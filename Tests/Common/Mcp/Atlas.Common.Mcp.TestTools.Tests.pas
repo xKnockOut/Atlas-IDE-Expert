@@ -42,7 +42,7 @@ uses
   Atlas.Text.TestResults;
 
 const
-  RechnerTests: array[0..21] of string = (
+  cRechnerTests: array[0..21] of string = (
     'unit Rechner.Tests;',
     'interface',
     'uses DUnitX.TestFramework;',
@@ -68,12 +68,12 @@ const
 
 function Lines: TArray<string>;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
-  SetLength(Result, Length(RechnerTests));
-  for Index := 0 to High(RechnerTests) do
+  SetLength(Result, Length(cRechnerTests));
+  for mIndex := 0 to High(cRechnerTests) do
   begin
-    Result[Index] := RechnerTests[Index];
+    Result[mIndex] := cRechnerTests[mIndex];
   end;
 end;
 
@@ -122,182 +122,183 @@ end;
 
 procedure TMcpTestToolsTests.PlatformFromProjectNotWin32;
 var
-  Platform, Reason: string;
+  mPlatform, mReason: string;
 begin
-  Assert.IsTrue(TMcpTestTools.ChoosePlatform('', '', ['Win64'], Platform, Reason));
-  Assert.AreEqual('Win64', Platform, 'nur Win64 aktiviert: Win64, nicht Win32');
-  Assert.IsTrue(TMcpTestTools.ChoosePlatform('', 'Win32', ['Win64'], Platform, Reason));
-  Assert.AreEqual('Win64', Platform, 'Vorgabe der Datei nicht aktiviert');
-  Assert.IsTrue(TMcpTestTools.ChoosePlatform('', 'Win64', ['Win32', 'Win64'], Platform, Reason));
-  Assert.AreEqual('Win64', Platform, 'Vorgabe der Datei');
-  Assert.IsTrue(TMcpTestTools.ChoosePlatform('', '', nil, Platform, Reason));
-  Assert.AreEqual('Win32', Platform, 'alte Datei ohne Angaben');
+  Assert.IsTrue(TMcpTestTools.ChoosePlatform('', '', ['Win64'], mPlatform, mReason));
+  Assert.AreEqual('Win64', mPlatform, 'nur Win64 aktiviert: Win64, nicht Win32');
+  Assert.IsTrue(TMcpTestTools.ChoosePlatform('', 'Win32', ['Win64'], mPlatform, mReason));
+  Assert.AreEqual('Win64', mPlatform, 'Vorgabe der Datei nicht aktiviert');
+  Assert.IsTrue(TMcpTestTools.ChoosePlatform('', 'Win64', ['Win32', 'Win64'], mPlatform, mReason));
+  Assert.AreEqual('Win64', mPlatform, 'Vorgabe der Datei');
+  Assert.IsTrue(TMcpTestTools.ChoosePlatform('', '', nil, mPlatform, mReason));
+  Assert.AreEqual('Win32', mPlatform, 'alte Datei ohne Angaben');
 end;
 
 procedure TMcpTestToolsTests.RequestedPlatformMustBeEnabled;
 var
-  Platform, Reason: string;
+  mPlatform, mReason: string;
 begin
-  Assert.IsFalse(TMcpTestTools.ChoosePlatform('Win32', 'Win64', ['Win64'], Platform, Reason));
-  Assert.Contains(Reason, 'Win32');
-  Assert.Contains(Reason, 'Win64');
-  Assert.IsTrue(TMcpTestTools.ChoosePlatform('win64', '', ['Win64'], Platform, Reason));
-  Assert.AreEqual('win64', Platform);
+  Assert.IsFalse(TMcpTestTools.ChoosePlatform('Win32', 'Win64', ['Win64'], mPlatform, mReason));
+  Assert.Contains(mReason, 'Win32');
+  Assert.Contains(mReason, 'Win64');
+  Assert.IsTrue(TMcpTestTools.ChoosePlatform('win64', '', ['Win64'], mPlatform, mReason));
+  Assert.AreEqual('win64', mPlatform);
 end;
 
 procedure TMcpTestToolsTests.PicksSingleTestProject;
 var
-  Project, Reason: string;
-  IsTest: TFunc<string, Boolean>;
+  mProject, mReason: string;
+  mIsTest: TFunc<string, Boolean>;
 begin
-  IsTest :=
+  mIsTest :=
     function(AFileName: string): Boolean
     begin
       Result := AFileName.Contains('Tests');
     end;
-  Assert.IsTrue(TMcpTestTools.PickProject(['C:\P\App.dproj', 'C:\P\App.Tests.dproj'], '', IsTest, Project,
-    Reason));
-  Assert.AreEqual('C:\P\App.Tests.dproj', Project);
-  Assert.IsFalse(TMcpTestTools.PickProject(['C:\P\A.Tests.dproj', 'C:\P\B.Tests.dproj'], '', IsTest, Project,
-    Reason));
-  Assert.Contains(Reason, 'A.Tests.dproj');
-  Assert.IsFalse(TMcpTestTools.PickProject(['C:\P\App.dproj'], '', IsTest, Project, Reason));
-  Assert.Contains(Reason, 'DUnitX');
-  Assert.IsTrue(TMcpTestTools.PickProject(['C:\P\App.dproj', 'C:\P\B.Tests.dproj'], 'app', IsTest, Project,
-    Reason));
-  Assert.AreEqual('C:\P\App.dproj', Project, 'genanntes Projekt ohne Endung');
-  Assert.IsFalse(TMcpTestTools.PickProject(['C:\P\App.dproj'], 'Fehlt', IsTest, Project, Reason));
-  Assert.Contains(Reason, 'Fehlt');
+  Assert.IsTrue(TMcpTestTools.PickProject(['C:\P\App.dproj', 'C:\P\App.Tests.dproj'], '', mIsTest, mProject,
+    mReason));
+  Assert.AreEqual('C:\P\App.Tests.dproj', mProject);
+  Assert.IsFalse(TMcpTestTools.PickProject(['C:\P\A.Tests.dproj', 'C:\P\B.Tests.dproj'], '', mIsTest, mProject,
+    mReason));
+  Assert.Contains(mReason, 'A.Tests.dproj');
+  Assert.IsFalse(TMcpTestTools.PickProject(['C:\P\App.dproj'], '', mIsTest, mProject, mReason));
+  Assert.Contains(mReason, 'DUnitX');
+  Assert.IsTrue(TMcpTestTools.PickProject(['C:\P\App.dproj', 'C:\P\B.Tests.dproj'], 'app', mIsTest, mProject,
+    mReason));
+  Assert.AreEqual('C:\P\App.dproj', mProject, 'genanntes Projekt ohne Endung');
+  Assert.IsFalse(TMcpTestTools.PickProject(['C:\P\App.dproj'], 'Fehlt', mIsTest, mProject, mReason));
+  Assert.Contains(mReason, 'Fehlt');
 end;
 
 procedure TMcpTestToolsTests.ExecutableFromExeOutput;
 var
-  Info: TProjectInfo;
+  mInfo: TProjectInfo;
 begin
-  Info := Default(TProjectInfo);
-  Info.FileName := 'C:\Projekt\Rechner.Tests.dproj';
-  Info.MainSource := 'C:\Projekt\Rechner.Tests.dpr';
-  Info.Properties := [TPair<string, string>.Create('DCC_ExeOutput', '.\Win32\Debug'),
+  mInfo := Default(TProjectInfo);
+  mInfo.FileName := 'C:\Projekt\Rechner.Tests.dproj';
+  mInfo.MainSource := 'C:\Projekt\Rechner.Tests.dpr';
+  mInfo.Properties := [TPair<string, string>.Create('DCC_ExeOutput', '.\Win32\Debug'),
     TPair<string, string>.Create('DCC_ExeOutput', '.\Win64\Debug')];
-  Assert.AreEqual('.\Win64\Debug', TMcpTestTools.PropertyOf(Info, 'dcc_exeoutput'), 'letzte Zuweisung');
-  Assert.AreEqual('C:\Projekt\Win64\Debug\Rechner.Tests.exe', TMcpTestTools.ExecutableOf(Info));
-  Info.Properties := nil;
-  Assert.AreEqual('C:\Projekt\Rechner.Tests.exe', TMcpTestTools.ExecutableOf(Info), 'ohne Ausgabeordner');
+  Assert.AreEqual('.\Win64\Debug', TMcpTestTools.PropertyOf(mInfo, 'dcc_exeoutput'), 'letzte Zuweisung');
+  Assert.AreEqual('C:\Projekt\Win64\Debug\Rechner.Tests.exe', TMcpTestTools.ExecutableOf(mInfo));
+  mInfo.Properties := nil;
+  Assert.AreEqual('C:\Projekt\Rechner.Tests.exe', TMcpTestTools.ExecutableOf(mInfo), 'ohne Ausgabeordner');
 end;
 
 procedure TMcpTestToolsTests.TestsFromListOrText;
 var
-  Arguments: TJSONObject;
-  List: TJSONArray;
-  Tests: TArray<string>;
+  mArguments: TJSONObject;
+  mList: TJSONArray;
+  mTests: TArray<string>;
 begin
-  Arguments := TJSONObject.Create;
+  mArguments := TJSONObject.Create;
   try
-    Assert.AreEqual(0, Integer(Length(TMcpTestTools.TestsOf(Arguments))), 'ohne Angabe alle');
-    List := TJSONArray.Create;
-    List.Add('U.TA.M');
-    List.Add(' ');
-    List.Add('U.TB');
-    Arguments.AddPair('tests', List);
-    Tests := TMcpTestTools.TestsOf(Arguments);
-    Assert.AreEqual(2, Integer(Length(Tests)));
-    Assert.AreEqual('U.TB', Tests[1]);
+    Assert.AreEqual(0, Integer(Length(TMcpTestTools.TestsOf(mArguments))), 'ohne Angabe alle');
+    mList := TJSONArray.Create;
+    mList.Add('U.TA.M');
+    mList.Add(' ');
+    mList.Add('U.TB');
+    mArguments.AddPair('tests', mList);
+    mTests := TMcpTestTools.TestsOf(mArguments);
+    Assert.AreEqual(2, Integer(Length(mTests)));
+    Assert.AreEqual('U.TB', mTests[1]);
   finally
-    Arguments.Free;
+    mArguments.Free;
   end;
-  Arguments := TJSONObject.Create;
+  mArguments := TJSONObject.Create;
   try
-    Arguments.AddPair('tests', 'U.TA.M, U.TB');
-    Tests := TMcpTestTools.TestsOf(Arguments);
-    Assert.AreEqual(2, Integer(Length(Tests)));
-    Assert.AreEqual('U.TA.M', Tests[0]);
-    Assert.AreEqual('U.TB', Tests[1]);
+    mArguments.AddPair('tests', 'U.TA.M, U.TB');
+    mTests := TMcpTestTools.TestsOf(mArguments);
+    Assert.AreEqual(2, Integer(Length(mTests)));
+    Assert.AreEqual('U.TA.M', mTests[0]);
+    Assert.AreEqual('U.TB', mTests[1]);
   finally
-    Arguments.Free;
+    mArguments.Free;
   end;
   Assert.AreEqual(0, Integer(Length(TMcpTestTools.TestsOf(nil))));
 end;
 
 procedure TMcpTestToolsTests.LocatesMethodBody;
 var
-  Units: TArray<TProjectUnit>;
-  FileName: string;
-  Line: Integer;
-  Missing: TTestCaseResult;
+  mUnits: TArray<TProjectUnit>;
+  mFileName: string;
+  mLine: Integer;
+  mMissing: TTestCaseResult;
 begin
-  SetLength(Units, 1);
-  Units[0].Name := 'Rechner.Tests';
-  Units[0].FileName := 'C:\Projekt\Quellen\Rechner.Tests.pas';
-  Assert.IsTrue(TMcpTestTools.Locate(FailedCase, Units, 'C:\Projekt', Reader(), FileName, Line));
-  Assert.AreEqual('C:\Projekt\Quellen\Rechner.Tests.pas', FileName);
-  Assert.AreEqual(18, Line, 'Methodenkopf im implementation-Teil, 1-basiert');
-  Assert.IsTrue(TMcpTestTools.Locate(FailedCase, nil, 'C:\Projekt', Reader(), FileName, Line),
+  SetLength(mUnits, 1);
+  mUnits[0].Name := 'Rechner.Tests';
+  mUnits[0].FileName := 'C:\Projekt\Quellen\Rechner.Tests.pas';
+  Assert.IsTrue(TMcpTestTools.Locate(FailedCase, mUnits, 'C:\Projekt', Reader(), mFileName, mLine));
+  Assert.AreEqual('C:\Projekt\Quellen\Rechner.Tests.pas', mFileName);
+  Assert.AreEqual(18, mLine, 'Methodenkopf im implementation-Teil, 1-basiert');
+  Assert.IsTrue(TMcpTestTools.Locate(FailedCase, nil, 'C:\Projekt', Reader(), mFileName, mLine),
     'ohne Unit-Liste im Projektordner');
-  Assert.AreEqual('C:\Projekt\Rechner.Tests.pas', FileName);
-  Missing := FailedCase;
-  Missing.UnitName := 'Andere.Tests';
-  Assert.IsFalse(TMcpTestTools.Locate(Missing, nil, 'C:\Projekt', Reader(), FileName, Line));
-  Assert.AreEqual('', FileName);
+  Assert.AreEqual('C:\Projekt\Rechner.Tests.pas', mFileName);
+  mMissing := FailedCase;
+  mMissing.UnitName := 'Andere.Tests';
+  Assert.IsFalse(TMcpTestTools.Locate(mMissing, nil, 'C:\Projekt', Reader(), mFileName, mLine));
+  Assert.AreEqual('', mFileName);
 end;
 
 procedure TMcpTestToolsTests.ReportsFailuresWithFileAndLine;
 var
-  Run: TTestRunResult;
-  Passed: TTestCaseResult;
-  Json: TJSONObject;
-  Failure: TJSONObject;
+  mRun: TTestRunResult;
+  mPassed: TTestCaseResult;
+  mJson: TJSONObject;
+  mFailure: TJSONObject;
 begin
-  Run := Default(TTestRunResult);
-  Run.Valid := True;
-  Run.DurationMs := 1250;
-  Passed := Default(TTestCaseResult);
-  Passed.FullName := 'Rechner.Tests.TRechnerTests.Addiert';
-  Passed.Outcome := TTestOutcome.Passed;
-  Run.Cases := [Passed, FailedCase];
-  Json := TJSONObject.ParseJSONValue(TMcpTestTools.Report(Target, ['Rechner.Tests.TRechnerTests'], Run,
+  mRun := Default(TTestRunResult);
+  mRun.Valid := True;
+  mRun.DurationMs := 1250;
+  mPassed := Default(TTestCaseResult);
+  mPassed.FullName := 'Rechner.Tests.TRechnerTests.Addiert';
+  mPassed.Outcome := TTestOutcome.Passed;
+  mRun.Cases := [mPassed, FailedCase];
+  mJson := TJSONObject.ParseJSONValue(TMcpTestTools.Report(Target, ['Rechner.Tests.TRechnerTests'], mRun,
     TMcpTestProcess.Make(1, nil), nil, Reader())) as TJSONObject;
   try
-    Assert.AreEqual('failed', Json.GetValue('result').Value);
-    Assert.AreEqual('Win64', Json.GetValue('platform').Value);
-    Assert.AreEqual('2', Json.GetValue('total').Value);
-    Assert.AreEqual('1', Json.GetValue('passed').Value);
-    Assert.AreEqual('1250', Json.GetValue('durationMs').Value);
-    Failure := TJSONArray(Json.GetValue('failures')).Items[0] as TJSONObject;
-    Assert.AreEqual('Rechner.Tests.TRechnerTests.Summe.Gross', Failure.GetValue('test').Value);
-    Assert.AreEqual('30', Failure.GetValue('expected').Value);
-    Assert.AreEqual('31', Failure.GetValue('actual').Value);
-    Assert.AreEqual('C:\Projekt\Rechner.Tests.pas', Failure.GetValue('file').Value);
-    Assert.AreEqual('18', Failure.GetValue('line').Value);
+    Assert.AreEqual('failed', mJson.GetValue('result').Value);
+    Assert.AreEqual('Win64', mJson.GetValue('platform').Value);
+    Assert.AreEqual('2', mJson.GetValue('total').Value);
+    Assert.AreEqual('1', mJson.GetValue('passed').Value);
+    Assert.AreEqual('1250', mJson.GetValue('durationMs').Value);
+    mFailure := TJSONArray(mJson.GetValue('failures')).Items[0] as TJSONObject;
+    Assert.AreEqual('Rechner.Tests.TRechnerTests.Summe.Gross', mFailure.GetValue('test').Value);
+    Assert.AreEqual('30', mFailure.GetValue('expected').Value);
+    Assert.AreEqual('31', mFailure.GetValue('actual').Value);
+    Assert.AreEqual('C:\Projekt\Rechner.Tests.pas', mFailure.GetValue('file').Value);
+    Assert.AreEqual('18', mFailure.GetValue('line').Value);
   finally
-    Json.Free;
+    mJson.Free;
   end;
-  Run.Cases := [Passed];
-  Json := TJSONObject.ParseJSONValue(TMcpTestTools.Report(Target, nil, Run, TMcpTestProcess.Make(0, nil), nil, Reader())) as TJSONObject;
+  mRun.Cases := [mPassed];
+  mJson := TJSONObject.ParseJSONValue(TMcpTestTools.Report(Target, nil, mRun, TMcpTestProcess.Make(0, nil), nil,
+    Reader())) as TJSONObject;
   try
-    Assert.AreEqual('passed', Json.GetValue('result').Value);
-    Assert.IsNull(Json.GetValue('tests'), 'ohne Filter kein Feld tests');
+    Assert.AreEqual('passed', mJson.GetValue('result').Value);
+    Assert.IsNull(mJson.GetValue('tests'), 'ohne Filter kein Feld tests');
   finally
-    Json.Free;
+    mJson.Free;
   end;
 end;
 
 procedure TMcpTestToolsTests.ReportsMissingXmlReport;
 var
-  Run: TTestRunResult;
-  Json: TJSONObject;
+  mRun: TTestRunResult;
+  mJson: TJSONObject;
 begin
-  Run := TTestResults.Parse('');
-  Json := TJSONObject.ParseJSONValue(TMcpTestTools.Report(Target, nil, Run,
+  mRun := TTestResults.Parse('');
+  mJson := TJSONObject.ParseJSONValue(TMcpTestTools.Report(Target, nil, mRun,
     TMcpTestProcess.Make(3, TArray<string>.Create('Zugriffsverletzung')), nil, Reader()))
     as TJSONObject;
   try
-    Assert.AreEqual('noReport', Json.GetValue('result').Value);
-    Assert.AreEqual('3', Json.GetValue('exitCode').Value);
-    Assert.Contains(Json.GetValue('reason').Value, 'XML');
-    Assert.AreEqual('Zugriffsverletzung', TJSONArray(Json.GetValue('output')).Items[0].Value);
-    Assert.IsNull(Json.GetValue('failures'));
+    Assert.AreEqual('noReport', mJson.GetValue('result').Value);
+    Assert.AreEqual('3', mJson.GetValue('exitCode').Value);
+    Assert.Contains(mJson.GetValue('reason').Value, 'XML');
+    Assert.AreEqual('Zugriffsverletzung', TJSONArray(mJson.GetValue('output')).Items[0].Value);
+    Assert.IsNull(mJson.GetValue('failures'));
   finally
-    Json.Free;
+    mJson.Free;
   end;
 end;
 

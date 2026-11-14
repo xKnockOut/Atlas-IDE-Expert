@@ -83,7 +83,7 @@ uses
   Atlas.Tests.RuleAssert;
 
 const
-  CatchAllOn = '{ "rules": { "catch-all-without-raise": "warning" } }';
+  cCatchAllOn = '{ "rules": { "catch-all-without-raise": "warning" } }';
 
 function InRoutine(const ABody: string): string;
 begin
@@ -92,12 +92,12 @@ end;
 
 procedure TExceptionRulesTests.GenericExceptionReported;
 var
-  Findings: TArray<TRuleFinding>;
+  mFindings: TArray<TRuleFinding>;
 begin
-  Findings := TRuleAssert.Findings(TGenericExceptionRaisedRule.Create,
+  mFindings := TRuleAssert.Findings(TGenericExceptionRaisedRule.Create,
     InRoutine('  raise Exception.Create(''Kunde fehlt'');'));
-  Assert.AreEqual(1, Integer(Length(Findings)));
-  Assert.AreEqual(Ord(TRuleSeverity.Hint), Ord(Findings[0].Severity));
+  Assert.AreEqual(1, Integer(Length(mFindings)));
+  Assert.AreEqual(Ord(TRuleSeverity.Hint), Ord(mFindings[0].Severity));
   TRuleAssert.Reports(TGenericExceptionRaisedRule.Create,
     InRoutine('  raise System.SysUtils.Exception.CreateFmt(''%d'', [N]);'));
   // Gleich wieder gefangen, nur für den Stack im Protokoll (#1109).
@@ -119,46 +119,46 @@ end;
 
 procedure TExceptionRulesTests.CatchAllWithoutRaiseReportedWhenEnabled;
 const
-  Source = '  try'#10'    Save;'#10'  except'#10'    on E: Exception do'#10'      Log(E.Message);'#10'  end;';
+  cSource = '  try'#10'    Save;'#10'  except'#10'    on E: Exception do'#10'      Log(E.Message);'#10'  end;';
 var
-  Findings: TArray<TRuleFinding>;
+  mFindings: TArray<TRuleFinding>;
 begin
   // Ohne Profil für Bibliothekscode aus.
-  TRuleAssert.Silent(TCatchAllWithoutRaiseRule.Create, InRoutine(Source));
-  Findings := TRuleAssert.Findings(TCatchAllWithoutRaiseRule.Create, InRoutine(Source), CatchAllOn);
-  Assert.AreEqual(1, Integer(Length(Findings)));
-  Assert.AreEqual(8, Findings[0].Range.StartPos.Line);
-  Assert.AreEqual(Ord(TRuleConfidence.Medium), Ord(Findings[0].Confidence));
+  TRuleAssert.Silent(TCatchAllWithoutRaiseRule.Create, InRoutine(cSource));
+  mFindings := TRuleAssert.Findings(TCatchAllWithoutRaiseRule.Create, InRoutine(cSource), cCatchAllOn);
+  Assert.AreEqual(1, Integer(Length(mFindings)));
+  Assert.AreEqual(8, mFindings[0].Range.StartPos.Line);
+  Assert.AreEqual(Ord(TRuleConfidence.Medium), Ord(mFindings[0].Confidence));
 end;
 
 procedure TExceptionRulesTests.CatchAllWithRaiseOrSpecificSilent;
 begin
   Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TCatchAllWithoutRaiseRule.Create,
     InRoutine('  try Save; except on E: Exception do begin Log(E.Message); raise; end; end;'#10 +
-    '  try Save; except on E: EInOutError do Log(E.Message); end;'), CatchAllOn))));
+    '  try Save; except on E: EInOutError do Log(E.Message); end;'), cCatchAllOn))));
 end;
 
 procedure TExceptionRulesTests.FreedInHandlerReported;
 var
-  Findings: TArray<TRuleFinding>;
+  mFindings: TArray<TRuleFinding>;
 begin
-  Findings := TRuleAssert.Findings(TExceptionFreedRule.Create,
+  mFindings := TRuleAssert.Findings(TExceptionFreedRule.Create,
     InRoutine('  try Save; except on E: Exception do begin Log(E.Message); E.Free; end; end;'));
-  Assert.AreEqual(1, Integer(Length(Findings)));
-  Assert.AreEqual(Ord(TRuleSeverity.Error), Ord(Findings[0].Severity));
+  Assert.AreEqual(1, Integer(Length(mFindings)));
+  Assert.AreEqual(Ord(TRuleSeverity.Error), Ord(mFindings[0].Severity));
   TRuleAssert.Reports(TExceptionFreedRule.Create,
     InRoutine('  try Save; except on Fehler: EInOutError do FreeAndNil(Fehler); end;'));
 end;
 
 procedure TExceptionRulesTests.FreedAfterRaiseReported;
 var
-  Findings: TArray<TRuleFinding>;
+  mFindings: TArray<TRuleFinding>;
 begin
-  Findings := TRuleAssert.Findings(TExceptionFreedRule.Create, 'unit U;'#10'interface'#10'implementation'#10 +
+  mFindings := TRuleAssert.Findings(TExceptionFreedRule.Create, 'unit U;'#10'interface'#10'implementation'#10 +
     'procedure P;'#10'var'#10'  E: EKunde;'#10'begin'#10'  E := EKunde.Create(''X'');'#10'  try'#10 +
     '    raise E;'#10'  finally'#10'    E.Free;'#10'  end;'#10'end;'#10'end.');
-  Assert.AreEqual(1, Integer(Length(Findings)));
-  Assert.AreEqual(11, Findings[0].Range.StartPos.Line);
+  Assert.AreEqual(1, Integer(Length(mFindings)));
+  Assert.AreEqual(11, mFindings[0].Range.StartPos.Line);
 end;
 
 procedure TExceptionRulesTests.NoDoubleFreeSilent;
@@ -179,18 +179,18 @@ end;
 
 procedure TExceptionRulesTests.ExceptionInDestructorIssueExample;
 var
-  Findings: TArray<TRuleFinding>;
+  mFindings: TArray<TRuleFinding>;
 begin
-  Findings := TRuleAssert.Findings(TExceptionInDestructorRule.Create, Sitzung('  if FOffen then'#10 +
+  mFindings := TRuleAssert.Findings(TExceptionInDestructorRule.Create, Sitzung('  if FOffen then'#10 +
     '    raise ESitzung.Create(''Sitzung noch offen'');'#10'  inherited;'));
-  Assert.AreEqual(1, Integer(Length(Findings)));
+  Assert.AreEqual(1, Integer(Length(mFindings)));
   Assert.AreEqual('raise im Destruktor: inherited Destroy läuft nicht mehr, Felder bleiben liegen.',
-    Findings[0].Message);
-  Assert.AreEqual(Ord(TRuleSeverity.Warning), Ord(Findings[0].Severity));
-  Assert.AreEqual(Ord(TRuleConfidence.High), Ord(Findings[0].Confidence));
-  Assert.AreEqual(11, Findings[0].Range.StartPos.Line);
-  Assert.AreEqual(4, Findings[0].Range.StartPos.Character);
-  Assert.AreEqual(0, Integer(Length(Findings[0].Fixes)));
+    mFindings[0].Message);
+  Assert.AreEqual(Ord(TRuleSeverity.Warning), Ord(mFindings[0].Severity));
+  Assert.AreEqual(Ord(TRuleConfidence.High), Ord(mFindings[0].Confidence));
+  Assert.AreEqual(11, mFindings[0].Range.StartPos.Line);
+  Assert.AreEqual(4, mFindings[0].Range.StartPos.Character);
+  Assert.AreEqual(0, Integer(Length(mFindings[0].Fixes)));
   // Korrigiert: Zustand protokollieren statt auslösen.
   TRuleAssert.Silent(TExceptionInDestructorRule.Create, Sitzung('  if FOffen then'#10 +
     '    Schliessen;'#10'  inherited;'));
@@ -203,14 +203,14 @@ end;
 
 procedure TExceptionRulesTests.ExceptionInDestructorVariants;
 var
-  Findings: TArray<TRuleFinding>;
+  mFindings: TArray<TRuleFinding>;
 begin
   // Nach inherited, im finally, erneutes raise im except-Teil, class destructor.
-  Findings := TRuleAssert.Findings(TExceptionInDestructorRule.Create, Sitzung('  try'#10'    Speichern;'#10 +
+  mFindings := TRuleAssert.Findings(TExceptionInDestructorRule.Create, Sitzung('  try'#10'    Speichern;'#10 +
     '  finally'#10'    inherited;'#10'  end;'#10'  if FOffen then'#10'    raise ESitzung.Create(''x'');'));
-  Assert.AreEqual(1, Integer(Length(Findings)));
+  Assert.AreEqual(1, Integer(Length(mFindings)));
   Assert.AreEqual('raise im Destruktor: die Ausnahme verlässt Destroy, der Aufrufer erwartet eine Freigabe ohne ' +
-    'Ausnahme.', Findings[0].Message);
+    'Ausnahme.', mFindings[0].Message);
   TRuleAssert.Reports(TExceptionInDestructorRule.Create, Sitzung('  try'#10'    Speichern;'#10'  finally'#10 +
     '    raise ESitzung.Create(''x'');'#10'  end;'));
   TRuleAssert.Reports(TExceptionInDestructorRule.Create, Sitzung('  try'#10'    Speichern;'#10'  except'#10 +
@@ -241,64 +241,64 @@ end;
 
 procedure TExceptionRulesTests.ExceptHandlerOrderIssueExample;
 var
-  Source, Fixed: string;
-  Findings: TArray<TRuleFinding>;
+  mSource, mFixed: string;
+  mFindings: TArray<TRuleFinding>;
 begin
-  Source := Handler('    on E: Exception do'#10'      Protokoll(E.Message);'#10 +
+  mSource := Handler('    on E: Exception do'#10'      Protokoll(E.Message);'#10 +
     '    on E: EConvertError do'#10'      ShowMessage(''Ungültige Zahl'');'#10);
-  Findings := TRuleAssert.Findings(TExceptHandlerOrderRule.Create, Source);
-  Assert.AreEqual(1, Integer(Length(Findings)));
-  Assert.AreEqual('except-handler-order', Findings[0].RuleId);
-  Assert.AreEqual(Ord(TRuleSeverity.Warning), Ord(Findings[0].Severity));
+  mFindings := TRuleAssert.Findings(TExceptHandlerOrderRule.Create, mSource);
+  Assert.AreEqual(1, Integer(Length(mFindings)));
+  Assert.AreEqual('except-handler-order', mFindings[0].RuleId);
+  Assert.AreEqual(Ord(TRuleSeverity.Warning), Ord(mFindings[0].Severity));
   Assert.AreEqual('Nie erreicht: EConvertError ist ein Nachfahr von Exception, das schon in Zeile 9 behandelt wird.',
-    Findings[0].Message);
-  Assert.AreEqual(10, Findings[0].Range.StartPos.Line);
-  Assert.AreEqual(10, Findings[0].Range.StartPos.Character);
-  Assert.AreEqual('on EConvertError vor on Exception verschieben', Findings[0].Fixes[0].Title);
-  Fixed := TChangeSignature.ApplyEdits(Source, Findings[0].Fixes[0].Edits);
+    mFindings[0].Message);
+  Assert.AreEqual(10, mFindings[0].Range.StartPos.Line);
+  Assert.AreEqual(10, mFindings[0].Range.StartPos.Character);
+  Assert.AreEqual('on EConvertError vor on Exception verschieben', mFindings[0].Fixes[0].Title);
+  mFixed := TChangeSignature.ApplyEdits(mSource, mFindings[0].Fixes[0].Edits);
   Assert.AreEqual(Handler('    on E: EConvertError do'#10'      ShowMessage(''Ungültige Zahl'');'#10 +
-    '    on E: Exception do'#10'      Protokoll(E.Message);'#10), Fixed);
-  TRuleAssert.Silent(TExceptHandlerOrderRule.Create, Fixed);
+    '    on E: Exception do'#10'      Protokoll(E.Message);'#10), mFixed);
+  TRuleAssert.Silent(TExceptHandlerOrderRule.Create, mFixed);
 end;
 
 procedure TExceptionRulesTests.ExceptHandlerOrderVariants;
 var
-  Source: string;
-  Findings: TArray<TRuleFinding>;
+  mSource: string;
+  mFindings: TArray<TRuleFinding>;
 begin
   // Doppelter Handler: keine Korrektur.
-  Findings := TRuleAssert.Findings(TExceptHandlerOrderRule.Create, Handler('    on E: EConvertError do'#10 +
+  mFindings := TRuleAssert.Findings(TExceptHandlerOrderRule.Create, Handler('    on E: EConvertError do'#10 +
     '      Protokoll(E.Message);'#10'    on EConvertError do'#10'      Abbrechen;'#10));
-  Assert.AreEqual(1, Integer(Length(Findings)));
-  Assert.AreEqual('Nie erreicht: EConvertError wird schon in Zeile 9 behandelt.', Findings[0].Message);
-  Assert.AreEqual(0, Integer(Length(Findings[0].Fixes)));
+  Assert.AreEqual(1, Integer(Length(mFindings)));
+  Assert.AreEqual('Nie erreicht: EConvertError wird schon in Zeile 9 behandelt.', mFindings[0].Message);
+  Assert.AreEqual(0, Integer(Length(mFindings[0].Fixes)));
   // Bekannte Hierarchie über zwei Stufen; letzter Handler ohne Semikolon, danach else.
-  Source := Handler('    on E: EStreamError do'#10'      Protokoll(E.Message);'#10 +
+  mSource := Handler('    on E: EStreamError do'#10'      Protokoll(E.Message);'#10 +
     '    on E: EFOpenError do'#10'      begin'#10'        Abbrechen;'#10'      end'#10'  else'#10'    raise;'#10);
-  Findings := TRuleAssert.Findings(TExceptHandlerOrderRule.Create, Source);
-  Assert.AreEqual(1, Integer(Length(Findings)));
+  mFindings := TRuleAssert.Findings(TExceptHandlerOrderRule.Create, mSource);
+  Assert.AreEqual(1, Integer(Length(mFindings)));
   Assert.AreEqual('Nie erreicht: EFOpenError ist ein Nachfahr von EStreamError, das schon in Zeile 9 behandelt wird.',
-    Findings[0].Message);
+    mFindings[0].Message);
   Assert.AreEqual(Handler('    on E: EFOpenError do'#10'      begin'#10'        Abbrechen;'#10'      end;'#10 +
     '    on E: EStreamError do'#10'      Protokoll(E.Message);'#10'  else'#10'    raise;'#10),
-    TChangeSignature.ApplyEdits(Source, Findings[0].Fixes[0].Edits));
+    TChangeSignature.ApplyEdits(mSource, mFindings[0].Fixes[0].Edits));
   // Eigene Hierarchie aus der Unit, TObject, geschachteltes try.
-  Findings := TRuleAssert.Findings(TExceptHandlerOrderRule.Create, 'unit U;'#10'interface'#10'type'#10 +
+  mFindings := TRuleAssert.Findings(TExceptHandlerOrderRule.Create, 'unit U;'#10'interface'#10'type'#10 +
     '  EBasis = class(Exception);'#10'  EKunde = class(EBasis);'#10'implementation'#10'procedure P;'#10'begin'#10 +
     '  try'#10'    try'#10'      Laden;'#10'    except'#10'      on EBasis do Abbrechen;'#10 +
     '      on E: EKunde do Melden(E);'#10'    end;'#10'  except'#10'    on TObject do Abbrechen;'#10 +
     '    on E: Exception do Melden(E);'#10'  end;'#10'end;'#10'end.');
-  Assert.AreEqual(2, Integer(Length(Findings)));
+  Assert.AreEqual(2, Integer(Length(mFindings)));
   Assert.AreEqual('Nie erreicht: Exception ist ein Nachfahr von TObject, das schon in Zeile 17 behandelt wird.',
-    Findings[1].Message);
+    mFindings[1].Message);
   Assert.AreEqual('Nie erreicht: EKunde ist ein Nachfahr von EBasis, das schon in Zeile 13 behandelt wird.',
-    Findings[0].Message);
-  Assert.AreEqual(1, Integer(Length(Findings[0].Fixes)));
+    mFindings[0].Message);
+  Assert.AreEqual(1, Integer(Length(mFindings[0].Fixes)));
   // Beide Handler in einer Zeile: gemeldet, aber ohne Korrektur.
-  Findings := TRuleAssert.Findings(TExceptHandlerOrderRule.Create, Handler(
+  mFindings := TRuleAssert.Findings(TExceptHandlerOrderRule.Create, Handler(
     '    on Exception do Abbrechen; on SysUtils.EConvertError do Melden;'#10));
-  Assert.AreEqual(1, Integer(Length(Findings)));
-  Assert.AreEqual(0, Integer(Length(Findings[0].Fixes)));
+  Assert.AreEqual(1, Integer(Length(mFindings)));
+  Assert.AreEqual(0, Integer(Length(mFindings[0].Fixes)));
   Assert.AreEqual('EIntError', TExceptHandlerOrderRule.KnownParent('ERangeError'));
   Assert.AreEqual('', TExceptHandlerOrderRule.KnownParent('EFremd'));
 end;
@@ -316,56 +316,56 @@ end;
 
 procedure TExceptionRulesTests.ExceptHandlerOrderOffAndExclude;
 var
-  Source: string;
+  mSource: string;
 begin
-  Source := Handler('    on Exception do Abbrechen;'#10'    on EConvertError do Melden;'#10);
-  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TExceptHandlerOrderRule.Create, Source,
+  mSource := Handler('    on Exception do Abbrechen;'#10'    on EConvertError do Melden;'#10);
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TExceptHandlerOrderRule.Create, mSource,
     '{"rules": {"except-handler-order": "off"}}'))));
-  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TExceptHandlerOrderRule.Create, Source,
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TExceptHandlerOrderRule.Create, mSource,
     '{"rules": {"except-handler-order": {"exclude": ["Source/*.pas"]}}}', 'Source/U.pas'))));
 end;
 
 procedure TExceptionRulesTests.ReraiseIssueExample;
 var
-  Source, Fixed: string;
-  Findings: TArray<TRuleFinding>;
+  mSource, mFixed: string;
+  mFindings: TArray<TRuleFinding>;
 begin
-  Source := Handler('    on E: EDatenbank do'#10'    begin'#10'      Protokoll(E.Message);'#10'      raise E;'#10 +
+  mSource := Handler('    on E: EDatenbank do'#10'    begin'#10'      Protokoll(E.Message);'#10'      raise E;'#10 +
     '    end;'#10);
-  Findings := TRuleAssert.Findings(TReraiseExceptionObjectRule.Create, Source);
-  Assert.AreEqual(1, Integer(Length(Findings)));
-  Assert.AreEqual('reraise-exception-object', Findings[0].RuleId);
-  Assert.AreEqual(Ord(TRuleSeverity.Warning), Ord(Findings[0].Severity));
-  Assert.AreEqual(Ord(TRuleConfidence.High), Ord(Findings[0].Confidence));
+  mFindings := TRuleAssert.Findings(TReraiseExceptionObjectRule.Create, mSource);
+  Assert.AreEqual(1, Integer(Length(mFindings)));
+  Assert.AreEqual('reraise-exception-object', mFindings[0].RuleId);
+  Assert.AreEqual(Ord(TRuleSeverity.Warning), Ord(mFindings[0].Severity));
+  Assert.AreEqual(Ord(TRuleConfidence.High), Ord(mFindings[0].Confidence));
   Assert.AreEqual('raise E löst das Objekt neu aus: Absprungstelle (ExceptAddr) und Aufrufliste zeigen danach auf ' +
     'diesen Handler statt auf den ursprünglichen Fehler; raise; wirft die Exception unverändert weiter.',
-    Findings[0].Message);
-  Assert.AreEqual(11, Findings[0].Range.StartPos.Line);
-  Assert.AreEqual(6, Findings[0].Range.StartPos.Character);
-  Assert.AreEqual(13, Findings[0].Range.EndPos.Character);
-  Assert.AreEqual('raise E; durch raise; ersetzen', Findings[0].Fixes[0].Title);
-  Fixed := TChangeSignature.ApplyEdits(Source, Findings[0].Fixes[0].Edits);
+    mFindings[0].Message);
+  Assert.AreEqual(11, mFindings[0].Range.StartPos.Line);
+  Assert.AreEqual(6, mFindings[0].Range.StartPos.Character);
+  Assert.AreEqual(13, mFindings[0].Range.EndPos.Character);
+  Assert.AreEqual('raise E; durch raise; ersetzen', mFindings[0].Fixes[0].Title);
+  mFixed := TChangeSignature.ApplyEdits(mSource, mFindings[0].Fixes[0].Edits);
   Assert.AreEqual(Handler('    on E: EDatenbank do'#10'    begin'#10'      Protokoll(E.Message);'#10 +
-    '      raise;'#10'    end;'#10), Fixed);
-  TRuleAssert.Silent(TReraiseExceptionObjectRule.Create, Fixed);
+    '      raise;'#10'    end;'#10), mFixed);
+  TRuleAssert.Silent(TReraiseExceptionObjectRule.Create, mFixed);
 end;
 
 procedure TExceptionRulesTests.ReraiseVariants;
 var
-  Findings: TArray<TRuleFinding>;
+  mFindings: TArray<TRuleFinding>;
 begin
   // Ohne begin, vor else, im inneren try, mit at (ohne Korrektur), anderer Name.
-  Findings := TRuleAssert.Findings(TReraiseExceptionObjectRule.Create, Handler(
+  mFindings := TRuleAssert.Findings(TReraiseExceptionObjectRule.Create, Handler(
     '    on Fehler: EConvertError do raise Fehler'#10'  else'#10'    raise;'#10));
-  Assert.AreEqual(1, Integer(Length(Findings)));
-  Assert.AreEqual(1, Integer(Length(Findings[0].Fixes)));
-  Findings := TRuleAssert.Findings(TReraiseExceptionObjectRule.Create, Handler(
+  Assert.AreEqual(1, Integer(Length(mFindings)));
+  Assert.AreEqual(1, Integer(Length(mFindings[0].Fixes)));
+  mFindings := TRuleAssert.Findings(TReraiseExceptionObjectRule.Create, Handler(
     '    on E: Exception do'#10'    begin'#10'      try'#10'        Aufraeumen;'#10'      except'#10 +
     '        on F: EInOutError do'#10'          raise E;'#10'      end;'#10'      raise E at ReturnAddress;'#10 +
     '    end;'#10));
-  Assert.AreEqual(2, Integer(Length(Findings)));
-  Assert.AreEqual(1, Integer(Length(Findings[0].Fixes)));
-  Assert.AreEqual(0, Integer(Length(Findings[1].Fixes)));
+  Assert.AreEqual(2, Integer(Length(mFindings)));
+  Assert.AreEqual(1, Integer(Length(mFindings[0].Fixes)));
+  Assert.AreEqual(0, Integer(Length(mFindings[1].Fixes)));
 end;
 
 procedure TExceptionRulesTests.ReraiseSilentCases;
@@ -386,12 +386,12 @@ end;
 
 procedure TExceptionRulesTests.ReraiseOffAndExclude;
 var
-  Source: string;
+  mSource: string;
 begin
-  Source := Handler('    on E: EDatenbank do'#10'      raise E;'#10);
-  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TReraiseExceptionObjectRule.Create, Source,
+  mSource := Handler('    on E: EDatenbank do'#10'      raise E;'#10);
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TReraiseExceptionObjectRule.Create, mSource,
     '{"rules": {"reraise-exception-object": "off"}}'))));
-  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TReraiseExceptionObjectRule.Create, Source,
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TReraiseExceptionObjectRule.Create, mSource,
     '{"rules": {"reraise-exception-object": {"exclude": ["Source/*.pas"]}}}', 'Source/U.pas'))));
 end;
 
@@ -405,35 +405,35 @@ end;
 
 procedure TReraiseOutsideHandlerTests.IssueExample;
 var
-  Findings: TArray<TRuleFinding>;
+  mFindings: TArray<TRuleFinding>;
 begin
-  Findings := TRuleAssert.Findings(TReraiseOutsideHandlerRule.Create,
+  mFindings := TRuleAssert.Findings(TReraiseOutsideHandlerRule.Create,
     Import('  Protokoll.Fehler(''Import abgebrochen'');'#10'  raise;'#10));
-  Assert.AreEqual(1, Integer(Length(Findings)));
-  Assert.AreEqual('reraise-outside-handler', Findings[0].RuleId);
-  Assert.AreEqual('raise ohne Argument ist nur in einem except-Block erlaubt (wie E2145).', Findings[0].Message);
-  Assert.AreEqual(Ord(TRuleSeverity.Error), Ord(Findings[0].Severity));
-  Assert.AreEqual(Ord(TRuleConfidence.High), Ord(Findings[0].Confidence));
-  Assert.AreEqual(6, Findings[0].Range.StartPos.Line);
-  Assert.AreEqual(2, Findings[0].Range.StartPos.Character);
-  Assert.AreEqual(7, Findings[0].Range.EndPos.Character);
-  Assert.AreEqual(0, Integer(Length(Findings[0].Fixes)));
+  Assert.AreEqual(1, Integer(Length(mFindings)));
+  Assert.AreEqual('reraise-outside-handler', mFindings[0].RuleId);
+  Assert.AreEqual('raise ohne Argument ist nur in einem except-Block erlaubt (wie E2145).', mFindings[0].Message);
+  Assert.AreEqual(Ord(TRuleSeverity.Error), Ord(mFindings[0].Severity));
+  Assert.AreEqual(Ord(TRuleConfidence.High), Ord(mFindings[0].Confidence));
+  Assert.AreEqual(6, mFindings[0].Range.StartPos.Line);
+  Assert.AreEqual(2, mFindings[0].Range.StartPos.Character);
+  Assert.AreEqual(7, mFindings[0].Range.EndPos.Character);
+  Assert.AreEqual(0, Integer(Length(mFindings[0].Fixes)));
 end;
 
 procedure TReraiseOutsideHandlerTests.LocalRoutineAndAnonymousMethod;
 var
-  Findings: TArray<TRuleFinding>;
+  mFindings: TArray<TRuleFinding>;
 begin
   // Lokale Prozedur, die aus dem Handler gerufen wird, raise im finally und in einer anonymen Methode.
-  Findings := TRuleAssert.Findings(TReraiseOutsideHandlerRule.Create,
+  mFindings := TRuleAssert.Findings(TReraiseOutsideHandlerRule.Create,
     'unit Importe;'#10'interface'#10'implementation'#10'procedure TImport.Laden;'#10 +
     '  procedure Weiterwerfen;'#10'  begin'#10'    raise;'#10'  end;'#10'begin'#10'  try'#10'    Lesen;'#10 +
     '  except'#10'    Weiterwerfen;'#10'  end;'#10'  try'#10'    Lesen;'#10'  finally'#10'    raise;'#10'  end;'#10 +
     '  Ausfuehren(procedure begin raise; end);'#10'end;'#10'end.');
-  Assert.AreEqual(3, Integer(Length(Findings)));
-  Assert.AreEqual(6, Findings[0].Range.StartPos.Line);
-  Assert.AreEqual(17, Findings[1].Range.StartPos.Line);
-  Assert.AreEqual(19, Findings[2].Range.StartPos.Line);
+  Assert.AreEqual(3, Integer(Length(mFindings)));
+  Assert.AreEqual(6, mFindings[0].Range.StartPos.Line);
+  Assert.AreEqual(17, mFindings[1].Range.StartPos.Line);
+  Assert.AreEqual(19, mFindings[2].Range.StartPos.Line);
 end;
 
 procedure TReraiseOutsideHandlerTests.HandlersAreSilent;
@@ -452,15 +452,15 @@ end;
 
 procedure TReraiseOutsideHandlerTests.OffAndExclude;
 const
-  Statements = '  raise;'#10;
+  cStatements = '  raise;'#10;
 begin
-  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TReraiseOutsideHandlerRule.Create, Import(Statements),
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TReraiseOutsideHandlerRule.Create, Import(cStatements),
     '{"rules": {"reraise-outside-handler": "off"}}', 'Importe.pas'))));
-  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TReraiseOutsideHandlerRule.Create, Import(Statements),
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TReraiseOutsideHandlerRule.Create, Import(cStatements),
     '{"rules": {"group:compiler": "off"}}', 'Importe.pas'))));
-  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TReraiseOutsideHandlerRule.Create, Import(Statements),
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TReraiseOutsideHandlerRule.Create, Import(cStatements),
     '{"rules": {"reraise-outside-handler": {"exclude": ["Alt/*.pas"]}}}', 'Alt/Importe.pas'))));
-  Assert.AreEqual(1, Integer(Length(TRuleAssert.Findings(TReraiseOutsideHandlerRule.Create, Import(Statements),
+  Assert.AreEqual(1, Integer(Length(TRuleAssert.Findings(TReraiseOutsideHandlerRule.Create, Import(cStatements),
     '{"rules": {"reraise-outside-handler": {"exclude": ["Alt/*.pas"]}}}', 'Neu/Importe.pas'))));
 end;
 
@@ -473,61 +473,61 @@ end;
 
 procedure TExceptionRulesTests.InheritedConstructorIssueExample;
 var
-  Source, Fixed: string;
-  Findings: TArray<TRuleFinding>;
+  mSource, mFixed: string;
+  mFindings: TArray<TRuleFinding>;
 begin
-  Source := Dienst('  try'#10'    inherited Create;'#10'    FListe := TObject.Create;'#10'  except'#10 +
+  mSource := Dienst('  try'#10'    inherited Create;'#10'    FListe := TObject.Create;'#10'  except'#10 +
     '    FListe.Free;'#10'    raise;'#10'  end;'#10);
-  Findings := TRuleAssert.Findings(TInheritedConstructorAfterTryRule.Create, Source);
-  Assert.AreEqual(1, Integer(Length(Findings)));
-  Assert.AreEqual('inherited-constructor-after-try', Findings[0].RuleId);
-  Assert.AreEqual(Ord(TRuleSeverity.Hint), Ord(Findings[0].Severity));
-  Assert.AreEqual(Ord(TRuleConfidence.High), Ord(Findings[0].Confidence));
+  mFindings := TRuleAssert.Findings(TInheritedConstructorAfterTryRule.Create, mSource);
+  Assert.AreEqual(1, Integer(Length(mFindings)));
+  Assert.AreEqual('inherited-constructor-after-try', mFindings[0].RuleId);
+  Assert.AreEqual(Ord(TRuleSeverity.Hint), Ord(mFindings[0].Severity));
+  Assert.AreEqual(Ord(TRuleConfidence.High), Ord(mFindings[0].Confidence));
   Assert.AreEqual('try vor dem Aufruf des geerbten Konstruktors; Self ist noch nicht initialisiert (wie H2505).',
-    Findings[0].Message);
-  Assert.AreEqual(12, Findings[0].Range.StartPos.Line);
-  Assert.AreEqual(2, Findings[0].Range.StartPos.Character);
-  Assert.AreEqual(5, Findings[0].Range.EndPos.Character);
-  Assert.AreEqual(1, Integer(Length(Findings[0].Fixes)));
-  Assert.AreEqual('inherited Create vor try ziehen', Findings[0].Fixes[0].Title);
-  Assert.IsTrue(Findings[0].Fixes[0].Safe);
-  Fixed := TChangeSignature.ApplyEdits(Source, Findings[0].Fixes[0].Edits);
+    mFindings[0].Message);
+  Assert.AreEqual(12, mFindings[0].Range.StartPos.Line);
+  Assert.AreEqual(2, mFindings[0].Range.StartPos.Character);
+  Assert.AreEqual(5, mFindings[0].Range.EndPos.Character);
+  Assert.AreEqual(1, Integer(Length(mFindings[0].Fixes)));
+  Assert.AreEqual('inherited Create vor try ziehen', mFindings[0].Fixes[0].Title);
+  Assert.IsTrue(mFindings[0].Fixes[0].Safe);
+  mFixed := TChangeSignature.ApplyEdits(mSource, mFindings[0].Fixes[0].Edits);
   Assert.AreEqual(Dienst('  inherited Create;'#10'  try'#10'    FListe := TObject.Create;'#10'  except'#10 +
-    '    FListe.Free;'#10'    raise;'#10'  end;'#10), Fixed);
-  TRuleAssert.Silent(TInheritedConstructorAfterTryRule.Create, Fixed);
+    '    FListe.Free;'#10'    raise;'#10'  end;'#10), mFixed);
+  TRuleAssert.Silent(TInheritedConstructorAfterTryRule.Create, mFixed);
 end;
 
 procedure TExceptionRulesTests.InheritedConstructorVariants;
 var
-  Findings: TArray<TRuleFinding>;
-  Fixed: string;
+  mFindings: TArray<TRuleFinding>;
+  mFixed: string;
 begin
   // inherited ohne Namen, auf derselben Zeile wie try.
-  Findings := TRuleAssert.Findings(TInheritedConstructorAfterTryRule.Create,
+  mFindings := TRuleAssert.Findings(TInheritedConstructorAfterTryRule.Create,
     Dienst('  try inherited;'#10'    FListe := TObject.Create;'#10'  finally'#10'  end;'#10));
-  Assert.AreEqual(1, Integer(Length(Findings)));
-  Assert.AreEqual('inherited vor try ziehen', Findings[0].Fixes[0].Title);
-  Fixed := TChangeSignature.ApplyEdits(Dienst('  try inherited;'#10'    FListe := TObject.Create;'#10 +
-    '  finally'#10'  end;'#10), Findings[0].Fixes[0].Edits);
+  Assert.AreEqual(1, Integer(Length(mFindings)));
+  Assert.AreEqual('inherited vor try ziehen', mFindings[0].Fixes[0].Title);
+  mFixed := TChangeSignature.ApplyEdits(Dienst('  try inherited;'#10'    FListe := TObject.Create;'#10 +
+    '  finally'#10'  end;'#10), mFindings[0].Fixes[0].Edits);
   Assert.AreEqual(Dienst('  inherited;'#10'  try'#10'    FListe := TObject.Create;'#10'  finally'#10'  end;'#10),
-    Fixed);
+    mFixed);
   // Nicht die erste Anweisung: Meldung ohne Korrektur.
-  Findings := TRuleAssert.Findings(TInheritedConstructorAfterTryRule.Create,
+  mFindings := TRuleAssert.Findings(TInheritedConstructorAfterTryRule.Create,
     Dienst('  try'#10'    FListe := nil;'#10'    inherited Create;'#10'  finally'#10'  end;'#10));
-  Assert.AreEqual(1, Integer(Length(Findings)));
-  Assert.AreEqual(0, Integer(Length(Findings[0].Fixes)));
+  Assert.AreEqual(1, Integer(Length(mFindings)));
+  Assert.AreEqual(0, Integer(Length(mFindings[0].Fixes)));
   // Mit Argumenten, CreateNeu; verschachtelt nur das äußere try.
-  Findings := TRuleAssert.Findings(TInheritedConstructorAfterTryRule.Create,
+  mFindings := TRuleAssert.Findings(TInheritedConstructorAfterTryRule.Create,
     Dienst('  try'#10'    try'#10'      inherited CreateNeu(nil);'#10'    finally'#10'    end;'#10 +
     '  except'#10'  end;'#10));
-  Assert.AreEqual(1, Integer(Length(Findings)));
-  Assert.AreEqual(12, Findings[0].Range.StartPos.Line);
+  Assert.AreEqual(1, Integer(Length(mFindings)));
+  Assert.AreEqual(12, mFindings[0].Range.StartPos.Line);
   // {$IFDEF}: Nur der Zweig, in dem inherited im try steht.
-  Findings := TRuleAssert.Findings(TInheritedConstructorAfterTryRule.Create,
+  mFindings := TRuleAssert.Findings(TInheritedConstructorAfterTryRule.Create,
     Dienst('{$IFDEF ALT}'#10'  try'#10'    inherited Create;'#10'  finally'#10'  end;'#10'{$ELSE}'#10 +
     '  inherited Create;'#10'  try'#10'  finally'#10'  end;'#10'{$ENDIF}'#10));
-  Assert.AreEqual(1, Integer(Length(Findings)));
-  Assert.AreEqual(13, Findings[0].Range.StartPos.Line);
+  Assert.AreEqual(1, Integer(Length(mFindings)));
+  Assert.AreEqual(13, mFindings[0].Range.StartPos.Line);
 end;
 
 procedure TExceptionRulesTests.InheritedConstructorSilentCases;
@@ -553,12 +553,12 @@ end;
 
 procedure TExceptionRulesTests.InheritedConstructorOffAndExclude;
 var
-  Source: string;
+  mSource: string;
 begin
-  Source := Dienst('  try'#10'    inherited Create;'#10'  finally'#10'  end;'#10);
-  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TInheritedConstructorAfterTryRule.Create, Source,
+  mSource := Dienst('  try'#10'    inherited Create;'#10'  finally'#10'  end;'#10);
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TInheritedConstructorAfterTryRule.Create, mSource,
     '{"rules": {"inherited-constructor-after-try": "off"}}'))));
-  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TInheritedConstructorAfterTryRule.Create, Source,
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TInheritedConstructorAfterTryRule.Create, mSource,
     '{"rules": {"inherited-constructor-after-try": {"exclude": ["Source/*.pas"]}}}', 'Source/U.pas'))));
 end;
 

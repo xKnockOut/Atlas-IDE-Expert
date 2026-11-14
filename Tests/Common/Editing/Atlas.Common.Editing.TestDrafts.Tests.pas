@@ -54,7 +54,7 @@ uses
   Atlas.Common.Editing.TestDrafts;
 
 const
-  KundenText =
+  cKundenText =
     'unit Kunden;'#13#10 +                                                              // 0
     'interface'#13#10 +                                                                 // 1
     'type'#13#10 +                                                                      // 2
@@ -90,7 +90,7 @@ const
     'end;'#13#10 +                                                                      // 32
     'end.'#13#10;
 
-  TestUnitText =
+  cTestUnitText =
     'unit Kunden.Tests;'#13#10 +
     'interface'#13#10 +
     'uses'#13#10 +
@@ -115,8 +115,8 @@ const
 
 function DraftAt(ALine: Integer; out ADraft: TTestDraft): Boolean;
 begin
-  Result := TTestDrafts.DraftAt(KundenText, TPascalLexer.Tokenize(KundenText),
-    TIndexExtractor.ExtractText(KundenText, 'Kunden.pas', nil), ALine, ADraft);
+  Result := TTestDrafts.DraftAt(cKundenText, TPascalLexer.Tokenize(cKundenText),
+    TIndexExtractor.ExtractText(cKundenText, 'Kunden.pas', nil), ALine, ADraft);
   ADraft.Fixture := 'TKundeTests';
   ADraft.UnitName := 'Kunden';
 end;
@@ -124,13 +124,13 @@ end;
 /// <summary>Der Rumpf AMethod in einer Testunit parst ohne Fehler.</summary>
 function Parses(const AMethod: string): Boolean;
 var
-  Tree: TSyntaxTree;
+  mTree: TSyntaxTree;
 begin
-  Tree := TSyntaxTreeCache.Parse('unit T;'#13#10'interface'#13#10'implementation'#13#10 + AMethod + #13#10'end.');
+  mTree := TSyntaxTreeCache.Parse('unit T;'#13#10'interface'#13#10'implementation'#13#10 + AMethod + #13#10'end.');
   try
-    Result := Length(Tree.Diagnostics) = 0;
+    Result := Length(mTree.Diagnostics) = 0;
   finally
-    Tree.Free;
+    mTree.Free;
   end;
 end;
 
@@ -158,151 +158,151 @@ end;
 
 procedure TTestDraftsTests.DraftAtReadsMethodFromBodyAndDeclaration;
 var
-  Draft: TTestDraft;
+  mDraft: TTestDraft;
 begin
-  Assert.IsTrue(DraftAt(19, Draft), 'im Rumpf');
-  Assert.AreEqual('TKunde', Draft.ClassName);
-  Assert.AreEqual('Berechne', Draft.MethodName);
-  Assert.AreEqual('TestBerechne', Draft.TestName);
-  Assert.AreEqual('Double', Draft.ResultType);
-  Assert.AreEqual(3, Integer(Length(Draft.Parameters)));
-  Assert.AreEqual('AName', Draft.Parameters[1].Name);
-  Assert.AreEqual('var', Draft.Parameters[1].Modifier);
-  Assert.AreEqual('string', Draft.Parameters[1].TypeName);
-  Assert.IsFalse(Draft.ClassMethod);
-  Assert.IsTrue(Draft.Draft);
-  Assert.IsTrue(DraftAt(6, Draft), 'an der Deklaration');
-  Assert.AreEqual('Berechne', Draft.MethodName);
-  Assert.IsTrue(DraftAt(22, Draft), 'Klassenmethode');
-  Assert.IsTrue(Draft.ClassMethod);
-  Assert.AreEqual('TKunde', Draft.ResultType);
-  Assert.IsTrue(DraftAt(31, Draft), 'Routine');
-  Assert.AreEqual('', Draft.ClassName);
-  Assert.AreEqual('Summe', Draft.MethodName);
-  Assert.AreEqual(2, Integer(Length(Draft.Parameters)));
+  Assert.IsTrue(DraftAt(19, mDraft), 'im Rumpf');
+  Assert.AreEqual('TKunde', mDraft.ClassName);
+  Assert.AreEqual('Berechne', mDraft.MethodName);
+  Assert.AreEqual('TestBerechne', mDraft.TestName);
+  Assert.AreEqual('Double', mDraft.ResultType);
+  Assert.AreEqual(3, Integer(Length(mDraft.Parameters)));
+  Assert.AreEqual('AName', mDraft.Parameters[1].Name);
+  Assert.AreEqual('var', mDraft.Parameters[1].Modifier);
+  Assert.AreEqual('string', mDraft.Parameters[1].TypeName);
+  Assert.IsFalse(mDraft.ClassMethod);
+  Assert.IsTrue(mDraft.Draft);
+  Assert.IsTrue(DraftAt(6, mDraft), 'an der Deklaration');
+  Assert.AreEqual('Berechne', mDraft.MethodName);
+  Assert.IsTrue(DraftAt(22, mDraft), 'Klassenmethode');
+  Assert.IsTrue(mDraft.ClassMethod);
+  Assert.AreEqual('TKunde', mDraft.ResultType);
+  Assert.IsTrue(DraftAt(31, mDraft), 'Routine');
+  Assert.AreEqual('', mDraft.ClassName);
+  Assert.AreEqual('Summe', mDraft.MethodName);
+  Assert.AreEqual(2, Integer(Length(mDraft.Parameters)));
 end;
 
 procedure TTestDraftsTests.DraftAtSkipsConstructorsRecordsAndOtherLines;
 var
-  Draft: TTestDraft;
+  mDraft: TTestDraft;
 begin
-  Assert.IsFalse(DraftAt(15, Draft), 'Konstruktor');
-  Assert.IsFalse(DraftAt(5, Draft), 'Konstruktor an der Deklaration');
-  Assert.IsFalse(DraftAt(27, Draft), 'Methode eines Records');
-  Assert.IsFalse(DraftAt(2, Draft), 'type');
+  Assert.IsFalse(DraftAt(15, mDraft), 'Konstruktor');
+  Assert.IsFalse(DraftAt(5, mDraft), 'Konstruktor an der Deklaration');
+  Assert.IsFalse(DraftAt(27, mDraft), 'Methode eines Records');
+  Assert.IsFalse(DraftAt(2, mDraft), 'type');
 end;
 
 procedure TTestDraftsTests.MethodTextCallsSubjectWithLocals;
 var
-  Draft: TTestDraft;
-  Text: string;
+  mDraft: TTestDraft;
+  mText: string;
 begin
-  Assert.IsTrue(DraftAt(19, Draft));
-  Draft.Subject := 'FSubject';
-  Text := TTestDrafts.MethodText(Draft, #13#10);
-  Assert.IsTrue(Parses(Text), Text);
+  Assert.IsTrue(DraftAt(19, mDraft));
+  mDraft.Subject := 'FSubject';
+  mText := TTestDrafts.MethodText(mDraft, #13#10);
+  Assert.IsTrue(Parses(mText), mText);
   Assert.IsTrue(StartsStr('procedure TKundeTests.TestBerechne;'#13#10'var'#13#10 +
-    '  Menge: Integer;'#13#10'  Name: string;'#13#10'  Faktor: Double;'#13#10'  Actual: Double;'#13#10'begin', Text),
-    Text);
-  Assert.IsTrue(ContainsStr(Text, '  Menge := 0;'#13#10'  Name := '''';'#13#10'  Faktor := 0;'), Text);
-  Assert.IsTrue(ContainsStr(Text, '  Actual := FSubject.Berechne(Menge, Name, Faktor);'), Text);
-  Assert.IsTrue(ContainsStr(Text, '  Assert.AreEqual(0.0, Actual, 1E-9);'), Text);
-  Assert.IsTrue(ContainsStr(Text, '  Assert.AreEqual('''', Name);'), 'var-Parameter wird geprüft: ' + Text);
+    '  Menge: Integer;'#13#10'  Name: string;'#13#10'  Faktor: Double;'#13#10'  Actual: Double;'#13#10'begin', mText),
+    mText);
+  Assert.IsTrue(ContainsStr(mText, '  Menge := 0;'#13#10'  Name := '''';'#13#10'  Faktor := 0;'), mText);
+  Assert.IsTrue(ContainsStr(mText, '  Actual := FSubject.Berechne(Menge, Name, Faktor);'), mText);
+  Assert.IsTrue(ContainsStr(mText, '  Assert.AreEqual(0.0, Actual, 1E-9);'), mText);
+  Assert.IsTrue(ContainsStr(mText, '  Assert.AreEqual('''', Name);'), 'var-Parameter wird geprüft: ' + mText);
   // Ohne Umlaute im Vergleich: Das FPC-Testprogramm liest Literale mit anderer Codepage.
-  Assert.IsTrue(ContainsStr(Text, '  Assert.Fail(''Entwurf f'), Text);
-  Assert.IsTrue(ContainsStr(Text, ' TKunde.Berechne: erwartete Werte eintragen und diese Zeile l'), Text);
-  Assert.IsTrue(EndsStr('schen'');'#13#10'end;', Text), Text);
-  Assert.IsFalse(ContainsStr(Text, 'try'), Text);
+  Assert.IsTrue(ContainsStr(mText, '  Assert.Fail(''Entwurf f'), mText);
+  Assert.IsTrue(ContainsStr(mText, ' TKunde.Berechne: erwartete Werte eintragen und diese Zeile l'), mText);
+  Assert.IsTrue(EndsStr('schen'');'#13#10'end;', mText), mText);
+  Assert.IsFalse(ContainsStr(mText, 'try'), mText);
 end;
 
 procedure TTestDraftsTests.ClassMethodIsCalledViaClass;
 var
-  Draft: TTestDraft;
-  Text: string;
+  mDraft: TTestDraft;
+  mText: string;
 begin
-  Assert.IsTrue(DraftAt(22, Draft));
-  Text := TTestDrafts.MethodText(Draft, #13#10);
-  Assert.IsTrue(Parses(Text), Text);
-  Assert.IsTrue(ContainsStr(Text, '  Actual := TKunde.Neu(Text);'), Text);
-  Assert.IsTrue(ContainsStr(Text, '  Assert.AreEqual<TKunde>(Default(TKunde), Actual);'), Text);
-  Assert.IsFalse(ContainsStr(Text, 'Subject'), Text);
-  Assert.IsTrue(DraftAt(31, Draft));
-  Text := TTestDrafts.MethodText(Draft, #13#10);
-  Assert.IsTrue(ContainsStr(Text, '  Actual := Summe(A, B);'), Text);
-  Assert.IsTrue(ContainsStr(Text, '  Assert.AreEqual(0, Actual);'), Text);
+  Assert.IsTrue(DraftAt(22, mDraft));
+  mText := TTestDrafts.MethodText(mDraft, #13#10);
+  Assert.IsTrue(Parses(mText), mText);
+  Assert.IsTrue(ContainsStr(mText, '  Actual := TKunde.Neu(Text);'), mText);
+  Assert.IsTrue(ContainsStr(mText, '  Assert.AreEqual<TKunde>(Default(TKunde), Actual);'), mText);
+  Assert.IsFalse(ContainsStr(mText, 'Subject'), mText);
+  Assert.IsTrue(DraftAt(31, mDraft));
+  mText := TTestDrafts.MethodText(mDraft, #13#10);
+  Assert.IsTrue(ContainsStr(mText, '  Actual := Summe(A, B);'), mText);
+  Assert.IsTrue(ContainsStr(mText, '  Assert.AreEqual(0, Actual);'), mText);
 end;
 
 procedure TTestDraftsTests.LocalSubjectIsFreedInFinally;
 var
-  Draft: TTestDraft;
-  Text: string;
+  mDraft: TTestDraft;
+  mText: string;
 begin
-  Assert.IsTrue(DraftAt(19, Draft));
-  Draft.CreateText := 'TKunde.Create';
-  Text := TTestDrafts.MethodText(Draft, #13#10);
-  Assert.IsTrue(Parses(Text), Text);
-  Assert.IsTrue(ContainsStr(Text, '  Subject: TKunde;'), Text);
-  Assert.IsTrue(ContainsStr(Text, '  Subject := TKunde.Create;'#13#10'  try'#13#10), Text);
-  Assert.IsTrue(ContainsStr(Text, '    Actual := Subject.Berechne(Menge, Name, Faktor);'), Text);
-  Assert.IsTrue(ContainsStr(Text, '  finally'#13#10'    Subject.Free;'#13#10'  end;'#13#10'end;'), Text);
-  Draft.CreateText := '';
-  Text := TTestDrafts.MethodText(Draft, #13#10);
-  Assert.IsTrue(Parses(Text), Text);
-  Assert.IsTrue(ContainsStr(Text, '  Subject := nil; // '), Text);
+  Assert.IsTrue(DraftAt(19, mDraft));
+  mDraft.CreateText := 'TKunde.Create';
+  mText := TTestDrafts.MethodText(mDraft, #13#10);
+  Assert.IsTrue(Parses(mText), mText);
+  Assert.IsTrue(ContainsStr(mText, '  Subject: TKunde;'), mText);
+  Assert.IsTrue(ContainsStr(mText, '  Subject := TKunde.Create;'#13#10'  try'#13#10), mText);
+  Assert.IsTrue(ContainsStr(mText, '    Actual := Subject.Berechne(Menge, Name, Faktor);'), mText);
+  Assert.IsTrue(ContainsStr(mText, '  finally'#13#10'    Subject.Free;'#13#10'  end;'#13#10'end;'), mText);
+  mDraft.CreateText := '';
+  mText := TTestDrafts.MethodText(mDraft, #13#10);
+  Assert.IsTrue(Parses(mText), mText);
+  Assert.IsTrue(ContainsStr(mText, '  Subject := nil; // '), mText);
 end;
 
 procedure TTestDraftsTests.RaisesWithValuesAndFields;
 var
-  Draft: TTestDraft;
-  Field: TTestDraftValue;
-  Text: string;
+  mDraft: TTestDraft;
+  mField: TTestDraftValue;
+  mText: string;
 begin
-  Assert.IsTrue(DraftAt(19, Draft));
-  Draft.Subject := 'FSubject';
-  Draft.Draft := False;
-  Draft.Kind := TTestDraftKind.Raises;
-  Draft.ExceptionClass := 'EConvertError';
-  Draft.Comment := 'Aus Debug-Halt, EConvertError';
-  Draft.Parameters[0].Value := '12';
-  Draft.Parameters[1].Value := '''12,5 kg''';
-  Draft.Parameters[2].Todo := True;
-  Field := TTestDraftValue.Create('Einheit', 'string', '', '''kg''');
-  Draft.Fields := [Field];
-  Field := TTestDraftValue.Create('FIntern', 'Integer', '', '3');
-  Field.Accessible := False;
-  Draft.Fields := Draft.Fields + [Field];
-  Text := TTestDrafts.MethodText(Draft, #13#10);
-  Assert.IsTrue(Parses(Text), Text);
-  Assert.IsTrue(ContainsStr(Text, 'begin'#13#10'  // Aus Debug-Halt, EConvertError'#13#10), Text);
-  Assert.IsTrue(ContainsStr(Text, '  Menge := 12;'#13#10'  Name := ''12,5 kg'';'#13#10 +
-    '  Faktor := 0; // TODO: Faktor aufbauen (Double)'), Text);
-  Assert.IsTrue(ContainsStr(Text, '  FSubject.Einheit := ''kg'';'), Text);
-  Assert.IsTrue(ContainsStr(Text, '  // FIntern = 3 (nicht zug'), Text);
-  Assert.IsTrue(ContainsStr(Text, '  Assert.WillRaise('#13#10'    procedure'#13#10'    begin'#13#10 +
-    '      FSubject.Berechne(Menge, Name, Faktor);'#13#10'    end, EConvertError);'#13#10'end;'), Text);
-  Assert.IsFalse(ContainsStr(Text, 'Actual'), Text);
-  Assert.IsFalse(ContainsStr(Text, 'Assert.Fail'), Text);
+  Assert.IsTrue(DraftAt(19, mDraft));
+  mDraft.Subject := 'FSubject';
+  mDraft.Draft := False;
+  mDraft.Kind := TTestDraftKind.Raises;
+  mDraft.ExceptionClass := 'EConvertError';
+  mDraft.Comment := 'Aus Debug-Halt, EConvertError';
+  mDraft.Parameters[0].Value := '12';
+  mDraft.Parameters[1].Value := '''12,5 kg''';
+  mDraft.Parameters[2].Todo := True;
+  mField := TTestDraftValue.Create('Einheit', 'string', '', '''kg''');
+  mDraft.Fields := [mField];
+  mField := TTestDraftValue.Create('FIntern', 'Integer', '', '3');
+  mField.Accessible := False;
+  mDraft.Fields := mDraft.Fields + [mField];
+  mText := TTestDrafts.MethodText(mDraft, #13#10);
+  Assert.IsTrue(Parses(mText), mText);
+  Assert.IsTrue(ContainsStr(mText, 'begin'#13#10'  // Aus Debug-Halt, EConvertError'#13#10), mText);
+  Assert.IsTrue(ContainsStr(mText, '  Menge := 12;'#13#10'  Name := ''12,5 kg'';'#13#10 +
+    '  Faktor := 0; // TODO: Faktor aufbauen (Double)'), mText);
+  Assert.IsTrue(ContainsStr(mText, '  FSubject.Einheit := ''kg'';'), mText);
+  Assert.IsTrue(ContainsStr(mText, '  // FIntern = 3 (nicht zug'), mText);
+  Assert.IsTrue(ContainsStr(mText, '  Assert.WillRaise('#13#10'    procedure'#13#10'    begin'#13#10 +
+    '      FSubject.Berechne(Menge, Name, Faktor);'#13#10'    end, EConvertError);'#13#10'end;'), mText);
+  Assert.IsFalse(ContainsStr(mText, 'Actual'), mText);
+  Assert.IsFalse(ContainsStr(mText, 'Assert.Fail'), mText);
 end;
 
 procedure TTestDraftsTests.BareDraftOnlyFails;
 var
-  Draft: TTestDraft;
-  Text: string;
+  mDraft: TTestDraft;
+  mText: string;
 begin
-  Draft := Default(TTestDraft);
-  Draft.Fixture := 'TKundeTests';
-  Draft.TestName := 'TestPruefe';
-  Draft.ClassName := 'TKunde';
-  Draft.MethodName := 'Pruefe';
-  Draft.Bare := True;
-  Text := TTestDrafts.MethodText(Draft, #13#10);
-  Assert.IsTrue(StartsStr('procedure TKundeTests.TestPruefe;'#13#10'begin'#13#10'  Assert.Fail(', Text), Text);
-  Assert.IsTrue(EndsStr(');'#13#10'end;', Text), Text);
+  mDraft := Default(TTestDraft);
+  mDraft.Fixture := 'TKundeTests';
+  mDraft.TestName := 'TestPruefe';
+  mDraft.ClassName := 'TKunde';
+  mDraft.MethodName := 'Pruefe';
+  mDraft.Bare := True;
+  mText := TTestDrafts.MethodText(mDraft, #13#10);
+  Assert.IsTrue(StartsStr('procedure TKundeTests.TestPruefe;'#13#10'begin'#13#10'  Assert.Fail(', mText), mText);
+  Assert.IsTrue(EndsStr(');'#13#10'end;', mText), mText);
 end;
 
 procedure TTestDraftsTests.NonPublicRoutinesAreBare;
 const
-  Text =
+  cText =
     'unit Intern;'#13#10 +                    // 0
     'interface'#13#10 +                       // 1
     'type'#13#10 +                            // 2
@@ -321,69 +321,69 @@ const
     'end;'#13#10 +                            // 15
     'end.'#13#10;
 var
-  Draft: TTestDraft;
-  Index: TUnitIndex;
+  mDraft: TTestDraft;
+  mIndex: TUnitIndex;
 begin
-  Index := TIndexExtractor.ExtractText(Text, 'Intern.pas', nil);
-  Assert.IsTrue(TTestDrafts.DraftAt(Text, TPascalLexer.Tokenize(Text), Index, 14, Draft));
-  Assert.AreEqual('Pruefe', Draft.MethodName);
-  Assert.IsTrue(Draft.Bare, 'private Methode');
-  Assert.IsTrue(TTestDrafts.DraftAt(Text, TPascalLexer.Tokenize(Text), Index, 10, Draft));
-  Assert.AreEqual('Hilfe', Draft.MethodName);
-  Assert.IsTrue(Draft.Bare, 'Routine nur im implementation-Teil');
+  mIndex := TIndexExtractor.ExtractText(cText, 'Intern.pas', nil);
+  Assert.IsTrue(TTestDrafts.DraftAt(cText, TPascalLexer.Tokenize(cText), mIndex, 14, mDraft));
+  Assert.AreEqual('Pruefe', mDraft.MethodName);
+  Assert.IsTrue(mDraft.Bare, 'private Methode');
+  Assert.IsTrue(TTestDrafts.DraftAt(cText, TPascalLexer.Tokenize(cText), mIndex, 10, mDraft));
+  Assert.AreEqual('Hilfe', mDraft.MethodName);
+  Assert.IsTrue(mDraft.Bare, 'Routine nur im implementation-Teil');
 end;
 
 procedure TTestDraftsTests.AddToTestUnitNumbersAndUsesSubjectField;
 var
-  Draft: TTestDraft;
-  NewText, Name, Reason: string;
+  mDraft: TTestDraft;
+  mNewText, mName, mReason: string;
 begin
-  Assert.IsTrue(DraftAt(19, Draft));
-  Assert.IsTrue(TTestDrafts.AddToTestUnit(TestUnitText, Draft, False, NewText, Name, Reason), Reason);
-  Assert.AreEqual('TestBerechne2', Name);
-  Assert.IsTrue(ContainsStr(NewText, '    procedure TestBerechne;'#13#10'    [Test]'#13#10 +
-    '    procedure TestBerechne2;'#13#10'  end;'), NewText);
-  Assert.IsTrue(ContainsStr(NewText, '  Actual := FKunde.Berechne(Menge, Name, Faktor);'), NewText);
-  Assert.IsTrue(ContainsStr(NewText, '  DUnitX.TestFramework,'#13#10'  Kunden;'), NewText);
-  Assert.IsTrue(Pos('procedure TKundeTests.TestBerechne2;', NewText) < Pos('initialization', NewText), NewText);
+  Assert.IsTrue(DraftAt(19, mDraft));
+  Assert.IsTrue(TTestDrafts.AddToTestUnit(cTestUnitText, mDraft, False, mNewText, mName, mReason), mReason);
+  Assert.AreEqual('TestBerechne2', mName);
+  Assert.IsTrue(ContainsStr(mNewText, '    procedure TestBerechne;'#13#10'    [Test]'#13#10 +
+    '    procedure TestBerechne2;'#13#10'  end;'), mNewText);
+  Assert.IsTrue(ContainsStr(mNewText, '  Actual := FKunde.Berechne(Menge, Name, Faktor);'), mNewText);
+  Assert.IsTrue(ContainsStr(mNewText, '  DUnitX.TestFramework,'#13#10'  Kunden;'), mNewText);
+  Assert.IsTrue(Pos('procedure TKundeTests.TestBerechne2;', mNewText) < Pos('initialization', mNewText), mNewText);
   // Nur wenn er fehlt: TestBerechne gibt es schon, nichts ändert sich.
-  Assert.IsTrue(TTestDrafts.AddToTestUnit(TestUnitText, Draft, True, NewText, Name, Reason), Reason);
-  Assert.AreEqual(TestUnitText, NewText);
-  Assert.AreEqual('TestBerechne', Name);
+  Assert.IsTrue(TTestDrafts.AddToTestUnit(cTestUnitText, mDraft, True, mNewText, mName, mReason), mReason);
+  Assert.AreEqual(cTestUnitText, mNewText);
+  Assert.AreEqual('TestBerechne', mName);
 end;
 
 procedure TTestDraftsTests.AddToTestUnitWithoutFixtureFails;
 var
-  Draft: TTestDraft;
-  NewText, Name, Reason: string;
+  mDraft: TTestDraft;
+  mNewText, mName, mReason: string;
 begin
-  Assert.IsTrue(DraftAt(19, Draft));
+  Assert.IsTrue(DraftAt(19, mDraft));
   Assert.IsFalse(TTestDrafts.AddToTestUnit('unit Leer;'#13#10'interface'#13#10'implementation'#13#10'end.'#13#10,
-    Draft, False, NewText, Name, Reason));
-  Assert.AreNotEqual('', Reason);
+    mDraft, False, mNewText, mName, mReason));
+  Assert.AreNotEqual('', mReason);
 end;
 
 procedure TTestDraftsTests.ParameterizedWithTestCases;
 var
-  Draft: TTestDraft;
-  Text, NewText, Name, Reason: string;
+  mDraft: TTestDraft;
+  mText, mNewText, mName, mReason: string;
 begin
   // Grenzfälle (#2173): Werte als Parameter, Prüfung gegen AExpected, Attribute über der Deklaration.
-  Assert.IsTrue(DraftAt(31, Draft));
-  Draft.Parameterized := True;
-  Draft.TestName := 'TestSummeGrenzen';
-  Draft.Attributes := ['[TestCase(''Eins'', ''1,2,3'')]', '[TestCase(''Null'', ''0,0,0'')]'];
+  Assert.IsTrue(DraftAt(31, mDraft));
+  mDraft.Parameterized := True;
+  mDraft.TestName := 'TestSummeGrenzen';
+  mDraft.Attributes := ['[TestCase(''Eins'', ''1,2,3'')]', '[TestCase(''Null'', ''0,0,0'')]'];
   Assert.AreEqual('(const A: Integer; const B: Integer; const AExpected: Integer)',
-    TTestDrafts.ParameterList(Draft));
-  Text := TTestDrafts.MethodText(Draft, #13#10);
-  Assert.IsTrue(Parses(Text), Text);
+    TTestDrafts.ParameterList(mDraft));
+  mText := TTestDrafts.MethodText(mDraft, #13#10);
+  Assert.IsTrue(Parses(mText), mText);
   Assert.AreEqual('procedure TKundeTests.TestSummeGrenzen(const A: Integer; const B: Integer; ' +
     'const AExpected: Integer);'#13#10'var'#13#10'  Actual: Integer;'#13#10'begin'#13#10 +
-    '  Actual := Summe(A, B);'#13#10'  Assert.AreEqual(AExpected, Actual);'#13#10'end;', Text);
-  Assert.IsTrue(TTestDrafts.AddToTestUnit(TestUnitText, Draft, False, NewText, Name, Reason), Reason);
-  Assert.IsTrue(ContainsStr(NewText, '    procedure TestBerechne;'#13#10'    [TestCase(''Eins'', ''1,2,3'')]'#13#10 +
+    '  Actual := Summe(A, B);'#13#10'  Assert.AreEqual(AExpected, Actual);'#13#10'end;', mText);
+  Assert.IsTrue(TTestDrafts.AddToTestUnit(cTestUnitText, mDraft, False, mNewText, mName, mReason), mReason);
+  Assert.IsTrue(ContainsStr(mNewText, '    procedure TestBerechne;'#13#10'    [TestCase(''Eins'', ''1,2,3'')]'#13#10 +
     '    [TestCase(''Null'', ''0,0,0'')]'#13#10'    procedure TestSummeGrenzen(const A: Integer; ' +
-    'const B: Integer; const AExpected: Integer);'#13#10'  end;'), NewText);
+    'const B: Integer; const AExpected: Integer);'#13#10'  end;'), mNewText);
 end;
 
 initialization

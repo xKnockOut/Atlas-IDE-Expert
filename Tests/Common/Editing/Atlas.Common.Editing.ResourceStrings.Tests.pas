@@ -55,74 +55,74 @@ uses
 
 function Join(const ALines: array of string): string;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
   Result := '';
-  for Index := 0 to High(ALines) do
+  for mIndex := 0 to High(ALines) do
   begin
-    Result := Result + ALines[Index] + #10;
+    Result := Result + ALines[mIndex] + #10;
   end;
 end;
 
 /// <summary>Position des "|" in AMarked; AText ohne "|".</summary>
 function Marked(const AMarked: string; out AText: string): TTextPosition;
 var
-  Index, Line, Character: Integer;
+  mIndex, mLine, mCharacter: Integer;
 begin
-  Line := 0;
-  Character := 0;
-  for Index := 1 to Pos('|', AMarked) - 1 do
+  mLine := 0;
+  mCharacter := 0;
+  for mIndex := 1 to Pos('|', AMarked) - 1 do
   begin
-    if AMarked[Index] = #10 then
+    if AMarked[mIndex] = #10 then
     begin
-      Inc(Line);
-      Character := 0;
+      Inc(mLine);
+      mCharacter := 0;
     end
     else
     begin
-      Inc(Character);
+      Inc(mCharacter);
     end;
   end;
   AText := StringReplace(AMarked, '|', '', []);
-  Result := TTextPosition.Create(Line, Character);
+  Result := TTextPosition.Create(mLine, mCharacter);
 end;
 
 /// <summary>Quelltext des Literals am "|"; '-' ohne.</summary>
 function LiteralOf(const AMarked: string): string;
 var
-  Text: string;
-  Position: TTextPosition;
-  Tree: TSyntaxTree;
-  Literal: TResourceLiteral;
+  mText: string;
+  mPosition: TTextPosition;
+  mTree: TSyntaxTree;
+  mLiteral: TResourceLiteral;
 begin
-  Position := Marked(AMarked, Text);
-  Tree := TPascalParser.Parse(Text);
+  mPosition := Marked(AMarked, mText);
+  mTree := TPascalParser.Parse(mText);
   try
     Result := '-';
-    if TResourceStrings.LiteralAt(Text, Tree.Tokens, Position, Literal) then
+    if TResourceStrings.LiteralAt(mText, mTree.Tokens, mPosition, mLiteral) then
     begin
-      Result := Literal.Source;
+      Result := mLiteral.Source;
     end;
   finally
-    Tree.Free;
+    mTree.Free;
   end;
 end;
 
 /// <summary>Darf am "|" (im Literal) ein resourcestring stehen?</summary>
 function AllowedAt(const AMarked: string): Boolean;
 var
-  Text: string;
-  Position: TTextPosition;
-  Tree: TSyntaxTree;
-  Literal: TResourceLiteral;
+  mText: string;
+  mPosition: TTextPosition;
+  mTree: TSyntaxTree;
+  mLiteral: TResourceLiteral;
 begin
-  Position := Marked(AMarked, Text);
-  Tree := TPascalParser.Parse(Text);
+  mPosition := Marked(AMarked, mText);
+  mTree := TPascalParser.Parse(mText);
   try
-    Result := TResourceStrings.LiteralAt(Text, Tree.Tokens, Position, Literal) and
-      TResourceStrings.Allowed(Tree, Literal.StartOffset);
+    Result := TResourceStrings.LiteralAt(mText, mTree.Tokens, mPosition, mLiteral) and
+      TResourceStrings.Allowed(mTree, mLiteral.StartOffset);
   finally
-    Tree.Free;
+    mTree.Free;
   end;
 end;
 
@@ -135,27 +135,27 @@ end;
 /// <summary>AText mit der Einfügung von ADecl (AInterface, vor Zeile ABefore); '-' ohne.</summary>
 function Inserted(const AText: string; AInterface: Boolean; ABefore: Integer; const ADecl: string): string;
 var
-  Tree: TSyntaxTree;
-  Edit: TTextEdit;
-  Lines: TArray<string>;
-  Line: string;
+  mTree: TSyntaxTree;
+  mEdit: TTextEdit;
+  mLines: TArray<string>;
+  mLine: string;
 begin
-  Tree := TPascalParser.Parse(AText);
+  mTree := TPascalParser.Parse(AText);
   try
     Result := '-';
-    if not TResourceStrings.Insertion(AText, Tree.Tokens, TResourcePlace.Create(AInterface, ABefore), ADecl, #10,
-      Edit) then
+    if not TResourceStrings.Insertion(AText, mTree.Tokens, TResourcePlace.Create(AInterface, ABefore), ADecl, #10,
+      mEdit) then
     begin
       Exit;
     end;
-    Assert.AreEqual(Edit.Range.StartPos.Line, Edit.Range.EndPos.Line);
-    Lines := AText.Split([#10]);
-    Line := Lines[Edit.Range.StartPos.Line];
-    Lines[Edit.Range.StartPos.Line] := Copy(Line, 1, Edit.Range.StartPos.Character) + Edit.NewText +
-      Copy(Line, Edit.Range.EndPos.Character + 1, MaxInt);
-    Result := string.Join(#10, Lines);
+    Assert.AreEqual(mEdit.Range.StartPos.Line, mEdit.Range.EndPos.Line);
+    mLines := AText.Split([#10]);
+    mLine := mLines[mEdit.Range.StartPos.Line];
+    mLines[mEdit.Range.StartPos.Line] := Copy(mLine, 1, mEdit.Range.StartPos.Character) + mEdit.NewText +
+      Copy(mLine, mEdit.Range.EndPos.Character + 1, MaxInt);
+    Result := string.Join(#10, mLines);
   finally
-    Tree.Free;
+    mTree.Free;
   end;
 end;
 
@@ -244,7 +244,7 @@ end;
 
 procedure TResourceStringsTests.ReadsEntries;
 const
-  Text =
+  cText =
     'unit Haupt;'#10 +
     'interface'#10 +
     'resourcestring'#10 +
@@ -258,29 +258,29 @@ const
     '  CKein = ''nein'';'#10 +
     'end.';
 var
-  Tree: TSyntaxTree;
-  Entries: TArray<TResourceEntry>;
+  mTree: TSyntaxTree;
+  mEntries: TArray<TResourceEntry>;
 begin
-  Tree := TPascalParser.Parse(Text);
+  mTree := TPascalParser.Parse(cText);
   try
-    Entries := TResourceStrings.Entries(Text, Tree.Tokens);
-    Assert.AreEqual(3, Integer(Length(Entries)));
-    Assert.AreEqual('SOffen', Entries[0].Name);
-    Assert.IsTrue(Entries[0].InInterface);
-    Assert.AreEqual('''Zeile''#13#10', Entries[1].Value);
-    Assert.IsFalse(Entries[1].InInterface);
-    Assert.AreEqual(6, Entries[1].Line);
-    Assert.AreEqual(5, Entries[1].Section);
-    Assert.AreEqual('SZwei', Entries[2].Name);
-    Assert.AreEqual(5, Entries[2].Section);
+    mEntries := TResourceStrings.Entries(cText, mTree.Tokens);
+    Assert.AreEqual(3, Integer(Length(mEntries)));
+    Assert.AreEqual('SOffen', mEntries[0].Name);
+    Assert.IsTrue(mEntries[0].InInterface);
+    Assert.AreEqual('''Zeile''#13#10', mEntries[1].Value);
+    Assert.IsFalse(mEntries[1].InInterface);
+    Assert.AreEqual(6, mEntries[1].Line);
+    Assert.AreEqual(5, mEntries[1].Section);
+    Assert.AreEqual('SZwei', mEntries[2].Name);
+    Assert.AreEqual(5, mEntries[2].Section);
   finally
-    Tree.Free;
+    mTree.Free;
   end;
 end;
 
 procedure TResourceStringsTests.FindsSameText;
 const
-  Text =
+  cText =
     'unit Haupt;'#10 +
     'interface'#10 +
     'implementation'#10 +
@@ -288,30 +288,30 @@ const
     '  SFrage = ''Eintrag wirklich l'' + ''öschen?'';'#10 +
     'end.';
 var
-  Tree: TSyntaxTree;
-  Entry: TResourceEntry;
+  mTree: TSyntaxTree;
+  mEntry: TResourceEntry;
 begin
-  Tree := TPascalParser.Parse(Text);
+  mTree := TPascalParser.Parse(cText);
   try
     // Gleicher Text, auch anders geschrieben.
-    Assert.IsTrue(TResourceStrings.SameText(TResourceStrings.Entries(Text, Tree.Tokens), 'Eintrag wirklich löschen?',
-      False, -1, Entry));
-    Assert.AreEqual('SFrage', Entry.Name);
-    Assert.IsFalse(TResourceStrings.SameText(TResourceStrings.Entries(Text, Tree.Tokens), 'Eintrag löschen?',
-      False, -1, Entry));
+    Assert.IsTrue(TResourceStrings.SameText(TResourceStrings.Entries(cText, mTree.Tokens), 'Eintrag wirklich löschen?',
+      False, -1, mEntry));
+    Assert.AreEqual('SFrage', mEntry.Name);
+    Assert.IsFalse(TResourceStrings.SameText(TResourceStrings.Entries(cText, mTree.Tokens), 'Eintrag löschen?',
+      False, -1, mEntry));
     // Nur Einträge vor der Stelle zählen, und nur im passenden Teil.
-    Assert.IsFalse(TResourceStrings.SameText(TResourceStrings.Entries(Text, Tree.Tokens), 'Eintrag wirklich löschen?',
-      False, 3, Entry));
-    Assert.IsFalse(TResourceStrings.SameText(TResourceStrings.Entries(Text, Tree.Tokens), 'Eintrag wirklich löschen?',
-      True, -1, Entry));
+    Assert.IsFalse(TResourceStrings.SameText(TResourceStrings.Entries(cText, mTree.Tokens), 'Eintrag wirklich löschen?',
+      False, 3, mEntry));
+    Assert.IsFalse(TResourceStrings.SameText(TResourceStrings.Entries(cText, mTree.Tokens), 'Eintrag wirklich löschen?',
+      True, -1, mEntry));
   finally
-    Tree.Free;
+    mTree.Free;
   end;
 end;
 
 procedure TResourceStringsTests.AppendsToImplementationSection;
 const
-  Text =
+  cText =
     'unit Haupt;'#10 +
     'interface'#10 +
     'implementation'#10 +
@@ -335,12 +335,12 @@ begin
     '    SDrei = ''Drei'';'#10 +
     #10 +
     'procedure P;'#10 +
-    'end.', Inserted(Text, False, 8, 'SDrei = ''Drei'';'));
+    'end.', Inserted(cText, False, 8, 'SDrei = ''Drei'';'));
 end;
 
 procedure TResourceStringsTests.CreatesImplementationSectionBehindUses;
 const
-  Text =
+  cText =
     'unit Haupt;'#10 +
     'interface'#10 +
     'implementation'#10 +
@@ -363,12 +363,12 @@ begin
     '  SNeu = ''Neu'';'#10 +
     #10 +
     'procedure P;'#10 +
-    'end.', Inserted(Text, False, 7, 'SNeu = ''Neu'';'));
+    'end.', Inserted(cText, False, 7, 'SNeu = ''Neu'';'));
 end;
 
 procedure TResourceStringsTests.CreatesInterfaceSectionBeforeImplementation;
 const
-  Text =
+  cText =
     'unit Texte;'#10 +
     'interface'#10 +
     #10 +
@@ -385,13 +385,13 @@ begin
     #10 +
     'implementation'#10 +
     #10 +
-    'end.', Inserted(Text, True, -1, 'SNeu = ''Neu'';'));
+    'end.', Inserted(cText, True, -1, 'SNeu = ''Neu'';'));
   Assert.AreEqual('-', Inserted('unit Kaputt;'#10'interface'#10, True, -1, 'SNeu = ''Neu'';'));
 end;
 
 procedure TResourceStringsTests.IgnoresSectionBehindLiteral;
 const
-  Text =
+  cText =
     'unit Haupt;'#10 +
     'interface'#10 +
     'implementation'#10 +
@@ -415,7 +415,7 @@ begin
     'end;'#10 +
     'resourcestring'#10 +
     '  SSpaet = ''Spät'';'#10 +
-    'end.', Inserted(Text, False, 4, 'SNeu = ''Neu'';'));
+    'end.', Inserted(cText, False, 4, 'SNeu = ''Neu'';'));
 end;
 
 initialization

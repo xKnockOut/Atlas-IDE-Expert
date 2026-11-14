@@ -66,23 +66,23 @@ uses
   Atlas.Common.Editing.VarBlock;
 
 const
-  LF = #10;
+  cLF = #10;
 
 function Wrap(const ABody: string): string;
 begin
-  Result := 'unit U;' + LF + 'interface' + LF + 'implementation' + LF + ABody + LF + 'end.';
+  Result := 'unit U;' + cLF + 'interface' + cLF + 'implementation' + cLF + ABody + cLF + 'end.';
 end;
 
 /// <summary>Position des ersten Vorkommens von ANeedle in AText.</summary>
 function At(const AText, ANeedle: string): TTextPosition;
 var
-  Offset, Index: Integer;
+  mOffset, mIndex: Integer;
 begin
-  Offset := Pos(ANeedle, AText) - 1;
+  mOffset := Pos(ANeedle, AText) - 1;
   Result := TTextPosition.Create(0, 0);
-  for Index := 1 to Offset do
+  for mIndex := 1 to mOffset do
   begin
-    if AText[Index] = LF then
+    if AText[mIndex] = cLF then
     begin
       Inc(Result.Line);
       Result.Character := 0;
@@ -97,626 +97,626 @@ end;
 /// <summary>Text nach der Aktion, deren Titel AKind enthält ('Inline', 'verschieben', 'aufr'); '' ohne.</summary>
 function Run(const AText, ANeedle, AKind: string; const AOptions: TVarBlockOptions; out ATitle: string): string;
 var
-  Tree: TSyntaxTree;
-  Action: TCodeAction;
+  mTree: TSyntaxTree;
+  mAction: TCodeAction;
 begin
   Result := '';
   ATitle := '';
-  Tree := TPascalParser.Parse(AText);
+  mTree := TPascalParser.Parse(AText);
   try
-    for Action in TVarBlock.Actions(AText, Tree, At(AText, ANeedle), AOptions) do
+    for mAction in TVarBlock.Actions(AText, mTree, At(AText, ANeedle), AOptions) do
     begin
-      if Pos(AKind, Action.Title) > 0 then
+      if Pos(AKind, mAction.Title) > 0 then
       begin
-        ATitle := Action.Title;
-        Result := TChangeSignature.ApplyEdits(AText, Action.Edits);
+        ATitle := mAction.Title;
+        Result := TChangeSignature.ApplyEdits(AText, mAction.Edits);
       end;
     end;
   finally
-    Tree.Free;
+    mTree.Free;
   end;
 end;
 
 function Apply(const AText, ANeedle, AKind: string): string;
 var
-  Title: string;
+  mTitle: string;
 begin
-  Result := Run(AText, ANeedle, AKind, TVarBlockOptions.Default, Title);
+  Result := Run(AText, ANeedle, AKind, TVarBlockOptions.Default, mTitle);
 end;
 
 function Parses(const AText: string): Boolean;
 var
-  Tree: TSyntaxTree;
+  mTree: TSyntaxTree;
 begin
-  Tree := TPascalParser.Parse(AText);
+  mTree := TPascalParser.Parse(AText);
   try
-    Result := Length(Tree.Diagnostics) = 0;
+    Result := Length(mTree.Diagnostics) = 0;
   finally
-    Tree.Free;
+    mTree.Free;
   end;
 end;
 
 procedure TVarBlockTests.SectionVariableBecomesInitializedInline;
 var
-  Title, Changed: string;
+  mTitle, mChanged: string;
 begin
-  Changed := Run(Wrap(
-    'procedure P;' + LF +
-    'var' + LF +
-    '  Count: Integer;' + LF +
-    '  Name: string;' + LF +
-    'begin' + LF +
-    '  Name := ''x'';' + LF +
-    '  Count := 0;' + LF +
-    '  Writeln(Count, Name);' + LF +
-    'end;'), 'Count:', 'Inline', TVarBlockOptions.Default, Title);
-  Assert.AreEqual('In Inline-Variable umwandeln (var Count)', Title);
+  mChanged := Run(Wrap(
+    'procedure P;' + cLF +
+    'var' + cLF +
+    '  Count: Integer;' + cLF +
+    '  Name: string;' + cLF +
+    'begin' + cLF +
+    '  Name := ''x'';' + cLF +
+    '  Count := 0;' + cLF +
+    '  Writeln(Count, Name);' + cLF +
+    'end;'), 'Count:', 'Inline', TVarBlockOptions.Default, mTitle);
+  Assert.AreEqual('In Inline-Variable umwandeln (var Count)', mTitle);
   Assert.AreEqual(Wrap(
-    'procedure P;' + LF +
-    'var' + LF +
-    '  Name: string;' + LF +
-    'begin' + LF +
-    '  Name := ''x'';' + LF +
-    '  var Count := 0;' + LF +
-    '  Writeln(Count, Name);' + LF +
-    'end;'), Changed);
-  Assert.IsTrue(Parses(Changed));
+    'procedure P;' + cLF +
+    'var' + cLF +
+    '  Name: string;' + cLF +
+    'begin' + cLF +
+    '  Name := ''x'';' + cLF +
+    '  var Count := 0;' + cLF +
+    '  Writeln(Count, Name);' + cLF +
+    'end;'), mChanged);
+  Assert.IsTrue(Parses(mChanged));
 end;
 
 procedure TVarBlockTests.InlineKeepsTypeWhenNotObvious;
 var
-  Changed: string;
+  mChanged: string;
 begin
   // Von der Verwendung aus aufgerufen; einziger Eintrag: "var" fällt mit weg.
-  Changed := Apply(Wrap(
-    'procedure P;' + LF +
-    'var' + LF +
-    '  Total: Int64;' + LF +
-    'begin' + LF +
-    '  Total := 0;' + LF +
-    '  Writeln(Total);' + LF +
+  mChanged := Apply(Wrap(
+    'procedure P;' + cLF +
+    'var' + cLF +
+    '  Total: Int64;' + cLF +
+    'begin' + cLF +
+    '  Total := 0;' + cLF +
+    '  Writeln(Total);' + cLF +
     'end;'), 'Total);', 'Inline');
   Assert.AreEqual(Wrap(
-    'procedure P;' + LF +
-    'begin' + LF +
-    '  var Total: Int64 := 0;' + LF +
-    '  Writeln(Total);' + LF +
-    'end;'), Changed);
-  Assert.IsTrue(Parses(Changed));
+    'procedure P;' + cLF +
+    'begin' + cLF +
+    '  var Total: Int64 := 0;' + cLF +
+    '  Writeln(Total);' + cLF +
+    'end;'), mChanged);
+  Assert.IsTrue(Parses(mChanged));
 end;
 
 procedure TVarBlockTests.InlineWithoutStartValueWhenExpressionReadsIt;
 var
-  Changed: string;
+  mChanged: string;
 begin
-  Changed := Apply(Wrap(
-    'procedure P;' + LF +
-    'var' + LF +
-    '  S: string;' + LF +
-    'begin' + LF +
-    '  Writeln(1);' + LF +
-    '  S := S + ''a'';' + LF +
+  mChanged := Apply(Wrap(
+    'procedure P;' + cLF +
+    'var' + cLF +
+    '  S: string;' + cLF +
+    'begin' + cLF +
+    '  Writeln(1);' + cLF +
+    '  S := S + ''a'';' + cLF +
     'end;'), 'S:', 'Inline');
   Assert.AreEqual(Wrap(
-    'procedure P;' + LF +
-    'begin' + LF +
-    '  Writeln(1);' + LF +
-    '  var S: string;' + LF +
-    '  S := S + ''a'';' + LF +
-    'end;'), Changed);
-  Assert.IsTrue(Parses(Changed));
+    'procedure P;' + cLF +
+    'begin' + cLF +
+    '  Writeln(1);' + cLF +
+    '  var S: string;' + cLF +
+    '  S := S + ''a'';' + cLF +
+    'end;'), mChanged);
+  Assert.IsTrue(Parses(mChanged));
 end;
 
 procedure TVarBlockTests.CommentsMoveToInline;
 var
-  Changed: string;
+  mChanged: string;
 begin
-  Changed := Apply(Wrap(
-    'procedure P;' + LF +
-    'var' + LF +
-    '  Name: string;' + LF +
-    '  // Zaehler' + LF +
-    '  { fuer die Liste }' + LF +
-    '  I: Integer; // Anzahl' + LF +
-    'begin' + LF +
-    '  Name := '''';' + LF +
-    '  I := 0;' + LF +
-    '  Writeln(I, Name);' + LF +
+  mChanged := Apply(Wrap(
+    'procedure P;' + cLF +
+    'var' + cLF +
+    '  Name: string;' + cLF +
+    '  // Zaehler' + cLF +
+    '  { fuer die Liste }' + cLF +
+    '  I: Integer; // Anzahl' + cLF +
+    'begin' + cLF +
+    '  Name := '''';' + cLF +
+    '  I := 0;' + cLF +
+    '  Writeln(I, Name);' + cLF +
     'end;'), 'I:', 'Inline');
   Assert.AreEqual(Wrap(
-    'procedure P;' + LF +
-    'var' + LF +
-    '  Name: string;' + LF +
-    'begin' + LF +
-    '  Name := '''';' + LF +
-    '  // Zaehler' + LF +
-    '  { fuer die Liste }' + LF +
-    '  var I := 0; // Anzahl' + LF +
-    '  Writeln(I, Name);' + LF +
-    'end;'), Changed);
-  Assert.IsTrue(Parses(Changed));
+    'procedure P;' + cLF +
+    'var' + cLF +
+    '  Name: string;' + cLF +
+    'begin' + cLF +
+    '  Name := '''';' + cLF +
+    '  // Zaehler' + cLF +
+    '  { fuer die Liste }' + cLF +
+    '  var I := 0; // Anzahl' + cLF +
+    '  Writeln(I, Name);' + cLF +
+    'end;'), mChanged);
+  Assert.IsTrue(Parses(mChanged));
 end;
 
 procedure TVarBlockTests.OuterBlockUseDeclaresInOuterBlock;
 var
-  Changed: string;
+  mChanged: string;
 begin
   // Erste Zuweisung im inneren Block, Verwendung danach außen: nicht in den inneren Block.
-  Changed := Apply(Wrap(
-    'procedure P(B: Boolean);' + LF +
-    'var' + LF +
-    '  I: Integer;' + LF +
-    'begin' + LF +
-    '  if B then' + LF +
-    '  begin' + LF +
-    '    I := 1;' + LF +
-    '  end;' + LF +
-    '  Writeln(I);' + LF +
+  mChanged := Apply(Wrap(
+    'procedure P(B: Boolean);' + cLF +
+    'var' + cLF +
+    '  I: Integer;' + cLF +
+    'begin' + cLF +
+    '  if B then' + cLF +
+    '  begin' + cLF +
+    '    I := 1;' + cLF +
+    '  end;' + cLF +
+    '  Writeln(I);' + cLF +
     'end;'), 'I:', 'Inline');
   Assert.AreEqual(Wrap(
-    'procedure P(B: Boolean);' + LF +
-    'begin' + LF +
-    '  var I: Integer;' + LF +
-    '  if B then' + LF +
-    '  begin' + LF +
-    '    I := 1;' + LF +
-    '  end;' + LF +
-    '  Writeln(I);' + LF +
-    'end;'), Changed);
-  Assert.IsTrue(Parses(Changed));
+    'procedure P(B: Boolean);' + cLF +
+    'begin' + cLF +
+    '  var I: Integer;' + cLF +
+    '  if B then' + cLF +
+    '  begin' + cLF +
+    '    I := 1;' + cLF +
+    '  end;' + cLF +
+    '  Writeln(I);' + cLF +
+    'end;'), mChanged);
+  Assert.IsTrue(Parses(mChanged));
   // Nur im inneren Block verwendet: dorthin.
-  Changed := Apply(Wrap(
-    'procedure P(B: Boolean);' + LF +
-    'var' + LF +
-    '  I: Integer;' + LF +
-    'begin' + LF +
-    '  if B then' + LF +
-    '  begin' + LF +
-    '    I := 1;' + LF +
-    '    Writeln(I);' + LF +
-    '  end;' + LF +
+  mChanged := Apply(Wrap(
+    'procedure P(B: Boolean);' + cLF +
+    'var' + cLF +
+    '  I: Integer;' + cLF +
+    'begin' + cLF +
+    '  if B then' + cLF +
+    '  begin' + cLF +
+    '    I := 1;' + cLF +
+    '    Writeln(I);' + cLF +
+    '  end;' + cLF +
     'end;'), 'I:', 'Inline');
   Assert.AreEqual(Wrap(
-    'procedure P(B: Boolean);' + LF +
-    'begin' + LF +
-    '  if B then' + LF +
-    '  begin' + LF +
-    '    var I := 1;' + LF +
-    '    Writeln(I);' + LF +
-    '  end;' + LF +
-    'end;'), Changed);
-  Assert.IsTrue(Parses(Changed));
+    'procedure P(B: Boolean);' + cLF +
+    'begin' + cLF +
+    '  if B then' + cLF +
+    '  begin' + cLF +
+    '    var I := 1;' + cLF +
+    '    Writeln(I);' + cLF +
+    '  end;' + cLF +
+    'end;'), mChanged);
+  Assert.IsTrue(Parses(mChanged));
 end;
 
 procedure TVarBlockTests.TryExceptUseDeclaresBeforeTry;
 var
-  Changed: string;
+  mChanged: string;
 begin
   // Im try-Teil zugewiesen, im except gelesen: Die Deklaration darf nicht in den try-Teil.
-  Changed := Apply(Wrap(
-    'procedure P;' + LF +
-    'var' + LF +
-    '  I: Integer;' + LF +
-    'begin' + LF +
-    '  try' + LF +
-    '    I := 1;' + LF +
-    '  except' + LF +
-    '    Writeln(I);' + LF +
-    '  end;' + LF +
+  mChanged := Apply(Wrap(
+    'procedure P;' + cLF +
+    'var' + cLF +
+    '  I: Integer;' + cLF +
+    'begin' + cLF +
+    '  try' + cLF +
+    '    I := 1;' + cLF +
+    '  except' + cLF +
+    '    Writeln(I);' + cLF +
+    '  end;' + cLF +
     'end;'), 'I:', 'Inline');
   Assert.AreEqual(Wrap(
-    'procedure P;' + LF +
-    'begin' + LF +
-    '  var I: Integer;' + LF +
-    '  try' + LF +
-    '    I := 1;' + LF +
-    '  except' + LF +
-    '    Writeln(I);' + LF +
-    '  end;' + LF +
-    'end;'), Changed);
-  Assert.IsTrue(Parses(Changed));
+    'procedure P;' + cLF +
+    'begin' + cLF +
+    '  var I: Integer;' + cLF +
+    '  try' + cLF +
+    '    I := 1;' + cLF +
+    '  except' + cLF +
+    '    Writeln(I);' + cLF +
+    '  end;' + cLF +
+    'end;'), mChanged);
+  Assert.IsTrue(Parses(mChanged));
   // Nur im try-Teil: dort hinein.
-  Changed := Apply(Wrap(
-    'procedure P;' + LF +
-    'var' + LF +
-    '  I: Integer;' + LF +
-    'begin' + LF +
-    '  try' + LF +
-    '    I := 1;' + LF +
-    '    Writeln(I);' + LF +
-    '  finally' + LF +
-    '    Writeln(2);' + LF +
-    '  end;' + LF +
+  mChanged := Apply(Wrap(
+    'procedure P;' + cLF +
+    'var' + cLF +
+    '  I: Integer;' + cLF +
+    'begin' + cLF +
+    '  try' + cLF +
+    '    I := 1;' + cLF +
+    '    Writeln(I);' + cLF +
+    '  finally' + cLF +
+    '    Writeln(2);' + cLF +
+    '  end;' + cLF +
     'end;'), 'I:', 'Inline');
   Assert.AreEqual(Wrap(
-    'procedure P;' + LF +
-    'begin' + LF +
-    '  try' + LF +
-    '    var I := 1;' + LF +
-    '    Writeln(I);' + LF +
-    '  finally' + LF +
-    '    Writeln(2);' + LF +
-    '  end;' + LF +
-    'end;'), Changed);
-  Assert.IsTrue(Parses(Changed));
+    'procedure P;' + cLF +
+    'begin' + cLF +
+    '  try' + cLF +
+    '    var I := 1;' + cLF +
+    '    Writeln(I);' + cLF +
+    '  finally' + cLF +
+    '    Writeln(2);' + cLF +
+    '  end;' + cLF +
+    'end;'), mChanged);
+  Assert.IsTrue(Parses(mChanged));
 end;
 
 procedure TVarBlockTests.NoInlineInLoopWithoutStartValue;
 begin
   // Inc(I) liest I: ohne Startwert begänne jeder Durchlauf mit einer neuen Variablen.
   Assert.AreEqual('', Apply(Wrap(
-    'procedure P(B: Boolean);' + LF +
-    'var' + LF +
-    '  I: Integer;' + LF +
-    'begin' + LF +
-    '  while B do' + LF +
-    '  begin' + LF +
-    '    Inc(I);' + LF +
-    '    Writeln(I);' + LF +
-    '  end;' + LF +
+    'procedure P(B: Boolean);' + cLF +
+    'var' + cLF +
+    '  I: Integer;' + cLF +
+    'begin' + cLF +
+    '  while B do' + cLF +
+    '  begin' + cLF +
+    '    Inc(I);' + cLF +
+    '    Writeln(I);' + cLF +
+    '  end;' + cLF +
     'end;'), 'I:', 'Inline'));
   // Mit Zuweisung am Anfang des Durchlaufs geht es.
   Assert.AreEqual(Wrap(
-    'procedure P(B: Boolean);' + LF +
-    'begin' + LF +
-    '  while B do' + LF +
-    '  begin' + LF +
-    '    var I := 0;' + LF +
-    '    Writeln(I);' + LF +
-    '  end;' + LF +
+    'procedure P(B: Boolean);' + cLF +
+    'begin' + cLF +
+    '  while B do' + cLF +
+    '  begin' + cLF +
+    '    var I := 0;' + cLF +
+    '    Writeln(I);' + cLF +
+    '  end;' + cLF +
     'end;'), Apply(Wrap(
-    'procedure P(B: Boolean);' + LF +
-    'var' + LF +
-    '  I: Integer;' + LF +
-    'begin' + LF +
-    '  while B do' + LF +
-    '  begin' + LF +
-    '    I := 0;' + LF +
-    '    Writeln(I);' + LF +
-    '  end;' + LF +
+    'procedure P(B: Boolean);' + cLF +
+    'var' + cLF +
+    '  I: Integer;' + cLF +
+    'begin' + cLF +
+    '  while B do' + cLF +
+    '  begin' + cLF +
+    '    I := 0;' + cLF +
+    '    Writeln(I);' + cLF +
+    '  end;' + cLF +
     'end;'), 'I:', 'Inline'));
 end;
 
 procedure TVarBlockTests.NoInlineWhenCaptured;
 begin
   Assert.AreEqual('', Apply(Wrap(
-    'procedure P;' + LF +
-    'var' + LF +
-    '  I: Integer;' + LF +
-    'begin' + LF +
-    '  I := 1;' + LF +
-    '  Run(procedure begin Writeln(I) end);' + LF +
+    'procedure P;' + cLF +
+    'var' + cLF +
+    '  I: Integer;' + cLF +
+    'begin' + cLF +
+    '  I := 1;' + cLF +
+    '  Run(procedure begin Writeln(I) end);' + cLF +
     'end;'), 'I:', 'Inline'));
   // Verschachtelte Routine
   Assert.AreEqual('', Apply(Wrap(
-    'procedure P;' + LF +
-    'var' + LF +
-    '  I: Integer;' + LF +
-    '  procedure Show;' + LF +
-    '  begin' + LF +
-    '    Writeln(I);' + LF +
-    '  end;' + LF +
-    'begin' + LF +
-    '  I := 1;' + LF +
-    '  Show;' + LF +
+    'procedure P;' + cLF +
+    'var' + cLF +
+    '  I: Integer;' + cLF +
+    '  procedure Show;' + cLF +
+    '  begin' + cLF +
+    '    Writeln(I);' + cLF +
+    '  end;' + cLF +
+    'begin' + cLF +
+    '  I := 1;' + cLF +
+    '  Show;' + cLF +
     'end;'), 'I:', 'Inline'));
   // Bedingte Übersetzung
   Assert.AreEqual('', Apply(Wrap(
-    'procedure P;' + LF +
-    'var' + LF +
-    '  I: Integer;' + LF +
-    'begin' + LF +
-    '  I := 1;' + LF +
-    '  {$IFDEF DEBUG}' + LF +
-    '  Writeln(I);' + LF +
-    '  {$ENDIF}' + LF +
+    'procedure P;' + cLF +
+    'var' + cLF +
+    '  I: Integer;' + cLF +
+    'begin' + cLF +
+    '  I := 1;' + cLF +
+    '  {$IFDEF DEBUG}' + cLF +
+    '  Writeln(I);' + cLF +
+    '  {$ENDIF}' + cLF +
     'end;'), 'I:', 'Inline'));
 end;
 
 procedure TVarBlockTests.NoInlineWithoutLanguageFeature;
 var
-  Options: TVarBlockOptions;
-  Title: string;
+  mOptions: TVarBlockOptions;
+  mTitle: string;
 begin
-  Options := TVarBlockOptions.Default;
-  Options.InlineVariables := False;
+  mOptions := TVarBlockOptions.Default;
+  mOptions.InlineVariables := False;
   Assert.AreEqual('', Run(Wrap(
-    'procedure P;' + LF +
-    'var' + LF +
-    '  I: Integer;' + LF +
-    'begin' + LF +
-    '  I := 1;' + LF +
-    '  Writeln(I);' + LF +
-    'end;'), 'I:', 'Inline', Options, Title));
+    'procedure P;' + cLF +
+    'var' + cLF +
+    '  I: Integer;' + cLF +
+    'begin' + cLF +
+    '  I := 1;' + cLF +
+    '  Writeln(I);' + cLF +
+    'end;'), 'I:', 'Inline', mOptions, mTitle));
 end;
 
 procedure TVarBlockTests.InlineMovesToNewSection;
 var
-  Title, Changed: string;
+  mTitle, mChanged: string;
 begin
-  Changed := Run(Wrap(
-    'procedure P;' + LF +
-    'begin' + LF +
-    '  var Count: Integer := 0;' + LF +
-    '  Writeln(Count);' + LF +
-    'end;'), 'Count:', 'verschieben', TVarBlockOptions.Default, Title);
-  Assert.AreEqual('In var-Block verschieben (Count)', Title);
+  mChanged := Run(Wrap(
+    'procedure P;' + cLF +
+    'begin' + cLF +
+    '  var Count: Integer := 0;' + cLF +
+    '  Writeln(Count);' + cLF +
+    'end;'), 'Count:', 'verschieben', TVarBlockOptions.Default, mTitle);
+  Assert.AreEqual('In var-Block verschieben (Count)', mTitle);
   Assert.AreEqual(Wrap(
-    'procedure P;' + LF +
-    'var' + LF +
-    '  Count: Integer;' + LF +
-    'begin' + LF +
-    '  Count := 0;' + LF +
-    '  Writeln(Count);' + LF +
-    'end;'), Changed);
-  Assert.IsTrue(Parses(Changed));
+    'procedure P;' + cLF +
+    'var' + cLF +
+    '  Count: Integer;' + cLF +
+    'begin' + cLF +
+    '  Count := 0;' + cLF +
+    '  Writeln(Count);' + cLF +
+    'end;'), mChanged);
+  Assert.IsTrue(Parses(mChanged));
   // Hin und zurück ergibt wieder den Anfang (ohne offensichtlichen Typ).
   Assert.AreEqual(Wrap(
-    'procedure P;' + LF +
-    'begin' + LF +
-    '  var Count := 0;' + LF +
-    '  Writeln(Count);' + LF +
-    'end;'), Apply(Changed, 'Count:', 'Inline'));
+    'procedure P;' + cLF +
+    'begin' + cLF +
+    '  var Count := 0;' + cLF +
+    '  Writeln(Count);' + cLF +
+    'end;'), Apply(mChanged, 'Count:', 'Inline'));
 end;
 
 procedure TVarBlockTests.InlineWithoutTypeUsesLookup;
 var
-  Options: TVarBlockOptions;
-  Title, Source, Changed: string;
+  mOptions: TVarBlockOptions;
+  mTitle, mSource, mChanged: string;
 begin
-  Source := Wrap(
-    'procedure P;' + LF +
-    'var' + LF +
-    '  A: Integer;' + LF +
-    'begin' + LF +
-    '  A := 1;' + LF +
-    '  var Liste := TStringList.Create;' + LF +
-    '  Writeln(A, Liste.Count);' + LF +
+  mSource := Wrap(
+    'procedure P;' + cLF +
+    'var' + cLF +
+    '  A: Integer;' + cLF +
+    'begin' + cLF +
+    '  A := 1;' + cLF +
+    '  var Liste := TStringList.Create;' + cLF +
+    '  Writeln(A, Liste.Count);' + cLF +
     'end;');
   // Ohne Typermittlung keine Aktion.
-  Assert.AreEqual('', Apply(Source, 'Liste :=', 'verschieben'));
-  Options := TVarBlockOptions.Default;
-  Options.Types :=
+  Assert.AreEqual('', Apply(mSource, 'Liste :=', 'verschieben'));
+  mOptions := TVarBlockOptions.Default;
+  mOptions.Types :=
     function(ADecl: TSyntaxNode; out AType: string; out AEdits: TArray<TTextEdit>): Boolean
     begin
       AType := 'TStringList';
       AEdits := nil;
       Result := True;
     end;
-  Changed := Run(Source, 'Liste :=', 'verschieben', Options, Title);
+  mChanged := Run(mSource, 'Liste :=', 'verschieben', mOptions, mTitle);
   Assert.AreEqual(Wrap(
-    'procedure P;' + LF +
-    'var' + LF +
-    '  A: Integer;' + LF +
-    '  Liste: TStringList;' + LF +
-    'begin' + LF +
-    '  A := 1;' + LF +
-    '  Liste := TStringList.Create;' + LF +
-    '  Writeln(A, Liste.Count);' + LF +
-    'end;'), Changed);
-  Assert.IsTrue(Parses(Changed));
+    'procedure P;' + cLF +
+    'var' + cLF +
+    '  A: Integer;' + cLF +
+    '  Liste: TStringList;' + cLF +
+    'begin' + cLF +
+    '  A := 1;' + cLF +
+    '  Liste := TStringList.Create;' + cLF +
+    '  Writeln(A, Liste.Count);' + cLF +
+    'end;'), mChanged);
+  Assert.IsTrue(Parses(mChanged));
 end;
 
 procedure TVarBlockTests.UninitializedInlineMovesWithComments;
 var
-  Changed: string;
+  mChanged: string;
 begin
-  Changed := Apply(Wrap(
-    'procedure P;' + LF +
-    'var' + LF +
-    '  A: Integer;' + LF +
-    'begin' + LF +
-    '  A := 1;' + LF +
-    '  // Puffer' + LF +
-    '  var S: string; // fuer Text' + LF +
-    '  S := IntToStr(A);' + LF +
+  mChanged := Apply(Wrap(
+    'procedure P;' + cLF +
+    'var' + cLF +
+    '  A: Integer;' + cLF +
+    'begin' + cLF +
+    '  A := 1;' + cLF +
+    '  // Puffer' + cLF +
+    '  var S: string; // fuer Text' + cLF +
+    '  S := IntToStr(A);' + cLF +
     'end;'), 'S:', 'verschieben');
   Assert.AreEqual(Wrap(
-    'procedure P;' + LF +
-    'var' + LF +
-    '  A: Integer;' + LF +
-    '  // Puffer' + LF +
-    '  S: string; // fuer Text' + LF +
-    'begin' + LF +
-    '  A := 1;' + LF +
-    '  S := IntToStr(A);' + LF +
-    'end;'), Changed);
-  Assert.IsTrue(Parses(Changed));
+    'procedure P;' + cLF +
+    'var' + cLF +
+    '  A: Integer;' + cLF +
+    '  // Puffer' + cLF +
+    '  S: string; // fuer Text' + cLF +
+    'begin' + cLF +
+    '  A := 1;' + cLF +
+    '  S := IntToStr(A);' + cLF +
+    'end;'), mChanged);
+  Assert.IsTrue(Parses(mChanged));
 end;
 
 procedure TVarBlockTests.NoSectionMoveWhenNameMeansSomethingElse;
 begin
   // Vor der Deklaration meint I etwas anderes (globale Variable).
   Assert.AreEqual('', Apply(Wrap(
-    'procedure P;' + LF +
-    'begin' + LF +
-    '  Writeln(I);' + LF +
-    '  var I: Integer := 0;' + LF +
-    '  Writeln(I);' + LF +
+    'procedure P;' + cLF +
+    'begin' + cLF +
+    '  Writeln(I);' + cLF +
+    '  var I: Integer := 0;' + cLF +
+    '  Writeln(I);' + cLF +
     'end;'), 'I: Integer', 'verschieben'));
   // Gleichnamige Inline-Variable in einem anderen Block
   Assert.AreEqual('', Apply(Wrap(
-    'procedure P(B: Boolean);' + LF +
-    'begin' + LF +
-    '  if B then' + LF +
-    '  begin' + LF +
-    '    var I: Integer := 0;' + LF +
-    '    Writeln(I);' + LF +
-    '  end' + LF +
-    '  else' + LF +
-    '  begin' + LF +
-    '    var I: string := '''';' + LF +
-    '    Writeln(I);' + LF +
-    '  end;' + LF +
+    'procedure P(B: Boolean);' + cLF +
+    'begin' + cLF +
+    '  if B then' + cLF +
+    '  begin' + cLF +
+    '    var I: Integer := 0;' + cLF +
+    '    Writeln(I);' + cLF +
+    '  end' + cLF +
+    '  else' + cLF +
+    '  begin' + cLF +
+    '    var I: string := '''';' + cLF +
+    '    Writeln(I);' + cLF +
+    '  end;' + cLF +
     'end;'), 'I: Integer', 'verschieben'));
   // Ohne Startwert in einer Schleife
   Assert.AreEqual('', Apply(Wrap(
-    'procedure P(B: Boolean);' + LF +
-    'begin' + LF +
-    '  while B do' + LF +
-    '  begin' + LF +
-    '    var S: string;' + LF +
-    '    S := S + ''a'';' + LF +
-    '  end;' + LF +
+    'procedure P(B: Boolean);' + cLF +
+    'begin' + cLF +
+    '  while B do' + cLF +
+    '  begin' + cLF +
+    '    var S: string;' + cLF +
+    '    S := S + ''a'';' + cLF +
+    '  end;' + cLF +
     'end;'), 'S:', 'verschieben'));
   // Capture in einer anonymen Methode
   Assert.AreEqual('', Apply(Wrap(
-    'procedure P;' + LF +
-    'begin' + LF +
-    '  var I: Integer := 0;' + LF +
-    '  Run(procedure begin Writeln(I) end);' + LF +
+    'procedure P;' + cLF +
+    'begin' + cLF +
+    '  var I: Integer := 0;' + cLF +
+    '  Run(procedure begin Writeln(I) end);' + cLF +
     'end;'), 'I:', 'verschieben'));
 end;
 
 procedure TVarBlockTests.CleanupRemovesSortsAndMerges;
 var
-  Title, Changed: string;
+  mTitle, mChanged: string;
 begin
-  Changed := Run(Wrap(
-    'procedure P;' + LF +
-    'var' + LF +
-    '  B: string;' + LF +
-    '  Unused: Integer;' + LF +
-    '  C: Integer;' + LF +
-    '  A: Integer;' + LF +
-    '  // Liste' + LF +
-    '  L: TStringList; // Puffer' + LF +
-    'begin' + LF +
-    '  A := 1;' + LF +
-    '  C := 2;' + LF +
-    '  L := nil;' + LF +
-    '  B := '''';' + LF +
-    'end;'), 'var', 'aufr', TVarBlockOptions.Default, Title);
-  Assert.AreEqual('var-Block aufr', Copy(Title, 1, 14));
-  Assert.IsTrue(Pos('(ungenutzt: Unused)', Title) > 0);
+  mChanged := Run(Wrap(
+    'procedure P;' + cLF +
+    'var' + cLF +
+    '  B: string;' + cLF +
+    '  Unused: Integer;' + cLF +
+    '  C: Integer;' + cLF +
+    '  A: Integer;' + cLF +
+    '  // Liste' + cLF +
+    '  L: TStringList; // Puffer' + cLF +
+    'begin' + cLF +
+    '  A := 1;' + cLF +
+    '  C := 2;' + cLF +
+    '  L := nil;' + cLF +
+    '  B := '''';' + cLF +
+    'end;'), 'var', 'aufr', TVarBlockOptions.Default, mTitle);
+  Assert.AreEqual('var-Block aufr', Copy(mTitle, 1, 14));
+  Assert.IsTrue(Pos('(ungenutzt: Unused)', mTitle) > 0);
   Assert.AreEqual(Wrap(
-    'procedure P;' + LF +
-    'var' + LF +
-    '  A, C: Integer;' + LF +
-    '  // Liste' + LF +
-    '  L: TStringList; // Puffer' + LF +
-    '  B: string;' + LF +
-    'begin' + LF +
-    '  A := 1;' + LF +
-    '  C := 2;' + LF +
-    '  L := nil;' + LF +
-    '  B := '''';' + LF +
-    'end;'), Changed);
-  Assert.IsTrue(Parses(Changed));
+    'procedure P;' + cLF +
+    'var' + cLF +
+    '  A, C: Integer;' + cLF +
+    '  // Liste' + cLF +
+    '  L: TStringList; // Puffer' + cLF +
+    '  B: string;' + cLF +
+    'begin' + cLF +
+    '  A := 1;' + cLF +
+    '  C := 2;' + cLF +
+    '  L := nil;' + cLF +
+    '  B := '''';' + cLF +
+    'end;'), mChanged);
+  Assert.IsTrue(Parses(mChanged));
 end;
 
 procedure TVarBlockTests.CleanupSplitsWithoutMerge;
 var
-  Options: TVarBlockOptions;
-  Title, Changed: string;
+  mOptions: TVarBlockOptions;
+  mTitle, mChanged: string;
 begin
-  Options := TVarBlockOptions.Default;
-  Options.Merge := False;
-  Options.Sort := TVarBlockSort.None;
-  Changed := Run(Wrap(
-    'procedure P;' + LF +
-    'var' + LF +
-    '  I, J: Integer;' + LF +
-    '  A, B: array of Integer;' + LF +
-    'begin' + LF +
-    '  J := 1;' + LF +
-    '  I := J;' + LF +
-    '  A := B;' + LF +
-    'end;'), 'I,', 'aufr', Options, Title);
+  mOptions := TVarBlockOptions.Default;
+  mOptions.Merge := False;
+  mOptions.Sort := TVarBlockSort.None;
+  mChanged := Run(Wrap(
+    'procedure P;' + cLF +
+    'var' + cLF +
+    '  I, J: Integer;' + cLF +
+    '  A, B: array of Integer;' + cLF +
+    'begin' + cLF +
+    '  J := 1;' + cLF +
+    '  I := J;' + cLF +
+    '  A := B;' + cLF +
+    'end;'), 'I,', 'aufr', mOptions, mTitle);
   // Typen ohne Namen bleiben zusammen (sonst wären A und B nicht mehr zuweisungsverträglich).
   Assert.AreEqual(Wrap(
-    'procedure P;' + LF +
-    'var' + LF +
-    '  I: Integer;' + LF +
-    '  J: Integer;' + LF +
-    '  A, B: array of Integer;' + LF +
-    'begin' + LF +
-    '  J := 1;' + LF +
-    '  I := J;' + LF +
-    '  A := B;' + LF +
-    'end;'), Changed);
-  Assert.IsTrue(Parses(Changed));
+    'procedure P;' + cLF +
+    'var' + cLF +
+    '  I: Integer;' + cLF +
+    '  J: Integer;' + cLF +
+    '  A, B: array of Integer;' + cLF +
+    'begin' + cLF +
+    '  J := 1;' + cLF +
+    '  I := J;' + cLF +
+    '  A := B;' + cLF +
+    'end;'), mChanged);
+  Assert.IsTrue(Parses(mChanged));
 end;
 
 procedure TVarBlockTests.CleanupAlphabeticalKeepsComments;
 var
-  Options: TVarBlockOptions;
-  Title, Changed: string;
+  mOptions: TVarBlockOptions;
+  mTitle, mChanged: string;
 begin
-  Options := TVarBlockOptions.Default;
-  Options.Sort := TVarBlockSort.Alpha;
-  Changed := Run(Wrap(
-    'procedure P;' + LF +
-    'var' + LF +
-    '  { Zaehler' + LF +
-    '    zweite Zeile }' + LF +
-    '  Zahl: Integer;' + LF +
-    '' + LF +
-    '  Text: string;' + LF +
-    '  Anzahl: Integer; // Menge' + LF +
-    'begin' + LF +
-    '  Zahl := 1;' + LF +
-    '  Text := '''';' + LF +
-    '  Anzahl := Zahl;' + LF +
-    'end;'), 'Text:', 'aufr', Options, Title);
+  mOptions := TVarBlockOptions.Default;
+  mOptions.Sort := TVarBlockSort.Alpha;
+  mChanged := Run(Wrap(
+    'procedure P;' + cLF +
+    'var' + cLF +
+    '  { Zaehler' + cLF +
+    '    zweite Zeile }' + cLF +
+    '  Zahl: Integer;' + cLF +
+    '' + cLF +
+    '  Text: string;' + cLF +
+    '  Anzahl: Integer; // Menge' + cLF +
+    'begin' + cLF +
+    '  Zahl := 1;' + cLF +
+    '  Text := '''';' + cLF +
+    '  Anzahl := Zahl;' + cLF +
+    'end;'), 'Text:', 'aufr', mOptions, mTitle);
   Assert.AreEqual(Wrap(
-    'procedure P;' + LF +
-    'var' + LF +
-    '  Anzahl: Integer; // Menge' + LF +
-    '  Text: string;' + LF +
-    '  { Zaehler' + LF +
-    '    zweite Zeile }' + LF +
-    '  Zahl: Integer;' + LF +
-    'begin' + LF +
-    '  Zahl := 1;' + LF +
-    '  Text := '''';' + LF +
-    '  Anzahl := Zahl;' + LF +
-    'end;'), Changed);
-  Assert.IsTrue(Parses(Changed));
+    'procedure P;' + cLF +
+    'var' + cLF +
+    '  Anzahl: Integer; // Menge' + cLF +
+    '  Text: string;' + cLF +
+    '  { Zaehler' + cLF +
+    '    zweite Zeile }' + cLF +
+    '  Zahl: Integer;' + cLF +
+    'begin' + cLF +
+    '  Zahl := 1;' + cLF +
+    '  Text := '''';' + cLF +
+    '  Anzahl := Zahl;' + cLF +
+    'end;'), mChanged);
+  Assert.IsTrue(Parses(mChanged));
 end;
 
 procedure TVarBlockTests.CleanupRemovesWholeSection;
 var
-  Changed: string;
+  mChanged: string;
 begin
-  Changed := Apply(Wrap(
-    'procedure P;' + LF +
-    'var' + LF +
-    '  // alt' + LF +
-    '  I, J: Integer;' + LF +
-    'begin' + LF +
-    '  Writeln(1);' + LF +
+  mChanged := Apply(Wrap(
+    'procedure P;' + cLF +
+    'var' + cLF +
+    '  // alt' + cLF +
+    '  I, J: Integer;' + cLF +
+    'begin' + cLF +
+    '  Writeln(1);' + cLF +
     'end;'), 'var', 'aufr');
   Assert.AreEqual(Wrap(
-    'procedure P;' + LF +
-    'begin' + LF +
-    '  Writeln(1);' + LF +
-    'end;'), Changed);
-  Assert.IsTrue(Parses(Changed));
+    'procedure P;' + cLF +
+    'begin' + cLF +
+    '  Writeln(1);' + cLF +
+    'end;'), mChanged);
+  Assert.IsTrue(Parses(mChanged));
 end;
 
 procedure TVarBlockTests.NoCleanupWhenTidy;
 begin
   Assert.AreEqual('', Apply(Wrap(
-    'procedure P;' + LF +
-    'var' + LF +
-    '  I, J: Integer;' + LF +
-    '  S: string;' + LF +
-    'begin' + LF +
-    '  I := 1;' + LF +
-    '  J := I;' + LF +
-    '  S := '''';' + LF +
+    'procedure P;' + cLF +
+    'var' + cLF +
+    '  I, J: Integer;' + cLF +
+    '  S: string;' + cLF +
+    'begin' + cLF +
+    '  I := 1;' + cLF +
+    '  J := I;' + cLF +
+    '  S := '''';' + cLF +
     'end;'), 'var', 'aufr'));
   // Mit Direktive im Abschnitt kein Aufräumen.
   Assert.AreEqual('', Apply(Wrap(
-    'procedure P;' + LF +
-    'var' + LF +
-    '  S: string;' + LF +
-    '  {$IFDEF DEBUG}' + LF +
-    '  I: Integer;' + LF +
-    '  {$ENDIF}' + LF +
-    'begin' + LF +
-    '  S := '''';' + LF +
+    'procedure P;' + cLF +
+    'var' + cLF +
+    '  S: string;' + cLF +
+    '  {$IFDEF DEBUG}' + cLF +
+    '  I: Integer;' + cLF +
+    '  {$ENDIF}' + cLF +
+    'begin' + cLF +
+    '  S := '''';' + cLF +
     'end;'), 'var', 'aufr'));
 end;
 

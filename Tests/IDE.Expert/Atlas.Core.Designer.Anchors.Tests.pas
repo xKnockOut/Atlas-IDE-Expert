@@ -40,9 +40,14 @@ const
   cLT = [TAtlasAnchorSide.Left, TAtlasAnchorSide.Top];
 
 function Item(const AName: string; ALeft, ATop, AWidth, AHeight: Integer;
-  AFill: Boolean = False): TAtlasAnchorItem;
+  AFill: Boolean): TAtlasAnchorItem; overload;
 begin
   Result := TAtlasAnchorItem.Create(AName, Bounds(ALeft, ATop, AWidth, AHeight), False, AFill, cLT, '');
+end;
+
+function Item(const AName: string; ALeft, ATop, AWidth, AHeight: Integer): TAtlasAnchorItem; overload;
+begin
+  Result := Item(AName, ALeft, ATop, AWidth, AHeight, False);
 end;
 
 function Texts(const AResult: TArray<TAtlasAnchorSuggestion>): string;

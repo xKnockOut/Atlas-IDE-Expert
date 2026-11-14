@@ -101,7 +101,7 @@ end;
 /// <summary>Befunde für die Unit Base + Src/Fall.Tests.pas mit den Projekten AProjects und den Dateien ATexts.
 /// </summary>
 function ProjectFindings(const ASource: string; const AProjects: TArray<TRuleProject>;
-  const ATexts: TDictionary<string, string>; const AConfig: string = ''): TArray<TRuleFinding>;
+  const ATexts: TDictionary<string, string>; const AConfig: string): TArray<TRuleFinding>; overload;
 var
   mContext: TRuleContext;
   mTexts: TDictionary<string, string>;
@@ -120,8 +120,14 @@ begin
   Result := TRuleAssert.ContextFindings(TDUnitXFixtureNotRegisteredRule.Create, mContext, AConfig);
 end;
 
+function ProjectFindings(const ASource: string; const AProjects: TArray<TRuleProject>; const ATexts: TDictionary<string,
+  string>): TArray<TRuleFinding>; overload;
+begin
+  Result := ProjectFindings(ASource, AProjects, ATexts, '');
+end;
+
 /// <summary>Befunde mit einem Testprojekt Tests.dproj, das die Unit enthält, und der .dpr ADpr.</summary>
-function Findings(const ASource, ADpr: string; const AConfig: string = ''): TArray<TRuleFinding>;
+function Findings(const ASource, ADpr: string; const AConfig: string): TArray<TRuleFinding>; overload;
 var
   mTexts: TDictionary<string, string>;
 begin
@@ -133,6 +139,11 @@ begin
   finally
     mTexts.Free;
   end;
+end;
+
+function Findings(const ASource, ADpr: string): TArray<TRuleFinding>; overload;
+begin
+  Result := Findings(ASource, ADpr, '');
 end;
 
 { TDUnitXFixtureNotRegisteredTests }

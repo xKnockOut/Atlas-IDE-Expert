@@ -28,7 +28,7 @@ uses
 
 procedure TAtlasOpenBuildSettingsTests.NamesAndSettingsValues;
 var
-  Exclude: TArray<string>;
+  mExclude: TArray<string>;
 begin
   Assert.AreEqual('Atlas.IDE.Expert', TAtlasOpenBuildSettings.NameOf('C:\P\Atlas.IDE.Expert.dproj'));
   Assert.AreEqual('App', TAtlasOpenBuildSettings.NameOf('/home/p/App.dpr'));
@@ -39,25 +39,25 @@ begin
   Assert.AreEqual('make', TAtlasOpenBuildSettings.KindName(TAtlasCompileKind.Clean), 'nur check, make, build');
   Assert.AreEqual(Ord(TAtlasOpenBuildScope.Active), Ord(TAtlasOpenBuildSettings.ScopeOf('ACTIVE')));
   Assert.AreEqual(Ord(TAtlasOpenBuildScope.All), Ord(TAtlasOpenBuildSettings.ScopeOf('')));
-  Exclude := TAtlasOpenBuildSettings.ParseExclude('Atlas.IDE.Expert.dpk;  Demo' + #13#10 + 'demo, ,');
-  Assert.AreEqual(2, Integer(Length(Exclude)));
-  Assert.AreEqual('Atlas.IDE.Expert', Exclude[0]);
-  Assert.AreEqual('Demo', Exclude[1]);
+  mExclude := TAtlasOpenBuildSettings.ParseExclude('Atlas.IDE.Expert.dpk;  Demo' + #13#10 + 'demo, ,');
+  Assert.AreEqual(2, Integer(Length(mExclude)));
+  Assert.AreEqual('Atlas.IDE.Expert', mExclude[0]);
+  Assert.AreEqual('Demo', mExclude[1]);
   Assert.AreEqual('Atlas.IDE.Expert, Demo', TAtlasOpenBuildSettings.NormalizedExclude('Atlas.IDE.Expert.dpk;Demo;demo'));
 end;
 
 procedure TAtlasOpenBuildSettingsTests.PicksTargetKnownToProject;
 var
-  Configurations, Platforms: TArray<string>;
+  mConfigurations, mPlatforms: TArray<string>;
 begin
-  Configurations := TArray<string>.Create('Debug', 'Release', 'CI');
-  Platforms := TArray<string>.Create('Win32', 'Win64');
-  Assert.AreEqual('Debug', TAtlasOpenBuildSettings.PickTarget(' debug ', Configurations), 'Schreibweise des Projekts');
-  Assert.AreEqual('Win64', TAtlasOpenBuildSettings.PickTarget('WIN64', Platforms));
-  Assert.AreEqual('Win64', TAtlasOpenBuildSettings.PickTarget('Win 64', Platforms), 'Leerzeichen wie in der IDE-Anzeige');
-  Assert.AreEqual('', TAtlasOpenBuildSettings.PickTarget('Profil', Configurations), 'unbekannt: wie im Projekt');
-  Assert.AreEqual('', TAtlasOpenBuildSettings.PickTarget('Linux64', Platforms), 'nicht aktiviert: wie im Projekt');
-  Assert.AreEqual('', TAtlasOpenBuildSettings.PickTarget('', Configurations), 'ohne Vorgabe: wie im Projekt');
+  mConfigurations := TArray<string>.Create('Debug', 'Release', 'CI');
+  mPlatforms := TArray<string>.Create('Win32', 'Win64');
+  Assert.AreEqual('Debug', TAtlasOpenBuildSettings.PickTarget(' debug ', mConfigurations), 'Schreibweise des Projekts');
+  Assert.AreEqual('Win64', TAtlasOpenBuildSettings.PickTarget('WIN64', mPlatforms));
+  Assert.AreEqual('Win64', TAtlasOpenBuildSettings.PickTarget('Win 64', mPlatforms), 'Leerzeichen wie in der IDE-Anzeige');
+  Assert.AreEqual('', TAtlasOpenBuildSettings.PickTarget('Profil', mConfigurations), 'unbekannt: wie im Projekt');
+  Assert.AreEqual('', TAtlasOpenBuildSettings.PickTarget('Linux64', mPlatforms), 'nicht aktiviert: wie im Projekt');
+  Assert.AreEqual('', TAtlasOpenBuildSettings.PickTarget('', mConfigurations), 'ohne Vorgabe: wie im Projekt');
   Assert.AreEqual('', TAtlasOpenBuildSettings.PickTarget('Debug', nil), 'Projekt ohne Liste');
 end;
 

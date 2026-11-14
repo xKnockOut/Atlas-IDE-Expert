@@ -38,16 +38,16 @@ uses
   Atlas.Core.Build.Target;
 
 const
-  Project = 'C:\P\App.dproj';
+  cProject = 'C:\P\App.dproj';
 
 procedure TAtlasBuildTargetTests.ParsesDefinesOfTheIde;
 var
-  Defines: TArray<string>;
+  mDefines: TArray<string>;
 begin
-  Defines := TAtlasBuildTarget.ParseDefines('DEBUG; $(DCC_Define);;Foo;debug');
-  Assert.AreEqual(2, Integer(Length(Defines)));
-  Assert.AreEqual('DEBUG', Defines[0]);
-  Assert.AreEqual('FOO', Defines[1]);
+  mDefines := TAtlasBuildTarget.ParseDefines('DEBUG; $(DCC_Define);;Foo;debug');
+  Assert.AreEqual(2, Integer(Length(mDefines)));
+  Assert.AreEqual('DEBUG', mDefines[0]);
+  Assert.AreEqual('FOO', mDefines[1]);
   Assert.AreEqual(0, Integer(Length(TAtlasBuildTarget.ParseDefines(''))));
 end;
 
@@ -55,7 +55,7 @@ procedure TAtlasBuildTargetTests.ComparesTargets;
 var
   A, B: TAtlasBuildTarget;
 begin
-  A := TAtlasBuildTarget.Create(Project, 'Debug', 'Win32', ['DEBUG', 'FOO']);
+  A := TAtlasBuildTarget.Create(cProject, 'Debug', 'Win32', ['DEBUG', 'FOO']);
   B := TAtlasBuildTarget.Create('c:\p\app.dproj', 'debug', 'WIN32', ['FOO', 'DEBUG']);
   Assert.IsTrue(A.SameAs(B), 'Reihenfolge und Groß/klein egal');
   B.Platform := 'Win64';
@@ -67,138 +67,138 @@ end;
 
 procedure TAtlasBuildTargetTests.QueriesFirstThenSelectsOnChange;
 var
-  Tracker: TAtlasBuildTargetTracker;
-  Current: TAtlasBuildTarget;
+  mTracker: TAtlasBuildTargetTracker;
+  mCurrent: TAtlasBuildTarget;
 begin
-  Tracker := TAtlasBuildTargetTracker.Create;
+  mTracker := TAtlasBuildTargetTracker.Create;
   try
-    Current := TAtlasBuildTarget.Create(Project, 'Debug', 'Win32', ['DEBUG']);
-    Assert.AreEqual<TAtlasBuildTargetAction>(TAtlasBuildTargetAction.Query, Tracker.Decide(Current));
+    mCurrent := TAtlasBuildTarget.Create(cProject, 'Debug', 'Win32', ['DEBUG']);
+    Assert.AreEqual<TAtlasBuildTargetAction>(TAtlasBuildTargetAction.Query, mTracker.Decide(mCurrent));
     // Während die Anfrage läuft, nichts Neues.
-    Assert.AreEqual<TAtlasBuildTargetAction>(TAtlasBuildTargetAction.None, Tracker.Decide(Current));
-    Tracker.Baseline(Project, 'Debug', 'Win32', ['DEBUG'], True);
-    Tracker.Finished;
+    Assert.AreEqual<TAtlasBuildTargetAction>(TAtlasBuildTargetAction.None, mTracker.Decide(mCurrent));
+    mTracker.Baseline(cProject, 'Debug', 'Win32', ['DEBUG'], True);
+    mTracker.Finished;
     Assert.AreEqual<TAtlasBuildTargetAction>(TAtlasBuildTargetAction.None,
-      Tracker.Decide(Current), 'Server hat dieselbe Auswahl');
+      mTracker.Decide(mCurrent), 'Server hat dieselbe Auswahl');
     // Wechsel auf Win64 in der Projektverwaltung.
-    Current.Platform := 'Win64';
-    Assert.AreEqual<TAtlasBuildTargetAction>(TAtlasBuildTargetAction.Select, Tracker.Decide(Current));
-    Assert.IsTrue(Tracker.Pending);
-    Tracker.Finished;
+    mCurrent.Platform := 'Win64';
+    Assert.AreEqual<TAtlasBuildTargetAction>(TAtlasBuildTargetAction.Select, mTracker.Decide(mCurrent));
+    Assert.IsTrue(mTracker.Pending);
+    mTracker.Finished;
     Assert.AreEqual<TAtlasBuildTargetAction>(TAtlasBuildTargetAction.None,
-      Tracker.Decide(Current), 'nur einmal senden');
+      mTracker.Decide(mCurrent), 'nur einmal senden');
     // Server startete mit anderer Auswahl als die IDE.
-    Current := TAtlasBuildTarget.Create('C:\P\Other.dproj', 'Release', 'Win32', nil);
-    Assert.AreEqual<TAtlasBuildTargetAction>(TAtlasBuildTargetAction.Query, Tracker.Decide(Current));
-    Tracker.Baseline(Current.Project, 'Debug', 'Win32', nil, True);
-    Tracker.Finished;
-    Assert.AreEqual<TAtlasBuildTargetAction>(TAtlasBuildTargetAction.Select, Tracker.Decide(Current));
+    mCurrent := TAtlasBuildTarget.Create('C:\P\Other.dproj', 'Release', 'Win32', nil);
+    Assert.AreEqual<TAtlasBuildTargetAction>(TAtlasBuildTargetAction.Query, mTracker.Decide(mCurrent));
+    mTracker.Baseline(mCurrent.Project, 'Debug', 'Win32', nil, True);
+    mTracker.Finished;
+    Assert.AreEqual<TAtlasBuildTargetAction>(TAtlasBuildTargetAction.Select, mTracker.Decide(mCurrent));
   finally
-    Tracker.Free;
+    mTracker.Free;
   end;
 end;
 
 procedure TAtlasBuildTargetTests.SendsChangedDefines;
 var
-  Tracker: TAtlasBuildTargetTracker;
-  Current: TAtlasBuildTarget;
+  mTracker: TAtlasBuildTargetTracker;
+  mCurrent: TAtlasBuildTarget;
 begin
-  Tracker := TAtlasBuildTargetTracker.Create;
+  mTracker := TAtlasBuildTargetTracker.Create;
   try
-    Current := TAtlasBuildTarget.Create(Project, 'Debug', 'Win32', ['DEBUG']);
-    Tracker.Decide(Current);
-    Tracker.Baseline(Project, 'Debug', 'Win32', Current.Defines, True);
-    Tracker.Finished;
+    mCurrent := TAtlasBuildTarget.Create(cProject, 'Debug', 'Win32', ['DEBUG']);
+    mTracker.Decide(mCurrent);
+    mTracker.Baseline(cProject, 'Debug', 'Win32', mCurrent.Defines, True);
+    mTracker.Finished;
     // Neues Symbol in den Projektoptionen, noch nicht gespeichert.
-    Current.Defines := ['DEBUG', 'TRACE'];
-    Assert.AreEqual<TAtlasBuildTargetAction>(TAtlasBuildTargetAction.Select, Tracker.Decide(Current));
+    mCurrent.Defines := ['DEBUG', 'TRACE'];
+    Assert.AreEqual<TAtlasBuildTargetAction>(TAtlasBuildTargetAction.Select, mTracker.Decide(mCurrent));
   finally
-    Tracker.Free;
+    mTracker.Free;
   end;
 end;
 
 procedure TAtlasBuildTargetTests.IgnoresProjectsUnknownToTheServer;
 var
-  Tracker: TAtlasBuildTargetTracker;
-  Current: TAtlasBuildTarget;
+  mTracker: TAtlasBuildTargetTracker;
+  mCurrent: TAtlasBuildTarget;
 begin
-  Tracker := TAtlasBuildTargetTracker.Create;
+  mTracker := TAtlasBuildTargetTracker.Create;
   try
-    Current := TAtlasBuildTarget.Create(Project, 'Debug', 'Win32', nil);
-    Assert.AreEqual<TAtlasBuildTargetAction>(TAtlasBuildTargetAction.Query, Tracker.Decide(Current));
-    Tracker.Baseline(Project, '', '', nil, False);
-    Tracker.Finished;
-    Current.Platform := 'Win64';
-    Assert.AreEqual<TAtlasBuildTargetAction>(TAtlasBuildTargetAction.None, Tracker.Decide(Current));
+    mCurrent := TAtlasBuildTarget.Create(cProject, 'Debug', 'Win32', nil);
+    Assert.AreEqual<TAtlasBuildTargetAction>(TAtlasBuildTargetAction.Query, mTracker.Decide(mCurrent));
+    mTracker.Baseline(cProject, '', '', nil, False);
+    mTracker.Finished;
+    mCurrent.Platform := 'Win64';
+    Assert.AreEqual<TAtlasBuildTargetAction>(TAtlasBuildTargetAction.None, mTracker.Decide(mCurrent));
     // Ohne Projekt nichts tun.
-    Assert.AreEqual<TAtlasBuildTargetAction>(TAtlasBuildTargetAction.None, Tracker.Decide(Default(TAtlasBuildTarget)));
+    Assert.AreEqual<TAtlasBuildTargetAction>(TAtlasBuildTargetAction.None, mTracker.Decide(Default(TAtlasBuildTarget)));
   finally
-    Tracker.Free;
+    mTracker.Free;
   end;
 end;
 
 procedure TAtlasBuildTargetTests.ResetStartsOver;
 var
-  Tracker: TAtlasBuildTargetTracker;
-  Current: TAtlasBuildTarget;
+  mTracker: TAtlasBuildTargetTracker;
+  mCurrent: TAtlasBuildTarget;
 begin
-  Tracker := TAtlasBuildTargetTracker.Create;
+  mTracker := TAtlasBuildTargetTracker.Create;
   try
-    Current := TAtlasBuildTarget.Create(Project, 'Debug', 'Win32', nil);
-    Tracker.Decide(Current);
-    Tracker.Reset;
-    Assert.IsFalse(Tracker.Pending);
-    Assert.AreEqual<TAtlasBuildTargetAction>(TAtlasBuildTargetAction.Query, Tracker.Decide(Current));
+    mCurrent := TAtlasBuildTarget.Create(cProject, 'Debug', 'Win32', nil);
+    mTracker.Decide(mCurrent);
+    mTracker.Reset;
+    Assert.IsFalse(mTracker.Pending);
+    Assert.AreEqual<TAtlasBuildTargetAction>(TAtlasBuildTargetAction.Query, mTracker.Decide(mCurrent));
   finally
-    Tracker.Free;
+    mTracker.Free;
   end;
 end;
 
 procedure TAtlasBuildTargetTests.BuildsCommandArguments;
 var
-  Target: TAtlasBuildTarget;
-  Arguments: TJSONArray;
-  Options: TJSONObject;
-  Defines: TJSONArray;
+  mTarget: TAtlasBuildTarget;
+  mArguments: TJSONArray;
+  mOptions: TJSONObject;
+  mDefines: TJSONArray;
 begin
-  Target := TAtlasBuildTarget.Create(Project, 'Release', 'Win64', ['RELEASE', 'TRACE']);
-  Arguments := Target.SelectArguments('file:///C:/P/App.dproj', TAtlasBuildTargetAction.Query);
+  mTarget := TAtlasBuildTarget.Create(cProject, 'Release', 'Win64', ['RELEASE', 'TRACE']);
+  mArguments := mTarget.SelectArguments('file:///C:/P/App.dproj', TAtlasBuildTargetAction.Query);
   try
-    Assert.AreEqual(1, Integer(Arguments.Count));
-    Options := Arguments.Items[0] as TJSONObject;
-    Assert.AreEqual('file:///C:/P/App.dproj', Options.GetValue<string>('uri'));
-    Assert.IsNull(Options.GetValue('config'), 'Query fragt nur');
+    Assert.AreEqual(1, Integer(mArguments.Count));
+    mOptions := mArguments.Items[0] as TJSONObject;
+    Assert.AreEqual('file:///C:/P/App.dproj', mOptions.GetValue<string>('uri'));
+    Assert.IsNull(mOptions.GetValue('config'), 'Query fragt nur');
   finally
-    Arguments.Free;
+    mArguments.Free;
   end;
-  Arguments := Target.SelectArguments('file:///C:/P/App.dproj', TAtlasBuildTargetAction.Select);
+  mArguments := mTarget.SelectArguments('file:///C:/P/App.dproj', TAtlasBuildTargetAction.Select);
   try
-    Options := Arguments.Items[0] as TJSONObject;
-    Assert.AreEqual('Release', Options.GetValue<string>('config'));
-    Assert.AreEqual('Win64', Options.GetValue<string>('platform'));
-    Defines := Options.GetValue('defines') as TJSONArray;
-    Assert.AreEqual(2, Integer(Defines.Count));
-    Assert.AreEqual('TRACE', Defines.Items[1].Value);
+    mOptions := mArguments.Items[0] as TJSONObject;
+    Assert.AreEqual('Release', mOptions.GetValue<string>('config'));
+    Assert.AreEqual('Win64', mOptions.GetValue<string>('platform'));
+    mDefines := mOptions.GetValue('defines') as TJSONArray;
+    Assert.AreEqual(2, Integer(mDefines.Count));
+    Assert.AreEqual('TRACE', mDefines.Items[1].Value);
   finally
-    Arguments.Free;
+    mArguments.Free;
   end;
 end;
 
 procedure TAtlasBuildTargetTests.ReadsServerSelection;
 var
-  Answer: TJSONValue;
-  Config, Platform: string;
+  mAnswer: TJSONValue;
+  mConfig, mPlatform: string;
 begin
-  Answer := TJSONObject.ParseJSONValue('{"projects":[{"project":"C:\\P\\Lib.dproj","config":"Debug","platform":"Win32"},' +
+  mAnswer := TJSONObject.ParseJSONValue('{"projects":[{"project":"C:\\P\\Lib.dproj","config":"Debug","platform":"Win32"},' +
     '{"project":"c:\\p\\app.dproj","config":"Release","platform":"Win64"}]}');
   try
-    Assert.IsTrue(TAtlasBuildTarget.FromSelection(Answer, Project, Config, Platform));
-    Assert.AreEqual('Release', Config);
-    Assert.AreEqual('Win64', Platform);
-    Assert.IsFalse(TAtlasBuildTarget.FromSelection(Answer, 'C:\P\Fremd.dproj', Config, Platform));
-    Assert.IsFalse(TAtlasBuildTarget.FromSelection(nil, Project, Config, Platform));
+    Assert.IsTrue(TAtlasBuildTarget.FromSelection(mAnswer, cProject, mConfig, mPlatform));
+    Assert.AreEqual('Release', mConfig);
+    Assert.AreEqual('Win64', mPlatform);
+    Assert.IsFalse(TAtlasBuildTarget.FromSelection(mAnswer, 'C:\P\Fremd.dproj', mConfig, mPlatform));
+    Assert.IsFalse(TAtlasBuildTarget.FromSelection(nil, cProject, mConfig, mPlatform));
   finally
-    Answer.Free;
+    mAnswer.Free;
   end;
 end;
 

@@ -37,134 +37,134 @@ uses
 
 procedure Send(const AProgress: ILspProgress; const AJson: string);
 var
-  Value: TJSONValue;
+  mValue: TJSONValue;
 begin
-  Value := TJSONObject.ParseJSONValue(AJson);
+  mValue := TJSONObject.ParseJSONValue(AJson);
   try
-    AProgress.Handle(Value);
+    AProgress.Handle(mValue);
   finally
-    Value.Free;
+    mValue.Free;
   end;
 end;
 
 procedure TLspProgressTests.TracksBeginReportEnd;
 var
-  Progress: ILspProgress;
+  mProgress: ILspProgress;
 begin
-  Progress := TLspProgress.Create;
-  Assert.AreEqual('', Progress.Text);
-  Send(Progress, '{"token":"atlas-index","value":{"kind":"begin","title":"Index","percentage":0}}');
-  Assert.AreEqual('Index 0 %', Progress.Text);
-  Send(Progress, '{"token":"atlas-index","value":{"kind":"report","percentage":45,"message":"Units"}}');
-  Assert.AreEqual('Index 45 %', Progress.Text);
-  Send(Progress, '{"token":"atlas-index","value":{"kind":"end"}}');
-  Assert.AreEqual('', Progress.Text);
+  mProgress := TLspProgress.Create;
+  Assert.AreEqual('', mProgress.Text);
+  Send(mProgress, '{"token":"atlas-index","value":{"kind":"begin","title":"Index","percentage":0}}');
+  Assert.AreEqual('Index 0 %', mProgress.Text);
+  Send(mProgress, '{"token":"atlas-index","value":{"kind":"report","percentage":45,"message":"Units"}}');
+  Assert.AreEqual('Index 45 %', mProgress.Text);
+  Send(mProgress, '{"token":"atlas-index","value":{"kind":"end"}}');
+  Assert.AreEqual('', mProgress.Text);
 end;
 
 procedure TLspProgressTests.IgnoresForeignMessages;
 var
-  Progress: ILspProgress;
+  mProgress: ILspProgress;
 begin
-  Progress := TLspProgress.Create;
-  Send(Progress, '{"token":"x"}');
-  Send(Progress, '[1,2]');
-  Progress.Handle(nil);
-  Assert.AreEqual('', Progress.Text);
-  Send(Progress, '{"token":"c","value":{"kind":"begin","title":"Kompilieren"}}');
-  Assert.AreEqual('Kompilieren', Progress.Text, 'ohne Prozent nur der Titel');
+  mProgress := TLspProgress.Create;
+  Send(mProgress, '{"token":"x"}');
+  Send(mProgress, '[1,2]');
+  mProgress.Handle(nil);
+  Assert.AreEqual('', mProgress.Text);
+  Send(mProgress, '{"token":"c","value":{"kind":"begin","title":"Kompilieren"}}');
+  Assert.AreEqual('Kompilieren', mProgress.Text, 'ohne Prozent nur der Titel');
 end;
 
 procedure TLspProgressTests.ActiveOfFollowsEachToken;
 var
-  Progress: ILspProgress;
-  Percent: Integer;
+  mProgress: ILspProgress;
+  mPercent: Integer;
 begin
-  Progress := TLspProgress.Create;
-  Assert.IsFalse(Progress.ActiveOf('atlas-index-1', Percent));
-  Assert.AreEqual(-1, Percent);
-  Send(Progress, '{"token":"atlas-index-1","value":{"kind":"begin","title":"Symbolindex","percentage":0}}');
-  Send(Progress, '{"token":"atlas-index-1","value":{"kind":"report","percentage":30}}');
-  Send(Progress, '{"token":"atlas-index-1-1","value":{"kind":"begin","title":"Symbolindex"}}');
-  Assert.IsTrue(Progress.ActiveOf('atlas-index-1', Percent));
-  Assert.AreEqual(30, Percent);
-  Assert.IsTrue(Progress.ActiveOf('atlas-index-1-1', Percent));
-  Assert.AreEqual(-1, Percent, 'ohne Prozent');
-  Send(Progress, '{"token":"atlas-index-1","value":{"kind":"end"}}');
-  Assert.IsFalse(Progress.ActiveOf('atlas-index-1', Percent));
-  Assert.IsTrue(Progress.ActiveOf('atlas-index-1-1', Percent));
+  mProgress := TLspProgress.Create;
+  Assert.IsFalse(mProgress.ActiveOf('atlas-index-1', mPercent));
+  Assert.AreEqual(-1, mPercent);
+  Send(mProgress, '{"token":"atlas-index-1","value":{"kind":"begin","title":"Symbolindex","percentage":0}}');
+  Send(mProgress, '{"token":"atlas-index-1","value":{"kind":"report","percentage":30}}');
+  Send(mProgress, '{"token":"atlas-index-1-1","value":{"kind":"begin","title":"Symbolindex"}}');
+  Assert.IsTrue(mProgress.ActiveOf('atlas-index-1', mPercent));
+  Assert.AreEqual(30, mPercent);
+  Assert.IsTrue(mProgress.ActiveOf('atlas-index-1-1', mPercent));
+  Assert.AreEqual(-1, mPercent, 'ohne Prozent');
+  Send(mProgress, '{"token":"atlas-index-1","value":{"kind":"end"}}');
+  Assert.IsFalse(mProgress.ActiveOf('atlas-index-1', mPercent));
+  Assert.IsTrue(mProgress.ActiveOf('atlas-index-1-1', mPercent));
 end;
 
 procedure TLspProgressTests.StatusLinesNameUnitsAndWorkspaces;
 var
-  Status: TJSONValue;
-  Lines: TArray<string>;
+  mStatus: TJSONValue;
+  mLines: TArray<string>;
 begin
-  Status := TJSONObject.ParseJSONValue('{"units":120,"symbols":5400,"indexBytes":2097152,' +
+  mStatus := TJSONObject.ParseJSONValue('{"units":120,"symbols":5400,"indexBytes":2097152,' +
     '"workspaces":[{"name":"Demo","lastIndexMs":850,"parsed":3,"fromCache":117,"missing":1}]}');
   try
-    Lines := TLspIndexStatus.Lines(Status);
+    mLines := TLspIndexStatus.Lines(mStatus);
   finally
-    Status.Free;
+    mStatus.Free;
   end;
-  Assert.AreEqual(2, Integer(Length(Lines)));
-  Assert.Contains(Lines[0], '120 Units');
-  Assert.Contains(Lines[0], '5400 Symbole');
-  Assert.Contains(Lines[1], 'Demo: letzter Lauf 850 ms, 3 gelesen, 117 aus dem Cache, 1 fehlen');
+  Assert.AreEqual(2, Integer(Length(mLines)));
+  Assert.Contains(mLines[0], '120 Units');
+  Assert.Contains(mLines[0], '5400 Symbole');
+  Assert.Contains(mLines[1], 'Demo: letzter Lauf 850 ms, 3 gelesen, 117 aus dem Cache, 1 fehlen');
   Assert.AreEqual(0, Integer(Length(TLspIndexStatus.Lines(nil))));
 end;
 
 procedure TLspProgressTests.IndexingTextForStatusBar;
 var
-  Progress: ILspProgress;
+  mProgress: ILspProgress;
 begin
   // #492: Statusleiste „Atlas indiziert … (n %)“, nie modal; leer, wenn nichts läuft.
-  Progress := TLspProgress.Create;
-  Assert.AreEqual('', Progress.IndexingText);
-  Send(Progress, '{"token":"i","value":{"kind":"begin","title":"Symbolindex"}}');
-  Assert.AreEqual('Atlas indiziert …', Progress.IndexingText);
-  Send(Progress, '{"token":"i","value":{"kind":"report","percentage":45}}');
-  Assert.AreEqual('Atlas indiziert … (45 %)', Progress.IndexingText);
-  Send(Progress, '{"token":"i","value":{"kind":"end"}}');
-  Assert.AreEqual('', Progress.IndexingText);
+  mProgress := TLspProgress.Create;
+  Assert.AreEqual('', mProgress.IndexingText);
+  Send(mProgress, '{"token":"i","value":{"kind":"begin","title":"Symbolindex"}}');
+  Assert.AreEqual('Atlas indiziert …', mProgress.IndexingText);
+  Send(mProgress, '{"token":"i","value":{"kind":"report","percentage":45}}');
+  Assert.AreEqual('Atlas indiziert … (45 %)', mProgress.IndexingText);
+  Send(mProgress, '{"token":"i","value":{"kind":"end"}}');
+  Assert.AreEqual('', mProgress.IndexingText);
 end;
 
 procedure TLspProgressTests.MetricsForSettingsPage;
 var
-  Status: TJSONValue;
-  Metrics: TLspIndexMetrics;
+  mStatus: TJSONValue;
+  mMetrics: TLspIndexMetrics;
 begin
   // #492: Units, Deklarationen, Größe (Speicher und Platte), letzte Aktualisierung.
-  Status := TJSONObject.ParseJSONValue('{"units":1000,"symbols":250000,"indexBytes":104857600,' +
+  mStatus := TJSONObject.ParseJSONValue('{"units":1000,"symbols":250000,"indexBytes":104857600,' +
     '"budgetBytes":268435456,"offloadedUnits":12,"diskBytes":52428800,' +
     '"workspaces":[{"name":"A","lastUpdate":"2026-10-14T10:00:00.000Z"},{"name":"B","lastUpdate":""}]}');
   try
-    Metrics := TLspIndexStatus.Metrics(Status);
+    mMetrics := TLspIndexStatus.Metrics(mStatus);
   finally
-    Status.Free;
+    mStatus.Free;
   end;
-  Assert.IsTrue(Metrics.Valid);
-  Assert.AreEqual(1000, Metrics.Units);
-  Assert.AreEqual(250000, Metrics.Declarations);
-  Assert.AreEqual(Int64(52428800), Metrics.DiskBytes);
-  Assert.AreEqual(12, Metrics.OffloadedUnits);
-  Assert.IsTrue(Metrics.LastUpdate > 0, 'jüngste Aktualisierung der Ordner');
-  Assert.Contains(Metrics.Text, 'Units: 1000 · Deklarationen: 250000');
-  Assert.Contains(Metrics.Text, 'Im Speicher: 100,0 MB von 256,0 MB (Verwendungen von 12 Units ausgelagert)');
-  Assert.Contains(Metrics.Text, 'Auf der Platte: 50,0 MB');
+  Assert.IsTrue(mMetrics.Valid);
+  Assert.AreEqual(1000, mMetrics.Units);
+  Assert.AreEqual(250000, mMetrics.Declarations);
+  Assert.AreEqual(Int64(52428800), mMetrics.DiskBytes);
+  Assert.AreEqual(12, mMetrics.OffloadedUnits);
+  Assert.IsTrue(mMetrics.LastUpdate > 0, 'jüngste Aktualisierung der Ordner');
+  Assert.Contains(mMetrics.Text, 'Units: 1000 · Deklarationen: 250000');
+  Assert.Contains(mMetrics.Text, 'Im Speicher: 100,0 MB von 256,0 MB (Verwendungen von 12 Units ausgelagert)');
+  Assert.Contains(mMetrics.Text, 'Auf der Platte: 50,0 MB');
   Assert.IsFalse(TLspIndexStatus.Metrics(nil).Valid);
   Assert.Contains(TLspIndexStatus.Metrics(nil).Text, 'nicht verfügbar');
 end;
 
 procedure TLspProgressTests.ClearedTextNamesCachesAndSize;
 var
-  Answer: TJSONValue;
+  mAnswer: TJSONValue;
 begin
-  Answer := TJSONObject.ParseJSONValue('{"removed":3,"freedBytes":2048}');
+  mAnswer := TJSONObject.ParseJSONValue('{"removed":3,"freedBytes":2048}');
   try
     Assert.AreEqual('Index gelöscht: 3 Caches, 2,0 KB frei; er wird neu aufgebaut.',
-      TLspIndexStatus.ClearedText(Answer));
+      TLspIndexStatus.ClearedText(mAnswer));
   finally
-    Answer.Free;
+    mAnswer.Free;
   end;
 end;
 

@@ -62,7 +62,8 @@ type
     [Test]
     procedure RuleIsRegistered;
     /// <summary>IfThen aus System.Math (Integer) und System.StrUtils (string): dcc führt die Überladungen beider Units
-    /// zusammen; der Ergebnistyp entscheidet sich an den Argumenten (Fehlalarm in Atlas.Common.Lsp.CompletionCollector).
+    /// zusammen; der Ergebnistyp entscheidet sich an den Argumenten (Fehlalarm in
+    /// Atlas.Common.Lsp.CompletionCollector).
     /// </summary>
     [Test]
     procedure OverloadsFromSeveralUnitsAreSilent;

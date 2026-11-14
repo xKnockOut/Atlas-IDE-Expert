@@ -75,152 +75,152 @@ end;
 
 procedure TLspWorkDoneProgressTests.StartSendsCreateAndBegin;
 var
-  Transport: TRecordingTransport;
-  Keep: IJsonRpcTransport;
-  Progress: TLspWorkDoneProgress;
+  mTransport: TRecordingTransport;
+  mKeep: IJsonRpcTransport;
+  mProgress: TLspWorkDoneProgress;
 begin
-  Transport := TRecordingTransport.Create;
-  Keep := Transport;
-  Progress := TLspWorkDoneProgress.Create(Keep, 'index');
+  mTransport := TRecordingTransport.Create;
+  mKeep := mTransport;
+  mProgress := TLspWorkDoneProgress.Create(mKeep, 'index');
   try
-    Assert.IsFalse(Progress.Active);
-    Progress.Start('Index aufbauen');
-    Assert.IsTrue(Progress.Active);
-    Assert.AreEqual(0, Progress.Percent);
-    Assert.AreEqual(2, Integer(Transport.Messages.Count));
-    Assert.Contains(Transport.Messages[0], '"method":"window/workDoneProgress/create"');
-    Assert.Contains(Transport.Messages[0], '"id":"atlas/index"');
-    Assert.Contains(Transport.Messages[0], '"token":"index"');
-    Assert.Contains(Transport.Messages[1], '"method":"$/progress"');
-    Assert.Contains(Transport.Messages[1], '"kind":"begin"');
-    Assert.Contains(Transport.Messages[1], '"title":"Index aufbauen"');
-    Assert.Contains(Transport.Messages[1], '"cancellable":false');
-    Assert.Contains(Transport.Messages[1], '"percentage":0');
+    Assert.IsFalse(mProgress.Active);
+    mProgress.Start('Index aufbauen');
+    Assert.IsTrue(mProgress.Active);
+    Assert.AreEqual(0, mProgress.Percent);
+    Assert.AreEqual(2, Integer(mTransport.Messages.Count));
+    Assert.Contains(mTransport.Messages[0], '"method":"window/workDoneProgress/create"');
+    Assert.Contains(mTransport.Messages[0], '"id":"atlas/index"');
+    Assert.Contains(mTransport.Messages[0], '"token":"index"');
+    Assert.Contains(mTransport.Messages[1], '"method":"$/progress"');
+    Assert.Contains(mTransport.Messages[1], '"kind":"begin"');
+    Assert.Contains(mTransport.Messages[1], '"title":"Index aufbauen"');
+    Assert.Contains(mTransport.Messages[1], '"cancellable":false');
+    Assert.Contains(mTransport.Messages[1], '"percentage":0');
   finally
-    Progress.Free;
+    mProgress.Free;
   end;
 end;
 
 procedure TLspWorkDoneProgressTests.ReportIsThrottled;
 var
-  Transport: TRecordingTransport;
-  Keep: IJsonRpcTransport;
-  Progress: TLspWorkDoneProgress;
+  mTransport: TRecordingTransport;
+  mKeep: IJsonRpcTransport;
+  mProgress: TLspWorkDoneProgress;
 begin
-  Transport := TRecordingTransport.Create;
-  Keep := Transport;
-  Progress := TLspWorkDoneProgress.Create(Keep, 't');
+  mTransport := TRecordingTransport.Create;
+  mKeep := mTransport;
+  mProgress := TLspWorkDoneProgress.Create(mKeep, 't');
   try
-    Progress.Start('Titel');
+    mProgress.Start('Titel');
     // Direkt nach begin: gedrosselt, der Prozentwert gilt trotzdem (#647).
-    Progress.Report('A.pas', 10);
-    Assert.AreEqual(2, Integer(Transport.Messages.Count));
-    Assert.AreEqual(10, Progress.Percent);
+    mProgress.Report('A.pas', 10);
+    Assert.AreEqual(2, Integer(mTransport.Messages.Count));
+    Assert.AreEqual(10, mProgress.Percent);
     Sleep(TLspWorkDoneProgress.cMinReportIntervalMs + 50);
-    Progress.Report('B.pas', 20);
-    Assert.AreEqual(3, Integer(Transport.Messages.Count));
-    Assert.Contains(Transport.Messages[2], '"kind":"report"');
-    Assert.Contains(Transport.Messages[2], '"message":"B.pas"');
-    Assert.Contains(Transport.Messages[2], '"percentage":20');
+    mProgress.Report('B.pas', 20);
+    Assert.AreEqual(3, Integer(mTransport.Messages.Count));
+    Assert.Contains(mTransport.Messages[2], '"kind":"report"');
+    Assert.Contains(mTransport.Messages[2], '"message":"B.pas"');
+    Assert.Contains(mTransport.Messages[2], '"percentage":20');
     // Gleich danach wieder gedrosselt.
-    Progress.Report('C.pas', 30);
-    Assert.AreEqual(3, Integer(Transport.Messages.Count));
-    Assert.AreEqual(30, Progress.Percent);
+    mProgress.Report('C.pas', 30);
+    Assert.AreEqual(3, Integer(mTransport.Messages.Count));
+    Assert.AreEqual(30, mProgress.Percent);
   finally
-    Progress.Free;
+    mProgress.Free;
   end;
 end;
 
 procedure TLspWorkDoneProgressTests.ReportWithoutPercentage;
 var
-  Transport: TRecordingTransport;
-  Keep: IJsonRpcTransport;
-  Progress: TLspWorkDoneProgress;
+  mTransport: TRecordingTransport;
+  mKeep: IJsonRpcTransport;
+  mProgress: TLspWorkDoneProgress;
 begin
-  Transport := TRecordingTransport.Create;
-  Keep := Transport;
-  Progress := TLspWorkDoneProgress.Create(Keep, 't');
+  mTransport := TRecordingTransport.Create;
+  mKeep := mTransport;
+  mProgress := TLspWorkDoneProgress.Create(mKeep, 't');
   try
-    Progress.Start('Titel');
-    Progress.Report('', 40);
+    mProgress.Start('Titel');
+    mProgress.Report('', 40);
     Sleep(TLspWorkDoneProgress.cMinReportIntervalMs + 50);
-    Progress.Report('ohne Zahl', -1);
-    Assert.AreEqual(3, Integer(Transport.Messages.Count));
-    Assert.IsFalse(Pos('percentage', Transport.Messages[2]) > 0, Transport.Messages[2]);
+    mProgress.Report('ohne Zahl', -1);
+    Assert.AreEqual(3, Integer(mTransport.Messages.Count));
+    Assert.IsFalse(Pos('percentage', mTransport.Messages[2]) > 0, mTransport.Messages[2]);
     // Ohne Prozentangabe bleibt der letzte Wert.
-    Assert.AreEqual(40, Progress.Percent);
+    Assert.AreEqual(40, mProgress.Percent);
   finally
-    Progress.Free;
+    mProgress.Free;
   end;
 end;
 
 procedure TLspWorkDoneProgressTests.FinishSendsEndOnce;
 var
-  Transport: TRecordingTransport;
-  Keep: IJsonRpcTransport;
-  Progress: TLspWorkDoneProgress;
+  mTransport: TRecordingTransport;
+  mKeep: IJsonRpcTransport;
+  mProgress: TLspWorkDoneProgress;
 begin
-  Transport := TRecordingTransport.Create;
-  Keep := Transport;
-  Progress := TLspWorkDoneProgress.Create(Keep, 't');
+  mTransport := TRecordingTransport.Create;
+  mKeep := mTransport;
+  mProgress := TLspWorkDoneProgress.Create(mKeep, 't');
   try
-    Progress.Start('Titel');
-    Progress.Finish('Fertig');
-    Assert.IsFalse(Progress.Active);
-    Assert.AreEqual(3, Integer(Transport.Messages.Count));
-    Assert.Contains(Transport.Messages[2], '"kind":"end"');
-    Assert.Contains(Transport.Messages[2], '"message":"Fertig"');
-    Assert.IsFalse(Pos('percentage', Transport.Messages[2]) > 0, Transport.Messages[2]);
-    Progress.Finish('Noch einmal');
-    Assert.AreEqual(3, Integer(Transport.Messages.Count));
+    mProgress.Start('Titel');
+    mProgress.Finish('Fertig');
+    Assert.IsFalse(mProgress.Active);
+    Assert.AreEqual(3, Integer(mTransport.Messages.Count));
+    Assert.Contains(mTransport.Messages[2], '"kind":"end"');
+    Assert.Contains(mTransport.Messages[2], '"message":"Fertig"');
+    Assert.IsFalse(Pos('percentage', mTransport.Messages[2]) > 0, mTransport.Messages[2]);
+    mProgress.Finish('Noch einmal');
+    Assert.AreEqual(3, Integer(mTransport.Messages.Count));
   finally
-    Progress.Free;
+    mProgress.Free;
   end;
 end;
 
 procedure TLspWorkDoneProgressTests.NothingBeforeStart;
 var
-  Transport: TRecordingTransport;
-  Keep: IJsonRpcTransport;
-  Progress: TLspWorkDoneProgress;
+  mTransport: TRecordingTransport;
+  mKeep: IJsonRpcTransport;
+  mProgress: TLspWorkDoneProgress;
 begin
-  Transport := TRecordingTransport.Create;
-  Keep := Transport;
-  Progress := TLspWorkDoneProgress.Create(Keep, 't');
+  mTransport := TRecordingTransport.Create;
+  mKeep := mTransport;
+  mProgress := TLspWorkDoneProgress.Create(mKeep, 't');
   try
-    Progress.Report('A.pas', 50);
-    Progress.Finish('Ende');
-    Assert.AreEqual(0, Integer(Transport.Messages.Count));
-    Assert.AreEqual(0, Progress.Percent);
+    mProgress.Report('A.pas', 50);
+    mProgress.Finish('Ende');
+    Assert.AreEqual(0, Integer(mTransport.Messages.Count));
+    Assert.AreEqual(0, mProgress.Percent);
   finally
-    Progress.Free;
+    mProgress.Free;
   end;
 end;
 
 procedure TLspWorkDoneProgressTests.IndexAdapterShowsFileNameOnly;
 var
-  Transport: TRecordingTransport;
-  Keep: IJsonRpcTransport;
-  Progress: TLspWorkDoneProgress;
-  Event: TIndexProgressEvent;
+  mTransport: TRecordingTransport;
+  mKeep: IJsonRpcTransport;
+  mProgress: TLspWorkDoneProgress;
+  mEvent: TIndexProgressEvent;
 begin
-  Transport := TRecordingTransport.Create;
-  Keep := Transport;
-  Progress := TLspWorkDoneProgress.Create(Keep, 't');
+  mTransport := TRecordingTransport.Create;
+  mKeep := mTransport;
+  mProgress := TLspWorkDoneProgress.Create(mKeep, 't');
   try
-    Event := Progress.AsIndexProgress();
-    Event(TIndexProgressKind.Started, 'Index', 0);
-    Assert.IsTrue(Progress.Active);
+    mEvent := mProgress.AsIndexProgress();
+    mEvent(TIndexProgressKind.Started, 'Index', 0);
+    Assert.IsTrue(mProgress.Active);
     Sleep(TLspWorkDoneProgress.cMinReportIntervalMs + 50);
-    Event(TIndexProgressKind.Report, 'C:\Projekt\Quellen\Haupt.pas', 25);
-    Assert.AreEqual(3, Integer(Transport.Messages.Count));
-    Assert.Contains(Transport.Messages[2], '"message":"Haupt.pas"');
-    Assert.IsFalse(Pos('Projekt', Transport.Messages[2]) > 0, 'Kein Pfad in der Meldung');
-    Event(TIndexProgressKind.Finished, 'Fertig', 100);
-    Assert.IsFalse(Progress.Active);
-    Event := nil;
+    mEvent(TIndexProgressKind.Report, 'C:\Projekt\Quellen\Haupt.pas', 25);
+    Assert.AreEqual(3, Integer(mTransport.Messages.Count));
+    Assert.Contains(mTransport.Messages[2], '"message":"Haupt.pas"');
+    Assert.IsFalse(Pos('Projekt', mTransport.Messages[2]) > 0, 'Kein Pfad in der Meldung');
+    mEvent(TIndexProgressKind.Finished, 'Fertig', 100);
+    Assert.IsFalse(mProgress.Active);
+    mEvent := nil;
   finally
-    Progress.Free;
+    mProgress.Free;
   end;
 end;
 

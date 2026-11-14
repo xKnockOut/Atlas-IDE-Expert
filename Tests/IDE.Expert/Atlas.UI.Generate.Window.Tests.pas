@@ -45,9 +45,9 @@ uses
   Atlas.UI.Generate.Window;
 
 const
-  MockupNames: array[0..5] of string = ('ctor', 'dtor', 'prop', 'override', 'implement', 'equals');
+  cMockupNames: array[0..5] of string = ('ctor', 'dtor', 'prop', 'override', 'implement', 'equals');
   // Alle Schnellbefehle des Menükatalogs (Atlas.Common.Editing.SlashMenu) plus „implement“.
-  CatalogNames: array[0..51] of string = ('ctor', 'dtor', 'prop', 'override', 'implement', 'equals', 'impl', 'field',
+  cCatalogNames: array[0..51] of string = ('ctor', 'dtor', 'prop', 'override', 'implement', 'equals', 'impl', 'field',
     'encapsulate', 'clone', 'assign', 'json', 'msg', 'notify', 'changed', 'loaded', 'notification', 'singleton',
     'list', 'dict', 'dict!', 'operator', 'guid', 'var', 'const', 'const!', 'guard', 'raise', 'log', 'sql', 'params',
     'record', 'enum', 'enum!', 'helper', 'exception', 'thread', 'external', 'exports', 'todo', 'try', 'except',
@@ -64,12 +64,12 @@ end;
 
 function MockupEntries: TArray<TAtlasGenerateEntry>;
 var
-  Name: string;
+  mName: string;
 begin
   Result := nil;
-  for Name in MockupNames do
+  for mName in cMockupNames do
   begin
-    Result := Result + [Slash(Name, TAtlasGenerateGroup.Generate)];
+    Result := Result + [Slash(mName, TAtlasGenerateGroup.Generate)];
   end;
   Result[0].HasChoices := True;
   Result[0].Multi := True;
@@ -106,30 +106,30 @@ end;
 
 procedure TAtlasGenerateWindowTests.CaptionsLikeMockup;
 var
-  Entries: TArray<TAtlasGenerateEntry>;
-  Window: TAtlasGenerateWindow;
-  Captions: TArray<string>;
-  Row: TAtlasGenerateRow;
+  mEntries: TArray<TAtlasGenerateEntry>;
+  mWindow: TAtlasGenerateWindow;
+  mCaptions: TArray<string>;
+  mRow: TAtlasGenerateRow;
 begin
-  Entries := MockupEntries;
-  Window := TAtlasGenerateWindow.CreateMenu(nil, Entries, TAtlasGenerateOptions.Default, nil, TAtlasColors.Light);
+  mEntries := MockupEntries;
+  mWindow := TAtlasGenerateWindow.CreateMenu(nil, mEntries, TAtlasGenerateOptions.Default, nil, TAtlasColors.Light);
   try
     Assert.AreEqual('Erzeugen', TAtlasGenerateStrings.Text(TAtlasGenerateTextId.GenerateTitle));
-    Assert.AreEqual('Erzeugen', TAtlasGenerateTexts.GroupCaption(Window.Rows[0].Group));
-    Assert.IsTrue(Window.Rows[0].IsHeader);
-    Captions := nil;
-    for Row in Window.Rows do
+    Assert.AreEqual('Erzeugen', TAtlasGenerateTexts.GroupCaption(mWindow.Rows[0].Group));
+    Assert.IsTrue(mWindow.Rows[0].IsHeader);
+    mCaptions := nil;
+    for mRow in mWindow.Rows do
     begin
-      if not Row.IsHeader then
+      if not mRow.IsHeader then
       begin
-        Captions := Captions + [IntToStr(Row.Digit) + ' ' + TAtlasGenerateTexts.EntryCaption(Entries[Row.Entry])];
+        mCaptions := mCaptions + [IntToStr(mRow.Digit) + ' ' + TAtlasGenerateTexts.EntryCaption(mEntries[mRow.Entry])];
       end;
     end;
     Assert.AreEqual('1 Konstruktor aus Feldern|2 Destruktor mit Freigabe|3 Property mit Feld|' +
-      '4 Methoden überschreiben…|5 Interface implementieren…|6 Equals / GetHashCode', string.Join('|', Captions));
-    Assert.AreEqual(1, Window.Selected, 'erster Eintrag unter dem Kopf gewählt');
+      '4 Methoden überschreiben…|5 Interface implementieren…|6 Equals / GetHashCode', string.Join('|', mCaptions));
+    Assert.AreEqual(1, mWindow.Selected, 'erster Eintrag unter dem Kopf gewählt');
   finally
-    Window.Free;
+    mWindow.Free;
   end;
   // Ohne eigenen Text: die Kurzbeschreibung des Servers; Vorlagen und Code-Aktionen behalten ihre Beschriftung.
   Assert.AreEqual('Server: neu', TAtlasGenerateTexts.EntryCaption(Slash('neu', TAtlasGenerateGroup.Generate)));
@@ -139,12 +139,12 @@ end;
 
 procedure TAtlasGenerateWindowTests.EveryCatalogCommandHasCaption;
 var
-  Name: string;
+  mName: string;
 begin
-  for Name in CatalogNames do
+  for mName in cCatalogNames do
   begin
-    Assert.IsFalse(TAtlasGenerateTexts.EntryCaption(Slash(Name, TAtlasGenerateGroup.Generate)).StartsWith('Server'),
-      Name);
+    Assert.IsFalse(TAtlasGenerateTexts.EntryCaption(Slash(mName, TAtlasGenerateGroup.Generate)).StartsWith('Server'),
+      mName);
   end;
   TAtlasStrings.Language := TAtlasLanguage.English;
   Assert.AreEqual('Constructor from fields',
@@ -153,67 +153,67 @@ end;
 
 procedure TAtlasGenerateWindowTests.DeleteHidesEntry;
 var
-  Window: TAtlasGenerateWindow;
-  Hidden: string;
-  Key: Word;
-  Count: Integer;
-  Row: TAtlasGenerateRow;
+  mWindow: TAtlasGenerateWindow;
+  mHidden: string;
+  mKey: Word;
+  mCount: Integer;
+  mRow: TAtlasGenerateRow;
 begin
-  Window := TAtlasGenerateWindow.CreateMenu(nil, MockupEntries, TAtlasGenerateOptions.Default, nil,
+  mWindow := TAtlasGenerateWindow.CreateMenu(nil, MockupEntries, TAtlasGenerateOptions.Default, nil,
     TAtlasColors.Light);
   try
-    Hidden := '';
-    Window.OnHide :=
+    mHidden := '';
+    mWindow.OnHide :=
       procedure(const AEntry: TAtlasGenerateEntry)
       begin
-        Hidden := AEntry.Id;
+        mHidden := AEntry.Id;
       end;
-    Key := VK_DOWN;
-    TWindowAccess(Window).KeyDown(Key, []);
-    Key := VK_DELETE;
-    TWindowAccess(Window).KeyDown(Key, []);
-    Assert.AreEqual('slash:dtor', Hidden);
-    Count := 0;
-    for Row in Window.Rows do
+    mKey := VK_DOWN;
+    TWindowAccess(mWindow).KeyDown(mKey, []);
+    mKey := VK_DELETE;
+    TWindowAccess(mWindow).KeyDown(mKey, []);
+    Assert.AreEqual('slash:dtor', mHidden);
+    mCount := 0;
+    for mRow in mWindow.Rows do
     begin
-      if not Row.IsHeader then
+      if not mRow.IsHeader then
       begin
-        Inc(Count);
+        Inc(mCount);
       end;
     end;
-    Assert.AreEqual(5, Count, 'ausgeblendet');
+    Assert.AreEqual(5, mCount, 'ausgeblendet');
   finally
-    Window.Free;
+    mWindow.Free;
   end;
 end;
 
 procedure TAtlasGenerateWindowTests.StepWithChoicesPrechecksAll;
 var
-  Window: TAtlasGenerateWindow;
-  Asked: string;
-  Key: Word;
+  mWindow: TAtlasGenerateWindow;
+  mAsked: string;
+  mKey: Word;
 begin
-  Window := TAtlasGenerateWindow.CreateMenu(nil, MockupEntries, TAtlasGenerateOptions.Default, nil,
+  mWindow := TAtlasGenerateWindow.CreateMenu(nil, MockupEntries, TAtlasGenerateOptions.Default, nil,
     TAtlasColors.Light);
   try
-    Asked := '';
-    Window.OnChoices :=
+    mAsked := '';
+    mWindow.OnChoices :=
       function(const AEntry: TAtlasGenerateEntry): TArray<string>
       begin
-        Asked := AEntry.Name;
+        mAsked := AEntry.Name;
         Result := ['FName', 'FAlter'];
       end;
     // Enter auf „Konstruktor aus Feldern“: zweiter Schritt mit den Feldern.
-    Key := VK_RETURN;
-    TWindowAccess(Window).KeyDown(Key, []);
-    Assert.AreEqual('ctor', Asked);
-    Assert.IsTrue(Window.InStep);
+    mKey := VK_RETURN;
+    TWindowAccess(mWindow).KeyDown(mKey, []);
+    Assert.AreEqual('ctor', mAsked);
+    Assert.IsTrue(mWindow.InStep);
     // Escape führt zurück zur Liste.
-    Key := VK_ESCAPE;
-    TWindowAccess(Window).KeyDown(Key, []);
-    Assert.IsFalse(Window.InStep);
+    mKey := VK_ESCAPE;
+    TWindowAccess(mWindow).KeyDown(mKey, []);
+    Assert.IsFalse(mWindow.InStep);
   finally
-    Window.Free;
+    mWindow.Free;
   end;
 end;
 

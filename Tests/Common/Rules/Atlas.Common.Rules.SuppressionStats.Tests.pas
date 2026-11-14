@@ -36,7 +36,7 @@ uses
   Atlas.Common.Rules.SuppressionStats;
 
 const
-  Code =
+  cCode =
     '// lsp-ignore-file: regel-a' + sLineBreak +
     'unit U;' + sLineBreak +
     'interface' + sLineBreak +
@@ -58,13 +58,13 @@ end;
 
 function Find(AStats: TSuppressionStats; const AId: string): TSuppressionCount;
 var
-  Count: TSuppressionCount;
+  mCount: TSuppressionCount;
 begin
-  for Count in AStats.Counts do
+  for mCount in AStats.Counts do
   begin
-    if Count.RuleId = AId then
+    if mCount.RuleId = AId then
     begin
-      Exit(Count);
+      Exit(mCount);
     end;
   end;
   Result := Default(TSuppressionCount);
@@ -74,97 +74,97 @@ end;
 
 procedure TSuppressionStatsTests.CountsLineAndFileSuppressionsPerRule;
 var
-  Stats: TSuppressionStats;
+  mStats: TSuppressionStats;
 begin
-  Stats := TSuppressionStats.Create;
+  mStats := TSuppressionStats.Create;
   try
-    Stats.Add(Code, nil);
-    Assert.AreEqual(1, Find(Stats, 'regel-a').FileCount);
-    Assert.AreEqual(1, Find(Stats, 'regel-a').LineCount);
-    Assert.AreEqual(0, Find(Stats, 'regel-b').FileCount);
-    Assert.AreEqual(2, Find(Stats, 'regel-b').LineCount);
-    Assert.AreEqual(2, Find(Stats, 'regel-b').Total);
+    mStats.Add(cCode, nil);
+    Assert.AreEqual(1, Find(mStats, 'regel-a').FileCount);
+    Assert.AreEqual(1, Find(mStats, 'regel-a').LineCount);
+    Assert.AreEqual(0, Find(mStats, 'regel-b').FileCount);
+    Assert.AreEqual(2, Find(mStats, 'regel-b').LineCount);
+    Assert.AreEqual(2, Find(mStats, 'regel-b').Total);
   finally
-    Stats.Free;
+    mStats.Free;
   end;
 end;
 
 procedure TSuppressionStatsTests.CountsFilesOncePerRule;
 var
-  Stats: TSuppressionStats;
+  mStats: TSuppressionStats;
 begin
-  Stats := TSuppressionStats.Create;
+  mStats := TSuppressionStats.Create;
   try
-    Stats.Add(Code, nil);
-    Stats.Add(Code, nil);
-    Assert.AreEqual(2, Stats.FileCount);
-    Assert.AreEqual(2, Find(Stats, 'regel-b').Files);
-    Assert.AreEqual(4, Find(Stats, 'regel-b').LineCount);
+    mStats.Add(cCode, nil);
+    mStats.Add(cCode, nil);
+    Assert.AreEqual(2, mStats.FileCount);
+    Assert.AreEqual(2, Find(mStats, 'regel-b').Files);
+    Assert.AreEqual(4, Find(mStats, 'regel-b').LineCount);
   finally
-    Stats.Free;
+    mStats.Free;
   end;
 end;
 
 procedure TSuppressionStatsTests.CountsUnusedFromEngineFindings;
 var
-  Stats: TSuppressionStats;
+  mStats: TSuppressionStats;
 begin
-  Stats := TSuppressionStats.Create;
+  mStats := TSuppressionStats.Create;
   try
     // Zeile 6 (0-basiert): "// lsp-ignore: regel-b, regel-a"
-    Stats.Add(Code, [Unused(6)]);
-    Assert.AreEqual(1, Find(Stats, 'regel-a').UnusedCount);
-    Assert.AreEqual(1, Find(Stats, 'regel-b').UnusedCount);
+    mStats.Add(cCode, [Unused(6)]);
+    Assert.AreEqual(1, Find(mStats, 'regel-a').UnusedCount);
+    Assert.AreEqual(1, Find(mStats, 'regel-b').UnusedCount);
   finally
-    Stats.Free;
+    mStats.Free;
   end;
 end;
 
 procedure TSuppressionStatsTests.SortsByTotalThenId;
 var
-  Stats: TSuppressionStats;
-  Counts: TArray<TSuppressionCount>;
+  mStats: TSuppressionStats;
+  mCounts: TArray<TSuppressionCount>;
 begin
-  Stats := TSuppressionStats.Create;
+  mStats := TSuppressionStats.Create;
   try
-    Stats.Add('// lsp-ignore: zeta' + sLineBreak + 'unit U; // lsp-ignore: alpha, beta, beta', nil);
-    Counts := Stats.Counts;
-    Assert.AreEqual<NativeInt>(3, Length(Counts));
-    Assert.AreEqual('beta', Counts[0].RuleId);
-    Assert.AreEqual('alpha', Counts[1].RuleId);
-    Assert.AreEqual('zeta', Counts[2].RuleId);
+    mStats.Add('// lsp-ignore: zeta' + sLineBreak + 'unit U; // lsp-ignore: alpha, beta, beta', nil);
+    mCounts := mStats.Counts;
+    Assert.AreEqual<NativeInt>(3, Length(mCounts));
+    Assert.AreEqual('beta', mCounts[0].RuleId);
+    Assert.AreEqual('alpha', mCounts[1].RuleId);
+    Assert.AreEqual('zeta', mCounts[2].RuleId);
   finally
-    Stats.Free;
+    mStats.Free;
   end;
 end;
 
 procedure TSuppressionStatsTests.RendersJson;
 var
-  Stats: TSuppressionStats;
+  mStats: TSuppressionStats;
 begin
-  Stats := TSuppressionStats.Create;
+  mStats := TSuppressionStats.Create;
   try
-    Stats.Add('unit U; // lsp-ignore: regel-a', nil);
+    mStats.Add('unit U; // lsp-ignore: regel-a', nil);
     Assert.AreEqual('{"suppressions":[{"rule":"regel-a","total":1,"line":1,"file":0,"unused":0,"files":1}],"files":1}',
-      Stats.Render(TFindingsFormat.Json));
+      mStats.Render(TFindingsFormat.Json));
   finally
-    Stats.Free;
+    mStats.Free;
   end;
 end;
 
 procedure TSuppressionStatsTests.RendersTextSummary;
 var
-  Stats: TSuppressionStats;
-  Output: string;
+  mStats: TSuppressionStats;
+  mOutput: string;
 begin
-  Stats := TSuppressionStats.Create;
+  mStats := TSuppressionStats.Create;
   try
-    Stats.Add(Code, nil);
-    Output := Stats.Render(TFindingsFormat.Text);
-    Assert.IsTrue(Pos('regel-a', Output) < Pos('regel-b', Output), Output);
-    Assert.IsTrue(Pos('1 Dateien ausgewertet, 2 Regeln unterdrückt', Output) > 0, Output);
+    mStats.Add(cCode, nil);
+    mOutput := mStats.Render(TFindingsFormat.Text);
+    Assert.IsTrue(Pos('regel-a', mOutput) < Pos('regel-b', mOutput), mOutput);
+    Assert.IsTrue(Pos('1 Dateien ausgewertet, 2 Regeln unterdrückt', mOutput) > 0, mOutput);
   finally
-    Stats.Free;
+    mStats.Free;
   end;
 end;
 

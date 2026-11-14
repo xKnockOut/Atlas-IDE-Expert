@@ -50,10 +50,10 @@ uses
   Atlas.Common.Lsp.MessageHandlers;
 
 const
-  HauptFile = 'C:\P\Haupt.pas';
-  BasisFile = 'C:\P\Basis.pas';
+  cHauptFile = 'C:\P\Haupt.pas';
+  cBasisFile = 'C:\P\Basis.pas';
 
-  UnitBasis =
+  cUnitBasis =
     'unit Basis;'#10 +
     'interface'#10 +
     'type'#10 +
@@ -70,7 +70,7 @@ const
     'end;'#10 +
     'end.';
 
-  UnitHaupt =
+  cUnitHaupt =
     'unit Haupt;'#10 +                                                    // 0
     'interface'#10 +                                                      // 1
     'uses Basis;'#10 +                                                    // 2
@@ -99,13 +99,13 @@ const
 function ReadFile(const AFileName: string; out AText: string): Boolean;
 begin
   Result := True;
-  if SameText(AFileName, HauptFile) then
+  if SameText(AFileName, cHauptFile) then
   begin
-    AText := UnitHaupt;
+    AText := cUnitHaupt;
   end
-  else if SameText(AFileName, BasisFile) then
+  else if SameText(AFileName, cBasisFile) then
   begin
-    AText := UnitBasis;
+    AText := cUnitBasis;
   end
   else
   begin
@@ -118,8 +118,8 @@ end;
 procedure TLspCodeLensTests.Setup;
 begin
   FIndex := TSymbolIndex.Create;
-  FIndex.AddUnit(TIndexExtractor.ExtractText(UnitBasis, BasisFile, nil));
-  FIndex.AddUnit(TIndexExtractor.ExtractText(UnitHaupt, HauptFile, nil));
+  FIndex.AddUnit(TIndexExtractor.ExtractText(cUnitBasis, cBasisFile, nil));
+  FIndex.AddUnit(TIndexExtractor.ExtractText(cUnitHaupt, cHauptFile, nil));
   FResolver := TNameResolver.Create(FIndex);
 end;
 
@@ -134,173 +134,173 @@ begin
   Result.Resolver := FResolver;
   Result.Index := FIndex;
   Result.Tree := ATree;
-  Result.FileName := HauptFile;
+  Result.FileName := cHauptFile;
   Result.ReadText := ReadFile;
 end;
 
 function TLspCodeLensTests.Describe(const AEntries: TArray<TCodeLensEntry>): string;
 var
-  Entry: TCodeLensEntry;
+  mEntry: TCodeLensEntry;
 begin
   Result := '';
-  for Entry in AEntries do
+  for mEntry in AEntries do
   begin
-    Result := Result + Format('%d %d %s %d|', [Entry.Range.StartPos.Line, Ord(Entry.Kind), Entry.Title,
-      Length(Entry.Targets)]);
+    Result := Result + Format('%d %d %s %d|', [mEntry.Range.StartPos.Line, Ord(mEntry.Kind), mEntry.Title,
+      Length(mEntry.Targets)]);
   end;
 end;
 
 procedure TLspCodeLensTests.FindsMessageHandlersAndInheritedOnes;
 var
-  Tree: TSyntaxTree;
-  Overview: TMessageOverview;
+  mTree: TSyntaxTree;
+  mOverview: TMessageOverview;
 begin
-  Tree := TPascalParser.Parse(UnitHaupt);
+  mTree := TPascalParser.Parse(cUnitHaupt);
   try
-    Overview := TMessageHandlers.Overview(FResolver, Tree, HauptFile, 'TFoo',
+    mOverview := TMessageHandlers.Overview(FResolver, mTree, cHauptFile, 'TFoo',
       function(const AName: string; out AText: string): Boolean
       begin
         Result := ReadFile(AName, AText);
       end);
-    Assert.AreEqual(2, Integer(Length(Overview.Own)));
-    Assert.AreEqual('WM_PAINT', Overview.Own[0].Message);
-    Assert.AreEqual('WMSize', Overview.Own[1].MethodName);
-    Assert.AreEqual(6, Overview.Own[1].SelectionRange.StartPos.Line);
-    Assert.AreEqual('TBasis', Overview.Inherited_[0].TypeName);
-    Assert.AreEqual('', Overview.Inherited_[1].TypeName);
-    Assert.AreEqual('behandelt WM_PAINT, WM_SIZE (WM_PAINT auch in TBasis)', Overview.Title);
-    Assert.AreEqual(0, Integer(Length(TMessageHandlers.InTree(Tree, HauptFile, 'TKind'))));
+    Assert.AreEqual(2, Integer(Length(mOverview.Own)));
+    Assert.AreEqual('WM_PAINT', mOverview.Own[0].Message);
+    Assert.AreEqual('WMSize', mOverview.Own[1].MethodName);
+    Assert.AreEqual(6, mOverview.Own[1].SelectionRange.StartPos.Line);
+    Assert.AreEqual('TBasis', mOverview.Inherited_[0].TypeName);
+    Assert.AreEqual('', mOverview.Inherited_[1].TypeName);
+    Assert.AreEqual('behandelt WM_PAINT, WM_SIZE (WM_PAINT auch in TBasis)', mOverview.Title);
+    Assert.AreEqual(0, Integer(Length(TMessageHandlers.InTree(mTree, cHauptFile, 'TKind'))));
   finally
-    Tree.Free;
+    mTree.Free;
   end;
 end;
 
 procedure TLspCodeLensTests.LensesForTypesAndMethods;
 var
-  Tree: TSyntaxTree;
+  mTree: TSyntaxTree;
 begin
-  Tree := TPascalParser.Parse(UnitHaupt);
+  mTree := TPascalParser.Parse(cUnitHaupt);
   try
     // Art: 0 Referenzen (offen), 1 überschreibt, 2 Nachfahren, 3 Nachrichten. Rümpfe ohne Linse.
     Assert.AreEqual(
       '4 0  0|4 2 1 Nachfahre 1|4 3 behandelt WM_PAINT, WM_SIZE (WM_PAINT auch in TBasis) 2|' +
       '5 0  0|5 1 überschreibt TBasis.WMPaint 1|6 0  0|7 0  0|7 1 überschreibt TBasis.Zeichne 1|9 0  0|',
-      Describe(TLspCodeLens.Lenses(SourceOf(Tree))));
+      Describe(TLspCodeLens.Lenses(SourceOf(mTree))));
   finally
-    Tree.Free;
+    mTree.Free;
   end;
 end;
 
 procedure TLspCodeLensTests.ResolvesReferenceCountWithoutHeaders;
 var
-  Tree: TSyntaxTree;
-  Entries: TArray<TCodeLensEntry>;
-  Resolved: TCodeLensEntry;
+  mTree: TSyntaxTree;
+  mEntries: TArray<TCodeLensEntry>;
+  mResolved: TCodeLensEntry;
 begin
-  Tree := TPascalParser.Parse(UnitHaupt);
+  mTree := TPascalParser.Parse(cUnitHaupt);
   try
-    Entries := TLspCodeLens.Lenses(SourceOf(Tree));
+    mEntries := TLspCodeLens.Lenses(SourceOf(mTree));
     // Zeichne in TFoo (Zeile 7): zwei Aufrufe, der Kopf "procedure TFoo.Zeichne" zählt nicht.
-    Resolved := TLspCodeLens.ResolveReferences(SourceOf(Tree), Entries[6], [HauptFile, BasisFile]);
-    Assert.AreEqual('2 Referenzen', Resolved.Title);
-    Assert.AreEqual(14, Resolved.Targets[0].Range.StartPos.Line);
+    mResolved := TLspCodeLens.ResolveReferences(SourceOf(mTree), mEntries[6], [cHauptFile, cBasisFile]);
+    Assert.AreEqual('2 Referenzen', mResolved.Title);
+    Assert.AreEqual(14, mResolved.Targets[0].Range.StartPos.Line);
   finally
-    Tree.Free;
+    mTree.Free;
   end;
 end;
 
 procedure TLspCodeLensTests.WritesCommandOrData;
 var
-  Entry: TCodeLensEntry;
-  Json: TJSONObject;
+  mEntry: TCodeLensEntry;
+  mJson: TJSONObject;
 begin
-  Entry := Default(TCodeLensEntry);
-  Entry.Range := TTextRange.Create(TTextPosition.Create(1, 2), TTextPosition.Create(1, 5));
-  Json := TLspCodeLens.ToJson(Entry, HauptFile);
+  mEntry := Default(TCodeLensEntry);
+  mEntry.Range := TTextRange.Create(TTextPosition.Create(1, 2), TTextPosition.Create(1, 5));
+  mJson := TLspCodeLens.ToJson(mEntry, cHauptFile);
   try
-    Assert.IsNotNull(Json.GetValue('data'));
-    Assert.IsNull(Json.GetValue('command'));
+    Assert.IsNotNull(mJson.GetValue('data'));
+    Assert.IsNull(mJson.GetValue('command'));
   finally
-    Json.Free;
+    mJson.Free;
   end;
-  Entry.Title := '1 Referenz';
-  Json := TLspCodeLens.ToJson(Entry, HauptFile);
+  mEntry.Title := '1 Referenz';
+  mJson := TLspCodeLens.ToJson(mEntry, cHauptFile);
   try
-    Assert.AreEqual('1 Referenz', Json.GetValue<string>('command.title'));
-    Assert.AreEqual(TLspCodeLens.cShowLocationsCommand, Json.GetValue<string>('command.command'));
-    Assert.AreEqual(3, TJSONArray(Json.GetValue<TJSONValue>('command.arguments')).Count);
+    Assert.AreEqual('1 Referenz', mJson.GetValue<string>('command.title'));
+    Assert.AreEqual(TLspCodeLens.cShowLocationsCommand, mJson.GetValue<string>('command.command'));
+    Assert.AreEqual(3, TJSONArray(mJson.GetValue<TJSONValue>('command.arguments')).Count);
   finally
-    Json.Free;
+    mJson.Free;
   end;
 end;
 
 procedure TLspCodeLensTests.MetricLensesOverImplementedMethods;
 var
-  Tree: TSyntaxTree;
-  Entries: TArray<TCodeLensEntry>;
-  Limits: TMetricLimits;
+  mTree: TSyntaxTree;
+  mEntries: TArray<TCodeLensEntry>;
+  mLimits: TMetricLimits;
 begin
-  Tree := TPascalParser.Parse(UnitHaupt);
+  mTree := TPascalParser.Parse(cUnitHaupt);
   try
-    Entries := TLspCodeLens.MetricLenses(Tree, TMetricLimits.Default);
+    mEntries := TLspCodeLens.MetricLenses(mTree, TMetricLimits.Default);
     // Aufbau (#939) zuerst: Unit-Name, uses, je Klasse; dann nur die Rümpfe, keine Deklarationen.
-    Assert.AreEqual(7, Integer(Length(Entries)));
-    Assert.AreEqual<TCodeLensKind>(TCodeLensKind.Metrics, Entries[0].Kind);
-    Assert.AreEqual('24 Zeilen', Entries[0].Title);
-    Assert.AreEqual(0, Entries[0].Range.StartPos.Line);
-    Assert.AreEqual('1 Units im uses', Entries[1].Title);
-    Assert.AreEqual(2, Entries[1].Range.StartPos.Line);
-    Assert.AreEqual('3 Member', Entries[2].Title);
-    Assert.AreEqual(4, Entries[2].Range.StartPos.Line);
-    Assert.AreEqual(2, Entries[2].Range.StartPos.Character);
-    Assert.AreEqual('0 Member', Entries[3].Title);
-    Assert.AreEqual(12, Entries[4].Range.StartPos.Line);
-    Assert.AreEqual(10, Entries[4].Range.StartPos.Character);
+    Assert.AreEqual(7, Integer(Length(mEntries)));
+    Assert.AreEqual<TCodeLensKind>(TCodeLensKind.Metrics, mEntries[0].Kind);
+    Assert.AreEqual('24 Zeilen', mEntries[0].Title);
+    Assert.AreEqual(0, mEntries[0].Range.StartPos.Line);
+    Assert.AreEqual('1 Units im uses', mEntries[1].Title);
+    Assert.AreEqual(2, mEntries[1].Range.StartPos.Line);
+    Assert.AreEqual('3 Member', mEntries[2].Title);
+    Assert.AreEqual(4, mEntries[2].Range.StartPos.Line);
+    Assert.AreEqual(2, mEntries[2].Range.StartPos.Character);
+    Assert.AreEqual('0 Member', mEntries[3].Title);
+    Assert.AreEqual(12, mEntries[4].Range.StartPos.Line);
+    Assert.AreEqual(10, mEntries[4].Range.StartPos.Character);
     Assert.AreEqual('4 Zeilen · Tiefe 0 · zyklomatisch 1 · kognitiv 0 · 1 Parameter · Operanden 0 · 0 lokale · ' +
-      '0 Ausstiege', Entries[4].Title);
-    Assert.AreEqual(20, Entries[6].Range.StartPos.Line);
-    Limits := TMetricLimits.Default;
-    Limits.Values[TMetricKind.MethodLength] := 3;
-    Limits.Structure[TStructureKind.ClassSize] := 2;
-    Entries := TLspCodeLens.MetricLenses(Tree, Limits);
-    Assert.AreEqual('3 Member (> 2)', Entries[2].Title);
+      '0 Ausstiege', mEntries[4].Title);
+    Assert.AreEqual(20, mEntries[6].Range.StartPos.Line);
+    mLimits := TMetricLimits.Default;
+    mLimits.Values[TMetricKind.MethodLength] := 3;
+    mLimits.Structure[TStructureKind.ClassSize] := 2;
+    mEntries := TLspCodeLens.MetricLenses(mTree, mLimits);
+    Assert.AreEqual('3 Member (> 2)', mEntries[2].Title);
     Assert.AreEqual('4 Zeilen (> 3) · Tiefe 0 · zyklomatisch 1 · kognitiv 0 · 1 Parameter · Operanden 0 · ' +
-      '0 lokale · 0 Ausstiege', Entries[4].Title);
+      '0 lokale · 0 Ausstiege', mEntries[4].Title);
     // Mit Index die Vererbungstiefe (#980): TFoo erbt von TBasis aus der Unit Basis, TKind von TFoo.
-    Entries := TLspCodeLens.MetricLenses(Tree, TMetricLimits.Default, FIndex, 'C:\P\Haupt.pas');
-    Assert.AreEqual(9, Integer(Length(Entries)));
-    Assert.AreEqual('Vererbungstiefe 1', Entries[7].Title);
-    Assert.AreEqual(4, Entries[7].Range.StartPos.Line);
-    Assert.AreEqual('Vererbungstiefe 2', Entries[8].Title);
-    Assert.AreEqual(9, Entries[8].Range.StartPos.Line);
+    mEntries := TLspCodeLens.MetricLenses(mTree, TMetricLimits.Default, FIndex, 'C:\P\Haupt.pas');
+    Assert.AreEqual(9, Integer(Length(mEntries)));
+    Assert.AreEqual('Vererbungstiefe 1', mEntries[7].Title);
+    Assert.AreEqual(4, mEntries[7].Range.StartPos.Line);
+    Assert.AreEqual('Vererbungstiefe 2', mEntries[8].Title);
+    Assert.AreEqual(9, mEntries[8].Range.StartPos.Line);
     // Ohne Basis im Index bricht die Kette ab: Untergrenze, TFoo ohne bekannte eigene Vorfahren fehlt.
-    Entries := TLspCodeLens.MetricLenses(Tree, TMetricLimits.Default, nil, 'C:\P\Haupt.pas');
-    Assert.AreEqual(8, Integer(Length(Entries)));
-    Assert.AreEqual('Vererbungstiefe mindestens 1', Entries[7].Title);
+    mEntries := TLspCodeLens.MetricLenses(mTree, TMetricLimits.Default, nil, 'C:\P\Haupt.pas');
+    Assert.AreEqual(8, Integer(Length(mEntries)));
+    Assert.AreEqual('Vererbungstiefe mindestens 1', mEntries[7].Title);
   finally
-    Tree.Free;
+    mTree.Free;
   end;
 end;
 
 procedure TLspCodeLensTests.MetricLensIsPlainText;
 var
-  Entry: TCodeLensEntry;
-  Json: TJSONObject;
-  Title, Command: string;
+  mEntry: TCodeLensEntry;
+  mJson: TJSONObject;
+  mTitle, mCommand: string;
 begin
-  Entry := Default(TCodeLensEntry);
-  Entry.Kind := TCodeLensKind.Metrics;
-  Entry.Range := TTextRange.Create(TTextPosition.Create(12, 10), TTextPosition.Create(12, 22));
-  Entry.Title := '4 Zeilen';
-  Json := TLspCodeLens.ToJson(Entry, HauptFile);
+  mEntry := Default(TCodeLensEntry);
+  mEntry.Kind := TCodeLensKind.Metrics;
+  mEntry.Range := TTextRange.Create(TTextPosition.Create(12, 10), TTextPosition.Create(12, 22));
+  mEntry.Title := '4 Zeilen';
+  mJson := TLspCodeLens.ToJson(mEntry, cHauptFile);
   try
-    Title := Json.GetValue<string>('command.title');
-    Command := Json.GetValue<string>('command.command');
-    Assert.AreEqual('4 Zeilen', Title);
-    Assert.AreEqual('', Command, 'ohne Klickziel');
-    Assert.IsNull(Json.GetValue('data'));
+    mTitle := mJson.GetValue<string>('command.title');
+    mCommand := mJson.GetValue<string>('command.command');
+    Assert.AreEqual('4 Zeilen', mTitle);
+    Assert.AreEqual('', mCommand, 'ohne Klickziel');
+    Assert.IsNull(mJson.GetValue('data'));
   finally
-    Json.Free;
+    mJson.Free;
   end;
 end;
 

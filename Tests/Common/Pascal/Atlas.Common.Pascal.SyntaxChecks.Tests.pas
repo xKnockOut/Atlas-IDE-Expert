@@ -108,127 +108,127 @@ end;
 
 function Diagnostics(const AText: string): TArray<TSyntaxDiagnostic>;
 var
-  Tree: TSyntaxTree;
+  mTree: TSyntaxTree;
 begin
-  Tree := TPascalParser.Parse(AText);
+  mTree := TPascalParser.Parse(AText);
   try
-    Result := Tree.Diagnostics;
+    Result := mTree.Diagnostics;
   finally
-    Tree.Free;
+    mTree.Free;
   end;
 end;
 
 /// <summary>Codes der Diagnosen in Reihenfolge, z. B. "E2153,E2029"; ohne Code "-".</summary>
 function Codes(const AText: string): string;
 var
-  Diagnostic: TSyntaxDiagnostic;
-  Code: string;
+  mDiagnostic: TSyntaxDiagnostic;
+  mCode: string;
 begin
   Result := '';
-  for Diagnostic in Diagnostics(AText) do
+  for mDiagnostic in Diagnostics(AText) do
   begin
-    Code := Diagnostic.Code;
-    if Code = '' then
+    mCode := mDiagnostic.Code;
+    if mCode = '' then
     begin
-      Code := '-';
+      mCode := '-';
     end;
     if Result <> '' then
     begin
       Result := Result + ',';
     end;
-    Result := Result + Code;
+    Result := Result + mCode;
   end;
 end;
 
 function ApplyEdits(const AText: string; const AEdits: TArray<TTextEdit>): string;
 var
-  Index: Integer;
-  Edit: TTextEdit;
+  mIndex: Integer;
+  mEdit: TTextEdit;
 
   function OffsetOf(const APosition: TTextPosition): Integer;
   var
-    Line, Position: Integer;
+    mLine, mPosition: Integer;
   begin
-    Position := 0;
-    for Line := 1 to APosition.Line do
+    mPosition := 0;
+    for mLine := 1 to APosition.Line do
     begin
-      Position := Pos(#10, AText, Position + 1);
+      mPosition := Pos(#10, AText, mPosition + 1);
     end;
-    Result := Position + APosition.Character;
+    Result := mPosition + APosition.Character;
   end;
 
 begin
   Result := AText;
-  for Index := High(AEdits) downto 0 do
+  for mIndex := High(AEdits) downto 0 do
   begin
-    Edit := AEdits[Index];
-    Result := Copy(Result, 1, OffsetOf(Edit.Range.StartPos)) + Edit.NewText +
-      Copy(Result, OffsetOf(Edit.Range.EndPos) + 1, MaxInt);
+    mEdit := AEdits[mIndex];
+    Result := Copy(Result, 1, OffsetOf(mEdit.Range.StartPos)) + mEdit.NewText +
+      Copy(Result, OffsetOf(mEdit.Range.EndPos) + 1, MaxInt);
   end;
 end;
 
 function InProgram(const ABody: array of string): string;
 var
-  Body: TArray<string>;
-  Index: Integer;
+  mBody: TArray<string>;
+  mIndex: Integer;
 begin
-  SetLength(Body, Length(ABody));
-  for Index := 0 to High(ABody) do
+  SetLength(mBody, Length(ABody));
+  for mIndex := 0 to High(ABody) do
   begin
-    Body[Index] := ABody[Index];
+    mBody[mIndex] := ABody[mIndex];
   end;
   // Mit TArray beginnen: Ein Literal vorn läse Delphi als Menge (E2001).
-  Result := Lines(TArray<string>.Create('program P;', 'var', '  A: Boolean;', '  B: Integer;', 'begin') + Body +
+  Result := Lines(TArray<string>.Create('program P;', 'var', '  A: Boolean;', '  B: Integer;', 'begin') + mBody +
     ['end.']);
 end;
 
 function InUnit(const AInterface, AImplementation: array of string): string;
 var
-  Text: TArray<string>;
-  Index: Integer;
+  mText: TArray<string>;
+  mIndex: Integer;
 begin
-  Text := ['unit U;', '', 'interface', ''];
-  for Index := 0 to High(AInterface) do
+  mText := ['unit U;', '', 'interface', ''];
+  for mIndex := 0 to High(AInterface) do
   begin
-    Text := Text + [AInterface[Index]];
+    mText := mText + [AInterface[mIndex]];
   end;
-  Text := Text + ['', 'implementation', ''];
-  for Index := 0 to High(AImplementation) do
+  mText := mText + ['', 'implementation', ''];
+  for mIndex := 0 to High(AImplementation) do
   begin
-    Text := Text + [AImplementation[Index]];
+    mText := mText + [AImplementation[mIndex]];
   end;
-  Result := Lines(Text + ['', 'end.']);
+  Result := Lines(mText + ['', 'end.']);
 end;
 
 { TSyntaxChecksTests }
 
 procedure TSyntaxChecksTests.SemicolonBeforeElseReportsE2153;
 var
-  Found: TArray<TSyntaxDiagnostic>;
+  mFound: TArray<TSyntaxDiagnostic>;
 begin
-  Found := Diagnostics(InProgram(['  if A then', '    B := 1;', '  else', '    B := 2;']));
-  Assert.AreEqual(1, Integer(Length(Found)));
-  Assert.AreEqual('E2153', Found[0].Code);
-  Assert.AreEqual(''';'' vor ''else'' ist nicht erlaubt (wie E2153).', Found[0].Message);
-  Assert.AreEqual(6, Found[0].StartPos.Line);
-  Assert.AreEqual(10, Found[0].StartPos.Character);
-  Assert.AreEqual(6, Found[0].EndPos.Line);
-  Assert.AreEqual(11, Found[0].EndPos.Character);
-  Assert.AreEqual(''';'' entfernen', Found[0].FixTitle);
-  Assert.IsTrue(Found[0].FixSafe);
+  mFound := Diagnostics(InProgram(['  if A then', '    B := 1;', '  else', '    B := 2;']));
+  Assert.AreEqual(1, Integer(Length(mFound)));
+  Assert.AreEqual('E2153', mFound[0].Code);
+  Assert.AreEqual(''';'' vor ''else'' ist nicht erlaubt (wie E2153).', mFound[0].Message);
+  Assert.AreEqual(6, mFound[0].StartPos.Line);
+  Assert.AreEqual(10, mFound[0].StartPos.Character);
+  Assert.AreEqual(6, mFound[0].EndPos.Line);
+  Assert.AreEqual(11, mFound[0].EndPos.Character);
+  Assert.AreEqual(''';'' entfernen', mFound[0].FixTitle);
+  Assert.IsTrue(mFound[0].FixSafe);
 end;
 
 procedure TSyntaxChecksTests.SemicolonBeforeElseFixParsesCleanly;
 var
-  Text, Fixed: string;
-  Found: TArray<TSyntaxDiagnostic>;
+  mText, mFixed: string;
+  mFound: TArray<TSyntaxDiagnostic>;
 begin
-  Text := InProgram(['  if A then', '    B := 1;', '  else', '    B := 2;']);
-  Found := Diagnostics(Text);
-  Assert.AreEqual(1, Integer(Length(Found)));
-  Fixed := ApplyEdits(Text, Found[0].FixEdits);
-  Assert.AreEqual(InProgram(['  if A then', '    B := 1', '  else', '    B := 2;']), Fixed);
-  Assert.AreEqual('', Codes(Fixed));
+  mText := InProgram(['  if A then', '    B := 1;', '  else', '    B := 2;']);
+  mFound := Diagnostics(mText);
+  Assert.AreEqual(1, Integer(Length(mFound)));
+  mFixed := ApplyEdits(mText, mFound[0].FixEdits);
+  Assert.AreEqual(InProgram(['  if A then', '    B := 1', '  else', '    B := 2;']), mFixed);
+  Assert.AreEqual('', Codes(mFixed));
 end;
 
 procedure TSyntaxChecksTests.SemicolonBeforeCaseElseIsSilent;
@@ -252,97 +252,97 @@ end;
 
 procedure TSyntaxChecksTests.MissingSemicolonReportsE2066WithFix;
 var
-  Text: string;
-  Found: TArray<TSyntaxDiagnostic>;
+  mText: string;
+  mFound: TArray<TSyntaxDiagnostic>;
 begin
-  Text := InProgram(['  B := 1', '  B := 2;']);
-  Found := Diagnostics(Text);
-  Assert.AreEqual(1, Integer(Length(Found)));
-  Assert.AreEqual('E2066', Found[0].Code);
-  Assert.AreEqual(''';'' ergänzen', Found[0].FixTitle);
-  Assert.IsFalse(Found[0].FixSafe);
-  Assert.AreEqual(InProgram(['  B := 1;', '  B := 2;']), ApplyEdits(Text, Found[0].FixEdits));
+  mText := InProgram(['  B := 1', '  B := 2;']);
+  mFound := Diagnostics(mText);
+  Assert.AreEqual(1, Integer(Length(mFound)));
+  Assert.AreEqual('E2066', mFound[0].Code);
+  Assert.AreEqual(''';'' ergänzen', mFound[0].FixTitle);
+  Assert.IsFalse(mFound[0].FixSafe);
+  Assert.AreEqual(InProgram(['  B := 1;', '  B := 2;']), ApplyEdits(mText, mFound[0].FixEdits));
 end;
 
 procedure TSyntaxChecksTests.UnexpectedTokenUsesCompilerText;
 var
-  Found: TArray<TSyntaxDiagnostic>;
+  mFound: TArray<TSyntaxDiagnostic>;
 begin
   // Zwischen Anweisungen fehlt ein Operator oder das Semikolon.
-  Found := Diagnostics(InProgram(['  B := 1 2;']));
-  Assert.AreEqual(1, Integer(Length(Found)));
-  Assert.AreEqual('E2066', Found[0].Code);
-  Assert.AreEqual('Operator oder '';'' fehlt (wie E2066).', Found[0].Message);
+  mFound := Diagnostics(InProgram(['  B := 1 2;']));
+  Assert.AreEqual(1, Integer(Length(mFound)));
+  Assert.AreEqual('E2066', mFound[0].Code);
+  Assert.AreEqual('Operator oder '';'' fehlt (wie E2066).', mFound[0].Message);
   // In Deklarationen der Text des Compilers.
-  Found := Diagnostics(InUnit(['var', '  I: Integer J: Integer;'], []));
-  Assert.IsTrue(Length(Found) > 0);
-  Assert.AreEqual(''';'' erwartet, aber ''J'' gefunden (wie E2029).', Found[0].Message);
+  mFound := Diagnostics(InUnit(['var', '  I: Integer J: Integer;'], []));
+  Assert.IsTrue(Length(mFound) > 0);
+  Assert.AreEqual(''';'' erwartet, aber ''J'' gefunden (wie E2029).', mFound[0].Message);
 end;
 
 procedure TSyntaxChecksTests.UnexpectedEndOfFileUsesCompilerText;
 var
-  Found: TArray<TSyntaxDiagnostic>;
+  mFound: TArray<TSyntaxDiagnostic>;
 begin
-  Found := Diagnostics(Lines(['unit U;', 'interface', 'implementation', 'end']));
-  Assert.AreEqual(1, Integer(Length(Found)));
-  Assert.AreEqual('''.'' erwartet, aber Dateiende gefunden (wie E2029).', Found[0].Message);
+  mFound := Diagnostics(Lines(['unit U;', 'interface', 'implementation', 'end']));
+  Assert.AreEqual(1, Integer(Length(mFound)));
+  Assert.AreEqual('''.'' erwartet, aber Dateiende gefunden (wie E2029).', mFound[0].Message);
 end;
 
 procedure TSyntaxChecksTests.UnterminatedStringReportsE2052Only;
 var
-  Text: string;
-  Found: TArray<TSyntaxDiagnostic>;
+  mText: string;
+  mFound: TArray<TSyntaxDiagnostic>;
 begin
-  Text := Lines(['program P;', 'var', '  S: string;', 'begin', '  S := ''abc;', 'end.']);
-  Found := Diagnostics(Text);
-  Assert.AreEqual(1, Integer(Length(Found)));
-  Assert.AreEqual('E2052', Found[0].Code);
-  Assert.AreEqual('Unvollständiger String (wie E2052).', Found[0].Message);
-  Assert.AreEqual('String schließen', Found[0].FixTitle);
-  Assert.AreEqual('', Codes(ApplyEdits(Text, Found[0].FixEdits)));
+  mText := Lines(['program P;', 'var', '  S: string;', 'begin', '  S := ''abc;', 'end.']);
+  mFound := Diagnostics(mText);
+  Assert.AreEqual(1, Integer(Length(mFound)));
+  Assert.AreEqual('E2052', mFound[0].Code);
+  Assert.AreEqual('Unvollständiger String (wie E2052).', mFound[0].Message);
+  Assert.AreEqual('String schließen', mFound[0].FixTitle);
+  Assert.AreEqual('', Codes(ApplyEdits(mText, mFound[0].FixEdits)));
 end;
 
 procedure TSyntaxChecksTests.UnterminatedCommentReportsE2057Only;
 var
-  Text: string;
-  Found: TArray<TSyntaxDiagnostic>;
+  mText: string;
+  mFound: TArray<TSyntaxDiagnostic>;
 begin
-  Text := InProgram(['  { offen', '  B := 1;']);
-  Found := Diagnostics(Text);
-  Assert.AreEqual(1, Integer(Length(Found)));
-  Assert.AreEqual('E2057', Found[0].Code);
-  Assert.AreEqual('Unerwartetes Dateiende im Kommentar ab Zeile 6 (wie E2057).', Found[0].Message);
-  Assert.AreEqual('Kommentar in Zeile 6 schließen', Found[0].FixTitle);
-  Assert.AreEqual(InProgram(['  { offen}', '  B := 1;']), ApplyEdits(Text, Found[0].FixEdits));
+  mText := InProgram(['  { offen', '  B := 1;']);
+  mFound := Diagnostics(mText);
+  Assert.AreEqual(1, Integer(Length(mFound)));
+  Assert.AreEqual('E2057', mFound[0].Code);
+  Assert.AreEqual('Unerwartetes Dateiende im Kommentar ab Zeile 6 (wie E2057).', mFound[0].Message);
+  Assert.AreEqual('Kommentar in Zeile 6 schließen', mFound[0].FixTitle);
+  Assert.AreEqual(InProgram(['  { offen}', '  B := 1;']), ApplyEdits(mText, mFound[0].FixEdits));
 end;
 
 procedure TSyntaxChecksTests.RealWithoutExponentReportsE2053;
 var
-  Found: TArray<TSyntaxDiagnostic>;
-  Tokens: TArray<TPascalToken>;
+  mFound: TArray<TSyntaxDiagnostic>;
+  mTokens: TArray<TPascalToken>;
 begin
   // Fall Cm.E2053 (#1382): nur E2053, kein ';' fehlt und kein Bezeichner e.
-  Found := Diagnostics(InProgram(['  B := 1.5e;']));
-  Assert.AreEqual(1, Integer(Length(Found)));
-  Assert.AreEqual('E2053', Found[0].Code);
-  Assert.AreEqual('Syntaxfehler in Gleitkommazahl (wie E2053).', Found[0].Message);
+  mFound := Diagnostics(InProgram(['  B := 1.5e;']));
+  Assert.AreEqual(1, Integer(Length(mFound)));
+  Assert.AreEqual('E2053', mFound[0].Code);
+  Assert.AreEqual('Syntaxfehler in Gleitkommazahl (wie E2053).', mFound[0].Message);
   Assert.AreEqual('', Codes(InProgram(['  B := Round(1.5e3 + 2E-1 + 3e+2);'])));
   // 1Eh (Hexadezimalzahl im asm-Block) bleibt Zahl und Bezeichner.
-  Tokens := TPascalLexer.Tokenize('1Eh');
-  Assert.AreEqual(2, Integer(Length(Tokens)));
-  Assert.AreEqual('1', Tokens[0].Text);
-  Assert.IsTrue(Tokens[0].Terminated);
+  mTokens := TPascalLexer.Tokenize('1Eh');
+  Assert.AreEqual(2, Integer(Length(mTokens)));
+  Assert.AreEqual('1', mTokens[0].Text);
+  Assert.IsTrue(mTokens[0].Terminated);
 end;
 
 procedure TSyntaxChecksTests.AbsoluteAddressReportsE2088;
 var
-  Found: TArray<TSyntaxDiagnostic>;
+  mFound: TArray<TSyntaxDiagnostic>;
 begin
   // Fall Cm.E2091 (#1382): Delphi 13 meldet E2088, nicht E2029 zum ':'.
-  Found := Diagnostics(InUnit(['var', '  GTastatur: Byte absolute $40:$17;'], []));
-  Assert.AreEqual(1, Integer(Length(Found)));
-  Assert.AreEqual('E2088', Found[0].Code);
-  Assert.AreEqual('Variable erwartet, aber ''$40'' gefunden (wie E2088).', Found[0].Message);
+  mFound := Diagnostics(InUnit(['var', '  GTastatur: Byte absolute $40:$17;'], []));
+  Assert.AreEqual(1, Integer(Length(mFound)));
+  Assert.AreEqual('E2088', mFound[0].Code);
+  Assert.AreEqual('Variable erwartet, aber ''$40'' gefunden (wie E2088).', mFound[0].Message);
   Assert.AreEqual('', Codes(InUnit(['var', '  GWert: Integer;', '  GBytes: array[0..3] of Byte absolute GWert;'],
     [])));
 end;
@@ -365,29 +365,29 @@ end;
 
 procedure TSyntaxChecksTests.ClassBeforeFieldReportsE2123;
 var
-  Found: TArray<TSyntaxDiagnostic>;
+  mFound: TArray<TSyntaxDiagnostic>;
 begin
   // Delphi 13 meldet E2123 (Fall Cm.E2123, #1382).
-  Found := Diagnostics(InUnit(['type', '  TFoo = class', '    class FWert: Integer;', '  end;'], []));
-  Assert.IsTrue(Length(Found) > 0);
-  Assert.AreEqual('E2123', Found[0].Code);
+  mFound := Diagnostics(InUnit(['type', '  TFoo = class', '    class FWert: Integer;', '  end;'], []));
+  Assert.IsTrue(Length(mFound) > 0);
+  Assert.AreEqual('E2123', mFound[0].Code);
   Assert.AreEqual('''procedure'', ''function'', ''property'' oder ''var'' erwartet, aber ''FWert'' gefunden ' +
-    '(wie E2123).', Found[0].Message);
+    '(wie E2123).', mFound[0].Message);
 end;
 
 procedure TSyntaxChecksTests.ClassOperatorInClassReportsE2123;
 var
-  Found: TArray<TSyntaxDiagnostic>;
+  mFound: TArray<TSyntaxDiagnostic>;
 begin
   // Operatoren gibt es nur in Records; in Klassen meldet Delphi 13 E2123 (Fall Cm.E2522, #1382).
-  Found := Diagnostics(InUnit(['type', '  TBasis = class', '  end;', '  TKind = class(TBasis)', '  public',
+  mFound := Diagnostics(InUnit(['type', '  TBasis = class', '  end;', '  TKind = class(TBasis)', '  public',
     '    class operator Implicit(A: TKind): TBasis;', '  end;'], []));
-  Assert.AreEqual(1, Integer(Length(Found)));
-  Assert.AreEqual('E2123', Found[0].Code);
+  Assert.AreEqual(1, Integer(Length(mFound)));
+  Assert.AreEqual('E2123', mFound[0].Code);
   Assert.AreEqual('''procedure'', ''function'', ''property'' oder ''var'' erwartet, aber ''operator'' gefunden ' +
-    '(wie E2123).', Found[0].Message);
-  Assert.AreEqual(9, Found[0].StartPos.Line);
-  Assert.AreEqual(10, Found[0].StartPos.Character);
+    '(wie E2123).', mFound[0].Message);
+  Assert.AreEqual(9, mFound[0].StartPos.Line);
+  Assert.AreEqual(10, mFound[0].StartPos.Character);
   // Im Record still.
   Assert.AreEqual('', Codes(InUnit(['type', '  TGeld = record', '    class operator Add(const A, B: TGeld): TGeld;',
     '  end;'], [])));
@@ -400,22 +400,22 @@ end;
 
 procedure TSyntaxChecksTests.ForWithoutVariableReportsE2088;
 var
-  Found: TArray<TSyntaxDiagnostic>;
+  mFound: TArray<TSyntaxDiagnostic>;
 begin
-  Found := Diagnostics(InProgram(['  for := 1 to 3 do', '    B := 1;']));
-  Assert.IsTrue(Length(Found) > 0);
-  Assert.AreEqual('E2088', Found[0].Code);
+  mFound := Diagnostics(InProgram(['  for := 1 to 3 do', '    B := 1;']));
+  Assert.IsTrue(Length(mFound) > 0);
+  Assert.AreEqual('E2088', mFound[0].Code);
 end;
 
 procedure TSyntaxChecksTests.ProcedureWithResultTypeReportsE2025;
 var
-  Found: TArray<TSyntaxDiagnostic>;
+  mFound: TArray<TSyntaxDiagnostic>;
 begin
-  Found := Diagnostics(InUnit(['procedure Rechne: Integer;'], ['procedure Rechne: Integer;', 'begin', 'end;']));
-  Assert.AreEqual(2, Integer(Length(Found)));
-  Assert.AreEqual('E2025', Found[0].Code);
-  Assert.AreEqual('Eine Prozedur kann keinen Ergebnistyp haben (wie E2025).', Found[0].Message);
-  Assert.AreEqual('E2025', Found[1].Code);
+  mFound := Diagnostics(InUnit(['procedure Rechne: Integer;'], ['procedure Rechne: Integer;', 'begin', 'end;']));
+  Assert.AreEqual(2, Integer(Length(mFound)));
+  Assert.AreEqual('E2025', mFound[0].Code);
+  Assert.AreEqual('Eine Prozedur kann keinen Ergebnistyp haben (wie E2025).', mFound[0].Message);
+  Assert.AreEqual('E2025', mFound[1].Code);
 end;
 
 procedure TSyntaxChecksTests.FunctionWithoutResultTypeReportsE2023;
@@ -437,12 +437,12 @@ end;
 
 procedure TSyntaxChecksTests.MissingParameterTypeReportsE2067;
 var
-  Found: TArray<TSyntaxDiagnostic>;
+  mFound: TArray<TSyntaxDiagnostic>;
 begin
-  Found := Diagnostics(InUnit(['procedure Rechne(A, B);'], []));
-  Assert.AreEqual(1, Integer(Length(Found)));
-  Assert.AreEqual('E2067', Found[0].Code);
-  Assert.AreEqual('Parametertyp fehlt bei A, B (wie E2067).', Found[0].Message);
+  mFound := Diagnostics(InUnit(['procedure Rechne(A, B);'], []));
+  Assert.AreEqual(1, Integer(Length(mFound)));
+  Assert.AreEqual('E2067', mFound[0].Code);
+  Assert.AreEqual('Parametertyp fehlt bei A, B (wie E2067).', mFound[0].Message);
 end;
 
 procedure TSyntaxChecksTests.UntypedVarParameterIsSilent;
@@ -452,13 +452,13 @@ end;
 
 procedure TSyntaxChecksTests.LocalVariableInitReportsE2195;
 var
-  Found: TArray<TSyntaxDiagnostic>;
+  mFound: TArray<TSyntaxDiagnostic>;
 begin
-  Found := Diagnostics(InUnit([], ['procedure Rechne;', 'var', '  I: Integer = 0;', 'begin', 'end;']));
-  Assert.AreEqual(1, Integer(Length(Found)));
-  Assert.AreEqual('E2195', Found[0].Code);
-  Assert.AreEqual(9, Found[0].StartPos.Line);
-  Assert.AreEqual(13, Found[0].StartPos.Character);
+  mFound := Diagnostics(InUnit([], ['procedure Rechne;', 'var', '  I: Integer = 0;', 'begin', 'end;']));
+  Assert.AreEqual(1, Integer(Length(mFound)));
+  Assert.AreEqual('E2195', mFound[0].Code);
+  Assert.AreEqual(9, mFound[0].StartPos.Line);
+  Assert.AreEqual(13, mFound[0].StartPos.Character);
 end;
 
 procedure TSyntaxChecksTests.GlobalVariableInitIsSilent;
@@ -511,16 +511,16 @@ end;
 
 procedure TSyntaxChecksTests.GotoUndeclaredLabelReportsE2031;
 var
-  Found: TArray<TSyntaxDiagnostic>;
+  mFound: TArray<TSyntaxDiagnostic>;
 begin
-  Found := Diagnostics(InUnit([], ['procedure Rechne;', 'begin', '  goto Ende;', 'end;']));
-  Assert.AreEqual(1, Integer(Length(Found)));
-  Assert.AreEqual('E2031', Found[0].Code);
-  Assert.AreEqual('Marke erwartet: Ende ist nicht als label deklariert (wie E2031).', Found[0].Message);
-  Assert.AreEqual(9, Found[0].StartPos.Line);
-  Assert.AreEqual(7, Found[0].StartPos.Character);
+  mFound := Diagnostics(InUnit([], ['procedure Rechne;', 'begin', '  goto Ende;', 'end;']));
+  Assert.AreEqual(1, Integer(Length(mFound)));
+  Assert.AreEqual('E2031', mFound[0].Code);
+  Assert.AreEqual('Marke erwartet: Ende ist nicht als label deklariert (wie E2031).', mFound[0].Message);
+  Assert.AreEqual(9, mFound[0].StartPos.Line);
+  Assert.AreEqual(7, mFound[0].StartPos.Character);
   // Prüfung am fertigen Baum: Regeln wie label-misuse dürfen dem Baum dort trauen.
-  Assert.IsTrue(Found[0].TreeIntact);
+  Assert.IsTrue(mFound[0].TreeIntact);
 end;
 
 procedure TSyntaxChecksTests.GotoDeclaredLabelIsSilent;
@@ -534,39 +534,39 @@ end;
 
 procedure TSyntaxChecksTests.InactiveBranchIsSilent;
 var
-  Found: TArray<TSyntaxDiagnostic>;
+  mFound: TArray<TSyntaxDiagnostic>;
 begin
   Assert.IsTrue(TPascalParser.ActiveDiagnostics(InUnit(['{$IFDEF NIE_DEFINIERT}', 'procedure Rechne: Integer;',
-    '{$ENDIF}'], []), nil, Found));
-  Assert.AreEqual(0, Integer(Length(Found)));
+    '{$ENDIF}'], []), nil, mFound));
+  Assert.AreEqual(0, Integer(Length(mFound)));
 end;
 
 procedure TSyntaxChecksTests.SyntaxFindingsCarryFix;
 var
-  Findings: TArray<TRuleFinding>;
+  mFindings: TArray<TRuleFinding>;
 begin
-  Findings := TFileChecker.SyntaxFindings(Diagnostics(InProgram(['  if A then B := 1;', '  else B := 2;'])),
+  mFindings := TFileChecker.SyntaxFindings(Diagnostics(InProgram(['  if A then B := 1;', '  else B := 2;'])),
     Default(TServerSettings));
-  Assert.AreEqual(1, Integer(Length(Findings)));
-  Assert.AreEqual(cSyntaxRuleId, Findings[0].RuleId);
-  Assert.AreEqual<TRuleSeverity>(TRuleSeverity.Error, Findings[0].Severity);
-  Assert.AreEqual(1, Integer(Length(Findings[0].Fixes)));
-  Assert.AreEqual(''';'' entfernen', Findings[0].Fixes[0].Title);
-  Assert.IsTrue(Findings[0].Fixes[0].Safe);
+  Assert.AreEqual(1, Integer(Length(mFindings)));
+  Assert.AreEqual(cSyntaxRuleId, mFindings[0].RuleId);
+  Assert.AreEqual<TRuleSeverity>(TRuleSeverity.Error, mFindings[0].Severity);
+  Assert.AreEqual(1, Integer(Length(mFindings[0].Fixes)));
+  Assert.AreEqual(''';'' entfernen', mFindings[0].Fixes[0].Title);
+  Assert.IsTrue(mFindings[0].Fixes[0].Safe);
 end;
 
 procedure TSyntaxChecksTests.SyntaxFindingsRespectSeverityOff;
 var
-  Settings: TServerSettings;
-  Rule: TRuleSetting;
+  mSettings: TServerSettings;
+  mRule: TRuleSetting;
 begin
-  Settings := Default(TServerSettings);
-  Rule := Default(TRuleSetting);
-  Rule.Id := cSyntaxRuleId;
-  Rule.Severity := TRuleSeverity.Off;
-  Settings.Rules := [Rule];
+  mSettings := Default(TServerSettings);
+  mRule := Default(TRuleSetting);
+  mRule.Id := cSyntaxRuleId;
+  mRule.Severity := TRuleSeverity.Off;
+  mSettings.Rules := [mRule];
   Assert.AreEqual(0, Integer(Length(TFileChecker.SyntaxFindings(Diagnostics(InProgram(['  B := 1 2;'])),
-    Settings))));
+    mSettings))));
 end;
 
 initialization

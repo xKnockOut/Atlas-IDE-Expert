@@ -32,7 +32,8 @@ type
     /// <summary>#862: hinter ^C in Konstanten der Code, nicht in Ausdrücken; abschaltbar; data.controlChar.</summary>
     [Test]
     procedure ControlCharCodesBehindConstants;
-    /// <summary>#686: „braucht kein Self“ hinter dem Kopf von Methoden ohne Self; aus in Default; data.methodWithoutSelf.
+    /// <summary>#686: „braucht kein Self“ hinter dem Kopf von Methoden ohne Self; aus in Default;
+    /// data.methodWithoutSelf.
     /// </summary>
     [Test]
     procedure MethodMarkersBehindHeaders;
@@ -73,10 +74,10 @@ uses
   Atlas.Common.Editing.CodeActions;
 
 const
-  HauptFile = 'C:\P\Haupt.pas';
-  WerkzeugFile = 'C:\P\Werkzeug.pas';
+  cHauptFile = 'C:\P\Haupt.pas';
+  cWerkzeugFile = 'C:\P\Werkzeug.pas';
 
-  UnitWerkzeug =
+  cUnitWerkzeug =
     'unit Werkzeug;'#10 +
     'interface'#10 +
     'type'#10 +
@@ -94,7 +95,7 @@ const
     'end;'#10 +
     'end.';
 
-  UnitHaupt =
+  cUnitHaupt =
     'unit Haupt;'#10 +                               // 0
     'interface'#10 +                                 // 1
     'uses Werkzeug;'#10 +                            // 2
@@ -116,7 +117,7 @@ const
     'end;'#10 +                                      // 18
     'end.';
 
-  UnitBloecke =
+  cUnitBloecke =
     'unit Bloecke;'#10 +                                   // 0
     'interface'#10 +                                       // 1
     'type'#10 +                                            // 2
@@ -152,7 +153,7 @@ const
     'end;'#10 +                                            // 32
     'end.';
 
-  UnitKommentar =
+  cUnitKommentar =
     'unit K;'#10 +                                         // 0
     'implementation'#10 +                                  // 1
     'procedure P;'#10 +                                    // 2
@@ -166,11 +167,11 @@ const
     'end;'#10 +                                            // 10
     'end.';
 
-  DatenFile = 'C:\P\Daten.pas';
-  QuelleFile = 'C:\P\Quelle.pas';
-  NutzerFile = 'C:\P\Nutzer.pas';
+  cDatenFile = 'C:\P\Daten.pas';
+  cQuelleFile = 'C:\P\Quelle.pas';
+  cNutzerFile = 'C:\P\Nutzer.pas';
 
-  UnitDaten =
+  cUnitDaten =
     'unit Daten;'#10 +
     'interface'#10 +
     'type'#10 +
@@ -196,7 +197,7 @@ const
     'end;'#10 +
     'end.';
 
-  UnitQuelle =
+  cUnitQuelle =
     'unit Quelle;'#10 +
     'interface'#10 +
     'uses Daten;'#10 +
@@ -209,7 +210,7 @@ const
     'end;'#10 +
     'end.';
 
-  UnitNutzer =
+  cUnitNutzer =
     'unit Nutzer;'#10 +                              // 0
     'interface'#10 +                                 // 1
     'uses Quelle;'#10 +                              // 2
@@ -234,8 +235,8 @@ const
 
 function ReadFile(const AFileName: string; out AText: string): Boolean;
 begin
-  AText := UnitWerkzeug;
-  Result := SameText(AFileName, WerkzeugFile);
+  AText := cUnitWerkzeug;
+  Result := SameText(AFileName, cWerkzeugFile);
 end;
 
 function WholeFile: TTextRange;
@@ -258,7 +259,7 @@ end;
 procedure TLspInlayHintsTests.Setup;
 begin
   FIndex := TSymbolIndex.Create;
-  FIndex.AddUnit(TIndexExtractor.ExtractText(UnitWerkzeug, WerkzeugFile, nil));
+  FIndex.AddUnit(TIndexExtractor.ExtractText(cUnitWerkzeug, cWerkzeugFile, nil));
   FResolver := TNameResolver.Create(FIndex);
 end;
 
@@ -270,307 +271,307 @@ end;
 
 function TLspInlayHintsTests.Describe(const AHints: TArray<TInlayHint>): string;
 var
-  Hint: TInlayHint;
+  mHint: TInlayHint;
 begin
   Result := '';
-  for Hint in AHints do
+  for mHint in AHints do
   begin
-    Result := Result + Format('%d:%d %s|', [Hint.Position.Line, Hint.Position.Character, Hint.Text]);
+    Result := Result + Format('%d:%d %s|', [mHint.Position.Line, mHint.Position.Character, mHint.Text]);
   end;
 end;
 
 procedure TLspInlayHintsTests.ParameterNamesBeforeArguments;
 var
-  Tree: TSyntaxTree;
+  mTree: TSyntaxTree;
 begin
-  Tree := TPascalParser.Parse(UnitHaupt);
+  mTree := TPascalParser.Parse(cUnitHaupt);
   try
     // Zeile 7: Wert heißt schon so, Faktor nicht. Zeile 11 ebenso; der Kopf in Zeile 4 bekommt keine.
     Assert.AreEqual('6:9 Wert:|6:12 Faktor:|7:15 Faktor:|11:18 Wert:|11:21 Faktor:|',
-      Describe(TLspInlayHints.ParameterNames(TInlayHintSource.Create(FResolver, FIndex, Tree, UnitHaupt, HauptFile,
+      Describe(TLspInlayHints.ParameterNames(TInlayHintSource.Create(FResolver, FIndex, mTree, cUnitHaupt, cHauptFile,
         ReadFile), WholeFile)));
   finally
-    Tree.Free;
+    mTree.Free;
   end;
 end;
 
 procedure TLspInlayHintsTests.InferredTypesOfInlineVariables;
 var
-  Tree: TSyntaxTree;
+  mTree: TSyntaxTree;
 begin
-  Tree := TPascalParser.Parse(UnitHaupt);
+  mTree := TPascalParser.Parse(cUnitHaupt);
   try
     Assert.AreEqual('8:7 : Integer|9:7 : string|10:7 : TFoo|11:7 : Integer|13:7 : TFarbe|',
-      Describe(TLspInlayHints.InferredTypes(FResolver, Tree, HauptFile, WholeFile)));
+      Describe(TLspInlayHints.InferredTypes(FResolver, mTree, cHauptFile, WholeFile)));
   finally
-    Tree.Free;
+    mTree.Free;
   end;
 end;
 
 procedure TLspInlayHintsTests.InferredTypesOfForInConstAndGenerics;
 var
-  Tree: TSyntaxTree;
+  mTree: TSyntaxTree;
 begin
-  FIndex.AddUnit(TIndexExtractor.ExtractText(UnitDaten, DatenFile, nil));
-  FIndex.AddUnit(TIndexExtractor.ExtractText(UnitQuelle, QuelleFile, nil));
-  Tree := TPascalParser.Parse(UnitNutzer);
+  FIndex.AddUnit(TIndexExtractor.ExtractText(cUnitDaten, cDatenFile, nil));
+  FIndex.AddUnit(TIndexExtractor.ExtractText(cUnitQuelle, cQuelleFile, nil));
+  mTree := TPascalParser.Parse(cUnitNutzer);
   try
     // Zeile 17 hat schon einen Typ.
     Assert.AreEqual('9:7 : TDaten|10:11 : Integer|12:11 : TDaten|14:11 : Char|16:9 : Integer|',
-      Describe(TLspInlayHints.InferredTypes(FResolver, Tree, NutzerFile, WholeFile)));
+      Describe(TLspInlayHints.InferredTypes(FResolver, mTree, cNutzerFile, WholeFile)));
   finally
-    Tree.Free;
+    mTree.Free;
   end;
 end;
 
 procedure TLspInlayHintsTests.ExplicitTypeWritesTypeAndUses;
 var
-  Tree: TSyntaxTree;
-  Action: TCodeAction;
+  mTree: TSyntaxTree;
+  mAction: TCodeAction;
 begin
-  FIndex.AddUnit(TIndexExtractor.ExtractText(UnitDaten, DatenFile, nil));
-  FIndex.AddUnit(TIndexExtractor.ExtractText(UnitQuelle, QuelleFile, nil));
-  Tree := TPascalParser.Parse(UnitNutzer);
+  FIndex.AddUnit(TIndexExtractor.ExtractText(cUnitDaten, cDatenFile, nil));
+  FIndex.AddUnit(TIndexExtractor.ExtractText(cUnitQuelle, cQuelleFile, nil));
+  mTree := TPascalParser.Parse(cUnitNutzer);
   try
     // Auf dem Namen X: ": TDaten" und uses Daten, weil Nutzer nur Quelle einbindet.
-    Assert.IsTrue(TLspInlayHints.ExplicitTypeAction(FResolver, Tree, NutzerFile, TTextPosition.Create(9, 6), #10,
-      Action));
-    Assert.AreEqual('Typ ausschreiben', Action.Title);
-    Assert.AreEqual(2, Integer(Length(Action.Edits)));
-    Assert.AreEqual(': TDaten', Action.Edits[0].NewText);
-    Assert.AreEqual(9, Action.Edits[0].Range.StartPos.Line);
-    Assert.AreEqual(7, Action.Edits[0].Range.StartPos.Character);
-    Assert.IsTrue(Action.Edits[1].NewText.Contains('Daten'), Action.Edits[1].NewText);
+    Assert.IsTrue(TLspInlayHints.ExplicitTypeAction(FResolver, mTree, cNutzerFile, TTextPosition.Create(9, 6), #10,
+      mAction));
+    Assert.AreEqual('Typ ausschreiben', mAction.Title);
+    Assert.AreEqual(2, Integer(Length(mAction.Edits)));
+    Assert.AreEqual(': TDaten', mAction.Edits[0].NewText);
+    Assert.AreEqual(9, mAction.Edits[0].Range.StartPos.Line);
+    Assert.AreEqual(7, mAction.Edits[0].Range.StartPos.Character);
+    Assert.IsTrue(mAction.Edits[1].NewText.Contains('Daten'), mAction.Edits[1].NewText);
     // Integer braucht keine Unit.
-    Assert.IsTrue(TLspInlayHints.ExplicitTypeAction(FResolver, Tree, NutzerFile, TTextPosition.Create(10, 10), #10,
-      Action));
-    Assert.AreEqual(1, Integer(Length(Action.Edits)));
-    Assert.AreEqual(': Integer', Action.Edits[0].NewText);
+    Assert.IsTrue(TLspInlayHints.ExplicitTypeAction(FResolver, mTree, cNutzerFile, TTextPosition.Create(10, 10), #10,
+      mAction));
+    Assert.AreEqual(1, Integer(Length(mAction.Edits)));
+    Assert.AreEqual(': Integer', mAction.Edits[0].NewText);
     // Mit Typ bzw. neben dem Namen nichts.
-    Assert.IsFalse(TLspInlayHints.ExplicitTypeAction(FResolver, Tree, NutzerFile, TTextPosition.Create(17, 10), #10,
-      Action));
-    Assert.IsFalse(TLspInlayHints.ExplicitTypeAction(FResolver, Tree, NutzerFile, TTextPosition.Create(9, 12), #10,
-      Action));
+    Assert.IsFalse(TLspInlayHints.ExplicitTypeAction(FResolver, mTree, cNutzerFile, TTextPosition.Create(17, 10), #10,
+      mAction));
+    Assert.IsFalse(TLspInlayHints.ExplicitTypeAction(FResolver, mTree, cNutzerFile, TTextPosition.Create(9, 12), #10,
+      mAction));
   finally
-    Tree.Free;
+    mTree.Free;
   end;
 end;
 
 procedure TLspInlayHintsTests.ControlCharCodesBehindConstants;
 const
-  Source = 'unit C;'#10'interface'#10'const'#10'  CtrlC = ^C;'#10'  Esc = ^[;'#10'  Text = ''a''^M;'#10 +
+  cSource = 'unit C;'#10'interface'#10'const'#10'  CtrlC = ^C;'#10'  Esc = ^[;'#10'  Text = ''a''^M;'#10 +
     'implementation'#10'procedure P(Key: Char);'#10'begin'#10'  if Key = ^M then'#10'    Exit;'#10'end;'#10'end.';
 var
-  Tree: TSyntaxTree;
-  Settings: TInlayHintSettings;
-  Json: TJSONArray;
+  mTree: TSyntaxTree;
+  mSettings: TInlayHintSettings;
+  mJson: TJSONArray;
 begin
-  Tree := TPascalParser.Parse(Source);
+  mTree := TPascalParser.Parse(cSource);
   try
-    Assert.AreEqual('3:12 #3|4:10 #27|', Describe(TLspInlayHints.ControlChars(Tree, Source, WholeFile)));
-    Settings := TInlayHintSettings.Default;
-    Settings.ParameterNames := False;
-    Settings.InferredTypes := False;
-    Settings.EndMarkers := False;
+    Assert.AreEqual('3:12 #3|4:10 #27|', Describe(TLspInlayHints.ControlChars(mTree, cSource, WholeFile)));
+    mSettings := TInlayHintSettings.Default;
+    mSettings.ParameterNames := False;
+    mSettings.InferredTypes := False;
+    mSettings.EndMarkers := False;
     Assert.AreEqual('3:12 #3|4:10 #27|', Describe(TLspInlayHints.Collect(TInlayHintSource.Create(FResolver, FIndex,
-      Tree, Source, 'C.pas', nil), WholeFile, Settings)));
-    Settings.ControlChars := False;
-    Assert.AreEqual('', Describe(TLspInlayHints.Collect(TInlayHintSource.Create(FResolver, FIndex, Tree, Source,
-      'C.pas', nil), WholeFile, Settings)));
-    Json := TLspInlayHints.ToJson(TLspInlayHints.ControlChars(Tree, Source, WholeFile));
+      mTree, cSource, 'C.pas', nil), WholeFile, mSettings)));
+    mSettings.ControlChars := False;
+    Assert.AreEqual('', Describe(TLspInlayHints.Collect(TInlayHintSource.Create(FResolver, FIndex, mTree, cSource,
+      'C.pas', nil), WholeFile, mSettings)));
+    mJson := TLspInlayHints.ToJson(TLspInlayHints.ControlChars(mTree, cSource, WholeFile));
     try
-      Assert.AreEqual(27, Json.Items[1].GetValue<Integer>('data.controlChar.code'));
+      Assert.AreEqual(27, mJson.Items[1].GetValue<Integer>('data.controlChar.code'));
     finally
-      Json.Free;
+      mJson.Free;
     end;
   finally
-    Tree.Free;
+    mTree.Free;
   end;
 end;
 
 procedure TLspInlayHintsTests.MethodMarkersBehindHeaders;
 const
-  Source = 'unit R;'#10'interface'#10'type'#10'  TRechner = class'#10'  private'#10'    FWert: Integer;'#10 +
+  cSource = 'unit R;'#10'interface'#10'type'#10'  TRechner = class'#10'  private'#10'    FWert: Integer;'#10 +
     '  public'#10'    function Doppelt(A: Integer): Integer;'#10'    function Wert: Integer;'#10'  end;'#10 +
     'implementation'#10'function TRechner.Doppelt(A: Integer): Integer;'#10'begin'#10'  Result := A * 2;'#10 +
     'end;'#10'function TRechner.Wert: Integer;'#10'begin'#10'  Result := FWert;'#10'end;'#10'end.';
 var
-  Tree: TSyntaxTree;
-  Settings: TInlayHintSettings;
-  Json: TJSONArray;
+  mTree: TSyntaxTree;
+  mSettings: TInlayHintSettings;
+  mJson: TJSONArray;
 begin
-  Tree := TPascalParser.Parse(Source);
+  mTree := TPascalParser.Parse(cSource);
   try
-    Settings := TInlayHintSettings.Default;
-    Settings.ParameterNames := False;
-    Settings.InferredTypes := False;
-    Settings.EndMarkers := False;
-    Settings.ControlChars := False;
+    mSettings := TInlayHintSettings.Default;
+    mSettings.ParameterNames := False;
+    mSettings.InferredTypes := False;
+    mSettings.EndMarkers := False;
+    mSettings.ControlChars := False;
     // Vorgabe ist an (refactoring.methodKindMarker); hier erst ohne.
-    Settings.MethodWithoutSelf := False;
-    Assert.AreEqual('', Describe(TLspInlayHints.Collect(TInlayHintSource.Create(FResolver, FIndex, Tree, Source,
-      'R.pas', nil), WholeFile, Settings)));
-    Settings.MethodWithoutSelf := True;
+    mSettings.MethodWithoutSelf := False;
+    Assert.AreEqual('', Describe(TLspInlayHints.Collect(TInlayHintSource.Create(FResolver, FIndex, mTree, cSource,
+      'R.pas', nil), WholeFile, mSettings)));
+    mSettings.MethodWithoutSelf := True;
     Assert.AreEqual('11:47 Self unused|', Describe(TLspInlayHints.Collect(TInlayHintSource.Create(FResolver, FIndex,
-      Tree, Source, 'R.pas', nil), WholeFile, Settings)));
-    Json := TLspInlayHints.ToJson(TLspInlayHints.MethodMarkers(FResolver, Tree, Source, 'R.pas', WholeFile, nil));
+      mTree, cSource, 'R.pas', nil), WholeFile, mSettings)));
+    mJson := TLspInlayHints.ToJson(TLspInlayHints.MethodMarkers(FResolver, mTree, cSource, 'R.pas', WholeFile, nil));
     try
-      Assert.AreEqual(1, Integer(Json.Count));
-      Assert.IsTrue(Json.Items[0].GetValue<Boolean>('data.methodWithoutSelf'));
+      Assert.AreEqual(1, Integer(mJson.Count));
+      Assert.IsTrue(mJson.Items[0].GetValue<Boolean>('data.methodWithoutSelf'));
     finally
-      Json.Free;
+      mJson.Free;
     end;
   finally
-    Tree.Free;
+    mTree.Free;
   end;
 end;
 
 procedure TLspInlayHintsTests.EndMarkersBehindLongBlocks;
 var
-  Tree: TSyntaxTree;
+  mTree: TSyntaxTree;
 begin
-  Tree := TPascalParser.Parse(UnitHaupt);
+  mTree := TPascalParser.Parse(cUnitHaupt);
   try
     // Reihenfolge der Knoten im Baum; Collect sortiert nach Position.
     Assert.AreEqual('18:4 // Arbeite|17:6 // if Assigned(nil)|',
-      Describe(TLspInlayHints.EndMarkers(Tree, WholeFile, 4)));
+      Describe(TLspInlayHints.EndMarkers(mTree, WholeFile, 4)));
     // Die Routine hat 15 Zeilen, der if-Block 4.
-    Assert.AreEqual('18:4 // Arbeite|', Describe(TLspInlayHints.EndMarkers(Tree, WholeFile, 5)));
-    Assert.AreEqual('', Describe(TLspInlayHints.EndMarkers(Tree, WholeFile, 20)));
+    Assert.AreEqual('18:4 // Arbeite|', Describe(TLspInlayHints.EndMarkers(mTree, WholeFile, 5)));
+    Assert.AreEqual('', Describe(TLspInlayHints.EndMarkers(mTree, WholeFile, 20)));
   finally
-    Tree.Free;
+    mTree.Free;
   end;
 end;
 
 procedure TLspInlayHintsTests.SettingsSwitchHintsOffAndSort;
 var
-  Tree: TSyntaxTree;
-  Settings: TInlayHintSettings;
-  Hints: TArray<TInlayHint>;
+  mTree: TSyntaxTree;
+  mSettings: TInlayHintSettings;
+  mHints: TArray<TInlayHint>;
 begin
-  Tree := TPascalParser.Parse(UnitHaupt);
+  mTree := TPascalParser.Parse(cUnitHaupt);
   try
-    Settings := TInlayHintSettings.Default;
-    Settings.ParameterNames := False;
-    Settings.EndMarkerMinLines := 5;
-    Hints := TLspInlayHints.Collect(TInlayHintSource.Create(FResolver, FIndex, Tree, UnitHaupt, HauptFile,
-      ReadFile), TTextRange.Create(TTextPosition.Create(9, 0), TTextPosition.Create(30, 0)), Settings);
-    Assert.AreEqual('9:7 : string|10:7 : TFoo|11:7 : Integer|13:7 : TFarbe|18:4 // Arbeite|', Describe(Hints));
+    mSettings := TInlayHintSettings.Default;
+    mSettings.ParameterNames := False;
+    mSettings.EndMarkerMinLines := 5;
+    mHints := TLspInlayHints.Collect(TInlayHintSource.Create(FResolver, FIndex, mTree, cUnitHaupt, cHauptFile,
+      ReadFile), TTextRange.Create(TTextPosition.Create(9, 0), TTextPosition.Create(30, 0)), mSettings);
+    Assert.AreEqual('9:7 : string|10:7 : TFoo|11:7 : Integer|13:7 : TFarbe|18:4 // Arbeite|', Describe(mHints));
   finally
-    Tree.Free;
+    mTree.Free;
   end;
 end;
 
 /// <summary>Endmarken mit Blockanfang: "Zeile:Spalte Text @Anfangszeile:Anfangsspalte|".</summary>
 function DescribeEnds(const AHints: TArray<TInlayHint>): string;
 var
-  Hint: TInlayHint;
+  mHint: TInlayHint;
 begin
   Result := '';
-  for Hint in AHints do
+  for mHint in AHints do
   begin
-    Result := Result + Format('%d:%d %s @%d:%d|', [Hint.Position.Line, Hint.Position.Character, Hint.Text,
-      Hint.BlockStart.Line, Hint.BlockStart.Character]);
+    Result := Result + Format('%d:%d %s @%d:%d|', [mHint.Position.Line, mHint.Position.Character, mHint.Text,
+      mHint.BlockStart.Line, mHint.BlockStart.Character]);
   end;
 end;
 
 procedure TLspInlayHintsTests.EndMarkersForEveryBlockKind;
 var
-  Tree: TSyntaxTree;
-  Found: string;
+  mTree: TSyntaxTree;
+  mFound: string;
 begin
-  Tree := TPascalParser.Parse(UnitBloecke);
+  mTree := TPascalParser.Parse(cUnitBloecke);
   try
-    Found := DescribeEnds(TLspInlayHints.EndMarkers(Tree, WholeFile, 1));
-    Assert.IsTrue(Pos('5:6 // TKunde @3:2|', Found) > 0, Found);
-    Assert.IsTrue(Pos('8:6 // TPunkt @6:2|', Found) > 0, Found);
-    Assert.IsTrue(Pos('32:4 // TKunde.Speichern @10:0|', Found) > 0, Found);
-    Assert.IsTrue(Pos('16:6 // for I := 0 to 9 @14:2|', Found) > 0, Found);
-    Assert.IsTrue(Pos('19:6 // while not Fertig @17:2|', Found) > 0, Found);
-    Assert.IsTrue(Pos('22:6 // case Art @20:2|', Found) > 0, Found);
-    Assert.IsTrue(Pos('25:6 // if Betrag > Limit @23:2|', Found) > 0, Found);
-    Assert.IsTrue(Pos('28:6 // try (finally) @26:2|', Found) > 0, Found);
-    Assert.IsTrue(Pos('31:6 // try (except) @29:2|', Found) > 0, Found);
+    mFound := DescribeEnds(TLspInlayHints.EndMarkers(mTree, WholeFile, 1));
+    Assert.IsTrue(Pos('5:6 // TKunde @3:2|', mFound) > 0, mFound);
+    Assert.IsTrue(Pos('8:6 // TPunkt @6:2|', mFound) > 0, mFound);
+    Assert.IsTrue(Pos('32:4 // TKunde.Speichern @10:0|', mFound) > 0, mFound);
+    Assert.IsTrue(Pos('16:6 // for I := 0 to 9 @14:2|', mFound) > 0, mFound);
+    Assert.IsTrue(Pos('19:6 // while not Fertig @17:2|', mFound) > 0, mFound);
+    Assert.IsTrue(Pos('22:6 // case Art @20:2|', mFound) > 0, mFound);
+    Assert.IsTrue(Pos('25:6 // if Betrag > Limit @23:2|', mFound) > 0, mFound);
+    Assert.IsTrue(Pos('28:6 // try (finally) @26:2|', mFound) > 0, mFound);
+    Assert.IsTrue(Pos('31:6 // try (except) @29:2|', mFound) > 0, mFound);
   finally
-    Tree.Free;
+    mTree.Free;
   end;
 end;
 
 procedure TLspInlayHintsTests.EndMarkersSkipCommentsAndShorten;
 var
-  Tree: TSyntaxTree;
-  Found: string;
+  mTree: TSyntaxTree;
+  mFound: string;
 begin
-  Tree := TPascalParser.Parse(UnitKommentar);
+  mTree := TPascalParser.Parse(cUnitKommentar);
   try
-    Found := Describe(TLspInlayHints.EndMarkers(Tree, WholeFile, 1));
+    mFound := Describe(TLspInlayHints.EndMarkers(mTree, WholeFile, 1));
     // Nach 40 Zeichen gekürzt; hinter "end; // Schleife" keine Marke.
-    Assert.IsTrue(Pos('6:6 // if EineSehrLangeBedingungMitVielenZeiche…|', Found) > 0, Found);
-    Assert.AreEqual(0, Pos('// while', Found), Found);
-    Assert.IsTrue(Pos('10:4 // P|', Found) > 0, Found);
+    Assert.IsTrue(Pos('6:6 // if EineSehrLangeBedingungMitVielenZeiche…|', mFound) > 0, mFound);
+    Assert.AreEqual(0, Pos('// while', mFound), mFound);
+    Assert.IsTrue(Pos('10:4 // P|', mFound) > 0, mFound);
     // Unter der Mindestlänge: nur die Routine (9 Zeilen).
-    Assert.AreEqual('10:4 // P|', Describe(TLspInlayHints.EndMarkers(Tree, WholeFile, 4)));
+    Assert.AreEqual('10:4 // P|', Describe(TLspInlayHints.EndMarkers(mTree, WholeFile, 4)));
   finally
-    Tree.Free;
+    mTree.Free;
   end;
 end;
 
 procedure TLspInlayHintsTests.EndMarkersCarryBlockStartAndRequestMinLines;
 var
-  Store: IDocumentStore;
-  Hints: TLspInlayHints;
-  Dispatcher: TJsonRpcDispatcher;
-  Uri: string;
+  mStore: IDocumentStore;
+  mHints: TLspInlayHints;
+  mDispatcher: TJsonRpcDispatcher;
+  mUri: string;
 
   function Labels(const AExtra: string): string;
   var
-    Request, Response: TJSONObject;
-    Item: TJSONValue;
+    mRequest, mResponse: TJSONObject;
+    mItem: TJSONValue;
   begin
-    Request := TJSONObject.ParseJSONValue('{"jsonrpc":"2.0","id":1,"method":"textDocument/inlayHint","params":' +
-      '{"textDocument":{"uri":"' + Uri.Replace('\', '\\') + '"},"range":{"start":{"line":0,"character":0},' +
+    mRequest := TJSONObject.ParseJSONValue('{"jsonrpc":"2.0","id":1,"method":"textDocument/inlayHint","params":' +
+      '{"textDocument":{"uri":"' + mUri.Replace('\', '\\') + '"},"range":{"start":{"line":0,"character":0},' +
       '"end":{"line":40,"character":0}}' + AExtra + '}}') as TJSONObject;
     try
-      Response := Dispatcher.DispatchMessage(Request);
+      mResponse := mDispatcher.DispatchMessage(mRequest);
     finally
-      Request.Free;
+      mRequest.Free;
     end;
     try
       Result := '';
-      for Item in Response.GetValue<TJSONArray>('result') do
+      for mItem in mResponse.GetValue<TJSONArray>('result') do
       begin
-        if TJSONObject(Item).GetValue('data') <> nil then
+        if TJSONObject(mItem).GetValue('data') <> nil then
         begin
-          Result := Result + Format('%s @%d|', [TJSONObject(Item).GetValue<string>('label'),
-            TJSONObject(Item).GetValue<Integer>('data.blockStart.line')]);
+          Result := Result + Format('%s @%d|', [TJSONObject(mItem).GetValue<string>('label'),
+            TJSONObject(mItem).GetValue<Integer>('data.blockStart.line')]);
         end;
       end;
     finally
-      Response.Free;
+      mResponse.Free;
     end;
   end;
 
 begin
-  Store := TDocumentStore.Create;
-  Hints := TLspInlayHints.Create(Store, FIndex, ReadFile,
+  mStore := TDocumentStore.Create;
+  mHints := TLspInlayHints.Create(mStore, FIndex, ReadFile,
     function(const AUri: string): TInlayHintSettings
     begin
       Result := TInlayHintSettings.Default;
       Result.ParameterNames := False;
       Result.InferredTypes := False;
     end);
-  Dispatcher := TJsonRpcDispatcher.Create;
+  mDispatcher := TJsonRpcDispatcher.Create;
   try
-    Hints.Attach(Dispatcher);
-    Uri := TDocumentUris.FromPath(HauptFile);
-    Store.Open(Uri, 'delphi', 1, UnitBloecke);
+    mHints.Attach(mDispatcher);
+    mUri := TDocumentUris.FromPath(cHauptFile);
+    mStore.Open(mUri, 'delphi', 1, cUnitBloecke);
     // Vorgabe 20 Zeilen: nur die Routine (23 Zeilen).
     Assert.AreEqual('// TKunde.Speichern @10|', Labels(''));
     // Mindestlänge aus der Anfrage: auch die Klasse (3 Zeilen).
     Assert.IsTrue(Pos('// TKunde @3|', Labels(',"atlas":{"endMarkerMinLines":3}')) > 0);
   finally
-    Dispatcher.Free;
-    Hints.Free;
+    mDispatcher.Free;
+    mHints.Free;
   end;
 end;
 

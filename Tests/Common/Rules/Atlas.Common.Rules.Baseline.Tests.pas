@@ -94,9 +94,9 @@ uses
   Atlas.Common.Rules.Baseline;
 
 const
-  Original = 'unit U;' + #10 + 'begin' + #10 + '  X := 1;' + #10 + 'end.';
+  cOriginal = 'unit U;' + #10 + 'begin' + #10 + '  X := 1;' + #10 + 'end.';
   // Zeile 5 in TFoo.A, Zeile 9 in TFoo.B.
-  TwoRoutines =
+  cTwoRoutines =
     'unit U;' + #10 +
     'interface' + #10 +
     'implementation' + #10 +
@@ -125,13 +125,13 @@ end;
 
 procedure TMarkerRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
 var
-  Token: TPascalToken;
+  mToken: TPascalToken;
 begin
-  for Token in AContext.Tree.Tokens do
+  for mToken in AContext.Tree.Tokens do
   begin
-    if (Token.Kind = TPascalTokenKind.Identifier) and SameText(Token.Text, 'Marker') then
+    if (mToken.Kind = TPascalTokenKind.Identifier) and SameText(mToken.Text, 'Marker') then
     begin
-      AReport.Add(TTextRange.Create(Token.StartPos, Token.EndPos), 'Marker gefunden');
+      AReport.Add(TTextRange.Create(mToken.StartPos, mToken.EndPos), 'Marker gefunden');
     end;
   end;
 end;
@@ -162,104 +162,104 @@ end;
 
 procedure ExpectBaselineError(const AJson: string);
 var
-  Raised: Boolean;
+  mRaised: Boolean;
 begin
-  Raised := False;
+  mRaised := False;
   try
     TRuleBaseline.FromJson(AJson);
   except
     on ERuleBaseline do
-      Raised := True;
+      mRaised := True;
   end;
-  Assert.IsTrue(Raised, AJson);
+  Assert.IsTrue(mRaised, AJson);
 end;
 
 { TRuleBaselineTests }
 
 procedure TRuleBaselineTests.HidesKnownFindings;
 var
-  Baseline: IRuleBaseline;
+  mBaseline: IRuleBaseline;
 begin
-  Baseline := BaselineOf([Source('Src\U.pas', Original, [Finding('a', 2)])]);
-  Assert.AreEqual(1, Integer(Baseline.Count));
-  Assert.AreEqual<NativeInt>(0, Length(Baseline.Filter('Src\U.pas', Original, [Finding('a', 2)])));
+  mBaseline := BaselineOf([Source('Src\U.pas', cOriginal, [Finding('a', 2)])]);
+  Assert.AreEqual(1, Integer(mBaseline.Count));
+  Assert.AreEqual<NativeInt>(0, Length(mBaseline.Filter('Src\U.pas', cOriginal, [Finding('a', 2)])));
   // Andere Regel in derselben Zeile ist neu.
-  Assert.AreEqual<NativeInt>(1, Length(Baseline.Filter('Src\U.pas', Original, [Finding('b', 2)])));
+  Assert.AreEqual<NativeInt>(1, Length(mBaseline.Filter('Src\U.pas', cOriginal, [Finding('b', 2)])));
   // Andere Datei ebenso.
-  Assert.AreEqual<NativeInt>(1, Length(Baseline.Filter('Src\V.pas', Original, [Finding('a', 2)])));
+  Assert.AreEqual<NativeInt>(1, Length(mBaseline.Filter('Src\V.pas', cOriginal, [Finding('a', 2)])));
 end;
 
 procedure TRuleBaselineTests.SurvivesShiftedLines;
 var
-  Baseline: IRuleBaseline;
-  Shifted: string;
+  mBaseline: IRuleBaseline;
+  mShifted: string;
 begin
-  Baseline := BaselineOf([Source('U.pas', Original, [Finding('a', 2)])]);
-  Shifted := 'unit U;' + #10 + '// neu' + #10 + '// neu' + #10 + 'begin' + #10 + '  X := 1;' + #10 + 'end.';
-  Assert.AreEqual<NativeInt>(0, Length(Baseline.Filter('U.pas', Shifted, [Finding('a', 4)])));
+  mBaseline := BaselineOf([Source('U.pas', cOriginal, [Finding('a', 2)])]);
+  mShifted := 'unit U;' + #10 + '// neu' + #10 + '// neu' + #10 + 'begin' + #10 + '  X := 1;' + #10 + 'end.';
+  Assert.AreEqual<NativeInt>(0, Length(mBaseline.Filter('U.pas', mShifted, [Finding('a', 4)])));
 end;
 
 procedure TRuleBaselineTests.ReportsChangedLine;
 var
-  Baseline: IRuleBaseline;
+  mBaseline: IRuleBaseline;
 begin
-  Baseline := BaselineOf([Source('U.pas', Original, [Finding('a', 2)])]);
-  Assert.AreEqual<NativeInt>(1, Length(Baseline.Filter('U.pas', StringReplace(Original, 'X := 1', 'X := 2', []),
+  mBaseline := BaselineOf([Source('U.pas', cOriginal, [Finding('a', 2)])]);
+  Assert.AreEqual<NativeInt>(1, Length(mBaseline.Filter('U.pas', StringReplace(cOriginal, 'X := 1', 'X := 2', []),
     [Finding('a', 2)])));
 end;
 
 procedure TRuleBaselineTests.ReportsAdditionalIdenticalFinding;
 var
-  Baseline: IRuleBaseline;
-  Twice: string;
-  Remaining: TArray<TRuleFinding>;
+  mBaseline: IRuleBaseline;
+  mTwice: string;
+  mRemaining: TArray<TRuleFinding>;
 begin
-  Baseline := BaselineOf([Source('U.pas', Original, [Finding('a', 2)])]);
-  Twice := 'unit U;' + #10 + 'begin' + #10 + '  X := 1;' + #10 + '  X := 1;' + #10 + 'end.';
-  Remaining := Baseline.Filter('U.pas', Twice, [Finding('a', 2), Finding('a', 3)]);
-  Assert.AreEqual<NativeInt>(1, Length(Remaining));
-  Assert.AreEqual(3, Remaining[0].Range.StartPos.Line);
+  mBaseline := BaselineOf([Source('U.pas', cOriginal, [Finding('a', 2)])]);
+  mTwice := 'unit U;' + #10 + 'begin' + #10 + '  X := 1;' + #10 + '  X := 1;' + #10 + 'end.';
+  mRemaining := mBaseline.Filter('U.pas', mTwice, [Finding('a', 2), Finding('a', 3)]);
+  Assert.AreEqual<NativeInt>(1, Length(mRemaining));
+  Assert.AreEqual(3, mRemaining[0].Range.StartPos.Line);
 end;
 
 procedure TRuleBaselineTests.MatchesPathsWithEitherSeparator;
 var
-  Baseline: IRuleBaseline;
+  mBaseline: IRuleBaseline;
 begin
-  Baseline := BaselineOf([Source('Src\Sub\U.pas', Original, [Finding('a', 2)])]);
-  Assert.AreEqual<NativeInt>(0, Length(Baseline.Filter('src/sub/u.pas', Original, [Finding('A', 2)])));
+  mBaseline := BaselineOf([Source('Src\Sub\U.pas', cOriginal, [Finding('a', 2)])]);
+  Assert.AreEqual<NativeInt>(0, Length(mBaseline.Filter('src/sub/u.pas', cOriginal, [Finding('A', 2)])));
 end;
 
 procedure TRuleBaselineTests.IgnoresIndentation;
 var
-  Baseline: IRuleBaseline;
+  mBaseline: IRuleBaseline;
 begin
-  Baseline := BaselineOf([Source('U.pas', Original, [Finding('a', 2)])]);
-  Assert.AreEqual<NativeInt>(0, Length(Baseline.Filter('U.pas',
-    StringReplace(Original, '  X := 1;', #9'X  :=   1;'#13, []), [Finding('a', 2)])));
+  mBaseline := BaselineOf([Source('U.pas', cOriginal, [Finding('a', 2)])]);
+  Assert.AreEqual<NativeInt>(0, Length(mBaseline.Filter('U.pas',
+    StringReplace(cOriginal, '  X := 1;', #9'X  :=   1;'#13, []), [Finding('a', 2)])));
 end;
 
 procedure TRuleBaselineTests.BuildDropsVanishedFindings;
 var
-  Baseline: IRuleBaseline;
+  mBaseline: IRuleBaseline;
 begin
   // Neu geschrieben enthält die Baseline nur, was aktuell gefunden wird.
-  Baseline := BaselineOf([Source('U.pas', Original, [Finding('a', 2)]), Source('V.pas', Original, nil)]);
-  Assert.AreEqual(1, Integer(Baseline.Count));
-  Baseline := BaselineOf([Source('U.pas', Original, nil)]);
-  Assert.AreEqual(0, Integer(Baseline.Count));
-  Assert.AreEqual<NativeInt>(1, Length(Baseline.Filter('U.pas', Original, [Finding('a', 2)])));
+  mBaseline := BaselineOf([Source('U.pas', cOriginal, [Finding('a', 2)]), Source('V.pas', cOriginal, nil)]);
+  Assert.AreEqual(1, Integer(mBaseline.Count));
+  mBaseline := BaselineOf([Source('U.pas', cOriginal, nil)]);
+  Assert.AreEqual(0, Integer(mBaseline.Count));
+  Assert.AreEqual<NativeInt>(1, Length(mBaseline.Filter('U.pas', cOriginal, [Finding('a', 2)])));
 end;
 
 procedure TRuleBaselineTests.BuildIsSortedAndCounts;
 var
-  Json: string;
+  mJson: string;
 begin
-  Json := TRuleBaseline.Build([Source('B.pas', Original, [Finding('z', 2)]),
-    Source('A.pas', Original, [Finding('a', 2), Finding('a', 2)])]);
-  Assert.IsTrue(Pos('"version": 1', Json) > 0, Json);
-  Assert.IsTrue(Pos('"path": "A.pas"', Json) < Pos('"path": "B.pas"', Json), Json);
-  Assert.IsTrue(Pos('"rule": "a", "fingerprint": "' + TRuleBaseline.Fingerprint(Original, Finding('a', 2)) +
-    '", "count": 2', Json) > 0, Json);
+  mJson := TRuleBaseline.Build([Source('B.pas', cOriginal, [Finding('z', 2)]),
+    Source('A.pas', cOriginal, [Finding('a', 2), Finding('a', 2)])]);
+  Assert.IsTrue(Pos('"version": 1', mJson) > 0, mJson);
+  Assert.IsTrue(Pos('"path": "A.pas"', mJson) < Pos('"path": "B.pas"', mJson), mJson);
+  Assert.IsTrue(Pos('"rule": "a", "fingerprint": "' + TRuleBaseline.Fingerprint(cOriginal, Finding('a', 2)) +
+    '", "count": 2', mJson) > 0, mJson);
 end;
 
 procedure TRuleBaselineTests.RejectsWrongVersion;
@@ -275,273 +275,273 @@ end;
 
 procedure TRuleBaselineTests.FilterDoesNotConsumeBaseline;
 var
-  Baseline: IRuleBaseline;
+  mBaseline: IRuleBaseline;
 begin
-  Baseline := BaselineOf([Source('U.pas', Original, [Finding('a', 2)])]);
-  Assert.AreEqual<NativeInt>(0, Length(Baseline.Filter('U.pas', Original, [Finding('a', 2)])));
-  Assert.AreEqual<NativeInt>(0, Length(Baseline.Filter('U.pas', Original, [Finding('a', 2)])));
+  mBaseline := BaselineOf([Source('U.pas', cOriginal, [Finding('a', 2)])]);
+  Assert.AreEqual<NativeInt>(0, Length(mBaseline.Filter('U.pas', cOriginal, [Finding('a', 2)])));
+  Assert.AreEqual<NativeInt>(0, Length(mBaseline.Filter('U.pas', cOriginal, [Finding('a', 2)])));
 end;
 
 procedure TRuleBaselineTests.SameLineInOtherRoutineIsNew;
 var
-  Baseline: IRuleBaseline;
-  Text: string;
-  Remaining: TArray<TRuleFinding>;
+  mBaseline: IRuleBaseline;
+  mText: string;
+  mRemaining: TArray<TRuleFinding>;
 begin
   // Beide Routinen enthalten X.Free; in der Baseline steht nur der Treffer in TFoo.A.
-  Text := Swap(TwoRoutines, '  Y := 1;', '  X.Free;');
-  Baseline := BaselineOf([Source('U.pas', Text, [Finding('a', 5)])]);
-  Remaining := Baseline.Filter('U.pas', Text, [Finding('a', 5), Finding('a', 9)]);
-  Assert.AreEqual<NativeInt>(1, Length(Remaining));
-  Assert.AreEqual(9, Remaining[0].Range.StartPos.Line);
+  mText := Swap(cTwoRoutines, '  Y := 1;', '  X.Free;');
+  mBaseline := BaselineOf([Source('U.pas', mText, [Finding('a', 5)])]);
+  mRemaining := mBaseline.Filter('U.pas', mText, [Finding('a', 5), Finding('a', 9)]);
+  Assert.AreEqual<NativeInt>(1, Length(mRemaining));
+  Assert.AreEqual(9, mRemaining[0].Range.StartPos.Line);
   // Steht nur TFoo.B in der Baseline, bleibt TFoo.A gemeldet.
-  Baseline := BaselineOf([Source('U.pas', Text, [Finding('a', 9)])]);
-  Remaining := Baseline.Filter('U.pas', Text, [Finding('a', 5), Finding('a', 9)]);
-  Assert.AreEqual<NativeInt>(1, Length(Remaining));
-  Assert.AreEqual(5, Remaining[0].Range.StartPos.Line);
+  mBaseline := BaselineOf([Source('U.pas', mText, [Finding('a', 9)])]);
+  mRemaining := mBaseline.Filter('U.pas', mText, [Finding('a', 5), Finding('a', 9)]);
+  Assert.AreEqual<NativeInt>(1, Length(mRemaining));
+  Assert.AreEqual(5, mRemaining[0].Range.StartPos.Line);
 end;
 
 procedure TRuleBaselineTests.MovedToOtherRoutineIsReported;
 var
-  Baseline: IRuleBaseline;
-  Moved: string;
+  mBaseline: IRuleBaseline;
+  mMoved: string;
 begin
-  Baseline := BaselineOf([Source('U.pas', TwoRoutines, [Finding('a', 5)])]);
+  mBaseline := BaselineOf([Source('U.pas', cTwoRoutines, [Finding('a', 5)])]);
   // X.Free wandert von TFoo.A nach TFoo.B; TFoo.A gibt es weiter.
-  Moved := Swap(Swap(TwoRoutines, '  X.Free;', '  Z := 2;'), '  Y := 1;', '  X.Free;');
-  Assert.AreEqual<NativeInt>(1, Length(Baseline.Filter('U.pas', Moved, [Finding('a', 9)])));
+  mMoved := Swap(Swap(cTwoRoutines, '  X.Free;', '  Z := 2;'), '  Y := 1;', '  X.Free;');
+  Assert.AreEqual<NativeInt>(1, Length(mBaseline.Filter('U.pas', mMoved, [Finding('a', 9)])));
 end;
 
 procedure TRuleBaselineTests.RenamedRoutineKeepsEntry;
 var
-  Baseline: IRuleBaseline;
-  Renamed: string;
-  Marks: TArray<TBaselineMark>;
+  mBaseline: IRuleBaseline;
+  mRenamed: string;
+  mMarks: TArray<TBaselineMark>;
 begin
-  Baseline := BaselineOf([Source('U.pas', TwoRoutines, [Finding('a', 5)])]);
-  Renamed := Swap(TwoRoutines, 'procedure TFoo.A;', 'procedure TFoo.Umbenannt;');
-  Marks := Baseline.Classify('U.pas', Renamed, TFindingScopes.FromText(Renamed), [Finding('a', 5)]);
-  Assert.AreEqual<NativeInt>(1, Length(Marks));
-  Assert.AreEqual<TBaselineState>(TBaselineState.Unchanged, Marks[0].State);
-  Assert.AreEqual<TBaselineMatch>(TBaselineMatch.Renamed, Marks[0].Match);
-  Assert.AreEqual('TFoo.Umbenannt', Marks[0].Routine);
+  mBaseline := BaselineOf([Source('U.pas', cTwoRoutines, [Finding('a', 5)])]);
+  mRenamed := Swap(cTwoRoutines, 'procedure TFoo.A;', 'procedure TFoo.Umbenannt;');
+  mMarks := mBaseline.Classify('U.pas', mRenamed, TFindingScopes.FromText(mRenamed), [Finding('a', 5)]);
+  Assert.AreEqual<NativeInt>(1, Length(mMarks));
+  Assert.AreEqual<TBaselineState>(TBaselineState.Unchanged, mMarks[0].State);
+  Assert.AreEqual<TBaselineMatch>(TBaselineMatch.Renamed, mMarks[0].Match);
+  Assert.AreEqual('TFoo.Umbenannt', mMarks[0].Routine);
   // Anderer Code in der umbenannten Routine bleibt neu.
-  Renamed := Swap(Renamed, '  X.Free;', '  W.Free;');
-  Assert.AreEqual<NativeInt>(1, Length(Baseline.Filter('U.pas', Renamed, [Finding('a', 5)])));
+  mRenamed := Swap(mRenamed, '  X.Free;', '  W.Free;');
+  Assert.AreEqual<NativeInt>(1, Length(mBaseline.Filter('U.pas', mRenamed, [Finding('a', 5)])));
 end;
 
 procedure TRuleBaselineTests.LegacyEntryWithoutRoutineStillHides;
 var
-  Baseline: IRuleBaseline;
-  Text: string;
+  mBaseline: IRuleBaseline;
+  mText: string;
 begin
-  Text := Swap(TwoRoutines, '  Y := 1;', '  X.Free;');
+  mText := Swap(cTwoRoutines, '  Y := 1;', '  X.Free;');
   // Datei vor #97: ohne "routine" und "context".
-  Baseline := TRuleBaseline.FromJson('{"version": 1, "findings": [{"path": "U.pas", "rule": "a", "fingerprint": "' +
-    TRuleBaseline.Fingerprint(Text, Finding('a', 5)) + '", "count": 1}]}');
-  Assert.AreEqual(1, Baseline.LegacyCount);
-  Assert.AreEqual<NativeInt>(0, Length(Baseline.Filter('U.pas', Text, [Finding('a', 5)])));
+  mBaseline := TRuleBaseline.FromJson('{"version": 1, "findings": [{"path": "U.pas", "rule": "a", "fingerprint": "' +
+    TRuleBaseline.Fingerprint(mText, Finding('a', 5)) + '", "count": 1}]}');
+  Assert.AreEqual(1, mBaseline.LegacyCount);
+  Assert.AreEqual<NativeInt>(0, Length(mBaseline.Filter('U.pas', mText, [Finding('a', 5)])));
   // Wie bisher gilt der Eintrag für jede Routine, aber nur einmal.
-  Assert.AreEqual<NativeInt>(0, Length(Baseline.Filter('U.pas', Text, [Finding('a', 9)])));
-  Assert.AreEqual<NativeInt>(1, Length(Baseline.Filter('U.pas', Text, [Finding('a', 5), Finding('a', 9)])));
+  Assert.AreEqual<NativeInt>(0, Length(mBaseline.Filter('U.pas', mText, [Finding('a', 9)])));
+  Assert.AreEqual<NativeInt>(1, Length(mBaseline.Filter('U.pas', mText, [Finding('a', 5), Finding('a', 9)])));
 end;
 
 procedure TRuleBaselineTests.UpdateCompletesLegacyEntries;
 var
-  Old: IRuleBaseline;
-  Outcome: TBaselineUpdate;
+  mOld: IRuleBaseline;
+  mOutcome: TBaselineUpdate;
 begin
-  Old := TRuleBaseline.FromJson('{"version": 1, "findings": [{"path": "U.pas", "rule": "a", "fingerprint": "' +
-    TRuleBaseline.Fingerprint(TwoRoutines, Finding('a', 5)) + '"}]}');
-  Outcome := TRuleBaseline.Update(Old, [Source('U.pas', TwoRoutines, [Finding('a', 5)])], nil);
-  Assert.AreEqual(1, Outcome.Unchanged);
-  Assert.AreEqual(1, Outcome.Completed);
-  Assert.AreEqual(0, Outcome.Added);
-  Assert.AreEqual(0, Outcome.Removed);
-  Assert.IsTrue(Pos('"routine": "TFoo.A"', Outcome.Json) > 0, Outcome.Json);
-  Assert.AreEqual(0, TRuleBaseline.FromJson(Outcome.Json).LegacyCount);
+  mOld := TRuleBaseline.FromJson('{"version": 1, "findings": [{"path": "U.pas", "rule": "a", "fingerprint": "' +
+    TRuleBaseline.Fingerprint(cTwoRoutines, Finding('a', 5)) + '"}]}');
+  mOutcome := TRuleBaseline.Update(mOld, [Source('U.pas', cTwoRoutines, [Finding('a', 5)])], nil);
+  Assert.AreEqual(1, mOutcome.Unchanged);
+  Assert.AreEqual(1, mOutcome.Completed);
+  Assert.AreEqual(0, mOutcome.Added);
+  Assert.AreEqual(0, mOutcome.Removed);
+  Assert.IsTrue(Pos('"routine": "TFoo.A"', mOutcome.Json) > 0, mOutcome.Json);
+  Assert.AreEqual(0, TRuleBaseline.FromJson(mOutcome.Json).LegacyCount);
 end;
 
 procedure TRuleBaselineTests.UpdateCountsAddedRemovedUnchanged;
 var
-  Old: IRuleBaseline;
-  Outcome: TBaselineUpdate;
+  mOld: IRuleBaseline;
+  mOutcome: TBaselineUpdate;
 begin
-  Old := BaselineOf([Source('U.pas', TwoRoutines, [Finding('a', 5), Finding('b', 9)])]);
-  Outcome := TRuleBaseline.Update(Old, [Source('U.pas', TwoRoutines, [Finding('a', 5), Finding('c', 9),
-    Finding('c', 5)]), Source('V.pas', Original, nil)], nil);
-  Assert.AreEqual(3, Outcome.Total);
-  Assert.AreEqual(2, Outcome.Files);
-  Assert.AreEqual(2, Outcome.Added);
-  Assert.AreEqual(1, Outcome.Removed);
-  Assert.AreEqual(1, Outcome.Unchanged);
-  Assert.AreEqual<NativeInt>(0, Length(Outcome.Orphans));
-  Assert.AreEqual(3, Integer(TRuleBaseline.FromJson(Outcome.Json).Count));
+  mOld := BaselineOf([Source('U.pas', cTwoRoutines, [Finding('a', 5), Finding('b', 9)])]);
+  mOutcome := TRuleBaseline.Update(mOld, [Source('U.pas', cTwoRoutines, [Finding('a', 5), Finding('c', 9),
+    Finding('c', 5)]), Source('V.pas', cOriginal, nil)], nil);
+  Assert.AreEqual(3, mOutcome.Total);
+  Assert.AreEqual(2, mOutcome.Files);
+  Assert.AreEqual(2, mOutcome.Added);
+  Assert.AreEqual(1, mOutcome.Removed);
+  Assert.AreEqual(1, mOutcome.Unchanged);
+  Assert.AreEqual<NativeInt>(0, Length(mOutcome.Orphans));
+  Assert.AreEqual(3, Integer(TRuleBaseline.FromJson(mOutcome.Json).Count));
 end;
 
 procedure TRuleBaselineTests.UpdateReportsOrphansOfRenamedFile;
 var
-  Old: IRuleBaseline;
-  Outcome: TBaselineUpdate;
+  mOld: IRuleBaseline;
+  mOutcome: TBaselineUpdate;
 begin
-  Old := BaselineOf([Source('Src\U.pas', TwoRoutines, [Finding('a', 5)]),
-    Source('Src\Alt.pas', TwoRoutines, [Finding('a', 5), Finding('b', 5)])]);
+  mOld := BaselineOf([Source('Src\U.pas', cTwoRoutines, [Finding('a', 5)]),
+    Source('Src\Alt.pas', cTwoRoutines, [Finding('a', 5), Finding('b', 5)])]);
   // Alt.pas heißt jetzt Neu.pas: Die Einträge von Alt.pas haben keine Datei mehr.
-  Outcome := TRuleBaseline.Update(Old, [Source('Src\U.pas', TwoRoutines, [Finding('a', 5)]),
-    Source('Src\Neu.pas', TwoRoutines, [Finding('a', 5), Finding('b', 5)])],
+  mOutcome := TRuleBaseline.Update(mOld, [Source('Src\U.pas', cTwoRoutines, [Finding('a', 5)]),
+    Source('Src\Neu.pas', cTwoRoutines, [Finding('a', 5), Finding('b', 5)])],
     function(const APath: string): Boolean
     begin
       Result := False;
     end);
-  Assert.AreEqual<NativeInt>(1, Length(Outcome.Orphans));
-  Assert.AreEqual('Src/Alt.pas', Outcome.Orphans[0].Path);
-  Assert.AreEqual(2, Integer(Outcome.Orphans[0].Count));
-  Assert.AreEqual(2, Outcome.OrphanCount);
-  Assert.AreEqual(2, Outcome.Removed);
-  Assert.AreEqual(2, Outcome.Added);
+  Assert.AreEqual<NativeInt>(1, Length(mOutcome.Orphans));
+  Assert.AreEqual('Src/Alt.pas', mOutcome.Orphans[0].Path);
+  Assert.AreEqual(2, Integer(mOutcome.Orphans[0].Count));
+  Assert.AreEqual(2, mOutcome.OrphanCount);
+  Assert.AreEqual(2, mOutcome.Removed);
+  Assert.AreEqual(2, mOutcome.Added);
   // Existiert die Datei noch (nur nicht geprüft), ist sie nicht verwaist.
-  Outcome := TRuleBaseline.Update(Old, [Source('Src\U.pas', TwoRoutines, [Finding('a', 5)])],
+  mOutcome := TRuleBaseline.Update(mOld, [Source('Src\U.pas', cTwoRoutines, [Finding('a', 5)])],
     function(const APath: string): Boolean
     begin
       Result := True;
     end);
-  Assert.AreEqual<NativeInt>(0, Length(Outcome.Orphans));
-  Assert.AreEqual(2, Outcome.Removed);
+  Assert.AreEqual<NativeInt>(0, Length(mOutcome.Orphans));
+  Assert.AreEqual(2, mOutcome.Removed);
 end;
 
 procedure TRuleBaselineTests.UpdateWithoutPreviousBaseline;
 var
-  Outcome: TBaselineUpdate;
+  mOutcome: TBaselineUpdate;
 begin
-  Outcome := TRuleBaseline.Update(nil, [Source('U.pas', TwoRoutines, [Finding('a', 5), Finding('a', 9)])], nil);
-  Assert.AreEqual(2, Outcome.Total);
-  Assert.AreEqual(2, Outcome.Added);
-  Assert.AreEqual(0, Outcome.Removed);
-  Assert.AreEqual(0, Outcome.Unchanged);
+  mOutcome := TRuleBaseline.Update(nil, [Source('U.pas', cTwoRoutines, [Finding('a', 5), Finding('a', 9)])], nil);
+  Assert.AreEqual(2, mOutcome.Total);
+  Assert.AreEqual(2, mOutcome.Added);
+  Assert.AreEqual(0, mOutcome.Removed);
+  Assert.AreEqual(0, mOutcome.Unchanged);
 end;
 
 procedure TRuleBaselineTests.ClassifyMarksUnchangedAndAbsent;
 var
-  Baseline: IRuleBaseline;
-  Marks: TArray<TBaselineMark>;
+  mBaseline: IRuleBaseline;
+  mMarks: TArray<TBaselineMark>;
 begin
-  Baseline := BaselineOf([Source('U.pas', TwoRoutines, [Finding('a', 5), Finding('b', 9)])]);
-  Marks := Baseline.Classify('U.pas', TwoRoutines, TFindingScopes.FromText(TwoRoutines),
+  mBaseline := BaselineOf([Source('U.pas', cTwoRoutines, [Finding('a', 5), Finding('b', 9)])]);
+  mMarks := mBaseline.Classify('U.pas', cTwoRoutines, TFindingScopes.FromText(cTwoRoutines),
     [Finding('a', 5), Finding('c', 9)]);
-  Assert.AreEqual<NativeInt>(3, Length(Marks));
-  Assert.AreEqual<TBaselineState>(TBaselineState.Unchanged, Marks[0].State);
-  Assert.AreEqual<TBaselineMatch>(TBaselineMatch.Exact, Marks[0].Match);
-  Assert.AreEqual('TFoo.A', Marks[0].Routine);
-  Assert.AreEqual<TBaselineState>(TBaselineState.New, Marks[1].State);
-  Assert.AreEqual('TFoo.B', Marks[1].Routine);
-  Assert.AreEqual<TBaselineState>(TBaselineState.Absent, Marks[2].State);
-  Assert.AreEqual('b', Marks[2].Finding.RuleId);
-  Assert.AreEqual('TFoo.B', Marks[2].Routine);
+  Assert.AreEqual<NativeInt>(3, Length(mMarks));
+  Assert.AreEqual<TBaselineState>(TBaselineState.Unchanged, mMarks[0].State);
+  Assert.AreEqual<TBaselineMatch>(TBaselineMatch.Exact, mMarks[0].Match);
+  Assert.AreEqual('TFoo.A', mMarks[0].Routine);
+  Assert.AreEqual<TBaselineState>(TBaselineState.New, mMarks[1].State);
+  Assert.AreEqual('TFoo.B', mMarks[1].Routine);
+  Assert.AreEqual<TBaselineState>(TBaselineState.Absent, mMarks[2].State);
+  Assert.AreEqual('b', mMarks[2].Finding.RuleId);
+  Assert.AreEqual('TFoo.B', mMarks[2].Routine);
   // Ganze Datei als nicht mehr gefunden.
-  Assert.AreEqual<NativeInt>(2, Length(Baseline.AbsentOf('u.pas')));
-  Assert.AreEqual(2, Baseline.CountOf('U.pas'));
-  Assert.AreEqual<NativeInt>(1, Length(Baseline.Paths));
+  Assert.AreEqual<NativeInt>(2, Length(mBaseline.AbsentOf('u.pas')));
+  Assert.AreEqual(2, mBaseline.CountOf('U.pas'));
+  Assert.AreEqual<NativeInt>(1, Length(mBaseline.Paths));
 end;
 
 procedure TRuleBaselineTests.BuildWritesRoutineAndContext;
 var
-  Json: string;
+  mJson: string;
 begin
-  Json := TRuleBaseline.Build([Source('U.pas', TwoRoutines, [Finding('a', 5), Finding('a', 1)])]);
-  Assert.IsTrue(Pos('"routine": "TFoo.A", "context": "' + TRuleBaseline.ContextFingerprint(TwoRoutines,
-    TFindingScopes.FromText(TwoRoutines), 5) + '"', Json) > 0, Json);
+  mJson := TRuleBaseline.Build([Source('U.pas', cTwoRoutines, [Finding('a', 5), Finding('a', 1)])]);
+  Assert.IsTrue(Pos('"routine": "TFoo.A", "context": "' + TRuleBaseline.ContextFingerprint(cTwoRoutines,
+    TFindingScopes.FromText(cTwoRoutines), 5) + '"', mJson) > 0, mJson);
   // Außerhalb einer Routine der Abschnitt.
-  Assert.IsTrue(Pos('"routine": "interface"', Json) > 0, Json);
+  Assert.IsTrue(Pos('"routine": "interface"', mJson) > 0, mJson);
 end;
 
 procedure TRuleBaselineTests.ContextIgnoresIndentationAndRoutineName;
 var
-  Changed: string;
+  mChanged: string;
 begin
-  Changed := Swap(Swap(TwoRoutines, '  X.Free;', #9'X.Free;   '), 'procedure TFoo.A;', 'procedure TFoo.Neu;');
-  Assert.AreEqual(TRuleBaseline.ContextFingerprint(TwoRoutines, TFindingScopes.FromText(TwoRoutines), 5),
-    TRuleBaseline.ContextFingerprint(Changed, TFindingScopes.FromText(Changed), 5));
-  Assert.AreNotEqual(TRuleBaseline.ContextFingerprint(TwoRoutines, TFindingScopes.FromText(TwoRoutines), 5),
-    TRuleBaseline.ContextFingerprint(TwoRoutines, TFindingScopes.FromText(TwoRoutines), 9));
+  mChanged := Swap(Swap(cTwoRoutines, '  X.Free;', #9'X.Free;   '), 'procedure TFoo.A;', 'procedure TFoo.Neu;');
+  Assert.AreEqual(TRuleBaseline.ContextFingerprint(cTwoRoutines, TFindingScopes.FromText(cTwoRoutines), 5),
+    TRuleBaseline.ContextFingerprint(mChanged, TFindingScopes.FromText(mChanged), 5));
+  Assert.AreNotEqual(TRuleBaseline.ContextFingerprint(cTwoRoutines, TFindingScopes.FromText(cTwoRoutines), 5),
+    TRuleBaseline.ContextFingerprint(cTwoRoutines, TFindingScopes.FromText(cTwoRoutines), 9));
 end;
 
 procedure TRuleBaselineTests.CountersJsonListsOrphans;
 var
-  Outcome: TBaselineUpdate;
-  Orphan: TBaselineOrphan;
+  mOutcome: TBaselineUpdate;
+  mOrphan: TBaselineOrphan;
 begin
-  Outcome := Default(TBaselineUpdate);
-  Outcome.Total := 4;
-  Outcome.Files := 2;
-  Outcome.Added := 1;
-  Outcome.Removed := 3;
-  Outcome.Unchanged := 3;
-  Orphan.Path := 'Alt/U.pas';
-  Orphan.Count := 2;
-  Outcome.Orphans := [Orphan];
+  mOutcome := Default(TBaselineUpdate);
+  mOutcome.Total := 4;
+  mOutcome.Files := 2;
+  mOutcome.Added := 1;
+  mOutcome.Removed := 3;
+  mOutcome.Unchanged := 3;
+  mOrphan.Path := 'Alt/U.pas';
+  mOrphan.Count := 2;
+  mOutcome.Orphans := [mOrphan];
   Assert.AreEqual('{"total": 4, "files": 2, "added": 1, "removed": 3, "unchanged": 3, "completed": 0, ' +
-    '"compiler": 0, "orphaned": {"count": 2, "entries": [{"path": "Alt/U.pas", "count": 2}]}}', Outcome.CountersJson);
+    '"compiler": 0, "orphaned": {"count": 2, "entries": [{"path": "Alt/U.pas", "count": 2}]}}', mOutcome.CountersJson);
 end;
 
 procedure TRuleBaselineTests.ReplaceCompilerReplacesPerFile;
 var
-  Old, Next: IRuleBaseline;
-  Outcome: TBaselineUpdate;
+  mOld, mNext: IRuleBaseline;
+  mOutcome: TBaselineUpdate;
 begin
-  Old := BaselineOf([Source('U.pas', TwoRoutines, [Finding('a', 5)])]);
-  Outcome := TRuleBaseline.ReplaceCompiler(Old, [Source('U.pas', TwoRoutines, [Finding('w1035', 5)]),
-    Source('V.pas', TwoRoutines, [Finding('h2164', 9)])]);
-  Assert.AreEqual(2, Outcome.Total);
-  Assert.AreEqual(2, Outcome.Added);
-  Old := TRuleBaseline.FromJson(Outcome.Json);
-  Assert.AreEqual(3, Old.Count, 'Regeltreffer bleibt');
+  mOld := BaselineOf([Source('U.pas', cTwoRoutines, [Finding('a', 5)])]);
+  mOutcome := TRuleBaseline.ReplaceCompiler(mOld, [Source('U.pas', cTwoRoutines, [Finding('w1035', 5)]),
+    Source('V.pas', cTwoRoutines, [Finding('h2164', 9)])]);
+  Assert.AreEqual(2, mOutcome.Total);
+  Assert.AreEqual(2, mOutcome.Added);
+  mOld := TRuleBaseline.FromJson(mOutcome.Json);
+  Assert.AreEqual(3, mOld.Count, 'Regeltreffer bleibt');
   // Neuer Build von U.pas: W1035 ist weg, H2164 neu; V.pas wurde nicht übersetzt und bleibt.
-  Outcome := TRuleBaseline.ReplaceCompiler(Old, [Source('U.pas', TwoRoutines, [Finding('h2164', 9)])]);
-  Assert.AreEqual(2, Outcome.Total, 'U: H2164, V: H2164');
-  Assert.AreEqual(1, Outcome.Added);
-  Assert.AreEqual(1, Outcome.Removed);
-  Assert.AreEqual(0, Outcome.Unchanged);
-  Next := TRuleBaseline.FromJson(Outcome.Json);
-  Assert.AreEqual(3, Next.Count);
-  Assert.AreEqual<NativeInt>(0, Length(Next.Filter('U.pas', TwoRoutines, [Finding('a', 5), Finding('h2164', 9)])),
+  mOutcome := TRuleBaseline.ReplaceCompiler(mOld, [Source('U.pas', cTwoRoutines, [Finding('h2164', 9)])]);
+  Assert.AreEqual(2, mOutcome.Total, 'U: H2164, V: H2164');
+  Assert.AreEqual(1, mOutcome.Added);
+  Assert.AreEqual(1, mOutcome.Removed);
+  Assert.AreEqual(0, mOutcome.Unchanged);
+  mNext := TRuleBaseline.FromJson(mOutcome.Json);
+  Assert.AreEqual(3, mNext.Count);
+  Assert.AreEqual<NativeInt>(0, Length(mNext.Filter('U.pas', cTwoRoutines, [Finding('a', 5), Finding('h2164', 9)])),
     'Regel und Compilermeldung bekannt');
-  Assert.AreEqual<NativeInt>(1, Length(Next.Filter('U.pas', TwoRoutines, [Finding('w1035', 5)])), 'W1035 wieder neu');
+  Assert.AreEqual<NativeInt>(1, Length(mNext.Filter('U.pas', cTwoRoutines, [Finding('w1035', 5)])), 'W1035 wieder neu');
   // Gleiche Meldung noch einmal: unverändert.
-  Outcome := TRuleBaseline.ReplaceCompiler(Next, [Source('U.pas', TwoRoutines, [Finding('h2164', 9)])]);
-  Assert.AreEqual(1, Outcome.Unchanged);
-  Assert.AreEqual(0, Outcome.Added);
-  Assert.AreEqual(0, Outcome.Removed);
+  mOutcome := TRuleBaseline.ReplaceCompiler(mNext, [Source('U.pas', cTwoRoutines, [Finding('h2164', 9)])]);
+  Assert.AreEqual(1, mOutcome.Unchanged);
+  Assert.AreEqual(0, mOutcome.Added);
+  Assert.AreEqual(0, mOutcome.Removed);
 end;
 
 procedure TRuleBaselineTests.UpdateKeepsCompilerEntries;
 var
-  Old: IRuleBaseline;
-  Outcome: TBaselineUpdate;
-  Mark: TBaselineMark;
+  mOld: IRuleBaseline;
+  mOutcome: TBaselineUpdate;
+  mMark: TBaselineMark;
 begin
-  Old := TRuleBaseline.FromJson(TRuleBaseline.ReplaceCompiler(BaselineOf([Source('U.pas', TwoRoutines,
-    [Finding('a', 5)])]), [Source('U.pas', TwoRoutines, [Finding('w1035', 5)]), Source('Alt.pas', TwoRoutines,
+  mOld := TRuleBaseline.FromJson(TRuleBaseline.ReplaceCompiler(BaselineOf([Source('U.pas', cTwoRoutines,
+    [Finding('a', 5)])]), [Source('U.pas', cTwoRoutines, [Finding('w1035', 5)]), Source('Alt.pas', cTwoRoutines,
     [Finding('h2164', 9)])]).Json);
-  for Mark in Old.Classify('U.pas', TwoRoutines, TFindingScopes.FromText(TwoRoutines), [Finding('a', 5)]) do
+  for mMark in mOld.Classify('U.pas', cTwoRoutines, TFindingScopes.FromText(cTwoRoutines), [Finding('a', 5)]) do
   begin
     Assert.AreNotEqual<TBaselineState>(TBaselineState.Absent,
-      Mark.State, 'Compilermeldung ist für die Regeln nicht verschwunden');
+      mMark.State, 'Compilermeldung ist für die Regeln nicht verschwunden');
   end;
-  Assert.AreEqual<NativeInt>(0, Length(Old.AbsentOf('Alt.pas')));
+  Assert.AreEqual<NativeInt>(0, Length(mOld.AbsentOf('Alt.pas')));
   // Alt.pas gibt es nicht mehr: dessen Compilermeldung fällt heraus, die von U.pas bleibt.
-  Outcome := TRuleBaseline.Update(Old, [Source('U.pas', TwoRoutines, [Finding('a', 5)])],
+  mOutcome := TRuleBaseline.Update(mOld, [Source('U.pas', cTwoRoutines, [Finding('a', 5)])],
     function(const APath: string): Boolean
     begin
       Result := SameText(APath, 'U.pas');
     end);
-  Assert.AreEqual(1, Outcome.Total);
-  Assert.AreEqual(1, Outcome.Unchanged);
-  Assert.AreEqual(1, Outcome.Compiler);
-  Assert.AreEqual(1, Outcome.Removed, 'nur die Meldung der verschwundenen Datei');
-  Assert.AreEqual(1, Outcome.OrphanCount);
-  Old := TRuleBaseline.FromJson(Outcome.Json);
-  Assert.AreEqual(2, Old.Count);
-  Assert.AreEqual<NativeInt>(0, Length(Old.Filter('U.pas', TwoRoutines, [Finding('w1035', 5)])));
+  Assert.AreEqual(1, mOutcome.Total);
+  Assert.AreEqual(1, mOutcome.Unchanged);
+  Assert.AreEqual(1, mOutcome.Compiler);
+  Assert.AreEqual(1, mOutcome.Removed, 'nur die Meldung der verschwundenen Datei');
+  Assert.AreEqual(1, mOutcome.OrphanCount);
+  mOld := TRuleBaseline.FromJson(mOutcome.Json);
+  Assert.AreEqual(2, mOld.Count);
+  Assert.AreEqual<NativeInt>(0, Length(mOld.Filter('U.pas', cTwoRoutines, [Finding('w1035', 5)])));
 end;
 
 procedure TRuleBaselineTests.RecognizesCompilerCodes;
@@ -556,7 +556,7 @@ end;
 
 procedure TRuleBaselineTests.SuppressionOfBaselineFindingIsNotUnused;
 const
-  Text =
+  cText =
     'unit U;' + #10 +
     'interface' + #10 +
     'implementation' + #10 +
@@ -567,37 +567,37 @@ const
     'end;' + #10 +
     'end.';
 var
-  Tree: TSyntaxTree;
-  Context: TRuleContext;
-  Findings: TArray<TRuleFinding>;
-  Baseline: IRuleBaseline;
-  Item: TRuleFinding;
-  Rule: IRule;
+  mTree: TSyntaxTree;
+  mContext: TRuleContext;
+  mFindings: TArray<TRuleFinding>;
+  mBaseline: IRuleBaseline;
+  mItem: TRuleFinding;
+  mRule: IRule;
 begin
   // Beide Treffer stehen in der Baseline (z. B. erzeugt, bevor der Kommentar dazukam).
-  Baseline := BaselineOf([Source('U.pas', Swap(Text, ' // lsp-ignore: marker', ''), [Finding('marker', 5),
+  mBaseline := BaselineOf([Source('U.pas', Swap(cText, ' // lsp-ignore: marker', ''), [Finding('marker', 5),
     Finding('marker', 6)])]);
-  Rule := TMarkerRule.Create;
-  Tree := TPascalParser.Parse(Text);
+  mRule := TMarkerRule.Create;
+  mTree := TPascalParser.Parse(cText);
   try
-    Context := Default(TRuleContext);
-    Context.RelativePath := 'U.pas';
-    Context.UnitName := 'U';
-    Context.Text := Text;
-    Context.Tree := Tree;
-    Findings := TRuleEngine.Run([Rule], TServerSettings.Default, Context);
+    mContext := Default(TRuleContext);
+    mContext.RelativePath := 'U.pas';
+    mContext.UnitName := 'U';
+    mContext.Text := cText;
+    mContext.Tree := mTree;
+    mFindings := TRuleEngine.Run([mRule], TServerSettings.Default, mContext);
   finally
-    Tree.Free;
+    mTree.Free;
   end;
   // Die Engine unterdrückt vor der Baseline: Der Kommentar hat gewirkt und wird nicht gemeldet.
-  Assert.AreEqual<NativeInt>(1, Length(Findings));
-  for Item in Findings do
+  Assert.AreEqual<NativeInt>(1, Length(mFindings));
+  for mItem in mFindings do
   begin
-    Assert.AreNotEqual(cUnusedSuppressionRuleId, Item.RuleId);
+    Assert.AreNotEqual(cUnusedSuppressionRuleId, mItem.RuleId);
   end;
   // Der übrige Treffer steht in der Baseline (Zeile 6 hat ihren Fingerabdruck behalten).
-  Findings := Baseline.Filter('U.pas', Text, Findings);
-  Assert.AreEqual<NativeInt>(0, Length(Findings));
+  mFindings := mBaseline.Filter('U.pas', cText, mFindings);
+  Assert.AreEqual<NativeInt>(0, Length(mFindings));
 end;
 
 initialization

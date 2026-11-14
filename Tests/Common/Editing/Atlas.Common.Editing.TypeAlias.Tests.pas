@@ -59,7 +59,7 @@ uses
   Atlas.Common.Editing.TypeAlias.Texts;
 
 const
-  UnitKunden =
+  cUnitKunden =
     'unit Kunden;'#10 +
     'interface'#10 +
     'uses System.Generics.Collections;'#10 +
@@ -90,41 +90,41 @@ const
 
 function PositionOf(const AText, AMarker: string; AOccurrence: Integer): TTextPosition;
 var
-  Index, Found, Line, LineStart: Integer;
+  mIndex, mFound, mLine, mLineStart: Integer;
 begin
-  Found := 0;
-  Index := 0;
+  mFound := 0;
+  mIndex := 0;
   repeat
-    Index := PosEx(AMarker, AText, Index + 1);
-    if Index = 0 then
+    mIndex := PosEx(AMarker, AText, mIndex + 1);
+    if mIndex = 0 then
     begin
       raise Exception.CreateFmt('"%s" nicht gefunden', [AMarker]);
     end;
-    Inc(Found);
-  until Found = AOccurrence;
-  Line := 0;
-  LineStart := 1;
-  for Found := 1 to Index - 1 do
+    Inc(mFound);
+  until mFound = AOccurrence;
+  mLine := 0;
+  mLineStart := 1;
+  for mFound := 1 to mIndex - 1 do
   begin
-    if AText[Found] = #10 then
+    if AText[mFound] = #10 then
     begin
-      Inc(Line);
-      LineStart := Found + 1;
+      Inc(mLine);
+      mLineStart := mFound + 1;
     end;
   end;
-  Result := TTextPosition.Create(Line, Index - LineStart);
+  Result := TTextPosition.Create(mLine, mIndex - mLineStart);
 end;
 
 function EditsOf(const AResult: TTypeAliasResult; const AFileName: string): TArray<TTextEdit>;
 var
-  Item: TTypeAliasFileEdits;
+  mItem: TTypeAliasFileEdits;
 begin
   Result := nil;
-  for Item in AResult.Files do
+  for mItem in AResult.Files do
   begin
-    if SameText(Item.FileName, AFileName) then
+    if SameText(mItem.FileName, AFileName) then
     begin
-      Exit(Item.Edits);
+      Exit(mItem.Edits);
     end;
   end;
 end;
@@ -133,32 +133,32 @@ end;
 function Introduce(const AText, AMarker, AName: string; AScope: TTypeAliasScope; out AResult: TTypeAliasResult;
   out AReason: string): string;
 var
-  Tree: TSyntaxTree;
+  mTree: TSyntaxTree;
 begin
   Result := '';
-  Tree := TPascalParser.Parse(AText);
+  mTree := TPascalParser.Parse(AText);
   try
-    if TTypeAlias.Introduce(TTypeAliasSource.Create('Kunden.pas', AText, Tree), nil,
+    if TTypeAlias.Introduce(TTypeAliasSource.Create('Kunden.pas', AText, mTree), nil,
       TTypeAliasRequest.Create(PositionOf(AText, AMarker, 1), AName, AScope, TTypeAliasLookup.FromTree), AResult,
       AReason) then
     begin
       Result := TChangeSignature.ApplyEdits(AText, EditsOf(AResult, 'Kunden.pas'));
     end;
   finally
-    Tree.Free;
+    mTree.Free;
   end;
 end;
 
 function Count(const AText, APart: string): Integer;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
   Result := 0;
-  Index := PosEx(APart, AText, 1);
-  while Index > 0 do
+  mIndex := PosEx(APart, AText, 1);
+  while mIndex > 0 do
   begin
     Inc(Result);
-    Index := PosEx(APart, AText, Index + 1);
+    mIndex := PosEx(APart, AText, mIndex + 1);
   end;
 end;
 
@@ -170,287 +170,287 @@ end;
 
 procedure TTypeAliasTests.TargetsAndSuggestions;
 var
-  Tree: TSyntaxTree;
-  Found: TArray<TTypeAliasTarget>;
+  mTree: TSyntaxTree;
+  mFound: TArray<TTypeAliasTarget>;
 begin
-  Tree := TPascalParser.Parse(UnitKunden);
+  mTree := TPascalParser.Parse(cUnitKunden);
   try
     // Auf dem inneren TList: der äußere Ausdruck zuerst, dann der innere.
-    Found := TTypeAlias.Targets(UnitKunden, Tree, 'Kunden.pas', PositionOf(UnitKunden, 'TList<TKunde>>', 1),
+    mFound := TTypeAlias.Targets(cUnitKunden, mTree, 'Kunden.pas', PositionOf(cUnitKunden, 'TList<TKunde>>', 1),
       TTypeAliasLookup.FromTree);
-    Assert.AreEqual(2, Integer(Length(Found)));
-    Assert.AreEqual('TDictionary<string, TList<TKunde>>', Found[0].TypeText);
-    Assert.AreEqual('TKundeGroups', Found[0].Suggestion);
-    Assert.AreEqual('TList<TKunde>', Found[1].TypeText);
-    Assert.AreEqual('TKundeList', Found[1].Suggestion);
-    Assert.AreEqual('', Found[0].OpenParams);
-    Found := TTypeAlias.Targets(UnitKunden, Tree, 'Kunden.pas', PositionOf(UnitKunden, 'array of array', 1),
+    Assert.AreEqual(2, Integer(Length(mFound)));
+    Assert.AreEqual('TDictionary<string, TList<TKunde>>', mFound[0].TypeText);
+    Assert.AreEqual('TKundeGroups', mFound[0].Suggestion);
+    Assert.AreEqual('TList<TKunde>', mFound[1].TypeText);
+    Assert.AreEqual('TKundeList', mFound[1].Suggestion);
+    Assert.AreEqual('', mFound[0].OpenParams);
+    mFound := TTypeAlias.Targets(cUnitKunden, mTree, 'Kunden.pas', PositionOf(cUnitKunden, 'array of array', 1),
       TTypeAliasLookup.FromTree);
-    Assert.AreEqual(1, Integer(Length(Found)));
-    Assert.AreEqual('array of array of Double', Found[0].TypeText);
-    Assert.AreEqual('TWerte', Found[0].Suggestion);
-    Found := TTypeAlias.Targets(UnitKunden, Tree, 'Kunden.pas', PositionOf(UnitKunden, 'reference', 1),
+    Assert.AreEqual(1, Integer(Length(mFound)));
+    Assert.AreEqual('array of array of Double', mFound[0].TypeText);
+    Assert.AreEqual('TWerte', mFound[0].Suggestion);
+    mFound := TTypeAlias.Targets(cUnitKunden, mTree, 'Kunden.pas', PositionOf(cUnitKunden, 'reference', 1),
       TTypeAliasLookup.FromTree);
-    Assert.AreEqual(1, Integer(Length(Found)));
-    Assert.AreEqual('TAktionFunc', Found[0].Suggestion);
+    Assert.AreEqual(1, Integer(Length(mFound)));
+    Assert.AreEqual('TAktionFunc', mFound[0].Suggestion);
     // Vergebene Namen bekommen eine Zahl.
-    Found := TTypeAlias.Targets(UnitKunden, Tree, 'Kunden.pas', PositionOf(UnitKunden, 'TList<TKunde>;', 1),
+    mFound := TTypeAlias.Targets(cUnitKunden, mTree, 'Kunden.pas', PositionOf(cUnitKunden, 'TList<TKunde>;', 1),
       TTypeAliasLookup.FromTree);
-    Assert.AreEqual('TKundeAktive', Found[0].Suggestion);
+    Assert.AreEqual('TKundeAktive', mFound[0].Suggestion);
   finally
-    Tree.Free;
+    mTree.Free;
   end;
 end;
 
 procedure TTypeAliasTests.NoTargetForOpenArraysAndDeclarations;
 const
-  Source = 'unit U;'#10'interface'#10'type'#10'  TListe = TArray<string>;'#10 +
+  cSource = 'unit U;'#10'interface'#10'type'#10'  TListe = TArray<string>;'#10 +
     'procedure P(const A: array of Integer; B: Integer);'#10'implementation'#10 +
     'procedure P(const A: array of Integer; B: Integer); begin end;'#10'end.';
 var
-  Tree: TSyntaxTree;
+  mTree: TSyntaxTree;
 begin
-  Tree := TPascalParser.Parse(Source);
+  mTree := TPascalParser.Parse(cSource);
   try
-    Assert.AreEqual(0, Integer(Length(TTypeAlias.Targets(Source, Tree, 'U.pas', PositionOf(Source, 'TArray', 1),
+    Assert.AreEqual(0, Integer(Length(TTypeAlias.Targets(cSource, mTree, 'U.pas', PositionOf(cSource, 'TArray', 1),
       TTypeAliasLookup.FromTree))));
-    Assert.AreEqual(0, Integer(Length(TTypeAlias.Targets(Source, Tree, 'U.pas', PositionOf(Source, 'array of', 1),
+    Assert.AreEqual(0, Integer(Length(TTypeAlias.Targets(cSource, mTree, 'U.pas', PositionOf(cSource, 'array of', 1),
       TTypeAliasLookup.FromTree))));
-    Assert.AreEqual(0, Integer(Length(TTypeAlias.Targets(Source, Tree, 'U.pas', PositionOf(Source, 'Integer)', 1),
+    Assert.AreEqual(0, Integer(Length(TTypeAlias.Targets(cSource, mTree, 'U.pas', PositionOf(cSource, 'Integer)', 1),
       TTypeAliasLookup.FromTree))));
   finally
-    Tree.Free;
+    mTree.Free;
   end;
 end;
 
 procedure TTypeAliasTests.OpenGenericParamsAreRefused;
 const
-  Source = 'unit U;'#10'interface'#10'type'#10'  TBox<T> = class'#10'    FListe: TList<T>;'#10 +
+  cSource = 'unit U;'#10'interface'#10'type'#10'  TBox<T> = class'#10'    FListe: TList<T>;'#10 +
     '    FFest: TList<Integer>;'#10'  end;'#10'implementation'#10'end.';
 var
-  Tree: TSyntaxTree;
-  Found: TArray<TTypeAliasTarget>;
-  Outcome: TTypeAliasResult;
-  Reason: string;
+  mTree: TSyntaxTree;
+  mFound: TArray<TTypeAliasTarget>;
+  mOutcome: TTypeAliasResult;
+  mReason: string;
 begin
-  Tree := TPascalParser.Parse(Source);
+  mTree := TPascalParser.Parse(cSource);
   try
-    Found := TTypeAlias.Targets(Source, Tree, 'U.pas', PositionOf(Source, 'TList<T>', 1), TTypeAliasLookup.FromTree);
-    Assert.AreEqual(1, Integer(Length(Found)));
-    Assert.AreEqual('T', Found[0].OpenParams);
-    Assert.IsFalse(TTypeAlias.Introduce(TTypeAliasSource.Create('U.pas', Source, Tree), nil,
-      TTypeAliasRequest.Create(PositionOf(Source, 'TList<T>', 1), 'TListe', TTypeAliasScope.InUnit,
-      TTypeAliasLookup.FromTree), Outcome, Reason));
-    Assert.IsTrue(Pos('generischen Parameter T', Reason) > 0, Reason);
-    Found := TTypeAlias.Targets(Source, Tree, 'U.pas', PositionOf(Source, 'TList<Integer>', 1),
+    mFound := TTypeAlias.Targets(cSource, mTree, 'U.pas', PositionOf(cSource, 'TList<T>', 1), TTypeAliasLookup.FromTree);
+    Assert.AreEqual(1, Integer(Length(mFound)));
+    Assert.AreEqual('T', mFound[0].OpenParams);
+    Assert.IsFalse(TTypeAlias.Introduce(TTypeAliasSource.Create('U.pas', cSource, mTree), nil,
+      TTypeAliasRequest.Create(PositionOf(cSource, 'TList<T>', 1), 'TListe', TTypeAliasScope.InUnit,
+      TTypeAliasLookup.FromTree), mOutcome, mReason));
+    Assert.IsTrue(Pos('generischen Parameter T', mReason) > 0, mReason);
+    mFound := TTypeAlias.Targets(cSource, mTree, 'U.pas', PositionOf(cSource, 'TList<Integer>', 1),
       TTypeAliasLookup.FromTree);
-    Assert.AreEqual('', Found[0].OpenParams);
+    Assert.AreEqual('', mFound[0].OpenParams);
   finally
-    Tree.Free;
+    mTree.Free;
   end;
 end;
 
 procedure TTypeAliasTests.IntroduceReplacesInUnit;
 var
-  Outcome: TTypeAliasResult;
-  Reason, Text: string;
+  mOutcome: TTypeAliasResult;
+  mReason, mText: string;
 begin
-  Text := Introduce(UnitKunden, 'TList<TKunde>;', 'TKundenListe', TTypeAliasScope.InUnit, Outcome, Reason);
-  Assert.AreEqual('', Reason);
+  mText := Introduce(cUnitKunden, 'TList<TKunde>;', 'TKundenListe', TTypeAliasScope.InUnit, mOutcome, mReason);
+  Assert.AreEqual('', mReason);
   // Vor TVerwaltung, hinter TKunde; ersetzt in Feldern, im Ergebnis, im Typargument und bei qualifiziertem Namen.
-  Assert.IsTrue(Pos('  end;'#10'  TKundenListe = TList<TKunde>;'#10'  TVerwaltung = class', Text) > 0, Text);
-  Assert.AreEqual(5, Outcome.Places);
-  Assert.IsTrue(Pos('FGroups: TDictionary<string, TKundenListe>;', Text) > 0, Text);
-  Assert.IsTrue(Pos('FAktive: TKundenListe;', Text) > 0, Text);
-  Assert.IsTrue(Pos('function Liste: TKundenListe;', Text) > 0, Text);
-  Assert.IsTrue(Pos('L: TKundenListe;', Text) > 0, Text);
-  Assert.AreEqual(1, Count(Text, 'TList<TKunde>'));
-  Assert.IsTrue(Pos('zuweisungsverträglich', Outcome.Preview) > 0, Outcome.Preview);
+  Assert.IsTrue(Pos('  end;'#10'  TKundenListe = TList<TKunde>;'#10'  TVerwaltung = class', mText) > 0, mText);
+  Assert.AreEqual(5, mOutcome.Places);
+  Assert.IsTrue(Pos('FGroups: TDictionary<string, TKundenListe>;', mText) > 0, mText);
+  Assert.IsTrue(Pos('FAktive: TKundenListe;', mText) > 0, mText);
+  Assert.IsTrue(Pos('function Liste: TKundenListe;', mText) > 0, mText);
+  Assert.IsTrue(Pos('L: TKundenListe;', mText) > 0, mText);
+  Assert.AreEqual(1, Count(mText, 'TList<TKunde>'));
+  Assert.IsTrue(Pos('zuweisungsverträglich', mOutcome.Preview) > 0, mOutcome.Preview);
 end;
 
 procedure TTypeAliasTests.IntroduceHereOnly;
 var
-  Outcome: TTypeAliasResult;
-  Reason, Text: string;
+  mOutcome: TTypeAliasResult;
+  mReason, mText: string;
 begin
-  Text := Introduce(UnitKunden, 'TList<TKunde>;', 'TKundenListe', TTypeAliasScope.Here, Outcome, Reason);
-  Assert.AreEqual('', Reason);
-  Assert.AreEqual(1, Outcome.Places);
-  Assert.IsTrue(Pos('FAktive: TKundenListe;', Text) > 0, Text);
-  Assert.AreEqual(5, Count(Text, 'TList<TKunde>'));
+  mText := Introduce(cUnitKunden, 'TList<TKunde>;', 'TKundenListe', TTypeAliasScope.Here, mOutcome, mReason);
+  Assert.AreEqual('', mReason);
+  Assert.AreEqual(1, mOutcome.Places);
+  Assert.IsTrue(Pos('FAktive: TKundenListe;', mText) > 0, mText);
+  Assert.AreEqual(5, Count(mText, 'TList<TKunde>'));
 end;
 
 procedure TTypeAliasTests.SelfReferenceGetsForwardDeclaration;
 const
-  Source = 'unit U;'#10'interface'#10'type'#10'  TKnoten = class'#10'    FKinder: TList<TKnoten>;'#10'  end;'#10 +
+  cSource = 'unit U;'#10'interface'#10'type'#10'  TKnoten = class'#10'    FKinder: TList<TKnoten>;'#10'  end;'#10 +
     'implementation'#10'end.';
 var
-  Outcome: TTypeAliasResult;
-  Reason, Text: string;
+  mOutcome: TTypeAliasResult;
+  mReason, mText: string;
 begin
-  Text := Introduce(Source, 'TList', 'TKnotenListe', TTypeAliasScope.InUnit, Outcome, Reason);
-  Assert.AreEqual('', Reason);
+  mText := Introduce(cSource, 'TList', 'TKnotenListe', TTypeAliasScope.InUnit, mOutcome, mReason);
+  Assert.AreEqual('', mReason);
   Assert.IsTrue(Pos('type'#10'  TKnoten = class;'#10'  TKnotenListe = TList<TKnoten>;'#10'  TKnoten = class'#10 +
-    '    FKinder: TKnotenListe;', Text) > 0, Text);
-  Assert.AreEqual(1, Integer(Length(Outcome.Warnings)));
+    '    FKinder: TKnotenListe;', mText) > 0, mText);
+  Assert.AreEqual(1, Integer(Length(mOutcome.Warnings)));
 end;
 
 procedure TTypeAliasTests.NewTypeSectionBeforeVar;
 const
-  Source = 'unit U;'#10'interface'#10'implementation'#10'uses System.SysUtils;'#10'var'#10 +
+  cSource = 'unit U;'#10'interface'#10'implementation'#10'uses System.SysUtils;'#10'var'#10 +
     '  G: TArray<string>;'#10'  H: TArray<string>;'#10'end.';
 var
-  Outcome: TTypeAliasResult;
-  Reason, Text: string;
-  Tree: TSyntaxTree;
-  Found: TArray<TTypeAliasTarget>;
+  mOutcome: TTypeAliasResult;
+  mReason, mText: string;
+  mTree: TSyntaxTree;
+  mFound: TArray<TTypeAliasTarget>;
 begin
-  Tree := TPascalParser.Parse(Source);
+  mTree := TPascalParser.Parse(cSource);
   try
-    Found := TTypeAlias.Targets(Source, Tree, 'U.pas', PositionOf(Source, 'TArray', 1), TTypeAliasLookup.FromTree);
-    Assert.AreEqual('TStringArray', Found[0].Suggestion);
+    mFound := TTypeAlias.Targets(cSource, mTree, 'U.pas', PositionOf(cSource, 'TArray', 1), TTypeAliasLookup.FromTree);
+    Assert.AreEqual('TStringArray', mFound[0].Suggestion);
   finally
-    Tree.Free;
+    mTree.Free;
   end;
-  Text := Introduce(Source, 'TArray', 'TStringArray', TTypeAliasScope.InUnit, Outcome, Reason);
-  Assert.AreEqual('', Reason);
+  mText := Introduce(cSource, 'TArray', 'TStringArray', TTypeAliasScope.InUnit, mOutcome, mReason);
+  Assert.AreEqual('', mReason);
   Assert.AreEqual('unit U;'#10'interface'#10'implementation'#10'uses System.SysUtils;'#10'type'#10 +
-    '  TStringArray = TArray<string>;'#10#10'var'#10'  G: TStringArray;'#10'  H: TStringArray;'#10'end.', Text);
+    '  TStringArray = TArray<string>;'#10#10'var'#10'  G: TStringArray;'#10'  H: TStringArray;'#10'end.', mText);
 end;
 
 procedure TTypeAliasTests.TakenNameIsRefused;
 var
-  Outcome: TTypeAliasResult;
-  Reason: string;
+  mOutcome: TTypeAliasResult;
+  mReason: string;
 begin
-  Assert.AreEqual('', Introduce(UnitKunden, 'TList<TKunde>;', 'TKunde', TTypeAliasScope.InUnit, Outcome, Reason));
-  Assert.IsTrue(Pos('schon vergeben', Reason) > 0, Reason);
-  Assert.AreEqual('', Introduce(UnitKunden, 'TList<TKunde>;', 'begin', TTypeAliasScope.InUnit, Outcome, Reason));
-  Assert.IsTrue(Pos('kein gültiger Bezeichner', Reason) > 0, Reason);
+  Assert.AreEqual('', Introduce(cUnitKunden, 'TList<TKunde>;', 'TKunde', TTypeAliasScope.InUnit, mOutcome, mReason));
+  Assert.IsTrue(Pos('schon vergeben', mReason) > 0, mReason);
+  Assert.AreEqual('', Introduce(cUnitKunden, 'TList<TKunde>;', 'begin', TTypeAliasScope.InUnit, mOutcome, mReason));
+  Assert.IsTrue(Pos('kein gültiger Bezeichner', mReason) > 0, mReason);
 end;
 
 procedure TTypeAliasTests.IntroduceAcrossProject;
 const
-  Nutzer = 'unit Nutzer;'#10'interface'#10'uses Kunden, System.Generics.Collections;'#10'var'#10 +
+  cNutzer = 'unit Nutzer;'#10'interface'#10'uses Kunden, System.Generics.Collections;'#10'var'#10 +
     '  X: TList<TKunde>;'#10'implementation'#10'end.';
-  Fremd = 'unit Fremd;'#10'interface'#10'uses System.Generics.Collections;'#10'type'#10'  TKunde = class end;'#10 +
+  cFremd = 'unit Fremd;'#10'interface'#10'uses System.Generics.Collections;'#10'type'#10'  TKunde = class end;'#10 +
     'var'#10'  Y: TList<TKunde>;'#10'implementation'#10'end.';
 var
-  Tree, NutzerTree, FremdTree: TSyntaxTree;
-  Outcome: TTypeAliasResult;
-  Reason: string;
+  mTree, mNutzerTree, mFremdTree: TSyntaxTree;
+  mOutcome: TTypeAliasResult;
+  mReason: string;
 begin
-  Tree := TPascalParser.Parse(UnitKunden);
-  NutzerTree := TPascalParser.Parse(Nutzer);
-  FremdTree := TPascalParser.Parse(Fremd);
+  mTree := TPascalParser.Parse(cUnitKunden);
+  mNutzerTree := TPascalParser.Parse(cNutzer);
+  mFremdTree := TPascalParser.Parse(cFremd);
   try
-    Assert.IsTrue(TTypeAlias.Introduce(TTypeAliasSource.Create('Kunden.pas', UnitKunden, Tree),
-      [TTypeAliasSource.Create('Nutzer.pas', Nutzer, NutzerTree), TTypeAliasSource.Create('Fremd.pas', Fremd,
-      FremdTree)], TTypeAliasRequest.Create(PositionOf(UnitKunden, 'TList<TKunde>;', 1), 'TKundenListe',
-      TTypeAliasScope.Project, TTypeAliasLookup.FromTree), Outcome, Reason), Reason);
-    Assert.AreEqual(6, Outcome.Places);
-    Assert.IsTrue(Pos('X: TKundenListe;', TChangeSignature.ApplyEdits(Nutzer, EditsOf(Outcome, 'Nutzer.pas'))) > 0);
+    Assert.IsTrue(TTypeAlias.Introduce(TTypeAliasSource.Create('Kunden.pas', cUnitKunden, mTree),
+      [TTypeAliasSource.Create('Nutzer.pas', cNutzer, mNutzerTree), TTypeAliasSource.Create('Fremd.pas', cFremd,
+      mFremdTree)], TTypeAliasRequest.Create(PositionOf(cUnitKunden, 'TList<TKunde>;', 1), 'TKundenListe',
+      TTypeAliasScope.Project, TTypeAliasLookup.FromTree), mOutcome, mReason), mReason);
+    Assert.AreEqual(6, mOutcome.Places);
+    Assert.IsTrue(Pos('X: TKundenListe;', TChangeSignature.ApplyEdits(cNutzer, EditsOf(mOutcome, 'Nutzer.pas'))) > 0);
     // Fremd bindet Kunden nicht ein und deklariert TKunde selbst.
-    Assert.AreEqual(0, Integer(Length(EditsOf(Outcome, 'Fremd.pas'))));
-    Assert.AreEqual(1, Integer(Length(Outcome.Warnings)));
+    Assert.AreEqual(0, Integer(Length(EditsOf(mOutcome, 'Fremd.pas'))));
+    Assert.AreEqual(1, Integer(Length(mOutcome.Warnings)));
   finally
-    FremdTree.Free;
-    NutzerTree.Free;
-    Tree.Free;
+    mFremdTree.Free;
+    mNutzerTree.Free;
+    mTree.Free;
   end;
 end;
 
 procedure TTypeAliasTests.InlineReplacesAndRemoves;
 const
-  Source = 'unit U;'#10'interface'#10'uses System.Generics.Collections;'#10'type'#10'  TKunde = class end;'#10 +
+  cSource = 'unit U;'#10'interface'#10'uses System.Generics.Collections;'#10'type'#10'  TKunde = class end;'#10 +
     '  TListe = TList<TKunde>;'#10'  TVerwaltung = class'#10'    FListe: TListe;'#10 +
     '    procedure Setze(const A: TListe);'#10'  end;'#10'implementation'#10 +
     'procedure TVerwaltung.Setze(const A: TListe);'#10'begin'#10'  FListe := TListe.Create;'#10'  FListe := U.TListe.Create;'#10'end;'#10'end.';
 var
-  Tree: TSyntaxTree;
-  Outcome: TTypeAliasResult;
-  Reason, Text: string;
-  Offsets: TArray<Integer>;
-  Index: Integer;
+  mTree: TSyntaxTree;
+  mOutcome: TTypeAliasResult;
+  mReason, mText: string;
+  mOffsets: TArray<Integer>;
+  mIndex: Integer;
 begin
-  Tree := TPascalParser.Parse(Source);
+  mTree := TPascalParser.Parse(cSource);
   try
-    Offsets := nil;
-    Index := PosEx('TListe', Source, 1);
-    while Index > 0 do
+    mOffsets := nil;
+    mIndex := PosEx('TListe', cSource, 1);
+    while mIndex > 0 do
     begin
-      Offsets := Offsets + [Index - 1];
-      Index := PosEx('TListe', Source, Index + 1);
+      mOffsets := mOffsets + [mIndex - 1];
+      mIndex := PosEx('TListe', cSource, mIndex + 1);
     end;
-    Assert.IsTrue(TTypeAlias.InlineAlias(TTypeAliasSource.Create('U.pas', Source, Tree, Offsets), nil,
-      PositionOf(Source, 'TListe =', 1), TTypeAliasLookup.FromTree, Outcome, Reason), Reason);
-    Text := TChangeSignature.ApplyEdits(Source, EditsOf(Outcome, 'U.pas'));
-    Assert.AreEqual(5, Outcome.Places);
-    Assert.AreEqual(0, Count(Text, 'TListe'));
-    Assert.AreEqual(2, Count(Text, 'FListe := TList<TKunde>.Create;'));
-    Assert.IsTrue(Pos('FListe: TList<TKunde>;', Text) > 0, Text);
-    Assert.IsTrue(Pos('const A: TList<TKunde>', Text) > 0, Text);
-    Assert.IsTrue(Pos('FListe := TList<TKunde>.Create;', Text) > 0, Text);
-    Assert.IsTrue(Pos('  TKunde = class end;'#10'  TVerwaltung = class', Text) > 0, Text);
+    Assert.IsTrue(TTypeAlias.InlineAlias(TTypeAliasSource.Create('U.pas', cSource, mTree, mOffsets), nil,
+      PositionOf(cSource, 'TListe =', 1), TTypeAliasLookup.FromTree, mOutcome, mReason), mReason);
+    mText := TChangeSignature.ApplyEdits(cSource, EditsOf(mOutcome, 'U.pas'));
+    Assert.AreEqual(5, mOutcome.Places);
+    Assert.AreEqual(0, Count(mText, 'TListe'));
+    Assert.AreEqual(2, Count(mText, 'FListe := TList<TKunde>.Create;'));
+    Assert.IsTrue(Pos('FListe: TList<TKunde>;', mText) > 0, mText);
+    Assert.IsTrue(Pos('const A: TList<TKunde>', mText) > 0, mText);
+    Assert.IsTrue(Pos('FListe := TList<TKunde>.Create;', mText) > 0, mText);
+    Assert.IsTrue(Pos('  TKunde = class end;'#10'  TVerwaltung = class', mText) > 0, mText);
   finally
-    Tree.Free;
+    mTree.Free;
   end;
 end;
 
 procedure TTypeAliasTests.InlineKeepsAliasWhereTypeNameNeeded;
 const
-  Source = 'unit U;'#10'interface'#10'type'#10'  TWerte = array of Double;'#10'var'#10'  W: TWerte;'#10 +
+  cSource = 'unit U;'#10'interface'#10'type'#10'  TWerte = array of Double;'#10'var'#10'  W: TWerte;'#10 +
     'procedure P(const A: TWerte);'#10'implementation'#10'procedure P(const A: TWerte); begin end;'#10'end.';
 var
-  Tree: TSyntaxTree;
-  Outcome: TTypeAliasResult;
-  Reason, Text: string;
+  mTree: TSyntaxTree;
+  mOutcome: TTypeAliasResult;
+  mReason, mText: string;
 begin
-  Tree := TPascalParser.Parse(Source);
+  mTree := TPascalParser.Parse(cSource);
   try
-    Assert.IsTrue(TTypeAlias.InlineAlias(TTypeAliasSource.Create('U.pas', Source, Tree,
-      [PosEx('TWerte', Source, 1) - 1, PosEx('TWerte;', Source, 1) - 1, PosEx('TWerte)', Source, 1) - 1,
-      PosEx('TWerte)', Source, PosEx('TWerte)', Source, 1) + 1) - 1]), nil, PositionOf(Source, 'TWerte =', 1),
-      TTypeAliasLookup.FromTree, Outcome, Reason), Reason);
-    Text := TChangeSignature.ApplyEdits(Source, EditsOf(Outcome, 'U.pas'));
-    Assert.AreEqual(1, Outcome.Places);
-    Assert.IsTrue(Pos('W: array of Double;', Text) > 0, Text);
-    Assert.IsTrue(Pos('TWerte = array of Double;', Text) > 0, Text);
-    Assert.AreEqual(1, Integer(Length(Outcome.Warnings)));
+    Assert.IsTrue(TTypeAlias.InlineAlias(TTypeAliasSource.Create('U.pas', cSource, mTree,
+      [PosEx('TWerte', cSource, 1) - 1, PosEx('TWerte;', cSource, 1) - 1, PosEx('TWerte)', cSource, 1) - 1,
+      PosEx('TWerte)', cSource, PosEx('TWerte)', cSource, 1) + 1) - 1]), nil, PositionOf(cSource, 'TWerte =', 1),
+      TTypeAliasLookup.FromTree, mOutcome, mReason), mReason);
+    mText := TChangeSignature.ApplyEdits(cSource, EditsOf(mOutcome, 'U.pas'));
+    Assert.AreEqual(1, mOutcome.Places);
+    Assert.IsTrue(Pos('W: array of Double;', mText) > 0, mText);
+    Assert.IsTrue(Pos('TWerte = array of Double;', mText) > 0, mText);
+    Assert.AreEqual(1, Integer(Length(mOutcome.Warnings)));
   finally
-    Tree.Free;
+    mTree.Free;
   end;
 end;
 
 procedure TTypeAliasTests.InlineRefusesStrongAlias;
 const
-  Source = 'unit U;'#10'interface'#10'type'#10'  TNeu = type Integer;'#10'  TKlasse = class end;'#10 +
+  cSource = 'unit U;'#10'interface'#10'type'#10'  TNeu = type Integer;'#10'  TKlasse = class end;'#10 +
     'implementation'#10'end.';
 var
-  Tree: TSyntaxTree;
-  Target: TInlineAliasTarget;
-  Reason: string;
+  mTree: TSyntaxTree;
+  mTarget: TInlineAliasTarget;
+  mReason: string;
 begin
-  Tree := TPascalParser.Parse(Source);
+  mTree := TPascalParser.Parse(cSource);
   try
-    Assert.IsFalse(TTypeAlias.InlineTarget(Source, Tree, PositionOf(Source, 'TNeu', 1), Target, Reason));
-    Assert.IsTrue(Pos('eigener Typ', Reason) > 0, Reason);
-    Assert.IsFalse(TTypeAlias.InlineTarget(Source, Tree, PositionOf(Source, 'TKlasse', 1), Target, Reason));
-    Assert.IsTrue(Pos('kein Alias', Reason) > 0, Reason);
+    Assert.IsFalse(TTypeAlias.InlineTarget(cSource, mTree, PositionOf(cSource, 'TNeu', 1), mTarget, mReason));
+    Assert.IsTrue(Pos('eigener Typ', mReason) > 0, mReason);
+    Assert.IsFalse(TTypeAlias.InlineTarget(cSource, mTree, PositionOf(cSource, 'TKlasse', 1), mTarget, mReason));
+    Assert.IsTrue(Pos('kein Alias', mReason) > 0, mReason);
   finally
-    Tree.Free;
+    mTree.Free;
   end;
 end;
 
 procedure TTypeAliasTests.ScopeNames;
 var
-  Scope: TTypeAliasScope;
+  mScope: TTypeAliasScope;
 begin
-  Assert.IsTrue(TTypeAlias.ScopeOf('project', Scope));
-  Assert.AreEqual<TTypeAliasScope>(TTypeAliasScope.Project, Scope);
+  Assert.IsTrue(TTypeAlias.ScopeOf('project', mScope));
+  Assert.AreEqual<TTypeAliasScope>(TTypeAliasScope.Project, mScope);
   Assert.AreEqual('here', TTypeAlias.ScopeName(TTypeAliasScope.Here));
   Assert.AreEqual('unit', TTypeAlias.ScopeName(TTypeAliasScope.InUnit));
-  Assert.IsFalse(TTypeAlias.ScopeOf('alles', Scope));
+  Assert.IsFalse(TTypeAlias.ScopeOf('alles', mScope));
 end;
 
 initialization

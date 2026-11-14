@@ -31,7 +31,7 @@ uses
 
 procedure TAtlasLspAccessChainsTests.ParsesServerAnswer;
 const
-  Answer =
+  cAnswer =
     '{"statements":2,"chains":[{"text":"Auftrag.Kunde.Adresse","links":[' +
     '{"expression":"Auftrag","name":"Auftrag","kind":"class","typeName":"TAuftrag","member":"Kunde",' +
     '"range":{"start":{"line":40,"character":2},"end":{"line":40,"character":9}},' +
@@ -42,46 +42,46 @@ const
     '"implicitSelf":true,"index":"I","indexPlain":true,"member":"[]"}]},' +
     '{"text":"leer","links":[]}]}';
 var
-  Value: TJSONValue;
-  Parsed: TAtlasAvChains;
+  mValue: TJSONValue;
+  mParsed: TAtlasAvChains;
 begin
-  Value := TJSONObject.ParseJSONValue(Answer);
+  mValue := TJSONObject.ParseJSONValue(cAnswer);
   try
-    Parsed := TAtlasAvJson.Parse(Value);
+    mParsed := TAtlasAvJson.Parse(mValue);
   finally
-    Value.Free;
+    mValue.Free;
   end;
-  Assert.IsTrue(Parsed.Found);
-  Assert.AreEqual(2, Parsed.Statements);
-  Assert.AreEqual(2, Integer(Length(Parsed.Chains)));
-  Assert.AreEqual('Auftrag.Kunde.Adresse', Parsed.Chains[0].Text);
-  Assert.AreEqual(2, Integer(Length(Parsed.Chains[0].Links)));
-  Assert.AreEqual<TAtlasAvLinkKind>(TAtlasAvLinkKind.ClassRef, Parsed.Chains[0].Links[0].Kind);
-  Assert.AreEqual(40, Parsed.Chains[0].Links[0].StartLine);
-  Assert.AreEqual(9, Parsed.Chains[0].Links[0].EndCharacter);
-  Assert.AreEqual(2, Parsed.Chains[0].Links[0].NameCharacter);
-  Assert.IsTrue(Parsed.Chains[0].Links[1].Call);
-  Assert.AreEqual('TKunde', Parsed.Chains[0].Links[1].TypeName);
-  Assert.AreEqual(2, Integer(Length(Parsed.Chains[0].Links[1].Fields)));
-  Assert.AreEqual(-1, Parsed.Chains[0].Links[1].Fields[1].Offset);
-  Assert.AreEqual<TAtlasAvLinkKind>(TAtlasAvLinkKind.DynArray, Parsed.Chains[1].Links[0].Kind);
-  Assert.IsTrue(Parsed.Chains[1].Links[0].ImplicitSelf);
-  Assert.AreEqual('I', Parsed.Chains[1].Links[0].IndexText);
-  Assert.IsTrue(Parsed.Chains[1].Links[0].IndexPlain);
+  Assert.IsTrue(mParsed.Found);
+  Assert.AreEqual(2, mParsed.Statements);
+  Assert.AreEqual(2, Integer(Length(mParsed.Chains)));
+  Assert.AreEqual('Auftrag.Kunde.Adresse', mParsed.Chains[0].Text);
+  Assert.AreEqual(2, Integer(Length(mParsed.Chains[0].Links)));
+  Assert.AreEqual<TAtlasAvLinkKind>(TAtlasAvLinkKind.ClassRef, mParsed.Chains[0].Links[0].Kind);
+  Assert.AreEqual(40, mParsed.Chains[0].Links[0].StartLine);
+  Assert.AreEqual(9, mParsed.Chains[0].Links[0].EndCharacter);
+  Assert.AreEqual(2, mParsed.Chains[0].Links[0].NameCharacter);
+  Assert.IsTrue(mParsed.Chains[0].Links[1].Call);
+  Assert.AreEqual('TKunde', mParsed.Chains[0].Links[1].TypeName);
+  Assert.AreEqual(2, Integer(Length(mParsed.Chains[0].Links[1].Fields)));
+  Assert.AreEqual(-1, mParsed.Chains[0].Links[1].Fields[1].Offset);
+  Assert.AreEqual<TAtlasAvLinkKind>(TAtlasAvLinkKind.DynArray, mParsed.Chains[1].Links[0].Kind);
+  Assert.IsTrue(mParsed.Chains[1].Links[0].ImplicitSelf);
+  Assert.AreEqual('I', mParsed.Chains[1].Links[0].IndexText);
+  Assert.IsTrue(mParsed.Chains[1].Links[0].IndexPlain);
   Assert.IsFalse(TAtlasAvJson.Parse(nil).Found);
 end;
 
 procedure TAtlasLspAccessChainsTests.ParamsCarryUriLineAndPointerSize;
 var
-  Params: TJSONObject;
+  mParams: TJSONObject;
 begin
-  Params := TAtlasAvJson.Params('C:\P\Haupt.pas', 40, 8);
+  mParams := TAtlasAvJson.Params('C:\P\Haupt.pas', 40, 8);
   try
-    Assert.AreEqual('file:///c%3A/P/Haupt.pas', Params.GetValue<string>('textDocument.uri'));
-    Assert.AreEqual(40, Params.GetValue<Integer>('line'));
-    Assert.AreEqual(8, Params.GetValue<Integer>('pointerSize'));
+    Assert.AreEqual('file:///c%3A/P/Haupt.pas', mParams.GetValue<string>('textDocument.uri'));
+    Assert.AreEqual(40, mParams.GetValue<Integer>('line'));
+    Assert.AreEqual(8, mParams.GetValue<Integer>('pointerSize'));
   finally
-    Params.Free;
+    mParams.Free;
   end;
 end;
 

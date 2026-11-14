@@ -19,8 +19,9 @@ type
     function CheckAt(const AMarker: string; const AFiles: TArray<string>): TRenameCheck;
     function EditsAt(const AMarker, ANewName: string): TArray<TRenameEdit>;
     function KundeError(const AMarker, ANewName: string): string;
+    function FormEdits(const AMarker, ANewName: string; AHandlers: Boolean): TArray<TRenameEdit>; overload;
     function FormEdits(const AMarker, ANewName: string; AHandlers: Boolean;
-      AFmx: Boolean = False): TArray<TRenameEdit>;
+      AFmx: Boolean): TArray<TRenameEdit>; overload;
   public
     [Setup]
     procedure Setup;
@@ -72,11 +73,11 @@ uses
   Atlas.Common.Lsp.References;
 
 const
-  WerkzeugFile = 'C:\P\Werkzeug.pas';
-  WerkzeugDfm = 'C:\P\Werkzeug.dfm';
-  HauptFile = 'C:\P\Haupt.pas';
+  cWerkzeugFile = 'C:\P\Werkzeug.pas';
+  cWerkzeugDfm = 'C:\P\Werkzeug.dfm';
+  cHauptFile = 'C:\P\Haupt.pas';
 
-  UnitWerkzeug =
+  cUnitWerkzeug =
     'unit Werkzeug;'#10 +                            // 0
     'interface'#10 +                                 // 1
     'type'#10 +                                      // 2
@@ -91,7 +92,7 @@ const
     'end;'#10 +                                      // 11
     'end.';
 
-  FormWerkzeug =
+  cFormWerkzeug =
     'object Rechner: TRechner'#10 +
     '  OnSumme = Summe'#10 +
     '  object Summe: TButton'#10 +
@@ -99,7 +100,7 @@ const
     '  end'#10 +
     'end';
 
-  UnitHaupt =
+  cUnitHaupt =
     'unit Haupt;'#10 +                               // 0
     'interface'#10 +                                 // 1
     'uses Werkzeug;'#10 +                            // 2
@@ -113,12 +114,12 @@ const
     'end;'#10 +                                      // 10
     'end.';
 
-  MaskeFile = 'C:\P\Maske.pas';
-  MaskeDfm = 'C:\P\Maske.dfm';
-  MaskeFmx = 'C:\P\Maske.fmx';
-  MaskeWindowsFmx = 'C:\P\Maske.Windows.fmx';
+  cMaskeFile = 'C:\P\Maske.pas';
+  cMaskeDfm = 'C:\P\Maske.dfm';
+  cMaskeFmx = 'C:\P\Maske.fmx';
+  cMaskeWindowsFmx = 'C:\P\Maske.Windows.fmx';
 
-  UnitMaske =
+  cUnitMaske =
     'unit Maske;'#10 +                               // 0
     'interface'#10 +                                 // 1
     'type'#10 +                                      // 2
@@ -137,7 +138,7 @@ const
     'end;'#10 +                                      // 15
     'end.';
 
-  FormMaske =
+  cFormMaske =
     'object Maske: TMaske'#10 +
     '  object Button1: TButton'#10 +
     '    OnClick = Button1Click'#10 +
@@ -145,10 +146,10 @@ const
     '  end'#10 +
     'end';
 
-  KundeFile = 'C:\P\Kunde.pas';
+  cKundeFile = 'C:\P\Kunde.pas';
 
   // Feld und Parameter bzw. lokale Variable mit gleichem Namen.
-  UnitKunde =
+  cUnitKunde =
     'unit Kunde;'#10 +                               // 0
     'interface'#10 +                                 // 1
     'type'#10 +                                      // 2
@@ -179,24 +180,24 @@ const
 
 function PositionOf(const AText, AMarker: string): TTextPosition;
 var
-  Index, Line, LineStart, I: Integer;
+  mIndex, mLine, mLineStart, I: Integer;
 begin
-  Index := Pos(AMarker, AText);
-  if Index = 0 then
+  mIndex := Pos(AMarker, AText);
+  if mIndex = 0 then
   begin
     raise Exception.CreateFmt('"%s" nicht gefunden', [AMarker]);
   end;
-  Line := 0;
-  LineStart := 1;
-  for I := 1 to Index - 1 do
+  mLine := 0;
+  mLineStart := 1;
+  for I := 1 to mIndex - 1 do
   begin
     if AText[I] = #10 then
     begin
-      Inc(Line);
-      LineStart := I + 1;
+      Inc(mLine);
+      mLineStart := I + 1;
     end;
   end;
-  Result := TTextPosition.Create(Line, Index - LineStart);
+  Result := TTextPosition.Create(mLine, mIndex - mLineStart);
 end;
 
 { TLspRenameTests }
@@ -204,7 +205,7 @@ end;
 procedure TLspRenameTests.Setup;
 begin
   FIndex := TSymbolIndex.Create;
-  FIndex.AddUnit(TIndexExtractor.ExtractText(UnitWerkzeug, WerkzeugFile, nil));
+  FIndex.AddUnit(TIndexExtractor.ExtractText(cUnitWerkzeug, cWerkzeugFile, nil));
   FResolver := TNameResolver.Create(FIndex);
 end;
 
@@ -216,34 +217,34 @@ end;
 
 function TLspRenameTests.CheckAt(const AMarker: string; const AFiles: TArray<string>): TRenameCheck;
 var
-  Tree: TSyntaxTree;
+  mTree: TSyntaxTree;
 begin
-  Tree := TPascalParser.Parse(UnitHaupt);
+  mTree := TPascalParser.Parse(cUnitHaupt);
   try
-    Result := TLspRename.Check(FResolver, FIndex, Tree, HauptFile, PositionOf(UnitHaupt, AMarker), AFiles);
+    Result := TLspRename.Check(FResolver, FIndex, mTree, cHauptFile, PositionOf(cUnitHaupt, AMarker), AFiles);
   finally
-    Tree.Free;
+    mTree.Free;
   end;
 end;
 
 function TLspRenameTests.EditsAt(const AMarker, ANewName: string): TArray<TRenameEdit>;
 var
-  Tree: TSyntaxTree;
+  mTree: TSyntaxTree;
 begin
-  Tree := TPascalParser.Parse(UnitHaupt);
+  mTree := TPascalParser.Parse(cUnitHaupt);
   try
-    Result := TLspRename.Edits(FResolver, FIndex, Tree, TReferenceSearch.Create(HauptFile,
-      PositionOf(UnitHaupt, AMarker), True, [WerkzeugFile, HauptFile],
+    Result := TLspRename.Edits(FResolver, FIndex, mTree, TReferenceSearch.Create(cHauptFile,
+      PositionOf(cUnitHaupt, AMarker), True, [cWerkzeugFile, cHauptFile],
       function(const AFileName: string; out AText: string): Boolean
       begin
         Result := True;
-        if SameText(AFileName, WerkzeugFile) then
+        if SameText(AFileName, cWerkzeugFile) then
         begin
-          AText := UnitWerkzeug;
+          AText := cUnitWerkzeug;
         end
-        else if SameText(AFileName, WerkzeugDfm) then
+        else if SameText(AFileName, cWerkzeugDfm) then
         begin
-          AText := FormWerkzeug;
+          AText := cFormWerkzeug;
         end
         else
         begin
@@ -251,31 +252,31 @@ begin
         end;
       end), ANewName);
   finally
-    Tree.Free;
+    mTree.Free;
   end;
 end;
 
 function TLspRenameTests.KundeError(const AMarker, ANewName: string): string;
 var
-  Index: ISymbolIndex;
-  Resolver: TNameResolver;
-  Tree: TSyntaxTree;
+  mIndex: ISymbolIndex;
+  mResolver: TNameResolver;
+  mTree: TSyntaxTree;
 begin
-  Index := TSymbolIndex.Create;
-  Index.AddUnit(TIndexExtractor.ExtractText(UnitKunde, KundeFile, nil));
-  Resolver := TNameResolver.Create(Index);
-  Tree := TPascalParser.Parse(UnitKunde);
+  mIndex := TSymbolIndex.Create;
+  mIndex.AddUnit(TIndexExtractor.ExtractText(cUnitKunde, cKundeFile, nil));
+  mResolver := TNameResolver.Create(mIndex);
+  mTree := TPascalParser.Parse(cUnitKunde);
   try
     Result := '';
     try
-      TLspRename.Edits(Resolver, Index, Tree, TReferenceSearch.Create(KundeFile, PositionOf(UnitKunde, AMarker),
-        True, [KundeFile],
+      TLspRename.Edits(mResolver, mIndex, mTree, TReferenceSearch.Create(cKundeFile, PositionOf(cUnitKunde, AMarker),
+        True, [cKundeFile],
         function(const AFileName: string; out AText: string): Boolean
         begin
-          Result := SameText(AFileName, KundeFile);
+          Result := SameText(AFileName, cKundeFile);
           if Result then
           begin
-            AText := UnitKunde;
+            AText := cUnitKunde;
           end;
         end), ANewName);
     except
@@ -283,48 +284,53 @@ begin
         Result := E.Message;
     end;
   finally
-    Tree.Free;
-    Resolver.Free;
+    mTree.Free;
+    mResolver.Free;
   end;
+end;
+
+function TLspRenameTests.FormEdits(const AMarker, ANewName: string; AHandlers: Boolean): TArray<TRenameEdit>;
+begin
+  Result := FormEdits(AMarker, ANewName, AHandlers, False);
 end;
 
 function TLspRenameTests.FormEdits(const AMarker, ANewName: string; AHandlers: Boolean;
 
   AFmx: Boolean): TArray<TRenameEdit>;
 var
-  Index: ISymbolIndex;
-  Resolver: TNameResolver;
-  Tree: TSyntaxTree;
-  UnitText: string;
+  mIndex: ISymbolIndex;
+  mResolver: TNameResolver;
+  mTree: TSyntaxTree;
+  mUnitText: string;
 begin
   // FMX (#87): Formular und Plattformansicht über die {$R}-Direktiven der Unit.
-  UnitText := UnitMaske;
+  mUnitText := cUnitMaske;
   if AFmx then
   begin
-    UnitText := StringReplace(UnitText, 'implementation'#10,
+    mUnitText := StringReplace(mUnitText, 'implementation'#10,
       'implementation'#10'{$R *.fmx}'#10'{$R *.Windows.fmx MSWINDOWS}'#10, []);
   end;
-  Index := TSymbolIndex.Create;
-  Index.AddUnit(TIndexExtractor.ExtractText(UnitText, MaskeFile, nil));
-  Resolver := TNameResolver.Create(Index);
-  Tree := TPascalParser.Parse(UnitText);
+  mIndex := TSymbolIndex.Create;
+  mIndex.AddUnit(TIndexExtractor.ExtractText(mUnitText, cMaskeFile, nil));
+  mResolver := TNameResolver.Create(mIndex);
+  mTree := TPascalParser.Parse(mUnitText);
   try
-    Result := TLspRename.Edits(Resolver, Index, Tree, TReferenceSearch.Create(MaskeFile,
-      PositionOf(UnitText, AMarker), True, [MaskeFile],
+    Result := TLspRename.Edits(mResolver, mIndex, mTree, TReferenceSearch.Create(cMaskeFile,
+      PositionOf(mUnitText, AMarker), True, [cMaskeFile],
       function(const AFileName: string; out AText: string): Boolean
       begin
         Result := True;
-        if SameText(AFileName, MaskeFile) then
+        if SameText(AFileName, cMaskeFile) then
         begin
-          AText := UnitText;
+          AText := mUnitText;
         end
-        else if not AFmx and SameText(AFileName, MaskeDfm) then
+        else if not AFmx and SameText(AFileName, cMaskeDfm) then
         begin
-          AText := FormMaske;
+          AText := cFormMaske;
         end
-        else if AFmx and (SameText(AFileName, MaskeFmx) or SameText(AFileName, MaskeWindowsFmx)) then
+        else if AFmx and (SameText(AFileName, cMaskeFmx) or SameText(AFileName, cMaskeWindowsFmx)) then
         begin
-          AText := FormMaske;
+          AText := cFormMaske;
         end
         else
         begin
@@ -332,8 +338,8 @@ begin
         end;
       end), TRenameRequest.Create(ANewName, AHandlers, TReferenceSettings.SureOnly, nil));
   finally
-    Tree.Free;
-    Resolver.Free;
+    mTree.Free;
+    mResolver.Free;
   end;
 end;
 
@@ -350,187 +356,187 @@ end;
 
 procedure TLspRenameTests.PrepareReturnsNameAndRange;
 var
-  Checked: TRenameCheck;
+  mChecked: TRenameCheck;
 begin
-  Checked := CheckAt('Summe(1', [WerkzeugFile]);
-  Assert.AreEqual('', Checked.Error);
-  Assert.AreEqual('Summe', Checked.Name);
-  Assert.AreEqual(8, Checked.Range.StartPos.Line);
-  Assert.AreEqual(4, Checked.Range.StartPos.Character);
-  Assert.AreEqual(9, Checked.Range.EndPos.Character);
+  mChecked := CheckAt('Summe(1', [cWerkzeugFile]);
+  Assert.AreEqual('', mChecked.Error);
+  Assert.AreEqual('Summe', mChecked.Name);
+  Assert.AreEqual(8, mChecked.Range.StartPos.Line);
+  Assert.AreEqual(4, mChecked.Range.StartPos.Character);
+  Assert.AreEqual(9, mChecked.Range.EndPos.Character);
 end;
 
 procedure TLspRenameTests.RejectsSymbolsOutsideProject;
 begin
   // Werkzeug.pas gehört hier nicht zum Projekt, wie eine Bibliotheks-Unit.
   Assert.IsTrue(Pos('außerhalb des Projekts', CheckAt('Summe(1', []).Error) > 0);
-  Assert.AreNotEqual('', CheckAt('begin', [WerkzeugFile]).Error);
+  Assert.AreNotEqual('', CheckAt('begin', [cWerkzeugFile]).Error);
 end;
 
 procedure TLspRenameTests.RejectsUnitNames;
 begin
-  Assert.IsTrue(Pos('Dateinamen', CheckAt('Werkzeug;', [WerkzeugFile]).Error) > 0);
+  Assert.IsTrue(Pos('Dateinamen', CheckAt('Werkzeug;', [cWerkzeugFile]).Error) > 0);
 end;
 
 procedure TLspRenameTests.RenamesAcrossUnitsAndForm;
 var
-  Found: TArray<TRenameEdit>;
-  Edit: TRenameEdit;
-  Haupt, Werkzeug, Form: Integer;
+  mFound: TArray<TRenameEdit>;
+  mEdit: TRenameEdit;
+  mHaupt, mWerkzeug, mForm: Integer;
 begin
-  Found := EditsAt('Summe(1', 'Addiere');
-  Haupt := 0;
-  Werkzeug := 0;
-  Form := 0;
-  for Edit in Found do
+  mFound := EditsAt('Summe(1', 'Addiere');
+  mHaupt := 0;
+  mWerkzeug := 0;
+  mForm := 0;
+  for mEdit in mFound do
   begin
-    if SameText(Edit.FileName, HauptFile) then
+    if SameText(mEdit.FileName, cHauptFile) then
     begin
-      Inc(Haupt);
+      Inc(mHaupt);
     end
-    else if SameText(Edit.FileName, WerkzeugFile) then
+    else if SameText(mEdit.FileName, cWerkzeugFile) then
     begin
-      Inc(Werkzeug);
+      Inc(mWerkzeug);
     end
-    else if SameText(Edit.FileName, WerkzeugDfm) then
+    else if SameText(mEdit.FileName, cWerkzeugDfm) then
     begin
-      Inc(Form);
+      Inc(mForm);
     end;
   end;
-  Assert.AreEqual(3, Haupt);
-  Assert.AreEqual(2, Werkzeug);
-  Assert.AreEqual(2, Form);
+  Assert.AreEqual(3, mHaupt);
+  Assert.AreEqual(2, mWerkzeug);
+  Assert.AreEqual(2, mForm);
 end;
 
 procedure TLspRenameTests.RejectsInvalidNewName;
 var
-  Raised: Boolean;
+  mRaised: Boolean;
 begin
-  Raised := False;
+  mRaised := False;
   try
     EditsAt('Summe(1', 'end');
   except
     on EJsonRpcError do
-      Raised := True;
+      mRaised := True;
   end;
-  Assert.IsTrue(Raised);
+  Assert.IsTrue(mRaised);
 end;
 
 procedure TLspRenameTests.RenamesComponentWithHandlers;
 var
-  Found: TArray<TRenameEdit>;
-  Edit: TRenameEdit;
-  Field, Handler, Other: Integer;
+  mFound: TArray<TRenameEdit>;
+  mEdit: TRenameEdit;
+  mField, mHandler, mOther: Integer;
 begin
-  Found := FormEdits('Button1: TObject', 'btnSpeichern', True);
-  Field := 0;
-  Handler := 0;
-  Other := 0;
-  for Edit in Found do
+  mFound := FormEdits('Button1: TObject', 'btnSpeichern', True);
+  mField := 0;
+  mHandler := 0;
+  mOther := 0;
+  for mEdit in mFound do
   begin
-    if Edit.NewText = 'btnSpeichern' then
+    if mEdit.NewText = 'btnSpeichern' then
     begin
-      Inc(Field);
+      Inc(mField);
     end
-    else if Edit.NewText = 'btnSpeichernClick' then
+    else if mEdit.NewText = 'btnSpeichernClick' then
     begin
-      Inc(Handler);
+      Inc(mHandler);
     end
     else
     begin
-      Inc(Other);
+      Inc(mOther);
     end;
   end;
   // Feld, Verwendung im Code und Objektname in der DFM.
-  Assert.AreEqual(3, Field);
+  Assert.AreEqual(3, mField);
   // Deklaration, Implementierung und Zuordnung in der DFM; Eigen bleibt.
-  Assert.AreEqual(3, Handler);
-  Assert.AreEqual(0, Other);
+  Assert.AreEqual(3, mHandler);
+  Assert.AreEqual(0, mOther);
 end;
 
 procedure TLspRenameTests.KeepsHandlersWhenDisabled;
 var
-  Edit: TRenameEdit;
+  mEdit: TRenameEdit;
 begin
-  for Edit in FormEdits('Button1: TObject', 'btnSpeichern', False) do
+  for mEdit in FormEdits('Button1: TObject', 'btnSpeichern', False) do
   begin
-    Assert.AreEqual('btnSpeichern', Edit.NewText);
+    Assert.AreEqual('btnSpeichern', mEdit.NewText);
   end;
 end;
 
 procedure TLspRenameTests.RenamesHandlersInFmxViews;
 var
-  Edit: TRenameEdit;
-  Fmx, Windows: Integer;
+  mEdit: TRenameEdit;
+  mFmx, mWindows: Integer;
 begin
-  Fmx := 0;
-  Windows := 0;
-  for Edit in FormEdits('Button1: TObject', 'btnSpeichern', True, True) do
+  mFmx := 0;
+  mWindows := 0;
+  for mEdit in FormEdits('Button1: TObject', 'btnSpeichern', True, True) do
   begin
-    if SameText(Edit.FileName, MaskeFmx) then
+    if SameText(mEdit.FileName, cMaskeFmx) then
     begin
-      Inc(Fmx);
+      Inc(mFmx);
     end
-    else if SameText(Edit.FileName, MaskeWindowsFmx) then
+    else if SameText(mEdit.FileName, cMaskeWindowsFmx) then
     begin
-      Inc(Windows);
+      Inc(mWindows);
     end;
   end;
   // Objektname und Zuordnung OnClick in beiden Formularen.
-  Assert.AreEqual(2, Fmx);
-  Assert.AreEqual(2, Windows);
+  Assert.AreEqual(2, mFmx);
+  Assert.AreEqual(2, mWindows);
 end;
 
 procedure TLspRenameTests.RenamesHandlerMethodInFmxViews;
 var
-  Edit: TRenameEdit;
-  Fmx, Windows: Integer;
+  mEdit: TRenameEdit;
+  mFmx, mWindows: Integer;
 begin
   // Abnahme #87: Umbenennen von Button1Click ändert die Zuordnung in Maske.fmx und Maske.Windows.fmx.
-  Fmx := 0;
-  Windows := 0;
-  for Edit in FormEdits('Button1Click(Sender', 'Speichern', False, True) do
+  mFmx := 0;
+  mWindows := 0;
+  for mEdit in FormEdits('Button1Click(Sender', 'Speichern', False, True) do
   begin
-    if SameText(Edit.FileName, MaskeFmx) then
+    if SameText(mEdit.FileName, cMaskeFmx) then
     begin
-      Inc(Fmx);
-      Assert.AreEqual('Speichern', Edit.NewText);
+      Inc(mFmx);
+      Assert.AreEqual('Speichern', mEdit.NewText);
     end
-    else if SameText(Edit.FileName, MaskeWindowsFmx) then
+    else if SameText(mEdit.FileName, cMaskeWindowsFmx) then
     begin
-      Inc(Windows);
-      Assert.AreEqual('Speichern', Edit.NewText);
+      Inc(mWindows);
+      Assert.AreEqual('Speichern', mEdit.NewText);
     end
     else
     begin
-      Assert.AreEqual(MaskeFile, Edit.FileName, 'nur Unit und Formulare');
+      Assert.AreEqual(cMaskeFile, mEdit.FileName, 'nur Unit und Formulare');
     end;
   end;
-  Assert.AreEqual(1, Fmx);
-  Assert.AreEqual(1, Windows);
+  Assert.AreEqual(1, mFmx);
+  Assert.AreEqual(1, mWindows);
 end;
 
 procedure TLspRenameTests.RejectsParameterThatWouldHideField;
 var
-  Error: string;
+  mError: string;
 begin
   // AName -> Name: "Name := 'x'" meinte danach den Parameter statt des Feldes.
-  Error := KundeError('AName); // K3', 'Name');
-  Assert.IsTrue(Pos('Bedeutung', Error) > 0, Error);
-  Assert.IsTrue(Pos('Zeile 25', Error) > 0, Error);
-  Assert.IsTrue(Pos('Feld TKunde.Name', Error) > 0, Error);
+  mError := KundeError('AName); // K3', 'Name');
+  Assert.IsTrue(Pos('Bedeutung', mError) > 0, mError);
+  Assert.IsTrue(Pos('Zeile 25', mError) > 0, mError);
+  Assert.IsTrue(Pos('Feld TKunde.Name', mError) > 0, mError);
 end;
 
 procedure TLspRenameTests.RejectsFieldThatWouldBeHiddenByLocal;
 var
-  Error: string;
+  mError: string;
 begin
   // Feld Wert -> Anzahl: In Zaehle verdeckt die lokale Variable Anzahl das umbenannte Feld.
-  Error := KundeError('Wert: Integer', 'Anzahl');
-  Assert.IsTrue(Pos('Zeile 20', Error) > 0, Error);
-  Assert.IsTrue(Pos('lokale Variable Anzahl', Error) > 0, Error);
-  Error := KundeError('Wert; // K2', 'Anzahl');
-  Assert.IsTrue(Pos('lokale Variable Anzahl', Error) > 0, Error);
+  mError := KundeError('Wert: Integer', 'Anzahl');
+  Assert.IsTrue(Pos('Zeile 20', mError) > 0, mError);
+  Assert.IsTrue(Pos('lokale Variable Anzahl', mError) > 0, mError);
+  mError := KundeError('Wert; // K2', 'Anzahl');
+  Assert.IsTrue(Pos('lokale Variable Anzahl', mError) > 0, mError);
 end;
 
 procedure TLspRenameTests.AllowsRenameWithoutShadowing;
@@ -545,9 +551,9 @@ begin
 end;
 
 const
-  KopfFile = 'C:\P\Kopf.pas';
+  cKopfFile = 'C:\P\Kopf.pas';
 
-  UnitKopf =
+  cUnitKopf =
     'unit Kopf;'#10 +                                // 0
     'interface'#10 +                                 // 1
     'type'#10 +                                      // 2
@@ -577,43 +583,43 @@ const
 
 function KopfEdits(ATypeComments: Boolean): TArray<TRenameEdit>;
 var
-  Index: ISymbolIndex;
-  Resolver: TNameResolver;
-  Tree: TSyntaxTree;
-  Request: TRenameRequest;
+  mIndex: ISymbolIndex;
+  mResolver: TNameResolver;
+  mTree: TSyntaxTree;
+  mRequest: TRenameRequest;
 begin
-  Index := TSymbolIndex.Create;
-  Index.AddUnit(TIndexExtractor.ExtractText(UnitKopf, KopfFile, nil));
-  Resolver := TNameResolver.Create(Index);
-  Tree := TPascalParser.Parse(UnitKopf);
+  mIndex := TSymbolIndex.Create;
+  mIndex.AddUnit(TIndexExtractor.ExtractText(cUnitKopf, cKopfFile, nil));
+  mResolver := TNameResolver.Create(mIndex);
+  mTree := TPascalParser.Parse(cUnitKopf);
   try
-    Request := TRenameRequest.Create('TCustomer');
-    Request.TypeComments := ATypeComments;
-    Result := TLspRename.Edits(Resolver, Index, Tree, TReferenceSearch.Create(KopfFile,
-      PositionOf(UnitKopf, 'TKunde = class'), True, [KopfFile],
+    mRequest := TRenameRequest.Create('TCustomer');
+    mRequest.TypeComments := ATypeComments;
+    Result := TLspRename.Edits(mResolver, mIndex, mTree, TReferenceSearch.Create(cKopfFile,
+      PositionOf(cUnitKopf, 'TKunde = class'), True, [cKopfFile],
       function(const AFileName: string; out AText: string): Boolean
       begin
-        Result := SameText(AFileName, KopfFile);
+        Result := SameText(AFileName, cKopfFile);
         if Result then
         begin
-          AText := UnitKopf;
+          AText := cUnitKopf;
         end;
-      end), Request);
+      end), mRequest);
   finally
-    Tree.Free;
-    Resolver.Free;
+    mTree.Free;
+    mResolver.Free;
   end;
 end;
 
 function EditOnLine(const AEdits: TArray<TRenameEdit>; ALine: Integer; out AEdit: TRenameEdit): Boolean;
 var
-  Edit: TRenameEdit;
+  mEdit: TRenameEdit;
 begin
-  for Edit in AEdits do
+  for mEdit in AEdits do
   begin
-    if Edit.Range.StartPos.Line = ALine then
+    if mEdit.Range.StartPos.Line = ALine then
     begin
-      AEdit := Edit;
+      AEdit := mEdit;
       Exit(True);
     end;
   end;
@@ -622,29 +628,29 @@ end;
 
 procedure TLspRenameTests.RenamesTypeComments;
 var
-  Found: TArray<TRenameEdit>;
-  Edit: TRenameEdit;
+  mFound: TArray<TRenameEdit>;
+  mEdit: TRenameEdit;
 begin
-  Found := KopfEdits(True);
-  Assert.IsTrue(EditOnLine(Found, 9, Edit), '{ TKunde } über den Rümpfen');
-  Assert.AreEqual(2, Edit.Range.StartPos.Character);
-  Assert.AreEqual(8, Edit.Range.EndPos.Character);
-  Assert.AreEqual('TCustomer', Edit.NewText);
-  Assert.IsTrue(EditOnLine(Found, 16, Edit), '(* TKunde *) direkt über dem Rumpf');
-  Assert.AreEqual(3, Edit.Range.StartPos.Character);
-  Assert.IsFalse(EditOnLine(Found, 15, Edit), 'Kommentar mit anderem Text bleibt');
-  Assert.IsFalse(EditOnLine(Found, 21, Edit), 'über einer freien Routine bleibt');
-  Assert.IsTrue(EditOnLine(Found, 11, Edit), 'Rumpf wie bisher');
+  mFound := KopfEdits(True);
+  Assert.IsTrue(EditOnLine(mFound, 9, mEdit), '{ TKunde } über den Rümpfen');
+  Assert.AreEqual(2, mEdit.Range.StartPos.Character);
+  Assert.AreEqual(8, mEdit.Range.EndPos.Character);
+  Assert.AreEqual('TCustomer', mEdit.NewText);
+  Assert.IsTrue(EditOnLine(mFound, 16, mEdit), '(* TKunde *) direkt über dem Rumpf');
+  Assert.AreEqual(3, mEdit.Range.StartPos.Character);
+  Assert.IsFalse(EditOnLine(mFound, 15, mEdit), 'Kommentar mit anderem Text bleibt');
+  Assert.IsFalse(EditOnLine(mFound, 21, mEdit), 'über einer freien Routine bleibt');
+  Assert.IsTrue(EditOnLine(mFound, 11, mEdit), 'Rumpf wie bisher');
 end;
 
 procedure TLspRenameTests.KeepsTypeCommentsWhenOff;
 var
-  Found: TArray<TRenameEdit>;
-  Edit: TRenameEdit;
+  mFound: TArray<TRenameEdit>;
+  mEdit: TRenameEdit;
 begin
-  Found := KopfEdits(False);
-  Assert.IsFalse(EditOnLine(Found, 9, Edit), 'classCompletion.typeComment = off: Kommentar bleibt');
-  Assert.IsTrue(EditOnLine(Found, 11, Edit));
+  mFound := KopfEdits(False);
+  Assert.IsFalse(EditOnLine(mFound, 9, mEdit), 'classCompletion.typeComment = off: Kommentar bleibt');
+  Assert.IsTrue(EditOnLine(mFound, 11, mEdit));
 end;
 
 initialization

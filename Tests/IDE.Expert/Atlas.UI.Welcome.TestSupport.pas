@@ -72,11 +72,11 @@ end;
 
 procedure RegisterViews(const AIds: array of string);
 var
-  Id: string;
+  mId: string;
 begin
-  for Id in AIds do
+  for mId in AIds do
   begin
-    TAtlasWelcomeViews.Register(Id,
+    TAtlasWelcomeViews.Register(mId,
       function(AOwner: TComponent): TAtlasWelcomeSectionFrame
       begin
         Result := TTestSection.Create(AOwner);

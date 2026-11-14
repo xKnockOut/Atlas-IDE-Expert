@@ -55,74 +55,74 @@ end;
 
 procedure TAtlasToolbarCustomizeDialogTests.AvailableListsTheRest;
 var
-  Dialog: TAtlasToolbarCustomizeDialog;
-  Available: TArray<string>;
+  mDialog: TAtlasToolbarCustomizeDialog;
+  mAvailable: TArray<string>;
 begin
-  Dialog := TAtlasToolbarCustomizeDialog.CreateDialog(nil, Commands,
+  mDialog := TAtlasToolbarCustomizeDialog.CreateDialog(nil, Commands,
     Config('Atlas.GotoInterface,Atlas.GotoImplementation,|,|,Atlas.NavBack,|'));
   try
     Assert.AreEqual('Atlas.GotoInterface,Atlas.GotoImplementation,|,Atlas.NavBack',
-      TAtlasToolbarItems.Format(Dialog.Config.Items), 'beim Öffnen bereinigt');
-    Assert.AreEqual('inBreadcrumbs', Dialog.Config.Position, 'Schreibweise der Einstellung');
-    Available := Dialog.Available;
-    Assert.AreEqual(3, Integer(Length(Available)));
-    Assert.AreEqual('|', Available[0], 'Trennstrich zuerst');
+      TAtlasToolbarItems.Format(mDialog.Config.Items), 'beim Öffnen bereinigt');
+    Assert.AreEqual('inBreadcrumbs', mDialog.Config.Position, 'Schreibweise der Einstellung');
+    mAvailable := mDialog.Available;
+    Assert.AreEqual(3, Integer(Length(mAvailable)));
+    Assert.AreEqual('|', mAvailable[0], 'Trennstrich zuerst');
     // Nach Beschriftung: „Code formatieren“ vor „Code-Aktionen“.
-    Assert.AreEqual('Atlas.FormatCode', Available[1]);
-    Assert.AreEqual('Atlas.CodeActions', Available[2]);
-    Assert.AreEqual('Zurück', Dialog.CaptionOf('Atlas.NavBack'));
-    Assert.AreEqual('Atlas.Unbekannt', Dialog.CaptionOf('Atlas.Unbekannt'));
+    Assert.AreEqual('Atlas.FormatCode', mAvailable[1]);
+    Assert.AreEqual('Atlas.CodeActions', mAvailable[2]);
+    Assert.AreEqual('Zurück', mDialog.CaptionOf('Atlas.NavBack'));
+    Assert.AreEqual('Atlas.Unbekannt', mDialog.CaptionOf('Atlas.Unbekannt'));
   finally
-    Dialog.Free;
+    mDialog.Free;
   end;
 end;
 
 procedure TAtlasToolbarCustomizeDialogTests.AddRemoveMove;
 var
-  Dialog: TAtlasToolbarCustomizeDialog;
+  mDialog: TAtlasToolbarCustomizeDialog;
 begin
-  Dialog := TAtlasToolbarCustomizeDialog.CreateDialog(nil, Commands, Config('Atlas.GotoInterface,Atlas.NavBack'));
+  mDialog := TAtlasToolbarCustomizeDialog.CreateDialog(nil, Commands, Config('Atlas.GotoInterface,Atlas.NavBack'));
   try
     // „Code-Aktionen“ (links Index 2) hinter Zurück.
-    Assert.AreEqual(2, Dialog.AddItem(2, 2));
+    Assert.AreEqual(2, mDialog.AddItem(2, 2));
     Assert.AreEqual('Atlas.GotoInterface,Atlas.NavBack,Atlas.CodeActions',
-      TAtlasToolbarItems.Format(Dialog.Config.Items));
-    Assert.AreEqual(3, Integer(Length(Dialog.Available)), 'links verschwunden');
+      TAtlasToolbarItems.Format(mDialog.Config.Items));
+    Assert.AreEqual(3, Integer(Length(mDialog.Available)), 'links verschwunden');
     // Trennstrich bleibt links und lässt sich mehrfach einfügen.
-    Assert.AreEqual(1, Dialog.AddItem(0, 1));
-    Assert.AreEqual('|', Dialog.Available[0]);
+    Assert.AreEqual(1, mDialog.AddItem(0, 1));
+    Assert.AreEqual('|', mDialog.Available[0]);
     Assert.AreEqual('Atlas.GotoInterface,|,Atlas.NavBack,Atlas.CodeActions',
-      TAtlasToolbarItems.Format(Dialog.Config.Items));
-    Assert.AreEqual(0, Dialog.MoveItem(1, -1));
+      TAtlasToolbarItems.Format(mDialog.Config.Items));
+    Assert.AreEqual(0, mDialog.MoveItem(1, -1));
     Assert.AreEqual('|,Atlas.GotoInterface,Atlas.NavBack,Atlas.CodeActions',
-      TAtlasToolbarItems.Format(Dialog.Config.Items));
-    Assert.IsTrue(Dialog.RemoveItem(3));
-    Assert.IsFalse(Dialog.RemoveItem(9));
-    Assert.AreEqual(4, Integer(Length(Dialog.Available)), 'Code-Aktionen wieder links');
-    Assert.AreEqual(-1, Dialog.AddItem(7, 0), 'außerhalb');
+      TAtlasToolbarItems.Format(mDialog.Config.Items));
+    Assert.IsTrue(mDialog.RemoveItem(3));
+    Assert.IsFalse(mDialog.RemoveItem(9));
+    Assert.AreEqual(4, Integer(Length(mDialog.Available)), 'Code-Aktionen wieder links');
+    Assert.AreEqual(-1, mDialog.AddItem(7, 0), 'außerhalb');
   finally
-    Dialog.Free;
+    mDialog.Free;
   end;
 end;
 
 procedure TAtlasToolbarCustomizeDialogTests.RestoreDefaultAndOptions;
 var
-  Dialog: TAtlasToolbarCustomizeDialog;
+  mDialog: TAtlasToolbarCustomizeDialog;
 begin
-  Dialog := TAtlasToolbarCustomizeDialog.CreateDialog(nil, Commands, Config(''));
+  mDialog := TAtlasToolbarCustomizeDialog.CreateDialog(nil, Commands, Config(''));
   try
-    Assert.AreEqual(0, Integer(Length(Dialog.Config.Items)), 'leere Leiste bleibt leer');
-    Dialog.SetLabels(True);
-    Dialog.SetPosition('aboveBreadcrumbs');
-    Dialog.SetPosition('irgendwo');
-    Assert.IsTrue(Dialog.Config.Labels);
-    Assert.AreEqual('aboveBreadcrumbs', Dialog.Config.Position);
-    Dialog.RestoreDefault;
-    Assert.AreEqual(TAtlasToolbarItems.DefaultText, TAtlasToolbarItems.Format(Dialog.Config.Items));
-    Assert.IsFalse(Dialog.Config.Labels);
-    Assert.AreEqual('belowBreadcrumbs', Dialog.Config.Position);
+    Assert.AreEqual(0, Integer(Length(mDialog.Config.Items)), 'leere Leiste bleibt leer');
+    mDialog.SetLabels(True);
+    mDialog.SetPosition('aboveBreadcrumbs');
+    mDialog.SetPosition('irgendwo');
+    Assert.IsTrue(mDialog.Config.Labels);
+    Assert.AreEqual('aboveBreadcrumbs', mDialog.Config.Position);
+    mDialog.RestoreDefault;
+    Assert.AreEqual(TAtlasToolbarItems.DefaultText, TAtlasToolbarItems.Format(mDialog.Config.Items));
+    Assert.IsFalse(mDialog.Config.Labels);
+    Assert.AreEqual('belowBreadcrumbs', mDialog.Config.Position);
   finally
-    Dialog.Free;
+    mDialog.Free;
   end;
 end;
 

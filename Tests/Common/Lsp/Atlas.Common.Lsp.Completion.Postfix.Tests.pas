@@ -16,7 +16,7 @@ type
   private
     FIndex: ISymbolIndex;
     FResolver: TNameResolver;
-    function ItemsAt(const ACode: string; AInlineVar: Boolean = True): TCompletionItems; overload;
+    function ItemsAt(const ACode: string; AInlineVar: Boolean): TCompletionItems; overload;
     function ItemsAt(const ACode: string; const AOptions: TPostfixOptions): TCompletionItems; overload;
     function ItemsIn(const AText: string; ALine: Integer; ACharacter: Integer;
       const AOptions: TPostfixOptions): TCompletionItems;
@@ -87,10 +87,10 @@ uses
   Atlas.Common.Index.SymbolIndex;
 
 const
-  HauptFile = 'C:\P\Haupt.pas';
-  KindSnippet = 15;
+  cHauptFile = 'C:\P\Haupt.pas';
+  cKindSnippet = 15;
 
-  UnitHaupt =
+  cUnitHaupt =
     'unit Haupt;'#10 +
     'interface'#10 +
     'type'#10 +
@@ -113,10 +113,10 @@ const
     'end.';
 
   // Zeile, in der der Code steht (ab 0).
-  CodeLine = 17;
+  cCodeLine = 17;
 
   // Funktion für .exit; Cursorzeile 6.
-  UnitFunktion =
+  cUnitFunktion =
     'unit Funktion;'#10 +
     'interface'#10 +
     'type TFoo = class end;'#10 +
@@ -141,49 +141,49 @@ end;
 
 function TPostfixCompletionTests.ItemsAt(const ACode: string; AInlineVar: Boolean): TCompletionItems;
 var
-  Options: TPostfixOptions;
+  mOptions: TPostfixOptions;
 begin
-  Options := TPostfixOptions.Default;
-  Options.InlineVar := AInlineVar;
-  Result := ItemsAt(ACode, Options);
+  mOptions := TPostfixOptions.Default;
+  mOptions.InlineVar := AInlineVar;
+  Result := ItemsAt(ACode, mOptions);
 end;
 
 function TPostfixCompletionTests.ItemsAt(const ACode: string; const AOptions: TPostfixOptions): TCompletionItems;
 begin
   // Cursor am Ende des Codes.
-  Result := ItemsIn(StringReplace(UnitHaupt, '|', ACode, []), CodeLine, Length(ACode), AOptions);
+  Result := ItemsIn(StringReplace(cUnitHaupt, '|', ACode, []), cCodeLine, Length(ACode), AOptions);
 end;
 
 function TPostfixCompletionTests.ItemsIn(const AText: string; ALine: Integer; ACharacter: Integer;
   const AOptions: TPostfixOptions): TCompletionItems;
 var
-  Tree: TSyntaxTree;
-  Request: TCompletionRequest;
+  mTree: TSyntaxTree;
+  mRequest: TCompletionRequest;
 begin
-  Tree := TPascalParser.Parse(AText);
-  Request := TCompletionRequest.Create(AText, HauptFile, TTextPosition.Create(ALine, ACharacter));
+  mTree := TPascalParser.Parse(AText);
+  mRequest := TCompletionRequest.Create(AText, cHauptFile, TTextPosition.Create(ALine, ACharacter));
   try
-    Request.Tree := Tree;
-    Request.Resolver := FResolver;
-    Request.Index := FIndex;
-    Request.Matching := TCompletionMatching.Prefix;
-    Result := TCompletionLists.Collect(Request, AOptions, nil);
+    mRequest.Tree := mTree;
+    mRequest.Resolver := FResolver;
+    mRequest.Index := FIndex;
+    mRequest.Matching := TCompletionMatching.Prefix;
+    Result := TCompletionLists.Collect(mRequest, AOptions, nil);
   finally
-    Request.Free;
-    Tree.Free;
+    mRequest.Free;
+    mTree.Free;
   end;
 end;
 
 function TPostfixCompletionTests.Find(const AItems: TCompletionItems; const AName: string; AKind: Integer;
   out AItem: TCompletionItem): Boolean;
 var
-  Item: TCompletionItem;
+  mItem: TCompletionItem;
 begin
-  for Item in AItems.Items do
+  for mItem in AItems.Items do
   begin
-    if SameText(Item.Name, AName) and (Item.Kind = AKind) then
+    if SameText(mItem.Name, AName) and (mItem.Kind = AKind) then
     begin
-      AItem := Item;
+      AItem := mItem;
       Exit(True);
     end;
   end;
@@ -192,294 +192,294 @@ end;
 
 procedure TPostfixCompletionTests.ForOverArray;
 var
-  Item: TCompletionItem;
+  mItem: TCompletionItem;
 begin
-  Assert.IsTrue(Find(ItemsAt('  Liste.for'), 'for', KindSnippet, Item));
+  Assert.IsTrue(Find(ItemsAt('  Liste.for', True), 'for', cKindSnippet, mItem));
   // Der Cursor steht danach eingerückt in der Folgezeile.
-  Assert.AreEqual('for var Item in Liste do'#10'    ', Item.TextEdit.NewText);
-  Assert.AreEqual('postfix', Item.Action);
-  Assert.AreEqual('Liste.for', Item.FilterText);
-  Assert.AreEqual(2, Item.TextEdit.Range.StartPos.Character);
-  Assert.AreEqual(11, Item.TextEdit.Range.EndPos.Character);
+  Assert.AreEqual('for var Item in Liste do'#10'    ', mItem.TextEdit.NewText);
+  Assert.AreEqual('postfix', mItem.Action);
+  Assert.AreEqual('Liste.for', mItem.FilterText);
+  Assert.AreEqual(2, mItem.TextEdit.Range.StartPos.Character);
+  Assert.AreEqual(11, mItem.TextEdit.Range.EndPos.Character);
   // Nach "Liste.fo" greift der Filter ebenso.
-  Assert.IsTrue(Find(ItemsAt('  Liste.fo'), 'for', KindSnippet, Item));
+  Assert.IsTrue(Find(ItemsAt('  Liste.fo', True), 'for', cKindSnippet, mItem));
 end;
 
 procedure TPostfixCompletionTests.ForClassicAddsVariable;
 var
-  Item: TCompletionItem;
+  mItem: TCompletionItem;
 begin
-  Assert.IsTrue(Find(ItemsAt('  Liste.for', False), 'for', KindSnippet, Item));
-  Assert.AreEqual('for Item in Liste do'#10'    ', Item.TextEdit.NewText);
-  Assert.AreEqual(1, Integer(Length(Item.AdditionalEdits)));
-  Assert.Contains(Item.AdditionalEdits[0].NewText, 'Item: Integer;');
+  Assert.IsTrue(Find(ItemsAt('  Liste.for', False), 'for', cKindSnippet, mItem));
+  Assert.AreEqual('for Item in Liste do'#10'    ', mItem.TextEdit.NewText);
+  Assert.AreEqual(1, Integer(Length(mItem.AdditionalEdits)));
+  Assert.Contains(mItem.AdditionalEdits[0].NewText, 'Item: Integer;');
 end;
 
 procedure TPostfixCompletionTests.TryFinallyAfterMember;
 var
-  Items: TCompletionItems;
-  Item: TCompletionItem;
-  Index, Member, Postfix: Integer;
+  mItems: TCompletionItems;
+  mItem: TCompletionItem;
+  mIndex, mMember, mPostfix: Integer;
 begin
-  Items := ItemsAt('  Wert.tryf');
-  Assert.IsTrue(Find(Items, 'tryf', KindSnippet, Item));
-  Assert.AreEqual('try'#10'    '#10'  finally'#10'    Wert.Free;'#10'  end;', Item.TextEdit.NewText);
+  mItems := ItemsAt('  Wert.tryf', True);
+  Assert.IsTrue(Find(mItems, 'tryf', cKindSnippet, mItem));
+  Assert.AreEqual('try'#10'    '#10'  finally'#10'    Wert.Free;'#10'  end;', mItem.TextEdit.NewText);
   // Das Feld tryf steht vor dem Postfix-Eintrag.
-  Member := -1;
-  Postfix := -1;
-  for Index := 0 to High(Items.Items) do
+  mMember := -1;
+  mPostfix := -1;
+  for mIndex := 0 to High(mItems.Items) do
   begin
-    if SameText(Items.Items[Index].Name, 'tryf') then
+    if SameText(mItems.Items[mIndex].Name, 'tryf') then
     begin
-      if Items.Items[Index].Kind = KindSnippet then
+      if mItems.Items[mIndex].Kind = cKindSnippet then
       begin
-        Postfix := Index;
+        mPostfix := mIndex;
       end
       else
       begin
-        Member := Index;
+        mMember := mIndex;
       end;
     end;
   end;
-  Assert.IsTrue((Member >= 0) and (Member < Postfix));
+  Assert.IsTrue((mMember >= 0) and (mMember < mPostfix));
 end;
 
 procedure TPostfixCompletionTests.IfAssigned;
 var
-  Item: TCompletionItem;
+  mItem: TCompletionItem;
 begin
-  Assert.IsTrue(Find(ItemsAt('  Wert.ifa'), 'ifa', KindSnippet, Item));
-  Assert.AreEqual('if Assigned(Wert) then'#10'    ', Item.TextEdit.NewText);
-  Assert.IsFalse(Find(ItemsAt('  Wert.for'), 'for', KindSnippet, Item));
+  Assert.IsTrue(Find(ItemsAt('  Wert.ifa', True), 'ifa', cKindSnippet, mItem));
+  Assert.AreEqual('if Assigned(Wert) then'#10'    ', mItem.TextEdit.NewText);
+  Assert.IsFalse(Find(ItemsAt('  Wert.for', True), 'for', cKindSnippet, mItem));
 end;
 
 procedure TPostfixCompletionTests.FormatOnString;
 var
-  Item: TCompletionItem;
+  mItem: TCompletionItem;
 begin
-  Assert.IsTrue(Find(ItemsAt('  Name := Name.fmt'), 'fmt', KindSnippet, Item));
-  Assert.AreEqual('Format(Name, [])', Item.TextEdit.NewText);
-  Assert.AreEqual(10, Item.TextEdit.Range.StartPos.Character);
+  Assert.IsTrue(Find(ItemsAt('  Name := Name.fmt', True), 'fmt', cKindSnippet, mItem));
+  Assert.AreEqual('Format(Name, [])', mItem.TextEdit.NewText);
+  Assert.AreEqual(10, mItem.TextEdit.Range.StartPos.Character);
 end;
 
 procedure TPostfixCompletionTests.NothingForIntegerOrUnknown;
 var
-  Item: TCompletionItem;
+  mItem: TCompletionItem;
 begin
-  Assert.IsFalse(Find(ItemsAt('  Anzahl.for'), 'for', KindSnippet, Item));
-  Assert.IsFalse(Find(ItemsAt('  Unbekannt.ifa'), 'ifa', KindSnippet, Item));
-  Assert.IsFalse(Find(ItemsAt('  TFoo.ifa'), 'ifa', KindSnippet, Item));
+  Assert.IsFalse(Find(ItemsAt('  Anzahl.for', True), 'for', cKindSnippet, mItem));
+  Assert.IsFalse(Find(ItemsAt('  Unbekannt.ifa', True), 'ifa', cKindSnippet, mItem));
+  Assert.IsFalse(Find(ItemsAt('  TFoo.ifa', True), 'ifa', cKindSnippet, mItem));
 end;
 
 procedure TPostfixCompletionTests.StatementsOnlyAtLineStart;
 var
-  Item: TCompletionItem;
+  mItem: TCompletionItem;
 begin
-  Assert.IsFalse(Find(ItemsAt('  Wert := Wert.ifa'), 'ifa', KindSnippet, Item));
-  Assert.IsFalse(Find(ItemsAt('  Name := Liste.for'), 'for', KindSnippet, Item));
+  Assert.IsFalse(Find(ItemsAt('  Wert := Wert.ifa', True), 'ifa', cKindSnippet, mItem));
+  Assert.IsFalse(Find(ItemsAt('  Name := Liste.for', True), 'for', cKindSnippet, mItem));
 end;
 
 procedure TPostfixCompletionTests.WritesTextEdit;
 var
-  Json: TJSONObject;
-  Entry: TJSONObject;
-  Items: TCompletionItems;
-  Index: Integer;
+  mJson: TJSONObject;
+  mEntry: TJSONObject;
+  mItems: TCompletionItems;
+  mIndex: Integer;
 begin
-  Items := ItemsAt('  Wert.ifa');
-  Json := TLspCompletion.ToJson(Items);
+  mItems := ItemsAt('  Wert.ifa', True);
+  mJson := TLspCompletion.ToJson(mItems);
   try
-    Entry := nil;
-    for Index := 0 to TJSONArray(Json.GetValue('items')).Count - 1 do
+    mEntry := nil;
+    for mIndex := 0 to TJSONArray(mJson.GetValue('items')).Count - 1 do
     begin
-      if TJSONArray(Json.GetValue('items')).Items[Index].GetValue<Integer>('kind') = KindSnippet then
+      if TJSONArray(mJson.GetValue('items')).Items[mIndex].GetValue<Integer>('kind') = cKindSnippet then
       begin
-        Entry := TJSONObject(TJSONArray(Json.GetValue('items')).Items[Index]);
+        mEntry := TJSONObject(TJSONArray(mJson.GetValue('items')).Items[mIndex]);
       end;
     end;
-    Assert.IsNotNull(Entry);
-    Assert.AreEqual('if Assigned(Wert) then'#10'    ', Entry.GetValue<string>('textEdit.newText'));
-    Assert.AreEqual('Wert.ifa', Entry.GetValue<string>('filterText'));
-    Assert.AreEqual('postfix', Entry.GetValue<string>('data.action'));
+    Assert.IsNotNull(mEntry);
+    Assert.AreEqual('if Assigned(Wert) then'#10'    ', mEntry.GetValue<string>('textEdit.newText'));
+    Assert.AreEqual('Wert.ifa', mEntry.GetValue<string>('filterText'));
+    Assert.AreEqual('postfix', mEntry.GetValue<string>('data.action'));
   finally
-    Json.Free;
+    mJson.Free;
   end;
 end;
 
 procedure TPostfixCompletionTests.ReferenceTemplates;
 var
-  Item: TCompletionItem;
+  mItem: TCompletionItem;
 begin
-  Assert.IsTrue(Find(ItemsAt('  Wert.notnil'), 'notnil', KindSnippet, Item));
-  Assert.AreEqual('if Assigned(Wert) then'#10'    ', Item.TextEdit.NewText);
-  Assert.IsTrue(Find(ItemsAt('  Wert.nil'), 'nil', KindSnippet, Item));
-  Assert.AreEqual('if not Assigned(Wert) then'#10'    ', Item.TextEdit.NewText);
-  Assert.IsTrue(Find(ItemsAt('  Wert.free'), 'free', KindSnippet, Item));
-  Assert.AreEqual('FreeAndNil(Wert);', Item.TextEdit.NewText);
-  Assert.IsTrue(Find(ItemsAt('  Wert.var'), 'var', KindSnippet, Item));
-  Assert.AreEqual('var Foo := Wert;', Item.TextEdit.NewText);
+  Assert.IsTrue(Find(ItemsAt('  Wert.notnil', True), 'notnil', cKindSnippet, mItem));
+  Assert.AreEqual('if Assigned(Wert) then'#10'    ', mItem.TextEdit.NewText);
+  Assert.IsTrue(Find(ItemsAt('  Wert.nil', True), 'nil', cKindSnippet, mItem));
+  Assert.AreEqual('if not Assigned(Wert) then'#10'    ', mItem.TextEdit.NewText);
+  Assert.IsTrue(Find(ItemsAt('  Wert.free', True), 'free', cKindSnippet, mItem));
+  Assert.AreEqual('FreeAndNil(Wert);', mItem.TextEdit.NewText);
+  Assert.IsTrue(Find(ItemsAt('  Wert.var', True), 'var', cKindSnippet, mItem));
+  Assert.AreEqual('var Foo := Wert;', mItem.TextEdit.NewText);
   // Nicht bei Strings oder Booleans.
-  Assert.IsFalse(Find(ItemsAt('  Name.notnil'), 'notnil', KindSnippet, Item));
-  Assert.IsFalse(Find(ItemsAt('  Fertig.free'), 'free', KindSnippet, Item));
+  Assert.IsFalse(Find(ItemsAt('  Name.notnil', True), 'notnil', cKindSnippet, mItem));
+  Assert.IsFalse(Find(ItemsAt('  Fertig.free', True), 'free', cKindSnippet, mItem));
 end;
 
 procedure TPostfixCompletionTests.BooleanTemplates;
 var
-  Item: TCompletionItem;
+  mItem: TCompletionItem;
 begin
-  Assert.IsTrue(Find(ItemsAt('  Fertig := Fertig.not'), 'not', KindSnippet, Item));
-  Assert.AreEqual('not Fertig', Item.TextEdit.NewText);
-  Assert.IsTrue(Find(ItemsAt('  Fertig.if'), 'if', KindSnippet, Item));
-  Assert.AreEqual('if Fertig then'#10'    ', Item.TextEdit.NewText);
-  Assert.IsFalse(Find(ItemsAt('  Wert.not'), 'not', KindSnippet, Item));
-  Assert.IsFalse(Find(ItemsAt('  Name.if'), 'if', KindSnippet, Item));
+  Assert.IsTrue(Find(ItemsAt('  Fertig := Fertig.not', True), 'not', cKindSnippet, mItem));
+  Assert.AreEqual('not Fertig', mItem.TextEdit.NewText);
+  Assert.IsTrue(Find(ItemsAt('  Fertig.if', True), 'if', cKindSnippet, mItem));
+  Assert.AreEqual('if Fertig then'#10'    ', mItem.TextEdit.NewText);
+  Assert.IsFalse(Find(ItemsAt('  Wert.not', True), 'not', cKindSnippet, mItem));
+  Assert.IsFalse(Find(ItemsAt('  Name.if', True), 'if', cKindSnippet, mItem));
 end;
 
 procedure TPostfixCompletionTests.ForInOnEnumerableOnly;
 var
-  Item: TCompletionItem;
+  mItem: TCompletionItem;
 begin
-  Assert.IsTrue(Find(ItemsAt('  Liste.forin'), 'forin', KindSnippet, Item));
-  Assert.AreEqual('for var Item in Liste do'#10'    ', Item.TextEdit.NewText);
-  Assert.IsFalse(Find(ItemsAt('  Anzahl.forin'), 'forin', KindSnippet, Item));
+  Assert.IsTrue(Find(ItemsAt('  Liste.forin', True), 'forin', cKindSnippet, mItem));
+  Assert.AreEqual('for var Item in Liste do'#10'    ', mItem.TextEdit.NewText);
+  Assert.IsFalse(Find(ItemsAt('  Anzahl.forin', True), 'forin', cKindSnippet, mItem));
 end;
 
 procedure TPostfixCompletionTests.TryAfterConstructorCall;
 var
-  Item: TCompletionItem;
+  mItem: TCompletionItem;
 begin
-  Assert.IsTrue(Find(ItemsAt('  TFoo.Create.try'), 'try', KindSnippet, Item));
+  Assert.IsTrue(Find(ItemsAt('  TFoo.Create.try', True), 'try', cKindSnippet, mItem));
   Assert.AreEqual('var Foo := TFoo.Create;'#10'  try'#10'    '#10'  finally'#10'    Foo.Free;'#10'  end;',
-    Item.TextEdit.NewText);
+    mItem.TextEdit.NewText);
   // Nur hinter einem Konstruktoraufruf.
-  Assert.IsFalse(Find(ItemsAt('  Wert.try'), 'try', KindSnippet, Item));
+  Assert.IsFalse(Find(ItemsAt('  Wert.try', True), 'try', cKindSnippet, mItem));
 end;
 
 procedure TPostfixCompletionTests.TryClassicDeclaresVariable;
 var
-  Item: TCompletionItem;
+  mItem: TCompletionItem;
 begin
-  Assert.IsTrue(Find(ItemsAt('  TFoo.Create.try', False), 'try', KindSnippet, Item));
-  Assert.IsTrue(Item.TextEdit.NewText.StartsWith('Foo := TFoo.Create;'#10'  try'));
-  Assert.AreEqual(1, Integer(Length(Item.AdditionalEdits)));
-  Assert.Contains(Item.AdditionalEdits[0].NewText, 'Foo: TFoo;');
+  Assert.IsTrue(Find(ItemsAt('  TFoo.Create.try', False), 'try', cKindSnippet, mItem));
+  Assert.IsTrue(mItem.TextEdit.NewText.StartsWith('Foo := TFoo.Create;'#10'  try'));
+  Assert.AreEqual(1, Integer(Length(mItem.AdditionalEdits)));
+  Assert.Contains(mItem.AdditionalEdits[0].NewText, 'Foo: TFoo;');
 end;
 
 procedure TPostfixCompletionTests.VarNeedsKnownTypeWithoutInlineVar;
 var
-  Item: TCompletionItem;
+  mItem: TCompletionItem;
 begin
   // refactoring.inlineVar aus bzw. Delphi vor 10.3: Zuweisung und Eintrag im var-Abschnitt.
-  Assert.IsTrue(Find(ItemsAt('  Wert.var', False), 'var', KindSnippet, Item));
-  Assert.AreEqual('Foo := Wert;', Item.TextEdit.NewText);
-  Assert.Contains(Item.AdditionalEdits[0].NewText, 'Foo: TFoo;');
+  Assert.IsTrue(Find(ItemsAt('  Wert.var', False), 'var', cKindSnippet, mItem));
+  Assert.AreEqual('Foo := Wert;', mItem.TextEdit.NewText);
+  Assert.Contains(mItem.AdditionalEdits[0].NewText, 'Foo: TFoo;');
 end;
 
 procedure TPostfixCompletionTests.ExitOnlyInFunction;
 var
-  Item: TCompletionItem;
+  mItem: TCompletionItem;
 begin
   // Bar ist eine Prozedur.
-  Assert.IsFalse(Find(ItemsAt('  Wert.exit'), 'exit', KindSnippet, Item));
-  Assert.IsTrue(Find(ItemsIn(StringReplace(UnitFunktion, '|', '  Wert.exit', []), 6, 11,
-    TPostfixOptions.Default), 'exit', KindSnippet, Item));
-  Assert.AreEqual('Exit(Wert);', Item.TextEdit.NewText);
+  Assert.IsFalse(Find(ItemsAt('  Wert.exit', True), 'exit', cKindSnippet, mItem));
+  Assert.IsTrue(Find(ItemsIn(StringReplace(cUnitFunktion, '|', '  Wert.exit', []), 6, 11,
+    TPostfixOptions.Default), 'exit', cKindSnippet, mItem));
+  Assert.AreEqual('Exit(Wert);', mItem.TextEdit.NewText);
 end;
 
 procedure TPostfixCompletionTests.SnippetPlacesCaretOnNextLine;
 var
-  Options: TPostfixOptions;
-  Item: TCompletionItem;
+  mOptions: TPostfixOptions;
+  mItem: TCompletionItem;
 begin
   // FCustomer.notnil + Enter: if Assigned(FCustomer) then, Cursor eingerückt in der Folgezeile.
-  Options := TPostfixOptions.Default;
-  Options.Snippet := True;
-  Assert.IsTrue(Find(ItemsAt('  Wert.notnil', Options), 'notnil', KindSnippet, Item));
-  Assert.IsTrue(Item.Snippet);
-  Assert.AreEqual('if Assigned(Wert) then'#10'    $0', Item.TextEdit.NewText);
-  Assert.IsTrue(Find(ItemsAt('  Wert.var', Options), 'var', KindSnippet, Item));
-  Assert.AreEqual('var ${1:Foo} := Wert;$0', Item.TextEdit.NewText);
-  Assert.IsTrue(Find(ItemsAt('  Wert.tryf', Options), 'tryf', KindSnippet, Item));
-  Assert.AreEqual('try'#10'    $0'#10'  finally'#10'    Wert.Free;'#10'  end;', Item.TextEdit.NewText);
-  Assert.IsTrue(Find(ItemsAt('  TFoo.Create.try', Options), 'try', KindSnippet, Item));
-  Assert.IsTrue(Item.TextEdit.NewText.StartsWith('var ${1:Foo} := TFoo.Create;'));
-  Assert.Contains(Item.TextEdit.NewText, '$1.Free;');
+  mOptions := TPostfixOptions.Default;
+  mOptions.Snippet := True;
+  Assert.IsTrue(Find(ItemsAt('  Wert.notnil', mOptions), 'notnil', cKindSnippet, mItem));
+  Assert.IsTrue(mItem.Snippet);
+  Assert.AreEqual('if Assigned(Wert) then'#10'    $0', mItem.TextEdit.NewText);
+  Assert.IsTrue(Find(ItemsAt('  Wert.var', mOptions), 'var', cKindSnippet, mItem));
+  Assert.AreEqual('var ${1:Foo} := Wert;$0', mItem.TextEdit.NewText);
+  Assert.IsTrue(Find(ItemsAt('  Wert.tryf', mOptions), 'tryf', cKindSnippet, mItem));
+  Assert.AreEqual('try'#10'    $0'#10'  finally'#10'    Wert.Free;'#10'  end;', mItem.TextEdit.NewText);
+  Assert.IsTrue(Find(ItemsAt('  TFoo.Create.try', mOptions), 'try', cKindSnippet, mItem));
+  Assert.IsTrue(mItem.TextEdit.NewText.StartsWith('var ${1:Foo} := TFoo.Create;'));
+  Assert.Contains(mItem.TextEdit.NewText, '$1.Free;');
 end;
 
 procedure TPostfixCompletionTests.DisabledOffersNothing;
 var
-  Options: TPostfixOptions;
-  Item: TCompletionItem;
+  mOptions: TPostfixOptions;
+  mItem: TCompletionItem;
 begin
   // completion.postfixTemplates: false
-  Options := TPostfixOptions.Default;
-  Options.Enabled := False;
-  Assert.IsFalse(Find(ItemsAt('  Wert.notnil', Options), 'notnil', KindSnippet, Item));
-  Assert.IsFalse(Find(ItemsAt('  Liste.for', Options), 'for', KindSnippet, Item));
+  mOptions := TPostfixOptions.Default;
+  mOptions.Enabled := False;
+  Assert.IsFalse(Find(ItemsAt('  Wert.notnil', mOptions), 'notnil', cKindSnippet, mItem));
+  Assert.IsFalse(Find(ItemsAt('  Liste.for', mOptions), 'for', cKindSnippet, mItem));
 end;
 
 procedure TPostfixCompletionTests.CustomTemplatesWithCondition;
 var
-  Options: TPostfixOptions;
-  Item: TCompletionItem;
+  mOptions: TPostfixOptions;
+  mItem: TCompletionItem;
 begin
-  Options := TPostfixOptions.Default;
-  Options.Custom := [TPostfixTemplate.Custom('log', 'Protokoll', 'Log(''%s'', [$expr]);', 'class'),
+  mOptions := TPostfixOptions.Default;
+  mOptions.Custom := [TPostfixTemplate.Custom('log', 'Protokoll', 'Log(''%s'', [$expr]);', 'class'),
     TPostfixTemplate.Custom('foo', 'Nur TFoo', 'Pruefe($expr);', 'TFoo'),
     TPostfixTemplate.Custom('bar', 'Nur TBar', 'Pruefe($expr);', 'TBar')];
-  Assert.IsTrue(Find(ItemsAt('  Wert.log', Options), 'log', KindSnippet, Item));
-  Assert.AreEqual('Log(''%s'', [Wert]);', Item.TextEdit.NewText);
-  Assert.AreEqual('Protokoll', Item.Detail);
-  Assert.IsFalse(Find(ItemsAt('  Name.log', Options), 'log', KindSnippet, Item));
-  Assert.IsTrue(Find(ItemsAt('  Wert.foo', Options), 'foo', KindSnippet, Item));
-  Assert.IsFalse(Find(ItemsAt('  Wert.bar', Options), 'bar', KindSnippet, Item));
+  Assert.IsTrue(Find(ItemsAt('  Wert.log', mOptions), 'log', cKindSnippet, mItem));
+  Assert.AreEqual('Log(''%s'', [Wert]);', mItem.TextEdit.NewText);
+  Assert.AreEqual('Protokoll', mItem.Detail);
+  Assert.IsFalse(Find(ItemsAt('  Name.log', mOptions), 'log', cKindSnippet, mItem));
+  Assert.IsTrue(Find(ItemsAt('  Wert.foo', mOptions), 'foo', cKindSnippet, mItem));
+  Assert.IsFalse(Find(ItemsAt('  Wert.bar', mOptions), 'bar', cKindSnippet, mItem));
   // Als Snippet bleiben die Platzhalter der Vorlage, der Ausdruck wird maskiert.
-  Options.Custom := [TPostfixTemplate.Custom('chk', '', 'if ${1:Ok}($expr) then'#10'  $0', '')];
-  Options.Snippet := True;
-  Assert.IsTrue(Find(ItemsAt('  Wert.chk', Options), 'chk', KindSnippet, Item));
-  Assert.AreEqual('if ${1:Ok}(Wert) then'#10'    $0', Item.TextEdit.NewText);
+  mOptions.Custom := [TPostfixTemplate.Custom('chk', '', 'if ${1:Ok}($expr) then'#10'  $0', '')];
+  mOptions.Snippet := True;
+  Assert.IsTrue(Find(ItemsAt('  Wert.chk', mOptions), 'chk', cKindSnippet, mItem));
+  Assert.AreEqual('if ${1:Ok}(Wert) then'#10'    $0', mItem.TextEdit.NewText);
 end;
 
 procedure TPostfixCompletionTests.CallsAndCastsBeforeTheDot;
 var
-  Item: TCompletionItem;
+  mItem: TCompletionItem;
 begin
   // Ausdruck bis zum Anweisungsanfang, auch mit Aufruf oder Typumwandlung.
-  Assert.IsTrue(Find(ItemsAt('  Clone(1).notnil'), 'notnil', KindSnippet, Item));
-  Assert.AreEqual('if Assigned(Clone(1)) then'#10'    ', Item.TextEdit.NewText);
-  Assert.AreEqual('Clone(1).notnil', Item.FilterText);
-  Assert.IsTrue(Find(ItemsAt('  TFoo(Wert).free'), 'free', KindSnippet, Item));
-  Assert.AreEqual('FreeAndNil(TFoo(Wert));', Item.TextEdit.NewText);
+  Assert.IsTrue(Find(ItemsAt('  Clone(1).notnil', True), 'notnil', cKindSnippet, mItem));
+  Assert.AreEqual('if Assigned(Clone(1)) then'#10'    ', mItem.TextEdit.NewText);
+  Assert.AreEqual('Clone(1).notnil', mItem.FilterText);
+  Assert.IsTrue(Find(ItemsAt('  TFoo(Wert).free', True), 'free', cKindSnippet, mItem));
+  Assert.AreEqual('FreeAndNil(TFoo(Wert));', mItem.TextEdit.NewText);
   // Nach einer offenen Klammer beginnt der Ausdruck dahinter.
-  Assert.IsFalse(Find(ItemsAt('  Bar(Liste.fo'), 'for', KindSnippet, Item));
-  Assert.IsTrue(Find(ItemsAt('  Name := Name.fmt'), 'fmt', KindSnippet, Item));
+  Assert.IsFalse(Find(ItemsAt('  Bar(Liste.fo', True), 'for', cKindSnippet, mItem));
+  Assert.IsTrue(Find(ItemsAt('  Name := Name.fmt', True), 'fmt', cKindSnippet, mItem));
 end;
 
 procedure TPostfixCompletionTests.NothingForMultiLineExpression;
 var
-  Text: string;
-  Item: TCompletionItem;
+  mText: string;
+  mItem: TCompletionItem;
 begin
-  Text := StringReplace(UnitHaupt, '|', '  Clone('#10'    1).notnil', []);
-  Assert.IsFalse(Find(ItemsIn(Text, CodeLine + 1, 13, TPostfixOptions.Default), 'notnil', KindSnippet, Item));
+  mText := StringReplace(cUnitHaupt, '|', '  Clone('#10'    1).notnil', []);
+  Assert.IsFalse(Find(ItemsIn(mText, cCodeLine + 1, 13, TPostfixOptions.Default), 'notnil', cKindSnippet, mItem));
 end;
 
 procedure TPostfixCompletionTests.ParsesCustomTemplatesFromPlugin;
 var
-  Params: TJSONObject;
-  Templates: TArray<TPostfixTemplate>;
+  mParams: TJSONObject;
+  mTemplates: TArray<TPostfixTemplate>;
 begin
-  Params := TJSONObject.ParseJSONValue('{"templates": [{"key": "log", "description": "Protokoll", ' +
+  mParams := TJSONObject.ParseJSONValue('{"templates": [{"key": "log", "description": "Protokoll", ' +
     '"body": "Log($expr);", "type": "class"}, {"key": "a b", "body": "x"}, {"key": "leer"}]}') as TJSONObject;
   try
-    Templates := TCompletionPostfix.ParseTemplates(Params);
+    mTemplates := TCompletionPostfix.ParseTemplates(mParams);
   finally
-    Params.Free;
+    mParams.Free;
   end;
-  Assert.AreEqual(1, Integer(Length(Templates)));
-  Assert.AreEqual('log', Templates[0].Key);
-  Assert.AreEqual('class', Templates[0].Condition);
-  Assert.IsTrue(Templates[0].IsCustom);
+  Assert.AreEqual(1, Integer(Length(mTemplates)));
+  Assert.AreEqual('log', mTemplates[0].Key);
+  Assert.AreEqual('class', mTemplates[0].Condition);
+  Assert.IsTrue(mTemplates[0].IsCustom);
 end;
 
 initialization

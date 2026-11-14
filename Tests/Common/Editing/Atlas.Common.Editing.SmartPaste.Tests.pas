@@ -36,7 +36,7 @@ uses
   Atlas.Common.Editing.SmartPaste;
 
 const
-  Target =
+  cTarget =
     'unit Ziel;'#10 +                         // 0
     'interface'#10 +                          // 1
     'uses'#10 +                               // 2
@@ -115,86 +115,86 @@ end;
 function Added(const AText: string; const APosition: TTextPosition; const AUnits: TArray<string>;
   out AMoved: string): string;
 var
-  Target: TSmartPasteTarget;
-  Uses_: TSmartPasteUses;
+  mTarget: TSmartPasteTarget;
+  mUses_: TSmartPasteUses;
 begin
   AMoved := '';
-  Target := Default(TSmartPasteTarget);
-  Target.Tokens := TPascalLexer.Tokenize(AText);
-  Target.Position := APosition;
-  Target.InterfaceUses := InterfaceUses();
-  Target.Namespaces := ['System'];
-  Target.LineBreak := #10;
-  if not TSmartPaste.UsesEdits(Target, AUnits, Uses_) then
+  mTarget := Default(TSmartPasteTarget);
+  mTarget.Tokens := TPascalLexer.Tokenize(AText);
+  mTarget.Position := APosition;
+  mTarget.InterfaceUses := InterfaceUses();
+  mTarget.Namespaces := ['System'];
+  mTarget.LineBreak := #10;
+  if not TSmartPaste.UsesEdits(mTarget, AUnits, mUses_) then
   begin
     Exit('-');
   end;
-  AMoved := string.Join('|', Uses_.ToImplementation);
-  Result := TChangeSignature.ApplyEdits(AText, Uses_.Edits);
+  AMoved := string.Join('|', mUses_.ToImplementation);
+  Result := TChangeSignature.ApplyEdits(AText, mUses_.Edits);
 end;
 
 procedure TSmartPasteTests.FindsMissingNamesInRange;
 var
-  Tree: TSyntaxTree;
-  Names: TArray<TSmartPasteName>;
-  Text: string;
-  Item: TSmartPasteName;
+  mTree: TSyntaxTree;
+  mNames: TArray<TSmartPasteName>;
+  mText: string;
+  mItem: TSmartPasteName;
 begin
-  Tree := TPascalParser.Parse(Target);
+  mTree := TPascalParser.Parse(cTarget);
   try
-    Names := TSmartPaste.Missing(TPascalLexer.Tokenize(Target), Tree, Range(6, 11), Declaring(), ['System']);
-    Text := '';
-    for Item in Names do
+    mNames := TSmartPaste.Missing(TPascalLexer.Tokenize(cTarget), mTree, Range(6, 11), Declaring(), ['System']);
+    mText := '';
+    for mItem in mNames do
     begin
-      Text := Text + Item.Name + '=' + string.Join(',', Item.Units) + ';';
+      mText := mText + mItem.Name + '=' + string.Join(',', mItem.Units) + ';';
     end;
     // TFoo deklariert die Datei selbst, TEnumerator steht nach einem Punkt, string ist kein Treffer.
-    Assert.AreEqual('TJSONObject=System.JSON;TKunde=Kunden;TList=System.Classes,System.Generics.Collections;', Text);
-    Assert.AreEqual('System.JSON|Kunden', string.Join('|', TSmartPaste.Certain(Names)), 'mehrdeutig nicht');
+    Assert.AreEqual('TJSONObject=System.JSON;TKunde=Kunden;TList=System.Classes,System.Generics.Collections;', mText);
+    Assert.AreEqual('System.JSON|Kunden', string.Join('|', TSmartPaste.Certain(mNames)), 'mehrdeutig nicht');
     // Format liefert System.SysUtils schon; außerhalb des Bereichs zählt nichts.
-    Names := TSmartPaste.Missing(TPascalLexer.Tokenize(Target), Tree, Range(16, 19), Declaring(), ['System']);
-    Assert.AreEqual(1, Integer(Length(Names)));
-    Assert.AreEqual('TDataSet', Names[0].Name);
-    Assert.AreEqual(0, Integer(Length(TSmartPaste.Missing(TPascalLexer.Tokenize(Target), Tree, Range(6, 11), nil,
+    mNames := TSmartPaste.Missing(TPascalLexer.Tokenize(cTarget), mTree, Range(16, 19), Declaring(), ['System']);
+    Assert.AreEqual(1, Integer(Length(mNames)));
+    Assert.AreEqual('TDataSet', mNames[0].Name);
+    Assert.AreEqual(0, Integer(Length(TSmartPaste.Missing(TPascalLexer.Tokenize(cTarget), mTree, Range(6, 11), nil,
       nil))), 'ohne Index nichts');
   finally
-    Tree.Free;
+    mTree.Free;
   end;
-  Names := nil;
+  mNames := nil;
 end;
 
 procedure TSmartPasteTests.InterfacePasteGoesToInterfaceUses;
 var
-  Moved: string;
+  mMoved: string;
 begin
-  Assert.IsTrue(TSmartPaste.InInterface(TPascalLexer.Tokenize(Target), TTextPosition.Create(6, 4)));
-  Assert.IsFalse(TSmartPaste.InInterface(TPascalLexer.Tokenize(Target), TTextPosition.Create(16, 2)));
+  Assert.IsTrue(TSmartPaste.InInterface(TPascalLexer.Tokenize(cTarget), TTextPosition.Create(6, 4)));
+  Assert.IsFalse(TSmartPaste.InInterface(TPascalLexer.Tokenize(cTarget), TTextPosition.Create(16, 2)));
   Assert.AreEqual(
-    StringReplace(StringReplace(Target, '  System.SysUtils;', '  System.SysUtils,'#10'  System.JSON;', []),
+    StringReplace(StringReplace(cTarget, '  System.SysUtils;', '  System.SysUtils,'#10'  System.JSON;', []),
       'implementation'#10, 'implementation'#10#10'uses'#10'  Kunden;'#10, []),
-    Added(Target, TTextPosition.Create(6, 4), ['System.JSON', 'Kunden', 'System.SysUtils', 'system.json', 'Ziel'],
-      Moved));
-  Assert.AreEqual('Kunden', Moved, 'Kreisverweis ins implementation');
+    Added(cTarget, TTextPosition.Create(6, 4), ['System.JSON', 'Kunden', 'System.SysUtils', 'system.json', 'Ziel'],
+      mMoved));
+  Assert.AreEqual('Kunden', mMoved, 'Kreisverweis ins implementation');
 end;
 
 procedure TSmartPasteTests.ImplementationPasteGoesToImplementationUses;
 var
-  Moved: string;
+  mMoved: string;
 begin
-  Assert.AreEqual(StringReplace(Target, 'implementation'#10, 'implementation'#10#10'uses'#10'  Data.DB, System.JSON;'#10,
-    []), Added(Target, TTextPosition.Create(16, 2), ['Data.DB', 'System.JSON'], Moved));
-  Assert.AreEqual('', Moved);
-  Assert.AreEqual('-', Added(Target, TTextPosition.Create(16, 2), ['System.SysUtils'], Moved), 'schon da');
+  Assert.AreEqual(StringReplace(cTarget, 'implementation'#10, 'implementation'#10#10'uses'#10'  Data.DB, System.JSON;'#10,
+    []), Added(cTarget, TTextPosition.Create(16, 2), ['Data.DB', 'System.JSON'], mMoved));
+  Assert.AreEqual('', mMoved);
+  Assert.AreEqual('-', Added(cTarget, TTextPosition.Create(16, 2), ['System.SysUtils'], mMoved), 'schon da');
 end;
 
 procedure TSmartPasteTests.ProgramHasOnlyOneUses;
 const
-  Program_ = 'program P;'#10'uses'#10'  System.SysUtils;'#10'begin'#10'end.'#10;
+  cProgram_ = 'program P;'#10'uses'#10'  System.SysUtils;'#10'begin'#10'end.'#10;
 var
-  Moved: string;
+  mMoved: string;
 begin
-  Assert.AreEqual(StringReplace(Program_, '  System.SysUtils;', '  System.SysUtils,'#10'  Kunden;', []),
-    Added(Program_, TTextPosition.Create(4, 0), ['Kunden'], Moved));
+  Assert.AreEqual(StringReplace(cProgram_, '  System.SysUtils;', '  System.SysUtils,'#10'  Kunden;', []),
+    Added(cProgram_, TTextPosition.Create(4, 0), ['Kunden'], mMoved));
 end;
 
 initialization

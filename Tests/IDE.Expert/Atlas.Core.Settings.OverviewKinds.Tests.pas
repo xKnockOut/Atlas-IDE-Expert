@@ -43,11 +43,11 @@ end;
 
 procedure TAtlasOverviewKindNamesTests.ParsesSeparatorsAndCase;
 var
-  Kinds: TAtlasOverviewKinds;
+  mKinds: TAtlasOverviewKinds;
 begin
-  Kinds := TAtlasOverviewKindNames.Parse('Diagnostics, SEARCH;cursor bookmarks');
+  mKinds := TAtlasOverviewKindNames.Parse('Diagnostics, SEARCH;cursor bookmarks');
   Assert.AreEqual<TAtlasOverviewKinds>([TAtlasOverviewKind.Diagnostics, TAtlasOverviewKind.Search,
-    TAtlasOverviewKind.Cursor, TAtlasOverviewKind.Bookmarks], Kinds);
+    TAtlasOverviewKind.Cursor, TAtlasOverviewKind.Bookmarks], mKinds);
   Assert.AreEqual<TAtlasOverviewKinds>([], TAtlasOverviewKindNames.Parse(''));
   Assert.AreEqual<TAtlasOverviewKinds>(TAtlasOverviewKindNames.cAll, TAtlasOverviewKindNames.Parse(
     'diagnostics,search,changes,breakpoints,bookmarks,cursor'));

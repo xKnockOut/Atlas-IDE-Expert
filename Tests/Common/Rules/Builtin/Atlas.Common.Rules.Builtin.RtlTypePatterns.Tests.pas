@@ -158,70 +158,70 @@ end;
 
 procedure TRtlTypePatternRulesTests.DeclaredTypesByScope;
 const
-  Source = 'unit U;'#10'interface'#10'type'#10'  TFoo = class'#10'  private'#10'    FCount: Int64;'#10 +
+  cSource = 'unit U;'#10'interface'#10'type'#10'  TFoo = class'#10'  private'#10'    FCount: Int64;'#10 +
     '    procedure Run(A: Integer; const S: string);'#10'  end;'#10'var'#10'  Global: Double;'#10 +
     'implementation'#10'procedure TFoo.Run(A: Integer; const S: string);'#10'var'#10'  L: TArray<Byte>;'#10 +
     'begin'#10'  var C: Char := ''x'';'#10'  FCount := A;'#10'end;'#10'end.';
 var
-  Tree: TSyntaxTree;
-  Types: TDeclaredTypes;
-  At: TTextPosition;
+  mTree: TSyntaxTree;
+  mTypes: TDeclaredTypes;
+  mAt: TTextPosition;
 begin
-  Tree := TPascalParser.Parse(Source);
-  Types := TDeclaredTypes.Create(Tree, Source);
+  mTree := TPascalParser.Parse(cSource);
+  mTypes := TDeclaredTypes.Create(mTree, cSource);
   try
-    At := TTextPosition.Create(16, 4);
-    Assert.AreEqual('Integer', Types.DeclaredType('A', At));
-    Assert.AreEqual('string', Types.DeclaredType('s', At));
-    Assert.AreEqual('TArray<Byte>', Types.DeclaredType('L', At));
-    Assert.AreEqual('Char', Types.DeclaredType('C', At));
-    Assert.AreEqual('Int64', Types.DeclaredType('FCount', At));
-    Assert.AreEqual('Double', Types.DeclaredType('Global', At));
-    Assert.AreEqual('', Types.DeclaredType('Unbekannt', At));
+    mAt := TTextPosition.Create(16, 4);
+    Assert.AreEqual('Integer', mTypes.DeclaredType('A', mAt));
+    Assert.AreEqual('string', mTypes.DeclaredType('s', mAt));
+    Assert.AreEqual('TArray<Byte>', mTypes.DeclaredType('L', mAt));
+    Assert.AreEqual('Char', mTypes.DeclaredType('C', mAt));
+    Assert.AreEqual('Int64', mTypes.DeclaredType('FCount', mAt));
+    Assert.AreEqual('Double', mTypes.DeclaredType('Global', mAt));
+    Assert.AreEqual('', mTypes.DeclaredType('Unbekannt', mAt));
     // Vor der Inline-Deklaration ist C nicht bekannt.
-    Assert.AreEqual('', Types.DeclaredType('C', TTextPosition.Create(14, 0)));
+    Assert.AreEqual('', mTypes.DeclaredType('C', TTextPosition.Create(14, 0)));
   finally
-    Types.Free;
-    Tree.Free;
+    mTypes.Free;
+    mTree.Free;
   end;
 end;
 
 procedure TRtlTypePatternRulesTests.DeclaredTypesThroughFields;
 const
-  Source = 'unit U;'#10'interface'#10'type'#10'  TTeile = record'#10'    Menu: TPopupMenu;'#10'  end;'#10 +
+  cSource = 'unit U;'#10'interface'#10'type'#10'  TTeile = record'#10'    Menu: TPopupMenu;'#10'  end;'#10 +
     '  TFoo = class'#10'    FTeile: TTeile;'#10'    procedure Run;'#10'  end;'#10'implementation'#10 +
     'procedure TFoo.Run;'#10'begin'#10'  FTeile.Menu.Items.Clear;'#10'end;'#10'end.';
 var
-  Tree: TSyntaxTree;
-  Types: TDeclaredTypes;
-  At: TTextPosition;
-  Member: string;
+  mTree: TSyntaxTree;
+  mTypes: TDeclaredTypes;
+  mAt: TTextPosition;
+  mMember: string;
 begin
-  Tree := TPascalParser.Parse(Source);
-  Types := TDeclaredTypes.Create(Tree, Source);
+  mTree := TPascalParser.Parse(cSource);
+  mTypes := TDeclaredTypes.Create(mTree, cSource);
   try
-    At := TTextPosition.Create(13, 4);
-    Assert.IsTrue(Types.FieldType('TTeile', 'menu', Member));
-    Assert.AreEqual('TPopupMenu', Member);
-    Assert.IsFalse(Types.FieldType('TTeile', 'Fehlt', Member));
-    Assert.AreEqual('TPopupMenu', Types.ChainType('FTeile.Menu', At));
-    Assert.AreEqual('TPopupMenu', Types.ChainType('Self.FTeile.Menu', At));
-    Assert.AreEqual('TTeile', Types.ChainType('FTeile', At));
-    Assert.AreEqual('', Types.ChainType('FTeile.Menu.Items', At), 'TPopupMenu ist nicht in der Datei deklariert');
+    mAt := TTextPosition.Create(13, 4);
+    Assert.IsTrue(mTypes.FieldType('TTeile', 'menu', mMember));
+    Assert.AreEqual('TPopupMenu', mMember);
+    Assert.IsFalse(mTypes.FieldType('TTeile', 'Fehlt', mMember));
+    Assert.AreEqual('TPopupMenu', mTypes.ChainType('FTeile.Menu', mAt));
+    Assert.AreEqual('TPopupMenu', mTypes.ChainType('Self.FTeile.Menu', mAt));
+    Assert.AreEqual('TTeile', mTypes.ChainType('FTeile', mAt));
+    Assert.AreEqual('', mTypes.ChainType('FTeile.Menu.Items', mAt), 'TPopupMenu ist nicht in der Datei deklariert');
   finally
-    Types.Free;
-    Tree.Free;
+    mTypes.Free;
+    mTree.Free;
   end;
 end;
 
 procedure TRtlTypePatternRulesTests.Int32MulOverflow;
 var
-  Findings: TArray<TRuleFinding>;
+  mFindings: TArray<TRuleFinding>;
 begin
-  Findings := TRuleAssert.Findings(TInt32MulOverflowRule.Create, InRoutine('  Total: Int64;'#10 +
+  mFindings := TRuleAssert.Findings(TInt32MulOverflowRule.Create, InRoutine('  Total: Int64;'#10 +
     '  Width, Height: Integer;', '  Total := Width * Height;'));
-  Assert.AreEqual(1, Integer(Length(Findings)));
-  Assert.AreEqual('Int64(Width)', Findings[0].Fixes[0].Edits[0].NewText);
+  Assert.AreEqual(1, Integer(Length(mFindings)));
+  Assert.AreEqual('Int64(Width)', mFindings[0].Fixes[0].Edits[0].NewText);
   TRuleAssert.Reports(TInt32MulOverflowRule.Create, InRoutine('  Total: Int64;'#10'  N: Cardinal;',
     '  Total := N * 1000;'));
   TRuleAssert.Silent(TInt32MulOverflowRule.Create, InRoutine('  Total: Int64;'#10'  Width: Int64;'#10 +
@@ -231,12 +231,12 @@ end;
 
 procedure TRtlTypePatternRulesTests.SizeOfPointer;
 var
-  Findings: TArray<TRuleFinding>;
+  mFindings: TArray<TRuleFinding>;
 begin
-  Findings := TRuleAssert.Findings(TSizeOfPointerRule.Create, InRoutine('  Buffer: TBytes;'#10'  P: PByte;',
+  mFindings := TRuleAssert.Findings(TSizeOfPointerRule.Create, InRoutine('  Buffer: TBytes;'#10'  P: PByte;',
     '  FillChar(Buffer[0], SizeOf(Buffer), 0);'#10'  Move(P^, Buffer[0], SizeOf(P));'));
-  Assert.AreEqual(2, Integer(Length(Findings)));
-  Assert.AreEqual(Ord(TRuleSeverity.Error), Ord(Findings[0].Severity));
+  Assert.AreEqual(2, Integer(Length(mFindings)));
+  Assert.AreEqual(Ord(TRuleSeverity.Error), Ord(mFindings[0].Severity));
   TRuleAssert.Silent(TSizeOfPointerRule.Create, InRoutine('  R: TPoint;'#10'  A: array[0..9] of Byte;',
     '  FillChar(R, SizeOf(R), 0);'#10'  FillChar(A, SizeOf(A), 0);'#10'  FillChar(R, SizeOf(TPoint), 0);'));
 end;
@@ -250,14 +250,14 @@ end;
 
 procedure TRtlTypePatternRulesTests.FloatEquality;
 var
-  Findings: TArray<TRuleFinding>;
+  mFindings: TArray<TRuleFinding>;
 begin
-  Findings := TRuleAssert.Findings(TFloatEqualityRule.Create, InRoutine('  A, B: Double;',
+  mFindings := TRuleAssert.Findings(TFloatEqualityRule.Create, InRoutine('  A, B: Double;',
     '  if A = B then Save;'#10'  if A <> 1.5 then Save;'));
-  Assert.AreEqual(2, Integer(Length(Findings)));
-  Assert.AreEqual(Ord(TRuleConfidence.Medium), Ord(Findings[0].Confidence));
-  Assert.AreEqual('SameValue(A, B)', Findings[0].Fixes[0].Edits[0].NewText);
-  Assert.AreEqual('not SameValue(A, 1.5)', Findings[1].Fixes[0].Edits[0].NewText);
+  Assert.AreEqual(2, Integer(Length(mFindings)));
+  Assert.AreEqual(Ord(TRuleConfidence.Medium), Ord(mFindings[0].Confidence));
+  Assert.AreEqual('SameValue(A, B)', mFindings[0].Fixes[0].Edits[0].NewText);
+  Assert.AreEqual('not SameValue(A, 1.5)', mFindings[1].Fixes[0].Edits[0].NewText);
   TRuleAssert.Silent(TFloatEqualityRule.Create, InRoutine('  A: Double;'#10'  N, M: Integer;',
     '  if A = 0 then Save;'#10'  if N = M then Save;'#10'  if A <> 0.0 then Save;'));
   // Zeitstempel werden absichtlich exakt verglichen (#647).
@@ -289,12 +289,12 @@ end;
 
 procedure TRtlTypePatternRulesTests.ConstructorOnInstance;
 var
-  Findings: TArray<TRuleFinding>;
+  mFindings: TArray<TRuleFinding>;
 begin
-  Findings := TRuleAssert.Findings(TConstructorOnInstanceRule.Create, InRoutine('  List: TStringList;',
+  mFindings := TRuleAssert.Findings(TConstructorOnInstanceRule.Create, InRoutine('  List: TStringList;',
     '  List.Create;'#10'  try'#10'  finally'#10'    List.Free;'#10'  end;'));
-  Assert.AreEqual(1, Integer(Length(Findings)));
-  Assert.AreEqual('TStringList', Findings[0].Fixes[0].Edits[0].NewText);
+  Assert.AreEqual(1, Integer(Length(mFindings)));
+  Assert.AreEqual('TStringList', mFindings[0].Fixes[0].Edits[0].NewText);
   TRuleAssert.Silent(TConstructorOnInstanceRule.Create, InRoutine('  List: TStringList;'#10 +
     '  Kind: TComponentClass;'#10'  C: TComponent;', '  List := TStringList.Create;'#10 +
     '  C := Kind.Create(nil);'#10'  inherited Create;'));
@@ -302,12 +302,12 @@ end;
 
 procedure TRtlTypePatternRulesTests.FormatWithoutSettings;
 var
-  Findings: TArray<TRuleFinding>;
+  mFindings: TArray<TRuleFinding>;
 begin
-  Findings := TRuleAssert.Findings(TFormatWithoutSettingsRule.Create, InRoutine('  X: Double;',
+  mFindings := TRuleAssert.Findings(TFormatWithoutSettingsRule.Create, InRoutine('  X: Double;',
     '  S := Format(''%.2f'', [X]);'#10'  S := FloatToStr(X);'#10'  D := StrToDate(S);'));
-  Assert.AreEqual(3, Integer(Length(Findings)));
-  Assert.AreEqual(', FormatSettings', Findings[0].Fixes[0].Edits[0].NewText);
+  Assert.AreEqual(3, Integer(Length(mFindings)));
+  Assert.AreEqual(', FormatSettings', mFindings[0].Fixes[0].Edits[0].NewText);
   TRuleAssert.Silent(TFormatWithoutSettingsRule.Create, InRoutine('  N: Integer;',
     '  S := Format(''%d'', [N]);'#10'  S := Format(''%.2f'', [X], FS);'#10'  S := FloatToStr(X, FS);'#10 +
     '  S := Writer.Format(''%f'', [X]);'));
@@ -408,47 +408,47 @@ begin
 end;
 
 const
-  Adresse = '  TAdresse = record'#10'    Strasse: string;'#10'    Ort: string;'#10'  end;'#10 +
+  cAdresse = '  TAdresse = record'#10'    Strasse: string;'#10'    Ort: string;'#10'  end;'#10 +
     '  PAdresse = ^TAdresse;'#10'  TPunkt = record'#10'    X, Y: Integer;'#10'  end;';
 
 procedure TRtlTypePatternRulesTests.ManagedRawMemoryIssueExample;
 var
-  Source, Fixed: string;
-  Findings: TArray<TRuleFinding>;
+  mSource, mFixed: string;
+  mFindings: TArray<TRuleFinding>;
 begin
-  Source := WithTypes(Adresse, '  Adresse: TAdresse;', '  FillChar(Adresse, SizeOf(Adresse), 0);');
-  Findings := TRuleAssert.Findings(TManagedTypeRawMemoryRule.Create, Source);
-  Assert.AreEqual(1, Integer(Length(Findings)));
+  mSource := WithTypes(cAdresse, '  Adresse: TAdresse;', '  FillChar(Adresse, SizeOf(Adresse), 0);');
+  mFindings := TRuleAssert.Findings(TManagedTypeRawMemoryRule.Create, mSource);
+  Assert.AreEqual(1, Integer(Length(mFindings)));
   Assert.AreEqual('TAdresse enthält Strings; FillChar überschreibt die Referenzen ohne Freigabe (Leck, ' +
-    'ggf. Zugriffsverletzung).', Findings[0].Message);
-  Assert.AreEqual(Ord(TRuleSeverity.Error), Ord(Findings[0].Severity));
-  Assert.AreEqual(Ord(TRuleConfidence.High), Ord(Findings[0].Confidence));
-  Assert.AreEqual('Adresse := Default(TAdresse)', Findings[0].Fixes[0].Title);
-  Fixed := TChangeSignature.ApplyEdits(Source, Findings[0].Fixes[0].Edits);
-  Assert.AreEqual(WithTypes(Adresse, '  Adresse: TAdresse;', '  Adresse := Default(TAdresse);'), Fixed);
-  TRuleAssert.Silent(TManagedTypeRawMemoryRule.Create, Fixed);
+    'ggf. Zugriffsverletzung).', mFindings[0].Message);
+  Assert.AreEqual(Ord(TRuleSeverity.Error), Ord(mFindings[0].Severity));
+  Assert.AreEqual(Ord(TRuleConfidence.High), Ord(mFindings[0].Confidence));
+  Assert.AreEqual('Adresse := Default(TAdresse)', mFindings[0].Fixes[0].Title);
+  mFixed := TChangeSignature.ApplyEdits(mSource, mFindings[0].Fixes[0].Edits);
+  Assert.AreEqual(WithTypes(cAdresse, '  Adresse: TAdresse;', '  Adresse := Default(TAdresse);'), mFixed);
+  TRuleAssert.Silent(TManagedTypeRawMemoryRule.Create, mFixed);
   // Record ohne verwaltete Felder: FillChar ist in Ordnung.
-  TRuleAssert.Silent(TManagedTypeRawMemoryRule.Create, WithTypes(Adresse, '  Punkt: TPunkt;',
+  TRuleAssert.Silent(TManagedTypeRawMemoryRule.Create, WithTypes(cAdresse, '  Punkt: TPunkt;',
     '  FillChar(Punkt, SizeOf(Punkt), 0);'));
 end;
 
 procedure TRtlTypePatternRulesTests.ManagedRawMemoryKinds;
 const
-  Types = '  IKunde = interface'#10'  end;'#10'  TMitInterface = record'#10'    Kunde: IKunde;'#10'  end;'#10 +
+  cTypes = '  IKunde = interface'#10'  end;'#10'  TMitInterface = record'#10'    Kunde: IKunde;'#10'  end;'#10 +
     '  TMitArray = record'#10'    Werte: array of Integer;'#10'  end;'#10'  TMitVariant = record'#10 +
     '    Wert: Variant;'#10'  end;'#10'  TInnen = record'#10'    Name: string;'#10'  end;'#10 +
     '  TAussen = record'#10'    Innen: array[0..1] of TInnen;'#10'  end;'#10'  TAlias = TAussen;';
 
   function Message(const AVar, AType: string): string;
   var
-    Findings: TArray<TRuleFinding>;
+    mFindings: TArray<TRuleFinding>;
   begin
-    Findings := TRuleAssert.Findings(TManagedTypeRawMemoryRule.Create, WithTypes(Types, '  ' + AVar + ': ' + AType +
+    mFindings := TRuleAssert.Findings(TManagedTypeRawMemoryRule.Create, WithTypes(cTypes, '  ' + AVar + ': ' + AType +
       ';', '  ZeroMemory(@' + AVar + ', SizeOf(' + AVar + '));'));
     Result := '';
-    if Length(Findings) = 1 then
+    if Length(mFindings) = 1 then
     begin
-      Result := Findings[0].Message;
+      Result := mFindings[0].Message;
     end;
   end;
 
@@ -466,93 +466,93 @@ end;
 
 procedure TRtlTypePatternRulesTests.ManagedRawMemoryMoveAndPointers;
 var
-  Source: string;
-  Findings: TArray<TRuleFinding>;
+  mSource: string;
+  mFindings: TArray<TRuleFinding>;
 begin
-  Source := WithTypes(Adresse, '  A, B: TAdresse;', '  Move(A, B, SizeOf(TAdresse));');
-  Findings := TRuleAssert.Findings(TManagedTypeRawMemoryRule.Create, Source);
-  Assert.AreEqual(1, Integer(Length(Findings)));
+  mSource := WithTypes(cAdresse, '  A, B: TAdresse;', '  Move(A, B, SizeOf(TAdresse));');
+  mFindings := TRuleAssert.Findings(TManagedTypeRawMemoryRule.Create, mSource);
+  Assert.AreEqual(1, Integer(Length(mFindings)));
   Assert.AreEqual('TAdresse enthält Strings; Move kopiert die Referenzen ohne Referenzzählung (doppelte Freigabe, ' +
-    'ggf. Zugriffsverletzung).', Findings[0].Message);
-  Assert.AreEqual(WithTypes(Adresse, '  A, B: TAdresse;', '  B := A;'),
-    TChangeSignature.ApplyEdits(Source, Findings[0].Fixes[0].Edits));
+    'ggf. Zugriffsverletzung).', mFindings[0].Message);
+  Assert.AreEqual(WithTypes(cAdresse, '  A, B: TAdresse;', '  B := A;'),
+    TChangeSignature.ApplyEdits(mSource, mFindings[0].Fixes[0].Edits));
   // GetMem und FreeMem über einen Zeiger auf den Record.
-  Source := WithTypes(Adresse, '  P: PAdresse;', '  GetMem(P, SizeOf(TAdresse));'#10'  FreeMem(P);');
-  Findings := TRuleAssert.Findings(TManagedTypeRawMemoryRule.Create, Source);
-  Assert.AreEqual(2, Integer(Length(Findings)));
+  mSource := WithTypes(cAdresse, '  P: PAdresse;', '  GetMem(P, SizeOf(TAdresse));'#10'  FreeMem(P);');
+  mFindings := TRuleAssert.Findings(TManagedTypeRawMemoryRule.Create, mSource);
+  Assert.AreEqual(2, Integer(Length(mFindings)));
   Assert.AreEqual('TAdresse enthält Strings; GetMem lässt die Referenzen uninitialisiert (Zugriffsverletzung beim ' +
-    'ersten Zuweisen); New oder Initialize verwenden.', Findings[0].Message);
+    'ersten Zuweisen); New oder Initialize verwenden.', mFindings[0].Message);
   Assert.AreEqual('TAdresse enthält Strings; FreeMem gibt die Referenzen nicht frei (Leck); Dispose oder Finalize ' +
-    'verwenden.', Findings[1].Message);
-  Assert.AreEqual(WithTypes(Adresse, '  P: PAdresse;', '  New(P);'#10'  FreeMem(P);'),
-    TChangeSignature.ApplyEdits(Source, Findings[0].Fixes[0].Edits));
-  Assert.AreEqual(WithTypes(Adresse, '  P: PAdresse;', '  GetMem(P, SizeOf(TAdresse));'#10'  Dispose(P);'),
-    TChangeSignature.ApplyEdits(Source, Findings[1].Fixes[0].Edits));
+    'verwenden.', mFindings[1].Message);
+  Assert.AreEqual(WithTypes(cAdresse, '  P: PAdresse;', '  New(P);'#10'  FreeMem(P);'),
+    TChangeSignature.ApplyEdits(mSource, mFindings[0].Fixes[0].Edits));
+  Assert.AreEqual(WithTypes(cAdresse, '  P: PAdresse;', '  GetMem(P, SizeOf(TAdresse));'#10'  Dispose(P);'),
+    TChangeSignature.ApplyEdits(mSource, mFindings[1].Fixes[0].Edits));
   // Dereferenzierter Zeiger: FillChar(P^, …) ohne Korrektur.
-  Findings := TRuleAssert.Findings(TManagedTypeRawMemoryRule.Create, WithTypes(Adresse, '  P: ^TAdresse;',
+  mFindings := TRuleAssert.Findings(TManagedTypeRawMemoryRule.Create, WithTypes(cAdresse, '  P: ^TAdresse;',
     '  FillChar(P^, SizeOf(TAdresse), 0);'));
-  Assert.AreEqual(1, Integer(Length(Findings)));
-  Assert.AreEqual(0, Integer(Length(Findings[0].Fixes)));
+  Assert.AreEqual(1, Integer(Length(mFindings)));
+  Assert.AreEqual(0, Integer(Length(mFindings[0].Fixes)));
 end;
 
 procedure TRtlTypePatternRulesTests.ManagedRawMemorySilentCases;
 begin
   // Element eines Arrays, Puffer aus Bytes, Methode eines Objekts.
-  TRuleAssert.Silent(TManagedTypeRawMemoryRule.Create, WithTypes(Adresse,
+  TRuleAssert.Silent(TManagedTypeRawMemoryRule.Create, WithTypes(cAdresse,
     '  S: string;'#10'  Puffer: array[0..15] of Byte;'#10'  Liste: TListe;',
     '  FillChar(S[1], Length(S) * SizeOf(Char), '' '');'#10'  FillChar(Puffer, SizeOf(Puffer), 0);'#10 +
     '  Liste.Move(0, 1);'));
   // FP-Prüfung 28.10.2026 (F10): Nullen direkt nach New bzw. GetMem füllt frischen Speicher.
-  TRuleAssert.Silent(TManagedTypeRawMemoryRule.Create, WithTypes(Adresse, '  P, Q: PAdresse;',
+  TRuleAssert.Silent(TManagedTypeRawMemoryRule.Create, WithTypes(cAdresse, '  P, Q: PAdresse;',
     '  New(P);'#10'  FillChar(P^, SizeOf(TAdresse), 0);'#10'  GetMem(Q, SizeOf(TAdresse));'#10 +
     '  FillChar(Q^, SizeOf(TAdresse), 0);'#10'  Dispose(P);'#10'  Dispose(Q);'));
   // Ein anderer Zeiger oder ein anderer Füllwert bleibt ein Treffer.
-  Assert.AreEqual(1, Integer(Length(TRuleAssert.Findings(TManagedTypeRawMemoryRule.Create, WithTypes(Adresse,
+  Assert.AreEqual(1, Integer(Length(TRuleAssert.Findings(TManagedTypeRawMemoryRule.Create, WithTypes(cAdresse,
     '  P, Q: PAdresse;', '  New(P);'#10'  FillChar(Q^, SizeOf(TAdresse), 0);'#10'  Dispose(P);')))));
 end;
 
 procedure TRtlTypePatternRulesTests.ManagedRawMemoryOffAndExclude;
 var
-  Source: string;
+  mSource: string;
 begin
-  Source := WithTypes(Adresse, '  Adresse: TAdresse;', '  FillChar(Adresse, SizeOf(Adresse), 0);');
-  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TManagedTypeRawMemoryRule.Create, Source,
+  mSource := WithTypes(cAdresse, '  Adresse: TAdresse;', '  FillChar(Adresse, SizeOf(Adresse), 0);');
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TManagedTypeRawMemoryRule.Create, mSource,
     '{"rules": {"managed-type-raw-memory": "off"}}', 'U.pas'))));
-  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TManagedTypeRawMemoryRule.Create, Source,
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TManagedTypeRawMemoryRule.Create, mSource,
     '{"rules": {"managed-type-raw-memory": {"exclude": ["Alt/*.pas"]}}}', 'Alt/U.pas'))));
-  Assert.AreEqual(1, Integer(Length(TRuleAssert.Findings(TManagedTypeRawMemoryRule.Create, Source,
+  Assert.AreEqual(1, Integer(Length(TRuleAssert.Findings(TManagedTypeRawMemoryRule.Create, mSource,
     '{"rules": {"managed-type-raw-memory": {"exclude": ["Alt/*.pas"]}}}', 'Neu/U.pas'))));
 end;
 
 procedure TRtlTypePatternRulesTests.ThreadvarManaged;
 const
-  Head = 'unit U;'#10'interface'#10'type'#10'  TMeldung = record'#10'    Text: string;'#10'  end;'#10 +
+  cHead = 'unit U;'#10'interface'#10'type'#10'  TMeldung = record'#10'    Text: string;'#10'  end;'#10 +
     'implementation'#10;
 var
-  Findings: TArray<TRuleFinding>;
-  Source: string;
+  mFindings: TArray<TRuleFinding>;
+  mSource: string;
 begin
-  Source := Head + 'threadvar'#10'  LetzteMeldung: string;'#10'  Zaehler: Integer;'#10 +
+  mSource := cHead + 'threadvar'#10'  LetzteMeldung: string;'#10'  Zaehler: Integer;'#10 +
     '  Meldung, Vorige: TMeldung;'#10'end.';
-  Findings := TRuleAssert.Findings(TThreadvarManagedRule.Create, Source);
-  Assert.AreEqual(3, Integer(Length(Findings)));
+  mFindings := TRuleAssert.Findings(TThreadvarManagedRule.Create, mSource);
+  Assert.AreEqual(3, Integer(Length(mFindings)));
   Assert.AreEqual('threadvar mit string wird beim Thread-Ende nicht finalisiert (Leck je Thread).',
-    Findings[0].Message);
-  Assert.AreEqual(Ord(TRuleSeverity.Warning), Ord(Findings[0].Severity));
-  Assert.AreEqual(Ord(TRuleConfidence.High), Ord(Findings[0].Confidence));
-  Assert.AreEqual(8, Findings[0].Range.StartPos.Line);
+    mFindings[0].Message);
+  Assert.AreEqual(Ord(TRuleSeverity.Warning), Ord(mFindings[0].Severity));
+  Assert.AreEqual(Ord(TRuleConfidence.High), Ord(mFindings[0].Confidence));
+  Assert.AreEqual(8, mFindings[0].Range.StartPos.Line);
   Assert.AreEqual('threadvar mit TMeldung (enthält Strings) wird beim Thread-Ende nicht finalisiert (Leck je ' +
-    'Thread).', Findings[1].Message);
-  Assert.AreEqual(10, Findings[2].Range.StartPos.Line);
-  Assert.AreEqual(11, Findings[2].Range.StartPos.Character);
+    'Thread).', mFindings[1].Message);
+  Assert.AreEqual(10, mFindings[2].Range.StartPos.Line);
+  Assert.AreEqual(11, mFindings[2].Range.StartPos.Character);
   // Korrigiert: Zeiger auf einen Puffer bzw. normale var mit string.
-  TRuleAssert.Silent(TThreadvarManagedRule.Create, Head + 'threadvar'#10'  LetzteMeldung: PChar;'#10 +
+  TRuleAssert.Silent(TThreadvarManagedRule.Create, cHead + 'threadvar'#10'  LetzteMeldung: PChar;'#10 +
     'var'#10'  Global: string;'#10'end.');
-  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TThreadvarManagedRule.Create, Source,
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TThreadvarManagedRule.Create, mSource,
     '{"rules": {"threadvar-managed": "off"}}', 'U.pas'))));
-  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TThreadvarManagedRule.Create, Source,
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TThreadvarManagedRule.Create, mSource,
     '{"rules": {"threadvar-managed": {"exclude": ["Alt/*.pas"]}}}', 'Alt/U.pas'))));
-  Assert.AreEqual(3, Integer(Length(TRuleAssert.Findings(TThreadvarManagedRule.Create, Source,
+  Assert.AreEqual(3, Integer(Length(TRuleAssert.Findings(TThreadvarManagedRule.Create, mSource,
     '{"rules": {"threadvar-managed": {"exclude": ["Alt/*.pas"]}}}', 'Neu/U.pas'))));
 end;
 
@@ -564,41 +564,41 @@ end;
 
 procedure TRtlTypePatternRulesTests.PCharOfTemporaryIssueExample;
 var
-  Source, Fixed: string;
-  Findings: TArray<TRuleFinding>;
+  mSource, mFixed: string;
+  mFindings: TArray<TRuleFinding>;
 begin
-  Source := Copier('  Ziel := PChar(Pfad + ''.bak'');'#10'  CopyFile(PChar(Pfad), Ziel, False);');
-  Findings := TRuleAssert.Findings(TPCharOfTemporaryRule.Create, Source);
-  Assert.AreEqual(1, Integer(Length(Findings)));
+  mSource := Copier('  Ziel := PChar(Pfad + ''.bak'');'#10'  CopyFile(PChar(Pfad), Ziel, False);');
+  mFindings := TRuleAssert.Findings(TPCharOfTemporaryRule.Create, mSource);
+  Assert.AreEqual(1, Integer(Length(mFindings)));
   Assert.AreEqual('Der Ausdruck Pfad + ''.bak'' ist temporär; Ziel zeigt nach dieser Zeile auf freigegebenen ' +
-    'Speicher.', Findings[0].Message);
-  Assert.AreEqual(Ord(TRuleSeverity.Warning), Ord(Findings[0].Severity));
-  Assert.AreEqual(Ord(TRuleConfidence.High), Ord(Findings[0].Confidence));
-  Assert.AreEqual('Zwischenergebnis in ZielText ablegen', Findings[0].Fixes[0].Title);
-  Fixed := TChangeSignature.ApplyEdits(Source, Findings[0].Fixes[0].Edits);
+    'Speicher.', mFindings[0].Message);
+  Assert.AreEqual(Ord(TRuleSeverity.Warning), Ord(mFindings[0].Severity));
+  Assert.AreEqual(Ord(TRuleConfidence.High), Ord(mFindings[0].Confidence));
+  Assert.AreEqual('Zwischenergebnis in ZielText ablegen', mFindings[0].Fixes[0].Title);
+  mFixed := TChangeSignature.ApplyEdits(mSource, mFindings[0].Fixes[0].Edits);
   Assert.AreEqual(Copier('  var ZielText: string := Pfad + ''.bak'';'#10'  Ziel := PChar(ZielText);'#10 +
-    '  CopyFile(PChar(Pfad), Ziel, False);'), Fixed);
-  TRuleAssert.Silent(TPCharOfTemporaryRule.Create, Fixed);
+    '  CopyFile(PChar(Pfad), Ziel, False);'), mFixed);
+  TRuleAssert.Silent(TPCharOfTemporaryRule.Create, mFixed);
 end;
 
 procedure TRtlTypePatternRulesTests.PCharOfTemporaryVariants;
 var
-  Findings: TArray<TRuleFinding>;
+  mFindings: TArray<TRuleFinding>;
 begin
   // Funktionsergebnis, Feld ohne Korrektur, PostMessage hinter LPARAM.
-  Findings := TRuleAssert.Findings(TPCharOfTemporaryRule.Create, Copier('  Ziel := PChar(IntToStr(N));'#10 +
+  mFindings := TRuleAssert.Findings(TPCharOfTemporaryRule.Create, Copier('  Ziel := PChar(IntToStr(N));'#10 +
     '  FName := PChar(Format(''%d'', [N]));'#10'  PostMessage(Handle, WM_USER, 0, LPARAM(PChar(Pfad + ''x'')));'));
-  Assert.AreEqual(3, Integer(Length(Findings)));
+  Assert.AreEqual(3, Integer(Length(mFindings)));
   Assert.AreEqual('Der Ausdruck IntToStr(N) ist temporär; Ziel zeigt nach dieser Zeile auf freigegebenen Speicher.',
-    Findings[0].Message);
-  Assert.AreEqual(1, Integer(Length(Findings[0].Fixes)));
-  Assert.AreEqual(0, Integer(Length(Findings[1].Fixes)), 'Feld: keine Korrektur');
+    mFindings[0].Message);
+  Assert.AreEqual(1, Integer(Length(mFindings[0].Fixes)));
+  Assert.AreEqual(0, Integer(Length(mFindings[1].Fixes)), 'Feld: keine Korrektur');
   Assert.AreEqual('Der Ausdruck Pfad + ''x'' ist temporär; PostMessage liest den Zeiger erst später aus ' +
-    'freigegebenem Speicher.', Findings[2].Message);
+    'freigegebenem Speicher.', mFindings[2].Message);
   // Name schon vergeben: ZielText2.
-  Findings := TRuleAssert.Findings(TPCharOfTemporaryRule.Create, Copier('  ZielText := 1;'#10 +
+  mFindings := TRuleAssert.Findings(TPCharOfTemporaryRule.Create, Copier('  ZielText := 1;'#10 +
     '  Ziel := PChar(Pfad + ''.bak'');'));
-  Assert.AreEqual('Zwischenergebnis in ZielText2 ablegen', Findings[0].Fixes[0].Title);
+  Assert.AreEqual('Zwischenergebnis in ZielText2 ablegen', mFindings[0].Fixes[0].Title);
   Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TPCharOfTemporaryRule.Create,
     Copier('  Ziel := PChar(IntToStr(N));'), '{"rules": {"pchar-of-temporary": "off"}}', 'U.pas'))));
   Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TPCharOfTemporaryRule.Create,
@@ -622,66 +622,66 @@ end;
 
 procedure TRtlTypePatternRulesTests.StringListUnsortedIssueExample;
 var
-  Source: string;
-  Findings: TArray<TRuleFinding>;
+  mSource: string;
+  mFindings: TArray<TRuleFinding>;
 begin
-  Source := Lister('', '  Namen := TStringList.Create;'#10'  Namen.LoadFromFile(Datei);'#10 +
+  mSource := Lister('', '  Namen := TStringList.Create;'#10'  Namen.LoadFromFile(Datei);'#10 +
     '  if Namen.Find(Suche, Index) then'#10'    Namen.Delete(Index);'#10'  Namen.Free;');
-  Findings := TRuleAssert.Findings(TStringListUnsortedRule.Create, Source);
-  Assert.AreEqual(1, Integer(Length(Findings)));
-  Assert.AreEqual('Find setzt eine sortierte Liste voraus; Namen ist nicht sortiert.', Findings[0].Message);
-  Assert.AreEqual(Ord(TRuleSeverity.Warning), Ord(Findings[0].Severity));
-  Assert.AreEqual(Ord(TRuleConfidence.Medium), Ord(Findings[0].Confidence));
-  Assert.AreEqual(2, Integer(Length(Findings[0].Fixes)));
-  Assert.AreEqual('Sorted := True nach dem Erzeugen ergänzen', Findings[0].Fixes[0].Title);
+  mFindings := TRuleAssert.Findings(TStringListUnsortedRule.Create, mSource);
+  Assert.AreEqual(1, Integer(Length(mFindings)));
+  Assert.AreEqual('Find setzt eine sortierte Liste voraus; Namen ist nicht sortiert.', mFindings[0].Message);
+  Assert.AreEqual(Ord(TRuleSeverity.Warning), Ord(mFindings[0].Severity));
+  Assert.AreEqual(Ord(TRuleConfidence.Medium), Ord(mFindings[0].Confidence));
+  Assert.AreEqual(2, Integer(Length(mFindings[0].Fixes)));
+  Assert.AreEqual('Sorted := True nach dem Erzeugen ergänzen', mFindings[0].Fixes[0].Title);
   Assert.AreEqual(Lister('', '  Namen := TStringList.Create;'#10'  Namen.Sorted := True;'#10 +
     '  Namen.LoadFromFile(Datei);'#10'  if Namen.Find(Suche, Index) then'#10'    Namen.Delete(Index);'#10 +
-    '  Namen.Free;'), TChangeSignature.ApplyEdits(Source, Findings[0].Fixes[0].Edits));
-  TRuleAssert.Silent(TStringListUnsortedRule.Create, TChangeSignature.ApplyEdits(Source, Findings[0].Fixes[0].Edits));
-  Assert.AreEqual('IndexOf statt Find verwenden', Findings[0].Fixes[1].Title);
+    '  Namen.Free;'), TChangeSignature.ApplyEdits(mSource, mFindings[0].Fixes[0].Edits));
+  TRuleAssert.Silent(TStringListUnsortedRule.Create, TChangeSignature.ApplyEdits(mSource, mFindings[0].Fixes[0].Edits));
+  Assert.AreEqual('IndexOf statt Find verwenden', mFindings[0].Fixes[1].Title);
   Assert.AreEqual(Lister('', '  Namen := TStringList.Create;'#10'  Namen.LoadFromFile(Datei);'#10 +
     '  Index := Namen.IndexOf(Suche);'#10'  if Index >= 0 then'#10'    Namen.Delete(Index);'#10'  Namen.Free;'),
-    TChangeSignature.ApplyEdits(Source, Findings[0].Fixes[1].Edits));
-  TRuleAssert.Silent(TStringListUnsortedRule.Create, TChangeSignature.ApplyEdits(Source, Findings[0].Fixes[1].Edits));
+    TChangeSignature.ApplyEdits(mSource, mFindings[0].Fixes[1].Edits));
+  TRuleAssert.Silent(TStringListUnsortedRule.Create, TChangeSignature.ApplyEdits(mSource, mFindings[0].Fixes[1].Edits));
 end;
 
 procedure TRtlTypePatternRulesTests.StringListUnsortedVariants;
 var
-  Findings: TArray<TRuleFinding>;
-  Source: string;
+  mFindings: TArray<TRuleFinding>;
+  mSource: string;
 begin
   // Duplicates ohne Sorted, Find in while ohne IndexOf-Korrektur.
-  Findings := TRuleAssert.Findings(TStringListUnsortedRule.Create, Lister('', '  Namen := TStringList.Create;'#10 +
+  mFindings := TRuleAssert.Findings(TStringListUnsortedRule.Create, Lister('', '  Namen := TStringList.Create;'#10 +
     '  Namen.Duplicates := dupIgnore;'#10'  while Namen.Find(Suche, Index) do'#10'    Namen.Delete(Index);'));
-  Assert.AreEqual(2, Integer(Length(Findings)));
-  Assert.AreEqual('Duplicates wirkt nur bei sortierten Listen; Namen ist nicht sortiert.', Findings[0].Message);
-  Assert.AreEqual(1, Integer(Length(Findings[0].Fixes)));
-  Assert.AreEqual(1, Integer(Length(Findings[1].Fixes)), 'while: nur Sorted');
+  Assert.AreEqual(2, Integer(Length(mFindings)));
+  Assert.AreEqual('Duplicates wirkt nur bei sortierten Listen; Namen ist nicht sortiert.', mFindings[0].Message);
+  Assert.AreEqual(1, Integer(Length(mFindings[0].Fixes)));
+  Assert.AreEqual(1, Integer(Length(mFindings[1].Fixes)), 'while: nur Sorted');
   // Insert verträgt kein Sorted: nur IndexOf.
-  Findings := TRuleAssert.Findings(TStringListUnsortedRule.Create, Lister('', '  Namen := TStringList.Create;'#10 +
+  mFindings := TRuleAssert.Findings(TStringListUnsortedRule.Create, Lister('', '  Namen := TStringList.Create;'#10 +
     '  Namen.Insert(0, Suche);'#10'  if Namen.Find(Suche, Index) then'#10'    Exit;'));
-  Assert.AreEqual(1, Integer(Length(Findings)));
-  Assert.AreEqual(1, Integer(Length(Findings[0].Fixes)));
-  Assert.AreEqual('IndexOf statt Find verwenden', Findings[0].Fixes[0].Title);
+  Assert.AreEqual(1, Integer(Length(mFindings)));
+  Assert.AreEqual(1, Integer(Length(mFindings[0].Fixes)));
+  Assert.AreEqual('IndexOf statt Find verwenden', mFindings[0].Fixes[0].Title);
   // Inline-Variable und Feld, das im Konstruktor erzeugt wird.
-  Findings := TRuleAssert.Findings(TStringListUnsortedRule.Create, Lister('',
+  mFindings := TRuleAssert.Findings(TStringListUnsortedRule.Create, Lister('',
     '  var Liste := TStringList.Create;'#10'  if Liste.Find(Suche, Index) then'#10'    Exit;'));
-  Assert.AreEqual(1, Integer(Length(Findings)));
-  Assert.AreEqual('Find setzt eine sortierte Liste voraus; Liste ist nicht sortiert.', Findings[0].Message);
-  Source := 'unit U;'#10'interface'#10'type'#10'  TCache = class'#10'    FNamen: TStringList;'#10 +
+  Assert.AreEqual(1, Integer(Length(mFindings)));
+  Assert.AreEqual('Find setzt eine sortierte Liste voraus; Liste ist nicht sortiert.', mFindings[0].Message);
+  mSource := 'unit U;'#10'interface'#10'type'#10'  TCache = class'#10'    FNamen: TStringList;'#10 +
     '    constructor Create;'#10'    function Hat(const S: string): Boolean;'#10'  end;'#10'implementation'#10 +
     'constructor TCache.Create;'#10'begin'#10'  FNamen := TStringList.Create;'#10'end;'#10 +
     'function TCache.Hat(const S: string): Boolean;'#10'var'#10'  I: Integer;'#10'begin'#10 +
     '  Result := Self.FNamen.Find(S, I);'#10'end;'#10'end.';
-  Findings := TRuleAssert.Findings(TStringListUnsortedRule.Create, Source);
-  Assert.AreEqual(1, Integer(Length(Findings)));
-  Assert.AreEqual('Find setzt eine sortierte Liste voraus; FNamen ist nicht sortiert.', Findings[0].Message);
+  mFindings := TRuleAssert.Findings(TStringListUnsortedRule.Create, mSource);
+  Assert.AreEqual(1, Integer(Length(mFindings)));
+  Assert.AreEqual('Find setzt eine sortierte Liste voraus; FNamen ist nicht sortiert.', mFindings[0].Message);
   // Eine gleichnamige sortierte Variable in einer anderen Routine zählt nicht.
-  Findings := TRuleAssert.Findings(TStringListUnsortedRule.Create, Lister('',
+  mFindings := TRuleAssert.Findings(TStringListUnsortedRule.Create, Lister('',
     '  Namen := TStringList.Create;'#10'  if Namen.Find(Suche, Index) then'#10'    Exit;'#10'end;'#10 +
     'procedure Andere;'#10'var'#10'  Namen: TStringList;'#10'begin'#10'  Namen := TStringList.Create;'#10 +
     '  Namen.Sorted := True;'));
-  Assert.AreEqual(1, Integer(Length(Findings)));
+  Assert.AreEqual(1, Integer(Length(mFindings)));
   Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TStringListUnsortedRule.Create,
     Lister('', '  Namen := TStringList.Create;'#10'  Namen.Find(Suche, Index);'),
     '{"rules": {"stringlist-unsorted": "off"}}', 'U.pas'))));
@@ -723,25 +723,25 @@ end;
 
 procedure TRtlTypePatternRulesTests.WritelnInGuiAppIssueExample;
 var
-  Source, Fixed: string;
-  Findings: TArray<TRuleFinding>;
+  mSource, mFixed: string;
+  mFindings: TArray<TRuleFinding>;
 begin
-  Source := GuiUnit('  Writeln(''Start: '', TimeToStr(Now));');
-  Findings := TRuleAssert.ApplicationFindings(TWritelnInGuiAppRule.Create, Source, TRuleApplicationKind.Gui);
-  Assert.AreEqual(1, Integer(Length(Findings)));
-  Assert.AreEqual('Das Projekt hat keine Konsole; Writeln löst zur Laufzeit E/A-Fehler 105 aus.', Findings[0].Message);
-  Assert.AreEqual(Ord(TRuleSeverity.Warning), Ord(Findings[0].Severity));
-  Assert.AreEqual(Ord(TRuleConfidence.High), Ord(Findings[0].Confidence));
-  Assert.AreEqual('Durch OutputDebugString ersetzen', Findings[0].Fixes[0].Title);
-  Fixed := TChangeSignature.ApplyEdits(Source, Findings[0].Fixes[0].Edits);
-  Assert.IsTrue(Pos('  OutputDebugString(PChar(''Start: '' + TimeToStr(Now)));', Fixed) > 0, Fixed);
-  Assert.IsTrue(Pos('Winapi.Windows', Fixed) > 0, 'uses ergänzt: ' + Fixed);
-  Assert.AreEqual(0, Integer(Length(TRuleAssert.ApplicationFindings(TWritelnInGuiAppRule.Create, Fixed,
+  mSource := GuiUnit('  Writeln(''Start: '', TimeToStr(Now));');
+  mFindings := TRuleAssert.ApplicationFindings(TWritelnInGuiAppRule.Create, mSource, TRuleApplicationKind.Gui);
+  Assert.AreEqual(1, Integer(Length(mFindings)));
+  Assert.AreEqual('Das Projekt hat keine Konsole; Writeln löst zur Laufzeit E/A-Fehler 105 aus.', mFindings[0].Message);
+  Assert.AreEqual(Ord(TRuleSeverity.Warning), Ord(mFindings[0].Severity));
+  Assert.AreEqual(Ord(TRuleConfidence.High), Ord(mFindings[0].Confidence));
+  Assert.AreEqual('Durch OutputDebugString ersetzen', mFindings[0].Fixes[0].Title);
+  mFixed := TChangeSignature.ApplyEdits(mSource, mFindings[0].Fixes[0].Edits);
+  Assert.IsTrue(Pos('  OutputDebugString(PChar(''Start: '' + TimeToStr(Now)));', mFixed) > 0, mFixed);
+  Assert.IsTrue(Pos('Winapi.Windows', mFixed) > 0, 'uses ergänzt: ' + mFixed);
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.ApplicationFindings(TWritelnInGuiAppRule.Create, mFixed,
     TRuleApplicationKind.Gui))));
   // Konsolenprojekt und Unit ohne Projekt: keine Meldung.
-  Assert.AreEqual(0, Integer(Length(TRuleAssert.ApplicationFindings(TWritelnInGuiAppRule.Create, Source,
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.ApplicationFindings(TWritelnInGuiAppRule.Create, mSource,
     TRuleApplicationKind.Console))));
-  Assert.AreEqual(0, Integer(Length(TRuleAssert.ApplicationFindings(TWritelnInGuiAppRule.Create, Source,
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.ApplicationFindings(TWritelnInGuiAppRule.Create, mSource,
     TRuleApplicationKind.Unknown))));
 end;
 
@@ -769,25 +769,25 @@ end;
 
 procedure TRtlTypePatternRulesTests.WritelnInGuiAppVariants;
 var
-  Source: string;
-  Findings: TArray<TRuleFinding>;
+  mSource: string;
+  mFindings: TArray<TRuleFinding>;
 begin
   // Die .dpr selbst ohne Projekt; Readln ohne Korrektur, Output fällt weg, Zahl über IntToStr.
-  Source := GuiProgram('var'#10'  Anzahl: Integer;'#10, '  Writeln(Output, ''Anzahl: '', Anzahl);'#10 +
+  mSource := GuiProgram('var'#10'  Anzahl: Integer;'#10, '  Writeln(Output, ''Anzahl: '', Anzahl);'#10 +
     '  Readln;'#10'  Write(Anzahl:5);');
-  Findings := TRuleAssert.Findings(TWritelnInGuiAppRule.Create, Source);
-  Assert.AreEqual(3, Integer(Length(Findings)));
+  mFindings := TRuleAssert.Findings(TWritelnInGuiAppRule.Create, mSource);
+  Assert.AreEqual(3, Integer(Length(mFindings)));
   Assert.IsTrue(Pos('OutputDebugString(PChar(''Anzahl: '' + IntToStr(Anzahl)))',
-    TChangeSignature.ApplyEdits(Source, Findings[0].Fixes[0].Edits)) > 0);
-  Assert.IsTrue(Pos('System.SysUtils', TChangeSignature.ApplyEdits(Source, Findings[0].Fixes[0].Edits)) > 0,
+    TChangeSignature.ApplyEdits(mSource, mFindings[0].Fixes[0].Edits)) > 0);
+  Assert.IsTrue(Pos('System.SysUtils', TChangeSignature.ApplyEdits(mSource, mFindings[0].Fixes[0].Edits)) > 0,
     'IntToStr braucht SysUtils');
-  Assert.AreEqual('Das Projekt hat keine Konsole; Readln löst zur Laufzeit E/A-Fehler 104 aus.', Findings[1].Message);
-  Assert.AreEqual(0, Integer(Length(Findings[1].Fixes)));
-  Assert.AreEqual(0, Integer(Length(Findings[2].Fixes)), 'Breitenangabe: keine Korrektur');
+  Assert.AreEqual('Das Projekt hat keine Konsole; Readln löst zur Laufzeit E/A-Fehler 104 aus.', mFindings[1].Message);
+  Assert.AreEqual(0, Integer(Length(mFindings[1].Fixes)));
+  Assert.AreEqual(0, Integer(Length(mFindings[2].Fixes)), 'Breitenangabe: keine Korrektur');
   // Unbekannter Typ: Meldung ohne Korrektur.
-  Findings := TRuleAssert.Findings(TWritelnInGuiAppRule.Create, GuiProgram('', '  Writeln(Fremd);'));
-  Assert.AreEqual(1, Integer(Length(Findings)));
-  Assert.AreEqual(0, Integer(Length(Findings[0].Fixes)));
+  mFindings := TRuleAssert.Findings(TWritelnInGuiAppRule.Create, GuiProgram('', '  Writeln(Fremd);'));
+  Assert.AreEqual(1, Integer(Length(mFindings)));
+  Assert.AreEqual(0, Integer(Length(mFindings[0].Fixes)));
 end;
 
 procedure TRtlTypePatternRulesTests.WritelnInGuiAppSilentCases;
@@ -808,30 +808,30 @@ end;
 
 procedure TRtlTypePatternRulesTests.WritelnInGuiAppOptions;
 var
-  Source: string;
-  Findings: TArray<TRuleFinding>;
-  Issues: TArray<TConfigurationIssue>;
+  mSource: string;
+  mFindings: TArray<TRuleFinding>;
+  mIssues: TArray<TConfigurationIssue>;
 begin
-  Source := GuiProgram('', '  Writeln(''Start'');');
-  Findings := TRuleAssert.Findings(TWritelnInGuiAppRule.Create, Source,
+  mSource := GuiProgram('', '  Writeln(''Start'');');
+  mFindings := TRuleAssert.Findings(TWritelnInGuiAppRule.Create, mSource,
     '{"rules": {"writeln-in-gui-app": {"replacement": "Log.Info"}}}', 'Werkzeug.dpr');
-  Assert.AreEqual('Durch Log.Info ersetzen', Findings[0].Fixes[0].Title);
-  Assert.AreEqual(GuiProgram('', '  Log.Info(''Start'');'), TChangeSignature.ApplyEdits(Source,
-    Findings[0].Fixes[0].Edits));
-  Findings := TRuleAssert.Findings(TWritelnInGuiAppRule.Create, Source,
+  Assert.AreEqual('Durch Log.Info ersetzen', mFindings[0].Fixes[0].Title);
+  Assert.AreEqual(GuiProgram('', '  Log.Info(''Start'');'), TChangeSignature.ApplyEdits(mSource,
+    mFindings[0].Fixes[0].Edits));
+  mFindings := TRuleAssert.Findings(TWritelnInGuiAppRule.Create, mSource,
     '{"rules": {"writeln-in-gui-app": {"replacement": "Logger.Log(TLogLevel.Info, %s)"}}}', 'Werkzeug.dpr');
-  Assert.AreEqual('Durch Logger.Log ersetzen', Findings[0].Fixes[0].Title);
-  Assert.AreEqual(GuiProgram('', '  Logger.Log(TLogLevel.Info, ''Start'');'), TChangeSignature.ApplyEdits(Source,
-    Findings[0].Fixes[0].Edits));
+  Assert.AreEqual('Durch Logger.Log ersetzen', mFindings[0].Fixes[0].Title);
+  Assert.AreEqual(GuiProgram('', '  Logger.Log(TLogLevel.Info, ''Start'');'), TChangeSignature.ApplyEdits(mSource,
+    mFindings[0].Fixes[0].Edits));
   Assert.AreEqual('OutputDebugString', TWritelnInGuiAppRule.Replacement(''));
   Assert.AreEqual('OutputDebugString', TWritelnInGuiAppRule.Replacement('{"replacement": " "}'));
-  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TWritelnInGuiAppRule.Create, Source,
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TWritelnInGuiAppRule.Create, mSource,
     '{"rules": {"writeln-in-gui-app": "off"}}', 'Werkzeug.dpr'))));
-  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TWritelnInGuiAppRule.Create, Source,
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TWritelnInGuiAppRule.Create, mSource,
     '{"rules": {"writeln-in-gui-app": {"exclude": ["Alt/*.dpr"]}}}', 'Alt/Werkzeug.dpr'))));
-  TConfigurationParser.Parse('{"rules": {"writeln-in-gui-app": {"replacement": ["Log.Info"]}}}', Issues);
-  Assert.AreEqual(1, Integer(Length(Issues)));
-  Assert.AreEqual('"replacement" muss ein Text sein', Issues[0].Message);
+  TConfigurationParser.Parse('{"rules": {"writeln-in-gui-app": {"replacement": ["Log.Info"]}}}', mIssues);
+  Assert.AreEqual(1, Integer(Length(mIssues)));
+  Assert.AreEqual('"replacement" muss ein Text sein', mIssues[0].Message);
 end;
 
 function Eingabe(const AVars, ABody: string): string;
@@ -843,45 +843,45 @@ end;
 
 procedure TRtlConversionRulesTests.UncheckedConversionIssueExample;
 var
-  Source, Fixed: string;
-  Findings: TArray<TRuleFinding>;
+  mSource, mFixed: string;
+  mFindings: TArray<TRuleFinding>;
 begin
-  Source := Eingabe('', '  Menge := StrToInt(edtMenge.Text);');
-  Findings := TRuleAssert.Findings(TUncheckedConversionRule.Create, Source);
-  Assert.AreEqual(1, Integer(Length(Findings)));
+  mSource := Eingabe('', '  Menge := StrToInt(edtMenge.Text);');
+  mFindings := TRuleAssert.Findings(TUncheckedConversionRule.Create, mSource);
+  Assert.AreEqual(1, Integer(Length(mFindings)));
   Assert.AreEqual('Eingabe aus edtMenge.Text ohne Prüfung umgewandelt; eine Fehleingabe löst EConvertError aus.',
-    Findings[0].Message);
-  Assert.AreEqual(Ord(TRuleSeverity.Hint), Ord(Findings[0].Severity));
-  Assert.AreEqual(Ord(TRuleConfidence.Medium), Ord(Findings[0].Confidence));
-  Assert.AreEqual('In TryStrToInt mit Fehlerzweig umschreiben', Findings[0].Fixes[0].Title);
-  Fixed := TChangeSignature.ApplyEdits(Source, Findings[0].Fixes[0].Edits);
+    mFindings[0].Message);
+  Assert.AreEqual(Ord(TRuleSeverity.Hint), Ord(mFindings[0].Severity));
+  Assert.AreEqual(Ord(TRuleConfidence.Medium), Ord(mFindings[0].Confidence));
+  Assert.AreEqual('In TryStrToInt mit Fehlerzweig umschreiben', mFindings[0].Fixes[0].Title);
+  mFixed := TChangeSignature.ApplyEdits(mSource, mFindings[0].Fixes[0].Edits);
   Assert.AreEqual(Eingabe('', '  if not TryStrToInt(edtMenge.Text, Menge) then'#10 +
-    '    raise EConvertError.Create(''Menge ist keine Zahl'');'), Fixed);
-  TRuleAssert.Silent(TUncheckedConversionRule.Create, Fixed);
+    '    raise EConvertError.Create(''Menge ist keine Zahl'');'), mFixed);
+  TRuleAssert.Silent(TUncheckedConversionRule.Create, mFixed);
 end;
 
 procedure TRtlConversionRulesTests.UncheckedConversionVariants;
 var
-  Findings: TArray<TRuleFinding>;
+  mFindings: TArray<TRuleFinding>;
 begin
-  Findings := TRuleAssert.Findings(TUncheckedConversionRule.Create, Eingabe('  Preis: Double;'#10'  Am: TDateTime;'#10 +
+  mFindings := TRuleAssert.Findings(TUncheckedConversionRule.Create, Eingabe('  Preis: Double;'#10'  Am: TDateTime;'#10 +
     '  Summe: Integer;'#10, '  Preis := StrToFloat(Trim(Grid.Cells[1, Zeile]));'#10 +
     '  Am := SysUtils.StrToDate(Memo.Lines[0]);'#10'  FAnzahl := StrToInt(edtMenge.Text);'#10 +
     '  Summe := Summe + StrToInt(edtMenge.Text);'#10'  if Pruefen then'#10'    Menge := StrToInt(edtMenge.Text)'#10 +
     '  else'#10'    Menge := 0;'#10'  Preis := StrToInt(edtMenge.Text);'));
-  Assert.AreEqual(6, Integer(Length(Findings)));
+  Assert.AreEqual(6, Integer(Length(mFindings)));
   Assert.AreEqual('Eingabe aus Grid.Cells[1, Zeile] ohne Prüfung umgewandelt; eine Fehleingabe löst EConvertError ' +
-    'aus.', Findings[0].Message);
+    'aus.', mFindings[0].Message);
   Assert.AreEqual('if not TryStrToFloat(Trim(Grid.Cells[1, Zeile]), Preis) then'#10 +
-    '    raise EConvertError.Create(''Preis ist keine Zahl'')', Findings[0].Fixes[0].Edits[0].NewText);
+    '    raise EConvertError.Create(''Preis ist keine Zahl'')', mFindings[0].Fixes[0].Edits[0].NewText);
   Assert.AreEqual('Eingabe aus Memo.Lines[0] ohne Prüfung umgewandelt; eine Fehleingabe löst EConvertError aus.',
-    Findings[1].Message);
-  Assert.AreEqual('In TryStrToDate mit Fehlerzweig umschreiben', Findings[1].Fixes[0].Title);
+    mFindings[1].Message);
+  Assert.AreEqual('In TryStrToDate mit Fehlerzweig umschreiben', mFindings[1].Fixes[0].Title);
   // Feld: Korrektur; Ausdruck, then-Zweig ohne begin und unpassender Typ: ohne Korrektur.
-  Assert.AreEqual(1, Integer(Length(Findings[2].Fixes)));
-  Assert.AreEqual(0, Integer(Length(Findings[3].Fixes)));
-  Assert.AreEqual(0, Integer(Length(Findings[4].Fixes)));
-  Assert.AreEqual(0, Integer(Length(Findings[5].Fixes)));
+  Assert.AreEqual(1, Integer(Length(mFindings[2].Fixes)));
+  Assert.AreEqual(0, Integer(Length(mFindings[3].Fixes)));
+  Assert.AreEqual(0, Integer(Length(mFindings[4].Fixes)));
+  Assert.AreEqual(0, Integer(Length(mFindings[5].Fixes)));
 end;
 
 procedure TRtlConversionRulesTests.UncheckedConversionSilentCases;
@@ -898,22 +898,22 @@ end;
 
 procedure TRtlConversionRulesTests.UncheckedConversionOptions;
 var
-  Source: string;
-  Issues: TArray<TConfigurationIssue>;
+  mSource: string;
+  mIssues: TArray<TConfigurationIssue>;
 begin
-  Source := Eingabe('', '  Menge := StrToInt(edtMenge.Text);'#10'  Menge := StrToInt(Query.Params[0].AsString);'#10 +
+  mSource := Eingabe('', '  Menge := StrToInt(edtMenge.Text);'#10'  Menge := StrToInt(Query.Params[0].AsString);'#10 +
     '  Menge := StrToUInt(edtMenge.Text);');
-  Assert.AreEqual(1, Integer(Length(TRuleAssert.Findings(TUncheckedConversionRule.Create, Source))));
-  Assert.AreEqual(2, Integer(Length(TRuleAssert.Findings(TUncheckedConversionRule.Create, Source,
+  Assert.AreEqual(1, Integer(Length(TRuleAssert.Findings(TUncheckedConversionRule.Create, mSource))));
+  Assert.AreEqual(2, Integer(Length(TRuleAssert.Findings(TUncheckedConversionRule.Create, mSource,
     '{"rules": {"unchecked-conversion": {"sources": ["Text", "AsString"]}}}', 'U.pas'))));
-  Assert.AreEqual(1, Integer(Length(TRuleAssert.Findings(TUncheckedConversionRule.Create, Source,
+  Assert.AreEqual(1, Integer(Length(TRuleAssert.Findings(TUncheckedConversionRule.Create, mSource,
     '{"rules": {"unchecked-conversion": {"functions": ["StrToUInt"]}}}', 'U.pas'))));
-  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TUncheckedConversionRule.Create, Source,
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TUncheckedConversionRule.Create, mSource,
     '{"rules": {"unchecked-conversion": "off"}}', 'U.pas'))));
-  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TUncheckedConversionRule.Create, Source,
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TUncheckedConversionRule.Create, mSource,
     '{"rules": {"unchecked-conversion": {"exclude": ["Alt/*.pas"]}}}', 'Alt/U.pas'))));
-  TConfigurationParser.Parse('{"rules": {"unchecked-conversion": {"functions": "StrToInt", "sources": [1]}}}', Issues);
-  Assert.AreEqual(2, Integer(Length(Issues)));
+  TConfigurationParser.Parse('{"rules": {"unchecked-conversion": {"functions": "StrToInt", "sources": [1]}}}', mIssues);
+  Assert.AreEqual(2, Integer(Length(mIssues)));
 end;
 
 function Preisliste(const AVars, ABody: string): string;
@@ -926,36 +926,36 @@ end;
 
 procedure TRtlConversionRulesTests.DictionaryGetIssueExample;
 var
-  Source, Fixed: string;
-  Findings: TArray<TRuleFinding>;
+  mSource, mFixed: string;
+  mFindings: TArray<TRuleFinding>;
 begin
-  Source := Preisliste('', '  Preis := Preise[Artikel.Nummer];');
-  Findings := TRuleAssert.Findings(TDictionaryGetWithoutCheckRule.Create, Source);
-  Assert.AreEqual(1, Integer(Length(Findings)));
-  Assert.AreEqual('Schlüssel wird nicht geprüft; fehlt er, löst der Zugriff EListError aus.', Findings[0].Message);
-  Assert.AreEqual(Ord(TRuleSeverity.Hint), Ord(Findings[0].Severity));
-  Assert.AreEqual(Ord(TRuleConfidence.Medium), Ord(Findings[0].Confidence));
-  Assert.AreEqual('In TryGetValue umschreiben', Findings[0].Fixes[0].Title);
-  Fixed := TChangeSignature.ApplyEdits(Source, Findings[0].Fixes[0].Edits);
-  Assert.AreEqual(Preisliste('', '  if not Preise.TryGetValue(Artikel.Nummer, Preis) then'#10'    Preis := 0;'), Fixed);
-  TRuleAssert.Silent(TDictionaryGetWithoutCheckRule.Create, Fixed);
+  mSource := Preisliste('', '  Preis := Preise[Artikel.Nummer];');
+  mFindings := TRuleAssert.Findings(TDictionaryGetWithoutCheckRule.Create, mSource);
+  Assert.AreEqual(1, Integer(Length(mFindings)));
+  Assert.AreEqual('Schlüssel wird nicht geprüft; fehlt er, löst der Zugriff EListError aus.', mFindings[0].Message);
+  Assert.AreEqual(Ord(TRuleSeverity.Hint), Ord(mFindings[0].Severity));
+  Assert.AreEqual(Ord(TRuleConfidence.Medium), Ord(mFindings[0].Confidence));
+  Assert.AreEqual('In TryGetValue umschreiben', mFindings[0].Fixes[0].Title);
+  mFixed := TChangeSignature.ApplyEdits(mSource, mFindings[0].Fixes[0].Edits);
+  Assert.AreEqual(Preisliste('', '  if not Preise.TryGetValue(Artikel.Nummer, Preis) then'#10'    Preis := 0;'), mFixed);
+  TRuleAssert.Silent(TDictionaryGetWithoutCheckRule.Create, mFixed);
 end;
 
 procedure TRtlConversionRulesTests.DictionaryGetVariants;
 var
-  Findings: TArray<TRuleFinding>;
+  mFindings: TArray<TRuleFinding>;
 begin
   // Feld, Items[…], Alias auf TObjectDictionary, Ausdruck, anderer Schlüssel geprüft.
-  Findings := TRuleAssert.Findings(TDictionaryGetWithoutCheckRule.Create, Preisliste('  Lager: TPreisMap;'#10 +
+  mFindings := TRuleAssert.Findings(TDictionaryGetWithoutCheckRule.Create, Preisliste('  Lager: TPreisMap;'#10 +
     '  Teil: TArtikel;'#10, '  Preis := Self.FPreise.Items[Artikel.Nummer];'#10'  Teil := Lager[''A1''];'#10 +
     '  Anzeigen(Preise[''B2''] * 2);'#10'  if Preise.ContainsKey(''X'') then'#10'    Preis := Preise[''Y''];'));
-  Assert.AreEqual(4, Integer(Length(Findings)));
+  Assert.AreEqual(4, Integer(Length(mFindings)));
   Assert.AreEqual('if not Self.FPreise.TryGetValue(Artikel.Nummer, Preis) then'#10'    Preis := 0',
-    Findings[0].Fixes[0].Edits[0].NewText);
+    mFindings[0].Fixes[0].Edits[0].NewText);
   Assert.AreEqual('if not Lager.TryGetValue(''A1'', Teil) then'#10'    Teil := Default(TArtikel)',
-    Findings[1].Fixes[0].Edits[0].NewText);
-  Assert.AreEqual(0, Integer(Length(Findings[2].Fixes)));
-  Assert.AreEqual(0, Integer(Length(Findings[3].Fixes)));
+    mFindings[1].Fixes[0].Edits[0].NewText);
+  Assert.AreEqual(0, Integer(Length(mFindings[2].Fixes)));
+  Assert.AreEqual(0, Integer(Length(mFindings[3].Fixes)));
   Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TDictionaryGetWithoutCheckRule.Create,
     Preisliste('', '  Preis := Preise[''A''];'), '{"rules": {"dictionary-get-without-check": "off"}}', 'U.pas'))));
   Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TDictionaryGetWithoutCheckRule.Create,
@@ -1002,39 +1002,39 @@ end;
 
 procedure TRtlConversionRulesTests.DelimitedTextIssueExample;
 var
-  Source, Fixed: string;
-  Findings: TArray<TRuleFinding>;
-  Edit: TRuleEdit;
-  Tree: TSyntaxTree;
+  mSource, mFixed: string;
+  mFindings: TArray<TRuleFinding>;
+  mEdit: TRuleEdit;
+  mTree: TSyntaxTree;
 begin
-  Source := Teilen('    Teile.Delimiter := '';'';'#10'    Teile.DelimitedText := Zeile;'#10);
-  Findings := TRuleAssert.Findings(TDelimitedTextWithoutStrictRule.Create, Source);
-  Assert.AreEqual(1, Integer(Length(Findings)));
-  Assert.AreEqual('delimited-text-without-strict', Findings[0].RuleId);
-  Assert.AreEqual(Ord(TRuleSeverity.Warning), Ord(Findings[0].Severity));
-  Assert.AreEqual(Ord(TRuleConfidence.High), Ord(Findings[0].Confidence));
+  mSource := Teilen('    Teile.Delimiter := '';'';'#10'    Teile.DelimitedText := Zeile;'#10);
+  mFindings := TRuleAssert.Findings(TDelimitedTextWithoutStrictRule.Create, mSource);
+  Assert.AreEqual(1, Integer(Length(mFindings)));
+  Assert.AreEqual('delimited-text-without-strict', mFindings[0].RuleId);
+  Assert.AreEqual(Ord(TRuleSeverity.Warning), Ord(mFindings[0].Severity));
+  Assert.AreEqual(Ord(TRuleConfidence.High), Ord(mFindings[0].Confidence));
   Assert.AreEqual('Ohne StrictDelimiter trennt DelimitedText auch an Leerzeichen: ''Max Muster'' wird zu zwei ' +
-    'Einträgen.', Findings[0].Message);
-  Assert.AreEqual(10, Findings[0].Range.StartPos.Line);
-  Assert.AreEqual(10, Findings[0].Range.StartPos.Character);
-  Assert.AreEqual('StrictDelimiter := True; einfügen', Findings[0].Fixes[0].Title);
-  Edit := Findings[0].Fixes[0].Edits[0];
-  Fixed := Copy(Source, 1, Pos('    Teile.DelimitedText', Source) + 3) + Edit.NewText +
-    Copy(Source, Pos('    Teile.DelimitedText', Source) + 4, MaxInt);
+    'Einträgen.', mFindings[0].Message);
+  Assert.AreEqual(10, mFindings[0].Range.StartPos.Line);
+  Assert.AreEqual(10, mFindings[0].Range.StartPos.Character);
+  Assert.AreEqual('StrictDelimiter := True; einfügen', mFindings[0].Fixes[0].Title);
+  mEdit := mFindings[0].Fixes[0].Edits[0];
+  mFixed := Copy(mSource, 1, Pos('    Teile.DelimitedText', mSource) + 3) + mEdit.NewText +
+    Copy(mSource, Pos('    Teile.DelimitedText', mSource) + 4, MaxInt);
   Assert.AreEqual(Teilen('    Teile.Delimiter := '';'';'#10'    Teile.StrictDelimiter := True;'#10 +
-    '    Teile.DelimitedText := Zeile;'#10), Fixed);
-  Tree := TPascalParser.Parse(Fixed);
+    '    Teile.DelimitedText := Zeile;'#10), mFixed);
+  mTree := TPascalParser.Parse(mFixed);
   try
-    Assert.AreEqual(0, Integer(Length(Tree.Diagnostics)));
+    Assert.AreEqual(0, Integer(Length(mTree.Diagnostics)));
   finally
-    Tree.Free;
+    mTree.Free;
   end;
-  TRuleAssert.Silent(TDelimitedTextWithoutStrictRule.Create, Fixed);
+  TRuleAssert.Silent(TDelimitedTextWithoutStrictRule.Create, mFixed);
 end;
 
 procedure TRtlConversionRulesTests.DelimitedTextVariants;
 const
-  Feld =
+  cFeld =
     'unit Import;'#10 +
     'interface'#10 +
     'type'#10 +
@@ -1056,19 +1056,19 @@ const
     'end;'#10 +
     'end.';
 var
-  Findings: TArray<TRuleFinding>;
+  mFindings: TArray<TRuleFinding>;
 begin
   // Feld: StrictDelimiter im Konstruktor genügt.
-  TRuleAssert.Silent(TDelimitedTextWithoutStrictRule.Create, Feld);
-  Findings := TRuleAssert.Findings(TDelimitedTextWithoutStrictRule.Create,
-    StringReplace(Feld, '  FTeile.StrictDelimiter := True;'#10, '', []));
-  Assert.AreEqual(1, Integer(Length(Findings)));
-  Assert.AreEqual('Self.FTeile.StrictDelimiter := True;'#10'  ', Findings[0].Fixes[0].Edits[0].NewText);
+  TRuleAssert.Silent(TDelimitedTextWithoutStrictRule.Create, cFeld);
+  mFindings := TRuleAssert.Findings(TDelimitedTextWithoutStrictRule.Create,
+    StringReplace(cFeld, '  FTeile.StrictDelimiter := True;'#10, '', []));
+  Assert.AreEqual(1, Integer(Length(mFindings)));
+  Assert.AreEqual('Self.FTeile.StrictDelimiter := True;'#10'  ', mFindings[0].Fixes[0].Edits[0].NewText);
   // Nach then keine Korrektur.
-  Findings := TRuleAssert.Findings(TDelimitedTextWithoutStrictRule.Create,
+  mFindings := TRuleAssert.Findings(TDelimitedTextWithoutStrictRule.Create,
     Teilen('    Teile.Delimiter := '';'';'#10'    if Zeile <> '''' then Teile.DelimitedText := Zeile;'#10));
-  Assert.AreEqual(1, Integer(Length(Findings)));
-  Assert.AreEqual(0, Integer(Length(Findings[0].Fixes)));
+  Assert.AreEqual(1, Integer(Length(mFindings)));
+  Assert.AreEqual(0, Integer(Length(mFindings[0].Fixes)));
 end;
 
 procedure TRtlConversionRulesTests.DelimitedTextSilentCases;
@@ -1086,12 +1086,12 @@ end;
 
 procedure TRtlConversionRulesTests.DelimitedTextOffAndExclude;
 var
-  Source: string;
+  mSource: string;
 begin
-  Source := Teilen('    Teile.Delimiter := '';'';'#10'    Teile.DelimitedText := Zeile;'#10);
-  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TDelimitedTextWithoutStrictRule.Create, Source,
+  mSource := Teilen('    Teile.Delimiter := '';'';'#10'    Teile.DelimitedText := Zeile;'#10);
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TDelimitedTextWithoutStrictRule.Create, mSource,
     '{"rules": {"delimited-text-without-strict": "off"}}'))));
-  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TDelimitedTextWithoutStrictRule.Create, Source,
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TDelimitedTextWithoutStrictRule.Create, mSource,
     '{"rules": {"delimited-text-without-strict": {"exclude": ["Source/*.pas"]}}}', 'Source/Import.pas'))));
 end;
 
@@ -1105,55 +1105,55 @@ end;
 
 procedure TRtlConversionRulesTests.UncheckedEnumCastIssueExample;
 var
-  Source, Fixed: string;
-  Findings: TArray<TRuleFinding>;
-  Tree: TSyntaxTree;
+  mSource, mFixed: string;
+  mFindings: TArray<TRuleFinding>;
+  mTree: TSyntaxTree;
 begin
-  Source := Auftrag('uses System.SysUtils, Data.DB;'#10, '',
+  mSource := Auftrag('uses System.SysUtils, Data.DB;'#10, '',
     '  Status := TStatus(qry.FieldByName(''Status'').AsInteger);'#10);
-  Findings := TRuleAssert.Findings(TUncheckedEnumCastRule.Create, Source);
-  Assert.AreEqual(1, Integer(Length(Findings)));
-  Assert.AreEqual('unchecked-enum-cast', Findings[0].RuleId);
-  Assert.AreEqual(Ord(TRuleSeverity.Hint), Ord(Findings[0].Severity));
-  Assert.AreEqual(Ord(TRuleConfidence.Medium), Ord(Findings[0].Confidence));
+  mFindings := TRuleAssert.Findings(TUncheckedEnumCastRule.Create, mSource);
+  Assert.AreEqual(1, Integer(Length(mFindings)));
+  Assert.AreEqual('unchecked-enum-cast', mFindings[0].RuleId);
+  Assert.AreEqual(Ord(TRuleSeverity.Hint), Ord(mFindings[0].Severity));
+  Assert.AreEqual(Ord(TRuleConfidence.Medium), Ord(mFindings[0].Confidence));
   Assert.AreEqual('Wert aus der Datenbank ungeprüft nach TStatus umgewandelt; Werte außerhalb 0..3 ergeben keinen ' +
-    'gültigen TStatus-Wert.', Findings[0].Message);
-  Assert.AreEqual(9, Findings[0].Range.StartPos.Line);
-  Assert.AreEqual(12, Findings[0].Range.StartPos.Character);
-  Assert.AreEqual('Prüfung mit InRange davorsetzen', Findings[0].Fixes[0].Title);
-  Fixed := TChangeSignature.ApplyEdits(Source, Findings[0].Fixes[0].Edits);
+    'gültigen TStatus-Wert.', mFindings[0].Message);
+  Assert.AreEqual(9, mFindings[0].Range.StartPos.Line);
+  Assert.AreEqual(12, mFindings[0].Range.StartPos.Character);
+  Assert.AreEqual('Prüfung mit InRange davorsetzen', mFindings[0].Fixes[0].Title);
+  mFixed := TChangeSignature.ApplyEdits(mSource, mFindings[0].Fixes[0].Edits);
   Assert.AreEqual(Auftrag('uses System.SysUtils, Data.DB, System.Math;'#10, 'var'#10'  Wert: Integer;'#10,
     '  Wert := qry.FieldByName(''Status'').AsInteger;'#10 +
     '  if not InRange(Wert, Ord(Low(TStatus)), Ord(High(TStatus))) then'#10 +
     '    raise EConvertError.CreateFmt(''Ungültiger Wert %d für TStatus'', [Wert]);'#10 +
-    '  Status := TStatus(Wert);'#10), Fixed);
-  Tree := TPascalParser.Parse(Fixed);
+    '  Status := TStatus(Wert);'#10), mFixed);
+  mTree := TPascalParser.Parse(mFixed);
   try
-    Assert.AreEqual(0, Integer(Length(Tree.Diagnostics)));
+    Assert.AreEqual(0, Integer(Length(mTree.Diagnostics)));
   finally
-    Tree.Free;
+    mTree.Free;
   end;
-  TRuleAssert.Silent(TUncheckedEnumCastRule.Create, Fixed);
+  TRuleAssert.Silent(TUncheckedEnumCastRule.Create, mFixed);
 end;
 
 procedure TRtlConversionRulesTests.UncheckedEnumCastVariants;
 var
-  Findings: TArray<TRuleFinding>;
+  mFindings: TArray<TRuleFinding>;
 begin
   // Über eine Variable: Meldung ohne Korrektur.
-  Findings := TRuleAssert.Findings(TUncheckedEnumCastRule.Create, Auftrag('', 'var'#10'  N: Integer;'#10,
+  mFindings := TRuleAssert.Findings(TUncheckedEnumCastRule.Create, Auftrag('', 'var'#10'  N: Integer;'#10,
     '  N := Ini.ReadInteger(''Auftrag'', ''Status'', 0);'#10'  Status := TStatus(N);'#10));
-  Assert.AreEqual(1, Integer(Length(Findings)));
+  Assert.AreEqual(1, Integer(Length(mFindings)));
   Assert.AreEqual('Wert aus der Registry bzw. INI-Datei ungeprüft nach TStatus umgewandelt; Werte außerhalb 0..3 ' +
-    'ergeben keinen gültigen TStatus-Wert.', Findings[0].Message);
-  Assert.AreEqual(0, Integer(Length(Findings[0].Fixes)));
+    'ergeben keinen gültigen TStatus-Wert.', mFindings[0].Message);
+  Assert.AreEqual(0, Integer(Length(mFindings[0].Fixes)));
   // Eigene Ordinalwerte: Bereich über Low/High; in case ohne Korrektur.
-  Findings := TRuleAssert.Findings(TUncheckedEnumCastRule.Create, Auftrag('', '',
+  mFindings := TRuleAssert.Findings(TUncheckedEnumCastRule.Create, Auftrag('', '',
     '  case TStufe(StrToInt(Zeile)) of'#10'    sfEins: Exit;'#10'  end;'#10));
-  Assert.AreEqual(1, Integer(Length(Findings)));
+  Assert.AreEqual(1, Integer(Length(mFindings)));
   Assert.AreEqual('Wert aus einem Text ungeprüft nach TStufe umgewandelt; Werte außerhalb Ord(Low(TStufe))..' +
-    'Ord(High(TStufe)) ergeben keinen gültigen TStufe-Wert.', Findings[0].Message);
-  Assert.AreEqual(0, Integer(Length(Findings[0].Fixes)));
+    'Ord(High(TStufe)) ergeben keinen gültigen TStufe-Wert.', mFindings[0].Message);
+  Assert.AreEqual(0, Integer(Length(mFindings[0].Fixes)));
   // Option sources: eigene Quellen.
   Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TUncheckedEnumCastRule.Create,
     Auftrag('', '', '  Status := TStatus(qry.FieldByName(''Status'').AsInteger);'#10),
@@ -1179,16 +1179,16 @@ end;
 
 procedure TRtlConversionRulesTests.UncheckedEnumCastOffAndExclude;
 var
-  Source: string;
-  Issues: TArray<TConfigurationIssue>;
+  mSource: string;
+  mIssues: TArray<TConfigurationIssue>;
 begin
-  Source := Auftrag('', '', '  Status := TStatus(qry.FieldByName(''Status'').AsInteger);'#10);
-  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TUncheckedEnumCastRule.Create, Source,
+  mSource := Auftrag('', '', '  Status := TStatus(qry.FieldByName(''Status'').AsInteger);'#10);
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TUncheckedEnumCastRule.Create, mSource,
     '{"rules": {"unchecked-enum-cast": "off"}}'))));
-  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TUncheckedEnumCastRule.Create, Source,
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TUncheckedEnumCastRule.Create, mSource,
     '{"rules": {"unchecked-enum-cast": {"exclude": ["Source/*.pas"]}}}', 'Source/Auftrag.pas'))));
-  TConfigurationParser.Parse('{"rules": {"unchecked-enum-cast": {"sources": "LeseZahl"}}}', Issues);
-  Assert.AreEqual(1, Integer(Length(Issues)));
+  TConfigurationParser.Parse('{"rules": {"unchecked-enum-cast": {"sources": "LeseZahl"}}}', mIssues);
+  Assert.AreEqual(1, Integer(Length(mIssues)));
 end;
 
 function Starten(const AVars, ABody: string): string;
@@ -1200,68 +1200,68 @@ end;
 
 procedure TRtlConversionRulesTests.CreateProcessIssueExample;
 var
-  Source, Fixed: string;
-  Findings: TArray<TRuleFinding>;
-  Tree: TSyntaxTree;
+  mSource, mFixed: string;
+  mFindings: TArray<TRuleFinding>;
+  mTree: TSyntaxTree;
 begin
-  Source := Starten('', '  CreateProcess(nil, PChar(''notepad.exe '' + Datei), nil, nil, False, 0, nil, nil, SI, PI);'#10);
-  Findings := TRuleAssert.Findings(TCreateProcessReadonlyCommandLineRule.Create, Source);
-  Assert.AreEqual(1, Integer(Length(Findings)));
-  Assert.AreEqual('createprocess-readonly-commandline', Findings[0].RuleId);
-  Assert.AreEqual(Ord(TRuleSeverity.Error), Ord(Findings[0].Severity));
-  Assert.AreEqual(Ord(TRuleConfidence.High), Ord(Findings[0].Confidence));
+  mSource := Starten('', '  CreateProcess(nil, PChar(''notepad.exe '' + Datei), nil, nil, False, 0, nil, nil, SI, PI);'#10);
+  mFindings := TRuleAssert.Findings(TCreateProcessReadonlyCommandLineRule.Create, mSource);
+  Assert.AreEqual(1, Integer(Length(mFindings)));
+  Assert.AreEqual('createprocess-readonly-commandline', mFindings[0].RuleId);
+  Assert.AreEqual(Ord(TRuleSeverity.Error), Ord(mFindings[0].Severity));
+  Assert.AreEqual(Ord(TRuleConfidence.High), Ord(mFindings[0].Confidence));
   Assert.AreEqual('CreateProcess schreibt in die Befehlszeile; ist der andere Teil leer, liefert die Verkettung ' +
-    'das konstante Literal, das nicht beschreibbar ist.', Findings[0].Message);
-  Assert.AreEqual(11, Findings[0].Range.StartPos.Line);
-  Assert.AreEqual(27, Findings[0].Range.StartPos.Character);
-  Assert.AreEqual('Befehlszeile in eine lokale Variable kopieren und UniqueString aufrufen', Findings[0].Fixes[0].Title);
-  Fixed := TChangeSignature.ApplyEdits(Source, Findings[0].Fixes[0].Edits);
+    'das konstante Literal, das nicht beschreibbar ist.', mFindings[0].Message);
+  Assert.AreEqual(11, mFindings[0].Range.StartPos.Line);
+  Assert.AreEqual(27, mFindings[0].Range.StartPos.Character);
+  Assert.AreEqual('Befehlszeile in eine lokale Variable kopieren und UniqueString aufrufen', mFindings[0].Fixes[0].Title);
+  mFixed := TChangeSignature.ApplyEdits(mSource, mFindings[0].Fixes[0].Edits);
   Assert.AreEqual(Starten('  Befehl: string;'#10, '  Befehl := ''notepad.exe '' + Datei;'#10 +
     '  UniqueString(Befehl);'#10 +
-    '  CreateProcess(nil, PChar(Befehl), nil, nil, False, 0, nil, nil, SI, PI);'#10), Fixed);
-  Tree := TPascalParser.Parse(Fixed);
+    '  CreateProcess(nil, PChar(Befehl), nil, nil, False, 0, nil, nil, SI, PI);'#10), mFixed);
+  mTree := TPascalParser.Parse(mFixed);
   try
-    Assert.AreEqual(0, Integer(Length(Tree.Diagnostics)));
+    Assert.AreEqual(0, Integer(Length(mTree.Diagnostics)));
   finally
-    Tree.Free;
+    mTree.Free;
   end;
-  TRuleAssert.Silent(TCreateProcessReadonlyCommandLineRule.Create, Fixed);
+  TRuleAssert.Silent(TCreateProcessReadonlyCommandLineRule.Create, mFixed);
 end;
 
 procedure TRtlConversionRulesTests.CreateProcessVariants;
 var
-  Source: string;
-  Findings: TArray<TRuleFinding>;
+  mSource: string;
+  mFindings: TArray<TRuleFinding>;
 begin
   // Literal, Konstante, in if-Bedingung.
-  Findings := TRuleAssert.Findings(TCreateProcessReadonlyCommandLineRule.Create, Starten('',
+  mFindings := TRuleAssert.Findings(TCreateProcessReadonlyCommandLineRule.Create, Starten('',
     '  CreateProcess(nil, PChar(''notepad.exe''), nil, nil, False, 0, nil, nil, SI, PI);'#10 +
     '  if not CreateProcessW(nil, PWideChar(Editor), nil, nil, False, 0, nil, nil, SI, PI) then'#10 +
     '    RaiseLastOSError;'#10));
-  Assert.AreEqual(2, Integer(Length(Findings)));
+  Assert.AreEqual(2, Integer(Length(mFindings)));
   Assert.AreEqual('CreateProcess schreibt in die Befehlszeile; ein konstanter String ist nicht beschreibbar.',
-    Findings[0].Message);
-  Assert.AreEqual(1, Integer(Length(Findings[1].Fixes)));
+    mFindings[0].Message);
+  Assert.AreEqual(1, Integer(Length(mFindings[1].Fixes)));
   // Variable mit Literal: UniqueString davor.
-  Source := Starten('  Befehl: string;'#10, '  Befehl := Editor;'#10 +
+  mSource := Starten('  Befehl: string;'#10, '  Befehl := Editor;'#10 +
     '  CreateProcess(nil, PChar(Befehl), nil, nil, False, 0, nil, nil, SI, PI);'#10);
-  Findings := TRuleAssert.Findings(TCreateProcessReadonlyCommandLineRule.Create, Source);
-  Assert.AreEqual(1, Integer(Length(Findings)));
+  mFindings := TRuleAssert.Findings(TCreateProcessReadonlyCommandLineRule.Create, mSource);
+  Assert.AreEqual(1, Integer(Length(mFindings)));
   Assert.AreEqual('CreateProcess schreibt in die Befehlszeile; Befehl kann auf einen konstanten String verweisen ' +
-    'und ist ohne UniqueString nicht beschreibbar.', Findings[0].Message);
+    'und ist ohne UniqueString nicht beschreibbar.', mFindings[0].Message);
   Assert.AreEqual(Starten('  Befehl: string;'#10, '  Befehl := Editor;'#10'  UniqueString(Befehl);'#10 +
     '  CreateProcess(nil, PChar(Befehl), nil, nil, False, 0, nil, nil, SI, PI);'#10),
-    TChangeSignature.ApplyEdits(Source, Findings[0].Fixes[0].Edits));
+    TChangeSignature.ApplyEdits(mSource, mFindings[0].Fixes[0].Edits));
   // Parameter: mittlere Konfidenz; CreateProcessAsUser an dritter Stelle.
-  Findings := TRuleAssert.Findings(TCreateProcessReadonlyCommandLineRule.Create, Starten('',
+  mFindings := TRuleAssert.Findings(TCreateProcessReadonlyCommandLineRule.Create, Starten('',
     '  CreateProcessAsUser(0, nil, PChar(Datei), nil, nil, False, 0, nil, nil, SI, PI);'#10));
-  Assert.AreEqual(1, Integer(Length(Findings)));
-  Assert.AreEqual(Ord(TRuleConfidence.Medium), Ord(Findings[0].Confidence));
+  Assert.AreEqual(1, Integer(Length(mFindings)));
+  Assert.AreEqual(Ord(TRuleConfidence.Medium), Ord(mFindings[0].Confidence));
   // In einer Schleifenbedingung keine Korrektur.
-  Findings := TRuleAssert.Findings(TCreateProcessReadonlyCommandLineRule.Create, Starten('',
+  mFindings := TRuleAssert.Findings(TCreateProcessReadonlyCommandLineRule.Create, Starten('',
     '  while not CreateProcess(nil, PChar(''x''), nil, nil, False, 0, nil, nil, SI, PI) do Sleep(10);'#10));
-  Assert.AreEqual(1, Integer(Length(Findings)));
-  Assert.AreEqual(0, Integer(Length(Findings[0].Fixes)));
+  Assert.AreEqual(1, Integer(Length(mFindings)));
+  Assert.AreEqual(0, Integer(Length(mFindings[0].Fixes)));
 end;
 
 procedure TRtlConversionRulesTests.CreateProcessSilentCases;
@@ -1282,12 +1282,12 @@ end;
 
 procedure TRtlConversionRulesTests.CreateProcessOffAndExclude;
 var
-  Source: string;
+  mSource: string;
 begin
-  Source := Starten('', '  CreateProcess(nil, PChar(Editor), nil, nil, False, 0, nil, nil, SI, PI);'#10);
-  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TCreateProcessReadonlyCommandLineRule.Create, Source,
+  mSource := Starten('', '  CreateProcess(nil, PChar(Editor), nil, nil, False, 0, nil, nil, SI, PI);'#10);
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TCreateProcessReadonlyCommandLineRule.Create, mSource,
     '{"rules": {"createprocess-readonly-commandline": "off"}}'))));
-  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TCreateProcessReadonlyCommandLineRule.Create, Source,
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TCreateProcessReadonlyCommandLineRule.Create, mSource,
     '{"rules": {"createprocess-readonly-commandline": {"exclude": ["Source/*.pas"]}}}', 'Source/Start.pas'))));
 end;
 
@@ -1307,84 +1307,84 @@ end;
 
 procedure TRtlConversionRulesTests.GlobalFormatSettingsIssueExample;
 var
-  Source, Fixed: string;
-  Findings: TArray<TRuleFinding>;
-  Tree: TSyntaxTree;
+  mSource, mFixed: string;
+  mFindings: TArray<TRuleFinding>;
+  mTree: TSyntaxTree;
 begin
-  Source := Export('', '  FormatSettings.DecimalSeparator := ''.'';'#10'  FZeile := FloatToStr(FBetrag);'#10);
-  Findings := TRuleAssert.Findings(TGlobalFormatSettingsModifiedRule.Create, Source);
-  Assert.AreEqual(1, Integer(Length(Findings)));
-  Assert.AreEqual('global-formatsettings-modified', Findings[0].RuleId);
-  Assert.AreEqual(Ord(TRuleSeverity.Warning), Ord(Findings[0].Severity));
-  Assert.AreEqual(Ord(TRuleConfidence.High), Ord(Findings[0].Confidence));
+  mSource := Export('', '  FormatSettings.DecimalSeparator := ''.'';'#10'  FZeile := FloatToStr(FBetrag);'#10);
+  mFindings := TRuleAssert.Findings(TGlobalFormatSettingsModifiedRule.Create, mSource);
+  Assert.AreEqual(1, Integer(Length(mFindings)));
+  Assert.AreEqual('global-formatsettings-modified', mFindings[0].RuleId);
+  Assert.AreEqual(Ord(TRuleSeverity.Warning), Ord(mFindings[0].Severity));
+  Assert.AreEqual(Ord(TRuleConfidence.High), Ord(mFindings[0].Confidence));
   Assert.AreEqual('Ändert den Dezimaltrenner für die ganze Anwendung und alle Threads; eine lokale ' +
-    'TFormatSettings verwenden.', Findings[0].Message);
-  Assert.AreEqual(15, Findings[0].Range.StartPos.Line);
-  Assert.AreEqual(2, Findings[0].Range.StartPos.Character);
-  Assert.AreEqual(1, Integer(Length(Findings[0].Fixes)));
-  Assert.AreEqual('Lokale TFormatSettings anlegen und übergeben', Findings[0].Fixes[0].Title);
-  Fixed := TChangeSignature.ApplyEdits(Source, Findings[0].Fixes[0].Edits);
+    'TFormatSettings verwenden.', mFindings[0].Message);
+  Assert.AreEqual(15, mFindings[0].Range.StartPos.Line);
+  Assert.AreEqual(2, mFindings[0].Range.StartPos.Character);
+  Assert.AreEqual(1, Integer(Length(mFindings[0].Fixes)));
+  Assert.AreEqual('Lokale TFormatSettings anlegen und übergeben', mFindings[0].Fixes[0].Title);
+  mFixed := TChangeSignature.ApplyEdits(mSource, mFindings[0].Fixes[0].Edits);
   Assert.AreEqual(Export('var'#10'  FS: TFormatSettings;'#10, '  FS := TFormatSettings.Invariant;'#10 +
-    '  FZeile := FloatToStr(FBetrag, FS);'#10), Fixed);
-  Tree := TPascalParser.Parse(Fixed);
+    '  FZeile := FloatToStr(FBetrag, FS);'#10), mFixed);
+  mTree := TPascalParser.Parse(mFixed);
   try
-    Assert.AreEqual(0, Integer(Length(Tree.Diagnostics)));
+    Assert.AreEqual(0, Integer(Length(mTree.Diagnostics)));
   finally
-    Tree.Free;
+    mTree.Free;
   end;
-  TRuleAssert.Silent(TGlobalFormatSettingsModifiedRule.Create, Fixed);
+  TRuleAssert.Silent(TGlobalFormatSettingsModifiedRule.Create, mFixed);
 end;
 
 procedure TRtlConversionRulesTests.GlobalFormatSettingsVariants;
 const
-  Formular = 'unit Haupt;'#10'interface'#10'uses'#10'  System.SysUtils, Vcl.Forms;'#10'type'#10 +
+  cFormular = 'unit Haupt;'#10'interface'#10'uses'#10'  System.SysUtils, Vcl.Forms;'#10'type'#10 +
     '  THaupt = class(TForm)'#10'    procedure FormCreate(Sender: TObject);'#10'  end;'#10'implementation'#10 +
     'procedure THaupt.FormCreate(Sender: TObject);'#10'begin'#10'  FormatSettings.ShortDateFormat := ''dd.mm.yyyy'';'#10 +
     'end;'#10'end.';
 var
-  Source: string;
-  Findings: TArray<TRuleFinding>;
-  Index: Integer;
+  mSource: string;
+  mFindings: TArray<TRuleFinding>;
+  mIndex: Integer;
 begin
   // Veraltete globale Variable mit anderem Wert: Kopie der FormatSettings mit dem geänderten Feld.
-  Source := Export('uses SysUtils;'#10, 'var'#10'  Zeile: string;'#10, '  DecimalSeparator := '','';'#10 +
+  mSource := Export('uses SysUtils;'#10, 'var'#10'  Zeile: string;'#10, '  DecimalSeparator := '','';'#10 +
     '  Zeile := Format(''%.2f'', [Betrag]);'#10'  Zeile := Zeile + IntToStr(1);'#10);
-  Findings := TRuleAssert.Findings(TGlobalFormatSettingsModifiedRule.Create, Source);
-  Assert.AreEqual(1, Integer(Length(Findings)));
+  mFindings := TRuleAssert.Findings(TGlobalFormatSettingsModifiedRule.Create, mSource);
+  Assert.AreEqual(1, Integer(Length(mFindings)));
   Assert.AreEqual('Ändert den Dezimaltrenner für die ganze Anwendung und alle Threads; eine lokale ' +
-    'TFormatSettings verwenden.', Findings[0].Message);
+    'TFormatSettings verwenden.', mFindings[0].Message);
   Assert.AreEqual(Export('uses SysUtils;'#10, 'var'#10'  Zeile: string;'#10'  FS: TFormatSettings;'#10,
     '  FS := FormatSettings;'#10'  FS.DecimalSeparator := '','';'#10'  Zeile := Format(''%.2f'', [Betrag], FS);'#10 +
-    '  Zeile := Zeile + IntToStr(1);'#10), TChangeSignature.ApplyEdits(Source, Findings[0].Fixes[0].Edits));
+    '  Zeile := Zeile + IntToStr(1);'#10), TChangeSignature.ApplyEdits(mSource, mFindings[0].Fixes[0].Edits));
   // Mit Unit-Namen, ganze FormatSettings, Feld mit Index, Methode eines Formulars (TForm ist bekannt).
-  Findings := TRuleAssert.Findings(TGlobalFormatSettingsModifiedRule.Create, Export('uses System.SysUtils;'#10, '',
+  mFindings := TRuleAssert.Findings(TGlobalFormatSettingsModifiedRule.Create, Export('uses System.SysUtils;'#10, '',
     '  System.SysUtils.FormatSettings.ShortDateFormat := ''dd.mm.yyyy'';'#10 +
     '  FormatSettings := TFormatSettings.Create(''en-US'');'#10'  FormatSettings.ShortMonthNames[1] := ''Jan'';'#10));
-  Assert.AreEqual(3, Integer(Length(Findings)));
+  Assert.AreEqual(3, Integer(Length(mFindings)));
   Assert.AreEqual('Ändert das kurze Datumsformat für die ganze Anwendung und alle Threads; eine lokale ' +
-    'TFormatSettings verwenden.', Findings[0].Message);
-  Assert.Contains(Findings[1].Message, 'Ändert alle Formateinstellungen');
-  Assert.Contains(Findings[2].Message, 'Ändert die kurzen Monatsnamen');
+    'TFormatSettings verwenden.', mFindings[0].Message);
+  Assert.Contains(mFindings[1].Message, 'Ändert alle Formateinstellungen');
+  Assert.Contains(mFindings[2].Message, 'Ändert die kurzen Monatsnamen');
   // Mehrere Änderungen in der Routine (Zurücksetzen im finally) bzw. kein Aufruf danach: ohne Korrektur.
-  for Index := 0 to High(Findings) do
+  for mIndex := 0 to High(mFindings) do
   begin
-    Assert.AreEqual(0, Integer(Length(Findings[Index].Fixes)));
+    Assert.AreEqual(0, Integer(Length(mFindings[mIndex].Fixes)));
   end;
-  Findings := TRuleAssert.Findings(TGlobalFormatSettingsModifiedRule.Create, Export('uses System.SysUtils;'#10,
+  mFindings := TRuleAssert.Findings(TGlobalFormatSettingsModifiedRule.Create, Export('uses System.SysUtils;'#10,
     'var'#10'  Alt: Char;'#10, '  Alt := FormatSettings.DecimalSeparator;'#10 +
     '  FormatSettings.DecimalSeparator := ''.'';'#10'  try'#10'    Writeln(FloatToStr(Betrag));'#10'  finally'#10 +
     '    FormatSettings.DecimalSeparator := Alt;'#10'  end;'#10));
-  Assert.AreEqual(2, Integer(Length(Findings)));
-  Assert.AreEqual(0, Integer(Length(Findings[0].Fixes)));
-  Assert.AreEqual(0, Integer(Length(Findings[1].Fixes)));
-  Findings := TRuleAssert.Findings(TGlobalFormatSettingsModifiedRule.Create, Formular);
-  Assert.AreEqual(1, Integer(Length(Findings)));
-  Assert.AreEqual(0, Integer(Length(Findings[0].Fixes)));
+  Assert.AreEqual(2, Integer(Length(mFindings)));
+  Assert.AreEqual(0, Integer(Length(mFindings[0].Fixes)));
+  Assert.AreEqual(0, Integer(Length(mFindings[1].Fixes)));
+  mFindings := TRuleAssert.Findings(TGlobalFormatSettingsModifiedRule.Create, cFormular);
+  Assert.AreEqual(1, Integer(Length(mFindings)));
+  Assert.AreEqual(0, Integer(Length(mFindings[0].Fixes)));
   // Im initialization-Abschnitt.
-  Findings := TRuleAssert.Findings(TGlobalFormatSettingsModifiedRule.Create, 'unit Start;'#10'interface'#10 +
+  mFindings := TRuleAssert.Findings(TGlobalFormatSettingsModifiedRule.Create, 'unit Start;'#10'interface'#10 +
     'implementation'#10'uses System.SysUtils;'#10'initialization'#10'  FormatSettings.DecimalSeparator := ''.'';'#10 +
     'end.');
-  Assert.AreEqual(1, Integer(Length(Findings)));
+  Assert.AreEqual(1, Integer(Length(mFindings)));
   Assert.AreEqual('das Listentrennzeichen', TGlobalFormatSettingsModifiedRule.Subject('ListSeparator'));
   Assert.AreEqual('die Formateinstellung NormalizedLocaleName',
     TGlobalFormatSettingsModifiedRule.Subject('NormalizedLocaleName'));
@@ -1392,7 +1392,7 @@ end;
 
 procedure TRtlConversionRulesTests.GlobalFormatSettingsSilentCases;
 const
-  Eigene = 'unit Eigene;'#10'interface'#10'uses'#10'  System.SysUtils;'#10'type'#10'  TZahlFeld = class'#10 +
+  cEigene = 'unit Eigene;'#10'interface'#10'uses'#10'  System.SysUtils;'#10'type'#10'  TZahlFeld = class'#10 +
     '  private'#10'    DecimalSeparator: Char;'#10'    procedure Setzen;'#10'  end;'#10 +
     '  TFremd = class(TCustomMaskEdit)'#10'    procedure Setzen;'#10'  end;'#10'implementation'#10 +
     'procedure TZahlFeld.Setzen;'#10'begin'#10'  DecimalSeparator := ''.'';'#10'end;'#10 +
@@ -1405,7 +1405,7 @@ begin
     '  FormatSettings.DecimalSeparator := ''.'';'#10'  FS.DecimalSeparator := ''.'';'#10 +
     '  DecimalSeparator := System.SysUtils.FormatSettings.DecimalSeparator;'#10));
   // Feld der eigenen Klasse; unbekannter Vorfahr kann gleichnamige Mitglieder haben.
-  TRuleAssert.Silent(TGlobalFormatSettingsModifiedRule.Create, Eigene);
+  TRuleAssert.Silent(TGlobalFormatSettingsModifiedRule.Create, cEigene);
   // Ohne System.SysUtils in uses ist es nicht die globale Variable; in with unklar.
   TRuleAssert.Silent(TGlobalFormatSettingsModifiedRule.Create, Export('', '',
     '  FormatSettings.DecimalSeparator := ''.'';'#10));
@@ -1415,27 +1415,27 @@ end;
 
 procedure TRtlConversionRulesTests.GlobalFormatSettingsOptions;
 const
-  Programm = 'program Start;'#10'uses'#10'  System.SysUtils;'#10'begin'#10 +
+  cProgramm = 'program Start;'#10'uses'#10'  System.SysUtils;'#10'begin'#10 +
     '  FormatSettings.DecimalSeparator := ''.'';'#10'end.';
 var
-  Source: string;
-  Issues: TArray<TConfigurationIssue>;
+  mSource: string;
+  mIssues: TArray<TConfigurationIssue>;
 begin
-  Source := Export('', '  FormatSettings.DecimalSeparator := ''.'';'#10);
-  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TGlobalFormatSettingsModifiedRule.Create, Source,
+  mSource := Export('', '  FormatSettings.DecimalSeparator := ''.'';'#10);
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TGlobalFormatSettingsModifiedRule.Create, mSource,
     '{"rules": {"global-formatsettings-modified": "off"}}'))));
-  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TGlobalFormatSettingsModifiedRule.Create, Source,
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TGlobalFormatSettingsModifiedRule.Create, mSource,
     '{"rules": {"global-formatsettings-modified": {"exclude": ["Source/*.pas"]}}}', 'Source/Export.pas'))));
   // allowInProgram gilt nur für die .dpr.
-  Assert.AreEqual(1, Integer(Length(TRuleAssert.Findings(TGlobalFormatSettingsModifiedRule.Create, Programm))));
-  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TGlobalFormatSettingsModifiedRule.Create, Programm,
+  Assert.AreEqual(1, Integer(Length(TRuleAssert.Findings(TGlobalFormatSettingsModifiedRule.Create, cProgramm))));
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TGlobalFormatSettingsModifiedRule.Create, cProgramm,
     '{"rules": {"global-formatsettings-modified": {"allowInProgram": true}}}', 'Start.dpr'))));
-  Assert.AreEqual(1, Integer(Length(TRuleAssert.Findings(TGlobalFormatSettingsModifiedRule.Create, Source,
+  Assert.AreEqual(1, Integer(Length(TRuleAssert.Findings(TGlobalFormatSettingsModifiedRule.Create, mSource,
     '{"rules": {"global-formatsettings-modified": {"allowInProgram": true}}}', 'Export.pas'))));
-  TConfigurationParser.Parse('{"rules": {"global-formatsettings-modified": {"allowInProgram": "ja"}}}', Issues);
-  Assert.AreEqual(1, Integer(Length(Issues)));
-  TConfigurationParser.Parse('{"rules": {"global-formatsettings-modified": {"allowInProgram": true}}}', Issues);
-  Assert.AreEqual(0, Integer(Length(Issues)));
+  TConfigurationParser.Parse('{"rules": {"global-formatsettings-modified": {"allowInProgram": "ja"}}}', mIssues);
+  Assert.AreEqual(1, Integer(Length(mIssues)));
+  TConfigurationParser.Parse('{"rules": {"global-formatsettings-modified": {"allowInProgram": true}}}', mIssues);
+  Assert.AreEqual(0, Integer(Length(mIssues)));
 end;
 
 initialization

@@ -1,6 +1,7 @@
 ﻿unit Atlas.Common.Rules.Builtin.Components.Tests;
 
-// Tests für die Komponentenregeln (#55, Teil A) und missing-inherited (#919) sowie message-handler-without-inherited (#949).
+// Tests für die Komponentenregeln (#55, Teil A) und missing-inherited (#919) sowie message-handler-without-inherited
+// (#949).
 // inherited-order (#1049): Destruktor mit Korrektur, Threads, Konstruktor mit geerbter Property, stille Fälle,
 // Abschalten.
 // inherited-wrong-method (#1050): Beispiel mit Korrektur, Argumente, Option allowed samt Parser, stille Fälle,
@@ -162,69 +163,74 @@ uses
   Atlas.Tests.RuleAssert;
 
 const
-  LowConfidence = '{"minConfidence": "low"}';
+  cLowConfidence = '{"minConfidence": "low"}';
 
 /// <summary>Unit mit TFoo = class(TCustomControl), den Mitgliedern AMembers und den
 /// Implementierungen AImpl.</summary>
-function ControlUnit(const AMembers, AImpl: string; const AHead: string = 'TFoo = class(TCustomControl)'): string;
+function ControlUnit(const AMembers, AImpl: string; const AHead: string): string; overload;
 begin
   Result := 'unit U;'#10'interface'#10'type'#10'  ' + AHead + #10 + AMembers + #10'  end;'#10 +
     'implementation'#10 + AImpl + #10'end.';
 end;
 
+function ControlUnit(const AMembers, AImpl: string): string; overload;
+begin
+  Result := ControlUnit(AMembers, AImpl, 'TFoo = class(TCustomControl)');
+end;
+
 /// <summary>Wendet die Änderungen der ersten Korrektur an (Zeilen mit #10).</summary>
 function ApplyFix(const AText: string; const AFix: TRuleFix): string;
 var
-  Index: Integer;
-  Edit: TRuleEdit;
+  mIndex: Integer;
+  mEdit: TRuleEdit;
 
   function OffsetOf(const APosition: TTextPosition): Integer;
   var
-    Line, Position: Integer;
+    mLine, mPosition: Integer;
   begin
-    Position := 0;
-    for Line := 1 to APosition.Line do
+    mPosition := 0;
+    for mLine := 1 to APosition.Line do
     begin
-      Position := Pos(#10, AText, Position + 1);
+      mPosition := Pos(#10, AText, mPosition + 1);
     end;
-    Result := Position + APosition.Character;
+    Result := mPosition + APosition.Character;
   end;
 
 begin
   Result := AText;
-  for Index := High(AFix.Edits) downto 0 do
+  for mIndex := High(AFix.Edits) downto 0 do
   begin
-    Edit := AFix.Edits[Index];
-    Result := Copy(Result, 1, OffsetOf(Edit.Range.StartPos)) + Edit.NewText +
-      Copy(Result, OffsetOf(Edit.Range.EndPos) + 1, MaxInt);
+    mEdit := AFix.Edits[mIndex];
+    Result := Copy(Result, 1, OffsetOf(mEdit.Range.StartPos)) + mEdit.NewText +
+      Copy(Result, OffsetOf(mEdit.Range.EndPos) + 1, MaxInt);
   end;
 end;
 
 procedure TComponentRulesTests.LoadedWithoutInheritedIsHigh;
 var
-  Source: string;
-  Findings: TArray<TRuleFinding>;
+  mSource: string;
+  mFindings: TArray<TRuleFinding>;
 begin
-  Source := ControlUnit('  protected'#10'    procedure Loaded; override;',
+  mSource := ControlUnit('  protected'#10'    procedure Loaded; override;',
     'procedure TFoo.Loaded;'#10'begin'#10'  Layout;'#10'end;');
-  Findings := TRuleAssert.Findings(TComponentMissingInheritedRule.Create, Source);
-  Assert.AreEqual(1, Integer(Length(Findings)));
-  Assert.AreEqual(Ord(TRuleConfidence.High), Ord(Findings[0].Confidence));
-  Assert.AreEqual(8, Findings[0].Range.StartPos.Line);
+  mFindings := TRuleAssert.Findings(TComponentMissingInheritedRule.Create, mSource);
+  Assert.AreEqual(1, Integer(Length(mFindings)));
+  Assert.AreEqual(Ord(TRuleConfidence.High), Ord(mFindings[0].Confidence));
+  Assert.AreEqual(8, mFindings[0].Range.StartPos.Line);
   Assert.AreEqual(ControlUnit('  protected'#10'    procedure Loaded; override;',
-    'procedure TFoo.Loaded;'#10'begin'#10'  inherited;'#10'  Layout;'#10'end;'), ApplyFix(Source, Findings[0].Fixes[0]));
+    'procedure TFoo.Loaded;'#10'begin'#10'  inherited;'#10'  Layout;'#10'end;'), ApplyFix(mSource, mFindings[0].Fixes[0]));
 end;
 
 const
-  PaintMember = '  protected'#10'    procedure Paint; override;';
-  PaintImpl = 'procedure TFoo.Paint;'#10'begin'#10'  Draw;'#10'end;';
+  cPaintMember = '  protected'#10'    procedure Paint; override;';
+  cPaintImpl = 'procedure TFoo.Paint;'#10'begin'#10'  Draw;'#10'end;';
 
 /// <summary>Unit mit TBase = class(AParent) (Mitglieder ABaseMembers) und TFoo = class(TBase) mit Paint ohne
 /// inherited.</summary>
 function TwoLevelUnit(const AParent, ABaseMembers, ABaseImpl: string): string;
 begin
   Result := 'unit U;'#10'interface'#10'type'#10'  TBase = class(' + AParent + ')'#10 + ABaseMembers + #10'  end;'#10 +
-    '  TFoo = class(TBase)'#10 + PaintMember + #10'  end;'#10'implementation'#10 + ABaseImpl + PaintImpl +
+    '  TFoo = class(TBase)'#10 + cPaintMember + #10'  end;'#10'implementation'#10 + ABaseImpl + cPaintImpl +
     #10'end.';
 end;
 
@@ -232,45 +238,45 @@ end;
 procedure AssertSilentAtLow(const ASource: string);
 begin
   Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TComponentMissingInheritedRule.Create, ASource,
-    LowConfidence))));
+    cLowConfidence))));
 end;
 
 procedure TComponentRulesTests.PaintOnEmptyAncestorIsSilent;
 begin
   // TCustomControl.Paint und TGraphicControl.Paint sind leer: Paint ohne inherited ist dort üblich.
-  AssertSilentAtLow(ControlUnit(PaintMember, PaintImpl));
-  AssertSilentAtLow(ControlUnit(PaintMember, PaintImpl, 'TFoo = class(TGraphicControl)'));
+  AssertSilentAtLow(ControlUnit(cPaintMember, cPaintImpl));
+  AssertSilentAtLow(ControlUnit(cPaintMember, cPaintImpl, 'TFoo = class(TGraphicControl)'));
   // Eigener Zwischenvorfahr ohne Paint (wie TAtlasPopupWindow, TAtlasEditorBar).
   AssertSilentAtLow(TwoLevelUnit('TCustomControl', '  protected'#10'    procedure PaintBorder;',
     'procedure TBase.PaintBorder;'#10'begin'#10'end;'#10));
   // Unbekannter Vorfahr: nicht zu entscheiden, also still.
-  AssertSilentAtLow(ControlUnit(PaintMember, PaintImpl, 'TFoo = class(TFremdControl)'));
+  AssertSilentAtLow(ControlUnit(cPaintMember, cPaintImpl, 'TFoo = class(TFremdControl)'));
 end;
 
 procedure TComponentRulesTests.PaintOnDrawingAncestorReports;
 var
-  Source: string;
-  Findings: TArray<TRuleFinding>;
+  mSource: string;
+  mFindings: TArray<TRuleFinding>;
 begin
-  Source := ControlUnit(PaintMember, PaintImpl, 'TFoo = class(TCustomPanel)');
-  Findings := TRuleAssert.Findings(TComponentMissingInheritedRule.Create, Source);
-  Assert.AreEqual(1, Integer(Length(Findings)));
-  Assert.AreEqual(Ord(TRuleConfidence.Medium), Ord(Findings[0].Confidence));
+  mSource := ControlUnit(cPaintMember, cPaintImpl, 'TFoo = class(TCustomPanel)');
+  mFindings := TRuleAssert.Findings(TComponentMissingInheritedRule.Create, mSource);
+  Assert.AreEqual(1, Integer(Length(mFindings)));
+  Assert.AreEqual(Ord(TRuleConfidence.Medium), Ord(mFindings[0].Confidence));
   Assert.AreEqual('TFoo.Paint ruft inherited nicht auf; TCustomPanel.Paint zeichnet dort selbst',
-    Findings[0].Message);
-  Assert.AreEqual(ControlUnit(PaintMember, 'procedure TFoo.Paint;'#10'begin'#10'  inherited;'#10'  Draw;'#10'end;',
-    'TFoo = class(TCustomPanel)'), ApplyFix(Source, Findings[0].Fixes[0]));
+    mFindings[0].Message);
+  Assert.AreEqual(ControlUnit(cPaintMember, 'procedure TFoo.Paint;'#10'begin'#10'  inherited;'#10'  Draw;'#10'end;',
+    'TFoo = class(TCustomPanel)'), ApplyFix(mSource, mFindings[0].Fixes[0]));
   // Eigener Vorfahr, der selbst zeichnet.
-  Findings := TRuleAssert.Findings(TComponentMissingInheritedRule.Create,
-    TwoLevelUnit('TCustomControl', PaintMember, 'procedure TBase.Paint;'#10'begin'#10'  Fill;'#10'end;'#10));
-  Assert.AreEqual(1, Integer(Length(Findings)));
-  Assert.AreEqual('TFoo.Paint ruft inherited nicht auf; TBase.Paint zeichnet dort selbst', Findings[0].Message);
+  mFindings := TRuleAssert.Findings(TComponentMissingInheritedRule.Create,
+    TwoLevelUnit('TCustomControl', cPaintMember, 'procedure TBase.Paint;'#10'begin'#10'  Fill;'#10'end;'#10));
+  Assert.AreEqual(1, Integer(Length(mFindings)));
+  Assert.AreEqual('TFoo.Paint ruft inherited nicht auf; TBase.Paint zeichnet dort selbst', mFindings[0].Message);
   // Zwischenvorfahr ohne Paint über TCustomForm: TForm.Paint löst nur OnPaint aus, das die Unit hier belegt.
-  Findings := TRuleAssert.Findings(TComponentMissingInheritedRule.Create,
+  mFindings := TRuleAssert.Findings(TComponentMissingInheritedRule.Create,
     TwoLevelUnit('TForm', '  protected'#10'    procedure Layout;',
     'procedure TBase.Layout;'#10'begin'#10'  OnPaint := nil;'#10'end;'#10));
-  Assert.AreEqual(1, Integer(Length(Findings)));
-  Assert.AreEqual('TFoo.Paint ruft inherited nicht auf; TForm.Paint löst dort OnPaint aus', Findings[0].Message);
+  Assert.AreEqual(1, Integer(Length(mFindings)));
+  Assert.AreEqual('TFoo.Paint ruft inherited nicht auf; TForm.Paint löst dort OnPaint aus', mFindings[0].Message);
 end;
 
 procedure TComponentRulesTests.PaintOnFormWithoutOnPaintIsSilent;
@@ -279,26 +285,26 @@ var
 begin
   // TCustomForm.Paint und TPaintBox.Paint lösen zur Laufzeit nur OnPaint aus: Ohne OnPaint in der Unit und ohne
   // DFM fehlt ohne inherited nichts (selbst gezeichnete Fenster wie TAtlasStatusWindow).
-  AssertSilentAtLow(ControlUnit(PaintMember, PaintImpl, 'TFoo = class(TForm)'));
-  AssertSilentAtLow(ControlUnit(PaintMember, PaintImpl, 'TFoo = class(TPaintBox)'));
+  AssertSilentAtLow(ControlUnit(cPaintMember, cPaintImpl, 'TFoo = class(TForm)'));
+  AssertSilentAtLow(ControlUnit(cPaintMember, cPaintImpl, 'TFoo = class(TPaintBox)'));
   // Mit DFM kann OnPaint dort belegt sein.
-  mSource := ControlUnit(PaintMember, PaintImpl, 'TFoo = class(TForm)').Replace('implementation',
+  mSource := ControlUnit(cPaintMember, cPaintImpl, 'TFoo = class(TForm)').Replace('implementation',
     'implementation'#10'{$R *.dfm}');
   Assert.AreEqual(1, Integer(Length(TRuleAssert.Findings(TComponentMissingInheritedRule.Create, mSource))));
 end;
 
 procedure TComponentRulesTests.DestroyGetsInheritedAtEnd;
 var
-  Source: string;
-  Findings: TArray<TRuleFinding>;
+  mSource: string;
+  mFindings: TArray<TRuleFinding>;
 begin
-  Source := ControlUnit('  public'#10'    destructor Destroy; override;',
+  mSource := ControlUnit('  public'#10'    destructor Destroy; override;',
     'destructor TFoo.Destroy;'#10'begin'#10'  FList.Free'#10'end;');
-  Findings := TRuleAssert.Findings(TComponentMissingInheritedRule.Create, Source);
-  Assert.AreEqual(1, Integer(Length(Findings)));
+  mFindings := TRuleAssert.Findings(TComponentMissingInheritedRule.Create, mSource);
+  Assert.AreEqual(1, Integer(Length(mFindings)));
   Assert.AreEqual(ControlUnit('  public'#10'    destructor Destroy; override;',
     'destructor TFoo.Destroy;'#10'begin'#10'  FList.Free;'#10'  inherited;'#10'end;'),
-    ApplyFix(Source, Findings[0].Fixes[0]));
+    ApplyFix(mSource, mFindings[0].Fixes[0]));
 end;
 
 procedure TComponentRulesTests.InheritedPresentIsSilent;
@@ -319,114 +325,114 @@ begin
 end;
 
 const
-  SizeMembers = '  private'#10'    FSize: Integer;'#10'  public'#10'    constructor Create(AOwner: TComponent); override;'#10 +
+  cSizeMembers = '  private'#10'    FSize: Integer;'#10'  public'#10'    constructor Create(AOwner: TComponent); override;'#10 +
     '  published'#10'    property Size: Integer read FSize write FSize default 5;';
 
 procedure TComponentRulesTests.DefaultMismatchReplacesValue;
 var
-  Source: string;
-  Findings: TArray<TRuleFinding>;
+  mSource: string;
+  mFindings: TArray<TRuleFinding>;
 begin
-  Source := ControlUnit(SizeMembers, 'constructor TFoo.Create(AOwner: TComponent);'#10'begin'#10 +
+  mSource := ControlUnit(cSizeMembers, 'constructor TFoo.Create(AOwner: TComponent);'#10'begin'#10 +
     '  inherited Create(AOwner);'#10'  FSize := 10;'#10'end;');
-  Findings := TRuleAssert.Findings(TComponentDefaultMismatchRule.Create, Source);
-  Assert.AreEqual(1, Integer(Length(Findings)));
-  Assert.AreEqual(Ord(TRuleConfidence.High), Ord(Findings[0].Confidence));
-  Assert.AreEqual('10', Findings[0].Fixes[0].Edits[0].NewText);
-  Assert.AreEqual(9, Findings[0].Range.StartPos.Line);
+  mFindings := TRuleAssert.Findings(TComponentDefaultMismatchRule.Create, mSource);
+  Assert.AreEqual(1, Integer(Length(mFindings)));
+  Assert.AreEqual(Ord(TRuleConfidence.High), Ord(mFindings[0].Confidence));
+  Assert.AreEqual('10', mFindings[0].Fixes[0].Edits[0].NewText);
+  Assert.AreEqual(9, mFindings[0].Range.StartPos.Line);
 end;
 
 procedure TComponentRulesTests.DefaultMatchingIsSilent;
 begin
-  TRuleAssert.Silent(TComponentDefaultMismatchRule.Create, ControlUnit(SizeMembers,
+  TRuleAssert.Silent(TComponentDefaultMismatchRule.Create, ControlUnit(cSizeMembers,
     'constructor TFoo.Create(AOwner: TComponent);'#10'begin'#10'  inherited Create(AOwner);'#10'  Self.FSize := $5;'#10'end;'));
   // Wert aus einer Berechnung: keine Aussage.
-  TRuleAssert.Silent(TComponentDefaultMismatchRule.Create, ControlUnit(SizeMembers,
+  TRuleAssert.Silent(TComponentDefaultMismatchRule.Create, ControlUnit(cSizeMembers,
     'constructor TFoo.Create(AOwner: TComponent);'#10'begin'#10'  inherited Create(AOwner);'#10 +
     '  FSize := Basis + 1;'#10'end;'));
 end;
 
 const
-  LinkMembers = '  private'#10'    FLink: TControl;'#10'    procedure SetLink(const Value: TControl);'#10 +
+  cLinkMembers = '  private'#10'    FLink: TControl;'#10'    procedure SetLink(const Value: TControl);'#10 +
     '  published'#10'    property Link: TControl read FLink write SetLink;';
 
 procedure TComponentRulesTests.SetterWithoutFreeNotificationReports;
 var
-  Source: string;
-  Findings: TArray<TRuleFinding>;
+  mSource: string;
+  mFindings: TArray<TRuleFinding>;
 begin
-  Source := ControlUnit(LinkMembers, 'procedure TFoo.SetLink(const Value: TControl);'#10'begin'#10 +
+  mSource := ControlUnit(cLinkMembers, 'procedure TFoo.SetLink(const Value: TControl);'#10'begin'#10 +
     '  FLink := Value;'#10'end;');
-  Findings := TRuleAssert.Findings(TComponentMissingFreeNotificationRule.Create, Source);
-  Assert.AreEqual(1, Integer(Length(Findings)));
-  Assert.AreEqual(Ord(TRuleConfidence.Medium), Ord(Findings[0].Confidence));
-  Assert.AreEqual(ControlUnit(LinkMembers, 'procedure TFoo.SetLink(const Value: TControl);'#10'begin'#10 +
+  mFindings := TRuleAssert.Findings(TComponentMissingFreeNotificationRule.Create, mSource);
+  Assert.AreEqual(1, Integer(Length(mFindings)));
+  Assert.AreEqual(Ord(TRuleConfidence.Medium), Ord(mFindings[0].Confidence));
+  Assert.AreEqual(ControlUnit(cLinkMembers, 'procedure TFoo.SetLink(const Value: TControl);'#10'begin'#10 +
     '  FLink := Value;'#10'  if Value <> nil then Value.FreeNotification(Self);'#10'end;'),
-    ApplyFix(Source, Findings[0].Fixes[0]));
+    ApplyFix(mSource, mFindings[0].Fixes[0]));
 end;
 
 procedure TComponentRulesTests.FreeNotificationAndSubcomponentAreSilent;
 begin
-  TRuleAssert.Silent(TComponentMissingFreeNotificationRule.Create, ControlUnit(LinkMembers,
+  TRuleAssert.Silent(TComponentMissingFreeNotificationRule.Create, ControlUnit(cLinkMembers,
     'procedure TFoo.SetLink(const Value: TControl);'#10'begin'#10'  FLink := Value;'#10 +
     '  if Value <> nil then Value.FreeNotification(Self);'#10'end;'));
-  TRuleAssert.Silent(TComponentMissingFreeNotificationRule.Create, ControlUnit(LinkMembers,
+  TRuleAssert.Silent(TComponentMissingFreeNotificationRule.Create, ControlUnit(cLinkMembers,
     'constructor TFoo.Create(AOwner: TComponent);'#10'begin'#10'  inherited Create(AOwner);'#10 +
     '  FLink := TControl.Create(Self);'#10'end;'#10'procedure TFoo.SetLink(const Value: TControl);'#10'begin'#10 +
     '  FLink.Assign(Value);'#10'end;'));
   // Kein Komponententyp
-  TRuleAssert.Silent(TComponentMissingFreeNotificationRule.Create, ControlUnit(SizeMembers, ''));
+  TRuleAssert.Silent(TComponentMissingFreeNotificationRule.Create, ControlUnit(cSizeMembers, ''));
 end;
 
 const
-  ColorMembers = '  private'#10'    FFill: TColor;'#10'    procedure SetFill(const Value: TColor);'#10 +
+  cColorMembers = '  private'#10'    FFill: TColor;'#10'    procedure SetFill(const Value: TColor);'#10 +
     '  protected'#10'    procedure Paint; override;'#10'  published'#10 +
     '    property Fill: TColor read FFill write SetFill;';
-  PaintFill = 'procedure TFoo.Paint;'#10'begin'#10'  inherited;'#10'  Canvas.Brush.Color := FFill;'#10'end;'#10;
+  cPaintFill = 'procedure TFoo.Paint;'#10'begin'#10'  inherited;'#10'  Canvas.Brush.Color := FFill;'#10'end;'#10;
 
 procedure TComponentRulesTests.SetterWithoutInvalidateReports;
 var
-  Source: string;
-  Findings: TArray<TRuleFinding>;
+  mSource: string;
+  mFindings: TArray<TRuleFinding>;
 begin
-  Source := ControlUnit(ColorMembers, PaintFill + 'procedure TFoo.SetFill(const Value: TColor);'#10'begin'#10 +
+  mSource := ControlUnit(cColorMembers, cPaintFill + 'procedure TFoo.SetFill(const Value: TColor);'#10'begin'#10 +
     '  FFill := Value;'#10'end;');
-  Findings := TRuleAssert.Findings(TComponentSetterWithoutInvalidateRule.Create, Source);
-  Assert.AreEqual(1, Integer(Length(Findings)));
-  Assert.AreEqual(Ord(TRuleSeverity.Hint), Ord(Findings[0].Severity));
-  Assert.AreEqual('Invalidate;', Trim(Findings[0].Fixes[0].Edits[0].NewText));
+  mFindings := TRuleAssert.Findings(TComponentSetterWithoutInvalidateRule.Create, mSource);
+  Assert.AreEqual(1, Integer(Length(mFindings)));
+  Assert.AreEqual(Ord(TRuleSeverity.Hint), Ord(mFindings[0].Severity));
+  Assert.AreEqual('Invalidate;', Trim(mFindings[0].Fixes[0].Edits[0].NewText));
 end;
 
 procedure TComponentRulesTests.SetterWithInvalidateOrUnpaintedFieldIsSilent;
 begin
-  TRuleAssert.Silent(TComponentSetterWithoutInvalidateRule.Create, ControlUnit(ColorMembers, PaintFill +
+  TRuleAssert.Silent(TComponentSetterWithoutInvalidateRule.Create, ControlUnit(cColorMembers, cPaintFill +
     'procedure TFoo.SetFill(const Value: TColor);'#10'begin'#10'  if FFill <> Value then'#10'  begin'#10 +
     '    FFill := Value;'#10'    Invalidate;'#10'  end;'#10'end;'));
   // Paint liest das Feld nicht.
-  TRuleAssert.Silent(TComponentSetterWithoutInvalidateRule.Create, ControlUnit(ColorMembers,
+  TRuleAssert.Silent(TComponentSetterWithoutInvalidateRule.Create, ControlUnit(cColorMembers,
     'procedure TFoo.Paint;'#10'begin'#10'  inherited;'#10'end;'#10 +
     'procedure TFoo.SetFill(const Value: TColor);'#10'begin'#10'  FFill := Value;'#10'end;'));
 end;
 
 const
-  PaintMembers = '  protected'#10'    procedure Paint; override;';
+  cPaintMembers = '  protected'#10'    procedure Paint; override;';
 
 function PaintUnit(const ABody: string): string;
 begin
-  Result := ControlUnit(PaintMembers, 'procedure TFoo.Paint;'#10'begin'#10'  inherited;'#10 + ABody + #10'end;');
+  Result := ControlUnit(cPaintMembers, 'procedure TFoo.Paint;'#10'begin'#10'  inherited;'#10 + ABody + #10'end;');
 end;
 
 procedure TComponentRulesTests.FixedPixelsOncePerCall;
 var
-  Source: string;
-  Findings: TArray<TRuleFinding>;
+  mSource: string;
+  mFindings: TArray<TRuleFinding>;
 begin
-  Source := PaintUnit('  Canvas.FillRect(Rect(0, 0, 16, 16));');
-  Findings := TRuleAssert.Findings(TComponentFixedPixelsRule.Create, Source);
-  Assert.AreEqual(1, Integer(Length(Findings)));
-  Assert.AreEqual(Ord(TRuleConfidence.Medium), Ord(Findings[0].Confidence));
+  mSource := PaintUnit('  Canvas.FillRect(Rect(0, 0, 16, 16));');
+  mFindings := TRuleAssert.Findings(TComponentFixedPixelsRule.Create, mSource);
+  Assert.AreEqual(1, Integer(Length(mFindings)));
+  Assert.AreEqual(Ord(TRuleConfidence.Medium), Ord(mFindings[0].Confidence));
   Assert.AreEqual(PaintUnit('  Canvas.FillRect(Rect(0, 0, ScaleValue(16), ScaleValue(16)));'),
-    ApplyFix(Source, Findings[0].Fixes[0]));
+    ApplyFix(mSource, mFindings[0].Fixes[0]));
 end;
 
 procedure TComponentRulesTests.OwnScalingHelperIsSilent;
@@ -466,38 +472,38 @@ end;
 
 procedure TComponentRulesTests.FixedBoundsReportWithFix;
 var
-  Source: string;
-  Findings: TArray<TRuleFinding>;
+  mSource: string;
+  mFindings: TArray<TRuleFinding>;
 begin
   // Resize meldet component-fixed-pixels, nicht control-fixed-bounds. Skaliert wird über das Ziel selbst (bei
   // Margins über das Steuerelement davor), ohne Objekt über Self.
-  Source := BoundsUnit('Vcl.Forms, Vcl.StdCtrls',
+  mSource := BoundsUnit('Vcl.Forms, Vcl.StdCtrls',
     '  mEdit.Width := 240;'#10'  Left := mEdit.Left + 8;'#10'  mEdit.Margins.Top := 7;');
-  Findings := TRuleAssert.Findings(TControlFixedBoundsRule.Create, Source);
-  Assert.AreEqual(3, Integer(Length(Findings)));
-  Assert.AreEqual(Ord(TRuleConfidence.Medium), Ord(Findings[0].Confidence));
+  mFindings := TRuleAssert.Findings(TControlFixedBoundsRule.Create, mSource);
+  Assert.AreEqual(3, Integer(Length(mFindings)));
+  Assert.AreEqual(Ord(TRuleConfidence.Medium), Ord(mFindings[0].Confidence));
   Assert.AreEqual(BoundsUnit('Vcl.Forms, Vcl.StdCtrls',
     '  mEdit.Width := mEdit.ScaleValue(240);'#10'  Left := mEdit.Left + 8;'#10'  mEdit.Margins.Top := 7;'),
-    ApplyFix(Source, Findings[0].Fixes[0]));
+    ApplyFix(mSource, mFindings[0].Fixes[0]));
   Assert.AreEqual(BoundsUnit('Vcl.Forms, Vcl.StdCtrls',
     '  mEdit.Width := 240;'#10'  Left := mEdit.Left + ScaleValue(8);'#10'  mEdit.Margins.Top := 7;'),
-    ApplyFix(Source, Findings[1].Fixes[0]));
+    ApplyFix(mSource, mFindings[1].Fixes[0]));
   Assert.AreEqual(BoundsUnit('Vcl.Forms, Vcl.StdCtrls',
     '  mEdit.Width := 240;'#10'  Left := mEdit.Left + 8;'#10'  mEdit.Margins.Top := mEdit.ScaleValue(7);'),
-    ApplyFix(Source, Findings[2].Fixes[0]));
+    ApplyFix(mSource, mFindings[2].Fixes[0]));
   // Ein Aufruf als Ziel liefe doppelt: Self skaliert. Min und Max reichen den Pixelwert durch.
-  Source := BoundsUnit('Vcl.Forms, Vcl.StdCtrls', '  NewEdit(Self).Top := Max(80, Width);');
-  Findings := TRuleAssert.Findings(TControlFixedBoundsRule.Create, Source);
-  Assert.AreEqual(1, Integer(Length(Findings)));
+  mSource := BoundsUnit('Vcl.Forms, Vcl.StdCtrls', '  NewEdit(Self).Top := Max(80, Width);');
+  mFindings := TRuleAssert.Findings(TControlFixedBoundsRule.Create, mSource);
+  Assert.AreEqual(1, Integer(Length(mFindings)));
   Assert.AreEqual(BoundsUnit('Vcl.Forms, Vcl.StdCtrls', '  NewEdit(Self).Top := Max(ScaleValue(80), Width);'),
-    ApplyFix(Source, Findings[0].Fixes[0]));
+    ApplyFix(mSource, mFindings[0].Fixes[0]));
   // Konstanten mit Pixelwert wie Zahlen; cOrder liegt über der Grenze für Align und bleibt still.
-  Source := StringReplace(BoundsUnit('Vcl.Forms, Vcl.StdCtrls', '  mEdit.Height := cRow;'#10'  mEdit.Top := cOrder;'),
+  mSource := StringReplace(BoundsUnit('Vcl.Forms, Vcl.StdCtrls', '  mEdit.Height := cRow;'#10'  mEdit.Top := cOrder;'),
     'implementation'#10, 'implementation'#10'const'#10'  cRow = 24;'#10'  cOrder = 20000;'#10, []);
-  Findings := TRuleAssert.Findings(TControlFixedBoundsRule.Create, Source);
-  Assert.AreEqual(1, Integer(Length(Findings)));
-  Assert.AreEqual(StringReplace(Source, 'mEdit.Height := cRow;', 'mEdit.Height := mEdit.ScaleValue(cRow);', []),
-    ApplyFix(Source, Findings[0].Fixes[0]));
+  mFindings := TRuleAssert.Findings(TControlFixedBoundsRule.Create, mSource);
+  Assert.AreEqual(1, Integer(Length(mFindings)));
+  Assert.AreEqual(StringReplace(mSource, 'mEdit.Height := cRow;', 'mEdit.Height := mEdit.ScaleValue(cRow);', []),
+    ApplyFix(mSource, mFindings[0].Fixes[0]));
 end;
 
 procedure TComponentRulesTests.FixedBoundsSilentCases;
@@ -526,10 +532,10 @@ end;
 
 procedure TComponentRulesTests.AllComponentRulesShareModelInOneRun;
 var
-  Source: string;
-  Count: Integer;
+  mSource: string;
+  mCount: Integer;
 begin
-  Source := ControlUnit(SizeMembers + #10 + LinkMembers + #10 +
+  mSource := ControlUnit(cSizeMembers + #10 + cLinkMembers + #10 +
     '  protected'#10'    procedure Loaded; override;'#10'    procedure Paint; override;',
     'constructor TFoo.Create(AOwner: TComponent);'#10'begin'#10'  inherited Create(AOwner);'#10 +
     '  FSize := 10;'#10'end;'#10 +
@@ -537,15 +543,15 @@ begin
     'procedure TFoo.Loaded;'#10'begin'#10'  Layout;'#10'end;'#10 +
     'procedure TFoo.Paint;'#10'begin'#10'  inherited;'#10'  Canvas.FillRect(Rect(0, 0, 16, 16));'#10 +
     '  Canvas.Brush.Color := $00FF8000;'#10'end;');
-  Count := TRuleAssert.SameAsSeparateRuns([TComponentMissingInheritedRule.Create,
+  mCount := TRuleAssert.SameAsSeparateRuns([TComponentMissingInheritedRule.Create,
     TComponentDefaultMismatchRule.Create, TComponentMissingFreeNotificationRule.Create,
     TComponentSetterWithoutInvalidateRule.Create, TComponentFixedPixelsRule.Create,
-    TComponentHardcodedColorRule.Create], Source, LowConfidence);
-  Assert.IsTrue(Count >= 5, 'Treffer mehrerer Regeln: ' + IntToStr(Count));
+    TComponentHardcodedColorRule.Create], mSource, cLowConfidence);
+  Assert.IsTrue(mCount >= 5, 'Treffer mehrerer Regeln: ' + IntToStr(mCount));
 end;
 
 const
-  ExportUnit = 'unit U;'#10'interface'#10'type'#10'  TBasisExport = class'#10'  public'#10 +
+  cExportUnit = 'unit U;'#10'interface'#10'type'#10'  TBasisExport = class'#10'  public'#10 +
     '    constructor Create;'#10'    destructor Destroy; override;'#10'  end;'#10 +
     '  TExport = class(TBasisExport)'#10'  public'#10'    destructor Destroy; override;'#10'  end;'#10 +
     'implementation'#10'constructor TBasisExport.Create;'#10'begin'#10'end;'#10 +
@@ -554,56 +560,56 @@ const
 
 procedure TComponentRulesTests.MissingInheritedIssueExample;
 var
-  Findings: TArray<TRuleFinding>;
-  Fixed: string;
+  mFindings: TArray<TRuleFinding>;
+  mFixed: string;
 begin
-  Findings := TRuleAssert.Findings(TMissingInheritedRule.Create, ExportUnit);
-  Assert.AreEqual(1, Integer(Length(Findings)));
+  mFindings := TRuleAssert.Findings(TMissingInheritedRule.Create, cExportUnit);
+  Assert.AreEqual(1, Integer(Length(mFindings)));
   Assert.AreEqual('Destroy ruft inherited nicht auf; die Felder von TBasisExport werden nie freigegeben.',
-    Findings[0].Message);
-  Assert.AreEqual(Ord(TRuleSeverity.Warning), Ord(Findings[0].Severity));
-  Assert.AreEqual(Ord(TRuleConfidence.High), Ord(Findings[0].Confidence));
-  Assert.AreEqual('"inherited;" einfügen', Findings[0].Fixes[0].Title);
-  Fixed := ApplyFix(ExportUnit, Findings[0].Fixes[0]);
-  Assert.IsTrue(Fixed.Contains('destructor TExport.Destroy;'#10'begin'#10'  FDatei.Free;'#10'  inherited;'#10'end;'),
-    Fixed);
-  TRuleAssert.Silent(TMissingInheritedRule.Create, Fixed);
+    mFindings[0].Message);
+  Assert.AreEqual(Ord(TRuleSeverity.Warning), Ord(mFindings[0].Severity));
+  Assert.AreEqual(Ord(TRuleConfidence.High), Ord(mFindings[0].Confidence));
+  Assert.AreEqual('"inherited;" einfügen', mFindings[0].Fixes[0].Title);
+  mFixed := ApplyFix(cExportUnit, mFindings[0].Fixes[0]);
+  Assert.IsTrue(mFixed.Contains('destructor TExport.Destroy;'#10'begin'#10'  FDatei.Free;'#10'  inherited;'#10'end;'),
+    mFixed);
+  TRuleAssert.Silent(TMissingInheritedRule.Create, mFixed);
 end;
 
 procedure TComponentRulesTests.MissingInheritedConstructor;
 const
-  Head = 'unit U;'#10'interface'#10'type'#10'  TBasis = class'#10'  public'#10'    constructor Create;'#10 +
+  cHead = 'unit U;'#10'interface'#10'type'#10'  TBasis = class'#10'  public'#10'    constructor Create;'#10 +
     '  end;'#10'  TKind = class(TBasis)'#10'  public'#10;
-  Impl = 'implementation'#10'constructor TBasis.Create;'#10'begin'#10'end;'#10;
+  cImpl = 'implementation'#10'constructor TBasis.Create;'#10'begin'#10'end;'#10;
 var
-  Findings: TArray<TRuleFinding>;
-  Source: string;
+  mFindings: TArray<TRuleFinding>;
+  mSource: string;
 begin
-  Source := Head + '    constructor Create;'#10'  end;'#10 + Impl +
+  mSource := cHead + '    constructor Create;'#10'  end;'#10 + cImpl +
     'constructor TKind.Create;'#10'begin'#10'  FWert := 1;'#10'end;'#10'end.';
-  Findings := TRuleAssert.Findings(TMissingInheritedRule.Create, Source);
-  Assert.AreEqual(1, Integer(Length(Findings)));
-  Assert.AreEqual('Create ruft inherited nicht auf; die Felder von TBasis werden nie angelegt.', Findings[0].Message);
-  Assert.IsTrue(ApplyFix(Source, Findings[0].Fixes[0]).Contains(
-    'constructor TKind.Create;'#10'begin'#10'  inherited;'#10'  FWert := 1;'), ApplyFix(Source, Findings[0].Fixes[0]));
+  mFindings := TRuleAssert.Findings(TMissingInheritedRule.Create, mSource);
+  Assert.AreEqual(1, Integer(Length(mFindings)));
+  Assert.AreEqual('Create ruft inherited nicht auf; die Felder von TBasis werden nie angelegt.', mFindings[0].Message);
+  Assert.IsTrue(ApplyFix(mSource, mFindings[0].Fixes[0]).Contains(
+    'constructor TKind.Create;'#10'begin'#10'  inherited;'#10'  FWert := 1;'), ApplyFix(mSource, mFindings[0].Fixes[0]));
   // Eigener Konstruktor mit Parametern: inherited Create ohne Argumente.
-  Source := Head + '    constructor Create(AWert: Integer);'#10'  end;'#10 + Impl +
+  mSource := cHead + '    constructor Create(AWert: Integer);'#10'  end;'#10 + cImpl +
     'constructor TKind.Create(AWert: Integer);'#10'begin'#10'  FWert := AWert;'#10'end;'#10'end.';
-  Findings := TRuleAssert.Findings(TMissingInheritedRule.Create, Source);
-  Assert.AreEqual(1, Integer(Length(Findings)));
-  Assert.AreEqual('"inherited Create;" einfügen', Findings[0].Fixes[0].Title);
+  mFindings := TRuleAssert.Findings(TMissingInheritedRule.Create, mSource);
+  Assert.AreEqual(1, Integer(Length(mFindings)));
+  Assert.AreEqual('"inherited Create;" einfügen', mFindings[0].Fixes[0].Title);
   // Ruft einen anderen eigenen Konstruktor: still.
-  TRuleAssert.Silent(TMissingInheritedRule.Create, Head + '    constructor Create;'#10 +
-    '    constructor CreateLeer;'#10'  end;'#10 + Impl +
+  TRuleAssert.Silent(TMissingInheritedRule.Create, cHead + '    constructor Create;'#10 +
+    '    constructor CreateLeer;'#10'  end;'#10 + cImpl +
     'constructor TKind.Create;'#10'begin'#10'  inherited;'#10'end;'#10 +
     'constructor TKind.CreateLeer;'#10'begin'#10'  Create;'#10'  FListe := TStringList.Create;'#10'end;'#10'end.');
   // AfterConstruction ohne inherited.
-  Findings := TRuleAssert.Findings(TMissingInheritedRule.Create, Head +
-    '    procedure AfterConstruction; override;'#10'  end;'#10 + Impl +
+  mFindings := TRuleAssert.Findings(TMissingInheritedRule.Create, cHead +
+    '    procedure AfterConstruction; override;'#10'  end;'#10 + cImpl +
     'procedure TKind.AfterConstruction;'#10'begin'#10'  Laden;'#10'end;'#10'end.');
-  Assert.AreEqual(1, Integer(Length(Findings)));
+  Assert.AreEqual(1, Integer(Length(mFindings)));
   Assert.AreEqual('AfterConstruction ruft inherited nicht auf; die Arbeit von TBasis nach dem Erzeugen entfällt.',
-    Findings[0].Message);
+    mFindings[0].Message);
 end;
 
 procedure TComponentRulesTests.MissingInheritedSilentCases;
@@ -618,7 +624,7 @@ begin
     '  end;'#10'  TKind = class(TBasis)'#10'  public'#10'    constructor Create;'#10'  end;'#10'implementation'#10 +
     'constructor TKind.Create;'#10'begin'#10'  FX := 1;'#10'end;'#10'end.');
   // Destroy ohne override meldet destroy-without-override, nicht diese Regel.
-  TRuleAssert.Silent(TMissingInheritedRule.Create, StringReplace(ExportUnit,
+  TRuleAssert.Silent(TMissingInheritedRule.Create, StringReplace(cExportUnit,
     '  TExport = class(TBasisExport)'#10'  public'#10'    destructor Destroy; override;',
     '  TExport = class(TBasisExport)'#10'  public'#10'    destructor Destroy;', []));
   // Formular ohne DFM: CreateNew ruft selbst inherited Create (#1109).
@@ -630,38 +636,38 @@ end;
 
 procedure TComponentRulesTests.MissingInheritedComponentsNoDoubleReport;
 var
-  Source: string;
-  Findings: TArray<TRuleFinding>;
+  mSource: string;
+  mFindings: TArray<TRuleFinding>;
 begin
-  Source := ControlUnit('  public'#10'    constructor Create(AOwner: TComponent); override;'#10 +
+  mSource := ControlUnit('  public'#10'    constructor Create(AOwner: TComponent); override;'#10 +
     '    destructor Destroy; override;',
     'constructor TFoo.Create(AOwner: TComponent);'#10'begin'#10'  FSize := 10;'#10'end;'#10 +
     'destructor TFoo.Destroy;'#10'begin'#10'  FLink := nil;'#10'end;');
-  Findings := TRuleAssert.Findings(TMissingInheritedRule.Create, Source);
-  Assert.AreEqual(1, Integer(Length(Findings)), 'Destroy meldet component-missing-inherited');
+  mFindings := TRuleAssert.Findings(TMissingInheritedRule.Create, mSource);
+  Assert.AreEqual(1, Integer(Length(mFindings)), 'Destroy meldet component-missing-inherited');
   Assert.AreEqual('Create ruft inherited nicht auf; die Felder von TCustomControl werden nie angelegt.',
-    Findings[0].Message);
-  Assert.AreEqual('"inherited;" einfügen', Findings[0].Fixes[0].Title, 'override reicht AOwner weiter');
-  Assert.AreEqual(1, Integer(Length(TRuleAssert.Findings(TComponentMissingInheritedRule.Create, Source))));
+    mFindings[0].Message);
+  Assert.AreEqual('"inherited;" einfügen', mFindings[0].Fixes[0].Title, 'override reicht AOwner weiter');
+  Assert.AreEqual(1, Integer(Length(TRuleAssert.Findings(TComponentMissingInheritedRule.Create, mSource))));
 end;
 
 procedure TComponentRulesTests.MissingInheritedMethodsOptionOffAndExclude;
 var
-  Issues: TArray<TConfigurationIssue>;
+  mIssues: TArray<TConfigurationIssue>;
 begin
-  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TMissingInheritedRule.Create, ExportUnit,
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TMissingInheritedRule.Create, cExportUnit,
     '{"rules": {"missing-inherited": {"methods": ["Create"]}}}', 'U.pas'))));
-  Assert.AreEqual(1, Integer(Length(TRuleAssert.Findings(TMissingInheritedRule.Create, ExportUnit,
+  Assert.AreEqual(1, Integer(Length(TRuleAssert.Findings(TMissingInheritedRule.Create, cExportUnit,
     '{"rules": {"missing-inherited": {"methods": ["Destroy"]}}}', 'U.pas'))));
   Assert.AreEqual(4, Integer(Length(TMissingInheritedRule.DefaultMethods)));
-  TConfigurationParser.Parse('{"rules": {"missing-inherited": {"methods": "Destroy"}}}', Issues);
-  Assert.AreEqual(1, Integer(Length(Issues)));
-  Assert.AreEqual('"methods" muss eine Liste von Texten sein', Issues[0].Message);
-  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TMissingInheritedRule.Create, ExportUnit,
+  TConfigurationParser.Parse('{"rules": {"missing-inherited": {"methods": "Destroy"}}}', mIssues);
+  Assert.AreEqual(1, Integer(Length(mIssues)));
+  Assert.AreEqual('"methods" muss eine Liste von Texten sein', mIssues[0].Message);
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TMissingInheritedRule.Create, cExportUnit,
     '{"rules": {"missing-inherited": "off"}}', 'U.pas'))));
-  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TMissingInheritedRule.Create, ExportUnit,
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TMissingInheritedRule.Create, cExportUnit,
     '{"rules": {"missing-inherited": {"exclude": ["Alt/*.pas"]}}}', 'Alt/U.pas'))));
-  Assert.AreEqual(1, Integer(Length(TRuleAssert.Findings(TMissingInheritedRule.Create, ExportUnit,
+  Assert.AreEqual(1, Integer(Length(TRuleAssert.Findings(TMissingInheritedRule.Create, cExportUnit,
     '{"rules": {"missing-inherited": {"exclude": ["Alt/*.pas"]}}}', 'Neu/U.pas'))));
 end;
 
@@ -686,30 +692,30 @@ end;
 
 procedure TComponentRulesTests.MessageHandlerIssueExample;
 var
-  Source, Fixed: string;
-  Findings: TArray<TRuleFinding>;
-  Tree: TSyntaxTree;
+  mSource, mFixed: string;
+  mFindings: TArray<TRuleFinding>;
+  mTree: TSyntaxTree;
 begin
-  Source := Haupt('WM_SIZE', '  AnordnungAnpassen;'#10);
-  Findings := TRuleAssert.Findings(TMessageHandlerWithoutInheritedRule.Create, Source);
-  Assert.AreEqual(1, Integer(Length(Findings)));
-  Assert.AreEqual('message-handler-without-inherited', Findings[0].RuleId);
-  Assert.AreEqual(Ord(TRuleSeverity.Warning), Ord(Findings[0].Severity));
-  Assert.AreEqual(Ord(TRuleConfidence.Medium), Ord(Findings[0].Confidence));
+  mSource := Haupt('WM_SIZE', '  AnordnungAnpassen;'#10);
+  mFindings := TRuleAssert.Findings(TMessageHandlerWithoutInheritedRule.Create, mSource);
+  Assert.AreEqual(1, Integer(Length(mFindings)));
+  Assert.AreEqual('message-handler-without-inherited', mFindings[0].RuleId);
+  Assert.AreEqual(Ord(TRuleSeverity.Warning), Ord(mFindings[0].Severity));
+  Assert.AreEqual(Ord(TRuleConfidence.Medium), Ord(mFindings[0].Confidence));
   Assert.AreEqual('WMSize ruft inherited nicht auf; die VCL passt Ausrichtung und Anker nicht mehr an.',
-    Findings[0].Message);
-  Assert.AreEqual(9, Findings[0].Range.StartPos.Line);
-  Assert.AreEqual(20, Findings[0].Range.StartPos.Character);
-  Assert.AreEqual('"inherited;" am Anfang einfügen', Findings[0].Fixes[0].Title);
-  Fixed := ApplyFix(Source, Findings[0].Fixes[0]);
-  Assert.AreEqual(Haupt('WM_SIZE', '  inherited;'#10'  AnordnungAnpassen;'#10), Fixed);
-  Tree := TPascalParser.Parse(Fixed);
+    mFindings[0].Message);
+  Assert.AreEqual(9, mFindings[0].Range.StartPos.Line);
+  Assert.AreEqual(20, mFindings[0].Range.StartPos.Character);
+  Assert.AreEqual('"inherited;" am Anfang einfügen', mFindings[0].Fixes[0].Title);
+  mFixed := ApplyFix(mSource, mFindings[0].Fixes[0]);
+  Assert.AreEqual(Haupt('WM_SIZE', '  inherited;'#10'  AnordnungAnpassen;'#10), mFixed);
+  mTree := TPascalParser.Parse(mFixed);
   try
-    Assert.AreEqual(0, Integer(Length(Tree.Diagnostics)));
+    Assert.AreEqual(0, Integer(Length(mTree.Diagnostics)));
   finally
-    Tree.Free;
+    mTree.Free;
   end;
-  TRuleAssert.Silent(TMessageHandlerWithoutInheritedRule.Create, Fixed);
+  TRuleAssert.Silent(TMessageHandlerWithoutInheritedRule.Create, mFixed);
 end;
 
 procedure TComponentRulesTests.MessageHandlerSilentCases;
@@ -738,14 +744,14 @@ end;
 
 procedure TComponentRulesTests.MessageHandlerConsequences;
 var
-  Findings: TArray<TRuleFinding>;
+  mFindings: TArray<TRuleFinding>;
 begin
-  Findings := TRuleAssert.Findings(TMessageHandlerWithoutInheritedRule.Create, Haupt('WM_CLOSE', '  Speichern;'#10));
-  Assert.AreEqual('WMSize ruft inherited nicht auf; das Fenster schließt nicht mehr.', Findings[0].Message);
-  Findings := TRuleAssert.Findings(TMessageHandlerWithoutInheritedRule.Create,
+  mFindings := TRuleAssert.Findings(TMessageHandlerWithoutInheritedRule.Create, Haupt('WM_CLOSE', '  Speichern;'#10));
+  Assert.AreEqual('WMSize ruft inherited nicht auf; das Fenster schließt nicht mehr.', mFindings[0].Message);
+  mFindings := TRuleAssert.Findings(TMessageHandlerWithoutInheritedRule.Create,
     Haupt('Winapi.Messages.WM_PAINT', '  Zeichnen;'#10));
   Assert.AreEqual('WMSize ruft inherited nicht auf; die VCL zeichnet das Steuerelement nicht mehr.',
-    Findings[0].Message);
+    mFindings[0].Message);
   Assert.AreEqual('die Standardbehandlung der VCL entfällt',
     TMessageHandlerWithoutInheritedRule.Consequence('CM_TEXTCHANGED'));
   Assert.AreEqual('die Standardbehandlung von Windows bzw. der VCL entfällt',
@@ -756,22 +762,22 @@ end;
 
 procedure TComponentRulesTests.MessageHandlerSwallowOffAndExclude;
 var
-  Source: string;
-  Issues: TArray<TConfigurationIssue>;
+  mSource: string;
+  mIssues: TArray<TConfigurationIssue>;
 begin
-  Source := Haupt('WM_SIZE', '  AnordnungAnpassen;'#10);
-  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TMessageHandlerWithoutInheritedRule.Create, Source,
+  mSource := Haupt('WM_SIZE', '  AnordnungAnpassen;'#10);
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TMessageHandlerWithoutInheritedRule.Create, mSource,
     '{"rules": {"message-handler-without-inherited": {"swallow": ["WM_SIZE"]}}}'))));
   // Eigene Liste ersetzt die Vorgabe: WM_ERASEBKGND wird dann gemeldet.
   Assert.AreEqual(1, Integer(Length(TRuleAssert.Findings(TMessageHandlerWithoutInheritedRule.Create,
     Haupt('WM_ERASEBKGND', '  Zeichnen;'#10),
     '{"rules": {"message-handler-without-inherited": {"swallow": ["WM_SIZE"]}}}'))));
-  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TMessageHandlerWithoutInheritedRule.Create, Source,
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TMessageHandlerWithoutInheritedRule.Create, mSource,
     '{"rules": {"message-handler-without-inherited": "off"}}'))));
-  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TMessageHandlerWithoutInheritedRule.Create, Source,
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TMessageHandlerWithoutInheritedRule.Create, mSource,
     '{"rules": {"message-handler-without-inherited": {"exclude": ["Source/*.pas"]}}}', 'Source/Haupt.pas'))));
-  TConfigurationParser.Parse('{"rules": {"message-handler-without-inherited": {"swallow": "WM_SIZE"}}}', Issues);
-  Assert.AreEqual(1, Integer(Length(Issues)));
+  TConfigurationParser.Parse('{"rules": {"message-handler-without-inherited": {"swallow": "WM_SIZE"}}}', mIssues);
+  Assert.AreEqual(1, Integer(Length(mIssues)));
 end;
 
 { TInheritedOrderTests }
@@ -792,21 +798,21 @@ end;
 
 procedure TInheritedOrderTests.DestructorIssueExampleWithFix;
 var
-  Source, Fixed: string;
-  Findings: TArray<TRuleFinding>;
+  mSource, mFixed: string;
+  mFindings: TArray<TRuleFinding>;
 begin
-  Source := Exporte('TBasisExport', '  inherited Create(''x'');'#10, '  inherited;'#10'  FDatei.Free;'#10);
-  Findings := TRuleAssert.Findings(TInheritedOrderRule.Create, Source);
-  Assert.AreEqual(1, Integer(Length(Findings)));
-  Assert.AreEqual('inherited-order', Findings[0].RuleId);
+  mSource := Exporte('TBasisExport', '  inherited Create(''x'');'#10, '  inherited;'#10'  FDatei.Free;'#10);
+  mFindings := TRuleAssert.Findings(TInheritedOrderRule.Create, mSource);
+  Assert.AreEqual(1, Integer(Length(mFindings)));
+  Assert.AreEqual('inherited-order', mFindings[0].RuleId);
   Assert.AreEqual('inherited vor dem Freigeben von FDatei; der Vorfahr ist dann schon abgebaut, FDatei darf ' +
-    'beim Freigeben nichts mehr von ihm brauchen.', Findings[0].Message);
-  Assert.AreEqual(Ord(TRuleConfidence.Medium), Ord(Findings[0].Confidence));
-  Assert.AreEqual(32, Findings[0].Range.StartPos.Line);
-  Assert.AreEqual('inherited an das Ende des Destruktors verschieben', Findings[0].Fixes[0].Title);
-  Fixed := ApplyFix(Source, Findings[0].Fixes[0]);
-  Assert.AreEqual(Exporte('TBasisExport', '  inherited Create(''x'');'#10, '  FDatei.Free;'#10'  inherited;'#10), Fixed);
-  TRuleAssert.Silent(TInheritedOrderRule.Create, Fixed);
+    'beim Freigeben nichts mehr von ihm brauchen.', mFindings[0].Message);
+  Assert.AreEqual(Ord(TRuleConfidence.Medium), Ord(mFindings[0].Confidence));
+  Assert.AreEqual(32, mFindings[0].Range.StartPos.Line);
+  Assert.AreEqual('inherited an das Ende des Destruktors verschieben', mFindings[0].Fixes[0].Title);
+  mFixed := ApplyFix(mSource, mFindings[0].Fixes[0]);
+  Assert.AreEqual(Exporte('TBasisExport', '  inherited Create(''x'');'#10, '  FDatei.Free;'#10'  inherited;'#10), mFixed);
+  TRuleAssert.Silent(TInheritedOrderRule.Create, mFixed);
   // FreeAndNil, Self. und inherited Destroy ebenso.
   TRuleAssert.Reports(TInheritedOrderRule.Create, Exporte('TBasisExport', '',
     '  inherited Destroy;'#10'  if True then'#10'    FreeAndNil(Self.FPuffer);'#10));
@@ -830,26 +836,26 @@ end;
 
 procedure TInheritedOrderTests.ConstructorAccessBeforeInherited;
 var
-  Source, Fixed: string;
-  Findings: TArray<TRuleFinding>;
+  mSource, mFixed: string;
+  mFindings: TArray<TRuleFinding>;
 begin
-  Source := Exporte('TBasisExport', '  Name := ''Export'';'#10'  inherited Create(''x'');'#10, '  inherited;'#10);
-  Findings := TRuleAssert.Findings(TInheritedOrderRule.Create, Source);
-  Assert.AreEqual(1, Integer(Length(Findings)));
+  mSource := Exporte('TBasisExport', '  Name := ''Export'';'#10'  inherited Create(''x'');'#10, '  inherited;'#10);
+  mFindings := TRuleAssert.Findings(TInheritedOrderRule.Create, mSource);
+  Assert.AreEqual(1, Integer(Length(mFindings)));
   Assert.AreEqual('Create greift vor inherited auf Name aus TBasisExport zu; der Vorfahr ist noch nicht angelegt.',
-    Findings[0].Message);
-  Assert.AreEqual(28, Findings[0].Range.StartPos.Line);
-  Assert.AreEqual('inherited an den Anfang des Konstruktors verschieben', Findings[0].Fixes[0].Title);
-  Fixed := ApplyFix(Source, Findings[0].Fixes[0]);
+    mFindings[0].Message);
+  Assert.AreEqual(28, mFindings[0].Range.StartPos.Line);
+  Assert.AreEqual('inherited an den Anfang des Konstruktors verschieben', mFindings[0].Fixes[0].Title);
+  mFixed := ApplyFix(mSource, mFindings[0].Fixes[0]);
   Assert.AreEqual(Exporte('TBasisExport', '  inherited Create(''x'');'#10'  Name := ''Export'';'#10, '  inherited;'#10),
-    Fixed);
-  TRuleAssert.Silent(TInheritedOrderRule.Create, Fixed);
+    mFixed);
+  TRuleAssert.Silent(TInheritedOrderRule.Create, mFixed);
   // Self.FName ebenso; inherited Create mit vorher gesetzter lokaler Variable: ohne Korrektur.
-  Findings := TRuleAssert.Findings(TInheritedOrderRule.Create, StringReplace(Exporte('TBasisExport',
+  mFindings := TRuleAssert.Findings(TInheritedOrderRule.Create, StringReplace(Exporte('TBasisExport',
     '  Text := Self.FName;'#10'  inherited Create(Text);'#10, ''), 'constructor TExport.Create;'#10'begin',
     'constructor TExport.Create;'#10'var'#10'  Text: string;'#10'begin', []));
-  Assert.AreEqual(1, Integer(Length(Findings)));
-  Assert.AreEqual(0, Integer(Length(Findings[0].Fixes)));
+  Assert.AreEqual(1, Integer(Length(mFindings)));
+  Assert.AreEqual(0, Integer(Length(mFindings[0].Fixes)));
 end;
 
 procedure TInheritedOrderTests.ConstructorSilentCases;
@@ -867,12 +873,12 @@ end;
 
 procedure TInheritedOrderTests.OffAndExclude;
 var
-  Source: string;
+  mSource: string;
 begin
-  Source := Exporte('TBasisExport', '', '  inherited;'#10'  FDatei.Free;'#10);
-  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TInheritedOrderRule.Create, Source,
+  mSource := Exporte('TBasisExport', '', '  inherited;'#10'  FDatei.Free;'#10);
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TInheritedOrderRule.Create, mSource,
     '{"rules": {"inherited-order": "off"}}', 'Source/Exporte.pas'))));
-  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TInheritedOrderRule.Create, Source,
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TInheritedOrderRule.Create, mSource,
     '{"rules": {"inherited-order": {"exclude": ["Source/*.pas"]}}}', 'Source/Exporte.pas'))));
 end;
 
@@ -892,40 +898,40 @@ end;
 
 procedure TInheritedWrongMethodTests.IssueExampleWithFix;
 var
-  Source, Fixed: string;
-  Findings: TArray<TRuleFinding>;
+  mSource, mFixed: string;
+  mFindings: TArray<TRuleFinding>;
 begin
-  Source := Kundenform('  inherited Laden;'#10'  Protokollieren;'#10, '', '');
-  Findings := TRuleAssert.Findings(TInheritedWrongMethodRule.Create, Source);
-  Assert.AreEqual(1, Integer(Length(Findings)));
-  Assert.AreEqual('inherited-wrong-method', Findings[0].RuleId);
+  mSource := Kundenform('  inherited Laden;'#10'  Protokollieren;'#10, '', '');
+  mFindings := TRuleAssert.Findings(TInheritedWrongMethodRule.Create, mSource);
+  Assert.AreEqual(1, Integer(Length(mFindings)));
+  Assert.AreEqual('inherited-wrong-method', mFindings[0].RuleId);
   Assert.AreEqual('Speichern ruft inherited Laden auf; gemeint ist vermutlich inherited Speichern.',
-    Findings[0].Message);
-  Assert.AreEqual(Ord(TRuleConfidence.High), Ord(Findings[0].Confidence));
-  Assert.AreEqual(17, Findings[0].Range.StartPos.Line);
-  Assert.AreEqual('inherited Speichern aufrufen', Findings[0].Fixes[0].Title);
-  Fixed := ApplyFix(Source, Findings[0].Fixes[0]);
-  Assert.AreEqual(Kundenform('  inherited Speichern;'#10'  Protokollieren;'#10, '', ''), Fixed);
-  TRuleAssert.Silent(TInheritedWrongMethodRule.Create, Fixed);
+    mFindings[0].Message);
+  Assert.AreEqual(Ord(TRuleConfidence.High), Ord(mFindings[0].Confidence));
+  Assert.AreEqual(17, mFindings[0].Range.StartPos.Line);
+  Assert.AreEqual('inherited Speichern aufrufen', mFindings[0].Fixes[0].Title);
+  mFixed := ApplyFix(mSource, mFindings[0].Fixes[0]);
+  Assert.AreEqual(Kundenform('  inherited Speichern;'#10'  Protokollieren;'#10, '', ''), mFixed);
+  TRuleAssert.Silent(TInheritedWrongMethodRule.Create, mFixed);
 end;
 
 procedure TInheritedWrongMethodTests.ArgumentsDecideFix;
 var
-  Findings: TArray<TRuleFinding>;
+  mFindings: TArray<TRuleFinding>;
 begin
   // Andere Zahl an Argumenten als Parameter: Meldung ohne Korrektur.
-  Findings := TRuleAssert.Findings(TInheritedWrongMethodRule.Create,
+  mFindings := TRuleAssert.Findings(TInheritedWrongMethodRule.Create,
     Kundenform('  inherited Schreiben(''x'');'#10, '', ''));
-  Assert.AreEqual(1, Integer(Length(Findings)));
-  Assert.AreEqual(0, Integer(Length(Findings[0].Fixes)));
+  Assert.AreEqual(1, Integer(Length(mFindings)));
+  Assert.AreEqual(0, Integer(Length(mFindings[0].Fixes)));
   // Gleiche Zahl: Korrektur behält die Argumente.
-  Findings := TRuleAssert.Findings(TInheritedWrongMethodRule.Create, Kundenform('  inherited;'#10,
+  mFindings := TRuleAssert.Findings(TInheritedWrongMethodRule.Create, Kundenform('  inherited;'#10,
     '    procedure Schreiben(const AName: string); override;'#10,
     'procedure TKundenForm.Schreiben(const AName: string);'#10'begin'#10'  inherited Laden;'#10 +
     '  inherited Speichern();'#10'end;'#10));
-  Assert.AreEqual(2, Integer(Length(Findings)));
-  Assert.AreEqual(0, Integer(Length(Findings[0].Fixes)));
-  Assert.AreEqual(0, Integer(Length(Findings[1].Fixes)));
+  Assert.AreEqual(2, Integer(Length(mFindings)));
+  Assert.AreEqual(0, Integer(Length(mFindings[0].Fixes)));
+  Assert.AreEqual(0, Integer(Length(mFindings[1].Fixes)));
 end;
 
 procedure TInheritedWrongMethodTests.SilentCases;
@@ -943,36 +949,36 @@ end;
 
 procedure TInheritedWrongMethodTests.AllowedOption;
 var
-  Source: string;
-  Issues: TArray<TConfigurationIssue>;
+  mSource: string;
+  mIssues: TArray<TConfigurationIssue>;
 begin
-  Source := Kundenform('  inherited Laden;'#10, '', '');
-  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TInheritedWrongMethodRule.Create, Source,
+  mSource := Kundenform('  inherited Laden;'#10, '', '');
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TInheritedWrongMethodRule.Create, mSource,
     '{"rules": {"inherited-wrong-method": {"allowed": ["Speichern>Laden"]}}}'))));
-  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TInheritedWrongMethodRule.Create, Source,
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TInheritedWrongMethodRule.Create, mSource,
     '{"rules": {"inherited-wrong-method": {"allowed": ["Speich*>*"]}}}'))));
-  Assert.AreEqual(1, Integer(Length(TRuleAssert.Findings(TInheritedWrongMethodRule.Create, Source,
+  Assert.AreEqual(1, Integer(Length(TRuleAssert.Findings(TInheritedWrongMethodRule.Create, mSource,
     '{"rules": {"inherited-wrong-method": {"allowed": ["Laden>Speichern"]}}}'))));
   Assert.IsTrue(TInheritedWrongMethodRule.Allowed(['Speichern > Laden'], 'Speichern', 'Laden'));
   Assert.IsFalse(TInheritedWrongMethodRule.Allowed(['Speichern'], 'Speichern', 'Laden'));
   // Der Parser verlangt hier Texte, bei magic-number weiter Zahlen.
-  TConfigurationParser.Parse('{"rules": {"inherited-wrong-method": {"allowed": [1]}}}', Issues);
-  Assert.AreEqual(1, Integer(Length(Issues)));
-  Assert.AreEqual('"allowed" muss eine Liste von Texten sein', Issues[0].Message);
-  TConfigurationParser.Parse('{"rules": {"inherited-wrong-method": {"allowed": ["A>B"]}}}', Issues);
-  Assert.AreEqual(0, Integer(Length(Issues)));
-  TConfigurationParser.Parse('{"rules": {"magic-number": {"allowed": ["A>B"]}}}', Issues);
-  Assert.AreEqual(1, Integer(Length(Issues)));
+  TConfigurationParser.Parse('{"rules": {"inherited-wrong-method": {"allowed": [1]}}}', mIssues);
+  Assert.AreEqual(1, Integer(Length(mIssues)));
+  Assert.AreEqual('"allowed" muss eine Liste von Texten sein', mIssues[0].Message);
+  TConfigurationParser.Parse('{"rules": {"inherited-wrong-method": {"allowed": ["A>B"]}}}', mIssues);
+  Assert.AreEqual(0, Integer(Length(mIssues)));
+  TConfigurationParser.Parse('{"rules": {"magic-number": {"allowed": ["A>B"]}}}', mIssues);
+  Assert.AreEqual(1, Integer(Length(mIssues)));
 end;
 
 procedure TInheritedWrongMethodTests.OffAndExclude;
 var
-  Source: string;
+  mSource: string;
 begin
-  Source := Kundenform('  inherited Laden;'#10, '', '');
-  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TInheritedWrongMethodRule.Create, Source,
+  mSource := Kundenform('  inherited Laden;'#10, '', '');
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TInheritedWrongMethodRule.Create, mSource,
     '{"rules": {"inherited-wrong-method": "off"}}', 'Source/Kundenform.pas'))));
-  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TInheritedWrongMethodRule.Create, Source,
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TInheritedWrongMethodRule.Create, mSource,
     '{"rules": {"inherited-wrong-method": {"exclude": ["Source/*.pas"]}}}', 'Source/Kundenform.pas'))));
 end;
 
@@ -989,44 +995,49 @@ begin
     'function TZaehler.GetListe: TList;'#10'begin'#10 + AListe + 'end;'#10'end.';
 end;
 
-function GetterFindings(const ASource: string; const AConfig: string = ''): TArray<TRuleFinding>;
+function GetterFindings(const ASource: string; const AConfig: string): TArray<TRuleFinding>; overload;
 begin
   Result := TRuleAssert.Findings(TGetterSideEffectRule.Create, ASource, AConfig);
 end;
 
+function GetterFindings(const ASource: string): TArray<TRuleFinding>; overload;
+begin
+  Result := GetterFindings(ASource, '');
+end;
+
 procedure TGetterSideEffectTests.IssueExample;
 var
-  Findings: TArray<TRuleFinding>;
+  mFindings: TArray<TRuleFinding>;
 begin
-  Findings := GetterFindings(Zaehler('  Inc(FAbrufe);'#10'  Result := FWert;'#10, '', '  Result := FListe;'#10));
-  Assert.AreEqual(1, Integer(Length(Findings)));
-  Assert.AreEqual('getter-side-effect', Findings[0].RuleId);
+  mFindings := GetterFindings(Zaehler('  Inc(FAbrufe);'#10'  Result := FWert;'#10, '', '  Result := FListe;'#10));
+  Assert.AreEqual(1, Integer(Length(mFindings)));
+  Assert.AreEqual('getter-side-effect', mFindings[0].RuleId);
   Assert.AreEqual('Der Getter GetWert verändert FAbrufe; schon das Anzeigen im Debugger ändert den Zustand.',
-    Findings[0].Message);
-  Assert.AreEqual(Ord(TRuleSeverity.Warning), Ord(Findings[0].Severity));
-  Assert.AreEqual(Ord(TRuleConfidence.Medium), Ord(Findings[0].Confidence));
-  Assert.AreEqual(16, Findings[0].Range.StartPos.Line);
-  Assert.AreEqual(6, Findings[0].Range.StartPos.Character);
-  Assert.AreEqual(0, Integer(Length(Findings[0].Fixes)));
+    mFindings[0].Message);
+  Assert.AreEqual(Ord(TRuleSeverity.Warning), Ord(mFindings[0].Severity));
+  Assert.AreEqual(Ord(TRuleConfidence.Medium), Ord(mFindings[0].Confidence));
+  Assert.AreEqual(16, mFindings[0].Range.StartPos.Line);
+  Assert.AreEqual(6, mFindings[0].Range.StartPos.Character);
+  Assert.AreEqual(0, Integer(Length(mFindings[0].Fixes)));
   // Die korrigierte Form ist still.
   TRuleAssert.Silent(TGetterSideEffectRule.Create, Zaehler('  Result := FWert;'#10, '', '  Result := FListe;'#10));
 end;
 
 procedure TGetterSideEffectTests.KindsOfChange;
 var
-  Findings: TArray<TRuleFinding>;
+  mFindings: TArray<TRuleFinding>;
 begin
   // Zuweisung (auch über Self.), Dec, neu angelegtes Objekt an eine Methode eines Felds; je Feld eine Meldung.
-  Findings := GetterFindings(Zaehler('  Self.FWert := FWert + 1;'#10'  Dec(FAbrufe);'#10'  Dec(FAbrufe);'#10 +
+  mFindings := GetterFindings(Zaehler('  Self.FWert := FWert + 1;'#10'  Dec(FAbrufe);'#10'  Dec(FAbrufe);'#10 +
     '  Result := FWert;'#10, '', '  FListe.Add(TObject.Create);'#10'  Result := FListe;'#10));
-  Assert.AreEqual(3, Integer(Length(Findings)));
+  Assert.AreEqual(3, Integer(Length(mFindings)));
   Assert.AreEqual('Der Getter GetWert verändert FWert; schon das Anzeigen im Debugger ändert den Zustand.',
-    Findings[0].Message);
-  Assert.AreEqual(16, Findings[0].Range.StartPos.Line);
+    mFindings[0].Message);
+  Assert.AreEqual(16, mFindings[0].Range.StartPos.Line);
   Assert.AreEqual('Der Getter GetWert verändert FAbrufe; schon das Anzeigen im Debugger ändert den Zustand.',
-    Findings[1].Message);
+    mFindings[1].Message);
   Assert.AreEqual('Der Getter GetListe verändert FListe; schon das Anzeigen im Debugger ändert den Zustand.',
-    Findings[2].Message);
+    mFindings[2].Message);
   // Ein if ohne Prüfung des Zugewiesenen ist keine Lazy-Initialisierung.
   Assert.AreEqual(1, Integer(Length(GetterFindings(Zaehler('  if FWert > 0 then'#10'    Inc(FAbrufe);'#10 +
     '  Result := FWert;'#10, '', '  Result := FListe;'#10)))));
@@ -1034,44 +1045,44 @@ end;
 
 procedure TGetterSideEffectTests.InheritedField;
 var
-  Source: string;
+  mSource: string;
 begin
-  Source := StringReplace(Zaehler('  Inc(FZugriffe);'#10'  Result := FWert;'#10, '', '  Result := FListe;'#10),
+  mSource := StringReplace(Zaehler('  Inc(FZugriffe);'#10'  Result := FWert;'#10, '', '  Result := FListe;'#10),
     '  TZaehler = class'#10, '  TBasis = class'#10'  protected'#10'    FZugriffe: Integer;'#10'  end;'#10 +
     '  TZaehler = class(TBasis)'#10, []);
   Assert.AreEqual('Der Getter GetWert verändert FZugriffe; schon das Anzeigen im Debugger ändert den Zustand.',
-    GetterFindings(Source)[0].Message);
+    GetterFindings(mSource)[0].Message);
 end;
 
 procedure TGetterSideEffectTests.LazyInitOption;
 var
-  Plain, Assigned_, ViaResult: string;
-  Issues: TArray<TConfigurationIssue>;
+  mPlain, mAssigned_, mViaResult: string;
+  mIssues: TArray<TConfigurationIssue>;
 begin
-  Plain := Zaehler('  Result := FWert;'#10, '', '  if FListe = nil then'#10'    FListe := TList.Create;'#10 +
+  mPlain := Zaehler('  Result := FWert;'#10, '', '  if FListe = nil then'#10'    FListe := TList.Create;'#10 +
     '  Result := FListe;'#10);
-  Assigned_ := Zaehler('  Result := FWert;'#10, '', '  if not Assigned(FListe) then'#10'  begin'#10 +
+  mAssigned_ := Zaehler('  Result := FWert;'#10, '', '  if not Assigned(FListe) then'#10'  begin'#10 +
     '    FListe := TList.Create;'#10'    FListe.Add(TObject.Create);'#10'  end;'#10'  Result := FListe;'#10);
-  ViaResult := Zaehler('  Result := FWert;'#10, '', '  Result := FListe;'#10'  if Result = nil then'#10 +
+  mViaResult := Zaehler('  Result := FWert;'#10, '', '  Result := FListe;'#10'  if Result = nil then'#10 +
     '  begin'#10'    Result := TList.Create;'#10'    FListe := Result;'#10'  end;'#10);
-  TRuleAssert.Silent(TGetterSideEffectRule.Create, Plain);
-  TRuleAssert.Silent(TGetterSideEffectRule.Create, Assigned_);
-  TRuleAssert.Silent(TGetterSideEffectRule.Create, ViaResult);
+  TRuleAssert.Silent(TGetterSideEffectRule.Create, mPlain);
+  TRuleAssert.Silent(TGetterSideEffectRule.Create, mAssigned_);
+  TRuleAssert.Silent(TGetterSideEffectRule.Create, mViaResult);
   // Zwischenspeicher mit Merker: if FAbrufe = 0 then begin FWert := …; FAbrufe := 1; end.
   TRuleAssert.Silent(TGetterSideEffectRule.Create, Zaehler('  if FAbrufe = 0 then'#10'  begin'#10 +
     '    FWert := 42;'#10'    FAbrufe := 1;'#10'  end;'#10'  Result := FWert;'#10, '', '  Result := FListe;'#10));
   // Mit allowLazyInit = false wird auch sie gemeldet.
-  Assert.AreEqual(1, Integer(Length(GetterFindings(Plain,
+  Assert.AreEqual(1, Integer(Length(GetterFindings(mPlain,
     '{"rules": {"getter-side-effect": {"allowLazyInit": false}}}'))));
-  Assert.AreEqual(1, Integer(Length(GetterFindings(Assigned_,
+  Assert.AreEqual(1, Integer(Length(GetterFindings(mAssigned_,
     '{"rules": {"getter-side-effect": {"allowLazyInit": false}}}'))));
-  Assert.AreEqual(1, Integer(Length(GetterFindings(ViaResult,
+  Assert.AreEqual(1, Integer(Length(GetterFindings(mViaResult,
     '{"rules": {"getter-side-effect": {"allowLazyInit": false}}}'))));
-  TConfigurationParser.Parse('{"rules": {"getter-side-effect": {"allowLazyInit": "ja"}}}', Issues);
-  Assert.AreEqual(1, Integer(Length(Issues)));
-  Assert.AreEqual('"allowLazyInit" muss true oder false sein', Issues[0].Message);
-  TConfigurationParser.Parse('{"rules": {"getter-side-effect": {"allowLazyInit": false}}}', Issues);
-  Assert.AreEqual(0, Integer(Length(Issues)));
+  TConfigurationParser.Parse('{"rules": {"getter-side-effect": {"allowLazyInit": "ja"}}}', mIssues);
+  Assert.AreEqual(1, Integer(Length(mIssues)));
+  Assert.AreEqual('"allowLazyInit" muss true oder false sein', mIssues[0].Message);
+  TConfigurationParser.Parse('{"rules": {"getter-side-effect": {"allowLazyInit": false}}}', mIssues);
+  Assert.AreEqual(0, Integer(Length(mIssues)));
 end;
 
 procedure TGetterSideEffectTests.SilentCases;
@@ -1091,12 +1102,12 @@ end;
 
 procedure TGetterSideEffectTests.OffAndExclude;
 var
-  Source: string;
+  mSource: string;
 begin
-  Source := Zaehler('  Inc(FAbrufe);'#10'  Result := FWert;'#10, '', '  Result := FListe;'#10);
-  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TGetterSideEffectRule.Create, Source,
+  mSource := Zaehler('  Inc(FAbrufe);'#10'  Result := FWert;'#10, '', '  Result := FListe;'#10);
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TGetterSideEffectRule.Create, mSource,
     '{"rules": {"getter-side-effect": "off"}}', 'Source/Zaehler.pas'))));
-  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TGetterSideEffectRule.Create, Source,
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TGetterSideEffectRule.Create, mSource,
     '{"rules": {"getter-side-effect": {"exclude": ["Source/*.pas"]}}}', 'Source/Zaehler.pas'))));
 end;
 
@@ -1106,80 +1117,90 @@ end;
 /// Implementierung, AParent den Vorfahren ('' = keiner).</summary>
 function KundenNr(const AMembers, AMore, AParent: string): string;
 var
-  Parent: string;
+  mParent: string;
 begin
-  Parent := '';
+  mParent := '';
   if AParent <> '' then
   begin
-    Parent := '(' + AParent + ')';
+    mParent := '(' + AParent + ')';
   end;
   Result := 'unit Kunden;'#10'interface'#10'uses'#10'  System.SysUtils;'#10'type'#10 +
-    '  TKundenNr = class' + Parent + #10'  private'#10'    FNummer: Integer;'#10'    FName: string;'#10'  public'#10 +
+    '  TKundenNr = class' + mParent + #10'  private'#10'    FNummer: Integer;'#10'    FName: string;'#10'  public'#10 +
     '    function Equals(Obj: TObject): Boolean; override;'#10 + AMembers + '  end;'#10'implementation'#10 +
     'function TKundenNr.Equals(Obj: TObject): Boolean;'#10'begin'#10 +
     '  Result := (Obj is TKundenNr) and (TKundenNr(Obj).FNummer = FNummer) and SameText(TKundenNr(Obj).FName, FName);'#10 +
     'end;'#10 + AMore + 'end.';
 end;
 
-function HashFindings(const ASource: string; const AConfig: string = ''; const APath: string = ''):
-  TArray<TRuleFinding>;
+function HashFindings(const ASource: string; const AConfig: string; const APath: string):
+  TArray<TRuleFinding>; overload;
 begin
   Result := TRuleAssert.Findings(TEqualsWithoutGetHashCodeRule.Create, ASource, AConfig, APath);
 end;
 
+function HashFindings(const ASource: string): TArray<TRuleFinding>; overload;
+begin
+  Result := HashFindings(ASource, '', '');
+end;
+
+function HashFindings(const ASource: string; const AConfig: string): TArray<TRuleFinding>; overload;
+begin
+  Result := HashFindings(ASource, AConfig, '');
+end;
+
 procedure TEqualsWithoutGetHashCodeTests.IssueExampleWithFix;
 var
-  Source, Fixed: string;
-  Findings: TArray<TRuleFinding>;
+  mSource, mFixed: string;
+  mFindings: TArray<TRuleFinding>;
 begin
-  Source := KundenNr('', '', '');
-  Findings := HashFindings(Source);
-  Assert.AreEqual(1, Integer(Length(Findings)));
-  Assert.AreEqual('equals-without-gethashcode', Findings[0].RuleId);
+  mSource := KundenNr('', '', '');
+  mFindings := HashFindings(mSource);
+  Assert.AreEqual(1, Integer(Length(mFindings)));
+  Assert.AreEqual('equals-without-gethashcode', mFindings[0].RuleId);
   Assert.AreEqual('Equals ist überschrieben, GetHashCode nicht; als Schlüssel in TDictionary finden sich gleiche ' +
-    'Objekte nicht.', Findings[0].Message);
-  Assert.AreEqual(Ord(TRuleSeverity.Warning), Ord(Findings[0].Severity));
-  Assert.AreEqual(Ord(TRuleConfidence.High), Ord(Findings[0].Confidence));
-  Assert.AreEqual(10, Findings[0].Range.StartPos.Line);
-  Assert.AreEqual(1, Integer(Length(Findings[0].Fixes)));
-  Assert.AreEqual('GetHashCode mit FNummer, FName überschreiben (THashBobJenkins)', Findings[0].Fixes[0].Title);
-  Fixed := ApplyFix(Source, Findings[0].Fixes[0]);
+    'Objekte nicht.', mFindings[0].Message);
+  Assert.AreEqual(Ord(TRuleSeverity.Warning), Ord(mFindings[0].Severity));
+  Assert.AreEqual(Ord(TRuleConfidence.High), Ord(mFindings[0].Confidence));
+  Assert.AreEqual(10, mFindings[0].Range.StartPos.Line);
+  Assert.AreEqual(1, Integer(Length(mFindings[0].Fixes)));
+  Assert.AreEqual('GetHashCode mit FNummer, FName überschreiben (THashBobJenkins)', mFindings[0].Fixes[0].Title);
+  mFixed := ApplyFix(mSource, mFindings[0].Fixes[0]);
   Assert.IsTrue(Pos('    function Equals(Obj: TObject): Boolean; override;'#10 +
-    '    function GetHashCode: Integer; override;'#10'  end;', Fixed) > 0, Fixed);
+    '    function GetHashCode: Integer; override;'#10'  end;', mFixed) > 0, mFixed);
   Assert.IsTrue(Pos('end;'#10#10'function TKundenNr.GetHashCode: Integer;'#10'begin'#10 +
     '  Result := THashBobJenkins.GetHashValue(FNummer, SizeOf(FNummer), 0);'#10 +
-    '  Result := THashBobJenkins.GetHashValue(LowerCase(FName), Result);'#10'end;'#10'end.', Fixed) > 0, Fixed);
-  Assert.IsTrue(Pos('System.Hash', Fixed) > 0, Fixed);
-  TRuleAssert.Silent(TEqualsWithoutGetHashCodeRule.Create, Fixed);
+    '  Result := THashBobJenkins.GetHashValue(LowerCase(FName), Result);'#10'end;'#10'end.', mFixed) > 0, mFixed);
+  Assert.IsTrue(Pos('System.Hash', mFixed) > 0, mFixed);
+  TRuleAssert.Silent(TEqualsWithoutGetHashCodeRule.Create, mFixed);
 end;
 
 procedure TEqualsWithoutGetHashCodeTests.GetHashCodeWithoutEquals;
 var
-  Source: string;
-  Findings: TArray<TRuleFinding>;
+  mSource: string;
+  mFindings: TArray<TRuleFinding>;
 begin
-  Source := StringReplace(KundenNr('', '', ''), 'function Equals(Obj: TObject): Boolean; override;',
+  mSource := StringReplace(KundenNr('', '', ''), 'function Equals(Obj: TObject): Boolean; override;',
     'function GetHashCode: Integer; override;', []);
-  Findings := HashFindings(Source);
-  Assert.AreEqual(1, Integer(Length(Findings)));
+  mFindings := HashFindings(mSource);
+  Assert.AreEqual(1, Integer(Length(mFindings)));
   Assert.AreEqual('GetHashCode ist überschrieben, Equals nicht; als Schlüssel in TDictionary gelten gleiche ' +
-    'Objekte weiter als verschieden.', Findings[0].Message);
-  Assert.AreEqual(0, Integer(Length(Findings[0].Fixes)));
+    'Objekte weiter als verschieden.', mFindings[0].Message);
+  Assert.AreEqual(0, Integer(Length(mFindings[0].Fixes)));
 end;
 
 procedure TEqualsWithoutGetHashCodeTests.AncestorsAndSilentCases;
 var
-  Basis: string;
+  mBasis: string;
 begin
   // Beides überschrieben.
   TRuleAssert.Silent(TEqualsWithoutGetHashCodeRule.Create, KundenNr('    function GetHashCode: Integer; override;'#10,
     'function TKundenNr.GetHashCode: Integer;'#10'begin'#10'  Result := FNummer;'#10'end;'#10, ''));
   // Ein Vorfahr der Datei überschreibt beides; ein unbekannter Vorfahr gibt keine Aussage.
-  Basis := StringReplace(KundenNr('', '', 'TBasis'), '  TKundenNr = class(TBasis)',
+  mBasis := StringReplace(KundenNr('', '', 'TBasis'), '  TKundenNr = class(TBasis)',
     '  TBasis = class'#10'  public'#10'    function Equals(Obj: TObject): Boolean; override;'#10 +
     '    function GetHashCode: Integer; override;'#10'  end;'#10 +
     '  TKundenNr = class(TBasis)', []);
-  TRuleAssert.Silent(TEqualsWithoutGetHashCodeRule.Create, Basis);
+  TRuleAssert.Silent(TEqualsWithoutGetHashCodeRule.Create, mBasis);
   TRuleAssert.Silent(TEqualsWithoutGetHashCodeRule.Create, KundenNr('', '', 'TUnbekannt'));
   // Eigenes Equals ohne override ist nicht TObject.Equals.
   TRuleAssert.Silent(TEqualsWithoutGetHashCodeRule.Create, StringReplace(KundenNr('', '', ''),
@@ -1188,54 +1209,55 @@ end;
 
 procedure TEqualsWithoutGetHashCodeTests.FixNeedsEqualsBodyWithFields;
 var
-  Findings: TArray<TRuleFinding>;
+  mFindings: TArray<TRuleFinding>;
 begin
   // Equals vergleicht keine eigenen Felder: Meldung ohne Korrektur.
-  Findings := HashFindings(StringReplace(KundenNr('', '', ''),
+  mFindings := HashFindings(StringReplace(KundenNr('', '', ''),
     '(Obj is TKundenNr) and (TKundenNr(Obj).FNummer = FNummer) and SameText(TKundenNr(Obj).FName, FName)',
     'Obj = Self', []));
-  Assert.AreEqual(1, Integer(Length(Findings)));
-  Assert.AreEqual(0, Integer(Length(Findings[0].Fixes)));
+  Assert.AreEqual(1, Integer(Length(mFindings)));
+  Assert.AreEqual(0, Integer(Length(mFindings[0].Fixes)));
 end;
 
-/// <summary>Record TSchluessel mit AFields und class operator Equal (AOperator = False: ohne), Schlüssel in ACode.</summary>
+/// <summary>Record TSchluessel mit AFields und class operator Equal (AOperator = False: ohne), Schlüssel in
+/// ACode.</summary>
 function Schluessel(const AFields, ACode: string; AOperator: Boolean): string;
 var
-  Operator_: string;
+  mOperator_: string;
 begin
-  Operator_ := '';
+  mOperator_ := '';
   if AOperator then
   begin
-    Operator_ := '    class operator Equal(const A, B: TSchluessel): Boolean;'#10;
+    mOperator_ := '    class operator Equal(const A, B: TSchluessel): Boolean;'#10;
   end;
   Result := 'unit Schluessel;'#10'interface'#10'uses'#10'  System.Generics.Collections;'#10'type'#10 +
-    '  TSchluessel = record'#10 + AFields + Operator_ + '  end;'#10'implementation'#10'procedure Zaehlen;'#10 +
+    '  TSchluessel = record'#10 + AFields + mOperator_ + '  end;'#10'implementation'#10'procedure Zaehlen;'#10 +
     'var'#10'  D: TDictionary<TSchluessel, Integer>;'#10'begin'#10 + ACode + 'end;'#10'end.';
 end;
 
 procedure TEqualsWithoutGetHashCodeTests.RecordKeys;
 var
-  Findings: TArray<TRuleFinding>;
+  mFindings: TArray<TRuleFinding>;
 const
-  Fields = '    Name: string;'#10'    Nr: Integer;'#10;
+  cFields = '    Name: string;'#10'    Nr: Integer;'#10;
 begin
-  Findings := HashFindings(Schluessel(Fields, '  D := TDictionary<TSchluessel, Integer>.Create;'#10, True));
-  Assert.AreEqual(1, Integer(Length(Findings)));
+  mFindings := HashFindings(Schluessel(cFields, '  D := TDictionary<TSchluessel, Integer>.Create;'#10, True));
+  Assert.AreEqual(1, Integer(Length(mFindings)));
   Assert.AreEqual('TSchluessel hat class operator Equal, TDictionary vergleicht Schlüssel ohne Comparer aber Byte ' +
-    'für Byte; gleiche Schlüssel finden sich nicht.', Findings[0].Message);
-  Assert.AreEqual(15, Findings[0].Range.StartPos.Line);
+    'für Byte; gleiche Schlüssel finden sich nicht.', mFindings[0].Message);
+  Assert.AreEqual(15, mFindings[0].Range.StartPos.Line);
   // Kapazität und Mengen sind kein Comparer.
-  Assert.AreEqual(2, Integer(Length(HashFindings(Schluessel(Fields,
+  Assert.AreEqual(2, Integer(Length(HashFindings(Schluessel(cFields,
     '  THashSet<TSchluessel>.Create(10).Free;'#10'  D := TObjectDictionary<TSchluessel, Integer>.Create([]);'#10,
     True)))));
   // Mit Comparer, ohne Operator, nur Ganzzahlfelder (Byte-Vergleich passt), Schlüssel nicht als erster Typ.
-  TRuleAssert.Silent(TEqualsWithoutGetHashCodeRule.Create, Schluessel(Fields,
+  TRuleAssert.Silent(TEqualsWithoutGetHashCodeRule.Create, Schluessel(cFields,
     '  D := TDictionary<TSchluessel, Integer>.Create(TSchluesselComparer.Create);'#10, True));
-  TRuleAssert.Silent(TEqualsWithoutGetHashCodeRule.Create, Schluessel(Fields,
+  TRuleAssert.Silent(TEqualsWithoutGetHashCodeRule.Create, Schluessel(cFields,
     '  D := TDictionary<TSchluessel, Integer>.Create;'#10, False));
   TRuleAssert.Silent(TEqualsWithoutGetHashCodeRule.Create, Schluessel('    Nr, Teil: Integer;'#10,
     '  D := TDictionary<TSchluessel, Integer>.Create;'#10, True));
-  TRuleAssert.Silent(TEqualsWithoutGetHashCodeRule.Create, Schluessel(Fields,
+  TRuleAssert.Silent(TEqualsWithoutGetHashCodeRule.Create, Schluessel(cFields,
     '  TDictionary<Integer, TSchluessel>.Create.Free;'#10, True));
 end;
 
@@ -1251,12 +1273,12 @@ end;
 
 procedure TEqualsWithoutGetHashCodeTests.OffAndExclude;
 var
-  Source: string;
+  mSource: string;
 begin
-  Source := KundenNr('', '', '');
-  Assert.AreEqual(0, Integer(Length(HashFindings(Source, '{"rules": {"equals-without-gethashcode": "off"}}',
+  mSource := KundenNr('', '', '');
+  Assert.AreEqual(0, Integer(Length(HashFindings(mSource, '{"rules": {"equals-without-gethashcode": "off"}}',
     'Source/Kunden.pas'))));
-  Assert.AreEqual(0, Integer(Length(HashFindings(Source,
+  Assert.AreEqual(0, Integer(Length(HashFindings(mSource,
     '{"rules": {"equals-without-gethashcode": {"exclude": ["Source/*.pas"]}}}', 'Source/Kunden.pas'))));
 end;
 

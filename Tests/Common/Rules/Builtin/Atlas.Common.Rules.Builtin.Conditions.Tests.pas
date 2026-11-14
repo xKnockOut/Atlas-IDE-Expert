@@ -126,79 +126,89 @@ begin
     'begin'#10 + AStatements + 'end;'#10'end.';
 end;
 
-function Findings(const ASource: string; const AConfig: string = ''; const APath: string = ''): TArray<TRuleFinding>;
+function Findings(const ASource: string; const AConfig: string; const APath: string): TArray<TRuleFinding>; overload;
 begin
   Result := TRuleAssert.Findings(TConstantConditionRule.Create, ASource, AConfig, APath);
+end;
+
+function Findings(const ASource: string): TArray<TRuleFinding>; overload;
+begin
+  Result := Findings(ASource, '', '');
+end;
+
+function Findings(const ASource: string; const AConfig: string): TArray<TRuleFinding>; overload;
+begin
+  Result := Findings(ASource, AConfig, '');
 end;
 
 { TConstantConditionTests }
 
 procedure TConstantConditionTests.IssueExampleWithFix;
 var
-  Source: string;
-  Found: TArray<TRuleFinding>;
+  mSource: string;
+  mFound: TArray<TRuleFinding>;
 begin
-  Source := Body('  if (Anzahl > 0) or True then'#10'    Verarbeiten;'#10);
-  Found := Findings(Source);
-  Assert.AreEqual(1, Integer(Length(Found)));
-  Assert.AreEqual(cConstantConditionRuleId, Found[0].RuleId);
-  Assert.AreEqual(Ord(TRuleSeverity.Warning), Ord(Found[0].Severity));
-  Assert.AreEqual('Die Bedingung ist immer wahr (… or True).', Found[0].Message);
-  Assert.AreEqual(9, Found[0].Range.StartPos.Line);
-  Assert.AreEqual(5, Found[0].Range.StartPos.Character);
-  Assert.AreEqual(1, Integer(Length(Found[0].Fixes)));
-  Assert.AreEqual('Bedingung entfernen', Found[0].Fixes[0].Title);
-  Assert.AreEqual(Body('  Verarbeiten;'#10), TChangeSignature.ApplyEdits(Source, Found[0].Fixes[0].Edits));
+  mSource := Body('  if (Anzahl > 0) or True then'#10'    Verarbeiten;'#10);
+  mFound := Findings(mSource);
+  Assert.AreEqual(1, Integer(Length(mFound)));
+  Assert.AreEqual(cConstantConditionRuleId, mFound[0].RuleId);
+  Assert.AreEqual(Ord(TRuleSeverity.Warning), Ord(mFound[0].Severity));
+  Assert.AreEqual('Die Bedingung ist immer wahr (… or True).', mFound[0].Message);
+  Assert.AreEqual(9, mFound[0].Range.StartPos.Line);
+  Assert.AreEqual(5, mFound[0].Range.StartPos.Character);
+  Assert.AreEqual(1, Integer(Length(mFound[0].Fixes)));
+  Assert.AreEqual('Bedingung entfernen', mFound[0].Fixes[0].Title);
+  Assert.AreEqual(Body('  Verarbeiten;'#10), TChangeSignature.ApplyEdits(mSource, mFound[0].Fixes[0].Edits));
 end;
 
 procedure TConstantConditionTests.FileConstantRemovesStatement;
 var
-  Source: string;
-  Found: TArray<TRuleFinding>;
+  mSource: string;
+  mFound: TArray<TRuleFinding>;
 begin
-  Source := Body('  Start;'#10'  if DEBUG_MODUS then'#10'    Protokoll(''Laden'');'#10'  Ende;'#10);
-  Found := Findings(Source);
-  Assert.AreEqual(1, Integer(Length(Found)));
-  Assert.AreEqual('Die Bedingung ist immer falsch (DEBUG_MODUS = False).', Found[0].Message);
-  Assert.AreEqual('Toten Zweig entfernen', Found[0].Fixes[0].Title);
-  Assert.AreEqual(Body('  Start;'#10'  Ende;'#10), TChangeSignature.ApplyEdits(Source, Found[0].Fixes[0].Edits));
+  mSource := Body('  Start;'#10'  if DEBUG_MODUS then'#10'    Protokoll(''Laden'');'#10'  Ende;'#10);
+  mFound := Findings(mSource);
+  Assert.AreEqual(1, Integer(Length(mFound)));
+  Assert.AreEqual('Die Bedingung ist immer falsch (DEBUG_MODUS = False).', mFound[0].Message);
+  Assert.AreEqual('Toten Zweig entfernen', mFound[0].Fixes[0].Title);
+  Assert.AreEqual(Body('  Start;'#10'  Ende;'#10), TChangeSignature.ApplyEdits(mSource, mFound[0].Fixes[0].Edits));
   // Vergleich mit einer Zahlkonstanten und not.
-  Found := Findings(Body('  if MAX_ANZAHL > 20 then'#10'    Exit;'#10'  if not DEBUG_MODUS and (Anzahl > 0) then'#10 +
+  mFound := Findings(Body('  if MAX_ANZAHL > 20 then'#10'    Exit;'#10'  if not DEBUG_MODUS and (Anzahl > 0) then'#10 +
     '    Exit;'#10));
-  Assert.AreEqual(1, Integer(Length(Found)));
-  Assert.AreEqual('Die Bedingung ist immer falsch (MAX_ANZAHL > 20).', Found[0].Message);
+  Assert.AreEqual(1, Integer(Length(mFound)));
+  Assert.AreEqual('Die Bedingung ist immer falsch (MAX_ANZAHL > 20).', mFound[0].Message);
 end;
 
 procedure TConstantConditionTests.FalseWithElseKeepsElse;
 var
-  Source: string;
-  Found: TArray<TRuleFinding>;
+  mSource: string;
+  mFound: TArray<TRuleFinding>;
 begin
-  Source := Body('  if False then'#10'    Alt'#10'  else'#10'  begin'#10'    Neu;'#10'    Fertig;'#10'  end;'#10);
-  Found := Findings(Source);
-  Assert.AreEqual(1, Integer(Length(Found)));
-  Assert.AreEqual('Die Bedingung ist immer falsch (False).', Found[0].Message);
+  mSource := Body('  if False then'#10'    Alt'#10'  else'#10'  begin'#10'    Neu;'#10'    Fertig;'#10'  end;'#10);
+  mFound := Findings(mSource);
+  Assert.AreEqual(1, Integer(Length(mFound)));
+  Assert.AreEqual('Die Bedingung ist immer falsch (False).', mFound[0].Message);
   Assert.AreEqual(Body('  begin'#10'    Neu;'#10'    Fertig;'#10'  end;'#10),
-    TChangeSignature.ApplyEdits(Source, Found[0].Fixes[0].Edits));
+    TChangeSignature.ApplyEdits(mSource, mFound[0].Fixes[0].Edits));
   // Teil mit and: False and X ist immer falsch.
-  Found := Findings(Body('  if False and (Anzahl > 0) then'#10'    Exit;'#10));
-  Assert.AreEqual(1, Integer(Length(Found)));
-  Assert.AreEqual('Die Bedingung ist immer falsch (False and …).', Found[0].Message);
+  mFound := Findings(Body('  if False and (Anzahl > 0) then'#10'    Exit;'#10));
+  Assert.AreEqual(1, Integer(Length(mFound)));
+  Assert.AreEqual('Die Bedingung ist immer falsch (False and …).', mFound[0].Message);
 end;
 
 procedure TConstantConditionTests.LoopsAndComparisons;
 var
-  Found: TArray<TRuleFinding>;
+  mFound: TArray<TRuleFinding>;
 begin
   // Gewollte Endlosschleifen bleiben still.
   Assert.AreEqual(0, Integer(Length(Findings(Body('  while True do'#10'    Break;'#10 +
     '  repeat'#10'    Break;'#10'  until False;'#10)))));
-  Found := Findings(Body('  while DEBUG_MODUS do'#10'    Inc(Anzahl);'#10'  repeat'#10'    Inc(Anzahl);'#10 +
+  mFound := Findings(Body('  while DEBUG_MODUS do'#10'    Inc(Anzahl);'#10'  repeat'#10'    Inc(Anzahl);'#10 +
     '  until 1 = 1;'#10));
-  Assert.AreEqual(2, Integer(Length(Found)));
-  Assert.AreEqual('Die Bedingung ist immer falsch (DEBUG_MODUS = False).', Found[0].Message);
-  Assert.AreEqual(0, Integer(Length(Found[0].Fixes)), 'Schleifen ohne Korrektur');
-  Assert.AreEqual('Die Bedingung ist immer wahr (1 = 1).', Found[1].Message);
+  Assert.AreEqual(2, Integer(Length(mFound)));
+  Assert.AreEqual('Die Bedingung ist immer falsch (DEBUG_MODUS = False).', mFound[0].Message);
+  Assert.AreEqual(0, Integer(Length(mFound[0].Fixes)), 'Schleifen ohne Korrektur');
+  Assert.AreEqual('Die Bedingung ist immer wahr (1 = 1).', mFound[1].Message);
 end;
 
 procedure TConstantConditionTests.SilentCases;
@@ -220,43 +230,53 @@ end;
 
 procedure TConstantConditionTests.SwitchConstantsOption;
 var
-  Source: string;
-  Issues: TArray<TConfigurationIssue>;
+  mSource: string;
+  mIssues: TArray<TConfigurationIssue>;
 begin
-  Source := Body('  if DEBUG_MODUS then'#10'    Protokoll;'#10);
-  Assert.AreEqual(1, Integer(Length(Findings(Source))));
-  Assert.AreEqual(0, Integer(Length(Findings(Source,
+  mSource := Body('  if DEBUG_MODUS then'#10'    Protokoll;'#10);
+  Assert.AreEqual(1, Integer(Length(Findings(mSource))));
+  Assert.AreEqual(0, Integer(Length(Findings(mSource,
     '{"rules": {"constant-condition": {"switchConstants": ["debug_modus"]}}}'))));
   // Literale bleiben gemeldet.
   Assert.AreEqual(1, Integer(Length(Findings(Body('  if False then'#10'    Protokoll;'#10),
     '{"rules": {"constant-condition": {"switchConstants": ["DEBUG_MODUS"]}}}'))));
-  TConfigurationParser.Parse('{"rules": {"constant-condition": {"switchConstants": "DEBUG_MODUS"}}}', Issues);
-  Assert.AreEqual(1, Integer(Length(Issues)));
-  Assert.AreEqual('"switchConstants" muss eine Liste von Texten sein', Issues[0].Message);
-  TConfigurationParser.Parse('{"rules": {"constant-condition": {"switchConstants": ["DEBUG_MODUS"]}}}', Issues);
-  Assert.AreEqual(0, Integer(Length(Issues)));
+  TConfigurationParser.Parse('{"rules": {"constant-condition": {"switchConstants": "DEBUG_MODUS"}}}', mIssues);
+  Assert.AreEqual(1, Integer(Length(mIssues)));
+  Assert.AreEqual('"switchConstants" muss eine Liste von Texten sein', mIssues[0].Message);
+  TConfigurationParser.Parse('{"rules": {"constant-condition": {"switchConstants": ["DEBUG_MODUS"]}}}', mIssues);
+  Assert.AreEqual(0, Integer(Length(mIssues)));
 end;
 
 procedure TConstantConditionTests.OffAndExclude;
 var
-  Source: string;
+  mSource: string;
 begin
-  Source := Body('  if False then'#10'    Protokoll;'#10);
-  Assert.AreEqual(1, Integer(Length(Findings(Source, '', 'Source/Daten.pas'))));
-  Assert.AreEqual(0, Integer(Length(Findings(Source, '{"rules": {"constant-condition": "off"}}',
+  mSource := Body('  if False then'#10'    Protokoll;'#10);
+  Assert.AreEqual(1, Integer(Length(Findings(mSource, '', 'Source/Daten.pas'))));
+  Assert.AreEqual(0, Integer(Length(Findings(mSource, '{"rules": {"constant-condition": "off"}}',
     'Source/Daten.pas'))));
-  Assert.AreEqual(0, Integer(Length(Findings(Source, '{"rules": {"group:find-bugs": "off"}}',
+  Assert.AreEqual(0, Integer(Length(Findings(mSource, '{"rules": {"group:find-bugs": "off"}}',
     'Source/Daten.pas'))));
-  Assert.AreEqual(0, Integer(Length(Findings(Source,
+  Assert.AreEqual(0, Integer(Length(Findings(mSource,
     '{"rules": {"constant-condition": {"exclude": ["Source/*.pas"]}}}', 'Source/Daten.pas'))));
 end;
 
 { TInfiniteLoopTests }
 
-function LoopFindings(const ASource: string; const AConfig: string = ''; const APath: string = ''):
-  TArray<TRuleFinding>;
+function LoopFindings(const ASource: string; const AConfig: string; const APath: string):
+  TArray<TRuleFinding>; overload;
 begin
   Result := TRuleAssert.Findings(TInfiniteLoopRule.Create, ASource, AConfig, APath);
+end;
+
+function LoopFindings(const ASource: string): TArray<TRuleFinding>; overload;
+begin
+  Result := LoopFindings(ASource, '', '');
+end;
+
+function LoopFindings(const ASource: string; const AConfig: string): TArray<TRuleFinding>; overload;
+begin
+  Result := LoopFindings(ASource, AConfig, '');
 end;
 
 function Lesen(const AStatements: string): string;
@@ -268,46 +288,46 @@ end;
 
 procedure TInfiniteLoopTests.IssueExample;
 var
-  Found: TArray<TRuleFinding>;
+  mFound: TArray<TRuleFinding>;
 begin
-  Found := LoopFindings(Lesen('  while True do'#10'  begin'#10'    Zeile := Leser.ReadLine;'#10 +
+  mFound := LoopFindings(Lesen('  while True do'#10'  begin'#10'    Zeile := Leser.ReadLine;'#10 +
     '    Verarbeiten(Zeile);'#10'  end;'#10));
-  Assert.AreEqual(1, Integer(Length(Found)));
-  Assert.AreEqual(cInfiniteLoopRuleId, Found[0].RuleId);
-  Assert.AreEqual(Ord(TRuleSeverity.Error), Ord(Found[0].Severity));
-  Assert.AreEqual('Die Schleife hat keinen Ausgang (kein Break, Exit oder raise).', Found[0].Message);
-  Assert.AreEqual(12, Found[0].Range.StartPos.Line);
-  Assert.AreEqual(2, Found[0].Range.StartPos.Character);
-  Assert.AreEqual(12, Found[0].Range.EndPos.Line);
-  Assert.AreEqual(12, Found[0].Range.EndPos.Character);
+  Assert.AreEqual(1, Integer(Length(mFound)));
+  Assert.AreEqual(cInfiniteLoopRuleId, mFound[0].RuleId);
+  Assert.AreEqual(Ord(TRuleSeverity.Error), Ord(mFound[0].Severity));
+  Assert.AreEqual('Die Schleife hat keinen Ausgang (kein Break, Exit oder raise).', mFound[0].Message);
+  Assert.AreEqual(12, mFound[0].Range.StartPos.Line);
+  Assert.AreEqual(2, mFound[0].Range.StartPos.Character);
+  Assert.AreEqual(12, mFound[0].Range.EndPos.Line);
+  Assert.AreEqual(12, mFound[0].Range.EndPos.Character);
 end;
 
 procedure TInfiniteLoopTests.RepeatJumpsToHead;
 var
-  Found: TArray<TRuleFinding>;
+  mFound: TArray<TRuleFinding>;
 begin
-  Found := LoopFindings(Lesen('  repeat'#10'    Zeile := Leser.ReadLine;'#10'  until False;'#10));
-  Assert.AreEqual(1, Integer(Length(Found)));
-  Assert.AreEqual(14, Found[0].Range.StartPos.Line);
-  Assert.AreEqual(1, Integer(Length(Found[0].Fixes)));
-  Assert.IsTrue(Found[0].Fixes[0].HasJump);
-  Assert.AreEqual(12, Found[0].Fixes[0].JumpTo.Line);
-  Assert.AreEqual(2, Found[0].Fixes[0].JumpTo.Character);
+  mFound := LoopFindings(Lesen('  repeat'#10'    Zeile := Leser.ReadLine;'#10'  until False;'#10));
+  Assert.AreEqual(1, Integer(Length(mFound)));
+  Assert.AreEqual(14, mFound[0].Range.StartPos.Line);
+  Assert.AreEqual(1, Integer(Length(mFound[0].Fixes)));
+  Assert.IsTrue(mFound[0].Fixes[0].HasJump);
+  Assert.AreEqual(12, mFound[0].Fixes[0].JumpTo.Line);
+  Assert.AreEqual(2, mFound[0].Fixes[0].JumpTo.Character);
 end;
 
 procedure TInfiniteLoopTests.ExitsAreSilent;
 const
-  Exits: array[0..7] of string = ('if Zeile = '''' then Break;', 'if Zeile = '''' then Exit;',
+  cExits: array[0..7] of string = ('if Zeile = '''' then Break;', 'if Zeile = '''' then Exit;',
     'if Zeile = '''' then raise EAbort.Create(''Ende'');', 'if Zeile = '''' then Halt(1);', 'Pruefen(Zeile);',
     'if Zeile = '''' then Abort;', 'if TThread.CurrentThread.CheckTerminated then Exit;',
     'if Zeile = '''' then goto Ende;');
 var
-  Statement: string;
+  mStatement: string;
 begin
-  for Statement in Exits do
+  for mStatement in cExits do
   begin
     Assert.AreEqual(0, Integer(Length(LoopFindings(Lesen('  while True do'#10'  begin'#10 +
-      '    Zeile := Leser.ReadLine;'#10'    ' + Statement + #10'  end;'#10)))), Statement);
+      '    Zeile := Leser.ReadLine;'#10'    ' + mStatement + #10'  end;'#10)))), mStatement);
   end;
   // Normale Schleifen und Terminated im Thread.
   Assert.AreEqual(0, Integer(Length(LoopFindings(Lesen('  while not Leser.EndOfStream do'#10 +
@@ -321,35 +341,45 @@ end;
 
 procedure TInfiniteLoopTests.InnerBreakDoesNotCount;
 var
-  Found: TArray<TRuleFinding>;
+  mFound: TArray<TRuleFinding>;
 begin
-  Found := LoopFindings(Lesen('  while True do'#10'  begin'#10'    for Zeile in Leser.Zeilen do'#10 +
+  mFound := LoopFindings(Lesen('  while True do'#10'  begin'#10'    for Zeile in Leser.Zeilen do'#10 +
     '      if Zeile = '''' then'#10'        Break;'#10'  end;'#10));
-  Assert.AreEqual(1, Integer(Length(Found)), 'Break der inneren Schleife');
-  Found := LoopFindings(Lesen('  while True do'#10'  begin'#10'    TThread.Queue(nil,'#10 +
+  Assert.AreEqual(1, Integer(Length(mFound)), 'Break der inneren Schleife');
+  mFound := LoopFindings(Lesen('  while True do'#10'  begin'#10'    TThread.Queue(nil,'#10 +
     '      procedure'#10'      begin'#10'        Exit;'#10'      end);'#10'  end;'#10));
-  Assert.AreEqual(1, Integer(Length(Found)), 'Exit der anonymen Methode');
+  Assert.AreEqual(1, Integer(Length(mFound)), 'Exit der anonymen Methode');
 end;
 
 procedure TInfiniteLoopTests.OffAndExclude;
 var
-  Source: string;
+  mSource: string;
 begin
-  Source := Lesen('  while True do'#10'    Zeile := Leser.ReadLine;'#10);
-  Assert.AreEqual(1, Integer(Length(LoopFindings(Source, '', 'Source/Daten.pas'))));
-  Assert.AreEqual(0, Integer(Length(LoopFindings(Source, '{"rules": {"infinite-loop": "off"}}', 'Source/Daten.pas'))));
-  Assert.AreEqual(0, Integer(Length(LoopFindings(Source, '{"rules": {"group:find-bugs": "off"}}',
+  mSource := Lesen('  while True do'#10'    Zeile := Leser.ReadLine;'#10);
+  Assert.AreEqual(1, Integer(Length(LoopFindings(mSource, '', 'Source/Daten.pas'))));
+  Assert.AreEqual(0, Integer(Length(LoopFindings(mSource, '{"rules": {"infinite-loop": "off"}}', 'Source/Daten.pas'))));
+  Assert.AreEqual(0, Integer(Length(LoopFindings(mSource, '{"rules": {"group:find-bugs": "off"}}',
     'Source/Daten.pas'))));
-  Assert.AreEqual(0, Integer(Length(LoopFindings(Source, '{"rules": {"infinite-loop": {"exclude": ["Source/*.pas"]}}}',
+  Assert.AreEqual(0, Integer(Length(LoopFindings(mSource, '{"rules": {"infinite-loop": {"exclude": ["Source/*.pas"]}}}',
     'Source/Daten.pas'))));
 end;
 
 { TLoopConditionUnchangedTests }
 
-function UnchangedFindings(const ASource: string; const AConfig: string = ''; const APath: string = ''):
-  TArray<TRuleFinding>;
+function UnchangedFindings(const ASource: string; const AConfig: string; const APath: string):
+  TArray<TRuleFinding>; overload;
 begin
   Result := TRuleAssert.Findings(TLoopConditionUnchangedRule.Create, ASource, AConfig, APath);
+end;
+
+function UnchangedFindings(const ASource: string): TArray<TRuleFinding>; overload;
+begin
+  Result := UnchangedFindings(ASource, '', '');
+end;
+
+function UnchangedFindings(const ASource: string; const AConfig: string): TArray<TRuleFinding>; overload;
+begin
+  Result := UnchangedFindings(ASource, AConfig, '');
 end;
 
 function Schleife(const AStatements: string): string;
@@ -362,46 +392,46 @@ end;
 
 procedure TLoopConditionUnchangedTests.IssueExample;
 var
-  Found: TArray<TRuleFinding>;
+  mFound: TArray<TRuleFinding>;
 begin
-  Found := UnchangedFindings(Schleife('  I := 0;'#10'  while I < Liste.Count do'#10'  begin'#10 +
+  mFound := UnchangedFindings(Schleife('  I := 0;'#10'  while I < Liste.Count do'#10'  begin'#10 +
     '    Pruefe(Liste[I]);'#10'  end;'#10));
-  Assert.AreEqual(1, Integer(Length(Found)));
-  Assert.AreEqual(cLoopConditionUnchangedRuleId, Found[0].RuleId);
-  Assert.AreEqual(Ord(TRuleSeverity.Warning), Ord(Found[0].Severity));
-  Assert.AreEqual(Ord(TRuleConfidence.Medium), Ord(Found[0].Confidence));
-  Assert.AreEqual('I und Liste werden im Rumpf nie verändert; die Schleife endet nicht.', Found[0].Message);
-  Assert.AreEqual(14, Found[0].Range.StartPos.Line);
-  Assert.AreEqual(8, Found[0].Range.StartPos.Character);
+  Assert.AreEqual(1, Integer(Length(mFound)));
+  Assert.AreEqual(cLoopConditionUnchangedRuleId, mFound[0].RuleId);
+  Assert.AreEqual(Ord(TRuleSeverity.Warning), Ord(mFound[0].Severity));
+  Assert.AreEqual(Ord(TRuleConfidence.Medium), Ord(mFound[0].Confidence));
+  Assert.AreEqual('I und Liste werden im Rumpf nie verändert; die Schleife endet nicht.', mFound[0].Message);
+  Assert.AreEqual(14, mFound[0].Range.StartPos.Line);
+  Assert.AreEqual(8, mFound[0].Range.StartPos.Character);
 end;
 
 procedure TLoopConditionUnchangedTests.SingleVariableAndRepeat;
 var
-  Found: TArray<TRuleFinding>;
+  mFound: TArray<TRuleFinding>;
 begin
-  Found := UnchangedFindings(Schleife('  repeat'#10'    Pruefe(Liste[0]);'#10'  until I > 10;'#10));
-  Assert.AreEqual(1, Integer(Length(Found)));
-  Assert.AreEqual('I wird im Rumpf nie verändert; die Schleife endet nicht.', Found[0].Message);
-  Assert.AreEqual(15, Found[0].Range.StartPos.Line);
+  mFound := UnchangedFindings(Schleife('  repeat'#10'    Pruefe(Liste[0]);'#10'  until I > 10;'#10));
+  Assert.AreEqual(1, Integer(Length(mFound)));
+  Assert.AreEqual('I wird im Rumpf nie verändert; die Schleife endet nicht.', mFound[0].Message);
+  Assert.AreEqual(15, mFound[0].Range.StartPos.Line);
 end;
 
 procedure TLoopConditionUnchangedTests.ChangesAreSilent;
 const
-  Bodies: array[0..7] of string = ('Inc(I);', 'I := I + 1;', 'Lesen(I);', 'Liste.Delete(0);',
+  cBodies: array[0..7] of string = ('Inc(I);', 'I := I + 1;', 'Lesen(I);', 'Liste.Delete(0);',
     'Pruefe(Liste.Count);', 'for I := 0 to 3 do Pruefe(I);', 'Werte[0] := 0;', 'Dec(Werte[0]);');
 var
-  Body: string;
+  mBody: string;
 begin
-  for Body in Bodies do
+  for mBody in cBodies do
   begin
     Assert.AreEqual(0, Integer(Length(UnchangedFindings(Schleife('  while (I < Liste.Count) and (Werte[0] > 0) do'#10 +
-      '    ' + Body + #10)))), Body);
+      '    ' + mBody + #10)))), mBody);
   end;
 end;
 
 procedure TLoopConditionUnchangedTests.UnknownConditionsAreSilent;
 const
-  Loops: array[0..9] of string = (
+  cLoops: array[0..9] of string = (
     '  while I < Anzahl(Liste) do'#10'    Pruefe(Liste[I]);'#10,
     '  while not FFertig do'#10'    Pruefe(Liste[I]);'#10,
     '  while not Fertig do'#10'    Pruefe(Liste[I]);'#10,
@@ -413,11 +443,11 @@ const
     '  while not Terminated do'#10'    Pruefe(Liste[0]);'#10,
     '  while True do'#10'    Pruefe(Liste[0]);'#10);
 var
-  Loop: string;
+  mLoop: string;
 begin
-  for Loop in Loops do
+  for mLoop in cLoops do
   begin
-    Assert.AreEqual(0, Integer(Length(UnchangedFindings(Schleife(Loop)))), Loop);
+    Assert.AreEqual(0, Integer(Length(UnchangedFindings(Schleife(mLoop)))), mLoop);
   end;
   // Lokale Routine kann I ändern.
   Assert.AreEqual(0, Integer(Length(UnchangedFindings(Schleife('  while I < 10 do'#10'    Weiter;'#10).Replace(
@@ -427,15 +457,15 @@ end;
 
 procedure TLoopConditionUnchangedTests.OffAndExclude;
 var
-  Source: string;
+  mSource: string;
 begin
-  Source := Schleife('  while I < Liste.Count do'#10'    Pruefe(Liste[I]);'#10);
-  Assert.AreEqual(1, Integer(Length(UnchangedFindings(Source, '', 'Source/Daten.pas'))));
-  Assert.AreEqual(0, Integer(Length(UnchangedFindings(Source, '{"rules": {"loop-condition-unchanged": "off"}}',
+  mSource := Schleife('  while I < Liste.Count do'#10'    Pruefe(Liste[I]);'#10);
+  Assert.AreEqual(1, Integer(Length(UnchangedFindings(mSource, '', 'Source/Daten.pas'))));
+  Assert.AreEqual(0, Integer(Length(UnchangedFindings(mSource, '{"rules": {"loop-condition-unchanged": "off"}}',
     'Source/Daten.pas'))));
-  Assert.AreEqual(0, Integer(Length(UnchangedFindings(Source, '{"rules": {"group:find-bugs": "off"}}',
+  Assert.AreEqual(0, Integer(Length(UnchangedFindings(mSource, '{"rules": {"group:find-bugs": "off"}}',
     'Source/Daten.pas'))));
-  Assert.AreEqual(0, Integer(Length(UnchangedFindings(Source,
+  Assert.AreEqual(0, Integer(Length(UnchangedFindings(mSource,
     '{"rules": {"loop-condition-unchanged": {"exclude": ["Source/*.pas"]}}}', 'Source/Daten.pas'))));
 end;
 
@@ -449,10 +479,20 @@ begin
     'procedure TImport.Schreiben;'#10'var'#10'  mWert: Integer;'#10'begin'#10 + ABody + 'end;'#10'end.';
 end;
 
-function JumpFindings(const ASource: string; const AConfig: string = ''; const APath: string = ''):
-  TArray<TRuleFinding>;
+function JumpFindings(const ASource: string; const AConfig: string; const APath: string):
+  TArray<TRuleFinding>; overload;
 begin
   Result := TRuleAssert.Findings(TRedundantJumpRule.Create, ASource, AConfig, APath);
+end;
+
+function JumpFindings(const ASource: string): TArray<TRuleFinding>; overload;
+begin
+  Result := JumpFindings(ASource, '', '');
+end;
+
+function JumpFindings(const ASource: string; const AConfig: string): TArray<TRuleFinding>; overload;
+begin
+  Result := JumpFindings(ASource, AConfig, '');
 end;
 
 procedure TRedundantJumpTests.IssueExampleWithFix;
@@ -506,7 +546,7 @@ end;
 
 procedure TRedundantJumpTests.SilentCases;
 const
-  Bodies: array[0..10] of string = (
+  cBodies: array[0..10] of string = (
     // Exit mit Wert, Exit in einem inneren Block, nicht am Ende.
     '  Exit(FLaenge);'#10,
     '  if FLaenge > 0 then'#10'    Exit;'#10,
@@ -529,7 +569,7 @@ const
 var
   mBody: string;
 begin
-  for mBody in Bodies do
+  for mBody in cBodies do
   begin
     Assert.AreEqual(0, Integer(Length(JumpFindings(Schreiben(mBody)))), mBody);
   end;

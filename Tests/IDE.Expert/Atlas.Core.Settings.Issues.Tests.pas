@@ -45,7 +45,8 @@ type
     procedure IssuesGitHubPullRequestOptions;
     [Test]
     procedure IssuesTimeOptions;
-    /// <summary>Kommentar-Editor (#1278): Schalter und Textbausteine mit Vorgaben, Normalisieren und Speichern.</summary>
+    /// <summary>Kommentar-Editor (#1278): Schalter und Textbausteine mit Vorgaben, Normalisieren und
+    /// Speichern.</summary>
     [Test]
     procedure IssuesCommentOptions;
   end;
@@ -552,25 +553,25 @@ begin
 end;
 procedure TAtlasIssueSettingsTests.WelcomeIssuesOptions;
 var
-  Settings, Loaded: TAtlasPluginSettings;
-  Store: IAtlasSettingsStore;
+  mSettings, mLoaded: TAtlasPluginSettings;
+  mStore: IAtlasSettingsStore;
 begin
-  Settings := TAtlasPluginSettings.Defaults;
-  AssertIssuesDefaults(Settings);
-  NormalizeIssuesOptions(Settings);
-  SetIssuesOptions(Settings);
-  Store := TMemoryStore.Create;
-  Settings.Save(Store);
-  Loaded := TAtlasPluginSettings.Defaults;
-  Loaded.Load(Store);
-  AssertIssuesLoaded(Loaded);
+  mSettings := TAtlasPluginSettings.Defaults;
+  AssertIssuesDefaults(mSettings);
+  NormalizeIssuesOptions(mSettings);
+  SetIssuesOptions(mSettings);
+  mStore := TMemoryStore.Create;
+  mSettings.Save(mStore);
+  mLoaded := TAtlasPluginSettings.Defaults;
+  mLoaded.Load(mStore);
+  AssertIssuesLoaded(mLoaded);
   // Bildbreite außerhalb 320–7680 wird begrenzt.
-  Settings.IssuesAttachMaxImageWidth := 50;
-  Settings.Normalize;
-  Assert.AreEqual(320, Settings.IssuesAttachMaxImageWidth);
-  Settings.IssuesAttachMaxImageWidth := 100000;
-  Settings.Normalize;
-  Assert.AreEqual(7680, Settings.IssuesAttachMaxImageWidth);
+  mSettings.IssuesAttachMaxImageWidth := 50;
+  mSettings.Normalize;
+  Assert.AreEqual(320, mSettings.IssuesAttachMaxImageWidth);
+  mSettings.IssuesAttachMaxImageWidth := 100000;
+  mSettings.Normalize;
+  Assert.AreEqual(7680, mSettings.IssuesAttachMaxImageWidth);
 end;
 procedure TAtlasIssueSettingsTests.IssuesSyncOptions;
 var
@@ -743,53 +744,53 @@ begin
 end;
 procedure TAtlasIssueSettingsTests.WelcomeQuickActionOptions;
 var
-  Settings, Loaded: TAtlasPluginSettings;
-  Store: IAtlasSettingsStore;
+  mSettings, mLoaded: TAtlasPluginSettings;
+  mStore: IAtlasSettingsStore;
 begin
-  Settings := TAtlasPluginSettings.Defaults;
-  Assert.IsTrue(Settings.WelcomePageQuickActions, 'standardmäßig an');
-  Assert.AreEqual('build,tests,run,pull,folder,console,tasks', Settings.WelcomePageQuickActionsItems);
-  Assert.AreEqual('wt.exe', Settings.WelcomePageQuickActionsConsole);
-  Assert.AreEqual($4042, Settings.WelcomePageQuickActionsBuildKey, 'Strg+B');
-  Assert.AreEqual($4054, Settings.WelcomePageQuickActionsTestKey, 'Strg+T');
+  mSettings := TAtlasPluginSettings.Defaults;
+  Assert.IsTrue(mSettings.WelcomePageQuickActions, 'standardmäßig an');
+  Assert.AreEqual('build,tests,run,pull,folder,console,tasks', mSettings.WelcomePageQuickActionsItems);
+  Assert.AreEqual('wt.exe', mSettings.WelcomePageQuickActionsConsole);
+  Assert.AreEqual($4042, mSettings.WelcomePageQuickActionsBuildKey, 'Strg+B');
+  Assert.AreEqual($4054, mSettings.WelcomePageQuickActionsTestKey, 'Strg+T');
   // Die Einstellungen kennen die Willkommensseite nicht: dieselben Vorgaben und Namen wie dort.
-  Assert.AreEqual(TAtlasWelcomeQuickActions.cDefaultItems, Settings.WelcomePageQuickActionsItems);
-  Assert.AreEqual(TAtlasWelcomeQuickActions.cDefaultConsole, Settings.WelcomePageQuickActionsConsole);
-  Assert.AreEqual(TAtlasWelcomeQuickActions.cDefaultBuildKey, Settings.WelcomePageQuickActionsBuildKey);
-  Assert.AreEqual(TAtlasWelcomeQuickActions.cDefaultTestKey, Settings.WelcomePageQuickActionsTestKey);
-  Settings.WelcomePageQuickActionsItems := 'folder,unbekannt;RUN tests console pull build';
-  Settings.Normalize;
+  Assert.AreEqual(TAtlasWelcomeQuickActions.cDefaultItems, mSettings.WelcomePageQuickActionsItems);
+  Assert.AreEqual(TAtlasWelcomeQuickActions.cDefaultConsole, mSettings.WelcomePageQuickActionsConsole);
+  Assert.AreEqual(TAtlasWelcomeQuickActions.cDefaultBuildKey, mSettings.WelcomePageQuickActionsBuildKey);
+  Assert.AreEqual(TAtlasWelcomeQuickActions.cDefaultTestKey, mSettings.WelcomePageQuickActionsTestKey);
+  mSettings.WelcomePageQuickActionsItems := 'folder,unbekannt;RUN tests console pull build';
+  mSettings.Normalize;
   Assert.AreEqual(TAtlasWelcomeQuickActions.NormalizedItems('folder,unbekannt;RUN tests console pull build'),
-    Settings.WelcomePageQuickActionsItems);
+    mSettings.WelcomePageQuickActionsItems);
   // Normalisieren: bekannte Namen in fester Reihenfolge, leeres Programm = wt.exe, Tasten als Word.
-  Settings.WelcomePageQuickActionsItems := ' Console; BUILD pull, unbekannt, build ';
-  Settings.WelcomePageQuickActionsConsole := '   ';
-  Settings.WelcomePageQuickActionsBuildKey := -5;
-  Settings.WelcomePageQuickActionsTestKey := $1FFFF;
-  Settings.Normalize;
-  Assert.AreEqual('build,pull,console', Settings.WelcomePageQuickActionsItems);
-  Assert.AreEqual(TAtlasWelcomeQuickActions.cDefaultConsole, Settings.WelcomePageQuickActionsConsole);
-  Assert.AreEqual(0, Settings.WelcomePageQuickActionsBuildKey);
-  Assert.AreEqual($FFFF, Settings.WelcomePageQuickActionsTestKey);
+  mSettings.WelcomePageQuickActionsItems := ' Console; BUILD pull, unbekannt, build ';
+  mSettings.WelcomePageQuickActionsConsole := '   ';
+  mSettings.WelcomePageQuickActionsBuildKey := -5;
+  mSettings.WelcomePageQuickActionsTestKey := $1FFFF;
+  mSettings.Normalize;
+  Assert.AreEqual('build,pull,console', mSettings.WelcomePageQuickActionsItems);
+  Assert.AreEqual(TAtlasWelcomeQuickActions.cDefaultConsole, mSettings.WelcomePageQuickActionsConsole);
+  Assert.AreEqual(0, mSettings.WelcomePageQuickActionsBuildKey);
+  Assert.AreEqual($FFFF, mSettings.WelcomePageQuickActionsTestKey);
   // Leere Liste bleibt leer (kein Knopf).
-  Settings.WelcomePageQuickActionsItems := '';
-  Settings.Normalize;
-  Assert.AreEqual('', Settings.WelcomePageQuickActionsItems);
+  mSettings.WelcomePageQuickActionsItems := '';
+  mSettings.Normalize;
+  Assert.AreEqual('', mSettings.WelcomePageQuickActionsItems);
   // Speichern und Laden.
-  Settings.WelcomePageQuickActions := False;
-  Settings.WelcomePageQuickActionsItems := 'tests,folder';
-  Settings.WelcomePageQuickActionsConsole := 'pwsh.exe';
-  Settings.WelcomePageQuickActionsBuildKey := $C042;
-  Settings.WelcomePageQuickActionsTestKey := 0;
-  Store := TMemoryStore.Create;
-  Settings.Save(Store);
-  Loaded := TAtlasPluginSettings.Defaults;
-  Loaded.Load(Store);
-  Assert.IsFalse(Loaded.WelcomePageQuickActions);
-  Assert.AreEqual('tests,folder', Loaded.WelcomePageQuickActionsItems);
-  Assert.AreEqual('pwsh.exe', Loaded.WelcomePageQuickActionsConsole);
-  Assert.AreEqual($C042, Loaded.WelcomePageQuickActionsBuildKey);
-  Assert.AreEqual(0, Loaded.WelcomePageQuickActionsTestKey);
+  mSettings.WelcomePageQuickActions := False;
+  mSettings.WelcomePageQuickActionsItems := 'tests,folder';
+  mSettings.WelcomePageQuickActionsConsole := 'pwsh.exe';
+  mSettings.WelcomePageQuickActionsBuildKey := $C042;
+  mSettings.WelcomePageQuickActionsTestKey := 0;
+  mStore := TMemoryStore.Create;
+  mSettings.Save(mStore);
+  mLoaded := TAtlasPluginSettings.Defaults;
+  mLoaded.Load(mStore);
+  Assert.IsFalse(mLoaded.WelcomePageQuickActions);
+  Assert.AreEqual('tests,folder', mLoaded.WelcomePageQuickActionsItems);
+  Assert.AreEqual('pwsh.exe', mLoaded.WelcomePageQuickActionsConsole);
+  Assert.AreEqual($C042, mLoaded.WelcomePageQuickActionsBuildKey);
+  Assert.AreEqual(0, mLoaded.WelcomePageQuickActionsTestKey);
 end;
 
 initialization

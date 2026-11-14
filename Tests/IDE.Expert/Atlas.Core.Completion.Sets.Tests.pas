@@ -68,16 +68,16 @@ type
 procedure TSetView.ShowList(const AItems: TAtlasCompletionItems; const AOrder: TArray<Integer>; ASelected: Integer;
   const APattern: string);
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
   Shown := True;
   Empty := False;
   Checked := '';
-  for Index in AOrder do
+  for mIndex in AOrder do
   begin
-    if not TAtlasRanking.IsHeader(Index) and AItems[Index].Checked then
+    if not TAtlasRanking.IsHeader(mIndex) and AItems[mIndex].Checked then
     begin
-      Checked := Checked + AItems[Index].Name + ' ';
+      Checked := Checked + AItems[mIndex].Name + ' ';
     end;
   end;
   Checked := Checked.Trim;
@@ -103,7 +103,7 @@ procedure TSetView.ShowChips(const ACounts: TAtlasChipCounts; AActive: TAtlasChi
 begin
 end;
 
-function Value(const AName: string; AOrdinal: Integer; AChecked: Boolean = False): TAtlasCompletionItem;
+function Value(const AName: string; AOrdinal: Integer; AChecked: Boolean): TAtlasCompletionItem; overload;
 begin
   Result := Default(TAtlasCompletionItem);
   Result.Name := AName;
@@ -119,6 +119,11 @@ begin
   Result.SetRange.EndCharacter := 23;
 end;
 
+function Value(const AName: string; AOrdinal: Integer): TAtlasCompletionItem; overload;
+begin
+  Result := Value(AName, AOrdinal, False);
+end;
+
 /// <summary>akLeft angehakt, die Liste absichtlich nicht in Deklarationsreihenfolge.</summary>
 function Anchors: TAtlasCompletionItems;
 begin
@@ -127,33 +132,33 @@ end;
 
 function WaitFor(const ACondition: TFunc<Boolean>): Boolean;
 var
-  Start: UInt64;
+  mStart: UInt64;
 begin
-  Start := TThread.GetTickCount64;
+  mStart := TThread.GetTickCount64;
   repeat
     CheckSynchronize(5);
     if ACondition() then
     begin
       Exit(True);
     end;
-  until TThread.GetTickCount64 - Start > 3000;
+  until TThread.GetTickCount64 - mStart > 3000;
   Result := False;
 end;
 
 function Names(const AItems: TAtlasCompletionItems; const AOrder: TArray<Integer>): string;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
   Result := '';
-  for Index in AOrder do
+  for mIndex in AOrder do
   begin
-    if TAtlasRanking.IsHeader(Index) then
+    if TAtlasRanking.IsHeader(mIndex) then
     begin
       Result := Result + '# ';
     end
     else
     begin
-      Result := Result + AItems[Index].Name + ' ';
+      Result := Result + AItems[mIndex].Name + ' ';
     end;
   end;
   Result := Result.Trim;
@@ -163,208 +168,208 @@ end;
 
 procedure TAtlasCompletionSetsTests.EnumValuesComeFirstInDeclarationOrder;
 var
-  Items: TAtlasCompletionItems;
-  Options: TAtlasRankOptions;
-  Local: TAtlasCompletionItem;
+  mItems: TAtlasCompletionItems;
+  mOptions: TAtlasRankOptions;
+  mLocal: TAtlasCompletionItem;
 begin
   // Eine passende lokale Variable stünde sonst vor den Werten (Bereich 1).
-  Local := Default(TAtlasCompletionItem);
-  Local.Name := 'Ausrichtung';
-  Local.ExpectedType := 'TAlign';
-  Local.Fits := True;
-  Local.Scope := 1;
-  Items := [Local, Value('alClient', 3), Value('alNone', 1), Value('alTop', 2)];
-  Options := TAtlasRankOptions.Defaults;
-  Options.GroupInherited := True;
-  Assert.AreEqual('# alNone alTop alClient Ausrichtung', Names(Items, TAtlasRanking.Order(Items, '', Options)));
+  mLocal := Default(TAtlasCompletionItem);
+  mLocal.Name := 'Ausrichtung';
+  mLocal.ExpectedType := 'TAlign';
+  mLocal.Fits := True;
+  mLocal.Scope := 1;
+  mItems := [mLocal, Value('alClient', 3), Value('alNone', 1), Value('alTop', 2)];
+  mOptions := TAtlasRankOptions.Defaults;
+  mOptions.GroupInherited := True;
+  Assert.AreEqual('# alNone alTop alClient Ausrichtung', Names(mItems, TAtlasRanking.Order(mItems, '', mOptions)));
   // Mit Getipptem entscheidet die Güte, bei Gleichstand die Deklaration.
   // alNone ist ein Tippfehler-Kandidat (ein Zeichen anders, #485) und steht in eigener Gruppe dahinter.
-  Assert.AreEqual('# alTop # alNone', Names(Items, TAtlasRanking.Order(Items, 'alTo', Options)));
+  Assert.AreEqual('# alTop # alNone', Names(mItems, TAtlasRanking.Order(mItems, 'alTo', mOptions)));
 end;
 
 procedure TAtlasCompletionSetsTests.ComposesBracketInDeclarationOrder;
 var
-  Items: TAtlasCompletionItems;
-  Commit: TAtlasCompletionItem;
+  mItems: TAtlasCompletionItems;
+  mCommit: TAtlasCompletionItem;
 begin
-  Items := Anchors;
-  Assert.IsTrue(TAtlasCompletionSets.Active(Items));
+  mItems := Anchors;
+  Assert.IsTrue(TAtlasCompletionSets.Active(mItems));
   Assert.IsFalse(TAtlasCompletionSets.Active([Default(TAtlasCompletionItem)]));
-  Items[0].Checked := True;
-  Assert.AreEqual(2, TAtlasCompletionSets.CheckedCount(Items));
-  Assert.AreEqual('[akLeft, akRight]', TAtlasCompletionSets.Text(Items));
+  mItems[0].Checked := True;
+  Assert.AreEqual(2, TAtlasCompletionSets.CheckedCount(mItems));
+  Assert.AreEqual('[akLeft, akRight]', TAtlasCompletionSets.Text(mItems));
   // Scoped Enums: Typpräfix aus InsertText.
-  Items[0].InsertText := 'TAnchorKind.akRight';
-  Assert.AreEqual('[akLeft, TAnchorKind.akRight]', TAtlasCompletionSets.Text(Items));
-  Items[0].Checked := False;
-  Items[1].Checked := False;
-  Assert.AreEqual('[]', TAtlasCompletionSets.Text(Items));
-  Items[2].Checked := True;
-  Commit := TAtlasCompletionSets.CommitItem(Items);
-  Assert.IsTrue(Commit.HasTextEdit);
-  Assert.AreEqual('[akTop]', Commit.TextEdit.NewText);
-  Assert.AreEqual(13, Commit.TextEdit.StartCharacter);
-  Assert.AreEqual(23, Commit.TextEdit.EndCharacter);
+  mItems[0].InsertText := 'TAnchorKind.akRight';
+  Assert.AreEqual('[akLeft, TAnchorKind.akRight]', TAtlasCompletionSets.Text(mItems));
+  mItems[0].Checked := False;
+  mItems[1].Checked := False;
+  Assert.AreEqual('[]', TAtlasCompletionSets.Text(mItems));
+  mItems[2].Checked := True;
+  mCommit := TAtlasCompletionSets.CommitItem(mItems);
+  Assert.IsTrue(mCommit.HasTextEdit);
+  Assert.AreEqual('[akTop]', mCommit.TextEdit.NewText);
+  Assert.AreEqual(13, mCommit.TextEdit.StartCharacter);
+  Assert.AreEqual(23, mCommit.TextEdit.EndCharacter);
 end;
 
 procedure TAtlasCompletionSetsTests.SpaceTogglesAndEnterReplacesBracket;
 var
-  View: TSetView;
-  ViewRef: IAtlasCompletionView;
-  Controller: TAtlasCompletionController;
-  Committed: string;
-  Context: TAtlasContext;
+  mView: TSetView;
+  mViewRef: IAtlasCompletionView;
+  mController: TAtlasCompletionController;
+  mCommitted: string;
+  mContext: TAtlasContext;
 begin
-  View := TSetView.Create;
-  ViewRef := View;
-  Controller := TAtlasCompletionController.Create(
-    TAtlasFixedCompletionProvider.Create(Anchors) as IAtlasCompletionProvider, ViewRef);
+  mView := TSetView.Create;
+  mViewRef := mView;
+  mController := TAtlasCompletionController.Create(
+    TAtlasFixedCompletionProvider.Create(Anchors) as IAtlasCompletionProvider, mViewRef);
   try
-    Committed := '';
-    Controller.OnCommit :=
+    mCommitted := '';
+    mController.OnCommit :=
       procedure(const AItem: TAtlasCompletionItem)
       begin
-        Committed := AItem.TextEdit.NewText;
+        mCommitted := AItem.TextEdit.NewText;
       end;
-    Context := Default(TAtlasContext);
-    Context.FileName := 'C:\P\A.pas';
-    Controller.Start(Context);
+    mContext := Default(TAtlasContext);
+    mContext.FileName := 'C:\P\A.pas';
+    mController.Start(mContext);
     Assert.IsTrue(WaitFor(
       function: Boolean
       begin
-        Result := not Controller.Loading;
+        Result := not mController.Loading;
       end));
-    Assert.IsTrue(Controller.SetMode);
-    Assert.AreEqual('akLeft', View.Checked);
+    Assert.IsTrue(mController.SetMode);
+    Assert.AreEqual('akLeft', mView.Checked);
     // Werte in Deklarationsreihenfolge: akLeft, akTop, ...; akTop anhaken.
-    Assert.IsTrue(Controller.HandleKey(TAtlasNavigationKey.Down));
-    Assert.IsTrue(Controller.HandleKey(TAtlasNavigationKey.Toggle));
-    Assert.AreEqual('akLeft akTop', View.Checked);
-    Assert.IsTrue(Controller.HandleKey(TAtlasNavigationKey.Accept));
-    Assert.AreEqual('[akLeft, akTop]', Committed);
-    Assert.IsFalse(Controller.Active);
+    Assert.IsTrue(mController.HandleKey(TAtlasNavigationKey.Down));
+    Assert.IsTrue(mController.HandleKey(TAtlasNavigationKey.Toggle));
+    Assert.AreEqual('akLeft akTop', mView.Checked);
+    Assert.IsTrue(mController.HandleKey(TAtlasNavigationKey.Accept));
+    Assert.AreEqual('[akLeft, akTop]', mCommitted);
+    Assert.IsFalse(mController.Active);
   finally
-    Controller.Free;
+    mController.Free;
   end;
 end;
 
 procedure TAtlasCompletionSetsTests.EnterWithoutToggleAddsSelectedValue;
 var
-  View: TSetView;
-  ViewRef: IAtlasCompletionView;
-  Controller: TAtlasCompletionController;
-  Committed: string;
-  Context: TAtlasContext;
+  mView: TSetView;
+  mViewRef: IAtlasCompletionView;
+  mController: TAtlasCompletionController;
+  mCommitted: string;
+  mContext: TAtlasContext;
 begin
-  View := TSetView.Create;
-  ViewRef := View;
-  Controller := TAtlasCompletionController.Create(
-    TAtlasFixedCompletionProvider.Create(Anchors) as IAtlasCompletionProvider, ViewRef);
+  mView := TSetView.Create;
+  mViewRef := mView;
+  mController := TAtlasCompletionController.Create(
+    TAtlasFixedCompletionProvider.Create(Anchors) as IAtlasCompletionProvider, mViewRef);
   try
-    Controller.OnCommit :=
+    mController.OnCommit :=
       procedure(const AItem: TAtlasCompletionItem)
       begin
-        Committed := AItem.TextEdit.NewText;
+        mCommitted := AItem.TextEdit.NewText;
       end;
-    Context := Default(TAtlasContext);
-    Context.FileName := 'C:\P\A.pas';
-    Context.Prefix := 'akB';
-    Controller.Start(Context);
+    mContext := Default(TAtlasContext);
+    mContext.FileName := 'C:\P\A.pas';
+    mContext.Prefix := 'akB';
+    mController.Start(mContext);
     Assert.IsTrue(WaitFor(
       function: Boolean
       begin
-        Result := not Controller.Loading;
+        Result := not mController.Loading;
       end));
-    Assert.IsTrue(Controller.HandleKey(TAtlasNavigationKey.Accept));
-    Assert.AreEqual('[akLeft, akBottom]', Committed);
+    Assert.IsTrue(mController.HandleKey(TAtlasNavigationKey.Accept));
+    Assert.AreEqual('[akLeft, akBottom]', mCommitted);
   finally
-    Controller.Free;
+    mController.Free;
   end;
 end;
 
 procedure TAtlasCompletionSetsTests.BracketTriggerWithoutSetClosesQuietly;
 var
-  View: TSetView;
-  ViewRef: IAtlasCompletionView;
-  Controller: TAtlasCompletionController;
-  Context: TAtlasContext;
+  mView: TSetView;
+  mViewRef: IAtlasCompletionView;
+  mController: TAtlasCompletionController;
+  mContext: TAtlasContext;
 begin
-  View := TSetView.Create;
-  ViewRef := View;
-  Controller := TAtlasCompletionController.Create(
-    TAtlasFixedCompletionProvider.Create(nil) as IAtlasCompletionProvider, ViewRef);
+  mView := TSetView.Create;
+  mViewRef := mView;
+  mController := TAtlasCompletionController.Create(
+    TAtlasFixedCompletionProvider.Create(nil) as IAtlasCompletionProvider, mViewRef);
   try
-    Context := Default(TAtlasContext);
-    Context.FileName := 'C:\P\A.pas';
-    Context.Trigger := '[';
-    Controller.Start(Context);
+    mContext := Default(TAtlasContext);
+    mContext.FileName := 'C:\P\A.pas';
+    mContext.Trigger := '[';
+    mController.Start(mContext);
     Assert.IsTrue(WaitFor(
       function: Boolean
       begin
-        Result := not Controller.Active;
+        Result := not mController.Active;
       end), 'Nach "[" ohne Menge schließt die Liste');
-    Assert.IsFalse(View.Empty, 'kein leerer Zustand');
-    Assert.IsFalse(Controller.HandleKey(TAtlasNavigationKey.Toggle), 'Leertaste gehört dem Editor');
+    Assert.IsFalse(mView.Empty, 'kein leerer Zustand');
+    Assert.IsFalse(mController.HandleKey(TAtlasNavigationKey.Toggle), 'Leertaste gehört dem Editor');
   finally
-    Controller.Free;
+    mController.Free;
   end;
 end;
 
 procedure TAtlasCompletionSetsTests.ReadsSetFieldsFromServer;
 var
-  Json: TJSONObject;
-  Item: TAtlasCompletionItem;
+  mJson: TJSONObject;
+  mItem: TAtlasCompletionItem;
 begin
-  Json := TJSONObject.ParseJSONValue('{"label":"akTop","kind":20,"data":{"expected":"TAnchors","fits":true,' +
+  mJson := TJSONObject.ParseJSONValue('{"label":"akTop","kind":20,"data":{"expected":"TAnchors","fits":true,' +
     '"ordinal":2,"setOf":"TAnchorKind","checked":true,"setRange":{"start":{"line":4,"character":13},' +
     '"end":{"line":4,"character":23}}}}') as TJSONObject;
   try
-    Item := TAtlasServerCompletionProvider.ItemFromLsp(Json, 0);
+    mItem := TAtlasServerCompletionProvider.ItemFromLsp(mJson, 0);
   finally
-    Json.Free;
+    mJson.Free;
   end;
-  Assert.AreEqual(2, Item.Ordinal);
-  Assert.AreEqual('TAnchorKind', Item.SetOf);
-  Assert.IsTrue(Item.Checked);
-  Assert.AreEqual(4, Item.SetRange.StartLine);
-  Assert.AreEqual(23, Item.SetRange.EndCharacter);
+  Assert.AreEqual(2, mItem.Ordinal);
+  Assert.AreEqual('TAnchorKind', mItem.SetOf);
+  Assert.IsTrue(mItem.Checked);
+  Assert.AreEqual(4, mItem.SetRange.StartLine);
+  Assert.AreEqual(23, mItem.SetRange.EndCharacter);
   // Ohne Bereich kein Mengenmodus.
-  Json := TJSONObject.ParseJSONValue('{"label":"akTop","data":{"setOf":"TAnchorKind"}}') as TJSONObject;
+  mJson := TJSONObject.ParseJSONValue('{"label":"akTop","data":{"setOf":"TAnchorKind"}}') as TJSONObject;
   try
-    Item := TAtlasServerCompletionProvider.ItemFromLsp(Json, 0);
+    mItem := TAtlasServerCompletionProvider.ItemFromLsp(mJson, 0);
   finally
-    Json.Free;
+    mJson.Free;
   end;
-  Assert.AreEqual('', Item.SetOf);
+  Assert.AreEqual('', mItem.SetOf);
 end;
 
 procedure TAtlasCompletionSetsTests.PinnedCaseItemComesFirst;
 var
-  Json: TJSONObject;
-  Pinned: TAtlasCompletionItem;
-  Items: TAtlasCompletionItems;
-  Options: TAtlasRankOptions;
-  Tags: TAtlasTags;
+  mJson: TJSONObject;
+  mPinned: TAtlasCompletionItem;
+  mItems: TAtlasCompletionItems;
+  mOptions: TAtlasRankOptions;
+  mTags: TAtlasTags;
 begin
-  Json := TJSONObject.ParseJSONValue('{"label":"Alle Werte einfügen","kind":15,"textEdit":{"range":{"start":' +
+  mJson := TJSONObject.ParseJSONValue('{"label":"Alle Werte einfügen","kind":15,"textEdit":{"range":{"start":' +
     '{"line":10,"character":20},"end":{"line":11,"character":4}},"newText":"\n    alNone: $0;"},' +
     '"data":{"expected":"TAlign","fits":true,"action":"case","pinned":true,"count":3}}') as TJSONObject;
   try
-    Pinned := TAtlasServerCompletionProvider.ItemFromLsp(Json, 0);
+    mPinned := TAtlasServerCompletionProvider.ItemFromLsp(mJson, 0);
   finally
-    Json.Free;
+    mJson.Free;
   end;
-  Assert.IsTrue(Pinned.Pinned);
-  Assert.AreEqual(3, Integer(Pinned.Count));
-  Assert.IsTrue(Pinned.HasTextEdit);
-  Assert.IsFalse(Pinned.IsAction, 'kein „Neue Methode …“');
-  Tags := TAtlasItemPresentation.Tags(Pinned);
-  Assert.AreEqual('3', Tags[0].Text);
+  Assert.IsTrue(mPinned.Pinned);
+  Assert.AreEqual(3, Integer(mPinned.Count));
+  Assert.IsTrue(mPinned.HasTextEdit);
+  Assert.IsFalse(mPinned.IsAction, 'kein „Neue Methode …“');
+  mTags := TAtlasItemPresentation.Tags(mPinned);
+  Assert.AreEqual('3', mTags[0].Text);
   // Ohne Getipptes ganz oben, vor den Werten; mit Getipptem hinter den Treffern, aber sichtbar.
-  Items := [Value('alClient', 3), Pinned, Value('alNone', 1), Value('alTop', 2)];
-  Options := TAtlasRankOptions.Defaults;
-  Assert.AreEqual('# Alle Werte einfügen alNone alTop alClient', Names(Items, TAtlasRanking.Order(Items, '', Options)));
-  Assert.AreEqual('# alTop Alle Werte einfügen # alNone', Names(Items, TAtlasRanking.Order(Items, 'alTo', Options)));
+  mItems := [Value('alClient', 3), mPinned, Value('alNone', 1), Value('alTop', 2)];
+  mOptions := TAtlasRankOptions.Defaults;
+  Assert.AreEqual('# Alle Werte einfügen alNone alTop alClient', Names(mItems, TAtlasRanking.Order(mItems, '', mOptions)));
+  Assert.AreEqual('# alTop Alle Werte einfügen # alNone', Names(mItems, TAtlasRanking.Order(mItems, 'alTo', mOptions)));
 end;
 
 function Insert(ALine: Integer; const AText: string): TAtlasTextEdit;
@@ -375,7 +380,8 @@ begin
   Result.NewText := AText;
 end;
 
-/// <summary>Fehlende Methode wie vom Server (#466): Abschnitt, Kommentar und Deklaration vor Zeile 8, Rumpf in 12.</summary>
+/// <summary>Fehlende Methode wie vom Server (#466): Abschnitt, Kommentar und Deklaration vor Zeile 8, Rumpf in
+/// 12.</summary>
 function Method(const AName, AInterface: string; AOrdinal: Integer): TAtlasCompletionItem;
 begin
   Result := Default(TAtlasCompletionItem);
@@ -397,59 +403,59 @@ end;
 
 procedure TAtlasCompletionSetsTests.BatchCommitsCheckedMethods;
 var
-  View: TSetView;
-  ViewRef: IAtlasCompletionView;
-  Controller: TAtlasCompletionController;
-  Committed: TAtlasCompletionItem;
-  Context: TAtlasContext;
-  Json: TJSONObject;
-  Item: TAtlasCompletionItem;
+  mView: TSetView;
+  mViewRef: IAtlasCompletionView;
+  mController: TAtlasCompletionController;
+  mCommitted: TAtlasCompletionItem;
+  mContext: TAtlasContext;
+  mJson: TJSONObject;
+  mItem: TAtlasCompletionItem;
 begin
-  View := TSetView.Create;
-  ViewRef := View;
-  Controller := TAtlasCompletionController.Create(TAtlasFixedCompletionProvider.Create([Method('Flush', 'IFlush', 3),
-    Method('Export', 'IExporter', 1), Method('Close', 'IExporter', 2)]) as IAtlasCompletionProvider, ViewRef);
+  mView := TSetView.Create;
+  mViewRef := mView;
+  mController := TAtlasCompletionController.Create(TAtlasFixedCompletionProvider.Create([Method('Flush', 'IFlush', 3),
+    Method('Export', 'IExporter', 1), Method('Close', 'IExporter', 2)]) as IAtlasCompletionProvider, mViewRef);
   try
-    Controller.OnCommit :=
+    mController.OnCommit :=
       procedure(const AItem: TAtlasCompletionItem)
       begin
-        Committed := AItem;
+        mCommitted := AItem;
       end;
-    Context := Default(TAtlasContext);
-    Context.FileName := 'C:\P\A.pas';
-    Controller.Start(Context);
+    mContext := Default(TAtlasContext);
+    mContext.FileName := 'C:\P\A.pas';
+    mController.Start(mContext);
     Assert.IsTrue(WaitFor(
       function: Boolean
       begin
-        Result := not Controller.Loading;
+        Result := not mController.Loading;
       end));
-    Assert.IsTrue(Controller.SetMode);
-    Assert.AreEqual('Export Close Flush', View.Checked);
+    Assert.IsTrue(mController.SetMode);
+    Assert.AreEqual('Export Close Flush', mView.Checked);
     // Close abwählen, dann übernehmen.
-    Assert.IsTrue(Controller.HandleKey(TAtlasNavigationKey.Down));
-    Assert.IsTrue(Controller.HandleKey(TAtlasNavigationKey.Toggle));
-    Assert.IsTrue(Controller.HandleKey(TAtlasNavigationKey.Accept));
-    Assert.IsTrue(Committed.HasTextEdit);
-    Assert.AreEqual('', Committed.TextEdit.NewText);
-    Assert.AreEqual(4, Committed.TextEdit.StartCharacter);
-    Assert.AreEqual(2, Integer(Length(Committed.AdditionalEdits)));
+    Assert.IsTrue(mController.HandleKey(TAtlasNavigationKey.Down));
+    Assert.IsTrue(mController.HandleKey(TAtlasNavigationKey.Toggle));
+    Assert.IsTrue(mController.HandleKey(TAtlasNavigationKey.Accept));
+    Assert.IsTrue(mCommitted.HasTextEdit);
+    Assert.AreEqual('', mCommitted.TextEdit.NewText);
+    Assert.AreEqual(4, mCommitted.TextEdit.StartCharacter);
+    Assert.AreEqual(2, Integer(Length(mCommitted.AdditionalEdits)));
     Assert.AreEqual('  public'#10'    { IExporter }'#10'    procedure Export;'#10'    { IFlush }'#10'    procedure Flush;'#10,
-      Committed.AdditionalEdits[0].NewText);
-    Assert.AreEqual('Export'#10'Flush'#10, Committed.AdditionalEdits[1].NewText);
+      mCommitted.AdditionalEdits[0].NewText);
+    Assert.AreEqual('Export'#10'Flush'#10, mCommitted.AdditionalEdits[1].NewText);
   finally
-    Controller.Free;
+    mController.Free;
   end;
-  Json := TJSONObject.ParseJSONValue('{"label":"Export","kind":2,"data":{"expected":"IExporter","fits":true,' +
+  mJson := TJSONObject.ParseJSONValue('{"label":"Export","kind":2,"data":{"expected":"IExporter","fits":true,' +
     '"ordinal":1,"setOf":"IExporter","checked":true,"batch":true,"action":"implement","setRange":{"start":' +
     '{"line":7,"character":4},"end":{"line":7,"character":4}}}}') as TJSONObject;
   try
-    Item := TAtlasServerCompletionProvider.ItemFromLsp(Json, 0);
+    mItem := TAtlasServerCompletionProvider.ItemFromLsp(mJson, 0);
   finally
-    Json.Free;
+    mJson.Free;
   end;
-  Assert.IsTrue(Item.Batch);
-  Assert.IsFalse(Item.IsAction);
-  Assert.AreEqual('IExporter', Item.SetOf);
+  Assert.IsTrue(mItem.Batch);
+  Assert.IsFalse(mItem.IsAction);
+  Assert.AreEqual('IExporter', mItem.SetOf);
 end;
 
 /// <summary>Eintrag „Alle Felder zuweisen“ wie vom Server (#491) mit seinen drei Zeilen.</summary>
@@ -483,48 +489,48 @@ end;
 
 procedure TAtlasCompletionSetsTests.AssignListCommitsCheckedLines;
 var
-  Item, Committed: TAtlasCompletionItem;
-  View: TSetView;
-  ViewRef: IAtlasCompletionView;
-  Controller: TAtlasCompletionController;
-  Context: TAtlasContext;
+  mItem, mCommitted: TAtlasCompletionItem;
+  mView: TSetView;
+  mViewRef: IAtlasCompletionView;
+  mController: TAtlasCompletionController;
+  mContext: TAtlasContext;
 begin
-  Item := AssignItemFromServer;
-  View := TSetView.Create;
-  ViewRef := View;
-  Controller := TAtlasCompletionController.Create(TAtlasFixedCompletionProvider.Create([Item]) as
-    IAtlasCompletionProvider, ViewRef);
+  mItem := AssignItemFromServer;
+  mView := TSetView.Create;
+  mViewRef := mView;
+  mController := TAtlasCompletionController.Create(TAtlasFixedCompletionProvider.Create([mItem]) as
+    IAtlasCompletionProvider, mViewRef);
   try
-    Controller.OnCommit :=
+    mController.OnCommit :=
       procedure(const AItem: TAtlasCompletionItem)
       begin
-        Committed := AItem;
+        mCommitted := AItem;
       end;
-    Context := Default(TAtlasContext);
-    Context.FileName := 'C:\P\A.pas';
-    Controller.Start(Context);
+    mContext := Default(TAtlasContext);
+    mContext.FileName := 'C:\P\A.pas';
+    mController.Start(mContext);
     Assert.IsTrue(WaitFor(
       function: Boolean
       begin
-        Result := not Controller.Loading;
+        Result := not mController.Loading;
       end));
     // Enter auf dem Eintrag öffnet erst die Liste, alle angehakt.
-    Assert.IsTrue(Controller.HandleKey(TAtlasNavigationKey.Accept));
-    Assert.IsTrue(Controller.SetMode);
-    Assert.AreEqual('A B C', View.Checked);
-    Assert.AreEqual('', Committed.Name, 'noch nichts übernommen');
+    Assert.IsTrue(mController.HandleKey(TAtlasNavigationKey.Accept));
+    Assert.IsTrue(mController.SetMode);
+    Assert.AreEqual('A B C', mView.Checked);
+    Assert.AreEqual('', mCommitted.Name, 'noch nichts übernommen');
     // B abwählen, dann übernehmen: der Ausdruck weg, die Zeilen von A und C an seiner Stelle.
-    Assert.IsTrue(Controller.HandleKey(TAtlasNavigationKey.Down));
-    Assert.IsTrue(Controller.HandleKey(TAtlasNavigationKey.Toggle));
-    Assert.IsTrue(Controller.HandleKey(TAtlasNavigationKey.Accept));
-    Assert.IsTrue(Committed.HasTextEdit);
-    Assert.IsTrue(Committed.IsAction);
-    Assert.AreEqual('', Committed.TextEdit.NewText);
-    Assert.AreEqual(2, Committed.TextEdit.StartCharacter);
-    Assert.AreEqual(1, Integer(Length(Committed.AdditionalEdits)));
-    Assert.AreEqual('Opts.A := 0;'#13#10'  Opts.C := False;'#13#10'  ', Committed.AdditionalEdits[0].NewText);
+    Assert.IsTrue(mController.HandleKey(TAtlasNavigationKey.Down));
+    Assert.IsTrue(mController.HandleKey(TAtlasNavigationKey.Toggle));
+    Assert.IsTrue(mController.HandleKey(TAtlasNavigationKey.Accept));
+    Assert.IsTrue(mCommitted.HasTextEdit);
+    Assert.IsTrue(mCommitted.IsAction);
+    Assert.AreEqual('', mCommitted.TextEdit.NewText);
+    Assert.AreEqual(2, mCommitted.TextEdit.StartCharacter);
+    Assert.AreEqual(1, Integer(Length(mCommitted.AdditionalEdits)));
+    Assert.AreEqual('Opts.A := 0;'#13#10'  Opts.C := False;'#13#10'  ', mCommitted.AdditionalEdits[0].NewText);
   finally
-    Controller.Free;
+    mController.Free;
   end;
 end;
 
@@ -549,54 +555,54 @@ end;
 
 procedure TAtlasCompletionSetsTests.HintStaysOnTopWithoutSelection;
 var
-  Hint, Item: TAtlasCompletionItem;
-  Items: TAtlasCompletionItems;
-  View: TSetView;
-  ViewRef: IAtlasCompletionView;
-  Controller: TAtlasCompletionController;
-  Context: TAtlasContext;
+  mHint, mItem: TAtlasCompletionItem;
+  mItems: TAtlasCompletionItems;
+  mView: TSetView;
+  mViewRef: IAtlasCompletionView;
+  mController: TAtlasCompletionController;
+  mContext: TAtlasContext;
 begin
-  Hint := ImplementHintFromServer;
-  Item := Default(TAtlasCompletionItem);
-  Item.Name := 'Exception';
-  Item.Kind := TAtlasItemKind.Class_;
-  Items := [Item, Hint];
+  mHint := ImplementHintFromServer;
+  mItem := Default(TAtlasCompletionItem);
+  mItem.Name := 'Exception';
+  mItem.Kind := TAtlasItemKind.Class_;
+  mItems := [mItem, mHint];
   Assert.AreEqual('2 Methoden von IExporter fehlen Exception',
-    Names(Items, TAtlasRanking.Order(Items, 'Ex', TAtlasRankOptions.Defaults)));
+    Names(mItems, TAtlasRanking.Order(mItems, 'Ex', TAtlasRankOptions.Defaults)));
   // Vorgewählt ist der erste Eintrag nach dem Hinweis; steht nur der Hinweis da, nichts.
-  View := TSetView.Create;
-  ViewRef := View;
-  Controller := TAtlasCompletionController.Create(
-    TAtlasFixedCompletionProvider.Create(Items) as IAtlasCompletionProvider, ViewRef);
+  mView := TSetView.Create;
+  mViewRef := mView;
+  mController := TAtlasCompletionController.Create(
+    TAtlasFixedCompletionProvider.Create(mItems) as IAtlasCompletionProvider, mViewRef);
   try
-    Context := Default(TAtlasContext);
-    Context.FileName := 'C:\P\A.pas';
-    Context.Prefix := 'Ex';
-    Controller.Start(Context);
+    mContext := Default(TAtlasContext);
+    mContext.FileName := 'C:\P\A.pas';
+    mContext.Prefix := 'Ex';
+    mController.Start(mContext);
     Assert.IsTrue(WaitFor(
       function: Boolean
       begin
-        Result := not Controller.Loading;
+        Result := not mController.Loading;
       end));
-    Assert.IsTrue(Controller.SelectedItem(Item));
-    Assert.AreEqual('Exception', Item.Name);
+    Assert.IsTrue(mController.SelectedItem(mItem));
+    Assert.AreEqual('Exception', mItem.Name);
   finally
-    Controller.Free;
+    mController.Free;
   end;
-  Controller := TAtlasCompletionController.Create(
-    TAtlasFixedCompletionProvider.Create([Hint]) as IAtlasCompletionProvider, ViewRef);
+  mController := TAtlasCompletionController.Create(
+    TAtlasFixedCompletionProvider.Create([mHint]) as IAtlasCompletionProvider, mViewRef);
   try
-    Context.Prefix := 'Ex';
-    Controller.Start(Context);
+    mContext.Prefix := 'Ex';
+    mController.Start(mContext);
     Assert.IsTrue(WaitFor(
       function: Boolean
       begin
-        Result := not Controller.Loading;
+        Result := not mController.Loading;
       end));
-    Assert.IsFalse(Controller.SelectedItem(Item), 'Hinweis nicht vorgewählt');
-    Assert.IsTrue(Controller.Passive);
+    Assert.IsFalse(mController.SelectedItem(mItem), 'Hinweis nicht vorgewählt');
+    Assert.IsTrue(mController.Passive);
   finally
-    Controller.Free;
+    mController.Free;
   end;
 end;
 

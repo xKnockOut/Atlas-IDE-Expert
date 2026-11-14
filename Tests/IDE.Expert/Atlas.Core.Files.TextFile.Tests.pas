@@ -53,49 +53,49 @@ uses
 
 procedure TAtlasTextFileTests.DetectsEncodings;
 var
-  Content: TAtlasTextFileContent;
+  mContent: TAtlasTextFileContent;
 begin
-  Content := TAtlasTextFile.Decode(TBytes.Create($EF, $BB, $BF, $61, $C3, $A4));
-  Assert.AreEqual<TAtlasTextEncoding>(TAtlasTextEncoding.Utf8Bom, Content.Encoding);
-  Assert.AreEqual('aä', Content.Text);
-  Content := TAtlasTextFile.Decode(TBytes.Create($61, $C3, $A4));
-  Assert.AreEqual<TAtlasTextEncoding>(TAtlasTextEncoding.Utf8, Content.Encoding);
-  Assert.AreEqual('aä', Content.Text);
-  Content := TAtlasTextFile.Decode(TBytes.Create($FF, $FE, $61, $00));
-  Assert.AreEqual<TAtlasTextEncoding>(TAtlasTextEncoding.Utf16LE, Content.Encoding);
-  Assert.AreEqual('a', Content.Text);
-  Content := TAtlasTextFile.Decode(TBytes.Create($FE, $FF, $00, $61));
-  Assert.AreEqual<TAtlasTextEncoding>(TAtlasTextEncoding.Utf16BE, Content.Encoding);
-  Assert.AreEqual('a', Content.Text);
+  mContent := TAtlasTextFile.Decode(TBytes.Create($EF, $BB, $BF, $61, $C3, $A4));
+  Assert.AreEqual<TAtlasTextEncoding>(TAtlasTextEncoding.Utf8Bom, mContent.Encoding);
+  Assert.AreEqual('aä', mContent.Text);
+  mContent := TAtlasTextFile.Decode(TBytes.Create($61, $C3, $A4));
+  Assert.AreEqual<TAtlasTextEncoding>(TAtlasTextEncoding.Utf8, mContent.Encoding);
+  Assert.AreEqual('aä', mContent.Text);
+  mContent := TAtlasTextFile.Decode(TBytes.Create($FF, $FE, $61, $00));
+  Assert.AreEqual<TAtlasTextEncoding>(TAtlasTextEncoding.Utf16LE, mContent.Encoding);
+  Assert.AreEqual('a', mContent.Text);
+  mContent := TAtlasTextFile.Decode(TBytes.Create($FE, $FF, $00, $61));
+  Assert.AreEqual<TAtlasTextEncoding>(TAtlasTextEncoding.Utf16BE, mContent.Encoding);
+  Assert.AreEqual('a', mContent.Text);
   // $E4 allein ist kein UTF-8: ANSI wie in der IDE.
-  Content := TAtlasTextFile.Decode(TBytes.Create($61, $E4));
-  Assert.AreEqual<TAtlasTextEncoding>(TAtlasTextEncoding.Ansi, Content.Encoding);
-  Content := TAtlasTextFile.Decode(nil);
-  Assert.AreEqual<TAtlasTextEncoding>(TAtlasTextEncoding.Utf8, Content.Encoding);
-  Assert.AreEqual('', Content.Text);
+  mContent := TAtlasTextFile.Decode(TBytes.Create($61, $E4));
+  Assert.AreEqual<TAtlasTextEncoding>(TAtlasTextEncoding.Ansi, mContent.Encoding);
+  mContent := TAtlasTextFile.Decode(nil);
+  Assert.AreEqual<TAtlasTextEncoding>(TAtlasTextEncoding.Utf8, mContent.Encoding);
+  Assert.AreEqual('', mContent.Text);
 end;
 
 function Hex(const ABytes: TBytes): string;
 var
-  Value: Byte;
+  mValue: Byte;
 begin
   Result := '';
-  for Value in ABytes do
+  for mValue in ABytes do
   begin
-    Result := Result + IntToHex(Value, 2) + ' ';
+    Result := Result + IntToHex(mValue, 2) + ' ';
   end;
 end;
 
 procedure TAtlasTextFileTests.KeepsBytesOnRoundTrip;
 var
-  Samples: TArray<TBytes>;
-  Sample: TBytes;
+  mSamples: TArray<TBytes>;
+  mSample: TBytes;
 begin
-  Samples := [TBytes.Create($EF, $BB, $BF, $61, $0D, $0A, $C3, $A4), TBytes.Create($61, $0A, $C3, $A4),
+  mSamples := [TBytes.Create($EF, $BB, $BF, $61, $0D, $0A, $C3, $A4), TBytes.Create($61, $0A, $C3, $A4),
     TBytes.Create($FF, $FE, $61, $00, $0D, $00), TBytes.Create($FE, $FF, $00, $61), TBytes.Create($61, $E4, $0D, $0A)];
-  for Sample in Samples do
+  for mSample in mSamples do
   begin
-    Assert.AreEqual(Hex(Sample), Hex(TAtlasTextFile.Encode(TAtlasTextFile.Decode(Sample))));
+    Assert.AreEqual(Hex(mSample), Hex(TAtlasTextFile.Encode(TAtlasTextFile.Decode(mSample))));
   end;
 end;
 
@@ -111,163 +111,163 @@ end;
 
 procedure TAtlasTextFileTests.SavesBesideAndReplaces;
 var
-  Folder, FileName: string;
-  Content: TAtlasTextFileContent;
+  mFolder, mFileName: string;
+  mContent: TAtlasTextFileContent;
 begin
-  Folder := TPath.Combine(TPath.GetTempPath, 'Atlas-TextFile-' + IntToStr(Random(MaxInt)));
-  TDirectory.CreateDirectory(Folder);
+  mFolder := TPath.Combine(TPath.GetTempPath, 'Atlas-TextFile-' + IntToStr(Random(MaxInt)));
+  TDirectory.CreateDirectory(mFolder);
   try
-    FileName := TPath.Combine(Folder, 'A.pas');
-    TFile.WriteAllBytes(FileName, TBytes.Create($EF, $BB, $BF, $61));
-    Content := TAtlasTextFile.Load(FileName);
-    Content.Text := Content.Text + 'ä';
-    TAtlasTextFile.Save(FileName, Content);
-    Assert.AreEqual<NativeInt>(6, Length(TFile.ReadAllBytes(FileName)));
-    Assert.IsFalse(TFile.Exists(FileName + '.atlas-tmp'), 'keine Nachbardatei übrig');
-    Assert.AreEqual('aä', TAtlasTextFile.Load(FileName).Text);
+    mFileName := TPath.Combine(mFolder, 'A.pas');
+    TFile.WriteAllBytes(mFileName, TBytes.Create($EF, $BB, $BF, $61));
+    mContent := TAtlasTextFile.Load(mFileName);
+    mContent.Text := mContent.Text + 'ä';
+    TAtlasTextFile.Save(mFileName, mContent);
+    Assert.AreEqual<NativeInt>(6, Length(TFile.ReadAllBytes(mFileName)));
+    Assert.IsFalse(TFile.Exists(mFileName + '.atlas-tmp'), 'keine Nachbardatei übrig');
+    Assert.AreEqual('aä', TAtlasTextFile.Load(mFileName).Text);
   finally
-    TDirectory.Delete(Folder, True);
+    TDirectory.Delete(mFolder, True);
   end;
 end;
 
 // UTF-8 ohne BOM liest LoadText als UTF-8 (TFile.ReadAllText nähme ANSI); LoadLines ohne leere letzte Zeile (#1109).
 procedure TAtlasTextFileTests.LoadTextAndLines;
 var
-  Folder, FileName: string;
-  Lines: TArray<string>;
+  mFolder, mFileName: string;
+  mLines: TArray<string>;
 begin
-  Folder := TPath.Combine(TPath.GetTempPath, 'Atlas-TextFile-' + IntToStr(Random(MaxInt)));
-  TDirectory.CreateDirectory(Folder);
+  mFolder := TPath.Combine(TPath.GetTempPath, 'Atlas-TextFile-' + IntToStr(Random(MaxInt)));
+  TDirectory.CreateDirectory(mFolder);
   try
-    FileName := TPath.Combine(Folder, 'A.dproj');
-    TFile.WriteAllBytes(FileName, TBytes.Create($61, $C3, $A4, $0D, $0A, $62, $0D, $0A));
-    Assert.AreEqual('a'#$E4#13#10'b'#13#10, TAtlasTextFile.LoadText(FileName));
-    Lines := TAtlasTextFile.LoadLines(FileName);
-    Assert.AreEqual(2, Integer(Length(Lines)));
-    Assert.AreEqual('a'#$E4, Lines[0]);
-    Assert.AreEqual('b', Lines[1]);
+    mFileName := TPath.Combine(mFolder, 'A.dproj');
+    TFile.WriteAllBytes(mFileName, TBytes.Create($61, $C3, $A4, $0D, $0A, $62, $0D, $0A));
+    Assert.AreEqual('a'#$E4#13#10'b'#13#10, TAtlasTextFile.LoadText(mFileName));
+    mLines := TAtlasTextFile.LoadLines(mFileName);
+    Assert.AreEqual(2, Integer(Length(mLines)));
+    Assert.AreEqual('a'#$E4, mLines[0]);
+    Assert.AreEqual('b', mLines[1]);
   finally
-    TDirectory.Delete(Folder, True);
+    TDirectory.Delete(mFolder, True);
   end;
 end;
 
 procedure TAtlasTextFileTests.ReplacesFileHeldOpenByOthers;
 var
-  Folder, FileName: string;
-  Content: TAtlasTextFileContent;
-  Handle: THandle;
-  Old: array[0..1] of Byte;
-  Count: DWORD;
+  mFolder, mFileName: string;
+  mContent: TAtlasTextFileContent;
+  mHandle: THandle;
+  mOld: array[0..1] of Byte;
+  mCount: DWORD;
 begin
   // Wie ein Leser, der Löschen teilt (der Server mit TWindowsSharedRead, ReadAllBytes): Löschen und
   // Verschieben getrennt meldete „Datei bereits vorhanden“, klassisches MoveFileEx scheitert ebenso.
-  Folder := TPath.Combine(TPath.GetTempPath, 'Atlas-TextFile-' + IntToStr(Random(MaxInt)));
-  TDirectory.CreateDirectory(Folder);
+  mFolder := TPath.Combine(TPath.GetTempPath, 'Atlas-TextFile-' + IntToStr(Random(MaxInt)));
+  TDirectory.CreateDirectory(mFolder);
   try
-    FileName := TPath.Combine(Folder, 'settings.json');
-    TFile.WriteAllText(FileName, '{}');
-    Handle := CreateFile(PChar(FileName), GENERIC_READ, FILE_SHARE_READ or FILE_SHARE_WRITE or FILE_SHARE_DELETE,
+    mFileName := TPath.Combine(mFolder, 'settings.json');
+    TFile.WriteAllText(mFileName, '{}');
+    mHandle := CreateFile(PChar(mFileName), GENERIC_READ, FILE_SHARE_READ or FILE_SHARE_WRITE or FILE_SHARE_DELETE,
       nil, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, 0);
-    Assert.AreNotEqual<THandle>(INVALID_HANDLE_VALUE, Handle);
+    Assert.AreNotEqual<THandle>(INVALID_HANDLE_VALUE, mHandle);
     try
-      Content := TAtlasTextFile.Load(FileName);
-      Content.Text := '{"metrics": false}';
-      TAtlasTextFile.Save(FileName, Content);
+      mContent := TAtlasTextFile.Load(mFileName);
+      mContent.Text := '{"metrics": false}';
+      TAtlasTextFile.Save(mFileName, mContent);
       // Atomar ersetzt, nicht überschrieben: Der Leser sieht weiter den alten Stand.
-      Assert.IsTrue(ReadFile(Handle, Old, SizeOf(Old), Count, nil));
-      Assert.AreEqual(2, Integer(Count));
-      Assert.AreEqual(Integer(Ord('{')), Integer(Old[0]));
-      Assert.AreEqual(Integer(Ord('}')), Integer(Old[1]));
+      Assert.IsTrue(ReadFile(mHandle, mOld, SizeOf(mOld), mCount, nil));
+      Assert.AreEqual(2, Integer(mCount));
+      Assert.AreEqual(Integer(Ord('{')), Integer(mOld[0]));
+      Assert.AreEqual(Integer(Ord('}')), Integer(mOld[1]));
     finally
-      CloseHandle(Handle);
+      CloseHandle(mHandle);
     end;
-    Assert.AreEqual('{"metrics": false}', TAtlasTextFile.Load(FileName).Text);
-    Assert.IsFalse(TFile.Exists(FileName + '.atlas-tmp'), 'keine Nachbardatei übrig');
+    Assert.AreEqual('{"metrics": false}', TAtlasTextFile.Load(mFileName).Text);
+    Assert.IsFalse(TFile.Exists(mFileName + '.atlas-tmp'), 'keine Nachbardatei übrig');
   finally
-    TDirectory.Delete(Folder, True);
+    TDirectory.Delete(mFolder, True);
   end;
 end;
 
 procedure TAtlasTextFileTests.KeepsFileLockedByOthers;
 var
-  Folder, FileName: string;
-  Content: TAtlasTextFileContent;
-  Handle: THandle;
+  mFolder, mFileName: string;
+  mContent: TAtlasTextFileContent;
+  mHandle: THandle;
 begin
-  Folder := TPath.Combine(TPath.GetTempPath, 'Atlas-TextFile-' + IntToStr(Random(MaxInt)));
-  TDirectory.CreateDirectory(Folder);
+  mFolder := TPath.Combine(TPath.GetTempPath, 'Atlas-TextFile-' + IntToStr(Random(MaxInt)));
+  TDirectory.CreateDirectory(mFolder);
   try
-    FileName := TPath.Combine(Folder, 'settings.json');
-    TFile.WriteAllText(FileName, '{}');
+    mFileName := TPath.Combine(mFolder, 'settings.json');
+    TFile.WriteAllText(mFileName, '{}');
     // So las TFile.ReadAllBytes: Lesen geteilt, Löschen nicht.
-    Handle := CreateFile(PChar(FileName), GENERIC_READ, FILE_SHARE_READ, nil, OPEN_EXISTING,
+    mHandle := CreateFile(PChar(mFileName), GENERIC_READ, FILE_SHARE_READ, nil, OPEN_EXISTING,
       FILE_ATTRIBUTE_NORMAL, 0);
-    Assert.AreNotEqual<THandle>(INVALID_HANDLE_VALUE, Handle);
+    Assert.AreNotEqual<THandle>(INVALID_HANDLE_VALUE, mHandle);
     try
-      Content := TAtlasTextFile.Load(FileName);
-      Content.Text := '{"metrics": false}';
+      mContent := TAtlasTextFile.Load(mFileName);
+      mContent.Text := '{"metrics": false}';
       Assert.WillRaise(
         procedure
         begin
-          TAtlasTextFile.Save(FileName, Content);
+          TAtlasTextFile.Save(mFileName, mContent);
         end, EAtlasTextFileError);
     finally
-      CloseHandle(Handle);
+      CloseHandle(mHandle);
     end;
-    Assert.AreEqual('{}', TAtlasTextFile.Load(FileName).Text);
-    Assert.IsFalse(TFile.Exists(FileName + '.atlas-tmp'), 'keine Nachbardatei übrig');
+    Assert.AreEqual('{}', TAtlasTextFile.Load(mFileName).Text);
+    Assert.IsFalse(TFile.Exists(mFileName + '.atlas-tmp'), 'keine Nachbardatei übrig');
   finally
-    TDirectory.Delete(Folder, True);
+    TDirectory.Delete(mFolder, True);
   end;
 end;
 
 procedure TAtlasTextFileTests.ReadAllBytesDoesNotBlockReplace;
 var
-  Folder, FileName: string;
-  Content: TAtlasTextFileContent;
-  Handle: THandle;
+  mFolder, mFileName: string;
+  mContent: TAtlasTextFileContent;
+  mHandle: THandle;
 begin
-  Folder := TPath.Combine(TPath.GetTempPath, 'Atlas-TextFile-' + IntToStr(Random(MaxInt)));
-  TDirectory.CreateDirectory(Folder);
+  mFolder := TPath.Combine(TPath.GetTempPath, 'Atlas-TextFile-' + IntToStr(Random(MaxInt)));
+  TDirectory.CreateDirectory(mFolder);
   try
-    FileName := TPath.Combine(Folder, 'atlas.json');
-    TFile.WriteAllText(FileName, '{}');
+    mFileName := TPath.Combine(mFolder, 'atlas.json');
+    TFile.WriteAllText(mFileName, '{}');
     // Wie Save beim Ersetzen: offen zum Löschen. TFile.ReadAllBytes scheitert daran, ReadAllBytes nicht.
-    Handle := CreateFile(PChar(FileName), _DELETE or SYNCHRONIZE,
+    mHandle := CreateFile(PChar(mFileName), _DELETE or SYNCHRONIZE,
       FILE_SHARE_READ or FILE_SHARE_WRITE or FILE_SHARE_DELETE, nil, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, 0);
-    Assert.AreNotEqual<THandle>(INVALID_HANDLE_VALUE, Handle);
+    Assert.AreNotEqual<THandle>(INVALID_HANDLE_VALUE, mHandle);
     try
-      Assert.AreEqual(2, Integer(Length(TAtlasTextFile.ReadAllBytes(FileName))));
+      Assert.AreEqual(2, Integer(Length(TAtlasTextFile.ReadAllBytes(mFileName))));
     finally
-      CloseHandle(Handle);
+      CloseHandle(mHandle);
     end;
     Assert.WillRaise(
       procedure
       begin
-        TAtlasTextFile.ReadAllBytes(TPath.Combine(Folder, 'fehlt.json'));
+        TAtlasTextFile.ReadAllBytes(TPath.Combine(mFolder, 'fehlt.json'));
       end, EFOpenError);
-    Content := TAtlasTextFile.Load(FileName);
-    Content.Text := '{"a": 1}';
-    TAtlasTextFile.Save(FileName, Content);
-    Assert.AreEqual('{"a": 1}', TAtlasTextFile.Load(FileName).Text);
+    mContent := TAtlasTextFile.Load(mFileName);
+    mContent.Text := '{"a": 1}';
+    TAtlasTextFile.Save(mFileName, mContent);
+    Assert.AreEqual('{"a": 1}', TAtlasTextFile.Load(mFileName).Text);
   finally
-    TDirectory.Delete(Folder, True);
+    TDirectory.Delete(mFolder, True);
   end;
 end;
 
 procedure TAtlasTextFileTests.AnsiDefaultCodePage;
 var
-  Source: TBytes;
-  Content: TAtlasTextFileContent;
+  mSource: TBytes;
+  mContent: TAtlasTextFileContent;
 begin
   // "Š" ist in Codepage 1250 $8A; außerhalb der Änderung bleibt jedes Byte gleich.
-  Source := TBytes.Create($8A, $0D, $0A, Ord('x'));
-  Content := TAtlasTextFile.Decode(Source, 1250);
-  Assert.AreEqual<TAtlasTextEncoding>(TAtlasTextEncoding.Ansi, Content.Encoding);
-  Assert.AreEqual(1250, Content.CodePage);
-  Assert.AreEqual(#$0160#13#10'x', Content.Text);
-  Content.Text := StringReplace(Content.Text, 'x', 'y', []);
-  Assert.AreEqual(Hex(TBytes.Create($8A, $0D, $0A, Ord('y'))), Hex(TAtlasTextFile.Encode(Content)));
+  mSource := TBytes.Create($8A, $0D, $0A, Ord('x'));
+  mContent := TAtlasTextFile.Decode(mSource, 1250);
+  Assert.AreEqual<TAtlasTextEncoding>(TAtlasTextEncoding.Ansi, mContent.Encoding);
+  Assert.AreEqual(1250, mContent.CodePage);
+  Assert.AreEqual(#$0160#13#10'x', mContent.Text);
+  mContent.Text := StringReplace(mContent.Text, 'x', 'y', []);
+  Assert.AreEqual(Hex(TBytes.Create($8A, $0D, $0A, Ord('y'))), Hex(TAtlasTextFile.Encode(mContent)));
   // Gültiges UTF-8 bleibt UTF-8, auch mit ANSI-Vorgabe.
   Assert.AreEqual<TAtlasTextEncoding>(TAtlasTextEncoding.Utf8,
     TAtlasTextFile.Decode(TBytes.Create($61, $C3, $A4), 1250).Encoding);
@@ -277,60 +277,60 @@ end;
 
 procedure TAtlasTextFileTests.PureAsciiFollowsDefault;
 var
-  Content: TAtlasTextFileContent;
+  mContent: TAtlasTextFileContent;
 begin
-  Content := TAtlasTextFile.Decode(TBytes.Create($61), 1250);
-  Assert.AreEqual<TAtlasTextEncoding>(TAtlasTextEncoding.Ansi, Content.Encoding);
-  Content.Text := Content.Text + #$010D;
-  Assert.AreEqual(Hex(TBytes.Create($61, $E8)), Hex(TAtlasTextFile.Encode(Content)));
+  mContent := TAtlasTextFile.Decode(TBytes.Create($61), 1250);
+  Assert.AreEqual<TAtlasTextEncoding>(TAtlasTextEncoding.Ansi, mContent.Encoding);
+  mContent.Text := mContent.Text + #$010D;
+  Assert.AreEqual(Hex(TBytes.Create($61, $E8)), Hex(TAtlasTextFile.Encode(mContent)));
   Assert.AreEqual<TAtlasTextEncoding>(TAtlasTextEncoding.Utf8, TAtlasTextFile.Decode(TBytes.Create($61)).Encoding);
 end;
 
 procedure TAtlasTextFileTests.ParsesCodePages;
 var
-  CodePage: Integer;
+  mCodePage: Integer;
 begin
-  Assert.IsTrue(TAtlasTextFile.ParseCodePage('utf-8', CodePage));
-  Assert.AreEqual(65001, CodePage);
-  Assert.IsTrue(TAtlasTextFile.ParseCodePage(' Windows-1251 ', CodePage));
-  Assert.AreEqual(1251, CodePage);
-  Assert.IsTrue(TAtlasTextFile.ParseCodePage('cp1250', CodePage));
-  Assert.AreEqual(1250, CodePage);
-  Assert.IsFalse(TAtlasTextFile.ParseCodePage('932', CodePage));
-  Assert.IsFalse(TAtlasTextFile.ParseCodePage('latin9', CodePage));
-  Assert.AreEqual(0, CodePage);
+  Assert.IsTrue(TAtlasTextFile.ParseCodePage('utf-8', mCodePage));
+  Assert.AreEqual(65001, mCodePage);
+  Assert.IsTrue(TAtlasTextFile.ParseCodePage(' Windows-1251 ', mCodePage));
+  Assert.AreEqual(1251, mCodePage);
+  Assert.IsTrue(TAtlasTextFile.ParseCodePage('cp1250', mCodePage));
+  Assert.AreEqual(1250, mCodePage);
+  Assert.IsFalse(TAtlasTextFile.ParseCodePage('932', mCodePage));
+  Assert.IsFalse(TAtlasTextFile.ParseCodePage('latin9', mCodePage));
+  Assert.AreEqual(0, mCodePage);
 end;
 
 procedure TAtlasTextFileTests.NeverTouchesBinaryForms;
 var
-  Folder, FileName: string;
-  Source: TBytes;
-  Content: TAtlasTextFileContent;
+  mFolder, mFileName: string;
+  mSource: TBytes;
+  mContent: TAtlasTextFileContent;
 begin
   Assert.IsTrue(TAtlasTextFile.IsBinaryForm(TBytes.Create($FF, $0A, $00, $54)));
   Assert.IsFalse(TAtlasTextFile.IsBinaryForm(TBytes.Create(Ord('o'), Ord('b'))));
-  Folder := TPath.Combine(TPath.GetTempPath, 'Atlas-TextFile-' + IntToStr(Random(MaxInt)));
-  TDirectory.CreateDirectory(Folder);
+  mFolder := TPath.Combine(TPath.GetTempPath, 'Atlas-TextFile-' + IntToStr(Random(MaxInt)));
+  TDirectory.CreateDirectory(mFolder);
   try
-    FileName := TPath.Combine(Folder, 'Form1.dfm');
-    Source := TBytes.Create(Ord('T'), Ord('P'), Ord('F'), Ord('0'), 6, $E4);
-    TFile.WriteAllBytes(FileName, Source);
+    mFileName := TPath.Combine(mFolder, 'Form1.dfm');
+    mSource := TBytes.Create(Ord('T'), Ord('P'), Ord('F'), Ord('0'), 6, $E4);
+    TFile.WriteAllBytes(mFileName, mSource);
     Assert.WillRaise(
       procedure
       begin
-        TAtlasTextFile.Load(FileName);
+        TAtlasTextFile.Load(mFileName);
       end, EAtlasTextFileError);
-    Content.Text := 'object Form1: TForm1'#13#10'end';
-    Content.Encoding := TAtlasTextEncoding.Utf8;
-    Content.CodePage := 0;
+    mContent.Text := 'object Form1: TForm1'#13#10'end';
+    mContent.Encoding := TAtlasTextEncoding.Utf8;
+    mContent.CodePage := 0;
     Assert.WillRaise(
       procedure
       begin
-        TAtlasTextFile.Save(FileName, Content);
+        TAtlasTextFile.Save(mFileName, mContent);
       end, EAtlasTextFileError);
-    Assert.AreEqual(Hex(Source), Hex(TFile.ReadAllBytes(FileName)));
+    Assert.AreEqual(Hex(mSource), Hex(TFile.ReadAllBytes(mFileName)));
   finally
-    TDirectory.Delete(Folder, True);
+    TDirectory.Delete(mFolder, True);
   end;
 end;
 

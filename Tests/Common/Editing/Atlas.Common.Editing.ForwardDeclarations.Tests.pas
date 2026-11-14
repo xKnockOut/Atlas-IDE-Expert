@@ -64,72 +64,72 @@ uses
 
 function Analyze(const AText: string): TArray<TForwardFinding>;
 var
-  Tree: TSyntaxTree;
+  mTree: TSyntaxTree;
 begin
-  Tree := TPascalParser.Parse(AText);
+  mTree := TPascalParser.Parse(AText);
   try
-    Result := TForwardDeclarations.Analyze(Tree, AText);
+    Result := TForwardDeclarations.Analyze(mTree, AText);
   finally
-    Tree.Free;
+    mTree.Free;
   end;
 end;
 
 function Parses(const AText: string): Boolean;
 var
-  Tree: TSyntaxTree;
+  mTree: TSyntaxTree;
 begin
-  Tree := TPascalParser.Parse(AText);
+  mTree := TPascalParser.Parse(AText);
   try
-    Result := Length(Tree.Diagnostics) = 0;
+    Result := Length(mTree.Diagnostics) = 0;
   finally
-    Tree.Free;
+    mTree.Free;
   end;
 end;
 
 /// <summary>Wendet die Edits (nicht überlappend, Zeilen mit #10) von hinten nach vorn an.</summary>
 function Apply(const AText: string; const AEdits: TArray<TTextEdit>): string;
 var
-  Lines: TArray<string>;
-  Offsets: TArray<Integer>;
-  Order: TArray<Integer>;
-  Index, Inner, Swap, Start, Stop: Integer;
+  mLines: TArray<string>;
+  mOffsets: TArray<Integer>;
+  mOrder: TArray<Integer>;
+  mIndex, mInner, mSwap, mStart, mStop: Integer;
 
   function OffsetOf(const APos: TTextPosition): Integer;
   begin
-    Result := Offsets[APos.Line] + APos.Character;
+    Result := mOffsets[APos.Line] + APos.Character;
   end;
 
 begin
-  Lines := AText.Split([#10]);
-  SetLength(Offsets, Length(Lines) + 1);
-  Offsets[0] := 0;
-  for Index := 0 to High(Lines) do
+  mLines := AText.Split([#10]);
+  SetLength(mOffsets, Length(mLines) + 1);
+  mOffsets[0] := 0;
+  for mIndex := 0 to High(mLines) do
   begin
-    Offsets[Index + 1] := Offsets[Index] + Length(Lines[Index]) + 1;
+    mOffsets[mIndex + 1] := mOffsets[mIndex] + Length(mLines[mIndex]) + 1;
   end;
-  SetLength(Order, Length(AEdits));
-  for Index := 0 to High(Order) do
+  SetLength(mOrder, Length(AEdits));
+  for mIndex := 0 to High(mOrder) do
   begin
-    Order[Index] := Index;
+    mOrder[mIndex] := mIndex;
   end;
-  for Index := 0 to High(Order) do
+  for mIndex := 0 to High(mOrder) do
   begin
-    for Inner := Index + 1 to High(Order) do
+    for mInner := mIndex + 1 to High(mOrder) do
     begin
-      if OffsetOf(AEdits[Order[Index]].Range.StartPos) < OffsetOf(AEdits[Order[Inner]].Range.StartPos) then
+      if OffsetOf(AEdits[mOrder[mIndex]].Range.StartPos) < OffsetOf(AEdits[mOrder[mInner]].Range.StartPos) then
       begin
-        Swap := Order[Index];
-        Order[Index] := Order[Inner];
-        Order[Inner] := Swap;
+        mSwap := mOrder[mIndex];
+        mOrder[mIndex] := mOrder[mInner];
+        mOrder[mInner] := mSwap;
       end;
     end;
   end;
   Result := AText;
-  for Index in Order do
+  for mIndex in mOrder do
   begin
-    Start := OffsetOf(AEdits[Index].Range.StartPos);
-    Stop := OffsetOf(AEdits[Index].Range.EndPos);
-    Result := Copy(Result, 1, Start) + AEdits[Index].NewText + Copy(Result, Stop + 1, MaxInt);
+    mStart := OffsetOf(AEdits[mIndex].Range.StartPos);
+    mStop := OffsetOf(AEdits[mIndex].Range.EndPos);
+    Result := Copy(Result, 1, mStart) + AEdits[mIndex].NewText + Copy(Result, mStop + 1, MaxInt);
   end;
 end;
 
@@ -141,32 +141,32 @@ end;
 /// <summary>Einziger Treffer; nach seiner Korrektur parst die Unit fehlerfrei und hat keinen Treffer mehr.</summary>
 function FixOnly(const AText: string; AFix: TForwardFix): string;
 var
-  Findings: TArray<TForwardFinding>;
+  mFindings: TArray<TForwardFinding>;
 begin
-  Findings := Analyze(AText);
-  Assert.AreEqual(1, Integer(Length(Findings)), AText);
-  Assert.AreEqual(Ord(AFix), Ord(Findings[0].Fix), Findings[0].Reason);
-  Result := Apply(AText, Findings[0].Edits);
+  mFindings := Analyze(AText);
+  Assert.AreEqual(1, Integer(Length(mFindings)), AText);
+  Assert.AreEqual(Ord(AFix), Ord(mFindings[0].Fix), mFindings[0].Reason);
+  Result := Apply(AText, mFindings[0].Edits);
   Assert.IsTrue(Parses(Result), Result);
   Assert.AreEqual(0, Integer(Length(Analyze(Result))), Result);
 end;
 
 procedure TForwardDeclarationsTests.ClassInSameBlockGetsForward;
 var
-  Findings: TArray<TForwardFinding>;
-  Source: string;
+  mFindings: TArray<TForwardFinding>;
+  mSource: string;
 begin
-  Source := UnitText('type'#10'  TTree = class'#10'    FRoot: TNode;'#10'  end;'#10'  TNode = class'#10 +
+  mSource := UnitText('type'#10'  TTree = class'#10'    FRoot: TNode;'#10'  end;'#10'  TNode = class'#10 +
     '    FTree: TTree;'#10'  end;'#10);
-  Findings := Analyze(Source);
-  Assert.AreEqual(1, Integer(Length(Findings)));
-  Assert.AreEqual<TForwardIssue>(TForwardIssue.UsedBeforeDeclaration, Findings[0].Issue);
-  Assert.AreEqual('TNode', Findings[0].TypeName);
-  Assert.AreEqual('TTree', Findings[0].UserName);
-  Assert.AreEqual(4, Findings[0].Range.StartPos.Line);
-  Assert.AreEqual(11, Findings[0].Range.StartPos.Character);
+  mFindings := Analyze(mSource);
+  Assert.AreEqual(1, Integer(Length(mFindings)));
+  Assert.AreEqual<TForwardIssue>(TForwardIssue.UsedBeforeDeclaration, mFindings[0].Issue);
+  Assert.AreEqual('TNode', mFindings[0].TypeName);
+  Assert.AreEqual('TTree', mFindings[0].UserName);
+  Assert.AreEqual(4, mFindings[0].Range.StartPos.Line);
+  Assert.AreEqual(11, mFindings[0].Range.StartPos.Character);
   Assert.AreEqual(UnitText('type'#10'  TNode = class;'#10'  TTree = class'#10'    FRoot: TNode;'#10'  end;'#10 +
-    '  TNode = class'#10'    FTree: TTree;'#10'  end;'#10), FixOnly(Source, TForwardFix.AddForward));
+    '  TNode = class'#10'    FTree: TTree;'#10'  end;'#10), FixOnly(mSource, TForwardFix.AddForward));
   Assert.AreEqual('Forward-Deklaration ergänzen', TForwardDeclarations.FixTitle(TForwardFix.AddForward));
 end;
 
@@ -185,14 +185,14 @@ end;
 
 procedure TForwardDeclarationsTests.ParameterResultAndPropertyCount;
 var
-  Findings: TArray<TForwardFinding>;
+  mFindings: TArray<TForwardFinding>;
 begin
-  Findings := Analyze(UnitText('type'#10'  TTree = class'#10'    procedure Add(A: TNode);'#10 +
+  mFindings := Analyze(UnitText('type'#10'  TTree = class'#10'    procedure Add(A: TNode);'#10 +
     '    function Find: TNode;'#10'    property Root: TNode read Find;'#10'    FList: TList<TNode>;'#10 +
     '  end;'#10'  TNode = class'#10'  end;'#10));
-  Assert.AreEqual(4, Integer(Length(Findings)));
-  Assert.AreEqual(4, Findings[0].Range.StartPos.Line);
-  Assert.AreEqual(7, Findings[3].Range.StartPos.Line);
+  Assert.AreEqual(4, Integer(Length(mFindings)));
+  Assert.AreEqual(4, mFindings[0].Range.StartPos.Line);
+  Assert.AreEqual(7, mFindings[3].Range.StartPos.Line);
 end;
 
 procedure TForwardDeclarationsTests.MutualClassesNeedOneForward;
@@ -231,31 +231,31 @@ end;
 
 procedure TForwardDeclarationsTests.MergeNeedsConstBetween;
 var
-  Findings: TArray<TForwardFinding>;
+  mFindings: TArray<TForwardFinding>;
 begin
   // Der var-Abschnitt dazwischen braucht TTree und muss danach stehen.
-  Findings := Analyze(UnitText('type'#10'  TTree = class'#10'    FRoot: TNode;'#10'  end;'#10'var'#10 +
+  mFindings := Analyze(UnitText('type'#10'  TTree = class'#10'    FRoot: TNode;'#10'  end;'#10'var'#10 +
     '  Baum: TTree;'#10'type'#10'  TNode = class'#10'  end;'#10));
-  Assert.AreEqual(1, Integer(Length(Findings)));
-  Assert.AreEqual(Ord(TForwardFix.NoFix), Ord(Findings[0].Fix));
-  Assert.Contains(Findings[0].Reason, 'var-Abschnitt');
-  Assert.Contains(Findings[0].Reason, 'TTree');
-  Assert.AreEqual(0, Integer(Length(Findings[0].Edits)));
+  Assert.AreEqual(1, Integer(Length(mFindings)));
+  Assert.AreEqual(Ord(TForwardFix.NoFix), Ord(mFindings[0].Fix));
+  Assert.Contains(mFindings[0].Reason, 'var-Abschnitt');
+  Assert.Contains(mFindings[0].Reason, 'TTree');
+  Assert.AreEqual(0, Integer(Length(mFindings[0].Edits)));
   // Eine Konstante, die die Typen brauchen, steht danach weiter vorn und bleibt erreichbar.
-  Findings := Analyze(UnitText('type'#10'  TTree = class'#10'    FRoot: TNode;'#10'  end;'#10'const'#10 +
+  mFindings := Analyze(UnitText('type'#10'  TTree = class'#10'    FRoot: TNode;'#10'  end;'#10'const'#10 +
     '  Max = 3;'#10'type'#10'  TNode = class'#10'    FItems: array[0..Max] of Integer;'#10'  end;'#10));
-  Assert.AreEqual(Ord(TForwardFix.MergeBlocks), Ord(Findings[0].Fix), 'Max wandert vor den ersten Block');
+  Assert.AreEqual(Ord(TForwardFix.MergeBlocks), Ord(mFindings[0].Fix), 'Max wandert vor den ersten Block');
 end;
 
 procedure TForwardDeclarationsTests.MergeBlockedByRoutine;
 var
-  Findings: TArray<TForwardFinding>;
+  mFindings: TArray<TForwardFinding>;
 begin
-  Findings := Analyze('program P;'#10'type'#10'  TTree = class'#10'    FRoot: TNode;'#10'  end;'#10 +
+  mFindings := Analyze('program P;'#10'type'#10'  TTree = class'#10'    FRoot: TNode;'#10'  end;'#10 +
     'procedure Lauf;'#10'begin'#10'end;'#10'type'#10'  TNode = class'#10'  end;'#10'begin'#10'end.');
-  Assert.AreEqual(1, Integer(Length(Findings)));
-  Assert.AreEqual(Ord(TForwardFix.NoFix), Ord(Findings[0].Fix));
-  Assert.Contains(Findings[0].Reason, 'const, var oder label');
+  Assert.AreEqual(1, Integer(Length(mFindings)));
+  Assert.AreEqual(Ord(TForwardFix.NoFix), Ord(mFindings[0].Fix));
+  Assert.Contains(mFindings[0].Reason, 'const, var oder label');
 end;
 
 procedure TForwardDeclarationsTests.RecordMovesUp;
@@ -273,33 +273,33 @@ end;
 
 procedure TForwardDeclarationsTests.RecordMoveWouldOpenGap;
 var
-  Findings: TArray<TForwardFinding>;
+  mFindings: TArray<TForwardFinding>;
 begin
-  Findings := Analyze(UnitText('type'#10'  TLinie = class'#10'    FStart: TPunkt;'#10'  end;'#10 +
+  mFindings := Analyze(UnitText('type'#10'  TLinie = class'#10'    FStart: TPunkt;'#10'  end;'#10 +
     '  TWert = Integer;'#10'  TPunkt = record'#10'    X: TWert;'#10'  end;'#10));
-  Assert.AreEqual(1, Integer(Length(Findings)));
-  Assert.AreEqual(Ord(TForwardFix.NoFix), Ord(Findings[0].Fix));
-  Assert.Contains(Findings[0].Reason, 'TWert');
+  Assert.AreEqual(1, Integer(Length(mFindings)));
+  Assert.AreEqual(Ord(TForwardFix.NoFix), Ord(mFindings[0].Fix));
+  Assert.Contains(mFindings[0].Reason, 'TWert');
 end;
 
 procedure TForwardDeclarationsTests.UnneededForwardIsRemoved;
 var
-  Findings: TArray<TForwardFinding>;
-  Source: string;
+  mFindings: TArray<TForwardFinding>;
+  mSource: string;
 begin
-  Source := UnitText('type'#10'  TNode = class;'#10'  TTree = class'#10'  end;'#10'  TNode = class'#10'  end;'#10);
-  Findings := Analyze(Source);
-  Assert.AreEqual(1, Integer(Length(Findings)));
-  Assert.AreEqual<TForwardIssue>(TForwardIssue.UnneededForward, Findings[0].Issue);
-  Assert.AreEqual(3, Findings[0].Range.StartPos.Line);
+  mSource := UnitText('type'#10'  TNode = class;'#10'  TTree = class'#10'  end;'#10'  TNode = class'#10'  end;'#10);
+  mFindings := Analyze(mSource);
+  Assert.AreEqual(1, Integer(Length(mFindings)));
+  Assert.AreEqual<TForwardIssue>(TForwardIssue.UnneededForward, mFindings[0].Issue);
+  Assert.AreEqual(3, mFindings[0].Range.StartPos.Line);
   Assert.AreEqual(UnitText('type'#10'  TTree = class'#10'  end;'#10'  TNode = class'#10'  end;'#10),
-    Apply(Source, Findings[0].Edits));
+    Apply(mSource, mFindings[0].Edits));
   // In einer Zeile mit anderen Deklarationen: nur sie.
-  Source := 'program P;'#10'procedure X;'#10'type TL = class; TL = class end;'#10'begin'#10'end;'#10'begin'#10'end.';
-  Findings := Analyze(Source);
-  Assert.AreEqual(1, Integer(Length(Findings)));
+  mSource := 'program P;'#10'procedure X;'#10'type TL = class; TL = class end;'#10'begin'#10'end;'#10'begin'#10'end.';
+  mFindings := Analyze(mSource);
+  Assert.AreEqual(1, Integer(Length(mFindings)));
   Assert.AreEqual('program P;'#10'procedure X;'#10'type TL = class end;'#10'begin'#10'end;'#10'begin'#10'end.',
-    Apply(Source, Findings[0].Edits));
+    Apply(mSource, mFindings[0].Edits));
 end;
 
 procedure TForwardDeclarationsTests.NeededForwardIsSilent;

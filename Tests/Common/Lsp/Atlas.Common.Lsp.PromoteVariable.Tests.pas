@@ -52,9 +52,9 @@ uses
   Atlas.Common.Lsp.PromoteVariable;
 
 const
-  FileName = 'C:\P\Haupt.pas';
-  FormFile = 'C:\P\Haupt.dfm';
-  Text =
+  cFileName = 'C:\P\Haupt.pas';
+  cFormFile = 'C:\P\Haupt.dfm';
+  cText =
     'unit Haupt;'#10 +                              // 0
     'interface'#10 +                                // 1
     'type'#10 +                                     // 2
@@ -82,7 +82,7 @@ const
 
 function ReadFile(const AFileName: string; out AText: string): Boolean;
 begin
-  Result := SameText(AFileName, FormFile);
+  Result := SameText(AFileName, cFormFile);
   if Result then
   begin
     AText := 'object Kunde: TKunde'#10'  object FLabel: TLabel'#10'  end'#10'end'#10;
@@ -92,7 +92,7 @@ end;
 procedure TLspPromoteVariableTests.Setup;
 begin
   FIndex := TSymbolIndex.Create;
-  FIndex.AddUnit(TIndexExtractor.ExtractText(Text, FileName, nil));
+  FIndex.AddUnit(TIndexExtractor.ExtractText(cText, cFileName, nil));
 end;
 
 procedure TLspPromoteVariableTests.TearDown;
@@ -103,97 +103,97 @@ end;
 /// <summary>Aktionen an ALine/ACharacter mit Namensauflösung.</summary>
 function ActionsAt(const AIndex: ISymbolIndex; ALine, ACharacter: Integer): TArray<TJSONObject>;
 var
-  Tree: TSyntaxTree;
-  Resolver: TNameResolver;
+  mTree: TSyntaxTree;
+  mResolver: TNameResolver;
 begin
-  Tree := TPascalParser.Parse(Text);
-  Resolver := TNameResolver.Create(AIndex);
+  mTree := TPascalParser.Parse(cText);
+  mResolver := TNameResolver.Create(AIndex);
   try
-    Resolver.PinTree(Tree, FileName);
+    mResolver.PinTree(mTree, cFileName);
     try
-      Result := TLspPromoteVariable.Actions(Tree, Text, TDocumentUris.FromPath(FileName), TTextPosition.Create(ALine,
-        ACharacter), TLspPromoteVariable.Lookup(Resolver, Tree, FileName, ReadFile));
+      Result := TLspPromoteVariable.Actions(mTree, cText, TDocumentUris.FromPath(cFileName), TTextPosition.Create(ALine,
+        ACharacter), TLspPromoteVariable.Lookup(mResolver, mTree, cFileName, ReadFile));
     finally
-      Resolver.UnpinTree;
+      mResolver.UnpinTree;
     end;
   finally
-    Resolver.Free;
-    Tree.Free;
+    mResolver.Free;
+    mTree.Free;
   end;
 end;
 
 /// <summary>Antwort von atlas.server.promoteVariable an ALine/ACharacter mit dem Namen AName.</summary>
 function ExecuteAt(const AIndex: ISymbolIndex; ALine, ACharacter: Integer; const AName: string): TJSONObject;
 var
-  Tree: TSyntaxTree;
-  Resolver: TNameResolver;
-  Context: TPromoteVariableContext;
+  mTree: TSyntaxTree;
+  mResolver: TNameResolver;
+  mContext: TPromoteVariableContext;
 begin
-  Tree := TPascalParser.Parse(Text);
-  Resolver := TNameResolver.Create(AIndex);
+  mTree := TPascalParser.Parse(cText);
+  mResolver := TNameResolver.Create(AIndex);
   try
-    Resolver.PinTree(Tree, FileName);
+    mResolver.PinTree(mTree, cFileName);
     try
-      Context.Lookup := TLspPromoteVariable.Lookup(Resolver, Tree, FileName, ReadFile);
-      Context.Style := TFormatStyle.Default;
-      Context.NewName := AName;
-      Result := TLspPromoteVariable.Execute(Tree, Text, TDocumentUris.FromPath(FileName), TTextPosition.Create(ALine,
-        ACharacter), Context);
+      mContext.Lookup := TLspPromoteVariable.Lookup(mResolver, mTree, cFileName, ReadFile);
+      mContext.Style := TFormatStyle.Default;
+      mContext.NewName := AName;
+      Result := TLspPromoteVariable.Execute(mTree, cText, TDocumentUris.FromPath(cFileName), TTextPosition.Create(ALine,
+        ACharacter), mContext);
     finally
-      Resolver.UnpinTree;
+      mResolver.UnpinTree;
     end;
   finally
-    Resolver.Free;
-    Tree.Free;
+    mResolver.Free;
+    mTree.Free;
   end;
 end;
 
 procedure TLspPromoteVariableTests.ActionCarriesClientCommand;
 var
-  Actions: TArray<TJSONObject>;
-  Action: TJSONObject;
-  Arguments: TJSONArray;
+  mActions: TArray<TJSONObject>;
+  mAction: TJSONObject;
+  mArguments: TJSONArray;
 begin
-  Actions := ActionsAt(FIndex, 16, 3);
+  mActions := ActionsAt(FIndex, 16, 3);
   try
-    Assert.AreEqual(1, Integer(Length(Actions)));
-    Assert.AreEqual(TLspPromoteVariable.cKind, Actions[0].GetValue<string>('kind'));
-    Assert.IsTrue(Actions[0].GetValue<string>('title').StartsWith(TPromoteVariable.ToFieldTitle + ' (LTotal'));
-    Assert.AreEqual(TLspPromoteVariable.cClientCommand, Actions[0].GetValue<string>('command.command'));
-    Arguments := Actions[0].GetValue<TJSONArray>('command.arguments');
-    Assert.AreEqual(3, Arguments.Count);
-    Assert.AreEqual(TDocumentUris.FromPath(FileName), Arguments.Items[0].Value);
-    Assert.AreEqual(16, Arguments.Items[1].GetValue<Integer>('line'));
-    Assert.AreEqual('FTotal', Arguments.Items[2].Value);
+    Assert.AreEqual(1, Integer(Length(mActions)));
+    Assert.AreEqual(TLspPromoteVariable.cKind, mActions[0].GetValue<string>('kind'));
+    Assert.IsTrue(mActions[0].GetValue<string>('title').StartsWith(TPromoteVariable.ToFieldTitle + ' (LTotal'));
+    Assert.AreEqual(TLspPromoteVariable.cClientCommand, mActions[0].GetValue<string>('command.command'));
+    mArguments := mActions[0].GetValue<TJSONArray>('command.arguments');
+    Assert.AreEqual(3, mArguments.Count);
+    Assert.AreEqual(TDocumentUris.FromPath(cFileName), mArguments.Items[0].Value);
+    Assert.AreEqual(16, mArguments.Items[1].GetValue<Integer>('line'));
+    Assert.AreEqual('FTotal', mArguments.Items[2].Value);
   finally
-    for Action in Actions do
+    for mAction in mActions do
     begin
-      Action.Free;
+      mAction.Free;
     end;
   end;
   // Im Rumpf ohne Variable: nichts.
-  Actions := ActionsAt(FIndex, 17, 1);
-  Assert.AreEqual(0, Integer(Length(Actions)));
+  mActions := ActionsAt(FIndex, 17, 1);
+  Assert.AreEqual(0, Integer(Length(mActions)));
 end;
 
 procedure TLspPromoteVariableTests.ExecuteAnswersEditAndCounts;
 var
-  Answer, Changes: TJSONObject;
-  Edits: TJSONArray;
+  mAnswer, mChanges: TJSONObject;
+  mEdits: TJSONArray;
 begin
-  Answer := ExecuteAt(FIndex, 16, 3, 'FSumme');
+  mAnswer := ExecuteAt(FIndex, 16, 3, 'FSumme');
   try
-    Changes := Answer.GetValue<TJSONObject>('edit').GetValue('changes') as TJSONObject;
-    Assert.AreEqual(1, Changes.Count);
-    Assert.AreEqual(TDocumentUris.FromPath(FileName), Changes.Pairs[0].JsonString.Value);
-    Edits := Changes.Pairs[0].JsonValue as TJSONArray;
-    Assert.IsTrue(Edits.Count >= 4, Answer.ToJSON);
+    mChanges := mAnswer.GetValue<TJSONObject>('edit').GetValue('changes') as TJSONObject;
+    Assert.AreEqual(1, mChanges.Count);
+    Assert.AreEqual(TDocumentUris.FromPath(cFileName), mChanges.Pairs[0].JsonString.Value);
+    mEdits := mChanges.Pairs[0].JsonValue as TJSONArray;
+    Assert.IsTrue(mEdits.Count >= 4, mAnswer.ToJSON);
     // Zwei Verwendungen und die beiden Deklarationen.
-    Assert.AreEqual(4, Answer.GetValue<Integer>('places'));
-    Assert.AreEqual(1, Answer.GetValue<Integer>('files'));
-    Assert.AreEqual(0, Answer.GetValue<TJSONArray>('warnings').Count);
+    Assert.AreEqual(4, mAnswer.GetValue<Integer>('places'));
+    Assert.AreEqual(1, mAnswer.GetValue<Integer>('files'));
+    Assert.AreEqual(0, mAnswer.GetValue<TJSONArray>('warnings').Count);
   finally
-    Answer.Free;
+    mAnswer.Free;
   end;
 end;
 
@@ -213,15 +213,15 @@ end;
 
 procedure TLspPromoteVariableTests.ResolverSuppliesTypesAndAncestors;
 var
-  Answer: TJSONObject;
+  mAnswer: TJSONObject;
 begin
   // Inline-Variable ohne Typangabe: TKunde über die Ableitung; erzeugt und freigegeben: Warnung.
-  Answer := ExecuteAt(FIndex, 19, 7, 'FNeu');
+  mAnswer := ExecuteAt(FIndex, 19, 7, 'FNeu');
   try
-    Assert.IsTrue(Pos('FNeu: TKunde;', Answer.ToJSON) > 0, Answer.ToJSON);
-    Assert.AreEqual(1, Answer.GetValue<TJSONArray>('warnings').Count);
+    Assert.IsTrue(Pos('FNeu: TKunde;', mAnswer.ToJSON) > 0, mAnswer.ToJSON);
+    Assert.AreEqual(1, mAnswer.GetValue<TJSONArray>('warnings').Count);
   finally
-    Answer.Free;
+    mAnswer.Free;
   end;
   // Geerbtes Feld der Basisklasse.
   Assert.WillRaise(

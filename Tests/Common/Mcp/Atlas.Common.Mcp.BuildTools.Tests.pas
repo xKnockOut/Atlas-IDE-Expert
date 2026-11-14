@@ -38,7 +38,8 @@ uses
   Atlas.Common.Index.Adapters.CacheDirectory,
   Atlas.Common.Mcp.BuildTools;
 
-function Message(const AFile: string; ALine: Integer; ASeverity: TCompilerSeverity; const ACode: string): TCompilerMessage;
+function Message(const AFile: string; ALine: Integer; ASeverity: TCompilerSeverity;
+  const ACode: string): TCompilerMessage;
 begin
   Result := Default(TCompilerMessage);
   Result.FileName := AFile;
@@ -67,9 +68,9 @@ end;
 
 procedure TMcpBuildToolsTests.WarmUp;
 var
-  Build: TIdeBuild;
+  mBuild: TIdeBuild;
 begin
-  TMcpBuildTools.FromFileText(TMcpBuildTools.ToFileText(Sample), Build);
+  TMcpBuildTools.FromFileText(TMcpBuildTools.ToFileText(Sample), mBuild);
 end;
 
 procedure TMcpBuildToolsTests.NoBuildYet;
@@ -79,69 +80,69 @@ end;
 
 procedure TMcpBuildToolsTests.FileRoundTripAndReport;
 var
-  Build: TIdeBuild;
-  Report: TJSONObject;
-  First: TJSONObject;
+  mBuild: TIdeBuild;
+  mReport: TJSONObject;
+  mFirst: TJSONObject;
 begin
-  Assert.IsTrue(TMcpBuildTools.FromFileText(TMcpBuildTools.ToFileText(Sample), Build));
-  Assert.AreEqual('C:\P\App.dproj', Build.Project);
-  Assert.AreEqual(3, Integer(Length(Build.Messages)));
-  Assert.AreEqual(9, Build.Messages[0].Line);
-  Report := TJSONObject.ParseJSONValue(TMcpBuildTools.Report(Build, '', '')) as TJSONObject;
+  Assert.IsTrue(TMcpBuildTools.FromFileText(TMcpBuildTools.ToFileText(Sample), mBuild));
+  Assert.AreEqual('C:\P\App.dproj', mBuild.Project);
+  Assert.AreEqual(3, Integer(Length(mBuild.Messages)));
+  Assert.AreEqual(9, mBuild.Messages[0].Line);
+  mReport := TJSONObject.ParseJSONValue(TMcpBuildTools.Report(mBuild, '', '')) as TJSONObject;
   try
-    Assert.AreEqual('failed', Report.GetValue<string>('result'));
-    Assert.AreEqual('build', Report.GetValue<string>('kind'));
-    Assert.AreEqual(1, Report.GetValue<Integer>('errors'));
-    Assert.AreEqual(1, Report.GetValue<Integer>('warnings'));
-    Assert.AreEqual(1, Report.GetValue<Integer>('hints'));
-    First := Report.GetValue<TJSONArray>('messages').Items[0] as TJSONObject;
+    Assert.AreEqual('failed', mReport.GetValue<string>('result'));
+    Assert.AreEqual('build', mReport.GetValue<string>('kind'));
+    Assert.AreEqual(1, mReport.GetValue<Integer>('errors'));
+    Assert.AreEqual(1, mReport.GetValue<Integer>('warnings'));
+    Assert.AreEqual(1, mReport.GetValue<Integer>('hints'));
+    mFirst := mReport.GetValue<TJSONArray>('messages').Items[0] as TJSONObject;
     // 1-basiert wie in der IDE.
-    Assert.AreEqual(10, First.GetValue<Integer>('line'));
-    Assert.AreEqual(5, First.GetValue<Integer>('column'));
-    Assert.AreEqual('E2003', First.GetValue<string>('code'));
-    Assert.AreEqual('error', First.GetValue<string>('severity'));
+    Assert.AreEqual(10, mFirst.GetValue<Integer>('line'));
+    Assert.AreEqual(5, mFirst.GetValue<Integer>('column'));
+    Assert.AreEqual('E2003', mFirst.GetValue<string>('code'));
+    Assert.AreEqual('error', mFirst.GetValue<string>('severity'));
   finally
-    Report.Free;
+    mReport.Free;
   end;
 end;
 
 procedure TMcpBuildToolsTests.KeepsRequestedBy;
 var
-  Requested, Build: TIdeBuild;
-  Report: TJSONObject;
+  mRequested, mBuild: TIdeBuild;
+  mReport: TJSONObject;
 begin
-  Assert.IsTrue(TMcpBuildTools.FromFileText(TMcpBuildTools.ToFileText(Sample), Build));
-  Assert.AreEqual('', Build.RequestedBy, 'Build des Benutzers');
-  Requested := Sample;
-  Requested.RequestedBy := 'mcp';
-  Assert.IsTrue(TMcpBuildTools.FromFileText(TMcpBuildTools.ToFileText(Requested), Build));
-  Assert.AreEqual('mcp', Build.RequestedBy);
-  Report := TJSONObject.ParseJSONValue(TMcpBuildTools.Report(Build, '', '')) as TJSONObject;
+  Assert.IsTrue(TMcpBuildTools.FromFileText(TMcpBuildTools.ToFileText(Sample), mBuild));
+  Assert.AreEqual('', mBuild.RequestedBy, 'Build des Benutzers');
+  mRequested := Sample;
+  mRequested.RequestedBy := 'mcp';
+  Assert.IsTrue(TMcpBuildTools.FromFileText(TMcpBuildTools.ToFileText(mRequested), mBuild));
+  Assert.AreEqual('mcp', mBuild.RequestedBy);
+  mReport := TJSONObject.ParseJSONValue(TMcpBuildTools.Report(mBuild, '', '')) as TJSONObject;
   try
-    Assert.AreEqual('mcp', Report.GetValue<string>('requestedBy'));
+    Assert.AreEqual('mcp', mReport.GetValue<string>('requestedBy'));
   finally
-    Report.Free;
+    mReport.Free;
   end;
 end;
 
 procedure TMcpBuildToolsTests.OmitsFilesOutsideWorkspaceAndFiltersProject;
 var
-  Report: TJSONObject;
+  mReport: TJSONObject;
 begin
-  Report := TJSONObject.ParseJSONValue(TMcpBuildTools.Report(Sample, 'C:\P', 'App')) as TJSONObject;
+  mReport := TJSONObject.ParseJSONValue(TMcpBuildTools.Report(Sample, 'C:\P', 'App')) as TJSONObject;
   try
-    Assert.AreEqual(2, Report.GetValue<TJSONArray>('messages').Count);
-    Assert.AreEqual(1, Report.GetValue<Integer>('omittedOutsideWorkspace'));
+    Assert.AreEqual(2, mReport.GetValue<TJSONArray>('messages').Count);
+    Assert.AreEqual(1, mReport.GetValue<Integer>('omittedOutsideWorkspace'));
   finally
-    Report.Free;
+    mReport.Free;
   end;
   Assert.Contains(TMcpBuildTools.Report(Sample, 'C:\P', 'Anderes.dproj'), 'nicht Anderes.dproj');
   // ".." führt nicht aus dem Arbeitsordner hinaus.
-  Report := TJSONObject.ParseJSONValue(TMcpBuildTools.Report(Sample, 'C:\P\..\Q', '')) as TJSONObject;
+  mReport := TJSONObject.ParseJSONValue(TMcpBuildTools.Report(Sample, 'C:\P\..\Q', '')) as TJSONObject;
   try
-    Assert.AreEqual(0, Report.GetValue<TJSONArray>('messages').Count);
+    Assert.AreEqual(0, mReport.GetValue<TJSONArray>('messages').Count);
   finally
-    Report.Free;
+    mReport.Free;
   end;
 end;
 

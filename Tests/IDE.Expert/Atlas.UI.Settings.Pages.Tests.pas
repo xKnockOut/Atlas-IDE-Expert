@@ -58,94 +58,94 @@ begin
 end;
 procedure TAtlasSettingsPagesTests.SnippetsPageShowsCatalogAndValidates;
 var
-  Host: TForm;
-  Page: TAtlasSnippetsPage;
-  Own: TAtlasSnippet;
+  mHost: TForm;
+  mPage: TAtlasSnippetsPage;
+  mOwn: TAtlasSnippet;
 begin
-  Own := Default(TAtlasSnippet);
-  Own.Prefix := 'eigen';
-  Own.Body := 'X;';
-  Own.Origin := TAtlasSnippetOrigin.User;
+  mOwn := Default(TAtlasSnippet);
+  mOwn.Prefix := 'eigen';
+  mOwn.Body := 'X;';
+  mOwn.Origin := TAtlasSnippetOrigin.User;
   // Listen brauchen ein Fenster, wie in der IDE.
-  Host := TForm.CreateNew(nil);
+  mHost := TForm.CreateNew(nil);
   try
-    Page := TAtlasSnippetsPage.Create(Host);
-    Page.Parent := Host;
-    Page.HandleNeeded;
-    Page.Load(TAtlasSnippetCatalog.Create(TAtlasSnippets.BuiltIn, nil, [Own]));
-    Assert.AreEqual(Integer(Length(TAtlasSnippets.BuiltIn)) + 1, Page.Catalog.Count);
-    Assert.AreEqual('', Page.Validate);
+    mPage := TAtlasSnippetsPage.Create(mHost);
+    mPage.Parent := mHost;
+    mPage.HandleNeeded;
+    mPage.Load(TAtlasSnippetCatalog.Create(TAtlasSnippets.BuiltIn, nil, [mOwn]));
+    Assert.AreEqual(Integer(Length(TAtlasSnippets.BuiltIn)) + 1, mPage.Catalog.Count);
+    Assert.AreEqual('', mPage.Validate);
     // Zweite eigene mit demselben Kürzel: Meldung nennt das Kürzel.
-    Page.Catalog.Update(Page.Catalog.AddNew, Own);
-    Assert.IsTrue(Pos('eigen', Page.Validate) > 0);
+    mPage.Catalog.Update(mPage.Catalog.AddNew, mOwn);
+    Assert.IsTrue(Pos('eigen', mPage.Validate) > 0);
   finally
-    Host.Free;
+    mHost.Free;
   end;
 end;
 procedure TAtlasSettingsPagesTests.ServerPageRunsActions;
 var
-  Host: TForm;
-  Page: TAtlasServerPage;
-  Global: Boolean;
+  mHost: TForm;
+  mPage: TAtlasServerPage;
+  mGlobal: Boolean;
 begin
   // Listen brauchen ein Fenster, wie in der IDE.
-  Host := TForm.CreateNew(nil);
+  mHost := TForm.CreateNew(nil);
   try
-    Page := TAtlasServerPage.Create(Host);
-    Page.Parent := Host;
-    Page.HandleNeeded;
+    mPage := TAtlasServerPage.Create(mHost);
+    mPage.Parent := mHost;
+    mPage.HandleNeeded;
     // Ohne Ereignisse ist alles aus.
-    Assert.IsFalse(Page.CacheClear.Enabled);
-    Global := False;
-    Page.OnEditGlobal :=
+    Assert.IsFalse(mPage.CacheClear.Enabled);
+    mGlobal := False;
+    mPage.OnEditGlobal :=
       procedure
       begin
-        Global := True;
+        mGlobal := True;
       end;
-    WireServerPageAnswers(Page);
-    Page.Reload;
-    Page.EditGlobal.Click;
-    Assert.IsTrue(Global);
-    Page.CacheClear.Click;
-    Assert.AreEqual('Cache leer', Page.CacheInfo.Caption);
+    WireServerPageAnswers(mPage);
+    mPage.Reload;
+    mPage.EditGlobal.Click;
+    Assert.IsTrue(mGlobal);
+    mPage.CacheClear.Click;
+    Assert.AreEqual('Cache leer', mPage.CacheInfo.Caption);
   finally
-    Host.Free;
+    mHost.Free;
   end;
 end;
 procedure TAtlasSettingsPagesTests.SymbolResourcesInAllSizes;
 var
-  Variant_: TAtlasSymbolVariant;
-  Index: Integer;
-  Image: TWICImage;
-  Icon: TIcon;
-  Collection: TImageCollection;
+  mVariant_: TAtlasSymbolVariant;
+  mIndex: Integer;
+  mImage: TWICImage;
+  mIcon: TIcon;
+  mCollection: TImageCollection;
 begin
   // #751: jede Größe beider Varianten ist als PNG eingebunden und hat genau diese Größe.
-  for Variant_ := Low(TAtlasSymbolVariant) to High(TAtlasSymbolVariant) do
+  for mVariant_ := Low(TAtlasSymbolVariant) to High(TAtlasSymbolVariant) do
   begin
-    for Index := 0 to TAtlasSymbol.cSizeCount - 1 do
+    for mIndex := 0 to TAtlasSymbol.cSizeCount - 1 do
     begin
-      Image := TAtlasSymbolImages.Load(Variant_, TAtlasSymbol.Size(Index));
+      mImage := TAtlasSymbolImages.Load(mVariant_, TAtlasSymbol.Size(mIndex));
       try
-        Assert.IsNotNull(Image, TAtlasSymbol.ResourceName(Variant_, TAtlasSymbol.Size(Index)));
-        Assert.AreEqual(TAtlasSymbol.Size(Index), Image.Width);
+        Assert.IsNotNull(mImage, TAtlasSymbol.ResourceName(mVariant_, TAtlasSymbol.Size(mIndex)));
+        Assert.AreEqual(TAtlasSymbol.Size(mIndex), mImage.Width);
       finally
-        Image.Free;
+        mImage.Free;
       end;
     end;
-    Icon := TAtlasSymbolImages.Icon(Variant_);
+    mIcon := TAtlasSymbolImages.Icon(mVariant_);
     try
-      Assert.IsFalse(Icon.Empty, TAtlasSymbol.IconName(Variant_));
+      Assert.IsFalse(mIcon.Empty, TAtlasSymbol.IconName(mVariant_));
     finally
-      Icon.Free;
+      mIcon.Free;
     end;
   end;
-  Collection := TAtlasSymbolImages.Collection(nil);
+  mCollection := TAtlasSymbolImages.Collection(nil);
   try
-    Assert.AreEqual(2, Integer(Collection.Images.Count));
-    Assert.AreEqual(TAtlasSymbol.cSizeCount, Collection.Images[1].SourceImages.Count);
+    Assert.AreEqual(2, Integer(mCollection.Images.Count));
+    Assert.AreEqual(TAtlasSymbol.cSizeCount, mCollection.Images[1].SourceImages.Count);
   finally
-    Collection.Free;
+    mCollection.Free;
   end;
 end;
 initialization

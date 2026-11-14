@@ -39,7 +39,7 @@ uses
   Atlas.Common.Editing.RoutineLocals;
 
 const
-  Source =
+  cSource =
     'unit U;'#10 +                                     // 0
     'interface'#10 +                                   // 1
     'implementation'#10 +                              // 2
@@ -63,133 +63,133 @@ const
 
 function Kinds(const ALocals: TArray<TRoutineLocal>): string;
 var
-  Local: TRoutineLocal;
+  mLocal: TRoutineLocal;
 begin
   Result := '';
-  for Local in ALocals do
+  for mLocal in ALocals do
   begin
-    Result := Result + Local.Name + ':' + IntToStr(Ord(Local.Kind)) + ' ';
+    Result := Result + mLocal.Name + ':' + IntToStr(Ord(mLocal.Kind)) + ' ';
   end;
 end;
 
 procedure TRoutineLocalsTests.CollectsAllKinds;
 var
-  Tree: TSyntaxTree;
-  Locals: TArray<TRoutineLocal>;
+  mTree: TSyntaxTree;
+  mLocals: TArray<TRoutineLocal>;
 begin
-  Tree := TPascalParser.Parse(Source);
+  mTree := TPascalParser.Parse(cSource);
   try
-    Locals := TRoutineLocals.Collect(Source, Tree, TRoutineBody.RoutineAt(Tree, Pos('X := A', Source)));
+    mLocals := TRoutineLocals.Collect(cSource, mTree, TRoutineBody.RoutineAt(mTree, Pos('X := A', cSource)));
     // Parameter (0), Konstante (4), Variablen (1), Inline-Variable (2), Laufvariable (3).
-    Assert.AreEqual('A:0 B:0 C:0 K:4 X:1 Y:1 Z:1 T:2 I:3 ', Kinds(Locals));
-    Assert.AreEqual('Integer', Locals[1].TypeText);
-    Assert.AreEqual('string', Locals[2].TypeText);
+    Assert.AreEqual('A:0 B:0 C:0 K:4 X:1 Y:1 Z:1 T:2 I:3 ', Kinds(mLocals));
+    Assert.AreEqual('Integer', mLocals[1].TypeText);
+    Assert.AreEqual('string', mLocals[2].TypeText);
   finally
-    Tree.Free;
+    mTree.Free;
   end;
 end;
 
 procedure TRoutineLocalsTests.IndexOfHonorsScope;
 var
-  Tree: TSyntaxTree;
-  Locals: TArray<TRoutineLocal>;
+  mTree: TSyntaxTree;
+  mLocals: TArray<TRoutineLocal>;
 begin
-  Tree := TPascalParser.Parse(Source);
+  mTree := TPascalParser.Parse(cSource);
   try
-    Locals := TRoutineLocals.Collect(Source, Tree, TRoutineBody.RoutineAt(Tree, Pos('X := A', Source)));
-    Assert.AreEqual(7, TRoutineLocals.IndexOf(Locals, 't', Pos('Y := T', Source)));
+    mLocals := TRoutineLocals.Collect(cSource, mTree, TRoutineBody.RoutineAt(mTree, Pos('X := A', cSource)));
+    Assert.AreEqual(7, TRoutineLocals.IndexOf(mLocals, 't', Pos('Y := T', cSource)));
     // Hinter dem Block ist T nicht mehr sichtbar, I nur in der Schleife.
-    Assert.AreEqual(-1, TRoutineLocals.IndexOf(Locals, 'T', Pos('for var', Source)));
-    Assert.AreEqual(8, TRoutineLocals.IndexOf(Locals, 'I', Pos('Inc(Z', Source)));
-    Assert.AreEqual(-1, TRoutineLocals.IndexOf(Locals, 'I', Pos('C := C', Source)));
-    Assert.AreEqual(-1, TRoutineLocals.IndexOf(Locals, 'IntToStr', Pos('C := C', Source)));
+    Assert.AreEqual(-1, TRoutineLocals.IndexOf(mLocals, 'T', Pos('for var', cSource)));
+    Assert.AreEqual(8, TRoutineLocals.IndexOf(mLocals, 'I', Pos('Inc(Z', cSource)));
+    Assert.AreEqual(-1, TRoutineLocals.IndexOf(mLocals, 'I', Pos('C := C', cSource)));
+    Assert.AreEqual(-1, TRoutineLocals.IndexOf(mLocals, 'IntToStr', Pos('C := C', cSource)));
   finally
-    Tree.Free;
+    mTree.Free;
   end;
 end;
 
 procedure TRoutineLocalsTests.AccessOfDistinguishesWrites;
 var
-  Tree: TSyntaxTree;
-  Nodes: TList<TSyntaxNode>;
-  Node: TSyntaxNode;
-  Lookup: TFlowSignatureLookup;
-  Text: string;
+  mTree: TSyntaxTree;
+  mNodes: TList<TSyntaxNode>;
+  mNode: TSyntaxNode;
+  mLookup: TFlowSignatureLookup;
+  mText: string;
 begin
-  Tree := TPascalParser.Parse(Source);
-  Nodes := TList<TSyntaxNode>.Create;
+  mTree := TPascalParser.Parse(cSource);
+  mNodes := TList<TSyntaxNode>.Create;
   try
-    Lookup := TFlowSignatures.FromTree(Tree.Root);
-    TRoutineLocals.CollectKind(Tree.Root, TSyntaxKind.Identifier, Nodes);
-    Text := '';
-    for Node in Nodes do
+    mLookup := TFlowSignatures.FromTree(mTree.Root);
+    TRoutineLocals.CollectKind(mTree.Root, TSyntaxKind.Identifier, mNodes);
+    mText := '';
+    for mNode in mNodes do
     begin
-      if (Node.StartPos.Line in [10, 16, 17]) and not SameText(Node.Name, 'Inc') and
-        not SameText(Node.Name, 'IntToStr') then
+      if (mNode.StartPos.Line in [10, 16, 17]) and not SameText(mNode.Name, 'Inc') and
+        not SameText(mNode.Name, 'IntToStr') then
       begin
-        Text := Text + Node.Name + ':' + IntToStr(Ord(TRoutineLocals.AccessOf(Node, Lookup))) + ' ';
+        mText := mText + mNode.Name + ':' + IntToStr(Ord(TRoutineLocals.AccessOf(mNode, mLookup))) + ' ';
       end;
     end;
     // Lesen 0, Schreiben 1, beides 2 (Inc ändert sein erstes Argument).
-    Assert.AreEqual('X:1 A:0 Z:2 I:0 C:1 C:0 X:0 ', Text);
-    Assert.IsTrue(TRoutineLocals.HasKind(Tree.Root, TSyntaxKind.InlineVar));
-    Assert.IsFalse(TRoutineLocals.HasKind(Tree.Root, TSyntaxKind.WithStatement));
+    Assert.AreEqual('X:1 A:0 Z:2 I:0 C:1 C:0 X:0 ', mText);
+    Assert.IsTrue(TRoutineLocals.HasKind(mTree.Root, TSyntaxKind.InlineVar));
+    Assert.IsFalse(TRoutineLocals.HasKind(mTree.Root, TSyntaxKind.WithStatement));
   finally
-    Nodes.Free;
-    Tree.Free;
+    mNodes.Free;
+    mTree.Free;
   end;
 end;
 
 procedure TRoutineLocalsTests.RemovesVariables;
 var
-  Tree: TSyntaxTree;
-  Locals: TArray<TRoutineLocal>;
-  Edits: TArray<TTextEdit>;
+  mTree: TSyntaxTree;
+  mLocals: TArray<TRoutineLocal>;
+  mEdits: TArray<TTextEdit>;
 begin
-  Tree := TPascalParser.Parse(Source);
+  mTree := TPascalParser.Parse(cSource);
   try
-    Locals := TRoutineLocals.Collect(Source, Tree, TRoutineBody.RoutineAt(Tree, Pos('X := A', Source)));
+    mLocals := TRoutineLocals.Collect(cSource, mTree, TRoutineBody.RoutineAt(mTree, Pos('X := A', cSource)));
     // Ein Name aus einer Gruppe.
-    Edits := nil;
-    TRoutineLocals.RemoveVariables(Tree, Locals[4].Decl, ['X'], Edits);
-    Assert.AreEqual(StringReplace(Source, '  X, Y: Integer;', '  Y: Integer;', []),
-      TChangeSignature.ApplyEdits(Source, Edits));
+    mEdits := nil;
+    TRoutineLocals.RemoveVariables(mTree, mLocals[4].Decl, ['X'], mEdits);
+    Assert.AreEqual(StringReplace(cSource, '  X, Y: Integer;', '  Y: Integer;', []),
+      TChangeSignature.ApplyEdits(cSource, mEdits));
     // Die ganze Zeile.
-    Edits := nil;
-    TRoutineLocals.RemoveVariables(Tree, Locals[6].Decl, ['Z'], Edits);
-    Assert.AreEqual(StringReplace(Source, '  Z: Integer;'#10, '', []), TChangeSignature.ApplyEdits(Source, Edits));
+    mEdits := nil;
+    TRoutineLocals.RemoveVariables(mTree, mLocals[6].Decl, ['Z'], mEdits);
+    Assert.AreEqual(StringReplace(cSource, '  Z: Integer;'#10, '', []), TChangeSignature.ApplyEdits(cSource, mEdits));
     // Alle Einträge: auch "var".
-    Edits := nil;
-    TRoutineLocals.RemoveVariables(Tree, Locals[4].Decl, ['X', 'Y', 'Z'], Edits);
-    TRoutineLocals.RemoveVariables(Tree, Locals[6].Decl, ['X', 'Y', 'Z'], Edits);
-    Assert.AreEqual(StringReplace(Source, 'var'#10'  X, Y: Integer;'#10'  Z: Integer;'#10, '', []),
-      TChangeSignature.ApplyEdits(Source, Edits));
+    mEdits := nil;
+    TRoutineLocals.RemoveVariables(mTree, mLocals[4].Decl, ['X', 'Y', 'Z'], mEdits);
+    TRoutineLocals.RemoveVariables(mTree, mLocals[6].Decl, ['X', 'Y', 'Z'], mEdits);
+    Assert.AreEqual(StringReplace(cSource, 'var'#10'  X, Y: Integer;'#10'  Z: Integer;'#10, '', []),
+      TChangeSignature.ApplyEdits(cSource, mEdits));
   finally
-    Tree.Free;
+    mTree.Free;
   end;
 end;
 
 procedure TRoutineLocalsTests.RemovesVariableSharingLine;
 const
-  Shared = 'unit U;'#10'interface'#10'implementation'#10'procedure P;'#10'var X: Integer;'#10 +
+  cShared = 'unit U;'#10'interface'#10'implementation'#10'procedure P;'#10'var X: Integer;'#10 +
     '  Y: Integer; Z: Integer;'#10'begin'#10'  Y := 1;'#10'  Z := Y;'#10'end;'#10'end.';
 var
-  Tree: TSyntaxTree;
-  Locals: TArray<TRoutineLocal>;
-  Edits: TArray<TTextEdit>;
+  mTree: TSyntaxTree;
+  mLocals: TArray<TRoutineLocal>;
+  mEdits: TArray<TTextEdit>;
 begin
   // Steht "var" oder ein weiterer Eintrag auf der Zeile, fällt nur der Eintrag weg (#644).
-  Tree := TPascalParser.Parse(Shared);
+  mTree := TPascalParser.Parse(cShared);
   try
-    Locals := TRoutineLocals.Collect(Shared, Tree, TRoutineBody.RoutineAt(Tree, Pos('Y := 1', Shared)));
-    Edits := nil;
-    TRoutineLocals.RemoveVariables(Tree, Locals[0].Decl, ['X'], Edits);
-    Assert.AreEqual(StringReplace(Shared, 'var X: Integer;', 'var ', []), TChangeSignature.ApplyEdits(Shared, Edits));
-    Edits := nil;
-    TRoutineLocals.RemoveVariables(Tree, Locals[1].Decl, ['Y'], Edits);
-    Assert.AreEqual(StringReplace(Shared, 'Y: Integer; Z', 'Z', []), TChangeSignature.ApplyEdits(Shared, Edits));
+    mLocals := TRoutineLocals.Collect(cShared, mTree, TRoutineBody.RoutineAt(mTree, Pos('Y := 1', cShared)));
+    mEdits := nil;
+    TRoutineLocals.RemoveVariables(mTree, mLocals[0].Decl, ['X'], mEdits);
+    Assert.AreEqual(StringReplace(cShared, 'var X: Integer;', 'var ', []), TChangeSignature.ApplyEdits(cShared, mEdits));
+    mEdits := nil;
+    TRoutineLocals.RemoveVariables(mTree, mLocals[1].Decl, ['Y'], mEdits);
+    Assert.AreEqual(StringReplace(cShared, 'Y: Integer; Z', 'Z', []), TChangeSignature.ApplyEdits(cShared, mEdits));
   finally
-    Tree.Free;
+    mTree.Free;
   end;
 end;
 

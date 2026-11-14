@@ -64,45 +64,45 @@ end;
 
 function Join(const AFound: TArray<TRuleFinding>): string;
 var
-  Finding: TRuleFinding;
+  mFinding: TRuleFinding;
 begin
   Result := '';
-  for Finding in AFound do
+  for mFinding in AFound do
   begin
-    Result := Result + ' | ' + Finding.Message;
+    Result := Result + ' | ' + mFinding.Message;
   end;
 end;
 
 function OnlyMessage(const ASource: string): string;
 var
-  Found: TArray<TRuleFinding>;
+  mFound: TArray<TRuleFinding>;
 begin
-  Found := Findings(ASource);
-  Assert.AreEqual(1, Integer(Length(Found)), ASource + Join(Found));
-  Result := Found[0].Message;
+  mFound := Findings(ASource);
+  Assert.AreEqual(1, Integer(Length(mFound)), ASource + Join(mFound));
+  Result := mFound[0].Message;
 end;
 
 procedure Silent(const ASource: string);
 var
-  Found: TArray<TRuleFinding>;
+  mFound: TArray<TRuleFinding>;
 begin
-  Found := Findings(ASource);
-  Assert.AreEqual(0, Integer(Length(Found)), ASource + Join(Found));
+  mFound := Findings(ASource);
+  Assert.AreEqual(0, Integer(Length(mFound)), ASource + Join(mFound));
 end;
 
 { TDefaultPropertyRulesTests }
 
 procedure TDefaultPropertyRulesTests.IssueExample;
 var
-  Found: TArray<TRuleFinding>;
+  mFound: TArray<TRuleFinding>;
 begin
-  Found := Findings(Listen('  private'#10'    FName: string;'#10'  public'#10 +
+  mFound := Findings(Listen('  private'#10'    FName: string;'#10'  public'#10 +
     '    property Name: string read FName; default;'#10, ''));
-  Assert.AreEqual(1, Integer(Length(Found)), Join(Found));
-  Assert.AreEqual('default ist nur an Array-Properties erlaubt (wie E2132).', Found[0].Message);
-  Assert.AreEqual(Ord(TRuleConfidence.High), Ord(Found[0].Confidence));
-  Assert.AreEqual(7, Found[0].Range.StartPos.Line);
-  Assert.AreEqual(38, Found[0].Range.StartPos.Character);
+  Assert.AreEqual(1, Integer(Length(mFound)), Join(mFound));
+  Assert.AreEqual('default ist nur an Array-Properties erlaubt (wie E2132).', mFound[0].Message);
+  Assert.AreEqual(Ord(TRuleConfidence.High), Ord(mFound[0].Confidence));
+  Assert.AreEqual(7, mFound[0].Range.StartPos.Line);
+  Assert.AreEqual(38, mFound[0].Range.StartPos.Character);
   // Korrigiert: Array-Property mit default, Speicher-Standardwert "default 0" an einer einfachen Property.
   Silent(Listen('  private'#10'    FName: string;'#10'    FZahl: Integer;'#10 +
     '    function GetItem(I: Integer): string;'#10'  public'#10 +
@@ -139,14 +139,14 @@ end;
 
 procedure TDefaultPropertyRulesTests.IndexWithoutDefaultProperty;
 var
-  Found: TArray<TRuleFinding>;
+  mFound: TArray<TRuleFinding>;
 begin
-  Found := Findings(Listen('    FAnzahl: Integer;'#10, 'procedure Zeigen;'#10'var'#10'  L: TListe;'#10 +
+  mFound := Findings(Listen('    FAnzahl: Integer;'#10, 'procedure Zeigen;'#10'var'#10'  L: TListe;'#10 +
     'begin'#10'  L := TListe.Create;'#10'  L[0] := nil;'#10'end;'#10));
-  Assert.AreEqual(1, Integer(Length(Found)), Join(Found));
-  Assert.AreEqual('TListe hat keine default-Property; L[…] braucht eine (wie E2149).', Found[0].Message);
-  Assert.AreEqual(12, Found[0].Range.StartPos.Line);
-  Assert.AreEqual(2, Found[0].Range.StartPos.Character);
+  Assert.AreEqual(1, Integer(Length(mFound)), Join(mFound));
+  Assert.AreEqual('TListe hat keine default-Property; L[…] braucht eine (wie E2149).', mFound[0].Message);
+  Assert.AreEqual(12, mFound[0].Range.StartPos.Line);
+  Assert.AreEqual(2, mFound[0].Range.StartPos.Character);
 end;
 
 procedure TDefaultPropertyRulesTests.SilentAccesses;
@@ -165,33 +165,33 @@ end;
 
 procedure TDefaultPropertyRulesTests.TypesFromIndex;
 var
-  Index: ISymbolIndex;
-  Found: TArray<TRuleFinding>;
+  mIndex: ISymbolIndex;
+  mFound: TArray<TRuleFinding>;
 begin
-  Index := TSymbolIndex.Create;
-  Index.AddUnit(TIndexExtractor.ExtractText('unit Behaelter;'#10'interface'#10'type'#10'  TSack = class'#10 +
+  mIndex := TSymbolIndex.Create;
+  mIndex.AddUnit(TIndexExtractor.ExtractText('unit Behaelter;'#10'interface'#10'type'#10'  TSack = class'#10 +
     '    FAnzahl: Integer;'#10'  end;'#10'  TBeutel = class'#10'    function G(I: Integer): Integer;'#10 +
     '    property Items[I: Integer]: Integer read G; default;'#10'  end;'#10'implementation'#10'end.',
     'C:\Projekt\Behaelter.pas', nil));
-  Found := TRuleAssert.IndexFindings(TDefaultPropertyInvalidRule.Create, 'unit Listen;'#10'interface'#10 +
+  mFound := TRuleAssert.IndexFindings(TDefaultPropertyInvalidRule.Create, 'unit Listen;'#10'interface'#10 +
     'uses'#10'  Behaelter;'#10'implementation'#10'procedure Zeigen(S: TSack; B: TBeutel);'#10'begin'#10 +
-    '  S[0] := 1;'#10'  B[0] := 1;'#10'end;'#10'end.', Index, '', '');
-  Assert.AreEqual(1, Integer(Length(Found)), Join(Found));
-  Assert.AreEqual('TSack hat keine default-Property; S[…] braucht eine (wie E2149).', Found[0].Message);
+    '  S[0] := 1;'#10'  B[0] := 1;'#10'end;'#10'end.', mIndex, '', '');
+  Assert.AreEqual(1, Integer(Length(mFound)), Join(mFound));
+  Assert.AreEqual('TSack hat keine default-Property; S[…] braucht eine (wie E2149).', mFound[0].Message);
 end;
 
 procedure TDefaultPropertyRulesTests.Options;
 var
-  Source: string;
+  mSource: string;
 begin
-  Source := Listen('    property Name: string read FName; default;'#10, '');
-  Assert.AreEqual(1, Integer(Length(Findings(Source, '', 'Source/Listen.pas'))));
-  Assert.AreEqual(0, Integer(Length(Findings(Source, '{"rules": {"default-property-invalid": "off"}}',
+  mSource := Listen('    property Name: string read FName; default;'#10, '');
+  Assert.AreEqual(1, Integer(Length(Findings(mSource, '', 'Source/Listen.pas'))));
+  Assert.AreEqual(0, Integer(Length(Findings(mSource, '{"rules": {"default-property-invalid": "off"}}',
     'Source/Listen.pas'))));
-  Assert.AreEqual(0, Integer(Length(Findings(Source, '{"rules": {"group:compiler": "off"}}', 'Source/Listen.pas'))));
-  Assert.AreEqual(0, Integer(Length(Findings(Source,
+  Assert.AreEqual(0, Integer(Length(Findings(mSource, '{"rules": {"group:compiler": "off"}}', 'Source/Listen.pas'))));
+  Assert.AreEqual(0, Integer(Length(Findings(mSource,
     '{"rules": {"default-property-invalid": {"exclude": ["Source/*.pas"]}}}', 'Source/Listen.pas'))));
-  Assert.AreEqual(1, Integer(Length(Findings(Source,
+  Assert.AreEqual(1, Integer(Length(Findings(mSource,
     '{"rules": {"default-property-invalid": {"exclude": ["Alt/*.pas"]}}}', 'Source/Listen.pas'))));
 end;
 

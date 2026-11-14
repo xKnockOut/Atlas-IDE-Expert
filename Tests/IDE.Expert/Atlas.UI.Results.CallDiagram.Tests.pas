@@ -50,7 +50,7 @@ end;
 /// </summary>
 function Children(ADirection: TAtlasHierarchyDirection; const AItem: TAtlasHierarchyItem): TArray<TAtlasHierarchyItem>;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
   Result := nil;
   if AItem.Name = 'Start' then
@@ -64,9 +64,9 @@ begin
   end
   else if AItem.Name = 'Viele' then
   begin
-    for Index := 1 to 10 do
+    for mIndex := 1 to 10 do
     begin
-      Result := Result + [Item('Teil' + IntToStr(Index), 'C:\P\Teile.pas', Index)];
+      Result := Result + [Item('Teil' + IntToStr(mIndex), 'C:\P\Teile.pas', mIndex)];
     end;
   end;
   if ADirection = TAtlasHierarchyDirection.Incoming then
@@ -91,170 +91,170 @@ end;
 
 procedure TAtlasCallDiagramViewTests.ShowsFirstLevelAndLoadsOnClick;
 var
-  Host: TForm;
-  View: TAtlasCallDiagramView;
-  Loads: Integer;
-  Opened: string;
-  Box: Integer;
+  mHost: TForm;
+  mView: TAtlasCallDiagramView;
+  mLoads: Integer;
+  mOpened: string;
+  mBox: Integer;
 begin
-  Host := TForm.CreateNew(nil);
+  mHost := TForm.CreateNew(nil);
   try
-    View := NewView(Host);
-    Loads := 0;
-    View.OnLoad :=
+    mView := NewView(mHost);
+    mLoads := 0;
+    mView.OnLoad :=
       function(ADirection: TAtlasHierarchyDirection; const AItem: TAtlasHierarchyItem): TArray<TAtlasHierarchyItem>
       begin
-        Inc(Loads);
+        Inc(mLoads);
         Result := Children(ADirection, AItem);
       end;
-    Opened := '';
-    View.OnOpen :=
+    mOpened := '';
+    mView.OnOpen :=
       procedure(const AItem: TAtlasHierarchyItem)
       begin
-        Opened := AItem.Name;
+        mOpened := AItem.Name;
       end;
-    View.ShowRoots(TAtlasHierarchyDirection.Outgoing, TArray<TAtlasHierarchyItem>.Create(Item('Start', 'C:\P\Haupt.pas',
+    mView.ShowRoots(TAtlasHierarchyDirection.Outgoing, TArray<TAtlasHierarchyItem>.Create(Item('Start', 'C:\P\Haupt.pas',
       1)));
     // Wurzel und erste Ebene (ohne RTL): Start, Laden, Speichern.
-    Assert.AreEqual(1, Loads, 'erste Ebene gleich geladen');
-    Assert.AreEqual(3, Integer(Length(View.Layout.Boxes)));
-    Box := View.Layout.BoxOf(1);
-    Assert.AreEqual('Laden', View.Diagram[View.Layout.Boxes[Box].Node].Item.Name);
-    View.ClickBox(Box);
-    Assert.AreEqual(2, Loads, 'Klick lädt die nächste Ebene');
-    Assert.AreEqual(4, Integer(Length(View.Layout.Boxes)), 'Lesen dazu');
-    Assert.AreEqual(1, View.Selected);
-    View.ClickBox(View.Layout.BoxOf(1));
-    Assert.AreEqual(2, Loads, 'Zuklappen lädt nicht neu');
-    Assert.AreEqual(3, Integer(Length(View.Layout.Boxes)));
-    View.ClickBox(View.Layout.BoxOf(1));
-    Assert.AreEqual(2, Loads, 'Aufklappen nutzt die geladene Ebene');
-    Assert.AreEqual(4, Integer(Length(View.Layout.Boxes)));
+    Assert.AreEqual(1, mLoads, 'erste Ebene gleich geladen');
+    Assert.AreEqual(3, Integer(Length(mView.Layout.Boxes)));
+    mBox := mView.Layout.BoxOf(1);
+    Assert.AreEqual('Laden', mView.Diagram[mView.Layout.Boxes[mBox].Node].Item.Name);
+    mView.ClickBox(mBox);
+    Assert.AreEqual(2, mLoads, 'Klick lädt die nächste Ebene');
+    Assert.AreEqual(4, Integer(Length(mView.Layout.Boxes)), 'Lesen dazu');
+    Assert.AreEqual(1, mView.Selected);
+    mView.ClickBox(mView.Layout.BoxOf(1));
+    Assert.AreEqual(2, mLoads, 'Zuklappen lädt nicht neu');
+    Assert.AreEqual(3, Integer(Length(mView.Layout.Boxes)));
+    mView.ClickBox(mView.Layout.BoxOf(1));
+    Assert.AreEqual(2, mLoads, 'Aufklappen nutzt die geladene Ebene');
+    Assert.AreEqual(4, Integer(Length(mView.Layout.Boxes)));
     // Doppelklick bzw. Enter öffnet die gewählte Stelle.
-    View.OpenSelected;
-    Assert.AreEqual('Laden', Opened);
-    Assert.IsTrue(View.Html('Aufrufe von Start').Contains('Lesen'), 'HTML enthält die geladenen Ebenen');
+    mView.OpenSelected;
+    Assert.AreEqual('Laden', mOpened);
+    Assert.IsTrue(mView.Html('Aufrufe von Start').Contains('Lesen'), 'HTML enthält die geladenen Ebenen');
   finally
-    Host.Free;
+    mHost.Free;
   end;
 end;
 
 procedure TAtlasCallDiagramViewTests.MoreBoxShowsAllChildren;
 var
-  Host: TForm;
-  View: TAtlasCallDiagramView;
-  Index, More: Integer;
+  mHost: TForm;
+  mView: TAtlasCallDiagramView;
+  mIndex, mMore: Integer;
 begin
-  Host := TForm.CreateNew(nil);
+  mHost := TForm.CreateNew(nil);
   try
-    View := NewView(Host);
-    View.ShowRoots(TAtlasHierarchyDirection.Outgoing, TArray<TAtlasHierarchyItem>.Create(Item('Viele', 'C:\P\Haupt.pas',
+    mView := NewView(mHost);
+    mView.ShowRoots(TAtlasHierarchyDirection.Outgoing, TArray<TAtlasHierarchyItem>.Create(Item('Viele', 'C:\P\Haupt.pas',
       1)));
-    More := -1;
-    for Index := 0 to High(View.Layout.Boxes) do
+    mMore := -1;
+    for mIndex := 0 to High(mView.Layout.Boxes) do
     begin
-      if View.Layout.Boxes[Index].Kind = TAtlasCallBoxKind.More then
+      if mView.Layout.Boxes[mIndex].Kind = TAtlasCallBoxKind.More then
       begin
-        More := Index;
+        mMore := mIndex;
       end;
     end;
-    Assert.IsTrue(More >= 0, '„+ N …“ bei zehn Kindern');
-    Assert.AreEqual(2, View.Layout.Boxes[More].Hidden);
-    Assert.AreEqual(1 + TAtlasCallDiagram.cMaxChildren + 1, Integer(Length(View.Layout.Boxes)));
-    View.ClickBox(More);
-    Assert.AreEqual(11, Integer(Length(View.Layout.Boxes)), 'Klick zeigt alle');
+    Assert.IsTrue(mMore >= 0, '„+ N …“ bei zehn Kindern');
+    Assert.AreEqual(2, mView.Layout.Boxes[mMore].Hidden);
+    Assert.AreEqual(1 + TAtlasCallDiagram.cMaxChildren + 1, Integer(Length(mView.Layout.Boxes)));
+    mView.ClickBox(mMore);
+    Assert.AreEqual(11, Integer(Length(mView.Layout.Boxes)), 'Klick zeigt alle');
   finally
-    Host.Free;
+    mHost.Free;
   end;
 end;
 
 procedure TAtlasCallDiagramViewTests.ProjectOnlyHidesLibraryCalls;
 var
-  Host: TForm;
-  View: TAtlasCallDiagramView;
+  mHost: TForm;
+  mView: TAtlasCallDiagramView;
 begin
-  Host := TForm.CreateNew(nil);
+  mHost := TForm.CreateNew(nil);
   try
-    View := NewView(Host);
-    View.ShowRoots(TAtlasHierarchyDirection.Outgoing, TArray<TAtlasHierarchyItem>.Create(Item('Start', 'C:\P\Haupt.pas',
+    mView := NewView(mHost);
+    mView.ShowRoots(TAtlasHierarchyDirection.Outgoing, TArray<TAtlasHierarchyItem>.Create(Item('Start', 'C:\P\Haupt.pas',
       1)));
-    Assert.IsTrue(View.ProjectOnly, 'Vorgabe: nur Projekt-Units');
-    Assert.AreEqual(3, Integer(Length(View.Layout.Boxes)));
-    View.ProjectOnly := False;
-    Assert.AreEqual(4, Integer(Length(View.Layout.Boxes)), 'IntToStr aus der RTL wieder da');
+    Assert.IsTrue(mView.ProjectOnly, 'Vorgabe: nur Projekt-Units');
+    Assert.AreEqual(3, Integer(Length(mView.Layout.Boxes)));
+    mView.ProjectOnly := False;
+    Assert.AreEqual(4, Integer(Length(mView.Layout.Boxes)), 'IntToStr aus der RTL wieder da');
   finally
-    Host.Free;
+    mHost.Free;
   end;
 end;
 
 procedure TAtlasCallDiagramViewTests.FrameToggleOnlyWhenAllowed;
 var
-  Host: TForm;
-  Frame: TAtlasResultsFrame;
-  Roots: TArray<TAtlasHierarchyItem>;
+  mHost: TForm;
+  mFrame: TAtlasResultsFrame;
+  mRoots: TArray<TAtlasHierarchyItem>;
 begin
-  Host := TForm.CreateNew(nil);
+  mHost := TForm.CreateNew(nil);
   try
-    Frame := TAtlasResultsFrame.Create(Host);
-    Frame.Parent := Host;
-    Frame.Hierarchy.OnExpand := Children;
+    mFrame := TAtlasResultsFrame.Create(mHost);
+    mFrame.Parent := mHost;
+    mFrame.Hierarchy.OnExpand := Children;
     // Wie in NewView: ohne Projektfilter stünde IntToStr aus der RTL als vierte Box da.
-    Frame.Hierarchy.IsProjectFile := IsProject;
-    Roots := TArray<TAtlasHierarchyItem>.Create(Item('Start', 'C:\P\Haupt.pas', 1));
+    mFrame.Hierarchy.IsProjectFile := IsProject;
+    mRoots := TArray<TAtlasHierarchyItem>.Create(Item('Start', 'C:\P\Haupt.pas', 1));
     // Ohne callHierarchy.diagram: kein Umschalter, auch nicht auf Wunsch.
-    Frame.Hierarchy.DiagramAllowed := False;
-    Frame.Hierarchy.Show('Aufrufe von Start', TAtlasHierarchyDirection.Outgoing, Roots, True);
-    Assert.IsFalse(Frame.Hierarchy.Controls.Toggle.Visible);
-    Assert.IsFalse(Frame.Hierarchy.ShowsDiagram);
-    Assert.IsTrue(Frame.Tree.Visible);
+    mFrame.Hierarchy.DiagramAllowed := False;
+    mFrame.Hierarchy.Show('Aufrufe von Start', TAtlasHierarchyDirection.Outgoing, mRoots, True);
+    Assert.IsFalse(mFrame.Hierarchy.Controls.Toggle.Visible);
+    Assert.IsFalse(mFrame.Hierarchy.ShowsDiagram);
+    Assert.IsTrue(mFrame.Tree.Visible);
     // Erlaubt: Umschalter bei Aufrufhierarchien, nicht bei Typhierarchien.
-    Frame.Hierarchy.DiagramAllowed := True;
-    Frame.Hierarchy.Show('Vorfahren', TAtlasHierarchyDirection.Supertypes, Roots);
-    Assert.IsFalse(Frame.Hierarchy.Controls.Toggle.Visible, 'Typhierarchie ohne Diagramm');
-    Frame.Hierarchy.Show('Aufrufe von Start', TAtlasHierarchyDirection.Outgoing, Roots);
-    Assert.IsTrue(Frame.Hierarchy.Controls.Toggle.Visible);
-    Assert.IsFalse(Frame.Hierarchy.ShowsDiagram, 'Vorgabe: Liste');
-    Frame.Hierarchy.Controls.Toggle.Checked := True;
-    Assert.IsTrue(Frame.Hierarchy.ShowsDiagram);
-    Assert.IsTrue(Frame.Hierarchy.Controls.Bar.Visible);
-    Assert.IsFalse(Frame.Tree.Visible);
-    Assert.AreEqual(3, Integer(Length(Frame.Hierarchy.Controls.Diagram.Layout.Boxes)));
+    mFrame.Hierarchy.DiagramAllowed := True;
+    mFrame.Hierarchy.Show('Vorfahren', TAtlasHierarchyDirection.Supertypes, mRoots);
+    Assert.IsFalse(mFrame.Hierarchy.Controls.Toggle.Visible, 'Typhierarchie ohne Diagramm');
+    mFrame.Hierarchy.Show('Aufrufe von Start', TAtlasHierarchyDirection.Outgoing, mRoots);
+    Assert.IsTrue(mFrame.Hierarchy.Controls.Toggle.Visible);
+    Assert.IsFalse(mFrame.Hierarchy.ShowsDiagram, 'Vorgabe: Liste');
+    mFrame.Hierarchy.Controls.Toggle.Checked := True;
+    Assert.IsTrue(mFrame.Hierarchy.ShowsDiagram);
+    Assert.IsTrue(mFrame.Hierarchy.Controls.Bar.Visible);
+    Assert.IsFalse(mFrame.Tree.Visible);
+    Assert.AreEqual(3, Integer(Length(mFrame.Hierarchy.Controls.Diagram.Layout.Boxes)));
     // Abschalten der Einstellung nimmt das Diagramm weg.
-    Frame.Hierarchy.DiagramAllowed := False;
-    Assert.IsFalse(Frame.Hierarchy.ShowsDiagram);
-    Assert.IsFalse(Frame.Hierarchy.Controls.Toggle.Visible);
-    Assert.IsTrue(Frame.Tree.Visible);
+    mFrame.Hierarchy.DiagramAllowed := False;
+    Assert.IsFalse(mFrame.Hierarchy.ShowsDiagram);
+    Assert.IsFalse(mFrame.Hierarchy.Controls.Toggle.Visible);
+    Assert.IsTrue(mFrame.Tree.Visible);
   finally
-    Host.Free;
+    mHost.Free;
   end;
 end;
 
 procedure TAtlasCallDiagramViewTests.FrameSwitchesDirectionAndSavesHtml;
 var
-  Host: TForm;
-  Frame: TAtlasResultsFrame;
-  Html: string;
+  mHost: TForm;
+  mFrame: TAtlasResultsFrame;
+  mHtml: string;
 begin
-  Host := TForm.CreateNew(nil);
+  mHost := TForm.CreateNew(nil);
   try
-    Frame := TAtlasResultsFrame.Create(Host);
-    Frame.Parent := Host;
-    Frame.Hierarchy.OnExpand := Children;
-    Frame.Hierarchy.DiagramAllowed := True;
-    Frame.Hierarchy.Show('Aufrufe von Start', TAtlasHierarchyDirection.Outgoing,
+    mFrame := TAtlasResultsFrame.Create(mHost);
+    mFrame.Parent := mHost;
+    mFrame.Hierarchy.OnExpand := Children;
+    mFrame.Hierarchy.DiagramAllowed := True;
+    mFrame.Hierarchy.Show('Aufrufe von Start', TAtlasHierarchyDirection.Outgoing,
       TArray<TAtlasHierarchyItem>.Create(Item('Start', 'C:\P\Haupt.pas', 1)), True);
-    Assert.IsTrue(Frame.Hierarchy.ShowsDiagram, 'gleich als Diagramm');
-    Assert.IsTrue(Frame.Hierarchy.Controls.Outgoing.Checked);
-    Frame.Hierarchy.Controls.Incoming.Checked := True;
-    Assert.AreEqual(Ord(TAtlasHierarchyDirection.Incoming), Ord(Frame.Hierarchy.Direction));
-    Assert.IsTrue(Frame.Hierarchy.ShowsDiagram, 'bleibt Diagramm');
-    Assert.AreEqual('Aufrufer', Frame.Hierarchy.Controls.Diagram.Diagram[1].Item.Name, 'dieselbe Wurzel, eingehend geladen');
-    Html := Frame.Hierarchy.DiagramHtml;
-    Assert.IsTrue(Html.StartsWith('<!DOCTYPE html>', True));
-    Assert.IsTrue(Html.Contains('Aufrufer'));
-    Assert.IsFalse(Html.Contains('src="http'), 'keine externen Verweise');
+    Assert.IsTrue(mFrame.Hierarchy.ShowsDiagram, 'gleich als Diagramm');
+    Assert.IsTrue(mFrame.Hierarchy.Controls.Outgoing.Checked);
+    mFrame.Hierarchy.Controls.Incoming.Checked := True;
+    Assert.AreEqual(Ord(TAtlasHierarchyDirection.Incoming), Ord(mFrame.Hierarchy.Direction));
+    Assert.IsTrue(mFrame.Hierarchy.ShowsDiagram, 'bleibt Diagramm');
+    Assert.AreEqual('Aufrufer', mFrame.Hierarchy.Controls.Diagram.Diagram[1].Item.Name, 'dieselbe Wurzel, eingehend geladen');
+    mHtml := mFrame.Hierarchy.DiagramHtml;
+    Assert.IsTrue(mHtml.StartsWith('<!DOCTYPE html>', True));
+    Assert.IsTrue(mHtml.Contains('Aufrufer'));
+    Assert.IsFalse(mHtml.Contains('src="http'), 'keine externen Verweise');
   finally
-    Host.Free;
+    mHost.Free;
   end;
 end;
 

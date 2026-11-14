@@ -85,22 +85,22 @@ end;
 
 procedure TFileRulesTests.PathConcatIssueExample;
 var
-  Findings: TArray<TRuleFinding>;
+  mFindings: TArray<TRuleFinding>;
 begin
-  Findings := PathFindings(Body('  Ordner := TPath.GetDocumentsPath;'#10'  Ziel := Ordner + ''export.csv'';'#10));
-  Assert.AreEqual(1, Integer(Length(Findings)));
-  Assert.AreEqual(cPathConcatWithoutDelimiterRuleId, Findings[0].RuleId);
-  Assert.AreEqual(Ord(TRuleSeverity.Warning), Ord(Findings[0].Severity));
-  Assert.AreEqual(Ord(TRuleConfidence.High), Ord(Findings[0].Confidence));
+  mFindings := PathFindings(Body('  Ordner := TPath.GetDocumentsPath;'#10'  Ziel := Ordner + ''export.csv'';'#10));
+  Assert.AreEqual(1, Integer(Length(mFindings)));
+  Assert.AreEqual(cPathConcatWithoutDelimiterRuleId, mFindings[0].RuleId);
+  Assert.AreEqual(Ord(TRuleSeverity.Warning), Ord(mFindings[0].Severity));
+  Assert.AreEqual(Ord(TRuleConfidence.High), Ord(mFindings[0].Confidence));
   Assert.AreEqual('Ordner kommt aus GetDocumentsPath und hat keinen abschließenden Backslash; das Ergebnis ist ' +
-    '…\Documentsexport.csv.', Findings[0].Message);
-  Assert.AreEqual(10, Findings[0].Range.StartPos.Line);
-  Assert.AreEqual(10, Findings[0].Range.StartPos.Character);
-  Assert.AreEqual(31, Findings[0].Range.EndPos.Character);
-  Assert.AreEqual(1, Integer(Length(Findings[0].Fixes)));
-  Assert.AreEqual('TPath.Combine verwenden', Findings[0].Fixes[0].Title);
-  Assert.AreEqual(1, Integer(Length(Findings[0].Fixes[0].Edits)), 'System.IOUtils ist schon eingebunden');
-  Assert.AreEqual('TPath.Combine(Ordner, ''export.csv'')', Findings[0].Fixes[0].Edits[0].NewText);
+    '…\Documentsexport.csv.', mFindings[0].Message);
+  Assert.AreEqual(10, mFindings[0].Range.StartPos.Line);
+  Assert.AreEqual(10, mFindings[0].Range.StartPos.Character);
+  Assert.AreEqual(31, mFindings[0].Range.EndPos.Character);
+  Assert.AreEqual(1, Integer(Length(mFindings[0].Fixes)));
+  Assert.AreEqual('TPath.Combine verwenden', mFindings[0].Fixes[0].Title);
+  Assert.AreEqual(1, Integer(Length(mFindings[0].Fixes[0].Edits)), 'System.IOUtils ist schon eingebunden');
+  Assert.AreEqual('TPath.Combine(Ordner, ''export.csv'')', mFindings[0].Fixes[0].Edits[0].NewText);
   // Korrigierte Form und naheliegender Negativfall
   Assert.AreEqual(0, PathCount(Body('  Ordner := TPath.GetDocumentsPath;'#10 +
     '  Ziel := TPath.Combine(Ordner, ''export.csv'');'#10)));
@@ -109,47 +109,47 @@ end;
 
 procedure TFileRulesTests.PathConcatDirectCalls;
 var
-  Findings: TArray<TRuleFinding>;
+  mFindings: TArray<TRuleFinding>;
 begin
-  Findings := PathFindings(Body('  Ziel := ExtractFileDir(Datei) + ''alt.bak'';'#10));
-  Assert.AreEqual(1, Integer(Length(Findings)));
+  mFindings := PathFindings(Body('  Ziel := ExtractFileDir(Datei) + ''alt.bak'';'#10));
+  Assert.AreEqual(1, Integer(Length(mFindings)));
   Assert.AreEqual('ExtractFileDir liefert keinen abschließenden Backslash; das Ergebnis ist …\Ordneralt.bak.',
-    Findings[0].Message);
-  Assert.AreEqual('TPath.Combine(ExtractFileDir(Datei), ''alt.bak'')', Findings[0].Fixes[0].Edits[0].NewText);
+    mFindings[0].Message);
+  Assert.AreEqual('TPath.Combine(ExtractFileDir(Datei), ''alt.bak'')', mFindings[0].Fixes[0].Edits[0].NewText);
   Assert.AreEqual(1, PathCount(Body('  Ziel := ExcludeTrailingPathDelimiter(Datei) + ''x.txt'';'#10)));
   Assert.AreEqual(1, PathCount(Body('  Ziel := GetCurrentDir + ''log.txt'';'#10)));
   Assert.AreEqual(1, PathCount(Body('  Ziel := System.SysUtils.GetCurrentDir + ''log.txt'';'#10)));
   Assert.AreEqual(1, PathCount(Body('  Ziel := TDirectory.GetCurrentDirectory + ''log.txt'';'#10)));
   Assert.AreEqual(1, PathCount(Body('  Ziel := TPath.GetDirectoryName(Datei) + ''log.txt'';'#10)));
   // Bezeichner als Name: mittlere Konfidenz
-  Findings := PathFindings(Body('  Ziel := ExtractFileDir(Datei) + Name;'#10));
-  Assert.AreEqual(1, Integer(Length(Findings)));
-  Assert.AreEqual(Ord(TRuleConfidence.Medium), Ord(Findings[0].Confidence));
+  mFindings := PathFindings(Body('  Ziel := ExtractFileDir(Datei) + Name;'#10));
+  Assert.AreEqual(1, Integer(Length(mFindings)));
+  Assert.AreEqual(Ord(TRuleConfidence.Medium), Ord(mFindings[0].Confidence));
   Assert.AreEqual('ExtractFileDir liefert keinen abschließenden Backslash; Name wird ohne Trennzeichen angehängt.',
-    Findings[0].Message);
+    mFindings[0].Message);
   // In einer Kette: Ordner + Name + Endung meldet einmal; Präfix + Ordner + Name ohne Korrektur.
-  Findings := PathFindings(Body('  Ziel := ExtractFileDir(Datei) + Name + ''.txt'';'#10));
-  Assert.AreEqual(1, Integer(Length(Findings)));
-  Assert.AreEqual(1, Integer(Length(Findings[0].Fixes)));
-  Findings := PathFindings(Body('  Ziel := ''\\?\'' + ExtractFileDir(Datei) + ''log.txt'';'#10));
-  Assert.AreEqual(1, Integer(Length(Findings)));
-  Assert.AreEqual(0, Integer(Length(Findings[0].Fixes)));
+  mFindings := PathFindings(Body('  Ziel := ExtractFileDir(Datei) + Name + ''.txt'';'#10));
+  Assert.AreEqual(1, Integer(Length(mFindings)));
+  Assert.AreEqual(1, Integer(Length(mFindings[0].Fixes)));
+  mFindings := PathFindings(Body('  Ziel := ''\\?\'' + ExtractFileDir(Datei) + ''log.txt'';'#10));
+  Assert.AreEqual(1, Integer(Length(mFindings)));
+  Assert.AreEqual(0, Integer(Length(mFindings[0].Fixes)));
 end;
 
 procedure TFileRulesTests.PathConcatVariables;
 var
-  Findings: TArray<TRuleFinding>;
+  mFindings: TArray<TRuleFinding>;
 begin
   // Inline-Variable, Ordner wird nur gelesen (ForceDirectories)
   Assert.AreEqual(1, PathCount(Body('  var Basis := TPath.GetHomePath;'#10'  ForceDirectories(Basis);'#10 +
     '  Ziel := Basis + ''Atlas'';'#10)));
   // Ohne System.IOUtils ergänzt die Korrektur die uses.
-  Findings := PathFindings('unit Pfade;'#10'interface'#10'implementation'#10'uses'#10'  System.SysUtils;'#10 +
+  mFindings := PathFindings('unit Pfade;'#10'interface'#10'implementation'#10'uses'#10'  System.SysUtils;'#10 +
     'function Ziel(const Datei: string): string;'#10'begin'#10'  Result := ExtractFileDir(Datei) + ''x.txt'';'#10 +
     'end;'#10'end.');
-  Assert.AreEqual(1, Integer(Length(Findings)));
-  Assert.AreEqual(2, Integer(Length(Findings[0].Fixes[0].Edits)));
-  Assert.AreEqual(',' + sLineBreak + '  System.IOUtils', StringReplace(Findings[0].Fixes[0].Edits[1].NewText, #10,
+  Assert.AreEqual(1, Integer(Length(mFindings)));
+  Assert.AreEqual(2, Integer(Length(mFindings[0].Fixes[0].Edits)));
+  Assert.AreEqual(',' + sLineBreak + '  System.IOUtils', StringReplace(mFindings[0].Fixes[0].Edits[1].NewText, #10,
     sLineBreak, []));
 end;
 
@@ -177,14 +177,14 @@ end;
 
 procedure TFileRulesTests.PathConcatOptions;
 var
-  Source: string;
+  mSource: string;
 begin
-  Source := Body('  Ziel := ExtractFileDir(Datei) + ''x.txt'';'#10);
-  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TPathConcatWithoutDelimiterRule.Create, Source,
+  mSource := Body('  Ziel := ExtractFileDir(Datei) + ''x.txt'';'#10);
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TPathConcatWithoutDelimiterRule.Create, mSource,
     '{"rules": {"path-concat-without-delimiter": "off"}}'))));
-  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TPathConcatWithoutDelimiterRule.Create, Source,
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TPathConcatWithoutDelimiterRule.Create, mSource,
     '{"rules": {"group:robustness": "off"}}'))));
-  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TPathConcatWithoutDelimiterRule.Create, Source,
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TPathConcatWithoutDelimiterRule.Create, mSource,
     '{"rules": {"path-concat-without-delimiter": {"exclude": ["Source/*.pas"]}}}', 'Source/Pfade.pas'))));
 end;
 
@@ -206,18 +206,18 @@ end;
 
 procedure TFileRulesTests.HardcodedPathIssueExample;
 var
-  Findings: TArray<TRuleFinding>;
+  mFindings: TArray<TRuleFinding>;
 begin
-  Findings := TRuleAssert.Findings(THardcodedPathRule.Create,
+  mFindings := TRuleAssert.Findings(THardcodedPathRule.Create,
     UnitWith('  Protokoll.SaveToFile(''C:\Users\marco\Desktop\log.txt'');'));
-  Assert.AreEqual(1, Integer(Length(Findings)));
-  Assert.AreEqual(cHardcodedPathRuleId, Findings[0].RuleId);
-  Assert.AreEqual(Ord(TRuleSeverity.Hint), Ord(Findings[0].Severity));
-  Assert.AreEqual(Ord(TRuleConfidence.High), Ord(Findings[0].Confidence));
-  Assert.AreEqual('Fester Benutzerpfad; auf anderen Rechnern gibt es ihn nicht.', Findings[0].Message);
-  Assert.AreEqual(5, Findings[0].Range.StartPos.Line);
-  Assert.AreEqual(23, Findings[0].Range.StartPos.Character);
-  Assert.AreEqual(0, Integer(Length(Findings[0].Fixes)));
+  Assert.AreEqual(1, Integer(Length(mFindings)));
+  Assert.AreEqual(cHardcodedPathRuleId, mFindings[0].RuleId);
+  Assert.AreEqual(Ord(TRuleSeverity.Hint), Ord(mFindings[0].Severity));
+  Assert.AreEqual(Ord(TRuleConfidence.High), Ord(mFindings[0].Confidence));
+  Assert.AreEqual('Fester Benutzerpfad; auf anderen Rechnern gibt es ihn nicht.', mFindings[0].Message);
+  Assert.AreEqual(5, mFindings[0].Range.StartPos.Line);
+  Assert.AreEqual(23, mFindings[0].Range.StartPos.Character);
+  Assert.AreEqual(0, Integer(Length(mFindings[0].Fixes)));
   // Korrigierte Form und naheliegender Negativfall
   Assert.AreEqual(0, HardcodedCount(UnitWith(
     '  Protokoll.SaveToFile(TPath.Combine(TPath.GetDocumentsPath, ''log.txt''));')));
@@ -253,23 +253,23 @@ end;
 
 procedure TFileRulesTests.HardcodedPathAllowedUnitsAndTests;
 const
-  Constants = 'unit App.Pfade;'#10'interface'#10'const'#10'  Standardordner = ''C:\ProgramData\Atlas'';'#10 +
+  cConstants = 'unit App.Pfade;'#10'interface'#10'const'#10'  Standardordner = ''C:\ProgramData\Atlas'';'#10 +
     'implementation'#10'end.';
 var
-  Issues: TArray<TConfigurationIssue>;
+  mIssues: TArray<TConfigurationIssue>;
 begin
-  Assert.AreEqual(1, HardcodedCount(Constants));
-  Assert.AreEqual(0, HardcodedCount(Constants, '{"rules": {"hardcoded-path": {"allowUnits": ["app.pfade"]}}}'));
-  Assert.AreEqual(0, HardcodedCount(Constants, '{"rules": {"hardcoded-path": {"allowUnits": ["App.*"]}}}'));
-  Assert.AreEqual(1, HardcodedCount(Constants, '{"rules": {"hardcoded-path": {"allowUnits": ["App.Andere"]}}}'));
-  Assert.AreEqual(0, HardcodedCount(Constants, '{"rules": {"hardcoded-path": "off"}}'));
-  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(THardcodedPathRule.Create, Constants,
+  Assert.AreEqual(1, HardcodedCount(cConstants));
+  Assert.AreEqual(0, HardcodedCount(cConstants, '{"rules": {"hardcoded-path": {"allowUnits": ["app.pfade"]}}}'));
+  Assert.AreEqual(0, HardcodedCount(cConstants, '{"rules": {"hardcoded-path": {"allowUnits": ["App.*"]}}}'));
+  Assert.AreEqual(1, HardcodedCount(cConstants, '{"rules": {"hardcoded-path": {"allowUnits": ["App.Andere"]}}}'));
+  Assert.AreEqual(0, HardcodedCount(cConstants, '{"rules": {"hardcoded-path": "off"}}'));
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(THardcodedPathRule.Create, cConstants,
     '{"rules": {"hardcoded-path": {"exclude": ["Source/*.pas"]}}}', 'Source/App.Pfade.pas'))));
   // Test-Units bleiben still.
   Assert.AreEqual(0, HardcodedCount('unit Pfade.Tests;'#10'interface'#10'uses'#10'  DUnitX.TestFramework;'#10 +
     'implementation'#10'const'#10'  Probe = ''C:\Temp\probe.txt'';'#10'end.'));
-  TConfigurationParser.Parse('{"rules": {"hardcoded-path": {"allowUnits": "App.Pfade"}}}', Issues);
-  Assert.AreEqual(1, Integer(Length(Issues)));
+  TConfigurationParser.Parse('{"rules": {"hardcoded-path": {"allowUnits": "App.Pfade"}}}', mIssues);
+  Assert.AreEqual(1, Integer(Length(mIssues)));
 end;
 
 function CompareUnit(const ACondition: string): string;
@@ -290,21 +290,21 @@ end;
 
 procedure TFileRulesTests.FilenameCompareIssueExample;
 var
-  Findings: TArray<TRuleFinding>;
+  mFindings: TArray<TRuleFinding>;
 begin
-  Findings := CompareFindings(CompareUnit('ExtractFileName(Datei) = ''Config.ini'''));
-  Assert.AreEqual(1, Integer(Length(Findings)));
-  Assert.AreEqual(cFilenameCompareCaseRuleId, Findings[0].RuleId);
-  Assert.AreEqual(Ord(TRuleSeverity.Hint), Ord(Findings[0].Severity));
-  Assert.AreEqual(Ord(TRuleConfidence.Medium), Ord(Findings[0].Confidence));
+  mFindings := CompareFindings(CompareUnit('ExtractFileName(Datei) = ''Config.ini'''));
+  Assert.AreEqual(1, Integer(Length(mFindings)));
+  Assert.AreEqual(cFilenameCompareCaseRuleId, mFindings[0].RuleId);
+  Assert.AreEqual(Ord(TRuleSeverity.Hint), Ord(mFindings[0].Severity));
+  Assert.AreEqual(Ord(TRuleConfidence.Medium), Ord(mFindings[0].Confidence));
   Assert.AreEqual('Dateinamen unterscheiden unter Windows nicht nach Groß-/Kleinschreibung; SameFileName ' +
-    'vergleicht richtig.', Findings[0].Message);
-  Assert.AreEqual(7, Findings[0].Range.StartPos.Line);
-  Assert.AreEqual(5, Findings[0].Range.StartPos.Character);
-  Assert.AreEqual(1, Integer(Length(Findings[0].Fixes)));
-  Assert.AreEqual('SameFileName verwenden', Findings[0].Fixes[0].Title);
-  Assert.AreEqual(1, Integer(Length(Findings[0].Fixes[0].Edits)));
-  Assert.AreEqual('SameFileName(ExtractFileName(Datei), ''Config.ini'')', Findings[0].Fixes[0].Edits[0].NewText);
+    'vergleicht richtig.', mFindings[0].Message);
+  Assert.AreEqual(7, mFindings[0].Range.StartPos.Line);
+  Assert.AreEqual(5, mFindings[0].Range.StartPos.Character);
+  Assert.AreEqual(1, Integer(Length(mFindings[0].Fixes)));
+  Assert.AreEqual('SameFileName verwenden', mFindings[0].Fixes[0].Title);
+  Assert.AreEqual(1, Integer(Length(mFindings[0].Fixes[0].Edits)));
+  Assert.AreEqual('SameFileName(ExtractFileName(Datei), ''Config.ini'')', mFindings[0].Fixes[0].Edits[0].NewText);
   // Korrigierte Form und naheliegender Negativfall
   Assert.AreEqual(0, CompareCount('SameFileName(ExtractFileName(Datei), ''Config.ini'')'));
   Assert.AreEqual(0, CompareCount('ExtractFileName(Datei) = '''''));
@@ -312,22 +312,22 @@ end;
 
 procedure TFileRulesTests.FilenameCompareVariants;
 var
-  Findings: TArray<TRuleFinding>;
+  mFindings: TArray<TRuleFinding>;
 begin
-  Findings := CompareFindings(CompareUnit('ExtractFileExt(Datei) <> ''.pas'''));
-  Assert.AreEqual(1, Integer(Length(Findings)));
-  Assert.AreEqual('not SameFileName(ExtractFileExt(Datei), ''.pas'')', Findings[0].Fixes[0].Edits[0].NewText);
+  mFindings := CompareFindings(CompareUnit('ExtractFileExt(Datei) <> ''.pas'''));
+  Assert.AreEqual(1, Integer(Length(mFindings)));
+  Assert.AreEqual('not SameFileName(ExtractFileExt(Datei), ''.pas'')', mFindings[0].Fixes[0].Edits[0].NewText);
   Assert.AreEqual(1, CompareCount('TPath.GetFileName(Datei) = Name'));
   Assert.AreEqual(1, CompareCount('OpenDialog.FileName = SaveDialog.FileName'));
   Assert.AreEqual(1, CompareCount('Application.ExeName = Datei'));
   Assert.AreEqual(1, CompareCount('AFileName = FLetzteDatei'));
   Assert.AreEqual(1, CompareCount('(ExpandFileName(Datei)) = ExpandFileName(Alt)'));
   // Ohne System.SysUtils trägt die Korrektur die Unit ein.
-  Findings := CompareFindings('unit Dateien;'#10'interface'#10'implementation'#10'uses'#10'  System.Classes;'#10 +
+  mFindings := CompareFindings('unit Dateien;'#10'interface'#10'implementation'#10'uses'#10'  System.Classes;'#10 +
     'function Gleich(Liste: TStrings): Boolean;'#10'begin'#10'  Result := Liste.FileName = ''a.txt'';'#10'end;'#10 +
     'end.');
-  Assert.AreEqual(1, Integer(Length(Findings)));
-  Assert.AreEqual(2, Integer(Length(Findings[0].Fixes[0].Edits)));
+  Assert.AreEqual(1, Integer(Length(mFindings)));
+  Assert.AreEqual(2, Integer(Length(mFindings[0].Fixes[0].Edits)));
 end;
 
 procedure TFileRulesTests.FilenameCompareSilentCases;
@@ -380,29 +380,29 @@ end;
 
 procedure TFileRulesTests.FilenameCompareTestUnits;
 const
-  Body = 'implementation'#10'function Gibt(const AFileName: string): Boolean;'#10'begin'#10 +
+  cBody = 'implementation'#10'function Gibt(const AFileName: string): Boolean;'#10'begin'#10 +
     '  Result := (AFileName = ''A.dfm'') or (AFileName = ''C.fmx'');'#10'end;'#10'end.';
 begin
   // Testdoubles vergleichen mit selbst vergebenen Namen.
   Assert.AreEqual(0, Integer(Length(CompareFindings('unit Doubles.Tests;'#10'interface'#10'uses'#10 +
-    '  DUnitX.TestFramework;'#10 + Body))));
+    '  DUnitX.TestFramework;'#10 + cBody))));
   Assert.AreEqual(2, Integer(Length(CompareFindings('unit Doubles;'#10'interface'#10'uses'#10 +
-    '  System.SysUtils;'#10 + Body))));
+    '  System.SysUtils;'#10 + cBody))));
 end;
 
 procedure TFileRulesTests.RulesAreRegistered;
 var
-  Rule: IRule;
-  Ids: string;
+  mRule: IRule;
+  mIds: string;
 begin
-  Ids := '';
-  for Rule in BuiltinRules do
+  mIds := '';
+  for mRule in BuiltinRules do
   begin
-    Ids := Ids + ' ' + Rule.Descriptor.Id;
+    mIds := mIds + ' ' + mRule.Descriptor.Id;
   end;
-  Assert.IsTrue(Pos(' ' + cPathConcatWithoutDelimiterRuleId, Ids) > 0);
-  Assert.IsTrue(Pos(' ' + cHardcodedPathRuleId, Ids) > 0);
-  Assert.IsTrue(Pos(' ' + cFilenameCompareCaseRuleId, Ids) > 0);
+  Assert.IsTrue(Pos(' ' + cPathConcatWithoutDelimiterRuleId, mIds) > 0);
+  Assert.IsTrue(Pos(' ' + cHardcodedPathRuleId, mIds) > 0);
+  Assert.IsTrue(Pos(' ' + cFilenameCompareCaseRuleId, mIds) > 0);
 end;
 
 initialization

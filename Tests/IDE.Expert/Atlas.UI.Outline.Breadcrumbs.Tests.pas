@@ -156,101 +156,101 @@ end;
 
 procedure TAtlasBreadcrumbBarTests.KeepsHeightAndShowsEmptyText;
 var
-  Height_: Integer;
+  mHeight_: Integer;
 begin
-  Height_ := FBar.Height;
-  Assert.AreEqual(TAtlasBreadcrumbBar.BarHeight(FBar.CurrentPPI), Height_);
+  mHeight_ := FBar.Height;
+  Assert.AreEqual(TAtlasBreadcrumbBar.BarHeight(FBar.CurrentPPI), mHeight_);
   FBar.EmptyText := 'Keine Gliederung an dieser Stelle';
   Assert.AreEqual(0, Integer(Length(FBar.Crumbs)));
   Assert.AreEqual(-1, FBar.CrumbAt(10, 5));
   FBar.SetCrumbs(Path);
-  FBar.Height := Height_ * 3;
-  Assert.AreEqual(Height_, FBar.Height, 'eine Zeile, nie höher');
+  FBar.Height := mHeight_ * 3;
+  Assert.AreEqual(mHeight_, FBar.Height, 'eine Zeile, nie höher');
   FBar.Repaint;
 end;
 
 procedure TAtlasBreadcrumbBarTests.HitTestAndMenuOnlyWithSiblings;
 var
-  Setup: TAtlasCrumbBarSetup;
-  Opened: Integer;
-  Area: TRect;
+  mSetup: TAtlasCrumbBarSetup;
+  mOpened: Integer;
+  mArea: TRect;
 begin
-  Opened := -1;
-  Setup.OnOpenMenu :=
+  mOpened := -1;
+  mSetup.OnOpenMenu :=
     procedure(AIndex: Integer; const APoint: TPoint)
     begin
-      Opened := AIndex;
+      mOpened := AIndex;
     end;
-  FBar.Setup := Setup;
+  FBar.Setup := mSetup;
   FBar.SetCrumbs(Path);
-  Area := FBar.CrumbRect(2);
-  Assert.IsFalse(Area.IsEmpty);
-  Assert.AreEqual(2, FBar.CrumbAt(Area.CenterPoint.X, Area.CenterPoint.Y));
-  Assert.IsTrue(FBar.CrumbRect(1).Right <= Area.Left, 'Reihenfolge von links');
+  mArea := FBar.CrumbRect(2);
+  Assert.IsFalse(mArea.IsEmpty);
+  Assert.AreEqual(2, FBar.CrumbAt(mArea.CenterPoint.X, mArea.CenterPoint.Y));
+  Assert.IsTrue(FBar.CrumbRect(1).Right <= mArea.Left, 'Reihenfolge von links');
   Assert.AreEqual(-1, FBar.CrumbAt(FBar.ClientWidth - 2, 5), 'rechts neben dem Pfad');
   FBar.OpenMenu(2);
-  Assert.AreEqual(2, Opened);
-  Opened := -1;
+  Assert.AreEqual(2, mOpened);
+  mOpened := -1;
   FBar.OpenMenu(0);
-  Assert.AreEqual(-1, Opened, 'Unit ohne Geschwister: kein Menü');
+  Assert.AreEqual(-1, mOpened, 'Unit ohne Geschwister: kein Menü');
 end;
 
 procedure TAtlasBreadcrumbBarTests.KeyboardMovesAndOpens;
 var
-  Setup: TAtlasCrumbBarSetup;
-  Opened: Integer;
-  Left: Boolean;
-  Key: Word;
+  mSetup: TAtlasCrumbBarSetup;
+  mOpened: Integer;
+  mLeft: Boolean;
+  mKey: Word;
 begin
-  Opened := -1;
-  Left := False;
-  Setup.OnOpenMenu :=
+  mOpened := -1;
+  mLeft := False;
+  mSetup.OnOpenMenu :=
     procedure(AIndex: Integer; const APoint: TPoint)
     begin
-      Opened := AIndex;
+      mOpened := AIndex;
     end;
-  Setup.OnLeave :=
+  mSetup.OnLeave :=
     procedure
     begin
-      Left := True;
+      mLeft := True;
     end;
-  FBar.Setup := Setup;
+  FBar.Setup := mSetup;
   FBar.SetCrumbs(Path);
   Assert.AreEqual(3, FBar.Selected, 'letztes Glied');
-  Key := VK_LEFT;
-  TBarAccess(FBar).KeyDown(Key, []);
+  mKey := VK_LEFT;
+  TBarAccess(FBar).KeyDown(mKey, []);
   Assert.AreEqual(2, FBar.Selected);
-  Assert.AreEqual(0, Integer(Key), 'Taste verbraucht');
-  Key := VK_DOWN;
-  TBarAccess(FBar).KeyDown(Key, []);
-  Assert.AreEqual(2, Opened);
-  Key := VK_RIGHT;
-  TBarAccess(FBar).KeyDown(Key, []);
-  Key := VK_RIGHT;
-  TBarAccess(FBar).KeyDown(Key, []);
+  Assert.AreEqual(0, Integer(mKey), 'Taste verbraucht');
+  mKey := VK_DOWN;
+  TBarAccess(FBar).KeyDown(mKey, []);
+  Assert.AreEqual(2, mOpened);
+  mKey := VK_RIGHT;
+  TBarAccess(FBar).KeyDown(mKey, []);
+  mKey := VK_RIGHT;
+  TBarAccess(FBar).KeyDown(mKey, []);
   Assert.AreEqual(3, FBar.Selected, 'bleibt am Ende');
-  Key := VK_HOME;
-  TBarAccess(FBar).KeyDown(Key, []);
+  mKey := VK_HOME;
+  TBarAccess(FBar).KeyDown(mKey, []);
   Assert.AreEqual(0, FBar.Selected);
-  Key := VK_ESCAPE;
-  TBarAccess(FBar).KeyDown(Key, []);
-  Assert.IsTrue(Left);
-  Key := Ord('A');
-  TBarAccess(FBar).KeyDown(Key, []);
-  Assert.AreEqual(Ord('A'), Integer(Key), 'andere Tasten nicht verbraucht');
+  mKey := VK_ESCAPE;
+  TBarAccess(FBar).KeyDown(mKey, []);
+  Assert.IsTrue(mLeft);
+  mKey := Ord('A');
+  TBarAccess(FBar).KeyDown(mKey, []);
+  Assert.AreEqual(Ord('A'), Integer(mKey), 'andere Tasten nicht verbraucht');
 end;
 
 procedure TAtlasBreadcrumbBarTests.DropsLeadingCrumbsWhenNarrow;
 var
-  Area: TRect;
+  mArea: TRect;
 begin
   FForm.Width := 200;
   FBar.SetCrumbs(Path);
   Assert.IsTrue(FBar.FirstShown > 0, 'vorn gekürzt');
   Assert.IsTrue(FBar.CrumbRect(0).IsEmpty);
-  Area := FBar.CrumbRect(3);
-  Assert.IsFalse(Area.IsEmpty, 'letztes Glied bleibt');
-  Assert.AreEqual(3, FBar.CrumbAt(Area.Left + 1, 5));
+  mArea := FBar.CrumbRect(3);
+  Assert.IsFalse(mArea.IsEmpty, 'letztes Glied bleibt');
+  Assert.AreEqual(3, FBar.CrumbAt(mArea.Left + 1, 5));
   FBar.Repaint;
   FForm.Width := 1200;
   FBar.SetCrumbs(Path);
@@ -259,15 +259,15 @@ end;
 
 procedure TAtlasBreadcrumbBarTests.DropsRankedCrumbsFirst;
 var
-  Ranked: TAtlasCrumbs;
-  Key: Word;
+  mRanked: TAtlasCrumbs;
+  mKey: Word;
 begin
   // Ein langes Glied mit Rang (Rahmen im Rumpf, #1769) fällt vor Unit und Typ weg.
-  Ranked := Path;
-  Insert(Crumb('case EinSehrLangerAusdruckMitVielenZeichenUndNochMehrZeichen of', 'kw', -1, nil), Ranked, 3);
-  Ranked[3].Drop := 2;
+  mRanked := Path;
+  Insert(Crumb('case EinSehrLangerAusdruckMitVielenZeichenUndNochMehrZeichen of', 'kw', -1, nil), mRanked, 3);
+  mRanked[3].Drop := 2;
   FForm.Width := 520;
-  FBar.SetCrumbs(Ranked);
+  FBar.SetCrumbs(mRanked);
   Assert.AreEqual(0, FBar.FirstShown, 'vorn nichts gekürzt');
   Assert.IsFalse(FBar.Shown(3));
   Assert.IsTrue(FBar.CrumbRect(3).IsEmpty);
@@ -275,197 +275,197 @@ begin
   Assert.IsFalse(FBar.CrumbRect(4).IsEmpty, 'letztes Glied bleibt');
   FBar.Repaint;
   // Die Tastatur überspringt das weggelassene Glied.
-  Key := VK_LEFT;
-  TBarAccess(FBar).KeyDown(Key, []);
+  mKey := VK_LEFT;
+  TBarAccess(FBar).KeyDown(mKey, []);
   Assert.AreEqual(2, FBar.Selected);
-  Key := VK_RIGHT;
-  TBarAccess(FBar).KeyDown(Key, []);
+  mKey := VK_RIGHT;
+  TBarAccess(FBar).KeyDown(mKey, []);
   Assert.AreEqual(4, FBar.Selected);
   FForm.Width := 1600;
   FBar.SetCrumbs(Path);
-  FBar.SetCrumbs(Ranked);
+  FBar.SetCrumbs(mRanked);
   Assert.IsTrue(FBar.Shown(3), 'breit genug');
 end;
 
 procedure TAtlasBreadcrumbBarTests.SameCrumbsKeepSelection;
 var
-  Key: Word;
-  Changed: TAtlasCrumbs;
+  mKey: Word;
+  mChanged: TAtlasCrumbs;
 begin
   FBar.SetCrumbs(Path);
-  Key := VK_LEFT;
-  TBarAccess(FBar).KeyDown(Key, []);
+  mKey := VK_LEFT;
+  TBarAccess(FBar).KeyDown(mKey, []);
   FBar.SetCrumbs(Path);
   Assert.AreEqual(2, FBar.Selected, 'gleicher Pfad ändert nichts');
-  Changed := Path;
-  Changed[3].Text := 'Pruefe2';
-  FBar.SetCrumbs(Changed);
+  mChanged := Path;
+  mChanged[3].Text := 'Pruefe2';
+  FBar.SetCrumbs(mChanged);
   Assert.AreEqual(3, FBar.Selected, 'neuer Pfad wählt das letzte Glied');
 end;
 
 procedure TAtlasBreadcrumbBarTests.SeparatorOpensChildren;
 var
-  Setup: TAtlasCrumbBarSetup;
-  Opened, Menu: Integer;
-  Crumbs: TAtlasCrumbs;
-  Area: TRect;
-  Key: Word;
+  mSetup: TAtlasCrumbBarSetup;
+  mOpened, mMenu: Integer;
+  mCrumbs: TAtlasCrumbs;
+  mArea: TRect;
+  mKey: Word;
 begin
-  Opened := -1;
-  Menu := -1;
-  Setup.OnOpenChildren :=
+  mOpened := -1;
+  mMenu := -1;
+  mSetup.OnOpenChildren :=
     procedure(AIndex: Integer; const APoint: TPoint)
     begin
-      Opened := AIndex;
+      mOpened := AIndex;
     end;
-  Setup.OnOpenMenu :=
+  mSetup.OnOpenMenu :=
     procedure(AIndex: Integer; const APoint: TPoint)
     begin
-      Menu := AIndex;
+      mMenu := AIndex;
     end;
-  FBar.Setup := Setup;
+  FBar.Setup := mSetup;
   FBar.SetCrumbs(PathWithChildren);
   // „›“ zwischen den Gliedern; das letzte Glied hat keine Kinder, also kein „›“ dahinter.
-  Area := FBar.SeparatorRect(0);
-  Assert.IsFalse(Area.IsEmpty);
-  Assert.IsTrue(Area.Left >= FBar.CrumbRect(0).Right - 1, 'hinter dem Glied');
-  Assert.IsTrue(Area.Right <= FBar.CrumbRect(1).Left + 1, 'vor dem nächsten Glied');
-  Assert.AreEqual(0, FBar.SeparatorAt(Area.CenterPoint.X, Area.CenterPoint.Y));
-  Assert.AreEqual(-1, FBar.CrumbAt(Area.CenterPoint.X, Area.CenterPoint.Y), 'kein Glied');
+  mArea := FBar.SeparatorRect(0);
+  Assert.IsFalse(mArea.IsEmpty);
+  Assert.IsTrue(mArea.Left >= FBar.CrumbRect(0).Right - 1, 'hinter dem Glied');
+  Assert.IsTrue(mArea.Right <= FBar.CrumbRect(1).Left + 1, 'vor dem nächsten Glied');
+  Assert.AreEqual(0, FBar.SeparatorAt(mArea.CenterPoint.X, mArea.CenterPoint.Y));
+  Assert.AreEqual(-1, FBar.CrumbAt(mArea.CenterPoint.X, mArea.CenterPoint.Y), 'kein Glied');
   Assert.IsTrue(FBar.SeparatorRect(2).IsEmpty, 'letztes Glied ohne Kinder');
-  TBarAccess(FBar).MouseUp(mbLeft, [], Area.CenterPoint.X, Area.CenterPoint.Y);
-  Assert.AreEqual(0, Opened);
-  Assert.AreEqual(-1, Menu, 'kein Geschwistermenü');
+  TBarAccess(FBar).MouseUp(mbLeft, [], mArea.CenterPoint.X, mArea.CenterPoint.Y);
+  Assert.AreEqual(0, mOpened);
+  Assert.AreEqual(-1, mMenu, 'kein Geschwistermenü');
   // Klick aufs Unit-Glied: Menü mit allen Elementen der Unit.
-  Area := FBar.CrumbRect(0);
-  TBarAccess(FBar).MouseUp(mbLeft, [], Area.CenterPoint.X, Area.CenterPoint.Y);
-  Assert.AreEqual(0, Menu);
+  mArea := FBar.CrumbRect(0);
+  TBarAccess(FBar).MouseUp(mbLeft, [], mArea.CenterPoint.X, mArea.CenterPoint.Y);
+  Assert.AreEqual(0, mMenu);
   // Letztes Glied mit Kindern: „›“ auch dahinter.
-  Crumbs := PathWithChildren;
-  Crumbs[2].Children := [8, 9];
-  FBar.SetCrumbs(Crumbs);
-  Area := FBar.SeparatorRect(2);
-  Assert.IsFalse(Area.IsEmpty, '„›“ hinter dem letzten Glied');
-  Assert.AreEqual(2, FBar.SeparatorAt(Area.CenterPoint.X, Area.CenterPoint.Y));
+  mCrumbs := PathWithChildren;
+  mCrumbs[2].Children := [8, 9];
+  FBar.SetCrumbs(mCrumbs);
+  mArea := FBar.SeparatorRect(2);
+  Assert.IsFalse(mArea.IsEmpty, '„›“ hinter dem letzten Glied');
+  Assert.AreEqual(2, FBar.SeparatorAt(mArea.CenterPoint.X, mArea.CenterPoint.Y));
   // Tastatur: Strg+↓ öffnet die Kinder des gewählten Glieds.
-  Opened := -1;
-  Key := VK_DOWN;
-  TBarAccess(FBar).KeyDown(Key, [ssCtrl]);
-  Assert.AreEqual(2, Opened);
+  mOpened := -1;
+  mKey := VK_DOWN;
+  TBarAccess(FBar).KeyDown(mKey, [ssCtrl]);
+  Assert.AreEqual(2, mOpened);
   FBar.Repaint;
 end;
 
 procedure TAtlasBreadcrumbBarTests.CtrlClickAndCtrlEnterJump;
 var
-  Setup: TAtlasCrumbBarSetup;
-  Jumped, Menu: Integer;
-  Declaration: Boolean;
-  Crumbs: TAtlasCrumbs;
-  Area: TRect;
-  Key: Word;
+  mSetup: TAtlasCrumbBarSetup;
+  mJumped, mMenu: Integer;
+  mDeclaration: Boolean;
+  mCrumbs: TAtlasCrumbs;
+  mArea: TRect;
+  mKey: Word;
 begin
-  Jumped := -1;
-  Menu := -1;
-  Declaration := False;
-  Setup.OnJump :=
+  mJumped := -1;
+  mMenu := -1;
+  mDeclaration := False;
+  mSetup.OnJump :=
     procedure(AIndex: Integer; ADeclaration: Boolean)
     begin
-      Jumped := AIndex;
-      Declaration := ADeclaration;
+      mJumped := AIndex;
+      mDeclaration := ADeclaration;
     end;
-  Setup.OnOpenMenu :=
+  mSetup.OnOpenMenu :=
     procedure(AIndex: Integer; const APoint: TPoint)
     begin
-      Menu := AIndex;
+      mMenu := AIndex;
     end;
-  FBar.Setup := Setup;
+  FBar.Setup := mSetup;
   FBar.SetCrumbs(PathWithChildren);
-  Area := FBar.CrumbRect(1);
-  TBarAccess(FBar).MouseUp(mbLeft, [ssCtrl], Area.CenterPoint.X, Area.CenterPoint.Y);
-  Assert.AreEqual(1, Jumped, 'Strg+Klick springt');
-  Assert.IsFalse(Declaration);
-  Assert.AreEqual(-1, Menu, 'kein Menü bei Strg+Klick');
-  TBarAccess(FBar).MouseUp(mbLeft, [ssCtrl, ssShift], Area.CenterPoint.X, Area.CenterPoint.Y);
-  Assert.IsTrue(Declaration, 'Strg+Umschalt+Klick: Deklaration');
+  mArea := FBar.CrumbRect(1);
+  TBarAccess(FBar).MouseUp(mbLeft, [ssCtrl], mArea.CenterPoint.X, mArea.CenterPoint.Y);
+  Assert.AreEqual(1, mJumped, 'Strg+Klick springt');
+  Assert.IsFalse(mDeclaration);
+  Assert.AreEqual(-1, mMenu, 'kein Menü bei Strg+Klick');
+  TBarAccess(FBar).MouseUp(mbLeft, [ssCtrl, ssShift], mArea.CenterPoint.X, mArea.CenterPoint.Y);
+  Assert.IsTrue(mDeclaration, 'Strg+Umschalt+Klick: Deklaration');
   // Unit-Glied springt an den Anfang.
-  Jumped := -1;
+  mJumped := -1;
   FBar.Jump(0, False);
-  Assert.AreEqual(0, Jumped);
+  Assert.AreEqual(0, mJumped);
   // Glied ohne Knoten (Besitzer aus einer anderen Unit) springt nicht.
-  Jumped := -1;
+  mJumped := -1;
   FBar.SetCrumbs(Path);
   FBar.Jump(0, False);
-  Assert.AreEqual(-1, Jumped, 'Glied ohne Knoten');
+  Assert.AreEqual(-1, mJumped, 'Glied ohne Knoten');
   // Ohne Geschwister springt schon der einfache Klick.
-  Crumbs := PathWithChildren;
-  Crumbs[2].Siblings := nil;
-  FBar.SetCrumbs(Crumbs);
-  Area := FBar.CrumbRect(2);
-  TBarAccess(FBar).MouseUp(mbLeft, [], Area.CenterPoint.X, Area.CenterPoint.Y);
-  Assert.AreEqual(2, Jumped);
+  mCrumbs := PathWithChildren;
+  mCrumbs[2].Siblings := nil;
+  FBar.SetCrumbs(mCrumbs);
+  mArea := FBar.CrumbRect(2);
+  TBarAccess(FBar).MouseUp(mbLeft, [], mArea.CenterPoint.X, mArea.CenterPoint.Y);
+  Assert.AreEqual(2, mJumped);
   // Strg+Enter mit Fokus.
-  Jumped := -1;
-  Key := VK_LEFT;
-  TBarAccess(FBar).KeyDown(Key, []);
-  Key := VK_RETURN;
-  TBarAccess(FBar).KeyDown(Key, [ssCtrl]);
-  Assert.AreEqual(1, Jumped);
-  Assert.AreEqual(0, Integer(Key), 'Taste verbraucht');
+  mJumped := -1;
+  mKey := VK_LEFT;
+  TBarAccess(FBar).KeyDown(mKey, []);
+  mKey := VK_RETURN;
+  TBarAccess(FBar).KeyDown(mKey, [ssCtrl]);
+  Assert.AreEqual(1, mJumped);
+  Assert.AreEqual(0, Integer(mKey), 'Taste verbraucht');
 end;
 
 procedure TAtlasBreadcrumbBarTests.ReportsWhenItsWindowIsDisabled;
 var
-  Calls: Integer;
+  mCalls: Integer;
 begin
-  Calls := 0;
+  mCalls := 0;
   FBar.OnDisabled :=
     procedure(ASender: TObject)
     begin
-      Inc(Calls);
+      Inc(mCalls);
     end;
   FBar.HandleNeeded;
   EnableWindow(FBar.Handle, False);
-  Assert.AreEqual(1, Calls, 'gesperrt');
+  Assert.AreEqual(1, mCalls, 'gesperrt');
   EnableWindow(FBar.Handle, True);
-  Assert.AreEqual(1, Calls, 'Freigeben meldet nichts');
+  Assert.AreEqual(1, mCalls, 'Freigeben meldet nichts');
   FBar.Enabled := False;
-  Assert.AreEqual(2, Calls, 'über VCL gesperrt');
+  Assert.AreEqual(2, mCalls, 'über VCL gesperrt');
   FBar.OnDisabled := nil;
 end;
 
 procedure TAtlasBreadcrumbBarTests.NamesWhyTheMouseMissesTheBar;
 var
-  Point: TPoint;
-  Other: TPanel;
-  Transparent: TTransparentBar;
+  mPoint: TPoint;
+  mOther: TPanel;
+  mTransparent: TTransparentBar;
 begin
   FForm.Show;
-  Point := FBar.ClientToScreen(TPoint.Create(10, 5));
-  Assert.AreEqual('', FBar.HitProblem(Point), 'in Ordnung');
+  mPoint := FBar.ClientToScreen(TPoint.Create(10, 5));
+  Assert.AreEqual('', FBar.HitProblem(mPoint), 'in Ordnung');
   Assert.Contains(FBar.HitProblem(FBar.ClientToScreen(TPoint.Create(10, FBar.Height + 40))),
     'außerhalb des Fensters', 'Punkt unter der Leiste');
   ShowWindow(FBar.Handle, SW_HIDE);
-  Assert.Contains(FBar.HitProblem(Point), 'ausgeblendet');
+  Assert.Contains(FBar.HitProblem(mPoint), 'ausgeblendet');
   ShowWindow(FBar.Handle, SW_SHOWNA);
   EnableWindow(FBar.Handle, False);
-  Assert.Contains(FBar.HitProblem(Point), 'gesperrt');
+  Assert.Contains(FBar.HitProblem(mPoint), 'gesperrt');
   EnableWindow(FBar.Handle, True);
   // Die Region gehört danach dem Fenster; 0 nimmt sie wieder weg.
   SetWindowRgn(FBar.Handle, CreateRectRgn(0, 0, 5, 5), False);
-  Assert.Contains(FBar.HitProblem(Point), 'Fensterregion');
+  Assert.Contains(FBar.HitProblem(mPoint), 'Fensterregion');
   SetWindowRgn(FBar.Handle, 0, False);
-  Assert.AreEqual('', FBar.HitProblem(Point), 'Region wieder weg');
-  Other := TPanel.Create(FForm);
-  Other.Name := 'Darueber';
-  Other.Parent := FForm;
-  Other.SetBounds(0, 0, 100, 10);
-  Other.BringToFront;
-  Assert.Contains(FBar.HitProblem(Point), 'Geschwisterfenster liegt darüber (TPanel Darueber)');
-  Other.Free;
-  Transparent := TTransparentBar.Create(FForm);
-  Transparent.Parent := FForm;
-  Transparent.Align := alBottom;
-  Assert.Contains(Transparent.HitProblem(Transparent.ClientToScreen(TPoint.Create(10, 5))), 'HTTRANSPARENT');
+  Assert.AreEqual('', FBar.HitProblem(mPoint), 'Region wieder weg');
+  mOther := TPanel.Create(FForm);
+  mOther.Name := 'Darueber';
+  mOther.Parent := FForm;
+  mOther.SetBounds(0, 0, 100, 10);
+  mOther.BringToFront;
+  Assert.Contains(FBar.HitProblem(mPoint), 'Geschwisterfenster liegt darüber (TPanel Darueber)');
+  mOther.Free;
+  mTransparent := TTransparentBar.Create(FForm);
+  mTransparent.Parent := FForm;
+  mTransparent.Align := alBottom;
+  Assert.Contains(mTransparent.HitProblem(mTransparent.ClientToScreen(TPoint.Create(10, 5))), 'HTTRANSPARENT');
 end;
 
 initialization

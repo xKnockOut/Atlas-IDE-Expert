@@ -43,8 +43,8 @@ uses
   Atlas.Common.Lsp.StringLiteralCommands;
 
 const
-  MainFile = 'C:\P\Haupt.pas';
-  UnitLf =
+  cMainFile = 'C:\P\Haupt.pas';
+  cUnitLf =
     'unit Haupt;'#10 +
     'implementation'#10 +
     'procedure Lauf;'#10 +
@@ -57,20 +57,20 @@ const
 function StoreWith(const AText: string): IDocumentStore;
 begin
   Result := TDocumentStore.Create;
-  Result.Open(TDocumentUris.FromPath(MainFile), 'delphi', 1, AText);
+  Result.Open(TDocumentUris.FromPath(cMainFile), 'delphi', 1, AText);
 end;
 
 /// <summary>Argumente URI, Position und, wenn AText nicht leer ist, der Text.</summary>
 function Arguments(ALine, ACharacter: Integer; const AText: string): TJSONArray;
 var
-  Position: TJSONObject;
+  mPosition: TJSONObject;
 begin
   Result := TJSONArray.Create;
-  Result.Add(TDocumentUris.FromPath(MainFile));
-  Position := TJSONObject.Create;
-  Position.AddPair('line', TJSONNumber.Create(ALine));
-  Position.AddPair('character', TJSONNumber.Create(ACharacter));
-  Result.AddElement(Position);
+  Result.Add(TDocumentUris.FromPath(cMainFile));
+  mPosition := TJSONObject.Create;
+  mPosition.AddPair('line', TJSONNumber.Create(ALine));
+  mPosition.AddPair('character', TJSONNumber.Create(ACharacter));
+  Result.AddElement(mPosition);
   if AText <> '' then
   begin
     Result.Add(AText);
@@ -79,23 +79,23 @@ end;
 
 function ToLiteral(const AStore: IDocumentStore; ALine: Integer; const AText: string; AMultiline: Boolean): string;
 var
-  Args: TJSONArray;
-  Answer: TJSONValue;
-  Settings: TStringLiteralSettings;
+  mArgs: TJSONArray;
+  mAnswer: TJSONValue;
+  mSettings: TStringLiteralSettings;
 begin
-  Settings := TStringLiteralSettings.Default;
-  Settings.LineBreak := TStringLiteralBreak.SLineBreak;
-  Settings.MaxLineLength := 0;
-  Args := Arguments(ALine, 0, AText);
+  mSettings := TStringLiteralSettings.Default;
+  mSettings.LineBreak := TStringLiteralBreak.SLineBreak;
+  mSettings.MaxLineLength := 0;
+  mArgs := Arguments(ALine, 0, AText);
   try
-    Answer := TStringLiteralCommands.ExecuteToLiteral(AStore, Settings, AMultiline, Args);
+    mAnswer := TStringLiteralCommands.ExecuteToLiteral(AStore, mSettings, AMultiline, mArgs);
     try
-      Result := Answer.Value;
+      Result := mAnswer.Value;
     finally
-      Answer.Free;
+      mAnswer.Free;
     end;
   finally
-    Args.Free;
+    mArgs.Free;
   end;
 end;
 
@@ -103,20 +103,20 @@ end;
 
 procedure TStringLiteralCommandsTests.PlainTextOfConcatenatedLiteral;
 var
-  Args: TJSONArray;
-  Answer: TJSONValue;
+  mArgs: TJSONArray;
+  mAnswer: TJSONValue;
 begin
-  Args := Arguments(4, 12, '');
+  mArgs := Arguments(4, 12, '');
   try
-    Answer := TStringLiteralCommands.ExecutePlainText(StoreWith(UnitLf), Args);
+    mAnswer := TStringLiteralCommands.ExecutePlainText(StoreWith(cUnitLf), mArgs);
     try
-      Assert.IsTrue(Answer is TJSONString);
-      Assert.AreEqual('select *'#13#10'from Kunde', Answer.Value);
+      Assert.IsTrue(mAnswer is TJSONString);
+      Assert.AreEqual('select *'#13#10'from Kunde', mAnswer.Value);
     finally
-      Answer.Free;
+      mAnswer.Free;
     end;
   finally
-    Args.Free;
+    mArgs.Free;
   end;
 end;
 
@@ -129,7 +129,7 @@ begin
     begin
       Args := Arguments(5, 6, '');
       try
-        TStringLiteralCommands.ExecutePlainText(StoreWith(UnitLf), Args).Free;
+        TStringLiteralCommands.ExecutePlainText(StoreWith(cUnitLf), Args).Free;
       finally
         Args.Free;
       end;
@@ -139,22 +139,22 @@ end;
 procedure TStringLiteralCommandsTests.ToLiteralUsesIndentOfLine;
 begin
   Assert.AreEqual('''select *'' + sLineBreak +'#10'    ''from Kunde''',
-    ToLiteral(StoreWith(UnitLf), 5, 'select *'#10'from Kunde', False));
+    ToLiteral(StoreWith(cUnitLf), 5, 'select *'#10'from Kunde', False));
   // Zeile ohne Einzug.
-  Assert.AreEqual('''a'' + sLineBreak +'#10'''b''', ToLiteral(StoreWith(UnitLf), 0, 'a'#10'b', False));
+  Assert.AreEqual('''a'' + sLineBreak +'#10'''b''', ToLiteral(StoreWith(cUnitLf), 0, 'a'#10'b', False));
 end;
 
 procedure TStringLiteralCommandsTests.ToLiteralUsesLineBreakOfDocument;
 begin
   Assert.AreEqual('''select *'' + sLineBreak +'#13#10'    ''from Kunde''',
-    ToLiteral(StoreWith(StringReplace(UnitLf, #10, #13#10, [rfReplaceAll])), 5, 'select *'#10'from Kunde', False));
+    ToLiteral(StoreWith(StringReplace(cUnitLf, #10, #13#10, [rfReplaceAll])), 5, 'select *'#10'from Kunde', False));
 end;
 
 procedure TStringLiteralCommandsTests.ToLiteralMultiline;
 begin
   Assert.AreEqual(TStringLiterals.ToLiteral('select *'#10'from Kunde', '    ', False, True,
-    TStringLiteralSettings.Default, #10), ToLiteral(StoreWith(UnitLf), 5, 'select *'#10'from Kunde', True));
-  Assert.StartsWith('''''''', ToLiteral(StoreWith(UnitLf), 5, 'select *'#10'from Kunde', True));
+    TStringLiteralSettings.Default, #10), ToLiteral(StoreWith(cUnitLf), 5, 'select *'#10'from Kunde', True));
+  Assert.StartsWith('''''''', ToLiteral(StoreWith(cUnitLf), 5, 'select *'#10'from Kunde', True));
 end;
 
 /// <summary>Ohne Position und mit nicht geöffnetem Dokument.</summary>
@@ -168,8 +168,8 @@ begin
     begin
       Args := TJSONArray.Create;
       try
-        Args.Add(TDocumentUris.FromPath(MainFile));
-        TStringLiteralCommands.ExecutePlainText(StoreWith(UnitLf), Args).Free;
+        Args.Add(TDocumentUris.FromPath(cMainFile));
+        TStringLiteralCommands.ExecutePlainText(StoreWith(cUnitLf), Args).Free;
       finally
         Args.Free;
       end;
@@ -203,7 +203,7 @@ begin
     begin
       Args := Arguments(4, 0, '');
       try
-        TStringLiteralCommands.ExecuteToLiteral(StoreWith(UnitLf), TStringLiteralSettings.Default, False,
+        TStringLiteralCommands.ExecuteToLiteral(StoreWith(cUnitLf), TStringLiteralSettings.Default, False,
           Args).Free;
       finally
         Args.Free;
@@ -217,7 +217,7 @@ begin
       Args := Arguments(4, 0, '');
       try
         Args.AddElement(TJSONObject.Create);
-        TStringLiteralCommands.ExecuteToLiteral(StoreWith(UnitLf), TStringLiteralSettings.Default, False,
+        TStringLiteralCommands.ExecuteToLiteral(StoreWith(cUnitLf), TStringLiteralSettings.Default, False,
           Args).Free;
       finally
         Args.Free;
@@ -238,7 +238,7 @@ begin
       Args := Arguments(4, 0, '');
       try
         Args.Add(1);
-        TStringLiteralCommands.ExecuteToLiteral(StoreWith(UnitLf), TStringLiteralSettings.Default, False,
+        TStringLiteralCommands.ExecuteToLiteral(StoreWith(cUnitLf), TStringLiteralSettings.Default, False,
           Args).Free;
       finally
         Args.Free;

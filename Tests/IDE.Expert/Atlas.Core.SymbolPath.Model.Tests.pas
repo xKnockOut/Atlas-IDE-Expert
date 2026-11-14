@@ -65,36 +65,36 @@ begin
 end;
 
 const
-  AFile = 'C:\P\uA.pas';
-  BFile = 'C:\P\uB.pas';
-  AText = 'unit uA;'#10'interface'#10'uses uB;'#10'implementation'#10'end.';
-  BText = 'unit uB;'#10'interface'#10'implementation'#10'end.';
+  cAFile = 'C:\P\uA.pas';
+  cBFile = 'C:\P\uB.pas';
+  cAText = 'unit uA;'#10'interface'#10'uses uB;'#10'implementation'#10'end.';
+  cBText = 'unit uB;'#10'interface'#10'implementation'#10'end.';
 
 { TAtlasSymbolPathModelTests }
 
 procedure TAtlasSymbolPathModelTests.ParsesRouteAndSteps;
 var
-  Answer: TAtlasSymbolPathAnswer;
-  Route: TAtlasSymbolPathRoute;
-  Units: TArray<string>;
+  mAnswer: TAtlasSymbolPathAnswer;
+  mRoute: TAtlasSymbolPathRoute;
+  mUnits: TArray<string>;
 begin
-  Assert.IsTrue(TAtlasSymbolPathAnswer.Parse(SampleSymbolPathAnswer, Answer));
-  Assert.IsTrue(Answer.Enabled);
-  Assert.AreEqual<TAtlasSymbolPathStatus>(TAtlasSymbolPathStatus.Found, Answer.Status);
-  Assert.AreEqual(3, Answer.StepCount);
-  Assert.AreEqual(42, Answer.Visited);
-  Assert.AreEqual(7, Answer.ElapsedMs);
-  Route := Answer.Routes[0];
-  Assert.AreEqual('TKundenForm.btnSpeichernClick', Route.Nodes[1].Caption);
-  Assert.AreEqual('C:\P\uKundenForm.pas', Route.Nodes[1].FileName);
-  Assert.AreEqual(8, Route.Nodes[1].Line);
-  Assert.AreEqual('calls', Route.Steps[1].Kind);
-  Assert.AreEqual(20, Route.Steps[1].Line);
-  Assert.IsTrue(Route.Steps[2].Inferred);
-  Assert.IsTrue(Route.Steps[2].Reverse);
+  Assert.IsTrue(TAtlasSymbolPathAnswer.Parse(SampleSymbolPathAnswer, mAnswer));
+  Assert.IsTrue(mAnswer.Enabled);
+  Assert.AreEqual<TAtlasSymbolPathStatus>(TAtlasSymbolPathStatus.Found, mAnswer.Status);
+  Assert.AreEqual(3, mAnswer.StepCount);
+  Assert.AreEqual(42, mAnswer.Visited);
+  Assert.AreEqual(7, mAnswer.ElapsedMs);
+  mRoute := mAnswer.Routes[0];
+  Assert.AreEqual('TKundenForm.btnSpeichernClick', mRoute.Nodes[1].Caption);
+  Assert.AreEqual('C:\P\uKundenForm.pas', mRoute.Nodes[1].FileName);
+  Assert.AreEqual(8, mRoute.Nodes[1].Line);
+  Assert.AreEqual('calls', mRoute.Steps[1].Kind);
+  Assert.AreEqual(20, mRoute.Steps[1].Line);
+  Assert.IsTrue(mRoute.Steps[2].Inferred);
+  Assert.IsTrue(mRoute.Steps[2].Reverse);
   // Units in Reihenfolge, die Form nur einmal.
-  Units := Route.UnitNames;
-  Assert.AreEqual('uKundenForm,uRepoIntf,uKundenRepo', string.Join(',', Units));
+  mUnits := mRoute.UnitNames;
+  Assert.AreEqual('uKundenForm,uRepoIntf,uKundenRepo', string.Join(',', mUnits));
 end;
 
 /// <summary>Wegsuche über zwei Units: uA verwendet uB.</summary>
@@ -103,19 +103,19 @@ var
   mIndex: ISymbolIndex;
 begin
   mIndex := TSymbolIndex.Create;
-  mIndex.AddUnit(TIndexExtractor.ExtractText(AText, AFile, nil));
-  mIndex.AddUnit(TIndexExtractor.ExtractText(BText, BFile, nil));
+  mIndex.AddUnit(TIndexExtractor.ExtractText(cAText, cAFile, nil));
+  mIndex.AddUnit(TIndexExtractor.ExtractText(cBText, cBFile, nil));
   Result := TLspSymbolPath.Create(mIndex,
     function(const AFileName: string; out AContent: string): Boolean
     begin
       Result := True;
-      if SameText(AFileName, AFile) then
+      if SameText(AFileName, cAFile) then
       begin
-        AContent := AText;
+        AContent := cAText;
       end
-      else if SameText(AFileName, BFile) then
+      else if SameText(AFileName, cBFile) then
       begin
-        AContent := BText;
+        AContent := cBText;
       end
       else
       begin
@@ -142,92 +142,92 @@ end;
 
 procedure TAtlasSymbolPathModelTests.ParsesServerAnswer;
 var
-  Service: TLspSymbolPath;
-  Args: TJSONArray;
-  Value: TJSONValue;
-  Answer: TAtlasSymbolPathAnswer;
+  mService: TLspSymbolPath;
+  mArgs: TJSONArray;
+  mValue: TJSONValue;
+  mAnswer: TAtlasSymbolPathAnswer;
 begin
   // Dasselbe Format wie der Server liefert: Weg uA → uB über uses.
-  Service := CreateUsesPathService;
+  mService := CreateUsesPathService;
   try
-    Args := TJSONArray.Create;
+    mArgs := TJSONArray.Create;
     try
-      Args.Add('file:///C:/P/uA.pas');
-      Args.AddElement(TJSONObject.ParseJSONValue('{"from":"uA","to":"uB"}'));
-      Value := Service.Execute(Args);
+      mArgs.Add('file:///C:/P/uA.pas');
+      mArgs.AddElement(TJSONObject.ParseJSONValue('{"from":"uA","to":"uB"}'));
+      mValue := mService.Execute(mArgs);
       try
-        Assert.IsTrue(TAtlasSymbolPathAnswer.Parse(Value.ToJSON, Answer));
+        Assert.IsTrue(TAtlasSymbolPathAnswer.Parse(mValue.ToJSON, mAnswer));
       finally
-        Value.Free;
+        mValue.Free;
       end;
     finally
-      Args.Free;
+      mArgs.Free;
     end;
   finally
-    Service.Free;
+    mService.Free;
   end;
-  Assert.AreEqual<TAtlasSymbolPathStatus>(TAtlasSymbolPathStatus.Found, Answer.Status);
-  Assert.AreEqual(1, Answer.StepCount);
-  Assert.AreEqual('uses', Answer.Routes[0].Steps[0].Kind);
-  Assert.AreEqual('uA,uB', string.Join(',', Answer.Routes[0].UnitNames));
+  Assert.AreEqual<TAtlasSymbolPathStatus>(TAtlasSymbolPathStatus.Found, mAnswer.Status);
+  Assert.AreEqual(1, mAnswer.StepCount);
+  Assert.AreEqual('uses', mAnswer.Routes[0].Steps[0].Kind);
+  Assert.AreEqual('uA,uB', string.Join(',', mAnswer.Routes[0].UnitNames));
   // Fundstelle des uses-Eintrags: Zeile 3 (0-basiert 2).
-  Assert.AreEqual(2, Answer.Routes[0].Steps[0].Line);
+  Assert.AreEqual(2, mAnswer.Routes[0].Steps[0].Line);
 end;
 
 procedure TAtlasSymbolPathModelTests.DisabledBrokenAndAmbiguous;
 var
-  Answer: TAtlasSymbolPathAnswer;
+  mAnswer: TAtlasSymbolPathAnswer;
 begin
-  Assert.IsTrue(TAtlasSymbolPathAnswer.Parse('{"enabled":false}', Answer));
-  Assert.IsFalse(Answer.Enabled);
-  Assert.IsFalse(TAtlasSymbolPathAnswer.Parse('', Answer));
-  Assert.IsFalse(TAtlasSymbolPathAnswer.Parse('kein JSON', Answer));
-  Assert.IsFalse(TAtlasSymbolPathAnswer.Parse('[1]', Answer));
-  Assert.IsFalse(TAtlasSymbolPathAnswer.Parse('{"enabled":true,"status":"unbekannt"}', Answer));
+  Assert.IsTrue(TAtlasSymbolPathAnswer.Parse('{"enabled":false}', mAnswer));
+  Assert.IsFalse(mAnswer.Enabled);
+  Assert.IsFalse(TAtlasSymbolPathAnswer.Parse('', mAnswer));
+  Assert.IsFalse(TAtlasSymbolPathAnswer.Parse('kein JSON', mAnswer));
+  Assert.IsFalse(TAtlasSymbolPathAnswer.Parse('[1]', mAnswer));
+  Assert.IsFalse(TAtlasSymbolPathAnswer.Parse('{"enabled":true,"status":"unbekannt"}', mAnswer));
   // Weg mit falscher Zahl Schritte: beschädigt.
   Assert.IsFalse(TAtlasSymbolPathAnswer.Parse('{"enabled":true,"status":"found","routes":[{"nodes":[{}],' +
-    '"steps":[{}]}]}', Answer));
+    '"steps":[{}]}]}', mAnswer));
   Assert.IsTrue(TAtlasSymbolPathAnswer.Parse('{"enabled":true,"status":"ambiguous","subject":"Laden",' +
     '"routes":[],"candidates":[{"caption":"TKundenRepo.Laden","unit":"uKundenRepo","file":"C:\\P\\uKundenRepo.pas",' +
     '"line":7,"character":14},{"caption":"TCacheRepo.Laden","unit":"uCacheRepo","file":"C:\\P\\uCacheRepo.pas",' +
-    '"line":9,"character":14}]}', Answer));
-  Assert.AreEqual<TAtlasSymbolPathStatus>(TAtlasSymbolPathStatus.Ambiguous, Answer.Status);
-  Assert.AreEqual('Laden', Answer.Subject);
-  Assert.AreEqual(2, Integer(Length(Answer.Candidates)));
-  Assert.AreEqual(0, Answer.StepCount);
+    '"line":9,"character":14}]}', mAnswer));
+  Assert.AreEqual<TAtlasSymbolPathStatus>(TAtlasSymbolPathStatus.Ambiguous, mAnswer.Status);
+  Assert.AreEqual('Laden', mAnswer.Subject);
+  Assert.AreEqual(2, Integer(Length(mAnswer.Candidates)));
+  Assert.AreEqual(0, mAnswer.StepCount);
 end;
 
 procedure TAtlasSymbolPathModelTests.RowsAlternateNodesAndSteps;
 var
-  Answer: TAtlasSymbolPathAnswer;
-  Rows: TArray<TAtlasSymbolPathRow>;
+  mAnswer: TAtlasSymbolPathAnswer;
+  mRows: TArray<TAtlasSymbolPathRow>;
 begin
-  Assert.IsTrue(TAtlasSymbolPathAnswer.Parse(SampleSymbolPathAnswer, Answer));
-  Rows := Answer.Rows;
+  Assert.IsTrue(TAtlasSymbolPathAnswer.Parse(SampleSymbolPathAnswer, mAnswer));
+  mRows := mAnswer.Rows;
   // Ein Weg: keine Überschrift, 4 Knoten und 3 Schritte im Wechsel.
-  Assert.AreEqual(7, Integer(Length(Rows)));
-  Assert.AreEqual<TAtlasSymbolPathRowKind>(TAtlasSymbolPathRowKind.Node, Rows[0].Kind);
-  Assert.AreEqual<TAtlasSymbolPathRowKind>(TAtlasSymbolPathRowKind.Step, Rows[1].Kind);
+  Assert.AreEqual(7, Integer(Length(mRows)));
+  Assert.AreEqual<TAtlasSymbolPathRowKind>(TAtlasSymbolPathRowKind.Node, mRows[0].Kind);
+  Assert.AreEqual<TAtlasSymbolPathRowKind>(TAtlasSymbolPathRowKind.Step, mRows[1].Kind);
   // Schritt ohne Fundstelle springt zum Knoten, zu dem er führt.
-  Assert.AreEqual('C:\P\uKundenForm.pas', Rows[1].FileName);
-  Assert.AreEqual(8, Rows[1].Line);
-  Assert.AreEqual(20, Rows[3].Line);
-  Assert.IsTrue(Rows[5].Inferred);
-  Assert.IsFalse(Rows[3].Inferred);
+  Assert.AreEqual('C:\P\uKundenForm.pas', mRows[1].FileName);
+  Assert.AreEqual(8, mRows[1].Line);
+  Assert.AreEqual(20, mRows[3].Line);
+  Assert.IsTrue(mRows[5].Inferred);
+  Assert.IsFalse(mRows[3].Inferred);
   // Zwei Wege: je eine Überschrift.
-  Answer.Routes := Answer.Routes + [Answer.Routes[0]];
-  Rows := Answer.Rows;
-  Assert.AreEqual(16, Integer(Length(Rows)));
-  Assert.AreEqual<TAtlasSymbolPathRowKind>(TAtlasSymbolPathRowKind.Header, Rows[0].Kind);
-  Assert.AreEqual<TAtlasSymbolPathRowKind>(TAtlasSymbolPathRowKind.Header, Rows[8].Kind);
-  Assert.AreEqual(1, Rows[8].Route);
+  mAnswer.Routes := mAnswer.Routes + [mAnswer.Routes[0]];
+  mRows := mAnswer.Rows;
+  Assert.AreEqual(16, Integer(Length(mRows)));
+  Assert.AreEqual<TAtlasSymbolPathRowKind>(TAtlasSymbolPathRowKind.Header, mRows[0].Kind);
+  Assert.AreEqual<TAtlasSymbolPathRowKind>(TAtlasSymbolPathRowKind.Header, mRows[8].Kind);
+  Assert.AreEqual(1, mRows[8].Route);
   // Mehrdeutig: nur die Treffer.
-  Answer.Status := TAtlasSymbolPathStatus.Ambiguous;
-  Answer.Candidates := Answer.Routes[0].Nodes;
-  Rows := Answer.Rows;
-  Assert.AreEqual(4, Integer(Length(Rows)));
-  Assert.AreEqual<TAtlasSymbolPathRowKind>(TAtlasSymbolPathRowKind.Candidate, Rows[0].Kind);
-  Assert.AreEqual(7, Rows[3].Line);
+  mAnswer.Status := TAtlasSymbolPathStatus.Ambiguous;
+  mAnswer.Candidates := mAnswer.Routes[0].Nodes;
+  mRows := mAnswer.Rows;
+  Assert.AreEqual(4, Integer(Length(mRows)));
+  Assert.AreEqual<TAtlasSymbolPathRowKind>(TAtlasSymbolPathRowKind.Candidate, mRows[0].Kind);
+  Assert.AreEqual(7, mRows[3].Line);
 end;
 
 procedure TAtlasSymbolPathModelTests.CommandArguments;

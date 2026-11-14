@@ -23,7 +23,6 @@
     "security-insecure-http": {"exclude": ["Tests/**"]},
     "security-hardcoded-credential": {"exclude": ["Tests/**", "**/Atlas.Common.Rules.Catalog.Data.*"]},
     "control-fixed-bounds": {"exclude": ["Tests/**"]},
-    "default-parameter": {"exclude": ["Tests/**"]},
     "hardcoded-path": {"exclude": ["Tests/**"]},
     "sql-select-star": {"exclude": ["Tests/**"]},
     "security-path-traversal": {"exclude": ["Tests/**"]},

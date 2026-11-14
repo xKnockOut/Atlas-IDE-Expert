@@ -112,10 +112,15 @@ begin
   end;
 end;
 
-function Path(ALine, ACharacter: Integer; AParts: TAtlasCrumbParts = [TAtlasCrumbPart.DeclarationBlocks]): string;
+function Path(ALine, ACharacter: Integer; AParts: TAtlasCrumbParts): string; overload;
 begin
   Result := Joined(TAtlasBreadcrumbs.Path(Nodes, Lines,
     TAtlasCrumbRequest.Create(ALine, ACharacter, '', False, AParts)));
+end;
+
+function Path(ALine, ACharacter: Integer): string; overload;
+begin
+  Result := Path(ALine, ACharacter, [TAtlasCrumbPart.DeclarationBlocks]);
 end;
 
 function CurrentKeyword(ALine: Integer): string;

@@ -64,40 +64,40 @@ uses
 
 function ApplyFix(const AText: string; const AFix: TRuleFix): string;
 var
-  Index: Integer;
-  Edit: TRuleEdit;
+  mIndex: Integer;
+  mEdit: TRuleEdit;
 
   function OffsetOf(const APosition: TTextPosition): Integer;
   var
-    Line, Position: Integer;
+    mLine, mPosition: Integer;
   begin
-    Position := 0;
-    for Line := 1 to APosition.Line do
+    mPosition := 0;
+    for mLine := 1 to APosition.Line do
     begin
-      Position := Pos(#10, AText, Position + 1);
+      mPosition := Pos(#10, AText, mPosition + 1);
     end;
-    Result := Position + APosition.Character;
+    Result := mPosition + APosition.Character;
   end;
 
 begin
   Result := AText;
-  for Index := High(AFix.Edits) downto 0 do
+  for mIndex := High(AFix.Edits) downto 0 do
   begin
-    Edit := AFix.Edits[Index];
-    Result := Copy(Result, 1, OffsetOf(Edit.Range.StartPos)) + Edit.NewText +
-      Copy(Result, OffsetOf(Edit.Range.EndPos) + 1, MaxInt);
+    mEdit := AFix.Edits[mIndex];
+    Result := Copy(Result, 1, OffsetOf(mEdit.Range.StartPos)) + mEdit.NewText +
+      Copy(Result, OffsetOf(mEdit.Range.EndPos) + 1, MaxInt);
   end;
 end;
 
 procedure AssertParses(const ASource: string);
 var
-  Tree: TSyntaxTree;
+  mTree: TSyntaxTree;
 begin
-  Tree := TPascalParser.Parse(ASource);
+  mTree := TPascalParser.Parse(ASource);
   try
-    Assert.AreEqual(0, Integer(Length(Tree.Diagnostics)));
+    Assert.AreEqual(0, Integer(Length(mTree.Diagnostics)));
   finally
-    Tree.Free;
+    mTree.Free;
   end;
 end;
 
@@ -122,10 +122,15 @@ begin
     'end.';
 end;
 
-function ParallelFindings(const AVar, ABody: string; const AConfigJson: string = ''): TArray<TRuleFinding>;
+function ParallelFindings(const AVar, ABody: string; const AConfigJson: string): TArray<TRuleFinding>; overload;
 begin
   Result := TRuleAssert.Findings(TParallelForSharedWriteRule.Create, Rechnen('System.Threading', AVar, ABody),
     AConfigJson);
+end;
+
+function ParallelFindings(const AVar, ABody: string): TArray<TRuleFinding>; overload;
+begin
+  Result := ParallelFindings(AVar, ABody, '');
 end;
 
 /// <summary>Unit Arbeit mit einer Thread-Klasse TArbeiter und der globalen Variablen GVerarbeitet.</summary>
@@ -158,9 +163,14 @@ begin
     'end.';
 end;
 
-function IncrementFindings(const ABody: string; const AConfigJson: string = ''): TArray<TRuleFinding>;
+function IncrementFindings(const ABody: string; const AConfigJson: string): TArray<TRuleFinding>; overload;
 begin
   Result := TRuleAssert.Findings(TThreadUnsafeIncrementRule.Create, Arbeit(ABody), AConfigJson);
+end;
+
+function IncrementFindings(const ABody: string): TArray<TRuleFinding>; overload;
+begin
+  Result := IncrementFindings(ABody, '');
 end;
 
 /// <summary>Formular-Unit, deren Methode Starten ABody ausführt (Feld FAnzahl, globale GZaehler).</summary>
@@ -192,84 +202,84 @@ end;
 
 procedure TSharedStateRulesTests.ParallelIssueExample;
 var
-  Findings: TArray<TRuleFinding>;
+  mFindings: TArray<TRuleFinding>;
 begin
-  Findings := ParallelFindings('  Summe: Integer;'#10, '      Summe := Summe + Werte[I];'#10);
-  Assert.AreEqual(1, Integer(Length(Findings)));
-  Assert.AreEqual('parallel-for-shared-write', Findings[0].RuleId);
-  Assert.AreEqual(Ord(TRuleSeverity.Warning), Ord(Findings[0].Severity));
-  Assert.AreEqual(Ord(TRuleConfidence.Medium), Ord(Findings[0].Confidence));
-  Assert.AreEqual('Summe wird parallel ohne Sperre geschrieben; Additionen gehen verloren.', Findings[0].Message);
-  Assert.AreEqual(10, Findings[0].Range.StartPos.Line);
-  Assert.AreEqual(6, Findings[0].Range.StartPos.Character);
-  Assert.AreEqual(31, Findings[0].Range.EndPos.Character);
+  mFindings := ParallelFindings('  Summe: Integer;'#10, '      Summe := Summe + Werte[I];'#10);
+  Assert.AreEqual(1, Integer(Length(mFindings)));
+  Assert.AreEqual('parallel-for-shared-write', mFindings[0].RuleId);
+  Assert.AreEqual(Ord(TRuleSeverity.Warning), Ord(mFindings[0].Severity));
+  Assert.AreEqual(Ord(TRuleConfidence.Medium), Ord(mFindings[0].Confidence));
+  Assert.AreEqual('Summe wird parallel ohne Sperre geschrieben; Additionen gehen verloren.', mFindings[0].Message);
+  Assert.AreEqual(10, mFindings[0].Range.StartPos.Line);
+  Assert.AreEqual(6, mFindings[0].Range.StartPos.Character);
+  Assert.AreEqual(31, mFindings[0].Range.EndPos.Character);
 end;
 
 procedure TSharedStateRulesTests.ParallelFixUsesInterlocked;
 var
-  Source, Fixed: string;
-  Findings: TArray<TRuleFinding>;
+  mSource, mFixed: string;
+  mFindings: TArray<TRuleFinding>;
 begin
-  Source := Rechnen('System.Threading, System.SyncObjs', '  Summe: Integer;'#10, '      Summe := Summe + Werte[I];'#10);
-  Findings := TRuleAssert.Findings(TParallelForSharedWriteRule.Create, Source);
-  Assert.AreEqual(1, Integer(Length(Findings[0].Fixes)));
-  Assert.AreEqual('TInterlocked.Add(Summe, Werte[I]) verwenden', Findings[0].Fixes[0].Title);
-  Fixed := ApplyFix(Source, Findings[0].Fixes[0]);
+  mSource := Rechnen('System.Threading, System.SyncObjs', '  Summe: Integer;'#10, '      Summe := Summe + Werte[I];'#10);
+  mFindings := TRuleAssert.Findings(TParallelForSharedWriteRule.Create, mSource);
+  Assert.AreEqual(1, Integer(Length(mFindings[0].Fixes)));
+  Assert.AreEqual('TInterlocked.Add(Summe, Werte[I]) verwenden', mFindings[0].Fixes[0].Title);
+  mFixed := ApplyFix(mSource, mFindings[0].Fixes[0]);
   Assert.AreEqual(Rechnen('System.Threading, System.SyncObjs', '  Summe: Integer;'#10,
-    '      TInterlocked.Add(Summe, Werte[I]);'#10), Fixed);
-  AssertParses(Fixed);
-  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TParallelForSharedWriteRule.Create, Fixed))));
+    '      TInterlocked.Add(Summe, Werte[I]);'#10), mFixed);
+  AssertParses(mFixed);
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TParallelForSharedWriteRule.Create, mFixed))));
 end;
 
 procedure TSharedStateRulesTests.ParallelFixAddsSyncObjs;
 var
-  Source, Fixed: string;
-  Findings: TArray<TRuleFinding>;
+  mSource, mFixed: string;
+  mFindings: TArray<TRuleFinding>;
 begin
-  Source := Rechnen('System.Threading', '  Summe: Integer;'#10, '      Summe := Summe + Werte[I];'#10);
-  Findings := TRuleAssert.Findings(TParallelForSharedWriteRule.Create, Source);
-  Fixed := ApplyFix(Source, Findings[0].Fixes[0]);
+  mSource := Rechnen('System.Threading', '  Summe: Integer;'#10, '      Summe := Summe + Werte[I];'#10);
+  mFindings := TRuleAssert.Findings(TParallelForSharedWriteRule.Create, mSource);
+  mFixed := ApplyFix(mSource, mFindings[0].Fixes[0]);
   Assert.AreEqual(Rechnen('System.Threading, System.SyncObjs', '  Summe: Integer;'#10,
-    '      TInterlocked.Add(Summe, Werte[I]);'#10), Fixed);
+    '      TInterlocked.Add(Summe, Werte[I]);'#10), mFixed);
 end;
 
 procedure TSharedStateRulesTests.ParallelIncAndSubtract;
 var
-  Source: string;
-  Findings: TArray<TRuleFinding>;
+  mSource: string;
+  mFindings: TArray<TRuleFinding>;
 begin
-  Source := Rechnen('System.Threading, System.SyncObjs', '  Anzahl: Integer;'#10'  Rest: Int64;'#10,
+  mSource := Rechnen('System.Threading, System.SyncObjs', '  Anzahl: Integer;'#10'  Rest: Int64;'#10,
     '      Inc(Anzahl);'#10'      Rest := Rest - Werte[I];'#10'      Dec(Anzahl, 2);'#10);
-  Findings := TRuleAssert.Findings(TParallelForSharedWriteRule.Create, Source);
-  Assert.AreEqual(3, Integer(Length(Findings)));
-  Assert.AreEqual('Anzahl wird parallel ohne Sperre geschrieben; Additionen gehen verloren.', Findings[0].Message);
-  Assert.AreEqual('TInterlocked.Increment(Anzahl) verwenden', Findings[0].Fixes[0].Title);
-  Assert.AreEqual('Rest wird parallel ohne Sperre geschrieben; Änderungen gehen verloren.', Findings[1].Message);
-  Assert.AreEqual('TInterlocked.Add(Rest, -(Werte[I])) verwenden', Findings[1].Fixes[0].Title);
-  Assert.AreEqual('TInterlocked.Add(Anzahl, -(2)) verwenden', Findings[2].Fixes[0].Title);
+  mFindings := TRuleAssert.Findings(TParallelForSharedWriteRule.Create, mSource);
+  Assert.AreEqual(3, Integer(Length(mFindings)));
+  Assert.AreEqual('Anzahl wird parallel ohne Sperre geschrieben; Additionen gehen verloren.', mFindings[0].Message);
+  Assert.AreEqual('TInterlocked.Increment(Anzahl) verwenden', mFindings[0].Fixes[0].Title);
+  Assert.AreEqual('Rest wird parallel ohne Sperre geschrieben; Änderungen gehen verloren.', mFindings[1].Message);
+  Assert.AreEqual('TInterlocked.Add(Rest, -(Werte[I])) verwenden', mFindings[1].Fixes[0].Title);
+  Assert.AreEqual('TInterlocked.Add(Anzahl, -(2)) verwenden', mFindings[2].Fixes[0].Title);
   // Ohne passenden Typ keine Korrektur, aber die Meldung.
-  Findings := ParallelFindings('  Summe: Double;'#10, '      Summe := Summe + Werte[I];'#10);
-  Assert.AreEqual(1, Integer(Length(Findings)));
-  Assert.AreEqual(0, Integer(Length(Findings[0].Fixes)));
+  mFindings := ParallelFindings('  Summe: Double;'#10, '      Summe := Summe + Werte[I];'#10);
+  Assert.AreEqual(1, Integer(Length(mFindings)));
+  Assert.AreEqual(0, Integer(Length(mFindings[0].Fixes)));
   // Zuweisung ohne Bezug auf den alten Wert ist ebenfalls ein Wettlauf.
-  Findings := ParallelFindings('  Letzter: Integer;'#10, '      Letzter := Werte[I] * Letzter;'#10);
-  Assert.AreEqual(1, Integer(Length(Findings)));
-  Assert.AreEqual(0, Integer(Length(Findings[0].Fixes)));
+  mFindings := ParallelFindings('  Letzter: Integer;'#10, '      Letzter := Werte[I] * Letzter;'#10);
+  Assert.AreEqual(1, Integer(Length(mFindings)));
+  Assert.AreEqual(0, Integer(Length(mFindings[0].Fixes)));
 end;
 
 procedure TSharedStateRulesTests.ParallelCollectionGetsLock;
 var
-  Source, Fixed: string;
-  Findings: TArray<TRuleFinding>;
+  mSource, mFixed: string;
+  mFindings: TArray<TRuleFinding>;
 begin
-  Source := Rechnen('System.Threading, System.Generics.Collections', '  Liste: TList<Integer>;'#10,
+  mSource := Rechnen('System.Threading, System.Generics.Collections', '  Liste: TList<Integer>;'#10,
     '      if Werte[I] > 0 then'#10'        Liste.Add(Werte[I]);'#10);
-  Findings := TRuleAssert.Findings(TParallelForSharedWriteRule.Create, Source);
-  Assert.AreEqual(1, Integer(Length(Findings)));
+  mFindings := TRuleAssert.Findings(TParallelForSharedWriteRule.Create, mSource);
+  Assert.AreEqual(1, Integer(Length(mFindings)));
   Assert.AreEqual('Liste wird parallel ohne Sperre verändert (Add); die Sammlung kann beschädigt werden.',
-    Findings[0].Message);
-  Assert.AreEqual('Sperre mit TMonitor um Liste.Add legen', Findings[0].Fixes[0].Title);
-  Fixed := ApplyFix(Source, Findings[0].Fixes[0]);
+    mFindings[0].Message);
+  Assert.AreEqual('Sperre mit TMonitor um Liste.Add legen', mFindings[0].Fixes[0].Title);
+  mFixed := ApplyFix(mSource, mFindings[0].Fixes[0]);
   Assert.AreEqual(Rechnen('System.Threading, System.Generics.Collections', '  Liste: TList<Integer>;'#10,
     '      if Werte[I] > 0 then'#10 +
     '        begin'#10 +
@@ -279,30 +289,30 @@ begin
     '          finally'#10 +
     '            System.TMonitor.Exit(Liste);'#10 +
     '          end;'#10 +
-    '        end;'#10), Fixed);
-  AssertParses(Fixed);
+    '        end;'#10), mFixed);
+  AssertParses(mFixed);
   // Direkt im Rumpf ohne begin … end.
-  Source := Rechnen('System.Threading, System.Generics.Collections', '  Liste: TList<Integer>;'#10,
+  mSource := Rechnen('System.Threading, System.Generics.Collections', '  Liste: TList<Integer>;'#10,
     '      Liste.Add(Werte[I]);'#10);
-  Findings := TRuleAssert.Findings(TParallelForSharedWriteRule.Create, Source);
+  mFindings := TRuleAssert.Findings(TParallelForSharedWriteRule.Create, mSource);
   Assert.AreEqual(Rechnen('System.Threading, System.Generics.Collections', '  Liste: TList<Integer>;'#10,
     '      System.TMonitor.Enter(Liste);'#10 +
     '      try'#10 +
     '        Liste.Add(Werte[I]);'#10 +
     '      finally'#10 +
     '        System.TMonitor.Exit(Liste);'#10 +
-    '      end;'#10), ApplyFix(Source, Findings[0].Fixes[0]));
+    '      end;'#10), ApplyFix(mSource, mFindings[0].Fixes[0]));
   // Mehrere Anweisungen in einer Zeile: keine Korrektur.
-  Source := Rechnen('System.Threading, System.Generics.Collections', '  Liste: TList<Integer>;'#10,
+  mSource := Rechnen('System.Threading, System.Generics.Collections', '  Liste: TList<Integer>;'#10,
     '      Liste.Add(Werte[I]); Liste.Delete(0);'#10);
-  Findings := TRuleAssert.Findings(TParallelForSharedWriteRule.Create, Source);
-  Assert.AreEqual(2, Integer(Length(Findings)));
-  Assert.AreEqual(0, Integer(Length(Findings[0].Fixes)));
+  mFindings := TRuleAssert.Findings(TParallelForSharedWriteRule.Create, mSource);
+  Assert.AreEqual(2, Integer(Length(mFindings)));
+  Assert.AreEqual(0, Integer(Length(mFindings[0].Fixes)));
 end;
 
 procedure TSharedStateRulesTests.ParallelFieldsAndGlobals;
 const
-  Source =
+  cSource =
     'unit Rechnen;'#10 +
     'interface'#10 +
     'uses System.Threading;'#10 +
@@ -324,34 +334,34 @@ const
     'end;'#10 +
     'end.';
 var
-  Findings: TArray<TRuleFinding>;
+  mFindings: TArray<TRuleFinding>;
 begin
-  Findings := TRuleAssert.Findings(TParallelForSharedWriteRule.Create, Source);
-  Assert.AreEqual(2, Integer(Length(Findings)));
-  Assert.AreEqual('FSumme wird parallel ohne Sperre geschrieben; Additionen gehen verloren.', Findings[0].Message);
-  Assert.AreEqual('TInterlocked.Add(FSumme, Werte[I]) verwenden', Findings[0].Fixes[0].Title);
-  Assert.AreEqual('GAnzahl wird parallel ohne Sperre geschrieben; Additionen gehen verloren.', Findings[1].Message);
+  mFindings := TRuleAssert.Findings(TParallelForSharedWriteRule.Create, cSource);
+  Assert.AreEqual(2, Integer(Length(mFindings)));
+  Assert.AreEqual('FSumme wird parallel ohne Sperre geschrieben; Additionen gehen verloren.', mFindings[0].Message);
+  Assert.AreEqual('TInterlocked.Add(FSumme, Werte[I]) verwenden', mFindings[0].Fixes[0].Title);
+  Assert.AreEqual('GAnzahl wird parallel ohne Sperre geschrieben; Additionen gehen verloren.', mFindings[1].Message);
 end;
 
 procedure TSharedStateRulesTests.ParallelTaskInLoop;
 const
-  InLoop =
+  cInLoop =
     '  for J := 1 to 4 do'#10 +
     '    TTask.Run(procedure'#10 +
     '      begin'#10 +
     '        Inc(FAnzahl);'#10 +
     '      end);'#10;
-  Single =
+  cSingle =
     '  TTask.Run(procedure'#10 +
     '    begin'#10 +
     '      Inc(FAnzahl);'#10 +
     '    end);'#10;
 begin
   Assert.AreEqual(1, Integer(Length(TRuleAssert.Findings(TParallelForSharedWriteRule.Create,
-    Starter('var'#10'  J: Integer;'#10, InLoop)))));
+    Starter('var'#10'  J: Integer;'#10, cInLoop)))));
   // Ein einzelner Task meldet thread-unsafe-increment.
   Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TParallelForSharedWriteRule.Create,
-    Starter('', Single)))));
+    Starter('', cSingle)))));
 end;
 
 procedure TSharedStateRulesTests.ParallelSilentCases;
@@ -392,7 +402,7 @@ end;
 
 procedure TSharedStateRulesTests.ParallelThreadSafeTypes;
 var
-  Issues: TArray<TConfigurationIssue>;
+  mIssues: TArray<TConfigurationIssue>;
 begin
   Assert.AreEqual(0, Integer(Length(ParallelFindings('  Liste: TThreadList<Integer>;'#10,
     '      Liste.Add(Werte[I]);'#10))));
@@ -406,104 +416,104 @@ begin
   Assert.AreEqual(1, Integer(Length(ParallelFindings('  Liste: TSichereListe;'#10,
     '      Liste.Add(Werte[I]);'#10))));
   TConfigurationParser.Parse('{"rules": {"parallel-for-shared-write": {"threadSafeTypes": "TSichereListe"}}}',
-    Issues);
-  Assert.AreEqual(1, Integer(Length(Issues)));
+    mIssues);
+  Assert.AreEqual(1, Integer(Length(mIssues)));
   TConfigurationParser.Parse('{"rules": {"parallel-for-shared-write": {"threadSafeTypes": ["TSichereListe"]}}}',
-    Issues);
-  Assert.AreEqual(0, Integer(Length(Issues)));
+    mIssues);
+  Assert.AreEqual(0, Integer(Length(mIssues)));
 end;
 
 procedure TSharedStateRulesTests.ParallelOffAndExclude;
 var
-  Source: string;
+  mSource: string;
 begin
-  Source := Rechnen('System.Threading', '  Summe: Integer;'#10, '      Summe := Summe + Werte[I];'#10);
-  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TParallelForSharedWriteRule.Create, Source,
+  mSource := Rechnen('System.Threading', '  Summe: Integer;'#10, '      Summe := Summe + Werte[I];'#10);
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TParallelForSharedWriteRule.Create, mSource,
     '{"rules": {"parallel-for-shared-write": "off"}}'))));
-  Assert.AreEqual(1, Integer(Length(TRuleAssert.Findings(TParallelForSharedWriteRule.Create, Source, '',
+  Assert.AreEqual(1, Integer(Length(TRuleAssert.Findings(TParallelForSharedWriteRule.Create, mSource, '',
     'Source/Rechnen.pas'))));
-  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TParallelForSharedWriteRule.Create, Source,
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TParallelForSharedWriteRule.Create, mSource,
     '{"rules": {"parallel-for-shared-write": {"exclude": ["Source/*.pas"]}}}', 'Source/Rechnen.pas'))));
 end;
 
 procedure TSharedStateRulesTests.IncrementIssueExample;
 var
-  Findings: TArray<TRuleFinding>;
+  mFindings: TArray<TRuleFinding>;
 begin
-  Findings := IncrementFindings('  while not Terminated do'#10'    if Holen then Inc(GVerarbeitet);'#10);
-  Assert.AreEqual(1, Integer(Length(Findings)));
-  Assert.AreEqual('thread-unsafe-increment', Findings[0].RuleId);
-  Assert.AreEqual(Ord(TRuleSeverity.Warning), Ord(Findings[0].Severity));
-  Assert.AreEqual(Ord(TRuleConfidence.Medium), Ord(Findings[0].Confidence));
+  mFindings := IncrementFindings('  while not Terminated do'#10'    if Holen then Inc(GVerarbeitet);'#10);
+  Assert.AreEqual(1, Integer(Length(mFindings)));
+  Assert.AreEqual('thread-unsafe-increment', mFindings[0].RuleId);
+  Assert.AreEqual(Ord(TRuleSeverity.Warning), Ord(mFindings[0].Severity));
+  Assert.AreEqual(Ord(TRuleConfidence.Medium), Ord(mFindings[0].Confidence));
   Assert.AreEqual('GVerarbeitet wird aus mehreren Threads ohne Sperre erhöht; Inc ist nicht atomar.',
-    Findings[0].Message);
-  Assert.AreEqual(22, Findings[0].Range.StartPos.Line);
-  Assert.AreEqual(18, Findings[0].Range.StartPos.Character);
-  Assert.AreEqual(35, Findings[0].Range.EndPos.Character);
+    mFindings[0].Message);
+  Assert.AreEqual(22, mFindings[0].Range.StartPos.Line);
+  Assert.AreEqual(18, mFindings[0].Range.StartPos.Character);
+  Assert.AreEqual(35, mFindings[0].Range.EndPos.Character);
 end;
 
 procedure TSharedStateRulesTests.IncrementFixUsesInterlocked;
 var
-  Source, Fixed: string;
-  Findings: TArray<TRuleFinding>;
+  mSource, mFixed: string;
+  mFindings: TArray<TRuleFinding>;
 begin
-  Source := Arbeit('  while not Terminated do'#10'    if Holen then Inc(GVerarbeitet);'#10);
-  Findings := TRuleAssert.Findings(TThreadUnsafeIncrementRule.Create, Source);
-  Assert.AreEqual(1, Integer(Length(Findings[0].Fixes)));
-  Assert.AreEqual('TInterlocked.Increment(GVerarbeitet) verwenden', Findings[0].Fixes[0].Title);
-  Fixed := ApplyFix(Source, Findings[0].Fixes[0]);
+  mSource := Arbeit('  while not Terminated do'#10'    if Holen then Inc(GVerarbeitet);'#10);
+  mFindings := TRuleAssert.Findings(TThreadUnsafeIncrementRule.Create, mSource);
+  Assert.AreEqual(1, Integer(Length(mFindings[0].Fixes)));
+  Assert.AreEqual('TInterlocked.Increment(GVerarbeitet) verwenden', mFindings[0].Fixes[0].Title);
+  mFixed := ApplyFix(mSource, mFindings[0].Fixes[0]);
   Assert.AreEqual(Arbeit('  while not Terminated do'#10'    if Holen then TInterlocked.Increment(GVerarbeitet);'#10),
-    Fixed);
-  AssertParses(Fixed);
-  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TThreadUnsafeIncrementRule.Create, Fixed))));
+    mFixed);
+  AssertParses(mFixed);
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TThreadUnsafeIncrementRule.Create, mFixed))));
 end;
 
 procedure TSharedStateRulesTests.IncrementVariants;
 var
-  Findings: TArray<TRuleFinding>;
-  Source: string;
-  Index: ISymbolIndex;
+  mFindings: TArray<TRuleFinding>;
+  mSource: string;
+  mIndex: ISymbolIndex;
 begin
-  Findings := IncrementFindings('  GVerarbeitet := GVerarbeitet + 1;'#10'  Dec(GVerarbeitet);'#10 +
+  mFindings := IncrementFindings('  GVerarbeitet := GVerarbeitet + 1;'#10'  Dec(GVerarbeitet);'#10 +
     '  GVerarbeitet := GVerarbeitet - 1;'#10'  Inc(GVerarbeitet, 5);'#10);
-  Assert.AreEqual(4, Integer(Length(Findings)));
+  Assert.AreEqual(4, Integer(Length(mFindings)));
   Assert.AreEqual('GVerarbeitet wird aus mehreren Threads ohne Sperre erhöht; ' +
-    'GVerarbeitet := GVerarbeitet + 1 ist nicht atomar.', Findings[0].Message);
-  Assert.AreEqual('TInterlocked.Increment(GVerarbeitet) verwenden', Findings[0].Fixes[0].Title);
+    'GVerarbeitet := GVerarbeitet + 1 ist nicht atomar.', mFindings[0].Message);
+  Assert.AreEqual('TInterlocked.Increment(GVerarbeitet) verwenden', mFindings[0].Fixes[0].Title);
   Assert.AreEqual('GVerarbeitet wird aus mehreren Threads ohne Sperre verringert; Dec ist nicht atomar.',
-    Findings[1].Message);
-  Assert.AreEqual('TInterlocked.Decrement(GVerarbeitet) verwenden', Findings[1].Fixes[0].Title);
-  Assert.AreEqual('TInterlocked.Decrement(GVerarbeitet) verwenden', Findings[2].Fixes[0].Title);
-  Assert.AreEqual('TInterlocked.Add(GVerarbeitet, 5) verwenden', Findings[3].Fixes[0].Title);
+    mFindings[1].Message);
+  Assert.AreEqual('TInterlocked.Decrement(GVerarbeitet) verwenden', mFindings[1].Fixes[0].Title);
+  Assert.AreEqual('TInterlocked.Decrement(GVerarbeitet) verwenden', mFindings[2].Fixes[0].Title);
+  Assert.AreEqual('TInterlocked.Add(GVerarbeitet, 5) verwenden', mFindings[3].Fixes[0].Title);
   // Double: Meldung ohne Korrektur.
-  Findings := IncrementFindings('  GSumme := GSumme + 1;'#10);
-  Assert.AreEqual(1, Integer(Length(Findings)));
-  Assert.AreEqual(0, Integer(Length(Findings[0].Fixes)));
+  mFindings := IncrementFindings('  GSumme := GSumme + 1;'#10);
+  Assert.AreEqual(1, Integer(Length(mFindings)));
+  Assert.AreEqual(0, Integer(Length(mFindings[0].Fixes)));
   // Erbt über eine Zwischenklasse der Unit von TThread.
-  Source := StringReplace(Arbeit('  Inc(GVerarbeitet);'#10), '  TArbeiter = class(TThread)',
+  mSource := StringReplace(Arbeit('  Inc(GVerarbeitet);'#10), '  TArbeiter = class(TThread)',
     '  TBasis = class(TThread)'#10'  end;'#10'  TArbeiter = class(TBasis)', []);
-  Assert.AreEqual(1, Integer(Length(TRuleAssert.Findings(TThreadUnsafeIncrementRule.Create, Source))));
+  Assert.AreEqual(1, Integer(Length(TRuleAssert.Findings(TThreadUnsafeIncrementRule.Create, mSource))));
   // Vorfahr in einer anderen Unit: nur mit Index bekannt.
-  Source := StringReplace(Arbeit('  Inc(GVerarbeitet);'#10), 'class(TThread)', 'class(TBasisThread)', []);
-  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TThreadUnsafeIncrementRule.Create, Source))));
-  Index := TSymbolIndex.Create;
-  Index.AddUnit(TIndexExtractor.ExtractText('unit Basis;'#10'interface'#10'uses System.Classes;'#10'type'#10 +
+  mSource := StringReplace(Arbeit('  Inc(GVerarbeitet);'#10), 'class(TThread)', 'class(TBasisThread)', []);
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TThreadUnsafeIncrementRule.Create, mSource))));
+  mIndex := TSymbolIndex.Create;
+  mIndex.AddUnit(TIndexExtractor.ExtractText('unit Basis;'#10'interface'#10'uses System.Classes;'#10'type'#10 +
     '  TBasisThread = class(TThread)'#10'  end;'#10'implementation'#10'end.', 'C:\Basis\Basis.pas', nil));
-  Assert.AreEqual(1, Integer(Length(TRuleAssert.IndexFindings(TThreadUnsafeIncrementRule.Create, Source, Index, '',
+  Assert.AreEqual(1, Integer(Length(TRuleAssert.IndexFindings(TThreadUnsafeIncrementRule.Create, mSource, mIndex, '',
     ''))));
 end;
 
 procedure TSharedStateRulesTests.IncrementTasksAndAnonymousThreads;
 var
-  Findings: TArray<TRuleFinding>;
+  mFindings: TArray<TRuleFinding>;
 begin
-  Findings := TRuleAssert.Findings(TThreadUnsafeIncrementRule.Create, Starter('',
+  mFindings := TRuleAssert.Findings(TThreadUnsafeIncrementRule.Create, Starter('',
     '  TTask.Run(procedure'#10'    begin'#10'      Inc(FAnzahl);'#10'      Inc(GZaehler);'#10'    end);'#10));
-  Assert.AreEqual(2, Integer(Length(Findings)));
-  Assert.AreEqual('FAnzahl wird aus mehreren Threads ohne Sperre erhöht; Inc ist nicht atomar.', Findings[0].Message);
+  Assert.AreEqual(2, Integer(Length(mFindings)));
+  Assert.AreEqual('FAnzahl wird aus mehreren Threads ohne Sperre erhöht; Inc ist nicht atomar.', mFindings[0].Message);
   Assert.AreEqual('GZaehler wird aus mehreren Threads ohne Sperre erhöht; Inc ist nicht atomar.',
-    Findings[1].Message);
-  Assert.AreEqual('TInterlocked.Increment(GZaehler) verwenden', Findings[1].Fixes[0].Title);
+    mFindings[1].Message);
+  Assert.AreEqual('TInterlocked.Increment(GZaehler) verwenden', mFindings[1].Fixes[0].Title);
   Assert.AreEqual(1, Integer(Length(TRuleAssert.Findings(TThreadUnsafeIncrementRule.Create, Starter('',
     '  TThread.CreateAnonymousThread(procedure'#10'    begin'#10'      FAnzahl := FAnzahl + 1;'#10 +
     '    end).Start;'#10)))));
@@ -543,14 +553,14 @@ end;
 
 procedure TSharedStateRulesTests.IncrementOffAndExclude;
 var
-  Source: string;
+  mSource: string;
 begin
-  Source := Arbeit('  Inc(GVerarbeitet);'#10);
-  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TThreadUnsafeIncrementRule.Create, Source,
+  mSource := Arbeit('  Inc(GVerarbeitet);'#10);
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TThreadUnsafeIncrementRule.Create, mSource,
     '{"rules": {"thread-unsafe-increment": "off"}}'))));
-  Assert.AreEqual(1, Integer(Length(TRuleAssert.Findings(TThreadUnsafeIncrementRule.Create, Source, '',
+  Assert.AreEqual(1, Integer(Length(TRuleAssert.Findings(TThreadUnsafeIncrementRule.Create, mSource, '',
     'Source/Arbeit.pas'))));
-  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TThreadUnsafeIncrementRule.Create, Source,
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TThreadUnsafeIncrementRule.Create, mSource,
     '{"rules": {"thread-unsafe-increment": {"exclude": ["Source/*.pas"]}}}', 'Source/Arbeit.pas'))));
 end;
 

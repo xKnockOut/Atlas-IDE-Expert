@@ -43,22 +43,22 @@ end;
 procedure TAtlasPopupWidthTests.LongSignatureFitsWithinMaxWidth;
 const
   // 60 Zeichen Signatur bei 7 px je Zeichen, Name, Badge und Ränder.
-  Measured = 60 * 7 + 120 + 47 + 30;
+  cMeasured = 60 * 7 + 120 + 47 + 30;
 begin
-  Assert.AreEqual(Measured, TAtlasPopupWidth.Fit(Measured, TAtlasPopupWidth.cMinListWidth,
+  Assert.AreEqual(cMeasured, TAtlasPopupWidth.Fit(cMeasured, TAtlasPopupWidth.cMinListWidth,
     TAtlasPopupWidth.cMaxListWidth), 'Ohne Kürzung, solange MaxWidth reicht');
 end;
 
 procedure TAtlasPopupWidthTests.GrowsButNeverShrinks;
 var
-  Session: Integer;
+  mSession: Integer;
 begin
   // Filtern von "A" (breite Einträge) zu "Add" (schmale): die Breite bleibt.
-  Session := TAtlasPopupWidth.Grow(0, 520);
-  Session := TAtlasPopupWidth.Grow(Session, 310);
-  Assert.AreEqual(520, Session);
-  Session := TAtlasPopupWidth.Grow(Session, 610);
-  Assert.AreEqual(610, Session);
+  mSession := TAtlasPopupWidth.Grow(0, 520);
+  mSession := TAtlasPopupWidth.Grow(mSession, 310);
+  Assert.AreEqual(520, mSession);
+  mSession := TAtlasPopupWidth.Grow(mSession, 610);
+  Assert.AreEqual(610, mSession);
 end;
 
 procedure TAtlasPopupWidthTests.ManualWidthWins;
@@ -70,7 +70,7 @@ end;
 
 procedure TAtlasPopupWidthTests.PanelHasOwnLimits;
 var
-  PanelMin, ListMin: Integer;
+  mPanelMin, mListMin: Integer;
 begin
   // Gezogene Panelbreite (#416): eigene Grenzen, unabhängig von der Liste.
   Assert.AreEqual(TAtlasPopupWidth.cMaxPanelWidth, TAtlasPopupWidth.Fit(900, TAtlasPopupWidth.cMinPanelWidth,
@@ -78,9 +78,9 @@ begin
   Assert.AreEqual(TAtlasPopupWidth.cMinPanelWidth, TAtlasPopupWidth.Fit(100, TAtlasPopupWidth.cMinPanelWidth,
     TAtlasPopupWidth.cMaxPanelWidth));
   // Über Variablen: Der Vergleich der Konstanten selbst ergibt W1022.
-  PanelMin := TAtlasPopupWidth.cMinPanelWidth;
-  ListMin := TAtlasPopupWidth.cMinListWidth;
-  Assert.IsTrue(PanelMin < ListMin);
+  mPanelMin := TAtlasPopupWidth.cMinPanelWidth;
+  mListMin := TAtlasPopupWidth.cMinListWidth;
+  Assert.IsTrue(mPanelMin < mListMin);
 end;
 
 initialization

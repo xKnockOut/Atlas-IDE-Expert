@@ -36,7 +36,7 @@ uses
   Atlas.Core.Editor.MethodPlacement;
 
 const
-  LB = #13#10;
+  cLB = #13#10;
 
 function Texts: TAtlasMethodPlacementTexts;
 begin
@@ -64,106 +64,106 @@ end;
 
 procedure TAtlasMethodPlacementTests.ReadsReply;
 var
-  Answer: TJSONValue;
-  Reply: TAtlasMethodPlacementReply;
+  mAnswer: TJSONValue;
+  mReply: TAtlasMethodPlacementReply;
 begin
-  Answer := TJSONObject.ParseJSONValue('{"edits": [{"range": {"start": {"line": 3, "character": 0}, ' +
+  mAnswer := TJSONObject.ParseJSONValue('{"edits": [{"range": {"start": {"line": 3, "character": 0}, ' +
     '"end": {"line": 9, "character": 0}}, "newText": "neu"}], "moves": [' +
     '{"type": "TKunde", "name": "Speichern", "line": 8, "newLine": 3, "size": 4, "delta": -2, "fixed": false, ' +
     '"reason": ""}, {"type": "TKunde", "name": "Laden", "line": 20, "newLine": -1, "size": 3, "delta": 0, ' +
     '"fixed": true, "reason": "region"}]}');
   try
-    Assert.IsTrue(TAtlasMethodPlacement.Read(Answer, Reply));
+    Assert.IsTrue(TAtlasMethodPlacement.Read(mAnswer, mReply));
   finally
-    Answer.Free;
+    mAnswer.Free;
   end;
-  Assert.AreEqual(1, Integer(Length(Reply.Edits)));
-  Assert.AreEqual(3, Reply.Edits[0].StartPos.Line);
-  Assert.AreEqual('neu', Reply.Edits[0].NewText);
-  Assert.AreEqual(2, Integer(Length(Reply.Moves)));
-  Assert.AreEqual(1, Reply.Moved);
-  Assert.AreEqual('Speichern', Reply.Moves[0].Name);
-  Assert.AreEqual(3, Reply.Moves[0].NewLine);
-  Assert.AreEqual(4, Reply.Moves[0].Size);
-  Assert.AreEqual(-2, Reply.Moves[0].Delta);
-  Assert.IsTrue(Reply.Moves[1].Fixed);
-  Assert.AreEqual('region', Reply.Moves[1].Reason);
-  Assert.IsFalse(TAtlasMethodPlacement.Read(nil, Reply));
+  Assert.AreEqual(1, Integer(Length(mReply.Edits)));
+  Assert.AreEqual(3, mReply.Edits[0].StartPos.Line);
+  Assert.AreEqual('neu', mReply.Edits[0].NewText);
+  Assert.AreEqual(2, Integer(Length(mReply.Moves)));
+  Assert.AreEqual(1, mReply.Moved);
+  Assert.AreEqual('Speichern', mReply.Moves[0].Name);
+  Assert.AreEqual(3, mReply.Moves[0].NewLine);
+  Assert.AreEqual(4, mReply.Moves[0].Size);
+  Assert.AreEqual(-2, mReply.Moves[0].Delta);
+  Assert.IsTrue(mReply.Moves[1].Fixed);
+  Assert.AreEqual('region', mReply.Moves[1].Reason);
+  Assert.IsFalse(TAtlasMethodPlacement.Read(nil, mReply));
 end;
 
 procedure TAtlasMethodPlacementTests.DetectsNewMethodHeaders;
 const
-  Before = 'implementation' + LB + LB + 'procedure TFoo.A;' + LB + 'begin' + LB + 'end;' + LB;
+  cBefore = 'implementation' + cLB + cLB + 'procedure TFoo.A;' + cLB + 'begin' + cLB + 'end;' + cLB;
 begin
-  Assert.IsTrue(TAtlasMethodPlacement.NewHeaders(Before,
-    Before + LB + 'procedure TFoo.B(X: Integer);' + LB + 'begin' + LB + 'end;' + LB));
-  Assert.IsTrue(TAtlasMethodPlacement.NewHeaders(Before,
-    Before + LB + '  class function TFoo.Neu: TFoo;' + LB + 'begin' + LB + 'end;' + LB));
-  Assert.IsFalse(TAtlasMethodPlacement.NewHeaders(Before, Before), 'unverändert');
-  Assert.IsFalse(TAtlasMethodPlacement.NewHeaders(Before,
-    Before + LB + 'procedure Hilfe(A: TFoo.TArt);' + LB + 'begin' + LB + 'end;' + LB), 'freie Routine');
-  Assert.IsFalse(TAtlasMethodPlacement.NewHeaders(Before,
-    StringReplace(Before, 'begin', 'begin' + LB + '  Lauf;', [])), 'Änderung im Rumpf');
-  Assert.IsFalse(TAtlasMethodPlacement.NewHeaders(Before,
-    StringReplace(Before, 'procedure TFoo.A;', '  procedure TFoo.A;', [])), 'nur eingerückt');
+  Assert.IsTrue(TAtlasMethodPlacement.NewHeaders(cBefore,
+    cBefore + cLB + 'procedure TFoo.B(X: Integer);' + cLB + 'begin' + cLB + 'end;' + cLB));
+  Assert.IsTrue(TAtlasMethodPlacement.NewHeaders(cBefore,
+    cBefore + cLB + '  class function TFoo.Neu: TFoo;' + cLB + 'begin' + cLB + 'end;' + cLB));
+  Assert.IsFalse(TAtlasMethodPlacement.NewHeaders(cBefore, cBefore), 'unverändert');
+  Assert.IsFalse(TAtlasMethodPlacement.NewHeaders(cBefore,
+    cBefore + cLB + 'procedure Hilfe(A: TFoo.TArt);' + cLB + 'begin' + cLB + 'end;' + cLB), 'freie Routine');
+  Assert.IsFalse(TAtlasMethodPlacement.NewHeaders(cBefore,
+    StringReplace(cBefore, 'begin', 'begin' + cLB + '  Lauf;', [])), 'Änderung im Rumpf');
+  Assert.IsFalse(TAtlasMethodPlacement.NewHeaders(cBefore,
+    StringReplace(cBefore, 'procedure TFoo.A;', '  procedure TFoo.A;', [])), 'nur eingerückt');
 end;
 
 procedure TAtlasMethodPlacementTests.DifferenceIsOneEdit;
 const
-  Before = 'A' + LB + 'B' + LB + 'C' + LB;
-  Final = 'A' + LB + 'B' + LB + 'neu' + LB + 'C' + LB;
+  cBefore = 'A' + cLB + 'B' + cLB + 'C' + cLB;
+  cFinal = 'A' + cLB + 'B' + cLB + 'neu' + cLB + 'C' + cLB;
 var
-  Range: TLspTextRange;
+  mRange: TLspTextRange;
 begin
-  Assert.IsTrue(TAtlasMethodPlacement.Difference(Before, Final, Range));
-  Assert.AreEqual(Final, Applied(Before, Range));
-  Assert.IsFalse(TAtlasMethodPlacement.Difference(Before, Before, Range));
+  Assert.IsTrue(TAtlasMethodPlacement.Difference(cBefore, cFinal, mRange));
+  Assert.AreEqual(cFinal, Applied(cBefore, mRange));
+  Assert.IsFalse(TAtlasMethodPlacement.Difference(cBefore, cBefore, mRange));
   // Nie zwischen #13 und #10 schneiden.
-  Assert.IsTrue(TAtlasMethodPlacement.Difference('A' + #13#10 + 'B', 'A' + #13 + 'B', Range));
-  Assert.AreEqual(1, Range.StartOffset);
-  Assert.AreEqual('A' + #13 + 'B', Applied('A' + #13#10 + 'B', Range));
-  Assert.IsTrue(TAtlasMethodPlacement.Difference('X' + #$D83D#$DE00, 'X' + #$D83D#$DE01, Range));
-  Assert.AreEqual(1, Range.StartOffset, 'Ersatzpaar ganz');
+  Assert.IsTrue(TAtlasMethodPlacement.Difference('A' + #13#10 + 'B', 'A' + #13 + 'B', mRange));
+  Assert.AreEqual(1, mRange.StartOffset);
+  Assert.AreEqual('A' + #13 + 'B', Applied('A' + #13#10 + 'B', mRange));
+  Assert.IsTrue(TAtlasMethodPlacement.Difference('X' + #$D83D#$DE00, 'X' + #$D83D#$DE01, mRange));
+  Assert.AreEqual(1, mRange.StartOffset, 'Ersatzpaar ganz');
 end;
 
 procedure TAtlasMethodPlacementTests.CaretFollowsMovedBody;
 var
-  Moves: TArray<TAtlasMethodMove>;
-  Line: Integer;
+  mMoves: TArray<TAtlasMethodMove>;
+  mLine: Integer;
 begin
-  SetLength(Moves, 2);
-  Moves[0].Fixed := True;
-  Moves[0].Line := 30;
-  Moves[0].NewLine := -1;
-  Moves[0].Size := 5;
-  Moves[1].Line := 40;
-  Moves[1].NewLine := 12;
-  Moves[1].Size := 4;
-  Assert.IsTrue(TAtlasMethodPlacement.CaretLine(Moves, 42, Line));
-  Assert.AreEqual(14, Line);
-  Assert.IsFalse(TAtlasMethodPlacement.CaretLine(Moves, 44, Line), 'hinter dem Rumpf');
-  Assert.IsFalse(TAtlasMethodPlacement.CaretLine(Moves, 31, Line), 'stehen bleibender Rumpf');
-  Assert.AreEqual(31, Line);
+  SetLength(mMoves, 2);
+  mMoves[0].Fixed := True;
+  mMoves[0].Line := 30;
+  mMoves[0].NewLine := -1;
+  mMoves[0].Size := 5;
+  mMoves[1].Line := 40;
+  mMoves[1].NewLine := 12;
+  mMoves[1].Size := 4;
+  Assert.IsTrue(TAtlasMethodPlacement.CaretLine(mMoves, 42, mLine));
+  Assert.AreEqual(14, mLine);
+  Assert.IsFalse(TAtlasMethodPlacement.CaretLine(mMoves, 44, mLine), 'hinter dem Rumpf');
+  Assert.IsFalse(TAtlasMethodPlacement.CaretLine(mMoves, 31, mLine), 'stehen bleibender Rumpf');
+  Assert.AreEqual(31, mLine);
 end;
 
 procedure TAtlasMethodPlacementTests.PreviewTexts;
 var
-  Move: TAtlasMethodMove;
+  mMove: TAtlasMethodMove;
 begin
-  Move := Default(TAtlasMethodMove);
-  Move.TypeName := 'TKunde';
-  Move.Name := 'Speichern';
-  Move.Delta := -3;
-  Assert.AreEqual('hoch 3  TKunde.Speichern', TAtlasMethodPlacement.MoveText(Move, Texts));
-  Move.Delta := 2;
-  Assert.AreEqual('runter 2  TKunde.Speichern', TAtlasMethodPlacement.MoveText(Move, Texts));
-  Move.Fixed := True;
-  Move.Reason := 'ifdef';
-  Assert.AreEqual('bleibt: IFDEF  TKunde.Speichern', TAtlasMethodPlacement.MoveText(Move, Texts));
-  Move.Reason := 'region';
-  Assert.AreEqual('bleibt: Region  TKunde.Speichern', TAtlasMethodPlacement.MoveText(Move, Texts));
-  Move.Reason := 'line';
-  Assert.AreEqual('bleibt: Zeile  TKunde.Speichern', TAtlasMethodPlacement.MoveText(Move, Texts));
+  mMove := Default(TAtlasMethodMove);
+  mMove.TypeName := 'TKunde';
+  mMove.Name := 'Speichern';
+  mMove.Delta := -3;
+  Assert.AreEqual('hoch 3  TKunde.Speichern', TAtlasMethodPlacement.MoveText(mMove, Texts));
+  mMove.Delta := 2;
+  Assert.AreEqual('runter 2  TKunde.Speichern', TAtlasMethodPlacement.MoveText(mMove, Texts));
+  mMove.Fixed := True;
+  mMove.Reason := 'ifdef';
+  Assert.AreEqual('bleibt: IFDEF  TKunde.Speichern', TAtlasMethodPlacement.MoveText(mMove, Texts));
+  mMove.Reason := 'region';
+  Assert.AreEqual('bleibt: Region  TKunde.Speichern', TAtlasMethodPlacement.MoveText(mMove, Texts));
+  mMove.Reason := 'line';
+  Assert.AreEqual('bleibt: Zeile  TKunde.Speichern', TAtlasMethodPlacement.MoveText(mMove, Texts));
 end;
 
 initialization

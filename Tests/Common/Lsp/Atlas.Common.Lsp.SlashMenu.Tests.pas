@@ -65,8 +65,8 @@ uses
   Atlas.Common.Lsp.Completion;
 
 const
-  FileName = 'C:\P\Foo.pas';
-  Text =
+  cFileName = 'C:\P\Foo.pas';
+  cText =
     'unit Foo;'#10 +                     // 0
     'interface'#10 +                     // 1
     'type'#10 +                          // 2
@@ -116,7 +116,7 @@ end;
 procedure TLspSlashMenuTests.Setup;
 begin
   FStore := TDocumentStore.Create;
-  FStore.Open(TDocumentUris.FromPath(FileName), 'pascal', 1, Text);
+  FStore.Open(TDocumentUris.FromPath(cFileName), 'pascal', 1, cText);
   FEnabled := True;
   FDisabled := nil;
   FMenu := TLspSlashMenu.Create(FStore);
@@ -138,14 +138,14 @@ end;
 
 function TLspSlashMenuTests.Arguments(ALine, AEndLine: Integer): TJSONArray;
 var
-  Position: TJSONObject;
+  mPosition: TJSONObject;
 begin
-  Position := TJSONObject.Create;
-  Position.AddPair('line', TJSONNumber.Create(ALine));
-  Position.AddPair('character', TJSONNumber.Create(0));
+  mPosition := TJSONObject.Create;
+  mPosition.AddPair('line', TJSONNumber.Create(ALine));
+  mPosition.AddPair('character', TJSONNumber.Create(0));
   Result := TJSONArray.Create;
-  Result.Add(TDocumentUris.FromPath(FileName));
-  Result.AddElement(Position);
+  Result.Add(TDocumentUris.FromPath(cFileName));
+  Result.AddElement(mPosition);
   Result.Add(AEndLine);
 end;
 
@@ -163,175 +163,175 @@ end;
 
 function TLspSlashMenuTests.Names(AResult: TJSONValue): string;
 var
-  Item: TJSONValue;
+  mItem: TJSONValue;
 begin
   Result := '';
-  for Item in TJSONObject(AResult).GetValue<TJSONArray>('commands') do
+  for mItem in TJSONObject(AResult).GetValue<TJSONArray>('commands') do
   begin
-    Result := Result + ',' + Item.GetValue<string>('name');
+    Result := Result + ',' + mItem.GetValue<string>('name');
   end;
   Result := Result + ',';
 end;
 
 procedure TLspSlashMenuTests.MenuInClassOffersGenerateCommands;
 var
-  Args: TJSONArray;
-  Answer: TJSONValue;
-  First: TJSONObject;
-  Group, Argument: string;
-  Choices: Boolean;
+  mArgs: TJSONArray;
+  mAnswer: TJSONValue;
+  mFirst: TJSONObject;
+  mGroup, mArgument: string;
+  mChoices: Boolean;
 begin
-  Args := Arguments(5, -1);
-  Answer := FMenu.ExecuteMenu(Args);
+  mArgs := Arguments(5, -1);
+  mAnswer := FMenu.ExecuteMenu(mArgs);
   try
-    Assert.IsTrue(Flag(Answer, 'enabled'));
-    Assert.AreEqual('class', List(Answer, 'places').Items[0].Value);
-    Assert.IsTrue(Pos(',ctor,', Names(Answer)) > 0, Names(Answer));
-    Assert.IsTrue(Pos(',todo,', Names(Answer)) > 0, 'überall');
-    Assert.AreEqual(0, Pos(',try,', Names(Answer)), 'Umschließen nur mit Markierung');
-    Assert.AreEqual(0, Pos(',raise,', Names(Answer)), 'nur in Routinen');
-    First := TJSONObject(TJSONObject(Answer).GetValue<TJSONArray>('commands').Items[0]);
-    Assert.AreEqual('ctor', Field(First, 'name'));
-    Group := First.GetValue<string>('group');
-    Argument := First.GetValue<string>('argument');
-    Choices := First.GetValue<Boolean>('choices');
-    Assert.AreEqual('generate', Group);
-    Assert.AreEqual('optional', Argument);
-    Assert.IsTrue(Choices);
-    Assert.AreNotEqual('', Field(First, 'summary'));
+    Assert.IsTrue(Flag(mAnswer, 'enabled'));
+    Assert.AreEqual('class', List(mAnswer, 'places').Items[0].Value);
+    Assert.IsTrue(Pos(',ctor,', Names(mAnswer)) > 0, Names(mAnswer));
+    Assert.IsTrue(Pos(',todo,', Names(mAnswer)) > 0, 'überall');
+    Assert.AreEqual(0, Pos(',try,', Names(mAnswer)), 'Umschließen nur mit Markierung');
+    Assert.AreEqual(0, Pos(',raise,', Names(mAnswer)), 'nur in Routinen');
+    mFirst := TJSONObject(TJSONObject(mAnswer).GetValue<TJSONArray>('commands').Items[0]);
+    Assert.AreEqual('ctor', Field(mFirst, 'name'));
+    mGroup := mFirst.GetValue<string>('group');
+    mArgument := mFirst.GetValue<string>('argument');
+    mChoices := mFirst.GetValue<Boolean>('choices');
+    Assert.AreEqual('generate', mGroup);
+    Assert.AreEqual('optional', mArgument);
+    Assert.IsTrue(mChoices);
+    Assert.AreNotEqual('', Field(mFirst, 'summary'));
   finally
-    Answer.Free;
-    Args.Free;
+    mAnswer.Free;
+    mArgs.Free;
   end;
 end;
 
 procedure TLspSlashMenuTests.MenuWithSelectionOffersSurround;
 var
-  Args: TJSONArray;
-  Answer: TJSONValue;
+  mArgs: TJSONArray;
+  mAnswer: TJSONValue;
 begin
-  Args := Arguments(10, 11);
-  Answer := FMenu.ExecuteMenu(Args);
+  mArgs := Arguments(10, 11);
+  mAnswer := FMenu.ExecuteMenu(mArgs);
   try
-    Assert.IsTrue(Pos(',try,', Names(Answer)) > 0, Names(Answer));
-    Assert.IsTrue(Pos(',raise,', Names(Answer)) > 0, Names(Answer));
-    Assert.AreEqual(0, Pos(',ctor,', Names(Answer)), 'keine Klasse');
+    Assert.IsTrue(Pos(',try,', Names(mAnswer)) > 0, Names(mAnswer));
+    Assert.IsTrue(Pos(',raise,', Names(mAnswer)) > 0, Names(mAnswer));
+    Assert.AreEqual(0, Pos(',ctor,', Names(mAnswer)), 'keine Klasse');
   finally
-    Answer.Free;
-    Args.Free;
+    mAnswer.Free;
+    mArgs.Free;
   end;
 end;
 
 procedure TLspSlashMenuTests.MenuLeavesOutDisabledCommands;
 var
-  Args: TJSONArray;
-  Answer: TJSONValue;
+  mArgs: TJSONArray;
+  mAnswer: TJSONValue;
 begin
   FDisabled := ['ctor'];
-  Args := Arguments(5, -1);
-  Answer := FMenu.ExecuteMenu(Args);
+  mArgs := Arguments(5, -1);
+  mAnswer := FMenu.ExecuteMenu(mArgs);
   try
-    Assert.AreEqual(0, Pos(',ctor,', Names(Answer)), Names(Answer));
-    Assert.IsTrue(Pos(',dtor,', Names(Answer)) > 0, Names(Answer));
+    Assert.AreEqual(0, Pos(',ctor,', Names(mAnswer)), Names(mAnswer));
+    Assert.IsTrue(Pos(',dtor,', Names(mAnswer)) > 0, Names(mAnswer));
   finally
-    Answer.Free;
-    Args.Free;
+    mAnswer.Free;
+    mArgs.Free;
   end;
 end;
 
 procedure TLspSlashMenuTests.MenuWhenSlashCommandsOff;
 var
-  Args: TJSONArray;
-  Answer: TJSONValue;
-  Run: TJSONValue;
+  mArgs: TJSONArray;
+  mAnswer: TJSONValue;
+  mRun: TJSONValue;
 begin
   FEnabled := False;
-  Args := Arguments(5, -1);
-  Answer := FMenu.ExecuteMenu(Args);
+  mArgs := Arguments(5, -1);
+  mAnswer := FMenu.ExecuteMenu(mArgs);
   try
-    Assert.IsFalse(Flag(Answer, 'enabled'));
-    Assert.AreEqual(',', Names(Answer));
+    Assert.IsFalse(Flag(mAnswer, 'enabled'));
+    Assert.AreEqual(',', Names(mAnswer));
   finally
-    Answer.Free;
-    Args.Free;
+    mAnswer.Free;
+    mArgs.Free;
   end;
-  Args := Arguments(5, -1, 'ctor');
-  Run := FMenu.ExecuteRun(Args);
+  mArgs := Arguments(5, -1, 'ctor');
+  mRun := FMenu.ExecuteRun(mArgs);
   try
-    Assert.IsTrue(Pos('abgeschaltet', Field(Run, 'reason')) > 0);
+    Assert.IsTrue(Pos('abgeschaltet', Field(mRun, 'reason')) > 0);
   finally
-    Run.Free;
-    Args.Free;
+    mRun.Free;
+    mArgs.Free;
   end;
 end;
 
 procedure TLspSlashMenuTests.ChoicesListFields;
 var
-  Args: TJSONArray;
-  Answer: TJSONValue;
+  mArgs: TJSONArray;
+  mAnswer: TJSONValue;
 begin
-  Args := Arguments(5, -1, 'ctor');
-  Answer := FMenu.ExecuteChoices(Args);
+  mArgs := Arguments(5, -1, 'ctor');
+  mAnswer := FMenu.ExecuteChoices(mArgs);
   try
-    Assert.AreEqual(1, Integer(TJSONArray(Answer).Count));
-    Assert.AreEqual('FName', TJSONArray(Answer).Items[0].Value);
+    Assert.AreEqual(1, Integer(TJSONArray(mAnswer).Count));
+    Assert.AreEqual('FName', TJSONArray(mAnswer).Items[0].Value);
   finally
-    Answer.Free;
-    Args.Free;
+    mAnswer.Free;
+    mArgs.Free;
   end;
 end;
 
 procedure TLspSlashMenuTests.RunReturnsEditsOrReason;
 var
-  Args: TJSONArray;
-  Answer: TJSONValue;
-  Edits: TJSONArray;
-  Item: TJSONValue;
-  NewText: string;
+  mArgs: TJSONArray;
+  mAnswer: TJSONValue;
+  mEdits: TJSONArray;
+  mItem: TJSONValue;
+  mNewText: string;
 begin
-  Args := Arguments(5, -1, 'ctor', 'FName');
-  Answer := FMenu.ExecuteRun(Args);
+  mArgs := Arguments(5, -1, 'ctor', 'FName');
+  mAnswer := FMenu.ExecuteRun(mArgs);
   try
-    Assert.AreEqual('', Field(Answer, 'reason'));
-    Edits := TJSONObject(Answer).GetValue<TJSONArray>('edits');
-    Assert.IsTrue(Edits.Count > 0);
-    NewText := '';
-    for Item in Edits do
+    Assert.AreEqual('', Field(mAnswer, 'reason'));
+    mEdits := TJSONObject(mAnswer).GetValue<TJSONArray>('edits');
+    Assert.IsTrue(mEdits.Count > 0);
+    mNewText := '';
+    for mItem in mEdits do
     begin
-      NewText := NewText + Item.GetValue<string>('newText');
+      mNewText := mNewText + mItem.GetValue<string>('newText');
     end;
-    Assert.IsTrue(Pos('constructor Create(const AName: string);', NewText) > 0, NewText);
+    Assert.IsTrue(Pos('constructor Create(const AName: string);', mNewText) > 0, mNewText);
   finally
-    Answer.Free;
-    Args.Free;
+    mAnswer.Free;
+    mArgs.Free;
   end;
-  Args := Arguments(10, -1, 'ctor', '');
-  Answer := FMenu.ExecuteRun(Args);
+  mArgs := Arguments(10, -1, 'ctor', '');
+  mAnswer := FMenu.ExecuteRun(mArgs);
   try
-    Assert.AreEqual(0, List(Answer, 'edits').Count);
-    Assert.AreNotEqual('', Field(Answer, 'reason'));
+    Assert.AreEqual(0, List(mAnswer, 'edits').Count);
+    Assert.AreNotEqual('', Field(mAnswer, 'reason'));
   finally
-    Answer.Free;
-    Args.Free;
+    mAnswer.Free;
+    mArgs.Free;
   end;
 end;
 
 procedure TLspSlashMenuTests.UnknownDocumentFails;
 var
-  Args: TJSONArray;
+  mArgs: TJSONArray;
 begin
-  Args := TJSONArray.Create;
+  mArgs := TJSONArray.Create;
   try
-    Args.Add('file:///C:/gibts/nicht.pas');
-    Args.AddElement(TJSONObject.Create);
-    Args.Add(-1);
+    mArgs.Add('file:///C:/gibts/nicht.pas');
+    mArgs.AddElement(TJSONObject.Create);
+    mArgs.Add(-1);
     Assert.WillRaise(
       procedure
       begin
-        FMenu.ExecuteMenu(Args).Free;
+        FMenu.ExecuteMenu(mArgs).Free;
       end, EJsonRpcError);
   finally
-    Args.Free;
+    mArgs.Free;
   end;
 end;
 
@@ -384,63 +384,63 @@ const
 
 procedure TLspSlashMenuTests.ImplementsMissingInterfaceMethods;
 var
-  Index: ISymbolIndex;
-  Completion: TLspCompletion;
-  Args, Position: TJSONArray;
-  Answer: TJSONValue;
-  Names_: string;
-  Spot: TJSONObject;
+  mIndex: ISymbolIndex;
+  mCompletion: TLspCompletion;
+  mArgs, mPosition: TJSONArray;
+  mAnswer: TJSONValue;
+  mNames_: string;
+  mSpot: TJSONObject;
 begin
-  Index := TSymbolIndex.Create;
-  Index.AddUnit(TIndexExtractor.ExtractText(cImplementsMissingUnitBasis, 'C:\P\Basis.pas', nil));
+  mIndex := TSymbolIndex.Create;
+  mIndex.AddUnit(TIndexExtractor.ExtractText(cImplementsMissingUnitBasis, 'C:\P\Basis.pas', nil));
   FStore.Open(TDocumentUris.FromPath(cImplementsMissingHauptFile), 'pascal', 1, cImplementsMissingHaupt);
-  Completion := TLspCompletion.Create(FStore, Index, nil);
+  mCompletion := TLspCompletion.Create(FStore, mIndex, nil);
   try
-    Completion.Hooks.ReadText :=
+    mCompletion.Hooks.ReadText :=
       function(const AFileName: string; out AText: string): Boolean
       begin
         AText := cImplementsMissingUnitBasis;
         Result := SameText(AFileName, 'C:\P\Basis.pas');
       end;
-    FMenu.Index := Index;
-    FMenu.Completion := Completion;
-    Spot := TJSONObject.Create;
-    Spot.AddPair('line', TJSONNumber.Create(6));
-    Spot.AddPair('character', TJSONNumber.Create(4));
-    Position := TJSONArray.Create;
-    Position.Add(TDocumentUris.FromPath(cImplementsMissingHauptFile));
-    Position.AddElement(Spot);
-    Position.Add(-1);
+    FMenu.Index := mIndex;
+    FMenu.Completion := mCompletion;
+    mSpot := TJSONObject.Create;
+    mSpot.AddPair('line', TJSONNumber.Create(6));
+    mSpot.AddPair('character', TJSONNumber.Create(4));
+    mPosition := TJSONArray.Create;
+    mPosition.Add(TDocumentUris.FromPath(cImplementsMissingHauptFile));
+    mPosition.AddElement(mSpot);
+    mPosition.Add(-1);
     try
       // Nach /override, wie im Mockup.
-      Answer := FMenu.ExecuteMenu(Position);
+      mAnswer := FMenu.ExecuteMenu(mPosition);
       try
-        Names_ := Names(Answer);
-        Assert.IsTrue(Pos(',override,implement,', Names_) > 0, Names_);
+        mNames_ := Names(mAnswer);
+        Assert.IsTrue(Pos(',override,implement,', mNames_) > 0, mNames_);
       finally
-        Answer.Free;
+        mAnswer.Free;
       end;
-      Args := TJSONArray(Position.Clone);
+      mArgs := TJSONArray(mPosition.Clone);
       try
-        Args.Add(TLspSlashMenu.cImplementName);
-        Answer := FMenu.ExecuteChoices(Args);
+        mArgs.Add(TLspSlashMenu.cImplementName);
+        mAnswer := FMenu.ExecuteChoices(mArgs);
         try
-          Assert.AreEqual(1, Integer(TJSONArray(Answer).Count));
-          Assert.AreEqual('IFlush.Flush', TJSONArray(Answer).Items[0].Value);
+          Assert.AreEqual(1, Integer(TJSONArray(mAnswer).Count));
+          Assert.AreEqual('IFlush.Flush', TJSONArray(mAnswer).Items[0].Value);
         finally
-          Answer.Free;
+          mAnswer.Free;
         end;
-        Args.Add('');
-        AssertImplementsFlush(FMenu, Args);
+        mArgs.Add('');
+        AssertImplementsFlush(FMenu, mArgs);
       finally
-        Args.Free;
+        mArgs.Free;
       end;
     finally
-      Position.Free;
+      mPosition.Free;
     end;
   finally
     FMenu.Completion := nil;
-    Completion.Free;
+    mCompletion.Free;
   end;
 end;
 

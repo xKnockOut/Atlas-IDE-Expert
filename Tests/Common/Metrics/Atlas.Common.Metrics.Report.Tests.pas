@@ -64,44 +64,44 @@ end;
 
 function SampleFiles: TArray<TFileMetrics>;
 var
-  First, Second: TArray<TRoutineMetrics>;
+  mFirst, mSecond: TArray<TRoutineMetrics>;
 begin
-  SetLength(First, 2);
-  First[0] := Routine('TFoo.Small', 4, [10, 1, 2, 1, 0]);
-  First[1] := Routine('TFoo.Big', 20, [75, 5, 17, 20, 2]);
-  SetLength(Second, 1);
-  Second[0] := Routine('Helper', 7, [6, 0, 1, 0, 7]);
+  SetLength(mFirst, 2);
+  mFirst[0] := Routine('TFoo.Small', 4, [10, 1, 2, 1, 0]);
+  mFirst[1] := Routine('TFoo.Big', 20, [75, 5, 17, 20, 2]);
+  SetLength(mSecond, 1);
+  mSecond[0] := Routine('Helper', 7, [6, 0, 1, 0, 7]);
   SetLength(Result, 2);
-  Result[0] := TFileMetrics.Create('Source/Foo.pas', First);
-  Result[1] := TFileMetrics.Create('Source/Helper.pas', Second);
+  Result[0] := TFileMetrics.Create('Source/Foo.pas', mFirst);
+  Result[1] := TFileMetrics.Create('Source/Helper.pas', mSecond);
 end;
 
 { TMetricsReportTests }
 
 procedure TMetricsReportTests.SummaryAveragesAndMaximum;
 var
-  Summary: TMetricsSummary;
+  mSummary: TMetricsSummary;
 begin
-  Summary := TMetricsReport.Summarize(SampleFiles, TMetricLimits.Default);
-  Assert.AreEqual(2, Summary.Files);
-  Assert.AreEqual(3, Summary.Methods);
+  mSummary := TMetricsReport.Summarize(SampleFiles, TMetricLimits.Default);
+  Assert.AreEqual(2, mSummary.Files);
+  Assert.AreEqual(3, mSummary.Methods);
   // (10 + 75 + 6) / 3 = 30,33 → 303 Zehntel
-  Assert.AreEqual(303, Summary.AverageTenths(TMetricKind.MethodLength));
+  Assert.AreEqual(303, mSummary.AverageTenths(TMetricKind.MethodLength));
   // (2 + 17 + 1) / 3 = 6,67 → 67 Zehntel
-  Assert.AreEqual(67, Summary.AverageTenths(TMetricKind.Cyclomatic));
-  Assert.AreEqual(75, Summary.Maximum[TMetricKind.MethodLength]);
-  Assert.AreEqual(1, Summary.Exceeded[TMetricKind.Cyclomatic]);
-  Assert.AreEqual(1, Summary.Exceeded[TMetricKind.ParameterCount]);
-  Assert.AreEqual(2, Summary.OverLimits, 'TFoo.Big und Helper');
+  Assert.AreEqual(67, mSummary.AverageTenths(TMetricKind.Cyclomatic));
+  Assert.AreEqual(75, mSummary.Maximum[TMetricKind.MethodLength]);
+  Assert.AreEqual(1, mSummary.Exceeded[TMetricKind.Cyclomatic]);
+  Assert.AreEqual(1, mSummary.Exceeded[TMetricKind.ParameterCount]);
+  Assert.AreEqual(2, mSummary.OverLimits, 'TFoo.Big und Helper');
 end;
 
 procedure TMetricsReportTests.SummaryWithoutMethodsIsZero;
 var
-  Summary: TMetricsSummary;
+  mSummary: TMetricsSummary;
 begin
-  Summary := TMetricsReport.Summarize(nil, TMetricLimits.Default);
-  Assert.AreEqual(0, Summary.Methods);
-  Assert.AreEqual(0, Summary.AverageTenths(TMetricKind.Cognitive));
+  mSummary := TMetricsReport.Summarize(nil, TMetricLimits.Default);
+  Assert.AreEqual(0, mSummary.Methods);
+  Assert.AreEqual(0, mSummary.AverageTenths(TMetricKind.Cognitive));
 end;
 
 procedure TMetricsReportTests.TenthsTextHasOneDecimal;
@@ -120,132 +120,132 @@ end;
 
 procedure TMetricsReportTests.RoutineJsonListsExceeded;
 var
-  Json: string;
+  mJson: string;
 begin
-  Json := TMetricsReport.RoutineJson(Routine('TFoo.Big', 20, [75, 5, 17, 20, 2]), TMetricLimits.Default);
-  Assert.Contains(Json, '"name": "TFoo.Big"');
-  Assert.Contains(Json, '"line": 21');
-  Assert.Contains(Json, '"character": 11');
-  Assert.Contains(Json, '"values": {"length": 75, "nesting": 5, "cyclomatic": 17, "cognitive": 20, "parameters": 2, ' +
+  mJson := TMetricsReport.RoutineJson(Routine('TFoo.Big', 20, [75, 5, 17, 20, 2]), TMetricLimits.Default);
+  Assert.Contains(mJson, '"name": "TFoo.Big"');
+  Assert.Contains(mJson, '"line": 21');
+  Assert.Contains(mJson, '"character": 11');
+  Assert.Contains(mJson, '"values": {"length": 75, "nesting": 5, "cyclomatic": 17, "cognitive": 20, "parameters": 2, ' +
     '"operands": 0, "locals": 0, "exits": 0}');
-  Assert.Contains(Json, '"exceeded": ["length", "nesting", "cyclomatic", "cognitive"]');
+  Assert.Contains(mJson, '"exceeded": ["length", "nesting", "cyclomatic", "cognitive"]');
 end;
 
 procedure TMetricsReportTests.JsonHasFormatLimitsSummaryAndFiles;
 var
-  Json: string;
+  mJson: string;
 begin
-  Json := TMetricsReport.Json(SampleFiles, TMetricLimits.Default);
-  Assert.Contains(Json, '{"format": 1, ');
-  Assert.Contains(Json, '"limits": {"length": 60, "nesting": 4, "cyclomatic": 15, "cognitive": 15, "parameters": 6, ' +
+  mJson := TMetricsReport.Json(SampleFiles, TMetricLimits.Default);
+  Assert.Contains(mJson, '{"format": 1, ');
+  Assert.Contains(mJson, '"limits": {"length": 60, "nesting": 4, "cyclomatic": 15, "cognitive": 15, "parameters": 6, ' +
     '"operands": 5, "locals": 12, "exits": 4}');
-  Assert.Contains(Json, '"summary": {"files": 2, "methods": 3, "overLimits": 2, "average": {"length": 30.3');
-  Assert.Contains(Json, '{"file": "Source/Helper.pas", "methods": [{"name": "Helper"');
-  Assert.Contains(Json, '"exceeded": ["parameters"]');
+  Assert.Contains(mJson, '"summary": {"files": 2, "methods": 3, "overLimits": 2, "average": {"length": 30.3');
+  Assert.Contains(mJson, '{"file": "Source/Helper.pas", "methods": [{"name": "Helper"');
+  Assert.Contains(mJson, '"exceeded": ["parameters"]');
 end;
 
 procedure TMetricsReportTests.MarkdownListsMethodsOverLimits;
 var
-  Text: string;
+  mText: string;
 begin
-  Text := TMetricsReport.Markdown(SampleFiles, TMetricLimits.Default, 'Demo');
-  Assert.Contains(Text, '# Code-Metriken: Demo');
-  Assert.Contains(Text, '2 Dateien, 3 Methoden, davon 2 über mindestens einem Grenzwert.');
-  Assert.Contains(Text, '| zyklomatisch | 15 | 6,7 | 17 | 1 |');
-  Assert.Contains(Text, '## Über einem Grenzwert');
-  Assert.Contains(Text, '| TFoo.Big | Source/Foo.pas | 21 | **75** | **5** | **17** | **20** | 2 | 0 | 0 | 0 |');
-  Assert.Contains(Text, '| Helper | Source/Helper.pas | 8 | 6 | 0 | 1 | 0 | **7** | 0 | 0 | 0 |');
-  Assert.Contains(Text, '| lokale Variablen | 12 | 0,0 | 0 | 0 |');
-  Assert.IsTrue(Pos('| TFoo.Big', Text) < Pos('| Helper', Text), 'meiste Überschreitungen zuerst');
-  Assert.Contains(Text, '## Komplexeste Methoden');
-  Assert.Contains(Text, '| Source/Foo.pas | 2 | 42,5 | 17 | 20 | 1 |');
+  mText := TMetricsReport.Markdown(SampleFiles, TMetricLimits.Default, 'Demo');
+  Assert.Contains(mText, '# Code-Metriken: Demo');
+  Assert.Contains(mText, '2 Dateien, 3 Methoden, davon 2 über mindestens einem Grenzwert.');
+  Assert.Contains(mText, '| zyklomatisch | 15 | 6,7 | 17 | 1 |');
+  Assert.Contains(mText, '## Über einem Grenzwert');
+  Assert.Contains(mText, '| TFoo.Big | Source/Foo.pas | 21 | **75** | **5** | **17** | **20** | 2 | 0 | 0 | 0 |');
+  Assert.Contains(mText, '| Helper | Source/Helper.pas | 8 | 6 | 0 | 1 | 0 | **7** | 0 | 0 | 0 |');
+  Assert.Contains(mText, '| lokale Variablen | 12 | 0,0 | 0 | 0 |');
+  Assert.IsTrue(Pos('| TFoo.Big', mText) < Pos('| Helper', mText), 'meiste Überschreitungen zuerst');
+  Assert.Contains(mText, '## Komplexeste Methoden');
+  Assert.Contains(mText, '| Source/Foo.pas | 2 | 42,5 | 17 | 20 | 1 |');
 end;
 
 procedure TMetricsReportTests.MarkdownWithoutOverLimits;
 var
-  Files: TArray<TFileMetrics>;
-  Routines: TArray<TRoutineMetrics>;
-  Text: string;
+  mFiles: TArray<TFileMetrics>;
+  mRoutines: TArray<TRoutineMetrics>;
+  mText: string;
 begin
-  SetLength(Routines, 1);
-  Routines[0] := Routine('Run', 1, [3, 0, 1, 0, 0]);
-  SetLength(Files, 1);
-  Files[0] := TFileMetrics.Create('Run.pas', Routines);
-  Text := TMetricsReport.Markdown(Files, TMetricLimits.Default, '');
-  Assert.Contains(Text, '# Code-Metriken' + #13#10);
-  Assert.Contains(Text, 'Keine Methode überschreitet einen Grenzwert.');
+  SetLength(mRoutines, 1);
+  mRoutines[0] := Routine('Run', 1, [3, 0, 1, 0, 0]);
+  SetLength(mFiles, 1);
+  mFiles[0] := TFileMetrics.Create('Run.pas', mRoutines);
+  mText := TMetricsReport.Markdown(mFiles, TMetricLimits.Default, '');
+  Assert.Contains(mText, '# Code-Metriken' + #13#10);
+  Assert.Contains(mText, 'Keine Methode überschreitet einen Grenzwert.');
 end;
 
 procedure TMetricsReportTests.LensTitleShowsLimitWhenExceeded;
 var
-  Values: TMetricValues;
+  mValues: TMetricValues;
 begin
-  Values := Routine('A', 0, [12, 2, 4, 3, 2]).Values;
+  mValues := Routine('A', 0, [12, 2, 4, 3, 2]).Values;
   Assert.AreEqual('12 Zeilen · Tiefe 2 · zyklomatisch 4 · kognitiv 3 · 2 Parameter · Operanden 0 · 0 lokale · ' +
-    '0 Ausstiege', TMetricsReport.LensTitle(Values, TMetricLimits.Default));
-  Values[TMetricKind.Cyclomatic] := 17;
-  Values[TMetricKind.BooleanOperands] := 6;
-  Values[TMetricKind.LocalCount] := 3;
-  Values[TMetricKind.ExitPoints] := 5;
+    '0 Ausstiege', TMetricsReport.LensTitle(mValues, TMetricLimits.Default));
+  mValues[TMetricKind.Cyclomatic] := 17;
+  mValues[TMetricKind.BooleanOperands] := 6;
+  mValues[TMetricKind.LocalCount] := 3;
+  mValues[TMetricKind.ExitPoints] := 5;
   Assert.AreEqual('12 Zeilen · Tiefe 2 · zyklomatisch 17 (> 15) · kognitiv 3 · 2 Parameter · Operanden 6 (> 5) · ' +
-    '3 lokale · 5 Ausstiege (> 4)', TMetricsReport.LensTitle(Values, TMetricLimits.Default));
+    '3 lokale · 5 Ausstiege (> 4)', TMetricsReport.LensTitle(mValues, TMetricLimits.Default));
 end;
 
 procedure TMetricsReportTests.LimitsDefaultsFromSpecification;
 var
-  Limits: TMetricLimits;
-  Values: TMetricValues;
+  mLimits: TMetricLimits;
+  mValues: TMetricValues;
 begin
-  Limits := TMetricLimits.Default;
-  Assert.AreEqual(60, Limits.Values[TMetricKind.MethodLength]);
-  Assert.AreEqual(4, Limits.Values[TMetricKind.NestingDepth]);
-  Assert.AreEqual(15, Limits.Values[TMetricKind.Cyclomatic]);
-  Assert.AreEqual(15, Limits.Values[TMetricKind.Cognitive]);
-  Assert.AreEqual(6, Limits.Values[TMetricKind.ParameterCount]);
-  Assert.AreEqual(5, Limits.Values[TMetricKind.BooleanOperands]);
-  Assert.AreEqual(12, Limits.Values[TMetricKind.LocalCount]);
-  Assert.AreEqual(4, Limits.Values[TMetricKind.ExitPoints]);
-  Assert.AreEqual(5, Limits.Structure[TStructureKind.InheritanceDepth]);
-  Assert.IsFalse(Limits.Exceeds(TMetricKind.Cyclomatic, 15), 'der Grenzwert selbst ist erlaubt');
-  Assert.IsTrue(Limits.Exceeds(TMetricKind.Cyclomatic, 16));
-  Values := Routine('A', 0, [61, 0, 1, 0, 0]).Values;
-  Assert.AreEqual(1, Integer(Length(Limits.Exceeded(Values))));
+  mLimits := TMetricLimits.Default;
+  Assert.AreEqual(60, mLimits.Values[TMetricKind.MethodLength]);
+  Assert.AreEqual(4, mLimits.Values[TMetricKind.NestingDepth]);
+  Assert.AreEqual(15, mLimits.Values[TMetricKind.Cyclomatic]);
+  Assert.AreEqual(15, mLimits.Values[TMetricKind.Cognitive]);
+  Assert.AreEqual(6, mLimits.Values[TMetricKind.ParameterCount]);
+  Assert.AreEqual(5, mLimits.Values[TMetricKind.BooleanOperands]);
+  Assert.AreEqual(12, mLimits.Values[TMetricKind.LocalCount]);
+  Assert.AreEqual(4, mLimits.Values[TMetricKind.ExitPoints]);
+  Assert.AreEqual(5, mLimits.Structure[TStructureKind.InheritanceDepth]);
+  Assert.IsFalse(mLimits.Exceeds(TMetricKind.Cyclomatic, 15), 'der Grenzwert selbst ist erlaubt');
+  Assert.IsTrue(mLimits.Exceeds(TMetricKind.Cyclomatic, 16));
+  mValues := Routine('A', 0, [61, 0, 1, 0, 0]).Values;
+  Assert.AreEqual(1, Integer(Length(mLimits.Exceeded(mValues))));
 end;
 
 procedure TMetricsReportTests.StructureJsonAndLensPart;
 var
-  Item: TStructureMetrics;
-  Limits: TMetricLimits;
+  mItem: TStructureMetrics;
+  mLimits: TMetricLimits;
 begin
-  Limits := TMetricLimits.Default;
-  Assert.AreEqual(40, Limits.Structure[TStructureKind.ClassSize]);
-  Assert.AreEqual(2000, Limits.Structure[TStructureKind.UnitLength]);
-  Assert.AreEqual(30, Limits.Structure[TStructureKind.UsesCount]);
-  Assert.IsFalse(Limits.ExceedsStructure(TStructureKind.ClassSize, 40));
-  Assert.IsTrue(Limits.ExceedsStructure(TStructureKind.ClassSize, 41));
-  Item := Default(TStructureMetrics);
-  Item.Kind := TStructureKind.ClassSize;
-  Item.Name := 'TfrmHaupt';
-  Item.NameRange := TTextRange.Create(4, 2, 4, 11);
-  Item.Value := 87;
+  mLimits := TMetricLimits.Default;
+  Assert.AreEqual(40, mLimits.Structure[TStructureKind.ClassSize]);
+  Assert.AreEqual(2000, mLimits.Structure[TStructureKind.UnitLength]);
+  Assert.AreEqual(30, mLimits.Structure[TStructureKind.UsesCount]);
+  Assert.IsFalse(mLimits.ExceedsStructure(TStructureKind.ClassSize, 40));
+  Assert.IsTrue(mLimits.ExceedsStructure(TStructureKind.ClassSize, 41));
+  mItem := Default(TStructureMetrics);
+  mItem.Kind := TStructureKind.ClassSize;
+  mItem.Name := 'TfrmHaupt';
+  mItem.NameRange := TTextRange.Create(4, 2, 4, 11);
+  mItem.Value := 87;
   Assert.AreEqual('[{"kind": "classSize", "name": "TfrmHaupt", "line": 5, "character": 3, "value": 87, ' +
-    '"limit": 40}]', TMetricsReport.StructureJson([Item], Limits));
-  Assert.AreEqual('[]', TMetricsReport.StructureJson(nil, Limits));
-  Assert.AreEqual('87 Member (> 40)', TMetricsReport.StructureLensPart(TStructureKind.ClassSize, 87, Limits));
-  Assert.AreEqual('12 Units im uses', TMetricsReport.StructureLensPart(TStructureKind.UsesCount, 12, Limits));
+    '"limit": 40}]', TMetricsReport.StructureJson([mItem], mLimits));
+  Assert.AreEqual('[]', TMetricsReport.StructureJson(nil, mLimits));
+  Assert.AreEqual('87 Member (> 40)', TMetricsReport.StructureLensPart(TStructureKind.ClassSize, 87, mLimits));
+  Assert.AreEqual('12 Units im uses', TMetricsReport.StructureLensPart(TStructureKind.UsesCount, 12, mLimits));
   Assert.AreEqual('unitLength', TMetricsReport.StructureKey(TStructureKind.UnitLength));
 end;
 
 procedure TMetricsReportTests.KindKeysRoundTrip;
 var
-  Kind, Found: TMetricKind;
+  mKind, mFound: TMetricKind;
 begin
-  for Kind := Low(TMetricKind) to High(TMetricKind) do
+  for mKind := Low(TMetricKind) to High(TMetricKind) do
   begin
-    Assert.IsTrue(TMetrics.TryKindOf(TMetrics.Key(Kind), Found), TMetrics.Key(Kind));
-    Assert.AreEqual<TMetricKind>(Found, Kind, TMetrics.Key(Kind));
+    Assert.IsTrue(TMetrics.TryKindOf(TMetrics.Key(mKind), mFound), TMetrics.Key(mKind));
+    Assert.AreEqual<TMetricKind>(mFound, mKind, TMetrics.Key(mKind));
   end;
-  Assert.IsFalse(TMetrics.TryKindOf('lines', Found));
+  Assert.IsFalse(TMetrics.TryKindOf('lines', mFound));
 end;
 
 initialization

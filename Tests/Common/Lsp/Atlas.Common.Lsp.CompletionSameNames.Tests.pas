@@ -51,18 +51,18 @@ uses
   Atlas.Common.Lsp.Completion;
 
 const
-  HauptFile = 'C:\P\Haupt.pas';
+  cHauptFile = 'C:\P\Haupt.pas';
 
-  UnitWindows =
+  cUnitWindows =
     'unit Winapi.Windows;'#10'interface'#10'type'#10'  tagBITMAP = record'#10'    bmType: Integer;'#10'  end;'#10 +
     '  TBitmap = tagBITMAP;'#10'implementation'#10'end.';
-  UnitGraphics =
+  cUnitGraphics =
     'unit Vcl.Graphics;'#10'interface'#10'type'#10'  TBitmap = class'#10'  end;'#10 +
     '  TBitmapImage = class'#10'  end;'#10'implementation'#10'end.';
-  UnitFmx =
+  cUnitFmx =
     'unit FMX.Graphics;'#10'interface'#10'type'#10'  TBitmap = class'#10'  end;'#10'implementation'#10'end.';
 
-  UnitHaupt =
+  cUnitHaupt =
     'unit Haupt;'#10 +
     'interface'#10 +
     'uses Winapi.Windows, Vcl.Graphics;'#10 +
@@ -78,50 +78,50 @@ const
 function ItemsAt(const AIndex: ISymbolIndex; const AText, AMarker: string;
   const ASettings: TCompletionSettings): TCompletionItems;
 var
-  Resolver: TNameResolver;
-  Request: TCompletionRequest;
-  Tree: TSyntaxTree;
-  Lines: TArray<string>;
-  Line: Integer;
-  Position: TTextPosition;
-  Postfix: TPostfixOptions;
+  mResolver: TNameResolver;
+  mRequest: TCompletionRequest;
+  mTree: TSyntaxTree;
+  mLines: TArray<string>;
+  mLine: Integer;
+  mPosition: TTextPosition;
+  mPostfix: TPostfixOptions;
 begin
-  Lines := AText.Split([#10]);
-  Position := TTextPosition.Create(0, 0);
-  for Line := 0 to High(Lines) do
+  mLines := AText.Split([#10]);
+  mPosition := TTextPosition.Create(0, 0);
+  for mLine := 0 to High(mLines) do
   begin
-    if Pos(AMarker, Lines[Line]) > 0 then
+    if Pos(AMarker, mLines[mLine]) > 0 then
     begin
-      Position := TTextPosition.Create(Line, Pos(AMarker, Lines[Line]) - 1 + Length(AMarker));
+      mPosition := TTextPosition.Create(mLine, Pos(AMarker, mLines[mLine]) - 1 + Length(AMarker));
     end;
   end;
-  Tree := TPascalParser.Parse(AText);
-  Resolver := TNameResolver.Create(AIndex);
-  Request := TCompletionRequest.Create(AText, HauptFile, Position);
+  mTree := TPascalParser.Parse(AText);
+  mResolver := TNameResolver.Create(AIndex);
+  mRequest := TCompletionRequest.Create(AText, cHauptFile, mPosition);
   try
-    Request.Tree := Tree;
-    Request.Resolver := Resolver;
-    Request.Index := AIndex;
-    Request.Matching := TCompletionMatching.Prefix;
-    Request.Settings := ASettings;
-    Postfix := Default(TPostfixOptions);
-    Result := TCompletionLists.Collect(Request, Postfix, nil);
+    mRequest.Tree := mTree;
+    mRequest.Resolver := mResolver;
+    mRequest.Index := AIndex;
+    mRequest.Matching := TCompletionMatching.Prefix;
+    mRequest.Settings := ASettings;
+    mPostfix := Default(TPostfixOptions);
+    Result := TCompletionLists.Collect(mRequest, mPostfix, nil);
   finally
-    Request.Free;
-    Resolver.Free;
-    Tree.Free;
+    mRequest.Free;
+    mResolver.Free;
+    mTree.Free;
   end;
 end;
 
 function Find(const AItems: TCompletionItems; const AName, AUnit: string; out AItem: TCompletionItem): Boolean;
 var
-  Item: TCompletionItem;
+  mItem: TCompletionItem;
 begin
-  for Item in AItems.Items do
+  for mItem in AItems.Items do
   begin
-    if SameText(Item.Name, AName) and SameText(Item.UnitName, AUnit) then
+    if SameText(mItem.Name, AName) and SameText(mItem.UnitName, AUnit) then
     begin
-      AItem := Item;
+      AItem := mItem;
       Exit(True);
     end;
   end;
@@ -131,12 +131,12 @@ end;
 
 function Order(const AItems: TCompletionItems): string;
 var
-  Item: TCompletionItem;
+  mItem: TCompletionItem;
 begin
   Result := '';
-  for Item in AItems.Items do
+  for mItem in AItems.Items do
   begin
-    Result := Result + Item.Name + '@' + Item.UnitName + ' ';
+    Result := Result + mItem.Name + '@' + mItem.UnitName + ' ';
   end;
   Result := Result.Trim;
 end;
@@ -146,9 +146,9 @@ end;
 procedure TCompletionSameNamesTests.Setup;
 begin
   FIndex := TSymbolIndex.Create;
-  FIndex.AddUnit(TIndexExtractor.ExtractText(UnitWindows, 'C:\RTL\Winapi.Windows.pas', nil));
-  FIndex.AddUnit(TIndexExtractor.ExtractText(UnitGraphics, 'C:\RTL\Vcl.Graphics.pas', nil));
-  FIndex.AddUnit(TIndexExtractor.ExtractText(UnitFmx, 'C:\RTL\FMX.Graphics.pas', nil));
+  FIndex.AddUnit(TIndexExtractor.ExtractText(cUnitWindows, 'C:\RTL\Winapi.Windows.pas', nil));
+  FIndex.AddUnit(TIndexExtractor.ExtractText(cUnitGraphics, 'C:\RTL\Vcl.Graphics.pas', nil));
+  FIndex.AddUnit(TIndexExtractor.ExtractText(cUnitFmx, 'C:\RTL\FMX.Graphics.pas', nil));
 end;
 
 procedure TCompletionSameNamesTests.TearDown;
@@ -170,99 +170,99 @@ end;
 
 procedure TCompletionSameNamesTests.MoveToEndInSameList;
 const
-  Text = 'unit Haupt;'#10'interface'#10'uses Winapi.Windows, Vcl.Graphics, System.Classes;'#10 +
+  cText = 'unit Haupt;'#10'interface'#10'uses Winapi.Windows, Vcl.Graphics, System.Classes;'#10 +
     'implementation'#10'uses Vcl.Forms;'#10'end.';
 var
-  Edits: TArray<TTextEdit>;
-  Tokens: TArray<TPascalToken>;
+  mEdits: TArray<TTextEdit>;
+  mTokens: TArray<TPascalToken>;
 begin
-  Tokens := TPascalLexer.Tokenize(Text);
-  Assert.IsTrue(TCompletionSameNames.MoveToEnd(Tokens, 'Winapi.Windows', 'Vcl.Graphics', nil, Edits));
-  Assert.AreEqual(2, Integer(Length(Edits)));
+  mTokens := TPascalLexer.Tokenize(cText);
+  Assert.IsTrue(TCompletionSameNames.MoveToEnd(mTokens, 'Winapi.Windows', 'Vcl.Graphics', nil, mEdits));
+  Assert.AreEqual(2, Integer(Length(mEdits)));
   // Erster Eintrag: samt Komma bis vor den nächsten Namen.
-  Assert.AreEqual(2, Edits[0].Range.StartPos.Line);
-  Assert.AreEqual(5, Edits[0].Range.StartPos.Character);
-  Assert.AreEqual(21, Edits[0].Range.EndPos.Character);
-  Assert.AreEqual('', Edits[0].NewText);
-  Assert.AreEqual(', Winapi.Windows', Edits[1].NewText);
+  Assert.AreEqual(2, mEdits[0].Range.StartPos.Line);
+  Assert.AreEqual(5, mEdits[0].Range.StartPos.Character);
+  Assert.AreEqual(21, mEdits[0].Range.EndPos.Character);
+  Assert.AreEqual('', mEdits[0].NewText);
+  Assert.AreEqual(', Winapi.Windows', mEdits[1].NewText);
   // Steht schon hinter der aktiven bzw. in einer anderen Liste: nichts.
-  Assert.IsFalse(TCompletionSameNames.MoveToEnd(Tokens, 'Vcl.Graphics', 'Winapi.Windows', nil, Edits));
-  Assert.IsFalse(TCompletionSameNames.MoveToEnd(Tokens, 'Vcl.Forms', 'Vcl.Graphics', nil, Edits));
+  Assert.IsFalse(TCompletionSameNames.MoveToEnd(mTokens, 'Vcl.Graphics', 'Winapi.Windows', nil, mEdits));
+  Assert.IsFalse(TCompletionSameNames.MoveToEnd(mTokens, 'Vcl.Forms', 'Vcl.Graphics', nil, mEdits));
   // Kurzform über die Namespaces.
-  Tokens := TPascalLexer.Tokenize('unit Haupt;'#10'interface'#10'uses Windows, Graphics;'#10'implementation'#10'end.');
-  Assert.IsTrue(TCompletionSameNames.MoveToEnd(Tokens, 'Winapi.Windows', 'Vcl.Graphics', ['Winapi', 'Vcl'], Edits));
-  Assert.AreEqual(', Windows', Edits[1].NewText);
+  mTokens := TPascalLexer.Tokenize('unit Haupt;'#10'interface'#10'uses Windows, Graphics;'#10'implementation'#10'end.');
+  Assert.IsTrue(TCompletionSameNames.MoveToEnd(mTokens, 'Winapi.Windows', 'Vcl.Graphics', ['Winapi', 'Vcl'], mEdits));
+  Assert.AreEqual(', Windows', mEdits[1].NewText);
 end;
 
 procedure TCompletionSameNamesTests.VariantsFollowTheActiveOne;
 var
-  Items: TCompletionItems;
-  Item: TCompletionItem;
+  mItems: TCompletionItems;
+  mItem: TCompletionItem;
 begin
-  Items := ItemsAt(FIndex, UnitHaupt, 'TBitm', TCompletionSettings.Default);
-  Assert.AreEqual('TBitmap@Vcl.Graphics TBitmap@Winapi.Windows TBitmapImage@Vcl.Graphics', Order(Items));
-  Assert.IsTrue(Find(Items, 'TBitmap', 'Vcl.Graphics', Item));
-  Assert.IsTrue(Item.SameNameActive);
-  Assert.AreEqual('Vcl.Graphics,Winapi.Windows', string.Join(',', Item.SameNameUnits));
-  Assert.AreEqual('FMX.Graphics.TBitmap', string.Join(',', Item.SameNameHidden));
-  Assert.IsTrue(Find(Items, 'TBitmap', 'Winapi.Windows', Item));
-  Assert.IsFalse(Item.SameNameActive);
-  Assert.AreEqual('Vcl.Graphics', Item.SameNameOf);
-  Assert.AreEqual('prefix', Item.SameNameInsert);
-  Assert.IsTrue(Item.HasTextEdit);
-  Assert.AreEqual('Winapi.Windows.TBitmap', Item.TextEdit.NewText);
-  Assert.AreEqual(10, Item.TextEdit.Range.StartPos.Character);
-  Assert.AreEqual(0, Integer(Length(Item.AdditionalEdits)));
+  mItems := ItemsAt(FIndex, cUnitHaupt, 'TBitm', TCompletionSettings.Default);
+  Assert.AreEqual('TBitmap@Vcl.Graphics TBitmap@Winapi.Windows TBitmapImage@Vcl.Graphics', Order(mItems));
+  Assert.IsTrue(Find(mItems, 'TBitmap', 'Vcl.Graphics', mItem));
+  Assert.IsTrue(mItem.SameNameActive);
+  Assert.AreEqual('Vcl.Graphics,Winapi.Windows', string.Join(',', mItem.SameNameUnits));
+  Assert.AreEqual('FMX.Graphics.TBitmap', string.Join(',', mItem.SameNameHidden));
+  Assert.IsTrue(Find(mItems, 'TBitmap', 'Winapi.Windows', mItem));
+  Assert.IsFalse(mItem.SameNameActive);
+  Assert.AreEqual('Vcl.Graphics', mItem.SameNameOf);
+  Assert.AreEqual('prefix', mItem.SameNameInsert);
+  Assert.IsTrue(mItem.HasTextEdit);
+  Assert.AreEqual('Winapi.Windows.TBitmap', mItem.TextEdit.NewText);
+  Assert.AreEqual(10, mItem.TextEdit.Range.StartPos.Character);
+  Assert.AreEqual(0, Integer(Length(mItem.AdditionalEdits)));
 end;
 
 procedure TCompletionSameNamesTests.UsesModeMovesTheUnit;
 var
-  Items: TCompletionItems;
-  Item: TCompletionItem;
-  Settings: TCompletionSettings;
+  mItems: TCompletionItems;
+  mItem: TCompletionItem;
+  mSettings: TCompletionSettings;
 begin
-  Settings := TCompletionSettings.Default;
-  Settings.SameNameInsert := TCompletionSameNameInsert.Uses_;
-  Items := ItemsAt(FIndex, UnitHaupt, 'TBitm', Settings);
-  Assert.IsTrue(Find(Items, 'TBitmap', 'Winapi.Windows', Item));
-  Assert.AreEqual('move', Item.SameNameInsert);
-  Assert.IsFalse(Item.HasTextEdit);
-  Assert.AreEqual(2, Integer(Length(Item.AdditionalEdits)));
-  Assert.AreEqual(', Winapi.Windows', Item.AdditionalEdits[1].NewText);
+  mSettings := TCompletionSettings.Default;
+  mSettings.SameNameInsert := TCompletionSameNameInsert.Uses_;
+  mItems := ItemsAt(FIndex, cUnitHaupt, 'TBitm', mSettings);
+  Assert.IsTrue(Find(mItems, 'TBitmap', 'Winapi.Windows', mItem));
+  Assert.AreEqual('move', mItem.SameNameInsert);
+  Assert.IsFalse(mItem.HasTextEdit);
+  Assert.AreEqual(2, Integer(Length(mItem.AdditionalEdits)));
+  Assert.AreEqual(', Winapi.Windows', mItem.AdditionalEdits[1].NewText);
 end;
 
 procedure TCompletionSameNamesTests.FmxAppearsOnlyWhenSwitchedOn;
 var
-  Items: TCompletionItems;
-  Item: TCompletionItem;
-  Settings: TCompletionSettings;
+  mItems: TCompletionItems;
+  mItem: TCompletionItem;
+  mSettings: TCompletionSettings;
 begin
-  Assert.IsFalse(Find(ItemsAt(FIndex, UnitHaupt, 'TBitm', TCompletionSettings.Default), 'TBitmap', 'FMX.Graphics',
-    Item));
-  Settings := TCompletionSettings.Default;
-  Settings.ShowFmxUnits := True;
-  Items := ItemsAt(FIndex, UnitHaupt, 'TBitm', Settings);
-  Assert.IsTrue(Find(Items, 'TBitmap', 'FMX.Graphics', Item));
+  Assert.IsFalse(Find(ItemsAt(FIndex, cUnitHaupt, 'TBitm', TCompletionSettings.Default), 'TBitmap', 'FMX.Graphics',
+    mItem));
+  mSettings := TCompletionSettings.Default;
+  mSettings.ShowFmxUnits := True;
+  mItems := ItemsAt(FIndex, cUnitHaupt, 'TBitm', mSettings);
+  Assert.IsTrue(Find(mItems, 'TBitmap', 'FMX.Graphics', mItem));
   // Nicht eingebunden: Präfix und uses-Eintrag.
-  Assert.AreEqual('prefixAdd', Item.SameNameInsert);
-  Assert.AreEqual('FMX.Graphics.TBitmap', Item.TextEdit.NewText);
-  Assert.AreEqual(1, Integer(Length(Item.AdditionalEdits)));
-  Assert.IsTrue(Item.AdditionalEdits[0].NewText.Contains('FMX.Graphics'), Item.AdditionalEdits[0].NewText);
+  Assert.AreEqual('prefixAdd', mItem.SameNameInsert);
+  Assert.AreEqual('FMX.Graphics.TBitmap', mItem.TextEdit.NewText);
+  Assert.AreEqual(1, Integer(Length(mItem.AdditionalEdits)));
+  Assert.IsTrue(mItem.AdditionalEdits[0].NewText.Contains('FMX.Graphics'), mItem.AdditionalEdits[0].NewText);
 end;
 
 procedure TCompletionSameNamesTests.SwitchedOffShowsOnlyTheActive;
 var
-  Items: TCompletionItems;
-  Item: TCompletionItem;
-  Settings: TCompletionSettings;
+  mItems: TCompletionItems;
+  mItem: TCompletionItem;
+  mSettings: TCompletionSettings;
 begin
-  Settings := TCompletionSettings.Default;
-  Settings.SameNameVariants := False;
-  Items := ItemsAt(FIndex, UnitHaupt, 'TBitm', Settings);
-  Assert.AreEqual('TBitmap@Vcl.Graphics TBitmapImage@Vcl.Graphics', Order(Items));
-  Assert.IsTrue(Find(Items, 'TBitmap', 'Vcl.Graphics', Item));
-  Assert.IsFalse(Item.SameNameActive);
-  Assert.AreEqual(0, Integer(Length(Item.SameNameUnits)));
+  mSettings := TCompletionSettings.Default;
+  mSettings.SameNameVariants := False;
+  mItems := ItemsAt(FIndex, cUnitHaupt, 'TBitm', mSettings);
+  Assert.AreEqual('TBitmap@Vcl.Graphics TBitmapImage@Vcl.Graphics', Order(mItems));
+  Assert.IsTrue(Find(mItems, 'TBitmap', 'Vcl.Graphics', mItem));
+  Assert.IsFalse(mItem.SameNameActive);
+  Assert.AreEqual(0, Integer(Length(mItem.SameNameUnits)));
 end;
 
 initialization

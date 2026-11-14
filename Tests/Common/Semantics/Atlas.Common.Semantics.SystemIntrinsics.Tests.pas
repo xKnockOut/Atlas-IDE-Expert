@@ -61,10 +61,10 @@ uses
   Atlas.Common.Localization.Texts;
 
 const
-  HauptFile = 'C:\P\Haupt.pas';
+  cHauptFile = 'C:\P\Haupt.pas';
 
   // Ohne uses: System ist trotzdem eingebunden.
-  UnitHaupt =
+  cUnitHaupt =
     'unit Haupt;'#10 +
     'interface'#10 +
     'type'#10 +
@@ -82,41 +82,41 @@ const
 
 function PositionOf(const AText, AMarker: string): TTextPosition;
 var
-  Index, Line, LineStart, Scan: Integer;
+  mIndex, mLine, mLineStart, mScan: Integer;
 begin
   // Cursor hinter AMarker.
-  Index := Pos(AMarker, AText);
-  if Index = 0 then
+  mIndex := Pos(AMarker, AText);
+  if mIndex = 0 then
   begin
     raise Exception.CreateFmt('"%s" nicht gefunden', [AMarker]);
   end;
-  Inc(Index, Length(AMarker));
-  Line := 0;
-  LineStart := 1;
-  for Scan := 1 to Index - 1 do
+  Inc(mIndex, Length(AMarker));
+  mLine := 0;
+  mLineStart := 1;
+  for mScan := 1 to mIndex - 1 do
   begin
-    if AText[Scan] = #10 then
+    if AText[mScan] = #10 then
     begin
-      Inc(Line);
-      LineStart := Scan + 1;
+      Inc(mLine);
+      mLineStart := mScan + 1;
     end;
   end;
-  Result := TTextPosition.Create(Line, Index - LineStart);
+  Result := TTextPosition.Create(mLine, mIndex - mLineStart);
 end;
 
 function WithCode(const ACode: string): string;
 begin
-  Result := StringReplace(UnitHaupt, '  |', ACode, []);
+  Result := StringReplace(cUnitHaupt, '  |', ACode, []);
 end;
 
 function CountNamed(const AItems: TCompletionItems; const AName: string): Integer;
 var
-  Item: TCompletionItem;
+  mItem: TCompletionItem;
 begin
   Result := 0;
-  for Item in AItems.Items do
+  for mItem in AItems.Items do
   begin
-    if SameText(Item.Name, AName) then
+    if SameText(mItem.Name, AName) then
     begin
       Inc(Result);
     end;
@@ -145,16 +145,16 @@ end;
 
 function TSystemIntrinsicsTests.ItemsAt(const ACode, AMarker: string): TCompletionItems;
 var
-  Text: string;
-  Tree: TSyntaxTree;
+  mText: string;
+  mTree: TSyntaxTree;
 begin
-  Text := WithCode(ACode);
-  Tree := TPascalParser.Parse(Text);
+  mText := WithCode(ACode);
+  mTree := TPascalParser.Parse(mText);
   try
-    Result := TCompletionLists.Collect(FResolver, FIndex, Tree, HauptFile, PositionOf(Text, AMarker),
+    Result := TCompletionLists.Collect(FResolver, FIndex, mTree, cHauptFile, PositionOf(mText, AMarker),
       TCompletionMatching.Prefix);
   finally
-    Tree.Free;
+    mTree.Free;
   end;
 end;
 
@@ -179,20 +179,20 @@ end;
 
 procedure TSystemIntrinsicsTests.ListKnowsRoutinesTypesAndOverloads;
 var
-  Found: TArray<TSystemIntrinsic>;
+  mFound: TArray<TSystemIntrinsic>;
 begin
-  Found := TSystemIntrinsics.Find('inc');
-  Assert.AreEqual(2, Integer(Length(Found)));
-  Assert.AreEqual(1, Found[0].MinArgs);
-  Assert.AreEqual(1, Found[0].MaxArgs);
-  Assert.AreEqual(2, Found[1].MaxArgs);
-  Found := TSystemIntrinsics.Find('SetLength');
-  Assert.AreEqual(1, Integer(Length(Found)));
-  Assert.AreEqual(2, Found[0].MinArgs);
-  Found := TSystemIntrinsics.Find('AtomicIncrement');
+  mFound := TSystemIntrinsics.Find('inc');
+  Assert.AreEqual(2, Integer(Length(mFound)));
+  Assert.AreEqual(1, mFound[0].MinArgs);
+  Assert.AreEqual(1, mFound[0].MaxArgs);
+  Assert.AreEqual(2, mFound[1].MaxArgs);
+  mFound := TSystemIntrinsics.Find('SetLength');
+  Assert.AreEqual(1, Integer(Length(mFound)));
+  Assert.AreEqual(2, mFound[0].MinArgs);
+  mFound := TSystemIntrinsics.Find('AtomicIncrement');
   // Standardwert zählt nicht zur Mindestzahl.
-  Assert.AreEqual(1, Found[0].MinArgs);
-  Assert.AreEqual(2, Found[0].MaxArgs);
+  Assert.AreEqual(1, mFound[0].MinArgs);
+  Assert.AreEqual(2, mFound[0].MaxArgs);
   Assert.AreEqual<TIndexSymbolKind>(TIndexSymbolKind.RecordType, TSystemIntrinsics.Find('Integer')[0].Kind);
   Assert.AreEqual<TIndexSymbolKind>(TIndexSymbolKind.Routine, TSystemIntrinsics.Find('Assigned')[0].Kind);
   Assert.IsTrue(TSystemIntrinsics.IsKnown('NativeInt'));
@@ -224,18 +224,18 @@ end;
 
 procedure TSystemIntrinsicsTests.NameAtSkipsMembersAfterDot;
 var
-  Text, Name: string;
-  Tree: TSyntaxTree;
+  mText, mName: string;
+  mTree: TSyntaxTree;
 begin
-  Text := WithCode('  X := Liste.Length + Length(Liste);');
-  Tree := TPascalParser.Parse(Text);
+  mText := WithCode('  X := Liste.Length + Length(Liste);');
+  mTree := TPascalParser.Parse(mText);
   try
-    Assert.IsFalse(TSystemIntrinsics.NameAt(Tree, PositionOf(Text, 'Liste.Len'), Name));
-    Assert.IsTrue(TSystemIntrinsics.NameAt(Tree, PositionOf(Text, '+ Len'), Name));
-    Assert.AreEqual('Length', Name);
-    Assert.IsFalse(TSystemIntrinsics.NameAt(Tree, PositionOf(Text, '  X'), Name));
+    Assert.IsFalse(TSystemIntrinsics.NameAt(mTree, PositionOf(mText, 'Liste.Len'), mName));
+    Assert.IsTrue(TSystemIntrinsics.NameAt(mTree, PositionOf(mText, '+ Len'), mName));
+    Assert.AreEqual('Length', mName);
+    Assert.IsFalse(TSystemIntrinsics.NameAt(mTree, PositionOf(mText, '  X'), mName));
   finally
-    Tree.Free;
+    mTree.Free;
   end;
 end;
 
@@ -258,122 +258,122 @@ end;
 
 procedure TSystemIntrinsicsTests.IndexedSystemDeclarationWins;
 var
-  Items: TCompletionItems;
-  Item: TCompletionItem;
+  mItems: TCompletionItems;
+  mItem: TCompletionItem;
 begin
   // Liegt System.pas im Index, kommt der Eintrag von dort, nicht doppelt aus der Liste.
   FIndex.AddUnit(TIndexExtractor.ExtractText('unit System;'#10'interface'#10 +
     'function Length(const S: string): Integer;'#10'implementation'#10 +
     'function Length(const S: string): Integer; begin end;'#10'end.', 'C:\Lib\System.pas', nil));
-  Items := ItemsAt('  Leng', '  Leng');
-  Assert.AreEqual(1, CountNamed(Items, 'Length'));
-  for Item in Items.Items do
+  mItems := ItemsAt('  Leng', '  Leng');
+  Assert.AreEqual(1, CountNamed(mItems, 'Length'));
+  for mItem in mItems.Items do
   begin
-    if SameText(Item.Name, 'Length') then
+    if SameText(mItem.Name, 'Length') then
     begin
-      Assert.AreEqual('C:\Lib\System.pas', Item.SourceFile);
+      Assert.AreEqual('C:\Lib\System.pas', mItem.SourceFile);
     end;
   end;
 end;
 
 procedure TSystemIntrinsicsTests.OwnDeclarationHidesIntrinsic;
 var
-  Text: string;
-  Tree: TSyntaxTree;
-  Items: TCompletionItems;
-  Item: TCompletionItem;
+  mText: string;
+  mTree: TSyntaxTree;
+  mItems: TCompletionItems;
+  mItem: TCompletionItem;
 begin
   // Ohne Eingabe keine Liste von System (die Antwort ist dann ohnehin unvollständig).
-  Items := ItemsAt('  ', #10'begin'#10'  ');
-  Assert.AreEqual(0, CountNamed(Items, 'Assigned'));
-  Assert.IsTrue(Items.Incomplete);
+  mItems := ItemsAt('  ', #10'begin'#10'  ');
+  Assert.AreEqual(0, CountNamed(mItems, 'Assigned'));
+  Assert.IsTrue(mItems.Incomplete);
   // Eine eigene Routine gleichen Namens verdeckt den Eintrag.
-  Text := StringReplace(WithCode('  Assi'), 'procedure TFoo.Bar;',
+  mText := StringReplace(WithCode('  Assi'), 'procedure TFoo.Bar;',
     'function Assigned(P: Pointer): Boolean;'#10'begin'#10'end;'#10'procedure TFoo.Bar;', []);
-  Tree := TPascalParser.Parse(Text);
+  mTree := TPascalParser.Parse(mText);
   try
-    Items := TCompletionLists.Collect(FResolver, FIndex, Tree, HauptFile, PositionOf(Text, '  Assi'),
+    mItems := TCompletionLists.Collect(FResolver, FIndex, mTree, cHauptFile, PositionOf(mText, '  Assi'),
       TCompletionMatching.Prefix);
   finally
-    Tree.Free;
+    mTree.Free;
   end;
-  Assert.AreEqual(1, CountNamed(Items, 'Assigned'));
-  for Item in Items.Items do
+  Assert.AreEqual(1, CountNamed(mItems, 'Assigned'));
+  for mItem in mItems.Items do
   begin
-    if SameText(Item.Name, 'Assigned') then
+    if SameText(mItem.Name, 'Assigned') then
     begin
-      Assert.AreEqual(HauptFile, Item.SourceFile);
+      Assert.AreEqual(cHauptFile, mItem.SourceFile);
     end;
   end;
 end;
 
 procedure TSystemIntrinsicsTests.SignatureHelpForIntrinsics;
 var
-  Text: string;
-  Tree: TSyntaxTree;
-  Help: TSignatureHelp;
+  mText: string;
+  mTree: TSyntaxTree;
+  mHelp: TSignatureHelp;
 begin
-  Text := WithCode('  SetLength(Liste, ');
-  Tree := TPascalParser.Parse(Text);
+  mText := WithCode('  SetLength(Liste, ');
+  mTree := TPascalParser.Parse(mText);
   try
-    Help := TLspSignatureHelp.HelpAt(TSignatureHelpRequest.Create(FResolver, FIndex, Tree, Text, HauptFile, NoText),
-      PositionOf(Text, 'Liste, '));
-    Assert.IsTrue(Help.Found);
-    Assert.AreEqual(1, Integer(Length(Help.Signatures)));
-    Assert.AreEqual('procedure SetLength(var S; NewLength: NativeInt)', Help.Signatures[0].Text);
-    Assert.AreEqual(1, Help.ActiveParameter);
-    Assert.AreNotEqual('', Help.Signatures[0].Documentation);
+    mHelp := TLspSignatureHelp.HelpAt(TSignatureHelpRequest.Create(FResolver, FIndex, mTree, mText, cHauptFile, NoText),
+      PositionOf(mText, 'Liste, '));
+    Assert.IsTrue(mHelp.Found);
+    Assert.AreEqual(1, Integer(Length(mHelp.Signatures)));
+    Assert.AreEqual('procedure SetLength(var S; NewLength: NativeInt)', mHelp.Signatures[0].Text);
+    Assert.AreEqual(1, mHelp.ActiveParameter);
+    Assert.AreNotEqual('', mHelp.Signatures[0].Documentation);
   finally
-    Tree.Free;
+    mTree.Free;
   end;
-  Text := WithCode('  Inc(Liste[0], ');
-  Tree := TPascalParser.Parse(Text);
+  mText := WithCode('  Inc(Liste[0], ');
+  mTree := TPascalParser.Parse(mText);
   try
-    Help := TLspSignatureHelp.HelpAt(TSignatureHelpRequest.Create(FResolver, FIndex, Tree, Text, HauptFile, NoText),
-      PositionOf(Text, '[0], '));
-    Assert.AreEqual(2, Integer(Length(Help.Signatures)));
+    mHelp := TLspSignatureHelp.HelpAt(TSignatureHelpRequest.Create(FResolver, FIndex, mTree, mText, cHauptFile, NoText),
+      PositionOf(mText, '[0], '));
+    Assert.AreEqual(2, Integer(Length(mHelp.Signatures)));
     // Die erste Überladung hat nur einen Parameter.
-    Assert.AreEqual(1, Help.ActiveSignature);
+    Assert.AreEqual(1, mHelp.ActiveSignature);
   finally
-    Tree.Free;
+    mTree.Free;
   end;
   // Nach einem Punkt ist Length ein Mitglied, keine Routine von System.
-  Text := WithCode('  Liste.Length(');
-  Tree := TPascalParser.Parse(Text);
+  mText := WithCode('  Liste.Length(');
+  mTree := TPascalParser.Parse(mText);
   try
-    Help := TLspSignatureHelp.HelpAt(TSignatureHelpRequest.Create(FResolver, FIndex, Tree, Text, HauptFile, NoText),
-      PositionOf(Text, 'Length('));
-    Assert.IsFalse(Help.Found);
+    mHelp := TLspSignatureHelp.HelpAt(TSignatureHelpRequest.Create(FResolver, FIndex, mTree, mText, cHauptFile, NoText),
+      PositionOf(mText, 'Length('));
+    Assert.IsFalse(mHelp.Found);
   finally
-    Tree.Free;
+    mTree.Free;
   end;
 end;
 
 procedure TSystemIntrinsicsTests.HoverForIntrinsicsAndTypes;
 var
-  Text: string;
-  Tree: TSyntaxTree;
-  Info: THoverInfo;
+  mText: string;
+  mTree: TSyntaxTree;
+  mInfo: THoverInfo;
 begin
-  Text := WithCode('  if Assigned(Self) then Exit;');
-  Tree := TPascalParser.Parse(Text);
+  mText := WithCode('  if Assigned(Self) then Exit;');
+  mTree := TPascalParser.Parse(mText);
   try
-    Info := TLspHover.InfoAt(THoverSource.Create(FResolver, FIndex, NoText), Tree, Text, HauptFile,
-      PositionOf(Text, 'if Assi'));
-    Assert.AreEqual('function Assigned(const P): Boolean;', Info.Declaration);
-    Assert.AreEqual('System', Info.UnitName);
-    Assert.AreNotEqual('', Info.Documentation);
+    mInfo := TLspHover.InfoAt(THoverSource.Create(FResolver, FIndex, NoText), mTree, mText, cHauptFile,
+      PositionOf(mText, 'if Assi'));
+    Assert.AreEqual('function Assigned(const P): Boolean;', mInfo.Declaration);
+    Assert.AreEqual('System', mInfo.UnitName);
+    Assert.AreNotEqual('', mInfo.Documentation);
   finally
-    Tree.Free;
+    mTree.Free;
   end;
-  Text := StringReplace(WithCode('  '), 'TArray<Integer>', 'Int64', []);
-  Tree := TPascalParser.Parse(Text);
+  mText := StringReplace(WithCode('  '), 'TArray<Integer>', 'Int64', []);
+  mTree := TPascalParser.Parse(mText);
   try
-    Info := TLspHover.InfoAt(THoverSource.Create(FResolver, FIndex, NoText), Tree, Text, HauptFile,
-      PositionOf(Text, 'Liste: Int'));
-    Assert.IsTrue(Info.Declaration.StartsWith('type Int64'), Info.Declaration);
+    mInfo := TLspHover.InfoAt(THoverSource.Create(FResolver, FIndex, NoText), mTree, mText, cHauptFile,
+      PositionOf(mText, 'Liste: Int'));
+    Assert.IsTrue(mInfo.Declaration.StartsWith('type Int64'), mInfo.Declaration);
   finally
-    Tree.Free;
+    mTree.Free;
   end;
 end;
 

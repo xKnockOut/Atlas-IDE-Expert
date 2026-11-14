@@ -56,18 +56,18 @@ uses
   Atlas.Common.Lsp.InlineAccessor;
 
 const
-  IntfFile = 'C:\P\Titles.pas';
-  ModelFile = 'C:\P\Model.pas';
-  UseFile = 'C:\P\Use.pas';
-  OtherFile = 'C:\P\Other.pas';
+  cIntfFile = 'C:\P\Titles.pas';
+  cModelFile = 'C:\P\Model.pas';
+  cUseFile = 'C:\P\Use.pas';
+  cOtherFile = 'C:\P\Other.pas';
 
-  UnitIntf =
+  cUnitIntf =
     'unit Titles;'#10'interface'#10'type'#10 +
     '  ITitled = interface'#10 +
     '    function GetTitle: string;'#10 +
     '  end;'#10 +
     'implementation'#10'end.'#10;
-  UnitModel =
+  cUnitModel =
     'unit Model;'#10 +                                                    // 0
     'interface'#10 +                                                      // 1
     'uses'#10 +                                                           // 2
@@ -99,11 +99,11 @@ const
     'procedure TFoo.SetCount(const Value: Integer);'#10'begin'#10'  FCount := Value;'#10'end;'#10#10 +
     'function TBar.GetTitle: string;'#10'begin'#10'  Result := FTitle;'#10'end;'#10#10 +
     'end.'#10;
-  UnitUse =
+  cUnitUse =
     'unit Use;'#10'interface'#10'uses'#10'  Model;'#10'implementation'#10#10 +
     'function Total(AFoo: TFoo): Integer;'#10'begin'#10'  Result := AFoo.GetCount + 1;'#10'end;'#10#10 +
     'end.'#10;
-  UnitOther =
+  cUnitOther =
     'unit Other;'#10'interface'#10'type'#10 +
     '  TBaz = class'#10 +
     '  private'#10 +
@@ -118,21 +118,21 @@ const
 
 function TextOf(const AFileName: string): string;
 begin
-  if SameText(AFileName, IntfFile) then
+  if SameText(AFileName, cIntfFile) then
   begin
-    Result := UnitIntf;
+    Result := cUnitIntf;
   end
-  else if SameText(AFileName, ModelFile) then
+  else if SameText(AFileName, cModelFile) then
   begin
-    Result := UnitModel;
+    Result := cUnitModel;
   end
-  else if SameText(AFileName, UseFile) then
+  else if SameText(AFileName, cUseFile) then
   begin
-    Result := UnitUse;
+    Result := cUnitUse;
   end
-  else if SameText(AFileName, OtherFile) then
+  else if SameText(AFileName, cOtherFile) then
   begin
-    Result := UnitOther;
+    Result := cUnitOther;
   end
   else
   begin
@@ -145,7 +145,7 @@ begin
   Result := Default(TInlineAccessorContext);
   Result.Index := AIndex;
   Result.Options := TInlineAccessorOptions.Default;
-  Result.Files := [IntfFile, ModelFile, UseFile, OtherFile];
+  Result.Files := [cIntfFile, cModelFile, cUseFile, cOtherFile];
   Result.ReadText :=
     function(const AFileName: string; out AText: string): Boolean
     begin
@@ -157,80 +157,80 @@ end;
 /// <summary>Text von AFileName nach dem WorkspaceEdit in AAnswer.</summary>
 function After(AAnswer: TJSONObject; const AFileName: string): string;
 var
-  Item, Edit: TJSONValue;
-  Document, Range: TJSONObject;
-  Edits: TArray<TTextEdit>;
-  Uri: string;
+  mItem, mEdit: TJSONValue;
+  mDocument, mRange: TJSONObject;
+  mEdits: TArray<TTextEdit>;
+  mUri: string;
 begin
   Result := TextOf(AFileName);
-  for Item in (AAnswer.GetValue('edit') as TJSONObject).GetValue('documentChanges') as TJSONArray do
+  for mItem in (AAnswer.GetValue('edit') as TJSONObject).GetValue('documentChanges') as TJSONArray do
   begin
-    Document := TJSONObject(Item);
-    Uri := (Document.GetValue('textDocument') as TJSONObject).GetValue('uri').Value;
-    if not SameText(TDocumentUris.ToPath(Uri), AFileName) then
+    mDocument := TJSONObject(mItem);
+    mUri := (mDocument.GetValue('textDocument') as TJSONObject).GetValue('uri').Value;
+    if not SameText(TDocumentUris.ToPath(mUri), AFileName) then
     begin
       Continue;
     end;
-    Edits := nil;
-    for Edit in Document.GetValue('edits') as TJSONArray do
+    mEdits := nil;
+    for mEdit in mDocument.GetValue('edits') as TJSONArray do
     begin
-      Range := TJSONObject(Edit).GetValue('range') as TJSONObject;
-      Edits := Edits + [TTextEdit.Create(TTextRange.Create(TLspPositions.ReadPosition(Range.GetValue('start')),
-        TLspPositions.ReadPosition(Range.GetValue('end'))), TJSONObject(Edit).GetValue('newText').Value)];
+      mRange := TJSONObject(mEdit).GetValue('range') as TJSONObject;
+      mEdits := mEdits + [TTextEdit.Create(TTextRange.Create(TLspPositions.ReadPosition(mRange.GetValue('start')),
+        TLspPositions.ReadPosition(mRange.GetValue('end'))), TJSONObject(mEdit).GetValue('newText').Value)];
     end;
-    Result := TTextChanges.Apply(Result, Edits);
+    Result := TTextChanges.Apply(Result, mEdits);
   end;
 end;
 
 function Run(const AIndex: ISymbolIndex; ALine: Integer; const AScope: string): TJSONObject;
 var
-  Tree: TSyntaxTree;
-  Resolver: TNameResolver;
+  mTree: TSyntaxTree;
+  mResolver: TNameResolver;
   mContext: TInlineAccessorContext;
 begin
-  Tree := TPascalParser.Parse(UnitModel);
-  Resolver := TNameResolver.Create(AIndex, nil);
+  mTree := TPascalParser.Parse(cUnitModel);
+  mResolver := TNameResolver.Create(AIndex, nil);
   try
     mContext := Context(AIndex);
     mContext.Scope := AScope;
-    Result := TLspInlineAccessor.Execute(Resolver, Tree, ModelFile, UnitModel, TTextPosition.Create(ALine, 6),
+    Result := TLspInlineAccessor.Execute(mResolver, mTree, cModelFile, cUnitModel, TTextPosition.Create(ALine, 6),
       mContext);
   finally
-    Resolver.Free;
-    Tree.Free;
+    mResolver.Free;
+    mTree.Free;
   end;
 end;
 
 function Titles(const AItems: TArray<TJSONObject>): string;
 var
-  Item: TJSONObject;
+  mItem: TJSONObject;
 begin
   Result := '';
-  for Item in AItems do
+  for mItem in AItems do
   begin
-    Result := Result + Item.GetValue('title').Value + '|';
-    Item.Free;
+    Result := Result + mItem.GetValue('title').Value + '|';
+    mItem.Free;
   end;
 end;
 
 function Warnings(AAnswer: TJSONObject): string;
 var
-  Item: TJSONValue;
+  mItem: TJSONValue;
 begin
   Result := '';
-  for Item in AAnswer.GetValue('warnings') as TJSONArray do
+  for mItem in AAnswer.GetValue('warnings') as TJSONArray do
   begin
-    Result := Result + Item.Value + '|';
+    Result := Result + mItem.Value + '|';
   end;
 end;
 
 procedure TLspInlineAccessorTests.Setup;
 begin
   FIndex := TSymbolIndex.Create;
-  FIndex.AddUnit(TIndexExtractor.ExtractText(UnitIntf, IntfFile, nil));
-  FIndex.AddUnit(TIndexExtractor.ExtractText(UnitModel, ModelFile, nil));
-  FIndex.AddUnit(TIndexExtractor.ExtractText(UnitUse, UseFile, nil));
-  FIndex.AddUnit(TIndexExtractor.ExtractText(UnitOther, OtherFile, nil));
+  FIndex.AddUnit(TIndexExtractor.ExtractText(cUnitIntf, cIntfFile, nil));
+  FIndex.AddUnit(TIndexExtractor.ExtractText(cUnitModel, cModelFile, nil));
+  FIndex.AddUnit(TIndexExtractor.ExtractText(cUnitUse, cUseFile, nil));
+  FIndex.AddUnit(TIndexExtractor.ExtractText(cUnitOther, cOtherFile, nil));
 end;
 
 procedure TLspInlineAccessorTests.TearDown;
@@ -240,7 +240,7 @@ end;
 
 procedure TLspInlineAccessorTests.OffersActions;
 var
-  Tree: TSyntaxTree;
+  mTree: TSyntaxTree;
 
   function Offered(AEnabled, ABulk: Boolean; ALine: Integer): string;
   var
@@ -251,12 +251,12 @@ var
     mOffer.Bulk := ABulk;
     mOffer.Options := TInlineAccessorOptions.Default;
     mOffer.Index := FIndex;
-    Result := Titles(TLspInlineAccessor.Actions(mOffer, Tree, UnitModel, 'file:///C:/P/Model.pas',
+    Result := Titles(TLspInlineAccessor.Actions(mOffer, mTree, cUnitModel, 'file:///C:/P/Model.pas',
       TTextPosition.Create(ALine, 6)));
   end;
 
 begin
-  Tree := TPascalParser.Parse(UnitModel);
+  mTree := TPascalParser.Parse(cUnitModel);
   try
     // Vier triviale in TFoo; GetTitle gehört zu ITitled (Index) und zählt nicht.
     Assert.AreEqual('Zugriffsmethoden GetName und SetName durch Feld ersetzen|' +
@@ -270,43 +270,43 @@ begin
     Assert.AreEqual('', Offered(True, True, 22), 'Interface-Methode');
     Assert.AreEqual('', Offered(False, True, 14), 'abgeschaltet');
   finally
-    Tree.Free;
+    mTree.Free;
   end;
 end;
 
 procedure TLspInlineAccessorTests.ReplacesAtProperty;
 var
-  Answer: TJSONObject;
-  Text: string;
+  mAnswer: TJSONObject;
+  mText: string;
 begin
-  Answer := Run(FIndex, 14, TLspInlineAccessor.cScopeHere);
+  mAnswer := Run(FIndex, 14, TLspInlineAccessor.cScopeHere);
   try
-    Assert.AreEqual(2, (Answer.GetValue('accessors') as TJSONNumber).AsInt);
-    Assert.AreEqual('', Warnings(Answer));
-    Text := After(Answer, ModelFile);
-    Assert.IsTrue(ContainsStr(Text, '    property Name: string read FName write FName;'), Text);
-    Assert.IsFalse(ContainsStr(Text, 'GetName'), Text);
-    Assert.IsFalse(ContainsStr(Text, 'SetName'), Text);
-    Assert.IsTrue(ContainsStr(Text, 'function TFoo.GetCount'), Text);
+    Assert.AreEqual(2, (mAnswer.GetValue('accessors') as TJSONNumber).AsInt);
+    Assert.AreEqual('', Warnings(mAnswer));
+    mText := After(mAnswer, cModelFile);
+    Assert.IsTrue(ContainsStr(mText, '    property Name: string read FName write FName;'), mText);
+    Assert.IsFalse(ContainsStr(mText, 'GetName'), mText);
+    Assert.IsFalse(ContainsStr(mText, 'SetName'), mText);
+    Assert.IsTrue(ContainsStr(mText, 'function TFoo.GetCount'), mText);
   finally
-    Answer.Free;
+    mAnswer.Free;
   end;
 end;
 
 procedure TLspInlineAccessorTests.KeepsCalledAccessor;
 var
-  Answer: TJSONObject;
-  Text: string;
+  mAnswer: TJSONObject;
+  mText: string;
 begin
-  Answer := Run(FIndex, 15, TLspInlineAccessor.cScopeHere);
+  mAnswer := Run(FIndex, 15, TLspInlineAccessor.cScopeHere);
   try
-    Assert.AreEqual(1, (Answer.GetValue('accessors') as TJSONNumber).AsInt);
-    Assert.AreEqual('TFoo.GetCount bleibt: Es wird noch aufgerufen (Use.pas:9).|', Warnings(Answer));
-    Text := After(Answer, ModelFile);
-    Assert.IsTrue(ContainsStr(Text, '    property Count: Integer read GetCount write FCount;'), Text);
-    Assert.IsFalse(ContainsStr(Text, 'SetCount'), Text);
+    Assert.AreEqual(1, (mAnswer.GetValue('accessors') as TJSONNumber).AsInt);
+    Assert.AreEqual('TFoo.GetCount bleibt: Es wird noch aufgerufen (Use.pas:9).|', Warnings(mAnswer));
+    mText := After(mAnswer, cModelFile);
+    Assert.IsTrue(ContainsStr(mText, '    property Count: Integer read GetCount write FCount;'), mText);
+    Assert.IsFalse(ContainsStr(mText, 'SetCount'), mText);
   finally
-    Answer.Free;
+    mAnswer.Free;
   end;
 end;
 
@@ -326,36 +326,36 @@ end;
 
 procedure TLspInlineAccessorTests.ReplacesWholeUnit;
 var
-  Answer: TJSONObject;
-  Text: string;
+  mAnswer: TJSONObject;
+  mText: string;
 begin
-  Answer := Run(FIndex, 5, TLspInlineAccessor.cScopeUnit);
+  mAnswer := Run(FIndex, 5, TLspInlineAccessor.cScopeUnit);
   try
-    Assert.AreEqual(3, (Answer.GetValue('accessors') as TJSONNumber).AsInt);
-    Assert.AreEqual(1, (Answer.GetValue('files') as TJSONNumber).AsInt);
-    Text := After(Answer, ModelFile);
-    Assert.IsTrue(ContainsStr(Text, 'read FName write FName;'), Text);
-    Assert.IsTrue(ContainsStr(Text, 'read GetCount write FCount;'), Text);
-    Assert.IsTrue(ContainsStr(Text, 'read GetTitle;'), Text);
+    Assert.AreEqual(3, (mAnswer.GetValue('accessors') as TJSONNumber).AsInt);
+    Assert.AreEqual(1, (mAnswer.GetValue('files') as TJSONNumber).AsInt);
+    mText := After(mAnswer, cModelFile);
+    Assert.IsTrue(ContainsStr(mText, 'read FName write FName;'), mText);
+    Assert.IsTrue(ContainsStr(mText, 'read GetCount write FCount;'), mText);
+    Assert.IsTrue(ContainsStr(mText, 'read GetTitle;'), mText);
   finally
-    Answer.Free;
+    mAnswer.Free;
   end;
 end;
 
 procedure TLspInlineAccessorTests.ReplacesWholeProject;
 var
-  Answer: TJSONObject;
-  Text: string;
+  mAnswer: TJSONObject;
+  mText: string;
 begin
-  Answer := Run(FIndex, 5, TLspInlineAccessor.cScopeProject);
+  mAnswer := Run(FIndex, 5, TLspInlineAccessor.cScopeProject);
   try
-    Assert.AreEqual(4, (Answer.GetValue('accessors') as TJSONNumber).AsInt);
-    Assert.AreEqual(2, (Answer.GetValue('files') as TJSONNumber).AsInt);
-    Text := After(Answer, OtherFile);
-    Assert.IsTrue(ContainsStr(Text, '    property Size: Integer read FSize;'), Text);
-    Assert.IsFalse(ContainsStr(Text, 'GetSize'), Text);
+    Assert.AreEqual(4, (mAnswer.GetValue('accessors') as TJSONNumber).AsInt);
+    Assert.AreEqual(2, (mAnswer.GetValue('files') as TJSONNumber).AsInt);
+    mText := After(mAnswer, cOtherFile);
+    Assert.IsTrue(ContainsStr(mText, '    property Size: Integer read FSize;'), mText);
+    Assert.IsFalse(ContainsStr(mText, 'GetSize'), mText);
   finally
-    Answer.Free;
+    mAnswer.Free;
   end;
 end;
 

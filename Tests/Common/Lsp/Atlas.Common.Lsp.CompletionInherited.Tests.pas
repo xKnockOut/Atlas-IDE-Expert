@@ -55,10 +55,10 @@ uses
   Atlas.Common.Lsp.Completion;
 
 const
-  BasisFile = 'C:\P\Basis.pas';
-  HauptFile = 'C:\P\Haupt.pas';
+  cBasisFile = 'C:\P\Basis.pas';
+  cHauptFile = 'C:\P\Haupt.pas';
 
-  UnitBasis =
+  cUnitBasis =
     'unit Basis;'#10 +
     'interface'#10 +
     'type'#10 +
@@ -77,7 +77,7 @@ const
     'implementation'#10 +
     'end.';
 
-  UnitHaupt =
+  cUnitHaupt =
     'unit Haupt;'#10 +
     'interface'#10 +
     'uses Basis;'#10 +
@@ -118,44 +118,44 @@ end;
 function ItemsAt(const AIndex: ISymbolIndex; const AText, AMarker: string;
   const ASettings: TCompletionSettings): TCompletionItems;
 var
-  Resolver: TNameResolver;
-  Request: TCompletionRequest;
-  Tree: TSyntaxTree;
-  Lines: TArray<string>;
-  Line: Integer;
-  Position: TTextPosition;
-  Postfix: TPostfixOptions;
+  mResolver: TNameResolver;
+  mRequest: TCompletionRequest;
+  mTree: TSyntaxTree;
+  mLines: TArray<string>;
+  mLine: Integer;
+  mPosition: TTextPosition;
+  mPostfix: TPostfixOptions;
 begin
-  Lines := AText.Split([#10]);
-  Position := TTextPosition.Create(0, 0);
-  for Line := 0 to High(Lines) do
+  mLines := AText.Split([#10]);
+  mPosition := TTextPosition.Create(0, 0);
+  for mLine := 0 to High(mLines) do
   begin
-    if Pos(AMarker, Lines[Line]) > 0 then
+    if Pos(AMarker, mLines[mLine]) > 0 then
     begin
-      Position := TTextPosition.Create(Line, Pos(AMarker, Lines[Line]) - 1 + Length(AMarker));
+      mPosition := TTextPosition.Create(mLine, Pos(AMarker, mLines[mLine]) - 1 + Length(AMarker));
     end;
   end;
-  Tree := TPascalParser.Parse(AText);
-  Resolver := TNameResolver.Create(AIndex);
-  Request := TCompletionRequest.Create(AText, HauptFile, Position);
+  mTree := TPascalParser.Parse(AText);
+  mResolver := TNameResolver.Create(AIndex);
+  mRequest := TCompletionRequest.Create(AText, cHauptFile, mPosition);
   try
-    Request.Tree := Tree;
-    Request.Resolver := Resolver;
-    Request.Index := AIndex;
-    Request.Matching := TCompletionMatching.Prefix;
-    Request.Settings := ASettings;
-    Postfix := Default(TPostfixOptions);
-    Result := TCompletionLists.Collect(Request, Postfix, nil);
+    mRequest.Tree := mTree;
+    mRequest.Resolver := mResolver;
+    mRequest.Index := AIndex;
+    mRequest.Matching := TCompletionMatching.Prefix;
+    mRequest.Settings := ASettings;
+    mPostfix := Default(TPostfixOptions);
+    Result := TCompletionLists.Collect(mRequest, mPostfix, nil);
   finally
-    Request.Free;
-    Resolver.Free;
-    Tree.Free;
+    mRequest.Free;
+    mResolver.Free;
+    mTree.Free;
   end;
 end;
 
 function Code(const AMarker, ACode: string): string;
 begin
-  Result := StringReplace(UnitHaupt, AMarker, ACode, []);
+  Result := StringReplace(cUnitHaupt, AMarker, ACode, []);
 end;
 
 { TCompletionInheritedTests }
@@ -163,7 +163,7 @@ end;
 procedure TCompletionInheritedTests.Setup;
 begin
   FIndex := TSymbolIndex.Create;
-  FIndex.AddUnit(TIndexExtractor.ExtractText(UnitBasis, BasisFile, nil));
+  FIndex.AddUnit(TIndexExtractor.ExtractText(cUnitBasis, cBasisFile, nil));
 end;
 
 procedure TCompletionInheritedTests.TearDown;
@@ -173,164 +173,164 @@ end;
 
 procedure TCompletionInheritedTests.ParsesHeadersOfDeclarationAndImplementation;
 var
-  Value: TInheritedHeader;
+  mValue: TInheritedHeader;
 begin
-  Value := Header('constructor TLogView.Create(AOwner: TComponent)');
-  Assert.AreEqual('constructor', Value.Kind);
-  Assert.AreEqual('Create', Value.Name);
-  Assert.AreEqual(1, Integer(Length(Value.Params)));
-  Assert.AreEqual('AOwner', Value.Params[0].Name);
-  Assert.AreEqual('TComponent', Value.Params[0].TypeName);
-  Value := Header('function FormatZeile(const AText, APrefix: string; ALevel: Integer = 0): string; virtual; abstract;');
-  Assert.AreEqual('function', Value.Kind);
-  Assert.AreEqual(3, Integer(Length(Value.Params)));
-  Assert.AreEqual('APrefix', Value.Params[1].Name);
-  Assert.AreEqual('string', Value.Params[1].TypeName);
-  Assert.AreEqual('Integer', Value.Params[2].TypeName);
-  Assert.IsTrue(Value.IsAbstract);
-  Value := Header('class procedure TAussen.TInnen.Lies(var Puffer)');
-  Assert.AreEqual('Lies', Value.Name);
-  Assert.AreEqual('', Value.Params[0].TypeName);
-  Assert.IsFalse(Value.IsAbstract);
-  Assert.IsFalse(TInheritedHeader.Parse('property Name: string', Value));
+  mValue := Header('constructor TLogView.Create(AOwner: TComponent)');
+  Assert.AreEqual('constructor', mValue.Kind);
+  Assert.AreEqual('Create', mValue.Name);
+  Assert.AreEqual(1, Integer(Length(mValue.Params)));
+  Assert.AreEqual('AOwner', mValue.Params[0].Name);
+  Assert.AreEqual('TComponent', mValue.Params[0].TypeName);
+  mValue := Header('function FormatZeile(const AText, APrefix: string; ALevel: Integer = 0): string; virtual; abstract;');
+  Assert.AreEqual('function', mValue.Kind);
+  Assert.AreEqual(3, Integer(Length(mValue.Params)));
+  Assert.AreEqual('APrefix', mValue.Params[1].Name);
+  Assert.AreEqual('string', mValue.Params[1].TypeName);
+  Assert.AreEqual('Integer', mValue.Params[2].TypeName);
+  Assert.IsTrue(mValue.IsAbstract);
+  mValue := Header('class procedure TAussen.TInnen.Lies(var Puffer)');
+  Assert.AreEqual('Lies', mValue.Name);
+  Assert.AreEqual('', mValue.Params[0].TypeName);
+  Assert.IsFalse(mValue.IsAbstract);
+  Assert.IsFalse(TInheritedHeader.Parse('property Name: string', mValue));
 end;
 
 procedure TCompletionInheritedTests.ArgumentsComeFromOwnParameters;
 var
-  Args: TArray<string>;
+  mArgs: TArray<string>;
 begin
   // Gleicher Name, dann gleicher Typ, sonst der Name der Vorfahrmethode.
-  Args := TCompletionInherited.Arguments(Header('constructor Create(AOwner: TComponent)'),
+  mArgs := TCompletionInherited.Arguments(Header('constructor Create(AOwner: TComponent)'),
     Header('constructor CreateNew(AOwner: TComponent; Dummy: Integer)'));
-  Assert.AreEqual('AOwner, Dummy', string.Join(', ', Args));
-  Args := TCompletionInherited.Arguments(Header('procedure Setze(Wert: Integer; Besitzer: TComponent)'),
+  Assert.AreEqual('AOwner, Dummy', string.Join(', ', mArgs));
+  mArgs := TCompletionInherited.Arguments(Header('procedure Setze(Wert: Integer; Besitzer: TComponent)'),
     Header('procedure Setze(AOwner: TComponent; AValue: Integer)'));
-  Assert.AreEqual('Besitzer, Wert', string.Join(', ', Args));
+  Assert.AreEqual('Besitzer, Wert', string.Join(', ', mArgs));
 end;
 
 procedure TCompletionInheritedTests.CallsOrderSameOverloadOther;
 var
-  Calls: TArray<TInheritedCall>;
-  Abstract_: TArray<string>;
+  mCalls: TArray<TInheritedCall>;
+  mAbstract_: TArray<string>;
 begin
-  Calls := TCompletionInherited.Calls(Header('constructor TLogView.Create(AOwner: TComponent)'), [
+  mCalls := TCompletionInherited.Calls(Header('constructor TLogView.Create(AOwner: TComponent)'), [
     Method('constructor CreateNew(AOwner: TComponent; Dummy: Integer = 0); virtual;', 'TBaseView', 1),
     Method('function FormatZeile(const AText: string): string;', 'TBaseView', 1),
     Method('constructor Create(AOwner: TComponent); override;', 'TBaseView', 1),
     Method('constructor Create(AOwner: TComponent); virtual;', 'TComponent', 2),
-    Method('constructor CreateParented(ParentWindow: THandle);', 'TWinControl', 2)], Abstract_);
-  Assert.AreEqual(3, Integer(Length(Calls)));
-  Assert.AreEqual('Create(AOwner)', Calls[0].Text);
-  Assert.AreEqual<TInheritedMatch>(TInheritedMatch.Same, Calls[0].Match);
-  Assert.AreEqual('TBaseView', Calls[0].Container);
-  Assert.AreEqual('CreateNew(AOwner, Dummy)', Calls[1].Text);
-  Assert.AreEqual<TInheritedMatch>(TInheritedMatch.Sibling, Calls[1].Match);
-  Assert.AreEqual('CreateParented(ParentWindow)', Calls[2].Text);
+    Method('constructor CreateParented(ParentWindow: THandle);', 'TWinControl', 2)], mAbstract_);
+  Assert.AreEqual(3, Integer(Length(mCalls)));
+  Assert.AreEqual('Create(AOwner)', mCalls[0].Text);
+  Assert.AreEqual<TInheritedMatch>(TInheritedMatch.Same, mCalls[0].Match);
+  Assert.AreEqual('TBaseView', mCalls[0].Container);
+  Assert.AreEqual('CreateNew(AOwner, Dummy)', mCalls[1].Text);
+  Assert.AreEqual<TInheritedMatch>(TInheritedMatch.Sibling, mCalls[1].Match);
+  Assert.AreEqual('CreateParented(ParentWindow)', mCalls[2].Text);
   // Funktion: die passende Überladung zuerst, keine Konstruktoren.
-  Calls := TCompletionInherited.Calls(Header('function TLogView.FormatZeile(const AText: string; ALevel: Integer): string'), [
+  mCalls := TCompletionInherited.Calls(Header('function TLogView.FormatZeile(const AText: string; ALevel: Integer): string'), [
     Method('function FormatZeile(const AText: string): string; overload;', 'TBaseView', 1),
     Method('function FormatZeile(const AText: string; ALevel: Integer): string; overload;', 'TBaseView', 1),
-    Method('constructor Create(AOwner: TComponent);', 'TBaseView', 1)], Abstract_);
-  Assert.AreEqual(2, Integer(Length(Calls)));
-  Assert.AreEqual('FormatZeile(AText, ALevel)', Calls[0].Text);
-  Assert.AreEqual('FormatZeile(AText)', Calls[1].Text);
-  Assert.AreEqual<TInheritedMatch>(TInheritedMatch.Overload, Calls[1].Match);
-  Assert.AreEqual(0, Integer(Length(Abstract_)));
+    Method('constructor Create(AOwner: TComponent);', 'TBaseView', 1)], mAbstract_);
+  Assert.AreEqual(2, Integer(Length(mCalls)));
+  Assert.AreEqual('FormatZeile(AText, ALevel)', mCalls[0].Text);
+  Assert.AreEqual('FormatZeile(AText)', mCalls[1].Text);
+  Assert.AreEqual<TInheritedMatch>(TInheritedMatch.Overload, mCalls[1].Match);
+  Assert.AreEqual(0, Integer(Length(mAbstract_)));
 end;
 
 procedure TCompletionInheritedTests.AbstractMethodsAreLeftOut;
 var
-  Calls: TArray<TInheritedCall>;
-  Abstract_: TArray<string>;
+  mCalls: TArray<TInheritedCall>;
+  mAbstract_: TArray<string>;
 begin
-  Calls := TCompletionInherited.Calls(Header('procedure TLogView.Zeichnen'), [
-    Method('procedure Zeichnen; virtual; abstract;', 'TBaseView', 1)], Abstract_);
-  Assert.AreEqual(0, Integer(Length(Calls)));
-  Assert.AreEqual('TBaseView.Zeichnen', string.Join(',', Abstract_));
+  mCalls := TCompletionInherited.Calls(Header('procedure TLogView.Zeichnen'), [
+    Method('procedure Zeichnen; virtual; abstract;', 'TBaseView', 1)], mAbstract_);
+  Assert.AreEqual(0, Integer(Length(mCalls)));
+  Assert.AreEqual('TBaseView.Zeichnen', string.Join(',', mAbstract_));
   // Ein näherer Vorfahr überschreibt die abstrakte Methode: seine Fassung gilt.
-  Calls := TCompletionInherited.Calls(Header('procedure TLogView.Zeichnen'), [
+  mCalls := TCompletionInherited.Calls(Header('procedure TLogView.Zeichnen'), [
     Method('procedure Zeichnen; override;', 'TMitte', 1),
-    Method('procedure Zeichnen; virtual; abstract;', 'TBaseView', 2)], Abstract_);
-  Assert.AreEqual(1, Integer(Length(Calls)));
-  Assert.AreEqual('Zeichnen', Calls[0].Text);
-  Assert.AreEqual(0, Integer(Length(Abstract_)));
+    Method('procedure Zeichnen; virtual; abstract;', 'TBaseView', 2)], mAbstract_);
+  Assert.AreEqual(1, Integer(Length(mCalls)));
+  Assert.AreEqual('Zeichnen', mCalls[0].Text);
+  Assert.AreEqual(0, Integer(Length(mAbstract_)));
 end;
 
 procedure TCompletionInheritedTests.ResultOnlyInFunctionsOnEmptyLine;
 var
-  Fn, Proc: TInheritedHeader;
+  mFn, mProc: TInheritedHeader;
 begin
-  Fn := Header('function TLogView.FormatZeile(const AText: string): string');
-  Proc := Header('procedure TLogView.Zeichnen');
-  Assert.IsTrue(TCompletionInherited.NeedsResult(Fn, '  inherited '));
-  Assert.IsTrue(TCompletionInherited.NeedsResult(Fn, '  inherited Form'));
-  Assert.IsFalse(TCompletionInherited.NeedsResult(Fn, '  S := inherited '));
-  Assert.IsFalse(TCompletionInherited.NeedsResult(Fn, '  if inherited '));
-  Assert.IsFalse(TCompletionInherited.NeedsResult(Proc, '  inherited '));
+  mFn := Header('function TLogView.FormatZeile(const AText: string): string');
+  mProc := Header('procedure TLogView.Zeichnen');
+  Assert.IsTrue(TCompletionInherited.NeedsResult(mFn, '  inherited '));
+  Assert.IsTrue(TCompletionInherited.NeedsResult(mFn, '  inherited Form'));
+  Assert.IsFalse(TCompletionInherited.NeedsResult(mFn, '  S := inherited '));
+  Assert.IsFalse(TCompletionInherited.NeedsResult(mFn, '  if inherited '));
+  Assert.IsFalse(TCompletionInherited.NeedsResult(mProc, '  inherited '));
 end;
 
 procedure TCompletionInheritedTests.HeaderTextEndsAtSemicolon;
 const
-  Text = 'function TFoo.Bar(A: Integer;'#13#10'  B: string): string;'#13#10'begin';
+  cText = 'function TFoo.Bar(A: Integer;'#13#10'  B: string): string;'#13#10'begin';
 begin
-  Assert.AreEqual('function TFoo.Bar(A: Integer;    B: string): string', TCompletionInherited.HeaderText(Text, 1));
+  Assert.AreEqual('function TFoo.Bar(A: Integer;    B: string): string', TCompletionInherited.HeaderText(cText, 1));
 end;
 
 procedure TCompletionInheritedTests.CompletionOffersFullCallFirst;
 var
-  Items: TCompletionItems;
+  mItems: TCompletionItems;
 begin
-  Items := ItemsAt(FIndex, Code('  { Create }', '  inherited '), 'inherited ', TCompletionSettings.Default);
-  Assert.IsTrue(Length(Items.Items) >= 2);
-  Assert.AreEqual('Create(AOwner)', Items.Items[0].Name);
-  Assert.AreEqual('same', Items.Items[0].InheritedMatch);
-  Assert.AreEqual('Create', Items.Items[0].FilterText);
-  Assert.IsTrue(Items.Items[0].HasTextEdit);
-  Assert.AreEqual('Create(AOwner);', Items.Items[0].TextEdit.NewText);
-  Assert.AreEqual('CreateNew(AOwner, Dummy)', Items.Items[1].Name);
-  Assert.AreEqual('other', Items.Items[1].InheritedMatch);
+  mItems := ItemsAt(FIndex, Code('  { Create }', '  inherited '), 'inherited ', TCompletionSettings.Default);
+  Assert.IsTrue(Length(mItems.Items) >= 2);
+  Assert.AreEqual('Create(AOwner)', mItems.Items[0].Name);
+  Assert.AreEqual('same', mItems.Items[0].InheritedMatch);
+  Assert.AreEqual('Create', mItems.Items[0].FilterText);
+  Assert.IsTrue(mItems.Items[0].HasTextEdit);
+  Assert.AreEqual('Create(AOwner);', mItems.Items[0].TextEdit.NewText);
+  Assert.AreEqual('CreateNew(AOwner, Dummy)', mItems.Items[1].Name);
+  Assert.AreEqual('other', mItems.Items[1].InheritedMatch);
   // Zeichnen ist abstrakt: weder als Aufruf noch als Name, die Fußzeile nennt es.
-  Assert.AreEqual('TBaseView.Zeichnen', string.Join(',', Items.Items[0].InheritedAbstract));
+  Assert.AreEqual('TBaseView.Zeichnen', string.Join(',', mItems.Items[0].InheritedAbstract));
 end;
 
 procedure TCompletionInheritedTests.CompletionAddsResultInFunctions;
 var
-  Items: TCompletionItems;
+  mItems: TCompletionItems;
 begin
-  Items := ItemsAt(FIndex, Code('  { Format }', '  inherited Form'), 'inherited Form', TCompletionSettings.Default);
-  Assert.IsTrue(Length(Items.Items) >= 2);
-  Assert.AreEqual('FormatZeile(AText, ALevel)', Items.Items[0].Name);
-  Assert.AreEqual('Result := inherited FormatZeile(AText, ALevel);', Items.Items[0].TextEdit.NewText);
-  Assert.AreEqual(2, Items.Items[0].TextEdit.Range.StartPos.Character);
-  Assert.AreEqual('FormatZeile(AText)', Items.Items[1].Name);
-  Assert.AreEqual('overload', Items.Items[1].InheritedMatch);
+  mItems := ItemsAt(FIndex, Code('  { Format }', '  inherited Form'), 'inherited Form', TCompletionSettings.Default);
+  Assert.IsTrue(Length(mItems.Items) >= 2);
+  Assert.AreEqual('FormatZeile(AText, ALevel)', mItems.Items[0].Name);
+  Assert.AreEqual('Result := inherited FormatZeile(AText, ALevel);', mItems.Items[0].TextEdit.NewText);
+  Assert.AreEqual(2, mItems.Items[0].TextEdit.Range.StartPos.Character);
+  Assert.AreEqual('FormatZeile(AText)', mItems.Items[1].Name);
+  Assert.AreEqual('overload', mItems.Items[1].InheritedMatch);
   // Mit Text dahinter kein Semikolon und mit Zuweisung davor kein Result.
-  Items := ItemsAt(FIndex, Code('  { Format }', '  S := inherited Form + ''x'';'), 'inherited Form',
+  mItems := ItemsAt(FIndex, Code('  { Format }', '  S := inherited Form + ''x'';'), 'inherited Form',
     TCompletionSettings.Default);
-  Assert.AreEqual('FormatZeile(AText, ALevel)', Items.Items[0].TextEdit.NewText);
+  Assert.AreEqual('FormatZeile(AText, ALevel)', mItems.Items[0].TextEdit.NewText);
 end;
 
 procedure TCompletionInheritedTests.CompletionSkipsAbstractAndFollowsSetting;
 var
-  Items: TCompletionItems;
-  Item: TCompletionItem;
-  Settings: TCompletionSettings;
+  mItems: TCompletionItems;
+  mItem: TCompletionItem;
+  mSettings: TCompletionSettings;
 begin
-  Items := ItemsAt(FIndex, Code('  { Zeichnen }', '  inherited '), 'inherited ', TCompletionSettings.Default);
-  for Item in Items.Items do
+  mItems := ItemsAt(FIndex, Code('  { Zeichnen }', '  inherited '), 'inherited ', TCompletionSettings.Default);
+  for mItem in mItems.Items do
   begin
-    Assert.AreNotEqual('Zeichnen', Item.Name);
-    Assert.AreEqual('', Item.InheritedMatch, Item.Name);
+    Assert.AreNotEqual('Zeichnen', mItem.Name);
+    Assert.AreEqual('', mItem.InheritedMatch, mItem.Name);
   end;
   // Aus: nur die Namen der Vorfahrmethoden wie bisher.
-  Settings := TCompletionSettings.Default;
-  Settings.InheritedCall := False;
-  Items := ItemsAt(FIndex, Code('  { Create }', '  inherited '), 'inherited ', Settings);
-  for Item in Items.Items do
+  mSettings := TCompletionSettings.Default;
+  mSettings.InheritedCall := False;
+  mItems := ItemsAt(FIndex, Code('  { Create }', '  inherited '), 'inherited ', mSettings);
+  for mItem in mItems.Items do
   begin
-    Assert.AreEqual('', Item.InheritedMatch, Item.Name);
+    Assert.AreEqual('', mItem.InheritedMatch, mItem.Name);
   end;
-  Assert.AreEqual('Create', Items.Items[0].Name);
+  Assert.AreEqual('Create', mItems.Items[0].Name);
 end;
 
 initialization

@@ -51,11 +51,11 @@ uses
 
 function TDebugValueTests.ExpressionAt(const ALine, AWord: string): string;
 var
-  Start: Integer;
+  mStart: Integer;
 begin
-  Start := Pos(AWord, ALine) - 1;
-  Assert.IsTrue(Start >= 0, AWord + ' fehlt in der Zeile');
-  Result := TAtlasDebugExpression.At(ALine, Start, Start + Length(AWord));
+  mStart := Pos(AWord, ALine) - 1;
+  Assert.IsTrue(mStart >= 0, AWord + ' fehlt in der Zeile');
+  Result := TAtlasDebugExpression.At(ALine, mStart, mStart + Length(AWord));
 end;
 
 procedure TDebugValueTests.PlainIdentifier;
@@ -127,49 +127,49 @@ end;
 
 procedure TDebugValueTests.AtCharacterFindsWordBounds;
 var
-  Line: string;
+  mLine: string;
 begin
-  Line := '  N := FList.Count;';
+  mLine := '  N := FList.Count;';
   // Mitten in „Count“.
-  Assert.AreEqual('FList.Count', TAtlasDebugExpression.AtCharacter(Line, Pos('ount', Line) - 1));
+  Assert.AreEqual('FList.Count', TAtlasDebugExpression.AtCharacter(mLine, Pos('ount', mLine) - 1));
   // Auf dem Leerzeichen: nichts.
-  Assert.AreEqual('', TAtlasDebugExpression.AtCharacter(Line, 0));
-  Assert.AreEqual('', TAtlasDebugExpression.AtCharacter(Line, Length(Line)));
+  Assert.AreEqual('', TAtlasDebugExpression.AtCharacter(mLine, 0));
+  Assert.AreEqual('', TAtlasDebugExpression.AtCharacter(mLine, Length(mLine)));
 end;
 
 procedure TDebugValueTests.ShortenLongValues;
 var
-  Value: TAtlasDebugValue;
+  mValue: TAtlasDebugValue;
 begin
   Assert.AreEqual('abc', TAtlasDebugExpression.Shorten('abc', 3));
   Assert.AreEqual('ab …', TAtlasDebugExpression.Shorten('abc', 2));
-  Value := TAtlasDebugValue.Evaluated('S', StringOfChar('x', TAtlasDebugExpression.cMaxValueLength + 10));
-  Assert.AreEqual(TAtlasDebugExpression.cMaxValueLength + 2, Integer(Length(Value.Text)));
+  mValue := TAtlasDebugValue.Evaluated('S', StringOfChar('x', TAtlasDebugExpression.cMaxValueLength + 10));
+  Assert.AreEqual(TAtlasDebugExpression.cMaxValueLength + 2, Integer(Length(mValue.Text)));
 end;
 
 procedure TDebugValueTests.StatesAndPlainText;
 var
-  Value: TAtlasDebugValue;
+  mValue: TAtlasDebugValue;
 begin
-  Value := Default(TAtlasDebugValue);
-  Assert.IsFalse(Value.Visible);
-  Assert.AreEqual('', Value.PlainText);
-  Value := TAtlasDebugValue.Pending('Count');
-  Assert.IsTrue(Value.Visible);
-  Assert.AreEqual('', Value.PlainText, 'ausstehend: noch kein Text für die IDE');
-  Value := TAtlasDebugValue.Evaluated('Count', '3');
-  Assert.IsTrue(Value.Visible);
-  Assert.AreEqual('Count = 3', Value.PlainText);
+  mValue := Default(TAtlasDebugValue);
+  Assert.IsFalse(mValue.Visible);
+  Assert.AreEqual('', mValue.PlainText);
+  mValue := TAtlasDebugValue.Pending('Count');
+  Assert.IsTrue(mValue.Visible);
+  Assert.AreEqual('', mValue.PlainText, 'ausstehend: noch kein Text für die IDE');
+  mValue := TAtlasDebugValue.Evaluated('Count', '3');
+  Assert.IsTrue(mValue.Visible);
+  Assert.AreEqual('Count = 3', mValue.PlainText);
   // Fehler ohne Erklärung zeigt der Tooltip nicht; mit Erklärung „kein Zugriff“ schon (#840).
-  Value := TAtlasDebugValue.Failed('Count', 'Undeclared identifier');
-  Assert.IsFalse(Value.Visible);
-  Assert.IsFalse(Value.Explained);
-  Assert.AreEqual('', Value.PlainText);
-  Value.Note.Caption := '<kein Zugriff>';
-  Value.Note.Reason := 'Optimierung an.';
-  Assert.IsTrue(Value.Visible);
-  Assert.IsTrue(Value.Explained);
-  Assert.AreEqual('Count = <kein Zugriff>' + sLineBreak + 'Optimierung an.', Value.PlainText);
+  mValue := TAtlasDebugValue.Failed('Count', 'Undeclared identifier');
+  Assert.IsFalse(mValue.Visible);
+  Assert.IsFalse(mValue.Explained);
+  Assert.AreEqual('', mValue.PlainText);
+  mValue.Note.Caption := '<kein Zugriff>';
+  mValue.Note.Reason := 'Optimierung an.';
+  Assert.IsTrue(mValue.Visible);
+  Assert.IsTrue(mValue.Explained);
+  Assert.AreEqual('Count = <kein Zugriff>' + sLineBreak + 'Optimierung an.', mValue.PlainText);
 end;
 
 initialization

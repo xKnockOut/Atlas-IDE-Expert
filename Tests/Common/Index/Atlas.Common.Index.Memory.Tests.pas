@@ -61,9 +61,10 @@ begin
   Result.TypeName := 'Integer';
 end;
 
-function MakeUnit(const AName: string; ALibrary: Boolean; AInterfaceSymbols, AImplementationSymbols: Integer): TUnitIndex;
+function MakeUnit(const AName: string; ALibrary: Boolean; AInterfaceSymbols,
+  AImplementationSymbols: Integer): TUnitIndex;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
   Result := Default(TUnitIndex);
   Result.UnitName := AName;
@@ -72,59 +73,59 @@ begin
   Result.InterfaceUses := ['System.SysUtils'];
   Result.ImplementationUses := ['System.Classes'];
   SetLength(Result.Symbols, AInterfaceSymbols + AImplementationSymbols);
-  for Index := 0 to High(Result.Symbols) do
+  for mIndex := 0 to High(Result.Symbols) do
   begin
-    Result.Symbols[Index] := MakeSymbol(AName + 'Symbol' + IntToStr(Index), Index < AInterfaceSymbols);
+    Result.Symbols[mIndex] := MakeSymbol(AName + 'Symbol' + IntToStr(mIndex), mIndex < AInterfaceSymbols);
   end;
 end;
 
 procedure TIndexMemoryTests.PoolReturnsSameStringForEqualValues;
 var
-  Pool: TStringPool;
-  First, Second: string;
+  mPool: TStringPool;
+  mFirst, mSecond: string;
 begin
-  Pool := TStringPool.Create;
+  mPool := TStringPool.Create;
   try
-    First := Pool.Intern(Copy('TObjekt', 1, MaxInt));
-    Second := Pool.Intern(Copy('TObjekt', 1, MaxInt));
-    Assert.AreEqual<Pointer>(Pointer(Second), Pointer(First));
-    Assert.AreEqual(1, Integer(Pool.Count));
-    Assert.AreEqual('', Pool.Intern(''));
+    mFirst := mPool.Intern(Copy('TObjekt', 1, MaxInt));
+    mSecond := mPool.Intern(Copy('TObjekt', 1, MaxInt));
+    Assert.AreEqual<Pointer>(Pointer(mSecond), Pointer(mFirst));
+    Assert.AreEqual(1, Integer(mPool.Count));
+    Assert.AreEqual('', mPool.Intern(''));
   finally
-    Pool.Free;
+    mPool.Free;
   end;
 end;
 
 procedure TIndexMemoryTests.PoolDoesNotChangeCallerArrays;
 var
-  Pool: TStringPool;
-  Original, Pooled: TUnitIndex;
-  Before: Pointer;
+  mPool: TStringPool;
+  mOriginal, mPooled: TUnitIndex;
+  mBefore: Pointer;
 begin
-  Pool := TStringPool.Create;
+  mPool := TStringPool.Create;
   try
-    Pool.Intern(Copy('TObject', 1, MaxInt));
-    Original := MakeUnit('A', False, 1, 0);
-    Before := Pointer(Original.Symbols[0].Ancestors[0]);
-    Pooled := Original;
-    Pooled.Symbols := Copy(Original.Symbols);
-    Pool.InternUnit(Pooled);
-    Assert.AreEqual<Pointer>(Pointer(Original.Symbols[0].Ancestors[0]), Before);
-    Assert.AreEqual('TObject', Pooled.Symbols[0].Ancestors[0]);
+    mPool.Intern(Copy('TObject', 1, MaxInt));
+    mOriginal := MakeUnit('A', False, 1, 0);
+    mBefore := Pointer(mOriginal.Symbols[0].Ancestors[0]);
+    mPooled := mOriginal;
+    mPooled.Symbols := Copy(mOriginal.Symbols);
+    mPool.InternUnit(mPooled);
+    Assert.AreEqual<Pointer>(Pointer(mOriginal.Symbols[0].Ancestors[0]), mBefore);
+    Assert.AreEqual('TObject', mPooled.Symbols[0].Ancestors[0]);
   finally
-    Pool.Free;
+    mPool.Free;
   end;
 end;
 
 procedure TIndexMemoryTests.CompactKeepsOnlyInterfaceSymbols;
 var
-  Compact: TUnitIndex;
+  mCompact: TUnitIndex;
 begin
-  Compact := TIndexMemory.Compacted(MakeUnit('A', True, 2, 3));
-  Assert.IsTrue(Compact.Compact);
-  Assert.AreEqual(2, Integer(Length(Compact.Symbols)));
-  Assert.IsTrue(Compact.Symbols[0].InInterface and Compact.Symbols[1].InInterface);
-  Assert.AreEqual(1, Integer(Length(Compact.ImplementationUses)));
+  mCompact := TIndexMemory.Compacted(MakeUnit('A', True, 2, 3));
+  Assert.IsTrue(mCompact.Compact);
+  Assert.AreEqual(2, Integer(Length(mCompact.Symbols)));
+  Assert.IsTrue(mCompact.Symbols[0].InInterface and mCompact.Symbols[1].InInterface);
+  Assert.AreEqual(1, Integer(Length(mCompact.ImplementationUses)));
 end;
 
 procedure TIndexMemoryTests.UnitBytesGrowWithSymbols;
@@ -135,16 +136,16 @@ end;
 
 procedure TIndexMemoryTests.IndexTracksMemoryBytes;
 var
-  Index: ISymbolIndex;
+  mIndex: ISymbolIndex;
 begin
-  Index := TSymbolIndex.Create;
-  Assert.AreEqual<Int64>(0, Index.MemoryBytes);
-  Index.AddUnit(MakeUnit('A', False, 5, 5));
-  Assert.AreEqual<Int64>(TIndexMemory.UnitBytes(MakeUnit('A', False, 5, 5)), Index.MemoryBytes);
-  Index.AddUnit(MakeUnit('A', False, 5, 5));
-  Assert.AreEqual<Int64>(TIndexMemory.UnitBytes(MakeUnit('A', False, 5, 5)), Index.MemoryBytes);
-  Index.RemoveFile('C:\Quelle\A.pas');
-  Assert.AreEqual<Int64>(0, Index.MemoryBytes);
+  mIndex := TSymbolIndex.Create;
+  Assert.AreEqual<Int64>(0, mIndex.MemoryBytes);
+  mIndex.AddUnit(MakeUnit('A', False, 5, 5));
+  Assert.AreEqual<Int64>(TIndexMemory.UnitBytes(MakeUnit('A', False, 5, 5)), mIndex.MemoryBytes);
+  mIndex.AddUnit(MakeUnit('A', False, 5, 5));
+  Assert.AreEqual<Int64>(TIndexMemory.UnitBytes(MakeUnit('A', False, 5, 5)), mIndex.MemoryBytes);
+  mIndex.RemoveFile('C:\Quelle\A.pas');
+  Assert.AreEqual<Int64>(0, mIndex.MemoryBytes);
 end;
 
 function WithUsages(const AUnit: TUnitIndex): TUnitIndex;
@@ -189,46 +190,46 @@ end;
 
 procedure TIndexMemoryTests.WithoutBudgetNothingIsCompacted;
 var
-  Index: ISymbolIndex;
+  mIndex: ISymbolIndex;
 begin
-  Index := TSymbolIndex.Create;
-  Index.AddUnit(MakeUnit('A', True, 5, 50));
-  Assert.AreEqual(0, Index.CompactCount);
-  Assert.AreEqual(55, Index.SymbolCount);
+  mIndex := TSymbolIndex.Create;
+  mIndex.AddUnit(MakeUnit('A', True, 5, 50));
+  Assert.AreEqual(0, mIndex.CompactCount);
+  Assert.AreEqual(55, mIndex.SymbolCount);
 end;
 
 procedure TIndexMemoryTests.CompactsLibraryUnitsFirst;
 var
-  Index: ISymbolIndex;
-  Found: TUnitIndex;
-  Full: Int64;
+  mIndex: ISymbolIndex;
+  mFound: TUnitIndex;
+  mFull: Int64;
 begin
-  Index := TSymbolIndex.Create;
-  Index.AddUnit(MakeUnit('Projekt', False, 5, 50));
-  Index.AddUnit(MakeUnit('Vcl', True, 5, 50));
-  Full := Index.MemoryBytes;
-  Index.SetBudget(Full - 1);
-  Assert.IsTrue(Index.MemoryBytes <= Full - 1);
-  Assert.IsTrue(Index.FindUnit('Vcl', Found) and Found.Compact);
-  Assert.IsTrue(Index.FindUnit('Projekt', Found) and not Found.Compact);
-  Assert.AreEqual(1, Index.CompactCount);
-  Assert.AreEqual(60, Index.SymbolCount);
+  mIndex := TSymbolIndex.Create;
+  mIndex.AddUnit(MakeUnit('Projekt', False, 5, 50));
+  mIndex.AddUnit(MakeUnit('Vcl', True, 5, 50));
+  mFull := mIndex.MemoryBytes;
+  mIndex.SetBudget(mFull - 1);
+  Assert.IsTrue(mIndex.MemoryBytes <= mFull - 1);
+  Assert.IsTrue(mIndex.FindUnit('Vcl', mFound) and mFound.Compact);
+  Assert.IsTrue(mIndex.FindUnit('Projekt', mFound) and not mFound.Compact);
+  Assert.AreEqual(1, mIndex.CompactCount);
+  Assert.AreEqual(60, mIndex.SymbolCount);
 end;
 
 procedure TIndexMemoryTests.CompactsProjectUnitsWhenLibrariesAreNotEnough;
 var
-  Index: ISymbolIndex;
-  Found: TUnitIndex;
+  mIndex: ISymbolIndex;
+  mFound: TUnitIndex;
 begin
-  Index := TSymbolIndex.Create;
-  Index.SetBudget(TIndexMemory.UnitBytes(MakeUnit('Projekt', False, 5, 50)));
-  Index.AddUnit(MakeUnit('Projekt', False, 5, 50));
-  Assert.AreEqual(0, Index.CompactCount);
-  Index.AddUnit(MakeUnit('Vcl', True, 5, 50));
-  Assert.IsTrue(Index.FindUnit('Projekt', Found) and Found.Compact);
-  Assert.IsTrue(Index.FindUnit('Vcl', Found) and Found.Compact);
-  Assert.AreNotEqual(0, Integer(Length(Index.FindSymbols('VclSymbol0'))));
-  Assert.AreEqual(0, Integer(Length(Index.FindSymbols('VclSymbol10'))));
+  mIndex := TSymbolIndex.Create;
+  mIndex.SetBudget(TIndexMemory.UnitBytes(MakeUnit('Projekt', False, 5, 50)));
+  mIndex.AddUnit(MakeUnit('Projekt', False, 5, 50));
+  Assert.AreEqual(0, mIndex.CompactCount);
+  mIndex.AddUnit(MakeUnit('Vcl', True, 5, 50));
+  Assert.IsTrue(mIndex.FindUnit('Projekt', mFound) and mFound.Compact);
+  Assert.IsTrue(mIndex.FindUnit('Vcl', mFound) and mFound.Compact);
+  Assert.AreNotEqual(0, Integer(Length(mIndex.FindSymbols('VclSymbol0'))));
+  Assert.AreEqual(0, Integer(Length(mIndex.FindSymbols('VclSymbol10'))));
 end;
 
 procedure TIndexMemoryTests.KeepsProjectUsagesWhileLibrariesAreEnough;
@@ -254,36 +255,36 @@ end;
 procedure TIndexMemoryTests.MillionLinesStayBelowBudget;
 const
   // Grob 1 Mio. Zeilen: 2000 Units mit je 500 Zeilen und 60 Symbolen.
-  UnitCount = 2000;
-  Budget = 16 * 1024 * 1024;
+  cUnitCount = 2000;
+  cBudget = 16 * 1024 * 1024;
 var
-  Index: ISymbolIndex;
-  Number: Integer;
+  mIndex: ISymbolIndex;
+  mNumber: Integer;
 begin
-  Index := TSymbolIndex.Create;
-  Index.SetBudget(Budget);
-  for Number := 1 to UnitCount do
+  mIndex := TSymbolIndex.Create;
+  mIndex.SetBudget(cBudget);
+  for mNumber := 1 to cUnitCount do
   begin
-    Index.AddUnit(MakeUnit('Unit' + IntToStr(Number), Number mod 2 = 0, 15, 45));
+    mIndex.AddUnit(MakeUnit('Unit' + IntToStr(mNumber), mNumber mod 2 = 0, 15, 45));
   end;
-  Assert.AreEqual(UnitCount, Index.UnitCount);
-  Assert.IsTrue(Index.MemoryBytes <= Budget, Format('%d > %d', [Index.MemoryBytes, Int64(Budget)]));
-  Assert.IsTrue(Index.CompactCount > 0);
+  Assert.AreEqual(cUnitCount, mIndex.UnitCount);
+  Assert.IsTrue(mIndex.MemoryBytes <= cBudget, Format('%d > %d', [mIndex.MemoryBytes, Int64(cBudget)]));
+  Assert.IsTrue(mIndex.CompactCount > 0);
 end;
 
 procedure TIndexMemoryTests.CacheKeepsLibraryAndCompactFlags;
 var
-  Units: TArray<TUnitIndex>;
-  LibraryUnit, CompactUnit: TUnitIndex;
+  mUnits: TArray<TUnitIndex>;
+  mLibraryUnit, mCompactUnit: TUnitIndex;
 begin
   // Erst in Variablen: Temporäre Records mit verwalteten Feldern im offenen
   // Array-Konstruktor gibt der Compiler nicht zuverlässig frei.
-  LibraryUnit := MakeUnit('A', True, 1, 0);
-  CompactUnit := TIndexMemory.Compacted(MakeUnit('B', False, 1, 1));
-  Units := TIndexCache.Deserialize(TIndexCache.Serialize([LibraryUnit, CompactUnit]));
-  Assert.AreEqual(2, Integer(Length(Units)));
-  Assert.IsTrue(Units[0].Library_ and not Units[0].Compact);
-  Assert.IsTrue(Units[1].Compact and not Units[1].Library_);
+  mLibraryUnit := MakeUnit('A', True, 1, 0);
+  mCompactUnit := TIndexMemory.Compacted(MakeUnit('B', False, 1, 1));
+  mUnits := TIndexCache.Deserialize(TIndexCache.Serialize([mLibraryUnit, mCompactUnit]));
+  Assert.AreEqual(2, Integer(Length(mUnits)));
+  Assert.IsTrue(mUnits[0].Library_ and not mUnits[0].Compact);
+  Assert.IsTrue(mUnits[1].Compact and not mUnits[1].Library_);
 end;
 
 initialization

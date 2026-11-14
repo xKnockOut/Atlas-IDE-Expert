@@ -70,14 +70,14 @@ end;
 
 function Sample: TArray<TAtlasProblem>;
 var
-  Dimmed: TAtlasProblem;
+  mDimmed: TAtlasProblem;
 begin
-  Dimmed := Problem(3, 0, TAtlasProblemSeverity.Hint, 'Atlas');
-  Dimmed.Unnecessary := True;
+  mDimmed := Problem(3, 0, TAtlasProblemSeverity.Hint, 'Atlas');
+  mDimmed.Unnecessary := True;
   Result := [Problem(40, 2, TAtlasProblemSeverity.Warning, 'Atlas'),
     Problem(10, 4, TAtlasProblemSeverity.Error, 'Atlas'), Problem(25, 0, TAtlasProblemSeverity.Warning, 'Atlas'),
     Problem(12, 1, TAtlasProblemSeverity.Information, 'Atlas'), Problem(13, 1, TAtlasProblemSeverity.Hint, 'Atlas'),
-    Problem(30, 0, TAtlasProblemSeverity.Error, TAtlasProblem.cCompilerSource), Dimmed];
+    Problem(30, 0, TAtlasProblemSeverity.Error, TAtlasProblem.cCompilerSource), mDimmed];
 end;
 
 function Texts: TAtlasStatusLiveTexts;
@@ -126,92 +126,92 @@ end;
 
 function Metrics: TAtlasFileMetrics;
 var
-  Method: TAtlasMethodMetrics;
-  Metric: TAtlasMetric;
+  mMethod: TAtlasMethodMetrics;
+  mMetric: TAtlasMetric;
 begin
   Result := Default(TAtlasFileMetrics);
   Result.Enabled := True;
-  for Metric := Low(TAtlasMetric) to High(TAtlasMetric) do
+  for mMetric := Low(TAtlasMetric) to High(TAtlasMetric) do
   begin
-    Result.Limits[Metric] := MaxInt;
+    Result.Limits[mMetric] := MaxInt;
   end;
   Result.Limits[TAtlasMetric.MethodLength] := 8;
   Result.Limits[TAtlasMetric.Cyclomatic] := 15;
-  Method := Default(TAtlasMethodMetrics);
-  Method.Name := 'TFoo.Bar';
-  Method.Line := 20;
-  Method.Values[TAtlasMetric.MethodLength] := 7;
-  Method.Values[TAtlasMetric.Cyclomatic] := 17;
-  Result.Methods := [Method];
-  Method.Name := 'Helper';
+  mMethod := Default(TAtlasMethodMetrics);
+  mMethod.Name := 'TFoo.Bar';
+  mMethod.Line := 20;
+  mMethod.Values[TAtlasMetric.MethodLength] := 7;
+  mMethod.Values[TAtlasMetric.Cyclomatic] := 17;
+  Result.Methods := [mMethod];
+  mMethod.Name := 'Helper';
   // Text seit dem Abruf verschoben: über den Namen.
-  Method.Line := 31;
-  Method.Values[TAtlasMetric.MethodLength] := 4;
-  Method.Values[TAtlasMetric.Cyclomatic] := 2;
-  Result.Methods := Result.Methods + [Method];
+  mMethod.Line := 31;
+  mMethod.Values[TAtlasMetric.MethodLength] := 4;
+  mMethod.Values[TAtlasMetric.Cyclomatic] := 2;
+  Result.Methods := Result.Methods + [mMethod];
 end;
 
 procedure TAtlasStatusBarContentTests.CountsLikeProblemsWindow;
 var
-  Counts: TAtlasStatusCounts;
+  mCounts: TAtlasStatusCounts;
 begin
-  Counts := TAtlasStatusBarContent.CountsOf(Sample, False);
-  Assert.AreEqual(1, Counts[TAtlasFindingKind.Error], 'ohne Compilermeldung');
-  Assert.AreEqual(2, Counts[TAtlasFindingKind.Warning]);
-  Assert.AreEqual(2, Counts[TAtlasFindingKind.Info], 'Hinweise und Informationen, ohne Abblendung');
-  Counts := TAtlasStatusBarContent.CountsOf(Sample, True);
-  Assert.AreEqual(2, Counts[TAtlasFindingKind.Error], 'mit Compilermeldung');
-  Counts := TAtlasStatusBarContent.CountsOf(nil, True);
-  Assert.AreEqual(0, Counts[TAtlasFindingKind.Warning]);
+  mCounts := TAtlasStatusBarContent.CountsOf(Sample, False);
+  Assert.AreEqual(1, mCounts[TAtlasFindingKind.Error], 'ohne Compilermeldung');
+  Assert.AreEqual(2, mCounts[TAtlasFindingKind.Warning]);
+  Assert.AreEqual(2, mCounts[TAtlasFindingKind.Info], 'Hinweise und Informationen, ohne Abblendung');
+  mCounts := TAtlasStatusBarContent.CountsOf(Sample, True);
+  Assert.AreEqual(2, mCounts[TAtlasFindingKind.Error], 'mit Compilermeldung');
+  mCounts := TAtlasStatusBarContent.CountsOf(nil, True);
+  Assert.AreEqual(0, mCounts[TAtlasFindingKind.Warning]);
 end;
 
 procedure TAtlasStatusBarContentTests.NextOfKindWraps;
 var
-  Target: TAtlasProblem;
+  mTarget: TAtlasProblem;
 begin
-  Assert.IsTrue(TAtlasStatusBarContent.NextOf(Sample, TAtlasFindingKind.Warning, False, 0, 0, Target));
-  Assert.AreEqual(25, Target.StartLine);
-  Assert.IsTrue(TAtlasStatusBarContent.NextOf(Sample, TAtlasFindingKind.Warning, False, 25, 0, Target),
+  Assert.IsTrue(TAtlasStatusBarContent.NextOf(Sample, TAtlasFindingKind.Warning, False, 0, 0, mTarget));
+  Assert.AreEqual(25, mTarget.StartLine);
+  Assert.IsTrue(TAtlasStatusBarContent.NextOf(Sample, TAtlasFindingKind.Warning, False, 25, 0, mTarget),
     'nicht der Befund genau am Cursor');
-  Assert.AreEqual(40, Target.StartLine);
-  Assert.IsTrue(TAtlasStatusBarContent.NextOf(Sample, TAtlasFindingKind.Warning, False, 40, 2, Target));
-  Assert.AreEqual(25, Target.StartLine, 'am Ende wieder vom Anfang');
-  Assert.IsTrue(TAtlasStatusBarContent.NextOf(Sample, TAtlasFindingKind.Info, False, 12, 1, Target));
-  Assert.AreEqual(13, Target.StartLine, 'ohne den abgeblendeten in Zeile 3');
-  Assert.IsTrue(TAtlasStatusBarContent.NextOf(Sample, TAtlasFindingKind.Error, True, 11, 0, Target));
-  Assert.AreEqual(30, Target.StartLine, 'Compilermeldung nur mit AWithCompiler');
-  Assert.IsTrue(TAtlasStatusBarContent.NextOf(Sample, TAtlasFindingKind.Error, False, 11, 0, Target));
-  Assert.AreEqual(10, Target.StartLine);
+  Assert.AreEqual(40, mTarget.StartLine);
+  Assert.IsTrue(TAtlasStatusBarContent.NextOf(Sample, TAtlasFindingKind.Warning, False, 40, 2, mTarget));
+  Assert.AreEqual(25, mTarget.StartLine, 'am Ende wieder vom Anfang');
+  Assert.IsTrue(TAtlasStatusBarContent.NextOf(Sample, TAtlasFindingKind.Info, False, 12, 1, mTarget));
+  Assert.AreEqual(13, mTarget.StartLine, 'ohne den abgeblendeten in Zeile 3');
+  Assert.IsTrue(TAtlasStatusBarContent.NextOf(Sample, TAtlasFindingKind.Error, True, 11, 0, mTarget));
+  Assert.AreEqual(30, mTarget.StartLine, 'Compilermeldung nur mit AWithCompiler');
+  Assert.IsTrue(TAtlasStatusBarContent.NextOf(Sample, TAtlasFindingKind.Error, False, 11, 0, mTarget));
+  Assert.AreEqual(10, mTarget.StartLine);
 end;
 
 procedure TAtlasStatusBarContentTests.NextOfKindWithoutFinding;
 var
-  Target: TAtlasProblem;
+  mTarget: TAtlasProblem;
 begin
-  Assert.IsFalse(TAtlasStatusBarContent.NextOf(nil, TAtlasFindingKind.Error, True, 0, 0, Target));
+  Assert.IsFalse(TAtlasStatusBarContent.NextOf(nil, TAtlasFindingKind.Error, True, 0, 0, mTarget));
   Assert.IsFalse(TAtlasStatusBarContent.NextOf([Problem(1, 0, TAtlasProblemSeverity.Error,
-    TAtlasProblem.cCompilerSource)], TAtlasFindingKind.Error, False, 0, 0, Target));
+    TAtlasProblem.cCompilerSource)], TAtlasFindingKind.Error, False, 0, 0, mTarget));
 end;
 
 procedure TAtlasStatusBarContentTests.LiveTexts;
 var
-  Now_: TDateTime;
+  mNow_: TDateTime;
 begin
-  Now_ := EncodeDateTime(2026, 10, 23, 18, 30, 0, 0);
-  Assert.AreEqual('prüft …', TAtlasStatusBarContent.LiveText(TAtlasProblemsUpdate.Live, True, Now_, Now_, Texts));
-  Assert.AreEqual('prüft …', TAtlasStatusBarContent.LiveText(TAtlasProblemsUpdate.Save, True, 0, Now_, Texts));
+  mNow_ := EncodeDateTime(2026, 10, 23, 18, 30, 0, 0);
+  Assert.AreEqual('prüft …', TAtlasStatusBarContent.LiveText(TAtlasProblemsUpdate.Live, True, mNow_, mNow_, Texts));
+  Assert.AreEqual('prüft …', TAtlasStatusBarContent.LiveText(TAtlasProblemsUpdate.Save, True, 0, mNow_, Texts));
   Assert.AreEqual('beim Speichern', TAtlasStatusBarContent.LiveText(TAtlasProblemsUpdate.Save, False,
-    IncSecond(Now_, -5), Now_, Texts));
-  Assert.AreEqual('live', TAtlasStatusBarContent.LiveText(TAtlasProblemsUpdate.Live, False, 0, Now_, Texts),
+    IncSecond(mNow_, -5), mNow_, Texts));
+  Assert.AreEqual('live', TAtlasStatusBarContent.LiveText(TAtlasProblemsUpdate.Live, False, 0, mNow_, Texts),
     'noch nicht geprüft');
   Assert.AreEqual('live · geprüft vor 2 s', TAtlasStatusBarContent.LiveText(TAtlasProblemsUpdate.Live, False,
-    IncSecond(Now_, -2), Now_, Texts));
+    IncSecond(mNow_, -2), mNow_, Texts));
   Assert.AreEqual('live · geprüft vor 0 s', TAtlasStatusBarContent.LiveText(TAtlasProblemsUpdate.Live, False,
-    IncSecond(Now_, 30), Now_, Texts), 'Uhr zurückgestellt');
+    IncSecond(mNow_, 30), mNow_, Texts), 'Uhr zurückgestellt');
   // Nur auf Anforderung: mit dem Alter der letzten Prüfung, damit man sieht, wie alt die Befunde sind.
-  Assert.AreEqual('manuell', TAtlasStatusBarContent.LiveText(TAtlasProblemsUpdate.Manual, False, 0, Now_, Texts));
+  Assert.AreEqual('manuell', TAtlasStatusBarContent.LiveText(TAtlasProblemsUpdate.Manual, False, 0, mNow_, Texts));
   Assert.AreEqual('manuell · geprüft vor 2 min', TAtlasStatusBarContent.LiveText(TAtlasProblemsUpdate.Manual, False,
-    IncSecond(Now_, -150), Now_, Texts));
+    IncSecond(mNow_, -150), mNow_, Texts));
 end;
 
 procedure TAtlasStatusBarContentTests.LiveHintsFollowUpdateMode;
@@ -240,62 +240,62 @@ end;
 
 procedure TAtlasStatusBarContentTests.MethodFromOutlineAndMetrics;
 var
-  Method: TAtlasStatusMethod;
+  mMethod: TAtlasStatusMethod;
 begin
-  Method := TAtlasStatusBarContent.MethodAt(Outline, 34, Metrics, True);
-  Assert.IsTrue(Method.Found);
-  Assert.AreEqual('Helper', Method.Name);
-  Assert.AreEqual(32, Method.Line, 'Sprung zum Kopf');
-  Assert.AreEqual(10, Method.Character);
-  Assert.AreEqual(4, Method.Lines, 'Zeilen wie die Regel');
-  Assert.AreEqual(2, Method.Cyclomatic);
-  Assert.IsFalse(Method.Over);
-  Assert.AreEqual('4 Zeilen · CC 2', TAtlasStatusBarContent.MethodDetail(Method, '%d Zeilen', 'CC %d', ' · '));
+  mMethod := TAtlasStatusBarContent.MethodAt(Outline, 34, Metrics, True);
+  Assert.IsTrue(mMethod.Found);
+  Assert.AreEqual('Helper', mMethod.Name);
+  Assert.AreEqual(32, mMethod.Line, 'Sprung zum Kopf');
+  Assert.AreEqual(10, mMethod.Character);
+  Assert.AreEqual(4, mMethod.Lines, 'Zeilen wie die Regel');
+  Assert.AreEqual(2, mMethod.Cyclomatic);
+  Assert.IsFalse(mMethod.Over);
+  Assert.AreEqual('4 Zeilen · CC 2', TAtlasStatusBarContent.MethodDetail(mMethod, '%d Zeilen', 'CC %d', ' · '));
   // Deklaration in der Klasse: mit Besitzer, Kennzahlen über den Namen.
-  Method := TAtlasStatusBarContent.MethodAt(Outline, 5, Metrics, True);
-  Assert.AreEqual('TFoo.Bar', Method.Name);
-  Assert.AreEqual(5, Method.Line);
-  Assert.AreEqual(17, Method.Cyclomatic);
+  mMethod := TAtlasStatusBarContent.MethodAt(Outline, 5, Metrics, True);
+  Assert.AreEqual('TFoo.Bar', mMethod.Name);
+  Assert.AreEqual(5, mMethod.Line);
+  Assert.AreEqual(17, mMethod.Cyclomatic);
 end;
 
 procedure TAtlasStatusBarContentTests.MethodWithoutMetrics;
 var
-  Method: TAtlasStatusMethod;
+  mMethod: TAtlasStatusMethod;
 begin
   // In der lokalen Routine: die innerste.
-  Method := TAtlasStatusBarContent.MethodAt(Outline, 22, Default(TAtlasFileMetrics), False);
-  Assert.AreEqual('Inner', Method.Name);
-  Assert.AreEqual(4, Method.Lines, 'aus der Gliederung');
-  Assert.AreEqual(-1, Method.Cyclomatic);
-  Assert.AreEqual(MaxInt, Method.CyclomaticLimit);
-  Assert.IsFalse(Method.Over);
-  Assert.AreEqual('4 Zeilen', TAtlasStatusBarContent.MethodDetail(Method, '%d Zeilen', 'CC %d', ' · '));
-  Assert.AreEqual('4 Zeilen', TAtlasStatusBarContent.MethodLimits(Method, '%d Zeilen', 'CC %d', '%s (Grenze %d)',
+  mMethod := TAtlasStatusBarContent.MethodAt(Outline, 22, Default(TAtlasFileMetrics), False);
+  Assert.AreEqual('Inner', mMethod.Name);
+  Assert.AreEqual(4, mMethod.Lines, 'aus der Gliederung');
+  Assert.AreEqual(-1, mMethod.Cyclomatic);
+  Assert.AreEqual(MaxInt, mMethod.CyclomaticLimit);
+  Assert.IsFalse(mMethod.Over);
+  Assert.AreEqual('4 Zeilen', TAtlasStatusBarContent.MethodDetail(mMethod, '%d Zeilen', 'CC %d', ' · '));
+  Assert.AreEqual('4 Zeilen', TAtlasStatusBarContent.MethodLimits(mMethod, '%d Zeilen', 'CC %d', '%s (Grenze %d)',
     ' · '));
 end;
 
 procedure TAtlasStatusBarContentTests.MethodOverLimit;
 var
-  Method: TAtlasStatusMethod;
+  mMethod: TAtlasStatusMethod;
 begin
-  Method := TAtlasStatusBarContent.MethodAt(Outline, 27, Metrics, True);
-  Assert.AreEqual('TFoo.Bar', Method.Name);
-  Assert.AreEqual(7, Method.Lines);
-  Assert.IsFalse(Method.LinesOver);
-  Assert.IsTrue(Method.CyclomaticOver);
-  Assert.IsTrue(Method.Over, 'Warnfarbe');
-  Assert.AreEqual('7 Zeilen (Grenze 8) · CC 17 (Grenze 15)', TAtlasStatusBarContent.MethodLimits(Method,
+  mMethod := TAtlasStatusBarContent.MethodAt(Outline, 27, Metrics, True);
+  Assert.AreEqual('TFoo.Bar', mMethod.Name);
+  Assert.AreEqual(7, mMethod.Lines);
+  Assert.IsFalse(mMethod.LinesOver);
+  Assert.IsTrue(mMethod.CyclomaticOver);
+  Assert.IsTrue(mMethod.Over, 'Warnfarbe');
+  Assert.AreEqual('7 Zeilen (Grenze 8) · CC 17 (Grenze 15)', TAtlasStatusBarContent.MethodLimits(mMethod,
     '%d Zeilen', 'CC %d', '%s (Grenze %d)', ' · '));
 end;
 
 procedure TAtlasStatusBarContentTests.NoMethodOutsideRoutines;
 var
-  Method: TAtlasStatusMethod;
+  mMethod: TAtlasStatusMethod;
 begin
-  Method := TAtlasStatusBarContent.MethodAt(Outline, 12, Metrics, True);
-  Assert.IsFalse(Method.Found);
-  Assert.IsFalse(Method.Over);
-  Assert.AreEqual('', TAtlasStatusBarContent.MethodDetail(Method, '%d Zeilen', 'CC %d', ' · '));
+  mMethod := TAtlasStatusBarContent.MethodAt(Outline, 12, Metrics, True);
+  Assert.IsFalse(mMethod.Found);
+  Assert.IsFalse(mMethod.Over);
+  Assert.AreEqual('', TAtlasStatusBarContent.MethodDetail(mMethod, '%d Zeilen', 'CC %d', ' · '));
   Assert.IsFalse(TAtlasStatusBarContent.MethodAt(nil, 0, Metrics, True).Found);
 end;
 

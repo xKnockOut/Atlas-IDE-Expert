@@ -68,19 +68,30 @@ uses
 
 function Settings(const AJson: string): TServerSettings;
 var
-  Issues: TArray<TConfigurationIssue>;
+  mIssues: TArray<TConfigurationIssue>;
 begin
-  Result := TConfigurationParser.Parse(AJson, Issues);
-  Assert.AreEqual(0, Integer(Length(Issues)), 'Konfiguration fehlerhaft');
+  Result := TConfigurationParser.Parse(AJson, mIssues);
+  Assert.AreEqual(0, Integer(Length(mIssues)), 'Konfiguration fehlerhaft');
 end;
 
 function SeverityOf(const ASettings: TServerSettings; const ACategory: string;
-  ADefault: TRuleSeverity = TRuleSeverity.Warning; const APath: string = 'Source/Main.pas'): TRuleSeverity;
+  ADefault: TRuleSeverity; const APath: string): TRuleSeverity; overload;
 var
-  Enabled: Boolean;
+  mEnabled: Boolean;
 begin
   Result := TRuleProfiles.Severity(ASettings, ASettings.Profile,
-    TRuleDescriptor.Create('probe', ADefault, 'Probe'), ACategory, APath, Enabled);
+    TRuleDescriptor.Create('probe', ADefault, 'Probe'), ACategory, APath, mEnabled);
+end;
+
+function SeverityOf(const ASettings: TServerSettings; const ACategory: string): TRuleSeverity; overload;
+begin
+  Result := SeverityOf(ASettings, ACategory, TRuleSeverity.Warning, 'Source/Main.pas');
+end;
+
+function SeverityOf(const ASettings: TServerSettings; const ACategory: string; ADefault: TRuleSeverity): TRuleSeverity;
+  overload;
+begin
+  Result := SeverityOf(ASettings, ACategory, ADefault, 'Source/Main.pas');
 end;
 
 procedure TRuleProfilesTests.StandardKeepsDefault;
@@ -91,15 +102,15 @@ end;
 
 procedure TRuleProfilesTests.FastKeepsOnlyBugsAndVulnerabilities;
 var
-  Fast: TServerSettings;
+  mFast: TServerSettings;
 begin
-  Fast := Settings('{"profile":"fast"}');
-  Assert.AreEqual(Ord(TRuleSeverity.Warning), Ord(SeverityOf(Fast, 'bug')));
-  Assert.AreEqual(Ord(TRuleSeverity.Warning), Ord(SeverityOf(Fast, 'vulnerability')));
-  Assert.AreEqual(Ord(TRuleSeverity.Off), Ord(SeverityOf(Fast, 'code-smell')));
-  Assert.AreEqual(Ord(TRuleSeverity.Off), Ord(SeverityOf(Fast, 'security-hotspot')));
+  mFast := Settings('{"profile":"fast"}');
+  Assert.AreEqual(Ord(TRuleSeverity.Warning), Ord(SeverityOf(mFast, 'bug')));
+  Assert.AreEqual(Ord(TRuleSeverity.Warning), Ord(SeverityOf(mFast, 'vulnerability')));
+  Assert.AreEqual(Ord(TRuleSeverity.Off), Ord(SeverityOf(mFast, 'code-smell')));
+  Assert.AreEqual(Ord(TRuleSeverity.Off), Ord(SeverityOf(mFast, 'security-hotspot')));
   // Regeln ohne Katalogeintrag bleiben an.
-  Assert.AreEqual(Ord(TRuleSeverity.Warning), Ord(SeverityOf(Fast, '')));
+  Assert.AreEqual(Ord(TRuleSeverity.Warning), Ord(SeverityOf(mFast, '')));
 end;
 
 procedure TRuleProfilesTests.SecurityAndStyleFilterCategories;
@@ -112,21 +123,21 @@ end;
 
 procedure TRuleProfilesTests.StrictEnablesExperimentalAndLowConfidence;
 var
-  Streng: TServerSettings;
-  Enabled: Boolean;
+  mStreng: TServerSettings;
+  mEnabled: Boolean;
 begin
-  Streng := Settings('{"profile":"strict"}');
-  Assert.AreEqual(Ord(TRuleSeverity.Hint), Ord(SeverityOf(Streng, 'code-smell', TRuleSeverity.Hint)));
-  Assert.AreEqual(Ord(TRuleConfidence.Low), Ord(TRuleProfiles.MinConfidence(Streng, Streng.Profile)));
-  Assert.AreEqual(Ord(TRuleConfidence.Medium), Ord(TRuleProfiles.MinConfidence(Streng, 'fast')));
+  mStreng := Settings('{"profile":"strict"}');
+  Assert.AreEqual(Ord(TRuleSeverity.Hint), Ord(SeverityOf(mStreng, 'code-smell', TRuleSeverity.Hint)));
+  Assert.AreEqual(Ord(TRuleConfidence.Low), Ord(TRuleProfiles.MinConfidence(mStreng, mStreng.Profile)));
+  Assert.AreEqual(Ord(TRuleConfidence.Medium), Ord(TRuleProfiles.MinConfidence(mStreng, 'fast')));
   Assert.AreEqual(Ord(TRuleConfidence.Low), Ord(TRuleProfiles.MinConfidence(
     Settings('{"profile":"ci","profiles":{"ci":{"extends":"strict"}}}'), 'ci')));
-  TRuleProfiles.Severity(Streng, Streng.Profile, TRuleDescriptor.Create('probe', TRuleSeverity.Hint, 'Probe'),
-    'bug', '', Enabled);
-  Assert.IsTrue(Enabled);
+  TRuleProfiles.Severity(mStreng, mStreng.Profile, TRuleDescriptor.Create('probe', TRuleSeverity.Hint, 'Probe'),
+    'bug', '', mEnabled);
+  Assert.IsTrue(mEnabled);
   TRuleProfiles.Severity(TServerSettings.Default, '', TRuleDescriptor.Create('probe', TRuleSeverity.Hint, 'Probe'),
-    'bug', '', Enabled);
-  Assert.IsFalse(Enabled);
+    'bug', '', mEnabled);
+  Assert.IsFalse(mEnabled);
 end;
 
 procedure TRuleProfilesTests.ExperimentalComesFromCatalog;
@@ -140,54 +151,54 @@ end;
 
 procedure TRuleProfilesTests.ExplicitMinConfidenceWinsOverProfile;
 var
-  Given: TServerSettings;
+  mGiven: TServerSettings;
 begin
-  Given := Settings('{"profile":"strict","minConfidence":"high"}');
-  Assert.AreEqual(Ord(TRuleConfidence.High), Ord(TRuleProfiles.MinConfidence(Given, Given.Profile)));
+  mGiven := Settings('{"profile":"strict","minConfidence":"high"}');
+  Assert.AreEqual(Ord(TRuleConfidence.High), Ord(TRuleProfiles.MinConfidence(mGiven, mGiven.Profile)));
 end;
 
 /// <summary>Aktive eingebaute Regeln unter AProfile, sortiert und mit Komma getrennt.</summary>
 function ActiveRules(const AProfile: string): string;
 var
-  Rule: IRule;
-  Config: TServerSettings;
-  Enabled: Boolean;
-  Ids: TArray<string>;
+  mRule: IRule;
+  mConfig: TServerSettings;
+  mEnabled: Boolean;
+  mIds: TArray<string>;
 begin
-  Config := TServerSettings.Default;
-  Config.Profile := AProfile;
-  Ids := nil;
-  for Rule in BuiltinRules do
+  mConfig := TServerSettings.Default;
+  mConfig.Profile := AProfile;
+  mIds := nil;
+  for mRule in BuiltinRules do
   begin
-    if (TRuleEngine.EffectiveSeverity(Rule.Descriptor, Config, '', Enabled) <> TRuleSeverity.Off) and
-      (Enabled or not TRuleProfiles.IsExperimental(Rule.Descriptor.Id)) then
+    if (TRuleEngine.EffectiveSeverity(mRule.Descriptor, mConfig, '', mEnabled) <> TRuleSeverity.Off) and
+      (mEnabled or not TRuleProfiles.IsExperimental(mRule.Descriptor.Id)) then
     begin
-      Ids := Ids + [Rule.Descriptor.Id];
+      mIds := mIds + [mRule.Descriptor.Id];
     end;
   end;
-  TArray.Sort<string>(Ids);
-  Result := string.Join(',', Ids);
+  TArray.Sort<string>(mIds);
+  Result := string.Join(',', mIds);
 end;
 
 /// <summary>AList um AExtra ergänzt und sortiert wie ActiveRules.</summary>
 function Merged(const AList: string; const AExtra: array of string): string;
 var
-  Ids: TArray<string>;
-  Id: string;
+  mIds: TArray<string>;
+  mId: string;
 begin
-  Ids := AList.Split([',']);
-  for Id in AExtra do
+  mIds := AList.Split([',']);
+  for mId in AExtra do
   begin
-    Ids := Ids + [Id];
+    mIds := mIds + [mId];
   end;
-  TArray.Sort<string>(Ids);
-  Result := string.Join(',', Ids);
+  TArray.Sort<string>(mIds);
+  Result := string.Join(',', mIds);
 end;
 
 procedure TRuleProfilesTests.BuiltinProfilesActivateExpectedRules;
 const
-  Threads = 'thread-free-with-free-on-terminate,thread-use-after-free-on-terminate,thread-vcl-access';
-  All = 'abstract-class-instantiated,abstract-declaration-invalid,anonymous-capture-invalid,anonymous-method-self-cycle,anonymous-thread-not-started,ansi-api-call,argument-count-mismatch,asm-invalid,asm-without-win64,assert-side-effect,assign-to-property-member,attribute-usage-invalid,automation-invalid,bidi-control,blocking-call-in-main-thread,bool-compare,boolean-assign-if,calling-convention-required,caption-string-helper,captured-loop-variable,case-insensitive-compare,case-missing-enum-value,case-selector-not-ordinal,char-count-as-bytes,char-to-pchar,' +
+  cThreads = 'thread-free-with-free-on-terminate,thread-use-after-free-on-terminate,thread-vcl-access';
+  cAll = 'abstract-class-instantiated,abstract-declaration-invalid,anonymous-capture-invalid,anonymous-method-self-cycle,anonymous-thread-not-started,ansi-api-call,argument-count-mismatch,asm-invalid,asm-without-win64,assert-side-effect,assign-to-property-member,attribute-usage-invalid,automation-invalid,bidi-control,blocking-call-in-main-thread,bool-compare,boolean-assign-if,calling-convention-required,caption-string-helper,captured-loop-variable,case-insensitive-compare,case-missing-enum-value,case-selector-not-ordinal,char-count-as-bytes,char-to-pchar,' +
     'class-reference-nonvirtual-constructor,collection-modified-in-loop,commented-out-code,comparison-always-constant,comparison-as-statement,compiler-directive-invalid,compiler-hints,compiler-warnings-disabled,component-create-without-override,component-default-mismatch,component-fixed-pixels,' +
     'component-hardcoded-color,component-interface-dangling,component-missing-free-notification,component-missing-inherited,' +
     'component-palette-icon,component-setter-without-invalidate,condition-not-boolean,conditional-directive-unbalanced,conditional-expression-version,confusable-identifier,constant-condition,constant-expression-error,constant-initializer-mismatch,constructor-on-instance,control-char,control-fixed-bounds,create-without-assignment,created-result-not-freed,createprocess-readonly-commandline,dataset-edit-without-post,dataset-loop-without-next,debug-display-placeholder,declaration-invalid,declared-not-implemented,default-parameter-invalid,default-property-invalid,delimited-text-without-strict,deprecated-symbol,deref-before-nil-check,destroy-called-directly,destroy-without-override,destructor-not-nil-safe,' +
@@ -205,12 +216,12 @@ const
     'window-long-ptr,with-statement,' +
     'write-only-property,writeln-in-gui-app,xmldoc-mismatch';
 begin
-  Assert.AreEqual(All, ActiveRules('standard'));
+  Assert.AreEqual(cAll, ActiveRules('standard'));
   // strict schaltet experimentelle Regeln ein (#146): security-path-traversal (#149), file-header und
   // hardcoded-string (#56), random-without-randomize (#153), die freiwillige Regel todo-comment (#68),
   // die Architekturregeln des Rollenkonzepts (ohne "prefixes" stumm), prefer-case (#646),
   // method-without-self (#686), method-order (#1840).
-  Assert.AreEqual(Merged(All, ['architecture-contract-content', 'architecture-role-import',
+  Assert.AreEqual(Merged(cAll, ['architecture-contract-content', 'architecture-role-import',
     'catch-all-without-raise', 'default-parameter', 'file-header', 'forbidden-symbol', 'global-variable',
     'hardcoded-string',
     'implicit-variants-unit', 'interface-cycle-without-weak', 'legacy-stack-queue', 'legacy-tlist', 'line-length', 'loop-invariant-call', 'magic-number',
@@ -248,25 +259,25 @@ end;
 
 procedure TRuleProfilesTests.TestProfileAppliesToTestUnits;
 var
-  Config: TServerSettings;
-  Issues: TArray<TConfigurationIssue>;
+  mConfig: TServerSettings;
+  mIssues: TArray<TConfigurationIssue>;
 begin
-  Config := Settings('{"testProfile":"lasch","profiles":{"lasch":{"categories":["bug"]}}}');
-  Assert.AreEqual('lasch', Config.TestProfile);
-  TConfigurationParser.Parse('{"testProfile":"fehlt"}', Issues);
-  Assert.AreEqual(1, Integer(Length(Issues)));
+  mConfig := Settings('{"testProfile":"lasch","profiles":{"lasch":{"categories":["bug"]}}}');
+  Assert.AreEqual('lasch', mConfig.TestProfile);
+  TConfigurationParser.Parse('{"testProfile":"fehlt"}', mIssues);
+  Assert.AreEqual(1, Integer(Length(mIssues)));
 end;
 
 procedure TRuleProfilesTests.OwnProfileExtendsBuiltin;
 var
-  Own: TServerSettings;
+  mOwn: TServerSettings;
 begin
-  Own := Settings('{"profile":"team","profiles":{"team":{"extends":"fast","rules":{"probe":"error"}}}}');
-  Assert.AreEqual(Ord(TRuleSeverity.Error), Ord(SeverityOf(Own, 'bug')));
-  Assert.AreEqual(Ord(TRuleSeverity.Error), Ord(SeverityOf(Own, 'code-smell')), 'Ausdrückliche Profilregel schlägt den Kategoriefilter');
-  Own := Settings('{"profile":"nur-stil","profiles":{"nur-stil":{"categories":["code-smell"]}}}');
-  Assert.AreEqual(Ord(TRuleSeverity.Off), Ord(SeverityOf(Own, 'bug')));
-  Assert.AreEqual(Ord(TRuleSeverity.Warning), Ord(SeverityOf(Own, 'code-smell')));
+  mOwn := Settings('{"profile":"team","profiles":{"team":{"extends":"fast","rules":{"probe":"error"}}}}');
+  Assert.AreEqual(Ord(TRuleSeverity.Error), Ord(SeverityOf(mOwn, 'bug')));
+  Assert.AreEqual(Ord(TRuleSeverity.Error), Ord(SeverityOf(mOwn, 'code-smell')), 'Ausdrückliche Profilregel schlägt den Kategoriefilter');
+  mOwn := Settings('{"profile":"nur-stil","profiles":{"nur-stil":{"categories":["code-smell"]}}}');
+  Assert.AreEqual(Ord(TRuleSeverity.Off), Ord(SeverityOf(mOwn, 'bug')));
+  Assert.AreEqual(Ord(TRuleSeverity.Warning), Ord(SeverityOf(mOwn, 'code-smell')));
 end;
 
 procedure TRuleProfilesTests.ConfigRulesWinOverProfile;
@@ -276,61 +287,61 @@ end;
 
 procedure TRuleProfilesTests.OverrideMatchesPathOnly;
 var
-  Paths: TServerSettings;
+  mPaths: TServerSettings;
 begin
-  Paths := Settings('{"overrides":[{"files":["Tests/**"],"rules":{"probe":"off"}}]}');
-  Assert.AreEqual(Ord(TRuleSeverity.Off), Ord(SeverityOf(Paths, 'bug', TRuleSeverity.Warning, 'Tests/Unit1.Tests.pas')));
-  Assert.AreEqual(Ord(TRuleSeverity.Warning), Ord(SeverityOf(Paths, 'bug', TRuleSeverity.Warning, 'Source/Unit1.pas')));
+  mPaths := Settings('{"overrides":[{"files":["Tests/**"],"rules":{"probe":"off"}}]}');
+  Assert.AreEqual(Ord(TRuleSeverity.Off), Ord(SeverityOf(mPaths, 'bug', TRuleSeverity.Warning, 'Tests/Unit1.Tests.pas')));
+  Assert.AreEqual(Ord(TRuleSeverity.Warning), Ord(SeverityOf(mPaths, 'bug', TRuleSeverity.Warning, 'Source/Unit1.pas')));
 end;
 
 procedure TRuleProfilesTests.OverrideDowngradesWarningInTests;
 var
-  Paths: TServerSettings;
+  mPaths: TServerSettings;
 begin
-  Paths := Settings('{"overrides":[{"files":["Tests/**"],"rules":{"*":"hint"}}]}');
-  Assert.AreEqual(Ord(TRuleSeverity.Hint), Ord(SeverityOf(Paths, 'bug', TRuleSeverity.Warning, 'Tests/Sub/A.Tests.pas')));
-  Assert.AreEqual(Ord(TRuleSeverity.Warning), Ord(SeverityOf(Paths, 'bug', TRuleSeverity.Warning, 'Source/A.pas')));
+  mPaths := Settings('{"overrides":[{"files":["Tests/**"],"rules":{"*":"hint"}}]}');
+  Assert.AreEqual(Ord(TRuleSeverity.Hint), Ord(SeverityOf(mPaths, 'bug', TRuleSeverity.Warning, 'Tests/Sub/A.Tests.pas')));
+  Assert.AreEqual(Ord(TRuleSeverity.Warning), Ord(SeverityOf(mPaths, 'bug', TRuleSeverity.Warning, 'Source/A.pas')));
 end;
 
 procedure TRuleProfilesTests.OverrideWildcardHitsAllRules;
 var
-  Paths: TServerSettings;
+  mPaths: TServerSettings;
 begin
-  Paths := Settings('{"rules":{"probe":"error"},"overrides":[{"files":["Generated/*.pas"],"rules":{"*":"hint"}}]}');
-  Assert.AreEqual(Ord(TRuleSeverity.Hint), Ord(SeverityOf(Paths, 'bug', TRuleSeverity.Warning, 'Generated/Api.pas')));
-  Assert.AreEqual(Ord(TRuleSeverity.Error), Ord(SeverityOf(Paths, 'bug', TRuleSeverity.Warning, 'Source/Api.pas')));
+  mPaths := Settings('{"rules":{"probe":"error"},"overrides":[{"files":["Generated/*.pas"],"rules":{"*":"hint"}}]}');
+  Assert.AreEqual(Ord(TRuleSeverity.Hint), Ord(SeverityOf(mPaths, 'bug', TRuleSeverity.Warning, 'Generated/Api.pas')));
+  Assert.AreEqual(Ord(TRuleSeverity.Error), Ord(SeverityOf(mPaths, 'bug', TRuleSeverity.Warning, 'Source/Api.pas')));
 end;
 
 procedure TRuleProfilesTests.CyclicProfilesTerminate;
 var
-  Cycle: TServerSettings;
-  Issues: TArray<TConfigurationIssue>;
+  mCycle: TServerSettings;
+  mIssues: TArray<TConfigurationIssue>;
 begin
-  Cycle := TConfigurationParser.Parse('{"profile":"a","profiles":{"a":{"extends":"b"},"b":{"extends":"a"}}}', Issues);
-  Assert.AreEqual(Ord(TRuleSeverity.Warning), Ord(SeverityOf(Cycle, 'bug')));
+  mCycle := TConfigurationParser.Parse('{"profile":"a","profiles":{"a":{"extends":"b"},"b":{"extends":"a"}}}', mIssues);
+  Assert.AreEqual(Ord(TRuleSeverity.Warning), Ord(SeverityOf(mCycle, 'bug')));
 end;
 
 procedure TRuleProfilesTests.ParsesProfileForEditorAndCli;
 var
-  Both: TServerSettings;
+  mBoth: TServerSettings;
 begin
-  Both := Settings('{"profile":{"editor":"fast","cli":"strict"},"excludeTests":true}');
-  Assert.AreEqual('fast', Both.Profile);
-  Assert.AreEqual('strict', Both.CliProfile);
-  Assert.IsTrue(Both.ExcludeTests);
+  mBoth := Settings('{"profile":{"editor":"fast","cli":"strict"},"excludeTests":true}');
+  Assert.AreEqual('fast', mBoth.Profile);
+  Assert.AreEqual('strict', mBoth.CliProfile);
+  Assert.IsTrue(mBoth.ExcludeTests);
 end;
 
 procedure TRuleProfilesTests.ReportsUnknownProfile;
 var
-  Issues: TArray<TConfigurationIssue>;
+  mIssues: TArray<TConfigurationIssue>;
 begin
-  TConfigurationParser.Parse('{"profile":"gibtsnicht"}', Issues);
-  Assert.AreEqual(1, Integer(Length(Issues)));
-  Assert.Contains(Issues[0].Message, 'gibtsnicht');
-  TConfigurationParser.Parse('{"profiles":{"x":{"extends":"fehlt"}}}', Issues);
-  Assert.AreEqual(1, Integer(Length(Issues)));
-  TConfigurationParser.Parse('{"overrides":[{"rules":{"a":"off"}}]}', Issues);
-  Assert.AreEqual(1, Integer(Length(Issues)), 'Pfadregel ohne files');
+  TConfigurationParser.Parse('{"profile":"gibtsnicht"}', mIssues);
+  Assert.AreEqual(1, Integer(Length(mIssues)));
+  Assert.Contains(mIssues[0].Message, 'gibtsnicht');
+  TConfigurationParser.Parse('{"profiles":{"x":{"extends":"fehlt"}}}', mIssues);
+  Assert.AreEqual(1, Integer(Length(mIssues)));
+  TConfigurationParser.Parse('{"overrides":[{"rules":{"a":"off"}}]}', mIssues);
+  Assert.AreEqual(1, Integer(Length(mIssues)), 'Pfadregel ohne files');
 end;
 
 procedure TRuleProfilesTests.DetectsTestUnits;

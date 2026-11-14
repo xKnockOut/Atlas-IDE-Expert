@@ -34,31 +34,31 @@ uses
 /// <summary>Methode und Parameter der gerahmten Nachricht ABytes.</summary>
 function MessageOf(const ABytes: TBytes; out AId: Integer; out AParams: string): string;
 var
-  Text: string;
-  Message: TJSONValue;
+  mText: string;
+  mMessage: TJSONValue;
 begin
-  Text := TEncoding.UTF8.GetString(ABytes);
-  Message := TJSONObject.ParseJSONValue(Text.Substring(Text.IndexOf(#13#10#13#10) + 4));
+  mText := TEncoding.UTF8.GetString(ABytes);
+  mMessage := TJSONObject.ParseJSONValue(mText.Substring(mText.IndexOf(#13#10#13#10) + 4));
   try
-    Result := Message.GetValue<string>('method', '');
-    AId := Message.GetValue<Integer>('id', 0);
+    Result := mMessage.GetValue<string>('method', '');
+    AId := mMessage.GetValue<Integer>('id', 0);
     AParams := '';
-    if Message.FindValue('params') <> nil then
+    if mMessage.FindValue('params') <> nil then
     begin
-      AParams := Message.FindValue('params').ToJSON;
+      AParams := mMessage.FindValue('params').ToJSON;
     end;
   finally
-    Message.Free;
+    mMessage.Free;
   end;
 end;
 
 /// <summary>Client, der jede Nachricht in ASeen notiert und Anfragen mit AAnswer beantwortet.</summary>
 function AnsweringClient(ASeen: TStrings; const AAnswer: string): TLspClient;
 var
-  Client: TLspClient;
+  mClient: TLspClient;
 begin
-  Client := nil;
-  Client := TLspClient.Create(
+  mClient := nil;
+  mClient := TLspClient.Create(
     procedure(const ABytes: TBytes)
     var
       Id: Integer;
@@ -70,62 +70,62 @@ begin
       if Id > 0 then
       begin
         Reply := TLspClient.Frame(Format('{"jsonrpc":"2.0","id":%d,"result":%s}', [Id, AAnswer]));
-        Client.Receive(Reply, Length(Reply));
+        mClient.Receive(Reply, Length(Reply));
       end;
     end);
-  Result := Client;
+  Result := mClient;
 end;
 
 procedure TLspSessionPartsTests.BaseClassSyncsDocuments;
 var
-  Seen: TStringList;
-  Client: TLspClient;
-  Session: TLspSessionBase;
-  Text: string;
+  mSeen: TStringList;
+  mClient: TLspClient;
+  mSession: TLspSessionBase;
+  mText: string;
 begin
-  Seen := TStringList.Create;
-  Client := AnsweringClient(Seen, 'null');
-  Session := TLspSessionBase.Create(Client);
+  mSeen := TStringList.Create;
+  mClient := AnsweringClient(mSeen, 'null');
+  mSession := TLspSessionBase.Create(mClient);
   try
-    Session.Sync('C:\P\A.pas', 'unit A;');
-    Session.Sync('C:\P\A.pas', 'unit A;');
-    Session.Sync('C:\P\A.pas', 'unit A2;');
-    Assert.IsTrue(Session.SyncedText('c:\p\a.pas', Text));
-    Assert.AreEqual('unit A2;', Text);
-    Session.Close('C:\P\A.pas');
-    Assert.AreEqual(3, Seen.Count, 'gleicher Text ohne didChange');
-    Assert.StartsWith('textDocument/didOpen ', Seen[0]);
-    Assert.StartsWith('textDocument/didChange ', Seen[1]);
-    Assert.StartsWith('textDocument/didClose ', Seen[2]);
-    Assert.AreEqual(0, Integer(Length(Session.SyncedFiles)));
+    mSession.Sync('C:\P\A.pas', 'unit A;');
+    mSession.Sync('C:\P\A.pas', 'unit A;');
+    mSession.Sync('C:\P\A.pas', 'unit A2;');
+    Assert.IsTrue(mSession.SyncedText('c:\p\a.pas', mText));
+    Assert.AreEqual('unit A2;', mText);
+    mSession.Close('C:\P\A.pas');
+    Assert.AreEqual(3, mSeen.Count, 'gleicher Text ohne didChange');
+    Assert.StartsWith('textDocument/didOpen ', mSeen[0]);
+    Assert.StartsWith('textDocument/didChange ', mSeen[1]);
+    Assert.StartsWith('textDocument/didClose ', mSeen[2]);
+    Assert.AreEqual(0, Integer(Length(mSession.SyncedFiles)));
   finally
-    Session.Free;
-    Client.Free;
-    Seen.Free;
+    mSession.Free;
+    mClient.Free;
+    mSeen.Free;
   end;
 end;
 
 procedure TLspSessionPartsTests.RequestsClassReadsReferences;
 var
-  Seen: TStringList;
-  Client: TLspClient;
-  Session: TLspSessionRequests;
-  Locations: TArray<TLspLocation>;
+  mSeen: TStringList;
+  mClient: TLspClient;
+  mSession: TLspSessionRequests;
+  mLocations: TArray<TLspLocation>;
 begin
-  Seen := TStringList.Create;
-  Client := AnsweringClient(Seen, '[{"uri":"file:///c:/p/kunde.pas","range":{"start":{"line":3,"character":4},' +
+  mSeen := TStringList.Create;
+  mClient := AnsweringClient(mSeen, '[{"uri":"file:///c:/p/kunde.pas","range":{"start":{"line":3,"character":4},' +
     '"end":{"line":3,"character":9}}},{"uri":"","range":{"start":{"line":1,"character":0}}}]');
-  Session := TLspSessionRequests.Create(Client);
+  mSession := TLspSessionRequests.Create(mClient);
   try
-    Locations := Session.References('C:\P\A.pas', 2, 5);
-    Assert.AreEqual(1, Integer(Length(Locations)), 'ohne Datei fällt weg');
-    Assert.AreEqual(3, Locations[0].Line);
-    Assert.AreEqual(4, Locations[0].Character);
-    Assert.Contains(Seen.Text, '"includeDeclaration":false');
+    mLocations := mSession.References('C:\P\A.pas', 2, 5);
+    Assert.AreEqual(1, Integer(Length(mLocations)), 'ohne Datei fällt weg');
+    Assert.AreEqual(3, mLocations[0].Line);
+    Assert.AreEqual(4, mLocations[0].Character);
+    Assert.Contains(mSeen.Text, '"includeDeclaration":false');
   finally
-    Session.Free;
-    Client.Free;
-    Seen.Free;
+    mSession.Free;
+    mClient.Free;
+    mSeen.Free;
   end;
 end;
 

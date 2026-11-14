@@ -112,32 +112,32 @@ end;
 
 procedure TAtlasNavigationToolbarTests.FindsToolbarByName;
 var
-  Other: TWinControl;
+  mOther: TWinControl;
 begin
   Assert.AreSame(FToolbar, TAtlasNavigationToolbar.Find(FForm), 'am Namen');
   Assert.IsNull(TAtlasNavigationToolbar.Find(FEditor), 'nicht unter dem Editor');
   Assert.IsNull(TAtlasNavigationToolbar.Find(nil));
   FToolbar.Name := '';
   Assert.IsNull(TAtlasNavigationToolbar.Find(FForm), 'ohne Namen');
-  Other := TEditorNavigationToolbarLike.Create(FForm);
-  Other.Parent := FEditor;
-  Assert.AreSame(Other, TAtlasNavigationToolbar.Find(FForm), 'am Klassennamen');
+  mOther := TEditorNavigationToolbarLike.Create(FForm);
+  mOther.Parent := FEditor;
+  Assert.AreSame(mOther, TAtlasNavigationToolbar.Find(FForm), 'am Klassennamen');
 end;
 
 procedure TAtlasNavigationToolbarTests.HidesEvenWhenIdeShowsItAgain;
 var
-  EditorTop: Integer;
+  mEditorTop: Integer;
 begin
-  EditorTop := FEditor.Top;
+  mEditorTop := FEditor.Top;
   FHider.Apply(FForm, True);
   Assert.IsTrue(TAtlasNavigationToolbar.IsHidden(FToolbar));
   Assert.AreEqual(0, FToolbar.Parent.Height, 'Halter ohne Höhe');
   Assert.AreEqual(1, FHider.HiddenCount);
-  Assert.AreEqual(EditorTop - 26, FEditor.Top, 'Editor rückt nach oben');
+  Assert.AreEqual(mEditorTop - 26, FEditor.Top, 'Editor rückt nach oben');
   // Die IDE setzt Visible bei neuem Reiter wieder.
   FToolbar.Visible := True;
   Assert.AreEqual(0, FToolbar.Parent.Height, 'bleibt verborgen');
-  Assert.AreEqual(EditorTop - 26, FEditor.Top, 'Editor bleibt oben');
+  Assert.AreEqual(mEditorTop - 26, FEditor.Top, 'Editor bleibt oben');
   // Zweimal ausblenden ändert nichts.
   FHider.Apply(FForm, True);
   Assert.AreEqual(1, FHider.HiddenCount);
@@ -176,19 +176,19 @@ end;
 
 procedure TAtlasNavigationToolbarTests.HandlesExistAfterEachMove;
 var
-  Child: TPanel;
+  mChild: TPanel;
 begin
   // Die Fenster entstehen beim Umhängen im aufrufenden Thread, nicht erst beim nächsten Zugriff
   // (sonst gehörten sie dem Parser-Thread der IDE und die IDE hinge).
-  Child := TPanel.Create(FForm);
-  Child.Parent := FToolbar;
+  mChild := TPanel.Create(FForm);
+  mChild.Parent := FToolbar;
   FHider.Apply(FForm, True);
   Assert.IsTrue(FToolbar.Parent.HandleAllocated, 'Halter');
   Assert.IsTrue(FToolbar.HandleAllocated, 'Leiste im Halter');
-  Assert.IsTrue(Child.HandleAllocated, 'Kind der Leiste');
+  Assert.IsTrue(mChild.HandleAllocated, 'Kind der Leiste');
   FHider.Apply(FForm, False);
   Assert.IsTrue(FToolbar.HandleAllocated, 'Leiste zurück');
-  Assert.IsTrue(Child.HandleAllocated, 'Kind zurück');
+  Assert.IsTrue(mChild.HandleAllocated, 'Kind zurück');
   FHider.Apply(FForm, True);
   FHider.RestoreAll;
   Assert.IsTrue(FToolbar.HandleAllocated, 'nach RestoreAll');

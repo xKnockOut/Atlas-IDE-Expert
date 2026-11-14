@@ -76,7 +76,8 @@ type
     procedure CollectionModifiedOffAndExclude;
   end;
 
-  /// <summary>Regeln zu Destroy, case, Datenmengen, Transaktionen, Vergleichen als Anweisung und doppelten case-Marken.</summary>
+  /// <summary>Regeln zu Destroy, case, Datenmengen, Transaktionen, Vergleichen als Anweisung und doppelten
+  /// case-Marken.</summary>
   [TestFixture]
   TStatementPatternRulesTests = class
   public
@@ -228,54 +229,54 @@ end;
 
 procedure TStatementRulesTests.SemicolonAfterThenIsReportedWithFix;
 var
-  Findings: TArray<TRuleFinding>;
+  mFindings: TArray<TRuleFinding>;
 begin
-  Findings := TRuleAssert.Findings(TEmptyStatementRule.Create,
+  mFindings := TRuleAssert.Findings(TEmptyStatementRule.Create,
     Body('  if Liste.Count = 0 then;'#10'    raise EKeineDaten.Create(''Keine Daten'');'#10));
-  Assert.AreEqual(1, Integer(Length(Findings)));
-  Assert.AreEqual(cEmptyStatementRuleId, Findings[0].RuleId);
-  Assert.AreEqual(Ord(TRuleSeverity.Warning), Ord(Findings[0].Severity));
-  Assert.AreEqual(Ord(TRuleConfidence.High), Ord(Findings[0].Confidence));
-  Assert.AreEqual('Leere Anweisung nach then: die nächste Zeile läuft immer.', Findings[0].Message);
-  Assert.AreEqual(7, Findings[0].Range.StartPos.Line);
-  Assert.AreEqual(21, Findings[0].Range.StartPos.Character);
-  Assert.AreEqual(1, Integer(Length(Findings[0].Fixes)));
-  Assert.AreEqual('Semikolon entfernen', Findings[0].Fixes[0].Title);
-  Assert.AreEqual(1, Integer(Length(Findings[0].Fixes[0].Edits)), 'ein Undo-Schritt');
-  Assert.AreEqual('', Findings[0].Fixes[0].Edits[0].NewText);
-  Assert.AreEqual(25, Findings[0].Fixes[0].Edits[0].Range.StartPos.Character);
-  Assert.AreEqual(26, Findings[0].Fixes[0].Edits[0].Range.EndPos.Character);
+  Assert.AreEqual(1, Integer(Length(mFindings)));
+  Assert.AreEqual(cEmptyStatementRuleId, mFindings[0].RuleId);
+  Assert.AreEqual(Ord(TRuleSeverity.Warning), Ord(mFindings[0].Severity));
+  Assert.AreEqual(Ord(TRuleConfidence.High), Ord(mFindings[0].Confidence));
+  Assert.AreEqual('Leere Anweisung nach then: die nächste Zeile läuft immer.', mFindings[0].Message);
+  Assert.AreEqual(7, mFindings[0].Range.StartPos.Line);
+  Assert.AreEqual(21, mFindings[0].Range.StartPos.Character);
+  Assert.AreEqual(1, Integer(Length(mFindings[0].Fixes)));
+  Assert.AreEqual('Semikolon entfernen', mFindings[0].Fixes[0].Title);
+  Assert.AreEqual(1, Integer(Length(mFindings[0].Fixes[0].Edits)), 'ein Undo-Schritt');
+  Assert.AreEqual('', mFindings[0].Fixes[0].Edits[0].NewText);
+  Assert.AreEqual(25, mFindings[0].Fixes[0].Edits[0].Range.StartPos.Character);
+  Assert.AreEqual(26, mFindings[0].Fixes[0].Edits[0].Range.EndPos.Character);
 end;
 
 procedure TStatementRulesTests.SemicolonAfterDoAndElse;
 var
-  Findings: TArray<TRuleFinding>;
+  mFindings: TArray<TRuleFinding>;
 begin
-  Findings := TRuleAssert.Findings(TEmptyStatementRule.Create,
+  mFindings := TRuleAssert.Findings(TEmptyStatementRule.Create,
     Body('  for I := 0 to Liste.Count - 1 do;'#10'    Liste.Delete(0);'#10 +
     '  while Liste.Count > 0 do;'#10'    Liste.Delete(0);'#10 +
     '  if Fertig then'#10'    Liste.Clear'#10'  else;'#10'    Liste.Pack;'#10));
-  Assert.AreEqual(3, Integer(Length(Findings)));
-  Assert.AreEqual('Leere Anweisung nach do: die Schleife dreht leer.', Findings[0].Message);
-  Assert.AreEqual('Leere Anweisung nach do: die Schleife dreht leer.', Findings[1].Message);
-  Assert.AreEqual('Leere Anweisung nach else: die nächste Zeile läuft immer.', Findings[2].Message);
+  Assert.AreEqual(3, Integer(Length(mFindings)));
+  Assert.AreEqual('Leere Anweisung nach do: die Schleife dreht leer.', mFindings[0].Message);
+  Assert.AreEqual('Leere Anweisung nach do: die Schleife dreht leer.', mFindings[1].Message);
+  Assert.AreEqual('Leere Anweisung nach else: die nächste Zeile läuft immer.', mFindings[2].Message);
 end;
 
 procedure TStatementRulesTests.EmptyBlockDependsOnComment;
 var
-  Findings: TArray<TRuleFinding>;
-  Source: string;
+  mFindings: TArray<TRuleFinding>;
+  mSource: string;
 begin
-  Source := Body('  if Fertig then'#10'  begin'#10'  end;'#10 +
+  mSource := Body('  if Fertig then'#10'  begin'#10'  end;'#10 +
     '  if Liste = nil then'#10'  begin'#10'    { absichtlich leer }'#10'  end;'#10);
-  Findings := TRuleAssert.Findings(TEmptyStatementRule.Create, Source);
-  Assert.AreEqual(1, Integer(Length(Findings)));
-  Assert.AreEqual('Leerer Block nach then: hier passiert nichts.', Findings[0].Message);
-  Assert.AreEqual(7, Findings[0].Range.StartPos.Line);
-  Assert.AreEqual(0, Integer(Length(Findings[0].Fixes)));
-  Findings := TRuleAssert.Findings(TEmptyStatementRule.Create, Source,
+  mFindings := TRuleAssert.Findings(TEmptyStatementRule.Create, mSource);
+  Assert.AreEqual(1, Integer(Length(mFindings)));
+  Assert.AreEqual('Leerer Block nach then: hier passiert nichts.', mFindings[0].Message);
+  Assert.AreEqual(7, mFindings[0].Range.StartPos.Line);
+  Assert.AreEqual(0, Integer(Length(mFindings[0].Fixes)));
+  mFindings := TRuleAssert.Findings(TEmptyStatementRule.Create, mSource,
     '{"rules": {"empty-statement": {"allowCommented": false}}}', 'Daten.pas');
-  Assert.AreEqual(2, Integer(Length(Findings)), 'mit allowCommented = false auch der kommentierte Block');
+  Assert.AreEqual(2, Integer(Length(mFindings)), 'mit allowCommented = false auch der kommentierte Block');
 end;
 
 procedure TStatementRulesTests.CorrectFormsAreSilent;
@@ -292,82 +293,82 @@ end;
 
 procedure TStatementRulesTests.NestedIfElseBelongsToInner;
 var
-  Findings: TArray<TRuleFinding>;
+  mFindings: TArray<TRuleFinding>;
 begin
-  Findings := TRuleAssert.Findings(TEmptyStatementRule.Create,
+  mFindings := TRuleAssert.Findings(TEmptyStatementRule.Create,
     Body('  if Fertig then'#10'    if Liste = nil then'#10'      Liste.Clear'#10'    else;'#10 +
     '  Liste.Pack;'#10));
-  Assert.AreEqual(1, Integer(Length(Findings)));
-  Assert.AreEqual('Leere Anweisung nach else: die nächste Zeile läuft immer.', Findings[0].Message);
-  Assert.AreEqual(10, Findings[0].Range.StartPos.Line);
+  Assert.AreEqual(1, Integer(Length(mFindings)));
+  Assert.AreEqual('Leere Anweisung nach else: die nächste Zeile läuft immer.', mFindings[0].Message);
+  Assert.AreEqual(10, mFindings[0].Range.StartPos.Line);
 end;
 
 procedure TStatementRulesTests.OffAndExcludeSilence;
 const
-  Source = '  if Fertig then;'#10'    Liste.Clear;'#10;
+  cSource = '  if Fertig then;'#10'    Liste.Clear;'#10;
 begin
-  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TEmptyStatementRule.Create, Body(Source),
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TEmptyStatementRule.Create, Body(cSource),
     '{"rules": {"empty-statement": "off"}}', 'Daten.pas'))));
-  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TEmptyStatementRule.Create, Body(Source),
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TEmptyStatementRule.Create, Body(cSource),
     '{"rules": {"empty-statement": {"exclude": ["Alt/*.pas"]}}}', 'Alt/Daten.pas'))));
-  Assert.AreEqual(1, Integer(Length(TRuleAssert.Findings(TEmptyStatementRule.Create, Body(Source),
+  Assert.AreEqual(1, Integer(Length(TRuleAssert.Findings(TEmptyStatementRule.Create, Body(cSource),
     '{"rules": {"empty-statement": {"exclude": ["Alt/*.pas"]}}}', 'Neu/Daten.pas'))));
 end;
 
 procedure TStatementRulesTests.AllowCommentedMustBeBoolean;
 var
-  Issues: TArray<TConfigurationIssue>;
+  mIssues: TArray<TConfigurationIssue>;
 begin
-  TConfigurationParser.Parse('{"rules": {"empty-statement": {"allowCommented": "ja"}}}', Issues);
-  Assert.AreEqual(1, Integer(Length(Issues)));
-  Assert.AreEqual('"allowCommented" muss true oder false sein', Issues[0].Message);
-  TConfigurationParser.Parse('{"rules": {"empty-statement": {"allowCommented": false}}}', Issues);
-  Assert.AreEqual(0, Integer(Length(Issues)));
+  TConfigurationParser.Parse('{"rules": {"empty-statement": {"allowCommented": "ja"}}}', mIssues);
+  Assert.AreEqual(1, Integer(Length(mIssues)));
+  Assert.AreEqual('"allowCommented" muss true oder false sein', mIssues[0].Message);
+  TConfigurationParser.Parse('{"rules": {"empty-statement": {"allowCommented": false}}}', mIssues);
+  Assert.AreEqual(0, Integer(Length(mIssues)));
 end;
 
 const
-  ListHeader =
+  cListHeader =
     'unit Kunden;'#10'interface'#10'type'#10'  TKunde = class Name: string; end;'#10 +
     '  TKundenListe = class'#10'  private'#10'    FKunden: TList<TKunde>;'#10'    FZahlen: TArray<Integer>;'#10 +
     '    FText: string;'#10'    procedure Ausgeben;'#10'  end;'#10'implementation'#10;
 
 function TokensOf(const AText: string): TArray<TPascalToken>;
 var
-  Tree: TSyntaxTree;
+  mTree: TSyntaxTree;
 begin
-  Tree := TPascalParser.Parse(AText);
+  mTree := TPascalParser.Parse(AText);
   try
-    Result := Tree.Tokens;
+    Result := mTree.Tokens;
   finally
-    Tree.Free;
+    mTree.Free;
   end;
 end;
 
 function ListBody(const AStatements: string): string;
 begin
-  Result := ListHeader + 'procedure TKundenListe.Ausgeben;'#10'var'#10'  I: Integer;'#10'  Kunden: TList<TKunde>;'#10 +
+  Result := cListHeader + 'procedure TKundenListe.Ausgeben;'#10'var'#10'  I: Integer;'#10'  Kunden: TList<TKunde>;'#10 +
     'begin'#10'  Kunden := FKunden;'#10 + AStatements + 'end;'#10'end.';
 end;
 
 procedure TStatementRulesTests.CountUpperBoundIsReportedWithFix;
 var
-  Findings: TArray<TRuleFinding>;
+  mFindings: TArray<TRuleFinding>;
 begin
-  Findings := TRuleAssert.Findings(TLoopOffByOneRule.Create,
+  mFindings := TRuleAssert.Findings(TLoopOffByOneRule.Create,
     ListBody('  for I := 0 to Kunden.Count do'#10'    Ausgabe(Kunden[I].Name);'#10));
-  Assert.AreEqual(1, Integer(Length(Findings)));
-  Assert.AreEqual(cLoopOffByOneRuleId, Findings[0].RuleId);
-  Assert.AreEqual(Ord(TRuleSeverity.Warning), Ord(Findings[0].Severity));
-  Assert.AreEqual(Ord(TRuleConfidence.High), Ord(Findings[0].Confidence));
+  Assert.AreEqual(1, Integer(Length(mFindings)));
+  Assert.AreEqual(cLoopOffByOneRuleId, mFindings[0].RuleId);
+  Assert.AreEqual(Ord(TRuleSeverity.Warning), Ord(mFindings[0].Severity));
+  Assert.AreEqual(Ord(TRuleConfidence.High), Ord(mFindings[0].Confidence));
   Assert.AreEqual('Obergrenze Kunden.Count: der letzte Durchlauf greift hinter das Listenende (Index Count).',
-    Findings[0].Message);
-  Assert.AreEqual(18, Findings[0].Range.StartPos.Line);
-  Assert.AreEqual(11, Findings[0].Range.StartPos.Character);
-  Assert.AreEqual('„- 1“ ergänzen', Findings[0].Fixes[0].Title);
-  Assert.AreEqual(1, Integer(Length(Findings[0].Fixes[0].Edits)), 'ein Undo-Schritt');
-  Assert.AreEqual(' - 1', Findings[0].Fixes[0].Edits[0].NewText);
-  Assert.AreEqual(28, Findings[0].Fixes[0].Edits[0].Range.StartPos.Character);
-  Assert.AreEqual(28, Findings[0].Fixes[0].Edits[0].Range.EndPos.Character);
+    mFindings[0].Message);
+  Assert.AreEqual(18, mFindings[0].Range.StartPos.Line);
+  Assert.AreEqual(11, mFindings[0].Range.StartPos.Character);
+  Assert.AreEqual('„- 1“ ergänzen', mFindings[0].Fixes[0].Title);
+  Assert.AreEqual(1, Integer(Length(mFindings[0].Fixes[0].Edits)), 'ein Undo-Schritt');
+  Assert.AreEqual(' - 1', mFindings[0].Fixes[0].Edits[0].NewText);
+  Assert.AreEqual(28, mFindings[0].Fixes[0].Edits[0].Range.StartPos.Character);
+  Assert.AreEqual(28, mFindings[0].Fixes[0].Edits[0].Range.EndPos.Character);
   // Feld und Items[I] zählen mit.
   Assert.AreEqual(1, Integer(Length(TRuleAssert.Findings(TLoopOffByOneRule.Create,
     ListBody('  for I := 0 to FKunden.Count do'#10'    FKunden.Items[I].Free;'#10)))));
@@ -375,15 +376,15 @@ end;
 
 procedure TStatementRulesTests.LengthOfArrayUsesHigh;
 var
-  Findings: TArray<TRuleFinding>;
+  mFindings: TArray<TRuleFinding>;
 begin
-  Findings := TRuleAssert.Findings(TLoopOffByOneRule.Create,
+  mFindings := TRuleAssert.Findings(TLoopOffByOneRule.Create,
     ListBody('  for I := 0 to Length(FZahlen) do'#10'    FZahlen[I] := 0;'#10));
-  Assert.AreEqual(1, Integer(Length(Findings)));
+  Assert.AreEqual(1, Integer(Length(mFindings)));
   Assert.AreEqual('Obergrenze Length(FZahlen): der letzte Durchlauf greift hinter das Array-Ende (Index Length).',
-    Findings[0].Message);
-  Assert.AreEqual('High(FZahlen) verwenden', Findings[0].Fixes[0].Title);
-  Assert.AreEqual('High(FZahlen)', Findings[0].Fixes[0].Edits[0].NewText);
+    mFindings[0].Message);
+  Assert.AreEqual('High(FZahlen) verwenden', mFindings[0].Fixes[0].Title);
+  Assert.AreEqual('High(FZahlen)', mFindings[0].Fixes[0].Edits[0].NewText);
 end;
 
 procedure TStatementRulesTests.CorrectLoopsAreSilent;
@@ -402,36 +403,36 @@ end;
 
 procedure TStatementRulesTests.StringLoopsAndZeroIndex;
 var
-  Findings: TArray<TRuleFinding>;
+  mFindings: TArray<TRuleFinding>;
 begin
-  Findings := TRuleAssert.Findings(TLoopOffByOneRule.Create,
+  mFindings := TRuleAssert.Findings(TLoopOffByOneRule.Create,
     ListBody('  for I := 0 to Length(FText) do'#10'    Ausgabe(FText[I]);'#10 +
     '  for I := 0 to Length(FText) - 1 do'#10'    Ausgabe(FText[I]);'#10 +
     '  if FText[0] = ''#'' then'#10'    Exit;'#10));
-  Assert.AreEqual(3, Integer(Length(Findings)));
-  Assert.AreEqual('Strings beginnen bei 1: der erste Durchlauf greift auf FText[0].', Findings[0].Message);
-  Assert.AreEqual('Low(FText)/High(FText) verwenden', Findings[0].Fixes[0].Title);
-  Assert.AreEqual('Low(FText) to High(FText)', Findings[0].Fixes[0].Edits[0].NewText);
-  Assert.AreEqual('Strings beginnen bei 1: der erste Durchlauf greift auf FText[0].', Findings[1].Message);
-  Assert.AreEqual('Low(FText) to High(FText)', Findings[1].Fixes[0].Edits[0].NewText);
-  Assert.AreEqual('Strings beginnen bei 1: FText[0] liegt vor dem ersten Zeichen (wie E2157).', Findings[2].Message);
-  Assert.AreEqual('Low(FText)', Findings[2].Fixes[0].Edits[0].NewText);
+  Assert.AreEqual(3, Integer(Length(mFindings)));
+  Assert.AreEqual('Strings beginnen bei 1: der erste Durchlauf greift auf FText[0].', mFindings[0].Message);
+  Assert.AreEqual('Low(FText)/High(FText) verwenden', mFindings[0].Fixes[0].Title);
+  Assert.AreEqual('Low(FText) to High(FText)', mFindings[0].Fixes[0].Edits[0].NewText);
+  Assert.AreEqual('Strings beginnen bei 1: der erste Durchlauf greift auf FText[0].', mFindings[1].Message);
+  Assert.AreEqual('Low(FText) to High(FText)', mFindings[1].Fixes[0].Edits[0].NewText);
+  Assert.AreEqual('Strings beginnen bei 1: FText[0] liegt vor dem ersten Zeichen (wie E2157).', mFindings[2].Message);
+  Assert.AreEqual('Low(FText)', mFindings[2].Fixes[0].Edits[0].NewText);
 end;
 
 procedure TStatementRulesTests.ZeroBasedStringsDirective;
 var
-  Findings: TArray<TRuleFinding>;
+  mFindings: TArray<TRuleFinding>;
 begin
-  Findings := TRuleAssert.Findings(TLoopOffByOneRule.Create, '{$ZEROBASEDSTRINGS ON}'#10 +
+  mFindings := TRuleAssert.Findings(TLoopOffByOneRule.Create, '{$ZEROBASEDSTRINGS ON}'#10 +
     ListBody('  for I := 0 to Length(FText) do'#10'    Ausgabe(FText[I]);'#10 +
     '  for I := 1 to Length(FText) do'#10'    Ausgabe(FText[I]);'#10 +
     '  for I := 0 to Length(FText) - 1 do'#10'    Ausgabe(FText[I]);'#10 +
     '  if FText[0] = ''#'' then'#10'    Exit;'#10));
-  Assert.AreEqual(2, Integer(Length(Findings)));
+  Assert.AreEqual(2, Integer(Length(mFindings)));
   Assert.AreEqual('Obergrenze Length(FText): der letzte Durchlauf greift hinter das String-Ende ' +
-    '(mit {$ZEROBASEDSTRINGS ON} sind Strings nullbasiert).', Findings[0].Message);
+    '(mit {$ZEROBASEDSTRINGS ON} sind Strings nullbasiert).', mFindings[0].Message);
   Assert.AreEqual('Mit {$ZEROBASEDSTRINGS ON} sind Strings nullbasiert: die Schleife überspringt FText[0] ' +
-    'und greift hinter das Ende.', Findings[1].Message);
+    'und greift hinter das Ende.', mFindings[1].Message);
   Assert.IsTrue(TLoopOffByOneRule.ZeroBasedStrings(TokensOf('{$ZEROBASEDSTRINGS+} unit U;')));
   Assert.IsFalse(TLoopOffByOneRule.ZeroBasedStrings(TokensOf(
     '{$ZEROBASEDSTRINGS ON}{$ZEROBASEDSTRINGS OFF} unit U;')));
@@ -439,7 +440,7 @@ end;
 
 procedure TStatementRulesTests.CountNamesOption;
 var
-  Issues: TArray<TConfigurationIssue>;
+  mIssues: TArray<TConfigurationIssue>;
 begin
   Assert.AreEqual(1, Integer(Length(TRuleAssert.Findings(TLoopOffByOneRule.Create,
     ListBody('  for I := 0 to Kunden.Anzahl do'#10'    Ausgabe(Kunden[I].Name);'#10),
@@ -447,53 +448,53 @@ begin
   Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TLoopOffByOneRule.Create,
     ListBody('  for I := 0 to Kunden.Count do'#10'    Ausgabe(Kunden[I].Name);'#10),
     '{"rules": {"loop-off-by-one": {"countNames": ["Anzahl"]}}}', 'Kunden.pas'))));
-  TConfigurationParser.Parse('{"rules": {"loop-off-by-one": {"countNames": "Count"}}}', Issues);
-  Assert.AreEqual(1, Integer(Length(Issues)));
-  Assert.AreEqual('"countNames" muss eine Liste von Texten sein', Issues[0].Message);
+  TConfigurationParser.Parse('{"rules": {"loop-off-by-one": {"countNames": "Count"}}}', mIssues);
+  Assert.AreEqual(1, Integer(Length(mIssues)));
+  Assert.AreEqual('"countNames" muss eine Liste von Texten sein', mIssues[0].Message);
 end;
 
 procedure TStatementRulesTests.LoopOffByOneOffAndExclude;
 const
-  Source = '  for I := 0 to Kunden.Count do'#10'    Ausgabe(Kunden[I].Name);'#10;
+  cSource = '  for I := 0 to Kunden.Count do'#10'    Ausgabe(Kunden[I].Name);'#10;
 begin
-  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TLoopOffByOneRule.Create, ListBody(Source),
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TLoopOffByOneRule.Create, ListBody(cSource),
     '{"rules": {"loop-off-by-one": "off"}}', 'Kunden.pas'))));
-  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TLoopOffByOneRule.Create, ListBody(Source),
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TLoopOffByOneRule.Create, ListBody(cSource),
     '{"rules": {"loop-off-by-one": {"exclude": ["Alt/*.pas"]}}}', 'Alt/Kunden.pas'))));
-  Assert.AreEqual(1, Integer(Length(TRuleAssert.Findings(TLoopOffByOneRule.Create, ListBody(Source),
+  Assert.AreEqual(1, Integer(Length(TRuleAssert.Findings(TLoopOffByOneRule.Create, ListBody(cSource),
     '{"rules": {"loop-off-by-one": {"exclude": ["Alt/*.pas"]}}}', 'Neu/Kunden.pas'))));
 end;
 
 procedure TStatementRulesTests.DeleteInForwardLoopIsReportedWithFix;
 const
-  Loop = '  for I := 0 to Kunden.Count - 1 do'#10'    if Kunden[I].Name = '''' then'#10'      Kunden.Delete(I);'#10;
-  Fixed = '  for I := Kunden.Count - 1 downto 0 do'#10'    if Kunden[I].Name = '''' then'#10'      Kunden.Delete(I);'#10;
+  cLoop = '  for I := 0 to Kunden.Count - 1 do'#10'    if Kunden[I].Name = '''' then'#10'      Kunden.Delete(I);'#10;
+  cFixed = '  for I := Kunden.Count - 1 downto 0 do'#10'    if Kunden[I].Name = '''' then'#10'      Kunden.Delete(I);'#10;
 var
-  Findings: TArray<TRuleFinding>;
-  Tree: TSyntaxTree;
-  Text: string;
+  mFindings: TArray<TRuleFinding>;
+  mTree: TSyntaxTree;
+  mText: string;
 begin
-  Findings := TRuleAssert.Findings(TCollectionModifiedInLoopRule.Create, ListBody(Loop));
-  Assert.AreEqual(1, Integer(Length(Findings)));
-  Assert.AreEqual(cCollectionModifiedInLoopRuleId, Findings[0].RuleId);
-  Assert.AreEqual(Ord(TRuleSeverity.Warning), Ord(Findings[0].Severity));
-  Assert.AreEqual(Ord(TRuleConfidence.High), Ord(Findings[0].Confidence));
+  mFindings := TRuleAssert.Findings(TCollectionModifiedInLoopRule.Create, ListBody(cLoop));
+  Assert.AreEqual(1, Integer(Length(mFindings)));
+  Assert.AreEqual(cCollectionModifiedInLoopRuleId, mFindings[0].RuleId);
+  Assert.AreEqual(Ord(TRuleSeverity.Warning), Ord(mFindings[0].Severity));
+  Assert.AreEqual(Ord(TRuleConfidence.High), Ord(mFindings[0].Confidence));
   Assert.AreEqual('Kunden.Delete in einer Vorwärtsschleife über Kunden: das nächste Element wird übersprungen, ' +
-    'am Ende folgt ein Indexfehler.', Findings[0].Message);
-  Assert.AreEqual(20, Findings[0].Range.StartPos.Line);
-  Assert.AreEqual(6, Findings[0].Range.StartPos.Character);
-  Assert.AreEqual(1, Integer(Length(Findings[0].Fixes)));
-  Assert.AreEqual('Schleife rückwärts (downto) umschreiben', Findings[0].Fixes[0].Title);
-  Assert.AreEqual(1, Integer(Length(Findings[0].Fixes[0].Edits)), 'ein Undo-Schritt');
-  Text := TChangeSignature.ApplyEdits(ListBody(Loop), Findings[0].Fixes[0].Edits);
-  Assert.AreEqual(ListBody(Fixed), Text);
-  Tree := TPascalParser.Parse(Text);
+    'am Ende folgt ein Indexfehler.', mFindings[0].Message);
+  Assert.AreEqual(20, mFindings[0].Range.StartPos.Line);
+  Assert.AreEqual(6, mFindings[0].Range.StartPos.Character);
+  Assert.AreEqual(1, Integer(Length(mFindings[0].Fixes)));
+  Assert.AreEqual('Schleife rückwärts (downto) umschreiben', mFindings[0].Fixes[0].Title);
+  Assert.AreEqual(1, Integer(Length(mFindings[0].Fixes[0].Edits)), 'ein Undo-Schritt');
+  mText := TChangeSignature.ApplyEdits(ListBody(cLoop), mFindings[0].Fixes[0].Edits);
+  Assert.AreEqual(ListBody(cFixed), mText);
+  mTree := TPascalParser.Parse(mText);
   try
-    Assert.AreEqual(0, Integer(Length(Tree.Diagnostics)), 'Ergebnis parst fehlerfrei');
+    Assert.AreEqual(0, Integer(Length(mTree.Diagnostics)), 'Ergebnis parst fehlerfrei');
   finally
-    Tree.Free;
+    mTree.Free;
   end;
-  TRuleAssert.Silent(TCollectionModifiedInLoopRule.Create, ListBody(Fixed));
+  TRuleAssert.Silent(TCollectionModifiedInLoopRule.Create, ListBody(cFixed));
   // High, Pred und Length(A) - 1 als Obergrenze ebenso.
   Assert.AreEqual(2, Integer(Length(TRuleAssert.Findings(TCollectionModifiedInLoopRule.Create,
     ListBody('  for I := 0 to Pred(FKunden.Count) do'#10'    FKunden.Remove(nil);'#10 +
@@ -502,24 +503,24 @@ end;
 
 procedure TStatementRulesTests.ForInAddAndInsertMessages;
 var
-  Findings: TArray<TRuleFinding>;
+  mFindings: TArray<TRuleFinding>;
 begin
-  Findings := TRuleAssert.Findings(TCollectionModifiedInLoopRule.Create,
+  mFindings := TRuleAssert.Findings(TCollectionModifiedInLoopRule.Create,
     ListBody('  for var Kunde in Kunden do'#10'    if Kunde.Name = '''' then'#10'      Kunden.Remove(Kunde);'#10 +
     '  for var Kunde in FKunden do'#10'    FKunden.Clear;'#10 +
     '  for I := 0 to Kunden.Count - 1 do'#10'    Kunden.Add(Kunden[I]);'#10 +
     '  for I := 0 to Kunden.Count - 1 do'#10'    Kunden.Insert(0, Kunden[I]);'#10));
-  Assert.AreEqual(4, Integer(Length(Findings)));
+  Assert.AreEqual(4, Integer(Length(mFindings)));
   Assert.AreEqual('Kunden.Remove in for … in über Kunden: die RTL wirft eine Exception, weil sich die Liste ' +
-    'ändert. Elemente sammeln und nach der Schleife ändern.', Findings[0].Message);
-  Assert.AreEqual(0, Integer(Length(Findings[0].Fixes)), 'for … in: nur Hinweis');
+    'ändert. Elemente sammeln und nach der Schleife ändern.', mFindings[0].Message);
+  Assert.AreEqual(0, Integer(Length(mFindings[0].Fixes)), 'for … in: nur Hinweis');
   Assert.AreEqual('FKunden.Clear in for … in über FKunden: die RTL wirft eine Exception, weil sich die Liste ' +
-    'ändert. Elemente sammeln und nach der Schleife ändern.', Findings[1].Message);
+    'ändert. Elemente sammeln und nach der Schleife ändern.', mFindings[1].Message);
   Assert.AreEqual('Kunden.Add in einer Vorwärtsschleife über Kunden: die neuen Elemente durchläuft die Schleife ' +
-    'nicht, die Obergrenze steht beim Start fest.', Findings[2].Message);
-  Assert.AreEqual(0, Integer(Length(Findings[2].Fixes)), 'downto hilft bei Add nicht');
+    'nicht, die Obergrenze steht beim Start fest.', mFindings[2].Message);
+  Assert.AreEqual(0, Integer(Length(mFindings[2].Fixes)), 'downto hilft bei Add nicht');
   Assert.AreEqual('Kunden.Insert in einer Vorwärtsschleife über Kunden: die Elemente rücken nach, dasselbe ' +
-    'Element kommt noch einmal, am Ende fehlen Elemente.', Findings[3].Message);
+    'Element kommt noch einmal, am Ende fehlen Elemente.', mFindings[3].Message);
 end;
 
 procedure TStatementRulesTests.SafeModificationsAreSilent;
@@ -542,7 +543,7 @@ end;
 
 procedure TStatementRulesTests.LaterBreakLeavesLoop;
 var
-  Findings: TArray<TRuleFinding>;
+  mFindings: TArray<TRuleFinding>;
 begin
   // Break oder Exit später im selben Block, nach einem Merker und nach einer inneren for-Schleife hinter dem Aufruf
   // (Modules.Registry, Settings.Parts).
@@ -553,107 +554,107 @@ begin
     '      Kunden.Delete(I);'#10'      for var Name in Namen do'#10'        Schluessel.Remove(Name);'#10 +
     '      Exit;'#10'    end;'#10));
   // Bedingtes Break und Break nur der inneren Schleife lassen die Meldung stehen.
-  Findings := TRuleAssert.Findings(TCollectionModifiedInLoopRule.Create,
+  mFindings := TRuleAssert.Findings(TCollectionModifiedInLoopRule.Create,
     ListBody('  for I := 0 to Kunden.Count - 1 do'#10'  begin'#10'    Kunden.Delete(I);'#10 +
     '    if Fertig then'#10'      Break;'#10'  end;'#10 +
     '  for I := 0 to Kunden.Count - 1 do'#10'    while Weiter do'#10'    begin'#10'      Kunden.Delete(I);'#10 +
     '      Break;'#10'    end;'#10));
-  Assert.AreEqual(2, Integer(Length(Findings)));
+  Assert.AreEqual(2, Integer(Length(mFindings)));
 end;
 
 procedure TStatementRulesTests.MutatingMethodsOption;
 const
-  Source = '  for I := 0 to Kunden.Count - 1 do'#10'    Kunden.Loeschen(I);'#10 +
+  cSource = '  for I := 0 to Kunden.Count - 1 do'#10'    Kunden.Loeschen(I);'#10 +
     '  for I := 0 to Kunden.Count - 1 do'#10'    Kunden.Delete(I);'#10;
 var
-  Findings: TArray<TRuleFinding>;
-  Issues: TArray<TConfigurationIssue>;
+  mFindings: TArray<TRuleFinding>;
+  mIssues: TArray<TConfigurationIssue>;
 begin
-  Findings := TRuleAssert.Findings(TCollectionModifiedInLoopRule.Create, ListBody(Source));
-  Assert.AreEqual(1, Integer(Length(Findings)), 'Vorgabe: nur Delete');
-  Assert.AreEqual(21, Findings[0].Range.StartPos.Line);
-  Findings := TRuleAssert.Findings(TCollectionModifiedInLoopRule.Create, ListBody(Source),
+  mFindings := TRuleAssert.Findings(TCollectionModifiedInLoopRule.Create, ListBody(cSource));
+  Assert.AreEqual(1, Integer(Length(mFindings)), 'Vorgabe: nur Delete');
+  Assert.AreEqual(21, mFindings[0].Range.StartPos.Line);
+  mFindings := TRuleAssert.Findings(TCollectionModifiedInLoopRule.Create, ListBody(cSource),
     '{"rules": {"collection-modified-in-loop": {"mutatingMethods": ["Loeschen"]}}}', 'Kunden.pas');
-  Assert.AreEqual(1, Integer(Length(Findings)), 'Option: nur Loeschen');
-  Assert.AreEqual(19, Findings[0].Range.StartPos.Line);
+  Assert.AreEqual(1, Integer(Length(mFindings)), 'Option: nur Loeschen');
+  Assert.AreEqual(19, mFindings[0].Range.StartPos.Line);
   Assert.AreEqual(6, Integer(Length(TCollectionModifiedInLoopRule.DefaultMutatingMethods)));
-  TConfigurationParser.Parse('{"rules": {"collection-modified-in-loop": {"mutatingMethods": "Delete"}}}', Issues);
-  Assert.AreEqual(1, Integer(Length(Issues)));
-  Assert.AreEqual('"mutatingMethods" muss eine Liste von Texten sein', Issues[0].Message);
+  TConfigurationParser.Parse('{"rules": {"collection-modified-in-loop": {"mutatingMethods": "Delete"}}}', mIssues);
+  Assert.AreEqual(1, Integer(Length(mIssues)));
+  Assert.AreEqual('"mutatingMethods" muss eine Liste von Texten sein', mIssues[0].Message);
 end;
 
 procedure TStatementRulesTests.CollectionModifiedOffAndExclude;
 const
-  Source = '  for I := 0 to Kunden.Count - 1 do'#10'    Kunden.Delete(I);'#10;
+  cSource = '  for I := 0 to Kunden.Count - 1 do'#10'    Kunden.Delete(I);'#10;
 begin
-  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TCollectionModifiedInLoopRule.Create, ListBody(Source),
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TCollectionModifiedInLoopRule.Create, ListBody(cSource),
     '{"rules": {"collection-modified-in-loop": "off"}}', 'Kunden.pas'))));
-  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TCollectionModifiedInLoopRule.Create, ListBody(Source),
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TCollectionModifiedInLoopRule.Create, ListBody(cSource),
     '{"rules": {"collection-modified-in-loop": {"exclude": ["Alt/*.pas"]}}}', 'Alt/Kunden.pas'))));
-  Assert.AreEqual(1, Integer(Length(TRuleAssert.Findings(TCollectionModifiedInLoopRule.Create, ListBody(Source),
+  Assert.AreEqual(1, Integer(Length(TRuleAssert.Findings(TCollectionModifiedInLoopRule.Create, ListBody(cSource),
     '{"rules": {"collection-modified-in-loop": {"exclude": ["Alt/*.pas"]}}}', 'Neu/Kunden.pas'))));
 end;
 
 procedure TStatementRulesTests.RuleIsRegistered;
 var
-  Rule: IRule;
-  Found: Boolean;
+  mRule: IRule;
+  mFound: Boolean;
 begin
-  Found := False;
-  for Rule in BuiltinRules do
+  mFound := False;
+  for mRule in BuiltinRules do
   begin
-    if Rule.Descriptor.Id = cEmptyStatementRuleId then
+    if mRule.Descriptor.Id = cEmptyStatementRuleId then
     begin
-      Found := True;
+      mFound := True;
     end;
   end;
-  Assert.IsTrue(Found);
-  Found := False;
-  for Rule in BuiltinRules do
+  Assert.IsTrue(mFound);
+  mFound := False;
+  for mRule in BuiltinRules do
   begin
-    if Rule.Descriptor.Id = cLoopOffByOneRuleId then
+    if mRule.Descriptor.Id = cLoopOffByOneRuleId then
     begin
-      Found := True;
+      mFound := True;
     end;
   end;
-  Assert.IsTrue(Found, cLoopOffByOneRuleId);
-  Found := False;
-  for Rule in BuiltinRules do
+  Assert.IsTrue(mFound, cLoopOffByOneRuleId);
+  mFound := False;
+  for mRule in BuiltinRules do
   begin
-    if Rule.Descriptor.Id = cCollectionModifiedInLoopRuleId then
+    if mRule.Descriptor.Id = cCollectionModifiedInLoopRuleId then
     begin
-      Found := True;
+      mFound := True;
     end;
   end;
-  Assert.IsTrue(Found, cCollectionModifiedInLoopRuleId);
-  Found := False;
-  for Rule in BuiltinRules do
+  Assert.IsTrue(mFound, cCollectionModifiedInLoopRuleId);
+  mFound := False;
+  for mRule in BuiltinRules do
   begin
-    if Rule.Descriptor.Id = cDestroyCalledDirectlyRuleId then
+    if mRule.Descriptor.Id = cDestroyCalledDirectlyRuleId then
     begin
-      Found := True;
+      mFound := True;
     end;
   end;
-  Assert.IsTrue(Found, cDestroyCalledDirectlyRuleId);
+  Assert.IsTrue(mFound, cDestroyCalledDirectlyRuleId);
 end;
 
 procedure TStatementPatternRulesTests.DestroyCalledDirectlyIssueExample;
 var
-  Findings: TArray<TRuleFinding>;
-  Text: string;
+  mFindings: TArray<TRuleFinding>;
+  mText: string;
 begin
-  Findings := TRuleAssert.Findings(TDestroyCalledDirectlyRule.Create, Body('  Verbindung.Destroy;'#10));
-  Assert.AreEqual(1, Integer(Length(Findings)));
-  Assert.AreEqual('Destroy direkt aufgerufen; Free prüft vorher auf nil.', Findings[0].Message);
-  Assert.AreEqual(Ord(TRuleSeverity.Warning), Ord(Findings[0].Severity));
-  Assert.AreEqual(Ord(TRuleConfidence.High), Ord(Findings[0].Confidence));
-  Assert.AreEqual(7, Findings[0].Range.StartPos.Line);
-  Assert.AreEqual(13, Findings[0].Range.StartPos.Character);
-  Assert.AreEqual('Free statt Destroy', Findings[0].Fixes[0].Title);
-  Assert.IsTrue(Findings[0].Fixes[0].Safe);
-  Text := TChangeSignature.ApplyEdits(Body('  Verbindung.Destroy;'#10), Findings[0].Fixes[0].Edits);
-  Assert.AreEqual(Body('  Verbindung.Free;'#10), Text);
-  TRuleAssert.Silent(TDestroyCalledDirectlyRule.Create, Text);
+  mFindings := TRuleAssert.Findings(TDestroyCalledDirectlyRule.Create, Body('  Verbindung.Destroy;'#10));
+  Assert.AreEqual(1, Integer(Length(mFindings)));
+  Assert.AreEqual('Destroy direkt aufgerufen; Free prüft vorher auf nil.', mFindings[0].Message);
+  Assert.AreEqual(Ord(TRuleSeverity.Warning), Ord(mFindings[0].Severity));
+  Assert.AreEqual(Ord(TRuleConfidence.High), Ord(mFindings[0].Confidence));
+  Assert.AreEqual(7, mFindings[0].Range.StartPos.Line);
+  Assert.AreEqual(13, mFindings[0].Range.StartPos.Character);
+  Assert.AreEqual('Free statt Destroy', mFindings[0].Fixes[0].Title);
+  Assert.IsTrue(mFindings[0].Fixes[0].Safe);
+  mText := TChangeSignature.ApplyEdits(Body('  Verbindung.Destroy;'#10), mFindings[0].Fixes[0].Edits);
+  Assert.AreEqual(Body('  Verbindung.Free;'#10), mText);
+  TRuleAssert.Silent(TDestroyCalledDirectlyRule.Create, mText);
   // Mit Klammern und über eine Typumwandlung ebenso.
   Assert.AreEqual(2, Integer(Length(TRuleAssert.Findings(TDestroyCalledDirectlyRule.Create,
     Body('  Liste.Destroy();'#10'  TObject(Liste).Destroy;'#10)))));
@@ -670,13 +671,13 @@ end;
 
 procedure TStatementPatternRulesTests.DestroyCalledDirectlyOffAndExclude;
 const
-  Source = '  Verbindung.Destroy;'#10;
+  cSource = '  Verbindung.Destroy;'#10;
 begin
-  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TDestroyCalledDirectlyRule.Create, Body(Source),
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TDestroyCalledDirectlyRule.Create, Body(cSource),
     '{"rules": {"destroy-called-directly": "off"}}', 'Daten.pas'))));
-  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TDestroyCalledDirectlyRule.Create, Body(Source),
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TDestroyCalledDirectlyRule.Create, Body(cSource),
     '{"rules": {"destroy-called-directly": {"exclude": ["Alt/*.pas"]}}}', 'Alt/Daten.pas'))));
-  Assert.AreEqual(1, Integer(Length(TRuleAssert.Findings(TDestroyCalledDirectlyRule.Create, Body(Source),
+  Assert.AreEqual(1, Integer(Length(TRuleAssert.Findings(TDestroyCalledDirectlyRule.Create, Body(cSource),
     '{"rules": {"destroy-called-directly": {"exclude": ["Alt/*.pas"]}}}', 'Neu/Daten.pas'))));
 end;
 
@@ -691,40 +692,40 @@ end;
 
 procedure TStatementPatternRulesTests.CaseMissingEnumValueIssueExample;
 var
-  Source, Fixed: string;
-  Findings: TArray<TRuleFinding>;
+  mSource, mFixed: string;
+  mFindings: TArray<TRuleFinding>;
 begin
-  Source := Bestellung('  case Bestellung.Status of'#10'    bsNeu: Anlegen;'#10'    bsBezahlt: Versenden;'#10 +
+  mSource := Bestellung('  case Bestellung.Status of'#10'    bsNeu: Anlegen;'#10'    bsBezahlt: Versenden;'#10 +
     '  end;');
-  Findings := TRuleAssert.Findings(TCaseMissingEnumValueRule.Create, Source);
-  Assert.AreEqual(1, Integer(Length(Findings)));
-  Assert.AreEqual('Fehlende Werte von TBestellStatus: bsStorniert, bsZurueck.', Findings[0].Message);
-  Assert.AreEqual(Ord(TRuleSeverity.Warning), Ord(Findings[0].Severity));
-  Assert.AreEqual(Ord(TRuleConfidence.High), Ord(Findings[0].Confidence));
-  Assert.AreEqual('Fehlende Werte ergänzen (2)', Findings[0].Fixes[0].Title);
-  Fixed := TChangeSignature.ApplyEdits(Source, Findings[0].Fixes[0].Edits);
+  mFindings := TRuleAssert.Findings(TCaseMissingEnumValueRule.Create, mSource);
+  Assert.AreEqual(1, Integer(Length(mFindings)));
+  Assert.AreEqual('Fehlende Werte von TBestellStatus: bsStorniert, bsZurueck.', mFindings[0].Message);
+  Assert.AreEqual(Ord(TRuleSeverity.Warning), Ord(mFindings[0].Severity));
+  Assert.AreEqual(Ord(TRuleConfidence.High), Ord(mFindings[0].Confidence));
+  Assert.AreEqual('Fehlende Werte ergänzen (2)', mFindings[0].Fixes[0].Title);
+  mFixed := TChangeSignature.ApplyEdits(mSource, mFindings[0].Fixes[0].Edits);
   Assert.AreEqual(Bestellung('  case Bestellung.Status of'#10'    bsNeu: Anlegen;'#10'    bsBezahlt: Versenden;'#10 +
-    '    bsStorniert: ;'#10'    bsZurueck: ;'#10'  end;'), Fixed);
-  TRuleAssert.Silent(TCaseMissingEnumValueRule.Create, Fixed);
+    '    bsStorniert: ;'#10'    bsZurueck: ;'#10'  end;'), mFixed);
+  TRuleAssert.Silent(TCaseMissingEnumValueRule.Create, mFixed);
 end;
 
 procedure TStatementPatternRulesTests.CaseMissingEnumValueVariants;
 var
-  Findings: TArray<TRuleFinding>;
-  Source: string;
+  mFindings: TArray<TRuleFinding>;
+  mSource: string;
 begin
   // Parameter, Bereich und Liste zählen als vorhanden.
-  Findings := TRuleAssert.Findings(TCaseMissingEnumValueRule.Create, Bestellung('  case Stand of'#10 +
+  mFindings := TRuleAssert.Findings(TCaseMissingEnumValueRule.Create, Bestellung('  case Stand of'#10 +
     '    bsNeu..bsBezahlt: Anlegen;'#10'  end;'));
-  Assert.AreEqual(1, Integer(Length(Findings)));
-  Assert.AreEqual('Fehlende Werte von TBestellStatus: bsStorniert, bsZurueck.', Findings[0].Message);
+  Assert.AreEqual(1, Integer(Length(mFindings)));
+  Assert.AreEqual('Fehlende Werte von TBestellStatus: bsStorniert, bsZurueck.', mFindings[0].Message);
   // {$SCOPEDENUMS ON}: neue Zweige mit Typpräfix.
-  Source := 'unit U;'#10'interface'#10'type'#10'  TAmpel = (Rot, Gelb, Gruen);'#10'implementation'#10 +
+  mSource := 'unit U;'#10'interface'#10'type'#10'  TAmpel = (Rot, Gelb, Gruen);'#10'implementation'#10 +
     'procedure Schalten(A: TAmpel);'#10'begin'#10'  case A of'#10'    TAmpel.Rot: Halten;'#10'  end;'#10'end;'#10 +
     'end.';
-  Findings := TRuleAssert.Findings(TCaseMissingEnumValueRule.Create, Source);
-  Assert.AreEqual(1, Integer(Length(Findings)));
-  Assert.IsTrue(Pos('TAmpel.Gelb: ;', TChangeSignature.ApplyEdits(Source, Findings[0].Fixes[0].Edits)) > 0);
+  mFindings := TRuleAssert.Findings(TCaseMissingEnumValueRule.Create, mSource);
+  Assert.AreEqual(1, Integer(Length(mFindings)));
+  Assert.IsTrue(Pos('TAmpel.Gelb: ;', TChangeSignature.ApplyEdits(mSource, mFindings[0].Fixes[0].Edits)) > 0);
   Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TCaseMissingEnumValueRule.Create,
     Bestellung('  case Stand of'#10'    bsNeu: ;'#10'  end;'), '{"rules": {"case-missing-enum-value": "off"}}',
     'U.pas'))));
@@ -732,15 +733,15 @@ begin
     Bestellung('  case Stand of'#10'    bsNeu: ;'#10'  end;'),
     '{"rules": {"case-missing-enum-value": {"exclude": ["Alt/*.pas"]}}}', 'Alt/U.pas'))));
   // Anonyme Methode als Argument eines Zweigs (#1109): Die Marken danach zählen mit, die Korrektur gibt es auch.
-  Source := Bestellung('  case Stand of'#10'    bsNeu:'#10'      Post('#10'        procedure'#10 +
+  mSource := Bestellung('  case Stand of'#10'    bsNeu:'#10'      Post('#10'        procedure'#10 +
     '        begin'#10'          Anlegen;'#10'        end);'#10'    bsBezahlt, bsStorniert:'#10 +
     '      Aufgabe := procedure'#10'        begin'#10'        end;'#10'  end;');
-  Findings := TRuleAssert.Findings(TCaseMissingEnumValueRule.Create, Source);
-  Assert.AreEqual(1, Integer(Length(Findings)));
-  Assert.AreEqual('Fehlende Werte von TBestellStatus: bsZurueck.', Findings[0].Message);
-  Assert.AreEqual(1, Integer(Length(Findings[0].Fixes)));
+  mFindings := TRuleAssert.Findings(TCaseMissingEnumValueRule.Create, mSource);
+  Assert.AreEqual(1, Integer(Length(mFindings)));
+  Assert.AreEqual('Fehlende Werte von TBestellStatus: bsZurueck.', mFindings[0].Message);
+  Assert.AreEqual(1, Integer(Length(mFindings[0].Fixes)));
   TRuleAssert.Silent(TCaseMissingEnumValueRule.Create,
-    TChangeSignature.ApplyEdits(Source, Findings[0].Fixes[0].Edits));
+    TChangeSignature.ApplyEdits(mSource, mFindings[0].Fixes[0].Edits));
 end;
 
 procedure TStatementPatternRulesTests.CaseMissingEnumValueCoverage;
@@ -775,64 +776,64 @@ end;
 
 procedure TStatementPatternRulesTests.CaseMissingEnumValueOptions;
 var
-  Source: string;
-  Findings: TArray<TRuleFinding>;
-  Issues: TArray<TConfigurationIssue>;
+  mSource: string;
+  mFindings: TArray<TRuleFinding>;
+  mIssues: TArray<TConfigurationIssue>;
 begin
-  Source := Bestellung('  case Stand of'#10'    bsNeu: Anlegen;'#10'  else'#10'    Protokoll;'#10'  end;');
+  mSource := Bestellung('  case Stand of'#10'    bsNeu: Anlegen;'#10'  else'#10'    Protokoll;'#10'  end;');
   // Drei von vier Werten fehlen: niedrige Konfidenz, darum minConfidence low.
-  Findings := TRuleAssert.Findings(TCaseMissingEnumValueRule.Create, Source,
+  mFindings := TRuleAssert.Findings(TCaseMissingEnumValueRule.Create, mSource,
     '{"minConfidence": "low", "rules": {"case-missing-enum-value": {"requireElse": true}}}', 'U.pas');
-  Assert.AreEqual(1, Integer(Length(Findings)));
-  Assert.AreEqual('Fehlende Werte von TBestellStatus: bsBezahlt, bsStorniert, bsZurueck.', Findings[0].Message);
-  Assert.IsTrue(Pos('bsZurueck: ;'#10'  else', TChangeSignature.ApplyEdits(Source, Findings[0].Fixes[0].Edits)) > 0);
-  TConfigurationParser.Parse('{"rules": {"case-missing-enum-value": {"requireElse": "ja"}}}', Issues);
-  Assert.AreEqual(1, Integer(Length(Issues)));
-  Assert.AreEqual('"requireElse" muss true oder false sein', Issues[0].Message);
+  Assert.AreEqual(1, Integer(Length(mFindings)));
+  Assert.AreEqual('Fehlende Werte von TBestellStatus: bsBezahlt, bsStorniert, bsZurueck.', mFindings[0].Message);
+  Assert.IsTrue(Pos('bsZurueck: ;'#10'  else', TChangeSignature.ApplyEdits(mSource, mFindings[0].Fixes[0].Edits)) > 0);
+  TConfigurationParser.Parse('{"rules": {"case-missing-enum-value": {"requireElse": "ja"}}}', mIssues);
+  Assert.AreEqual(1, Integer(Length(mIssues)));
+  Assert.AreEqual('"requireElse" muss true oder false sein', mIssues[0].Message);
 end;
 
 procedure TStatementPatternRulesTests.DatasetLoopIssueExample;
 var
-  Source, Fixed: string;
-  Findings: TArray<TRuleFinding>;
+  mSource, mFixed: string;
+  mFindings: TArray<TRuleFinding>;
 begin
-  Source := Body('  qryPositionen.First;'#10'  while not qryPositionen.Eof do'#10'  begin'#10 +
+  mSource := Body('  qryPositionen.First;'#10'  while not qryPositionen.Eof do'#10'  begin'#10 +
     '    Summe := Summe + qryPositionen.FieldByName(''Betrag'').AsCurrency;'#10'  end;'#10);
-  Findings := TRuleAssert.Findings(TDatasetLoopWithoutNextRule.Create, Source);
-  Assert.AreEqual(1, Integer(Length(Findings)));
-  Assert.AreEqual('dataset-loop-without-next', Findings[0].RuleId);
-  Assert.AreEqual(Ord(TRuleSeverity.Error), Ord(Findings[0].Severity));
-  Assert.AreEqual(Ord(TRuleConfidence.High), Ord(Findings[0].Confidence));
-  Assert.AreEqual('Im Rumpf fehlt qryPositionen.Next; die Schleife läuft endlos.', Findings[0].Message);
-  Assert.AreEqual(8, Findings[0].Range.StartPos.Line);
-  Assert.AreEqual(8, Findings[0].Range.StartPos.Character);
-  Assert.AreEqual('qryPositionen.Next; am Ende des Rumpfs einfügen', Findings[0].Fixes[0].Title);
-  Fixed := TChangeSignature.ApplyEdits(Source, Findings[0].Fixes[0].Edits);
+  mFindings := TRuleAssert.Findings(TDatasetLoopWithoutNextRule.Create, mSource);
+  Assert.AreEqual(1, Integer(Length(mFindings)));
+  Assert.AreEqual('dataset-loop-without-next', mFindings[0].RuleId);
+  Assert.AreEqual(Ord(TRuleSeverity.Error), Ord(mFindings[0].Severity));
+  Assert.AreEqual(Ord(TRuleConfidence.High), Ord(mFindings[0].Confidence));
+  Assert.AreEqual('Im Rumpf fehlt qryPositionen.Next; die Schleife läuft endlos.', mFindings[0].Message);
+  Assert.AreEqual(8, mFindings[0].Range.StartPos.Line);
+  Assert.AreEqual(8, mFindings[0].Range.StartPos.Character);
+  Assert.AreEqual('qryPositionen.Next; am Ende des Rumpfs einfügen', mFindings[0].Fixes[0].Title);
+  mFixed := TChangeSignature.ApplyEdits(mSource, mFindings[0].Fixes[0].Edits);
   Assert.AreEqual(Body('  qryPositionen.First;'#10'  while not qryPositionen.Eof do'#10'  begin'#10 +
     '    Summe := Summe + qryPositionen.FieldByName(''Betrag'').AsCurrency;'#10'    qryPositionen.Next;'#10 +
-    '  end;'#10), Fixed);
-  TRuleAssert.Silent(TDatasetLoopWithoutNextRule.Create, Fixed);
+    '  end;'#10), mFixed);
+  TRuleAssert.Silent(TDatasetLoopWithoutNextRule.Create, mFixed);
 end;
 
 procedure TStatementPatternRulesTests.DatasetLoopVariants;
 var
-  Findings: TArray<TRuleFinding>;
+  mFindings: TArray<TRuleFinding>;
 begin
   // Next nur in einem Zweig bzw. vor Continue übersprungen: mittlere Konfidenz, keine Korrektur.
-  Findings := TRuleAssert.Findings(TDatasetLoopWithoutNextRule.Create, Body('  while not Q.Eof do'#10'  begin'#10 +
+  mFindings := TRuleAssert.Findings(TDatasetLoopWithoutNextRule.Create, Body('  while not Q.Eof do'#10'  begin'#10 +
     '    if Q.FieldByName(''Aktiv'').AsBoolean then'#10'      Q.Next;'#10'  end;'#10'  while not Self.Daten.Eof do'#10 +
     '  begin'#10'    if Fertig then'#10'      Continue;'#10'    Self.Daten.Next;'#10'  end;'#10 +
     '  while not Q.Eof do'#10'    Summe := Summe + 1;'#10));
-  Assert.AreEqual(3, Integer(Length(Findings)));
+  Assert.AreEqual(3, Integer(Length(mFindings)));
   Assert.AreEqual('Nicht jeder Weg durch den Rumpf ruft Q.Next auf; dort läuft die Schleife endlos.',
-    Findings[0].Message);
-  Assert.AreEqual(Ord(TRuleConfidence.Medium), Ord(Findings[0].Confidence));
-  Assert.AreEqual(0, Integer(Length(Findings[0].Fixes)));
+    mFindings[0].Message);
+  Assert.AreEqual(Ord(TRuleConfidence.Medium), Ord(mFindings[0].Confidence));
+  Assert.AreEqual(0, Integer(Length(mFindings[0].Fixes)));
   Assert.AreEqual('Nicht jeder Weg durch den Rumpf ruft Self.Daten.Next auf; dort läuft die Schleife endlos.',
-    Findings[1].Message);
+    mFindings[1].Message);
   // Einzelne Anweisung ohne begin: gemeldet, ohne Korrektur.
-  Assert.AreEqual('Im Rumpf fehlt Q.Next; die Schleife läuft endlos.', Findings[2].Message);
-  Assert.AreEqual(0, Integer(Length(Findings[2].Fixes)));
+  Assert.AreEqual('Im Rumpf fehlt Q.Next; die Schleife läuft endlos.', mFindings[2].Message);
+  Assert.AreEqual(0, Integer(Length(mFindings[2].Fixes)));
 end;
 
 procedure TStatementPatternRulesTests.DatasetLoopSilentCases;
@@ -849,56 +850,56 @@ end;
 
 procedure TStatementPatternRulesTests.DatasetLoopOffAndExclude;
 var
-  Source: string;
+  mSource: string;
 begin
-  Source := Body('  while not Q.Eof do'#10'    Lesen;'#10);
-  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TDatasetLoopWithoutNextRule.Create, Source,
+  mSource := Body('  while not Q.Eof do'#10'    Lesen;'#10);
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TDatasetLoopWithoutNextRule.Create, mSource,
     '{"rules": {"dataset-loop-without-next": "off"}}'))));
-  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TDatasetLoopWithoutNextRule.Create, Source,
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TDatasetLoopWithoutNextRule.Create, mSource,
     '{"rules": {"dataset-loop-without-next": {"exclude": ["Source/*.pas"]}}}', 'Source/Daten.pas'))));
 end;
 
 procedure TStatementPatternRulesTests.DatasetEditIssueExample;
 var
-  Source, Fixed: string;
-  Findings: TArray<TRuleFinding>;
-  Tree: TSyntaxTree;
+  mSource, mFixed: string;
+  mFindings: TArray<TRuleFinding>;
+  mTree: TSyntaxTree;
 begin
-  Source := Body('  tblKunde.Edit;'#10'  tblKunde.FieldByName(''Status'').AsInteger := Ord(ksAktiv);'#10 +
+  mSource := Body('  tblKunde.Edit;'#10'  tblKunde.FieldByName(''Status'').AsInteger := Ord(ksAktiv);'#10 +
     '  Protokollieren;'#10);
-  Findings := TRuleAssert.Findings(TDatasetEditWithoutPostRule.Create, Source);
-  Assert.AreEqual(1, Integer(Length(Findings)));
-  Assert.AreEqual('dataset-edit-without-post', Findings[0].RuleId);
-  Assert.AreEqual(Ord(TRuleSeverity.Warning), Ord(Findings[0].Severity));
-  Assert.AreEqual(Ord(TRuleConfidence.Medium), Ord(Findings[0].Confidence));
-  Assert.AreEqual('Nach Edit fehlt Post oder Cancel; die Änderung bleibt offen.', Findings[0].Message);
-  Assert.AreEqual(7, Findings[0].Range.StartPos.Line);
-  Assert.AreEqual(11, Findings[0].Range.StartPos.Character);
-  Assert.AreEqual(15, Findings[0].Range.EndPos.Character);
-  Assert.AreEqual('tblKunde.Post mit try … except Cancel ergänzen', Findings[0].Fixes[0].Title);
-  Fixed := TChangeSignature.ApplyEdits(Source, Findings[0].Fixes[0].Edits);
+  mFindings := TRuleAssert.Findings(TDatasetEditWithoutPostRule.Create, mSource);
+  Assert.AreEqual(1, Integer(Length(mFindings)));
+  Assert.AreEqual('dataset-edit-without-post', mFindings[0].RuleId);
+  Assert.AreEqual(Ord(TRuleSeverity.Warning), Ord(mFindings[0].Severity));
+  Assert.AreEqual(Ord(TRuleConfidence.Medium), Ord(mFindings[0].Confidence));
+  Assert.AreEqual('Nach Edit fehlt Post oder Cancel; die Änderung bleibt offen.', mFindings[0].Message);
+  Assert.AreEqual(7, mFindings[0].Range.StartPos.Line);
+  Assert.AreEqual(11, mFindings[0].Range.StartPos.Character);
+  Assert.AreEqual(15, mFindings[0].Range.EndPos.Character);
+  Assert.AreEqual('tblKunde.Post mit try … except Cancel ergänzen', mFindings[0].Fixes[0].Title);
+  mFixed := TChangeSignature.ApplyEdits(mSource, mFindings[0].Fixes[0].Edits);
   Assert.AreEqual(Body('  tblKunde.Edit;'#10'  try'#10'    tblKunde.FieldByName(''Status'').AsInteger := Ord(ksAktiv);'#10 +
-    '    tblKunde.Post;'#10'  except'#10'    tblKunde.Cancel;'#10'    raise;'#10'  end;'#10'  Protokollieren;'#10), Fixed);
-  Tree := TPascalParser.Parse(Fixed);
+    '    tblKunde.Post;'#10'  except'#10'    tblKunde.Cancel;'#10'    raise;'#10'  end;'#10'  Protokollieren;'#10), mFixed);
+  mTree := TPascalParser.Parse(mFixed);
   try
-    Assert.AreEqual(0, Integer(Length(Tree.Diagnostics)));
+    Assert.AreEqual(0, Integer(Length(mTree.Diagnostics)));
   finally
-    Tree.Free;
+    mTree.Free;
   end;
-  TRuleAssert.Silent(TDatasetEditWithoutPostRule.Create, Fixed);
+  TRuleAssert.Silent(TDatasetEditWithoutPostRule.Create, mFixed);
 end;
 
 procedure TStatementPatternRulesTests.DatasetEditVariants;
 var
-  Findings: TArray<TRuleFinding>;
+  mFindings: TArray<TRuleFinding>;
 begin
   // Append und Insert(); ohne folgende Zuweisung keine Korrektur; Post vor dem Edit zählt nicht.
-  Findings := TRuleAssert.Findings(TDatasetEditWithoutPostRule.Create, Body('  Q.Post;'#10'  Q.Append;'#10 +
+  mFindings := TRuleAssert.Findings(TDatasetEditWithoutPostRule.Create, Body('  Q.Post;'#10'  Q.Append;'#10 +
     '  Q[''Name''] := Name;'#10'  Q.FieldValues[''Ort''] := Ort;'#10'  R.Insert();'#10'  Weiter;'#10));
-  Assert.AreEqual(2, Integer(Length(Findings)));
-  Assert.AreEqual('Nach Append fehlt Post oder Cancel; die Änderung bleibt offen.', Findings[0].Message);
-  Assert.AreEqual(1, Integer(Length(Findings[0].Fixes)));
-  Assert.AreEqual(0, Integer(Length(Findings[1].Fixes)));
+  Assert.AreEqual(2, Integer(Length(mFindings)));
+  Assert.AreEqual('Nach Append fehlt Post oder Cancel; die Änderung bleibt offen.', mFindings[0].Message);
+  Assert.AreEqual(1, Integer(Length(mFindings[0].Fixes)));
+  Assert.AreEqual(0, Integer(Length(mFindings[1].Fixes)));
 end;
 
 procedure TStatementPatternRulesTests.DatasetEditSilentCases;
@@ -934,58 +935,58 @@ end;
 
 procedure TStatementPatternRulesTests.DatasetEditOffAndExclude;
 var
-  Source: string;
+  mSource: string;
 begin
-  Source := Body('  Q.Edit;'#10);
-  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TDatasetEditWithoutPostRule.Create, Source,
+  mSource := Body('  Q.Edit;'#10);
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TDatasetEditWithoutPostRule.Create, mSource,
     '{"rules": {"dataset-edit-without-post": "off"}}'))));
-  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TDatasetEditWithoutPostRule.Create, Source,
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TDatasetEditWithoutPostRule.Create, mSource,
     '{"rules": {"dataset-edit-without-post": {"exclude": ["Source/*.pas"]}}}', 'Source/Daten.pas'))));
 end;
 
 procedure TStatementPatternRulesTests.TransactionIssueExample;
 var
-  Source, Fixed: string;
-  Findings: TArray<TRuleFinding>;
+  mSource, mFixed: string;
+  mFindings: TArray<TRuleFinding>;
 begin
-  Source := Body('  Verbindung.StartTransaction;'#10'  Buchen(Auftrag);'#10'  Verbindung.Commit;'#10);
-  Findings := TRuleAssert.Findings(TTransactionWithoutRollbackRule.Create, Source);
-  Assert.AreEqual(1, Integer(Length(Findings)));
-  Assert.AreEqual('transaction-without-rollback', Findings[0].RuleId);
-  Assert.AreEqual(Ord(TRuleSeverity.Warning), Ord(Findings[0].Severity));
-  Assert.AreEqual(Ord(TRuleConfidence.High), Ord(Findings[0].Confidence));
+  mSource := Body('  Verbindung.StartTransaction;'#10'  Buchen(Auftrag);'#10'  Verbindung.Commit;'#10);
+  mFindings := TRuleAssert.Findings(TTransactionWithoutRollbackRule.Create, mSource);
+  Assert.AreEqual(1, Integer(Length(mFindings)));
+  Assert.AreEqual('transaction-without-rollback', mFindings[0].RuleId);
+  Assert.AreEqual(Ord(TRuleSeverity.Warning), Ord(mFindings[0].Severity));
+  Assert.AreEqual(Ord(TRuleConfidence.High), Ord(mFindings[0].Confidence));
   Assert.AreEqual('Kein Rollback bei einer Exception; die Transaktion bleibt offen und hält Sperren.',
-    Findings[0].Message);
-  Assert.AreEqual(7, Findings[0].Range.StartPos.Line);
-  Assert.AreEqual(13, Findings[0].Range.StartPos.Character);
-  Assert.AreEqual(29, Findings[0].Range.EndPos.Character);
-  Assert.AreEqual('try … except Verbindung.Rollback; raise; end erzeugen', Findings[0].Fixes[0].Title);
-  Fixed := TChangeSignature.ApplyEdits(Source, Findings[0].Fixes[0].Edits);
+    mFindings[0].Message);
+  Assert.AreEqual(7, mFindings[0].Range.StartPos.Line);
+  Assert.AreEqual(13, mFindings[0].Range.StartPos.Character);
+  Assert.AreEqual(29, mFindings[0].Range.EndPos.Character);
+  Assert.AreEqual('try … except Verbindung.Rollback; raise; end erzeugen', mFindings[0].Fixes[0].Title);
+  mFixed := TChangeSignature.ApplyEdits(mSource, mFindings[0].Fixes[0].Edits);
   Assert.AreEqual(Body('  Verbindung.StartTransaction;'#10'  try'#10'    Buchen(Auftrag);'#10'    Verbindung.Commit;'#10 +
-    '  except'#10'    Verbindung.Rollback;'#10'    raise;'#10'  end;'#10), Fixed);
-  TRuleAssert.Silent(TTransactionWithoutRollbackRule.Create, Fixed);
+    '  except'#10'    Verbindung.Rollback;'#10'    raise;'#10'  end;'#10), mFixed);
+  TRuleAssert.Silent(TTransactionWithoutRollbackRule.Create, mFixed);
 end;
 
 procedure TStatementPatternRulesTests.TransactionVariants;
 var
-  Source: string;
-  Findings: TArray<TRuleFinding>;
+  mSource: string;
+  mFindings: TArray<TRuleFinding>;
 begin
   // ADO, dbExpress mit Transaktionsobjekt, ohne Commit (keine Korrektur), Rollback auf anderer Verbindung.
-  Source := Body('  ADO.BeginTrans;'#10'  Buchen;'#10'  ADO.CommitTrans;'#10'  T := Sql.BeginTransaction;'#10 +
+  mSource := Body('  ADO.BeginTrans;'#10'  Buchen;'#10'  ADO.CommitTrans;'#10'  T := Sql.BeginTransaction;'#10 +
     '  Buchen;'#10'  Sql.CommitFreeAndNil(T);'#10'  A.StartTransaction;'#10'  Buchen;'#10 +
     '  B.StartTransaction;'#10'  try'#10'    Buchen;'#10'    B.Commit;'#10'  except'#10'    A.Rollback;'#10 +
     '    raise;'#10'  end;'#10);
-  Findings := TRuleAssert.Findings(TTransactionWithoutRollbackRule.Create, Source);
-  Assert.AreEqual(4, Integer(Length(Findings)));
-  Assert.AreEqual('try … except ADO.RollbackTrans; raise; end erzeugen', Findings[0].Fixes[0].Title);
+  mFindings := TRuleAssert.Findings(TTransactionWithoutRollbackRule.Create, mSource);
+  Assert.AreEqual(4, Integer(Length(mFindings)));
+  Assert.AreEqual('try … except ADO.RollbackTrans; raise; end erzeugen', mFindings[0].Fixes[0].Title);
   Assert.AreEqual(Body('  ADO.BeginTrans;'#10'  Buchen;'#10'  ADO.CommitTrans;'#10'  T := Sql.BeginTransaction;'#10 +
     '  try'#10'    Buchen;'#10'    Sql.CommitFreeAndNil(T);'#10'  except'#10'    Sql.RollbackFreeAndNil(T);'#10 +
     '    raise;'#10'  end;'#10'  A.StartTransaction;'#10'  Buchen;'#10'  B.StartTransaction;'#10'  try'#10 +
     '    Buchen;'#10'    B.Commit;'#10'  except'#10'    A.Rollback;'#10'    raise;'#10'  end;'#10),
-    TChangeSignature.ApplyEdits(Source, Findings[1].Fixes[0].Edits));
-  Assert.AreEqual(0, Integer(Length(Findings[2].Fixes)));
-  Assert.AreEqual(0, Integer(Length(Findings[3].Fixes)));
+    TChangeSignature.ApplyEdits(mSource, mFindings[1].Fixes[0].Edits));
+  Assert.AreEqual(0, Integer(Length(mFindings[2].Fixes)));
+  Assert.AreEqual(0, Integer(Length(mFindings[3].Fixes)));
   Assert.AreEqual(3, Integer(Length(TTransactionWithoutRollbackRule.Pairs(''))));
   Assert.AreEqual('BeginTrans', TTransactionWithoutRollbackRule.Pairs('')[2].Start);
 end;
@@ -1005,29 +1006,29 @@ end;
 
 procedure TStatementPatternRulesTests.TransactionOptions;
 var
-  Source: string;
-  Issues: TArray<TConfigurationIssue>;
-  Pairs: TArray<TTransactionPair>;
+  mSource: string;
+  mIssues: TArray<TConfigurationIssue>;
+  mPairs: TArray<TTransactionPair>;
 begin
-  Pairs := TTransactionWithoutRollbackRule.Pairs('{"pairs": [{"start": "Beginnen", "commit": "Festschreiben", ' +
+  mPairs := TTransactionWithoutRollbackRule.Pairs('{"pairs": [{"start": "Beginnen", "commit": "Festschreiben", ' +
     '"rollback": "Verwerfen"}]}');
-  Assert.AreEqual(1, Integer(Length(Pairs)));
-  Assert.AreEqual('Verwerfen', Pairs[0].Rollback);
-  Source := Body('  Db.Beginnen;'#10'  Buchen;'#10'  Db.StartTransaction;'#10'  Buchen;'#10);
-  Assert.AreEqual(1, Integer(Length(TRuleAssert.Findings(TTransactionWithoutRollbackRule.Create, Source))));
-  Assert.AreEqual(1, Integer(Length(TRuleAssert.Findings(TTransactionWithoutRollbackRule.Create, Source,
+  Assert.AreEqual(1, Integer(Length(mPairs)));
+  Assert.AreEqual('Verwerfen', mPairs[0].Rollback);
+  mSource := Body('  Db.Beginnen;'#10'  Buchen;'#10'  Db.StartTransaction;'#10'  Buchen;'#10);
+  Assert.AreEqual(1, Integer(Length(TRuleAssert.Findings(TTransactionWithoutRollbackRule.Create, mSource))));
+  Assert.AreEqual(1, Integer(Length(TRuleAssert.Findings(TTransactionWithoutRollbackRule.Create, mSource,
     '{"rules": {"transaction-without-rollback": {"pairs": [{"start": "Beginnen", "commit": "Festschreiben", ' +
     '"rollback": "Verwerfen"}]}}}'))));
-  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TTransactionWithoutRollbackRule.Create, Source,
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TTransactionWithoutRollbackRule.Create, mSource,
     '{"rules": {"transaction-without-rollback": "off"}}'))));
-  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TTransactionWithoutRollbackRule.Create, Source,
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TTransactionWithoutRollbackRule.Create, mSource,
     '{"rules": {"transaction-without-rollback": {"exclude": ["Source/*.pas"]}}}', 'Source/Daten.pas'))));
   TConfigurationParser.Parse('{"rules": {"transaction-without-rollback": {"pairs": [{"open": "A", "close": "B"}]}}}',
-    Issues);
-  Assert.AreEqual(1, Integer(Length(Issues)));
+    mIssues);
+  Assert.AreEqual(1, Integer(Length(mIssues)));
   TConfigurationParser.Parse('{"rules": {"transaction-without-rollback": {"pairs": [{"start": "A", "commit": "B", ' +
-    '"rollback": "C"}]}, "pair-without-finally": {"pairs": [{"open": "A", "close": "B"}]}}}', Issues);
-  Assert.AreEqual(0, Integer(Length(Issues)));
+    '"rollback": "C"}]}, "pair-without-finally": {"pairs": [{"open": "A", "close": "B"}]}}}', mIssues);
+  Assert.AreEqual(0, Integer(Length(mIssues)));
 end;
 
 function Konto(const AStatements: string): string;
@@ -1038,54 +1039,54 @@ end;
 
 procedure TStatementPatternRulesTests.ComparisonAsStatementIssueExample;
 const
-  Statements = '  Result = 0;'#10'  for var B in FBuchungen do'#10'    Result := Result + B.Betrag;'#10;
-  Fixed = '  Result := 0;'#10'  for var B in FBuchungen do'#10'    Result := Result + B.Betrag;'#10;
+  cStatements = '  Result = 0;'#10'  for var B in FBuchungen do'#10'    Result := Result + B.Betrag;'#10;
+  cFixed = '  Result := 0;'#10'  for var B in FBuchungen do'#10'    Result := Result + B.Betrag;'#10;
 var
-  Findings: TArray<TRuleFinding>;
-  Text: string;
+  mFindings: TArray<TRuleFinding>;
+  mText: string;
 begin
-  Findings := TRuleAssert.Findings(TComparisonAsStatementRule.Create, Konto(Statements));
-  Assert.AreEqual(1, Integer(Length(Findings)));
-  Assert.AreEqual(cComparisonAsStatementRuleId, Findings[0].RuleId);
-  Assert.AreEqual('Vergleich als Anweisung (wie E2014); gemeint ist wohl Result := 0.', Findings[0].Message);
-  Assert.AreEqual(Ord(TRuleSeverity.Error), Ord(Findings[0].Severity));
-  Assert.AreEqual(Ord(TRuleConfidence.High), Ord(Findings[0].Confidence));
-  Assert.AreEqual(5, Findings[0].Range.StartPos.Line);
-  Assert.AreEqual(2, Findings[0].Range.StartPos.Character);
-  Assert.AreEqual(12, Findings[0].Range.EndPos.Character);
-  Assert.AreEqual('= durch := ersetzen', Findings[0].Fixes[0].Title);
-  Text := TChangeSignature.ApplyEdits(Konto(Statements), Findings[0].Fixes[0].Edits);
-  Assert.AreEqual(Konto(Fixed), Text);
-  TRuleAssert.Silent(TComparisonAsStatementRule.Create, Text);
+  mFindings := TRuleAssert.Findings(TComparisonAsStatementRule.Create, Konto(cStatements));
+  Assert.AreEqual(1, Integer(Length(mFindings)));
+  Assert.AreEqual(cComparisonAsStatementRuleId, mFindings[0].RuleId);
+  Assert.AreEqual('Vergleich als Anweisung (wie E2014); gemeint ist wohl Result := 0.', mFindings[0].Message);
+  Assert.AreEqual(Ord(TRuleSeverity.Error), Ord(mFindings[0].Severity));
+  Assert.AreEqual(Ord(TRuleConfidence.High), Ord(mFindings[0].Confidence));
+  Assert.AreEqual(5, mFindings[0].Range.StartPos.Line);
+  Assert.AreEqual(2, mFindings[0].Range.StartPos.Character);
+  Assert.AreEqual(12, mFindings[0].Range.EndPos.Character);
+  Assert.AreEqual('= durch := ersetzen', mFindings[0].Fixes[0].Title);
+  mText := TChangeSignature.ApplyEdits(Konto(cStatements), mFindings[0].Fixes[0].Edits);
+  Assert.AreEqual(Konto(cFixed), mText);
+  TRuleAssert.Silent(TComparisonAsStatementRule.Create, mText);
 end;
 
 procedure TStatementPatternRulesTests.ComparisonAsStatementVariants;
 var
-  Findings: TArray<TRuleFinding>;
+  mFindings: TArray<TRuleFinding>;
 begin
   // Feld, Element, Zeiger und Anweisung nach then: jeweils mit Korrektur.
-  Findings := TRuleAssert.Findings(TComparisonAsStatementRule.Create, Konto('  FAktiv = True;'#10 +
+  mFindings := TRuleAssert.Findings(TComparisonAsStatementRule.Create, Konto('  FAktiv = True;'#10 +
     '  FWerte[I] = 2;'#10'  P^ = 3;'#10'  if Neu then Self.FName = '''';'#10'  (Result = 1);'#10));
-  Assert.AreEqual(5, Integer(Length(Findings)));
-  Assert.AreEqual('Vergleich als Anweisung (wie E2014); gemeint ist wohl FAktiv := True.', Findings[0].Message);
-  Assert.AreEqual('Vergleich als Anweisung (wie E2014); gemeint ist wohl Self.FName := ''''.', Findings[3].Message);
-  Assert.AreEqual(1, Integer(Length(Findings[4].Fixes)));
+  Assert.AreEqual(5, Integer(Length(mFindings)));
+  Assert.AreEqual('Vergleich als Anweisung (wie E2014); gemeint ist wohl FAktiv := True.', mFindings[0].Message);
+  Assert.AreEqual('Vergleich als Anweisung (wie E2014); gemeint ist wohl Self.FName := ''''.', mFindings[3].Message);
+  Assert.AreEqual(1, Integer(Length(mFindings[4].Fixes)));
   Assert.AreEqual(Konto('  FAktiv := True;'#10'  FWerte[I] = 2;'#10'  P^ = 3;'#10 +
     '  if Neu then Self.FName = '''';'#10'  (Result = 1);'#10),
     TChangeSignature.ApplyEdits(Konto('  FAktiv = True;'#10'  FWerte[I] = 2;'#10'  P^ = 3;'#10 +
-    '  if Neu then Self.FName = '''';'#10'  (Result = 1);'#10), Findings[0].Fixes[0].Edits));
+    '  if Neu then Self.FName = '''';'#10'  (Result = 1);'#10), mFindings[0].Fixes[0].Edits));
   // Aufruf links, andere Vergleiche und Ausdrücke: ohne Korrektur.
-  Findings := TRuleAssert.Findings(TComparisonAsStatementRule.Create, Konto('  Laden(1) = 2;'#10 +
+  mFindings := TRuleAssert.Findings(TComparisonAsStatementRule.Create, Konto('  Laden(1) = 2;'#10 +
     '  Result <> 0;'#10'  Result + 1;'#10'  not FAktiv;'#10'  5;'#10));
-  Assert.AreEqual(5, Integer(Length(Findings)));
-  Assert.AreEqual(0, Integer(Length(Findings[0].Fixes)));
-  Assert.AreEqual('Vergleich als Anweisung (wie E2014); das Ergebnis wird nicht verwendet.', Findings[1].Message);
-  Assert.AreEqual('Ausdruck als Anweisung (wie E2014); das Ergebnis wird nicht verwendet.', Findings[2].Message);
-  Assert.AreEqual(0, Integer(Length(Findings[2].Fixes)));
-  Assert.AreEqual('Ausdruck als Anweisung (wie E2014); das Ergebnis wird nicht verwendet.', Findings[4].Message);
+  Assert.AreEqual(5, Integer(Length(mFindings)));
+  Assert.AreEqual(0, Integer(Length(mFindings[0].Fixes)));
+  Assert.AreEqual('Vergleich als Anweisung (wie E2014); das Ergebnis wird nicht verwendet.', mFindings[1].Message);
+  Assert.AreEqual('Ausdruck als Anweisung (wie E2014); das Ergebnis wird nicht verwendet.', mFindings[2].Message);
+  Assert.AreEqual(0, Integer(Length(mFindings[2].Fixes)));
+  Assert.AreEqual('Ausdruck als Anweisung (wie E2014); das Ergebnis wird nicht verwendet.', mFindings[4].Message);
   // Mehrzeiliger Vorschlag: Leerraum zusammengefasst.
-  Findings := TRuleAssert.Findings(TComparisonAsStatementRule.Create, Konto('  Result ='#10'    0;'#10));
-  Assert.AreEqual('Vergleich als Anweisung (wie E2014); gemeint ist wohl Result := 0.', Findings[0].Message);
+  mFindings := TRuleAssert.Findings(TComparisonAsStatementRule.Create, Konto('  Result ='#10'    0;'#10));
+  Assert.AreEqual('Vergleich als Anweisung (wie E2014); gemeint ist wohl Result := 0.', mFindings[0].Message);
 end;
 
 procedure TStatementPatternRulesTests.ComparisonAsStatementSilentCases;
@@ -1098,15 +1099,15 @@ end;
 
 procedure TStatementPatternRulesTests.ComparisonAsStatementOffAndExclude;
 const
-  Statements = '  Result = 0;'#10;
+  cStatements = '  Result = 0;'#10;
 begin
-  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TComparisonAsStatementRule.Create, Konto(Statements),
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TComparisonAsStatementRule.Create, Konto(cStatements),
     '{"rules": {"comparison-as-statement": "off"}}', 'Konten.pas'))));
-  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TComparisonAsStatementRule.Create, Konto(Statements),
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TComparisonAsStatementRule.Create, Konto(cStatements),
     '{"rules": {"group:compiler": "off"}}', 'Konten.pas'))));
-  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TComparisonAsStatementRule.Create, Konto(Statements),
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TComparisonAsStatementRule.Create, Konto(cStatements),
     '{"rules": {"comparison-as-statement": {"exclude": ["Alt/*.pas"]}}}', 'Alt/Konten.pas'))));
-  Assert.AreEqual(1, Integer(Length(TRuleAssert.Findings(TComparisonAsStatementRule.Create, Konto(Statements),
+  Assert.AreEqual(1, Integer(Length(TRuleAssert.Findings(TComparisonAsStatementRule.Create, Konto(cStatements),
     '{"rules": {"comparison-as-statement": {"exclude": ["Alt/*.pas"]}}}', 'Neu/Konten.pas'))));
 end;
 
@@ -1119,94 +1120,94 @@ end;
 
 procedure TStatementPatternRulesTests.DuplicateCaseLabelIssueExample;
 const
-  Statements = '  case Status of'#10'    stNeu, stOffen: Bearbeiten;'#10'    stGeschlossen: Archivieren;'#10 +
+  cStatements = '  case Status of'#10'    stNeu, stOffen: Bearbeiten;'#10'    stGeschlossen: Archivieren;'#10 +
     '    stOffen: Erinnern;'#10'  end;'#10;
 var
-  Findings: TArray<TRuleFinding>;
-  Text: string;
+  mFindings: TArray<TRuleFinding>;
+  mText: string;
 begin
-  Findings := TRuleAssert.Findings(TDuplicateCaseLabelRule.Create, Vorgang(Statements));
-  Assert.AreEqual(1, Integer(Length(Findings)));
-  Assert.AreEqual(cDuplicateCaseLabelRuleId, Findings[0].RuleId);
-  Assert.AreEqual('stOffen kommt schon in Zeile 12 vor (wie E2030).', Findings[0].Message);
-  Assert.AreEqual(Ord(TRuleSeverity.Error), Ord(Findings[0].Severity));
-  Assert.AreEqual(Ord(TRuleConfidence.High), Ord(Findings[0].Confidence));
-  Assert.AreEqual(13, Findings[0].Range.StartPos.Line);
-  Assert.AreEqual(4, Findings[0].Range.StartPos.Character);
-  Assert.AreEqual('Zweig mit doppeltem Wert entfernen', Findings[0].Fixes[0].Title);
-  Text := TChangeSignature.ApplyEdits(Vorgang(Statements), Findings[0].Fixes[0].Edits);
+  mFindings := TRuleAssert.Findings(TDuplicateCaseLabelRule.Create, Vorgang(cStatements));
+  Assert.AreEqual(1, Integer(Length(mFindings)));
+  Assert.AreEqual(cDuplicateCaseLabelRuleId, mFindings[0].RuleId);
+  Assert.AreEqual('stOffen kommt schon in Zeile 12 vor (wie E2030).', mFindings[0].Message);
+  Assert.AreEqual(Ord(TRuleSeverity.Error), Ord(mFindings[0].Severity));
+  Assert.AreEqual(Ord(TRuleConfidence.High), Ord(mFindings[0].Confidence));
+  Assert.AreEqual(13, mFindings[0].Range.StartPos.Line);
+  Assert.AreEqual(4, mFindings[0].Range.StartPos.Character);
+  Assert.AreEqual('Zweig mit doppeltem Wert entfernen', mFindings[0].Fixes[0].Title);
+  mText := TChangeSignature.ApplyEdits(Vorgang(cStatements), mFindings[0].Fixes[0].Edits);
   Assert.AreEqual(Vorgang('  case Status of'#10'    stNeu, stOffen: Bearbeiten;'#10'    stGeschlossen: Archivieren;'#10 +
-    '  end;'#10), Text);
-  TRuleAssert.Silent(TDuplicateCaseLabelRule.Create, Text);
+    '  end;'#10), mText);
+  TRuleAssert.Silent(TDuplicateCaseLabelRule.Create, mText);
   // Ein Wert unter mehreren: nur er verschwindet.
-  Findings := TRuleAssert.Findings(TDuplicateCaseLabelRule.Create, Vorgang('  case Status of'#10 +
+  mFindings := TRuleAssert.Findings(TDuplicateCaseLabelRule.Create, Vorgang('  case Status of'#10 +
     '    stNeu: Bearbeiten;'#10'    stOffen, stNeu: Erinnern;'#10'  end;'#10));
-  Assert.AreEqual('Doppelten Wert aus dem späteren Zweig entfernen', Findings[0].Fixes[0].Title);
+  Assert.AreEqual('Doppelten Wert aus dem späteren Zweig entfernen', mFindings[0].Fixes[0].Title);
   Assert.AreEqual(Vorgang('  case Status of'#10'    stNeu: Bearbeiten;'#10'    stOffen: Erinnern;'#10'  end;'#10),
     TChangeSignature.ApplyEdits(Vorgang('  case Status of'#10'    stNeu: Bearbeiten;'#10 +
-    '    stOffen, stNeu: Erinnern;'#10'  end;'#10), Findings[0].Fixes[0].Edits));
-  Findings := TRuleAssert.Findings(TDuplicateCaseLabelRule.Create, Vorgang('  case Status of'#10 +
+    '    stOffen, stNeu: Erinnern;'#10'  end;'#10), mFindings[0].Fixes[0].Edits));
+  mFindings := TRuleAssert.Findings(TDuplicateCaseLabelRule.Create, Vorgang('  case Status of'#10 +
     '    stNeu: Bearbeiten;'#10'    stNeu, stOffen: Erinnern;'#10'  end;'#10));
   Assert.AreEqual(Vorgang('  case Status of'#10'    stNeu: Bearbeiten;'#10'    stOffen: Erinnern;'#10'  end;'#10),
     TChangeSignature.ApplyEdits(Vorgang('  case Status of'#10'    stNeu: Bearbeiten;'#10 +
-    '    stNeu, stOffen: Erinnern;'#10'  end;'#10), Findings[0].Fixes[0].Edits));
+    '    stNeu, stOffen: Erinnern;'#10'  end;'#10), mFindings[0].Fixes[0].Edits));
 end;
 
 procedure TStatementPatternRulesTests.DuplicateCaseLabelValues;
 var
-  Findings: TArray<TRuleFinding>;
+  mFindings: TArray<TRuleFinding>;
 begin
   // Bereiche, Konstanten, Zeichen und Aufzählungswerte über Bereiche.
-  Findings := TRuleAssert.Findings(TDuplicateCaseLabelRule.Create, Vorgang('  case Zahl of'#10 +
+  mFindings := TRuleAssert.Findings(TDuplicateCaseLabelRule.Create, Vorgang('  case Zahl of'#10 +
     '    1..5: A;'#10'    3: B;'#10'    Danach: C;'#10'    6: D;'#10'    4..8: E;'#10'  end;'#10 +
     '  case Zeichen of'#10'    ''a'': A;'#10'    #97: B;'#10'    Chr(98), ''b'': C;'#10'  end;'#10 +
     '  case Status of'#10'    stNeu..stOffen: A;'#10'    TStatus.stOffen: B;'#10'  end;'#10));
-  Assert.AreEqual(6, Integer(Length(Findings)));
-  Assert.AreEqual('3 liegt schon in 1..5 aus Zeile 12 (wie E2030).', Findings[0].Message);
-  Assert.AreEqual(1, Integer(Length(Findings[0].Fixes)));
-  Assert.AreEqual('6 hat denselben Wert wie Danach aus Zeile 14 (wie E2030).', Findings[1].Message);
-  Assert.AreEqual('4..8 überschneidet sich mit 1..5 aus Zeile 12 (wie E2030).', Findings[2].Message);
-  Assert.AreEqual(0, Integer(Length(Findings[2].Fixes)));
-  Assert.AreEqual('#97 hat denselben Wert wie ''a'' aus Zeile 19 (wie E2030).', Findings[3].Message);
-  Assert.AreEqual('''b'' hat denselben Wert wie Chr(98) aus Zeile 21 (wie E2030).', Findings[4].Message);
-  Assert.AreEqual('TStatus.stOffen liegt schon in stNeu..stOffen aus Zeile 24 (wie E2030).', Findings[5].Message);
+  Assert.AreEqual(6, Integer(Length(mFindings)));
+  Assert.AreEqual('3 liegt schon in 1..5 aus Zeile 12 (wie E2030).', mFindings[0].Message);
+  Assert.AreEqual(1, Integer(Length(mFindings[0].Fixes)));
+  Assert.AreEqual('6 hat denselben Wert wie Danach aus Zeile 14 (wie E2030).', mFindings[1].Message);
+  Assert.AreEqual('4..8 überschneidet sich mit 1..5 aus Zeile 12 (wie E2030).', mFindings[2].Message);
+  Assert.AreEqual(0, Integer(Length(mFindings[2].Fixes)));
+  Assert.AreEqual('#97 hat denselben Wert wie ''a'' aus Zeile 19 (wie E2030).', mFindings[3].Message);
+  Assert.AreEqual('''b'' hat denselben Wert wie Chr(98) aus Zeile 21 (wie E2030).', mFindings[4].Message);
+  Assert.AreEqual('TStatus.stOffen liegt schon in stNeu..stOffen aus Zeile 24 (wie E2030).', mFindings[5].Message);
 end;
 
 procedure TStatementPatternRulesTests.DuplicateCaseLabelVariantRecord;
 const
-  Source = 'unit Formen;'#10'interface'#10'type'#10'  TForm = record'#10'    case Art: Integer of'#10 +
+  cSource = 'unit Formen;'#10'interface'#10'type'#10'  TForm = record'#10'    case Art: Integer of'#10 +
     '      0: (Radius: Double);'#10'      1, 2: (Breite, Hoehe: Double);'#10'      2: (Seite: Double);'#10 +
     '  end;'#10'implementation'#10'end.';
 var
-  Findings: TArray<TRuleFinding>;
+  mFindings: TArray<TRuleFinding>;
 begin
-  Findings := TRuleAssert.Findings(TDuplicateCaseLabelRule.Create, Source);
-  Assert.AreEqual(1, Integer(Length(Findings)));
-  Assert.AreEqual('2 kommt schon in Zeile 7 vor (wie E2027).', Findings[0].Message);
-  Assert.AreEqual(StringReplace(Source, #10'      2: (Seite: Double);', '', []),
-    TChangeSignature.ApplyEdits(Source, Findings[0].Fixes[0].Edits));
+  mFindings := TRuleAssert.Findings(TDuplicateCaseLabelRule.Create, cSource);
+  Assert.AreEqual(1, Integer(Length(mFindings)));
+  Assert.AreEqual('2 kommt schon in Zeile 7 vor (wie E2027).', mFindings[0].Message);
+  Assert.AreEqual(StringReplace(cSource, #10'      2: (Seite: Double);', '', []),
+    TChangeSignature.ApplyEdits(cSource, mFindings[0].Fixes[0].Edits));
 end;
 
 procedure TStatementPatternRulesTests.DuplicateCaseLabelFromIndex;
 const
-  Source = 'unit Auftraege;'#10'interface'#10'uses'#10'  Grenzen;'#10'implementation'#10 +
+  cSource = 'unit Auftraege;'#10'interface'#10'uses'#10'  Grenzen;'#10'implementation'#10 +
     'procedure P(Zahl: Integer; Farbe: TFarbe);'#10'begin'#10'  case Zahl of'#10'    Oben: A;'#10'    10: B;'#10 +
     '    Mitte: C;'#10'    3: D;'#10'  end;'#10'  case Farbe of'#10'    fRot..fBlau: A;'#10'    fGruen: B;'#10'  end;'#10 +
     'end;'#10'end.';
 var
-  Index: ISymbolIndex;
-  Findings: TArray<TRuleFinding>;
+  mIndex: ISymbolIndex;
+  mFindings: TArray<TRuleFinding>;
 begin
   // Konstanten und Aufzählung aus einer anderen Unit; Oben verweist dort auf Basis.
-  Index := TSymbolIndex.Create;
-  Index.AddUnit(TIndexExtractor.ExtractText('unit Grenzen;'#10'interface'#10'type'#10 +
+  mIndex := TSymbolIndex.Create;
+  mIndex.AddUnit(TIndexExtractor.ExtractText('unit Grenzen;'#10'interface'#10'type'#10 +
     '  TFarbe = (fRot, fGruen, fBlau);'#10'const'#10'  Basis = 4;'#10'  Oben = Basis * 2 + 2;'#10 +
     '  Mitte = Basis - 1;'#10'implementation'#10'end.', 'C:\Projekt\Grenzen.pas', nil));
-  Findings := TRuleAssert.IndexFindings(TDuplicateCaseLabelRule.Create, Source, Index, '', 'Auftraege.pas');
-  Assert.AreEqual(3, Integer(Length(Findings)));
-  Assert.AreEqual('10 hat denselben Wert wie Oben aus Zeile 9 (wie E2030).', Findings[0].Message);
-  Assert.AreEqual('3 hat denselben Wert wie Mitte aus Zeile 11 (wie E2030).', Findings[1].Message);
-  Assert.AreEqual('fGruen liegt schon in fRot..fBlau aus Zeile 15 (wie E2030).', Findings[2].Message);
+  mFindings := TRuleAssert.IndexFindings(TDuplicateCaseLabelRule.Create, cSource, mIndex, '', 'Auftraege.pas');
+  Assert.AreEqual(3, Integer(Length(mFindings)));
+  Assert.AreEqual('10 hat denselben Wert wie Oben aus Zeile 9 (wie E2030).', mFindings[0].Message);
+  Assert.AreEqual('3 hat denselben Wert wie Mitte aus Zeile 11 (wie E2030).', mFindings[1].Message);
+  Assert.AreEqual('fGruen liegt schon in fRot..fBlau aus Zeile 15 (wie E2030).', mFindings[2].Message);
 end;
 
 procedure TStatementPatternRulesTests.DuplicateCaseLabelSilentCases;
@@ -1232,14 +1233,14 @@ end;
 
 procedure TStatementPatternRulesTests.DuplicateCaseLabelOffAndExclude;
 const
-  Statements = '  case Zahl of'#10'    1: A;'#10'    1: B;'#10'  end;'#10;
+  cStatements = '  case Zahl of'#10'    1: A;'#10'    1: B;'#10'  end;'#10;
 begin
-  Assert.AreEqual(1, Integer(Length(TRuleAssert.Findings(TDuplicateCaseLabelRule.Create, Vorgang(Statements)))));
-  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TDuplicateCaseLabelRule.Create, Vorgang(Statements),
+  Assert.AreEqual(1, Integer(Length(TRuleAssert.Findings(TDuplicateCaseLabelRule.Create, Vorgang(cStatements)))));
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TDuplicateCaseLabelRule.Create, Vorgang(cStatements),
     '{"rules": {"duplicate-case-label": "off"}}', 'Vorgaenge.pas'))));
-  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TDuplicateCaseLabelRule.Create, Vorgang(Statements),
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TDuplicateCaseLabelRule.Create, Vorgang(cStatements),
     '{"rules": {"group:compiler": "off"}}', 'Vorgaenge.pas'))));
-  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TDuplicateCaseLabelRule.Create, Vorgang(Statements),
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TDuplicateCaseLabelRule.Create, Vorgang(cStatements),
     '{"rules": {"duplicate-case-label": {"exclude": ["Alt/*.pas"]}}}', 'Alt/Vorgaenge.pas'))));
 end;
 
@@ -1287,126 +1288,126 @@ end;
 /// <summary>Offset von APosition in AText mit Zeilen aus #10.</summary>
 function OffsetIn(const AText: string; const APosition: TTextPosition): Integer;
 var
-  Line, Index: Integer;
+  mLine, mIndex: Integer;
 begin
-  Line := 0;
-  Index := 1;
-  while (Line < APosition.Line) and (Index <= Length(AText)) do
+  mLine := 0;
+  mIndex := 1;
+  while (mLine < APosition.Line) and (mIndex <= Length(AText)) do
   begin
-    if AText[Index] = #10 then
+    if AText[mIndex] = #10 then
     begin
-      Inc(Line);
+      Inc(mLine);
     end;
-    Inc(Index);
+    Inc(mIndex);
   end;
-  Result := Index + APosition.Character;
+  Result := mIndex + APosition.Character;
 end;
 
 /// <summary>Wendet die Edits einer Korrektur von hinten nach vorn an (nach Position sortiert).</summary>
 function ApplyAll(const AText: string; const AFix: TRuleFix): string;
 var
-  Edits: TArray<TRuleEdit>;
-  Index, Inner, Start, Stop: Integer;
-  Swap: TRuleEdit;
+  mEdits: TArray<TRuleEdit>;
+  mIndex, mInner, mStart, mStop: Integer;
+  mSwap: TRuleEdit;
 begin
-  Edits := Copy(AFix.Edits);
-  for Index := 0 to High(Edits) do
+  mEdits := Copy(AFix.Edits);
+  for mIndex := 0 to High(mEdits) do
   begin
-    for Inner := Index + 1 to High(Edits) do
+    for mInner := mIndex + 1 to High(mEdits) do
     begin
-      if OffsetIn(AText, Edits[Inner].Range.StartPos) > OffsetIn(AText, Edits[Index].Range.StartPos) then
+      if OffsetIn(AText, mEdits[mInner].Range.StartPos) > OffsetIn(AText, mEdits[mIndex].Range.StartPos) then
       begin
-        Swap := Edits[Index];
-        Edits[Index] := Edits[Inner];
-        Edits[Inner] := Swap;
+        mSwap := mEdits[mIndex];
+        mEdits[mIndex] := mEdits[mInner];
+        mEdits[mInner] := mSwap;
       end;
     end;
   end;
   Result := AText;
-  for Index := 0 to High(Edits) do
+  for mIndex := 0 to High(mEdits) do
   begin
-    Start := OffsetIn(Result, Edits[Index].Range.StartPos);
-    Stop := OffsetIn(Result, Edits[Index].Range.EndPos);
-    Result := Copy(Result, 1, Start - 1) + Edits[Index].NewText + Copy(Result, Stop, MaxInt);
+    mStart := OffsetIn(Result, mEdits[mIndex].Range.StartPos);
+    mStop := OffsetIn(Result, mEdits[mIndex].Range.EndPos);
+    Result := Copy(Result, 1, mStart - 1) + mEdits[mIndex].NewText + Copy(Result, mStop, MaxInt);
   end;
 end;
 
 procedure TAssignToPropertyMemberTests.IssueExampleWithFix;
 var
-  Source, Fixed: string;
-  Found: TArray<TRuleFinding>;
+  mSource, mFixed: string;
+  mFound: TArray<TRuleFinding>;
 begin
-  Source := Rahmen('  Rahmen.BoundsRect.Left := 0;'#10);
-  Found := AssignFindings(Source);
-  Assert.AreEqual(1, Integer(Length(Found)));
+  mSource := Rahmen('  Rahmen.BoundsRect.Left := 0;'#10);
+  mFound := AssignFindings(mSource);
+  Assert.AreEqual(1, Integer(Length(mFound)));
   Assert.AreEqual('BoundsRect liefert eine Kopie; die Zuweisung an Left hat keine Wirkung (wie E2064).',
-    Found[0].Message);
-  Assert.AreEqual(7, Found[0].Range.StartPos.Line);
-  Assert.AreEqual(1, Integer(Length(Found[0].Fixes)));
-  Assert.AreEqual('Über R zuweisen und zurückschreiben', Found[0].Fixes[0].Title);
-  Fixed := ApplyAll(Source, Found[0].Fixes[0]);
-  Assert.IsTrue(Pos('  R := Rahmen.BoundsRect;'#10'  R.Left := 0;'#10'  Rahmen.BoundsRect := R;'#10, Fixed) > 0, Fixed);
-  Assert.IsTrue(Pos('R: TRect;', Fixed) > 0, Fixed);
-  Assert.IsTrue(Pos('System.Types', Fixed) > 0, Fixed);
-  Assert.AreEqual(0, Integer(Length(AssignFindings(Fixed))), Fixed);
+    mFound[0].Message);
+  Assert.AreEqual(7, mFound[0].Range.StartPos.Line);
+  Assert.AreEqual(1, Integer(Length(mFound[0].Fixes)));
+  Assert.AreEqual('Über R zuweisen und zurückschreiben', mFound[0].Fixes[0].Title);
+  mFixed := ApplyAll(mSource, mFound[0].Fixes[0]);
+  Assert.IsTrue(Pos('  R := Rahmen.BoundsRect;'#10'  R.Left := 0;'#10'  Rahmen.BoundsRect := R;'#10, mFixed) > 0, mFixed);
+  Assert.IsTrue(Pos('R: TRect;', mFixed) > 0, mFixed);
+  Assert.IsTrue(Pos('System.Types', mFixed) > 0, mFixed);
+  Assert.AreEqual(0, Integer(Length(AssignFindings(mFixed))), mFixed);
   // Ohne write keine Korrektur.
-  Found := AssignFindings(Rahmen('  Rahmen.ClientRect.Top := 0;'#10));
-  Assert.AreEqual(1, Integer(Length(Found)));
-  Assert.AreEqual(0, Integer(Length(Found[0].Fixes)));
+  mFound := AssignFindings(Rahmen('  Rahmen.ClientRect.Top := 0;'#10));
+  Assert.AreEqual(1, Integer(Length(mFound)));
+  Assert.AreEqual(0, Integer(Length(mFound[0].Fixes)));
   // Feld eines Records im Record: die Kopie liefert weiter BoundsRect.
-  Found := AssignFindings(Rahmen('  Rahmen.BoundsRect.TopLeft.X := 0;'#10));
-  Assert.AreEqual(1, Integer(Length(Found)));
+  mFound := AssignFindings(Rahmen('  Rahmen.BoundsRect.TopLeft.X := 0;'#10));
+  Assert.AreEqual(1, Integer(Length(mFound)));
   Assert.AreEqual('BoundsRect liefert eine Kopie; die Zuweisung an TopLeft hat keine Wirkung (wie E2064).',
-    Found[0].Message);
+    mFound[0].Message);
 end;
 
 procedure TAssignToPropertyMemberTests.DefaultPropertyAndFunctionResult;
 var
-  Found: TArray<TRuleFinding>;
+  mFound: TArray<TRuleFinding>;
 begin
-  Found := AssignFindings(Rahmen('  Liste[0].Left := 1;'#10));
-  Assert.AreEqual(1, Integer(Length(Found)));
+  mFound := AssignFindings(Rahmen('  Liste[0].Left := 1;'#10));
+  Assert.AreEqual(1, Integer(Length(mFound)));
   Assert.AreEqual('Liste[0] liefert eine Kopie; die Zuweisung an Left hat keine Wirkung (wie E2064).',
-    Found[0].Message);
-  Assert.AreEqual(1, Integer(Length(Found[0].Fixes)));
-  Found := AssignFindings(Rahmen('  Mitte(Rahmen.BoundsRect).X := 1;'#10));
-  Assert.AreEqual(1, Integer(Length(Found)));
-  Assert.AreEqual('Mitte liefert eine Kopie; die Zuweisung an X hat keine Wirkung (wie E2064).', Found[0].Message);
-  Assert.AreEqual(0, Integer(Length(Found[0].Fixes)));
+    mFound[0].Message);
+  Assert.AreEqual(1, Integer(Length(mFound[0].Fixes)));
+  mFound := AssignFindings(Rahmen('  Mitte(Rahmen.BoundsRect).X := 1;'#10));
+  Assert.AreEqual(1, Integer(Length(mFound)));
+  Assert.AreEqual('Mitte liefert eine Kopie; die Zuweisung an X hat keine Wirkung (wie E2064).', mFound[0].Message);
+  Assert.AreEqual(0, Integer(Length(mFound[0].Fixes)));
 end;
 
 procedure TAssignToPropertyMemberTests.ConstantIsReported;
 var
-  Found: TArray<TRuleFinding>;
+  mFound: TArray<TRuleFinding>;
 begin
-  Found := AssignFindings('unit Rahmen;'#10'interface'#10'implementation'#10'const'#10'  Grenze = 10;'#10 +
+  mFound := AssignFindings('unit Rahmen;'#10'interface'#10'implementation'#10'const'#10'  Grenze = 10;'#10 +
     '  Start: Integer = 1;'#10'procedure P;'#10'begin'#10'  Grenze := 1;'#10'  Start := 2;'#10'end;'#10'end.');
-  Assert.AreEqual(1, Integer(Length(Found)));
-  Assert.AreEqual('Grenze ist eine Konstante; ihr lässt sich nichts zuweisen (wie E2064).', Found[0].Message);
+  Assert.AreEqual(1, Integer(Length(mFound)));
+  Assert.AreEqual('Grenze ist eine Konstante; ihr lässt sich nichts zuweisen (wie E2064).', mFound[0].Message);
 end;
 
 procedure TAssignToPropertyMemberTests.WritableTargetsAreSilent;
 var
-  Source: string;
+  mSource: string;
 begin
   // Property mit Feld, Record-Variable, Klasse hinter der Property, ganze Property, unbekannter Typ.
-  Source := Rahmen('  Rahmen.Origin.X := 1;'#10'  Rahmen.Font.Size := 9;'#10'  Rahmen.BoundsRect := Rahmen.ClientRect;'#10 +
+  mSource := Rahmen('  Rahmen.Origin.X := 1;'#10'  Rahmen.Font.Size := 9;'#10'  Rahmen.BoundsRect := Rahmen.ClientRect;'#10 +
     '  Liste[0] := Rahmen.ClientRect;'#10'  Unbekannt.Wert.X := 1;'#10).Replace('begin'#10,
     'var'#10'  R: TRect;'#10'begin'#10'  R.Left := 1;'#10'  R.TopLeft.X := 2;'#10);
-  Assert.AreEqual(0, Integer(Length(AssignFindings(Source))), Source);
+  Assert.AreEqual(0, Integer(Length(AssignFindings(mSource))), mSource);
 end;
 
 procedure TAssignToPropertyMemberTests.OffAndExclude;
 var
-  Source: string;
+  mSource: string;
 begin
-  Source := Rahmen('  Rahmen.BoundsRect.Left := 0;'#10);
-  Assert.AreEqual(1, Integer(Length(AssignFindings(Source, '', 'Source/Rahmen.pas'))));
-  Assert.AreEqual(0, Integer(Length(AssignFindings(Source, '{"rules": {"assign-to-property-member": "off"}}',
+  mSource := Rahmen('  Rahmen.BoundsRect.Left := 0;'#10);
+  Assert.AreEqual(1, Integer(Length(AssignFindings(mSource, '', 'Source/Rahmen.pas'))));
+  Assert.AreEqual(0, Integer(Length(AssignFindings(mSource, '{"rules": {"assign-to-property-member": "off"}}',
     'Source/Rahmen.pas'))));
-  Assert.AreEqual(0, Integer(Length(AssignFindings(Source, '{"rules": {"group:compiler": "off"}}',
+  Assert.AreEqual(0, Integer(Length(AssignFindings(mSource, '{"rules": {"group:compiler": "off"}}',
     'Source/Rahmen.pas'))));
-  Assert.AreEqual(0, Integer(Length(AssignFindings(Source,
+  Assert.AreEqual(0, Integer(Length(AssignFindings(mSource,
     '{"rules": {"assign-to-property-member": {"exclude": ["Source/*.pas"]}}}', 'Source/Rahmen.pas'))));
 end;
 
@@ -1486,60 +1487,60 @@ end;
 
 procedure TReadonlyPropertyAssignedTests.IssueExampleWithClear;
 var
-  Source, Fixed: string;
-  Found: TArray<TRuleFinding>;
+  mSource, mFixed: string;
+  mFound: TArray<TRuleFinding>;
 begin
-  Source := Kundenliste('  Liste.Count := 0;'#10);
-  Found := ReadonlyFindings(Source);
-  Assert.AreEqual(1, Integer(Length(Found)));
-  Assert.AreEqual('TStrings.Count hat kein write (wie E2129); zum Leeren Clear aufrufen.', Found[0].Message);
-  Assert.AreEqual(7, Found[0].Range.StartPos.Line);
-  Assert.AreEqual(1, Integer(Length(Found[0].Fixes)));
-  Assert.AreEqual('Clear aufrufen', Found[0].Fixes[0].Title);
-  Fixed := ApplyAll(Source, Found[0].Fixes[0]);
-  Assert.IsTrue(Pos('  Liste.Clear;'#10, Fixed) > 0, Fixed);
-  Assert.AreEqual(0, Integer(Length(ReadonlyFindings(Fixed))), Fixed);
+  mSource := Kundenliste('  Liste.Count := 0;'#10);
+  mFound := ReadonlyFindings(mSource);
+  Assert.AreEqual(1, Integer(Length(mFound)));
+  Assert.AreEqual('TStrings.Count hat kein write (wie E2129); zum Leeren Clear aufrufen.', mFound[0].Message);
+  Assert.AreEqual(7, mFound[0].Range.StartPos.Line);
+  Assert.AreEqual(1, Integer(Length(mFound[0].Fixes)));
+  Assert.AreEqual('Clear aufrufen', mFound[0].Fixes[0].Title);
+  mFixed := ApplyAll(mSource, mFound[0].Fixes[0]);
+  Assert.IsTrue(Pos('  Liste.Clear;'#10, mFixed) > 0, mFixed);
+  Assert.AreEqual(0, Integer(Length(ReadonlyFindings(mFixed))), mFixed);
   // Andere Werte: ohne Clear-Hinweis.
-  Found := ReadonlyFindings(Kundenliste('  Liste.Count := 3;'#10));
-  Assert.AreEqual(1, Integer(Length(Found)));
-  Assert.AreEqual('TStrings.Count hat kein write (wie E2129).', Found[0].Message);
+  mFound := ReadonlyFindings(Kundenliste('  Liste.Count := 3;'#10));
+  Assert.AreEqual(1, Integer(Length(mFound)));
+  Assert.AreEqual('TStrings.Count hat kein write (wie E2129).', mFound[0].Message);
 end;
 
 procedure TReadonlyPropertyAssignedTests.OwnClassFieldAndSetterFixes;
 var
-  Source, Fixed: string;
-  Found: TArray<TRuleFinding>;
+  mSource, mFixed: string;
+  mFound: TArray<TRuleFinding>;
 begin
-  Source := Kunde('  Name := ''Neu'';'#10);
-  Found := ReadonlyFindings(Source);
-  Assert.AreEqual(1, Integer(Length(Found)));
-  Assert.AreEqual('TKunde.Name hat kein write (wie E2129).', Found[0].Message);
-  Assert.AreEqual(2, Integer(Length(Found[0].Fixes)));
-  Assert.AreEqual('Feld FName zuweisen', Found[0].Fixes[0].Title);
-  Fixed := ApplyAll(Source, Found[0].Fixes[0]);
-  Assert.IsTrue(Pos('  FName := ''Neu'';'#10, Fixed) > 0, Fixed);
-  Assert.AreEqual(0, Integer(Length(ReadonlyFindings(Fixed))), Fixed);
-  Assert.AreEqual('SetName anlegen und write ergänzen', Found[0].Fixes[1].Title);
-  Assert.IsTrue(Found[0].Fixes[1].Alternative);
-  Fixed := ApplyAll(Source, Found[0].Fixes[1]);
-  Assert.IsTrue(Pos('property Name: string read FName write SetName;', Fixed) > 0, Fixed);
-  Assert.IsTrue(Pos('procedure SetName(const Value: string);', Fixed) > 0, Fixed);
-  Assert.AreEqual(0, Integer(Length(ReadonlyFindings(Fixed))), Fixed);
+  mSource := Kunde('  Name := ''Neu'';'#10);
+  mFound := ReadonlyFindings(mSource);
+  Assert.AreEqual(1, Integer(Length(mFound)));
+  Assert.AreEqual('TKunde.Name hat kein write (wie E2129).', mFound[0].Message);
+  Assert.AreEqual(2, Integer(Length(mFound[0].Fixes)));
+  Assert.AreEqual('Feld FName zuweisen', mFound[0].Fixes[0].Title);
+  mFixed := ApplyAll(mSource, mFound[0].Fixes[0]);
+  Assert.IsTrue(Pos('  FName := ''Neu'';'#10, mFixed) > 0, mFixed);
+  Assert.AreEqual(0, Integer(Length(ReadonlyFindings(mFixed))), mFixed);
+  Assert.AreEqual('SetName anlegen und write ergänzen', mFound[0].Fixes[1].Title);
+  Assert.IsTrue(mFound[0].Fixes[1].Alternative);
+  mFixed := ApplyAll(mSource, mFound[0].Fixes[1]);
+  Assert.IsTrue(Pos('property Name: string read FName write SetName;', mFixed) > 0, mFixed);
+  Assert.IsTrue(Pos('procedure SetName(const Value: string);', mFixed) > 0, mFixed);
+  Assert.AreEqual(0, Integer(Length(ReadonlyFindings(mFixed))), mFixed);
   // Getter statt Feld: nur der Setter.
-  Found := ReadonlyFindings(Kunde('  Self.Kennung := 4;'#10));
-  Assert.AreEqual(1, Integer(Length(Found)));
-  Assert.AreEqual(1, Integer(Length(Found[0].Fixes)));
-  Assert.AreEqual('SetKennung anlegen und write ergänzen', Found[0].Fixes[0].Title);
+  mFound := ReadonlyFindings(Kunde('  Self.Kennung := 4;'#10));
+  Assert.AreEqual(1, Integer(Length(mFound)));
+  Assert.AreEqual(1, Integer(Length(mFound[0].Fixes)));
+  Assert.AreEqual('SetKennung anlegen und write ergänzen', mFound[0].Fixes[0].Title);
 end;
 
 procedure TReadonlyPropertyAssignedTests.ReadWithoutRead;
 var
-  Found: TArray<TRuleFinding>;
+  mFound: TArray<TRuleFinding>;
 begin
-  Found := ReadonlyFindings(Kunde('  if Passwort = '''' then'#10'    Passwort := ''geheim'';'#10));
-  Assert.AreEqual(1, Integer(Length(Found)));
-  Assert.AreEqual('TKunde.Passwort hat kein read (wie E2130).', Found[0].Message);
-  Assert.AreEqual(24, Found[0].Range.StartPos.Line);
+  mFound := ReadonlyFindings(Kunde('  if Passwort = '''' then'#10'    Passwort := ''geheim'';'#10));
+  Assert.AreEqual(1, Integer(Length(mFound)));
+  Assert.AreEqual('TKunde.Passwort hat kein read (wie E2130).', mFound[0].Message);
+  Assert.AreEqual(24, mFound[0].Range.StartPos.Line);
 end;
 
 procedure TReadonlyPropertyAssignedTests.WritablePropertiesAreSilent;
@@ -1554,15 +1555,15 @@ end;
 
 procedure TReadonlyPropertyAssignedTests.OffAndExclude;
 var
-  Source: string;
+  mSource: string;
 begin
-  Source := Kundenliste('  Liste.Count := 0;'#10);
-  Assert.AreEqual(1, Integer(Length(ReadonlyFindings(Source, '', 'Source/Kunden.pas'))));
-  Assert.AreEqual(0, Integer(Length(ReadonlyFindings(Source, '{"rules": {"readonly-property-assigned": "off"}}',
+  mSource := Kundenliste('  Liste.Count := 0;'#10);
+  Assert.AreEqual(1, Integer(Length(ReadonlyFindings(mSource, '', 'Source/Kunden.pas'))));
+  Assert.AreEqual(0, Integer(Length(ReadonlyFindings(mSource, '{"rules": {"readonly-property-assigned": "off"}}',
     'Source/Kunden.pas'))));
-  Assert.AreEqual(0, Integer(Length(ReadonlyFindings(Source, '{"rules": {"group:compiler": "off"}}',
+  Assert.AreEqual(0, Integer(Length(ReadonlyFindings(mSource, '{"rules": {"group:compiler": "off"}}',
     'Source/Kunden.pas'))));
-  Assert.AreEqual(0, Integer(Length(ReadonlyFindings(Source,
+  Assert.AreEqual(0, Integer(Length(ReadonlyFindings(mSource,
     '{"rules": {"readonly-property-assigned": {"exclude": ["Source/*.pas"]}}}', 'Source/Kunden.pas'))));
 end;
 
@@ -1576,63 +1577,63 @@ end;
 
 procedure TUntypedPointerRefcountTests.IssueExample;
 var
-  Source: string;
-  Findings: TArray<TRuleFinding>;
+  mSource: string;
+  mFindings: TArray<TRuleFinding>;
 begin
-  Source := Teil('    FBesitzer: IBesitzer;'#10, 'begin'#10'  Pointer(FBesitzer) := Pointer(Besitzer);'#10);
-  Findings := TRuleAssert.Findings(TUntypedPointerRefcountRule.Create, Source);
-  Assert.AreEqual(1, Integer(Length(Findings)));
-  Assert.AreEqual('untyped-pointer-refcount', Findings[0].RuleId);
-  Assert.AreEqual(Ord(TRuleSeverity.Warning), Ord(Findings[0].Severity));
-  Assert.AreEqual(Ord(TRuleConfidence.Medium), Ord(Findings[0].Confidence));
+  mSource := Teil('    FBesitzer: IBesitzer;'#10, 'begin'#10'  Pointer(FBesitzer) := Pointer(Besitzer);'#10);
+  mFindings := TRuleAssert.Findings(TUntypedPointerRefcountRule.Create, mSource);
+  Assert.AreEqual(1, Integer(Length(mFindings)));
+  Assert.AreEqual('untyped-pointer-refcount', mFindings[0].RuleId);
+  Assert.AreEqual(Ord(TRuleSeverity.Warning), Ord(mFindings[0].Severity));
+  Assert.AreEqual(Ord(TRuleConfidence.Medium), Ord(mFindings[0].Confidence));
   Assert.AreEqual('Die Zuweisung über Pointer umgeht die Referenzzählung (wie W1070); besser [weak] FBesitzer.',
-    Findings[0].Message);
-  Assert.AreEqual(15, Findings[0].Range.StartPos.Line);
-  Assert.AreEqual(2, Findings[0].Range.StartPos.Character);
-  Assert.AreEqual(20, Findings[0].Range.EndPos.Character);
-  Assert.AreEqual(2, Integer(Length(Findings[0].Fixes)));
-  Assert.AreEqual('[weak] FBesitzer verwenden', Findings[0].Fixes[0].Title);
-  Assert.AreEqual('[unsafe] FBesitzer verwenden', Findings[0].Fixes[1].Title);
-  Source := TChangeSignature.ApplyEdits(Source, Findings[0].Fixes[0].Edits);
-  Assert.AreEqual(Teil('    [weak] FBesitzer: IBesitzer;'#10, 'begin'#10'  FBesitzer := Besitzer;'#10), Source);
-  TRuleAssert.Silent(TUntypedPointerRefcountRule.Create, Source);
+    mFindings[0].Message);
+  Assert.AreEqual(15, mFindings[0].Range.StartPos.Line);
+  Assert.AreEqual(2, mFindings[0].Range.StartPos.Character);
+  Assert.AreEqual(20, mFindings[0].Range.EndPos.Character);
+  Assert.AreEqual(2, Integer(Length(mFindings[0].Fixes)));
+  Assert.AreEqual('[weak] FBesitzer verwenden', mFindings[0].Fixes[0].Title);
+  Assert.AreEqual('[unsafe] FBesitzer verwenden', mFindings[0].Fixes[1].Title);
+  mSource := TChangeSignature.ApplyEdits(mSource, mFindings[0].Fixes[0].Edits);
+  Assert.AreEqual(Teil('    [weak] FBesitzer: IBesitzer;'#10, 'begin'#10'  FBesitzer := Besitzer;'#10), mSource);
+  TRuleAssert.Silent(TUntypedPointerRefcountRule.Create, mSource);
 end;
 
 procedure TUntypedPointerRefcountTests.Variants;
 var
-  Source: string;
-  Findings: TArray<TRuleFinding>;
+  mSource: string;
+  mFindings: TArray<TRuleFinding>;
 begin
   // nil rechts; IInterface; roher Zeiger rechts ohne Korrektur; lokale Variable ohne Korrektur; Self.F.
-  Source := Teil('    FBesitzer: IBesitzer;'#10'    FAnderer: IInterface;'#10, 'var'#10'  P: Pointer;'#10 +
+  mSource := Teil('    FBesitzer: IBesitzer;'#10'    FAnderer: IInterface;'#10, 'var'#10'  P: Pointer;'#10 +
     '  L: IBesitzer;'#10'begin'#10'  Pointer(FBesitzer) := nil;'#10'  Pointer(FAnderer) := P;'#10 +
     '  Pointer(L) := nil;'#10'  Pointer(Self.FBesitzer) := Pointer(Besitzer);'#10);
-  Findings := TRuleAssert.Findings(TUntypedPointerRefcountRule.Create, Source);
-  Assert.AreEqual(4, Integer(Length(Findings)));
-  Assert.AreEqual(2, Integer(Length(Findings[0].Fixes)));
-  Assert.IsTrue(TChangeSignature.ApplyEdits(Source, Findings[0].Fixes[1].Edits).Contains(
+  mFindings := TRuleAssert.Findings(TUntypedPointerRefcountRule.Create, mSource);
+  Assert.AreEqual(4, Integer(Length(mFindings)));
+  Assert.AreEqual(2, Integer(Length(mFindings[0].Fixes)));
+  Assert.IsTrue(TChangeSignature.ApplyEdits(mSource, mFindings[0].Fixes[1].Edits).Contains(
     '[unsafe] FBesitzer: IBesitzer;'#10'    FAnderer: IInterface;'));
-  Assert.IsTrue(TChangeSignature.ApplyEdits(Source, Findings[0].Fixes[1].Edits).Contains('  FBesitzer := nil;'));
-  Assert.AreEqual(0, Integer(Length(Findings[1].Fixes)));
-  Assert.AreEqual(0, Integer(Length(Findings[2].Fixes)));
+  Assert.IsTrue(TChangeSignature.ApplyEdits(mSource, mFindings[0].Fixes[1].Edits).Contains('  FBesitzer := nil;'));
+  Assert.AreEqual(0, Integer(Length(mFindings[1].Fixes)));
+  Assert.AreEqual(0, Integer(Length(mFindings[2].Fixes)));
   Assert.AreEqual('Die Zuweisung über Pointer umgeht die Referenzzählung (wie W1070); besser [weak] Self.FBesitzer.',
-    Findings[3].Message);
+    mFindings[3].Message);
 end;
 
 procedure TUntypedPointerRefcountTests.Strings;
 var
-  Findings: TArray<TRuleFinding>;
+  mFindings: TArray<TRuleFinding>;
 begin
   // dcc warnt bei Strings nur unter NEXTGEN; Atlas meldet sie mit Zusatz und ohne Korrektur.
-  Findings := TRuleAssert.Findings(TUntypedPointerRefcountRule.Create, Teil('    FText: string;'#10 +
+  mFindings := TRuleAssert.Findings(TUntypedPointerRefcountRule.Create, Teil('    FText: string;'#10 +
     '    FAnsi: AnsiString;'#10, 'begin'#10'  Pointer(FText) := nil;'#10'  Pointer(FAnsi) := Pointer(FText);'#10));
-  Assert.AreEqual(2, Integer(Length(Findings)));
+  Assert.AreEqual(2, Integer(Length(mFindings)));
   Assert.AreEqual('Die Zuweisung über Pointer umgeht die Referenzzählung des Strings FText (dcc meldet das nicht).',
-    Findings[0].Message);
-  Assert.AreEqual(Ord(TRuleConfidence.Medium), Ord(Findings[0].Confidence));
-  Assert.AreEqual(0, Integer(Length(Findings[0].Fixes)));
+    mFindings[0].Message);
+  Assert.AreEqual(Ord(TRuleConfidence.Medium), Ord(mFindings[0].Confidence));
+  Assert.AreEqual(0, Integer(Length(mFindings[0].Fixes)));
   Assert.AreEqual('Die Zuweisung über Pointer umgeht die Referenzzählung des Strings FAnsi (dcc meldet das nicht).',
-    Findings[1].Message);
+    mFindings[1].Message);
 end;
 
 procedure TUntypedPointerRefcountTests.SilentCases;
@@ -1650,12 +1651,12 @@ end;
 
 procedure TUntypedPointerRefcountTests.OffAndExclude;
 var
-  Source: string;
+  mSource: string;
 begin
-  Source := Teil('    FBesitzer: IBesitzer;'#10, 'begin'#10'  Pointer(FBesitzer) := nil;'#10);
-  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TUntypedPointerRefcountRule.Create, Source,
+  mSource := Teil('    FBesitzer: IBesitzer;'#10, 'begin'#10'  Pointer(FBesitzer) := nil;'#10);
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TUntypedPointerRefcountRule.Create, mSource,
     '{"rules": {"untyped-pointer-refcount": "off"}}'))));
-  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TUntypedPointerRefcountRule.Create, Source,
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TUntypedPointerRefcountRule.Create, mSource,
     '{"rules": {"untyped-pointer-refcount": {"exclude": ["Source/*.pas"]}}}', 'Source/U.pas'))));
 end;
 

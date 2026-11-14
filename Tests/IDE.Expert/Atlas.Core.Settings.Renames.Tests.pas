@@ -73,254 +73,254 @@ end;
 
 procedure TAtlasSettingsRenamesTests.OnlyOldNameMoves;
 var
-  Catalog: TAtlasSettingsCatalog;
-  Store: IAtlasMemorySettingsStore;
-  Renames: TArray<TAtlasSettingsRename>;
+  mCatalog: TAtlasSettingsCatalog;
+  mStore: IAtlasMemorySettingsStore;
+  mRenames: TArray<TAtlasSettingsRename>;
 begin
-  Catalog := TestCatalog;
+  mCatalog := TestCatalog;
   try
-    Store := NewStore;
-    Store.WriteString('OldQuery', 'assignee: meine #Ungelöst');
-    Store.WriteInteger('OldRows', 12);
-    Renames := Apply(Store, Catalog);
-    Assert.AreEqual(2, Integer(Length(Renames)));
-    Assert.AreEqual(Ord(srMoved), Ord(Renames[0].Outcome));
-    Assert.AreEqual('OldQuery', Renames[0].OldName);
-    Assert.AreEqual('Query', Renames[0].NewName);
-    Assert.AreEqual('assignee: meine #Ungelöst', Store.ReadString('Query', ''));
-    Assert.AreEqual(12, Store.ReadInteger('Rows', 0));
-    Assert.IsFalse((Store as IAtlasSettingsNames).Contains('OldQuery'), 'alter Name entfernt');
-    Assert.IsFalse((Store as IAtlasSettingsNames).Contains('OldRows'));
-    Assert.AreEqual('Einstellung welcome.query heißt jetzt issues.query; Wert übernommen', Renames[0].LogLine);
-    Assert.AreEqual('Einstellung welcome.rows heißt jetzt issues.rows; Wert übernommen', Renames[1].LogLine);
+    mStore := NewStore;
+    mStore.WriteString('OldQuery', 'assignee: meine #Ungelöst');
+    mStore.WriteInteger('OldRows', 12);
+    mRenames := Apply(mStore, mCatalog);
+    Assert.AreEqual(2, Integer(Length(mRenames)));
+    Assert.AreEqual(Ord(srMoved), Ord(mRenames[0].Outcome));
+    Assert.AreEqual('OldQuery', mRenames[0].OldName);
+    Assert.AreEqual('Query', mRenames[0].NewName);
+    Assert.AreEqual('assignee: meine #Ungelöst', mStore.ReadString('Query', ''));
+    Assert.AreEqual(12, mStore.ReadInteger('Rows', 0));
+    Assert.IsFalse((mStore as IAtlasSettingsNames).Contains('OldQuery'), 'alter Name entfernt');
+    Assert.IsFalse((mStore as IAtlasSettingsNames).Contains('OldRows'));
+    Assert.AreEqual('Einstellung welcome.query heißt jetzt issues.query; Wert übernommen', mRenames[0].LogLine);
+    Assert.AreEqual('Einstellung welcome.rows heißt jetzt issues.rows; Wert übernommen', mRenames[1].LogLine);
   finally
-    Catalog.Free;
+    mCatalog.Free;
   end;
 end;
 
 procedure TAtlasSettingsRenamesTests.OnlyNewNameIsLeftAlone;
 var
-  Catalog: TAtlasSettingsCatalog;
-  Store: IAtlasMemorySettingsStore;
+  mCatalog: TAtlasSettingsCatalog;
+  mStore: IAtlasMemorySettingsStore;
 begin
-  Catalog := TestCatalog;
+  mCatalog := TestCatalog;
   try
-    Store := NewStore;
-    Store.WriteString('Query', 'label:bug');
-    Assert.AreEqual(0, Integer(Length(Apply(Store, Catalog))));
-    Assert.AreEqual('label:bug', Store.ReadString('Query', ''));
+    mStore := NewStore;
+    mStore.WriteString('Query', 'label:bug');
+    Assert.AreEqual(0, Integer(Length(Apply(mStore, mCatalog))));
+    Assert.AreEqual('label:bug', mStore.ReadString('Query', ''));
   finally
-    Catalog.Free;
+    mCatalog.Free;
   end;
 end;
 
 procedure TAtlasSettingsRenamesTests.BothNamesNewWins;
 var
-  Catalog: TAtlasSettingsCatalog;
-  Store: IAtlasMemorySettingsStore;
-  Renames: TArray<TAtlasSettingsRename>;
+  mCatalog: TAtlasSettingsCatalog;
+  mStore: IAtlasMemorySettingsStore;
+  mRenames: TArray<TAtlasSettingsRename>;
 begin
-  Catalog := TestCatalog;
+  mCatalog := TestCatalog;
   try
-    Store := NewStore;
-    Store.WriteString('OldQuery', 'alt');
-    Store.WriteString('Query', 'neu');
-    Renames := Apply(Store, Catalog);
-    Assert.AreEqual(1, Integer(Length(Renames)));
-    Assert.AreEqual(Ord(srSuperseded), Ord(Renames[0].Outcome));
-    Assert.AreEqual('neu', Store.ReadString('Query', ''));
-    Assert.IsFalse((Store as IAtlasSettingsNames).Contains('OldQuery'), 'alter Name entfernt');
-    Assert.IsTrue(Renames[0].LogLine.StartsWith('Warnung: Einstellung issues.query '), Renames[0].LogLine);
+    mStore := NewStore;
+    mStore.WriteString('OldQuery', 'alt');
+    mStore.WriteString('Query', 'neu');
+    mRenames := Apply(mStore, mCatalog);
+    Assert.AreEqual(1, Integer(Length(mRenames)));
+    Assert.AreEqual(Ord(srSuperseded), Ord(mRenames[0].Outcome));
+    Assert.AreEqual('neu', mStore.ReadString('Query', ''));
+    Assert.IsFalse((mStore as IAtlasSettingsNames).Contains('OldQuery'), 'alter Name entfernt');
+    Assert.IsTrue(mRenames[0].LogLine.StartsWith('Warnung: Einstellung issues.query '), mRenames[0].LogLine);
   finally
-    Catalog.Free;
+    mCatalog.Free;
   end;
 end;
 
 procedure TAtlasSettingsRenamesTests.WrongKindIsDropped;
 var
-  Catalog: TAtlasSettingsCatalog;
-  Store: IAtlasMemorySettingsStore;
-  Renames: TArray<TAtlasSettingsRename>;
+  mCatalog: TAtlasSettingsCatalog;
+  mStore: IAtlasMemorySettingsStore;
+  mRenames: TArray<TAtlasSettingsRename>;
 begin
-  Catalog := TestCatalog;
+  mCatalog := TestCatalog;
   try
-    Store := NewStore;
+    mStore := NewStore;
     // Zahl statt Text und Text statt Wahrheitswert.
-    Store.WriteInteger('OldQuery', 7);
-    Store.WriteString('OldLogin', 'ja');
-    Renames := Apply(Store, Catalog);
-    Assert.AreEqual(2, Integer(Length(Renames)));
-    Assert.AreEqual(Ord(srInvalid), Ord(Renames[0].Outcome));
-    Assert.AreEqual(Ord(srInvalid), Ord(Renames[1].Outcome));
-    Assert.IsFalse((Store as IAtlasSettingsNames).Contains('Query'), 'nichts übernommen');
-    Assert.IsFalse((Store as IAtlasSettingsNames).Contains('Login'));
-    Assert.IsFalse((Store as IAtlasSettingsNames).Contains('OldQuery'), 'ungültiger Wert entfernt');
-    Assert.IsFalse((Store as IAtlasSettingsNames).Contains('OldLogin'));
-    Assert.IsTrue(Renames[0].LogLine.StartsWith('Warnung: '), Renames[0].LogLine);
+    mStore.WriteInteger('OldQuery', 7);
+    mStore.WriteString('OldLogin', 'ja');
+    mRenames := Apply(mStore, mCatalog);
+    Assert.AreEqual(2, Integer(Length(mRenames)));
+    Assert.AreEqual(Ord(srInvalid), Ord(mRenames[0].Outcome));
+    Assert.AreEqual(Ord(srInvalid), Ord(mRenames[1].Outcome));
+    Assert.IsFalse((mStore as IAtlasSettingsNames).Contains('Query'), 'nichts übernommen');
+    Assert.IsFalse((mStore as IAtlasSettingsNames).Contains('Login'));
+    Assert.IsFalse((mStore as IAtlasSettingsNames).Contains('OldQuery'), 'ungültiger Wert entfernt');
+    Assert.IsFalse((mStore as IAtlasSettingsNames).Contains('OldLogin'));
+    Assert.IsTrue(mRenames[0].LogLine.StartsWith('Warnung: '), mRenames[0].LogLine);
   finally
-    Catalog.Free;
+    mCatalog.Free;
   end;
 end;
 
 procedure TAtlasSettingsRenamesTests.FalseAndEmptyTextMove;
 var
-  Catalog: TAtlasSettingsCatalog;
-  Store: IAtlasMemorySettingsStore;
-  Renames: TArray<TAtlasSettingsRename>;
+  mCatalog: TAtlasSettingsCatalog;
+  mStore: IAtlasMemorySettingsStore;
+  mRenames: TArray<TAtlasSettingsRename>;
 begin
-  Catalog := TestCatalog;
+  mCatalog := TestCatalog;
   try
-    Store := NewStore;
+    mStore := NewStore;
     // Werte gleich der Lesevorgabe: aus und leerer Text sind gültig und werden übernommen.
-    Store.WriteInteger('OldLogin', 0);
-    Store.WriteString('OldQuery', '');
-    Renames := Apply(Store, Catalog);
-    Assert.AreEqual(2, Integer(Length(Renames)));
-    Assert.AreEqual(Ord(srMoved), Ord(Renames[0].Outcome));
-    Assert.AreEqual(Ord(srMoved), Ord(Renames[1].Outcome));
-    Assert.AreEqual(0, Store.ReadInteger('Login', 1));
-    Assert.IsTrue((Store as IAtlasSettingsNames).Contains('Query'));
-    Assert.AreEqual('', Store.ReadString('Query', 'Vorgabe'));
+    mStore.WriteInteger('OldLogin', 0);
+    mStore.WriteString('OldQuery', '');
+    mRenames := Apply(mStore, mCatalog);
+    Assert.AreEqual(2, Integer(Length(mRenames)));
+    Assert.AreEqual(Ord(srMoved), Ord(mRenames[0].Outcome));
+    Assert.AreEqual(Ord(srMoved), Ord(mRenames[1].Outcome));
+    Assert.AreEqual(0, mStore.ReadInteger('Login', 1));
+    Assert.IsTrue((mStore as IAtlasSettingsNames).Contains('Query'));
+    Assert.AreEqual('', mStore.ReadString('Query', 'Vorgabe'));
     // Ohne x-formerKeys nennt das Protokoll den früheren Namen.
-    Assert.AreEqual('Einstellung OldLogin heißt jetzt issues.login; Wert übernommen', Renames[1].LogLine);
+    Assert.AreEqual('Einstellung OldLogin heißt jetzt issues.login; Wert übernommen', mRenames[1].LogLine);
   finally
-    Catalog.Free;
+    mCatalog.Free;
   end;
 end;
 
 procedure TAtlasSettingsRenamesTests.SecondRunFindsNothing;
 var
-  Catalog: TAtlasSettingsCatalog;
-  Store: IAtlasMemorySettingsStore;
+  mCatalog: TAtlasSettingsCatalog;
+  mStore: IAtlasMemorySettingsStore;
 begin
-  Catalog := TestCatalog;
+  mCatalog := TestCatalog;
   try
-    Store := NewStore;
-    Store.WriteString('OldQuery', 'x');
-    Assert.AreEqual(1, Integer(Length(Apply(Store, Catalog))));
-    Assert.AreEqual(0, Integer(Length(Apply(Store, Catalog))), 'Protokoll nur einmal');
-    Assert.AreEqual('x', Store.ReadString('Query', ''));
+    mStore := NewStore;
+    mStore.WriteString('OldQuery', 'x');
+    Assert.AreEqual(1, Integer(Length(Apply(mStore, mCatalog))));
+    Assert.AreEqual(0, Integer(Length(Apply(mStore, mCatalog))), 'Protokoll nur einmal');
+    Assert.AreEqual('x', mStore.ReadString('Query', ''));
   finally
-    Catalog.Free;
+    mCatalog.Free;
   end;
 end;
 
 procedure TAtlasSettingsRenamesTests.RealCatalogMovesTrackerSettings;
 var
-  Catalog: TAtlasSettingsCatalog;
-  Store: IAtlasMemorySettingsStore;
-  Renames: TArray<TAtlasSettingsRename>;
-  Settings: TAtlasPluginSettings;
+  mCatalog: TAtlasSettingsCatalog;
+  mStore: IAtlasMemorySettingsStore;
+  mRenames: TArray<TAtlasSettingsRename>;
+  mSettings: TAtlasPluginSettings;
   mMigration: TAtlasSettingsQueryMigration;
 begin
-  Catalog := TAtlasSettingsCatalog.CreateDefault;
+  mCatalog := TAtlasSettingsCatalog.CreateDefault;
   try
-    Store := NewStore;
-    Store.WriteInteger('WelcomePageIssues', 1);
-    Store.WriteString('WelcomePageIssuesTracker', 'youtrack');
-    Store.WriteString('WelcomePageIssuesQuery', 'assignee: meine #Ungelöst');
-    Store.WriteString('WelcomePageIssuesStart', 'remember');
-    Store.WriteString('WelcomePageIssuesBranchPattern', 'bugfix/{kennung}');
-    Store.WriteString('WelcomePageIssuesBranchBase', 'develop');
-    Store.WriteString('WelcomePageIssuesCommitPattern', '[{kennung}] ');
-    Store.WriteInteger('TrackerLogin', 0);
-    Renames := Apply(Store, Catalog);
+    mStore := NewStore;
+    mStore.WriteInteger('WelcomePageIssues', 1);
+    mStore.WriteString('WelcomePageIssuesTracker', 'youtrack');
+    mStore.WriteString('WelcomePageIssuesQuery', 'assignee: meine #Ungelöst');
+    mStore.WriteString('WelcomePageIssuesStart', 'remember');
+    mStore.WriteString('WelcomePageIssuesBranchPattern', 'bugfix/{kennung}');
+    mStore.WriteString('WelcomePageIssuesBranchBase', 'develop');
+    mStore.WriteString('WelcomePageIssuesCommitPattern', '[{kennung}] ');
+    mStore.WriteInteger('TrackerLogin', 0);
+    mRenames := Apply(mStore, mCatalog);
     // Die Abfrage übernimmt seit #1262 TAtlasSettingsQueryMigrations (als „Standard“ in issues.queries).
-    Assert.AreEqual(5, Integer(Length(Renames)), 'je früherem Namen eine Übernahme');
-    Assert.IsTrue((Store as IAtlasSettingsNames).Contains('WelcomePageIssuesQuery'));
-    mMigration := TAtlasSettingsQueryMigrations.Migrate(Store, Store as IAtlasSettingsNames, Store);
+    Assert.AreEqual(5, Integer(Length(mRenames)), 'je früherem Namen eine Übernahme');
+    Assert.IsTrue((mStore as IAtlasSettingsNames).Contains('WelcomePageIssuesQuery'));
+    mMigration := TAtlasSettingsQueryMigrations.Migrate(mStore, mStore as IAtlasSettingsNames, mStore);
     Assert.IsTrue(mMigration.Found);
     Assert.IsTrue(mMigration.Moved);
-    TAtlasSettingsQueryMigrations.RemoveLegacy(Store as IAtlasSettingsNames);
-    Settings := TAtlasPluginSettings.Defaults;
-    Settings.Load(Store);
-    Assert.IsTrue(Settings.WelcomePageIssues, 'Schalter des Bereichs bleibt');
-    Assert.AreEqual('youtrack', Settings.IssuesTracker);
-    Assert.AreEqual('[{"name": "Standard", "query": "assignee: meine #Ungelöst"}]', Settings.IssuesQueries);
-    Assert.AreEqual('remember', Settings.IssuesStart);
-    Assert.AreEqual('bugfix/{kennung}', Settings.IssuesBranchPattern);
-    Assert.AreEqual('develop', Settings.IssuesBranchBase);
-    Assert.AreEqual('[{kennung}] ', Settings.IssuesCommitPattern);
-    Assert.IsFalse(Settings.TrackerLogin, 'Registry-Name unverändert');
-    Assert.IsFalse((Store as IAtlasSettingsNames).Contains('WelcomePageIssuesQuery'));
+    TAtlasSettingsQueryMigrations.RemoveLegacy(mStore as IAtlasSettingsNames);
+    mSettings := TAtlasPluginSettings.Defaults;
+    mSettings.Load(mStore);
+    Assert.IsTrue(mSettings.WelcomePageIssues, 'Schalter des Bereichs bleibt');
+    Assert.AreEqual('youtrack', mSettings.IssuesTracker);
+    Assert.AreEqual('[{"name": "Standard", "query": "assignee: meine #Ungelöst"}]', mSettings.IssuesQueries);
+    Assert.AreEqual('remember', mSettings.IssuesStart);
+    Assert.AreEqual('bugfix/{kennung}', mSettings.IssuesBranchPattern);
+    Assert.AreEqual('develop', mSettings.IssuesBranchBase);
+    Assert.AreEqual('[{kennung}] ', mSettings.IssuesCommitPattern);
+    Assert.IsFalse(mSettings.TrackerLogin, 'Registry-Name unverändert');
+    Assert.IsFalse((mStore as IAtlasSettingsNames).Contains('WelcomePageIssuesQuery'));
     Assert.AreEqual('Einstellung welcomePage.issues.tracker heißt jetzt issues.tracker; Wert übernommen',
-      Renames[0].LogLine);
+      mRenames[0].LogLine);
     Assert.AreEqual('Einstellung welcomePage.issues.query ist jetzt die Abfrage „Standard“ in issues.queries',
       mMigration.LogLine);
   finally
-    Catalog.Free;
+    mCatalog.Free;
   end;
 end;
 
 procedure TAtlasSettingsRenamesTests.RealCatalogHasNoWelcomeTrackerKeys;
 var
-  Catalog: TAtlasSettingsCatalog;
-  Index: Integer;
-  Entry: TAtlasCatalogEntry;
+  mCatalog: TAtlasSettingsCatalog;
+  mIndex: Integer;
+  mEntry: TAtlasCatalogEntry;
 begin
-  Catalog := TAtlasSettingsCatalog.CreateDefault;
+  mCatalog := TAtlasSettingsCatalog.CreateDefault;
   try
-    for Index := 0 to Catalog.Count - 1 do
+    for mIndex := 0 to mCatalog.Count - 1 do
     begin
-      Entry := Catalog[Index];
+      mEntry := mCatalog[mIndex];
       // Nur der Schalter des Bereichs bleibt unter welcomePage.issues (#1280).
-      Assert.IsFalse(Entry.Key.StartsWith('welcomePage.issues.'), Entry.Key);
-      if Entry.Key.StartsWith('issues.') then
+      Assert.IsFalse(mEntry.Key.StartsWith('welcomePage.issues.'), mEntry.Key);
+      if mEntry.Key.StartsWith('issues.') then
       begin
-        Assert.AreEqual('issues', Entry.Area, Entry.Key);
-        Assert.AreEqual('Issue-Tracker', Entry.Page, Entry.Key);
+        Assert.AreEqual('issues', mEntry.Area, mEntry.Key);
+        Assert.AreEqual('Issue-Tracker', mEntry.Page, mEntry.Key);
       end;
     end;
-    Assert.IsTrue(Catalog.HasArea('issues'));
-    Assert.AreEqual('Issue-Tracker', Catalog.AreaCaption('issues', False));
-    Assert.AreEqual('Issue tracker', Catalog.AreaCaption('issues', True));
-    Assert.IsTrue(Catalog.IndexOfKey('issues.login') >= 0);
-    Assert.AreEqual('TrackerLogin', Catalog[Catalog.IndexOfKey('issues.login')].Name);
-    Assert.IsTrue(Catalog.IndexOfKey('welcomePage.issues') >= 0, 'Schalter des Bereichs');
+    Assert.IsTrue(mCatalog.HasArea('issues'));
+    Assert.AreEqual('Issue-Tracker', mCatalog.AreaCaption('issues', False));
+    Assert.AreEqual('Issue tracker', mCatalog.AreaCaption('issues', True));
+    Assert.IsTrue(mCatalog.IndexOfKey('issues.login') >= 0);
+    Assert.AreEqual('TrackerLogin', mCatalog[mCatalog.IndexOfKey('issues.login')].Name);
+    Assert.IsTrue(mCatalog.IndexOfKey('welcomePage.issues') >= 0, 'Schalter des Bereichs');
   finally
-    Catalog.Free;
+    mCatalog.Free;
   end;
 end;
 
 procedure TAtlasSettingsRenamesTests.ImportResolvesFormerNames;
 var
-  Catalog: TAtlasSettingsCatalog;
-  Migrated: Boolean;
-  Expected: Integer;
+  mCatalog: TAtlasSettingsCatalog;
+  mMigrated: Boolean;
+  mExpected: Integer;
 begin
-  Catalog := TAtlasSettingsCatalog.CreateDefault;
+  mCatalog := TAtlasSettingsCatalog.CreateDefault;
   try
     // issues.query (#1280) geht seit #1262 in issues.queries auf.
-    Expected := Catalog.IndexOfKey('issues.queries');
-    Assert.IsTrue(Expected >= 0);
-    Assert.IsTrue(Catalog.IndexOfKey('issues.query') < 0);
-    Assert.AreEqual(Expected, Catalog.Resolve('issues.query', Migrated));
-    Assert.IsTrue(Migrated);
+    mExpected := mCatalog.IndexOfKey('issues.queries');
+    Assert.IsTrue(mExpected >= 0);
+    Assert.IsTrue(mCatalog.IndexOfKey('issues.query') < 0);
+    Assert.AreEqual(mExpected, mCatalog.Resolve('issues.query', mMigrated));
+    Assert.IsTrue(mMigrated);
     // Exportdatei vor #1280 (früherer Schlüssel) und ältere flache Datei (früherer Registry-Name).
-    Assert.AreEqual(Expected, Catalog.Resolve('welcomePage.issues.query', Migrated));
-    Assert.IsTrue(Migrated);
-    Assert.AreEqual(Expected, Catalog.Resolve('WelcomePageIssuesQuery', Migrated));
-    Assert.IsTrue(Migrated);
-    Assert.AreEqual(Catalog.IndexOfKey('issues.login'), Catalog.Resolve('welcomePage.issues.login', Migrated));
-    Assert.IsTrue(Migrated);
+    Assert.AreEqual(mExpected, mCatalog.Resolve('welcomePage.issues.query', mMigrated));
+    Assert.IsTrue(mMigrated);
+    Assert.AreEqual(mExpected, mCatalog.Resolve('WelcomePageIssuesQuery', mMigrated));
+    Assert.IsTrue(mMigrated);
+    Assert.AreEqual(mCatalog.IndexOfKey('issues.login'), mCatalog.Resolve('welcomePage.issues.login', mMigrated));
+    Assert.IsTrue(mMigrated);
   finally
-    Catalog.Free;
+    mCatalog.Free;
   end;
 end;
 
 procedure TAtlasSettingsRenamesTests.HistoryKeepsTrackerValues;
 var
-  History: TAtlasSettingsHistory;
+  mHistory: TAtlasSettingsHistory;
 begin
-  History := TAtlasSettingsHistory.Create;
+  mHistory := TAtlasSettingsHistory.Create;
   try
-    Assert.IsTrue(History.LoadJson('[{"changedAt":"2026-10-27T10:00:00.000Z","settings":' +
+    Assert.IsTrue(mHistory.LoadJson('[{"changedAt":"2026-10-27T10:00:00.000Z","settings":' +
       '{"WelcomePageIssuesQuery":"label:bug","WelcomePageIssuesTracker":"github"}}]'));
-    Assert.AreEqual(1, History.Count);
-    Assert.AreEqual('[{"name": "Standard", "query": "label:bug"}]', History[0].Settings.IssuesQueries);
-    Assert.AreEqual('github', History[0].Settings.IssuesTracker);
+    Assert.AreEqual(1, mHistory.Count);
+    Assert.AreEqual('[{"name": "Standard", "query": "label:bug"}]', mHistory[0].Settings.IssuesQueries);
+    Assert.AreEqual('github', mHistory[0].Settings.IssuesTracker);
   finally
-    History.Free;
+    mHistory.Free;
   end;
 end;
 

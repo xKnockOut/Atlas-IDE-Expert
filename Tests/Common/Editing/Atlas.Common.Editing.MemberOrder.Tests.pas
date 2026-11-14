@@ -64,39 +64,39 @@ end;
 /// <summary>Sortiertes Ergebnis; '' ohne Aktion.</summary>
 function Sorted(const AText: string; const ASettings: TMemberOrderSettings): string; overload;
 var
-  Tree: TSyntaxTree;
-  Edit: TRuleEdit;
-  Lines: TArray<string>;
-  Index, Start, Line: Integer;
+  mTree: TSyntaxTree;
+  mEdit: TRuleEdit;
+  mLines: TArray<string>;
+  mIndex, mStart, mLine: Integer;
 begin
-  Tree := TPascalParser.Parse(AText);
+  mTree := TPascalParser.Parse(AText);
   try
-    if not TMemberOrder.Sort(AText, Tree, 3, ASettings, Edit) then
+    if not TMemberOrder.Sort(AText, mTree, 3, ASettings, mEdit) then
     begin
       Exit('');
     end;
   finally
-    Tree.Free;
+    mTree.Free;
   end;
-  Lines := nil;
-  Start := 1;
-  for Index := 1 to Length(AText) + 1 do
+  mLines := nil;
+  mStart := 1;
+  for mIndex := 1 to Length(AText) + 1 do
   begin
-    if (Index > Length(AText)) or (AText[Index] = #10) then
+    if (mIndex > Length(AText)) or (AText[mIndex] = #10) then
     begin
-      Lines := Lines + [Copy(AText, Start, Index - Start)];
-      Start := Index + 1;
+      mLines := mLines + [Copy(AText, mStart, mIndex - mStart)];
+      mStart := mIndex + 1;
     end;
   end;
   Result := '';
-  for Line := 0 to Edit.Range.StartPos.Line - 1 do
+  for mLine := 0 to mEdit.Range.StartPos.Line - 1 do
   begin
-    Result := Result + Lines[Line] + #10;
+    Result := Result + mLines[mLine] + #10;
   end;
-  Result := Result + Edit.NewText;
-  for Line := Edit.Range.EndPos.Line to High(Lines) do
+  Result := Result + mEdit.NewText;
+  for mLine := mEdit.Range.EndPos.Line to High(mLines) do
   begin
-    Result := Result + Lines[Line] + IfThen(Line < High(Lines), #10, '');
+    Result := Result + mLines[mLine] + IfThen(mLine < High(mLines), #10, '');
   end;
 end;
 
@@ -107,21 +107,21 @@ end;
 
 function Parses(const AText: string): Boolean;
 var
-  Tree: TSyntaxTree;
+  mTree: TSyntaxTree;
 begin
-  Tree := TPascalParser.Parse(AText);
+  mTree := TPascalParser.Parse(AText);
   try
-    Result := Length(Tree.Diagnostics) = 0;
+    Result := Length(mTree.Diagnostics) = 0;
   finally
-    Tree.Free;
+    mTree.Free;
   end;
 end;
 
 procedure TMemberOrderTests.SortsSectionsAndMembers;
 var
-  Text: string;
+  mText: string;
 begin
-  Text := Sorted(Wrap(
+  mText := Sorted(Wrap(
     '  public'#10 +
     '    property Name: string read FName;'#10 +
     '    procedure Run;'#10 +
@@ -134,8 +134,8 @@ begin
     '  public'#10 +
     '    constructor Create;'#10 +
     '    procedure Run;'#10 +
-    '    property Name: string read FName;'#10), Text);
-  Assert.IsTrue(Parses(Text), Text);
+    '    property Name: string read FName;'#10), mText);
+  Assert.IsTrue(Parses(mText), mText);
 end;
 
 procedure TMemberOrderTests.CommentsAndAttributesMoveWithMember;
@@ -159,12 +159,12 @@ end;
 
 procedure TMemberOrderTests.SecondRunChangesNothing;
 var
-  Once: string;
+  mOnce: string;
 begin
-  Once := Sorted(Wrap('  public'#10'    procedure Run;'#10'    constructor Create;'#10'  private'#10 +
+  mOnce := Sorted(Wrap('  public'#10'    procedure Run;'#10'    constructor Create;'#10'  private'#10 +
     '    FA: Integer;'#10));
-  Assert.AreNotEqual('', Once);
-  Assert.AreEqual('', Sorted(Once));
+  Assert.AreNotEqual('', mOnce);
+  Assert.AreEqual('', Sorted(mOnce));
 end;
 
 procedure TMemberOrderTests.DirectiveAcrossSectionsBlocks;
@@ -210,28 +210,28 @@ end;
 
 procedure TMemberOrderTests.PublishedOnlyWithOption;
 var
-  Source: string;
-  Settings: TMemberOrderSettings;
+  mSource: string;
+  mSettings: TMemberOrderSettings;
 begin
-  Source := Wrap('  published'#10'    property B: Integer read FB;'#10'    procedure Run;'#10);
-  Assert.AreEqual('', Sorted(Source));
-  Settings := TMemberOrderSettings.Default;
-  Settings.SortPublished := True;
+  mSource := Wrap('  published'#10'    property B: Integer read FB;'#10'    procedure Run;'#10);
+  Assert.AreEqual('', Sorted(mSource));
+  mSettings := TMemberOrderSettings.Default;
+  mSettings.SortPublished := True;
   Assert.AreEqual(Wrap('  published'#10'    procedure Run;'#10'    property B: Integer read FB;'#10),
-    Sorted(Source, Settings));
+    Sorted(mSource, mSettings));
 end;
 
 procedure TMemberOrderTests.FieldsInSeveralSectionsKeepLayout;
 var
-  Source: string;
-  Settings: TMemberOrderSettings;
+  mSource: string;
+  mSettings: TMemberOrderSettings;
 begin
-  Source := Wrap('  public'#10'    FB: Integer;'#10'  private'#10'    FA: Integer;'#10);
-  Assert.AreEqual('', Sorted(Source));
-  Settings := TMemberOrderSettings.Default;
-  Settings.SortFields := True;
+  mSource := Wrap('  public'#10'    FB: Integer;'#10'  private'#10'    FA: Integer;'#10);
+  Assert.AreEqual('', Sorted(mSource));
+  mSettings := TMemberOrderSettings.Default;
+  mSettings.SortFields := True;
   Assert.AreEqual(Wrap('  private'#10'    FA: Integer;'#10'  public'#10'    FB: Integer;'#10),
-    Sorted(Source, Settings));
+    Sorted(mSource, mSettings));
 end;
 
 procedure TMemberOrderTests.NestedTypesKeepPlace;
@@ -254,11 +254,11 @@ end;
 
 procedure TMemberOrderTests.AlignOffBlocksSort;
 const
-  Body = 'type'#10'  TFoo = class'#10'  public'#10'    procedure Run;'#10'  private'#10'    B: Byte;'#10'  end;'#10 +
+  cBody = 'type'#10'  TFoo = class'#10'  public'#10'    procedure Run;'#10'  private'#10'    B: Byte;'#10'  end;'#10 +
     'implementation'#10'end.';
 begin
-  Assert.AreEqual('', Sorted('unit U;'#10'interface'#10'{$ALIGN OFF}'#10 + Body));
-  Assert.AreEqual('', Sorted('unit U;'#10'interface'#10'{$A1}'#10 + Body));
+  Assert.AreEqual('', Sorted('unit U;'#10'interface'#10'{$ALIGN OFF}'#10 + cBody));
+  Assert.AreEqual('', Sorted('unit U;'#10'interface'#10'{$A1}'#10 + cBody));
 end;
 
 procedure TMemberOrderTests.ClassVarSectionKeepsPlace;
@@ -275,43 +275,43 @@ end;
 
 procedure TMemberOrderTests.UnchangedReturnsFalse;
 var
-  Source: string;
-  Tree: TSyntaxTree;
-  Edit: TRuleEdit;
+  mSource: string;
+  mTree: TSyntaxTree;
+  mEdit: TRuleEdit;
 begin
-  Source := Wrap('  private'#10'    FA: Integer;'#10'  public'#10'    constructor Create;'#10'    procedure Run;'#10);
-  Tree := TPascalParser.Parse(Source);
+  mSource := Wrap('  private'#10'    FA: Integer;'#10'  public'#10'    constructor Create;'#10'    procedure Run;'#10);
+  mTree := TPascalParser.Parse(mSource);
   try
-    Assert.IsFalse(TMemberOrder.Sort(Source, Tree, 3, TMemberOrderSettings.Default, Edit));
+    Assert.IsFalse(TMemberOrder.Sort(mSource, mTree, 3, TMemberOrderSettings.Default, mEdit));
   finally
-    Tree.Free;
+    mTree.Free;
   end;
 end;
 
 procedure TMemberOrderTests.CrlfIsPreserved;
 var
-  Source: string;
-  Tree: TSyntaxTree;
-  Edit: TRuleEdit;
+  mSource: string;
+  mTree: TSyntaxTree;
+  mEdit: TRuleEdit;
 begin
-  Source := StringReplace(Wrap('  public'#10'    procedure Run;'#10'    constructor Create;'#10), #10, #13#10,
+  mSource := StringReplace(Wrap('  public'#10'    procedure Run;'#10'    constructor Create;'#10), #10, #13#10,
     [rfReplaceAll]);
-  Tree := TPascalParser.Parse(Source);
+  mTree := TPascalParser.Parse(mSource);
   try
-    Assert.IsTrue(TMemberOrder.Sort(Source, Tree, 3, TMemberOrderSettings.Default, Edit));
+    Assert.IsTrue(TMemberOrder.Sort(mSource, mTree, 3, TMemberOrderSettings.Default, mEdit));
   finally
-    Tree.Free;
+    mTree.Free;
   end;
-  Assert.AreEqual('  public'#13#10'    constructor Create;'#13#10'    procedure Run;'#13#10, Edit.NewText);
-  Assert.AreEqual(0, Pos(#10, StringReplace(Edit.NewText, #13#10, '', [rfReplaceAll])));
+  Assert.AreEqual('  public'#13#10'    constructor Create;'#13#10'    procedure Run;'#13#10, mEdit.NewText);
+  Assert.AreEqual(0, Pos(#10, StringReplace(mEdit.NewText, #13#10, '', [rfReplaceAll])));
 end;
 
 procedure TMemberOrderTests.UnknownMemberKindRanksLast;
 var
-  Settings: TMemberOrderSettings;
+  mSettings: TMemberOrderSettings;
 begin
-  Settings := TMemberOrderSettings.Default;
-  Settings.Members := ['field', 'constructor', 'destructor', 'method'];
+  mSettings := TMemberOrderSettings.Default;
+  mSettings.Members := ['field', 'constructor', 'destructor', 'method'];
   Assert.AreEqual(Wrap(
     '  public'#10 +
     '    constructor Create;'#10 +
@@ -320,7 +320,7 @@ begin
     '  public'#10 +
     '    property B: Integer read FB;'#10 +
     '    procedure Run;'#10 +
-    '    constructor Create;'#10), Settings));
+    '    constructor Create;'#10), mSettings));
 end;
 
 procedure TMemberOrderTests.MultiNameFieldStaysTogether;

@@ -65,15 +65,15 @@ end;
 
 procedure TProbeLineRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
 var
-  Lines: TArray<string>;
-  Index: Integer;
+  mLines: TArray<string>;
+  mIndex: Integer;
 begin
-  Lines := AContext.Text.Split([#10]);
-  for Index := 0 to High(Lines) do
+  mLines := AContext.Text.Split([#10]);
+  for mIndex := 0 to High(mLines) do
   begin
-    if Pos('X := 1', Lines[Index]) > 0 then
+    if Pos('X := 1', mLines[mIndex]) > 0 then
     begin
-      AReport.Add(TTextRange.Create(TTextPosition.Create(Index, 2), TTextPosition.Create(Index, 8)), 'Probe');
+      AReport.Add(TTextRange.Create(TTextPosition.Create(mIndex, 2), TTextPosition.Create(mIndex, 8)), 'Probe');
     end;
   end;
 end;
@@ -97,88 +97,88 @@ end;
 
 procedure TSlashCommandsTests.SplitsCommandLines;
 var
-  Name, Arguments: string;
+  mName, mArguments: string;
 begin
-  Assert.IsTrue(TSlashCommandRegistry.Split('  /uses A, B', Name, Arguments));
-  Assert.AreEqual('uses', Name);
-  Assert.AreEqual('A, B', Arguments);
-  Assert.IsTrue(TSlashCommandRegistry.Split('/const! X = 1', Name, Arguments));
-  Assert.AreEqual('const!', Name);
-  Assert.IsTrue(TSlashCommandRegistry.Split('/guid', Name, Arguments));
-  Assert.AreEqual('', Arguments);
-  Assert.IsFalse(TSlashCommandRegistry.Split('// Kommentar', Name, Arguments));
-  Assert.IsFalse(TSlashCommandRegistry.Split('A / B', Name, Arguments));
-  Assert.IsFalse(TSlashCommandRegistry.Split('/ 2', Name, Arguments));
+  Assert.IsTrue(TSlashCommandRegistry.Split('  /uses A, B', mName, mArguments));
+  Assert.AreEqual('uses', mName);
+  Assert.AreEqual('A, B', mArguments);
+  Assert.IsTrue(TSlashCommandRegistry.Split('/const! X = 1', mName, mArguments));
+  Assert.AreEqual('const!', mName);
+  Assert.IsTrue(TSlashCommandRegistry.Split('/guid', mName, mArguments));
+  Assert.AreEqual('', mArguments);
+  Assert.IsFalse(TSlashCommandRegistry.Split('// Kommentar', mName, mArguments));
+  Assert.IsFalse(TSlashCommandRegistry.Split('A / B', mName, mArguments));
+  Assert.IsFalse(TSlashCommandRegistry.Split('/ 2', mName, mArguments));
 end;
 
 procedure TSlashCommandsTests.UsesRunsThroughRegistry;
 var
-  Edits: TArray<TRuleEdit>;
+  mEdits: TArray<TRuleEdit>;
 begin
   Assert.IsTrue(TSlashCommandRegistry.Shared.AfterEnter(Source('/uses System.Classes'), TTextPosition.Create(6, 0),
-    nil, nil, Edits));
-  Assert.AreEqual(2, Integer(Length(Edits)));
-  Assert.IsTrue(Pos('Classes', Edits[0].NewText) > 0, Edits[0].NewText);
+    nil, nil, mEdits));
+  Assert.AreEqual(2, Integer(Length(mEdits)));
+  Assert.IsTrue(Pos('Classes', mEdits[0].NewText) > 0, mEdits[0].NewText);
   // Die Befehlszeile verschwindet samt Zeilenende.
-  Assert.AreEqual(5, Edits[1].Range.StartPos.Line);
-  Assert.AreEqual(6, Edits[1].Range.EndPos.Line);
-  Assert.AreEqual('', Edits[1].NewText);
+  Assert.AreEqual(5, mEdits[1].Range.StartPos.Line);
+  Assert.AreEqual(6, mEdits[1].Range.EndPos.Line);
+  Assert.AreEqual('', mEdits[1].NewText);
 end;
 
 procedure TSlashCommandsTests.UnknownCommandStaysWithHint;
 var
-  Edits: TArray<TRuleEdit>;
-  Problems: TArray<TSlashProblem>;
+  mEdits: TArray<TRuleEdit>;
+  mProblems: TArray<TSlashProblem>;
 begin
   Assert.IsFalse(TSlashCommandRegistry.Shared.AfterEnter(Source('/gibtsnicht X'), TTextPosition.Create(6, 0),
-    nil, nil, Edits));
-  Assert.AreEqual(0, Integer(Length(Edits)));
-  Problems := TSlashCommandRegistry.Shared.Problems(Source('  /gibtsnicht X'), nil);
-  Assert.AreEqual(1, Integer(Length(Problems)));
-  Assert.AreEqual(5, Problems[0].Range.StartPos.Line);
-  Assert.AreEqual(2, Problems[0].Range.StartPos.Character);
-  Assert.AreEqual('Unbekannter Schnellbefehl /gibtsnicht', Problems[0].Message);
+    nil, nil, mEdits));
+  Assert.AreEqual(0, Integer(Length(mEdits)));
+  mProblems := TSlashCommandRegistry.Shared.Problems(Source('  /gibtsnicht X'), nil);
+  Assert.AreEqual(1, Integer(Length(mProblems)));
+  Assert.AreEqual(5, mProblems[0].Range.StartPos.Line);
+  Assert.AreEqual(2, mProblems[0].Range.StartPos.Character);
+  Assert.AreEqual('Unbekannter Schnellbefehl /gibtsnicht', mProblems[0].Message);
   // Falsche Argumente: Grund des Befehls.
   Assert.AreEqual(1, Integer(Length(TSlashCommandRegistry.Shared.Problems(Source('/uses 1A'), nil))));
 end;
 
 procedure TSlashCommandsTests.MixedLineBreaksKeepLineNumbers;
 var
-  Problems: TArray<TSlashProblem>;
+  mProblems: TArray<TSlashProblem>;
 begin
   // CRLF-Datei mit einer LF-Zeile davor: der Befehl steht trotzdem in Zeile 3.
-  Problems := TSlashCommandRegistry.Shared.Problems('unit U;'#13#10'interface'#10'implementation'#13#10 +
+  mProblems := TSlashCommandRegistry.Shared.Problems('unit U;'#13#10'interface'#10'implementation'#13#10 +
     '  /gibtsnicht X'#13#10'end.', nil);
-  Assert.AreEqual(1, Integer(Length(Problems)));
-  Assert.AreEqual(3, Problems[0].Range.StartPos.Line);
+  Assert.AreEqual(1, Integer(Length(mProblems)));
+  Assert.AreEqual(3, mProblems[0].Range.StartPos.Line);
 end;
 
 procedure TSlashCommandsTests.CommandInStringOrCommentIsIgnored;
 var
-  Edits: TArray<TRuleEdit>;
-  Text: string;
+  mEdits: TArray<TRuleEdit>;
+  mText: string;
 begin
-  Text := 'unit U;'#10'interface'#10'implementation'#10'{'#10'/uses System.Classes'#10#10'}'#10'end.';
-  Assert.IsFalse(TSlashCommandRegistry.Shared.AfterEnter(Text, TTextPosition.Create(5, 0), nil, nil, Edits));
-  Assert.AreEqual(0, Integer(Length(TSlashCommandRegistry.Shared.Problems(Text, nil))));
-  Text := 'unit U;'#10'interface'#10'implementation'#10'procedure P;'#10'asm'#10'/uses System.Classes'#10#10 +
+  mText := 'unit U;'#10'interface'#10'implementation'#10'{'#10'/uses System.Classes'#10#10'}'#10'end.';
+  Assert.IsFalse(TSlashCommandRegistry.Shared.AfterEnter(mText, TTextPosition.Create(5, 0), nil, nil, mEdits));
+  Assert.AreEqual(0, Integer(Length(TSlashCommandRegistry.Shared.Problems(mText, nil))));
+  mText := 'unit U;'#10'interface'#10'implementation'#10'procedure P;'#10'asm'#10'/uses System.Classes'#10#10 +
     'end;'#10'end.';
-  Assert.IsFalse(TSlashCommandRegistry.Shared.AfterEnter(Text, TTextPosition.Create(6, 0), nil, nil, Edits));
-  Text := 'unit U;'#10'interface'#10'implementation'#10'const S = '''''''#10'/gibtsnicht X'#10 +
+  Assert.IsFalse(TSlashCommandRegistry.Shared.AfterEnter(mText, TTextPosition.Create(6, 0), nil, nil, mEdits));
+  mText := 'unit U;'#10'interface'#10'implementation'#10'const S = '''''''#10'/gibtsnicht X'#10 +
     ''''''';'#10'end.';
-  Assert.AreEqual(0, Integer(Length(TSlashCommandRegistry.Shared.Problems(Text, nil))));
+  Assert.AreEqual(0, Integer(Length(TSlashCommandRegistry.Shared.Problems(mText, nil))));
 end;
 
 procedure TSlashCommandsTests.DisabledCommandIsSkipped;
 var
-  Edits: TArray<TRuleEdit>;
-  Problems: TArray<TSlashProblem>;
+  mEdits: TArray<TRuleEdit>;
+  mProblems: TArray<TSlashProblem>;
 begin
   Assert.IsFalse(TSlashCommandRegistry.Shared.AfterEnter(Source('/uses System.Classes'), TTextPosition.Create(6, 0),
-    nil, ['USES'], Edits));
-  Problems := TSlashCommandRegistry.Shared.Problems(Source('/uses System.Classes'), ['uses']);
-  Assert.AreEqual(1, Integer(Length(Problems)));
-  Assert.IsTrue(Pos('abgeschaltet', Problems[0].Message) > 0, Problems[0].Message);
+    nil, ['USES'], mEdits));
+  mProblems := TSlashCommandRegistry.Shared.Problems(Source('/uses System.Classes'), ['uses']);
+  Assert.AreEqual(1, Integer(Length(mProblems)));
+  Assert.IsTrue(Pos('abgeschaltet', mProblems[0].Message) > 0, mProblems[0].Message);
 end;
 
 procedure TSlashCommandsTests.MatchingListsCommands;
@@ -192,22 +192,22 @@ end;
 
 procedure TSlashCommandsTests.RegisterRejectsDuplicates;
 var
-  Registry: TSlashCommandRegistry;
-  Command: TSlashCommand;
+  mRegistry: TSlashCommandRegistry;
+  mCommand: TSlashCommand;
 begin
-  Registry := TSlashCommandRegistry.Create;
+  mRegistry := TSlashCommandRegistry.Create;
   try
-    Command := Default(TSlashCommand);
-    Command.Name := 'probe';
-    Registry.Register(Command);
+    mCommand := Default(TSlashCommand);
+    mCommand.Name := 'probe';
+    mRegistry.Register(mCommand);
     Assert.WillRaise(
       procedure
       begin
-        Registry.Register(Command);
+        mRegistry.Register(mCommand);
       end, EArgumentException);
-    Assert.AreEqual(1, Integer(Length(Registry.Commands)));
+    Assert.AreEqual(1, Integer(Length(mRegistry.Commands)));
   finally
-    Registry.Free;
+    mRegistry.Free;
   end;
 end;
 
@@ -219,19 +219,19 @@ end;
 
 procedure TSlashCommandsTests.RuleReportsIgnoreWithoutHit;
 const
-  Text = 'unit U;'#10'interface'#10'implementation'#10'procedure P;'#10'begin'#10'  %s'#10'  %s'#10'end;'#10'end.';
+  cText = 'unit U;'#10'interface'#10'implementation'#10'procedure P;'#10'begin'#10'  %s'#10'  %s'#10'end;'#10'end.';
 
   function HintsOf(const ACommand, ANext: string): TArray<string>;
   var
-    Finding: TRuleFinding;
+    mFinding: TRuleFinding;
   begin
     Result := nil;
-    for Finding in TRuleAssert.FindingsOfAll([TSlashCommandRule.Create, TProbeLineRule.Create],
-      Format(Text, [ACommand, ANext]), '') do
+    for mFinding in TRuleAssert.FindingsOfAll([TSlashCommandRule.Create, TProbeLineRule.Create],
+      Format(cText, [ACommand, ANext]), '') do
     begin
-      if Finding.RuleId = 'slash-command' then
+      if mFinding.RuleId = 'slash-command' then
       begin
-        Result := Result + [Finding.Message];
+        Result := Result + [mFinding.Message];
       end;
     end;
   end;

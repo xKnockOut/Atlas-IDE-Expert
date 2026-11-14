@@ -47,9 +47,9 @@ uses
   Atlas.Common.Mcp.CheckTools;
 
 const
-  WorkerFile = 'C:\P\Worker.pas';
-  MainFile = 'C:\P\Main.pas';
-  WorkerUnit =
+  cWorkerFile = 'C:\P\Worker.pas';
+  cMainFile = 'C:\P\Main.pas';
+  cWorkerUnit =
     'unit Worker;'#10 +
     'interface'#10 +
     'type'#10 +
@@ -66,7 +66,7 @@ const
     '  Step;'#10 +
     'end;'#10 +
     'end.';
-  MainUnit =
+  cMainUnit =
     'unit Main;'#10 +
     'interface'#10 +
     'implementation'#10 +
@@ -86,13 +86,13 @@ const
 function ReadText(const AFileName: string; out AText: string): Boolean;
 begin
   Result := True;
-  if SameText(AFileName, WorkerFile) then
+  if SameText(AFileName, cWorkerFile) then
   begin
-    AText := WorkerUnit;
+    AText := cWorkerUnit;
   end
-  else if SameText(AFileName, MainFile) then
+  else if SameText(AFileName, cMainFile) then
   begin
-    AText := MainUnit;
+    AText := cMainUnit;
   end
   else
   begin
@@ -102,82 +102,82 @@ end;
 
 function NewTools: TMcpCodeTools;
 var
-  Index: ISymbolIndex;
+  mIndex: ISymbolIndex;
 begin
-  Index := TSymbolIndex.Create;
-  Index.AddUnit(TIndexExtractor.ExtractText(WorkerUnit, WorkerFile, nil));
-  Index.AddUnit(TIndexExtractor.ExtractText(MainUnit, MainFile, nil));
-  Result := TMcpCodeTools.Create(Index, ReadText,
+  mIndex := TSymbolIndex.Create;
+  mIndex.AddUnit(TIndexExtractor.ExtractText(cWorkerUnit, cWorkerFile, nil));
+  mIndex.AddUnit(TIndexExtractor.ExtractText(cMainUnit, cMainFile, nil));
+  Result := TMcpCodeTools.Create(mIndex, ReadText,
     function: TArray<string>
     begin
-      Result := [WorkerFile, MainFile];
+      Result := [cWorkerFile, cMainFile];
     end);
 end;
 
 procedure TMcpCodeToolsTests.FindsReferencesAcrossFiles;
 var
-  Tools: TMcpCodeTools;
-  Text: string;
+  mTools: TMcpCodeTools;
+  mText: string;
 begin
-  Tools := NewTools;
+  mTools := NewTools;
   try
-    Text := Tools.References('TWorker.Run');
-    Assert.Contains(Text, 'Verwendungen von TWorker.Run');
-    Assert.Contains(Text, MainFile + ':10: W.Run;');
+    mText := mTools.References('TWorker.Run');
+    Assert.Contains(mText, 'Verwendungen von TWorker.Run');
+    Assert.Contains(mText, cMainFile + ':10: W.Run;');
   finally
-    Tools.Free;
+    mTools.Free;
   end;
 end;
 
 procedure TMcpCodeToolsTests.ShowsIncomingAndOutgoingCalls;
 var
-  Tools: TMcpCodeTools;
-  Text: string;
+  mTools: TMcpCodeTools;
+  mText: string;
 begin
-  Tools := NewTools;
+  mTools := NewTools;
   try
-    Text := Tools.CallHierarchy('TWorker.Run', TMcpCallDirection.Both);
-    Assert.Contains(Text, 'Aufgerufen von:');
-    Assert.Contains(Text, '← Start');
-    Assert.Contains(Text, '→ TWorker.Step');
-    Text := Tools.CallHierarchy('TWorker.Step', TMcpCallDirection.Incoming);
-    Assert.Contains(Text, '← TWorker.Run');
-    Assert.DoesNotContain(Text, 'Ruft auf:');
+    mText := mTools.CallHierarchy('TWorker.Run', TMcpCallDirection.Both);
+    Assert.Contains(mText, 'Aufgerufen von:');
+    Assert.Contains(mText, '← Start');
+    Assert.Contains(mText, '→ TWorker.Step');
+    mText := mTools.CallHierarchy('TWorker.Step', TMcpCallDirection.Incoming);
+    Assert.Contains(mText, '← TWorker.Run');
+    Assert.DoesNotContain(mText, 'Ruft auf:');
   finally
-    Tools.Free;
+    mTools.Free;
   end;
 end;
 
 procedure TMcpCodeToolsTests.GivesQualifiedName;
 var
-  Tools: TMcpCodeTools;
+  mTools: TMcpCodeTools;
 begin
-  Tools := NewTools;
+  mTools := NewTools;
   try
     // Zeile 10, Spalte 5: "Run" in "W.Run;".
-    Assert.AreEqual('Worker.TWorker.Run', Tools.QualifiedName(MainFile, 10, 5, False));
-    Assert.AreEqual('Worker.TWorker.Run()', Tools.QualifiedName(MainFile, 10, 5, True));
-    Assert.AreEqual('Main.Start.W', Tools.QualifiedName(MainFile, 7, 3, False));
+    Assert.AreEqual('Worker.TWorker.Run', mTools.QualifiedName(cMainFile, 10, 5, False));
+    Assert.AreEqual('Worker.TWorker.Run()', mTools.QualifiedName(cMainFile, 10, 5, True));
+    Assert.AreEqual('Main.Start.W', mTools.QualifiedName(cMainFile, 7, 3, False));
     Assert.WillRaise(
       procedure
       begin
-        Tools.QualifiedName(MainFile, 2, 1, False);
+        mTools.QualifiedName(cMainFile, 2, 1, False);
       end, EMcpToolError);
   finally
-    Tools.Free;
+    mTools.Free;
   end;
 end;
 
 procedure TMcpCodeToolsTests.ReportsUnknownSymbol;
 var
-  Tools: TMcpCodeTools;
+  mTools: TMcpCodeTools;
 begin
-  Tools := NewTools;
+  mTools := NewTools;
   try
-    Assert.Contains(Tools.References('TNichts'), 'Kein Symbol');
-    Assert.Contains(Tools.CallHierarchy('TNichts', TMcpCallDirection.Both), 'Kein Symbol');
+    Assert.Contains(mTools.References('TNichts'), 'Kein Symbol');
+    Assert.Contains(mTools.CallHierarchy('TNichts', TMcpCallDirection.Both), 'Kein Symbol');
   finally
-    Tools.Free;
+    mTools.Free;
   end;
 end;
 
@@ -196,23 +196,23 @@ end;
 
 procedure TMcpCodeToolsTests.CheckCodeReportsWithoutWriting;
 var
-  Tools: TMcpCodeTools;
-  Text: string;
+  mTools: TMcpCodeTools;
+  mText: string;
 begin
-  Tools := NewTools;
+  mTools := NewTools;
   try
     // Zeile 9 ("begin") bleibt, Zeile 10 "W.Run;" wird durch fehlerhaften Code ersetzt.
-    Text := Tools.CheckCode(TMcpRuleScope.Create(BuiltinRules, TServerSettings.Default, 'C:\P'),
-      MainFile, '  if then', 10, 10);
-    Assert.Contains(Text, '10:');
-    Assert.Contains(Text, '[syntax]');
+    mText := mTools.CheckCode(TMcpRuleScope.Create(BuiltinRules, TServerSettings.Default, 'C:\P'),
+      cMainFile, '  if then', 10, 10);
+    Assert.Contains(mText, '10:');
+    Assert.Contains(mText, '[syntax]');
     // Ohne System im Index werden Bezeichner nicht geprüft, und das steht dabei.
-    Assert.Contains(Text, 'Unit System ist nicht im Index');
-    Text := Tools.CheckCode(TMcpRuleScope.Create(BuiltinRules, TServerSettings.Default, 'C:\P'),
-      MainFile, MainUnit, 0, 0);
-    Assert.Contains(Text, 'Keine Befunde');
+    Assert.Contains(mText, 'Unit System ist nicht im Index');
+    mText := mTools.CheckCode(TMcpRuleScope.Create(BuiltinRules, TServerSettings.Default, 'C:\P'),
+      cMainFile, cMainUnit, 0, 0);
+    Assert.Contains(mText, 'Keine Befunde');
   finally
-    Tools.Free;
+    mTools.Free;
   end;
 end;
 
@@ -220,46 +220,46 @@ procedure TMcpCodeToolsTests.CheckCodeUsesProjectDefines;
 const
   // Der WIN64-Zweig ist sonst sauber: Datei und Unit heißen gleich, X ruft sich nicht selbst auf und wird im
   // initialization-Teil verwendet (unused-declaration, #64).
-  ZielFile = 'C:\P\Ziel.pas';
-  Win64Unit =
+  cZielFile = 'C:\P\Ziel.pas';
+  cWin64Unit =
     'unit Ziel;'#10'interface'#10'implementation'#10'procedure X;'#10'begin'#10 +
     '{$IFDEF WIN64}'#10'  Exit;'#10'{$ELSE}'#10'  if then'#10'{$ENDIF}'#10'end;'#10 +
     'initialization'#10'  X;'#10'end.';
 var
-  Tools: TMcpCodeTools;
-  Win64: TCheckSourceFunc;
-  ReadWin64: TReferenceReadText;
+  mTools: TMcpCodeTools;
+  mWin64: TCheckSourceFunc;
+  mReadWin64: TReferenceReadText;
 begin
-  Win64 :=
+  mWin64 :=
     function(const AFileName: string): TCheckSource
     begin
       Result := TCheckSource.Create(AFileName, TPascalPreprocessor.PredefinedSymbols('Win64', 37), nil);
     end;
-  ReadWin64 :=
+  mReadWin64 :=
     function(const AFileName: string; out AText: string): Boolean
     begin
-      AText := Win64Unit;
+      AText := cWin64Unit;
       Result := True;
     end;
-  Tools := NewTools;
+  mTools := NewTools;
   try
     // Ohne Projekt gelten Win32 und Delphi 13: Der {$ELSE}-Zweig ist aktiv und kaputt.
-    Assert.Contains(Tools.CheckCode(TMcpRuleScope.Create(BuiltinRules, TServerSettings.Default, 'C:\P'),
-      ZielFile, Win64Unit, 0, 0),
+    Assert.Contains(mTools.CheckCode(TMcpRuleScope.Create(BuiltinRules, TServerSettings.Default, 'C:\P'),
+      cZielFile, cWin64Unit, 0, 0),
       '[syntax]');
-    Tools.CheckSource := Win64;
-    Assert.Contains(Tools.CheckCode(TMcpRuleScope.Create(BuiltinRules, TServerSettings.Default, 'C:\P'),
-      ZielFile, Win64Unit, 0, 0),
+    mTools.CheckSource := mWin64;
+    Assert.Contains(mTools.CheckCode(TMcpRuleScope.Create(BuiltinRules, TServerSettings.Default, 'C:\P'),
+      cZielFile, cWin64Unit, 0, 0),
       'Keine Befunde');
   finally
-    Tools.Free;
+    mTools.Free;
   end;
   Assert.Contains(TMcpCheckTools.Diagnostics(TMcpRuleScope.Create(BuiltinRules, TServerSettings.Default, 'C:\P'),
-    [ZielFile],
-    ReadWin64), '[syntax]');
+    [cZielFile],
+    mReadWin64), '[syntax]');
   Assert.Contains(TMcpCheckTools.Diagnostics(TMcpRuleScope.Create(BuiltinRules, TServerSettings.Default, 'C:\P'),
-    [ZielFile],
-    ReadWin64, Win64), '0 Befunde');
+    [cZielFile],
+    mReadWin64, mWin64), '0 Befunde');
 end;
 
 procedure TMcpCodeToolsTests.ParsesDirection;

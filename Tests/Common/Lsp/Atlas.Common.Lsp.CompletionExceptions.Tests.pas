@@ -74,11 +74,11 @@ uses
   Atlas.Common.Lsp.CompletionExceptions;
 
 const
-  HauptFile = 'C:\P\Haupt.pas';
-  SysUtilsFile = 'C:\Rtl\System.SysUtils.pas';
-  ClassesFile = 'C:\Rtl\System.Classes.pas';
+  cHauptFile = 'C:\P\Haupt.pas';
+  cSysUtilsFile = 'C:\Rtl\System.SysUtils.pas';
+  cClassesFile = 'C:\Rtl\System.Classes.pas';
 
-  UnitSysUtils =
+  cUnitSysUtils =
     'unit System.SysUtils;'#10 +
     'interface'#10 +
     'type'#10 +
@@ -98,7 +98,7 @@ const
     'function StrToInt(const S: string): Integer; begin Result := 0; end;'#10 +
     'end.';
 
-  UnitHaupt =
+  cUnitHaupt =
     'unit Haupt;'#10 +
     'interface'#10 +
     'uses'#10 +
@@ -128,23 +128,23 @@ const
 /// <summary>Text ohne "|" und die Position des "|".</summary>
 function Split(const AMarked: string; out APosition: TTextPosition): string;
 var
-  Index, Line, Character: Integer;
+  mIndex, mLine, mCharacter: Integer;
 begin
-  Line := 0;
-  Character := 0;
-  for Index := 1 to Pos('|', AMarked) - 1 do
+  mLine := 0;
+  mCharacter := 0;
+  for mIndex := 1 to Pos('|', AMarked) - 1 do
   begin
-    if AMarked[Index] = #10 then
+    if AMarked[mIndex] = #10 then
     begin
-      Inc(Line);
-      Character := 0;
+      Inc(mLine);
+      mCharacter := 0;
     end
     else
     begin
-      Inc(Character);
+      Inc(mCharacter);
     end;
   end;
-  APosition := TTextPosition.Create(Line, Character);
+  APosition := TTextPosition.Create(mLine, mCharacter);
   Result := StringReplace(AMarked, '|', '', []);
 end;
 
@@ -152,16 +152,16 @@ end;
 
 procedure TCompletionExceptionsTests.Setup;
 var
-  Rtl: TUnitIndex;
+  mRtl: TUnitIndex;
 begin
   FIndex := TSymbolIndex.Create;
-  Rtl := TIndexExtractor.ExtractText(UnitSysUtils, SysUtilsFile, nil);
-  Rtl.Library_ := True;
-  FIndex.AddUnit(Rtl);
-  Rtl := TIndexExtractor.ExtractText('unit System.Classes;'#10'interface'#10'uses'#10'  System.SysUtils;'#10 +
-    'type'#10'  EFOpenError = class(Exception);'#10'implementation'#10'end.', ClassesFile, nil);
-  Rtl.Library_ := True;
-  FIndex.AddUnit(Rtl);
+  mRtl := TIndexExtractor.ExtractText(cUnitSysUtils, cSysUtilsFile, nil);
+  mRtl.Library_ := True;
+  FIndex.AddUnit(mRtl);
+  mRtl := TIndexExtractor.ExtractText('unit System.Classes;'#10'interface'#10'uses'#10'  System.SysUtils;'#10 +
+    'type'#10'  EFOpenError = class(Exception);'#10'implementation'#10'end.', cClassesFile, nil);
+  mRtl.Library_ := True;
+  FIndex.AddUnit(mRtl);
   FResolver := TNameResolver.Create(FIndex);
 end;
 
@@ -174,25 +174,25 @@ end;
 function TCompletionExceptionsTests.ItemsAt(const AMarked: string; const ASettings: TCompletionSettings;
   const APostfix: TPostfixOptions): TCompletionItems;
 var
-  Text: string;
-  Position: TTextPosition;
-  Tree: TSyntaxTree;
-  Request: TCompletionRequest;
+  mText: string;
+  mPosition: TTextPosition;
+  mTree: TSyntaxTree;
+  mRequest: TCompletionRequest;
 begin
-  Text := Split(StringReplace(UnitHaupt, '{ Code }', AMarked, []), Position);
-  Tree := TPascalParser.Parse(Text);
-  FIndex.AddUnit(TIndexExtractor.ExtractText(StringReplace(Text, '|', '', []), HauptFile, nil));
-  Request := TCompletionRequest.Create(Text, HauptFile, Position);
+  mText := Split(StringReplace(cUnitHaupt, '{ Code }', AMarked, []), mPosition);
+  mTree := TPascalParser.Parse(mText);
+  FIndex.AddUnit(TIndexExtractor.ExtractText(StringReplace(mText, '|', '', []), cHauptFile, nil));
+  mRequest := TCompletionRequest.Create(mText, cHauptFile, mPosition);
   try
-    Request.Tree := Tree;
-    Request.Resolver := FResolver;
-    Request.Index := FIndex;
-    Request.Matching := TCompletionMatching.Prefix;
-    Request.Settings := ASettings;
-    Result := TCompletionLists.Collect(Request, APostfix, nil);
+    mRequest.Tree := mTree;
+    mRequest.Resolver := FResolver;
+    mRequest.Index := FIndex;
+    mRequest.Matching := TCompletionMatching.Prefix;
+    mRequest.Settings := ASettings;
+    Result := TCompletionLists.Collect(mRequest, APostfix, nil);
   finally
-    Request.Free;
-    Tree.Free;
+    mRequest.Free;
+    mTree.Free;
   end;
 end;
 
@@ -210,13 +210,13 @@ end;
 function TCompletionExceptionsTests.Find(const AItems: TCompletionItems; const AName: string;
   out AItem: TCompletionItem): Boolean;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
-  Index := IndexOf(AItems, AName);
-  Result := Index >= 0;
+  mIndex := IndexOf(AItems, AName);
+  Result := mIndex >= 0;
   if Result then
   begin
-    AItem := AItems.Items[Index];
+    AItem := AItems.Items[mIndex];
   end
   else
   begin
@@ -226,13 +226,13 @@ end;
 
 function TCompletionExceptionsTests.IndexOf(const AItems: TCompletionItems; const AName: string): Integer;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
-  for Index := 0 to High(AItems.Items) do
+  for mIndex := 0 to High(AItems.Items) do
   begin
-    if AItems.Items[Index].Name = AName then
+    if AItems.Items[mIndex].Name = AName then
     begin
-      Exit(Index);
+      Exit(mIndex);
     end;
   end;
   Result := -1;
@@ -240,187 +240,187 @@ end;
 
 procedure TCompletionExceptionsTests.RaiseOffersOnlyExceptionClasses;
 var
-  Items: TCompletionItems;
-  Item: TCompletionItem;
+  mItems: TCompletionItems;
+  mItem: TCompletionItem;
 begin
-  Items := ItemsAt('raise |');
-  Assert.IsTrue(Find(Items, 'EAppError', Item), 'Projektklasse fehlt');
-  Assert.IsTrue(Find(Items, 'ELoadError', Item), 'Nachfahre fehlt');
-  Assert.IsTrue(Find(Items, 'Exception', Item), 'Exception fehlt');
-  Assert.IsTrue(Find(Items, 'EConvertError', Item), 'RTL-Klasse fehlt');
-  Assert.AreEqual(-1, IndexOf(Items, 'TWorker'), 'keine Exception');
-  Assert.AreEqual(-1, IndexOf(Items, 'TFormatSettings'), 'kein Record');
-  Assert.AreEqual(-1, IndexOf(Items, 'Value'), 'keine Variable');
-  Assert.AreEqual(-1, IndexOf(Items, 'StrToInt'), 'keine Routine');
+  mItems := ItemsAt('raise |');
+  Assert.IsTrue(Find(mItems, 'EAppError', mItem), 'Projektklasse fehlt');
+  Assert.IsTrue(Find(mItems, 'ELoadError', mItem), 'Nachfahre fehlt');
+  Assert.IsTrue(Find(mItems, 'Exception', mItem), 'Exception fehlt');
+  Assert.IsTrue(Find(mItems, 'EConvertError', mItem), 'RTL-Klasse fehlt');
+  Assert.AreEqual(-1, IndexOf(mItems, 'TWorker'), 'keine Exception');
+  Assert.AreEqual(-1, IndexOf(mItems, 'TFormatSettings'), 'kein Record');
+  Assert.AreEqual(-1, IndexOf(mItems, 'Value'), 'keine Variable');
+  Assert.AreEqual(-1, IndexOf(mItems, 'StrToInt'), 'keine Routine');
 end;
 
 procedure TCompletionExceptionsTests.RaiseProjectBeforeLibrary;
 var
-  Items: TCompletionItems;
+  mItems: TCompletionItems;
 begin
-  Items := ItemsAt('raise E|');
-  Assert.IsTrue(IndexOf(Items, 'EAppError') >= 0);
-  Assert.IsTrue(IndexOf(Items, 'EAppError') < IndexOf(Items, 'EConvertError'), 'Projekt vor Bibliothek');
-  Assert.IsTrue(IndexOf(Items, 'ELoadError') < IndexOf(Items, 'EAbort'), 'Projekt vor Bibliothek');
+  mItems := ItemsAt('raise E|');
+  Assert.IsTrue(IndexOf(mItems, 'EAppError') >= 0);
+  Assert.IsTrue(IndexOf(mItems, 'EAppError') < IndexOf(mItems, 'EConvertError'), 'Projekt vor Bibliothek');
+  Assert.IsTrue(IndexOf(mItems, 'ELoadError') < IndexOf(mItems, 'EAbort'), 'Projekt vor Bibliothek');
 end;
 
 procedure TCompletionExceptionsTests.RaiseInsertsCreateAndCreateFmt;
 var
-  Postfix: TPostfixOptions;
-  Items: TCompletionItems;
-  Item: TCompletionItem;
+  mPostfix: TPostfixOptions;
+  mItems: TCompletionItems;
+  mItem: TCompletionItem;
 begin
-  Postfix := Default(TPostfixOptions);
-  Postfix.Snippet := True;
-  Items := ItemsAt('raise EApp|', TCompletionSettings.Default, Postfix);
-  Assert.IsTrue(Find(Items, 'EAppError', Item));
-  Assert.AreEqual('EAppError.Create(''$0'')', Item.InsertText);
-  Assert.IsTrue(Item.Snippet);
-  Assert.AreEqual(TCompletionExceptions.cGroupRaise, Item.ExceptionGroup);
-  Assert.IsTrue(Find(Items, 'EAppError.CreateFmt', Item), 'eigener Eintrag fuer CreateFmt');
-  Assert.AreEqual('EAppError.CreateFmt(''$1'', [$2])$0', Item.InsertText);
-  Assert.AreEqual(cKindConstructor, Item.Kind);
-  Assert.AreEqual('EAppError', Item.FilterText);
-  Assert.AreEqual(IndexOf(Items, 'EAppError') + 1, IndexOf(Items, 'EAppError.CreateFmt'), 'direkt dahinter');
+  mPostfix := Default(TPostfixOptions);
+  mPostfix.Snippet := True;
+  mItems := ItemsAt('raise EApp|', TCompletionSettings.Default, mPostfix);
+  Assert.IsTrue(Find(mItems, 'EAppError', mItem));
+  Assert.AreEqual('EAppError.Create(''$0'')', mItem.InsertText);
+  Assert.IsTrue(mItem.Snippet);
+  Assert.AreEqual(TCompletionExceptions.cGroupRaise, mItem.ExceptionGroup);
+  Assert.IsTrue(Find(mItems, 'EAppError.CreateFmt', mItem), 'eigener Eintrag fuer CreateFmt');
+  Assert.AreEqual('EAppError.CreateFmt(''$1'', [$2])$0', mItem.InsertText);
+  Assert.AreEqual(cKindConstructor, mItem.Kind);
+  Assert.AreEqual('EAppError', mItem.FilterText);
+  Assert.AreEqual(IndexOf(mItems, 'EAppError') + 1, IndexOf(mItems, 'EAppError.CreateFmt'), 'direkt dahinter');
 end;
 
 procedure TCompletionExceptionsTests.RaiseWithoutSnippets;
 var
-  Items: TCompletionItems;
-  Item: TCompletionItem;
+  mItems: TCompletionItems;
+  mItem: TCompletionItem;
 begin
-  Items := ItemsAt('raise EApp|');
-  Assert.IsTrue(Find(Items, 'EAppError', Item));
-  Assert.AreEqual('EAppError.Create('''')', Item.InsertText);
-  Assert.IsFalse(Item.Snippet);
-  Assert.IsTrue(Find(Items, 'EAppError.CreateFmt', Item));
-  Assert.AreEqual('EAppError.CreateFmt('''', [])', Item.InsertText);
+  mItems := ItemsAt('raise EApp|');
+  Assert.IsTrue(Find(mItems, 'EAppError', mItem));
+  Assert.AreEqual('EAppError.Create('''')', mItem.InsertText);
+  Assert.IsFalse(mItem.Snippet);
+  Assert.IsTrue(Find(mItems, 'EAppError.CreateFmt', mItem));
+  Assert.AreEqual('EAppError.CreateFmt('''', [])', mItem.InsertText);
 end;
 
 procedure TCompletionExceptionsTests.HandlerShowsTryClassesFirst;
 var
-  Items: TCompletionItems;
-  Item: TCompletionItem;
+  mItems: TCompletionItems;
+  mItem: TCompletionItem;
 begin
   // Akzeptanz: Nach StrToInt im try zeigt "on E: " als erstes EConvertError.
-  Items := ItemsAt('try'#10'    Value := StrToInt(''1'');'#10'  except'#10'    on E: |');
-  Assert.IsTrue(Length(Items.Items) > 0);
-  Assert.AreEqual('EConvertError', Items.Items[0].Name);
-  Assert.AreEqual(TCompletionExceptions.cGroupTry, Items.Items[0].ExceptionGroup);
-  Assert.IsTrue(Items.Items[0].Fits);
-  Assert.IsTrue(Find(Items, 'EAppError', Item));
-  Assert.AreEqual(TCompletionExceptions.cGroupGeneral, Item.ExceptionGroup);
-  Assert.IsFalse(Item.Fits);
-  Assert.AreEqual(-1, IndexOf(Items, 'TWorker'));
+  mItems := ItemsAt('try'#10'    Value := StrToInt(''1'');'#10'  except'#10'    on E: |');
+  Assert.IsTrue(Length(mItems.Items) > 0);
+  Assert.AreEqual('EConvertError', mItems.Items[0].Name);
+  Assert.AreEqual(TCompletionExceptions.cGroupTry, mItems.Items[0].ExceptionGroup);
+  Assert.IsTrue(mItems.Items[0].Fits);
+  Assert.IsTrue(Find(mItems, 'EAppError', mItem));
+  Assert.AreEqual(TCompletionExceptions.cGroupGeneral, mItem.ExceptionGroup);
+  Assert.IsFalse(mItem.Fits);
+  Assert.AreEqual(-1, IndexOf(mItems, 'TWorker'));
 end;
 
 procedure TCompletionExceptionsTests.HandlerReadsXmlDoc;
 var
-  Items: TCompletionItems;
+  mItems: TCompletionItems;
 begin
-  Items := ItemsAt('try'#10'    Load;'#10'    Value := StrToInt(''1'');'#10'  except'#10'    on E: |');
-  Assert.IsTrue(Length(Items.Items) > 1);
-  Assert.AreEqual('ELoadError', Items.Items[0].Name, 'Reihenfolge der Aufrufe');
-  Assert.AreEqual('EConvertError', Items.Items[1].Name);
-  Assert.AreEqual(TCompletionExceptions.cGroupTry, Items.Items[1].ExceptionGroup);
+  mItems := ItemsAt('try'#10'    Load;'#10'    Value := StrToInt(''1'');'#10'  except'#10'    on E: |');
+  Assert.IsTrue(Length(mItems.Items) > 1);
+  Assert.AreEqual('ELoadError', mItems.Items[0].Name, 'Reihenfolge der Aufrufe');
+  Assert.AreEqual('EConvertError', mItems.Items[1].Name);
+  Assert.AreEqual(TCompletionExceptions.cGroupTry, mItems.Items[1].ExceptionGroup);
 end;
 
 procedure TCompletionExceptionsTests.HandlerAddsUsesForTryClasses;
 var
-  Items: TCompletionItems;
+  mItems: TCompletionItems;
 begin
   // LoadFromFile ohne aufgeloesten Empfaenger: bekannter Fall der RTL, Klasse aus nicht eingebundener Unit.
-  Items := ItemsAt('try'#10'    Lines.LoadFromFile(''a.txt'');'#10'  except'#10'    on E: |');
-  Assert.IsTrue(Length(Items.Items) > 0);
-  Assert.AreEqual('EFOpenError', Items.Items[0].Name);
-  Assert.AreEqual(TCompletionExceptions.cGroupTry, Items.Items[0].ExceptionGroup);
-  Assert.AreEqual(1, Integer(Length(Items.Items[0].AdditionalEdits)), 'uses ergaenzen');
-  Assert.IsTrue(Items.Items[0].AdditionalEdits[0].NewText.Contains('System.Classes'));
+  mItems := ItemsAt('try'#10'    Lines.LoadFromFile(''a.txt'');'#10'  except'#10'    on E: |');
+  Assert.IsTrue(Length(mItems.Items) > 0);
+  Assert.AreEqual('EFOpenError', mItems.Items[0].Name);
+  Assert.AreEqual(TCompletionExceptions.cGroupTry, mItems.Items[0].ExceptionGroup);
+  Assert.AreEqual(1, Integer(Length(mItems.Items[0].AdditionalEdits)), 'uses ergaenzen');
+  Assert.IsTrue(mItems.Items[0].AdditionalEdits[0].NewText.Contains('System.Classes'));
 end;
 
 procedure TCompletionExceptionsTests.HandlerSkipsHandledClasses;
 var
-  Items: TCompletionItems;
+  mItems: TCompletionItems;
 begin
-  Items := ItemsAt('try'#10'    Value := StrToInt(''1'');'#10'  except'#10'    on E: EConvertError do'#10 +
+  mItems := ItemsAt('try'#10'    Value := StrToInt(''1'');'#10'  except'#10'    on E: EConvertError do'#10 +
     '      Value := 0;'#10'    on E: |');
-  Assert.AreEqual(-1, IndexOf(Items, 'EConvertError'), 'schon behandelt');
-  Assert.IsTrue(IndexOf(Items, 'EAppError') >= 0);
+  Assert.AreEqual(-1, IndexOf(mItems, 'EConvertError'), 'schon behandelt');
+  Assert.IsTrue(IndexOf(mItems, 'EAppError') >= 0);
 end;
 
 procedure TCompletionExceptionsTests.HandlerWarnsAboutOrder;
 var
-  Items: TCompletionItems;
-  Item: TCompletionItem;
+  mItems: TCompletionItems;
+  mItem: TCompletionItem;
 begin
   // Akzeptanz: on E: Exception vor on E: EConvertError erzeugt die Warnung.
-  Items := ItemsAt('try'#10'    Value := 1;'#10'  except'#10'    on E: Exception do'#10'      Value := 0;'#10 +
+  mItems := ItemsAt('try'#10'    Value := 1;'#10'  except'#10'    on E: Exception do'#10'      Value := 0;'#10 +
     '    on E: |');
-  Assert.IsTrue(Find(Items, 'EConvertError', Item));
-  Assert.AreEqual('Exception', Item.Unreachable);
-  Assert.AreEqual(-1, IndexOf(Items, 'Exception'), 'schon behandelt');
+  Assert.IsTrue(Find(mItems, 'EConvertError', mItem));
+  Assert.AreEqual('Exception', mItem.Unreachable);
+  Assert.AreEqual(-1, IndexOf(mItems, 'Exception'), 'schon behandelt');
   // Zweig danach (nicht davor) loest keine Warnung aus.
-  Items := ItemsAt('try'#10'    Value := 1;'#10'  except'#10'    on E: E|'#10'    on E: Exception do'#10 +
+  mItems := ItemsAt('try'#10'    Value := 1;'#10'  except'#10'    on E: E|'#10'    on E: Exception do'#10 +
     '      Value := 0;');
-  Assert.IsTrue(Find(Items, 'EConvertError', Item));
-  Assert.AreEqual('', Item.Unreachable);
-  Assert.AreEqual(-1, IndexOf(Items, 'Exception'));
+  Assert.IsTrue(Find(mItems, 'EConvertError', mItem));
+  Assert.AreEqual('', mItem.Unreachable);
+  Assert.AreEqual(-1, IndexOf(mItems, 'Exception'));
 end;
 
 procedure TCompletionExceptionsTests.HandlerWithoutTryClassesHasNoGroups;
 var
-  Items: TCompletionItems;
-  Item: TCompletionItem;
+  mItems: TCompletionItems;
+  mItem: TCompletionItem;
 begin
-  Items := ItemsAt('try'#10'    Value := 1;'#10'  except'#10'    on E: |');
-  Assert.IsTrue(Find(Items, 'EAppError', Item));
-  Assert.AreEqual('', Item.ExceptionGroup);
-  Assert.AreEqual('', Item.Expected);
+  mItems := ItemsAt('try'#10'    Value := 1;'#10'  except'#10'    on E: |');
+  Assert.IsTrue(Find(mItems, 'EAppError', mItem));
+  Assert.AreEqual('', mItem.ExceptionGroup);
+  Assert.AreEqual('', mItem.Expected);
 end;
 
 procedure TCompletionExceptionsTests.SiteNeedsExcept;
 var
-  Items: TCompletionItems;
+  mItems: TCompletionItems;
 begin
   // Ohne except ist "on E:" keine Behandlung; die gewoehnliche Liste gilt.
-  Items := ItemsAt('Value := 1;'#10'  on E: |');
-  Assert.AreEqual(-1, IndexOf(Items, 'EAppError.CreateFmt'));
+  mItems := ItemsAt('Value := 1;'#10'  on E: |');
+  Assert.AreEqual(-1, IndexOf(mItems, 'EAppError.CreateFmt'));
   // Verschachtelter Block im try zaehlt nicht als except-Ebene.
-  Items := ItemsAt('try'#10'    begin'#10'      Value := StrToInt(''1'');'#10'    end;'#10'  except'#10 +
+  mItems := ItemsAt('try'#10'    begin'#10'      Value := StrToInt(''1'');'#10'    end;'#10'  except'#10 +
     '    on E: |');
-  Assert.IsTrue(Length(Items.Items) > 0);
-  Assert.AreEqual('EConvertError', Items.Items[0].Name);
+  Assert.IsTrue(Length(mItems.Items) > 0);
+  Assert.AreEqual('EConvertError', mItems.Items[0].Name);
 end;
 
 procedure TCompletionExceptionsTests.WritesJson;
 var
-  Json: TJSONObject;
-  Text: string;
+  mJson: TJSONObject;
+  mText: string;
 begin
-  Json := TLspCompletion.ToJson(ItemsAt('try'#10'    Value := StrToInt(''1'');'#10'  except'#10 +
+  mJson := TLspCompletion.ToJson(ItemsAt('try'#10'    Value := StrToInt(''1'');'#10'  except'#10 +
     '    on E: Exception do'#10'      Value := 0;'#10'    on E: |'));
   try
-    Text := Json.ToJSON;
+    mText := mJson.ToJSON;
   finally
-    Json.Free;
+    mJson.Free;
   end;
-  Assert.IsTrue(Text.Contains('"exceptionGroup":"try"'), Text);
-  Assert.IsTrue(Text.Contains('"unreachable":"Exception"'), Text);
+  Assert.IsTrue(mText.Contains('"exceptionGroup":"try"'), mText);
+  Assert.IsTrue(mText.Contains('"unreachable":"Exception"'), mText);
 end;
 
 procedure TCompletionExceptionsTests.SwitchOff;
 var
-  Settings: TCompletionSettings;
-  Items: TCompletionItems;
-  Item: TCompletionItem;
+  mSettings: TCompletionSettings;
+  mItems: TCompletionItems;
+  mItem: TCompletionItem;
 begin
-  Settings := TCompletionSettings.Default;
-  Settings.ExceptionClasses := False;
-  Items := ItemsAt('raise |', Settings);
-  Assert.IsTrue(Find(Items, 'EAppError', Item));
-  Assert.AreEqual('', Item.ExceptionGroup);
-  Assert.AreEqual(-1, IndexOf(Items, 'EAppError.CreateFmt'));
-  Assert.IsTrue(IndexOf(Items, 'Value') >= 0, 'gewoehnliche Liste');
+  mSettings := TCompletionSettings.Default;
+  mSettings.ExceptionClasses := False;
+  mItems := ItemsAt('raise |', mSettings);
+  Assert.IsTrue(Find(mItems, 'EAppError', mItem));
+  Assert.AreEqual('', mItem.ExceptionGroup);
+  Assert.AreEqual(-1, IndexOf(mItems, 'EAppError.CreateFmt'));
+  Assert.IsTrue(IndexOf(mItems, 'Value') >= 0, 'gewoehnliche Liste');
 end;
 
 end.

@@ -39,7 +39,7 @@ uses
   Atlas.Common.Editing.DataFieldNames;
 
 const
-  Form =
+  cForm =
     'object frmOrders: TfrmOrders'#13#10 +
     '  object qryOrders: TSQLQuery'#13#10 +
     '    SQL.Strings = ('#13#10 +
@@ -73,76 +73,76 @@ const
 
 function Names(const AItems: TArray<TDataName>): string;
 var
-  Item: TDataName;
+  mItem: TDataName;
 begin
   Result := '';
-  for Item in AItems do
+  for mItem in AItems do
   begin
     if Result <> '' then
     begin
       Result := Result + '|';
     end;
-    Result := Result + Item.Name;
-    if Item.TypeName <> '' then
+    Result := Result + mItem.Name;
+    if mItem.TypeName <> '' then
     begin
-      Result := Result + ':' + Item.TypeName;
+      Result := Result + ':' + mItem.TypeName;
     end;
   end;
 end;
 
 procedure TDataFieldNamesTests.FindsCallAtCursor;
 var
-  Call: TDataNameCall;
-  Line: string;
+  mCall: TDataNameCall;
+  mLine: string;
 begin
-  Line := '  Total := qryOrders.FieldByName(''cu'').AsInteger;';
+  mLine := '  Total := qryOrders.FieldByName(''cu'').AsInteger;';
   // Cursor hinter "cu".
-  Assert.IsTrue(TDataFieldNames.CallAt(Line, 36, Call));
-  Assert.AreEqual('qryOrders', Call.DataSet);
-  Assert.AreEqual('FieldByName', Call.Method);
-  Assert.AreEqual<TDataNameKind>(TDataNameKind.Field, Call.Kind);
-  Assert.AreEqual(34, Call.ContentStart);
-  Assert.AreEqual(36, Call.ContentEnd);
-  Assert.AreEqual('cu', Call.Content);
+  Assert.IsTrue(TDataFieldNames.CallAt(mLine, 36, mCall));
+  Assert.AreEqual('qryOrders', mCall.DataSet);
+  Assert.AreEqual('FieldByName', mCall.Method);
+  Assert.AreEqual<TDataNameKind>(TDataNameKind.Field, mCall.Kind);
+  Assert.AreEqual(34, mCall.ContentStart);
+  Assert.AreEqual(36, mCall.ContentEnd);
+  Assert.AreEqual('cu', mCall.Content);
   // Direkt hinter dem öffnenden Anführungszeichen, ohne schließendes.
-  Line := '  Self.qryOrders.Params.ParamByName(''';
-  Assert.IsTrue(TDataFieldNames.CallAt(Line, Length(Line), Call));
-  Assert.AreEqual('qryOrders', Call.DataSet);
-  Assert.AreEqual<TDataNameKind>(TDataNameKind.Param, Call.Kind);
-  Assert.AreEqual(Integer(Length(Line)), Call.ContentStart);
-  Assert.AreEqual(Integer(Length(Line)), Call.ContentEnd);
-  Line := '  if qryOrders.FindField(''NO'') = nil then';
-  Assert.IsTrue(TDataFieldNames.CallAt(Line, 26, Call));
-  Assert.AreEqual('FindField', Call.Method);
-  Assert.AreEqual('NO', Call.Content);
+  mLine := '  Self.qryOrders.Params.ParamByName(''';
+  Assert.IsTrue(TDataFieldNames.CallAt(mLine, Length(mLine), mCall));
+  Assert.AreEqual('qryOrders', mCall.DataSet);
+  Assert.AreEqual<TDataNameKind>(TDataNameKind.Param, mCall.Kind);
+  Assert.AreEqual(Integer(Length(mLine)), mCall.ContentStart);
+  Assert.AreEqual(Integer(Length(mLine)), mCall.ContentEnd);
+  mLine := '  if qryOrders.FindField(''NO'') = nil then';
+  Assert.IsTrue(TDataFieldNames.CallAt(mLine, 26, mCall));
+  Assert.AreEqual('FindField', mCall.Method);
+  Assert.AreEqual('NO', mCall.Content);
 end;
 
 procedure TDataFieldNamesTests.IgnoresOtherStringsAndDataModules;
 var
-  Call: TDataNameCall;
+  mCall: TDataNameCall;
 begin
   // Zweites Argument, anderer Aufruf, lange Kette, Cursor hinter dem String.
-  Assert.IsFalse(TDataFieldNames.CallAt('  Log(''cu'');', 8, Call));
-  Assert.IsFalse(TDataFieldNames.CallAt('  App.dmMain.qryOrders.FieldByName(''cu'');', 38, Call));
-  Assert.IsFalse(TDataFieldNames.CallAt('  qryOrders.FieldByName(''cu'').AsString := ''x'';', 30, Call));
-  Assert.IsFalse(TDataFieldNames.CallAt('  FieldByName(''cu'');', 17, Call));
-  Assert.IsFalse(TDataFieldNames.CallAt('  // qryOrders.FieldByName(''cu'');', 30, Call));
+  Assert.IsFalse(TDataFieldNames.CallAt('  Log(''cu'');', 8, mCall));
+  Assert.IsFalse(TDataFieldNames.CallAt('  App.dmMain.qryOrders.FieldByName(''cu'');', 38, mCall));
+  Assert.IsFalse(TDataFieldNames.CallAt('  qryOrders.FieldByName(''cu'').AsString := ''x'';', 30, mCall));
+  Assert.IsFalse(TDataFieldNames.CallAt('  FieldByName(''cu'');', 17, mCall));
+  Assert.IsFalse(TDataFieldNames.CallAt('  // qryOrders.FieldByName(''cu'');', 30, mCall));
 end;
 
 procedure TDataFieldNamesTests.FindsDataModuleCall;
 var
-  Call: TDataNameCall;
+  mCall: TDataNameCall;
 begin
-  Assert.IsTrue(TDataFieldNames.CallAt('  dmMain.qryOrders.FieldByName(''cu'');', 34, Call));
-  Assert.AreEqual('dmMain', Call.Owner);
-  Assert.AreEqual('qryOrders', Call.DataSet);
-  Assert.AreEqual('dmMain.qryOrders', Call.DisplayName);
-  Assert.IsTrue(TDataFieldNames.CallAt('  Self.dmMain.qryOrders.Params.ParamByName(''', 44, Call));
-  Assert.AreEqual('dmMain', Call.Owner);
-  Assert.AreEqual<TDataNameKind>(TDataNameKind.Param, Call.Kind);
-  Assert.IsTrue(TDataFieldNames.CallAt('  qryOrders.FieldByName(''cu'');', 27, Call));
-  Assert.AreEqual('', Call.Owner);
-  Assert.AreEqual('qryOrders', Call.DisplayName);
+  Assert.IsTrue(TDataFieldNames.CallAt('  dmMain.qryOrders.FieldByName(''cu'');', 34, mCall));
+  Assert.AreEqual('dmMain', mCall.Owner);
+  Assert.AreEqual('qryOrders', mCall.DataSet);
+  Assert.AreEqual('dmMain.qryOrders', mCall.DisplayName);
+  Assert.IsTrue(TDataFieldNames.CallAt('  Self.dmMain.qryOrders.Params.ParamByName(''', 44, mCall));
+  Assert.AreEqual('dmMain', mCall.Owner);
+  Assert.AreEqual<TDataNameKind>(TDataNameKind.Param, mCall.Kind);
+  Assert.IsTrue(TDataFieldNames.CallAt('  qryOrders.FieldByName(''cu'');', 27, mCall));
+  Assert.AreEqual('', mCall.Owner);
+  Assert.AreEqual('qryOrders', mCall.DisplayName);
 end;
 
 const
@@ -161,16 +161,16 @@ const
 
 procedure TDataFieldNamesTests.LooksUpOwnFormAndDataModules;
 var
-  Index: ISymbolIndex;
-  Reader: TDataTextReader;
-  Call: TDataNameCall;
-  Sql: string;
-  Found: Boolean;
-  Items: TArray<TDataName>;
+  mIndex: ISymbolIndex;
+  mReader: TDataTextReader;
+  mCall: TDataNameCall;
+  mSql: string;
+  mFound: Boolean;
+  mItems: TArray<TDataName>;
 begin
-  Index := TSymbolIndex.Create;
-  Index.AddUnit(TIndexExtractor.ExtractText(cLooksUpModuleText, cLooksUpModuleFile, nil));
-  Reader :=
+  mIndex := TSymbolIndex.Create;
+  mIndex.AddUnit(TIndexExtractor.ExtractText(cLooksUpModuleText, cLooksUpModuleFile, nil));
+  mReader :=
     function(const AFileName: string; out AText: string): Boolean
     begin
       Result := True;
@@ -180,7 +180,7 @@ begin
       end
       else if SameText(AFileName, ChangeFileExt(cLooksUpMainFile, '.dfm')) then
       begin
-        AText := Form;
+        AText := cForm;
       end
       else if SameText(AFileName, cLooksUpModuleFile) then
       begin
@@ -196,87 +196,93 @@ begin
       end;
     end;
   // Eigene Unit, auch über den Namen des eigenen Formulars.
-  Assert.IsTrue(TDataFieldNames.CallAt('  qryOrders.FieldByName(''cu'');', 27, Call));
-  Items := TDataFieldNames.Lookup(TDataLookupSource.Create(cLooksUpMainText, cLooksUpMainFile, Index, Reader), Call, Sql, Found);
-  Assert.IsTrue(Found);
-  Assert.Contains(Names(Items), 'CUSTOMER_ID');
-  Assert.IsTrue(TDataFieldNames.CallAt('  frmOrders.qryOrders.FieldByName(''cu'');', 37, Call));
-  Items := TDataFieldNames.Lookup(TDataLookupSource.Create(cLooksUpMainText, cLooksUpMainFile, Index, Reader), Call, Sql, Found);
-  Assert.IsTrue(Found);
+  Assert.IsTrue(TDataFieldNames.CallAt('  qryOrders.FieldByName(''cu'');', 27, mCall));
+  mItems := TDataFieldNames.Lookup(TDataLookupSource.Create(cLooksUpMainText, cLooksUpMainFile, mIndex, mReader), mCall,
+    mSql, mFound);
+  Assert.IsTrue(mFound);
+  Assert.Contains(Names(mItems), 'CUSTOMER_ID');
+  Assert.IsTrue(TDataFieldNames.CallAt('  frmOrders.qryOrders.FieldByName(''cu'');', 37, mCall));
+  mItems := TDataFieldNames.Lookup(TDataLookupSource.Create(cLooksUpMainText, cLooksUpMainFile, mIndex, mReader), mCall,
+    mSql, mFound);
+  Assert.IsTrue(mFound);
   // Anderes Datenmodul über die globale Variable im Index.
-  Assert.IsTrue(TDataFieldNames.CallAt('  dmMain.qryKunden.FieldByName(''na'');', 34, Call));
-  Items := TDataFieldNames.Lookup(TDataLookupSource.Create(cLooksUpMainText, cLooksUpMainFile, Index, Reader), Call, Sql, Found);
-  Assert.IsTrue(Found);
-  Assert.AreEqual('KUNDE_ID|NAME', Names(Items));
-  Assert.Contains(Sql, 'from KUNDEN');
+  Assert.IsTrue(TDataFieldNames.CallAt('  dmMain.qryKunden.FieldByName(''na'');', 34, mCall));
+  mItems := TDataFieldNames.Lookup(TDataLookupSource.Create(cLooksUpMainText, cLooksUpMainFile, mIndex, mReader), mCall,
+    mSql, mFound);
+  Assert.IsTrue(mFound);
+  Assert.AreEqual('KUNDE_ID|NAME', Names(mItems));
+  Assert.Contains(mSql, 'from KUNDEN');
   // Ohne Index, unbekanntes Datenmodul oder unbekannte Datenmenge: nichts.
-  Items := TDataFieldNames.Lookup(TDataLookupSource.Create(cLooksUpMainText, cLooksUpMainFile, nil, Reader), Call, Sql, Found);
-  Assert.IsFalse(Found);
-  Assert.IsTrue(TDataFieldNames.CallAt('  dmFremd.qryKunden.FieldByName(''na'');', 35, Call));
-  Items := TDataFieldNames.Lookup(TDataLookupSource.Create(cLooksUpMainText, cLooksUpMainFile, Index, Reader), Call, Sql, Found);
-  Assert.IsFalse(Found);
-  Assert.AreEqual(0, Integer(Length(Items)));
-  Assert.IsTrue(TDataFieldNames.CallAt('  dmMain.qryOrders.FieldByName(''na'');', 34, Call));
-  Items := TDataFieldNames.Lookup(TDataLookupSource.Create(cLooksUpMainText, cLooksUpMainFile, Index, Reader), Call, Sql, Found);
-  Assert.IsFalse(Found);
+  mItems := TDataFieldNames.Lookup(TDataLookupSource.Create(cLooksUpMainText, cLooksUpMainFile, nil, mReader), mCall,
+    mSql, mFound);
+  Assert.IsFalse(mFound);
+  Assert.IsTrue(TDataFieldNames.CallAt('  dmFremd.qryKunden.FieldByName(''na'');', 35, mCall));
+  mItems := TDataFieldNames.Lookup(TDataLookupSource.Create(cLooksUpMainText, cLooksUpMainFile, mIndex, mReader), mCall,
+    mSql, mFound);
+  Assert.IsFalse(mFound);
+  Assert.AreEqual(0, Integer(Length(mItems)));
+  Assert.IsTrue(TDataFieldNames.CallAt('  dmMain.qryOrders.FieldByName(''na'');', 34, mCall));
+  mItems := TDataFieldNames.Lookup(TDataLookupSource.Create(cLooksUpMainText, cLooksUpMainFile, mIndex, mReader), mCall,
+    mSql, mFound);
+  Assert.IsFalse(mFound);
 end;
 
 procedure TDataFieldNamesTests.SplitsSelectList;
 var
-  Star: Boolean;
+  mStar: Boolean;
 begin
   Assert.AreEqual('ORDER_ID|CUSTOMER_ID|CUR|TOTAL|Name', string.Join('|', TDataFieldNames.SelectColumns(
     'select distinct O.ORDER_ID, O.CUSTOMER_ID, O.CURRENCY as CUR, sum(P.AMOUNT) TOTAL, count(*), ' +
-    '"Name", (select max(X) from Y) from ORDERS O', Star)));
-  Assert.IsFalse(Star);
+    '"Name", (select max(X) from Y) from ORDERS O', mStar)));
+  Assert.IsFalse(mStar);
   Assert.AreEqual('A', string.Join('|', TDataFieldNames.SelectColumns(
-    '-- Kommentar'#10'select first 10 T.*, A /* B */ from T', Star)));
-  Assert.IsTrue(Star);
+    '-- Kommentar'#10'select first 10 T.*, A /* B */ from T', mStar)));
+  Assert.IsTrue(mStar);
   Assert.AreEqual('Nr', string.Join('|', TDataFieldNames.SelectColumns(
-    'select case when A = 1 then ''x'' else ''y'' end, [Nr] from T', Star)));
-  Assert.AreEqual(0, Integer(Length(TDataFieldNames.SelectColumns('update T set A = 1', Star))));
+    'select case when A = 1 then ''x'' else ''y'' end, [Nr] from T', mStar)));
+  Assert.AreEqual(0, Integer(Length(TDataFieldNames.SelectColumns('update T set A = 1', mStar))));
 end;
 
 procedure TDataFieldNamesTests.CollectsFieldsFromForm;
 var
-  Sql: string;
-  Found: Boolean;
+  mSql: string;
+  mFound: Boolean;
 begin
   // Persistente Felder zuerst, dann die Spalten der Anweisung ohne Doppelte.
   Assert.AreEqual('CUSTOMER_ID:Integer|NOTE:WideString|ORDER_ID|CUR|TOTAL', Names(
-    TDataFieldNames.FromForm(Form, 'qryOrders', TDataNameKind.Field, Sql, Found)));
-  Assert.IsTrue(Found);
-  Assert.IsTrue(Sql.StartsWith('select O.ORDER_ID'));
+    TDataFieldNames.FromForm(cForm, 'qryOrders', TDataNameKind.Field, mSql, mFound)));
+  Assert.IsTrue(mFound);
+  Assert.IsTrue(mSql.StartsWith('select O.ORDER_ID'));
   // select * ohne Schema-Cache: keine Spalten.
-  Assert.AreEqual('', Names(TDataFieldNames.FromForm(Form, 'qryAll', TDataNameKind.Field, Sql, Found)));
-  Assert.IsTrue(Found);
+  Assert.AreEqual('', Names(TDataFieldNames.FromForm(cForm, 'qryAll', TDataNameKind.Field, mSql, mFound)));
+  Assert.IsTrue(mFound);
   // Zur Laufzeit erzeugt: nicht in der Formulardatei.
-  Assert.AreEqual('', Names(TDataFieldNames.FromForm(Form, 'qryLaufzeit', TDataNameKind.Field, Sql, Found)));
-  Assert.IsFalse(Found);
+  Assert.AreEqual('', Names(TDataFieldNames.FromForm(cForm, 'qryLaufzeit', TDataNameKind.Field, mSql, mFound)));
+  Assert.IsFalse(mFound);
 end;
 
 procedure TDataFieldNamesTests.CollectsParamsFromForm;
 var
-  Sql: string;
-  Found: Boolean;
+  mSql: string;
+  mFound: Boolean;
 begin
   // Platzhalter der Anweisung, Typ aus der Params-Sammlung, dann übrige Einträge der Sammlung.
   Assert.AreEqual('Customer:Integer|State|Extra:String', Names(
-    TDataFieldNames.FromForm(Form, 'qryOrders', TDataNameKind.Param, Sql, Found)));
+    TDataFieldNames.FromForm(cForm, 'qryOrders', TDataNameKind.Param, mSql, mFound)));
 end;
 
 procedure TDataFieldNamesTests.ShortensSql;
 var
-  Sql: string;
-  Found: Boolean;
+  mSql: string;
+  mFound: Boolean;
 begin
   Assert.AreEqual('select A from T', TDataFieldNames.ShortSql('select A'#13#10'  from T'));
   // Mehrere Lücken: Der Text zwischen den Treffern bleibt ganz.
   Assert.AreEqual('select O.ID, O.TOTAL from ORDERS',
     TDataFieldNames.ShortSql('select  O.ID,'#13#10'  O.TOTAL  from  ORDERS'));
   Assert.AreEqual('select A, B…', TDataFieldNames.ShortSql('select A, B, C from T', 12));
-  Assert.IsTrue(TDataFieldNames.Contains(TDataFieldNames.FromForm(Form, 'qryOrders', TDataNameKind.Field,
-    Sql, Found), 'customer_id'));
+  Assert.IsTrue(TDataFieldNames.Contains(TDataFieldNames.FromForm(cForm, 'qryOrders', TDataNameKind.Field,
+    mSql, mFound), 'customer_id'));
 end;
 
 initialization

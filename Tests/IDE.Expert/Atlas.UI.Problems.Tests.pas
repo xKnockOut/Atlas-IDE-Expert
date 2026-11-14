@@ -169,242 +169,242 @@ end;
 
 procedure TAtlasProblemsFrameTests.ShowsColumnsGroupsAndCounts;
 var
-  Host: TForm;
-  Frame: TAtlasProblemsFrame;
+  mHost: TForm;
+  mFrame: TAtlasProblemsFrame;
 begin
-  Host := TForm.CreateNew(nil);
+  mHost := TForm.CreateNew(nil);
   try
-    Frame := NewFrame(Host);
+    mFrame := NewFrame(mHost);
     // Icon, Art, Kategorie, Meldung, Zeile, Stelle, Regel, Compiler (#1024).
-    Assert.AreEqual(8, Integer(Frame.List.Columns.Count));
-    Assert.AreEqual('Art', Frame.List.Columns[1].Caption);
-    Assert.AreEqual('Regel', Frame.List.Columns[6].Caption);
-    Assert.AreEqual('Compiler', Frame.List.Columns[7].Caption);
+    Assert.AreEqual(8, Integer(mFrame.List.Columns.Count));
+    Assert.AreEqual('Art', mFrame.List.Columns[1].Caption);
+    Assert.AreEqual('Regel', mFrame.List.Columns[6].Caption);
+    Assert.AreEqual('Compiler', mFrame.List.Columns[7].Caption);
     // problems.showCompilerCode aus: ohne Spalte Compiler, Layout bleibt gemerkt.
-    Frame.ShowCompilerCode := False;
-    Assert.AreEqual(7, Integer(Frame.List.Columns.Count));
-    Assert.Contains(Frame.ColumnsText, 'compiler');
-    Frame.ShowCompilerCode := True;
-    Assert.AreEqual(8, Integer(Frame.List.Columns.Count));
+    mFrame.ShowCompilerCode := False;
+    Assert.AreEqual(7, Integer(mFrame.List.Columns.Count));
+    Assert.Contains(mFrame.ColumnsText, 'compiler');
+    mFrame.ShowCompilerCode := True;
+    Assert.AreEqual(8, Integer(mFrame.List.Columns.Count));
     // Nach Datei: Kunde.pas (2), dann ihre Befunde, dann Lager.pas (1) und sein Befund.
-    Assert.AreEqual(5, Integer(Frame.List.Items.Count));
-    Assert.AreEqual(#$25BE' Kunde.pas (2)', Frame.List.Items[0].SubItems[0]);
-    Assert.AreEqual(-1, Frame.List.Items[0].ImageIndex, 'Gruppenzeile ohne Icon');
+    Assert.AreEqual(5, Integer(mFrame.List.Items.Count));
+    Assert.AreEqual(#$25BE' Kunde.pas (2)', mFrame.List.Items[0].SubItems[0]);
+    Assert.AreEqual(-1, mFrame.List.Items[0].ImageIndex, 'Gruppenzeile ohne Icon');
     // Fehler vor Warnungen.
-    Assert.AreEqual('Error', Frame.List.Items[1].SubItems[0]);
-    Assert.AreEqual(0, Frame.List.Items[1].ImageIndex);
-    Assert.AreEqual('Bug', Frame.List.Items[1].SubItems[1]);
-    Assert.AreEqual('X := 1', Frame.List.Items[1].SubItems[3]);
-    Assert.AreEqual('Kunde.pas:6:3', Frame.List.Items[1].SubItems[4]);
-    Assert.AreEqual('syntax', Frame.List.Items[1].SubItems[5]);
-    Assert.AreEqual('Warnung', Frame.List.Items[2].SubItems[0]);
-    Assert.AreEqual(1, Frame.List.Items[2].ImageIndex);
-    Assert.AreEqual('Compiler', Frame.List.Items[4].SubItems[1]);
+    Assert.AreEqual('Error', mFrame.List.Items[1].SubItems[0]);
+    Assert.AreEqual(0, mFrame.List.Items[1].ImageIndex);
+    Assert.AreEqual('Bug', mFrame.List.Items[1].SubItems[1]);
+    Assert.AreEqual('X := 1', mFrame.List.Items[1].SubItems[3]);
+    Assert.AreEqual('Kunde.pas:6:3', mFrame.List.Items[1].SubItems[4]);
+    Assert.AreEqual('syntax', mFrame.List.Items[1].SubItems[5]);
+    Assert.AreEqual('Warnung', mFrame.List.Items[2].SubItems[0]);
+    Assert.AreEqual(1, mFrame.List.Items[2].ImageIndex);
+    Assert.AreEqual('Compiler', mFrame.List.Items[4].SubItems[1]);
     // Gruppe zuklappen per Klick bzw. Leertaste: Zeilen bleiben gezählt.
-    Frame.View.Toggle(0);
-    Frame.Refill;
-    Assert.AreEqual(3, Integer(Frame.List.Items.Count));
-    Assert.AreEqual(#$25B8' Kunde.pas (2)', Frame.List.Items[0].SubItems[0]);
-    Assert.IsFalse(Frame.EmptyLabel.Visible);
+    mFrame.View.Toggle(0);
+    mFrame.Refill;
+    Assert.AreEqual(3, Integer(mFrame.List.Items.Count));
+    Assert.AreEqual(#$25B8' Kunde.pas (2)', mFrame.List.Items[0].SubItems[0]);
+    Assert.IsFalse(mFrame.EmptyLabel.Visible);
   finally
-    Host.Free;
+    mHost.Free;
   end;
 end;
 
 procedure TAtlasProblemsFrameTests.KindToggleAndTextFilterNarrowTheList;
 var
-  Host: TForm;
-  Frame: TAtlasProblemsFrame;
+  mHost: TForm;
+  mFrame: TAtlasProblemsFrame;
 begin
-  Host := TForm.CreateNew(nil);
+  mHost := TForm.CreateNew(nil);
   try
-    Frame := NewFrame(Host);
-    Frame.GroupingBox.ItemIndex := Ord(TAtlasFindingGrouping.None);
-    Frame.GroupingBox.OnChange(Frame.GroupingBox);
-    Assert.AreEqual(3, Integer(Frame.List.Items.Count));
-    Assert.AreEqual('Error 1', Frame.KindButton(TAtlasFindingKind.Error).Caption);
-    Assert.AreEqual('Warnung 2', Frame.KindButton(TAtlasFindingKind.Warning).Caption);
-    Assert.AreEqual('Info 0', Frame.KindButton(TAtlasFindingKind.Info).Caption);
+    mFrame := NewFrame(mHost);
+    mFrame.GroupingBox.ItemIndex := Ord(TAtlasFindingGrouping.None);
+    mFrame.GroupingBox.OnChange(mFrame.GroupingBox);
+    Assert.AreEqual(3, Integer(mFrame.List.Items.Count));
+    Assert.AreEqual('Error 1', mFrame.KindButton(TAtlasFindingKind.Error).Caption);
+    Assert.AreEqual('Warnung 2', mFrame.KindButton(TAtlasFindingKind.Warning).Caption);
+    Assert.AreEqual('Info 0', mFrame.KindButton(TAtlasFindingKind.Info).Caption);
     // Warnungen aus: nur der Fehler bleibt, die Zähler auf den Umschaltern bleiben.
-    Frame.KindButton(TAtlasFindingKind.Warning).Down := False;
-    Frame.KindButton(TAtlasFindingKind.Warning).OnClick(Frame.KindButton(TAtlasFindingKind.Warning));
-    Assert.AreEqual(1, Integer(Frame.List.Items.Count));
-    Assert.AreEqual('Warnung 2', Frame.KindButton(TAtlasFindingKind.Warning).Caption);
-    Frame.KindButton(TAtlasFindingKind.Warning).Down := True;
-    Frame.KindButton(TAtlasFindingKind.Warning).OnClick(Frame.KindButton(TAtlasFindingKind.Warning));
+    mFrame.KindButton(TAtlasFindingKind.Warning).Down := False;
+    mFrame.KindButton(TAtlasFindingKind.Warning).OnClick(mFrame.KindButton(TAtlasFindingKind.Warning));
+    Assert.AreEqual(1, Integer(mFrame.List.Items.Count));
+    Assert.AreEqual('Warnung 2', mFrame.KindButton(TAtlasFindingKind.Warning).Caption);
+    mFrame.KindButton(TAtlasFindingKind.Warning).Down := True;
+    mFrame.KindButton(TAtlasFindingKind.Warning).OnClick(mFrame.KindButton(TAtlasFindingKind.Warning));
     // Kategorie „Compiler“.
-    Frame.CategoryBox.ItemIndex := 1 + Ord(TAtlasFindingCategory.Compiler);
-    Frame.CategoryBox.OnChange(Frame.CategoryBox);
-    Assert.AreEqual(1, Integer(Frame.List.Items.Count));
-    Frame.CategoryBox.ItemIndex := 0;
-    Frame.CategoryBox.OnChange(Frame.CategoryBox);
-    Frame.FilterEdit.Text := 'except';
-    Assert.AreEqual(1, Integer(Frame.List.Items.Count), 'Textfilter über Meldung, Regel und Datei');
-    Frame.FilterEdit.Text := 'lager';
-    Assert.AreEqual(1, Integer(Frame.List.Items.Count));
-    Assert.AreEqual('W1036', Frame.List.Items[0].SubItems[5]);
-    Frame.FilterEdit.Text := 'gibtsnicht';
-    Assert.AreEqual(0, Integer(Frame.List.Items.Count));
-    Assert.IsTrue(Frame.EmptyLabel.Visible);
-    Frame.FilterEdit.Text := '';
-    Assert.AreEqual(3, Integer(Frame.List.Items.Count));
+    mFrame.CategoryBox.ItemIndex := 1 + Ord(TAtlasFindingCategory.Compiler);
+    mFrame.CategoryBox.OnChange(mFrame.CategoryBox);
+    Assert.AreEqual(1, Integer(mFrame.List.Items.Count));
+    mFrame.CategoryBox.ItemIndex := 0;
+    mFrame.CategoryBox.OnChange(mFrame.CategoryBox);
+    mFrame.FilterEdit.Text := 'except';
+    Assert.AreEqual(1, Integer(mFrame.List.Items.Count), 'Textfilter über Meldung, Regel und Datei');
+    mFrame.FilterEdit.Text := 'lager';
+    Assert.AreEqual(1, Integer(mFrame.List.Items.Count));
+    Assert.AreEqual('W1036', mFrame.List.Items[0].SubItems[5]);
+    mFrame.FilterEdit.Text := 'gibtsnicht';
+    Assert.AreEqual(0, Integer(mFrame.List.Items.Count));
+    Assert.IsTrue(mFrame.EmptyLabel.Visible);
+    mFrame.FilterEdit.Text := '';
+    Assert.AreEqual(3, Integer(mFrame.List.Items.Count));
   finally
-    Host.Free;
+    mHost.Free;
   end;
 end;
 
 procedure TAtlasProblemsFrameTests.OpenFirstPinsDimsAndSkipsSections;
 var
-  Host: TForm;
-  Frame: TAtlasProblemsFrame;
-  Key: Word;
-  Saved: Boolean;
+  mHost: TForm;
+  mFrame: TAtlasProblemsFrame;
+  mKey: Word;
+  mSaved: Boolean;
 begin
-  Host := TForm.CreateNew(nil);
+  mHost := TForm.CreateNew(nil);
   try
-    Frame := NewFrame(Host);
-    Frame.ApplyTierSettings(True, TAtlasClosedUnits.Dimmed, True);
-    Assert.IsTrue(Frame.OpenFirst);
-    Assert.IsTrue(Frame.OpenFirstButton.Down);
-    Frame.SetOpenFiles('C:\P\Lager.pas', ['C:\P\Lager.pas'], True);
-    Assert.AreEqual(6, Integer(Frame.List.Items.Count));
-    Assert.AreEqual(#$25BE' '#$D83D#$DCCC' Lager.pas (1) '#$00B7' aktiver Editor', Frame.List.Items[0].SubItems[0]);
-    Assert.AreEqual(1, Frame.List.Items[1].ImageIndex, 'aktive Unit mit normalem Symbol');
-    Assert.AreEqual('Nicht geöffnet '#$00B7' 1 Units '#$00B7' 2 Befunde', Frame.List.Items[2].SubItems[0]);
-    Assert.AreEqual(-1, Frame.List.Items[2].ImageIndex, 'Trennzeile ohne Symbol');
-    Assert.AreEqual(#$25BE' Kunde.pas (2) '#$00B7' nicht geöffnet', Frame.List.Items[3].SubItems[0]);
-    Assert.AreEqual(3, Frame.List.Items[4].ImageIndex, 'ausgegrautes Fehlersymbol');
+    mFrame := NewFrame(mHost);
+    mFrame.ApplyTierSettings(True, TAtlasClosedUnits.Dimmed, True);
+    Assert.IsTrue(mFrame.OpenFirst);
+    Assert.IsTrue(mFrame.OpenFirstButton.Down);
+    mFrame.SetOpenFiles('C:\P\Lager.pas', ['C:\P\Lager.pas'], True);
+    Assert.AreEqual(6, Integer(mFrame.List.Items.Count));
+    Assert.AreEqual(#$25BE' '#$D83D#$DCCC' Lager.pas (1) '#$00B7' aktiver Editor', mFrame.List.Items[0].SubItems[0]);
+    Assert.AreEqual(1, mFrame.List.Items[1].ImageIndex, 'aktive Unit mit normalem Symbol');
+    Assert.AreEqual('Nicht geöffnet '#$00B7' 1 Units '#$00B7' 2 Befunde', mFrame.List.Items[2].SubItems[0]);
+    Assert.AreEqual(-1, mFrame.List.Items[2].ImageIndex, 'Trennzeile ohne Symbol');
+    Assert.AreEqual(#$25BE' Kunde.pas (2) '#$00B7' nicht geöffnet', mFrame.List.Items[3].SubItems[0]);
+    Assert.AreEqual(3, mFrame.List.Items[4].ImageIndex, 'ausgegrautes Fehlersymbol');
     // ↓ von der letzten Zeile der aktiven Unit springt über die Trennzeile.
-    Frame.List.ItemIndex := 1;
-    Frame.View.Select(1);
-    Key := VK_DOWN;
-    Frame.List.OnKeyDown(Frame.List, Key, []);
-    Assert.AreEqual(0, Integer(Key));
-    Assert.AreEqual(3, Frame.List.ItemIndex);
+    mFrame.List.ItemIndex := 1;
+    mFrame.View.Select(1);
+    mKey := VK_DOWN;
+    mFrame.List.OnKeyDown(mFrame.List, mKey, []);
+    Assert.AreEqual(0, Integer(mKey));
+    Assert.AreEqual(3, mFrame.List.ItemIndex);
     // Knopf aus: wie #909, und die Einstellung wird gespeichert.
-    Saved := False;
-    Frame.OnLayout :=
+    mSaved := False;
+    mFrame.OnLayout :=
       procedure
       begin
-        Saved := True;
+        mSaved := True;
       end;
-    Frame.OpenFirstButton.Down := False;
-    Frame.OpenFirstButton.OnClick(Frame.OpenFirstButton);
-    Assert.IsTrue(Saved);
-    Assert.IsFalse(Frame.OpenFirst);
-    Assert.AreEqual(5, Integer(Frame.List.Items.Count));
-    Assert.AreEqual(#$25BE' Kunde.pas (2)', Frame.List.Items[0].SubItems[0]);
+    mFrame.OpenFirstButton.Down := False;
+    mFrame.OpenFirstButton.OnClick(mFrame.OpenFirstButton);
+    Assert.IsTrue(mSaved);
+    Assert.IsFalse(mFrame.OpenFirst);
+    Assert.AreEqual(5, Integer(mFrame.List.Items.Count));
+    Assert.AreEqual(#$25BE' Kunde.pas (2)', mFrame.List.Items[0].SubItems[0]);
   finally
-    Host.Free;
+    mHost.Free;
   end;
 end;
 
 procedure TAtlasProblemsFrameTests.RefillReselectsWithoutFetchingEveryRow;
 var
-  Host: TForm;
-  Frame: TAtlasProblemsFrame;
-  Counter: TFetchCounter;
-  Problems: TArray<TAtlasProblem>;
-  Index: Integer;
+  mHost: TForm;
+  mFrame: TAtlasProblemsFrame;
+  mCounter: TFetchCounter;
+  mProblems: TArray<TAtlasProblem>;
+  mIndex: Integer;
 begin
-  SetLength(Problems, 300);
-  for Index := 0 to High(Problems) do
+  SetLength(mProblems, 300);
+  for mIndex := 0 to High(mProblems) do
   begin
-    Problems[Index] := Problem(Index, 'Atlas', 'empty-except', 'Leerer except-Block', TAtlasProblemSeverity.Warning,
+    mProblems[mIndex] := Problem(mIndex, 'Atlas', 'empty-except', 'Leerer except-Block', TAtlasProblemSeverity.Warning,
       '');
   end;
-  Host := TForm.CreateNew(nil);
-  Counter := TFetchCounter.Create;
+  mHost := TForm.CreateNew(nil);
+  mCounter := TFetchCounter.Create;
   try
-    Frame := NewFrame(Host);
-    Frame.SetFindings(TAtlasFindings.FromProblems('C:\P\Kunde.pas', Problems, nil), 'C:\P\Kunde.pas', nil);
+    mFrame := NewFrame(mHost);
+    mFrame.SetFindings(TAtlasFindings.FromProblems('C:\P\Kunde.pas', mProblems, nil), 'C:\P\Kunde.pas', nil);
     // Zwei Zeilen markiert, dann wählt die Sicht eine dritte.
-    Frame.List.ItemIndex := 1;
-    Frame.List.ItemIndex := 2; // lsp-ignore: duplicate-assignment -- markiert eine zweite Zeile (Mehrfachauswahl)
-    Assert.AreEqual(2, Integer(Frame.List.SelCount));
-    Counter.Inner := Frame.List.OnData;
-    Frame.List.OnData := Counter.Fetch;
+    mFrame.List.ItemIndex := 1;
+    mFrame.List.ItemIndex := 2; // lsp-ignore: duplicate-assignment -- markiert eine zweite Zeile (Mehrfachauswahl)
+    Assert.AreEqual(2, Integer(mFrame.List.SelCount));
+    mCounter.Inner := mFrame.List.OnData;
+    mFrame.List.OnData := mCounter.Fetch;
     try
-      Frame.View.Select(4);
-      Frame.Refill;
+      mFrame.View.Select(4);
+      mFrame.Refill;
     finally
-      Frame.List.OnData := Counter.Inner;
+      mFrame.List.OnData := mCounter.Inner;
     end;
-    Assert.AreEqual(1, Integer(Frame.List.SelCount));
-    Assert.AreEqual(4, Frame.List.ItemIndex);
+    Assert.AreEqual(1, Integer(mFrame.List.SelCount));
+    Assert.AreEqual(4, mFrame.List.ItemIndex);
     // Mit ClearSelection holte das jede der 301 Zeilen mindestens einmal.
-    Assert.IsTrue(Counter.Count < 30, Format('%d Abrufe für %d Zeilen', [Counter.Count, Frame.List.Items.Count]));
+    Assert.IsTrue(mCounter.Count < 30, Format('%d Abrufe für %d Zeilen', [mCounter.Count, mFrame.List.Items.Count]));
   finally
-    Host.Free;
-    Counter.Free;
+    mHost.Free;
+    mCounter.Free;
   end;
 end;
 
 procedure TAtlasProblemsFrameTests.KeysOpenAndFix;
 var
-  Host: TForm;
-  Frame: TAtlasProblemsFrame;
-  Opened, Fixed: string;
-  Key: Word;
+  mHost: TForm;
+  mFrame: TAtlasProblemsFrame;
+  mOpened, mFixed: string;
+  mKey: Word;
 begin
-  Host := TForm.CreateNew(nil);
+  mHost := TForm.CreateNew(nil);
   try
-    Frame := NewFrame(Host);
-    Frame.OnOpen :=
+    mFrame := NewFrame(mHost);
+    mFrame.OnOpen :=
       procedure(const AFinding: TAtlasFinding)
       begin
-        Opened := AFinding.Location;
+        mOpened := AFinding.Location;
       end;
-    Frame.OnFix :=
+    mFrame.OnFix :=
       procedure(const AFinding: TAtlasFinding)
       begin
-        Fixed := AFinding.Problem.FixTitle;
+        mFixed := AFinding.Problem.FixTitle;
       end;
-    Frame.List.ItemIndex := 2;
-    Frame.View.Select(2);
-    Key := VK_RETURN;
-    Frame.List.OnKeyDown(Frame.List, Key, []);
-    Assert.AreEqual('Kunde.pas:4:3', Opened);
-    Key := VK_RETURN;
-    Frame.List.OnKeyDown(Frame.List, Key, [ssAlt]);
-    Assert.AreEqual('raise ergänzen', Fixed);
+    mFrame.List.ItemIndex := 2;
+    mFrame.View.Select(2);
+    mKey := VK_RETURN;
+    mFrame.List.OnKeyDown(mFrame.List, mKey, []);
+    Assert.AreEqual('Kunde.pas:4:3', mOpened);
+    mKey := VK_RETURN;
+    mFrame.List.OnKeyDown(mFrame.List, mKey, [ssAlt]);
+    Assert.AreEqual('raise ergänzen', mFixed);
     // Enter auf einer Gruppe klappt sie nur.
-    Opened := '';
-    Frame.List.ItemIndex := 0;
-    Key := VK_RETURN;
-    Frame.List.OnKeyDown(Frame.List, Key, []);
-    Assert.AreEqual('', Opened);
-    Assert.AreEqual(3, Integer(Frame.List.Items.Count));
+    mOpened := '';
+    mFrame.List.ItemIndex := 0;
+    mKey := VK_RETURN;
+    mFrame.List.OnKeyDown(mFrame.List, mKey, []);
+    Assert.AreEqual('', mOpened);
+    Assert.AreEqual(3, Integer(mFrame.List.Items.Count));
   finally
-    Host.Free;
+    mHost.Free;
   end;
 end;
 
 procedure TAtlasProblemsFrameTests.MenuOffersRuleActionsOnlyForRules;
 var
-  Host: TForm;
-  Frame: TAtlasProblemsFrame;
+  mHost: TForm;
+  mFrame: TAtlasProblemsFrame;
 
   function Item(const ACaption: string): TMenuItem;
   var
-    Index: Integer;
+    mIndex: Integer;
   begin
     Result := nil;
-    for Index := 0 to Frame.Menu.Items.Count - 1 do
+    for mIndex := 0 to mFrame.Menu.Items.Count - 1 do
     begin
-      if StripHotkey(Frame.Menu.Items[Index].Caption).StartsWith(ACaption) then
+      if StripHotkey(mFrame.Menu.Items[mIndex].Caption).StartsWith(ACaption) then
       begin
-        Exit(Frame.Menu.Items[Index]);
+        Exit(mFrame.Menu.Items[mIndex]);
       end;
     end;
   end;
 
 begin
-  Host := TForm.CreateNew(nil);
+  mHost := TForm.CreateNew(nil);
   try
-    Frame := NewFrame(Host);
-    Frame.List.ItemIndex := 2;
-    Frame.Menu.OnPopup(Frame.Menu);
+    mFrame := NewFrame(mHost);
+    mFrame.List.ItemIndex := 2;
+    mFrame.Menu.OnPopup(mFrame.Menu);
     Assert.IsNotNull(Item('Schnellkorrektur: raise ergänzen'));
     Assert.IsTrue(Item('Schnellkorrektur').Enabled);
     Assert.IsTrue(Item('Für diese Zeile unterdrücken').Enabled);
@@ -413,153 +413,153 @@ begin
     Assert.IsTrue(Item('Regel erklären').Enabled);
     // Compilermeldung: kein Unterdrücken, Einstellen, Abschalten oder Erklären.
     // Mehrfachauswahl: ItemIndex fügt nur hinzu, die erste markierte Zeile zählt.
-    Frame.List.ClearSelection;
-    Frame.List.ItemIndex := 4;
-    Frame.Menu.OnPopup(Frame.Menu);
+    mFrame.List.ClearSelection;
+    mFrame.List.ItemIndex := 4;
+    mFrame.Menu.OnPopup(mFrame.Menu);
     Assert.IsFalse(Item('Schnellkorrektur').Enabled, 'Schnellkorrektur');
     Assert.IsFalse(Item('Für diese Zeile unterdrücken').Enabled, 'Unterdrücken');
     Assert.IsFalse(Item('Regel abschalten').Enabled, 'Abschalten');
     Assert.IsTrue(Item('Gehe zu').Enabled, 'Gehe zu');
   finally
-    Host.Free;
+    mHost.Free;
   end;
 end;
 
 procedure TAtlasProblemsFrameTests.MenuFixAllFollowsSettingAndRule;
 var
-  Host: TForm;
-  Frame: TAtlasProblemsFrame;
-  Bulk: Boolean;
-  Fired: string;
+  mHost: TForm;
+  mFrame: TAtlasProblemsFrame;
+  mBulk: Boolean;
+  mFired: string;
 
   function Item: TMenuItem;
   var
-    Index: Integer;
+    mIndex: Integer;
   begin
     Result := nil;
-    for Index := 0 to Frame.Menu.Items.Count - 1 do
+    for mIndex := 0 to mFrame.Menu.Items.Count - 1 do
     begin
-      if StripHotkey(Frame.Menu.Items[Index].Caption).StartsWith('Alle sicheren Treffer von') then
+      if StripHotkey(mFrame.Menu.Items[mIndex].Caption).StartsWith('Alle sicheren Treffer von') then
       begin
-        Exit(Frame.Menu.Items[Index]);
+        Exit(mFrame.Menu.Items[mIndex]);
       end;
     end;
   end;
 
 begin
-  Host := TForm.CreateNew(nil);
+  mHost := TForm.CreateNew(nil);
   try
-    Frame := NewFrame(Host);
-    Bulk := False;
-    Fired := '';
-    Frame.OnFixAll :=
+    mFrame := NewFrame(mHost);
+    mBulk := False;
+    mFired := '';
+    mFrame.OnFixAll :=
       procedure(const AFinding: TAtlasFinding)
       begin
-        Fired := AFinding.Rule;
+        mFired := AFinding.Rule;
       end;
-    Frame.CanFixAll :=
+    mFrame.CanFixAll :=
       function: Boolean
       begin
-        Result := Bulk;
+        Result := mBulk;
       end;
-    Frame.List.ItemIndex := 2;
-    Frame.Menu.OnPopup(Frame.Menu);
+    mFrame.List.ItemIndex := 2;
+    mFrame.Menu.OnPopup(mFrame.Menu);
     Assert.IsNotNull(Item);
     Assert.IsFalse(Item.Visible, 'fix.bulk aus: kein Eintrag');
-    Bulk := True;
-    Frame.Menu.OnPopup(Frame.Menu);
+    mBulk := True;
+    mFrame.Menu.OnPopup(mFrame.Menu);
     Assert.IsTrue(Item.Visible);
     Assert.IsTrue(Item.Enabled);
     Item.Click;
-    Assert.AreNotEqual('', Fired);
-    Assert.IsTrue(Pos(Fired, StripHotkey(Item.Caption)) > 0, Item.Caption);
+    Assert.AreNotEqual('', mFired);
+    Assert.IsTrue(Pos(mFired, StripHotkey(Item.Caption)) > 0, Item.Caption);
     // Compilermeldung: keine Regel, also keine Sammelkorrektur.
-    Frame.List.ClearSelection;
-    Frame.List.ItemIndex := 4;
-    Frame.Menu.OnPopup(Frame.Menu);
+    mFrame.List.ClearSelection;
+    mFrame.List.ItemIndex := 4;
+    mFrame.Menu.OnPopup(mFrame.Menu);
     Assert.IsFalse(Item.Enabled);
   finally
-    Host.Free;
+    mHost.Free;
   end;
 end;
 
 procedure TAtlasProblemsFrameTests.ColumnsCanBeHiddenAndAreRemembered;
 var
-  Host: TForm;
-  Frame: TAtlasProblemsFrame;
-  Layout: Integer;
+  mHost: TForm;
+  mFrame: TAtlasProblemsFrame;
+  mLayout: Integer;
 begin
-  Host := TForm.CreateNew(nil);
+  mHost := TForm.CreateNew(nil);
   try
-    Frame := NewFrame(Host);
-    Layout := 0;
-    Frame.OnLayout :=
+    mFrame := NewFrame(mHost);
+    mLayout := 0;
+    mFrame.OnLayout :=
       procedure
       begin
-        Inc(Layout);
+        Inc(mLayout);
       end;
-    Frame.ApplySettings(TAtlasFindingScope.Group, TAtlasFindingGrouping.None, 'rule,kind:90,-message', False);
+    mFrame.ApplySettings(TAtlasFindingScope.Group, TAtlasFindingGrouping.None, 'rule,kind:90,-message', False);
     // Pflichtspalten bleiben, Meldung ist aus, Regel steht vorn (Reihenfolge der Anzeige).
-    Assert.AreEqual(7, Integer(Frame.List.Columns.Count));
-    Assert.Contains(Frame.ColumnsText, '-message');
-    Assert.Contains(Frame.ColumnsText, 'kind:90');
-    Assert.IsTrue(Frame.ColumnsText.StartsWith('rule'), Frame.ColumnsText);
+    Assert.AreEqual(7, Integer(mFrame.List.Columns.Count));
+    Assert.Contains(mFrame.ColumnsText, '-message');
+    Assert.Contains(mFrame.ColumnsText, 'kind:90');
+    Assert.IsTrue(mFrame.ColumnsText.StartsWith('rule'), mFrame.ColumnsText);
     // Ohne Compilermeldungen.
-    Assert.AreEqual(2, Integer(Frame.List.Items.Count));
-    Assert.AreEqual(0, Layout, 'Übernehmen der Einstellungen meldet nichts');
+    Assert.AreEqual(2, Integer(mFrame.List.Items.Count));
+    Assert.AreEqual(0, mLayout, 'Übernehmen der Einstellungen meldet nichts');
   finally
-    Host.Free;
+    mHost.Free;
   end;
 end;
 
 procedure TAtlasProblemsFrameTests.LiveAndPausedAndStatus;
 var
-  Host: TForm;
-  Frame: TAtlasProblemsFrame;
+  mHost: TForm;
+  mFrame: TAtlasProblemsFrame;
 begin
-  Host := TForm.CreateNew(nil);
+  mHost := TForm.CreateNew(nil);
   try
-    Frame := NewFrame(Host);
-    Frame.SetUpdate(TAtlasProblemsUpdate.Live);
-    Assert.AreEqual('● Live', Frame.LiveLabel.Caption);
-    Frame.SetUpdate(TAtlasProblemsUpdate.Save);
-    Assert.AreEqual('Beim Speichern', Frame.LiveLabel.Caption);
-    Frame.SetUpdate(TAtlasProblemsUpdate.Manual);
-    Assert.AreEqual('Manuell', Frame.LiveLabel.Caption);
+    mFrame := NewFrame(mHost);
+    mFrame.SetUpdate(TAtlasProblemsUpdate.Live);
+    Assert.AreEqual('● Live', mFrame.LiveLabel.Caption);
+    mFrame.SetUpdate(TAtlasProblemsUpdate.Save);
+    Assert.AreEqual('Beim Speichern', mFrame.LiveLabel.Caption);
+    mFrame.SetUpdate(TAtlasProblemsUpdate.Manual);
+    Assert.AreEqual('Manuell', mFrame.LiveLabel.Caption);
     // Die aktuelle Datei prüft die Schaltfläche der Atlas-Statusleiste, das Fenster hat keinen eigenen Knopf.
-    Assert.IsFalse(HasButton(Frame, 'Datei jetzt prüfen'), 'kein Knopf „Datei jetzt prüfen“');
-    Frame.SetStatus('3 Befunde in 2 Dateien');
-    Assert.AreEqual('3 Befunde in 2 Dateien', Frame.StatusLabel.Caption);
-    Frame.SetFindings(nil, '', nil);
-    Assert.IsTrue(Frame.EmptyLabel.Visible);
-    Assert.AreEqual('Keine Befunde.', Frame.EmptyLabel.Caption);
+    Assert.IsFalse(HasButton(mFrame, 'Datei jetzt prüfen'), 'kein Knopf „Datei jetzt prüfen“');
+    mFrame.SetStatus('3 Befunde in 2 Dateien');
+    Assert.AreEqual('3 Befunde in 2 Dateien', mFrame.StatusLabel.Caption);
+    mFrame.SetFindings(nil, '', nil);
+    Assert.IsTrue(mFrame.EmptyLabel.Visible);
+    Assert.AreEqual('Keine Befunde.', mFrame.EmptyLabel.Caption);
   finally
-    Host.Free;
+    mHost.Free;
   end;
 end;
 
 procedure TAtlasProblemsFrameTests.ExplainDialogShowsExamples;
 var
-  Explanation: TAtlasRuleExplanation;
-  Dialog: TAtlasRuleExplainDialog;
+  mExplanation: TAtlasRuleExplanation;
+  mDialog: TAtlasRuleExplainDialog;
 begin
-  Explanation := Default(TAtlasRuleExplanation);
-  Explanation.Id := 'empty-except';
-  Explanation.Name := 'Leerer except-Block';
-  Explanation.Description := 'Fehler werden verschluckt.';
-  Explanation.Bad := 'except end;';
-  Explanation.Good := 'except raise; end;';
-  Explanation.Experimental := True;
-  Dialog := TAtlasRuleExplainDialog.CreateDialog(nil, Explanation);
+  mExplanation := Default(TAtlasRuleExplanation);
+  mExplanation.Id := 'empty-except';
+  mExplanation.Name := 'Leerer except-Block';
+  mExplanation.Description := 'Fehler werden verschluckt.';
+  mExplanation.Bad := 'except end;';
+  mExplanation.Good := 'except raise; end;';
+  mExplanation.Experimental := True;
+  mDialog := TAtlasRuleExplainDialog.CreateDialog(nil, mExplanation);
   try
-    Assert.AreEqual('Regel empty-except', Dialog.Caption);
-    Assert.AreEqual('Leerer except-Block', Dialog.TitleLabel.Caption);
-    Assert.IsTrue(Dialog.MarkLabel.Visible);
-    Assert.AreEqual('Experimentell', Dialog.MarkLabel.Caption);
-    Assert.AreEqual('except end;', Dialog.BadMemo.Lines.Text.Trim);
-    Assert.AreEqual('except raise; end;', Dialog.GoodMemo.Lines.Text.Trim);
+    Assert.AreEqual('Regel empty-except', mDialog.Caption);
+    Assert.AreEqual('Leerer except-Block', mDialog.TitleLabel.Caption);
+    Assert.IsTrue(mDialog.MarkLabel.Visible);
+    Assert.AreEqual('Experimentell', mDialog.MarkLabel.Caption);
+    Assert.AreEqual('except end;', mDialog.BadMemo.Lines.Text.Trim);
+    Assert.AreEqual('except raise; end;', mDialog.GoodMemo.Lines.Text.Trim);
   finally
-    Dialog.Free;
+    mDialog.Free;
   end;
 end;
 

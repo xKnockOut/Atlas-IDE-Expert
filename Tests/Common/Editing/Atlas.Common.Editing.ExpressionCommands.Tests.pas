@@ -48,7 +48,7 @@ uses
   Atlas.Common.Editing.SlashCommands;
 
 const
-  RoutineUnit =
+  cRoutineUnit =
     'unit U;'#10 +                                  // 0
     'interface'#10 +                                // 1
     'implementation'#10 +                           // 2
@@ -66,17 +66,17 @@ const
 
 function Apply(const AText: string; AEdits: TArray<TRuleEdit>): string;
 var
-  Lines: TArray<string>;
-  Edit: TRuleEdit;
-  Offsets: TArray<Integer>;
-  Index, Start, Stop: Integer;
+  mLines: TArray<string>;
+  mEdit: TRuleEdit;
+  mOffsets: TArray<Integer>;
+  mIndex, mStart, mStop: Integer;
 begin
-  Lines := AText.Split([#10]);
-  SetLength(Offsets, Length(Lines) + 1);
-  Offsets[0] := 0;
-  for Index := 0 to High(Lines) do
+  mLines := AText.Split([#10]);
+  SetLength(mOffsets, Length(mLines) + 1);
+  mOffsets[0] := 0;
+  for mIndex := 0 to High(mLines) do
   begin
-    Offsets[Index + 1] := Offsets[Index] + Length(Lines[Index]) + 1;
+    mOffsets[mIndex + 1] := mOffsets[mIndex] + Length(mLines[mIndex]) + 1;
   end;
   TArray.Sort<TRuleEdit>(AEdits, TComparer<TRuleEdit>.Construct(
     function(const ALeft, ARight: TRuleEdit): Integer
@@ -85,88 +85,93 @@ begin
         ARight.Range.StartPos.Character - ALeft.Range.StartPos.Character;
     end));
   Result := AText;
-  for Edit in AEdits do
+  for mEdit in AEdits do
   begin
-    Start := Offsets[Edit.Range.StartPos.Line] + Edit.Range.StartPos.Character;
-    Stop := Offsets[Edit.Range.EndPos.Line] + Edit.Range.EndPos.Character;
-    Result := Copy(Result, 1, Start) + Edit.NewText + Copy(Result, Stop + 1, MaxInt);
+    mStart := mOffsets[mEdit.Range.StartPos.Line] + mEdit.Range.StartPos.Character;
+    mStop := mOffsets[mEdit.Range.EndPos.Line] + mEdit.Range.EndPos.Character;
+    Result := Copy(Result, 1, mStart) + mEdit.NewText + Copy(Result, mStop + 1, MaxInt);
   end;
 end;
 
 function Source(const ACommand, AStatement: string): string;
 begin
-  Result := StringReplace(StringReplace(RoutineUnit, '%s', ACommand, []), '%s', AStatement, []);
+  Result := StringReplace(StringReplace(cRoutineUnit, '%s', ACommand, []), '%s', AStatement, []);
 end;
 
 function TryRun(const ACommand, AStatement, AVersion: string; out AText: string): Boolean;
 var
-  Edits: TArray<TRuleEdit>;
+  mEdits: TArray<TRuleEdit>;
 begin
   AText := Source(ACommand, AStatement);
   Result := TSlashCommandRegistry.Shared.AfterEnter(AText, TTextPosition.Create(11, 0), TSlashEnvironment.Create(nil,
-    nil, nil, AVersion, '', nil), Edits);
+    nil, nil, AVersion, '', nil), mEdits);
   if Result then
   begin
-    AText := Apply(AText, Edits);
+    AText := Apply(AText, mEdits);
   end;
 end;
 
-function Expand(const ACommand, AStatement: string; const AVersion: string = ''): string;
+function Expand(const ACommand, AStatement: string; const AVersion: string): string; overload;
 begin
   Assert.IsTrue(TryRun(ACommand, AStatement, AVersion, Result), ACommand + ' ' + AStatement);
   Assert.AreEqual(0, Pos(ACommand, Result), Result);
 end;
 
+function Expand(const ACommand, AStatement: string): string; overload;
+begin
+  Result := Expand(ACommand, AStatement, '');
+end;
+
 procedure TExpressionCommandsTests.FormatUsesTypes;
 var
-  Text: string;
+  mText: string;
 begin
-  Text := Expand('/format', '  S := ''Kunde '' + Name + '' hat '' + IntToStr(N) + '' Aufträge zu '' + ' +
+  mText := Expand('/format', '  S := ''Kunde '' + Name + '' hat '' + IntToStr(N) + '' Aufträge zu '' + ' +
     'FloatToStr(Preis) + '' (100%)'';');
-  Assert.IsTrue(Pos('  S := Format(''Kunde %s hat %d Aufträge zu %g (100%%)'', [Name, N, Preis]);', Text) > 0,
-    Text);
-  Text := Expand('/format', '  S := ''Preis: '' + Preis;');
-  Assert.IsTrue(Pos('Format(''Preis: %g'', [Preis])', Text) > 0, Text);
+  Assert.IsTrue(Pos('  S := Format(''Kunde %s hat %d Aufträge zu %g (100%%)'', [Name, N, Preis]);', mText) > 0,
+    mText);
+  mText := Expand('/format', '  S := ''Preis: '' + Preis;');
+  Assert.IsTrue(Pos('Format(''Preis: %g'', [Preis])', mText) > 0, mText);
 end;
 
 procedure TExpressionCommandsTests.FormatUnknownTypeAddsHint;
 var
-  Text: string;
+  mText: string;
 begin
   // Nicht über Expand: Der Hinweis nennt den Befehl selbst ("// /format: ...").
-  Assert.IsTrue(TryRun('/format', '  ShowMessage(''Wert: '' + Liste.Text);', '', Text));
-  Assert.AreEqual(0, Pos(#10'  /format', Text), Text);
-  Assert.IsTrue(Pos('ShowMessage(Format(''Wert: %s'', [Liste.Text]));', Text) > 0, Text);
-  Assert.IsTrue(Pos('// /format: Typ von Liste.Text unbekannt', Text) > 0, Text);
+  Assert.IsTrue(TryRun('/format', '  ShowMessage(''Wert: '' + Liste.Text);', '', mText));
+  Assert.AreEqual(0, Pos(#10'  /format', mText), mText);
+  Assert.IsTrue(Pos('ShowMessage(Format(''Wert: %s'', [Liste.Text]));', mText) > 0, mText);
+  Assert.IsTrue(Pos('// /format: Typ von Liste.Text unbekannt', mText) > 0, mText);
 end;
 
 procedure TExpressionCommandsTests.FormatWithoutConcatenationFails;
 var
-  Text: string;
+  mText: string;
 begin
-  Assert.IsFalse(TryRun('/format', '  S := ''nur Text'';', '', Text));
-  Assert.IsFalse(TryRun('/format', '  Zaehler := Zaehler + 1;', '', Text));
+  Assert.IsFalse(TryRun('/format', '  S := ''nur Text'';', '', mText));
+  Assert.IsFalse(TryRun('/format', '  Zaehler := Zaehler + 1;', '', mText));
 end;
 
 procedure TExpressionCommandsTests.MultilineBothWays;
 var
-  Text: string;
+  mText: string;
 begin
-  Text := Expand('/multiline', '  S := ''SELECT *'' + sLineBreak + ''FROM Kunde'';');
-  Assert.IsTrue(Pos('  S := '''''''#10'    SELECT *'#10'    FROM Kunde'#10'    '''''';', Text) > 0, Text);
-  Text := Expand('/multiline!', '  S := '''''''#10'    SELECT *'#10'    FROM Kunde'#10'    '''''';');
-  Assert.IsTrue(Pos('''SELECT *'' + sLineBreak', Text) > 0, Text);
-  Assert.IsTrue(Pos('''FROM Kunde'';', Text) > 0, Text);
+  mText := Expand('/multiline', '  S := ''SELECT *'' + sLineBreak + ''FROM Kunde'';');
+  Assert.IsTrue(Pos('  S := '''''''#10'    SELECT *'#10'    FROM Kunde'#10'    '''''';', mText) > 0, mText);
+  mText := Expand('/multiline!', '  S := '''''''#10'    SELECT *'#10'    FROM Kunde'#10'    '''''';');
+  Assert.IsTrue(Pos('''SELECT *'' + sLineBreak', mText) > 0, mText);
+  Assert.IsTrue(Pos('''FROM Kunde'';', mText) > 0, mText);
 end;
 
 procedure TExpressionCommandsTests.MultilineNeedsDelphi12;
 var
-  Text: string;
+  mText: string;
 begin
   // Delphi 11 (22.0) kennt keine mehrzeiligen Strings.
-  Assert.IsFalse(TryRun('/multiline', '  S := ''a'' + sLineBreak + ''b'';', '22.0', Text));
-  Assert.IsTrue(TryRun('/multiline', '  S := ''a'' + sLineBreak + ''b'';', '23.0', Text));
-  Assert.IsFalse(TryRun('/multiline', '  S := ''nur eine Zeile'';', '', Text));
+  Assert.IsFalse(TryRun('/multiline', '  S := ''a'' + sLineBreak + ''b'';', '22.0', mText));
+  Assert.IsTrue(TryRun('/multiline', '  S := ''a'' + sLineBreak + ''b'';', '23.0', mText));
+  Assert.IsFalse(TryRun('/multiline', '  S := ''nur eine Zeile'';', '', mText));
 end;
 
 procedure TExpressionCommandsTests.IifBuildsConditionalExpression;
@@ -179,12 +184,12 @@ end;
 
 procedure TExpressionCommandsTests.IifNeedsDelphi13AndSameTarget;
 var
-  Text: string;
+  mText: string;
 begin
   // Delphi 12 (23.0) kennt keine Bedingungsausdrücke.
-  Assert.IsFalse(TryRun('/iif', '  if N > 0 then S := ''ja'' else S := ''nein'';', '23.0', Text));
-  Assert.IsFalse(TryRun('/iif', '  if N > 0 then S := ''ja'' else Name := ''nein'';', '', Text));
-  Assert.IsFalse(TryRun('/iif', '  if N > 0 then begin S := ''ja''; end else S := ''nein'';', '', Text));
+  Assert.IsFalse(TryRun('/iif', '  if N > 0 then S := ''ja'' else S := ''nein'';', '23.0', mText));
+  Assert.IsFalse(TryRun('/iif', '  if N > 0 then S := ''ja'' else Name := ''nein'';', '', mText));
+  Assert.IsFalse(TryRun('/iif', '  if N > 0 then begin S := ''ja''; end else S := ''nein'';', '', mText));
 end;
 
 procedure TExpressionCommandsTests.IncAndDec;
@@ -196,38 +201,38 @@ end;
 
 procedure TExpressionCommandsTests.IncRejectsOtherShapes;
 var
-  Text: string;
+  mText: string;
 begin
-  Assert.IsFalse(TryRun('/inc', '  Zaehler := N + 1;', '', Text));
-  Assert.IsFalse(TryRun('/inc', '  Zaehler := Zaehler - N + 1;', '', Text));
-  Assert.IsFalse(TryRun('/inc', '  Preis := Preis + 0.5;', '', Text));
+  Assert.IsFalse(TryRun('/inc', '  Zaehler := N + 1;', '', mText));
+  Assert.IsFalse(TryRun('/inc', '  Zaehler := Zaehler - N + 1;', '', mText));
+  Assert.IsFalse(TryRun('/inc', '  Preis := Preis + 0.5;', '', mText));
 end;
 
 procedure TExpressionCommandsTests.OutsideRoutineFails;
 var
-  Text: string;
+  mText: string;
 begin
-  Text := StringReplace(Source('', '  S := S;'), 'interface'#10, 'interface'#10'/inc'#10, []);
-  Assert.AreEqual(1, Integer(Length(TSlashCommandRegistry.Shared.Problems(Text, nil))));
+  mText := StringReplace(Source('', '  S := S;'), 'interface'#10, 'interface'#10'/inc'#10, []);
+  Assert.AreEqual(1, Integer(Length(TSlashCommandRegistry.Shared.Problems(mText, nil))));
 end;
 
 procedure TExpressionCommandsTests.ModernUsesInlineVariable;
 var
-  Text: string;
+  mText: string;
 begin
-  Text := Expand('/modern', '  Zaehler := N;'#10'  Log(Zaehler);');
-  Assert.IsTrue(Pos('  var Zaehler: Integer := N;', Text) > 0, Text);
-  Assert.AreEqual(0, Pos('  Zaehler: Integer;', Text), Text);
+  mText := Expand('/modern', '  Zaehler := N;'#10'  Log(Zaehler);');
+  Assert.IsTrue(Pos('  var Zaehler: Integer := N;', mText) > 0, mText);
+  Assert.AreEqual(0, Pos('  Zaehler: Integer;', mText), mText);
 end;
 
 procedure TExpressionCommandsTests.ModernWithoutChangesFails;
 var
-  Text: string;
+  mText: string;
 begin
-  Assert.IsFalse(TryRun('/modern', '  Log(N);', '', Text));
+  Assert.IsFalse(TryRun('/modern', '  Log(N);', '', mText));
   // Vor Delphi 10.3 keine Inline-Variablen.
-  Assert.IsFalse(TryRun('/modern', '  Zaehler := N;', '19.0', Text));
-  Assert.IsFalse(TryRun('/modern -inline', '  Zaehler := N;', '', Text));
+  Assert.IsFalse(TryRun('/modern', '  Zaehler := N;', '19.0', mText));
+  Assert.IsFalse(TryRun('/modern -inline', '  Zaehler := N;', '', mText));
 end;
 
 initialization

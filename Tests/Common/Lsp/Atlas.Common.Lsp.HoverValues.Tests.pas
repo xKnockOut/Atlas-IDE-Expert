@@ -34,30 +34,30 @@ implementation
 
 procedure TLspHoverValuesTests.ParsesNumberNotations;
 var
-  Value: Int64;
+  mValue: Int64;
 begin
-  Assert.IsTrue(THoverValues.TryParseNumber('15', Value));
-  Assert.AreEqual(Int64(15), Value);
-  Assert.IsTrue(THoverValues.TryParseNumber('$FF', Value));
-  Assert.AreEqual(Int64(255), Value);
-  Assert.IsTrue(THoverValues.TryParseNumber('%1010', Value));
-  Assert.AreEqual(Int64(10), Value);
-  Assert.IsTrue(THoverValues.TryParseNumber('&17', Value));
-  Assert.AreEqual(Int64(15), Value);
-  Assert.IsTrue(THoverValues.TryParseNumber('1_000', Value));
-  Assert.AreEqual(Int64(1000), Value);
-  Assert.IsTrue(THoverValues.TryParseNumber('-3', Value));
-  Assert.AreEqual(Int64(-3), Value);
+  Assert.IsTrue(THoverValues.TryParseNumber('15', mValue));
+  Assert.AreEqual(Int64(15), mValue);
+  Assert.IsTrue(THoverValues.TryParseNumber('$FF', mValue));
+  Assert.AreEqual(Int64(255), mValue);
+  Assert.IsTrue(THoverValues.TryParseNumber('%1010', mValue));
+  Assert.AreEqual(Int64(10), mValue);
+  Assert.IsTrue(THoverValues.TryParseNumber('&17', mValue));
+  Assert.AreEqual(Int64(15), mValue);
+  Assert.IsTrue(THoverValues.TryParseNumber('1_000', mValue));
+  Assert.AreEqual(Int64(1000), mValue);
+  Assert.IsTrue(THoverValues.TryParseNumber('-3', mValue));
+  Assert.AreEqual(Int64(-3), mValue);
 end;
 
 procedure TLspHoverValuesTests.RejectsNonNumbers;
 var
-  Value: Int64;
+  mValue: Int64;
 begin
-  Assert.IsFalse(THoverValues.TryParseNumber('', Value));
-  Assert.IsFalse(THoverValues.TryParseNumber('Foo', Value));
-  Assert.IsFalse(THoverValues.TryParseNumber('1.5', Value));
-  Assert.IsFalse(THoverValues.TryParseNumber('$', Value));
+  Assert.IsFalse(THoverValues.TryParseNumber('', mValue));
+  Assert.IsFalse(THoverValues.TryParseNumber('Foo', mValue));
+  Assert.IsFalse(THoverValues.TryParseNumber('1.5', mValue));
+  Assert.IsFalse(THoverValues.TryParseNumber('$', mValue));
 end;
 
 procedure TLspHoverValuesTests.FormatsNumbers;
@@ -100,17 +100,17 @@ end;
 
 procedure TLspHoverValuesTests.ReadsSetTypes;
 var
-  BaseType: string;
+  mBaseType: string;
 begin
-  Assert.IsTrue(THoverValues.SetBaseType('TFontStyles = set of TFontStyle;', BaseType));
-  Assert.AreEqual('TFontStyle', BaseType);
-  Assert.AreEqual(-1, THoverValues.BaseTypeCount(BaseType));
-  Assert.IsTrue(THoverValues.SetBaseType('TOpts = set of (oA, oB, oC);', BaseType));
-  Assert.AreEqual(3, THoverValues.BaseTypeCount(BaseType));
-  Assert.IsTrue(THoverValues.SetBaseType('TBits = set of 0..31;', BaseType));
-  Assert.AreEqual(32, THoverValues.BaseTypeCount(BaseType));
+  Assert.IsTrue(THoverValues.SetBaseType('TFontStyles = set of TFontStyle;', mBaseType));
+  Assert.AreEqual('TFontStyle', mBaseType);
+  Assert.AreEqual(-1, THoverValues.BaseTypeCount(mBaseType));
+  Assert.IsTrue(THoverValues.SetBaseType('TOpts = set of (oA, oB, oC);', mBaseType));
+  Assert.AreEqual(3, THoverValues.BaseTypeCount(mBaseType));
+  Assert.IsTrue(THoverValues.SetBaseType('TBits = set of 0..31;', mBaseType));
+  Assert.AreEqual(32, THoverValues.BaseTypeCount(mBaseType));
   Assert.AreEqual(256, THoverValues.BaseTypeCount('Byte'));
-  Assert.IsFalse(THoverValues.SetBaseType('TFoo = class', BaseType));
+  Assert.IsFalse(THoverValues.SetBaseType('TFoo = class', mBaseType));
 end;
 
 procedure TLspHoverValuesTests.FindsDeprecationDirectives;

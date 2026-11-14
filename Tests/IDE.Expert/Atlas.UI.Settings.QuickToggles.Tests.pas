@@ -48,7 +48,7 @@ uses
   Atlas.UI.Settings.QuickToggles;
 
 const
-  Catalog =
+  cCatalog =
     '{"properties":{' +
     '"PairColors":{"type":"boolean","x-page":"Editor","x-quickToggle":true,"x-caption":"Klammerfarben"},' +
     '"HoverTooltip":{"type":"boolean","x-page":"Hints","x-quickToggle":true,"x-caption":"Hover"},' +
@@ -57,7 +57,7 @@ const
 
 function SampleItems: TArray<TAtlasQuickToggleItem>;
 begin
-  Result := TAtlasQuickToggles.Items(TAtlasQuickToggles.Build(Catalog, ''), TAtlasPluginSettings.Defaults,
+  Result := TAtlasQuickToggles.Items(TAtlasQuickToggles.Build(cCatalog, ''), TAtlasPluginSettings.Defaults,
     Default(TAtlasToggleSession), nil);
 end;
 
@@ -68,81 +68,81 @@ end;
 
 procedure TAtlasQuickToggleWindowTests.GroupsByPage;
 var
-  Window: TAtlasQuickToggleWindow;
+  mWindow: TAtlasQuickToggleWindow;
 begin
   TAtlasQuickToggleRows.ExpandAll;
-  Window := TAtlasQuickToggleWindow.CreateToggles(nil, TAtlasColors.Light);
+  mWindow := TAtlasQuickToggleWindow.CreateToggles(nil, TAtlasColors.Light);
   try
-    Window.SetItems(SampleItems, False);
+    mWindow.SetItems(SampleItems, False);
     // Editor (Überschrift), Klammerfarben, Blocklinien, Hints (Überschrift), Hover.
-    Assert.AreEqual(5, Window.Rows.Count);
-    Assert.AreEqual('Editor', Window.Rows.Text(0));
-    Assert.AreEqual(-1, Window.Rows.Item(0));
-    Assert.AreEqual('Klammerfarben', Window.Rows.Text(1));
-    Assert.AreEqual('Blocklinien', Window.Rows.Text(2));
-    Assert.AreEqual('Hints', Window.Rows.Text(3));
-    Assert.AreEqual(-1, Window.Rows.Item(3));
-    Assert.AreEqual('Hover', Window.Rows.Text(4));
-    Assert.AreEqual(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.QuickTogglesAllOff), Window.AllButton.Caption);
+    Assert.AreEqual(5, mWindow.Rows.Count);
+    Assert.AreEqual('Editor', mWindow.Rows.Text(0));
+    Assert.AreEqual(-1, mWindow.Rows.Item(0));
+    Assert.AreEqual('Klammerfarben', mWindow.Rows.Text(1));
+    Assert.AreEqual('Blocklinien', mWindow.Rows.Text(2));
+    Assert.AreEqual('Hints', mWindow.Rows.Text(3));
+    Assert.AreEqual(-1, mWindow.Rows.Item(3));
+    Assert.AreEqual('Hover', mWindow.Rows.Text(4));
+    Assert.AreEqual(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.QuickTogglesAllOff), mWindow.AllButton.Caption);
   finally
-    Window.Free;
+    mWindow.Free;
   end;
 end;
 
 procedure TAtlasQuickToggleWindowTests.ClickTogglesAndStaysOpen;
 var
-  Window: TAtlasQuickToggleWindow;
-  Toggled: string;
-  Count: Integer;
+  mWindow: TAtlasQuickToggleWindow;
+  mToggled: string;
+  mCount: Integer;
 begin
-  Toggled := '';
-  Count := 0;
+  mToggled := '';
+  mCount := 0;
   TAtlasQuickToggleRows.ExpandAll;
-  Window := TAtlasQuickToggleWindow.CreateToggles(nil, TAtlasColors.Light);
+  mWindow := TAtlasQuickToggleWindow.CreateToggles(nil, TAtlasColors.Light);
   try
-    Window.SetItems(SampleItems, False);
-    Window.OnToggle :=
+    mWindow.SetItems(SampleItems, False);
+    mWindow.OnToggle :=
       procedure(AItem: TAtlasQuickToggleItem)
       begin
-        Toggled := AItem.Toggle.Key;
-        Inc(Count);
+        mToggled := AItem.Toggle.Key;
+        Inc(mCount);
       end;
-    Window.ClickRow(1);
-    Assert.AreEqual(1, Count, 'sofort');
-    Assert.AreEqual('PairColors', Toggled);
-    Window.ClickRow(4);
-    Assert.AreEqual(2, Count, 'Fenster bleibt offen');
-    Assert.AreEqual('HoverTooltip', Toggled);
+    mWindow.ClickRow(1);
+    Assert.AreEqual(1, mCount, 'sofort');
+    Assert.AreEqual('PairColors', mToggled);
+    mWindow.ClickRow(4);
+    Assert.AreEqual(2, mCount, 'Fenster bleibt offen');
+    Assert.AreEqual('HoverTooltip', mToggled);
   finally
-    Window.Free;
+    mWindow.Free;
   end;
 end;
 
 procedure TAtlasQuickToggleWindowTests.ProjectValueRunsAfterClosing;
 var
-  Window: TAtlasQuickToggleWindow;
-  Items: TArray<TAtlasQuickToggleItem>;
-  Count: Integer;
+  mWindow: TAtlasQuickToggleWindow;
+  mItems: TArray<TAtlasQuickToggleItem>;
+  mCount: Integer;
 begin
-  Count := 0;
-  Items := SampleItems;
-  Items[0].Project := True;
+  mCount := 0;
+  mItems := SampleItems;
+  mItems[0].Project := True;
   TAtlasQuickToggleRows.ExpandAll;
-  Window := TAtlasQuickToggleWindow.CreateToggles(nil, TAtlasColors.Light);
+  mWindow := TAtlasQuickToggleWindow.CreateToggles(nil, TAtlasColors.Light);
   try
-    Window.SetItems(Items, False);
-    Window.OnToggle :=
+    mWindow.SetItems(mItems, False);
+    mWindow.OnToggle :=
       procedure(AItem: TAtlasQuickToggleItem)
       begin
-        Inc(Count);
+        Inc(mCount);
       end;
-    Window.ClickRow(1);
-    Assert.AreEqual(0, Count, 'erst nach dem Schließen: die IDE fragt nach');
+    mWindow.ClickRow(1);
+    Assert.AreEqual(0, mCount, 'erst nach dem Schließen: die IDE fragt nach');
     // Schließt schon: weitere Klicks tun nichts.
-    Window.ClickRow(2);
+    mWindow.ClickRow(2);
     CheckSynchronize;
     Application.ProcessMessages;
-    Assert.AreEqual(1, Count);
+    Assert.AreEqual(1, mCount);
   finally
     Application.ProcessMessages;
   end;
@@ -150,36 +150,36 @@ end;
 
 procedure TAtlasQuickToggleWindowTests.OpenSettingRunsAfterClosing;
 var
-  Window: TAtlasQuickToggleWindow;
-  Opened: string;
-  Toggled: Integer;
+  mWindow: TAtlasQuickToggleWindow;
+  mOpened: string;
+  mToggled: Integer;
 begin
-  Opened := '';
-  Toggled := 0;
+  mOpened := '';
+  mToggled := 0;
   TAtlasQuickToggleRows.ExpandAll;
-  Window := TAtlasQuickToggleWindow.CreateToggles(nil, TAtlasColors.Light);
+  mWindow := TAtlasQuickToggleWindow.CreateToggles(nil, TAtlasColors.Light);
   try
-    Window.SetItems(SampleItems, False);
-    Window.OnToggle :=
+    mWindow.SetItems(SampleItems, False);
+    mWindow.OnToggle :=
       procedure(AItem: TAtlasQuickToggleItem)
       begin
-        Inc(Toggled);
+        Inc(mToggled);
       end;
-    Window.OnOpenSetting :=
+    mWindow.OnOpenSetting :=
       procedure(AItem: TAtlasQuickToggleItem)
       begin
-        Opened := AItem.Toggle.Key;
+        mOpened := AItem.Toggle.Key;
       end;
     // Überschrift hat kein Symbol.
-    Window.ClickOpen(0);
-    Assert.AreEqual('', Opened);
+    mWindow.ClickOpen(0);
+    Assert.AreEqual('', mOpened);
     // Tools › Optionen ist modal: erst nach dem Schließen, und geschaltet wird nichts.
-    Window.ClickOpen(1);
-    Assert.AreEqual('', Opened, 'erst nach dem Schließen');
+    mWindow.ClickOpen(1);
+    Assert.AreEqual('', mOpened, 'erst nach dem Schließen');
     CheckSynchronize;
     Application.ProcessMessages;
-    Assert.AreEqual('PairColors', Opened);
-    Assert.AreEqual(0, Toggled);
+    Assert.AreEqual('PairColors', mOpened);
+    Assert.AreEqual(0, mToggled);
   finally
     Application.ProcessMessages;
   end;
@@ -187,82 +187,82 @@ end;
 
 procedure TAtlasQuickToggleWindowTests.AllOffButton;
 var
-  Window: TAtlasQuickToggleWindow;
-  Clicked: Integer;
+  mWindow: TAtlasQuickToggleWindow;
+  mClicked: Integer;
 begin
-  Clicked := 0;
-  Window := TAtlasQuickToggleWindow.CreateToggles(nil, TAtlasColors.Dark);
+  mClicked := 0;
+  mWindow := TAtlasQuickToggleWindow.CreateToggles(nil, TAtlasColors.Dark);
   try
-    Window.OnAllOff :=
+    mWindow.OnAllOff :=
       procedure
       begin
-        Inc(Clicked);
+        Inc(mClicked);
       end;
-    Window.SetItems(SampleItems, False);
-    Window.AllButton.Click;
-    Assert.AreEqual(1, Clicked);
-    Window.SetItems(SampleItems, True);
-    Assert.AreEqual(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.QuickTogglesAllOn), Window.AllButton.Caption);
+    mWindow.SetItems(SampleItems, False);
+    mWindow.AllButton.Click;
+    Assert.AreEqual(1, mClicked);
+    mWindow.SetItems(SampleItems, True);
+    Assert.AreEqual(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.QuickTogglesAllOn), mWindow.AllButton.Caption);
   finally
-    Window.Free;
+    mWindow.Free;
   end;
 end;
 
 procedure TAtlasQuickToggleWindowTests.HeaderCollapsesAndExpandsGroup;
 var
-  Window: TAtlasQuickToggleWindow;
-  Count: Integer;
+  mWindow: TAtlasQuickToggleWindow;
+  mCount: Integer;
 begin
-  Count := 0;
+  mCount := 0;
   TAtlasQuickToggleRows.ExpandAll;
-  Window := TAtlasQuickToggleWindow.CreateToggles(nil, TAtlasColors.Light);
+  mWindow := TAtlasQuickToggleWindow.CreateToggles(nil, TAtlasColors.Light);
   try
-    Window.SetItems(SampleItems, False);
-    Window.OnToggle :=
+    mWindow.SetItems(SampleItems, False);
+    mWindow.OnToggle :=
       procedure(AItem: TAtlasQuickToggleItem)
       begin
-        Inc(Count);
+        Inc(mCount);
       end;
-    Window.ClickRow(0);
-    Assert.AreEqual(0, Count, 'Überschrift schaltet nichts');
+    mWindow.ClickRow(0);
+    Assert.AreEqual(0, mCount, 'Überschrift schaltet nichts');
     // Editor eingeklappt: Editor, Hints, Hover.
-    Assert.AreEqual(3, Window.Rows.Count);
-    Assert.AreEqual('Editor', Window.Rows.Text(0));
-    Assert.AreEqual('Hints', Window.Rows.Text(1));
-    Assert.AreEqual(0, Window.HotRow, 'Auswahl bleibt auf der Überschrift');
+    Assert.AreEqual(3, mWindow.Rows.Count);
+    Assert.AreEqual('Editor', mWindow.Rows.Text(0));
+    Assert.AreEqual('Hints', mWindow.Rows.Text(1));
+    Assert.AreEqual(0, mWindow.HotRow, 'Auswahl bleibt auf der Überschrift');
     // Neues Fenster öffnet wie zuletzt verlassen.
-    Window.Free;
-    Window := TAtlasQuickToggleWindow.CreateToggles(nil, TAtlasColors.Light);
-    Window.SetItems(SampleItems, False);
-    Assert.AreEqual(3, Window.Rows.Count);
-    Window.ClickRow(0);
+    mWindow.Free;
+    mWindow := TAtlasQuickToggleWindow.CreateToggles(nil, TAtlasColors.Light);
+    mWindow.SetItems(SampleItems, False);
+    Assert.AreEqual(3, mWindow.Rows.Count);
+    mWindow.ClickRow(0);
     // Akkordeon: Editor wieder offen, dafür Hints zu (Editor, Klammerfarben, Blocklinien, Hints).
-    Assert.AreEqual(4, Window.Rows.Count, 'wieder ausgeklappt');
-    Assert.AreEqual('Klammerfarben', Window.Rows.Text(1));
-    Assert.AreEqual('Hints', Window.Rows.Text(3));
+    Assert.AreEqual(4, mWindow.Rows.Count, 'wieder ausgeklappt');
+    Assert.AreEqual('Klammerfarben', mWindow.Rows.Text(1));
+    Assert.AreEqual('Hints', mWindow.Rows.Text(3));
   finally
-    Window.Free;
+    mWindow.Free;
     TAtlasQuickToggleRows.ExpandAll;
   end;
 end;
 
 procedure TAtlasQuickToggleWindowTests.FirstOpenAndAccordion;
 var
-  Window: TAtlasQuickToggleWindow;
+  mWindow: TAtlasQuickToggleWindow;
 begin
   TAtlasQuickToggleRows.ResetCollapse;
-  Window := TAtlasQuickToggleWindow.CreateToggles(nil, TAtlasColors.Light);
+  mWindow := TAtlasQuickToggleWindow.CreateToggles(nil, TAtlasColors.Light);
   try
-    Window.SetItems(SampleItems, False);
+    mWindow.SetItems(SampleItems, False);
     // Erstes Öffnen: nur die erste Seite offen (Editor, Klammerfarben, Blocklinien, Hints).
-    Assert.AreEqual(4, Window.Rows.Count);
-    Assert.AreEqual('Hints', Window.Rows.Text(3));
+    Assert.AreEqual(4, mWindow.Rows.Count);
+    Assert.AreEqual('Hints', mWindow.Rows.Text(3));
     // Hints aufklappen schließt Editor: Editor, Hints, Hover.
-    Window.ClickRow(3);
-    Assert.AreEqual(3, Window.Rows.Count);
-    Assert.AreEqual('Hover', Window.Rows.Text(2));
+    mWindow.ClickRow(3);
+    Assert.AreEqual(3, mWindow.Rows.Count);
+    Assert.AreEqual('Hover', mWindow.Rows.Text(2));
   finally
-    Window.Free;
+    mWindow.Free;
     TAtlasQuickToggleRows.ExpandAll;
   end;
 end;

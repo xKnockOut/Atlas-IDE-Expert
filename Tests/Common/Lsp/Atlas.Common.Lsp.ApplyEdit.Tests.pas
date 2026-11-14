@@ -36,79 +36,79 @@ end;
 
 procedure TLspApplyEditTests.ChecksClientCapability;
 var
-  Params: TJSONObject;
+  mParams: TJSONObject;
 begin
   Assert.IsFalse(TLspApplyEdit.ClientSupports(nil));
-  Params := Parse('{"capabilities":{"workspace":{"applyEdit":true}}}');
+  mParams := Parse('{"capabilities":{"workspace":{"applyEdit":true}}}');
   try
-    Assert.IsTrue(TLspApplyEdit.ClientSupports(Params));
+    Assert.IsTrue(TLspApplyEdit.ClientSupports(mParams));
   finally
-    Params.Free;
+    mParams.Free;
   end;
-  Params := Parse('{"capabilities":{"workspace":{"applyEdit":false}}}');
+  mParams := Parse('{"capabilities":{"workspace":{"applyEdit":false}}}');
   try
-    Assert.IsFalse(TLspApplyEdit.ClientSupports(Params));
+    Assert.IsFalse(TLspApplyEdit.ClientSupports(mParams));
   finally
-    Params.Free;
+    mParams.Free;
   end;
-  Params := Parse('{"capabilities":{}}');
+  mParams := Parse('{"capabilities":{}}');
   try
-    Assert.IsFalse(TLspApplyEdit.ClientSupports(Params));
+    Assert.IsFalse(TLspApplyEdit.ClientSupports(mParams));
   finally
-    Params.Free;
+    mParams.Free;
   end;
 end;
 
 procedure TLspApplyEditTests.ReplacesWholeFile;
 var
-  Request, Changes, Edit: TJSONObject;
+  mRequest, mChanges, mEdit: TJSONObject;
 begin
-  Request := TLspApplyEdit.Request('atlas/applyEdit/1', '/define TEST',
+  mRequest := TLspApplyEdit.Request('atlas/applyEdit/1', '/define TEST',
     TLspApplyEdit.ReplaceAll('C:\P\Haupt.dproj', '<Project>'#13#10'  <A/>'#13#10'</Project>', '<Project/>'));
   try
-    Assert.AreEqual('workspace/applyEdit', Request.GetValue<string>('method'));
-    Assert.AreEqual('atlas/applyEdit/1', Request.GetValue<string>('id'));
-    Assert.AreEqual('/define TEST', Request.GetValue<string>('params.label'));
-    Changes := Request.GetValue<TJSONObject>('params.edit.changes');
-    Assert.AreEqual(1, Integer(Changes.Count));
-    Assert.Contains(Changes.Pairs[0].JsonString.Value, 'Haupt.dproj');
-    Edit := (Changes.Pairs[0].JsonValue as TJSONArray).Items[0] as TJSONObject;
-    Assert.AreEqual('<Project/>', Edit.GetValue<string>('newText'));
+    Assert.AreEqual('workspace/applyEdit', mRequest.GetValue<string>('method'));
+    Assert.AreEqual('atlas/applyEdit/1', mRequest.GetValue<string>('id'));
+    Assert.AreEqual('/define TEST', mRequest.GetValue<string>('params.label'));
+    mChanges := mRequest.GetValue<TJSONObject>('params.edit.changes');
+    Assert.AreEqual(1, Integer(mChanges.Count));
+    Assert.Contains(mChanges.Pairs[0].JsonString.Value, 'Haupt.dproj');
+    mEdit := (mChanges.Pairs[0].JsonValue as TJSONArray).Items[0] as TJSONObject;
+    Assert.AreEqual('<Project/>', mEdit.GetValue<string>('newText'));
     // Vom Anfang bis zum Ende der letzten Zeile: Zeile 2, Länge von "</Project>".
-    Assert.AreEqual(0, Edit.GetValue<Integer>('range.start.line'));
-    Assert.AreEqual(0, Edit.GetValue<Integer>('range.start.character'));
-    Assert.AreEqual(2, Edit.GetValue<Integer>('range.end.line'));
-    Assert.AreEqual(10, Edit.GetValue<Integer>('range.end.character'));
+    Assert.AreEqual(0, mEdit.GetValue<Integer>('range.start.line'));
+    Assert.AreEqual(0, mEdit.GetValue<Integer>('range.start.character'));
+    Assert.AreEqual(2, mEdit.GetValue<Integer>('range.end.line'));
+    Assert.AreEqual(10, mEdit.GetValue<Integer>('range.end.character'));
   finally
-    Request.Free;
+    mRequest.Free;
   end;
 end;
 
 procedure TLspApplyEditTests.CreatesAndReplacesFiles;
 var
-  Edit, Item: TJSONObject;
-  Changes: TJSONArray;
+  mEdit, mItem: TJSONObject;
+  mChanges: TJSONArray;
 begin
-  Edit := TLspApplyEdit.Files([TLspFileChange.Create('C:\P\Neu.pas', '', 'unit Neu;', True),
+  mEdit := TLspApplyEdit.Files([TLspFileChange.Create('C:\P\Neu.pas', '', 'unit Neu;', True),
     TLspFileChange.Create('C:\P\App.dproj', '<A/>'#13#10'<B/>', '<C/>', False)]);
   try
-    Changes := Edit.GetValue<TJSONArray>('documentChanges');
+    mChanges := mEdit.GetValue<TJSONArray>('documentChanges');
     // Anlegen, Füllen der neuen Datei, Ersetzen der vorhandenen.
-    Assert.AreEqual(3, Integer(Changes.Count));
-    Item := Changes.Items[0] as TJSONObject;
-    Assert.AreEqual('create', Item.GetValue<string>('kind'));
-    Assert.Contains(Item.GetValue<string>('uri'), 'Neu.pas');
-    Item := Changes.Items[1] as TJSONObject;
-    Assert.Contains(Item.GetValue<string>('textDocument.uri'), 'Neu.pas');
-    Assert.AreEqual('unit Neu;', (Item.GetValue<TJSONArray>('edits').Items[0] as TJSONObject).GetValue<string>('newText'));
-    Assert.AreEqual(0, (Item.GetValue<TJSONArray>('edits').Items[0] as TJSONObject).GetValue<Integer>('range.end.line'));
-    Item := Changes.Items[2] as TJSONObject;
-    Assert.Contains(Item.GetValue<string>('textDocument.uri'), 'App.dproj');
-    Assert.AreEqual(1, (Item.GetValue<TJSONArray>('edits').Items[0] as TJSONObject).GetValue<Integer>('range.end.line'));
-    Assert.AreEqual(4, (Item.GetValue<TJSONArray>('edits').Items[0] as TJSONObject).GetValue<Integer>(
+    Assert.AreEqual(3, Integer(mChanges.Count));
+    mItem := mChanges.Items[0] as TJSONObject;
+    Assert.AreEqual('create', mItem.GetValue<string>('kind'));
+    Assert.Contains(mItem.GetValue<string>('uri'), 'Neu.pas');
+    mItem := mChanges.Items[1] as TJSONObject;
+    Assert.Contains(mItem.GetValue<string>('textDocument.uri'), 'Neu.pas');
+    Assert.AreEqual('unit Neu;', (mItem.GetValue<TJSONArray>('edits').Items[0] as TJSONObject).GetValue<string>('newText'));
+    Assert.AreEqual(0, (mItem.GetValue<TJSONArray>('edits').Items[0] as TJSONObject).GetValue<Integer>('range.end.line'));
+    mItem := mChanges.Items[2] as TJSONObject;
+    Assert.Contains(mItem.GetValue<string>('textDocument.uri'), 'App.dproj');
+    Assert.AreEqual(1, (mItem.GetValue<TJSONArray>('edits').Items[0] as TJSONObject).GetValue<Integer>('range.end.line'));
+    Assert.AreEqual(4, (mItem.GetValue<TJSONArray>('edits').Items[0] as TJSONObject).GetValue<Integer>(
       'range.end.character'));
   finally
-    Edit.Free;
+    mEdit.Free;
   end;
 end;
 
@@ -116,27 +116,27 @@ procedure TLspApplyEditTests.ReadsClientAnswer;
 
   function Read(const AJson: string; out AReason: string): Boolean;
   var
-    Response: TJSONObject;
+    mResponse: TJSONObject;
   begin
-    Response := Parse(AJson);
+    mResponse := Parse(AJson);
     try
-      Result := TLspApplyEdit.ReadResult(Response, AReason);
+      Result := TLspApplyEdit.ReadResult(mResponse, AReason);
     finally
-      Response.Free;
+      mResponse.Free;
     end;
   end;
 
 var
-  Reason: string;
+  mReason: string;
 begin
-  Assert.IsTrue(Read('{"jsonrpc":"2.0","id":"a","result":{"applied":true}}', Reason));
-  Assert.AreEqual('', Reason);
+  Assert.IsTrue(Read('{"jsonrpc":"2.0","id":"a","result":{"applied":true}}', mReason));
+  Assert.AreEqual('', mReason);
   Assert.IsFalse(Read('{"jsonrpc":"2.0","id":"a","result":{"applied":false,"failureReason":"schreibgeschützt"}}',
-    Reason));
-  Assert.AreEqual('schreibgeschützt', Reason);
-  Assert.IsFalse(Read('{"jsonrpc":"2.0","id":"a","error":{"code":-32601,"message":"unbekannt"}}', Reason));
-  Assert.AreEqual('unbekannt', Reason);
-  Assert.IsFalse(TLspApplyEdit.ReadResult(nil, Reason));
+    mReason));
+  Assert.AreEqual('schreibgeschützt', mReason);
+  Assert.IsFalse(Read('{"jsonrpc":"2.0","id":"a","error":{"code":-32601,"message":"unbekannt"}}', mReason));
+  Assert.AreEqual('unbekannt', mReason);
+  Assert.IsFalse(TLspApplyEdit.ReadResult(nil, mReason));
 end;
 
 initialization

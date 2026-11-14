@@ -55,11 +55,11 @@ uses
   Atlas.Common.Lsp.TypeAlias;
 
 const
-  KundenFile = 'C:\P\Kunden.pas';
-  AufruferFile = 'C:\P\Aufrufer.pas';
-  FremdFile = 'C:\P\Fremd.pas';
-  AndereFile = 'C:\P\Andere.pas';
-  Kunden =
+  cKundenFile = 'C:\P\Kunden.pas';
+  cAufruferFile = 'C:\P\Aufrufer.pas';
+  cFremdFile = 'C:\P\Fremd.pas';
+  cAndereFile = 'C:\P\Andere.pas';
+  cKunden =
     'unit Kunden;'#10 +                                       // 0
     'interface'#10 +                                          // 1
     'uses System.Generics.Collections;'#10 +                  // 2
@@ -77,7 +77,7 @@ const
     'implementation'#10 +                                     // 14
     'end.'#10;
 
-  Aufrufer =
+  cAufrufer =
     'unit Aufrufer;'#10 +
     'interface'#10 +
     'uses System.Generics.Collections, Kunden;'#10 +
@@ -90,7 +90,7 @@ const
     'end.'#10;
 
   // Eigenes TKunde: derselbe Text, ein anderer Typ.
-  Andere =
+  cAndere =
     'unit Andere;'#10 +
     'interface'#10 +
     'uses System.Generics.Collections, Kunden;'#10 +
@@ -104,7 +104,7 @@ const
     'end.'#10;
 
   // Nennt Kunden nur im Kommentar und bleibt deshalb unberührt.
-  Fremd =
+  cFremd =
     'unit Fremd;'#10 +
     'interface'#10 +
     '// Kunden'#10 +
@@ -114,21 +114,21 @@ const
 function ReadFile(const AFileName: string; out AText: string): Boolean;
 begin
   Result := True;
-  if SameText(AFileName, AufruferFile) then
+  if SameText(AFileName, cAufruferFile) then
   begin
-    AText := Aufrufer;
+    AText := cAufrufer;
   end
-  else if SameText(AFileName, KundenFile) then
+  else if SameText(AFileName, cKundenFile) then
   begin
-    AText := Kunden;
+    AText := cKunden;
   end
-  else if SameText(AFileName, FremdFile) then
+  else if SameText(AFileName, cFremdFile) then
   begin
-    AText := Fremd;
+    AText := cFremd;
   end
-  else if SameText(AFileName, AndereFile) then
+  else if SameText(AFileName, cAndereFile) then
   begin
-    AText := Andere;
+    AText := cAndere;
   end
   else
   begin
@@ -139,10 +139,10 @@ end;
 procedure TLspTypeAliasTests.Setup;
 begin
   FIndex := TSymbolIndex.Create;
-  FIndex.AddUnit(TIndexExtractor.ExtractText(Kunden, KundenFile, nil));
-  FIndex.AddUnit(TIndexExtractor.ExtractText(Aufrufer, AufruferFile, nil));
-  FIndex.AddUnit(TIndexExtractor.ExtractText(Fremd, FremdFile, nil));
-  FIndex.AddUnit(TIndexExtractor.ExtractText(Andere, AndereFile, nil));
+  FIndex.AddUnit(TIndexExtractor.ExtractText(cKunden, cKundenFile, nil));
+  FIndex.AddUnit(TIndexExtractor.ExtractText(cAufrufer, cAufruferFile, nil));
+  FIndex.AddUnit(TIndexExtractor.ExtractText(cFremd, cFremdFile, nil));
+  FIndex.AddUnit(TIndexExtractor.ExtractText(cAndere, cAndereFile, nil));
 end;
 
 procedure TLspTypeAliasTests.TearDown;
@@ -152,22 +152,22 @@ end;
 
 function ActionsAt(const AIndex: ISymbolIndex; ALine, ACharacter: Integer): TArray<TJSONObject>;
 var
-  Tree: TSyntaxTree;
-  Resolver: TNameResolver;
+  mTree: TSyntaxTree;
+  mResolver: TNameResolver;
 begin
-  Tree := TPascalParser.Parse(Kunden);
-  Resolver := TNameResolver.Create(AIndex);
+  mTree := TPascalParser.Parse(cKunden);
+  mResolver := TNameResolver.Create(AIndex);
   try
-    Resolver.PinTree(Tree, KundenFile);
+    mResolver.PinTree(mTree, cKundenFile);
     try
-      Result := TLspTypeAlias.Actions(Tree, Kunden, TDocumentUris.FromPath(KundenFile),
-        TTextPosition.Create(ALine, ACharacter), TTypeAliasScope.InUnit, TLspTypeAlias.Lookup(Resolver));
+      Result := TLspTypeAlias.Actions(mTree, cKunden, TDocumentUris.FromPath(cKundenFile),
+        TTextPosition.Create(ALine, ACharacter), TTypeAliasScope.InUnit, TLspTypeAlias.Lookup(mResolver));
     finally
-      Resolver.UnpinTree;
+      mResolver.UnpinTree;
     end;
   finally
-    Resolver.Free;
-    Tree.Free;
+    mResolver.Free;
+    mTree.Free;
   end;
 end;
 
@@ -175,163 +175,163 @@ function Context(const AIndex: ISymbolIndex): TTypeAliasContext;
 begin
   Result := Default(TTypeAliasContext);
   Result.Index := AIndex;
-  Result.Files := [KundenFile, AufruferFile, FremdFile, AndereFile];
+  Result.Files := [cKundenFile, cAufruferFile, cFremdFile, cAndereFile];
   Result.ReadText := ReadFile;
 end;
 
 function ExecuteAt(const AIndex: ISymbolIndex; ALine, ACharacter: Integer; const AName, AScope: string): TJSONObject;
 var
-  Tree: TSyntaxTree;
-  Resolver: TNameResolver;
-  Request: TTypeAliasContext;
+  mTree: TSyntaxTree;
+  mResolver: TNameResolver;
+  mRequest: TTypeAliasContext;
 begin
-  Request := Context(AIndex);
-  Request.Name := AName;
-  Request.Scope := AScope;
-  Tree := TPascalParser.Parse(Kunden);
-  Resolver := TNameResolver.Create(AIndex);
+  mRequest := Context(AIndex);
+  mRequest.Name := AName;
+  mRequest.Scope := AScope;
+  mTree := TPascalParser.Parse(cKunden);
+  mResolver := TNameResolver.Create(AIndex);
   try
-    Result := TLspTypeAlias.Execute(Resolver, Tree, KundenFile, Kunden, TTextPosition.Create(ALine, ACharacter),
-      Request);
+    Result := TLspTypeAlias.Execute(mResolver, mTree, cKundenFile, cKunden, TTextPosition.Create(ALine, ACharacter),
+      mRequest);
   finally
-    Resolver.Free;
-    Tree.Free;
+    mResolver.Free;
+    mTree.Free;
   end;
 end;
 
 function ExecuteInlineAt(const AIndex: ISymbolIndex; ALine, ACharacter: Integer): TJSONObject;
 var
-  Tree: TSyntaxTree;
-  Resolver: TNameResolver;
+  mTree: TSyntaxTree;
+  mResolver: TNameResolver;
 begin
-  Tree := TPascalParser.Parse(Kunden);
-  Resolver := TNameResolver.Create(AIndex);
+  mTree := TPascalParser.Parse(cKunden);
+  mResolver := TNameResolver.Create(AIndex);
   try
-    Result := TLspTypeAlias.ExecuteInline(Resolver, Tree, KundenFile, Kunden, TTextPosition.Create(ALine,
+    Result := TLspTypeAlias.ExecuteInline(mResolver, mTree, cKundenFile, cKunden, TTextPosition.Create(ALine,
       ACharacter), Context(AIndex));
   finally
-    Resolver.Free;
-    Tree.Free;
+    mResolver.Free;
+    mTree.Free;
   end;
 end;
 
 procedure FreeAll(const AActions: TArray<TJSONObject>);
 var
-  Action: TJSONObject;
+  mAction: TJSONObject;
 begin
-  for Action in AActions do
+  for mAction in AActions do
   begin
-    Action.Free;
+    mAction.Free;
   end;
 end;
 
 procedure TLspTypeAliasTests.ActionsOfferScopes;
 var
-  Actions: TArray<TJSONObject>;
-  Arguments: TJSONArray;
+  mActions: TArray<TJSONObject>;
+  mArguments: TJSONArray;
 begin
   // Auf TDictionary in FAktive.
-  Actions := ActionsAt(FIndex, 11, 15);
+  mActions := ActionsAt(FIndex, 11, 15);
   try
-    Assert.AreEqual(3, Integer(Length(Actions)));
-    Assert.AreEqual('Typ-Alias einführen (TDictionary<string, TKunde>)', Actions[0].GetValue<string>('title'));
+    Assert.AreEqual(3, Integer(Length(mActions)));
+    Assert.AreEqual('Typ-Alias einführen (TDictionary<string, TKunde>)', mActions[0].GetValue<string>('title'));
     Assert.AreEqual('Typ-Alias einführen, nur diese Stelle (TDictionary<string, TKunde>)',
-      Actions[1].GetValue<string>('title'));
+      mActions[1].GetValue<string>('title'));
     Assert.AreEqual('Typ-Alias einführen, im Projekt (TDictionary<string, TKunde>)',
-      Actions[2].GetValue<string>('title'));
-    Assert.AreEqual(TLspTypeAlias.cIntroduceKind, Actions[0].GetValue<string>('kind'));
-    Assert.AreEqual(TLspTypeAlias.cClientCommand, Actions[0].GetValue<string>('command.command'));
-    Arguments := Actions[0].GetValue<TJSONArray>('command.arguments');
-    Assert.AreEqual(4, Arguments.Count);
-    Assert.AreEqual(TDocumentUris.FromPath(KundenFile), Arguments.Items[0].Value);
-    Assert.AreEqual(11, Arguments.Items[1].GetValue<Integer>('line'));
-    Assert.AreEqual(13, Arguments.Items[1].GetValue<Integer>('character'));
-    Assert.AreEqual('TKundeAktive', Arguments.Items[2].Value);
-    Assert.AreEqual('unit', Arguments.Items[3].Value);
-    Assert.AreEqual('project', Actions[2].GetValue<TJSONArray>('command.arguments').Items[3].Value);
+      mActions[2].GetValue<string>('title'));
+    Assert.AreEqual(TLspTypeAlias.cIntroduceKind, mActions[0].GetValue<string>('kind'));
+    Assert.AreEqual(TLspTypeAlias.cClientCommand, mActions[0].GetValue<string>('command.command'));
+    mArguments := mActions[0].GetValue<TJSONArray>('command.arguments');
+    Assert.AreEqual(4, mArguments.Count);
+    Assert.AreEqual(TDocumentUris.FromPath(cKundenFile), mArguments.Items[0].Value);
+    Assert.AreEqual(11, mArguments.Items[1].GetValue<Integer>('line'));
+    Assert.AreEqual(13, mArguments.Items[1].GetValue<Integer>('character'));
+    Assert.AreEqual('TKundeAktive', mArguments.Items[2].Value);
+    Assert.AreEqual('unit', mArguments.Items[3].Value);
+    Assert.AreEqual('project', mActions[2].GetValue<TJSONArray>('command.arguments').Items[3].Value);
   finally
-    FreeAll(Actions);
+    FreeAll(mActions);
   end;
 end;
 
 procedure TLspTypeAliasTests.OpenParamsGiveDisabledAction;
 var
-  Actions: TArray<TJSONObject>;
+  mActions: TArray<TJSONObject>;
 begin
-  Actions := ActionsAt(FIndex, 8, 15);
+  mActions := ActionsAt(FIndex, 8, 15);
   try
-    Assert.AreEqual(1, Integer(Length(Actions)));
-    Assert.IsNull(Actions[0].GetValue('command'));
-    Assert.AreEqual(Format(TTypeAlias.OpenParamsReason, ['T']), Actions[0].GetValue<string>('disabled.reason'));
+    Assert.AreEqual(1, Integer(Length(mActions)));
+    Assert.IsNull(mActions[0].GetValue('command'));
+    Assert.AreEqual(Format(TTypeAlias.OpenParamsReason, ['T']), mActions[0].GetValue<string>('disabled.reason'));
   finally
-    FreeAll(Actions);
+    FreeAll(mActions);
   end;
 end;
 
 procedure TLspTypeAliasTests.InlineActionOnAliasName;
 var
-  Actions: TArray<TJSONObject>;
-  Arguments: TJSONArray;
+  mActions: TArray<TJSONObject>;
+  mArguments: TJSONArray;
 begin
-  Actions := ActionsAt(FIndex, 6, 5);
+  mActions := ActionsAt(FIndex, 6, 5);
   try
-    Assert.AreEqual(1, Integer(Length(Actions)));
-    Assert.AreEqual('Alias auflösen (TKundenListe)', Actions[0].GetValue<string>('title'));
-    Assert.AreEqual(TLspTypeAlias.cInlineKind, Actions[0].GetValue<string>('kind'));
-    Assert.AreEqual(TLspTypeAlias.cInlineClientCommand, Actions[0].GetValue<string>('command.command'));
-    Arguments := Actions[0].GetValue<TJSONArray>('command.arguments');
-    Assert.AreEqual(2, Arguments.Count);
-    Assert.AreEqual(6, Arguments.Items[1].GetValue<Integer>('line'));
-    Assert.AreEqual(2, Arguments.Items[1].GetValue<Integer>('character'));
+    Assert.AreEqual(1, Integer(Length(mActions)));
+    Assert.AreEqual('Alias auflösen (TKundenListe)', mActions[0].GetValue<string>('title'));
+    Assert.AreEqual(TLspTypeAlias.cInlineKind, mActions[0].GetValue<string>('kind'));
+    Assert.AreEqual(TLspTypeAlias.cInlineClientCommand, mActions[0].GetValue<string>('command.command'));
+    mArguments := mActions[0].GetValue<TJSONArray>('command.arguments');
+    Assert.AreEqual(2, mArguments.Count);
+    Assert.AreEqual(6, mArguments.Items[1].GetValue<Integer>('line'));
+    Assert.AreEqual(2, mArguments.Items[1].GetValue<Integer>('character'));
   finally
-    FreeAll(Actions);
+    FreeAll(mActions);
   end;
 end;
 
 procedure TLspTypeAliasTests.ExecuteProjectMatchesQualifiedNames;
 var
-  Answer: TJSONObject;
-  Json: string;
+  mAnswer: TJSONObject;
+  mJson: string;
 begin
-  Answer := ExecuteAt(FIndex, 11, 15, 'TKundenMap', 'project');
+  mAnswer := ExecuteAt(FIndex, 11, 15, 'TKundenMap', 'project');
   try
-    Json := Answer.ToJSON;
-    Assert.AreEqual(2, Answer.GetValue<Integer>('files'), Json);
-    Assert.AreEqual(2, Answer.GetValue<Integer>('places'), Json);
-    Assert.IsTrue(Pos(TDocumentUris.FromPath(AufruferFile), Json) > 0, Json);
-    Assert.IsFalse(Pos('Fremd', Json) > 0, Json);
-    Assert.IsFalse(Pos('Andere', Json) > 0, Json);
-    Assert.IsTrue(Pos('TKundenMap = TDictionary<string, TKunde>;', Json) > 0, Json);
-    Assert.IsTrue(Pos('"needsConfirmation":true', Json) > 0, Json);
-    Assert.IsTrue(Answer.GetValue<string>('preview').StartsWith('TKundenMap = TDictionary<string, TKunde>;'), Json);
+    mJson := mAnswer.ToJSON;
+    Assert.AreEqual(2, mAnswer.GetValue<Integer>('files'), mJson);
+    Assert.AreEqual(2, mAnswer.GetValue<Integer>('places'), mJson);
+    Assert.IsTrue(Pos(TDocumentUris.FromPath(cAufruferFile), mJson) > 0, mJson);
+    Assert.IsFalse(Pos('Fremd', mJson) > 0, mJson);
+    Assert.IsFalse(Pos('Andere', mJson) > 0, mJson);
+    Assert.IsTrue(Pos('TKundenMap = TDictionary<string, TKunde>;', mJson) > 0, mJson);
+    Assert.IsTrue(Pos('"needsConfirmation":true', mJson) > 0, mJson);
+    Assert.IsTrue(mAnswer.GetValue<string>('preview').StartsWith('TKundenMap = TDictionary<string, TKunde>;'), mJson);
   finally
-    Answer.Free;
+    mAnswer.Free;
   end;
   // Nur in der Unit: Aufrufer bleibt.
-  Answer := ExecuteAt(FIndex, 11, 15, 'TKundenMap', 'unit');
+  mAnswer := ExecuteAt(FIndex, 11, 15, 'TKundenMap', 'unit');
   try
-    Assert.AreEqual(1, Answer.GetValue<Integer>('files'), Answer.ToJSON);
+    Assert.AreEqual(1, mAnswer.GetValue<Integer>('files'), mAnswer.ToJSON);
   finally
-    Answer.Free;
+    mAnswer.Free;
   end;
 end;
 
 procedure TLspTypeAliasTests.ExecuteInlineChangesOtherUnit;
 var
-  Answer: TJSONObject;
-  Json: string;
+  mAnswer: TJSONObject;
+  mJson: string;
 begin
-  Answer := ExecuteInlineAt(FIndex, 6, 5);
+  mAnswer := ExecuteInlineAt(FIndex, 6, 5);
   try
-    Json := Answer.ToJSON;
-    Assert.AreEqual(2, Answer.GetValue<Integer>('files'), Json);
-    Assert.AreEqual(2, Answer.GetValue<Integer>('places'), Json);
-    Assert.IsTrue(Pos(TDocumentUris.FromPath(AufruferFile), Json) > 0, Json);
-    Assert.IsTrue(Pos('"newText":"TList<TKunde>"', Json) > 0, Json);
-    Assert.IsTrue(Answer.GetValue<string>('preview').EndsWith('der Alias entfällt.') or
-      (Pos('der Alias entfällt.', Answer.GetValue<string>('preview')) > 0), Json);
+    mJson := mAnswer.ToJSON;
+    Assert.AreEqual(2, mAnswer.GetValue<Integer>('files'), mJson);
+    Assert.AreEqual(2, mAnswer.GetValue<Integer>('places'), mJson);
+    Assert.IsTrue(Pos(TDocumentUris.FromPath(cAufruferFile), mJson) > 0, mJson);
+    Assert.IsTrue(Pos('"newText":"TList<TKunde>"', mJson) > 0, mJson);
+    Assert.IsTrue(mAnswer.GetValue<string>('preview').EndsWith('der Alias entfällt.') or
+      (Pos('der Alias entfällt.', mAnswer.GetValue<string>('preview')) > 0), mJson);
   finally
-    Answer.Free;
+    mAnswer.Free;
   end;
 end;
 

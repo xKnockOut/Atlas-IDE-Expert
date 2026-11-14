@@ -38,7 +38,7 @@ uses
   Atlas.Common.Editing.ClassBodies;
 
 const
-  Quelle =
+  cQuelle =
     'unit U;'#10 +
     'interface'#10 +
     'type'#10 +
@@ -66,42 +66,42 @@ const
 
 function Shape: TTypeShape;
 begin
-  Result := TTypeShape.Read(TIndexExtractor.ExtractText(Quelle, 'U.pas', nil), Quelle.Split([#10]), 'TKunde');
+  Result := TTypeShape.Read(TIndexExtractor.ExtractText(cQuelle, 'U.pas', nil), cQuelle.Split([#10]), 'TKunde');
 end;
 
 procedure TClassBodiesTests.ReadsShape;
 var
-  Kunde: TTypeShape;
-  FieldType: string;
+  mKunde: TTypeShape;
+  mFieldType: string;
 begin
-  Kunde := Shape;
-  Assert.AreEqual('TKunde', Kunde.TypeName);
-  Assert.IsTrue(Kunde.IsClass);
-  Assert.AreEqual('TComponent', Kunde.Ancestor);
-  Assert.AreEqual('Kunde mit Adresse.', Kunde.Summary);
-  Assert.AreEqual(3, Integer(Length(Kunde.Properties)));
-  Assert.AreEqual('GetName', Kunde.Properties[0].ReadName);
-  Assert.AreEqual('SetName', Kunde.Properties[0].WriteName);
-  Assert.IsTrue(Kunde.Properties[2].Indexed);
-  Assert.IsTrue(Kunde.FieldType('FName', FieldType));
-  Assert.AreEqual('string', FieldType);
-  Assert.IsFalse(Kunde.FieldType('FGibtsNicht', FieldType));
+  mKunde := Shape;
+  Assert.AreEqual('TKunde', mKunde.TypeName);
+  Assert.IsTrue(mKunde.IsClass);
+  Assert.AreEqual('TComponent', mKunde.Ancestor);
+  Assert.AreEqual('Kunde mit Adresse.', mKunde.Summary);
+  Assert.AreEqual(3, Integer(Length(mKunde.Properties)));
+  Assert.AreEqual('GetName', mKunde.Properties[0].ReadName);
+  Assert.AreEqual('SetName', mKunde.Properties[0].WriteName);
+  Assert.IsTrue(mKunde.Properties[2].Indexed);
+  Assert.IsTrue(mKunde.FieldType('FName', mFieldType));
+  Assert.AreEqual('string', mFieldType);
+  Assert.IsFalse(mKunde.FieldType('FGibtsNicht', mFieldType));
 end;
 
 procedure TClassBodiesTests.RanksLifecycleAccessorsOverrides;
 var
-  Kunde: TTypeShape;
+  mKunde: TTypeShape;
 
   function Rank(const ADeclaration, AName: string): Integer;
   var
-    Found: TMethodRank;
+    mFound: TMethodRank;
   begin
-    Found := TClassBodies.RankOf(Kunde, ADeclaration, AName);
-    Result := Found.Group * 100 + Found.Sub;
+    mFound := TClassBodies.RankOf(mKunde, ADeclaration, AName);
+    Result := mFound.Group * 100 + mFound.Sub;
   end;
 
 begin
-  Kunde := Shape;
+  mKunde := Shape;
   Assert.IsTrue(Rank('class constructor Init;', 'Init') < Rank('constructor Create(AOwner: TComponent); override;',
     'Create'), 'class constructor zuerst');
   Assert.IsTrue(Rank('constructor Create(AOwner: TComponent); override;', 'Create') <
@@ -118,26 +118,26 @@ end;
 
 procedure TClassBodiesTests.ReadsParameterNames;
 var
-  Names: TArray<string>;
+  mNames: TArray<string>;
 begin
-  Names := TClassBodies.ParameterNames('function Wert(const A, B: Integer; var C: string; out D): Integer;');
-  Assert.AreEqual('A,B,C,D', string.Join(',', Names));
+  mNames := TClassBodies.ParameterNames('function Wert(const A, B: Integer; var C: string; out D): Integer;');
+  Assert.AreEqual('A,B,C,D', string.Join(',', mNames));
   Assert.AreEqual(0, Integer(Length(TClassBodies.ParameterNames('procedure Lauf;'))));
-  Names := TClassBodies.ParameterNames('procedure Lauf(const S: string = ''a;b''; X: TArray<Integer>);');
-  Assert.AreEqual('S,X', string.Join(',', Names), 'Standardwert und Generics');
+  mNames := TClassBodies.ParameterNames('procedure Lauf(const S: string = ''a;b''; X: TArray<Integer>);');
+  Assert.AreEqual('S,X', string.Join(',', mNames), 'Standardwert und Generics');
 end;
 
 procedure TClassBodiesTests.StubsForOverridesAndAccessors;
 var
-  Kunde: TTypeShape;
+  mKunde: TTypeShape;
 
   function Stub(const ADeclaration, AName: string): string;
   begin
-    Result := string.Join('|', TClassBodies.StubLines(Kunde, ADeclaration, AName, '  '));
+    Result := string.Join('|', TClassBodies.StubLines(mKunde, ADeclaration, AName, '  '));
   end;
 
 begin
-  Kunde := Shape;
+  mKunde := Shape;
   Assert.AreEqual('  inherited;', Stub('constructor Create(AOwner: TComponent); override;', 'Create'));
   Assert.AreEqual('|  inherited;', Stub('destructor Destroy; override;', 'Destroy'), 'inherited am Ende');
   Assert.AreEqual('  Result := FName;', Stub('function GetName: string;', 'GetName'));
@@ -150,39 +150,39 @@ end;
 
 procedure TClassBodiesTests.NoStubsWithoutMatchingField;
 var
-  Kunde: TTypeShape;
+  mKunde: TTypeShape;
 begin
-  Kunde := Shape;
-  Assert.AreEqual(0, Integer(Length(TClassBodies.StubLines(Kunde, 'function GetAlter: Integer;', 'GetAlter', '  '))),
+  mKunde := Shape;
+  Assert.AreEqual(0, Integer(Length(TClassBodies.StubLines(mKunde, 'function GetAlter: Integer;', 'GetAlter', '  '))),
     'FAlter hat einen anderen Typ');
-  Assert.AreEqual(0, Integer(Length(TClassBodies.StubLines(Kunde, 'function GetPosten(AIndex: Integer): string;',
+  Assert.AreEqual(0, Integer(Length(TClassBodies.StubLines(mKunde, 'function GetPosten(AIndex: Integer): string;',
     'GetPosten', '  '))), 'Array-Property');
 end;
 
 procedure TClassBodiesTests.WrapsWithTypeComment;
 var
-  Kunde: TTypeShape;
-  Options: TClassBodyOptions;
+  mKunde: TTypeShape;
+  mOptions: TClassBodyOptions;
 begin
-  Kunde := Shape;
-  Options := TClassBodyOptions.Default;
-  Assert.AreEqual('{ TKunde }'#10#10'B', TClassBodies.Wrapped(Kunde, Options, 'B', #10));
-  Options.TypeComment := TTypeCommentStyle.Summary;
-  Assert.AreEqual('{ TKunde: Kunde mit Adresse. }'#10#10'B', TClassBodies.Wrapped(Kunde, Options, 'B', #10));
-  Options.TypeComment := TTypeCommentStyle.Region;
-  Assert.AreEqual('{$REGION ''TKunde''}'#10'B'#10'{$ENDREGION}', TClassBodies.Wrapped(Kunde, Options, 'B', #10));
-  Options.TypeComment := TTypeCommentStyle.Off;
-  Assert.AreEqual('B', TClassBodies.Wrapped(Kunde, Options, 'B', #10));
+  mKunde := Shape;
+  mOptions := TClassBodyOptions.Default;
+  Assert.AreEqual('{ TKunde }'#10#10'B', TClassBodies.Wrapped(mKunde, mOptions, 'B', #10));
+  mOptions.TypeComment := TTypeCommentStyle.Summary;
+  Assert.AreEqual('{ TKunde: Kunde mit Adresse. }'#10#10'B', TClassBodies.Wrapped(mKunde, mOptions, 'B', #10));
+  mOptions.TypeComment := TTypeCommentStyle.Region;
+  Assert.AreEqual('{$REGION ''TKunde''}'#10'B'#10'{$ENDREGION}', TClassBodies.Wrapped(mKunde, mOptions, 'B', #10));
+  mOptions.TypeComment := TTypeCommentStyle.Off;
+  Assert.AreEqual('B', TClassBodies.Wrapped(mKunde, mOptions, 'B', #10));
 end;
 
 procedure TClassBodiesTests.FindsExistingTypeComment;
 var
-  Text: TArray<string>;
+  mText: TArray<string>;
 begin
-  Text := TArray<string>.Create('implementation', '', '{ TKunde }', '', 'procedure TKunde.A;');
-  Assert.IsTrue(TClassBodies.HasTypeComment(Text, 0, 'TKunde'));
-  Assert.IsFalse(TClassBodies.HasTypeComment(Text, 3, 'TKunde'), 'erst ab AFromLine');
-  Assert.IsFalse(TClassBodies.HasTypeComment(Text, 0, 'TAnders'));
+  mText := TArray<string>.Create('implementation', '', '{ TKunde }', '', 'procedure TKunde.A;');
+  Assert.IsTrue(TClassBodies.HasTypeComment(mText, 0, 'TKunde'));
+  Assert.IsFalse(TClassBodies.HasTypeComment(mText, 3, 'TKunde'), 'erst ab AFromLine');
+  Assert.IsFalse(TClassBodies.HasTypeComment(mText, 0, 'TAnders'));
 end;
 
 initialization

@@ -56,12 +56,12 @@ end;
 
 function ErrorCodeOf(const ATransport: IJsonRpcTransport): Integer;
 var
-  Message: TJSONObject;
+  mMessage: TJSONObject;
 begin
   Result := 0;
   try
-    Message := ATransport.ReadMessage;
-    Message.Free;
+    mMessage := ATransport.ReadMessage;
+    mMessage.Free;
   except
     on E: EJsonRpcError do
       Result := E.Code;
@@ -72,289 +72,289 @@ end;
 
 procedure TJsonRpcStreamTransportTests.ReadsSingleMessage;
 var
-  Input: TBytesStream;
-  Message: TJSONObject;
+  mInput: TBytesStream;
+  mMessage: TJSONObject;
 begin
-  Input := TJsonRpcTestSupport.InputOf(['{"jsonrpc":"2.0","id":1,"method":"initialize"}']);
+  mInput := TJsonRpcTestSupport.InputOf(['{"jsonrpc":"2.0","id":1,"method":"initialize"}']);
   try
-    Message := TransportOn(Input).ReadMessage;
+    mMessage := TransportOn(mInput).ReadMessage;
     try
-      Assert.AreEqual('initialize', Message.GetValue<string>('method'));
-      Assert.AreEqual(1, Message.GetValue<Integer>('id'));
+      Assert.AreEqual('initialize', mMessage.GetValue<string>('method'));
+      Assert.AreEqual(1, mMessage.GetValue<Integer>('id'));
     finally
-      Message.Free;
+      mMessage.Free;
     end;
   finally
-    Input.Free;
+    mInput.Free;
   end;
 end;
 
 procedure TJsonRpcStreamTransportTests.ReadsConsecutiveMessages;
 var
-  Input: TBytesStream;
-  Transport: IJsonRpcTransport;
-  First, Second: TJSONObject;
+  mInput: TBytesStream;
+  mTransport: IJsonRpcTransport;
+  mFirst, mSecond: TJSONObject;
 begin
-  Input := TJsonRpcTestSupport.InputOf([
+  mInput := TJsonRpcTestSupport.InputOf([
     '{"jsonrpc":"2.0","id":1,"method":"a"}',
     '{"jsonrpc":"2.0","method":"b"}']);
   try
-    Transport := TransportOn(Input);
-    First := Transport.ReadMessage;
-    Second := Transport.ReadMessage;
+    mTransport := TransportOn(mInput);
+    mFirst := mTransport.ReadMessage;
+    mSecond := mTransport.ReadMessage;
     try
-      Assert.AreEqual('a', First.GetValue<string>('method'));
-      Assert.AreEqual('b', Second.GetValue<string>('method'));
+      Assert.AreEqual('a', mFirst.GetValue<string>('method'));
+      Assert.AreEqual('b', mSecond.GetValue<string>('method'));
     finally
-      First.Free;
-      Second.Free;
+      mFirst.Free;
+      mSecond.Free;
     end;
     Assert.WillRaise(
       procedure
       begin
-        Transport.ReadMessage.Free;
+        mTransport.ReadMessage.Free;
       end, EJsonRpcTransportClosed);
   finally
-    Transport := nil;
-    Input.Free;
+    mTransport := nil;
+    mInput.Free;
   end;
 end;
 
 procedure TJsonRpcStreamTransportTests.IgnoresAdditionalHeaders;
 var
-  Input: TBytesStream;
-  Message: TJSONObject;
+  mInput: TBytesStream;
+  mMessage: TJSONObject;
 begin
-  Input := TJsonRpcTestSupport.RawInput(
+  mInput := TJsonRpcTestSupport.RawInput(
     'Content-Type: application/vscode-jsonrpc; charset=utf-8'#13#10 +
     'Content-Length: 14'#13#10#13#10 +
     '{"method":"x"}');
   try
-    Message := TransportOn(Input).ReadMessage;
+    mMessage := TransportOn(mInput).ReadMessage;
     try
-      Assert.AreEqual('x', Message.GetValue<string>('method'));
+      Assert.AreEqual('x', mMessage.GetValue<string>('method'));
     finally
-      Message.Free;
+      mMessage.Free;
     end;
   finally
-    Input.Free;
+    mInput.Free;
   end;
 end;
 
 procedure TJsonRpcStreamTransportTests.AcceptsLineFeedWithoutCarriageReturn;
 var
-  Input: TBytesStream;
-  Message: TJSONObject;
+  mInput: TBytesStream;
+  mMessage: TJSONObject;
 begin
-  Input := TJsonRpcTestSupport.RawInput('Content-Length: 14'#10#10'{"method":"x"}');
+  mInput := TJsonRpcTestSupport.RawInput('Content-Length: 14'#10#10'{"method":"x"}');
   try
-    Message := TransportOn(Input).ReadMessage;
+    mMessage := TransportOn(mInput).ReadMessage;
     try
-      Assert.AreEqual('x', Message.GetValue<string>('method'));
+      Assert.AreEqual('x', mMessage.GetValue<string>('method'));
     finally
-      Message.Free;
+      mMessage.Free;
     end;
   finally
-    Input.Free;
+    mInput.Free;
   end;
 end;
 
 procedure TJsonRpcStreamTransportTests.CountsContentLengthInUtf8Bytes;
 var
-  Input: TBytesStream;
-  Transport: IJsonRpcTransport;
-  First, Second: TJSONObject;
+  mInput: TBytesStream;
+  mTransport: IJsonRpcTransport;
+  mFirst, mSecond: TJSONObject;
 begin
   // Umlaute belegen in UTF-8 zwei Bytes; die nächste Nachricht muss trotzdem passen.
-  Input := TJsonRpcTestSupport.InputOf([
+  mInput := TJsonRpcTestSupport.InputOf([
     '{"method":"Größe"}',
     '{"method":"Übersicht"}']);
   try
-    Transport := TransportOn(Input);
-    First := Transport.ReadMessage;
-    Second := Transport.ReadMessage;
+    mTransport := TransportOn(mInput);
+    mFirst := mTransport.ReadMessage;
+    mSecond := mTransport.ReadMessage;
     try
-      Assert.AreEqual('Größe', First.GetValue<string>('method'));
-      Assert.AreEqual('Übersicht', Second.GetValue<string>('method'));
+      Assert.AreEqual('Größe', mFirst.GetValue<string>('method'));
+      Assert.AreEqual('Übersicht', mSecond.GetValue<string>('method'));
     finally
-      First.Free;
-      Second.Free;
+      mFirst.Free;
+      mSecond.Free;
     end;
   finally
-    Transport := nil;
-    Input.Free;
+    mTransport := nil;
+    mInput.Free;
   end;
 end;
 
 procedure TJsonRpcStreamTransportTests.ReadsMessageLargerThanBuffer;
 var
-  Input: TBytesStream;
-  Text: string;
-  Message: TJSONObject;
+  mInput: TBytesStream;
+  mText: string;
+  mMessage: TJSONObject;
 begin
-  Text := StringOfChar('a', 200000);
-  Input := TJsonRpcTestSupport.InputOf(['{"method":"x","params":"' + Text + '"}']);
+  mText := StringOfChar('a', 200000);
+  mInput := TJsonRpcTestSupport.InputOf(['{"method":"x","params":"' + mText + '"}']);
   try
-    Message := TransportOn(Input).ReadMessage;
+    mMessage := TransportOn(mInput).ReadMessage;
     try
-      Assert.AreEqual(Text, Message.GetValue<string>('params'));
+      Assert.AreEqual(mText, mMessage.GetValue<string>('params'));
     finally
-      Message.Free;
+      mMessage.Free;
     end;
   finally
-    Input.Free;
+    mInput.Free;
   end;
 end;
 
 procedure TJsonRpcStreamTransportTests.RaisesClosedOnEmptyInput;
 var
-  Input: TBytesStream;
-  Transport: IJsonRpcTransport;
+  mInput: TBytesStream;
+  mTransport: IJsonRpcTransport;
 begin
-  Input := TJsonRpcTestSupport.RawInput('');
+  mInput := TJsonRpcTestSupport.RawInput('');
   try
-    Transport := TransportOn(Input);
+    mTransport := TransportOn(mInput);
     Assert.WillRaise(
       procedure
       begin
-        Transport.ReadMessage.Free;
+        mTransport.ReadMessage.Free;
       end, EJsonRpcTransportClosed);
   finally
-    Transport := nil;
-    Input.Free;
+    mTransport := nil;
+    mInput.Free;
   end;
 end;
 
 procedure TJsonRpcStreamTransportTests.RaisesTransportErrorWithoutContentLength;
 var
-  Input: TBytesStream;
-  Transport: IJsonRpcTransport;
+  mInput: TBytesStream;
+  mTransport: IJsonRpcTransport;
 begin
-  Input := TJsonRpcTestSupport.RawInput('Content-Type: text/plain'#13#10#13#10'{}');
+  mInput := TJsonRpcTestSupport.RawInput('Content-Type: text/plain'#13#10#13#10'{}');
   try
-    Transport := TransportOn(Input);
+    mTransport := TransportOn(mInput);
     Assert.WillRaise(
       procedure
       begin
-        Transport.ReadMessage.Free;
+        mTransport.ReadMessage.Free;
       end, EJsonRpcTransportError);
   finally
-    Transport := nil;
-    Input.Free;
+    mTransport := nil;
+    mInput.Free;
   end;
 end;
 
 procedure TJsonRpcStreamTransportTests.RaisesTransportErrorOnInvalidContentLength;
 var
-  Input: TBytesStream;
-  Transport: IJsonRpcTransport;
+  mInput: TBytesStream;
+  mTransport: IJsonRpcTransport;
 begin
-  Input := TJsonRpcTestSupport.RawInput('Content-Length: abc'#13#10#13#10'{}');
+  mInput := TJsonRpcTestSupport.RawInput('Content-Length: abc'#13#10#13#10'{}');
   try
-    Transport := TransportOn(Input);
+    mTransport := TransportOn(mInput);
     Assert.WillRaise(
       procedure
       begin
-        Transport.ReadMessage.Free;
+        mTransport.ReadMessage.Free;
       end, EJsonRpcTransportError);
   finally
-    Transport := nil;
-    Input.Free;
+    mTransport := nil;
+    mInput.Free;
   end;
 end;
 
 procedure TJsonRpcStreamTransportTests.RaisesTransportErrorOnTruncatedBody;
 var
-  Input: TBytesStream;
-  Transport: IJsonRpcTransport;
+  mInput: TBytesStream;
+  mTransport: IJsonRpcTransport;
 begin
-  Input := TJsonRpcTestSupport.RawInput('Content-Length: 100'#13#10#13#10'{"method":"x"}');
+  mInput := TJsonRpcTestSupport.RawInput('Content-Length: 100'#13#10#13#10'{"method":"x"}');
   try
-    Transport := TransportOn(Input);
+    mTransport := TransportOn(mInput);
     Assert.WillRaise(
       procedure
       begin
-        Transport.ReadMessage.Free;
+        mTransport.ReadMessage.Free;
       end, EJsonRpcTransportError);
   finally
-    Transport := nil;
-    Input.Free;
+    mTransport := nil;
+    mInput.Free;
   end;
 end;
 
 procedure TJsonRpcStreamTransportTests.RaisesParseErrorOnInvalidJsonAndContinues;
 var
-  Input: TBytesStream;
-  Transport: IJsonRpcTransport;
-  Message: TJSONObject;
+  mInput: TBytesStream;
+  mTransport: IJsonRpcTransport;
+  mMessage: TJSONObject;
 begin
-  Input := TJsonRpcTestSupport.InputOf(['{kein json', '{"method":"x"}']);
+  mInput := TJsonRpcTestSupport.InputOf(['{kein json', '{"method":"x"}']);
   try
-    Transport := TransportOn(Input);
-    Assert.AreEqual(TJsonRpcErrorCode.cParseError, ErrorCodeOf(Transport));
-    Message := Transport.ReadMessage;
+    mTransport := TransportOn(mInput);
+    Assert.AreEqual(TJsonRpcErrorCode.cParseError, ErrorCodeOf(mTransport));
+    mMessage := mTransport.ReadMessage;
     try
-      Assert.AreEqual('x', Message.GetValue<string>('method'));
+      Assert.AreEqual('x', mMessage.GetValue<string>('method'));
     finally
-      Message.Free;
+      mMessage.Free;
     end;
   finally
-    Transport := nil;
-    Input.Free;
+    mTransport := nil;
+    mInput.Free;
   end;
 end;
 
 procedure TJsonRpcStreamTransportTests.RaisesInvalidRequestOnJsonArray;
 var
-  Input: TBytesStream;
-  Transport: IJsonRpcTransport;
+  mInput: TBytesStream;
+  mTransport: IJsonRpcTransport;
 begin
-  Input := TJsonRpcTestSupport.InputOf(['[1,2,3]']);
+  mInput := TJsonRpcTestSupport.InputOf(['[1,2,3]']);
   try
-    Transport := TransportOn(Input);
-    Assert.AreEqual(TJsonRpcErrorCode.cInvalidRequest, ErrorCodeOf(Transport));
+    mTransport := TransportOn(mInput);
+    Assert.AreEqual(TJsonRpcErrorCode.cInvalidRequest, ErrorCodeOf(mTransport));
   finally
-    Transport := nil;
-    Input.Free;
+    mTransport := nil;
+    mInput.Free;
   end;
 end;
 
 procedure TJsonRpcStreamTransportTests.WritesHeaderWithUtf8ByteLength;
 var
-  Output: TBytesStream;
-  Transport: IJsonRpcTransport;
-  Message: TJSONObject;
-  Written: string;
-  HeaderEnd: Integer;
-  Body: TBytes;
-  Messages: TObjectList<TJSONObject>;
+  mOutput: TBytesStream;
+  mTransport: IJsonRpcTransport;
+  mMessage: TJSONObject;
+  mWritten: string;
+  mHeaderEnd: Integer;
+  mBody: TBytes;
+  mMessages: TObjectList<TJSONObject>;
 begin
-  Output := TBytesStream.Create;
+  mOutput := TBytesStream.Create;
   try
-    Transport := TJsonRpcStreamTransport.Create(nil, Output, False);
-    Message := TJsonRpcTestSupport.Parse('{"jsonrpc":"2.0","method":"Größe"}');
+    mTransport := TJsonRpcStreamTransport.Create(nil, mOutput, False);
+    mMessage := TJsonRpcTestSupport.Parse('{"jsonrpc":"2.0","method":"Größe"}');
     try
-      Transport.WriteMessage(Message);
+      mTransport.WriteMessage(mMessage);
     finally
-      Message.Free;
+      mMessage.Free;
     end;
-    Transport := nil;
+    mTransport := nil;
 
-    Written := TEncoding.UTF8.GetString(Output.Bytes, 0, Integer(Output.Size));
-    HeaderEnd := Written.IndexOf(#13#10#13#10);
-    Assert.IsTrue(HeaderEnd > 0, 'Header muss mit Leerzeile enden');
-    Body := TEncoding.UTF8.GetBytes(Written.Substring(HeaderEnd + 4));
-    Assert.AreEqual(Format('Content-Length: %d', [Length(Body)]), Written.Substring(0, HeaderEnd));
+    mWritten := TEncoding.UTF8.GetString(mOutput.Bytes, 0, Integer(mOutput.Size));
+    mHeaderEnd := mWritten.IndexOf(#13#10#13#10);
+    Assert.IsTrue(mHeaderEnd > 0, 'Header muss mit Leerzeile enden');
+    mBody := TEncoding.UTF8.GetBytes(mWritten.Substring(mHeaderEnd + 4));
+    Assert.AreEqual(Format('Content-Length: %d', [Length(mBody)]), mWritten.Substring(0, mHeaderEnd));
 
-    Messages := TJsonRpcTestSupport.ReadMessages(Output);
+    mMessages := TJsonRpcTestSupport.ReadMessages(mOutput);
     try
-      Assert.AreEqual<NativeInt>(1, Messages.Count);
-      Assert.AreEqual('Größe', Messages[0].GetValue<string>('method'));
+      Assert.AreEqual<NativeInt>(1, mMessages.Count);
+      Assert.AreEqual('Größe', mMessages[0].GetValue<string>('method'));
     finally
-      Messages.Free;
+      mMessages.Free;
     end;
   finally
-    Output.Free;
+    mOutput.Free;
   end;
 end;
 

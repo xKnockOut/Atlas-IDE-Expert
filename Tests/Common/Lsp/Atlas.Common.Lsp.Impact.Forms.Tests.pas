@@ -40,11 +40,11 @@ uses
   System.SysUtils;
 
 const
-  UnitFile = 'C:\P\Haupt.pas';
-  FormFile = 'C:\P\Haupt.dfm';
-  PlainFile = 'C:\P\Ohne.pas';
+  cUnitFile = 'C:\P\Haupt.pas';
+  cFormFile = 'C:\P\Haupt.dfm';
+  cPlainFile = 'C:\P\Ohne.pas';
 
-  UnitText =
+  cUnitText =
     'unit Haupt;'#10 +
     'interface'#10 +
     'type'#10 +
@@ -55,14 +55,14 @@ const
     '{$R *.dfm}'#10 +
     'end.';
 
-  FormText =
+  cFormText =
     'object Form1: TForm1'#10 +
     '  object Button1: TButton'#10 +
     '    OnClick = Button1Click'#10 +
     '  end'#10 +
     'end';
 
-  PlainText =
+  cPlainText =
     'unit Ohne;'#10 +
     'interface'#10 +
     'implementation'#10 +
@@ -71,18 +71,18 @@ const
 function TImpactFormCacheTests.ReadFile(const AFileName: string; out AText: string): Boolean;
 begin
   Result := True;
-  if SameText(AFileName, UnitFile) then
+  if SameText(AFileName, cUnitFile) then
   begin
-    AText := UnitText;
+    AText := cUnitText;
   end
-  else if SameText(AFileName, FormFile) then
+  else if SameText(AFileName, cFormFile) then
   begin
     Inc(FReads);
-    AText := FormText;
+    AText := cFormText;
   end
-  else if SameText(AFileName, PlainFile) then
+  else if SameText(AFileName, cPlainFile) then
   begin
-    AText := PlainText;
+    AText := cPlainText;
   end
   else
   begin
@@ -106,9 +106,9 @@ procedure TImpactFormCacheTests.HandlerBindingWithLineText;
 var
   mFound: TArray<TImpactFormBinding>;
 begin
-  mFound := FCache.Bindings('Button1Click', UnitFile);
+  mFound := FCache.Bindings('Button1Click', cUnitFile);
   Assert.AreEqual(1, Integer(Length(mFound)));
-  Assert.AreEqual(FormFile, mFound[0].FileName);
+  Assert.AreEqual(cFormFile, mFound[0].FileName);
   Assert.AreEqual('OnClick = Button1Click', mFound[0].Text);
   Assert.AreEqual(2, mFound[0].Range.StartPos.Line);
 end;
@@ -117,32 +117,32 @@ procedure TImpactFormCacheTests.ComponentNameBinding;
 var
   mFound: TArray<TImpactFormBinding>;
 begin
-  mFound := FCache.Bindings('Button1', UnitFile);
+  mFound := FCache.Bindings('Button1', cUnitFile);
   Assert.AreEqual(1, Integer(Length(mFound)));
   Assert.AreEqual('object Button1: TButton', mFound[0].Text);
 end;
 
 procedure TImpactFormCacheTests.UnknownNameHasNoBinding;
 begin
-  Assert.AreEqual(0, Integer(Length(FCache.Bindings('Fehlt', UnitFile))));
-  Assert.AreEqual(0, Integer(Length(FCache.Bindings('', UnitFile))));
+  Assert.AreEqual(0, Integer(Length(FCache.Bindings('Fehlt', cUnitFile))));
+  Assert.AreEqual(0, Integer(Length(FCache.Bindings('', cUnitFile))));
 end;
 
 procedure TImpactFormCacheTests.UnitWithoutFormHasNoBinding;
 begin
-  Assert.AreEqual(0, Integer(Length(FCache.Bindings('Button1Click', PlainFile))));
+  Assert.AreEqual(0, Integer(Length(FCache.Bindings('Button1Click', cPlainFile))));
   Assert.AreEqual(0, Integer(Length(FCache.Bindings('Button1Click', 'C:\P\Fehlt.pas'))));
 end;
 
 procedure TImpactFormCacheTests.FormFileItselfHasNoBinding;
 begin
-  Assert.AreEqual(0, Integer(Length(FCache.Bindings('Button1Click', FormFile))));
+  Assert.AreEqual(0, Integer(Length(FCache.Bindings('Button1Click', cFormFile))));
 end;
 
 procedure TImpactFormCacheTests.FormReadOnceForSeveralNames;
 begin
-  FCache.Bindings('Button1Click', UnitFile);
-  FCache.Bindings('Fehlt', UnitFile);
+  FCache.Bindings('Button1Click', cUnitFile);
+  FCache.Bindings('Fehlt', cUnitFile);
   // Das Modell wird einmal gelesen; den Zeilentext liest nur die Bindung mit Fundstelle nach.
   Assert.AreEqual(2, FReads);
 end;

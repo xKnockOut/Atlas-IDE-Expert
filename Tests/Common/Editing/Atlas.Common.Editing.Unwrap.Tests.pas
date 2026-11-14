@@ -65,37 +65,37 @@ uses
   Atlas.Common.Editing.Unwrap;
 
 const
-  Head = 'unit U;'#13#10'interface'#13#10'implementation'#13#10'procedure P;'#13#10'begin'#13#10;
-  Tail = #13#10'end;'#13#10'end.'#13#10;
+  cHead = 'unit U;'#13#10'interface'#13#10'implementation'#13#10'procedure P;'#13#10'begin'#13#10;
+  cTail = #13#10'end;'#13#10'end.'#13#10;
 
 function Join(const ALines: array of string): string;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
   Result := '';
-  for Index := 0 to High(ALines) do
+  for mIndex := 0 to High(ALines) do
   begin
-    if Index > 0 then
+    if mIndex > 0 then
     begin
       Result := Result + #13#10;
     end;
-    Result := Result + ALines[Index];
+    Result := Result + ALines[mIndex];
   end;
 end;
 
 /// <summary>Position des ersten ANeedle im Rumpf (Zeilen ab 5).</summary>
 function At(const ABody, ANeedle: string): TTextPosition;
 var
-  Lines: TArray<string>;
-  Index, Column: Integer;
+  mLines: TArray<string>;
+  mIndex, mColumn: Integer;
 begin
-  Lines := ABody.Split([#13#10]);
-  for Index := 0 to High(Lines) do
+  mLines := ABody.Split([#13#10]);
+  for mIndex := 0 to High(mLines) do
   begin
-    Column := Pos(ANeedle, Lines[Index]);
-    if Column > 0 then
+    mColumn := Pos(ANeedle, mLines[mIndex]);
+    if mColumn > 0 then
     begin
-      Exit(TTextPosition.Create(5 + Index, Column - 1));
+      Exit(TTextPosition.Create(5 + mIndex, mColumn - 1));
     end;
   end;
   raise Exception.Create('nicht gefunden: ' + ANeedle);
@@ -103,13 +103,13 @@ end;
 
 function CandidatesOf(const ABody, ANeedle: string; const AOptions: TUnwrapOptions): TArray<TUnwrapCandidate>;
 var
-  Tree: TSyntaxTree;
+  mTree: TSyntaxTree;
 begin
-  Tree := TPascalParser.Parse(Head + ABody + Tail);
+  mTree := TPascalParser.Parse(cHead + ABody + cTail);
   try
-    Result := TUnwrap.Candidates(Head + ABody + Tail, Tree, At(ABody, ANeedle), AOptions);
+    Result := TUnwrap.Candidates(cHead + ABody + cTail, mTree, At(ABody, ANeedle), AOptions);
   finally
-    Tree.Free;
+    mTree.Free;
   end;
 end;
 
@@ -121,55 +121,55 @@ end;
 /// <summary>Rumpf nach Anwenden der Variante; das Ergebnis muss fehlerfrei parsen.</summary>
 function Apply(const ABody: string; const AVariant: TUnwrapVariant): string;
 var
-  Text: string;
-  Tree: TSyntaxTree;
+  mText: string;
+  mTree: TSyntaxTree;
 begin
-  Text := TChangeSignature.ApplyEdits(Head + ABody + Tail, AVariant.Edits);
-  Tree := TPascalParser.Parse(Text);
+  mText := TChangeSignature.ApplyEdits(cHead + ABody + cTail, AVariant.Edits);
+  mTree := TPascalParser.Parse(mText);
   try
-    Assert.AreEqual(0, Integer(Length(Tree.Diagnostics)), 'parst nicht: ' + Text);
+    Assert.AreEqual(0, Integer(Length(mTree.Diagnostics)), 'parst nicht: ' + mText);
   finally
-    Tree.Free;
+    mTree.Free;
   end;
-  Assert.IsTrue(Text.StartsWith(Head) and Text.EndsWith(Tail), Text);
-  Result := Copy(Text, Length(Head) + 1, Length(Text) - Length(Head) - Length(Tail));
+  Assert.IsTrue(mText.StartsWith(cHead) and mText.EndsWith(cTail), mText);
+  Result := Copy(mText, Length(cHead) + 1, Length(mText) - Length(cHead) - Length(cTail));
 end;
 
 function TextOf(const ABody: string; const ARange: TTextRange): string;
 var
-  Lines: TArray<string>;
+  mLines: TArray<string>;
 begin
-  Lines := (Head + ABody + Tail).Split([#13#10]);
+  mLines := (cHead + ABody + cTail).Split([#13#10]);
   Assert.AreEqual(ARange.StartPos.Line, ARange.EndPos.Line, 'Stück über mehrere Zeilen');
-  Result := Copy(Lines[ARange.StartPos.Line], ARange.StartPos.Character + 1,
+  Result := Copy(mLines[ARange.StartPos.Line], ARange.StartPos.Character + 1,
     ARange.EndPos.Character - ARange.StartPos.Character);
 end;
 
 function Texts(const ABody: string; const ARanges: TArray<TTextRange>): string;
 var
-  Range: TTextRange;
+  mRange: TTextRange;
 begin
   Result := '';
-  for Range in ARanges do
+  for mRange in ARanges do
   begin
     if Result <> '' then
     begin
       Result := Result + '|';
     end;
-    Result := Result + TextOf(ABody, Range);
+    Result := Result + TextOf(ABody, mRange);
   end;
 end;
 
 procedure TUnwrapTests.BeginEndInList;
 var
-  Body: string;
-  Found: TArray<TUnwrapCandidate>;
+  mBody: string;
+  mFound: TArray<TUnwrapCandidate>;
 begin
-  Body := Join(['  X;', '  begin', '    Y; // bleibt', '    { auch das }', '    Z;', '  end;', '  W;']);
-  Found := Find(Body, 'Y;');
-  Assert.AreEqual(1, Integer(Length(Found)));
-  Assert.AreEqual(Ord(TUnwrapKind.BeginEnd), Ord(Found[0].Kind));
-  Assert.AreEqual(Join(['  X;', '  Y; // bleibt', '  { auch das }', '  Z;', '  W;']), Apply(Body, Found[0].Variants[0]));
+  mBody := Join(['  X;', '  begin', '    Y; // bleibt', '    { auch das }', '    Z;', '  end;', '  W;']);
+  mFound := Find(mBody, 'Y;');
+  Assert.AreEqual(1, Integer(Length(mFound)));
+  Assert.AreEqual(Ord(TUnwrapKind.BeginEnd), Ord(mFound[0].Kind));
+  Assert.AreEqual(Join(['  X;', '  Y; // bleibt', '  { auch das }', '  Z;', '  W;']), Apply(mBody, mFound[0].Variants[0]));
 end;
 
 procedure TUnwrapTests.RoutineBodyIsNotOffered;
@@ -179,212 +179,212 @@ end;
 
 procedure TUnwrapTests.BeginEndAfterThen;
 var
-  Body: string;
-  Found: TArray<TUnwrapCandidate>;
+  mBody: string;
+  mFound: TArray<TUnwrapCandidate>;
 begin
-  Body := Join(['  if A then', '  begin', '    X;', '  end;']);
-  Found := Find(Body, 'X;');
-  Assert.AreEqual(2, Integer(Length(Found)));
-  Assert.AreEqual(Ord(TUnwrapKind.BeginEnd), Ord(Found[0].Kind));
-  Assert.AreEqual(Ord(TUnwrapKind.IfThen), Ord(Found[1].Kind));
-  Assert.AreEqual(Join(['  if A then', '    X;']), Apply(Body, Found[0].Variants[0]));
-  Assert.AreEqual('  X;', Apply(Body, Found[1].Variants[0]));
+  mBody := Join(['  if A then', '  begin', '    X;', '  end;']);
+  mFound := Find(mBody, 'X;');
+  Assert.AreEqual(2, Integer(Length(mFound)));
+  Assert.AreEqual(Ord(TUnwrapKind.BeginEnd), Ord(mFound[0].Kind));
+  Assert.AreEqual(Ord(TUnwrapKind.IfThen), Ord(mFound[1].Kind));
+  Assert.AreEqual(Join(['  if A then', '    X;']), Apply(mBody, mFound[0].Variants[0]));
+  Assert.AreEqual('  X;', Apply(mBody, mFound[1].Variants[0]));
   // Ein Block mit zwei Anweisungen hinter then wird nicht angeboten.
-  Body := Join(['  if A then', '  begin', '    X;', '    Y;', '  end;']);
-  Found := Find(Body, 'X;');
-  Assert.AreEqual(1, Integer(Length(Found)));
-  Assert.AreEqual(Join(['  X;', '  Y;']), Apply(Body, Found[0].Variants[0]));
+  mBody := Join(['  if A then', '  begin', '    X;', '    Y;', '  end;']);
+  mFound := Find(mBody, 'X;');
+  Assert.AreEqual(1, Integer(Length(mFound)));
+  Assert.AreEqual(Join(['  X;', '  Y;']), Apply(mBody, mFound[0].Variants[0]));
 end;
 
 procedure TUnwrapTests.BeginEndBeforeElse;
 var
-  Body: string;
-  Found: TArray<TUnwrapCandidate>;
+  mBody: string;
+  mFound: TArray<TUnwrapCandidate>;
 begin
-  Body := Join(['  if A then', '  begin', '    X;', '  end', '  else', '    Y;']);
-  Found := Find(Body, 'X;');
-  Assert.AreEqual(Ord(TUnwrapKind.BeginEnd), Ord(Found[0].Kind));
-  Assert.AreEqual(Join(['  if A then', '    X', '  else', '    Y;']), Apply(Body, Found[0].Variants[0]));
+  mBody := Join(['  if A then', '  begin', '    X;', '  end', '  else', '    Y;']);
+  mFound := Find(mBody, 'X;');
+  Assert.AreEqual(Ord(TUnwrapKind.BeginEnd), Ord(mFound[0].Kind));
+  Assert.AreEqual(Join(['  if A then', '    X', '  else', '    Y;']), Apply(mBody, mFound[0].Variants[0]));
 end;
 
 procedure TUnwrapTests.IfElseBranches;
 var
-  Body: string;
-  Found: TArray<TUnwrapCandidate>;
+  mBody: string;
+  mFound: TArray<TUnwrapCandidate>;
 begin
-  Body := Join(['  if A then', '    X', '  else', '  begin', '    Y;', '    Z;', '  end;']);
-  Found := Find(Body, 'X');
-  Assert.AreEqual(1, Integer(Length(Found)));
-  Assert.AreEqual(Ord(TUnwrapKind.IfThen), Ord(Found[0].Kind));
-  Assert.AreEqual(2, Integer(Length(Found[0].Variants)));
-  Assert.AreEqual(Ord(TUnwrapVariantKind.ThenBranch), Ord(Found[0].Variants[0].Kind));
-  Assert.AreEqual(Ord(TUnwrapVariantKind.ElseBranch), Ord(Found[0].Variants[1].Kind));
-  Assert.AreEqual('  X;', Apply(Body, Found[0].Variants[0]));
-  Assert.AreEqual(Join(['  Y;', '  Z;']), Apply(Body, Found[0].Variants[1]));
+  mBody := Join(['  if A then', '    X', '  else', '  begin', '    Y;', '    Z;', '  end;']);
+  mFound := Find(mBody, 'X');
+  Assert.AreEqual(1, Integer(Length(mFound)));
+  Assert.AreEqual(Ord(TUnwrapKind.IfThen), Ord(mFound[0].Kind));
+  Assert.AreEqual(2, Integer(Length(mFound[0].Variants)));
+  Assert.AreEqual(Ord(TUnwrapVariantKind.ThenBranch), Ord(mFound[0].Variants[0].Kind));
+  Assert.AreEqual(Ord(TUnwrapVariantKind.ElseBranch), Ord(mFound[0].Variants[1].Kind));
+  Assert.AreEqual('  X;', Apply(mBody, mFound[0].Variants[0]));
+  Assert.AreEqual(Join(['  Y;', '  Z;']), Apply(mBody, mFound[0].Variants[1]));
   // Ohne else nur der then-Zweig.
-  Body := Join(['  if A then', '    X;', '  W;']);
-  Found := Find(Body, 'X;');
-  Assert.AreEqual(1, Integer(Length(Found[0].Variants)));
-  Assert.AreEqual(Join(['  X;', '  W;']), Apply(Body, Found[0].Variants[0]));
+  mBody := Join(['  if A then', '    X;', '  W;']);
+  mFound := Find(mBody, 'X;');
+  Assert.AreEqual(1, Integer(Length(mFound[0].Variants)));
+  Assert.AreEqual(Join(['  X;', '  W;']), Apply(mBody, mFound[0].Variants[0]));
 end;
 
 procedure TUnwrapTests.TryFinallyVariants;
 var
-  Body: string;
-  Found: TArray<TUnwrapCandidate>;
+  mBody: string;
+  mFound: TArray<TUnwrapCandidate>;
 begin
-  Body := Join(['  L := TList.Create;', '  try', '    L.Add(1); // eins', '  finally', '    L.Free;', '  end;']);
-  Found := Find(Body, 'L.Add');
-  Assert.AreEqual(1, Integer(Length(Found)));
-  Assert.AreEqual(Ord(TUnwrapKind.TryFinally), Ord(Found[0].Kind));
-  Assert.AreEqual(Ord(TUnwrapVariantKind.KeepFinally), Ord(Found[0].Variants[0].Kind));
+  mBody := Join(['  L := TList.Create;', '  try', '    L.Add(1); // eins', '  finally', '    L.Free;', '  end;']);
+  mFound := Find(mBody, 'L.Add');
+  Assert.AreEqual(1, Integer(Length(mFound)));
+  Assert.AreEqual(Ord(TUnwrapKind.TryFinally), Ord(mFound[0].Kind));
+  Assert.AreEqual(Ord(TUnwrapVariantKind.KeepFinally), Ord(mFound[0].Variants[0].Kind));
   Assert.AreEqual(Join(['  L := TList.Create;', '  L.Add(1); // eins', '  L.Free;']),
-    Apply(Body, Found[0].Variants[0]));
-  Assert.AreEqual(Ord(TUnwrapVariantKind.DropFinally), Ord(Found[0].Variants[1].Kind));
-  Assert.AreEqual(Join(['  L := TList.Create;', '  L.Add(1); // eins']), Apply(Body, Found[0].Variants[1]));
+    Apply(mBody, mFound[0].Variants[0]));
+  Assert.AreEqual(Ord(TUnwrapVariantKind.DropFinally), Ord(mFound[0].Variants[1].Kind));
+  Assert.AreEqual(Join(['  L := TList.Create;', '  L.Add(1); // eins']), Apply(mBody, mFound[0].Variants[1]));
   // Ohne Semikolon vor finally kommt eins dazu.
-  Body := Join(['  try', '    X', '  finally', '    Y', '  end;']);
-  Assert.AreEqual(Join(['  X;', '  Y;']), Apply(Body, Find(Body, 'X')[0].Variants[0]));
+  mBody := Join(['  try', '    X', '  finally', '    Y', '  end;']);
+  Assert.AreEqual(Join(['  X;', '  Y;']), Apply(mBody, Find(mBody, 'X')[0].Variants[0]));
 end;
 
 procedure TUnwrapTests.TryExceptWarnsAboutRaise;
 var
-  Body: string;
-  Found: TArray<TUnwrapCandidate>;
+  mBody: string;
+  mFound: TArray<TUnwrapCandidate>;
 begin
-  Body := Join(['  try', '    X;', '  except', '    on E: EA do raise;', '    on E: EB do raise;', '  end;']);
-  Found := Find(Body, 'X;');
-  Assert.AreEqual(Ord(TUnwrapKind.TryExcept), Ord(Found[0].Kind));
-  Assert.AreEqual(Ord(TUnwrapNote.MultipleRaise), Ord(Found[0].Note));
-  Assert.AreEqual('2', Found[0].NoteText);
-  Assert.AreEqual('  X;', Apply(Body, Found[0].Variants[0]));
-  Body := Join(['  try', '    X;', '  except', '    raise;', '  end;']);
-  Assert.AreEqual(Ord(TUnwrapNote.None), Ord(Find(Body, 'X;')[0].Note));
+  mBody := Join(['  try', '    X;', '  except', '    on E: EA do raise;', '    on E: EB do raise;', '  end;']);
+  mFound := Find(mBody, 'X;');
+  Assert.AreEqual(Ord(TUnwrapKind.TryExcept), Ord(mFound[0].Kind));
+  Assert.AreEqual(Ord(TUnwrapNote.MultipleRaise), Ord(mFound[0].Note));
+  Assert.AreEqual('2', mFound[0].NoteText);
+  Assert.AreEqual('  X;', Apply(mBody, mFound[0].Variants[0]));
+  mBody := Join(['  try', '    X;', '  except', '    raise;', '  end;']);
+  Assert.AreEqual(Ord(TUnwrapNote.None), Ord(Find(mBody, 'X;')[0].Note));
 end;
 
 procedure TUnwrapTests.NestedTry;
 var
-  Body: string;
-  Found: TArray<TUnwrapCandidate>;
+  mBody: string;
+  mFound: TArray<TUnwrapCandidate>;
 begin
-  Body := Join(['  try', '    try', '      X;', '    except', '      Y;', '    end;', '  finally', '    Z;', '  end;']);
-  Found := Find(Body, 'X;');
-  Assert.AreEqual(2, Integer(Length(Found)));
-  Assert.AreEqual(Ord(TUnwrapKind.TryExcept), Ord(Found[0].Kind));
-  Assert.AreEqual(Ord(TUnwrapKind.TryFinally), Ord(Found[1].Kind));
-  Assert.AreEqual(Join(['  try', '    X;', '  finally', '    Z;', '  end;']), Apply(Body, Found[0].Variants[0]));
-  Assert.AreEqual(Join(['  try', '    X;', '  except', '    Y;', '  end;', '  Z;']), Apply(Body, Found[1].Variants[0]));
+  mBody := Join(['  try', '    try', '      X;', '    except', '      Y;', '    end;', '  finally', '    Z;', '  end;']);
+  mFound := Find(mBody, 'X;');
+  Assert.AreEqual(2, Integer(Length(mFound)));
+  Assert.AreEqual(Ord(TUnwrapKind.TryExcept), Ord(mFound[0].Kind));
+  Assert.AreEqual(Ord(TUnwrapKind.TryFinally), Ord(mFound[1].Kind));
+  Assert.AreEqual(Join(['  try', '    X;', '  finally', '    Z;', '  end;']), Apply(mBody, mFound[0].Variants[0]));
+  Assert.AreEqual(Join(['  try', '    X;', '  except', '    Y;', '  end;', '  Z;']), Apply(mBody, mFound[1].Variants[0]));
 end;
 
 procedure TUnwrapTests.Loops;
 var
-  Body: string;
-  Found: TArray<TUnwrapCandidate>;
+  mBody: string;
+  mFound: TArray<TUnwrapCandidate>;
 begin
-  Body := Join(['  for I := 1 to 3 do', '    X(I);']);
-  Found := Find(Body, 'X(I)');
-  Assert.AreEqual(Ord(TUnwrapKind.ForDo), Ord(Found[0].Kind));
-  Assert.AreEqual(Ord(TUnwrapNote.LoopVariable), Ord(Found[0].Note));
-  Assert.AreEqual('I', Found[0].NoteText);
-  Assert.AreEqual('  X(I);', Apply(Body, Found[0].Variants[0]));
+  mBody := Join(['  for I := 1 to 3 do', '    X(I);']);
+  mFound := Find(mBody, 'X(I)');
+  Assert.AreEqual(Ord(TUnwrapKind.ForDo), Ord(mFound[0].Kind));
+  Assert.AreEqual(Ord(TUnwrapNote.LoopVariable), Ord(mFound[0].Note));
+  Assert.AreEqual('I', mFound[0].NoteText);
+  Assert.AreEqual('  X(I);', Apply(mBody, mFound[0].Variants[0]));
 
-  Body := Join(['  for S in L do', '  begin', '    X(S);', '    Y;', '  end;']);
-  Found := Find(Body, 'X(S)');
-  Assert.AreEqual(Ord(TUnwrapKind.ForDo), Ord(Found[0].Kind));
-  Assert.AreEqual('S', Found[0].NoteText);
-  Assert.AreEqual(Join(['  X(S);', '  Y;']), Apply(Body, Found[0].Variants[0]));
+  mBody := Join(['  for S in L do', '  begin', '    X(S);', '    Y;', '  end;']);
+  mFound := Find(mBody, 'X(S)');
+  Assert.AreEqual(Ord(TUnwrapKind.ForDo), Ord(mFound[0].Kind));
+  Assert.AreEqual('S', mFound[0].NoteText);
+  Assert.AreEqual(Join(['  X(S);', '  Y;']), Apply(mBody, mFound[0].Variants[0]));
 
-  Body := Join(['  while A do', '  begin', '    X;', '    Y;', '  end;']);
-  Found := Find(Body, 'X;');
-  Assert.AreEqual(1, Integer(Length(Found)));
-  Assert.AreEqual(Ord(TUnwrapKind.WhileDo), Ord(Found[0].Kind));
-  Assert.AreEqual(Ord(TUnwrapNote.None), Ord(Found[0].Note));
-  Assert.AreEqual(Join(['  X;', '  Y;']), Apply(Body, Found[0].Variants[0]));
+  mBody := Join(['  while A do', '  begin', '    X;', '    Y;', '  end;']);
+  mFound := Find(mBody, 'X;');
+  Assert.AreEqual(1, Integer(Length(mFound)));
+  Assert.AreEqual(Ord(TUnwrapKind.WhileDo), Ord(mFound[0].Kind));
+  Assert.AreEqual(Ord(TUnwrapNote.None), Ord(mFound[0].Note));
+  Assert.AreEqual(Join(['  X;', '  Y;']), Apply(mBody, mFound[0].Variants[0]));
 
-  Body := Join(['  repeat', '    X;', '    Y', '  until A;']);
-  Found := Find(Body, 'X;');
-  Assert.AreEqual(Ord(TUnwrapKind.RepeatUntil), Ord(Found[0].Kind));
-  Assert.AreEqual(Join(['  X;', '  Y;']), Apply(Body, Found[0].Variants[0]));
+  mBody := Join(['  repeat', '    X;', '    Y', '  until A;']);
+  mFound := Find(mBody, 'X;');
+  Assert.AreEqual(Ord(TUnwrapKind.RepeatUntil), Ord(mFound[0].Kind));
+  Assert.AreEqual(Join(['  X;', '  Y;']), Apply(mBody, mFound[0].Variants[0]));
 end;
 
 procedure TUnwrapTests.SeveralStatementsGetBeginEnd;
 var
-  Body: string;
-  Found: TArray<TUnwrapCandidate>;
+  mBody: string;
+  mFound: TArray<TUnwrapCandidate>;
 begin
-  Body := Join(['  if A then', '    while B do', '    begin', '      X;', '      Y;', '    end;']);
-  Found := Find(Body, 'X;');
-  Assert.AreEqual(Ord(TUnwrapKind.WhileDo), Ord(Found[0].Kind));
-  Assert.AreEqual(Join(['  if A then', '  begin', '    X;', '    Y;', '  end;']), Apply(Body, Found[0].Variants[0]));
+  mBody := Join(['  if A then', '    while B do', '    begin', '      X;', '      Y;', '    end;']);
+  mFound := Find(mBody, 'X;');
+  Assert.AreEqual(Ord(TUnwrapKind.WhileDo), Ord(mFound[0].Kind));
+  Assert.AreEqual(Join(['  if A then', '  begin', '    X;', '    Y;', '  end;']), Apply(mBody, mFound[0].Variants[0]));
   // try … finally hinter do mit beiden Teilen.
-  Body := Join(['  for I := 1 to 2 do', '    try', '      X;', '    finally', '      Y;', '    end;']);
-  Found := Find(Body, 'X;');
-  Assert.AreEqual(Ord(TUnwrapKind.TryFinally), Ord(Found[0].Kind));
+  mBody := Join(['  for I := 1 to 2 do', '    try', '      X;', '    finally', '      Y;', '    end;']);
+  mFound := Find(mBody, 'X;');
+  Assert.AreEqual(Ord(TUnwrapKind.TryFinally), Ord(mFound[0].Kind));
   Assert.AreEqual(Join(['  for I := 1 to 2 do', '  begin', '    X;', '    Y;', '  end;']),
-    Apply(Body, Found[0].Variants[0]));
-  Assert.AreEqual(Join(['  for I := 1 to 2 do', '    X;']), Apply(Body, Found[0].Variants[1]));
+    Apply(mBody, mFound[0].Variants[0]));
+  Assert.AreEqual(Join(['  for I := 1 to 2 do', '    X;']), Apply(mBody, mFound[0].Variants[1]));
 end;
 
 procedure TUnwrapTests.SemicolonBeforeElse;
 var
-  Body: string;
-  Found: TArray<TUnwrapCandidate>;
+  mBody: string;
+  mFound: TArray<TUnwrapCandidate>;
 begin
-  Body := Join(['  if A then', '    for I := 1 to 2 do', '      X;', '  W;']);
-  Found := Find(Body, 'X;');
-  Assert.AreEqual(Join(['  if A then', '    X;', '  W;']), Apply(Body, Found[0].Variants[0]));
-  Body := Join(['  if A then', '    for I := 1 to 2 do', '      X', '  else', '    Y;']);
-  Found := Find(Body, 'X');
-  Assert.AreEqual(Ord(TUnwrapKind.ForDo), Ord(Found[0].Kind));
-  Assert.AreEqual(Join(['  if A then', '    X', '  else', '    Y;']), Apply(Body, Found[0].Variants[0]));
+  mBody := Join(['  if A then', '    for I := 1 to 2 do', '      X;', '  W;']);
+  mFound := Find(mBody, 'X;');
+  Assert.AreEqual(Join(['  if A then', '    X;', '  W;']), Apply(mBody, mFound[0].Variants[0]));
+  mBody := Join(['  if A then', '    for I := 1 to 2 do', '      X', '  else', '    Y;']);
+  mFound := Find(mBody, 'X');
+  Assert.AreEqual(Ord(TUnwrapKind.ForDo), Ord(mFound[0].Kind));
+  Assert.AreEqual(Join(['  if A then', '    X', '  else', '    Y;']), Apply(mBody, mFound[0].Variants[0]));
 end;
 
 procedure TUnwrapTests.InlineAndMidLine;
 var
-  Body: string;
-  Found: TArray<TUnwrapCandidate>;
+  mBody: string;
+  mFound: TArray<TUnwrapCandidate>;
 begin
-  Body := Join(['  if A then X;', '  W;']);
-  Found := Find(Body, 'X;');
-  Assert.AreEqual(Join(['  X;', '  W;']), Apply(Body, Found[0].Variants[0]));
-  Body := Join(['  Q; if A then X; W;']);
-  Found := Find(Body, 'X;');
-  Assert.AreEqual('  Q; X; W;', Apply(Body, Found[0].Variants[0]));
-  Body := Join(['  if A then begin', '    X;', '  end;']);
-  Found := Find(Body, 'X;');
-  Assert.AreEqual(Ord(TUnwrapKind.BeginEnd), Ord(Found[0].Kind));
-  Assert.AreEqual(Join(['  if A then', '    X;']), Apply(Body, Found[0].Variants[0]));
-  Assert.AreEqual('  X;', Apply(Body, Found[1].Variants[0]));
-  Body := Join(['  if A then begin', '    X;', '  end else', '    Y;']);
-  Found := Find(Body, 'X;');
-  Assert.AreEqual(Join(['  if A then', '    X', '  else', '    Y;']), Apply(Body, Found[0].Variants[0]));
+  mBody := Join(['  if A then X;', '  W;']);
+  mFound := Find(mBody, 'X;');
+  Assert.AreEqual(Join(['  X;', '  W;']), Apply(mBody, mFound[0].Variants[0]));
+  mBody := Join(['  Q; if A then X; W;']);
+  mFound := Find(mBody, 'X;');
+  Assert.AreEqual('  Q; X; W;', Apply(mBody, mFound[0].Variants[0]));
+  mBody := Join(['  if A then begin', '    X;', '  end;']);
+  mFound := Find(mBody, 'X;');
+  Assert.AreEqual(Ord(TUnwrapKind.BeginEnd), Ord(mFound[0].Kind));
+  Assert.AreEqual(Join(['  if A then', '    X;']), Apply(mBody, mFound[0].Variants[0]));
+  Assert.AreEqual('  X;', Apply(mBody, mFound[1].Variants[0]));
+  mBody := Join(['  if A then begin', '    X;', '  end else', '    Y;']);
+  mFound := Find(mBody, 'X;');
+  Assert.AreEqual(Join(['  if A then', '    X', '  else', '    Y;']), Apply(mBody, mFound[0].Variants[0]));
 end;
 
 procedure TUnwrapTests.Directives;
 var
-  Body: string;
-  Found: TArray<TUnwrapCandidate>;
+  mBody: string;
+  mFound: TArray<TUnwrapCandidate>;
 begin
-  Body := Join(['{$IFDEF DEBUG}', '  X;', '{$ELSE}', '  Y;', '{$ENDIF}', '  W;']);
-  Found := Find(Body, 'X;');
-  Assert.AreEqual(1, Integer(Length(Found)));
-  Assert.AreEqual(Ord(TUnwrapKind.IfDef), Ord(Found[0].Kind));
-  Assert.AreEqual(2, Integer(Length(Found[0].Variants)));
-  Assert.AreEqual(Join(['  X;', '  W;']), Apply(Body, Found[0].Variants[0]));
-  Assert.AreEqual(Ord(TUnwrapVariantKind.ElseBranch), Ord(Found[0].Variants[1].Kind));
-  Assert.AreEqual(Join(['  Y;', '  W;']), Apply(Body, Found[0].Variants[1]));
+  mBody := Join(['{$IFDEF DEBUG}', '  X;', '{$ELSE}', '  Y;', '{$ENDIF}', '  W;']);
+  mFound := Find(mBody, 'X;');
+  Assert.AreEqual(1, Integer(Length(mFound)));
+  Assert.AreEqual(Ord(TUnwrapKind.IfDef), Ord(mFound[0].Kind));
+  Assert.AreEqual(2, Integer(Length(mFound[0].Variants)));
+  Assert.AreEqual(Join(['  X;', '  W;']), Apply(mBody, mFound[0].Variants[0]));
+  Assert.AreEqual(Ord(TUnwrapVariantKind.ElseBranch), Ord(mFound[0].Variants[1].Kind));
+  Assert.AreEqual(Join(['  Y;', '  W;']), Apply(mBody, mFound[0].Variants[1]));
 
-  Body := Join(['  {$REGION ''Teil''}', '  X;', '  Y;', '  {$ENDREGION}']);
-  Found := Find(Body, 'Y;');
-  Assert.AreEqual(Ord(TUnwrapKind.Region), Ord(Found[0].Kind));
-  Assert.AreEqual(Join(['  X;', '  Y;']), Apply(Body, Found[0].Variants[0]));
+  mBody := Join(['  {$REGION ''Teil''}', '  X;', '  Y;', '  {$ENDREGION}']);
+  mFound := Find(mBody, 'Y;');
+  Assert.AreEqual(Ord(TUnwrapKind.Region), Ord(mFound[0].Kind));
+  Assert.AreEqual(Join(['  X;', '  Y;']), Apply(mBody, mFound[0].Variants[0]));
 
   // Direktive in einem Block: der Block ist innen, die Direktive außen.
-  Body := Join(['  {$IFDEF A}', '  begin', '    X;', '  end;', '  {$ENDIF}']);
-  Found := Find(Body, 'X;');
-  Assert.AreEqual(2, Integer(Length(Found)));
-  Assert.AreEqual(Ord(TUnwrapKind.BeginEnd), Ord(Found[0].Kind));
-  Assert.AreEqual(Ord(TUnwrapKind.IfDef), Ord(Found[1].Kind));
+  mBody := Join(['  {$IFDEF A}', '  begin', '    X;', '  end;', '  {$ENDIF}']);
+  mFound := Find(mBody, 'X;');
+  Assert.AreEqual(2, Integer(Length(mFound)));
+  Assert.AreEqual(Ord(TUnwrapKind.BeginEnd), Ord(mFound[0].Kind));
+  Assert.AreEqual(Ord(TUnwrapKind.IfDef), Ord(mFound[1].Kind));
 end;
 
 function Owners(AIdentifier: TSyntaxNode; out AElement: Integer): TWithOwner;
@@ -407,22 +407,22 @@ end;
 
 procedure TUnwrapTests.WithTwoObjects;
 var
-  Body, Text: string;
-  Tree: TSyntaxTree;
-  Options: TUnwrapOptions;
-  Found: TArray<TUnwrapCandidate>;
+  mBody, mText: string;
+  mTree: TSyntaxTree;
+  mOptions: TUnwrapOptions;
+  mFound: TArray<TUnwrapCandidate>;
 begin
-  Body := Join(['  with A, B do', '  begin', '    Caption := IntToStr(Width); // Kommentar', '    X;', '  end;']);
-  Text := Head + Body + Tail;
-  Tree := TPascalParser.Parse(Text);
+  mBody := Join(['  with A, B do', '  begin', '    Caption := IntToStr(Width); // Kommentar', '    X;', '  end;']);
+  mText := cHead + mBody + cTail;
+  mTree := TPascalParser.Parse(mText);
   try
-    Options := TUnwrapOptions.Default;
-    Options.ResolveWith :=
+    mOptions := TUnwrapOptions.Default;
+    mOptions.ResolveWith :=
       function(AWith: TSyntaxNode; out AEdits: TArray<TTextEdit>; out AReason: string): Boolean
       var
         Resolved: TWithResolved;
       begin
-        Result := TWithResolution.Resolve(Text, Tree, AWith,
+        Result := TWithResolution.Resolve(mText, mTree, AWith,
           function(AOwnerWith, AIdentifier: TSyntaxNode; out AElement: Integer): TWithOwner
           begin
             Result := Owners(AIdentifier, AElement);
@@ -430,51 +430,51 @@ begin
         AEdits := Resolved.Action.Edits;
         AReason := Resolved.Reason;
       end;
-    Found := TUnwrap.Candidates(Text, Tree, At(Body, 'X;'), Options);
+    mFound := TUnwrap.Candidates(mText, mTree, At(mBody, 'X;'), mOptions);
   finally
-    Tree.Free;
+    mTree.Free;
   end;
-  Assert.AreEqual(1, Integer(Length(Found)));
-  Assert.AreEqual(Ord(TUnwrapKind.WithDo), Ord(Found[0].Kind));
-  Assert.AreEqual(Join(['  A.Caption := IntToStr(B.Width); // Kommentar', '  X;']), Apply(Body, Found[0].Variants[0]));
+  Assert.AreEqual(1, Integer(Length(mFound)));
+  Assert.AreEqual(Ord(TUnwrapKind.WithDo), Ord(mFound[0].Kind));
+  Assert.AreEqual(Join(['  A.Caption := IntToStr(B.Width); // Kommentar', '  X;']), Apply(mBody, mFound[0].Variants[0]));
 end;
 
 procedure TUnwrapTests.WithWithoutResolverIsNoted;
 var
-  Found: TArray<TUnwrapCandidate>;
+  mFound: TArray<TUnwrapCandidate>;
 begin
-  Found := Find(Join(['  with A do', '    X;']), 'X;');
-  Assert.AreEqual(Ord(TUnwrapNote.WithUnresolved), Ord(Found[0].Note));
-  Assert.AreEqual(0, Integer(Length(Found[0].Variants)));
+  mFound := Find(Join(['  with A do', '    X;']), 'X;');
+  Assert.AreEqual(Ord(TUnwrapNote.WithUnresolved), Ord(mFound[0].Note));
+  Assert.AreEqual(0, Integer(Length(mFound[0].Variants)));
 end;
 
 procedure TUnwrapTests.PreviewRanges;
 var
-  Body: string;
-  Found: TArray<TUnwrapCandidate>;
+  mBody: string;
+  mFound: TArray<TUnwrapCandidate>;
 begin
-  Body := Join(['  try', '    X; // a', '  finally', '    Y;', '  end;']);
-  Found := Find(Body, 'X;');
-  Assert.AreEqual('X; // a|Y;', Texts(Body, Found[0].Variants[0].Keep));
-  Assert.AreEqual('try|finally|end', Texts(Body, Found[0].Variants[0].Remove));
-  Assert.AreEqual('X; // a', Texts(Body, Found[0].Variants[1].Keep));
-  Assert.AreEqual('try|finally|Y;|end', Texts(Body, Found[0].Variants[1].Remove));
-  Body := Join(['  if A then X else Y;']);
-  Found := Find(Body, 'X');
-  Assert.AreEqual('X', Texts(Body, Found[0].Variants[0].Keep));
-  Assert.AreEqual('if A then|else Y', Texts(Body, Found[0].Variants[0].Remove));
+  mBody := Join(['  try', '    X; // a', '  finally', '    Y;', '  end;']);
+  mFound := Find(mBody, 'X;');
+  Assert.AreEqual('X; // a|Y;', Texts(mBody, mFound[0].Variants[0].Keep));
+  Assert.AreEqual('try|finally|end', Texts(mBody, mFound[0].Variants[0].Remove));
+  Assert.AreEqual('X; // a', Texts(mBody, mFound[0].Variants[1].Keep));
+  Assert.AreEqual('try|finally|Y;|end', Texts(mBody, mFound[0].Variants[1].Remove));
+  mBody := Join(['  if A then X else Y;']);
+  mFound := Find(mBody, 'X');
+  Assert.AreEqual('X', Texts(mBody, mFound[0].Variants[0].Keep));
+  Assert.AreEqual('if A then|else Y', Texts(mBody, mFound[0].Variants[0].Remove));
 end;
 
 procedure TUnwrapTests.AtMostFiveLevels;
 var
-  Body: string;
-  Found: TArray<TUnwrapCandidate>;
+  mBody: string;
+  mFound: TArray<TUnwrapCandidate>;
 begin
-  Body := Join(['  begin', '  begin', '  begin', '  begin', '  begin', '  begin', '    X;', '  end;', '  end;', '  end;',
+  mBody := Join(['  begin', '  begin', '  begin', '  begin', '  begin', '  begin', '    X;', '  end;', '  end;', '  end;',
     '  end;', '  end;', '  end;']);
-  Found := Find(Body, 'X;');
-  Assert.AreEqual(5, Integer(Length(Found)));
-  Assert.AreEqual(10, Found[0].Range.StartPos.Line);
+  mFound := Find(mBody, 'X;');
+  Assert.AreEqual(5, Integer(Length(mFound)));
+  Assert.AreEqual(10, mFound[0].Range.StartPos.Line);
 end;
 
 initialization

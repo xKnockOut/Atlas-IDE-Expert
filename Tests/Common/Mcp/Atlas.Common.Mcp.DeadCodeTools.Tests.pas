@@ -48,10 +48,10 @@ uses
   Atlas.Common.Mcp.DeadCodeTools;
 
 const
-  Root = 'C:\P';
-  AppFile = 'C:\P\App.dpr';
-  MainFile = 'C:\P\Haupt.pas';
-  OrphanFile = 'C:\P\Waise.pas';
+  cRoot = 'C:\P';
+  cAppFile = 'C:\P\App.dpr';
+  cMainFile = 'C:\P\Haupt.pas';
+  cOrphanFile = 'C:\P\Waise.pas';
 
 type
   TFixture = record
@@ -76,47 +76,47 @@ end;
 /// <summary>App nutzt Haupt und Waise; Waise nutzt Haupt im implementation-Teil (Zyklus).</summary>
 function Fixture(AIncomplete: Boolean): TFixture;
 var
-  Texts: TDictionary<string, string>;
-  Pair: TPair<string, string>;
-  Incomplete: Boolean;
-  Project: TRuleProject;
+  mTexts: TDictionary<string, string>;
+  mPair: TPair<string, string>;
+  mIncomplete: Boolean;
+  mProject: TRuleProject;
 begin
-  Incomplete := AIncomplete;
-  Texts := TDictionary<string, string>.Create;
-  Texts.Add(UpperCase(AppFile), 'program App;'#10'uses'#10'  Haupt, Waise;'#10'begin'#10'  Start;'#10'end.');
-  Texts.Add(UpperCase(MainFile), MainText);
-  Texts.Add(UpperCase(OrphanFile), 'unit Waise;'#10'interface'#10'implementation'#10'uses'#10'  Haupt;'#10'end.');
-  Result.Texts := Texts;
+  mIncomplete := AIncomplete;
+  mTexts := TDictionary<string, string>.Create;
+  mTexts.Add(UpperCase(cAppFile), 'program App;'#10'uses'#10'  Haupt, Waise;'#10'begin'#10'  Start;'#10'end.');
+  mTexts.Add(UpperCase(cMainFile), MainText);
+  mTexts.Add(UpperCase(cOrphanFile), 'unit Waise;'#10'interface'#10'implementation'#10'uses'#10'  Haupt;'#10'end.');
+  Result.Texts := mTexts;
   Result.Index := TSymbolIndex.Create;
-  for Pair in Texts do
+  for mPair in mTexts do
   begin
-    if Pair.Key = UpperCase(AppFile) then
+    if mPair.Key = UpperCase(cAppFile) then
     begin
-      Result.Index.AddUnit(TIndexExtractor.ExtractText(Pair.Value, AppFile, nil, nil, True));
+      Result.Index.AddUnit(TIndexExtractor.ExtractText(mPair.Value, cAppFile, nil, nil, True));
     end
-    else if Pair.Key = UpperCase(MainFile) then
+    else if mPair.Key = UpperCase(cMainFile) then
     begin
-      Result.Index.AddUnit(TIndexExtractor.ExtractText(Pair.Value, MainFile, nil, nil, True));
+      Result.Index.AddUnit(TIndexExtractor.ExtractText(mPair.Value, cMainFile, nil, nil, True));
     end
     else
     begin
-      Result.Index.AddUnit(TIndexExtractor.ExtractText(Pair.Value, OrphanFile, nil, nil, True));
+      Result.Index.AddUnit(TIndexExtractor.ExtractText(mPair.Value, cOrphanFile, nil, nil, True));
     end;
   end;
-  Result.Sources := [AppFile, MainFile, OrphanFile];
-  Project := Default(TRuleProject);
-  Project.FileName := 'C:\P\App.dproj';
-  Project.Kind := TRuleProjectKind.Application;
-  Project.Sources := Result.Sources;
-  Result.Files := TRuleProjectFiles.Create([Project], Result.Index,
+  Result.Sources := [cAppFile, cMainFile, cOrphanFile];
+  mProject := Default(TRuleProject);
+  mProject.FileName := 'C:\P\App.dproj';
+  mProject.Kind := TRuleProjectKind.Application;
+  mProject.Sources := Result.Sources;
+  Result.Files := TRuleProjectFiles.Create([mProject], Result.Index,
     function(const AFileName: string; out AText: string): Boolean
     begin
-      Result := Texts.TryGetValue(UpperCase(AFileName), AText);
+      Result := mTexts.TryGetValue(UpperCase(AFileName), AText);
     end,
     function(out AReason: string): Boolean
     begin
-      Result := not Incomplete;
-      if Incomplete then
+      Result := not mIncomplete;
+      if mIncomplete then
       begin
         AReason := 'Index wird aufgebaut';
       end;
@@ -133,13 +133,13 @@ end;
 
 procedure TMcpDeadCodeToolsTests.FindUnusedReportsAllRules;
 var
-  Data: TFixture;
-  Text: string;
+  mData: TFixture;
+  mText: string;
 begin
-  Data := Fixture(False);
+  mData := Fixture(False);
   try
-    Text := TMcpDeadCodeTools.FindUnused(TMcpRuleScope.Create(BuiltinRules, TServerSettings.Default, Root),
-      [MainFile, OrphanFile], Data.Index, Data.Files, nil, False);
+    mText := TMcpDeadCodeTools.FindUnused(TMcpRuleScope.Create(BuiltinRules, TServerSettings.Default, cRoot),
+      [cMainFile, cOrphanFile], mData.Index, mData.Files, nil, False);
     Assert.AreEqual(
       '# Ungenutzter Code'#13#10 +
       '2 Befunde in 2 Dateien (unused-private-member, unused-public-member, unused-declaration, unused-unit).'#13#10 +
@@ -148,70 +148,71 @@ begin
       '- Zeile 8, Spalte 15: Private Methode Vergessen wird nie verwendet (wie H2219). (unused-private-member, ' +
       'Konfidenz hoch)'#13#10 +
       '- Zeile 14, Spalte 11: Routine Hilfe wird nirgends verwendet. (unused-declaration, Konfidenz hoch)',
-      StringReplace(Text, sLineBreak, #13#10, [rfReplaceAll]));
+      StringReplace(mText, sLineBreak, #13#10, [rfReplaceAll]));
   finally
-    Release(Data);
+    Release(mData);
   end;
 end;
 
 procedure TMcpDeadCodeToolsTests.FindUnusedAsJson;
 var
-  Data: TFixture;
-  Json: TJSONValue;
-  Items: TJSONArray;
+  mData: TFixture;
+  mJson: TJSONValue;
+  mItems: TJSONArray;
 begin
-  Data := Fixture(False);
+  mData := Fixture(False);
   try
-    Json := TJSONObject.ParseJSONValue(TMcpDeadCodeTools.FindUnused(TMcpRuleScope.Create(BuiltinRules,
-      TServerSettings.Default, Root), Data.Sources, Data.Index, Data.Files, nil, True));
+    mJson := TJSONObject.ParseJSONValue(TMcpDeadCodeTools.FindUnused(TMcpRuleScope.Create(BuiltinRules,
+      TServerSettings.Default, cRoot), mData.Sources, mData.Index, mData.Files, nil, True));
     try
-      Assert.AreEqual(3, (Json as TJSONObject).GetValue<Integer>('files'));
-      Assert.AreEqual(2, (Json as TJSONObject).GetValue<Integer>('total'));
-      Items := (Json as TJSONObject).GetValue<TJSONArray>('findings');
-      Assert.AreEqual('unused-private-member', Items.Items[0].GetValue<string>('rule'));
-      Assert.AreEqual('Haupt.pas', Items.Items[0].GetValue<string>('file'));
-      Assert.AreEqual(8, Items.Items[0].GetValue<Integer>('line'));
-      Assert.AreEqual('high', Items.Items[1].GetValue<string>('confidence'));
+      Assert.AreEqual(3, (mJson as TJSONObject).GetValue<Integer>('files'));
+      Assert.AreEqual(2, (mJson as TJSONObject).GetValue<Integer>('total'));
+      mItems := (mJson as TJSONObject).GetValue<TJSONArray>('findings');
+      Assert.AreEqual('unused-private-member', mItems.Items[0].GetValue<string>('rule'));
+      Assert.AreEqual('Haupt.pas', mItems.Items[0].GetValue<string>('file'));
+      Assert.AreEqual(8, mItems.Items[0].GetValue<Integer>('line'));
+      Assert.AreEqual('high', mItems.Items[1].GetValue<string>('confidence'));
     finally
-      Json.Free;
+      mJson.Free;
     end;
   finally
-    Release(Data);
+    Release(mData);
   end;
 end;
 
 procedure TMcpDeadCodeToolsTests.FindUnusedWhileIndexing;
 var
-  Data: TFixture;
-  Text: string;
+  mData: TFixture;
+  mText: string;
 begin
-  Data := Fixture(True);
+  mData := Fixture(True);
   try
-    Text := TMcpDeadCodeTools.FindUnused(TMcpRuleScope.Create(BuiltinRules, TServerSettings.Default, Root), [MainFile],
-      Data.Index, Data.Files, nil, False);
-    Assert.IsTrue(Pos('Hinweis: Index wird aufgebaut; unused-public-member und unused-unit schweigen', Text) > 0, Text);
+    mText := TMcpDeadCodeTools.FindUnused(TMcpRuleScope.Create(BuiltinRules, TServerSettings.Default, cRoot),
+      [cMainFile],
+      mData.Index, mData.Files, nil, False);
+    Assert.IsTrue(Pos('Hinweis: Index wird aufgebaut; unused-public-member und unused-unit schweigen', mText) > 0, mText);
     // Regeln innerhalb der Unit melden trotzdem.
-    Assert.IsTrue(Pos('Routine Hilfe wird nirgends verwendet.', Text) > 0, Text);
+    Assert.IsTrue(Pos('Routine Hilfe wird nirgends verwendet.', mText) > 0, mText);
   finally
-    Release(Data);
+    Release(mData);
   end;
 end;
 
 procedure TMcpDeadCodeToolsTests.FindUnusedHonoursSettings;
 var
-  Data: TFixture;
-  Issues: TArray<TConfigurationIssue>;
-  Text: string;
+  mData: TFixture;
+  mIssues: TArray<TConfigurationIssue>;
+  mText: string;
 begin
-  Data := Fixture(False);
+  mData := Fixture(False);
   try
-    Text := TMcpDeadCodeTools.FindUnused(TMcpRuleScope.Create(BuiltinRules, TConfigurationParser.Parse(
-      '{"rules": {"unused-private-member": "off"}, "deadCode": {"keepPatterns": ["Hilfe"]}}', Issues), Root),
-      [MainFile], Data.Index, Data.Files, nil, False);
-    Assert.IsTrue(Pos('0 Befunde in 1 Dateien', Text) > 0, Text);
-    Issues := nil;
+    mText := TMcpDeadCodeTools.FindUnused(TMcpRuleScope.Create(BuiltinRules, TConfigurationParser.Parse(
+      '{"rules": {"unused-private-member": "off"}, "deadCode": {"keepPatterns": ["Hilfe"]}}', mIssues), cRoot),
+      [cMainFile], mData.Index, mData.Files, nil, False);
+    Assert.IsTrue(Pos('0 Befunde in 1 Dateien', mText) > 0, mText);
+    mIssues := nil;
   finally
-    Release(Data);
+    Release(mData);
   end;
 end;
 
@@ -223,11 +224,11 @@ end;
 
 procedure TMcpDeadCodeToolsTests.UnitDependenciesWithCycle;
 var
-  Data: TFixture;
-  Graph: TUsesGraph;
+  mData: TFixture;
+  mGraph: TUsesGraph;
 begin
-  Data := Fixture(False);
-  Graph := GraphOf(Data);
+  mData := Fixture(False);
+  mGraph := GraphOf(mData);
   try
     Assert.AreEqual(
       '# Waise'#13#10 +
@@ -242,71 +243,71 @@ begin
       #13#10 +
       '## Zyklen'#13#10 +
       '- Waise → Haupt → Waise (über implementation-uses)',
-      StringReplace(TMcpDeadCodeTools.UnitDependencies(Graph, 'Waise', Root, TMcpUsesDirection.Both, False, False),
+      StringReplace(TMcpDeadCodeTools.UnitDependencies(mGraph, 'Waise', cRoot, TMcpUsesDirection.Both, False, False),
       sLineBreak, #13#10, [rfReplaceAll]));
   finally
-    Graph.Free;
-    Release(Data);
+    mGraph.Free;
+    Release(mData);
   end;
 end;
 
 procedure TMcpDeadCodeToolsTests.UnitDependenciesDirectionsAndJson;
 var
-  Data: TFixture;
-  Graph: TUsesGraph;
-  Text: string;
-  Json: TJSONValue;
+  mData: TFixture;
+  mGraph: TUsesGraph;
+  mText: string;
+  mJson: TJSONValue;
 begin
-  Data := Fixture(False);
-  Graph := GraphOf(Data);
+  mData := Fixture(False);
+  mGraph := GraphOf(mData);
   try
-    Text := TMcpDeadCodeTools.UnitDependencies(Graph, 'Haupt', Root, TMcpUsesDirection.UsedBy, True, False);
-    Assert.IsTrue(Pos('## Verwendet von (2)', Text) > 0, Text);
-    Assert.IsFalse(Pos('## Verwendet (', Text) > 0, Text);
-    Assert.IsTrue(Pos('## Alle Nutzer, transitiv (2)', Text) > 0, Text);
+    mText := TMcpDeadCodeTools.UnitDependencies(mGraph, 'Haupt', cRoot, TMcpUsesDirection.UsedBy, True, False);
+    Assert.IsTrue(Pos('## Verwendet von (2)', mText) > 0, mText);
+    Assert.IsFalse(Pos('## Verwendet (', mText) > 0, mText);
+    Assert.IsTrue(Pos('## Alle Nutzer, transitiv (2)', mText) > 0, mText);
     // Pfad statt Name, als JSON.
-    Json := TJSONObject.ParseJSONValue(TMcpDeadCodeTools.UnitDependencies(Graph, MainFile, Root,
+    mJson := TJSONObject.ParseJSONValue(TMcpDeadCodeTools.UnitDependencies(mGraph, cMainFile, cRoot,
       TMcpUsesDirection.Uses_, True, True));
     try
-      Assert.AreEqual('Haupt', (Json as TJSONObject).GetValue<string>('unit'));
-      Assert.AreEqual('Waise', (Json as TJSONObject).GetValue<TJSONArray>('uses').Items[0].GetValue<string>('unit'));
-      Assert.AreEqual('interface', (Json as TJSONObject).GetValue<TJSONArray>('uses').Items[0].GetValue<string>(
+      Assert.AreEqual('Haupt', (mJson as TJSONObject).GetValue<string>('unit'));
+      Assert.AreEqual('Waise', (mJson as TJSONObject).GetValue<TJSONArray>('uses').Items[0].GetValue<string>('unit'));
+      Assert.AreEqual('interface', (mJson as TJSONObject).GetValue<TJSONArray>('uses').Items[0].GetValue<string>(
         'section'));
-      Assert.AreEqual(1, (Json as TJSONObject).GetValue<TJSONArray>('transitiveUses').Count);
-      Assert.AreEqual(3, (Json as TJSONObject).GetValue<TJSONArray>('cycles').Items[0].GetValue<TJSONArray>(
+      Assert.AreEqual(1, (mJson as TJSONObject).GetValue<TJSONArray>('transitiveUses').Count);
+      Assert.AreEqual(3, (mJson as TJSONObject).GetValue<TJSONArray>('cycles').Items[0].GetValue<TJSONArray>(
         'path').Count);
-      Assert.IsFalse((Json as TJSONObject).GetValue<TJSONArray>('cycles').Items[0].GetValue<Boolean>(
+      Assert.IsFalse((mJson as TJSONObject).GetValue<TJSONArray>('cycles').Items[0].GetValue<Boolean>(
         'interfaceOnly'));
     finally
-      Json.Free;
+      mJson.Free;
     end;
   finally
-    Graph.Free;
-    Release(Data);
+    mGraph.Free;
+    Release(mData);
   end;
 end;
 
 procedure TMcpDeadCodeToolsTests.UnknownUnitAndDirections;
 var
-  Data: TFixture;
-  Graph: TUsesGraph;
-  Direction: TMcpUsesDirection;
+  mData: TFixture;
+  mGraph: TUsesGraph;
+  mDirection: TMcpUsesDirection;
 begin
-  Data := Fixture(False);
-  Graph := GraphOf(Data);
+  mData := Fixture(False);
+  mGraph := GraphOf(mData);
   try
-    Assert.IsTrue(Pos('Unit Vcl.Forms steht nicht im Uses-Graphen', TMcpDeadCodeTools.UnitDependencies(Graph,
-      'Vcl.Forms', Root, TMcpUsesDirection.Both, False, False)) > 0);
-    Assert.IsTrue(TMcpDeadCodeTools.ParseDirection('', Direction));
-    Assert.AreEqual<TMcpUsesDirection>(TMcpUsesDirection.Both, Direction);
-    Assert.IsTrue(TMcpDeadCodeTools.ParseDirection('usedBy', Direction));
-    Assert.AreEqual<TMcpUsesDirection>(TMcpUsesDirection.UsedBy, Direction);
-    Assert.IsTrue(TMcpDeadCodeTools.ParseDirection('uses', Direction));
-    Assert.AreEqual<TMcpUsesDirection>(TMcpUsesDirection.Uses_, Direction);
-    Assert.IsFalse(TMcpDeadCodeTools.ParseDirection('rauf', Direction));
+    Assert.IsTrue(Pos('Unit Vcl.Forms steht nicht im Uses-Graphen', TMcpDeadCodeTools.UnitDependencies(mGraph,
+      'Vcl.Forms', cRoot, TMcpUsesDirection.Both, False, False)) > 0);
+    Assert.IsTrue(TMcpDeadCodeTools.ParseDirection('', mDirection));
+    Assert.AreEqual<TMcpUsesDirection>(TMcpUsesDirection.Both, mDirection);
+    Assert.IsTrue(TMcpDeadCodeTools.ParseDirection('usedBy', mDirection));
+    Assert.AreEqual<TMcpUsesDirection>(TMcpUsesDirection.UsedBy, mDirection);
+    Assert.IsTrue(TMcpDeadCodeTools.ParseDirection('uses', mDirection));
+    Assert.AreEqual<TMcpUsesDirection>(TMcpUsesDirection.Uses_, mDirection);
+    Assert.IsFalse(TMcpDeadCodeTools.ParseDirection('rauf', mDirection));
   finally
-    Graph.Free;
-    Release(Data);
+    mGraph.Free;
+    Release(mData);
   end;
 end;
 

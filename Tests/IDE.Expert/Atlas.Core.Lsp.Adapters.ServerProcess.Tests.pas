@@ -46,7 +46,7 @@ uses
   Atlas.Core.Problems.Contract;
 
 /// <summary>Zahl der offenen Handles des Prozesses (eigene Deklaration, unabhängig von der Delphi-Version).</summary>
-function ProcessHandleCount(hProcess: THandle; var pdwHandleCount: DWORD): BOOL; stdcall;
+function ProcessHandleCount(AHProcess: THandle; var APdwHandleCount: DWORD): BOOL; stdcall;
   external kernel32 name 'GetProcessHandleCount';
 { TLspServerProcessTests }
 
@@ -66,62 +66,62 @@ begin
 end;
 procedure TLspServerProcessTests.StartFailureLeavesNoHandles;
 const
-  Missing = 'C:\nicht\vorhanden\AtlasServer.exe';
+  cMissing = 'C:\nicht\vorhanden\AtlasServer.exe';
 var
-  Before, After: DWORD;
-  Index: Integer;
+  mBefore, mAfter: DWORD;
+  mIndex: Integer;
 begin
   // Vorlauf außerhalb der Messung: einmalige Handles der RTL (Ausnahmen, Codepages) vorwegnehmen.
   Assert.WillRaise(
     procedure
     begin
-      TLspServerProcess.Create(Missing, '').Free;
+      TLspServerProcess.Create(cMissing, '').Free;
     end, EOSError);
-  Before := 0;
-  After := 0;
-  Assert.IsTrue(ProcessHandleCount(GetCurrentProcess, Before));
-  for Index := 1 to 10 do
+  mBefore := 0;
+  mAfter := 0;
+  Assert.IsTrue(ProcessHandleCount(GetCurrentProcess, mBefore));
+  for mIndex := 1 to 10 do
   begin
     Assert.WillRaise(
       procedure
       begin
-        TLspServerProcess.Create(Missing, '').Free;
+        TLspServerProcess.Create(cMissing, '').Free;
       end, EOSError);
   end;
-  Assert.IsTrue(ProcessHandleCount(GetCurrentProcess, After));
+  Assert.IsTrue(ProcessHandleCount(GetCurrentProcess, mAfter));
   // Je Lauf vier Pipe-Enden und die stderr-Datei; ein Leck zeigte sich als Zuwachs um mindestens zehn.
-  Assert.IsTrue(Integer(After) - Integer(Before) < 5, Format('Handles vorher %d, nachher %d', [Before, After]));
+  Assert.IsTrue(Integer(mAfter) - Integer(mBefore) < 5, Format('Handles vorher %d, nachher %d', [mBefore, mAfter]));
 end;
 procedure TLspServerProcessTests.EndReportsExitCodeAndStderr;
 var
-  Server: IAtlasLspServer;
-  Watch: TStopwatch;
-  Info: TLspCloseInfo;
-  Text: string;
+  mServer: IAtlasLspServer;
+  mWatch: TStopwatch;
+  mInfo: TLspCloseInfo;
+  mText: string;
 begin
   // Ein „Server“, der eine Zeile auf stderr schreibt und mit Code 3 endet.
-  Server := TLspServerProcess.Create(GetEnvironmentVariable('ComSpec'), '/c echo Testausgabe auf stderr 1>&2 & exit 3');
-  Watch := TStopwatch.StartNew;
-  while not Server.Client.Closed and (Watch.ElapsedMilliseconds < 10000) do
+  mServer := TLspServerProcess.Create(GetEnvironmentVariable('ComSpec'), '/c echo Testausgabe auf stderr 1>&2 & exit 3');
+  mWatch := TStopwatch.StartNew;
+  while not mServer.Client.Closed and (mWatch.ElapsedMilliseconds < 10000) do
   begin
     Sleep(20);
   end;
-  Assert.IsTrue(Server.Client.Closed, 'Verbindung nach dem Ende des Prozesses geschlossen');
-  Info := Server.Client.CloseInfo;
-  Assert.IsTrue(Info.ExitKnown, 'Exit-Code bekannt');
-  Assert.AreEqual(Int64(3), Int64(Info.ExitCode));
-  Assert.AreEqual(1, Info.ErrorLines);
-  Assert.IsTrue(Info.RuntimeMs >= 0);
-  Server := nil;
-  Text := TFile.ReadAllText(TAtlasServerExits.StderrFileName(TAtlasGuard.RotatingLog.Folder), TEncoding.UTF8);
-  Assert.Contains(Text, 'Serverstart');
-  Assert.Contains(Text, 'Testausgabe auf stderr');
+  Assert.IsTrue(mServer.Client.Closed, 'Verbindung nach dem Ende des Prozesses geschlossen');
+  mInfo := mServer.Client.CloseInfo;
+  Assert.IsTrue(mInfo.ExitKnown, 'Exit-Code bekannt');
+  Assert.AreEqual(Int64(3), Int64(mInfo.ExitCode));
+  Assert.AreEqual(1, mInfo.ErrorLines);
+  Assert.IsTrue(mInfo.RuntimeMs >= 0);
+  mServer := nil;
+  mText := TFile.ReadAllText(TAtlasServerExits.StderrFileName(TAtlasGuard.RotatingLog.Folder), TEncoding.UTF8);
+  Assert.Contains(mText, 'Serverstart');
+  Assert.Contains(mText, 'Testausgabe auf stderr');
 end;
 { TLspServerProcessTests }
 
 procedure TLspServerProcessTests.HoverAndDefinitionAgainstServer;
 const
-  UnitText =
+  cUnitText =
     'unit Probe;'#13#10 +
     'interface'#13#10 +
     'type'#13#10 +
@@ -136,37 +136,37 @@ const
     'end;'#13#10 +
     'end.';
 var
-  ServerExe, FileName: string;
-  Server: TLspServerProcess;
-  Session: TLspSession;
-  Location: TLspLocation;
+  mServerExe, mFileName: string;
+  mServer: TLspServerProcess;
+  mSession: TLspSession;
+  mLocation: TLspLocation;
 begin
-  ServerExe := TPath.Combine(ExtractFilePath(ParamStr(0)), 'AtlasServer.exe');
-  if not FileExists(ServerExe) then
+  mServerExe := TPath.Combine(ExtractFilePath(ParamStr(0)), 'AtlasServer.exe');
+  if not FileExists(mServerExe) then
   begin
-    Assert.Pass('Server nicht neben dem Testprogramm gebaut: ' + ServerExe);
+    Assert.Pass('Server nicht neben dem Testprogramm gebaut: ' + mServerExe);
   end;
-  FileName := TPath.Combine(TPath.GetTempPath, 'AtlasPluginProbe.pas');
-  Server := TLspServerProcess.Create(ServerExe, '');
+  mFileName := TPath.Combine(TPath.GetTempPath, 'AtlasPluginProbe.pas');
+  mServer := TLspServerProcess.Create(mServerExe, '');
   try
-    Session := TLspSession.Create(Server.Client, 5000);
+    mSession := TLspSession.Create(mServer.Client, 5000);
     try
-      Session.Initialize;
-      Assert.IsTrue(Server.Running);
-      Assert.AreEqual('FWert: Integer;', Session.Hover(FileName, UnitText, 10, 3, 0));
-      Assert.IsTrue(Session.Definition(FileName, UnitText, 10, 3, Location));
-      Assert.AreEqual(4, Location.Line);
-      Assert.IsTrue(SameText(FileName, Location.FileName), Location.FileName);
+      mSession.Initialize;
+      Assert.IsTrue(mServer.Running);
+      Assert.AreEqual('FWert: Integer;', mSession.Hover(mFileName, cUnitText, 10, 3, 0));
+      Assert.IsTrue(mSession.Definition(mFileName, cUnitText, 10, 3, mLocation));
+      Assert.AreEqual(4, mLocation.Line);
+      Assert.IsTrue(SameText(mFileName, mLocation.FileName), mLocation.FileName);
     finally
-      Session.Free;
+      mSession.Free;
     end;
   finally
-    Server.Free;
+    mServer.Free;
   end;
 end;
 procedure TLspServerProcessTests.PullsDiagnosticsAgainstServer;
 const
-  UnitText =
+  cUnitText =
     'unit ProbeFehler;'#13#10 +
     'interface'#13#10 +
     'implementation'#13#10 +
@@ -176,36 +176,36 @@ const
     'end;'#13#10 +
     'end.';
 var
-  ServerExe, FileName: string;
-  Server: TLspServerProcess;
-  Session: TLspSession;
-  Report, Again: TLspDiagnosticReport;
+  mServerExe, mFileName: string;
+  mServer: TLspServerProcess;
+  mSession: TLspSession;
+  mReport, mAgain: TLspDiagnosticReport;
 begin
-  ServerExe := TPath.Combine(ExtractFilePath(ParamStr(0)), 'AtlasServer.exe');
-  if not FileExists(ServerExe) then
+  mServerExe := TPath.Combine(ExtractFilePath(ParamStr(0)), 'AtlasServer.exe');
+  if not FileExists(mServerExe) then
   begin
-    Assert.Pass('Server nicht neben dem Testprogramm gebaut: ' + ServerExe);
+    Assert.Pass('Server nicht neben dem Testprogramm gebaut: ' + mServerExe);
   end;
-  FileName := TPath.Combine(TPath.GetTempPath, 'AtlasPluginProbeFehler.pas');
-  Server := TLspServerProcess.Create(ServerExe, '');
+  mFileName := TPath.Combine(TPath.GetTempPath, 'AtlasPluginProbeFehler.pas');
+  mServer := TLspServerProcess.Create(mServerExe, '');
   try
-    Session := TLspSession.Create(Server.Client, 5000);
+    mSession := TLspSession.Create(mServer.Client, 5000);
     try
-      Session.Initialize;
-      Session.Sync(FileName, UnitText);
-      Report := Session.DocumentDiagnostics(FileName, '', 10000);
-      Assert.IsFalse(Report.Unchanged);
-      Assert.IsTrue(Length(Report.Problems) > 0, 'Syntaxfehler gemeldet');
-      Assert.AreEqual<TAtlasProblemSeverity>(TAtlasProblemSeverity.Error, Report.Problems[0].Severity);
-      Assert.AreEqual(5, Report.Problems[0].StartLine);
-      Assert.AreNotEqual('', Report.ResultId);
-      Again := Session.DocumentDiagnostics(FileName, Report.ResultId, 10000);
-      Assert.IsTrue(Again.Unchanged, 'gleiche Version: unverändert');
+      mSession.Initialize;
+      mSession.Sync(mFileName, cUnitText);
+      mReport := mSession.DocumentDiagnostics(mFileName, '', 10000);
+      Assert.IsFalse(mReport.Unchanged);
+      Assert.IsTrue(Length(mReport.Problems) > 0, 'Syntaxfehler gemeldet');
+      Assert.AreEqual<TAtlasProblemSeverity>(TAtlasProblemSeverity.Error, mReport.Problems[0].Severity);
+      Assert.AreEqual(5, mReport.Problems[0].StartLine);
+      Assert.AreNotEqual('', mReport.ResultId);
+      mAgain := mSession.DocumentDiagnostics(mFileName, mReport.ResultId, 10000);
+      Assert.IsTrue(mAgain.Unchanged, 'gleiche Version: unverändert');
     finally
-      Session.Free;
+      mSession.Free;
     end;
   finally
-    Server.Free;
+    mServer.Free;
   end;
 end;
 
@@ -222,57 +222,57 @@ const
 
 procedure TLspServerProcessTests.CompilerMessagesReachPulledDiagnostics;
 var
-  ServerExe, FileName: string;
-  Server: TLspServerProcess;
-  Session: TLspSession;
-  Report: TLspDiagnosticReport;
-  Params: TJSONObject;
-  Waited: Integer;
-  Problem: TAtlasProblem;
-  Found: Boolean;
+  mServerExe, mFileName: string;
+  mServer: TLspServerProcess;
+  mSession: TLspSession;
+  mReport: TLspDiagnosticReport;
+  mParams: TJSONObject;
+  mWaited: Integer;
+  mProblem: TAtlasProblem;
+  mFound: Boolean;
 begin
-  ServerExe := TPath.Combine(ExtractFilePath(ParamStr(0)), 'AtlasServer.exe');
-  if not FileExists(ServerExe) then
+  mServerExe := TPath.Combine(ExtractFilePath(ParamStr(0)), 'AtlasServer.exe');
+  if not FileExists(mServerExe) then
   begin
-    Assert.Pass('Server nicht neben dem Testprogramm gebaut: ' + ServerExe);
+    Assert.Pass('Server nicht neben dem Testprogramm gebaut: ' + mServerExe);
   end;
-  FileName := TPath.Combine(TPath.GetTempPath, 'AtlasPluginProbeCompiler.pas');
-  Server := TLspServerProcess.Create(ServerExe, '');
+  mFileName := TPath.Combine(TPath.GetTempPath, 'AtlasPluginProbeCompiler.pas');
+  mServer := TLspServerProcess.Create(mServerExe, '');
   try
-    Session := TLspSession.Create(Server.Client, 5000);
+    mSession := TLspSession.Create(mServer.Client, 5000);
     try
-      Session.Initialize;
-      Session.Sync(FileName, cCompilerMessagesUnitText);
-      Params := TJSONObject.ParseJSONValue(Format('{"project":"","platform":"Win32","success":false,"background":true,' +
+      mSession.Initialize;
+      mSession.Sync(mFileName, cCompilerMessagesUnitText);
+      mParams := TJSONObject.ParseJSONValue(Format('{"project":"","platform":"Win32","success":false,"background":true,' +
         '"messages":[{"file":"%s","line":6,"column":3,"severity":"error","code":"E2003",' +
-        '"text":"Undeklarierter Bezeichner: ''Gibtsnicht''"}]}', [StringReplace(FileName, '\', '\\', [rfReplaceAll])]))
+        '"text":"Undeklarierter Bezeichner: ''Gibtsnicht''"}]}', [StringReplace(mFileName, '\', '\\', [rfReplaceAll])]))
         as TJSONObject;
-      Session.Notify('atlas/compilerMessages', Params);
+      mSession.Notify('atlas/compilerMessages', mParams);
       // Der Server bittet danach um neues Holen.
-      Waited := 0;
-      while (Session.RefreshCount = 0) and (Waited < 5000) do
+      mWaited := 0;
+      while (mSession.RefreshCount = 0) and (mWaited < 5000) do
       begin
         Sleep(50);
-        Inc(Waited, 50);
+        Inc(mWaited, 50);
       end;
-      Assert.AreEqual(1, Session.RefreshCount, 'workspace/diagnostic/refresh');
-      Report := Session.DocumentDiagnostics(FileName, '', 10000);
-      Found := False;
-      for Problem in Report.Problems do
+      Assert.AreEqual(1, mSession.RefreshCount, 'workspace/diagnostic/refresh');
+      mReport := mSession.DocumentDiagnostics(mFileName, '', 10000);
+      mFound := False;
+      for mProblem in mReport.Problems do
       begin
-        if Problem.IsCompiler and (Problem.Code = 'E2003') then
+        if mProblem.IsCompiler and (mProblem.Code = 'E2003') then
         begin
-          Found := True;
-          Assert.AreEqual(5, Problem.StartLine);
-          Assert.AreEqual<TAtlasProblemSeverity>(TAtlasProblemSeverity.Error, Problem.Severity);
+          mFound := True;
+          Assert.AreEqual(5, mProblem.StartLine);
+          Assert.AreEqual<TAtlasProblemSeverity>(TAtlasProblemSeverity.Error, mProblem.Severity);
         end;
       end;
-      Assert.IsTrue(Found, 'dcc-Meldung in den Diagnosen der geöffneten Datei');
+      Assert.IsTrue(mFound, 'dcc-Meldung in den Diagnosen der geöffneten Datei');
     finally
-      Session.Free;
+      mSession.Free;
     end;
   finally
-    Server.Free;
+    mServer.Free;
   end;
 end;
 

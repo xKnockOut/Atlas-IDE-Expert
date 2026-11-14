@@ -66,14 +66,14 @@ uses
 
 function Occurrences(const ASub, AText: string): Integer;
 var
-  Position: Integer;
+  mPosition: Integer;
 begin
   Result := 0;
-  Position := Pos(ASub, AText);
-  while Position > 0 do
+  mPosition := Pos(ASub, AText);
+  while mPosition > 0 do
   begin
     Inc(Result);
-    Position := Pos(ASub, AText, Position + Length(ASub));
+    mPosition := Pos(ASub, AText, mPosition + Length(ASub));
   end;
 end;
 
@@ -113,73 +113,73 @@ end;
 
 function TAtlasDataFileTests.LogText: string;
 var
-  FileName: string;
+  mFileName: string;
 begin
   Result := '';
-  FileName := TPath.Combine(FLogFolder, 'atlas.log');
-  if TFile.Exists(FileName) then
+  mFileName := TPath.Combine(FLogFolder, 'atlas.log');
+  if TFile.Exists(mFileName) then
   begin
-    Result := TFile.ReadAllText(FileName, TEncoding.UTF8);
+    Result := TFile.ReadAllText(mFileName, TEncoding.UTF8);
   end;
 end;
 
 procedure TAtlasDataFileTests.MissingFileIsMissing;
 var
-  Called: Boolean;
+  mCalled: Boolean;
 begin
-  Called := False;
+  mCalled := False;
   Assert.AreEqual<TAtlasDataLoad>(TAtlasDataLoad.Missing, TAtlasDataFile.Load(DataFile('favoriten.json'), 'Favoriten',
     function(const AText: string): Boolean
     begin
-      Called := True;
+      mCalled := True;
       Result := True;
     end));
-  Assert.IsFalse(Called, 'ohne Datei wird nichts gelesen');
+  Assert.IsFalse(mCalled, 'ohne Datei wird nichts gelesen');
   Assert.IsTrue(TAtlasDataFile.Writable(TAtlasDataLoad.Missing));
   Assert.AreEqual(0, Occurrences('Datendatei', LogText));
 end;
 
 procedure TAtlasDataFileTests.ReadsWithAndWithoutBom;
 var
-  Text, Seen: string;
+  mText, mSeen: string;
 begin
   TFile.WriteAllBytes(DataFile('a.json'), TBytes.Create($EF, $BB, $BF, Ord('['), $C3, $A4, Ord(']')));
   TFile.WriteAllBytes(DataFile('b.json'), TBytes.Create(Ord('['), $C3, $A4, Ord(']')));
-  Assert.IsTrue(TAtlasDataFile.TryRead(DataFile('a.json'), Text));
-  Assert.AreEqual('[ä]', Text);
-  Assert.IsTrue(TAtlasDataFile.TryRead(DataFile('b.json'), Text));
-  Assert.AreEqual('[ä]', Text);
-  Assert.IsFalse(TAtlasDataFile.TryRead(DataFile('fehlt.json'), Text));
-  Assert.AreEqual('', Text);
+  Assert.IsTrue(TAtlasDataFile.TryRead(DataFile('a.json'), mText));
+  Assert.AreEqual('[ä]', mText);
+  Assert.IsTrue(TAtlasDataFile.TryRead(DataFile('b.json'), mText));
+  Assert.AreEqual('[ä]', mText);
+  Assert.IsFalse(TAtlasDataFile.TryRead(DataFile('fehlt.json'), mText));
+  Assert.AreEqual('', mText);
   Assert.AreEqual<TAtlasDataLoad>(TAtlasDataLoad.Loaded, TAtlasDataFile.Load(DataFile('a.json'), 'Favoriten',
     function(const AText: string): Boolean
     begin
-      Seen := AText;
+      mSeen := AText;
       Result := True;
     end));
-  Assert.AreEqual('[ä]', Seen);
+  Assert.AreEqual('[ä]', mSeen);
   Assert.IsTrue(TAtlasDataFile.Writable(TAtlasDataLoad.Loaded));
-  Seen := '';
+  mSeen := '';
 end;
 
 procedure TAtlasDataFileTests.SetsAsideUnusableContent;
 var
-  Log: string;
-  Load: TAtlasDataLoad;
+  mLog: string;
+  mLoad: TAtlasDataLoad;
 begin
   TFile.WriteAllText(DataFile('favoriten.json'), '{kaputt');
-  Load := TAtlasDataFile.Load(DataFile('favoriten.json'), 'Favoriten',
+  mLoad := TAtlasDataFile.Load(DataFile('favoriten.json'), 'Favoriten',
     function(const AText: string): Boolean
     begin
       Result := False;
     end);
-  Assert.AreEqual<TAtlasDataLoad>(TAtlasDataLoad.Renewed, Load);
-  Assert.IsTrue(TAtlasDataFile.Writable(Load));
+  Assert.AreEqual<TAtlasDataLoad>(TAtlasDataLoad.Renewed, mLoad);
+  Assert.IsTrue(TAtlasDataFile.Writable(mLoad));
   Assert.IsFalse(TFile.Exists(DataFile('favoriten.json')));
   Assert.AreEqual('{kaputt', TFile.ReadAllText(DataFile('favoriten.json.defekt'), TEncoding.UTF8));
-  Log := LogText;
-  Assert.Contains(Log, 'Datendatei Favoriten: kein gültiger Inhalt; beiseitegelegt als *.defekt');
-  Assert.DoesNotContain(Log, ExtractFileName(FFolder), 'kein Pfad im Protokoll');
+  mLog := LogText;
+  Assert.Contains(mLog, 'Datendatei Favoriten: kein gültiger Inhalt; beiseitegelegt als *.defekt');
+  Assert.DoesNotContain(mLog, ExtractFileName(FFolder), 'kein Pfad im Protokoll');
 end;
 
 procedure TAtlasDataFileTests.EmptyFileIsSetAsideAsEmpty;
@@ -206,11 +206,11 @@ end;
 
 procedure TAtlasDataFileTests.ParserExceptionKeepsFile;
 var
-  Parse: TAtlasDataParse;
-  Log: string;
+  mParse: TAtlasDataParse;
+  mLog: string;
 begin
   TFile.WriteAllText(DataFile('lesezeichen.json'), '{"geheimer Inhalt": 1}');
-  Parse :=
+  mParse :=
     function(const AText: string): Boolean
     begin
       if AText <> '' then
@@ -220,58 +220,58 @@ begin
       Result := True;
     end;
   Assert.AreEqual<TAtlasDataLoad>(TAtlasDataLoad.Kept,
-    TAtlasDataFile.Load(DataFile('lesezeichen.json'), 'Lesezeichen', Parse));
+    TAtlasDataFile.Load(DataFile('lesezeichen.json'), 'Lesezeichen', mParse));
   Assert.IsFalse(TAtlasDataFile.Writable(TAtlasDataLoad.Kept));
   Assert.AreEqual<TAtlasDataLoad>(TAtlasDataLoad.Kept,
-    TAtlasDataFile.Load(DataFile('lesezeichen.json'), 'Lesezeichen', Parse));
+    TAtlasDataFile.Load(DataFile('lesezeichen.json'), 'Lesezeichen', mParse));
   Assert.AreEqual('{"geheimer Inhalt": 1}', TFile.ReadAllText(DataFile('lesezeichen.json'), TEncoding.UTF8));
   Assert.IsFalse(TFile.Exists(DataFile('lesezeichen.json.defekt')));
-  Log := LogText;
-  Assert.AreEqual(1, Occurrences('Datendatei Lesezeichen: Fehler beim Lesen (EConvertError)', Log));
-  Assert.DoesNotContain(Log, 'geheim');
-  Parse := nil;
+  mLog := LogText;
+  Assert.AreEqual(1, Occurrences('Datendatei Lesezeichen: Fehler beim Lesen (EConvertError)', mLog));
+  Assert.DoesNotContain(mLog, 'geheim');
+  mParse := nil;
 end;
 
 procedure TAtlasDataFileTests.LockedFileIsKept;
 var
-  Handle: THandle;
-  Called: Boolean;
-  Parse: TAtlasDataParse;
+  mHandle: THandle;
+  mCalled: Boolean;
+  mParse: TAtlasDataParse;
 begin
   TFile.WriteAllText(DataFile('startprofile.json'), '{}');
-  Called := False;
-  Parse :=
+  mCalled := False;
+  mParse :=
     function(const AText: string): Boolean
     begin
-      Called := True;
+      mCalled := True;
       Result := True;
     end;
-  Handle := CreateFile(PChar(DataFile('startprofile.json')), GENERIC_READ, 0, nil, OPEN_EXISTING,
+  mHandle := CreateFile(PChar(DataFile('startprofile.json')), GENERIC_READ, 0, nil, OPEN_EXISTING,
     FILE_ATTRIBUTE_NORMAL, 0);
-  Assert.AreNotEqual<THandle>(INVALID_HANDLE_VALUE, Handle);
+  Assert.AreNotEqual<THandle>(INVALID_HANDLE_VALUE, mHandle);
   try
     Assert.AreEqual<TAtlasDataLoad>(TAtlasDataLoad.Kept,
-      TAtlasDataFile.Load(DataFile('startprofile.json'), 'Startprofile', Parse));
+      TAtlasDataFile.Load(DataFile('startprofile.json'), 'Startprofile', mParse));
     Assert.AreEqual<TAtlasDataLoad>(TAtlasDataLoad.Kept,
-      TAtlasDataFile.Load(DataFile('startprofile.json'), 'Startprofile', Parse));
+      TAtlasDataFile.Load(DataFile('startprofile.json'), 'Startprofile', mParse));
   finally
-    CloseHandle(Handle);
+    CloseHandle(mHandle);
   end;
-  Assert.IsFalse(Called);
+  Assert.IsFalse(mCalled);
   Assert.IsFalse(TFile.Exists(DataFile('startprofile.json.defekt')));
   Assert.AreEqual(1, Occurrences('Datendatei Startprofile: gesperrt oder nicht lesbar', LogText));
-  Parse := nil;
+  mParse := nil;
 end;
 
 procedure TAtlasDataFileTests.KeepsFileThatCannotBeSetAside;
 var
-  Handle: THandle;
+  mHandle: THandle;
 begin
   TFile.WriteAllText(DataFile('wahl.json'), 'kaputt');
   // Lesen geteilt, Löschen nicht: TryRead liest, Umbenennen scheitert.
-  Handle := CreateFile(PChar(DataFile('wahl.json')), GENERIC_READ, FILE_SHARE_READ, nil, OPEN_EXISTING,
+  mHandle := CreateFile(PChar(DataFile('wahl.json')), GENERIC_READ, FILE_SHARE_READ, nil, OPEN_EXISTING,
     FILE_ATTRIBUTE_NORMAL, 0);
-  Assert.AreNotEqual<THandle>(INVALID_HANDLE_VALUE, Handle);
+  Assert.AreNotEqual<THandle>(INVALID_HANDLE_VALUE, mHandle);
   try
     Assert.AreEqual<TAtlasDataLoad>(TAtlasDataLoad.Kept,
       TAtlasDataFile.Load(DataFile('wahl.json'), 'Wahl des Testprojekts',
@@ -280,7 +280,7 @@ begin
         Result := False;
       end));
   finally
-    CloseHandle(Handle);
+    CloseHandle(mHandle);
   end;
   Assert.AreEqual('kaputt', TFile.ReadAllText(DataFile('wahl.json'), TEncoding.UTF8));
   Assert.IsFalse(TFile.Exists(DataFile('wahl.json.defekt')));
@@ -289,45 +289,45 @@ end;
 
 procedure TAtlasDataFileTests.WritesAtomicallyWithoutBom;
 var
-  FileName, Text: string;
-  Bytes: TBytes;
+  mFileName, mText: string;
+  mBytes: TBytes;
 begin
-  FileName := TPath.Combine(TPath.Combine(FFolder, 'neu'), 'daten.json');
-  TAtlasDataFile.Write(FileName, '{"a": "ä"}');
-  Bytes := TFile.ReadAllBytes(FileName);
-  Assert.AreEqual(Integer(Ord('{')), Integer(Bytes[0]), 'ohne BOM');
-  Assert.IsTrue(TAtlasDataFile.TryRead(FileName, Text));
-  Assert.AreEqual('{"a": "ä"}', Text);
-  TAtlasDataFile.Write(FileName, '[]');
-  Assert.IsTrue(TAtlasDataFile.TryRead(FileName, Text));
-  Assert.AreEqual('[]', Text);
-  Assert.IsFalse(TFile.Exists(FileName + '.atlas-tmp'), 'keine Nachbardatei übrig');
+  mFileName := TPath.Combine(TPath.Combine(FFolder, 'neu'), 'daten.json');
+  TAtlasDataFile.Write(mFileName, '{"a": "ä"}');
+  mBytes := TFile.ReadAllBytes(mFileName);
+  Assert.AreEqual(Integer(Ord('{')), Integer(mBytes[0]), 'ohne BOM');
+  Assert.IsTrue(TAtlasDataFile.TryRead(mFileName, mText));
+  Assert.AreEqual('{"a": "ä"}', mText);
+  TAtlasDataFile.Write(mFileName, '[]');
+  Assert.IsTrue(TAtlasDataFile.TryRead(mFileName, mText));
+  Assert.AreEqual('[]', mText);
+  Assert.IsFalse(TFile.Exists(mFileName + '.atlas-tmp'), 'keine Nachbardatei übrig');
 end;
 
 procedure TAtlasDataFileTests.ReportsNotWrittenOncePerKind;
 var
-  Locked: EAtlasTextFileError;
-  Open: EFOpenError;
-  Log: string;
+  mLocked: EAtlasTextFileError;
+  mOpen: EFOpenError;
+  mLog: string;
 begin
-  Locked := EAtlasTextFileError.Create('Ziel von einem anderen Programm gesperrt');
+  mLocked := EAtlasTextFileError.Create('Ziel von einem anderen Programm gesperrt');
   // CreateFmt: Delphis EFOpenError.Create erwartet einen Ressourcen-String.
-  Open := EFOpenError.CreateFmt('%s lässt sich nicht öffnen', ['C:\Benutzer\Geheim\notizen.json']);
+  mOpen := EFOpenError.CreateFmt('%s lässt sich nicht öffnen', ['C:\Benutzer\Geheim\notizen.json']);
   try
-    TAtlasDataFile.ReportNotWritten('Favoriten', Locked);
-    TAtlasDataFile.ReportNotWritten('Favoriten', Locked);
-    TAtlasDataFile.ReportNotWritten('Notizen', Open);
-    Log := LogText;
-    Assert.AreEqual(1, Occurrences('Datendatei Favoriten nicht gespeichert', Log));
-    Assert.Contains(Log, 'EAtlasTextFileError: Ziel von einem anderen Programm gesperrt');
-    Assert.Contains(Log, 'Datendatei Notizen nicht gespeichert (EFOpenError)');
-    Assert.DoesNotContain(Log, 'Geheim', 'Meldungen mit Pfad nicht ins Protokoll');
+    TAtlasDataFile.ReportNotWritten('Favoriten', mLocked);
+    TAtlasDataFile.ReportNotWritten('Favoriten', mLocked);
+    TAtlasDataFile.ReportNotWritten('Notizen', mOpen);
+    mLog := LogText;
+    Assert.AreEqual(1, Occurrences('Datendatei Favoriten nicht gespeichert', mLog));
+    Assert.Contains(mLog, 'EAtlasTextFileError: Ziel von einem anderen Programm gesperrt');
+    Assert.Contains(mLog, 'Datendatei Notizen nicht gespeichert (EFOpenError)');
+    Assert.DoesNotContain(mLog, 'Geheim', 'Meldungen mit Pfad nicht ins Protokoll');
     TAtlasDataFile.ForgetReports;
-    TAtlasDataFile.ReportNotWritten('Favoriten', Locked);
+    TAtlasDataFile.ReportNotWritten('Favoriten', mLocked);
     Assert.AreEqual(2, Occurrences('Datendatei Favoriten nicht gespeichert', LogText));
   finally
-    Open.Free;
-    Locked.Free;
+    mOpen.Free;
+    mLocked.Free;
   end;
 end;
 

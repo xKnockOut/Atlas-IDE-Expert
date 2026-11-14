@@ -59,11 +59,11 @@ end;
 
 function OnlyMessage(const ASource: string): string;
 var
-  Found: TArray<TRuleFinding>;
+  mFound: TArray<TRuleFinding>;
 begin
-  Found := Findings(ASource);
-  Assert.AreEqual(1, Integer(Length(Found)), ASource);
-  Result := Found[0].Message;
+  mFound := Findings(ASource);
+  Assert.AreEqual(1, Integer(Length(mFound)), ASource);
+  Result := mFound[0].Message;
 end;
 
 procedure Silent(const ASource: string);
@@ -74,43 +74,43 @@ end;
 /// <summary>Wendet Edits an, die jeweils innerhalb einer Zeile liegen (Zeilen aus #10), von hinten nach vorn.</summary>
 function ApplyFix(const AText: string; const AFix: TRuleFix): string;
 var
-  Lines: TArray<string>;
-  Index: Integer;
-  Edit: TRuleEdit;
+  mLines: TArray<string>;
+  mIndex: Integer;
+  mEdit: TRuleEdit;
 begin
-  Lines := AText.Split([#10]);
-  for Index := High(AFix.Edits) downto 0 do
+  mLines := AText.Split([#10]);
+  for mIndex := High(AFix.Edits) downto 0 do
   begin
-    Edit := AFix.Edits[Index];
-    Lines[Edit.Range.StartPos.Line] := Copy(Lines[Edit.Range.StartPos.Line], 1, Edit.Range.StartPos.Character) +
-      Edit.NewText + Copy(Lines[Edit.Range.StartPos.Line], Edit.Range.EndPos.Character + 1, MaxInt);
+    mEdit := AFix.Edits[mIndex];
+    mLines[mEdit.Range.StartPos.Line] := Copy(mLines[mEdit.Range.StartPos.Line], 1, mEdit.Range.StartPos.Character) +
+      mEdit.NewText + Copy(mLines[mEdit.Range.StartPos.Line], mEdit.Range.EndPos.Character + 1, MaxInt);
   end;
-  Result := string.Join(#10, Lines);
+  Result := string.Join(#10, mLines);
 end;
 
 { TMemberHidingRulesTests }
 
 procedure TMemberHidingRulesTests.IssueExample;
 var
-  Source, Fixed: string;
-  Found: TArray<TRuleFinding>;
+  mSource, mFixed: string;
+  mFound: TArray<TRuleFinding>;
 begin
-  Source := Kunden('    FName: string;'#10, '    FName: string;'#10'    procedure Setzen;'#10,
+  mSource := Kunden('    FName: string;'#10, '    FName: string;'#10'    procedure Setzen;'#10,
     'procedure TKunde.Setzen;'#10'begin'#10'  FName := ''A'';'#10'  Self.FName := ''B'';'#10 +
     '  TBasis(Self).FName := ''C'';'#10'end;'#10);
-  Found := Findings(Source);
-  Assert.AreEqual(1, Integer(Length(Found)));
-  Assert.AreEqual('FName verdeckt TBasis.FName.', Found[0].Message);
-  Assert.AreEqual(Ord(TRuleConfidence.High), Ord(Found[0].Confidence));
-  Assert.AreEqual(7, Found[0].Range.StartPos.Line);
-  Assert.AreEqual(4, Found[0].Range.StartPos.Character);
-  Assert.AreEqual(1, Integer(Length(Found[0].Fixes)));
-  Assert.AreEqual('In FKundeName umbenennen (in dieser Unit)', Found[0].Fixes[0].Title);
-  Fixed := ApplyFix(Source, Found[0].Fixes[0]);
+  mFound := Findings(mSource);
+  Assert.AreEqual(1, Integer(Length(mFound)));
+  Assert.AreEqual('FName verdeckt TBasis.FName.', mFound[0].Message);
+  Assert.AreEqual(Ord(TRuleConfidence.High), Ord(mFound[0].Confidence));
+  Assert.AreEqual(7, mFound[0].Range.StartPos.Line);
+  Assert.AreEqual(4, mFound[0].Range.StartPos.Character);
+  Assert.AreEqual(1, Integer(Length(mFound[0].Fixes)));
+  Assert.AreEqual('In FKundeName umbenennen (in dieser Unit)', mFound[0].Fixes[0].Title);
+  mFixed := ApplyFix(mSource, mFound[0].Fixes[0]);
   Assert.AreEqual(Kunden('    FName: string;'#10, '    FKundeName: string;'#10'    procedure Setzen;'#10,
     'procedure TKunde.Setzen;'#10'begin'#10'  FKundeName := ''A'';'#10'  Self.FKundeName := ''B'';'#10 +
-    '  TBasis(Self).FName := ''C'';'#10'end;'#10), Fixed);
-  Silent(Fixed);
+    '  TBasis(Self).FName := ''C'';'#10'end;'#10), mFixed);
+  Silent(mFixed);
 end;
 
 procedure TMemberHidingRulesTests.PropertyHidesField;
@@ -125,17 +125,17 @@ end;
 
 procedure TMemberHidingRulesTests.MethodHidesStaticMethod;
 var
-  Found: TArray<TRuleFinding>;
+  mFound: TArray<TRuleFinding>;
 begin
   // Niedrige Konfidenz: dcc schweigt, und in der FP-Prüfung vom 28.10.2026 war das meist gewollt.
-  Found := Findings(Kunden('    procedure Speichern(const APfad: string);'#10,
+  mFound := Findings(Kunden('    procedure Speichern(const APfad: string);'#10,
     '    procedure Speichern(const APfad: string);'#10, ''), '{"minConfidence": "low"}', 'Kunden.pas');
-  Assert.AreEqual(1, Integer(Length(Found)));
-  Assert.AreEqual('Speichern verdeckt TBasis.Speichern.', Found[0].Message);
-  Assert.AreEqual(Ord(TRuleConfidence.Low), Ord(Found[0].Confidence));
+  Assert.AreEqual(1, Integer(Length(mFound)));
+  Assert.AreEqual('Speichern verdeckt TBasis.Speichern.', mFound[0].Message);
+  Assert.AreEqual(Ord(TRuleConfidence.Low), Ord(mFound[0].Confidence));
   Assert.AreEqual(0, Integer(Length(Findings(Kunden('    procedure Speichern(const APfad: string);'#10,
     '    procedure Speichern(const APfad: string);'#10, '')))));
-  Assert.AreEqual(0, Integer(Length(Found[0].Fixes)));
+  Assert.AreEqual(0, Integer(Length(mFound[0].Fixes)));
 end;
 
 procedure TMemberHidingRulesTests.SilentCases;
@@ -157,20 +157,20 @@ end;
 
 procedure TMemberHidingRulesTests.VisibilityAndIndex;
 var
-  Index: ISymbolIndex;
-  Found: TArray<TRuleFinding>;
-  Source: string;
+  mIndex: ISymbolIndex;
+  mFound: TArray<TRuleFinding>;
+  mSource: string;
 begin
-  Index := TSymbolIndex.Create;
-  Index.AddUnit(TIndexExtractor.ExtractText('unit Basis;'#10'interface'#10'type'#10'  TFern = class'#10 +
+  mIndex := TSymbolIndex.Create;
+  mIndex.AddUnit(TIndexExtractor.ExtractText('unit Basis;'#10'interface'#10'type'#10'  TFern = class'#10 +
     '  private'#10'    FGeheim: Integer;'#10'  strict private'#10'    FStreng: Integer;'#10'  protected'#10 +
     '    FWert: Integer;'#10'  end;'#10'implementation'#10'end.', 'C:\Projekt\Basis.pas', nil));
-  Source := 'unit Kunden;'#10'interface'#10'uses'#10'  Basis;'#10'type'#10'  TKunde = class(TFern)'#10 +
+  mSource := 'unit Kunden;'#10'interface'#10'uses'#10'  Basis;'#10'type'#10'  TKunde = class(TFern)'#10 +
     '    FGeheim: Integer;'#10'    FStreng: Integer;'#10'    FWert: Integer;'#10'  end;'#10'implementation'#10'end.';
-  Found := TRuleAssert.IndexFindings(TMemberHidesAncestorRule.Create, Source, Index, '', '');
+  mFound := TRuleAssert.IndexFindings(TMemberHidesAncestorRule.Create, mSource, mIndex, '', '');
   // private einer anderen Unit sieht TKunde nicht; strict private nur mit ignoreStrictPrivate = false.
-  Assert.AreEqual(1, Integer(Length(Found)));
-  Assert.AreEqual('FWert verdeckt TFern.FWert.', Found[0].Message);
+  Assert.AreEqual(1, Integer(Length(mFound)));
+  Assert.AreEqual('FWert verdeckt TFern.FWert.', mFound[0].Message);
   // private derselben Unit ist sichtbar.
   Assert.AreEqual('FGeheim verdeckt TBasis.FGeheim.', OnlyMessage(Kunden('  private'#10 +
     '    FGeheim: Integer;'#10, '    FGeheim: Integer;'#10, '')));
@@ -179,18 +179,18 @@ end;
 
 procedure TMemberHidingRulesTests.Options;
 var
-  Source: string;
+  mSource: string;
 begin
-  Source := Kunden('    FName: string;'#10, '    FName: string;'#10, '');
-  Assert.AreEqual(1, Integer(Length(Findings(Source, '', 'Source/Kunden.pas'))));
-  Assert.AreEqual(0, Integer(Length(Findings(Source, '{"rules": {"member-hides-ancestor": "off"}}',
+  mSource := Kunden('    FName: string;'#10, '    FName: string;'#10, '');
+  Assert.AreEqual(1, Integer(Length(Findings(mSource, '', 'Source/Kunden.pas'))));
+  Assert.AreEqual(0, Integer(Length(Findings(mSource, '{"rules": {"member-hides-ancestor": "off"}}',
     'Source/Kunden.pas'))));
-  Assert.AreEqual(0, Integer(Length(Findings(Source, '{"rules": {"group:compiler": "off"}}', 'Source/Kunden.pas'))));
-  Assert.AreEqual(0, Integer(Length(Findings(Source,
+  Assert.AreEqual(0, Integer(Length(Findings(mSource, '{"rules": {"group:compiler": "off"}}', 'Source/Kunden.pas'))));
+  Assert.AreEqual(0, Integer(Length(Findings(mSource,
     '{"rules": {"member-hides-ancestor": {"exclude": ["Source/*.pas"]}}}', 'Source/Kunden.pas'))));
-  Source := Kunden('  strict private'#10'    FStreng: Integer;'#10, '    FStreng: Integer;'#10, '');
-  Assert.AreEqual(0, Integer(Length(Findings(Source, '', 'Source/Kunden.pas'))));
-  Assert.AreEqual(1, Integer(Length(Findings(Source,
+  mSource := Kunden('  strict private'#10'    FStreng: Integer;'#10, '    FStreng: Integer;'#10, '');
+  Assert.AreEqual(0, Integer(Length(Findings(mSource, '', 'Source/Kunden.pas'))));
+  Assert.AreEqual(1, Integer(Length(Findings(mSource,
     '{"rules": {"member-hides-ancestor": {"ignoreStrictPrivate": false}}}', 'Source/Kunden.pas'))));
 end;
 

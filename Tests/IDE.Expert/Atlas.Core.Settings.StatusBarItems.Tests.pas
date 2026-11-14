@@ -61,33 +61,33 @@ end;
 
 procedure TAtlasStatusBarItemsTests.ToggleRemovesAndRestoresPlace;
 var
-  Items: TArray<string>;
+  mItems: TArray<string>;
 begin
-  Items := TAtlasStatusBarItems.All;
-  Items := TAtlasStatusBarItems.Toggle(Items, 'findings');
-  Assert.AreEqual('status liveCheck method', Joined(Items));
-  Items := TAtlasStatusBarItems.Toggle(Items, 'status');
-  Assert.AreEqual('liveCheck method', Joined(Items));
-  Items := TAtlasStatusBarItems.Toggle(Items, 'FINDINGS');
-  Assert.AreEqual('findings liveCheck method', Joined(Items), 'vor dem ersten, das in der Vorgabe nach ihm kommt');
-  Items := TAtlasStatusBarItems.Toggle(Items, 'status');
-  Assert.AreEqual('status findings liveCheck method', Joined(Items));
-  Items := TAtlasStatusBarItems.Toggle(Items, 'unbekannt');
-  Assert.AreEqual('status findings liveCheck method', Joined(Items));
-  Items := TAtlasStatusBarItems.Toggle(nil, 'method');
-  Assert.AreEqual('method', Joined(Items));
+  mItems := TAtlasStatusBarItems.All;
+  mItems := TAtlasStatusBarItems.Toggle(mItems, 'findings');
+  Assert.AreEqual('status liveCheck method', Joined(mItems));
+  mItems := TAtlasStatusBarItems.Toggle(mItems, 'status');
+  Assert.AreEqual('liveCheck method', Joined(mItems));
+  mItems := TAtlasStatusBarItems.Toggle(mItems, 'FINDINGS');
+  Assert.AreEqual('findings liveCheck method', Joined(mItems), 'vor dem ersten, das in der Vorgabe nach ihm kommt');
+  mItems := TAtlasStatusBarItems.Toggle(mItems, 'status');
+  Assert.AreEqual('status findings liveCheck method', Joined(mItems));
+  mItems := TAtlasStatusBarItems.Toggle(mItems, 'unbekannt');
+  Assert.AreEqual('status findings liveCheck method', Joined(mItems));
+  mItems := TAtlasStatusBarItems.Toggle(nil, 'method');
+  Assert.AreEqual('method', Joined(mItems));
 end;
 
 procedure TAtlasStatusBarItemsTests.ToggleKeepsCustomOrder;
 var
-  Items: TArray<string>;
+  mItems: TArray<string>;
 begin
-  Items := TAtlasStatusBarItems.Parse('method,status');
-  Items := TAtlasStatusBarItems.Toggle(Items, 'liveCheck');
-  Assert.AreEqual('liveCheck method status', Joined(Items));
-  Items := TAtlasStatusBarItems.Parse('status,method');
-  Items := TAtlasStatusBarItems.Toggle(Items, 'findings');
-  Assert.AreEqual('status findings method', Joined(Items));
+  mItems := TAtlasStatusBarItems.Parse('method,status');
+  mItems := TAtlasStatusBarItems.Toggle(mItems, 'liveCheck');
+  Assert.AreEqual('liveCheck method status', Joined(mItems));
+  mItems := TAtlasStatusBarItems.Parse('status,method');
+  mItems := TAtlasStatusBarItems.Toggle(mItems, 'findings');
+  Assert.AreEqual('status findings method', Joined(mItems));
 end;
 
 initialization

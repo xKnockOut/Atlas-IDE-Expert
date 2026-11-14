@@ -67,12 +67,12 @@ end;
 
 function TAtlasSelectionMatchesTests.Describe(const AList: TAtlasSelectionMatchList): string;
 var
-  Match: TAtlasSelectionMatch;
+  mMatch: TAtlasSelectionMatch;
 begin
   Result := '';
-  for Match in AList.Matches do
+  for mMatch in AList.Matches do
   begin
-    Result := Result + Format('%d:%d ', [Match.Line, Match.Character]);
+    Result := Result + Format('%d:%d ', [mMatch.Line, mMatch.Character]);
   end;
   Result := Trim(Result);
   if AList.Truncated then
@@ -90,23 +90,23 @@ end;
 
 procedure TAtlasSelectionMatchesTests.TermNeedsSingleLineMinLengthAndText;
 var
-  Term: string;
-  Short: TAtlasSelectionMatchOptions;
+  mTerm: string;
+  mShort: TAtlasSelectionMatchOptions;
 begin
-  Assert.IsTrue(TAtlasSelectionMatches.Term('Kunde', TAtlasSelectionMatchOptions.Defaults, Term));
-  Assert.AreEqual('Kunde', Term);
-  Assert.IsFalse(TAtlasSelectionMatches.Term('Ku', TAtlasSelectionMatchOptions.Defaults, Term), 'zu kurz');
-  Assert.AreEqual('', Term);
-  Assert.IsFalse(TAtlasSelectionMatches.Term('    ', TAtlasSelectionMatchOptions.Defaults, Term), 'nur Leerraum');
-  Assert.IsFalse(TAtlasSelectionMatches.Term('Kunde'#13#10'Neu', TAtlasSelectionMatchOptions.Defaults, Term),
+  Assert.IsTrue(TAtlasSelectionMatches.Term('Kunde', TAtlasSelectionMatchOptions.Defaults, mTerm));
+  Assert.AreEqual('Kunde', mTerm);
+  Assert.IsFalse(TAtlasSelectionMatches.Term('Ku', TAtlasSelectionMatchOptions.Defaults, mTerm), 'zu kurz');
+  Assert.AreEqual('', mTerm);
+  Assert.IsFalse(TAtlasSelectionMatches.Term('    ', TAtlasSelectionMatchOptions.Defaults, mTerm), 'nur Leerraum');
+  Assert.IsFalse(TAtlasSelectionMatches.Term('Kunde'#13#10'Neu', TAtlasSelectionMatchOptions.Defaults, mTerm),
     'mehrzeilig ohne Wirkung');
-  Assert.IsFalse(TAtlasSelectionMatches.Term('', TAtlasSelectionMatchOptions.Defaults, Term));
+  Assert.IsFalse(TAtlasSelectionMatches.Term('', TAtlasSelectionMatchOptions.Defaults, mTerm));
   Assert.IsFalse(TAtlasSelectionMatches.Term(StringOfChar('x', TAtlasSelectionMatches.cMaxTermLength + 1),
-    TAtlasSelectionMatchOptions.Defaults, Term));
-  Short := TAtlasSelectionMatchOptions.Defaults;
-  Short.MinLength := 1;
-  Assert.IsTrue(TAtlasSelectionMatches.Term('K', Short, Term));
-  Assert.IsTrue(TAtlasSelectionMatches.Term(' := ', TAtlasSelectionMatchOptions.Defaults, Term),
+    TAtlasSelectionMatchOptions.Defaults, mTerm));
+  mShort := TAtlasSelectionMatchOptions.Defaults;
+  mShort.MinLength := 1;
+  Assert.IsTrue(TAtlasSelectionMatches.Term('K', mShort, mTerm));
+  Assert.IsTrue(TAtlasSelectionMatches.Term(' := ', TAtlasSelectionMatchOptions.Defaults, mTerm),
     'Leerraum mit Text zählt');
 end;
 
@@ -145,16 +145,16 @@ end;
 
 procedure TAtlasSelectionMatchesTests.StopsAtMaxMatches;
 var
-  Limited: TAtlasSelectionMatchOptions;
-  List: TAtlasSelectionMatchList;
+  mLimited: TAtlasSelectionMatchOptions;
+  mList: TAtlasSelectionMatchList;
 begin
-  Limited := Options(False, False);
-  Limited.MaxMatches := 3;
-  List := TAtlasSelectionMatches.Find(FLines, 'Kunde', Limited);
-  Assert.AreEqual('0:0 0:10 1:3 +', Describe(List));
-  Assert.AreEqual(3, List.Count);
-  Limited.MaxMatches := 7;
-  Assert.IsFalse(TAtlasSelectionMatches.Find(FLines, 'Kunde', Limited).Truncated, 'genau sieben');
+  mLimited := Options(False, False);
+  mLimited.MaxMatches := 3;
+  mList := TAtlasSelectionMatches.Find(FLines, 'Kunde', mLimited);
+  Assert.AreEqual('0:0 0:10 1:3 +', Describe(mList));
+  Assert.AreEqual(3, mList.Count);
+  mLimited.MaxMatches := 7;
+  Assert.IsFalse(TAtlasSelectionMatches.Find(FLines, 'Kunde', mLimited).Truncated, 'genau sieben');
 end;
 
 procedure TAtlasSelectionMatchesTests.LimitsToLineRange;
@@ -167,50 +167,50 @@ end;
 
 procedure TAtlasSelectionMatchesTests.NextWrapsAroundBothWays;
 var
-  Found: TLspRange;
+  mFound: TLspRange;
 begin
   // Vorwärts ab dem Ende der Markierung 2:11–2:16.
   Assert.IsTrue(TAtlasSelectionMatches.Next(FLines, 'Kunde', Options(False, True), TLspTextPosition.Create(2, 16),
-    False, Found));
-  Assert.AreEqual(3, Found.StartPos.Line);
-  Assert.AreEqual(13, Found.StartPos.Character);
-  Assert.AreEqual(18, Found.EndPos.Character);
+    False, mFound));
+  Assert.AreEqual(3, mFound.StartPos.Line);
+  Assert.AreEqual(13, mFound.StartPos.Character);
+  Assert.AreEqual(18, mFound.EndPos.Character);
   // Hinter dem letzten Treffer geht es oben weiter.
   Assert.IsTrue(TAtlasSelectionMatches.Next(FLines, 'Kunde', Options(False, True), TLspTextPosition.Create(3, 18),
-    False, Found));
-  Assert.AreEqual(0, Found.StartPos.Line);
-  Assert.AreEqual(0, Found.StartPos.Character);
+    False, mFound));
+  Assert.AreEqual(0, mFound.StartPos.Line);
+  Assert.AreEqual(0, mFound.StartPos.Character);
   // Rückwärts ab dem Anfang der Markierung 0:0: unten weiter.
   Assert.IsTrue(TAtlasSelectionMatches.Next(FLines, 'Kunde', Options(False, True), TLspTextPosition.Create(0, 0),
-    True, Found));
-  Assert.AreEqual(3, Found.StartPos.Line);
+    True, mFound));
+  Assert.AreEqual(3, mFound.StartPos.Line);
   Assert.IsTrue(TAtlasSelectionMatches.Next(FLines, 'Kunde', Options(False, True), TLspTextPosition.Create(2, 11),
-    True, Found));
-  Assert.AreEqual(1, Found.StartPos.Line);
+    True, mFound));
+  Assert.AreEqual(1, mFound.StartPos.Line);
   // Einziger Treffer: wieder er selbst.
   Assert.IsTrue(TAtlasSelectionMatches.Next(FLines, 'gespeichert', Options(False, False),
-    TLspTextPosition.Create(3, 30), False, Found));
-  Assert.AreEqual(3, Found.StartPos.Line);
-  Assert.AreEqual(19, Found.StartPos.Character);
+    TLspTextPosition.Create(3, 30), False, mFound));
+  Assert.AreEqual(3, mFound.StartPos.Line);
+  Assert.AreEqual(19, mFound.StartPos.Character);
   Assert.IsFalse(TAtlasSelectionMatches.Next(FLines, 'Lieferant', Options(False, False),
-    TLspTextPosition.Create(0, 0), False, Found));
+    TLspTextPosition.Create(0, 0), False, mFound));
 end;
 
 procedure TAtlasSelectionMatchesTests.LinesAndSelection;
 var
-  List: TAtlasSelectionMatchList;
-  Lines: TArray<Integer>;
+  mList: TAtlasSelectionMatchList;
+  mLines: TArray<Integer>;
 begin
-  List := TAtlasSelectionMatches.Find(FLines, 'Kunde', Options(False, False));
-  Lines := TAtlasSelectionMatches.Lines(List);
-  Assert.AreEqual(5, Integer(Length(Lines)));
-  Assert.AreEqual(0, Lines[0]);
-  Assert.AreEqual(4, Lines[4]);
-  Assert.AreEqual(2, Integer(Length(List.OnLine(2))));
-  Assert.AreEqual(11, List.OnLine(2)[1].Character);
-  Assert.AreEqual(0, Integer(Length(List.OnLine(7))));
-  Assert.IsTrue(TAtlasSelectionMatches.IsSelection(List.OnLine(2)[1], 2, 11, 16));
-  Assert.IsFalse(TAtlasSelectionMatches.IsSelection(List.OnLine(2)[0], 2, 11, 16));
+  mList := TAtlasSelectionMatches.Find(FLines, 'Kunde', Options(False, False));
+  mLines := TAtlasSelectionMatches.Lines(mList);
+  Assert.AreEqual(5, Integer(Length(mLines)));
+  Assert.AreEqual(0, mLines[0]);
+  Assert.AreEqual(4, mLines[4]);
+  Assert.AreEqual(2, Integer(Length(mList.OnLine(2))));
+  Assert.AreEqual(11, mList.OnLine(2)[1].Character);
+  Assert.AreEqual(0, Integer(Length(mList.OnLine(7))));
+  Assert.IsTrue(TAtlasSelectionMatches.IsSelection(mList.OnLine(2)[1], 2, 11, 16));
+  Assert.IsFalse(TAtlasSelectionMatches.IsSelection(mList.OnLine(2)[0], 2, 11, 16));
 end;
 
 end.

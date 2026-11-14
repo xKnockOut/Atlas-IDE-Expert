@@ -70,12 +70,12 @@ end;
 /// IDE und eine Belegung einer anderen Erweiterung.</summary>
 function Sample: TArray<TAtlasKeyItem>;
 var
-  Other: TAtlasKeyItem;
+  mOther: TAtlasKeyItem;
 begin
-  Other := TAtlasKeyItem.Create($4053, 'Strg+S', 'Speichern', TAtlasKeyProvenance.Create(TAtlasKeyOrigin.Ide,
+  mOther := TAtlasKeyItem.Create($4053, 'Strg+S', 'Speichern', TAtlasKeyProvenance.Create(TAtlasKeyOrigin.Ide,
     TAtlasKeyMap.cIdeName, TAtlasKeyContext.Global, TAtlasKeySource.Action, 'FileSaveCommand', 4));
   Result := [AtlasItem(TAtlasKeyFunction.Palette, $6050, 'Strg+Umschalt+P'),
-    AtlasItem(TAtlasKeyFunction.ExpandSelection, $6050, 'Strg+Umschalt+P'), Other,
+    AtlasItem(TAtlasKeyFunction.ExpandSelection, $6050, 'Strg+Umschalt+P'), mOther,
     TAtlasKeyItem.Create($4044, 'Strg+D', 'Tastaturbelegung des Editors',
       TAtlasKeyProvenance.Create(TAtlasKeyOrigin.Plugin, 'CnWizards_D120', TAtlasKeyContext.Editor,
       TAtlasKeySource.Binding, 'Editor.16452', 101))];
@@ -105,193 +105,193 @@ end;
 
 procedure TAtlasKeyMapWindowTests.PaletteKeyShowsOriginAtlas;
 var
-  Window: TAtlasKeyMapWindow;
-  Cells: TArray<string>;
+  mWindow: TAtlasKeyMapWindow;
+  mCells: TArray<string>;
 begin
-  Window := TAtlasKeyMapWindow.CreateKeyMap(nil);
+  mWindow := TAtlasKeyMapWindow.CreateKeyMap(nil);
   try
-    Window.SetItems(Sample);
-    Assert.AreEqual(4, Integer(Length(Window.Shown)));
-    Assert.AreEqual(4, Integer(Window.List.Items.Count));
-    Cells := TAtlasKeyMapWindow.Cells(Window.Items, 0);
-    Assert.AreEqual('Strg+Umschalt+P', Cells[0]);
-    Assert.AreEqual('Befehlspalette', Cells[1]);
-    Assert.AreEqual('Atlas', Cells[2], 'Herkunft der Befehlspalette (#502)');
-    Assert.AreEqual('Editor', Cells[3]);
-    Assert.AreEqual('Erweiterung CnWizards_D120', TAtlasKeyMapWindow.OriginText(Window.Items[3]));
-    Assert.AreEqual('IDE', TAtlasKeyMapWindow.OriginText(Window.Items[2]));
+    mWindow.SetItems(Sample);
+    Assert.AreEqual(4, Integer(Length(mWindow.Shown)));
+    Assert.AreEqual(4, Integer(mWindow.List.Items.Count));
+    mCells := TAtlasKeyMapWindow.Cells(mWindow.Items, 0);
+    Assert.AreEqual('Strg+Umschalt+P', mCells[0]);
+    Assert.AreEqual('Befehlspalette', mCells[1]);
+    Assert.AreEqual('Atlas', mCells[2], 'Herkunft der Befehlspalette (#502)');
+    Assert.AreEqual('Editor', mCells[3]);
+    Assert.AreEqual('Erweiterung CnWizards_D120', TAtlasKeyMapWindow.OriginText(mWindow.Items[3]));
+    Assert.AreEqual('IDE', TAtlasKeyMapWindow.OriginText(mWindow.Items[2]));
     Assert.AreEqual('global', TAtlasKeyMapWindow.ContextText(TAtlasKeyContext.Global));
     Assert.AreEqual('Willkommensseite', TAtlasKeyMapWindow.ContextText(TAtlasKeyContext.WelcomePage));
-    Assert.AreEqual('4 Kürzel, 2 Konflikte', Window.SummaryLabel.Caption);
+    Assert.AreEqual('4 Kürzel, 2 Konflikte', mWindow.SummaryLabel.Caption);
   finally
-    Window.Free;
+    mWindow.Free;
   end;
 end;
 
 procedure TAtlasKeyMapWindowTests.DoubledKeyIsRedWithWinner;
 var
-  Items: TArray<TAtlasKeyItem>;
-  Winner, Loser: Integer;
+  mItems: TArray<TAtlasKeyItem>;
+  mWinner, mLoser: Integer;
 begin
-  Items := Sample;
-  Assert.IsTrue(Items[0].Conflict, 'absichtlich doppelt belegt: rot');
-  Assert.IsTrue(Items[1].Conflict);
-  Assert.IsFalse(Items[2].Conflict);
-  Winner := Items[0].Winner;
-  Assert.IsTrue((Winner = 0) or (Winner = 1));
-  Loser := 1 - Winner;
-  Assert.Contains(TAtlasKeyMapWindow.HintText(Items, Winner), 'gewinnt');
-  Assert.Contains(TAtlasKeyMapWindow.HintText(Items, Loser), 'unterliegt');
-  Assert.Contains(TAtlasKeyMapWindow.HintText(Items, Loser), Items[Winner].Command);
-  Assert.Contains(TAtlasKeyMapWindow.HintText(Items, Loser), 'zuletzt angemeldete Tastaturbelegung');
-  Assert.AreEqual('', TAtlasKeyMapWindow.HintText(Items, 2), 'ohne Konflikt kein Hinweis');
+  mItems := Sample;
+  Assert.IsTrue(mItems[0].Conflict, 'absichtlich doppelt belegt: rot');
+  Assert.IsTrue(mItems[1].Conflict);
+  Assert.IsFalse(mItems[2].Conflict);
+  mWinner := mItems[0].Winner;
+  Assert.IsTrue((mWinner = 0) or (mWinner = 1));
+  mLoser := 1 - mWinner;
+  Assert.Contains(TAtlasKeyMapWindow.HintText(mItems, mWinner), 'gewinnt');
+  Assert.Contains(TAtlasKeyMapWindow.HintText(mItems, mLoser), 'unterliegt');
+  Assert.Contains(TAtlasKeyMapWindow.HintText(mItems, mLoser), mItems[mWinner].Command);
+  Assert.Contains(TAtlasKeyMapWindow.HintText(mItems, mLoser), 'zuletzt angemeldete Tastaturbelegung');
+  Assert.AreEqual('', TAtlasKeyMapWindow.HintText(mItems, 2), 'ohne Konflikt kein Hinweis');
   Assert.AreEqual('', TAtlasKeyMapWindow.ReasonText(TAtlasKeyReason.None));
   Assert.Contains(TAtlasKeyMapWindow.ReasonText(TAtlasKeyReason.AtlasYields), 'überlässt');
 end;
 
 procedure TAtlasKeyMapWindowTests.SearchByKeyAndOnlyConflicts;
 var
-  Window: TAtlasKeyMapWindow;
+  mWindow: TAtlasKeyMapWindow;
 begin
-  Window := TAtlasKeyMapWindow.CreateKeyMap(nil);
+  mWindow := TAtlasKeyMapWindow.CreateKeyMap(nil);
   try
-    Window.SetItems(Sample);
-    Window.SetQuery('Strg+Umschalt+P');
-    Assert.AreEqual(2, Integer(Length(Window.Shown)));
-    Assert.AreEqual('2 von 4 Kürzeln, 2 Konflikte', Window.SummaryLabel.Caption);
-    Window.SearchEdit.Text := 'Ctrl+S';
-    Assert.AreEqual(1, Integer(Length(Window.Shown)), 'englisch, über OnChange');
-    Assert.AreEqual(2, Window.Shown[0]);
-    Window.SearchEdit.Text := 'cnwizards';
-    Assert.AreEqual(1, Integer(Length(Window.Shown)), 'nach Herkunft');
-    Window.SearchEdit.Text := '';
-    Window.OnlyConflictsBox.Checked := True;
-    Assert.AreEqual(2, Integer(Length(Window.Shown)), 'nur Konflikte');
+    mWindow.SetItems(Sample);
+    mWindow.SetQuery('Strg+Umschalt+P');
+    Assert.AreEqual(2, Integer(Length(mWindow.Shown)));
+    Assert.AreEqual('2 von 4 Kürzeln, 2 Konflikte', mWindow.SummaryLabel.Caption);
+    mWindow.SearchEdit.Text := 'Ctrl+S';
+    Assert.AreEqual(1, Integer(Length(mWindow.Shown)), 'englisch, über OnChange');
+    Assert.AreEqual(2, mWindow.Shown[0]);
+    mWindow.SearchEdit.Text := 'cnwizards';
+    Assert.AreEqual(1, Integer(Length(mWindow.Shown)), 'nach Herkunft');
+    mWindow.SearchEdit.Text := '';
+    mWindow.OnlyConflictsBox.Checked := True;
+    Assert.AreEqual(2, Integer(Length(mWindow.Shown)), 'nur Konflikte');
     // Neue Belegungen behalten Suche und Filter.
-    Window.SetItems(Sample);
-    Assert.AreEqual(2, Integer(Length(Window.Shown)));
+    mWindow.SetItems(Sample);
+    Assert.AreEqual(2, Integer(Length(mWindow.Shown)));
   finally
-    Window.Free;
+    mWindow.Free;
   end;
 end;
 
 procedure TAtlasKeyMapWindowTests.ButtonsCallEvents;
 var
-  Window: TAtlasKeyMapWindow;
-  Exported, Settings, Refreshed: Integer;
+  mWindow: TAtlasKeyMapWindow;
+  mExported, mSettings, mRefreshed: Integer;
 begin
-  Exported := 0;
-  Settings := 0;
-  Refreshed := 0;
-  Window := TAtlasKeyMapWindow.CreateKeyMap(nil);
+  mExported := 0;
+  mSettings := 0;
+  mRefreshed := 0;
+  mWindow := TAtlasKeyMapWindow.CreateKeyMap(nil);
   try
-    Window.OnExport :=
+    mWindow.OnExport :=
       procedure
       begin
-        Inc(Exported);
+        Inc(mExported);
       end;
-    Window.OnSettings :=
+    mWindow.OnSettings :=
       procedure
       begin
-        Inc(Settings);
+        Inc(mSettings);
       end;
-    Window.OnRefresh :=
+    mWindow.OnRefresh :=
       procedure
       begin
-        Inc(Refreshed);
+        Inc(mRefreshed);
       end;
-    Window.ExportButton.Click;
-    Window.SettingsButton.Click;
-    Window.RefreshButton.Click;
-    Window.RefreshButton.Click;
-    Assert.AreEqual(1, Exported);
-    Assert.AreEqual(1, Settings);
-    Assert.AreEqual(2, Refreshed);
-    Assert.AreEqual('Als HTML exportieren', Window.ExportButton.Caption);
-    Assert.IsTrue(Window.CloseButton.Cancel);
+    mWindow.ExportButton.Click;
+    mWindow.SettingsButton.Click;
+    mWindow.RefreshButton.Click;
+    mWindow.RefreshButton.Click;
+    Assert.AreEqual(1, mExported);
+    Assert.AreEqual(1, mSettings);
+    Assert.AreEqual(2, mRefreshed);
+    Assert.AreEqual('Als HTML exportieren', mWindow.ExportButton.Caption);
+    Assert.IsTrue(mWindow.CloseButton.Cancel);
   finally
-    Window.Free;
+    mWindow.Free;
   end;
 end;
 
 procedure TAtlasKeyMapWindowTests.ExportContainsShownRows;
 var
-  Window: TAtlasKeyMapWindow;
-  Html: string;
+  mWindow: TAtlasKeyMapWindow;
+  mHtml: string;
 begin
-  Window := TAtlasKeyMapWindow.CreateKeyMap(nil);
+  mWindow := TAtlasKeyMapWindow.CreateKeyMap(nil);
   try
-    Window.SetItems(Sample);
-    Html := Window.ExportHtml('15.10.2026 12:00');
-    Assert.Contains(Html, '<html lang="de">');
-    Assert.Contains(Html, 'Atlas – Tastenkürzel');
-    Assert.Contains(Html, 'Stand: 15.10.2026 12:00 · 4 Kürzel, 2 Konflikte');
-    Assert.Contains(Html, '<tr class="conflict"><td class="key">Strg+Umschalt+P</td><td>Befehlspalette</td>');
-    Assert.Contains(Html, '<td class="key">Strg+S</td><td>Speichern</td>');
-    Assert.Contains(Html, 'Drucken');
-    Window.SetQuery('Strg+S');
-    Html := Window.ExportHtml('heute');
-    Assert.DoesNotContain(Html, 'Befehlspalette', False, 'nur die gezeigten Zeilen');
-    Assert.Contains(Html, 'Filter: Strg+S');
+    mWindow.SetItems(Sample);
+    mHtml := mWindow.ExportHtml('15.10.2026 12:00');
+    Assert.Contains(mHtml, '<html lang="de">');
+    Assert.Contains(mHtml, 'Atlas – Tastenkürzel');
+    Assert.Contains(mHtml, 'Stand: 15.10.2026 12:00 · 4 Kürzel, 2 Konflikte');
+    Assert.Contains(mHtml, '<tr class="conflict"><td class="key">Strg+Umschalt+P</td><td>Befehlspalette</td>');
+    Assert.Contains(mHtml, '<td class="key">Strg+S</td><td>Speichern</td>');
+    Assert.Contains(mHtml, 'Drucken');
+    mWindow.SetQuery('Strg+S');
+    mHtml := mWindow.ExportHtml('heute');
+    Assert.DoesNotContain(mHtml, 'Befehlspalette', False, 'nur die gezeigten Zeilen');
+    Assert.Contains(mHtml, 'Filter: Strg+S');
   finally
-    Window.Free;
+    mWindow.Free;
   end;
 end;
 
 procedure TAtlasKeyMapWindowTests.RarelyByKeyboardColumn;
 var
-  Items: TArray<TAtlasKeyItem>;
-  Headers, Cells: TArray<string>;
+  mItems: TArray<TAtlasKeyItem>;
+  mHeaders, mCells: TArray<string>;
 begin
-  Headers := TAtlasKeyMapWindow.Headers;
-  Assert.AreEqual(6, Integer(Length(Headers)));
-  Assert.AreEqual('Selten per Tastatur', Headers[4]);
-  Assert.AreEqual('Hinweis', Headers[5], 'Hinweis bleibt die letzte, breite Spalte');
-  Items := Sample;
+  mHeaders := TAtlasKeyMapWindow.Headers;
+  Assert.AreEqual(6, Integer(Length(mHeaders)));
+  Assert.AreEqual('Selten per Tastatur', mHeaders[4]);
+  Assert.AreEqual('Hinweis', mHeaders[5], 'Hinweis bleibt die letzte, breite Spalte');
+  mItems := Sample;
   // Ohne Zählung leer.
-  Cells := TAtlasKeyMapWindow.Cells(Items, 0);
-  Assert.AreEqual(6, Integer(Length(Cells)));
-  Assert.AreEqual('', Cells[4]);
+  mCells := TAtlasKeyMapWindow.Cells(mItems, 0);
+  Assert.AreEqual(6, Integer(Length(mCells)));
+  Assert.AreEqual('', mCells[4]);
   // Fünfmal per Maus, nie über das Kürzel: selten per Tastatur.
-  Items[0].MouseUses := 5;
-  Items[0].KeyUses := 0;
-  Assert.IsTrue(Items[0].RarelyByKeyboard);
-  Assert.AreEqual('5× Maus, 0× Tastatur', TAtlasKeyMapWindow.Cells(Items, 0)[4]);
+  mItems[0].MouseUses := 5;
+  mItems[0].KeyUses := 0;
+  Assert.IsTrue(mItems[0].RarelyByKeyboard);
+  Assert.AreEqual('5× Maus, 0× Tastatur', TAtlasKeyMapWindow.Cells(mItems, 0)[4]);
   // Meist über das Kürzel: nicht selten.
-  Items[0].MouseUses := 1;
-  Items[0].KeyUses := 3;
-  Assert.IsFalse(Items[0].RarelyByKeyboard);
-  Assert.AreEqual('', TAtlasKeyMapWindow.Cells(Items, 0)[4]);
+  mItems[0].MouseUses := 1;
+  mItems[0].KeyUses := 3;
+  Assert.IsFalse(mItems[0].RarelyByKeyboard);
+  Assert.AreEqual('', TAtlasKeyMapWindow.Cells(mItems, 0)[4]);
   // Zu wenige Aufrufe für ein Urteil.
-  Items[0].MouseUses := 2;
-  Items[0].KeyUses := 0;
-  Assert.IsFalse(Items[0].RarelyByKeyboard);
+  mItems[0].MouseUses := 2;
+  mItems[0].KeyUses := 0;
+  Assert.IsFalse(mItems[0].RarelyByKeyboard);
 end;
 
 procedure TAtlasKeyMapWindowTests.ThemedDialogWithFillingHintColumn;
 var
-  Window: TAtlasKeyMapWindow;
-  Fixed, Index: Integer;
+  mWindow: TAtlasKeyMapWindow;
+  mFixed, mIndex: Integer;
 begin
-  Window := TAtlasKeyMapWindow.CreateKeyMap(nil);
+  mWindow := TAtlasKeyMapWindow.CreateKeyMap(nil);
   try
-    Assert.IsTrue(Window is TAtlasDialog, 'Thema über den Atlas-Dialog');
-    Assert.IsTrue(TAtlasUiTheme.Subscribed(Window), 'folgt dem Themenwechsel');
-    Assert.AreEqual(Integer(clBtnFace), Integer(Window.Color), 'keine eigene Fensterfarbe');
-    Assert.AreEqual(Integer(clWindow), Integer(Window.List.Color), 'keine eigene Listenfarbe');
-    Assert.AreEqual<TFormBorderStyle>(bsSizeable, Window.BorderStyle, 'Größe ziehbar');
-    Window.SetItems(Sample);
-    Fixed := 0;
-    for Index := 0 to Window.List.Columns.Count - 2 do
+    Assert.IsTrue(mWindow is TAtlasDialog, 'Thema über den Atlas-Dialog');
+    Assert.IsTrue(TAtlasUiTheme.Subscribed(mWindow), 'folgt dem Themenwechsel');
+    Assert.AreEqual(Integer(clBtnFace), Integer(mWindow.Color), 'keine eigene Fensterfarbe');
+    Assert.AreEqual(Integer(clWindow), Integer(mWindow.List.Color), 'keine eigene Listenfarbe');
+    Assert.AreEqual<TFormBorderStyle>(bsSizeable, mWindow.BorderStyle, 'Größe ziehbar');
+    mWindow.SetItems(Sample);
+    mFixed := 0;
+    for mIndex := 0 to mWindow.List.Columns.Count - 2 do
     begin
-      Inc(Fixed, Window.List.Columns[Index].Width);
+      Inc(mFixed, mWindow.List.Columns[mIndex].Width);
     end;
-    Assert.AreEqual(Window.List.ClientWidth - Fixed, Integer(Window.List.Columns[5].Width),
+    Assert.AreEqual(mWindow.List.ClientWidth - mFixed, Integer(mWindow.List.Columns[5].Width),
       'Hinweis nimmt die übrige Breite');
-    Window.Width := Window.Width + Window.ScaleValue(200);
-    Assert.AreEqual(Window.List.ClientWidth - Fixed, Integer(Window.List.Columns[5].Width), 'wächst mit');
+    mWindow.Width := mWindow.Width + mWindow.ScaleValue(200);
+    Assert.AreEqual(mWindow.List.ClientWidth - mFixed, Integer(mWindow.List.Columns[5].Width), 'wächst mit');
   finally
-    Window.Free;
+    mWindow.Free;
   end;
 end;
 

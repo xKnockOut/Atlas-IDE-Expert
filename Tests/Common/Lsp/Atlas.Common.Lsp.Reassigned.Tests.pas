@@ -58,41 +58,41 @@ uses
   Atlas.Common.Lsp.Reassigned;
 
 const
-  LB = #13#10;
-  MainFile = 'C:\P\Haupt.pas';
-  OtherFile = 'C:\P\Lader.pas';
+  cLB = #13#10;
+  cMainFile = 'C:\P\Haupt.pas';
+  cOtherFile = 'C:\P\Lader.pas';
 
-  UnitOther =
-    'unit Lader;' + LB +
-    'interface' + LB +
-    'procedure Lade(var AWert: Integer);' + LB +
-    'implementation' + LB +
-    'procedure Lade(var AWert: Integer);' + LB +
-    'begin' + LB +
-    'end;' + LB +
+  cUnitOther =
+    'unit Lader;' + cLB +
+    'interface' + cLB +
+    'procedure Lade(var AWert: Integer);' + cLB +
+    'implementation' + cLB +
+    'procedure Lade(var AWert: Integer);' + cLB +
+    'begin' + cLB +
+    'end;' + cLB +
     'end.';
 
-  UnitMain =
-    'unit Haupt;' + LB +
-    'interface' + LB +
-    'implementation' + LB +
-    'uses Lader;' + LB +
-    'procedure Probe(A: Integer);' + LB +           // 4
-    'var' + LB +
-    '  Total, N: Integer;' + LB +                    // 6
-    'begin' + LB +
-    '  Total := 0;' + LB +                           // 8
-    '  for N := 1 to A do' + LB +
-    '    Total := Total + N;' + LB +                 // 10
-    '  A := Total;' + LB +
-    'end;' + LB +
-    'procedure Zweite;' + LB +
-    'var' + LB +
-    '  W: Integer;' + LB +                           // 15
-    'begin' + LB +
-    '  W := 1;' + LB +
-    '  Lade(W);' + LB +
-    'end;' + LB +
+  cUnitMain =
+    'unit Haupt;' + cLB +
+    'interface' + cLB +
+    'implementation' + cLB +
+    'uses Lader;' + cLB +
+    'procedure Probe(A: Integer);' + cLB +           // 4
+    'var' + cLB +
+    '  Total, N: Integer;' + cLB +                    // 6
+    'begin' + cLB +
+    '  Total := 0;' + cLB +                           // 8
+    '  for N := 1 to A do' + cLB +
+    '    Total := Total + N;' + cLB +                 // 10
+    '  A := Total;' + cLB +
+    'end;' + cLB +
+    'procedure Zweite;' + cLB +
+    'var' + cLB +
+    '  W: Integer;' + cLB +                           // 15
+    'begin' + cLB +
+    '  W := 1;' + cLB +
+    '  Lade(W);' + cLB +
+    'end;' + cLB +
     'end.';
 
 type
@@ -119,8 +119,8 @@ procedure TLspReassignedTests.Setup;
 begin
   FStore := TDocumentStore.Create;
   FIndex := TSymbolIndex.Create;
-  FIndex.AddUnit(TIndexExtractor.ExtractText(UnitOther, OtherFile, nil));
-  FIndex.AddUnit(TIndexExtractor.ExtractText(UnitMain, MainFile, nil));
+  FIndex.AddUnit(TIndexExtractor.ExtractText(cUnitOther, cOtherFile, nil));
+  FIndex.AddUnit(TIndexExtractor.ExtractText(cUnitMain, cMainFile, nil));
 end;
 
 procedure TLspReassignedTests.TearDown;
@@ -136,164 +136,164 @@ end;
 
 function TLspReassignedTests.Run(const ASettings: string; const ACancellation: IJsonRpcCancellationToken): TJSONObject;
 var
-  Uri: string;
-  Arguments: TJSONArray;
-  Reply: TJSONValue;
+  mUri: string;
+  mArguments: TJSONArray;
+  mReply: TJSONValue;
 begin
-  Uri := TDocumentUris.FromPath(MainFile);
-  FStore.Close(Uri);
-  FStore.Open(Uri, 'delphi', 1, UnitMain);
-  Arguments := TJSONArray.Create;
+  mUri := TDocumentUris.FromPath(cMainFile);
+  FStore.Close(mUri);
+  FStore.Open(mUri, 'delphi', 1, cUnitMain);
+  mArguments := TJSONArray.Create;
   try
-    Arguments.Add(Uri);
+    mArguments.Add(mUri);
     if ASettings <> '' then
     begin
-      Arguments.AddElement(TJSONObject.ParseJSONValue(ASettings));
+      mArguments.AddElement(TJSONObject.ParseJSONValue(ASettings));
     end;
-    Reply := TLspReassigned.Execute(FStore, FIndex, nil, nil, Arguments, ACancellation);
+    mReply := TLspReassigned.Execute(FStore, FIndex, nil, nil, mArguments, ACancellation);
   finally
-    Arguments.Free;
+    mArguments.Free;
   end;
-  Assert.IsTrue(Reply is TJSONObject);
-  Result := TJSONObject(Reply);
+  Assert.IsTrue(mReply is TJSONObject);
+  Result := TJSONObject(mReply);
 end;
 
 class function TLspReassignedTests.Names(AReply: TJSONObject): string;
 var
-  Item: TJSONValue;
+  mItem: TJSONValue;
 begin
   Result := '';
-  for Item in AReply.GetValue('symbols') as TJSONArray do
+  for mItem in AReply.GetValue('symbols') as TJSONArray do
   begin
     if Result <> '' then
     begin
       Result := Result + ' ';
     end;
-    Result := Result + (Item as TJSONObject).GetValue('name').Value;
+    Result := Result + (mItem as TJSONObject).GetValue('name').Value;
   end;
 end;
 
 procedure TLspReassignedTests.ReplyCarriesUsesAndWrites;
 var
-  Reply, Total, Use: TJSONObject;
-  Uses_: TJSONArray;
+  mReply, mTotal, mUse: TJSONObject;
+  mUses_: TJSONArray;
 begin
-  Reply := Run('');
+  mReply := Run('');
   try
     // Vorgabe: lokale Variablen und Wertparameter; N ist ein Schleifenzähler.
-    Assert.AreEqual('A Total W', Names(Reply));
-    Total := ((Reply.GetValue('symbols') as TJSONArray).Items[1]) as TJSONObject;
-    Assert.AreEqual('local', Total.GetValue('kind').Value);
-    Assert.AreEqual('2', Total.GetValue('writes').Value);
-    Assert.AreEqual('Probe', Total.GetValue('routine').Value);
-    Assert.AreEqual('[8,10]', Total.GetValue('writeLines').ToJSON);
-    Uses_ := Total.GetValue('uses') as TJSONArray;
-    Assert.AreEqual(5, Uses_.Count);
-    Use := Uses_.Items[0] as TJSONObject;
-    Assert.AreEqual('6', Use.GetValue('line').Value);
-    Assert.AreEqual('2', Use.GetValue('character').Value);
-    Assert.AreEqual('7', Use.GetValue('endCharacter').Value);
-    Assert.AreEqual('false', Use.GetValue('write').Value);
-    Assert.AreEqual('true', (Uses_.Items[1] as TJSONObject).GetValue('write').Value);
+    Assert.AreEqual('A Total W', Names(mReply));
+    mTotal := ((mReply.GetValue('symbols') as TJSONArray).Items[1]) as TJSONObject;
+    Assert.AreEqual('local', mTotal.GetValue('kind').Value);
+    Assert.AreEqual('2', mTotal.GetValue('writes').Value);
+    Assert.AreEqual('Probe', mTotal.GetValue('routine').Value);
+    Assert.AreEqual('[8,10]', mTotal.GetValue('writeLines').ToJSON);
+    mUses_ := mTotal.GetValue('uses') as TJSONArray;
+    Assert.AreEqual(5, mUses_.Count);
+    mUse := mUses_.Items[0] as TJSONObject;
+    Assert.AreEqual('6', mUse.GetValue('line').Value);
+    Assert.AreEqual('2', mUse.GetValue('character').Value);
+    Assert.AreEqual('7', mUse.GetValue('endCharacter').Value);
+    Assert.AreEqual('false', mUse.GetValue('write').Value);
+    Assert.AreEqual('true', (mUses_.Items[1] as TJSONObject).GetValue('write').Value);
   finally
-    Reply.Free;
+    mReply.Free;
   end;
 end;
 
 procedure TLspReassignedTests.TargetsFromArguments;
 var
-  Reply: TJSONObject;
+  mReply: TJSONObject;
 begin
-  Reply := Run('{"targets":["loopVars"]}');
+  mReply := Run('{"targets":["loopVars"]}');
   try
-    Assert.AreEqual('N', Names(Reply));
+    Assert.AreEqual('N', Names(mReply));
   finally
-    Reply.Free;
+    mReply.Free;
   end;
-  Reply := Run('{"targets":[]}');
+  mReply := Run('{"targets":[]}');
   try
-    Assert.AreEqual('', Names(Reply));
+    Assert.AreEqual('', Names(mReply));
   finally
-    Reply.Free;
+    mReply.Free;
   end;
 end;
 
 procedure TLspReassignedTests.VarArgumentOfOtherUnit;
 var
-  Reply, W: TJSONObject;
+  mReply, W: TJSONObject;
 begin
   // Lade steht in Lader und nimmt W als var-Parameter: zweite Zuweisung.
-  Reply := Run('{"targets":["locals"]}');
+  mReply := Run('{"targets":["locals"]}');
   try
-    Assert.AreEqual('Total W', Names(Reply));
-    W := ((Reply.GetValue('symbols') as TJSONArray).Items[1]) as TJSONObject;
+    Assert.AreEqual('Total W', Names(mReply));
+    W := ((mReply.GetValue('symbols') as TJSONArray).Items[1]) as TJSONObject;
     Assert.AreEqual('2', W.GetValue('writes').Value);
   finally
-    Reply.Free;
+    mReply.Free;
   end;
 end;
 
 procedure TLspReassignedTests.UnknownDocumentGivesError;
 var
-  Arguments: TJSONArray;
+  mArguments: TJSONArray;
 begin
-  Arguments := TJSONObject.ParseJSONValue('["file:///C:/P/Fehlt.pas"]') as TJSONArray;
+  mArguments := TJSONObject.ParseJSONValue('["file:///C:/P/Fehlt.pas"]') as TJSONArray;
   try
     Assert.WillRaise(
       procedure
       begin
-        TLspReassigned.Execute(FStore, FIndex, nil, nil, Arguments, nil).Free;
+        TLspReassigned.Execute(FStore, FIndex, nil, nil, mArguments, nil).Free;
       end,
       EJsonRpcError);
   finally
-    Arguments.Free;
+    mArguments.Free;
   end;
 end;
 
 procedure TLspReassignedTests.RangeKeepsOnlyTouchedRoutines;
 var
-  Reply: TJSONObject;
+  mReply: TJSONObject;
 begin
   // Nur Zweite (Zeilen 13 bis 19) reicht in den Bereich: Probe bleibt außen vor.
-  Reply := Run('{"targets":["locals","valueParams"],"range":{"start":16,"end":18}}');
+  mReply := Run('{"targets":["locals","valueParams"],"range":{"start":16,"end":18}}');
   try
-    Assert.AreEqual('W', Names(Reply));
+    Assert.AreEqual('W', Names(mReply));
   finally
-    Reply.Free;
+    mReply.Free;
   end;
-  Reply := Run('{"range":{"start":0,"end":5}}');
+  mReply := Run('{"range":{"start":0,"end":5}}');
   try
-    Assert.AreEqual('A Total', Names(Reply));
+    Assert.AreEqual('A Total', Names(mReply));
   finally
-    Reply.Free;
+    mReply.Free;
   end;
 end;
 
 procedure TLspReassignedTests.RangeCountsWholeRoutine;
 var
-  Reply, Total: TJSONObject;
+  mReply, mTotal: TJSONObject;
 begin
   // Der Bereich trifft nur den Kopf von Probe; alle Stellen der Routine zählen trotzdem.
-  Reply := Run('{"targets":["locals"],"range":{"start":4,"end":4}}');
+  mReply := Run('{"targets":["locals"],"range":{"start":4,"end":4}}');
   try
-    Assert.AreEqual('Total', Names(Reply));
-    Total := ((Reply.GetValue('symbols') as TJSONArray).Items[0]) as TJSONObject;
-    Assert.AreEqual('2', Total.GetValue('writes').Value);
-    Assert.AreEqual(5, (Total.GetValue('uses') as TJSONArray).Count);
+    Assert.AreEqual('Total', Names(mReply));
+    mTotal := ((mReply.GetValue('symbols') as TJSONArray).Items[0]) as TJSONObject;
+    Assert.AreEqual('2', mTotal.GetValue('writes').Value);
+    Assert.AreEqual(5, (mTotal.GetValue('uses') as TJSONArray).Count);
   finally
-    Reply.Free;
+    mReply.Free;
   end;
 end;
 
 procedure TLspReassignedTests.InvalidRangeMeansWholeFile;
 var
-  Reply: TJSONObject;
+  mReply: TJSONObject;
 begin
-  Reply := Run('{"targets":["locals"],"range":{"start":12,"end":3}}');
+  mReply := Run('{"targets":["locals"],"range":{"start":12,"end":3}}');
   try
-    Assert.AreEqual('Total W', Names(Reply));
+    Assert.AreEqual('Total W', Names(mReply));
   finally
-    Reply.Free;
+    mReply.Free;
   end;
 end;
 

@@ -61,7 +61,7 @@ uses
   Atlas.Common.Lsp.InlineValues;
 
 const
-  UnitText =
+  cUnitText =
     'unit Werte;'#10 +                                   // 0
     'interface'#10 +                                     // 1
     'type'#10 +                                          // 2
@@ -97,7 +97,7 @@ const
     'end;'#10 +                                          // 32
     'end.';
 
-  FileName = 'C:\P\Werte.pas';
+  cFileName = 'C:\P\Werte.pas';
 
 { TLspInlineValuesTests }
 
@@ -123,93 +123,93 @@ end;
 
 function TLspInlineValuesTests.ValuesFor(AFirstLine, ALastLine, AStoppedLine: Integer): string;
 var
-  Tree: TSyntaxTree;
-  Resolver: TNameResolver;
-  Value: TInlineValue;
+  mTree: TSyntaxTree;
+  mResolver: TNameResolver;
+  mValue: TInlineValue;
 begin
   Result := '';
-  Tree := TPascalParser.Parse(UnitText);
-  Resolver := TNameResolver.Create(FIndex);
+  mTree := TPascalParser.Parse(cUnitText);
+  mResolver := TNameResolver.Create(FIndex);
   try
-    for Value in TLspInlineValues.Collect(Resolver, Tree, FileName, TTextRange.Create(AFirstLine, 0, ALastLine, 0),
+    for mValue in TLspInlineValues.Collect(mResolver, mTree, cFileName, TTextRange.Create(AFirstLine, 0, ALastLine, 0),
       AStoppedLine) do
     begin
       if Result <> '' then
       begin
         Result := Result + ' ';
       end;
-      Result := Result + Format('%d:%s', [Value.Range.StartPos.Line, Value.Name]);
+      Result := Result + Format('%d:%s', [mValue.Range.StartPos.Line, mValue.Name]);
     end;
   finally
-    Resolver.Free;
-    Tree.Free;
+    mResolver.Free;
+    mTree.Free;
   end;
 end;
 
 procedure TLspInlineValuesTests.LocalsParametersAndLoopVariable;
 var
-  Values: string;
+  mValues: string;
 begin
-  Values := ValuesFor(0, 40, 25);
-  Assert.IsTrue(Values.StartsWith('16:Anzahl 20:Summe 21:Andere 23:Summe 23:Anzahl 24:I 24:Anzahl 25:Summe 25:I'),
-    Values);
+  mValues := ValuesFor(0, 40, 25);
+  Assert.IsTrue(mValues.StartsWith('16:Anzahl 20:Summe 21:Andere 23:Summe 23:Anzahl 24:I 24:Anzahl 25:Summe 25:I'),
+    mValues);
 end;
 
 procedure TLspInlineValuesTests.FieldsOfSelfButNotInWith;
 var
-  Values: string;
+  mValues: string;
 begin
-  Values := ValuesFor(0, 40, 31);
-  Assert.IsTrue(Values.Contains('26:FCount 26:Summe 26:FName'), Values);
-  Assert.IsTrue(Values.Contains('27:Andere'), Values);
-  Assert.IsTrue(Values.Contains('28:Andere 29:Andere 30:Summe 31:Summe'), 'Andere.FCount und with: ' + Values);
-  Assert.IsFalse(Values.Contains('28:FCount'), 'Mitglied eines anderen Objekts');
-  Assert.IsFalse(Values.Contains('30:FCount'), 'Feld in with gehört vielleicht Andere');
+  mValues := ValuesFor(0, 40, 31);
+  Assert.IsTrue(mValues.Contains('26:FCount 26:Summe 26:FName'), mValues);
+  Assert.IsTrue(mValues.Contains('27:Andere'), mValues);
+  Assert.IsTrue(mValues.Contains('28:Andere 29:Andere 30:Summe 31:Summe'), 'Andere.FCount und with: ' + mValues);
+  Assert.IsFalse(mValues.Contains('28:FCount'), 'Mitglied eines anderen Objekts');
+  Assert.IsFalse(mValues.Contains('30:FCount'), 'Feld in with gehört vielleicht Andere');
 end;
 
 procedure TLspInlineValuesTests.NoCallsPropertiesConstantsOrGlobals;
 var
-  Values: string;
+  mValues: string;
 begin
-  Values := ValuesFor(0, 40, 31);
-  Assert.IsFalse(Values.Contains('Rand'), 'Konstante: ' + Values);
-  Assert.IsFalse(Values.Contains('Global'), 'globale Variable');
-  Assert.IsFalse(Values.Contains('GetSize'), 'Aufruf');
-  Assert.IsFalse(Values.Contains('Size'), 'Eigenschaft mit Getter');
-  Assert.IsFalse(Values.Contains('IntToStr'), 'Routine');
-  Assert.IsFalse(Values.Contains('TListe'), 'Typ');
+  mValues := ValuesFor(0, 40, 31);
+  Assert.IsFalse(mValues.Contains('Rand'), 'Konstante: ' + mValues);
+  Assert.IsFalse(mValues.Contains('Global'), 'globale Variable');
+  Assert.IsFalse(mValues.Contains('GetSize'), 'Aufruf');
+  Assert.IsFalse(mValues.Contains('Size'), 'Eigenschaft mit Getter');
+  Assert.IsFalse(mValues.Contains('IntToStr'), 'Routine');
+  Assert.IsFalse(mValues.Contains('TListe'), 'Typ');
 end;
 
 procedure TLspInlineValuesTests.OnlyUpToStoppedLineAndInRange;
 var
-  Values: string;
+  mValues: string;
 begin
-  Values := ValuesFor(23, 40, 24);
-  Assert.AreEqual('23:Summe 23:Anzahl 24:I 24:Anzahl', Values);
-  Values := ValuesFor(0, 40, 14);
-  Assert.AreEqual('14:Result 14:FCount', Values, 'andere Routine (GetSize)');
+  mValues := ValuesFor(23, 40, 24);
+  Assert.AreEqual('23:Summe 23:Anzahl 24:I 24:Anzahl', mValues);
+  mValues := ValuesFor(0, 40, 14);
+  Assert.AreEqual('14:Result 14:FCount', mValues, 'andere Routine (GetSize)');
 end;
 
 procedure TLspInlineValuesTests.KnowsDeclaredTypes;
 var
-  Tree: TSyntaxTree;
-  Resolver: TNameResolver;
-  Value: TInlineValue;
-  Types: string;
+  mTree: TSyntaxTree;
+  mResolver: TNameResolver;
+  mValue: TInlineValue;
+  mTypes: string;
 begin
-  Types := '';
-  Tree := TPascalParser.Parse(UnitText);
-  Resolver := TNameResolver.Create(FIndex);
+  mTypes := '';
+  mTree := TPascalParser.Parse(cUnitText);
+  mResolver := TNameResolver.Create(FIndex);
   try
-    for Value in TLspInlineValues.Collect(Resolver, Tree, FileName, TTextRange.Create(26, 0, 27, 0), 31) do
+    for mValue in TLspInlineValues.Collect(mResolver, mTree, cFileName, TTextRange.Create(26, 0, 27, 0), 31) do
     begin
-      Types := Types + Value.Name + ':' + Value.TypeName + ' ';
+      mTypes := mTypes + mValue.Name + ':' + mValue.TypeName + ' ';
     end;
   finally
-    Resolver.Free;
-    Tree.Free;
+    mResolver.Free;
+    mTree.Free;
   end;
-  Assert.AreEqual('FCount:Integer Summe:Integer FName:string Andere:TListe ', Types);
+  Assert.AreEqual('FCount:Integer Summe:Integer FName:string Andere:TListe ', mTypes);
 end;
 
 procedure TLspInlineValuesTests.NothingOutsideRoutine;
@@ -220,42 +220,42 @@ end;
 
 procedure TLspInlineValuesTests.HandlerWritesInlineValues;
 var
-  Store: IDocumentStore;
-  Values: TLspInlineValues;
-  Dispatcher: TJsonRpcDispatcher;
-  Request, Response: TJSONObject;
-  Uri, Text: string;
+  mStore: IDocumentStore;
+  mValues: TLspInlineValues;
+  mDispatcher: TJsonRpcDispatcher;
+  mRequest, mResponse: TJSONObject;
+  mUri, mText: string;
 begin
-  Store := TDocumentStore.Create;
-  Uri := TDocumentUris.FromPath(FileName);
-  Store.Open(Uri, 'delphi', 1, UnitText);
-  Values := TLspInlineValues.Create(Store, FIndex, nil);
-  Dispatcher := TJsonRpcDispatcher.Create;
+  mStore := TDocumentStore.Create;
+  mUri := TDocumentUris.FromPath(cFileName);
+  mStore.Open(mUri, 'delphi', 1, cUnitText);
+  mValues := TLspInlineValues.Create(mStore, FIndex, nil);
+  mDispatcher := TJsonRpcDispatcher.Create;
   try
-    Values.Attach(Dispatcher);
-    Request := TJSONObject.ParseJSONValue('{"jsonrpc":"2.0","id":1,"method":"' + TLspInlineValues.cMethod +
-      '","params":{"textDocument":{"uri":"' + Uri.Replace('\', '\\') + '"},' +
+    mValues.Attach(mDispatcher);
+    mRequest := TJSONObject.ParseJSONValue('{"jsonrpc":"2.0","id":1,"method":"' + TLspInlineValues.cMethod +
+      '","params":{"textDocument":{"uri":"' + mUri.Replace('\', '\\') + '"},' +
       '"range":{"start":{"line":23,"character":0},"end":{"line":24,"character":0}},' +
       '"context":{"frameId":1,"stoppedLocation":{"start":{"line":23,"character":2},' +
       '"end":{"line":23,"character":2}}}}}') as TJSONObject;
     try
-      Response := Dispatcher.DispatchMessage(Request);
+      mResponse := mDispatcher.DispatchMessage(mRequest);
     finally
-      Request.Free;
+      mRequest.Free;
     end;
     try
-      Text := Response.GetValue('result').ToJSON;
+      mText := mResponse.GetValue('result').ToJSON;
     finally
-      Response.Free;
+      mResponse.Free;
     end;
   finally
-    Dispatcher.Free;
-    Values.Free;
+    mDispatcher.Free;
+    mValues.Free;
   end;
   Assert.AreEqual('[{"range":{"start":{"line":23,"character":2},"end":{"line":23,"character":7}},' +
     '"variableName":"Summe","caseSensitiveLookup":false,"atlasType":"Integer"},{"range":{"start":{"line":23,' +
     '"character":11},"end":{"line":23,"character":17}},"variableName":"Anzahl","caseSensitiveLookup":false,' +
-    '"atlasType":"Integer"}]', Text);
+    '"atlasType":"Integer"}]', mText);
 end;
 
 end.

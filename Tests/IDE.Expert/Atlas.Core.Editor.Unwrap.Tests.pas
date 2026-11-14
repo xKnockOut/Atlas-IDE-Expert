@@ -39,7 +39,7 @@ uses
   Atlas.Core.Editor.Unwrap;
 
 const
-  Answer =
+  cAnswer =
     '{"candidates":[' +
     '{"kind":"tryFinally","range":{"start":{"line":5,"character":2},"end":{"line":9,"character":5}},' +
     '"note":"","noteText":"","variants":[' +
@@ -57,13 +57,13 @@ const
 
 function Entries: TArray<TAtlasUnwrapEntry>;
 var
-  Value: TJSONValue;
+  mValue: TJSONValue;
 begin
-  Value := TJSONObject.ParseJSONValue(Answer);
+  mValue := TJSONObject.ParseJSONValue(cAnswer);
   try
-    Result := TAtlasUnwrap.ReadEntries(Value);
+    Result := TAtlasUnwrap.ReadEntries(mValue);
   finally
-    Value.Free;
+    mValue.Free;
   end;
 end;
 
@@ -75,101 +75,101 @@ end;
 
 procedure TAtlasUnwrapTests.EntriesPerVariant;
 var
-  List: TArray<TAtlasUnwrapEntry>;
+  mList: TArray<TAtlasUnwrapEntry>;
 begin
-  List := Entries;
-  Assert.AreEqual(3, Integer(Length(List)));
-  Assert.AreEqual('tryFinally', List[0].Kind);
-  Assert.AreEqual('keepFinally', List[0].VariantKind);
-  Assert.AreEqual(2, List[0].VariantCount);
-  Assert.AreEqual(5, List[0].Line);
-  Assert.IsTrue(List[0].Available);
-  Assert.AreEqual(2, Integer(Length(List[0].Keep)));
-  Assert.AreEqual(3, Integer(Length(List[0].Remove)));
-  Assert.AreEqual('  X;'#13#10'  Y;'#13#10, List[0].Edits[0].NewText);
-  Assert.AreEqual('dropFinally', List[1].VariantKind);
-  Assert.AreEqual('withDo', List[2].Kind);
-  Assert.AreEqual('withUnresolved', List[2].Note);
-  Assert.AreEqual('Caption ist nicht eindeutig', List[2].NoteText);
-  Assert.IsFalse(List[2].Available);
-  Assert.AreEqual(3, List[2].Line);
+  mList := Entries;
+  Assert.AreEqual(3, Integer(Length(mList)));
+  Assert.AreEqual('tryFinally', mList[0].Kind);
+  Assert.AreEqual('keepFinally', mList[0].VariantKind);
+  Assert.AreEqual(2, mList[0].VariantCount);
+  Assert.AreEqual(5, mList[0].Line);
+  Assert.IsTrue(mList[0].Available);
+  Assert.AreEqual(2, Integer(Length(mList[0].Keep)));
+  Assert.AreEqual(3, Integer(Length(mList[0].Remove)));
+  Assert.AreEqual('  X;'#13#10'  Y;'#13#10, mList[0].Edits[0].NewText);
+  Assert.AreEqual('dropFinally', mList[1].VariantKind);
+  Assert.AreEqual('withDo', mList[2].Kind);
+  Assert.AreEqual('withUnresolved', mList[2].Note);
+  Assert.AreEqual('Caption ist nicht eindeutig', mList[2].NoteText);
+  Assert.IsFalse(mList[2].Available);
+  Assert.AreEqual(3, mList[2].Line);
 end;
 
 procedure TAtlasUnwrapTests.ForeignAnswerGivesNothing;
 var
-  Value: TJSONValue;
+  mValue: TJSONValue;
 begin
   Assert.AreEqual(0, Integer(Length(TAtlasUnwrap.ReadEntries(nil))));
-  Value := TJSONObject.ParseJSONValue('{"candidates":[]}');
+  mValue := TJSONObject.ParseJSONValue('{"candidates":[]}');
   try
-    Assert.AreEqual(0, Integer(Length(TAtlasUnwrap.ReadEntries(Value))));
+    Assert.AreEqual(0, Integer(Length(TAtlasUnwrap.ReadEntries(mValue))));
   finally
-    Value.Free;
+    mValue.Free;
   end;
-  Value := TJSONObject.ParseJSONValue('[1,2]');
+  mValue := TJSONObject.ParseJSONValue('[1,2]');
   try
-    Assert.AreEqual(0, Integer(Length(TAtlasUnwrap.ReadEntries(Value))));
+    Assert.AreEqual(0, Integer(Length(TAtlasUnwrap.ReadEntries(mValue))));
   finally
-    Value.Free;
+    mValue.Free;
   end;
 end;
 
 procedure TAtlasUnwrapTests.SingleEntrySkipsList;
 var
-  List: TArray<TAtlasUnwrapEntry>;
+  mList: TArray<TAtlasUnwrapEntry>;
 begin
-  List := Entries;
-  Assert.IsFalse(TAtlasUnwrap.SingleEntry(List));
-  Assert.IsTrue(TAtlasUnwrap.SingleEntry([List[0]]));
-  Assert.IsFalse(TAtlasUnwrap.SingleEntry([List[2]]), 'nicht übernehmbar: Liste mit Hinweis');
+  mList := Entries;
+  Assert.IsFalse(TAtlasUnwrap.SingleEntry(mList));
+  Assert.IsTrue(TAtlasUnwrap.SingleEntry([mList[0]]));
+  Assert.IsFalse(TAtlasUnwrap.SingleEntry([mList[2]]), 'nicht übernehmbar: Liste mit Hinweis');
   Assert.IsFalse(TAtlasUnwrap.SingleEntry(nil));
 end;
 
 procedure TAtlasUnwrapTests.NextAvailableSkipsUnavailable;
 var
-  List: TArray<TAtlasUnwrapEntry>;
+  mList: TArray<TAtlasUnwrapEntry>;
 begin
-  List := Entries;
-  Assert.AreEqual(0, TAtlasUnwrap.NextAvailable(List, 0, 1));
-  Assert.AreEqual(0, TAtlasUnwrap.NextAvailable(List, 2, 1), 'ringsum');
-  Assert.AreEqual(1, TAtlasUnwrap.NextAvailable(List, 2, -1));
-  Assert.AreEqual(-1, TAtlasUnwrap.NextAvailable([List[2]], 0, 1));
+  mList := Entries;
+  Assert.AreEqual(0, TAtlasUnwrap.NextAvailable(mList, 0, 1));
+  Assert.AreEqual(0, TAtlasUnwrap.NextAvailable(mList, 2, 1), 'ringsum');
+  Assert.AreEqual(1, TAtlasUnwrap.NextAvailable(mList, 2, -1));
+  Assert.AreEqual(-1, TAtlasUnwrap.NextAvailable([mList[2]], 0, 1));
   Assert.AreEqual(-1, TAtlasUnwrap.NextAvailable(nil, 0, 1));
 end;
 
 procedure TAtlasUnwrapTests.SpansOnLine;
 var
-  List: TArray<TAtlasUnwrapEntry>;
-  Spans: TArray<TAtlasUnwrapSpan>;
-  First, Last: Integer;
+  mList: TArray<TAtlasUnwrapEntry>;
+  mSpans: TArray<TAtlasUnwrapSpan>;
+  mFirst, mLast: Integer;
 begin
-  List := Entries;
-  Spans := TAtlasUnwrap.SpansOnLine(List[0], 6);
-  Assert.AreEqual(1, Integer(Length(Spans)));
-  Assert.IsTrue(Spans[0].Keep);
-  Assert.AreEqual(4, Spans[0].Start);
-  Assert.AreEqual(6, Spans[0].Stop);
-  Spans := TAtlasUnwrap.SpansOnLine(List[0], 7);
-  Assert.AreEqual(1, Integer(Length(Spans)));
-  Assert.IsFalse(Spans[0].Keep);
-  Assert.AreEqual(0, Integer(Length(TAtlasUnwrap.SpansOnLine(List[0], 4))));
-  Assert.IsTrue(TAtlasUnwrap.LineSpan(List[0], First, Last));
-  Assert.AreEqual(5, First);
-  Assert.AreEqual(9, Last);
-  Assert.IsFalse(TAtlasUnwrap.LineSpan(List[1], First, Last));
+  mList := Entries;
+  mSpans := TAtlasUnwrap.SpansOnLine(mList[0], 6);
+  Assert.AreEqual(1, Integer(Length(mSpans)));
+  Assert.IsTrue(mSpans[0].Keep);
+  Assert.AreEqual(4, mSpans[0].Start);
+  Assert.AreEqual(6, mSpans[0].Stop);
+  mSpans := TAtlasUnwrap.SpansOnLine(mList[0], 7);
+  Assert.AreEqual(1, Integer(Length(mSpans)));
+  Assert.IsFalse(mSpans[0].Keep);
+  Assert.AreEqual(0, Integer(Length(TAtlasUnwrap.SpansOnLine(mList[0], 4))));
+  Assert.IsTrue(TAtlasUnwrap.LineSpan(mList[0], mFirst, mLast));
+  Assert.AreEqual(5, mFirst);
+  Assert.AreEqual(9, mLast);
+  Assert.IsFalse(TAtlasUnwrap.LineSpan(mList[1], mFirst, mLast));
 end;
 
 procedure TAtlasUnwrapTests.EditForFile;
 var
-  List: TArray<TAtlasUnwrapEntry>;
-  Edit: TLspWorkspaceEdit;
+  mList: TArray<TAtlasUnwrapEntry>;
+  mEdit: TLspWorkspaceEdit;
 begin
-  List := Entries;
-  Edit := TAtlasUnwrap.EditOf(List[0], 'C:\a.pas');
-  Assert.AreEqual(1, Integer(Length(Edit.Files)));
-  Assert.AreEqual('C:\a.pas', Edit.Files[0].FileName);
-  Assert.AreEqual(1, Edit.EditCount);
-  Assert.IsTrue(TAtlasUnwrap.EditOf(List[2], 'C:\a.pas').IsEmpty);
+  mList := Entries;
+  mEdit := TAtlasUnwrap.EditOf(mList[0], 'C:\a.pas');
+  Assert.AreEqual(1, Integer(Length(mEdit.Files)));
+  Assert.AreEqual('C:\a.pas', mEdit.Files[0].FileName);
+  Assert.AreEqual(1, mEdit.EditCount);
+  Assert.IsTrue(TAtlasUnwrap.EditOf(mList[2], 'C:\a.pas').IsEmpty);
 end;
 
 initialization

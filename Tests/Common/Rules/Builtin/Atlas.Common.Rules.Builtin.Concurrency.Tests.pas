@@ -57,7 +57,8 @@ type
     procedure ResumeOnOwnNonThreadClassIsSilent;
   end;
 
-  /// <summary>Regeln zu Paaren ohne finally, ProcessMessages, Queue(nil), blockierenden Aufrufen, Threadschleifen und Tasks.</summary>
+  /// <summary>Regeln zu Paaren ohne finally, ProcessMessages, Queue(nil), blockierenden Aufrufen, Threadschleifen und
+  /// Tasks.</summary>
   [TestFixture]
   TConcurrencyPatternRulesTests = class
   public
@@ -138,7 +139,7 @@ uses
   Atlas.Tests.RuleAssert;
 
 const
-  ThreadTypes =
+  cThreadTypes =
     'type'#10 +
     '  TWorker = class(TThread)'#10 +
     '  protected'#10 +
@@ -151,29 +152,34 @@ const
     '    destructor Destroy; override;'#10 +
     '  end;'#10;
 
-function Routine(const ABody: string; const AHeader: string = 'procedure TA.Run;'): string;
+function Routine(const ABody: string; const AHeader: string): string; overload;
 begin
   Result := 'unit U;'#10'interface'#10'implementation'#10 + AHeader + #10'begin'#10 + ABody + #10'end;'#10'end.';
 end;
 
+function Routine(const ABody: string): string; overload;
+begin
+  Result := Routine(ABody, 'procedure TA.Run;');
+end;
+
 function ThreadUnit(const AImplementation: string): string;
 begin
-  Result := 'unit U;'#10'interface'#10 + ThreadTypes + 'implementation'#10 + AImplementation + #10'end.';
+  Result := 'unit U;'#10'interface'#10 + cThreadTypes + 'implementation'#10 + AImplementation + #10'end.';
 end;
 
 procedure TConcurrencyRulesTests.VclAccessInExecuteReports;
 var
-  Findings: TArray<TRuleFinding>;
+  mFindings: TArray<TRuleFinding>;
 begin
-  Findings := TRuleAssert.Findings(TThreadVclAccessRule.Create, ThreadUnit(
+  mFindings := TRuleAssert.Findings(TThreadVclAccessRule.Create, ThreadUnit(
     'procedure TWorker.Execute;'#10'begin'#10'  Application.Title := ''x'';'#10'  if Done then'#10 +
     '    ShowMessage(''fertig'');'#10'end;'));
-  Assert.AreEqual(2, Integer(Length(Findings)));
-  Assert.AreEqual(Ord(TRuleSeverity.Warning), Ord(Findings[0].Severity));
-  Assert.AreEqual(1, Integer(Length(Findings[0].Fixes)));
+  Assert.AreEqual(2, Integer(Length(mFindings)));
+  Assert.AreEqual(Ord(TRuleSeverity.Warning), Ord(mFindings[0].Severity));
+  Assert.AreEqual(1, Integer(Length(mFindings[0].Fixes)));
   Assert.AreEqual('TThread.Queue(nil, procedure begin Application.Title := ''x'' end)',
-    Findings[0].Fixes[0].Edits[0].NewText);
-  Assert.AreEqual(0, Integer(Length(Findings[1].Fixes)));
+    mFindings[0].Fixes[0].Edits[0].NewText);
+  Assert.AreEqual(0, Integer(Length(mFindings[1].Fixes)));
 end;
 
 procedure TConcurrencyRulesTests.VclAccessInsideSynchronizeIsSilent;
@@ -199,37 +205,37 @@ end;
 
 procedure TConcurrencyRulesTests.ThreadClassesFollowIntermediateClasses;
 var
-  Tree: TSyntaxTree;
-  Names: TArray<string>;
+  mTree: TSyntaxTree;
+  mNames: TArray<string>;
 begin
-  Tree := TPascalParser.Parse('unit U;'#10'interface'#10'type'#10'  TBase = class(TThread) end;'#10 +
+  mTree := TPascalParser.Parse('unit U;'#10'interface'#10'type'#10'  TBase = class(TThread) end;'#10 +
     '  TJob = class(TBase) end;'#10'  TOther = class(TObject) end;'#10'implementation'#10'end.');
   try
-    Names := ThreadClasses(Tree.Root);
-    Assert.AreEqual(2, Integer(Length(Names)));
-    Assert.AreEqual('TBase', Names[0]);
-    Assert.AreEqual('TJob', Names[1]);
+    mNames := ThreadClasses(mTree.Root);
+    Assert.AreEqual(2, Integer(Length(mNames)));
+    Assert.AreEqual('TBase', mNames[0]);
+    Assert.AreEqual('TJob', mNames[1]);
   finally
-    Tree.Free;
+    mTree.Free;
   end;
 end;
 
 procedure TConcurrencyRulesTests.LockWithoutFinallyReportsWithFix;
 var
-  Findings: TArray<TRuleFinding>;
+  mFindings: TArray<TRuleFinding>;
 begin
-  Findings := TRuleAssert.Findings(TLockWithoutFinallyRule.Create,
+  mFindings := TRuleAssert.Findings(TLockWithoutFinallyRule.Create,
     Routine('  CS.Enter;'#10'  DoWork;'#10'  CS.Leave;'));
-  Assert.AreEqual(1, Integer(Length(Findings)));
-  Assert.AreEqual(5, Findings[0].Range.StartPos.Line);
-  Assert.AreEqual(5, Findings[0].Range.StartPos.Character);
-  Assert.AreEqual(10, Findings[0].Range.EndPos.Character);
-  Assert.Contains(Findings[0].Message, 'Leave');
-  Assert.AreEqual(1, Integer(Length(Findings[0].Fixes)));
+  Assert.AreEqual(1, Integer(Length(mFindings)));
+  Assert.AreEqual(5, mFindings[0].Range.StartPos.Line);
+  Assert.AreEqual(5, mFindings[0].Range.StartPos.Character);
+  Assert.AreEqual(10, mFindings[0].Range.EndPos.Character);
+  Assert.Contains(mFindings[0].Message, 'Leave');
+  Assert.AreEqual(1, Integer(Length(mFindings[0].Fixes)));
   Assert.AreEqual('try' + sLineBreak + '    DoWork;' + sLineBreak + '  finally' + sLineBreak + '    CS.Leave;' +
-    sLineBreak + '  end', Findings[0].Fixes[0].Edits[0].NewText);
-  Assert.AreEqual(6, Findings[0].Fixes[0].Edits[0].Range.StartPos.Line);
-  Assert.AreEqual(7, Findings[0].Fixes[0].Edits[0].Range.EndPos.Line);
+    sLineBreak + '  end', mFindings[0].Fixes[0].Edits[0].NewText);
+  Assert.AreEqual(6, mFindings[0].Fixes[0].Edits[0].Range.StartPos.Line);
+  Assert.AreEqual(7, mFindings[0].Fixes[0].Edits[0].Range.EndPos.Line);
 end;
 
 procedure TConcurrencyRulesTests.LockFollowedByTryFinallyIsSilent;
@@ -287,25 +293,25 @@ end;
 
 procedure TConcurrencyRulesTests.OwnLockPairFromOptions;
 const
-  Config = '{ "rules": { "lock-without-finally": { "lockPairs": [["Grab", "Drop"]] } } }';
+  cConfig = '{ "rules": { "lock-without-finally": { "lockPairs": [["Grab", "Drop"]] } } }';
 begin
   Assert.AreEqual(1, Integer(Length(TRuleAssert.Findings(TLockWithoutFinallyRule.Create,
-    Routine('  FPool.Grab;'#10'  DoWork;'#10'  FPool.Drop;'), Config))));
+    Routine('  FPool.Grab;'#10'  DoWork;'#10'  FPool.Drop;'), cConfig))));
   Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TLockWithoutFinallyRule.Create,
-    Routine('  FPool.Grab;'#10'  try'#10'    DoWork;'#10'  finally'#10'    FPool.Drop;'#10'  end;'), Config))));
+    Routine('  FPool.Grab;'#10'  try'#10'    DoWork;'#10'  finally'#10'    FPool.Drop;'#10'  end;'), cConfig))));
   Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TLockWithoutFinallyRule.Create,
     Routine('  FPool.Grab;'#10'  DoWork;')))), 'ohne Option keine Sperre');
 end;
 
 procedure TConcurrencyRulesTests.UseAfterFreeOnTerminateReports;
 var
-  Findings: TArray<TRuleFinding>;
+  mFindings: TArray<TRuleFinding>;
 begin
-  Findings := TRuleAssert.Findings(TThreadUseAfterFreeOnTerminateRule.Create,
+  mFindings := TRuleAssert.Findings(TThreadUseAfterFreeOnTerminateRule.Create,
     Routine('  T := TWorker.Create(True);'#10'  T.FreeOnTerminate := True;'#10'  T.Start;'#10 +
       '  Log(T.ThreadID);'#10'  T.WaitFor;'));
-  Assert.AreEqual(1, Integer(Length(Findings)));
-  Assert.AreEqual(8, Findings[0].Range.StartPos.Line);
+  Assert.AreEqual(1, Integer(Length(mFindings)));
+  Assert.AreEqual(8, mFindings[0].Range.StartPos.Line);
 end;
 
 procedure TConcurrencyRulesTests.UseWithoutFreeOnTerminateIsSilent;
@@ -322,16 +328,16 @@ end;
 
 procedure TConcurrencyRulesTests.FreeWithFreeOnTerminateReportsWithFix;
 var
-  Findings: TArray<TRuleFinding>;
+  mFindings: TArray<TRuleFinding>;
 begin
-  Findings := TRuleAssert.Findings(TThreadFreeWithFreeOnTerminateRule.Create,
+  mFindings := TRuleAssert.Findings(TThreadFreeWithFreeOnTerminateRule.Create,
     Routine('  T.FreeOnTerminate := True;'#10'  T.Start;'#10'  T.Free;'));
-  Assert.AreEqual(1, Integer(Length(Findings)));
-  Assert.AreEqual(Ord(TRuleSeverity.Error), Ord(Findings[0].Severity));
-  Assert.AreEqual('', Findings[0].Fixes[0].Edits[0].NewText);
-  Assert.AreEqual(7, Findings[0].Fixes[0].Edits[0].Range.StartPos.Line);
-  Assert.AreEqual(0, Findings[0].Fixes[0].Edits[0].Range.StartPos.Character);
-  Assert.AreEqual(8, Findings[0].Fixes[0].Edits[0].Range.EndPos.Line);
+  Assert.AreEqual(1, Integer(Length(mFindings)));
+  Assert.AreEqual(Ord(TRuleSeverity.Error), Ord(mFindings[0].Severity));
+  Assert.AreEqual('', mFindings[0].Fixes[0].Edits[0].NewText);
+  Assert.AreEqual(7, mFindings[0].Fixes[0].Edits[0].Range.StartPos.Line);
+  Assert.AreEqual(0, mFindings[0].Fixes[0].Edits[0].Range.StartPos.Character);
+  Assert.AreEqual(8, mFindings[0].Fixes[0].Edits[0].Range.EndPos.Line);
   // Die Nutzungsregel meldet Free nicht doppelt.
   TRuleAssert.Silent(TThreadUseAfterFreeOnTerminateRule.Create,
     Routine('  T.FreeOnTerminate := True;'#10'  T.Start;'#10'  T.Free;'));
@@ -364,23 +370,23 @@ end;
 
 procedure TConcurrencyRulesTests.ResumeReportsWithFix;
 var
-  Findings: TArray<TRuleFinding>;
+  mFindings: TArray<TRuleFinding>;
 begin
-  Findings := TRuleAssert.Findings(TThreadResumeSuspendRule.Create, Routine('  FWorker.Resume;'));
-  Assert.AreEqual(1, Integer(Length(Findings)));
-  Assert.AreEqual(Ord(TRuleSeverity.Warning), Ord(Findings[0].Severity));
-  Assert.AreEqual('Start', Findings[0].Fixes[0].Edits[0].NewText);
-  Assert.AreEqual(10, Findings[0].Fixes[0].Edits[0].Range.StartPos.Character);
-  Assert.AreEqual(16, Findings[0].Fixes[0].Edits[0].Range.EndPos.Character);
+  mFindings := TRuleAssert.Findings(TThreadResumeSuspendRule.Create, Routine('  FWorker.Resume;'));
+  Assert.AreEqual(1, Integer(Length(mFindings)));
+  Assert.AreEqual(Ord(TRuleSeverity.Warning), Ord(mFindings[0].Severity));
+  Assert.AreEqual('Start', mFindings[0].Fixes[0].Edits[0].NewText);
+  Assert.AreEqual(10, mFindings[0].Fixes[0].Edits[0].Range.StartPos.Character);
+  Assert.AreEqual(16, mFindings[0].Fixes[0].Edits[0].Range.EndPos.Character);
 end;
 
 procedure TConcurrencyRulesTests.SuspendReportsAndResumeWithArgumentsIsSilent;
 var
-  Findings: TArray<TRuleFinding>;
+  mFindings: TArray<TRuleFinding>;
 begin
-  Findings := TRuleAssert.Findings(TThreadResumeSuspendRule.Create, Routine('  FWorker.Suspend;'));
-  Assert.AreEqual(1, Integer(Length(Findings)));
-  Assert.AreEqual(0, Integer(Length(Findings[0].Fixes)));
+  mFindings := TRuleAssert.Findings(TThreadResumeSuspendRule.Create, Routine('  FWorker.Suspend;'));
+  Assert.AreEqual(1, Integer(Length(mFindings)));
+  Assert.AreEqual(0, Integer(Length(mFindings[0].Fixes)));
   TRuleAssert.Silent(TThreadResumeSuspendRule.Create, Routine('  FPlayer.Resume(Position);'));
 end;
 
@@ -406,45 +412,45 @@ end;
 
 procedure TConcurrencyPatternRulesTests.PairWithoutFinallyIssueExample;
 var
-  Source, Fixed: string;
-  Findings: TArray<TRuleFinding>;
+  mSource, mFixed: string;
+  mFindings: TArray<TRuleFinding>;
 begin
-  Source := Import('  Screen.Cursor := crHourGlass;'#10'  Tabelle.DisableControls;'#10'  Importieren;'#10 +
+  mSource := Import('  Screen.Cursor := crHourGlass;'#10'  Tabelle.DisableControls;'#10'  Importieren;'#10 +
     '  Tabelle.EnableControls;'#10'  Screen.Cursor := crDefault;');
-  Findings := TRuleAssert.Findings(TPairWithoutFinallyRule.Create, Source);
-  Assert.AreEqual(1, Integer(Length(Findings)));
+  mFindings := TRuleAssert.Findings(TPairWithoutFinallyRule.Create, mSource);
+  Assert.AreEqual(1, Integer(Length(mFindings)));
   Assert.AreEqual('EnableControls steht nicht im finally; bei einer Exception bleibt das Grid eingefroren. ' +
-    'Gleiches gilt für Screen.Cursor.', Findings[0].Message);
-  Assert.AreEqual(Ord(TRuleSeverity.Warning), Ord(Findings[0].Severity));
-  Assert.AreEqual(Ord(TRuleConfidence.High), Ord(Findings[0].Confidence));
-  Assert.AreEqual('In try/finally einschließen', Findings[0].Fixes[0].Title);
-  Fixed := TChangeSignature.ApplyEdits(Source, Findings[0].Fixes[0].Edits);
+    'Gleiches gilt für Screen.Cursor.', mFindings[0].Message);
+  Assert.AreEqual(Ord(TRuleSeverity.Warning), Ord(mFindings[0].Severity));
+  Assert.AreEqual(Ord(TRuleConfidence.High), Ord(mFindings[0].Confidence));
+  Assert.AreEqual('In try/finally einschließen', mFindings[0].Fixes[0].Title);
+  mFixed := TChangeSignature.ApplyEdits(mSource, mFindings[0].Fixes[0].Edits);
   Assert.AreEqual(Import('  Screen.Cursor := crHourGlass;'#10'  Tabelle.DisableControls;'#10'  try'#10 +
     '    Importieren;'#10'  finally'#10'    Tabelle.EnableControls;'#10'    Screen.Cursor := crDefault;'#10 +
-    '  end;'), Fixed);
-  TRuleAssert.Silent(TPairWithoutFinallyRule.Create, Fixed);
+    '  end;'), mFixed);
+  TRuleAssert.Silent(TPairWithoutFinallyRule.Create, mFixed);
 end;
 
 procedure TConcurrencyPatternRulesTests.PairWithoutFinallyVariants;
 var
-  Findings: TArray<TRuleFinding>;
+  mFindings: TArray<TRuleFinding>;
 begin
   // FindFirst in der Bedingung, Datei, Speicher.
-  Findings := TRuleAssert.Findings(TPairWithoutFinallyRule.Create, Import('  if FindFirst(''*.txt'', faAnyFile, SR) = 0 then'#10 +
+  mFindings := TRuleAssert.Findings(TPairWithoutFinallyRule.Create, Import('  if FindFirst(''*.txt'', faAnyFile, SR) = 0 then'#10 +
     '  begin'#10'    Verarbeiten(SR);'#10'    FindClose(SR);'#10'  end;'#10'  AssignFile(F, ''a.txt'');'#10'  Reset(F);'#10 +
     '  Readln(F);'#10'  CloseFile(F);'#10'  P := AllocMem(100);'#10'  Fuellen(P);'#10'  FreeMem(P);'));
-  Assert.AreEqual(3, Integer(Length(Findings)));
+  Assert.AreEqual(3, Integer(Length(mFindings)));
   Assert.AreEqual('FindClose steht nicht im finally; bei einer Exception bleibt das Suchhandle offen.',
-    Findings[0].Message);
-  Assert.AreEqual(1, Integer(Length(Findings[0].Fixes)));
-  Assert.AreEqual('CloseFile steht nicht im finally; bei einer Exception bleibt die Datei offen.', Findings[1].Message);
-  Assert.AreEqual('FreeMem steht nicht im finally; bei einer Exception bleibt der Speicher belegt.', Findings[2].Message);
+    mFindings[0].Message);
+  Assert.AreEqual(1, Integer(Length(mFindings[0].Fixes)));
+  Assert.AreEqual('CloseFile steht nicht im finally; bei einer Exception bleibt die Datei offen.', mFindings[1].Message);
+  Assert.AreEqual('FreeMem steht nicht im finally; bei einer Exception bleibt der Speicher belegt.', mFindings[2].Message);
   // BeginUpdate/EndUpdate auf Lines; verschachtelt ohne Korrektur.
-  Findings := TRuleAssert.Findings(TPairWithoutFinallyRule.Create, Import('  Memo.Lines.BeginUpdate;'#10 +
+  mFindings := TRuleAssert.Findings(TPairWithoutFinallyRule.Create, Import('  Memo.Lines.BeginUpdate;'#10 +
     '  Memo.Lines.Add(''x'');'#10'  Tabelle.DisableControls;'#10'  Memo.Lines.EndUpdate;'#10'  Lesen;'#10 +
     '  Tabelle.EnableControls;'));
-  Assert.AreEqual(1, Integer(Length(Findings)));
-  Assert.AreEqual(0, Integer(Length(Findings[0].Fixes)));
+  Assert.AreEqual(1, Integer(Length(mFindings)));
+  Assert.AreEqual(0, Integer(Length(mFindings[0].Fixes)));
   Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TPairWithoutFinallyRule.Create,
     Import('  Tabelle.DisableControls;'#10'  Lesen;'#10'  Tabelle.EnableControls;'),
     '{"rules": {"pair-without-finally": "off"}}', 'U.pas'))));
@@ -467,38 +473,38 @@ end;
 
 procedure TConcurrencyPatternRulesTests.PairWithoutFinallyOptions;
 var
-  Findings: TArray<TRuleFinding>;
-  Issues: TArray<TConfigurationIssue>;
+  mFindings: TArray<TRuleFinding>;
+  mIssues: TArray<TConfigurationIssue>;
 begin
-  Findings := TRuleAssert.Findings(TPairWithoutFinallyRule.Create, Import('  Anzeige.Einfrieren;'#10 +
+  mFindings := TRuleAssert.Findings(TPairWithoutFinallyRule.Create, Import('  Anzeige.Einfrieren;'#10 +
     '  Lesen;'#10'  Anzeige.Auftauen;'), '{"rules": {"pair-without-finally": {"pairs": [{"open": "Einfrieren", ' +
     '"close": "Auftauen"}]}}}', 'U.pas');
-  Assert.AreEqual(1, Integer(Length(Findings)));
+  Assert.AreEqual(1, Integer(Length(mFindings)));
   Assert.AreEqual('Auftauen steht nicht im finally; bei einer Exception bleibt der Zustand hängen.',
-    Findings[0].Message);
+    mFindings[0].Message);
   Assert.AreEqual(9, Integer(Length(TPairWithoutFinallyRule.Pairs(''))));
-  TConfigurationParser.Parse('{"rules": {"pair-without-finally": {"pairs": [["Einfrieren", "Auftauen"]]}}}', Issues);
-  Assert.AreEqual(1, Integer(Length(Issues)));
-  Assert.AreEqual('"pairs" muss eine Liste von Objekten mit "open" und "close" sein', Issues[0].Message);
+  TConfigurationParser.Parse('{"rules": {"pair-without-finally": {"pairs": [["Einfrieren", "Auftauen"]]}}}', mIssues);
+  Assert.AreEqual(1, Integer(Length(mIssues)));
+  Assert.AreEqual('"pairs" muss eine Liste von Objekten mit "open" und "close" sein', mIssues[0].Message);
 end;
 
 const
-  ProcessMessagesAdvice = ' Besser die Arbeit in einen Thread oder TTask auslagern oder den Auslöser bis zum ' +
+  cProcessMessagesAdvice = ' Besser die Arbeit in einen Thread oder TTask auslagern oder den Auslöser bis zum ' +
     'Ende sperren.';
 
 procedure TConcurrencyPatternRulesTests.ProcessMessagesInLoopIssueExample;
 var
-  Findings: TArray<TRuleFinding>;
+  mFindings: TArray<TRuleFinding>;
 begin
-  Findings := TRuleAssert.Findings(TProcessMessagesInLoopRule.Create, Routine('  while not Fertig do'#10'  begin'#10 +
+  mFindings := TRuleAssert.Findings(TProcessMessagesInLoopRule.Create, Routine('  while not Fertig do'#10'  begin'#10 +
     '    Schritt;'#10'    Application.ProcessMessages;'#10'  end;'));
-  Assert.AreEqual(1, Integer(Length(Findings)));
+  Assert.AreEqual(1, Integer(Length(mFindings)));
   Assert.AreEqual('ProcessMessages in der Schleife erlaubt Wiedereintritt (zweiter Klick, Formular schließen).' +
-    ProcessMessagesAdvice, Findings[0].Message);
-  Assert.AreEqual(Ord(TRuleSeverity.Hint), Ord(Findings[0].Severity));
-  Assert.AreEqual(Ord(TRuleConfidence.Medium), Ord(Findings[0].Confidence));
-  Assert.AreEqual(8, Findings[0].Range.StartPos.Line);
-  Assert.AreEqual(0, Integer(Length(Findings[0].Fixes)));
+    cProcessMessagesAdvice, mFindings[0].Message);
+  Assert.AreEqual(Ord(TRuleSeverity.Hint), Ord(mFindings[0].Severity));
+  Assert.AreEqual(Ord(TRuleConfidence.Medium), Ord(mFindings[0].Confidence));
+  Assert.AreEqual(8, mFindings[0].Range.StartPos.Line);
+  Assert.AreEqual(0, Integer(Length(mFindings[0].Fixes)));
   // for, repeat und Vcl.Forms.Application.
   TRuleAssert.Reports(TProcessMessagesInLoopRule.Create, Routine('  for I := 0 to 9 do'#10 +
     '    Vcl.Forms.Application.ProcessMessages;'#10'  repeat'#10'    if Abbruch then'#10 +
@@ -507,13 +513,13 @@ end;
 
 procedure TConcurrencyPatternRulesTests.ProcessMessagesInEventHandler;
 var
-  Findings: TArray<TRuleFinding>;
+  mFindings: TArray<TRuleFinding>;
 begin
-  Findings := TRuleAssert.Findings(TProcessMessagesInLoopRule.Create, Routine('  Status.Caption := ''Lade …'';'#10 +
+  mFindings := TRuleAssert.Findings(TProcessMessagesInLoopRule.Create, Routine('  Status.Caption := ''Lade …'';'#10 +
     '  Application.ProcessMessages;'#10'  Laden;', 'procedure TForm1.LadenClick(Sender: TObject);'));
-  Assert.AreEqual(1, Integer(Length(Findings)));
+  Assert.AreEqual(1, Integer(Length(mFindings)));
   Assert.AreEqual('ProcessMessages im Ereignis-Handler erlaubt Wiedereintritt (zweiter Klick, Formular schließen).' +
-    ProcessMessagesAdvice, Findings[0].Message);
+    cProcessMessagesAdvice, mFindings[0].Message);
 end;
 
 procedure TConcurrencyPatternRulesTests.ProcessMessagesSilentCases;
@@ -531,26 +537,26 @@ end;
 
 procedure TConcurrencyPatternRulesTests.ProcessMessagesOptions;
 var
-  Source: string;
-  Issues: TArray<TConfigurationIssue>;
+  mSource: string;
+  mIssues: TArray<TConfigurationIssue>;
 begin
-  Source := Routine('  while not Fertig do'#10'    Application.ProcessMessages;', 'procedure TForm1.Warten;');
-  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TProcessMessagesInLoopRule.Create, Source,
+  mSource := Routine('  while not Fertig do'#10'    Application.ProcessMessages;', 'procedure TForm1.Warten;');
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TProcessMessagesInLoopRule.Create, mSource,
     '{"rules": {"processmessages-in-loop": {"allowIn": ["Warten"]}}}', 'U.pas'))));
-  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TProcessMessagesInLoopRule.Create, Source,
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TProcessMessagesInLoopRule.Create, mSource,
     '{"rules": {"processmessages-in-loop": {"allowIn": ["TForm1.Warten"]}}}', 'U.pas'))));
-  Assert.AreEqual(1, Integer(Length(TRuleAssert.Findings(TProcessMessagesInLoopRule.Create, Source,
+  Assert.AreEqual(1, Integer(Length(TRuleAssert.Findings(TProcessMessagesInLoopRule.Create, mSource,
     '{"rules": {"processmessages-in-loop": {"allowIn": ["TForm2.Warten"]}}}', 'U.pas'))));
-  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TProcessMessagesInLoopRule.Create, Source,
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TProcessMessagesInLoopRule.Create, mSource,
     '{"rules": {"processmessages-in-loop": "off"}}', 'U.pas'))));
-  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TProcessMessagesInLoopRule.Create, Source,
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TProcessMessagesInLoopRule.Create, mSource,
     '{"rules": {"processmessages-in-loop": {"exclude": ["Alt/*.pas"]}}}', 'Alt/U.pas'))));
-  TConfigurationParser.Parse('{"rules": {"processmessages-in-loop": {"allowIn": "Warten"}}}', Issues);
-  Assert.AreEqual(1, Integer(Length(Issues)));
+  TConfigurationParser.Parse('{"rules": {"processmessages-in-loop": {"allowIn": "Warten"}}}', mIssues);
+  Assert.AreEqual(1, Integer(Length(mIssues)));
 end;
 
 const
-  QueueExample =
+  cQueueExample =
     '  TThread.Queue(nil,'#10 +
     '    procedure'#10 +
     '    begin'#10 +
@@ -560,92 +566,92 @@ const
 /// <summary>Quelltext nach den Korrekturen des ersten Treffers.</summary>
 function Fixed(const ASource: string; const AFinding: TRuleFinding): string;
 var
-  Lines: TArray<string>;
-  Offsets: TArray<Integer>;
-  Index: Integer;
-  Edit: TTextEdit;
+  mLines: TArray<string>;
+  mOffsets: TArray<Integer>;
+  mIndex: Integer;
+  mEdit: TTextEdit;
 begin
-  Lines := ASource.Split([#10]);
-  SetLength(Offsets, Length(Lines) + 1);
-  Offsets[0] := 0;
-  for Index := 0 to High(Lines) do
+  mLines := ASource.Split([#10]);
+  SetLength(mOffsets, Length(mLines) + 1);
+  mOffsets[0] := 0;
+  for mIndex := 0 to High(mLines) do
   begin
-    Offsets[Index + 1] := Offsets[Index] + Length(Lines[Index]) + 1;
+    mOffsets[mIndex + 1] := mOffsets[mIndex] + Length(mLines[mIndex]) + 1;
   end;
   Result := ASource;
-  for Index := High(AFinding.Fixes[0].Edits) downto 0 do
+  for mIndex := High(AFinding.Fixes[0].Edits) downto 0 do
   begin
-    Edit := AFinding.Fixes[0].Edits[Index];
-    Result := Copy(Result, 1, Offsets[Edit.Range.StartPos.Line] + Edit.Range.StartPos.Character) + Edit.NewText +
-      Copy(Result, Offsets[Edit.Range.EndPos.Line] + Edit.Range.EndPos.Character + 1, MaxInt);
+    mEdit := AFinding.Fixes[0].Edits[mIndex];
+    Result := Copy(Result, 1, mOffsets[mEdit.Range.StartPos.Line] + mEdit.Range.StartPos.Character) + mEdit.NewText +
+      Copy(Result, mOffsets[mEdit.Range.EndPos.Line] + mEdit.Range.EndPos.Character + 1, MaxInt);
   end;
 end;
 
 procedure TConcurrencyPatternRulesTests.QueueNilIssueExample;
 var
-  Source: string;
-  Findings: TArray<TRuleFinding>;
-  Tree: TSyntaxTree;
+  mSource: string;
+  mFindings: TArray<TRuleFinding>;
+  mTree: TSyntaxTree;
 begin
-  Source := Routine(QueueExample);
-  Findings := TRuleAssert.PackageFindings(TQueueNilInPackageRule.Create, Source, 'Atlas.IDE.Expert', '', 'U.pas');
-  Assert.AreEqual(1, Integer(Length(Findings)));
-  Assert.AreEqual('queue-nil-in-package', Findings[0].RuleId);
-  Assert.AreEqual(Ord(TRuleSeverity.Warning), Ord(Findings[0].Severity));
-  Assert.AreEqual(Ord(TRuleConfidence.High), Ord(Findings[0].Confidence));
+  mSource := Routine(cQueueExample);
+  mFindings := TRuleAssert.PackageFindings(TQueueNilInPackageRule.Create, mSource, 'Atlas.IDE.Expert', '', 'U.pas');
+  Assert.AreEqual(1, Integer(Length(mFindings)));
+  Assert.AreEqual('queue-nil-in-package', mFindings[0].RuleId);
+  Assert.AreEqual(Ord(TRuleSeverity.Warning), Ord(mFindings[0].Severity));
+  Assert.AreEqual(Ord(TRuleConfidence.High), Ord(mFindings[0].Confidence));
   Assert.AreEqual('Queue(nil, …) in Atlas.IDE.Expert.bpl: der Eintrag kann nach dem Entladen des Packages laufen.',
-    Findings[0].Message);
-  Assert.AreEqual(5, Findings[0].Range.StartPos.Line);
-  Assert.AreEqual(2, Findings[0].Range.StartPos.Character);
-  Assert.AreEqual(19, Findings[0].Range.EndPos.Character);
+    mFindings[0].Message);
+  Assert.AreEqual(5, mFindings[0].Range.StartPos.Line);
+  Assert.AreEqual(2, mFindings[0].Range.StartPos.Character);
+  Assert.AreEqual(19, mFindings[0].Range.EndPos.Character);
   // Korrigierte Form wie im Issue; sie parst fehlerfrei und wird nicht mehr gemeldet.
   Assert.AreEqual(Routine('  TAtlasMainThread.Queue('#10'    procedure'#10'    begin'#10 +
-    '      FPanel.Aktualisieren;'#10'    end);'), Fixed(Source, Findings[0]));
-  Tree := TPascalParser.Parse(Fixed(Source, Findings[0]));
+    '      FPanel.Aktualisieren;'#10'    end);'), Fixed(mSource, mFindings[0]));
+  mTree := TPascalParser.Parse(Fixed(mSource, mFindings[0]));
   try
-    Assert.AreEqual(0, Integer(Length(Tree.Diagnostics)));
+    Assert.AreEqual(0, Integer(Length(mTree.Diagnostics)));
   finally
-    Tree.Free;
+    mTree.Free;
   end;
   Assert.AreEqual(0, Integer(Length(TRuleAssert.PackageFindings(TQueueNilInPackageRule.Create,
-    Fixed(Source, Findings[0]), 'Atlas.IDE.Expert', '', 'U.pas'))));
+    Fixed(mSource, mFindings[0]), 'Atlas.IDE.Expert', '', 'U.pas'))));
 end;
 
 procedure TConcurrencyPatternRulesTests.QueueNilFixAndVariants;
 var
-  Source: string;
-  Findings: TArray<TRuleFinding>;
+  mSource: string;
+  mFindings: TArray<TRuleFinding>;
 begin
   // ForceQueue und Argument in derselben Zeile.
-  Source := Routine('  TThread.ForceQueue(nil, Aktualisieren);');
-  Findings := TRuleAssert.PackageFindings(TQueueNilInPackageRule.Create, Source, 'P', '', 'U.pas');
-  Assert.AreEqual(1, Integer(Length(Findings)));
+  mSource := Routine('  TThread.ForceQueue(nil, Aktualisieren);');
+  mFindings := TRuleAssert.PackageFindings(TQueueNilInPackageRule.Create, mSource, 'P', '', 'U.pas');
+  Assert.AreEqual(1, Integer(Length(mFindings)));
   Assert.AreEqual('ForceQueue(nil, …) in P.bpl: der Eintrag kann nach dem Entladen des Packages laufen.',
-    Findings[0].Message);
-  Assert.AreEqual(Routine('  TAtlasMainThread.ForceQueue(Aktualisieren);'), Fixed(Source, Findings[0]));
+    mFindings[0].Message);
+  Assert.AreEqual(Routine('  TAtlasMainThread.ForceQueue(Aktualisieren);'), Fixed(mSource, mFindings[0]));
   // ForceQueue mit Verzögerung: Meldung ohne Korrektur.
-  Findings := TRuleAssert.PackageFindings(TQueueNilInPackageRule.Create,
+  mFindings := TRuleAssert.PackageFindings(TQueueNilInPackageRule.Create,
     Routine('  TThread.ForceQueue(nil, Aktualisieren, 100);'), 'P', '', 'U.pas');
-  Assert.AreEqual(1, Integer(Length(Findings)));
-  Assert.AreEqual(0, Integer(Length(Findings[0].Fixes)));
+  Assert.AreEqual(1, Integer(Length(mFindings)));
+  Assert.AreEqual(0, Integer(Length(mFindings[0].Fixes)));
   // Mehrere Argumente in der anonymen Methode zählen nicht mit.
-  Findings := TRuleAssert.PackageFindings(TQueueNilInPackageRule.Create,
+  mFindings := TRuleAssert.PackageFindings(TQueueNilInPackageRule.Create,
     Routine('  TThread.Queue(nil, procedure begin Zeigen(1, [2, 3]); end);'), 'P', '', 'U.pas');
-  Assert.AreEqual(1, Integer(Length(Findings[0].Fixes)));
+  Assert.AreEqual(1, Integer(Length(mFindings[0].Fixes)));
   // Ohne Projektname: die .dpk selbst.
-  Findings := TRuleAssert.Findings(TQueueNilInPackageRule.Create,
+  mFindings := TRuleAssert.Findings(TQueueNilInPackageRule.Create,
     'package P;'#10'requires rtl;'#10'begin'#10'  TThread.Queue(nil, Start);'#10'end.');
-  Assert.AreEqual(1, Integer(Length(Findings)));
+  Assert.AreEqual(1, Integer(Length(mFindings)));
   Assert.AreEqual('Queue(nil, …) in diesem Package: der Eintrag kann nach dem Entladen des Packages laufen.',
-    Findings[0].Message);
+    mFindings[0].Message);
 end;
 
 procedure TConcurrencyPatternRulesTests.QueueNilSilentCases;
 begin
   // Kein Package: Programm oder unbekannt.
-  TRuleAssert.Silent(TQueueNilInPackageRule.Create, Routine(QueueExample));
+  TRuleAssert.Silent(TQueueNilInPackageRule.Create, Routine(cQueueExample));
   Assert.AreEqual(0, Integer(Length(TRuleAssert.ApplicationFindings(TQueueNilInPackageRule.Create,
-    Routine(QueueExample), TRuleApplicationKind.Gui))));
+    Routine(cQueueExample), TRuleApplicationKind.Gui))));
   // Mit Besitzer, über den Wrapper, im Kommentar oder String.
   Assert.AreEqual(0, Integer(Length(TRuleAssert.PackageFindings(TQueueNilInPackageRule.Create,
     Routine('  TThread.Queue(Self, Aktualisieren);'#10'  TAtlasMainThread.Queue(Aktualisieren);'#10 +
@@ -657,23 +663,23 @@ end;
 
 procedure TConcurrencyPatternRulesTests.QueueNilOptions;
 var
-  Source: string;
-  Findings: TArray<TRuleFinding>;
-  Issues: TArray<TConfigurationIssue>;
+  mSource: string;
+  mFindings: TArray<TRuleFinding>;
+  mIssues: TArray<TConfigurationIssue>;
 begin
-  Source := Routine('  TThread.Queue(nil, Aktualisieren); // ui-ok');
-  Findings := TRuleAssert.PackageFindings(TQueueNilInPackageRule.Create, Source, 'P',
+  mSource := Routine('  TThread.Queue(nil, Aktualisieren); // ui-ok');
+  mFindings := TRuleAssert.PackageFindings(TQueueNilInPackageRule.Create, mSource, 'P',
     '{"rules": {"queue-nil-in-package": {"wrapper": "Haupt.Einreihen"}}}', 'U.pas');
-  Assert.AreEqual(1, Integer(Length(Findings)));
-  Assert.AreEqual(Routine('  Haupt.Einreihen(Aktualisieren); // ui-ok'), Fixed(Source, Findings[0]));
-  Assert.AreEqual(0, Integer(Length(TRuleAssert.PackageFindings(TQueueNilInPackageRule.Create, Source, 'P',
+  Assert.AreEqual(1, Integer(Length(mFindings)));
+  Assert.AreEqual(Routine('  Haupt.Einreihen(Aktualisieren); // ui-ok'), Fixed(mSource, mFindings[0]));
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.PackageFindings(TQueueNilInPackageRule.Create, mSource, 'P',
     '{"rules": {"queue-nil-in-package": {"okMarker": "ui-ok"}}}', 'U.pas'))));
-  Assert.AreEqual(0, Integer(Length(TRuleAssert.PackageFindings(TQueueNilInPackageRule.Create, Source, 'P',
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.PackageFindings(TQueueNilInPackageRule.Create, mSource, 'P',
     '{"rules": {"queue-nil-in-package": "off"}}', 'U.pas'))));
-  Assert.AreEqual(0, Integer(Length(TRuleAssert.PackageFindings(TQueueNilInPackageRule.Create, Source, 'P',
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.PackageFindings(TQueueNilInPackageRule.Create, mSource, 'P',
     '{"rules": {"queue-nil-in-package": {"exclude": ["Alt/*.pas"]}}}', 'Alt/U.pas'))));
-  TConfigurationParser.Parse('{"rules": {"queue-nil-in-package": {"wrapper": 1, "okMarker": true}}}', Issues);
-  Assert.AreEqual(2, Integer(Length(Issues)));
+  TConfigurationParser.Parse('{"rules": {"queue-nil-in-package": {"wrapper": 1, "okMarker": true}}}', mIssues);
+  Assert.AreEqual(2, Integer(Length(mIssues)));
 end;
 
 procedure TConcurrencyPatternRulesTests.QueueNilWrapperCall;
@@ -687,7 +693,7 @@ begin
 end;
 
 const
-  BlockingCallAdvice = ' Besser die Arbeit mit TTask.Run auslagern und das Ergebnis über TThread.Queue melden.';
+  cBlockingCallAdvice = ' Besser die Arbeit mit TTask.Run auslagern und das Ergebnis über TThread.Queue melden.';
 
 function FormUnit(const AMethods: string): string;
 begin
@@ -702,20 +708,20 @@ end;
 
 procedure TConcurrencyPatternRulesTests.BlockingCallIssueExample;
 var
-  Findings: TArray<TRuleFinding>;
+  mFindings: TArray<TRuleFinding>;
 begin
-  Findings := TRuleAssert.Findings(TBlockingCallInMainThreadRule.Create, FormMethod(
+  mFindings := TRuleAssert.Findings(TBlockingCallInMainThreadRule.Create, FormMethod(
     'procedure TfrmHaupt.btnExportClick(Sender: TObject);', '  FExport.Start;'#10'  FExport.WaitFor;'#10));
-  Assert.AreEqual(1, Integer(Length(Findings)));
-  Assert.AreEqual('blocking-call-in-main-thread', Findings[0].RuleId);
-  Assert.AreEqual(Ord(TRuleSeverity.Warning), Ord(Findings[0].Severity));
-  Assert.AreEqual(Ord(TRuleConfidence.Medium), Ord(Findings[0].Confidence));
+  Assert.AreEqual(1, Integer(Length(mFindings)));
+  Assert.AreEqual('blocking-call-in-main-thread', mFindings[0].RuleId);
+  Assert.AreEqual(Ord(TRuleSeverity.Warning), Ord(mFindings[0].Severity));
+  Assert.AreEqual(Ord(TRuleConfidence.Medium), Ord(mFindings[0].Confidence));
   Assert.AreEqual('WaitFor im Click-Handler blockiert den Hauptthread; ruft FExport Synchronize auf, hängt das ' +
-    'Programm.' + BlockingCallAdvice, Findings[0].Message);
-  Assert.AreEqual(10, Findings[0].Range.StartPos.Line);
-  Assert.AreEqual(10, Findings[0].Range.StartPos.Character);
-  Assert.AreEqual(17, Findings[0].Range.EndPos.Character);
-  Assert.AreEqual(0, Integer(Length(Findings[0].Fixes)));
+    'Programm.' + cBlockingCallAdvice, mFindings[0].Message);
+  Assert.AreEqual(10, mFindings[0].Range.StartPos.Line);
+  Assert.AreEqual(10, mFindings[0].Range.StartPos.Character);
+  Assert.AreEqual(17, mFindings[0].Range.EndPos.Character);
+  Assert.AreEqual(0, Integer(Length(mFindings[0].Fixes)));
   // Korrigierte Form: Arbeit in TTask.Run, Rückmeldung über TThread.Queue.
   TRuleAssert.Silent(TBlockingCallInMainThreadRule.Create, FormMethod(
     'procedure TfrmHaupt.btnExportClick(Sender: TObject);', '  btnExport.Enabled := False;'#10 +
@@ -725,27 +731,27 @@ end;
 
 procedure TConcurrencyPatternRulesTests.BlockingCallVariants;
 var
-  Findings: TArray<TRuleFinding>;
+  mFindings: TArray<TRuleFinding>;
 begin
-  Findings := TRuleAssert.Findings(TBlockingCallInMainThreadRule.Create, FormMethod('procedure TfrmHaupt.Laden;',
+  mFindings := TRuleAssert.Findings(TBlockingCallInMainThreadRule.Create, FormMethod('procedure TfrmHaupt.Laden;',
     '  Sleep(500);'#10'  if WaitForSingleObject(H, INFINITE) = WAIT_OBJECT_0 then'#10'    FEreignis.WaitFor(5000);'#10 +
     '  FAufgabe.Wait;'#10'  Winapi.Windows.Sleep(Pause);'#10'  while not Fertig do'#10'    Sleep(10);'#10));
-  Assert.AreEqual(6, Integer(Length(Findings)));
-  Assert.AreEqual('Sleep(500) in Laden blockiert den Hauptthread; die Oberfläche friert ein.' + BlockingCallAdvice,
-    Findings[0].Message);
+  Assert.AreEqual(6, Integer(Length(mFindings)));
+  Assert.AreEqual('Sleep(500) in Laden blockiert den Hauptthread; die Oberfläche friert ein.' + cBlockingCallAdvice,
+    mFindings[0].Message);
   Assert.AreEqual('FEreignis.WaitFor(5000) in Laden blockiert den Hauptthread; die Oberfläche friert ein.' +
-    BlockingCallAdvice, Findings[2].Message);
+    cBlockingCallAdvice, mFindings[2].Message);
   Assert.AreEqual('Warteschleife mit Sleep in Laden blockiert den Hauptthread; die Oberfläche friert ein.' +
-    BlockingCallAdvice, Findings[5].Message);
+    cBlockingCallAdvice, mFindings[5].Message);
   // Ereignis-Handler einer anderen Klasse, Frame, eingebettete Routine.
-  Findings := TRuleAssert.Findings(TBlockingCallInMainThreadRule.Create, 'unit U;'#10'interface'#10'type'#10 +
+  mFindings := TRuleAssert.Findings(TBlockingCallInMainThreadRule.Create, 'unit U;'#10'interface'#10'type'#10 +
     '  TfraListe = class(TFrame)'#10'  end;'#10'implementation'#10 +
     'procedure TVerwaltung.TimerTimer(Sender: TObject);'#10'begin'#10'  Sleep(100);'#10'end;'#10 +
     'procedure TfraListe.Fuellen;'#10'  procedure Warten;'#10'  begin'#10'    Sleep(1000);'#10'  end;'#10 +
     'begin'#10'  Warten;'#10'end;'#10'end.');
-  Assert.AreEqual(2, Integer(Length(Findings)));
+  Assert.AreEqual(2, Integer(Length(mFindings)));
   Assert.AreEqual('Sleep(100) im Ereignis-Handler TimerTimer blockiert den Hauptthread; die Oberfläche friert ein.' +
-    BlockingCallAdvice, Findings[0].Message);
+    cBlockingCallAdvice, mFindings[0].Message);
   Assert.AreEqual(1, TBlockingCallInMainThreadRule.TimeoutArgument('WaitForSingleObject'));
   Assert.AreEqual(3, TBlockingCallInMainThreadRule.TimeoutArgument('WaitForMultipleObjects'));
   Assert.AreEqual(-1, TBlockingCallInMainThreadRule.TimeoutArgument('Pause'));
@@ -768,24 +774,24 @@ end;
 
 procedure TConcurrencyPatternRulesTests.BlockingCallOptions;
 var
-  Source: string;
-  Issues: TArray<TConfigurationIssue>;
+  mSource: string;
+  mIssues: TArray<TConfigurationIssue>;
 begin
-  Source := FormMethod('procedure TfrmHaupt.Laden;', '  Sleep(500);'#10'  Sleep(10);'#10'  Pause(100);'#10);
-  Assert.AreEqual(1, Integer(Length(TRuleAssert.Findings(TBlockingCallInMainThreadRule.Create, Source, '', 'U.pas'))));
-  Assert.AreEqual(2, Integer(Length(TRuleAssert.Findings(TBlockingCallInMainThreadRule.Create, Source,
+  mSource := FormMethod('procedure TfrmHaupt.Laden;', '  Sleep(500);'#10'  Sleep(10);'#10'  Pause(100);'#10);
+  Assert.AreEqual(1, Integer(Length(TRuleAssert.Findings(TBlockingCallInMainThreadRule.Create, mSource, '', 'U.pas'))));
+  Assert.AreEqual(2, Integer(Length(TRuleAssert.Findings(TBlockingCallInMainThreadRule.Create, mSource,
     '{"rules": {"blocking-call-in-main-thread": {"maxSleepMs": 5}}}', 'U.pas'))));
-  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TBlockingCallInMainThreadRule.Create, Source,
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TBlockingCallInMainThreadRule.Create, mSource,
     '{"rules": {"blocking-call-in-main-thread": {"maxSleepMs": 1000}}}', 'U.pas'))));
-  Assert.AreEqual(1, Integer(Length(TRuleAssert.Findings(TBlockingCallInMainThreadRule.Create, Source,
+  Assert.AreEqual(1, Integer(Length(TRuleAssert.Findings(TBlockingCallInMainThreadRule.Create, mSource,
     '{"rules": {"blocking-call-in-main-thread": {"calls": ["Pause"]}}}', 'U.pas'))));
-  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TBlockingCallInMainThreadRule.Create, Source,
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TBlockingCallInMainThreadRule.Create, mSource,
     '{"rules": {"blocking-call-in-main-thread": "off"}}', 'U.pas'))));
-  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TBlockingCallInMainThreadRule.Create, Source,
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TBlockingCallInMainThreadRule.Create, mSource,
     '{"rules": {"blocking-call-in-main-thread": {"exclude": ["Alt/*.pas"]}}}', 'Alt/U.pas'))));
   TConfigurationParser.Parse('{"rules": {"blocking-call-in-main-thread": {"maxSleepMs": "x", "calls": 1}}}',
-    Issues);
-  Assert.AreEqual(2, Integer(Length(Issues)));
+    mIssues);
+  Assert.AreEqual(2, Integer(Length(mIssues)));
 end;
 
 function Poller(const AMethods: string): string;
@@ -801,51 +807,51 @@ end;
 
 procedure TConcurrencyPatternRulesTests.ThreadLoopIssueExample;
 var
-  Source, Fixed: string;
-  Findings: TArray<TRuleFinding>;
+  mSource, mFixed: string;
+  mFindings: TArray<TRuleFinding>;
 begin
-  Source := PollerExecute('  while True do'#10'  begin'#10'    Abfragen;'#10'    Sleep(1000);'#10'  end;'#10);
-  Findings := TRuleAssert.Findings(TThreadLoopWithoutTerminatedRule.Create, Source);
-  Assert.AreEqual(1, Integer(Length(Findings)));
-  Assert.AreEqual('thread-loop-without-terminated', Findings[0].RuleId);
-  Assert.AreEqual(Ord(TRuleSeverity.Warning), Ord(Findings[0].Severity));
-  Assert.AreEqual(Ord(TRuleConfidence.High), Ord(Findings[0].Confidence));
-  Assert.AreEqual('Die Schleife prüft Terminated nicht; der Thread lässt sich nicht beenden.', Findings[0].Message);
-  Assert.AreEqual(10, Findings[0].Range.StartPos.Line);
-  Assert.AreEqual(2, Findings[0].Range.StartPos.Character);
-  Assert.AreEqual(7, Findings[0].Range.EndPos.Character);
-  Assert.AreEqual('Terminated in die Schleifenbedingung aufnehmen', Findings[0].Fixes[0].Title);
-  Fixed := TChangeSignature.ApplyEdits(Source, Findings[0].Fixes[0].Edits);
+  mSource := PollerExecute('  while True do'#10'  begin'#10'    Abfragen;'#10'    Sleep(1000);'#10'  end;'#10);
+  mFindings := TRuleAssert.Findings(TThreadLoopWithoutTerminatedRule.Create, mSource);
+  Assert.AreEqual(1, Integer(Length(mFindings)));
+  Assert.AreEqual('thread-loop-without-terminated', mFindings[0].RuleId);
+  Assert.AreEqual(Ord(TRuleSeverity.Warning), Ord(mFindings[0].Severity));
+  Assert.AreEqual(Ord(TRuleConfidence.High), Ord(mFindings[0].Confidence));
+  Assert.AreEqual('Die Schleife prüft Terminated nicht; der Thread lässt sich nicht beenden.', mFindings[0].Message);
+  Assert.AreEqual(10, mFindings[0].Range.StartPos.Line);
+  Assert.AreEqual(2, mFindings[0].Range.StartPos.Character);
+  Assert.AreEqual(7, mFindings[0].Range.EndPos.Character);
+  Assert.AreEqual('Terminated in die Schleifenbedingung aufnehmen', mFindings[0].Fixes[0].Title);
+  mFixed := TChangeSignature.ApplyEdits(mSource, mFindings[0].Fixes[0].Edits);
   Assert.AreEqual(PollerExecute('  while not Terminated do'#10'  begin'#10'    Abfragen;'#10'    Sleep(1000);'#10 +
-    '  end;'#10), Fixed);
-  TRuleAssert.Silent(TThreadLoopWithoutTerminatedRule.Create, Fixed);
+    '  end;'#10), mFixed);
+  TRuleAssert.Silent(TThreadLoopWithoutTerminatedRule.Create, mFixed);
 end;
 
 procedure TConcurrencyPatternRulesTests.ThreadLoopVariants;
 var
-  Source: string;
-  Findings: TArray<TRuleFinding>;
+  mSource: string;
+  mFindings: TArray<TRuleFinding>;
 begin
   // Warteschleife mit Bedingung, repeat … until False und mit Bedingung.
-  Source := PollerExecute('  while not FFertig do'#10'    FEreignis.WaitFor(500);'#10'  repeat'#10 +
+  mSource := PollerExecute('  while not FFertig do'#10'    FEreignis.WaitFor(500);'#10'  repeat'#10 +
     '    Abfragen;'#10'  until False;'#10'  repeat'#10'    Sleep(10);'#10'  until FFertig or FAbbruch;'#10);
-  Findings := TRuleAssert.Findings(TThreadLoopWithoutTerminatedRule.Create, Source);
-  Assert.AreEqual(3, Integer(Length(Findings)));
+  mFindings := TRuleAssert.Findings(TThreadLoopWithoutTerminatedRule.Create, mSource);
+  Assert.AreEqual(3, Integer(Length(mFindings)));
   Assert.AreEqual(PollerExecute('  while not FFertig and not Terminated do'#10'    FEreignis.WaitFor(500);'#10 +
     '  repeat'#10'    Abfragen;'#10'  until False;'#10'  repeat'#10'    Sleep(10);'#10'  until FFertig or FAbbruch;'#10),
-    TChangeSignature.ApplyEdits(Source, Findings[0].Fixes[0].Edits));
+    TChangeSignature.ApplyEdits(mSource, mFindings[0].Fixes[0].Edits));
   Assert.AreEqual(PollerExecute('  while not FFertig do'#10'    FEreignis.WaitFor(500);'#10'  repeat'#10 +
     '    Abfragen;'#10'  until Terminated;'#10'  repeat'#10'    Sleep(10);'#10'  until FFertig or FAbbruch;'#10),
-    TChangeSignature.ApplyEdits(Source, Findings[1].Fixes[0].Edits));
+    TChangeSignature.ApplyEdits(mSource, mFindings[1].Fixes[0].Edits));
   Assert.AreEqual(PollerExecute('  while not FFertig do'#10'    FEreignis.WaitFor(500);'#10'  repeat'#10 +
     '    Abfragen;'#10'  until False;'#10'  repeat'#10'    Sleep(10);'#10'  until (FFertig or FAbbruch) or Terminated;'#10),
-    TChangeSignature.ApplyEdits(Source, Findings[2].Fixes[0].Edits));
+    TChangeSignature.ApplyEdits(mSource, mFindings[2].Fixes[0].Edits));
   // Methode, die nur aus Execute kommt (auch über eine zweite), eingebettete Routine.
-  Findings := TRuleAssert.Findings(TThreadLoopWithoutTerminatedRule.Create, Poller(
+  mFindings := TRuleAssert.Findings(TThreadLoopWithoutTerminatedRule.Create, Poller(
     'procedure TPoller.Execute;'#10'  procedure Warten;'#10'  begin'#10'    while True do Sleep(1);'#10'  end;'#10 +
     'begin'#10'  Starten;'#10'  Warten;'#10'end;'#10'procedure TPoller.Starten;'#10'begin'#10'  Schleife;'#10 +
     'end;'#10'procedure TPoller.Schleife;'#10'begin'#10'  while True do Abfragen;'#10'end;'#10));
-  Assert.AreEqual(2, Integer(Length(Findings)));
+  Assert.AreEqual(2, Integer(Length(mFindings)));
 end;
 
 procedure TConcurrencyPatternRulesTests.ThreadLoopSilentCases;
@@ -869,58 +875,58 @@ end;
 
 procedure TConcurrencyPatternRulesTests.ThreadLoopOffAndExclude;
 var
-  Source: string;
+  mSource: string;
 begin
-  Source := PollerExecute('  while True do Sleep(1);'#10);
-  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TThreadLoopWithoutTerminatedRule.Create, Source,
+  mSource := PollerExecute('  while True do Sleep(1);'#10);
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TThreadLoopWithoutTerminatedRule.Create, mSource,
     '{"rules": {"thread-loop-without-terminated": "off"}}', 'U.pas'))));
-  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TThreadLoopWithoutTerminatedRule.Create, Source,
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TThreadLoopWithoutTerminatedRule.Create, mSource,
     '{"rules": {"thread-loop-without-terminated": {"exclude": ["Alt/*.pas"]}}}', 'Alt/U.pas'))));
 end;
 
 procedure TConcurrencyPatternRulesTests.AnonymousThreadIssueExample;
 var
-  Source, Fixed: string;
-  Findings: TArray<TRuleFinding>;
+  mSource, mFixed: string;
+  mFindings: TArray<TRuleFinding>;
 begin
-  Source := Routine('  TThread.CreateAnonymousThread('#10'    procedure'#10'    begin'#10'      Synchronisieren;'#10 +
+  mSource := Routine('  TThread.CreateAnonymousThread('#10'    procedure'#10'    begin'#10'      Synchronisieren;'#10 +
     '    end);');
-  Findings := TRuleAssert.Findings(TAnonymousThreadNotStartedRule.Create, Source);
-  Assert.AreEqual(1, Integer(Length(Findings)));
-  Assert.AreEqual('anonymous-thread-not-started', Findings[0].RuleId);
-  Assert.AreEqual(Ord(TRuleSeverity.Warning), Ord(Findings[0].Severity));
-  Assert.AreEqual(Ord(TRuleConfidence.High), Ord(Findings[0].Confidence));
-  Assert.AreEqual('Der anonyme Thread wird nie gestartet und nie freigegeben.', Findings[0].Message);
-  Assert.AreEqual(5, Findings[0].Range.StartPos.Line);
-  Assert.AreEqual(10, Findings[0].Range.StartPos.Character);
-  Assert.AreEqual('.Start anhängen', Findings[0].Fixes[0].Title);
-  Fixed := TChangeSignature.ApplyEdits(Source, Findings[0].Fixes[0].Edits);
+  mFindings := TRuleAssert.Findings(TAnonymousThreadNotStartedRule.Create, mSource);
+  Assert.AreEqual(1, Integer(Length(mFindings)));
+  Assert.AreEqual('anonymous-thread-not-started', mFindings[0].RuleId);
+  Assert.AreEqual(Ord(TRuleSeverity.Warning), Ord(mFindings[0].Severity));
+  Assert.AreEqual(Ord(TRuleConfidence.High), Ord(mFindings[0].Confidence));
+  Assert.AreEqual('Der anonyme Thread wird nie gestartet und nie freigegeben.', mFindings[0].Message);
+  Assert.AreEqual(5, mFindings[0].Range.StartPos.Line);
+  Assert.AreEqual(10, mFindings[0].Range.StartPos.Character);
+  Assert.AreEqual('.Start anhängen', mFindings[0].Fixes[0].Title);
+  mFixed := TChangeSignature.ApplyEdits(mSource, mFindings[0].Fixes[0].Edits);
   Assert.AreEqual(Routine('  TThread.CreateAnonymousThread('#10'    procedure'#10'    begin'#10 +
-    '      Synchronisieren;'#10'    end).Start;'), Fixed);
-  TRuleAssert.Silent(TAnonymousThreadNotStartedRule.Create, Fixed);
+    '      Synchronisieren;'#10'    end).Start;'), mFixed);
+  TRuleAssert.Silent(TAnonymousThreadNotStartedRule.Create, mFixed);
 end;
 
 procedure TConcurrencyPatternRulesTests.AnonymousThreadVariables;
 var
-  Source: string;
-  Findings: TArray<TRuleFinding>;
+  mSource: string;
+  mFindings: TArray<TRuleFinding>;
 begin
   // Lokale Variable mit gesetzten Eigenschaften: Start nach der letzten Anweisung, die sie erwähnt.
-  Source := Routine('  T := System.Classes.TThread.CreateAnonymousThread(Arbeit);'#10'  T.FreeOnTerminate := False;'#10 +
+  mSource := Routine('  T := System.Classes.TThread.CreateAnonymousThread(Arbeit);'#10'  T.FreeOnTerminate := False;'#10 +
     '  Weiter;', 'procedure TA.Run;'#10'var'#10'  T: TThread;');
-  Findings := TRuleAssert.Findings(TAnonymousThreadNotStartedRule.Create, Source);
-  Assert.AreEqual(1, Integer(Length(Findings)));
-  Assert.AreEqual('T.Start ergänzen', Findings[0].Fixes[0].Title);
+  mFindings := TRuleAssert.Findings(TAnonymousThreadNotStartedRule.Create, mSource);
+  Assert.AreEqual(1, Integer(Length(mFindings)));
+  Assert.AreEqual('T.Start ergänzen', mFindings[0].Fixes[0].Title);
   Assert.AreEqual(Routine('  T := System.Classes.TThread.CreateAnonymousThread(Arbeit);'#10 +
     '  T.FreeOnTerminate := False;'#10'  T.Start;'#10'  Weiter;', 'procedure TA.Run;'#10'var'#10'  T: TThread;'),
-    TChangeSignature.ApplyEdits(Source, Findings[0].Fixes[0].Edits));
+    TChangeSignature.ApplyEdits(mSource, mFindings[0].Fixes[0].Edits));
   // Inline-Variable.
-  Findings := TRuleAssert.Findings(TAnonymousThreadNotStartedRule.Create, Routine(
+  mFindings := TRuleAssert.Findings(TAnonymousThreadNotStartedRule.Create, Routine(
     '  var Aufgabe := TThread.CreateAnonymousThread(Arbeit);'#10'  Weiter;'));
-  Assert.AreEqual(1, Integer(Length(Findings)));
+  Assert.AreEqual(1, Integer(Length(mFindings)));
   Assert.AreEqual(Routine('  var Aufgabe := TThread.CreateAnonymousThread(Arbeit);'#10'  Aufgabe.Start;'#10 +
     '  Weiter;'), TChangeSignature.ApplyEdits(Routine('  var Aufgabe := TThread.CreateAnonymousThread(Arbeit);'#10 +
-    '  Weiter;'), Findings[0].Fixes[0].Edits));
+    '  Weiter;'), mFindings[0].Fixes[0].Edits));
 end;
 
 procedure TConcurrencyPatternRulesTests.AnonymousThreadSilentCases;
@@ -936,12 +942,12 @@ end;
 
 procedure TConcurrencyPatternRulesTests.AnonymousThreadOffAndExclude;
 var
-  Source: string;
+  mSource: string;
 begin
-  Source := Routine('  TThread.CreateAnonymousThread(Arbeit);');
-  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TAnonymousThreadNotStartedRule.Create, Source,
+  mSource := Routine('  TThread.CreateAnonymousThread(Arbeit);');
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TAnonymousThreadNotStartedRule.Create, mSource,
     '{"rules": {"anonymous-thread-not-started": "off"}}', 'U.pas'))));
-  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TAnonymousThreadNotStartedRule.Create, Source,
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TAnonymousThreadNotStartedRule.Create, mSource,
     '{"rules": {"anonymous-thread-not-started": {"exclude": ["Alt/*.pas"]}}}', 'Alt/U.pas'))));
 end;
 
@@ -953,48 +959,48 @@ end;
 
 procedure TConcurrencyPatternRulesTests.TaskExceptionIssueExample;
 var
-  Source, Fixed: string;
-  Findings: TArray<TRuleFinding>;
-  Tree: TSyntaxTree;
+  mSource, mFixed: string;
+  mFindings: TArray<TRuleFinding>;
+  mTree: TSyntaxTree;
 begin
-  Source := TaskUnit('  TTask.Run('#10'    procedure'#10'    begin'#10'      Importieren(Datei);'#10'    end);'#10);
-  Findings := TRuleAssert.Findings(TTaskExceptionUnobservedRule.Create, Source);
-  Assert.AreEqual(1, Integer(Length(Findings)));
-  Assert.AreEqual('task-exception-unobserved', Findings[0].RuleId);
-  Assert.AreEqual(Ord(TRuleSeverity.Hint), Ord(Findings[0].Severity));
-  Assert.AreEqual(Ord(TRuleConfidence.Medium), Ord(Findings[0].Confidence));
+  mSource := TaskUnit('  TTask.Run('#10'    procedure'#10'    begin'#10'      Importieren(Datei);'#10'    end);'#10);
+  mFindings := TRuleAssert.Findings(TTaskExceptionUnobservedRule.Create, mSource);
+  Assert.AreEqual(1, Integer(Length(mFindings)));
+  Assert.AreEqual('task-exception-unobserved', mFindings[0].RuleId);
+  Assert.AreEqual(Ord(TRuleSeverity.Hint), Ord(mFindings[0].Severity));
+  Assert.AreEqual(Ord(TRuleConfidence.Medium), Ord(mFindings[0].Confidence));
   Assert.AreEqual('Der Task wird nie abgefragt und fängt keine Exceptions; Fehler in Importieren gehen verloren.',
-    Findings[0].Message);
-  Assert.AreEqual(9, Findings[0].Range.StartPos.Line);
-  Assert.AreEqual(8, Findings[0].Range.StartPos.Character);
-  Assert.AreEqual('Rumpf in try … except mit Meldung über TThread.Queue einschließen', Findings[0].Fixes[0].Title);
-  Fixed := TChangeSignature.ApplyEdits(Source, Findings[0].Fixes[0].Edits);
+    mFindings[0].Message);
+  Assert.AreEqual(9, mFindings[0].Range.StartPos.Line);
+  Assert.AreEqual(8, mFindings[0].Range.StartPos.Character);
+  Assert.AreEqual('Rumpf in try … except mit Meldung über TThread.Queue einschließen', mFindings[0].Fixes[0].Title);
+  mFixed := TChangeSignature.ApplyEdits(mSource, mFindings[0].Fixes[0].Edits);
   Assert.AreEqual(StringReplace(TaskUnit('  TTask.Run('#10'    procedure'#10'    begin'#10'      try'#10 +
     '        Importieren(Datei);'#10'      except'#10'        on E: Exception do'#10'        begin'#10 +
     '          var Fehler := E.Message;'#10'          TThread.Queue(nil,'#10'            procedure'#10 +
     '            begin'#10'              ShowMessage(Fehler);'#10'            end);'#10'        end;'#10 +
-    '      end;'#10'    end);'#10), 'System.Threading;', 'System.Threading,'#10'  Vcl.Dialogs;', []), Fixed);
-  Tree := TPascalParser.Parse(Fixed);
+    '      end;'#10'    end);'#10), 'System.Threading;', 'System.Threading,'#10'  Vcl.Dialogs;', []), mFixed);
+  mTree := TPascalParser.Parse(mFixed);
   try
-    Assert.AreEqual(0, Integer(Length(Tree.Diagnostics)));
+    Assert.AreEqual(0, Integer(Length(mTree.Diagnostics)));
   finally
-    Tree.Free;
+    mTree.Free;
   end;
-  TRuleAssert.Silent(TTaskExceptionUnobservedRule.Create, Fixed);
+  TRuleAssert.Silent(TTaskExceptionUnobservedRule.Create, mFixed);
 end;
 
 procedure TConcurrencyPatternRulesTests.TaskExceptionVariants;
 var
-  Findings: TArray<TRuleFinding>;
+  mFindings: TArray<TRuleFinding>;
 begin
   // TTask.Create(…).Start, Variable ohne Abfrage, Create in Variable mit Start, Rumpf in einer Zeile (ohne Korrektur).
-  Findings := TRuleAssert.Findings(TTaskExceptionUnobservedRule.Create, TaskUnit(
+  mFindings := TRuleAssert.Findings(TTaskExceptionUnobservedRule.Create, TaskUnit(
     '  TTask.Create(procedure begin Laden; end).Start;'#10'  A := TTask.Run(procedure begin Laden; end);'#10 +
     '  var B := TTask.Create(procedure begin end);'#10'  B.Start;'#10) );
-  Assert.AreEqual(3, Integer(Length(Findings)));
-  Assert.AreEqual(0, Integer(Length(Findings[0].Fixes)));
+  Assert.AreEqual(3, Integer(Length(mFindings)));
+  Assert.AreEqual(0, Integer(Length(mFindings[0].Fixes)));
   Assert.AreEqual('Der Task wird nie abgefragt und fängt keine Exceptions; Fehler im Task gehen verloren.',
-    Findings[2].Message);
+    mFindings[2].Message);
 end;
 
 procedure TConcurrencyPatternRulesTests.TaskExceptionSilentCases;
@@ -1009,12 +1015,12 @@ end;
 
 procedure TConcurrencyPatternRulesTests.TaskExceptionOffAndExclude;
 var
-  Source: string;
+  mSource: string;
 begin
-  Source := TaskUnit('  TTask.Run(procedure begin Laden; end);'#10);
-  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TTaskExceptionUnobservedRule.Create, Source,
+  mSource := TaskUnit('  TTask.Run(procedure begin Laden; end);'#10);
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TTaskExceptionUnobservedRule.Create, mSource,
     '{"rules": {"task-exception-unobserved": "off"}}', 'U.pas'))));
-  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TTaskExceptionUnobservedRule.Create, Source,
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TTaskExceptionUnobservedRule.Create, mSource,
     '{"rules": {"task-exception-unobserved": {"exclude": ["Alt/*.pas"]}}}', 'Alt/U.pas'))));
 end;
 

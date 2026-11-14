@@ -56,7 +56,7 @@ uses
   Atlas.Common.Editing.TestCommands;
 
 const
-  MockUnit =
+  cMockUnit =
     'unit Repos;'#10 +                                           // 0
     'interface'#10 +                                             // 1
     'type'#10 +                                                  // 2
@@ -71,7 +71,7 @@ const
     #10 +                                                        // 11
     'end.';
 
-  FixtureUnit =
+  cFixtureUnit =
     'unit Kunden.Tests;'#10 +                                    // 0
     'interface'#10 +                                             // 1
     'uses'#10 +                                                  // 2
@@ -91,7 +91,7 @@ const
     'end;'#10 +                                                  // 16
     'end.';
 
-  RoutineUnit =
+  cRoutineUnit =
     'unit Rechnen;'#10 +                                         // 0
     'interface'#10 +                                             // 1
     '%s'#10 +                                                    // 2 Befehl auf Unit-Ebene
@@ -116,31 +116,36 @@ end;
 
 function Problem(const AText: string): string;
 var
-  Problems: TArray<TSlashProblem>;
+  mProblems: TArray<TSlashProblem>;
 begin
-  Problems := TSlashCommandRegistry.Shared.Problems(AText, nil);
+  mProblems := TSlashCommandRegistry.Shared.Problems(AText, nil);
   Result := '';
-  if Length(Problems) > 0 then
+  if Length(mProblems) > 0 then
   begin
-    Result := Problems[0].Message;
+    Result := mProblems[0].Message;
   end;
 end;
 
 function Parses(const AText: string): Boolean;
 var
-  Tree: TSyntaxTree;
+  mTree: TSyntaxTree;
 begin
-  Tree := TSyntaxTreeCache.Parse(AText);
+  mTree := TSyntaxTreeCache.Parse(AText);
   try
-    Result := Length(Tree.Diagnostics) = 0;
+    Result := Length(mTree.Diagnostics) = 0;
   finally
-    Tree.Free;
+    mTree.Free;
   end;
 end;
 
-function InRoutine(const ACommand: string; const AUses: string = ''): string;
+function InRoutine(const ACommand: string; const AUses: string): string; overload;
 begin
-  Result := Format(RoutineUnit, ['', AUses, ACommand]);
+  Result := Format(cRoutineUnit, ['', AUses, ACommand]);
+end;
+
+function InRoutine(const ACommand: string): string; overload;
+begin
+  Result := InRoutine(ACommand, '');
 end;
 
 procedure TTestCommandsTests.WarmUp;
@@ -151,13 +156,13 @@ end;
 
 procedure TTestCommandsTests.SplitValuesKeepsCommasInStrings;
 var
-  Values: TArray<string>;
+  mValues: TArray<string>;
 begin
-  Assert.IsTrue(TTestCommandTexts.SplitValues('''a'', 2, True', Values));
-  Assert.AreEqual('a|2|True', string.Join('|', Values));
-  Assert.IsTrue(TTestCommandTexts.SplitValues('''x, y'', ''it''''s''', Values));
-  Assert.AreEqual('x, y|it''s', string.Join('|', Values));
-  Assert.IsFalse(TTestCommandTexts.SplitValues('''offen, 2', Values));
+  Assert.IsTrue(TTestCommandTexts.SplitValues('''a'', 2, True', mValues));
+  Assert.AreEqual('a|2|True', string.Join('|', mValues));
+  Assert.IsTrue(TTestCommandTexts.SplitValues('''x, y'', ''it''''s''', mValues));
+  Assert.AreEqual('x, y|it''s', string.Join('|', mValues));
+  Assert.IsFalse(TTestCommandTexts.SplitValues('''offen, 2', mValues));
 end;
 
 procedure TTestCommandsTests.TestCaseAttributeSwitchesSeparator;
@@ -170,145 +175,145 @@ end;
 
 procedure TTestCommandsTests.MockImplementsTheWholeInterface;
 var
-  Source, Text: string;
-  Edits: TArray<TTextEdit>;
+  mSource, mText: string;
+  mEdits: TArray<TTextEdit>;
 begin
-  Source := Format(MockUnit, ['/mock IKundenRepo']);
-  Assert.IsTrue(Run(Source, 9, Edits), Problem(Source));
-  Text := TTextChanges.Apply(Source, Edits);
-  Assert.IsTrue(Parses(Text), Text);
-  Assert.IsTrue(ContainsStr(Text, 'type'#10'  TKundenRepoMock = class(TInterfacedObject, IKundenRepo)'#10 +
-    '  public'#10'    LadenCalls: Integer;'#10'    LadenResult: TKunde;'#10'    SpeichernCalls: Integer;'#10), Text);
-  Assert.IsTrue(ContainsStr(Text, '    function Laden(const AId: Integer): TKunde;'#10 +
-    '    procedure Speichern(const AKunde: TKunde);'#10'  end;'), Text);
-  Assert.IsTrue(ContainsStr(Text, 'function TKundenRepoMock.Laden(const AId: Integer): TKunde;'#10'begin'#10 +
-    '  Inc(LadenCalls);'#10'  Result := LadenResult;'#10'end;'), Text);
-  Assert.IsTrue(ContainsStr(Text, 'procedure TKundenRepoMock.Speichern(const AKunde: TKunde);'#10'begin'#10 +
-    '  Inc(SpeichernCalls);'#10'end;'), Text);
-  Assert.IsTrue(Pos('TKundenRepoMock.Laden', Text) > Pos('implementation', Text), Text);
-  Assert.IsFalse(ContainsStr(Text, '/mock'), Text);
+  mSource := Format(cMockUnit, ['/mock IKundenRepo']);
+  Assert.IsTrue(Run(mSource, 9, mEdits), Problem(mSource));
+  mText := TTextChanges.Apply(mSource, mEdits);
+  Assert.IsTrue(Parses(mText), mText);
+  Assert.IsTrue(ContainsStr(mText, 'type'#10'  TKundenRepoMock = class(TInterfacedObject, IKundenRepo)'#10 +
+    '  public'#10'    LadenCalls: Integer;'#10'    LadenResult: TKunde;'#10'    SpeichernCalls: Integer;'#10), mText);
+  Assert.IsTrue(ContainsStr(mText, '    function Laden(const AId: Integer): TKunde;'#10 +
+    '    procedure Speichern(const AKunde: TKunde);'#10'  end;'), mText);
+  Assert.IsTrue(ContainsStr(mText, 'function TKundenRepoMock.Laden(const AId: Integer): TKunde;'#10'begin'#10 +
+    '  Inc(LadenCalls);'#10'  Result := LadenResult;'#10'end;'), mText);
+  Assert.IsTrue(ContainsStr(mText, 'procedure TKundenRepoMock.Speichern(const AKunde: TKunde);'#10'begin'#10 +
+    '  Inc(SpeichernCalls);'#10'end;'), mText);
+  Assert.IsTrue(Pos('TKundenRepoMock.Laden', mText) > Pos('implementation', mText), mText);
+  Assert.IsFalse(ContainsStr(mText, '/mock'), mText);
   // Kein Interface.
-  Source := Format(MockUnit, ['/mock TKunde']);
-  Assert.IsFalse(Run(Source, 9, Edits));
-  Assert.IsTrue(ContainsStr(Problem(Source), 'TKunde'), Problem(Source));
+  mSource := Format(cMockUnit, ['/mock TKunde']);
+  Assert.IsFalse(Run(mSource, 9, mEdits));
+  Assert.IsTrue(ContainsStr(Problem(mSource), 'TKunde'), Problem(mSource));
 end;
 
 procedure TTestCommandsTests.MockInsideClassFails;
 var
-  Source: string;
-  Edits: TArray<TTextEdit>;
+  mSource: string;
+  mEdits: TArray<TTextEdit>;
 begin
-  Source := StringReplace(Format(MockUnit, ['']), '  TKunde = class'#10, '  TKunde = class'#10'    /mock IKundenRepo'#10,
+  mSource := StringReplace(Format(cMockUnit, ['']), '  TKunde = class'#10, '  TKunde = class'#10'    /mock IKundenRepo'#10,
     []);
-  Assert.IsFalse(Run(Source, 4, Edits));
-  Assert.IsTrue(ContainsStr(Problem(Source), '/mock'), Problem(Source));
+  Assert.IsFalse(Run(mSource, 4, mEdits));
+  Assert.IsTrue(ContainsStr(Problem(mSource), '/mock'), Problem(mSource));
 end;
 
 procedure TTestCommandsTests.MockWithDelphiMocksInRoutine;
 var
-  Source, Text: string;
-  Edits: TArray<TTextEdit>;
+  mSource, mText: string;
+  mEdits: TArray<TTextEdit>;
 begin
-  Source := InRoutine('/mock IKundenRepo', ', Delphi.Mocks');
-  Assert.IsTrue(Run(Source, 13, Edits), Problem(Source));
-  Text := TTextChanges.Apply(Source, Edits);
-  Assert.IsTrue(ContainsStr(Text, '  KundenRepo: TMock<IKundenRepo>;'), Text);
-  Assert.IsTrue(ContainsStr(Text, '  KundenRepo := TMock<IKundenRepo>.Create;'), Text);
+  mSource := InRoutine('/mock IKundenRepo', ', Delphi.Mocks');
+  Assert.IsTrue(Run(mSource, 13, mEdits), Problem(mSource));
+  mText := TTextChanges.Apply(mSource, mEdits);
+  Assert.IsTrue(ContainsStr(mText, '  KundenRepo: TMock<IKundenRepo>;'), mText);
+  Assert.IsTrue(ContainsStr(mText, '  KundenRepo := TMock<IKundenRepo>.Create;'), mText);
   // Ohne Delphi.Mocks gehört /mock auf die Unit-Ebene.
-  Source := InRoutine('/mock IKundenRepo');
-  Assert.IsFalse(Run(Source, 13, Edits));
+  mSource := InRoutine('/mock IKundenRepo');
+  Assert.IsFalse(Run(mSource, 13, mEdits));
 end;
 
 procedure TTestCommandsTests.TestCaseNumbersAndChecksCount;
 var
-  Source, Text: string;
-  Edits: TArray<TTextEdit>;
+  mSource, mText: string;
+  mEdits: TArray<TTextEdit>;
 begin
-  Source := Format(FixtureUnit, ['/testcase ''a, b'', 2, True']);
-  Assert.IsTrue(Run(Source, 10, Edits), Problem(Source));
-  Text := TTextChanges.Apply(Source, Edits);
-  Assert.IsTrue(ContainsStr(Text, '    [TestCase(''Fall1'', ''x,1,False'')]'#10 +
-    '    [TestCase(''Fall2'', ''a, b;2;True'', '';'')]'#10'    procedure Pruefe('), Text);
-  Assert.IsTrue(Parses(Text), Text);
+  mSource := Format(cFixtureUnit, ['/testcase ''a, b'', 2, True']);
+  Assert.IsTrue(Run(mSource, 10, mEdits), Problem(mSource));
+  mText := TTextChanges.Apply(mSource, mEdits);
+  Assert.IsTrue(ContainsStr(mText, '    [TestCase(''Fall1'', ''x,1,False'')]'#10 +
+    '    [TestCase(''Fall2'', ''a, b;2;True'', '';'')]'#10'    procedure Pruefe('), mText);
+  Assert.IsTrue(Parses(mText), mText);
 end;
 
 procedure TTestCommandsTests.TestCaseWithWrongCountFails;
 var
-  Source: string;
-  Edits: TArray<TTextEdit>;
+  mSource: string;
+  mEdits: TArray<TTextEdit>;
 begin
-  Source := Format(FixtureUnit, ['/testcase ''a'', 2']);
-  Assert.IsFalse(Run(Source, 10, Edits));
-  Assert.IsTrue(ContainsStr(Problem(Source), 'Pruefe'), Problem(Source));
-  Assert.IsTrue(ContainsStr(Problem(Source), '3'), Problem(Source));
+  mSource := Format(cFixtureUnit, ['/testcase ''a'', 2']);
+  Assert.IsFalse(Run(mSource, 10, mEdits));
+  Assert.IsTrue(ContainsStr(Problem(mSource), 'Pruefe'), Problem(mSource));
+  Assert.IsTrue(ContainsStr(Problem(mSource), '3'), Problem(mSource));
   // Ohne Methode darunter.
-  Source := StringReplace(Format(FixtureUnit, ['/testcase 1']),
+  mSource := StringReplace(Format(cFixtureUnit, ['/testcase 1']),
     '    procedure Pruefe(const AName: string; AZahl: Integer; AAn: Boolean);'#10, '', []);
-  Assert.IsFalse(Run(Source, 10, Edits));
+  Assert.IsFalse(Run(mSource, 10, mEdits));
 end;
 
 procedure TTestCommandsTests.DumpListsSimpleLocals;
 var
-  Source, Text: string;
-  Edits: TArray<TTextEdit>;
+  mSource, mText: string;
+  mEdits: TArray<TTextEdit>;
 begin
-  Source := InRoutine('/dump');
-  Assert.IsTrue(Run(Source, 13, Edits), Problem(Source));
-  Text := TTextChanges.Apply(Source, Edits);
-  Assert.IsTrue(ContainsStr(Text, '  OutputDebugString(PChar(Format(''Rechne: A=%d, S=%s, Summe=%g, Fertig=%s'', ' +
-    '[A, S, Summe, BoolToStr(Fertig, True)])));'), Text);
-  Assert.IsTrue(ContainsStr(Text, 'System.SysUtils'), Text);
-  Assert.IsTrue(Parses(Text), Text);
+  mSource := InRoutine('/dump');
+  Assert.IsTrue(Run(mSource, 13, mEdits), Problem(mSource));
+  mText := TTextChanges.Apply(mSource, mEdits);
+  Assert.IsTrue(ContainsStr(mText, '  OutputDebugString(PChar(Format(''Rechne: A=%d, S=%s, Summe=%g, Fertig=%s'', ' +
+    '[A, S, Summe, BoolToStr(Fertig, True)])));'), mText);
+  Assert.IsTrue(ContainsStr(mText, 'System.SysUtils'), mText);
+  Assert.IsTrue(Parses(mText), mText);
 end;
 
 procedure TTestCommandsTests.DumpOutsideRoutineFails;
 var
-  Source: string;
-  Edits: TArray<TTextEdit>;
+  mSource: string;
+  mEdits: TArray<TTextEdit>;
 begin
-  Source := Format(RoutineUnit, ['/dump', '', '']);
-  Assert.IsFalse(Run(Source, 2, Edits));
-  Assert.IsTrue(ContainsStr(Problem(Source), '/dump'), Problem(Source));
+  mSource := Format(cRoutineUnit, ['/dump', '', '']);
+  Assert.IsFalse(Run(mSource, 2, mEdits));
+  Assert.IsTrue(ContainsStr(Problem(mSource), '/dump'), Problem(mSource));
 end;
 
 procedure TTestCommandsTests.AssertFitsTheType;
 var
-  Source, Text: string;
-  Edits: TArray<TTextEdit>;
+  mSource, mText: string;
+  mEdits: TArray<TTextEdit>;
 begin
   // Liste: Klasse aus der RTL ohne Index, über die Liste der Referenztypen nicht erkannt; TStringList kennt die
   // Unit nicht. Darum zuerst ein String.
-  Source := StringReplace(InRoutine('/assert'), '  Liste := TStringList.Create;', '  Fertig := A > 0;', []);
-  Assert.IsTrue(Run(Source, 13, Edits), Problem(Source));
-  Text := TTextChanges.Apply(Source, Edits);
-  Assert.IsTrue(ContainsStr(Text, '  Assert(Fertig, ''Fertig ist False'');'), Text);
-  Source := StringReplace(InRoutine('/assert'), '  Liste := TStringList.Create;', '  Summe := A * 2;', []);
-  Assert.IsTrue(Run(Source, 13, Edits), Problem(Source));
-  Text := TTextChanges.Apply(Source, Edits);
-  Assert.IsTrue(ContainsStr(Text, '  Assert(Summe >= 0, ''Summe ist negativ'');'), Text);
+  mSource := StringReplace(InRoutine('/assert'), '  Liste := TStringList.Create;', '  Fertig := A > 0;', []);
+  Assert.IsTrue(Run(mSource, 13, mEdits), Problem(mSource));
+  mText := TTextChanges.Apply(mSource, mEdits);
+  Assert.IsTrue(ContainsStr(mText, '  Assert(Fertig, ''Fertig ist False'');'), mText);
+  mSource := StringReplace(InRoutine('/assert'), '  Liste := TStringList.Create;', '  Summe := A * 2;', []);
+  Assert.IsTrue(Run(mSource, 13, mEdits), Problem(mSource));
+  mText := TTextChanges.Apply(mSource, mEdits);
+  Assert.IsTrue(ContainsStr(mText, '  Assert(Summe >= 0, ''Summe ist negativ'');'), mText);
 end;
 
 procedure TTestCommandsTests.AssertInTestUnitUsesDUnitX;
 var
-  Line: string;
+  mLine: string;
 begin
-  Assert.IsTrue(TTestCommandTexts.AssertLine('Kunde', 'TKunde', True, True, Line));
-  Assert.AreEqual('Assert.IsNotNull(Kunde);', Line);
-  Assert.IsTrue(TTestCommandTexts.AssertLine('Name', 'string', False, True, Line));
-  Assert.AreEqual('Assert.AreNotEqual('''', Name);', Line);
-  Assert.IsTrue(TTestCommandTexts.AssertLine('Kunde', 'TKunde', True, False, Line));
-  Assert.AreEqual('Assert(Assigned(Kunde), ''Kunde ist nil'');', Line);
-  Assert.IsFalse(TTestCommandTexts.AssertLine('P', 'TPunkt', False, False, Line), 'Record');
+  Assert.IsTrue(TTestCommandTexts.AssertLine('Kunde', 'TKunde', True, True, mLine));
+  Assert.AreEqual('Assert.IsNotNull(Kunde);', mLine);
+  Assert.IsTrue(TTestCommandTexts.AssertLine('Name', 'string', False, True, mLine));
+  Assert.AreEqual('Assert.AreNotEqual('''', Name);', mLine);
+  Assert.IsTrue(TTestCommandTexts.AssertLine('Kunde', 'TKunde', True, False, mLine));
+  Assert.AreEqual('Assert(Assigned(Kunde), ''Kunde ist nil'');', mLine);
+  Assert.IsFalse(TTestCommandTexts.AssertLine('P', 'TPunkt', False, False, mLine), 'Record');
 end;
 
 procedure TTestCommandsTests.AssertWithoutAssignmentFails;
 var
-  Source: string;
-  Edits: TArray<TTextEdit>;
+  mSource: string;
+  mEdits: TArray<TTextEdit>;
 begin
-  Source := StringReplace(InRoutine('/assert'), '  Liste := TStringList.Create;', '  Liste.Clear;', []);
-  Assert.IsFalse(Run(Source, 13, Edits));
-  Assert.IsTrue(ContainsStr(Problem(Source), 'Variable'), Problem(Source));
+  mSource := StringReplace(InRoutine('/assert'), '  Liste := TStringList.Create;', '  Liste.Clear;', []);
+  Assert.IsFalse(Run(mSource, 13, mEdits));
+  Assert.IsTrue(ContainsStr(Problem(mSource), 'Variable'), Problem(mSource));
 end;
 
 initialization

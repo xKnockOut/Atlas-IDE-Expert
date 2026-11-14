@@ -70,13 +70,13 @@ end;
 
 function ArchitectureOverviewOf(const AUnits: TArray<TUnitIndex>): TArchitectureOverview;
 var
-  Graph: TUsesGraph;
+  mGraph: TUsesGraph;
 begin
-  Graph := TUsesGraph.Create(AUnits, TUsesGraphOptions.Default);
+  mGraph := TUsesGraph.Create(AUnits, TUsesGraphOptions.Default);
   try
-    Result := TArchitectureAnalyzer.Analyze(Graph, nil, 5);
+    Result := TArchitectureAnalyzer.Analyze(mGraph, nil, 5);
   finally
-    Graph.Free;
+    mGraph.Free;
   end;
   Result.Title := 'Beispiel';
   Result.Root := 'C:\Projekt';
@@ -87,151 +87,151 @@ end;
 
 procedure TArchitectureSnapshotTests.WritesSortedNamesWithFormat;
 var
-  Text: string;
-  Root: TJSONValue;
-  Data: TJSONObject;
-  Units: TJSONArray;
-  Index: Integer;
+  mText: string;
+  mRoot: TJSONValue;
+  mData: TJSONObject;
+  mUnits: TJSONArray;
+  mIndex: Integer;
 begin
-  Text := TArchitectureSnapshots.Json(TArchitectureSnapshots.FromOverview(
+  mText := TArchitectureSnapshots.Json(TArchitectureSnapshots.FromOverview(
     ArchitectureOverviewOf(ArchitectureSampleUnits)));
-  Root := TJSONObject.ParseJSONValue(Text);
+  mRoot := TJSONObject.ParseJSONValue(mText);
   try
-    Assert.IsTrue(Root is TJSONObject, 'gültiges JSON');
-    Data := TJSONObject(Root);
-    Assert.AreEqual(2, Data.GetValue<Integer>('format'));
-    Assert.AreEqual('atlas.architecture', Data.GetValue<string>('kind'));
-    Units := Data.GetValue<TJSONArray>('units');
-    Assert.AreEqual(12, Units.Count);
-    for Index := 1 to Units.Count - 1 do
+    Assert.IsTrue(mRoot is TJSONObject, 'gültiges JSON');
+    mData := TJSONObject(mRoot);
+    Assert.AreEqual(2, mData.GetValue<Integer>('format'));
+    Assert.AreEqual('atlas.architecture', mData.GetValue<string>('kind'));
+    mUnits := mData.GetValue<TJSONArray>('units');
+    Assert.AreEqual(12, mUnits.Count);
+    for mIndex := 1 to mUnits.Count - 1 do
     begin
-      Assert.IsTrue(CompareText((Units.Items[Index - 1] as TJSONObject).GetValue<string>('name'),
-        (Units.Items[Index] as TJSONObject).GetValue<string>('name')) < 0, 'Units nach Namen');
+      Assert.IsTrue(CompareText((mUnits.Items[mIndex - 1] as TJSONObject).GetValue<string>('name'),
+        (mUnits.Items[mIndex] as TJSONObject).GetValue<string>('name')) < 0, 'Units nach Namen');
     end;
-    Assert.AreEqual('App/Core/Base.pas', (Units.Items[0] as TJSONObject).GetValue<string>('file'));
-    Assert.AreEqual('Core', (Units.Items[0] as TJSONObject).GetValue<string>('subsystem'));
+    Assert.AreEqual('App/Core/Base.pas', (mUnits.Items[0] as TJSONObject).GetValue<string>('file'));
+    Assert.AreEqual('Core', (mUnits.Items[0] as TJSONObject).GetValue<string>('subsystem'));
   finally
-    Root.Free;
+    mRoot.Free;
   end;
   // Kanten mit Namen und Abschnitt, je Zeile eine; keine Zeit, kein Index-Stand.
-  Assert.Contains(Text, '["App.Data.Db", "App.Data.Cache", "implementation"]');
-  Assert.Contains(Text, '["App.Core.Types", "App.Core.Base", "interface"]');
-  Assert.DoesNotContain(Text, 'created');
-  Assert.DoesNotContain(Text, 'generation');
-  Assert.DoesNotContain(Text, 'durationMs');
-  Assert.DoesNotContain(Text, #13);
+  Assert.Contains(mText, '["App.Data.Db", "App.Data.Cache", "implementation"]');
+  Assert.Contains(mText, '["App.Core.Types", "App.Core.Base", "interface"]');
+  Assert.DoesNotContain(mText, 'created');
+  Assert.DoesNotContain(mText, 'generation');
+  Assert.DoesNotContain(mText, 'durationMs');
+  Assert.DoesNotContain(mText, #13);
 end;
 
 procedure TArchitectureSnapshotTests.SameStateSameBytes;
 var
-  First, Second: TArchitectureOverview;
-  Units: TArray<TUnitIndex>;
-  Index: Integer;
+  mFirst, mSecond: TArchitectureOverview;
+  mUnits: TArray<TUnitIndex>;
+  mIndex: Integer;
 begin
-  First := ArchitectureOverviewOf(ArchitectureSampleUnits);
+  mFirst := ArchitectureOverviewOf(ArchitectureSampleUnits);
   // Gleicher Stand in anderer Reihenfolge, zu anderer Zeit, mit anderem Index-Stand.
-  Units := ArchitectureSampleUnits;
-  for Index := 0 to High(Units) div 2 do
+  mUnits := ArchitectureSampleUnits;
+  for mIndex := 0 to High(mUnits) div 2 do
   begin
-    Units := Units + [Units[0]];
-    Delete(Units, 0, 1);
+    mUnits := mUnits + [mUnits[0]];
+    Delete(mUnits, 0, 1);
   end;
-  Second := ArchitectureOverviewOf(Units);
-  Second.Created := First.Created + 1;
-  Second.Generation := First.Generation + 99;
-  Second.DurationMs := First.DurationMs + 500;
-  Assert.AreEqual(TArchitectureSnapshots.Json(TArchitectureSnapshots.FromOverview(First)),
-    TArchitectureSnapshots.Json(TArchitectureSnapshots.FromOverview(Second)));
+  mSecond := ArchitectureOverviewOf(mUnits);
+  mSecond.Created := mFirst.Created + 1;
+  mSecond.Generation := mFirst.Generation + 99;
+  mSecond.DurationMs := mFirst.DurationMs + 500;
+  Assert.AreEqual(TArchitectureSnapshots.Json(TArchitectureSnapshots.FromOverview(mFirst)),
+    TArchitectureSnapshots.Json(TArchitectureSnapshots.FromOverview(mSecond)));
 end;
 
 procedure TArchitectureSnapshotTests.ReadsWhatItWrites;
 var
-  Snapshot, Read: TArchitectureSnapshot;
-  Error: string;
+  mSnapshot, mRead: TArchitectureSnapshot;
+  mError: string;
 begin
-  Snapshot := TArchitectureSnapshots.FromOverview(ArchitectureOverviewOf(ArchitectureSampleUnits));
-  Assert.IsTrue(TArchitectureSnapshots.Parse(TArchitectureSnapshots.Json(Snapshot), Read, Error), Error);
-  Assert.AreEqual(2, Read.FormatVersion);
-  Assert.AreEqual('Beispiel', Read.Title);
-  Assert.AreEqual(Integer(Length(Snapshot.Units)), Integer(Length(Read.Units)));
-  Assert.AreEqual(Integer(Length(Snapshot.Edges)), Integer(Length(Read.Edges)));
-  Assert.AreEqual(1, Integer(Length(Read.Cycles)));
-  Assert.AreEqual(TArchitectureSnapshots.Json(Snapshot), TArchitectureSnapshots.Json(Read));
+  mSnapshot := TArchitectureSnapshots.FromOverview(ArchitectureOverviewOf(ArchitectureSampleUnits));
+  Assert.IsTrue(TArchitectureSnapshots.Parse(TArchitectureSnapshots.Json(mSnapshot), mRead, mError), mError);
+  Assert.AreEqual(2, mRead.FormatVersion);
+  Assert.AreEqual('Beispiel', mRead.Title);
+  Assert.AreEqual(Integer(Length(mSnapshot.Units)), Integer(Length(mRead.Units)));
+  Assert.AreEqual(Integer(Length(mSnapshot.Edges)), Integer(Length(mRead.Edges)));
+  Assert.AreEqual(1, Integer(Length(mRead.Cycles)));
+  Assert.AreEqual(TArchitectureSnapshots.Json(mSnapshot), TArchitectureSnapshots.Json(mRead));
 end;
 
 procedure TArchitectureSnapshotTests.ReadsFormatOne;
 var
-  Source: TArchitectureOverview;
-  Read: TArchitectureSnapshot;
-  Error: string;
+  mSource: TArchitectureOverview;
+  mRead: TArchitectureSnapshot;
+  mError: string;
 begin
   // Format 1 sind die Daten des Berichts (Nummern statt Namen), auch als Antwort von atlas/architecture.
-  Source := ArchitectureOverviewOf(ArchitectureSampleUnits);
-  Assert.IsTrue(TArchitectureSnapshots.Parse(TArchitectureReport.Json(Source, TArchitectureLayouter.Compute(Source)),
-    Read, Error), Error);
-  Assert.AreEqual(1, Read.FormatVersion);
-  Assert.AreEqual(TArchitectureSnapshots.Json(TArchitectureSnapshots.FromOverview(Source)),
-    TArchitectureSnapshots.Json(Read));
+  mSource := ArchitectureOverviewOf(ArchitectureSampleUnits);
+  Assert.IsTrue(TArchitectureSnapshots.Parse(TArchitectureReport.Json(mSource, TArchitectureLayouter.Compute(mSource)),
+    mRead, mError), mError);
+  Assert.AreEqual(1, mRead.FormatVersion);
+  Assert.AreEqual(TArchitectureSnapshots.Json(TArchitectureSnapshots.FromOverview(mSource)),
+    TArchitectureSnapshots.Json(mRead));
   Assert.IsTrue(TArchitectureSnapshots.Parse('{"enabled": true, "format": "json", "data": ' +
-    TArchitectureReport.Json(Source, TArchitectureLayouter.Compute(Source)) + '}', Read, Error), Error);
-  Assert.AreEqual(12, Integer(Length(Read.Units)));
+    TArchitectureReport.Json(mSource, TArchitectureLayouter.Compute(mSource)) + '}', mRead, mError), mError);
+  Assert.AreEqual(12, Integer(Length(mRead.Units)));
 end;
 
 procedure TArchitectureSnapshotTests.RejectsOtherFormats;
 var
-  Read: TArchitectureSnapshot;
-  Error: string;
+  mRead: TArchitectureSnapshot;
+  mError: string;
 begin
-  Assert.IsFalse(TArchitectureSnapshots.Parse('{"format": 3, "units": []}', Read, Error));
-  Assert.Contains(Error, 'Format 3');
-  Assert.Contains(Error, 'neu speichern');
-  Assert.IsFalse(TArchitectureSnapshots.Parse('{"units": []}', Read, Error));
-  Assert.Contains(Error, 'ohne Formatversion');
-  Assert.IsFalse(TArchitectureSnapshots.Parse('kein JSON', Read, Error));
-  Assert.Contains(Error, 'kein JSON-Objekt');
-  Assert.IsFalse(TArchitectureSnapshots.Parse('{"format": 2, "kind": "atlas.baseline", "units": []}', Read, Error));
-  Assert.Contains(Error, 'kein Architekturstand');
+  Assert.IsFalse(TArchitectureSnapshots.Parse('{"format": 3, "units": []}', mRead, mError));
+  Assert.Contains(mError, 'Format 3');
+  Assert.Contains(mError, 'neu speichern');
+  Assert.IsFalse(TArchitectureSnapshots.Parse('{"units": []}', mRead, mError));
+  Assert.Contains(mError, 'ohne Formatversion');
+  Assert.IsFalse(TArchitectureSnapshots.Parse('kein JSON', mRead, mError));
+  Assert.Contains(mError, 'kein JSON-Objekt');
+  Assert.IsFalse(TArchitectureSnapshots.Parse('{"format": 2, "kind": "atlas.baseline", "units": []}', mRead, mError));
+  Assert.Contains(mError, 'kein Architekturstand');
   Assert.IsFalse(TArchitectureSnapshots.Parse('{"format": 1, "units": [{"name": "A"}], "edges": [[0, 4, "i"]]}',
-    Read, Error));
-  Assert.Contains(Error, 'beschädigt');
-  Assert.IsFalse(TArchitectureSnapshots.Parse('{"format": 2}', Read, Error));
-  Assert.Contains(Error, '"units" fehlt');
+    mRead, mError));
+  Assert.Contains(mError, 'beschädigt');
+  Assert.IsFalse(TArchitectureSnapshots.Parse('{"format": 2}', mRead, mError));
+  Assert.Contains(mError, '"units" fehlt');
 end;
 
 procedure TArchitectureSnapshotTests.SavesAndLoadsFile;
 var
-  Folder, FileName, Error: string;
-  Snapshot, Read: TArchitectureSnapshot;
-  Bytes: TBytes;
+  mFolder, mFileName, mError: string;
+  mSnapshot, mRead: TArchitectureSnapshot;
+  mBytes: TBytes;
 begin
-  Folder := TPath.Combine(TPath.GetTempPath, 'AtlasSnapshot' + IntToStr(Random(1000000)));
-  FileName := TPath.Combine(TPath.Combine(Folder, 'Stand'), 'architektur.json');
+  mFolder := TPath.Combine(TPath.GetTempPath, 'AtlasSnapshot' + IntToStr(Random(1000000)));
+  mFileName := TPath.Combine(TPath.Combine(mFolder, 'Stand'), 'architektur.json');
   try
-    Snapshot := TArchitectureSnapshots.FromOverview(ArchitectureOverviewOf(ArchitectureSampleUnits));
-    TArchitectureSnapshots.Save(FileName, Snapshot);
-    Bytes := TFile.ReadAllBytes(FileName);
-    Assert.AreEqual(Integer(Ord('{')), Integer(Bytes[0]), 'ohne BOM');
-    Assert.IsTrue(TArchitectureSnapshots.Load(FileName, Read, Error), Error);
-    Assert.AreEqual(TArchitectureSnapshots.Json(Snapshot), TArchitectureSnapshots.Json(Read));
-    Assert.IsFalse(TArchitectureSnapshots.Load(TPath.Combine(Folder, 'fehlt.json'), Read, Error));
-    Assert.Contains(Error, 'nicht gefunden');
+    mSnapshot := TArchitectureSnapshots.FromOverview(ArchitectureOverviewOf(ArchitectureSampleUnits));
+    TArchitectureSnapshots.Save(mFileName, mSnapshot);
+    mBytes := TFile.ReadAllBytes(mFileName);
+    Assert.AreEqual(Integer(Ord('{')), Integer(mBytes[0]), 'ohne BOM');
+    Assert.IsTrue(TArchitectureSnapshots.Load(mFileName, mRead, mError), mError);
+    Assert.AreEqual(TArchitectureSnapshots.Json(mSnapshot), TArchitectureSnapshots.Json(mRead));
+    Assert.IsFalse(TArchitectureSnapshots.Load(TPath.Combine(mFolder, 'fehlt.json'), mRead, mError));
+    Assert.Contains(mError, 'nicht gefunden');
   finally
-    if TDirectory.Exists(Folder) then
+    if TDirectory.Exists(mFolder) then
     begin
-      TDirectory.Delete(Folder, True);
+      TDirectory.Delete(mFolder, True);
     end;
   end;
 end;
 
 procedure TArchitectureSnapshotTests.CycleKeyIgnoresStart;
 var
-  First, Second: TSnapshotCycle;
+  mFirst, mSecond: TSnapshotCycle;
 begin
-  First := Default(TSnapshotCycle);
-  First.Units := TArray<string>.Create('B', 'c', 'A');
-  Second := Default(TSnapshotCycle);
-  Second.Units := TArray<string>.Create('a', 'B', 'C');
-  Assert.AreEqual(First.Key, Second.Key);
+  mFirst := Default(TSnapshotCycle);
+  mFirst.Units := TArray<string>.Create('B', 'c', 'A');
+  mSecond := Default(TSnapshotCycle);
+  mSecond.Units := TArray<string>.Create('a', 'B', 'C');
+  Assert.AreEqual(mFirst.Key, mSecond.Key);
 end;
 
 procedure TArchitectureSnapshotTests.KeepsGroupingAndReadsOlderStates;

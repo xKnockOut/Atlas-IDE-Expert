@@ -48,7 +48,7 @@ uses
   Atlas.Common.Rules.Builtin.Packages;
 
 const
-  PackageKasse =
+  cPackageKasse =
     'package KasseCore;'#10 +
     'requires'#10 +
     '  rtl, vcl, Basis;'#10 +
@@ -69,7 +69,7 @@ end;
 
 function NewIndex: ISymbolIndex;
 var
-  Library_: TUnitIndex;
+  mLibrary_: TUnitIndex;
 begin
   Result := TSymbolIndex.Create;
   Result.AddUnit(TIndexExtractor.ExtractText(UnitText('uBeleg', 'System.Classes'), 'C:\P\uBeleg.pas', nil));
@@ -78,9 +78,9 @@ begin
   Result.AddUnit(TIndexExtractor.ExtractText(UnitText('uRunden', 'uMathe'), 'C:\P\uRunden.pas', nil));
   Result.AddUnit(TIndexExtractor.ExtractText(UnitText('uMathe', ''), 'C:\P\uMathe.pas', nil));
   Result.AddUnit(TIndexExtractor.ExtractText(UnitText('uBasis', ''), 'C:\B\uBasis.pas', nil));
-  Library_ := TIndexExtractor.ExtractText(UnitText('System.Classes', 'uMathe'), 'C:\BDS\System.Classes.pas', nil);
-  Library_.Library_ := True;
-  Result.AddUnit(Library_);
+  mLibrary_ := TIndexExtractor.ExtractText(UnitText('System.Classes', 'uMathe'), 'C:\BDS\System.Classes.pas', nil);
+  mLibrary_.Library_ := True;
+  Result.AddUnit(mLibrary_);
 end;
 
 /// <summary>rtl liefert System.*, Basis liefert uBasis, vcl ist leer; AUnknown = Basis ist nicht auffindbar.
@@ -112,56 +112,56 @@ end;
 function Run(const ASource: string; const AProvides: TRulePackageProvides;
   const ARequires: TRulePackageRequires): TArray<TRuleFinding>; overload;
 var
-  Context: TRuleContext;
-  Tree: TSyntaxTree;
+  mContext: TRuleContext;
+  mTree: TSyntaxTree;
 begin
-  Tree := TPascalParser.Parse(ASource);
+  mTree := TPascalParser.Parse(ASource);
   try
-    Context := Default(TRuleContext);
-    Context.RelativePath := 'KasseCore.dpk';
-    Context.UnitName := 'KasseCore';
-    Context.Text := ASource;
-    Context.Tree := Tree;
-    Context.Index := NewIndex;
-    Context.FileName := 'C:\P\KasseCore.dpk';
-    Context.PackageProvides := AProvides;
-    Context.PackageRequires := ARequires;
-    Result := TRuleEngine.Run([IRule(TImplicitPackageImportRule.Create)], TServerSettings.Default, Context);
+    mContext := Default(TRuleContext);
+    mContext.RelativePath := 'KasseCore.dpk';
+    mContext.UnitName := 'KasseCore';
+    mContext.Text := ASource;
+    mContext.Tree := mTree;
+    mContext.Index := NewIndex;
+    mContext.FileName := 'C:\P\KasseCore.dpk';
+    mContext.PackageProvides := AProvides;
+    mContext.PackageRequires := ARequires;
+    Result := TRuleEngine.Run([IRule(TImplicitPackageImportRule.Create)], TServerSettings.Default, mContext);
   finally
-    Tree.Free;
+    mTree.Free;
   end;
 end;
 
 function Run(const ASource: string; const AProvides: TRulePackageProvides): TArray<TRuleFinding>; overload;
 var
-  Context: TRuleContext;
-  Tree: TSyntaxTree;
+  mContext: TRuleContext;
+  mTree: TSyntaxTree;
 begin
-  Tree := TPascalParser.Parse(ASource);
+  mTree := TPascalParser.Parse(ASource);
   try
-    Context := Default(TRuleContext);
-    Context.RelativePath := 'KasseCore.dpk';
-    Context.UnitName := 'KasseCore';
-    Context.Text := ASource;
-    Context.Tree := Tree;
-    Context.Index := NewIndex;
-    Context.FileName := 'C:\P\KasseCore.dpk';
-    Context.PackageProvides := AProvides;
-    Result := TRuleEngine.Run([IRule(TImplicitPackageImportRule.Create)], TServerSettings.Default, Context);
+    mContext := Default(TRuleContext);
+    mContext.RelativePath := 'KasseCore.dpk';
+    mContext.UnitName := 'KasseCore';
+    mContext.Text := ASource;
+    mContext.Tree := mTree;
+    mContext.Index := NewIndex;
+    mContext.FileName := 'C:\P\KasseCore.dpk';
+    mContext.PackageProvides := AProvides;
+    Result := TRuleEngine.Run([IRule(TImplicitPackageImportRule.Create)], TServerSettings.Default, mContext);
   finally
-    Tree.Free;
+    mTree.Free;
   end;
 end;
 
 function Messages(const AFindings: TArray<TRuleFinding>): string;
 var
-  Finding: TRuleFinding;
+  mFinding: TRuleFinding;
 begin
   Result := '';
-  for Finding in AFindings do
+  for mFinding in AFindings do
   begin
-    Result := Result + Format('%d:%d %s|', [Finding.Range.StartPos.Line, Finding.Range.StartPos.Character,
-      Finding.Message]);
+    Result := Result + Format('%d:%d %s|', [mFinding.Range.StartPos.Line, mFinding.Range.StartPos.Character,
+      mFinding.Message]);
   end;
 end;
 
@@ -169,36 +169,36 @@ end;
 
 procedure TPackageRulesTests.ReportsImplicitUnitsWithFix;
 var
-  Findings: TArray<TRuleFinding>;
-  Finding: TRuleFinding;
-  Text: string;
+  mFindings: TArray<TRuleFinding>;
+  mFinding: TRuleFinding;
+  mText: string;
 begin
-  Findings := Run(PackageKasse, Provides(False));
-  Text := Messages(Findings);
-  Assert.AreEqual(2, Integer(Length(Findings)), Text);
-  Assert.IsTrue(Text.Contains('5:2 "uRunden" wird implizit ins Package gezogen: uSteuer verwendet uRunden'), Text);
+  mFindings := Run(cPackageKasse, Provides(False));
+  mText := Messages(mFindings);
+  Assert.AreEqual(2, Integer(Length(mFindings)), mText);
+  Assert.IsTrue(mText.Contains('5:2 "uRunden" wird implizit ins Package gezogen: uSteuer verwendet uRunden'), mText);
   // uMathe kommt über uRunden mit; gemeldet am selben contains-Eintrag.
-  Assert.IsTrue(Text.Contains('5:2 "uMathe" wird implizit ins Package gezogen: uRunden verwendet uMathe'), Text);
-  Assert.IsFalse(Text.Contains('System.Classes'), Text);
-  Assert.IsFalse(Text.Contains('uBasis'), Text);
-  Finding := Findings[0];
-  Assert.AreEqual(cImplicitPackageImportRuleId, Finding.RuleId);
-  Assert.AreEqual(Ord(TRuleSeverity.Warning), Ord(Finding.Severity));
-  Assert.AreEqual(1, Integer(Length(Finding.Fixes)));
-  Assert.AreEqual('"uRunden" in contains aufnehmen', Finding.Fixes[0].Title);
-  Assert.AreEqual(5, Finding.Fixes[0].Edits[0].Range.StartPos.Line);
+  Assert.IsTrue(mText.Contains('5:2 "uMathe" wird implizit ins Package gezogen: uRunden verwendet uMathe'), mText);
+  Assert.IsFalse(mText.Contains('System.Classes'), mText);
+  Assert.IsFalse(mText.Contains('uBasis'), mText);
+  mFinding := mFindings[0];
+  Assert.AreEqual(cImplicitPackageImportRuleId, mFinding.RuleId);
+  Assert.AreEqual(Ord(TRuleSeverity.Warning), Ord(mFinding.Severity));
+  Assert.AreEqual(1, Integer(Length(mFinding.Fixes)));
+  Assert.AreEqual('"uRunden" in contains aufnehmen', mFinding.Fixes[0].Title);
+  Assert.AreEqual(5, mFinding.Fixes[0].Edits[0].Range.StartPos.Line);
   // Vor dem Semikolon hinter dem letzten contains-Eintrag.
-  Assert.AreEqual(26, Finding.Fixes[0].Edits[0].Range.StartPos.Character);
-  Assert.IsTrue(Finding.Fixes[0].Edits[0].NewText.StartsWith(','#10'  uRunden in '''),
-    Finding.Fixes[0].Edits[0].NewText);
-  Assert.IsTrue(Finding.Fixes[0].Edits[0].NewText.EndsWith('uRunden.pas'''), Finding.Fixes[0].Edits[0].NewText);
+  Assert.AreEqual(26, mFinding.Fixes[0].Edits[0].Range.StartPos.Character);
+  Assert.IsTrue(mFinding.Fixes[0].Edits[0].NewText.StartsWith(','#10'  uRunden in '''),
+    mFinding.Fixes[0].Edits[0].NewText);
+  Assert.IsTrue(mFinding.Fixes[0].Edits[0].NewText.EndsWith('uRunden.pas'''), mFinding.Fixes[0].Edits[0].NewText);
 end;
 
 procedure TPackageRulesTests.RequiredPackageProvidesUnit;
 begin
   // uBasis kommt aus dem Package Basis; ohne Basis in requires wäre es implizit.
-  Assert.IsFalse(Messages(Run(PackageKasse, Provides(False))).Contains('uBasis'));
-  Assert.IsTrue(Messages(Run(PackageKasse.Replace(', Basis;', ';'), Provides(False))).Contains(
+  Assert.IsFalse(Messages(Run(cPackageKasse, Provides(False))).Contains('uBasis'));
+  Assert.IsTrue(Messages(Run(cPackageKasse.Replace(', Basis;', ';'), Provides(False))).Contains(
     '"uBasis" wird implizit'));
 end;
 
@@ -208,7 +208,7 @@ var
   mRequires: TRulePackageRequires;
 begin
   // KasseCore verlangt nur Mitte, Mitte verlangt Basis, Basis liefert uBasis.
-  mSource := PackageKasse.Replace(', Basis;', ', Mitte;');
+  mSource := cPackageKasse.Replace(', Basis;', ', Mitte;');
   mRequires :=
     function(const APackage: string): TArray<string>
     begin
@@ -225,16 +225,16 @@ end;
 
 procedure TPackageRulesTests.UnknownPackageIsSilent;
 var
-  Findings: TArray<TRuleFinding>;
+  mFindings: TArray<TRuleFinding>;
 begin
   // Ist ein Package aus requires nicht auffindbar, könnte jede Unit darin stehen.
-  Findings := Run(PackageKasse, Provides(True));
-  Assert.AreEqual(0, Integer(Length(Findings)), Messages(Findings));
+  mFindings := Run(cPackageKasse, Provides(True));
+  Assert.AreEqual(0, Integer(Length(mFindings)), Messages(mFindings));
 end;
 
 procedure TPackageRulesTests.SilentWithoutPackageInfo;
 begin
-  Assert.AreEqual(0, Integer(Length(Run(PackageKasse, nil))));
+  Assert.AreEqual(0, Integer(Length(Run(cPackageKasse, nil))));
 end;
 
 procedure TPackageRulesTests.UnitsAreNotChecked;
@@ -244,18 +244,18 @@ end;
 
 procedure TPackageRulesTests.RuleIsRegistered;
 var
-  Rule: IRule;
-  Found: Boolean;
+  mRule: IRule;
+  mFound: Boolean;
 begin
-  Found := False;
-  for Rule in BuiltinRules do
+  mFound := False;
+  for mRule in BuiltinRules do
   begin
-    if Rule.Descriptor.Id = cImplicitPackageImportRuleId then
+    if mRule.Descriptor.Id = cImplicitPackageImportRuleId then
     begin
-      Found := True;
+      mFound := True;
     end;
   end;
-  Assert.IsTrue(Found);
+  Assert.IsTrue(mFound);
 end;
 
 end.

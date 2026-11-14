@@ -64,7 +64,7 @@ uses
   Atlas.Common.Lsp.Completion;
 
 const
-  Head =
+  cHead =
     'unit Haupt;'#10 +              // 0
     'interface'#10 +                // 1
     'type'#10 +                     // 2
@@ -77,23 +77,23 @@ const
 /// <summary>Text ohne "|" und die Position des "|".</summary>
 function Split(const AMarked: string; out APosition: TTextPosition): string;
 var
-  Index, Line, Character: Integer;
+  mIndex, mLine, mCharacter: Integer;
 begin
-  Line := 0;
-  Character := 0;
-  for Index := 1 to Pos('|', AMarked) - 1 do
+  mLine := 0;
+  mCharacter := 0;
+  for mIndex := 1 to Pos('|', AMarked) - 1 do
   begin
-    if AMarked[Index] = #10 then
+    if AMarked[mIndex] = #10 then
     begin
-      Inc(Line);
-      Character := 0;
+      Inc(mLine);
+      mCharacter := 0;
     end
     else
     begin
-      Inc(Character);
+      Inc(mCharacter);
     end;
   end;
-  APosition := TTextPosition.Create(Line, Character);
+  APosition := TTextPosition.Create(mLine, mCharacter);
   Result := StringReplace(AMarked, '|', '', []);
 end;
 
@@ -101,16 +101,16 @@ end;
 
 function TCompletionSyntaxTests.Assess(const AMarked: string; ACount: Integer): TCompletionSyntaxNotice;
 var
-  Text: string;
-  Position: TTextPosition;
-  Tree: TSyntaxTree;
+  mText: string;
+  mPosition: TTextPosition;
+  mTree: TSyntaxTree;
 begin
-  Text := Split(AMarked, Position);
-  Tree := TPascalParser.Parse(Text);
+  mText := Split(AMarked, mPosition);
+  mTree := TPascalParser.Parse(mText);
   try
-    Result := TCompletionSyntax.Assess(Tree, Text, Position, ACount);
+    Result := TCompletionSyntax.Assess(mTree, mText, mPosition, ACount);
   finally
-    Tree.Free;
+    mTree.Free;
   end;
 end;
 
@@ -121,24 +121,24 @@ end;
 
 function TCompletionSyntaxTests.ScopeOf(const AMarked: string): TCompletionScope;
 var
-  Text: string;
-  Position: TTextPosition;
-  Tree: TSyntaxTree;
+  mText: string;
+  mPosition: TTextPosition;
+  mTree: TSyntaxTree;
 begin
-  Text := Split(AMarked, Position);
-  Tree := TPascalParser.Parse(Text);
+  mText := Split(AMarked, mPosition);
+  mTree := TPascalParser.Parse(mText);
   try
-    Result := TCompletionSyntax.ScopeAt(Tree.Tokens, Position);
+    Result := TCompletionSyntax.ScopeAt(mTree.Tokens, mPosition);
   finally
-    Tree.Free;
+    mTree.Free;
   end;
 end;
 
 procedure TCompletionSyntaxTests.ScopeIsCurrentRoutine;
 var
-  Scope: TCompletionScope;
+  mScope: TCompletionScope;
 begin
-  Scope := ScopeOf(Head +
+  mScope := ScopeOf(cHead +
     'procedure TF.A;'#10 +          // 8
     'begin'#10 +                    // 9
     'end;'#10 +                     // 10
@@ -149,20 +149,20 @@ begin
     '  X|'#10 +                     // 15
     'end;'#10 +                     // 16
     'end.');                        // 17
-  Assert.AreEqual(Ord(TCompletionScopeKind.Routine), Ord(Scope.Kind));
-  Assert.AreEqual(11, Scope.FirstLine);
-  Assert.AreEqual(16, Scope.LastLine);
+  Assert.AreEqual(Ord(TCompletionScopeKind.Routine), Ord(mScope.Kind));
+  Assert.AreEqual(11, mScope.FirstLine);
+  Assert.AreEqual(16, mScope.LastLine);
 end;
 
 procedure TCompletionSyntaxTests.ScopeIsClassDeclaration;
 var
-  Scope: TCompletionScope;
+  mScope: TCompletionScope;
 begin
-  Scope := ScopeOf('unit Haupt;'#10'interface'#10'type'#10'  TA = class'#10'    X: Integer;'#10'  end;'#10 +
+  mScope := ScopeOf('unit Haupt;'#10'interface'#10'type'#10'  TA = class'#10'    X: Integer;'#10'  end;'#10 +
     '  TF = class'#10'    |'#10'  end;'#10'var'#10'  G: Integer;'#10'implementation'#10'end.');
-  Assert.AreEqual(Ord(TCompletionScopeKind.TypeDecl), Ord(Scope.Kind));
-  Assert.AreEqual(6, Scope.FirstLine);
-  Assert.AreEqual(8, Scope.LastLine);
+  Assert.AreEqual(Ord(TCompletionScopeKind.TypeDecl), Ord(mScope.Kind));
+  Assert.AreEqual(6, mScope.FirstLine);
+  Assert.AreEqual(8, mScope.LastLine);
 end;
 
 procedure TCompletionSyntaxTests.NoScopeOutsideRoutines;
@@ -170,13 +170,13 @@ begin
   Assert.AreEqual(Ord(TCompletionScopeKind.None), Ord(ScopeOf('unit Haupt;'#10'interface'#10'uses'#10 +
     '  Sys|'#10'implementation'#10'end.').Kind));
   // Globale Variable hinter einer Klasse.
-  Assert.AreEqual(Ord(TCompletionScopeKind.None), Ord(ScopeOf(Head + 'var'#10'  G: |'#10'end.').Kind));
+  Assert.AreEqual(Ord(TCompletionScopeKind.None), Ord(ScopeOf(cHead + 'var'#10'  G: |'#10'end.').Kind));
 end;
 
 procedure TCompletionSyntaxTests.MissingEndInEarlierMethodIsNoNotice;
 begin
   // Akzeptanz: Ein fehlendes end; in einer frueheren Methode erzeugt keinen Hinweis.
-  Assert.AreEqual(Ord(TCompletionTrust.Sure), Ord(Assess(Head +
+  Assert.AreEqual(Ord(TCompletionTrust.Sure), Ord(Assess(cHead +
     'procedure TF.A;'#10 +
     'begin'#10 +
     '  if True then'#10 +
@@ -192,10 +192,10 @@ end;
 
 procedure TCompletionSyntaxTests.ErrorInCurrentMethodIsNotice;
 var
-  Notice: TCompletionSyntaxNotice;
+  mNotice: TCompletionSyntaxNotice;
 begin
   // Akzeptanz: ein Fehler in der aktuellen Methode schon.
-  Notice := Assess(Head +
+  mNotice := Assess(cHead +
     'procedure TF.A;'#10 +          // 8
     'begin'#10 +                    // 9
     'end;'#10 +                     // 10
@@ -206,67 +206,67 @@ begin
     '  Z|'#10 +                     // 15
     'end;'#10 +
     'end.');
-  Assert.AreEqual(Ord(TCompletionTrust.Limited), Ord(Notice.Trust));
-  Assert.AreEqual(13, Notice.Line);
-  Assert.AreEqual(12, Notice.Character);
-  Assert.AreNotEqual('', Notice.Message);
+  Assert.AreEqual(Ord(TCompletionTrust.Limited), Ord(mNotice.Trust));
+  Assert.AreEqual(13, mNotice.Line);
+  Assert.AreEqual(12, mNotice.Character);
+  Assert.AreNotEqual('', mNotice.Message);
 end;
 
 procedure TCompletionSyntaxTests.TypingAtCursorIsNoNotice;
 begin
-  Assert.AreEqual(Ord(TCompletionTrust.Sure), Ord(Assess(Head + 'procedure TF.A;'#10'begin'#10 +
+  Assert.AreEqual(Ord(TCompletionTrust.Sure), Ord(Assess(cHead + 'procedure TF.A;'#10'begin'#10 +
     '  X := Foo.|'#10'end;'#10'procedure TF.B;'#10'begin'#10'end;'#10'end.').Trust));
-  Assert.AreEqual(Ord(TCompletionTrust.Sure), Ord(Assess(Head + 'procedure TF.A;'#10'begin'#10 +
+  Assert.AreEqual(Ord(TCompletionTrust.Sure), Ord(Assess(cHead + 'procedure TF.A;'#10'begin'#10 +
     '  Foo(1, |'#10'end;'#10'end.').Trust));
-  Assert.AreEqual(Ord(TCompletionTrust.Sure), Ord(Assess(Head + 'procedure TF.A;'#10'begin'#10 +
+  Assert.AreEqual(Ord(TCompletionTrust.Sure), Ord(Assess(cHead + 'procedure TF.A;'#10'begin'#10 +
     '  if Ab|'#10'end;'#10'end.').Trust));
 end;
 
 procedure TCompletionSyntaxTests.ErrorAfterCursorIsNoNotice;
 begin
-  Assert.AreEqual(Ord(TCompletionTrust.Sure), Ord(Assess(Head + 'procedure TF.A;'#10'begin'#10 +
+  Assert.AreEqual(Ord(TCompletionTrust.Sure), Ord(Assess(cHead + 'procedure TF.A;'#10'begin'#10 +
     '  Fo|;'#10'  X := (1 + ;'#10'end;'#10'end.').Trust));
 end;
 
 procedure TCompletionSyntaxTests.ErrorInClassDeclaration;
 var
-  Notice: TCompletionSyntaxNotice;
+  mNotice: TCompletionSyntaxNotice;
 begin
-  Notice := Assess('unit Haupt;'#10'interface'#10'type'#10'  TF = class'#10'    procedure A(;'#10 +
+  mNotice := Assess('unit Haupt;'#10'interface'#10'type'#10'  TF = class'#10'    procedure A(;'#10 +
     '    procedure |'#10'  end;'#10'implementation'#10'end.');
-  Assert.AreEqual(Ord(TCompletionTrust.Limited), Ord(Notice.Trust));
-  Assert.AreEqual(4, Notice.Line);
+  Assert.AreEqual(Ord(TCompletionTrust.Limited), Ord(mNotice.Trust));
+  Assert.AreEqual(4, mNotice.Line);
   // Fehler in einer anderen Klasse zaehlt nicht.
-  Notice := Assess('unit Haupt;'#10'interface'#10'type'#10'  TA = class'#10'    procedure A(;'#10'  end;'#10 +
+  mNotice := Assess('unit Haupt;'#10'interface'#10'type'#10'  TA = class'#10'    procedure A(;'#10'  end;'#10 +
     '  TF = class'#10'    procedure B;'#10'    |'#10'  end;'#10'implementation'#10'end.');
-  Assert.AreEqual(Ord(TCompletionTrust.Sure), Ord(Notice.Trust));
+  Assert.AreEqual(Ord(TCompletionTrust.Sure), Ord(mNotice.Trust));
 end;
 
 procedure TCompletionSyntaxTests.UnknownWithoutItems;
 begin
-  Assert.AreEqual(Ord(TCompletionTrust.Unknown), Ord(Assess(Head + 'procedure TF.A;'#10'begin'#10 +
+  Assert.AreEqual(Ord(TCompletionTrust.Unknown), Ord(Assess(cHead + 'procedure TF.A;'#10'begin'#10 +
     '  X := (1 + ;'#10'  |'#10'end;'#10'end.', 0).Trust));
 end;
 
 procedure TCompletionSyntaxTests.WritesJson;
 var
-  List: TJSONObject;
-  Notice: TCompletionSyntaxNotice;
+  mList: TJSONObject;
+  mNotice: TCompletionSyntaxNotice;
 begin
-  List := TJSONObject.Create;
+  mList := TJSONObject.Create;
   try
-    Notice := Default(TCompletionSyntaxNotice);
-    TCompletionSyntax.WriteJson(List, Notice);
-    Assert.AreEqual('{}', List.ToJSON);
-    Notice.Trust := TCompletionTrust.Limited;
-    Notice.Line := 13;
-    Notice.Character := 12;
-    Notice.Message := 'Fehler';
-    TCompletionSyntax.WriteJson(List, Notice);
+    mNotice := Default(TCompletionSyntaxNotice);
+    TCompletionSyntax.WriteJson(mList, mNotice);
+    Assert.AreEqual('{}', mList.ToJSON);
+    mNotice.Trust := TCompletionTrust.Limited;
+    mNotice.Line := 13;
+    mNotice.Character := 12;
+    mNotice.Message := 'Fehler';
+    TCompletionSyntax.WriteJson(mList, mNotice);
     Assert.AreEqual('{"syntaxNotice":{"trust":"limited","line":13,"character":12,"message":"Fehler"}}',
-      List.ToJSON);
+      mList.ToJSON);
   finally
-    List.Free;
+    mList.Free;
   end;
 end;
 
@@ -277,58 +277,58 @@ end;
 
 procedure TCompletionSyntaxTests.DispatcherAnswersWithNotice;
 var
-  Text, Uri, Answer: string;
-  Store: IDocumentStore;
-  Completion: TLspCompletion;
-  Dispatcher: TJsonRpcDispatcher;
-  Position: TTextPosition;
-  Index: ISymbolIndex;
+  mText, mUri, mAnswer: string;
+  mStore: IDocumentStore;
+  mCompletion: TLspCompletion;
+  mDispatcher: TJsonRpcDispatcher;
+  mPosition: TTextPosition;
+  mIndex: ISymbolIndex;
 
   function Ask: string;
   var
-    Request, Response: TJSONObject;
+    mRequest, mResponse: TJSONObject;
   begin
-    Request := TJSONObject.ParseJSONValue('{"jsonrpc":"2.0","id":1,"method":"textDocument/completion",' +
-      '"params":{"textDocument":{"uri":"' + Uri.Replace('\', '\\') + '"},"position":{"line":' +
-      IntToStr(Position.Line) + ',"character":' + IntToStr(Position.Character) + '}}}') as TJSONObject;
+    mRequest := TJSONObject.ParseJSONValue('{"jsonrpc":"2.0","id":1,"method":"textDocument/completion",' +
+      '"params":{"textDocument":{"uri":"' + mUri.Replace('\', '\\') + '"},"position":{"line":' +
+      IntToStr(mPosition.Line) + ',"character":' + IntToStr(mPosition.Character) + '}}}') as TJSONObject;
     try
-      Response := Dispatcher.DispatchMessage(Request);
+      mResponse := mDispatcher.DispatchMessage(mRequest);
       try
-        Result := Response.ToJSON;
+        Result := mResponse.ToJSON;
       finally
-        Response.Free;
+        mResponse.Free;
       end;
     finally
-      Request.Free;
+      mRequest.Free;
     end;
   end;
 
 begin
-  Text := Split(Head + 'procedure TF.A;'#10'var'#10'  Value: Integer;'#10'begin'#10'  X := (1 + ;'#10 +
-    '  Va|'#10'end;'#10'end.', Position);
-  Uri := TDocumentUris.FromPath('C:\P\Haupt.pas');
-  Store := TDocumentStore.Create;
-  Store.Open(Uri, 'delphi', 1, Text);
-  Index := TSymbolIndex.Create;
-  Completion := TLspCompletion.Create(Store, Index);
-  Dispatcher := TJsonRpcDispatcher.Create;
+  mText := Split(cHead + 'procedure TF.A;'#10'var'#10'  Value: Integer;'#10'begin'#10'  X := (1 + ;'#10 +
+    '  Va|'#10'end;'#10'end.', mPosition);
+  mUri := TDocumentUris.FromPath('C:\P\Haupt.pas');
+  mStore := TDocumentStore.Create;
+  mStore.Open(mUri, 'delphi', 1, mText);
+  mIndex := TSymbolIndex.Create;
+  mCompletion := TLspCompletion.Create(mStore, mIndex);
+  mDispatcher := TJsonRpcDispatcher.Create;
   try
-    Completion.Attach(Dispatcher);
+    mCompletion.Attach(mDispatcher);
     FSyntaxNotice := True;
-    Completion.Hooks.SettingsFor :=
+    mCompletion.Hooks.SettingsFor :=
       function(const AUri: string): TCompletionSettings
       begin
         Result := TCompletionSettings.Default;
         Result.SyntaxNotice := FSyntaxNotice;
       end;
-    Answer := Ask;
-    Assert.IsTrue(Answer.Contains('"syntaxNotice":{"trust":"limited","line":12,"character":12'), Answer);
+    mAnswer := Ask;
+    Assert.IsTrue(mAnswer.Contains('"syntaxNotice":{"trust":"limited","line":12,"character":12'), mAnswer);
     FSyntaxNotice := False;
-    Answer := Ask;
-    Assert.IsFalse(Answer.Contains('syntaxNotice'), Answer);
+    mAnswer := Ask;
+    Assert.IsFalse(mAnswer.Contains('syntaxNotice'), mAnswer);
   finally
-    Dispatcher.Free;
-    Completion.Free;
+    mDispatcher.Free;
+    mCompletion.Free;
   end;
 end;
 

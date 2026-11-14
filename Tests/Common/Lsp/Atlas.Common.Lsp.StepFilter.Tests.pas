@@ -66,7 +66,7 @@ uses
   Atlas.Common.Pascal.Parser;
 
 const
-  Source =
+  cSource =
     'unit Kunden;'#10 +                                                 // 0
     'interface'#10 +                                                    // 1
     'type'#10 +                                                         // 2
@@ -151,7 +151,7 @@ const
 
 procedure TLspStepFilterTests.Setup;
 begin
-  FTree := TPascalParser.Parse(Source);
+  FTree := TPascalParser.Parse(cSource);
 end;
 
 procedure TLspStepFilterTests.TearDown;
@@ -161,7 +161,7 @@ end;
 
 function TLspStepFilterTests.At(ALine: Integer): TLspStepRoutine;
 begin
-  Assert.IsTrue(TLspStepFilter.RoutineAt(FTree, Source, ALine, Result), 'Routine an Zeile ' + IntToStr(ALine));
+  Assert.IsTrue(TLspStepFilter.RoutineAt(FTree, cSource, ALine, Result), 'Routine an Zeile ' + IntToStr(ALine));
 end;
 
 function TLspStepFilterTests.KindsAt(ALine: Integer): string;
@@ -256,9 +256,9 @@ procedure TLspStepFilterTests.OutsideRoutinesNothing;
 var
   mRoutine: TLspStepRoutine;
 begin
-  Assert.IsFalse(TLspStepFilter.RoutineAt(FTree, Source, 5, mRoutine), 'Feld');
-  Assert.IsFalse(TLspStepFilter.RoutineAt(FTree, Source, 13, mRoutine), 'Eigenschaft');
-  Assert.IsFalse(TLspStepFilter.RoutineAt(FTree, Source, 21, mRoutine), 'implementation');
+  Assert.IsFalse(TLspStepFilter.RoutineAt(FTree, cSource, 5, mRoutine), 'Feld');
+  Assert.IsFalse(TLspStepFilter.RoutineAt(FTree, cSource, 13, mRoutine), 'Eigenschaft');
+  Assert.IsFalse(TLspStepFilter.RoutineAt(FTree, cSource, 21, mRoutine), 'implementation');
 end;
 
 procedure TLspStepFilterTests.CountsKindsAndPatterns;
@@ -268,7 +268,7 @@ var
 begin
   mPatterns := TArray<string>.Create('TKunde.*', '*.Get*', 'Nirgends.*');
   mCounts := TLspStepFilter.NewCounts(mPatterns);
-  TLspStepFilter.AddCounts(FTree, Source, mPatterns, mCounts);
+  TLspStepFilter.AddCounts(FTree, cSource, mPatterns, mCounts);
   Assert.AreEqual(1, mCounts.Files);
   Assert.AreEqual(12, mCounts.Routines);
   Assert.AreEqual(1, mCounts.Kinds[TStepFilterKind.Getters]);
@@ -287,7 +287,7 @@ var
   mArguments: TJSONArray;
   mPatterns: TArray<string>;
 begin
-  mJson := TLspStepFilter.Execute(FTree, Source, 24);
+  mJson := TLspStepFilter.Execute(FTree, cSource, 24);
   try
     Assert.AreEqual(1, mJson.GetValue<Integer>('format'));
     Assert.IsTrue(mJson.GetValue<Boolean>('found'));
@@ -298,7 +298,7 @@ begin
   finally
     mJson.Free;
   end;
-  mJson := TLspStepFilter.Execute(FTree, Source, 1);
+  mJson := TLspStepFilter.Execute(FTree, cSource, 1);
   try
     Assert.IsFalse(mJson.GetValue<Boolean>('found'));
     Assert.IsNull(mJson.GetValue('name'));

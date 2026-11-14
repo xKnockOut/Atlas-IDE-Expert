@@ -55,9 +55,9 @@ uses
   Atlas.Common.Lsp.AnonymousMethods;
 
 const
-  FileName = 'C:\P\Haupt.pas';
-  FormFile = 'C:\P\Haupt.dfm';
-  Text =
+  cFileName = 'C:\P\Haupt.pas';
+  cFormFile = 'C:\P\Haupt.dfm';
+  cText =
     'unit Haupt;'#10 +                                               // 0
     'interface'#10 +                                                 // 1
     'type'#10 +                                                      // 2
@@ -100,7 +100,7 @@ const
 
 function ReadFile(const AFileName: string; out AText: string): Boolean;
 begin
-  Result := SameText(AFileName, FormFile);
+  Result := SameText(AFileName, cFormFile);
   if Result then
   begin
     AText := 'object Kunde: TKunde'#10'  OnClick = Knopf'#10'end'#10;
@@ -110,7 +110,7 @@ end;
 procedure TLspAnonymousMethodsTests.Setup;
 begin
   FIndex := TSymbolIndex.Create;
-  FIndex.AddUnit(TIndexExtractor.ExtractText(Text, FileName, nil));
+  FIndex.AddUnit(TIndexExtractor.ExtractText(cText, cFileName, nil));
 end;
 
 procedure TLspAnonymousMethodsTests.TearDown;
@@ -123,10 +123,10 @@ function RequestAt(AResolver: TNameResolver; ATree: TSyntaxTree; ALine, ACharact
 begin
   Result := Default(TAnonymousMethodRequest);
   Result.Tree := ATree;
-  Result.Text := Text;
-  Result.Uri := TDocumentUris.FromPath(FileName);
+  Result.Text := cText;
+  Result.Uri := TDocumentUris.FromPath(cFileName);
   Result.Position := TTextPosition.Create(ALine, ACharacter);
-  Result.Lookup := TLspAnonymousMethods.Lookup(AResolver, ATree, FileName, ReadFile);
+  Result.Lookup := TLspAnonymousMethods.Lookup(AResolver, ATree, cFileName, ReadFile);
   Result.Capture := TDeferredCapture.Forward;
   Result.Style := TFormatStyle.Default;
 end;
@@ -134,93 +134,93 @@ end;
 /// <summary>Aktionen an ALine/ACharacter mit Namensauflösung.</summary>
 function ActionsAt(const AIndex: ISymbolIndex; ALine, ACharacter: Integer): TArray<TJSONObject>;
 var
-  Tree: TSyntaxTree;
-  Resolver: TNameResolver;
+  mTree: TSyntaxTree;
+  mResolver: TNameResolver;
 begin
-  Tree := TPascalParser.Parse(Text);
-  Resolver := TNameResolver.Create(AIndex);
+  mTree := TPascalParser.Parse(cText);
+  mResolver := TNameResolver.Create(AIndex);
   try
-    Resolver.PinTree(Tree, FileName);
+    mResolver.PinTree(mTree, cFileName);
     try
-      Result := TLspAnonymousMethods.Actions(RequestAt(Resolver, Tree, ALine, ACharacter));
+      Result := TLspAnonymousMethods.Actions(RequestAt(mResolver, mTree, ALine, ACharacter));
     finally
-      Resolver.UnpinTree;
+      mResolver.UnpinTree;
     end;
   finally
-    Resolver.Free;
-    Tree.Free;
+    mResolver.Free;
+    mTree.Free;
   end;
 end;
 
 /// <summary>Antwort von atlas.server.anonymousMethod an ALine/ACharacter mit dem Namen AName.</summary>
 function ExecuteAt(const AIndex: ISymbolIndex; ALine, ACharacter: Integer; const AName: string): TJSONObject;
 var
-  Tree: TSyntaxTree;
-  Resolver: TNameResolver;
+  mTree: TSyntaxTree;
+  mResolver: TNameResolver;
 begin
-  Tree := TPascalParser.Parse(Text);
-  Resolver := TNameResolver.Create(AIndex);
+  mTree := TPascalParser.Parse(cText);
+  mResolver := TNameResolver.Create(AIndex);
   try
-    Resolver.PinTree(Tree, FileName);
+    mResolver.PinTree(mTree, cFileName);
     try
-      Result := TLspAnonymousMethods.Execute(RequestAt(Resolver, Tree, ALine, ACharacter), AName);
+      Result := TLspAnonymousMethods.Execute(RequestAt(mResolver, mTree, ALine, ACharacter), AName);
     finally
-      Resolver.UnpinTree;
+      mResolver.UnpinTree;
     end;
   finally
-    Resolver.Free;
-    Tree.Free;
+    mResolver.Free;
+    mTree.Free;
   end;
 end;
 
 procedure FreeAll(const AActions: TArray<TJSONObject>);
 var
-  Action: TJSONObject;
+  mAction: TJSONObject;
 begin
-  for Action in AActions do
+  for mAction in AActions do
   begin
-    Action.Free;
+    mAction.Free;
   end;
 end;
 
 procedure TLspAnonymousMethodsTests.ActionCarriesClientCommand;
 var
-  Actions: TArray<TJSONObject>;
-  Arguments: TJSONArray;
+  mActions: TArray<TJSONObject>;
+  mArguments: TJSONArray;
 begin
-  Actions := ActionsAt(FIndex, 25, 18);
+  mActions := ActionsAt(FIndex, 25, 18);
   try
-    Assert.AreEqual(1, Integer(Length(Actions)));
-    Assert.AreEqual(TLspAnonymousMethods.cKind, Actions[0].GetValue<string>('kind'));
-    Assert.AreEqual('In Methode umwandeln (ProcessItem)', Actions[0].GetValue<string>('title'));
-    Assert.AreEqual(TLspAnonymousMethods.cClientCommand, Actions[0].GetValue<string>('command.command'));
-    Arguments := Actions[0].GetValue<TJSONArray>('command.arguments');
-    Assert.AreEqual(3, Arguments.Count);
-    Assert.AreEqual(TDocumentUris.FromPath(FileName), Arguments.Items[0].Value);
-    Assert.AreEqual(25, Arguments.Items[1].GetValue<Integer>('line'));
-    Assert.AreEqual('ProcessItem', Arguments.Items[2].Value);
+    Assert.AreEqual(1, Integer(Length(mActions)));
+    Assert.AreEqual(TLspAnonymousMethods.cKind, mActions[0].GetValue<string>('kind'));
+    Assert.AreEqual('In Methode umwandeln (ProcessItem)', mActions[0].GetValue<string>('title'));
+    Assert.AreEqual(TLspAnonymousMethods.cClientCommand, mActions[0].GetValue<string>('command.command'));
+    mArguments := mActions[0].GetValue<TJSONArray>('command.arguments');
+    Assert.AreEqual(3, mArguments.Count);
+    Assert.AreEqual(TDocumentUris.FromPath(cFileName), mArguments.Items[0].Value);
+    Assert.AreEqual(25, mArguments.Items[1].GetValue<Integer>('line'));
+    Assert.AreEqual('ProcessItem', mArguments.Items[2].Value);
   finally
-    FreeAll(Actions);
+    FreeAll(mActions);
   end;
   // Im Rumpf: nichts.
-  Actions := ActionsAt(FIndex, 25, 58);
-  Assert.AreEqual(0, Integer(Length(Actions)));
+  mActions := ActionsAt(FIndex, 25, 58);
+  Assert.AreEqual(0, Integer(Length(mActions)));
 end;
 
 procedure TLspAnonymousMethodsTests.ExecuteAnswersEditAndPreview;
 var
-  Answer: TJSONObject;
+  mAnswer: TJSONObject;
 begin
-  Answer := ExecuteAt(FIndex, 25, 18, 'Merke');
+  mAnswer := ExecuteAt(FIndex, 25, 18, 'Merke');
   try
-    Assert.IsTrue(Pos('"newText":"Merke"', Answer.ToJSON) > 0, Answer.ToJSON);
-    Assert.IsTrue(Pos('end;\n\n"', Answer.ToJSON) > 0, Answer.ToJSON);
-    Assert.IsTrue(Pos('procedure TKunde.Merke(const AWert: Integer);', Answer.ToJSON) > 0, Answer.ToJSON);
-    Assert.IsTrue(Answer.GetValue<string>('preview').StartsWith('Neue Methode: '), Answer.ToJSON);
-    Assert.AreEqual(1, Answer.GetValue<Integer>('files'));
-    Assert.AreEqual(0, Answer.GetValue<TJSONArray>('warnings').Count);
+    Assert.IsTrue(Pos('"newText":"Merke"', mAnswer.ToJSON) > 0, mAnswer.ToJSON);
+    Assert.IsTrue(Pos('end;\n\n"', mAnswer.ToJSON) > 0, mAnswer.ToJSON);
+    Assert.IsTrue(Pos('procedure TKunde.Merke(const AWert: Integer);', mAnswer.ToJSON) > 0, mAnswer.ToJSON);
+    Assert.IsTrue(mAnswer.GetValue<string>('preview').StartsWith('Neue Methode: '), mAnswer.ToJSON);
+    Assert.AreEqual(1, mAnswer.GetValue<Integer>('files'));
+    Assert.AreEqual(0, mAnswer.GetValue<TJSONArray>('warnings').Count);
   finally
-    Answer.Free;
+    mAnswer.Free;
   end;
 end;
 
@@ -240,21 +240,21 @@ end;
 
 procedure TLspAnonymousMethodsTests.EmbedFollowsTargetType;
 var
-  Actions: TArray<TJSONObject>;
+  mActions: TArray<TJSONObject>;
 begin
   // Addiere geht an TAktion (reference to): einbetten mit Vorschau.
-  Actions := ActionsAt(FIndex, 28, 18);
+  mActions := ActionsAt(FIndex, 28, 18);
   try
-    Assert.AreEqual(1, Integer(Length(Actions)));
-    Assert.AreEqual(TAnonymousMethods.EmbedTitle, Actions[0].GetValue<string>('title'));
-    Assert.AreNotEqual('', Actions[0].GetValue<string>('data.preview'), Actions[0].ToJSON);
-    Assert.IsTrue(Pos('procedure(const AWert: Integer)', Actions[0].ToJSON) > 0, Actions[0].ToJSON);
+    Assert.AreEqual(1, Integer(Length(mActions)));
+    Assert.AreEqual(TAnonymousMethods.EmbedTitle, mActions[0].GetValue<string>('title'));
+    Assert.AreNotEqual('', mActions[0].GetValue<string>('data.preview'), mActions[0].ToJSON);
+    Assert.IsTrue(Pos('procedure(const AWert: Integer)', mActions[0].ToJSON) > 0, mActions[0].ToJSON);
   finally
-    FreeAll(Actions);
+    FreeAll(mActions);
   end;
   // Tick geht an TEreignis (of object): nicht.
-  Actions := ActionsAt(FIndex, 32, 18);
-  Assert.AreEqual(0, Integer(Length(Actions)));
+  mActions := ActionsAt(FIndex, 32, 18);
+  Assert.AreEqual(0, Integer(Length(mActions)));
 end;
 
 procedure TLspAnonymousMethodsTests.EmbedSkipsFormEvent;

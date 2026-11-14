@@ -96,15 +96,15 @@ end;
 
 function FindKind(ANode: TSyntaxNode; AKind: TSyntaxKind): TSyntaxNode;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
   if ANode.Kind = AKind then
   begin
     Exit(ANode);
   end;
-  for Index := 0 to ANode.ChildCount - 1 do
+  for mIndex := 0 to ANode.ChildCount - 1 do
   begin
-    Result := FindKind(ANode.Children[Index], AKind);
+    Result := FindKind(ANode.Children[mIndex], AKind);
     if Result <> nil then
     begin
       Exit;
@@ -116,15 +116,15 @@ end;
 /// <summary>Anweisung mit dem Namen AName (Zuweisungsziel oder aufgerufene Routine).</summary>
 function FindStatement(ANode: TSyntaxNode; const AName: string): TSyntaxNode;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
   if (ANode.Kind in [TSyntaxKind.AssignStatement, TSyntaxKind.CallStatement]) and SameText(ANode.Name, AName) then
   begin
     Exit(ANode);
   end;
-  for Index := 0 to ANode.ChildCount - 1 do
+  for mIndex := 0 to ANode.ChildCount - 1 do
   begin
-    Result := FindStatement(ANode.Children[Index], AName);
+    Result := FindStatement(ANode.Children[mIndex], AName);
     if Result <> nil then
     begin
       Exit;
@@ -144,15 +144,15 @@ end;
 
 function FindRoutine(ANode: TSyntaxNode; const AName: string): TSyntaxNode;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
   if (ANode.Kind = TSyntaxKind.RoutineDecl) and SameText(ANode.Name, AName) then
   begin
     Exit(ANode);
   end;
-  for Index := 0 to ANode.ChildCount - 1 do
+  for mIndex := 0 to ANode.ChildCount - 1 do
   begin
-    Result := FindRoutine(ANode.Children[Index], AName);
+    Result := FindRoutine(ANode.Children[mIndex], AName);
     if Result <> nil then
     begin
       Exit;
@@ -325,16 +325,16 @@ end;
 procedure TControlFlowTests.EndlessLoopEndsOnlyThroughExit;
 var
   F: TFlowFixture;
-  Body: string;
+  mBody: string;
 begin
   // while True und repeat … until False laufen nur über Exit, Break oder raise hinaus (#1109).
-  for Body in TArray<string>.Create('  while True do'#13#10'    if X > 0 then Exit(1);',
+  for mBody in TArray<string>.Create('  while True do'#13#10'    if X > 0 then Exit(1);',
     '  repeat'#13#10'    if X > 0 then Exit(1);'#13#10'  until False;',
     '  while (True) do'#13#10'    if X > 0 then Exit(1);') do
   begin
-    F := Flow(Body);
+    F := Flow(mBody);
     try
-      Assert.AreEqual<TFlowAnswer>(TFlowAnswer.No, F.Graph.MayEndWithout('Result'), Body);
+      Assert.AreEqual<TFlowAnswer>(TFlowAnswer.No, F.Graph.MayEndWithout('Result'), mBody);
     finally
       F.Free;
     end;
@@ -376,24 +376,24 @@ end;
 procedure TControlFlowTests.FinallyRunsOnExit;
 var
   F: TFlowFixture;
-  Syntax: TSyntaxNode;
-  Node: TFlowNode;
-  OnExitPath: Boolean;
+  mSyntax: TSyntaxNode;
+  mNode: TFlowNode;
+  mOnExitPath: Boolean;
 begin
   F := Flow('  try'#13#10'    Exit;'#13#10'  finally'#13#10'    Cleanup;'#13#10'  end;'#13#10'  Dead;');
   try
     // Seit #647 gibt es je Ausgang eine Kopie des finally-Blocks: Eine Kopie ist erreichbar, das Ende auch,
     // der Code hinter dem try nicht.
-    Syntax := FindStatement(F.Tree.Root, 'Cleanup');
-    OnExitPath := False;
-    for Node in F.Graph.Nodes do
+    mSyntax := FindStatement(F.Tree.Root, 'Cleanup');
+    mOnExitPath := False;
+    for mNode in F.Graph.Nodes do
     begin
-      if (Node.Syntax = Syntax) and (F.Graph.IsReachable(Node) = TFlowAnswer.Yes) then
+      if (mNode.Syntax = mSyntax) and (F.Graph.IsReachable(mNode) = TFlowAnswer.Yes) then
       begin
-        OnExitPath := True;
+        mOnExitPath := True;
       end;
     end;
-    Assert.IsTrue(OnExitPath, 'finally läuft');
+    Assert.IsTrue(mOnExitPath, 'finally läuft');
     Assert.AreEqual<TFlowAnswer>(TFlowAnswer.Yes, F.Graph.IsReachable(F.Graph.ExitNode), 'Routine endet');
     Assert.AreEqual<TFlowAnswer>(TFlowAnswer.No, F.Graph.IsReachable(NodeNamed(F, 'Dead')), 'Exit springt');
   finally
@@ -458,13 +458,13 @@ end;
 procedure TControlFlowTests.ReachingDefinitionsInLoop;
 var
   F: TFlowFixture;
-  Defs: TReachingDefinitions;
+  mDefs: TReachingDefinitions;
 begin
   F := Flow('  while X > 0 do'#13#10'  begin'#13#10'    Use;'#13#10'    Y := 1;'#13#10'  end;');
   try
-    Defs := F.Graph.ReachingDefinitions(NodeNamed(F, 'Use'), 'Y');
-    Assert.AreEqual(1, Integer(Length(Defs.Definitions)));
-    Assert.IsTrue(Defs.FromEntry);
+    mDefs := F.Graph.ReachingDefinitions(NodeNamed(F, 'Use'), 'Y');
+    Assert.AreEqual(1, Integer(Length(mDefs.Definitions)));
+    Assert.IsTrue(mDefs.FromEntry);
   finally
     F.Free;
   end;
@@ -497,15 +497,15 @@ end;
 procedure TControlFlowTests.ReachingDefinitionsSkipFailedAssignment;
 var
   F: TFlowFixture;
-  Defs: TReachingDefinitions;
+  mDefs: TReachingDefinitions;
 begin
   F := Flow('  Y := nil;'#13#10'  try'#13#10'    Y := Load;'#13#10'  except'#13#10'    Report;'#13#10'  end;'#13#10'  Use;');
   try
-    Defs := F.Graph.ReachingDefinitions(NodeNamed(F, 'Use'), 'Y');
-    Assert.AreEqual(2, Integer(Length(Defs.Definitions)));
-    Defs := F.Graph.ReachingDefinitions(NodeNamed(F, 'Report'), 'Y');
-    Assert.AreEqual(1, Integer(Length(Defs.Definitions)));
-    Assert.AreSame(NodeNamed(F, 'Y'), Defs.Definitions[0], 'im except gilt nur Y := nil');
+    mDefs := F.Graph.ReachingDefinitions(NodeNamed(F, 'Use'), 'Y');
+    Assert.AreEqual(2, Integer(Length(mDefs.Definitions)));
+    mDefs := F.Graph.ReachingDefinitions(NodeNamed(F, 'Report'), 'Y');
+    Assert.AreEqual(1, Integer(Length(mDefs.Definitions)));
+    Assert.AreSame(NodeNamed(F, 'Y'), mDefs.Definitions[0], 'im except gilt nur Y := nil');
   finally
     F.Free;
   end;
@@ -514,14 +514,14 @@ end;
 procedure TControlFlowTests.ReachingDefinitionsWithoutEntryPath;
 var
   F: TFlowFixture;
-  Defs: TReachingDefinitions;
+  mDefs: TReachingDefinitions;
 begin
   F := Flow('  Y := 1;'#13#10'  if X > 0 then Y := 2;'#13#10'  Use;');
   try
-    Defs := F.Graph.ReachingDefinitions(NodeNamed(F, 'Use'), 'Y');
-    Assert.AreEqual(2, Integer(Length(Defs.Definitions)));
-    Assert.IsFalse(Defs.FromEntry);
-    Assert.IsFalse(Defs.MaybeFromEntry);
+    mDefs := F.Graph.ReachingDefinitions(NodeNamed(F, 'Use'), 'Y');
+    Assert.AreEqual(2, Integer(Length(mDefs.Definitions)));
+    Assert.IsFalse(mDefs.FromEntry);
+    Assert.IsFalse(mDefs.MaybeFromEntry);
   finally
     F.Free;
   end;
@@ -572,24 +572,24 @@ end;
 procedure TControlFlowTests.UncertainChangeGivesUnknown;
 const
   // var-/out-Argument mit unbekannter oder bekannter Signatur, Adresse, Teilzuweisung (#143).
-  Statements: array[0..9] of string = ('Dict.TryGetValue(X, Result);', 'TryGetValue(X, Result);',
+  cStatements: array[0..9] of string = ('Dict.TryGetValue(X, Result);', 'TryGetValue(X, Result);',
     'SetLength(Result, X);', 'FillChar(Result, SizeOf(Result), 0);', 'P := @Result;', 'P := Addr(Result);',
     'Result.Feld := 1;', 'Result[0] := 1;', 'Result.Init(X);', 'with Result do Feld := 1;');
 var
   F: TFlowFixture;
-  Defs: TReachingDefinitions;
-  Statement: string;
+  mDefs: TReachingDefinitions;
+  mStatement: string;
 begin
-  for Statement in Statements do
+  for mStatement in cStatements do
   begin
-    F := Flow('  ' + Statement);
+    F := Flow('  ' + mStatement);
     try
-      Assert.IsTrue(F.Graph.Complete, Statement);
-      Assert.AreEqual<TFlowAnswer>(TFlowAnswer.Unknown, F.Graph.MayEndWithout('Result'), Statement);
-      Defs := F.Graph.ReachingDefinitions(F.Graph.ExitNode, 'Result');
-      Assert.IsFalse(Defs.FromEntry, Statement);
-      Assert.IsTrue(Defs.MaybeFromEntry, Statement);
-      Assert.AreEqual(1, Integer(Length(Defs.Uncertain)), Statement);
+      Assert.IsTrue(F.Graph.Complete, mStatement);
+      Assert.AreEqual<TFlowAnswer>(TFlowAnswer.Unknown, F.Graph.MayEndWithout('Result'), mStatement);
+      mDefs := F.Graph.ReachingDefinitions(F.Graph.ExitNode, 'Result');
+      Assert.IsFalse(mDefs.FromEntry, mStatement);
+      Assert.IsTrue(mDefs.MaybeFromEntry, mStatement);
+      Assert.AreEqual(1, Integer(Length(mDefs.Uncertain)), mStatement);
     finally
       F.Free;
     end;
@@ -670,15 +670,15 @@ end;
 procedure TControlFlowTests.ValueArgumentIsRead;
 var
   F: TFlowFixture;
-  Node: TFlowNode;
+  mNode: TFlowNode;
 begin
   F := Flow('  Use(Y + 1, Dict.Items[I]);');
   try
-    Node := NodeNamed(F, 'Use');
-    Assert.IsTrue(Node.ReadsName('Y'));
-    Assert.IsTrue(Node.ReadsName('I'), 'Index in einer Kette wird gelesen');
-    Assert.IsTrue(Node.TouchesName('Dict'), 'unbekannte Signatur');
-    Assert.IsFalse(Node.TouchesName('Y'), 'Ausdruck kann nicht var-Argument sein');
+    mNode := NodeNamed(F, 'Use');
+    Assert.IsTrue(mNode.ReadsName('Y'));
+    Assert.IsTrue(mNode.ReadsName('I'), 'Index in einer Kette wird gelesen');
+    Assert.IsTrue(mNode.TouchesName('Dict'), 'unbekannte Signatur');
+    Assert.IsFalse(mNode.TouchesName('Y'), 'Ausdruck kann nicht var-Argument sein');
   finally
     F.Free;
   end;
@@ -727,12 +727,12 @@ var
 
   function ImplicitEdges(ANode: TFlowNode): Integer;
   var
-    Next: TFlowNode;
+    mNext: TFlowNode;
   begin
     Result := 0;
-    for Next in ANode.Successors do
+    for mNext in ANode.Successors do
     begin
-      if ANode.IsImplicitRaiseEdge(Next) then
+      if ANode.IsImplicitRaiseEdge(mNext) then
       begin
         Inc(Result);
       end;

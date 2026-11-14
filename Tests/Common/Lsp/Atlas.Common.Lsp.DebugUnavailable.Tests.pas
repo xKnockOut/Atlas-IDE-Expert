@@ -49,7 +49,7 @@ uses
   Atlas.Common.Lsp.CompilerSwitches;
 
 const
-  UnitText =
+  cUnitText =
     'unit Werte;'#10 +                                  // 0
     'interface'#10 +                                    // 1
     'type'#10 +                                         // 2
@@ -84,31 +84,31 @@ const
     'end;'#10 +                                         // 31
     'end.';
 
-  FileName = 'C:\P\Werte.pas';
+  cFileName = 'C:\P\Werte.pas';
 
 { TLspDebugUnavailableTests }
 
 function TLspDebugUnavailableTests.FactsAt(const AName: string; ALine: Integer): TUnavailableFacts;
 var
-  Tree: TSyntaxTree;
+  mTree: TSyntaxTree;
 begin
-  Tree := TPascalParser.Parse(UnitText);
+  mTree := TPascalParser.Parse(cUnitText);
   try
-    Result := TLspDebugUnavailable.Facts(nil, Tree, FileName, UnitText, AName, ALine);
+    Result := TLspDebugUnavailable.Facts(nil, mTree, cFileName, cUnitText, AName, ALine);
   finally
-    Tree.Free;
+    mTree.Free;
   end;
 end;
 
 procedure TLspDebugUnavailableTests.LifetimeBeforeWithinAfter;
 var
-  Facts: TUnavailableFacts;
+  mFacts: TUnavailableFacts;
 begin
-  Facts := FactsAt('Summe', 21);
-  Assert.IsTrue(Facts.Local);
-  Assert.AreEqual(22, Facts.FirstUse);
-  Assert.AreEqual(29, Facts.LastUse);
-  Assert.AreEqual<TVariableLifetime>(TVariableLifetime.Before, Facts.Lifetime, 'vor der ersten Verwendung');
+  mFacts := FactsAt('Summe', 21);
+  Assert.IsTrue(mFacts.Local);
+  Assert.AreEqual(22, mFacts.FirstUse);
+  Assert.AreEqual(29, mFacts.LastUse);
+  Assert.AreEqual<TVariableLifetime>(TVariableLifetime.Before, mFacts.Lifetime, 'vor der ersten Verwendung');
   Assert.AreEqual<TVariableLifetime>(TVariableLifetime.Within, FactsAt('Summe', 25).Lifetime);
   Assert.AreEqual<TVariableLifetime>(TVariableLifetime.After,
     FactsAt('Summe', 30).Lifetime, 'nach der letzten Verwendung');
@@ -116,36 +116,36 @@ end;
 
 procedure TLspDebugUnavailableTests.LoopCountsAsWhole;
 var
-  Facts: TUnavailableFacts;
+  mFacts: TUnavailableFacts;
 begin
   // Rest steht zuletzt in Zeile 25, die Schleife reicht bis 27: am Ende der Schleife lebt Rest noch.
-  Facts := FactsAt('Rest', 27);
-  Assert.AreEqual(27, Facts.LastUse);
-  Assert.AreEqual<TVariableLifetime>(TVariableLifetime.Within, Facts.Lifetime);
+  mFacts := FactsAt('Rest', 27);
+  Assert.AreEqual(27, mFacts.LastUse);
+  Assert.AreEqual<TVariableLifetime>(TVariableLifetime.Within, mFacts.Lifetime);
   Assert.AreEqual<TVariableLifetime>(TVariableLifetime.After, FactsAt('Rest', 28).Lifetime);
 end;
 
 procedure TLspDebugUnavailableTests.ParameterLivesFromStart;
 var
-  Facts: TUnavailableFacts;
+  mFacts: TUnavailableFacts;
 begin
-  Facts := FactsAt('Anzahl', 21);
-  Assert.IsTrue(Facts.IsParameter);
-  Assert.IsTrue(Facts.Local);
-  Assert.AreEqual(14, Facts.FirstUse, 'ab Routinenanfang');
-  Assert.AreEqual<TVariableLifetime>(TVariableLifetime.Within, Facts.Lifetime);
+  mFacts := FactsAt('Anzahl', 21);
+  Assert.IsTrue(mFacts.IsParameter);
+  Assert.IsTrue(mFacts.Local);
+  Assert.AreEqual(14, mFacts.FirstUse, 'ab Routinenanfang');
+  Assert.AreEqual<TVariableLifetime>(TVariableLifetime.Within, mFacts.Lifetime);
   Assert.AreEqual<TVariableLifetime>(TVariableLifetime.After, FactsAt('Anzahl', 25).Lifetime);
 end;
 
 procedure TLspDebugUnavailableTests.InlineAtDeclaration;
 var
-  Facts: TUnavailableFacts;
+  mFacts: TUnavailableFacts;
 begin
-  Facts := FactsAt('Result', 12);
-  Assert.IsTrue(Facts.HasRoutine);
-  Assert.AreEqual('TListe.Schnell', Facts.RoutineName);
-  Assert.IsTrue(Facts.RoutineInline, 'inline an der Deklaration in der Klasse');
-  Assert.IsTrue(Facts.Local, 'Result ist lokal');
+  mFacts := FactsAt('Result', 12);
+  Assert.IsTrue(mFacts.HasRoutine);
+  Assert.AreEqual('TListe.Schnell', mFacts.RoutineName);
+  Assert.IsTrue(mFacts.RoutineInline, 'inline an der Deklaration in der Klasse');
+  Assert.IsTrue(mFacts.Local, 'Result ist lokal');
   Assert.IsFalse(FactsAt('Summe', 22).RoutineInline);
 end;
 
@@ -157,67 +157,67 @@ end;
 
 procedure TLspDebugUnavailableTests.FixesAroundOuterRoutine;
 var
-  Facts: TUnavailableFacts;
+  mFacts: TUnavailableFacts;
 begin
   // Halt in der lokalen Routine: Direktiven um die äußere Routine (14 bis 31).
-  Facts := FactsAt('Summe', 16);
-  Assert.IsTrue(Facts.HasRoutine);
-  Assert.AreEqual(2, Integer(Length(Facts.RoutineFix)));
-  Assert.AreEqual(14, Facts.RoutineFix[0].Range.StartPos.Line);
-  Assert.AreEqual('{$OPTIMIZATION OFF}'#10, Facts.RoutineFix[0].NewText);
-  Assert.AreEqual(32, Facts.RoutineFix[1].Range.StartPos.Line);
-  Assert.AreEqual('{$OPTIMIZATION ON}'#10, Facts.RoutineFix[1].NewText);
-  Assert.AreEqual(1, Integer(Length(Facts.UnitFix)));
-  Assert.AreEqual(1, Facts.UnitFix[0].Range.StartPos.Line, 'unter unit Werte;');
-  Assert.AreEqual('{$O-}'#10, Facts.UnitFix[0].NewText);
+  mFacts := FactsAt('Summe', 16);
+  Assert.IsTrue(mFacts.HasRoutine);
+  Assert.AreEqual(2, Integer(Length(mFacts.RoutineFix)));
+  Assert.AreEqual(14, mFacts.RoutineFix[0].Range.StartPos.Line);
+  Assert.AreEqual('{$OPTIMIZATION OFF}'#10, mFacts.RoutineFix[0].NewText);
+  Assert.AreEqual(32, mFacts.RoutineFix[1].Range.StartPos.Line);
+  Assert.AreEqual('{$OPTIMIZATION ON}'#10, mFacts.RoutineFix[1].NewText);
+  Assert.AreEqual(1, Integer(Length(mFacts.UnitFix)));
+  Assert.AreEqual(1, mFacts.UnitFix[0].Range.StartPos.Line, 'unter unit Werte;');
+  Assert.AreEqual('{$O-}'#10, mFacts.UnitFix[0].NewText);
 end;
 
 function Context(const AUri: string): TCompilerSwitchContext;
 begin
   Result := Default(TCompilerSwitchContext);
-  Result.FileName := FileName;
+  Result.FileName := cFileName;
   Result.HasProject := True;
   Result.Input.Defines := TArray<string>.Create('DEBUG', '$D+', '$L+', '$O-');
 end;
 
 procedure TLspDebugUnavailableTests.HandlerWritesSwitchesAndFacts;
 var
-  Store: IDocumentStore;
-  Handler: TLspDebugUnavailable;
-  Dispatcher: TJsonRpcDispatcher;
-  Request, Response: TJSONObject;
-  Text: string;
+  mStore: IDocumentStore;
+  mHandler: TLspDebugUnavailable;
+  mDispatcher: TJsonRpcDispatcher;
+  mRequest, mResponse: TJSONObject;
+  mText: string;
 begin
-  Store := TDocumentStore.Create;
-  Store.Open(TDocumentUris.FromPath(FileName), 'delphi', 1, UnitText);
-  Handler := TLspDebugUnavailable.Create(Store, nil, nil, Context);
-  Dispatcher := TJsonRpcDispatcher.Create;
+  mStore := TDocumentStore.Create;
+  mStore.Open(TDocumentUris.FromPath(cFileName), 'delphi', 1, cUnitText);
+  mHandler := TLspDebugUnavailable.Create(mStore, nil, nil, Context);
+  mDispatcher := TJsonRpcDispatcher.Create;
   try
-    Handler.Attach(Dispatcher);
-    Request := TJSONObject.ParseJSONValue('{"jsonrpc":"2.0","id":1,"method":"' + TLspDebugUnavailable.cMethod +
-      '","params":{"textDocument":{"uri":"' + TDocumentUris.FromPath(FileName).Replace('\', '\\') +
+    mHandler.Attach(mDispatcher);
+    mRequest := TJSONObject.ParseJSONValue('{"jsonrpc":"2.0","id":1,"method":"' + TLspDebugUnavailable.cMethod +
+      '","params":{"textDocument":{"uri":"' + TDocumentUris.FromPath(cFileName).Replace('\', '\\') +
       '"},"position":{"line":30,"character":0},"name":"Summe"}}') as TJSONObject;
     try
-      Response := Dispatcher.DispatchMessage(Request);
+      mResponse := mDispatcher.DispatchMessage(mRequest);
     finally
-      Request.Free;
+      mRequest.Free;
     end;
     try
-      Text := Response.GetValue('result').ToJSON;
+      mText := mResponse.GetValue('result').ToJSON;
     finally
-      Response.Free;
+      mResponse.Free;
     end;
   finally
-    Dispatcher.Free;
-    Handler.Free;
+    mDispatcher.Free;
+    mHandler.Free;
   end;
-  Assert.IsTrue(Text.Contains('{"name":"O","longName":"OPTIMIZATION","value":"+","projectValue":"-",' +
-    '"deviates":true,"origin":{"kind":"directive","text":"{$O+}"'), Text);
-  Assert.IsTrue(Text.Contains('"name":"D","longName":"DEBUGINFO","value":"+"'), Text);
-  Assert.IsTrue(Text.Contains('"routine":{"name":"TListe.Lauf","inline":false,"startLine":14,"endLine":31}'), Text);
-  Assert.IsTrue(Text.Contains('"lifetime":"after"'), Text);
-  Assert.IsTrue(Text.Contains('"routineOptimization":{"changes":'), Text);
-  Assert.IsTrue(Text.Contains('"unitOptimization":{"changes":'), Text);
+  Assert.IsTrue(mText.Contains('{"name":"O","longName":"OPTIMIZATION","value":"+","projectValue":"-",' +
+    '"deviates":true,"origin":{"kind":"directive","text":"{$O+}"'), mText);
+  Assert.IsTrue(mText.Contains('"name":"D","longName":"DEBUGINFO","value":"+"'), mText);
+  Assert.IsTrue(mText.Contains('"routine":{"name":"TListe.Lauf","inline":false,"startLine":14,"endLine":31}'), mText);
+  Assert.IsTrue(mText.Contains('"lifetime":"after"'), mText);
+  Assert.IsTrue(mText.Contains('"routineOptimization":{"changes":'), mText);
+  Assert.IsTrue(mText.Contains('"unitOptimization":{"changes":'), mText);
 end;
 
 end.

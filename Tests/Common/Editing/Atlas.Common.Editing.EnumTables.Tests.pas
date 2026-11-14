@@ -54,60 +54,60 @@ uses
   Atlas.Common.Editing.EnumTables;
 
 const
-  States: array[0..2] of string = ('osNew', 'osPaid', 'osPaymentDue');
+  cStates: array[0..2] of string = ('osNew', 'osPaid', 'osPaymentDue');
 
 function Names: TArray<string>;
 begin
-  Result := TArray<string>.Create(States[0], States[1], States[2]);
+  Result := TArray<string>.Create(cStates[0], cStates[1], cStates[2]);
 end;
 
 function Parses(const AText: string): Boolean;
 var
-  Tree: TSyntaxTree;
+  mTree: TSyntaxTree;
 begin
-  Tree := TPascalParser.Parse(AText);
+  mTree := TPascalParser.Parse(AText);
   try
-    Result := Tree.Diagnostics = nil;
+    Result := mTree.Diagnostics = nil;
   finally
-    Tree.Free;
+    mTree.Free;
   end;
 end;
 
 function Created(const ASource, AName: string; APlacement: TEnumTablePlacement; AResource: Boolean): string;
 var
-  Tree: TSyntaxTree;
-  Edits: TArray<TTextEdit>;
-  Reason: string;
+  mTree: TSyntaxTree;
+  mEdits: TArray<TTextEdit>;
+  mReason: string;
 begin
-  Tree := TPascalParser.Parse(ASource);
+  mTree := TPascalParser.Parse(ASource);
   try
-    Assert.IsTrue(TEnumTables.CreateTable(ASource, Tree, TTextPosition.Create(3, 4),
-      TEnumTableRequest.Create(AName, APlacement, AResource), Edits, Reason), Reason);
-    Result := TChangeSignature.ApplyEdits(ASource, Edits);
+    Assert.IsTrue(TEnumTables.CreateTable(ASource, mTree, TTextPosition.Create(3, 4),
+      TEnumTableRequest.Create(AName, APlacement, AResource), mEdits, mReason), mReason);
+    Result := TChangeSignature.ApplyEdits(ASource, mEdits);
   finally
-    Tree.Free;
+    mTree.Free;
   end;
 end;
 
 /// <summary>Repariert die erste Tabelle von ASource.</summary>
 function Repaired(const ASource: string; const AValues: TEnumTableValues; out ARepair: TEnumTableRepair): string;
 var
-  Tree: TSyntaxTree;
-  Tables: TArray<TEnumTable>;
+  mTree: TSyntaxTree;
+  mTables: TArray<TEnumTable>;
 begin
-  Tree := TPascalParser.Parse(ASource);
+  mTree := TPascalParser.Parse(ASource);
   try
-    Tables := TEnumTables.Tables(Tree);
-    Assert.IsTrue(Length(Tables) > 0);
-    Assert.IsTrue(TEnumTables.Repair(ASource, Tree, Tables[0].Value, Names, AValues, ARepair));
+    mTables := TEnumTables.Tables(mTree);
+    Assert.IsTrue(Length(mTables) > 0);
+    Assert.IsTrue(TEnumTables.Repair(ASource, mTree, mTables[0].Value, Names, AValues, ARepair));
     Result := TChangeSignature.ApplyEdits(ASource, ARepair.Edits);
   finally
-    Tree.Free;
+    mTree.Free;
   end;
 end;
 
 const
-  Unit_ =
+  cUnit_ =
     'unit U;'#10 +
     'interface'#10 +
     'type'#10 +
@@ -132,200 +132,200 @@ end;
 
 procedure TEnumTablesTests.CreateAfterType;
 var
-  Text: string;
+  mText: string;
 begin
-  Text := Created(Unit_, 'COrderStateNames', TEnumTablePlacement.AfterType, False);
+  mText := Created(cUnit_, 'COrderStateNames', TEnumTablePlacement.AfterType, False);
   Assert.IsTrue(Pos('  TOrderState = (osNew, osPaid, osPaymentDue);'#10#10'const'#10 +
     '  COrderStateNames: array[TOrderState] of string = (''New'', ''Paid'', ''Payment due'');'#10#10'type'#10 +
-    '  TOther = class', Text) > 0, Text);
-  Assert.IsTrue(Parses(Text), Text);
+    '  TOther = class', mText) > 0, mText);
+  Assert.IsTrue(Parses(mText), mText);
 end;
 
 procedure TEnumTablesTests.CreateInImplementation;
 var
-  Text: string;
+  mText: string;
 begin
-  Text := Created(Unit_, 'CNames', TEnumTablePlacement.InImplementation, False);
-  Assert.IsTrue(Pos('uses System.SysUtils;'#10#10'const'#10'  CNames: array[TOrderState] of string', Text) > 0,
-    Text);
-  Assert.IsTrue(Parses(Text), Text);
+  mText := Created(cUnit_, 'CNames', TEnumTablePlacement.InImplementation, False);
+  Assert.IsTrue(Pos('uses System.SysUtils;'#10#10'const'#10'  CNames: array[TOrderState] of string', mText) > 0,
+    mText);
+  Assert.IsTrue(Parses(mText), mText);
 end;
 
 procedure TEnumTablesTests.CreateWithResourceStrings;
 var
-  Text: string;
+  mText: string;
 begin
-  Text := Created(Unit_, 'COrderStateNames', TEnumTablePlacement.InImplementation, True);
-  Assert.IsTrue(Pos('resourcestring'#10'  SOrderStateNew = ''New'';'#10'  SOrderStatePaid = ''Paid'';', Text) > 0,
-    Text);
+  mText := Created(cUnit_, 'COrderStateNames', TEnumTablePlacement.InImplementation, True);
+  Assert.IsTrue(Pos('resourcestring'#10'  SOrderStateNew = ''New'';'#10'  SOrderStatePaid = ''Paid'';', mText) > 0,
+    mText);
   // Zu lang für eine Zeile: je Eintrag eine.
   Assert.IsTrue(Pos('array[TOrderState] of PResStringRec = ('#10'    @SOrderStateNew,'#10'    @SOrderStatePaid,'#10 +
-    '    @SOrderStatePaymentDue);', Text) > 0, Text);
-  Assert.IsTrue(Parses(Text), Text);
+    '    @SOrderStatePaymentDue);', mText) > 0, mText);
+  Assert.IsTrue(Parses(mText), mText);
 end;
 
 procedure TEnumTablesTests.CreateRefusesFixedValuesAndTakenName;
 const
-  Fixed = 'unit U;'#10'interface'#10'type'#10'  TCode = (cA = 1, cB = 5);'#10'implementation'#10'end.'#10;
+  cFixed = 'unit U;'#10'interface'#10'type'#10'  TCode = (cA = 1, cB = 5);'#10'implementation'#10'end.'#10;
 var
-  Tree: TSyntaxTree;
-  Edits: TArray<TTextEdit>;
-  Reason: string;
+  mTree: TSyntaxTree;
+  mEdits: TArray<TTextEdit>;
+  mReason: string;
 begin
-  Tree := TPascalParser.Parse(Fixed);
+  mTree := TPascalParser.Parse(cFixed);
   try
-    Assert.IsFalse(TEnumTables.CreateTable(Fixed, Tree, TTextPosition.Create(3, 4),
-      TEnumTableRequest.Create('CNames', TEnumTablePlacement.AfterType, False), Edits, Reason));
-    Assert.IsTrue(Pos('festen Werten', Reason) > 0, Reason);
+    Assert.IsFalse(TEnumTables.CreateTable(cFixed, mTree, TTextPosition.Create(3, 4),
+      TEnumTableRequest.Create('CNames', TEnumTablePlacement.AfterType, False), mEdits, mReason));
+    Assert.IsTrue(Pos('festen Werten', mReason) > 0, mReason);
   finally
-    Tree.Free;
+    mTree.Free;
   end;
-  Tree := TPascalParser.Parse(Unit_);
+  mTree := TPascalParser.Parse(cUnit_);
   try
-    Assert.IsFalse(TEnumTables.CreateTable(Unit_, Tree, TTextPosition.Create(3, 4),
-      TEnumTableRequest.Create('TOther', TEnumTablePlacement.AfterType, False), Edits, Reason));
-    Assert.IsTrue(Pos('schon vergeben', Reason) > 0, Reason);
-    Assert.IsFalse(TEnumTables.CreateTable(Unit_, Tree, TTextPosition.Create(3, 4),
-      TEnumTableRequest.Create('begin', TEnumTablePlacement.AfterType, False), Edits, Reason));
+    Assert.IsFalse(TEnumTables.CreateTable(cUnit_, mTree, TTextPosition.Create(3, 4),
+      TEnumTableRequest.Create('TOther', TEnumTablePlacement.AfterType, False), mEdits, mReason));
+    Assert.IsTrue(Pos('schon vergeben', mReason) > 0, mReason);
+    Assert.IsFalse(TEnumTables.CreateTable(cUnit_, mTree, TTextPosition.Create(3, 4),
+      TEnumTableRequest.Create('begin', TEnumTablePlacement.AfterType, False), mEdits, mReason));
   finally
-    Tree.Free;
+    mTree.Free;
   end;
 end;
 
 procedure TEnumTablesTests.TablesAreFound;
 const
-  Source = 'unit U;'#10'interface'#10'type'#10'  TOrderState = (osNew, osPaid, osPaymentDue);'#10 +
+  cSource = 'unit U;'#10'interface'#10'type'#10'  TOrderState = (osNew, osPaid, osPaymentDue);'#10 +
     'const'#10'  A: array[TOrderState] of string = (''New'', ''Paid'', ''Payment due'');'#10 +
     '  B: array[0..2] of Integer = (1, 2, 3);'#10'var'#10'  C: array[TOrderState] of Integer = (1, 2, 3);'#10 +
     'implementation'#10'end.'#10;
 var
-  Tree: TSyntaxTree;
-  Tables: TArray<TEnumTable>;
-  Table: TEnumTable;
+  mTree: TSyntaxTree;
+  mTables: TArray<TEnumTable>;
+  mTable: TEnumTable;
 begin
-  Tree := TPascalParser.Parse(Source);
+  mTree := TPascalParser.Parse(cSource);
   try
-    Tables := TEnumTables.Tables(Tree);
-    Assert.AreEqual(2, Integer(Length(Tables)));
-    Assert.AreEqual('A', Tables[0].Decl.Name);
-    Assert.AreEqual('TOrderState', Tables[1].IndexType.Name);
-    Assert.IsTrue(TEnumTables.TableAt(Tree, TTextPosition.Create(5, 40), Table));
-    Assert.AreEqual('A', Table.Decl.Name);
-    Assert.IsFalse(TEnumTables.TableAt(Tree, TTextPosition.Create(6, 10), Table));
+    mTables := TEnumTables.Tables(mTree);
+    Assert.AreEqual(2, Integer(Length(mTables)));
+    Assert.AreEqual('A', mTables[0].Decl.Name);
+    Assert.AreEqual('TOrderState', mTables[1].IndexType.Name);
+    Assert.IsTrue(TEnumTables.TableAt(mTree, TTextPosition.Create(5, 40), mTable));
+    Assert.AreEqual('A', mTable.Decl.Name);
+    Assert.IsFalse(TEnumTables.TableAt(mTree, TTextPosition.Create(6, 10), mTable));
     Assert.AreEqual<TEnumTableElement>(TEnumTableElement.Text, TEnumTables.ElementOf('String'));
     Assert.AreEqual<TEnumTableElement>(TEnumTableElement.Number, TEnumTables.ElementOf('Integer'));
     Assert.AreEqual<TEnumTableElement>(TEnumTableElement.Other, TEnumTables.ElementOf('TKunde'));
   finally
-    Tree.Free;
+    mTree.Free;
   end;
 end;
 
 procedure TEnumTablesTests.RepairInsertsAtTextPosition;
 const
-  Source = 'const'#10'  A: array[TOrderState] of string = (''New'', ''Payment due'');'#10;
+  cSource = 'const'#10'  A: array[TOrderState] of string = (''New'', ''Payment due'');'#10;
 var
-  Repair: TEnumTableRepair;
-  Text: string;
+  mRepair: TEnumTableRepair;
+  mText: string;
 begin
-  Text := Repaired(Source, TEnumTableValues.Create(TEnumTableElement.Text, 'string', 'TOrderState'), Repair);
-  Assert.IsTrue(Pos('(''New'', ''Paid'', ''Payment due'');', Text) > 0, Text);
-  Assert.IsFalse(Repair.Uncertain);
-  Assert.AreEqual('Fehlenden Eintrag ergänzen (osPaid)', Repair.Title);
+  mText := Repaired(cSource, TEnumTableValues.Create(TEnumTableElement.Text, 'string', 'TOrderState'), mRepair);
+  Assert.IsTrue(Pos('(''New'', ''Paid'', ''Payment due'');', mText) > 0, mText);
+  Assert.IsFalse(mRepair.Uncertain);
+  Assert.AreEqual('Fehlenden Eintrag ergänzen (osPaid)', mRepair.Title);
 end;
 
 procedure TEnumTablesTests.RepairRemovesByComment;
 const
-  Source = 'const'#10'  A: array[TOrderState] of Integer = ('#10 +
+  cSource = 'const'#10'  A: array[TOrderState] of Integer = ('#10 +
     '    1, // osNew'#10 +
     '    7, // osOld'#10 +
     '    2, // osPaid'#10 +
     '    3  // osPaymentDue'#10 +
     '  );'#10;
 var
-  Repair: TEnumTableRepair;
-  Text: string;
+  mRepair: TEnumTableRepair;
+  mText: string;
 begin
-  Text := Repaired(Source, TEnumTableValues.Create(TEnumTableElement.Number, 'Integer', 'TOrderState'), Repair);
+  mText := Repaired(cSource, TEnumTableValues.Create(TEnumTableElement.Number, 'Integer', 'TOrderState'), mRepair);
   Assert.AreEqual('const'#10'  A: array[TOrderState] of Integer = ('#10'    1, // osNew'#10'    2, // osPaid'#10 +
-    '    3  // osPaymentDue'#10'  );'#10, Text);
-  Assert.AreEqual(1, Integer(Length(Repair.Removed)));
-  Assert.AreEqual('Überzähligen Eintrag entfernen (7)', Repair.Title);
-  Assert.IsFalse(Repair.Uncertain);
+    '    3  // osPaymentDue'#10'  );'#10, mText);
+  Assert.AreEqual(1, Integer(Length(mRepair.Removed)));
+  Assert.AreEqual('Überzähligen Eintrag entfernen (7)', mRepair.Title);
+  Assert.IsFalse(mRepair.Uncertain);
 end;
 
 procedure TEnumTablesTests.RepairMultiLineInMiddleKeepsComments;
 const
-  Source = 'const'#10'  A: array[TOrderState] of Boolean = ('#10 +
+  cSource = 'const'#10'  A: array[TOrderState] of Boolean = ('#10 +
     '    True,  // osNew'#10 +
     '    False  // osPaymentDue'#10 +
     '  );'#10;
 var
-  Repair: TEnumTableRepair;
-  Text: string;
+  mRepair: TEnumTableRepair;
+  mText: string;
 begin
-  Text := Repaired(Source, TEnumTableValues.Create(TEnumTableElement.Boolean_, 'Boolean', 'TOrderState'), Repair);
+  mText := Repaired(cSource, TEnumTableValues.Create(TEnumTableElement.Boolean_, 'Boolean', 'TOrderState'), mRepair);
   Assert.AreEqual('const'#10'  A: array[TOrderState] of Boolean = ('#10'    True,  // osNew'#10 +
-    '    False {TODO osPaid}, // osPaid'#10'    False  // osPaymentDue'#10'  );'#10, Text);
-  Assert.IsFalse(Repair.Uncertain);
+    '    False {TODO osPaid}, // osPaid'#10'    False  // osPaymentDue'#10'  );'#10, mText);
+  Assert.IsFalse(mRepair.Uncertain);
 end;
 
 procedure TEnumTablesTests.RepairMultiLineAtEndWithRecords;
 const
-  Source = 'const'#10'  A: array[TOrderState] of TRec = ('#10 +
+  cSource = 'const'#10'  A: array[TOrderState] of TRec = ('#10 +
     '    (Name: ''New''; Code: 1),'#10 +
     '    (Name: ''Paid''; Code: 2)'#10 +
     '  );'#10;
 var
-  Repair: TEnumTableRepair;
-  Text: string;
+  mRepair: TEnumTableRepair;
+  mText: string;
 begin
-  Text := Repaired(Source, TEnumTableValues.Create(TEnumTableElement.Other, 'TRec', 'TOrderState'), Repair);
+  mText := Repaired(cSource, TEnumTableValues.Create(TEnumTableElement.Other, 'TRec', 'TOrderState'), mRepair);
   Assert.AreEqual('const'#10'  A: array[TOrderState] of TRec = ('#10'    (Name: ''New''; Code: 1),'#10 +
-    '    (Name: ''Paid''; Code: 2),'#10'    (Name: ''Paid''; Code: 2) {TODO osPaymentDue}'#10'  );'#10, Text);
-  Assert.IsFalse(Repair.Uncertain);
+    '    (Name: ''Paid''; Code: 2),'#10'    (Name: ''Paid''; Code: 2) {TODO osPaymentDue}'#10'  );'#10, mText);
+  Assert.IsFalse(mRepair.Uncertain);
 end;
 
 procedure TEnumTablesTests.RepairWithoutHintsIsUncertain;
 const
-  Source = 'const'#10'  A: array[TOrderState] of Integer = (10, 20);'#10;
+  cSource = 'const'#10'  A: array[TOrderState] of Integer = (10, 20);'#10;
 var
-  Repair: TEnumTableRepair;
-  Text: string;
+  mRepair: TEnumTableRepair;
+  mText: string;
 begin
-  Text := Repaired(Source, TEnumTableValues.Create(TEnumTableElement.Number, 'Integer', 'TOrderState'), Repair);
-  Assert.IsTrue(Pos('(10, 20, 0 {TODO osPaymentDue});', Text) > 0, Text);
-  Assert.IsTrue(Repair.Uncertain);
+  mText := Repaired(cSource, TEnumTableValues.Create(TEnumTableElement.Number, 'Integer', 'TOrderState'), mRepair);
+  Assert.IsTrue(Pos('(10, 20, 0 {TODO osPaymentDue});', mText) > 0, mText);
+  Assert.IsTrue(mRepair.Uncertain);
 end;
 
 procedure TEnumTablesTests.RepairAddsResourceString;
 const
-  Source = 'unit U;'#10'interface'#10'implementation'#10'resourcestring'#10'  SOrderStateNew = ''New'';'#10 +
+  cSource = 'unit U;'#10'interface'#10'implementation'#10'resourcestring'#10'  SOrderStateNew = ''New'';'#10 +
     '  SOrderStatePaymentDue = ''Payment due'';'#10'const'#10 +
     '  A: array[TOrderState] of PResStringRec = (@SOrderStateNew, @SOrderStatePaymentDue);'#10'end.'#10;
 var
-  Repair: TEnumTableRepair;
-  Text: string;
+  mRepair: TEnumTableRepair;
+  mText: string;
 begin
-  Text := Repaired(Source, TEnumTableValues.Create(TEnumTableElement.ResourceString_, 'PResStringRec',
-    'TOrderState'), Repair);
-  Assert.IsTrue(Pos('  SOrderStateNew = ''New'';'#10'  SOrderStatePaid = ''Paid'';'#10, Text) > 0, Text);
-  Assert.IsTrue(Pos('(@SOrderStateNew, @SOrderStatePaid, @SOrderStatePaymentDue);', Text) > 0, Text);
-  Assert.IsTrue(Parses(Text), Text);
+  mText := Repaired(cSource, TEnumTableValues.Create(TEnumTableElement.ResourceString_, 'PResStringRec',
+    'TOrderState'), mRepair);
+  Assert.IsTrue(Pos('  SOrderStateNew = ''New'';'#10'  SOrderStatePaid = ''Paid'';'#10, mText) > 0, mText);
+  Assert.IsTrue(Pos('(@SOrderStateNew, @SOrderStatePaid, @SOrderStatePaymentDue);', mText) > 0, mText);
+  Assert.IsTrue(Parses(mText), mText);
 end;
 
 procedure TEnumTablesTests.RepairNothingToDo;
 const
-  Source = 'const'#10'  A: array[TOrderState] of string = (''Neu'', ''Bezahlt'', ''Faellig'');'#10;
+  cSource = 'const'#10'  A: array[TOrderState] of string = (''Neu'', ''Bezahlt'', ''Faellig'');'#10;
 var
-  Tree: TSyntaxTree;
-  Repair: TEnumTableRepair;
+  mTree: TSyntaxTree;
+  mRepair: TEnumTableRepair;
 begin
-  Tree := TPascalParser.Parse(Source);
+  mTree := TPascalParser.Parse(cSource);
   try
-    Assert.IsFalse(TEnumTables.Repair(Source, Tree, TEnumTables.Tables(Tree)[0].Value, Names,
-      TEnumTableValues.Create(TEnumTableElement.Text, 'string', 'TOrderState'), Repair));
+    Assert.IsFalse(TEnumTables.Repair(cSource, mTree, TEnumTables.Tables(mTree)[0].Value, Names,
+      TEnumTableValues.Create(TEnumTableElement.Text, 'string', 'TOrderState'), mRepair));
   finally
-    Tree.Free;
+    mTree.Free;
   end;
 end;
 

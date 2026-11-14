@@ -49,7 +49,7 @@ uses
   Atlas.Tests.RuleAssert;
 
 const
-  IssueExample =
+  cIssueExample =
     'unit Speichern;'#10 +
     #10 +
     'interface'#10 +
@@ -65,7 +65,7 @@ const
     #10 +
     'end.';
 
-  MethodExample =
+  cMethodExample =
     'unit Spion;'#10 +
     'interface'#10 +
     'type'#10 +
@@ -84,36 +84,36 @@ const
 /// <summary>Quelltext nach den Korrekturen des ersten Treffers (Edits nach Position sortiert).</summary>
 function Fixed(const ASource: string; const AFinding: TRuleFinding): string;
 var
-  Lines: TArray<string>;
-  Offsets: TArray<Integer>;
-  Index: Integer;
-  Edit: TTextEdit;
+  mLines: TArray<string>;
+  mOffsets: TArray<Integer>;
+  mIndex: Integer;
+  mEdit: TTextEdit;
 begin
-  Lines := ASource.Split([#10]);
-  SetLength(Offsets, Length(Lines) + 1);
-  Offsets[0] := 0;
-  for Index := 0 to High(Lines) do
+  mLines := ASource.Split([#10]);
+  SetLength(mOffsets, Length(mLines) + 1);
+  mOffsets[0] := 0;
+  for mIndex := 0 to High(mLines) do
   begin
-    Offsets[Index + 1] := Offsets[Index] + Length(Lines[Index]) + 1;
+    mOffsets[mIndex + 1] := mOffsets[mIndex] + Length(mLines[mIndex]) + 1;
   end;
   Result := ASource;
-  for Index := High(AFinding.Fixes[0].Edits) downto 0 do
+  for mIndex := High(AFinding.Fixes[0].Edits) downto 0 do
   begin
-    Edit := AFinding.Fixes[0].Edits[Index];
-    Result := Copy(Result, 1, Offsets[Edit.Range.StartPos.Line] + Edit.Range.StartPos.Character) + Edit.NewText +
-      Copy(Result, Offsets[Edit.Range.EndPos.Line] + Edit.Range.EndPos.Character + 1, MaxInt);
+    mEdit := AFinding.Fixes[0].Edits[mIndex];
+    Result := Copy(Result, 1, mOffsets[mEdit.Range.StartPos.Line] + mEdit.Range.StartPos.Character) + mEdit.NewText +
+      Copy(Result, mOffsets[mEdit.Range.EndPos.Line] + mEdit.Range.EndPos.Character + 1, MaxInt);
   end;
 end;
 
 procedure AssertParses(const ASource: string);
 var
-  Tree: TSyntaxTree;
+  mTree: TSyntaxTree;
 begin
-  Tree := TPascalParser.Parse(ASource);
+  mTree := TPascalParser.Parse(ASource);
   try
-    Assert.AreEqual(0, Integer(Length(Tree.Diagnostics)), ASource);
+    Assert.AreEqual(0, Integer(Length(mTree.Diagnostics)), ASource);
   finally
-    Tree.Free;
+    mTree.Free;
   end;
 end;
 
@@ -121,28 +121,28 @@ end;
 
 procedure TOpenToolsRulesTests.IssueExampleReported;
 var
-  Findings: TArray<TRuleFinding>;
+  mFindings: TArray<TRuleFinding>;
 begin
-  Findings := TRuleAssert.Findings(TOtaNotifierNotRemovedRule.Create, IssueExample);
-  Assert.AreEqual(1, Integer(Length(Findings)));
-  Assert.AreEqual('ota-notifier-not-removed', Findings[0].RuleId);
-  Assert.AreEqual(Ord(TRuleSeverity.Warning), Ord(Findings[0].Severity));
-  Assert.AreEqual(Ord(TRuleConfidence.Medium), Ord(Findings[0].Confidence));
+  mFindings := TRuleAssert.Findings(TOtaNotifierNotRemovedRule.Create, cIssueExample);
+  Assert.AreEqual(1, Integer(Length(mFindings)));
+  Assert.AreEqual('ota-notifier-not-removed', mFindings[0].RuleId);
+  Assert.AreEqual(Ord(TRuleSeverity.Warning), Ord(mFindings[0].Severity));
+  Assert.AreEqual(Ord(TRuleConfidence.Medium), Ord(mFindings[0].Confidence));
   Assert.AreEqual('Der Index von AddNotifier wird nicht gemerkt; ohne RemoveNotifier ruft die IDE nach dem ' +
-    'Entladen ins Leere.', Findings[0].Message);
-  Assert.AreEqual(10, Findings[0].Range.StartPos.Line);
-  Assert.AreEqual(39, Findings[0].Range.StartPos.Character);
+    'Entladen ins Leere.', mFindings[0].Message);
+  Assert.AreEqual(10, mFindings[0].Range.StartPos.Line);
+  Assert.AreEqual(39, mFindings[0].Range.StartPos.Character);
 end;
 
 procedure TOpenToolsRulesTests.IssueExampleFixUsesFinalization;
 var
-  Findings: TArray<TRuleFinding>;
-  Source: string;
+  mFindings: TArray<TRuleFinding>;
+  mSource: string;
 begin
-  Findings := TRuleAssert.Findings(TOtaNotifierNotRemovedRule.Create, IssueExample);
-  Assert.AreEqual(1, Integer(Length(Findings[0].Fixes)));
-  Assert.AreEqual('Index merken und RemoveNotifier in finalization ergänzen', Findings[0].Fixes[0].Title);
-  Source := Fixed(IssueExample, Findings[0]);
+  mFindings := TRuleAssert.Findings(TOtaNotifierNotRemovedRule.Create, cIssueExample);
+  Assert.AreEqual(1, Integer(Length(mFindings[0].Fixes)));
+  Assert.AreEqual('Index merken und RemoveNotifier in finalization ergänzen', mFindings[0].Fixes[0].Title);
+  mSource := Fixed(cIssueExample, mFindings[0]);
   Assert.AreEqual(
     'unit Speichern;'#10#10'interface'#10#10'procedure Register;'#10#10'implementation'#10#10 +
     'var'#10'  NotifierIndex: Integer = -1;'#10#10 +
@@ -152,58 +152,58 @@ begin
     'initialization'#10#10 +
     'finalization'#10'  if NotifierIndex >= 0 then'#10 +
     '    (BorlandIDEServices as IOTAServices).RemoveNotifier(NotifierIndex);'#10#10 +
-    'end.', Source);
-  AssertParses(Source);
-  TRuleAssert.Silent(TOtaNotifierNotRemovedRule.Create, Source);
+    'end.', mSource);
+  AssertParses(mSource);
+  TRuleAssert.Silent(TOtaNotifierNotRemovedRule.Create, mSource);
   // Vorhandene finalization wird ergänzt.
-  Source := StringReplace(IssueExample, #10'end.', #10'initialization'#10'finalization'#10'  Aufraeumen;'#10'end.',
+  mSource := StringReplace(cIssueExample, #10'end.', #10'initialization'#10'finalization'#10'  Aufraeumen;'#10'end.',
     []);
-  Findings := TRuleAssert.Findings(TOtaNotifierNotRemovedRule.Create, Source);
-  Source := Fixed(Source, Findings[0]);
-  Assert.Contains(Source, 'finalization'#10'  if NotifierIndex >= 0 then'#10 +
+  mFindings := TRuleAssert.Findings(TOtaNotifierNotRemovedRule.Create, mSource);
+  mSource := Fixed(mSource, mFindings[0]);
+  Assert.Contains(mSource, 'finalization'#10'  if NotifierIndex >= 0 then'#10 +
     '    (BorlandIDEServices as IOTAServices).RemoveNotifier(NotifierIndex);'#10'  Aufraeumen;');
-  AssertParses(Source);
+  AssertParses(mSource);
 end;
 
 procedure TOpenToolsRulesTests.MethodFixUsesFieldAndDestructor;
 var
-  Findings: TArray<TRuleFinding>;
-  Source: string;
+  mFindings: TArray<TRuleFinding>;
+  mSource: string;
 begin
-  Findings := TRuleAssert.Findings(TOtaNotifierNotRemovedRule.Create, MethodExample);
-  Assert.AreEqual(1, Integer(Length(Findings)));
-  Assert.AreEqual('Index in ein Feld legen und RemoveNotifier im Destruktor ergänzen', Findings[0].Fixes[0].Title);
-  Source := Fixed(MethodExample, Findings[0]);
-  Assert.Contains(Source, '  end;'#10'implementation', 'Klasse endet wie vorher');
-  Assert.Contains(Source, '  private'#10'    FNotifierIndex: Integer;'#10'  end;');
-  Assert.Contains(Source, '  FNotifierIndex := (BorlandIDEServices as IOTAEditorServices).AddNotifier(');
-  Assert.Contains(Source, 'destructor Destroy; override;');
-  Assert.Contains(Source, 'destructor TSpion.Destroy;'#10'begin'#10 +
+  mFindings := TRuleAssert.Findings(TOtaNotifierNotRemovedRule.Create, cMethodExample);
+  Assert.AreEqual(1, Integer(Length(mFindings)));
+  Assert.AreEqual('Index in ein Feld legen und RemoveNotifier im Destruktor ergänzen', mFindings[0].Fixes[0].Title);
+  mSource := Fixed(cMethodExample, mFindings[0]);
+  Assert.Contains(mSource, '  end;'#10'implementation', 'Klasse endet wie vorher');
+  Assert.Contains(mSource, '  private'#10'    FNotifierIndex: Integer;'#10'  end;');
+  Assert.Contains(mSource, '  FNotifierIndex := (BorlandIDEServices as IOTAEditorServices).AddNotifier(');
+  Assert.Contains(mSource, 'destructor Destroy; override;');
+  Assert.Contains(mSource, 'destructor TSpion.Destroy;'#10'begin'#10 +
     '  (BorlandIDEServices as IOTAEditorServices).RemoveNotifier(FNotifierIndex);'#10'  inherited;'#10'end;');
-  AssertParses(Source);
-  TRuleAssert.Silent(TOtaNotifierNotRemovedRule.Create, Source);
+  AssertParses(mSource);
+  TRuleAssert.Silent(TOtaNotifierNotRemovedRule.Create, mSource);
 end;
 
 procedure TOpenToolsRulesTests.AssignedIndexWithoutRemove;
 var
-  Findings: TArray<TRuleFinding>;
-  Source: string;
+  mFindings: TArray<TRuleFinding>;
+  mSource: string;
 begin
-  Source := StringReplace(MethodExample, '    constructor Create;', '    FIndex: Integer;'#10 +
+  mSource := StringReplace(cMethodExample, '    constructor Create;', '    FIndex: Integer;'#10 +
     '    constructor Create;'#10'    destructor Destroy; override;', []);
-  Source := StringReplace(Source, '  (BorlandIDEServices as IOTAEditorServices).AddNotifier',
+  mSource := StringReplace(mSource, '  (BorlandIDEServices as IOTAEditorServices).AddNotifier',
     '  FIndex := (BorlandIDEServices as IOTAEditorServices).AddNotifier', []);
-  Source := StringReplace(Source, #10'end.', #10'destructor TSpion.Destroy;'#10'begin'#10'  inherited;'#10 +
+  mSource := StringReplace(mSource, #10'end.', #10'destructor TSpion.Destroy;'#10'begin'#10'  inherited;'#10 +
     'end;'#10'end.', []);
-  Findings := TRuleAssert.Findings(TOtaNotifierNotRemovedRule.Create, Source);
-  Assert.AreEqual(1, Integer(Length(Findings)));
+  mFindings := TRuleAssert.Findings(TOtaNotifierNotRemovedRule.Create, mSource);
+  Assert.AreEqual(1, Integer(Length(mFindings)));
   Assert.AreEqual('Der Index FIndex von AddNotifier geht nie an RemoveNotifier; die IDE ruft nach dem Entladen ' +
-    'ins Leere.', Findings[0].Message);
-  Assert.AreEqual('RemoveNotifier im Destruktor ergänzen', Findings[0].Fixes[0].Title);
-  Source := Fixed(Source, Findings[0]);
-  Assert.Contains(Source, 'destructor TSpion.Destroy;'#10'begin'#10 +
+    'ins Leere.', mFindings[0].Message);
+  Assert.AreEqual('RemoveNotifier im Destruktor ergänzen', mFindings[0].Fixes[0].Title);
+  mSource := Fixed(mSource, mFindings[0]);
+  Assert.Contains(mSource, 'destructor TSpion.Destroy;'#10'begin'#10 +
     '  (BorlandIDEServices as IOTAEditorServices).RemoveNotifier(FIndex);'#10'  inherited;');
-  TRuleAssert.Silent(TOtaNotifierNotRemovedRule.Create, Source);
+  TRuleAssert.Silent(TOtaNotifierNotRemovedRule.Create, mSource);
 end;
 
 procedure TOpenToolsRulesTests.RemovedIndexIsSilent;
@@ -248,39 +248,39 @@ end;
 
 procedure TOpenToolsRulesTests.LocalReceiverWithoutFix;
 var
-  Findings: TArray<TRuleFinding>;
+  mFindings: TArray<TRuleFinding>;
 begin
-  Findings := TRuleAssert.Findings(TOtaNotifierNotRemovedRule.Create,
+  mFindings := TRuleAssert.Findings(TOtaNotifierNotRemovedRule.Create,
     'unit U;'#10'interface'#10'implementation'#10 +
     'procedure Beobachten(const AModule: IOTAModule);'#10'begin'#10'  AModule.AddNotifier(TN.Create);'#10 +
     'end;'#10'end.');
-  Assert.AreEqual(1, Integer(Length(Findings)));
-  Assert.AreEqual(0, Integer(Length(Findings[0].Fixes)));
+  Assert.AreEqual(1, Integer(Length(mFindings)));
+  Assert.AreEqual(0, Integer(Length(mFindings[0].Fixes)));
 end;
 
 procedure TOpenToolsRulesTests.RegisterPairsOption;
 const
-  Source = 'unit U;'#10'interface'#10'implementation'#10 +
+  cSource = 'unit U;'#10'interface'#10'implementation'#10 +
     'procedure P;'#10'begin'#10'  Services.AddWizard(TW.Create);'#10'  Services.AddNotifier(TN.Create);'#10 +
     'end;'#10'end.';
 var
-  Findings: TArray<TRuleFinding>;
-  Issues: TArray<TConfigurationIssue>;
+  mFindings: TArray<TRuleFinding>;
+  mIssues: TArray<TConfigurationIssue>;
 begin
-  Findings := TRuleAssert.Findings(TOtaNotifierNotRemovedRule.Create, Source,
+  mFindings := TRuleAssert.Findings(TOtaNotifierNotRemovedRule.Create, cSource,
     '{"rules": {"ota-notifier-not-removed": {"registerPairs": [{"open": "AddWizard", "close": "RemoveWizard"}]}}}');
-  Assert.AreEqual(1, Integer(Length(Findings)));
-  Assert.Contains(Findings[0].Message, 'AddWizard');
-  Assert.AreEqual(1, Integer(Length(TRuleAssert.Findings(TOtaNotifierNotRemovedRule.Create, Source))));
-  TConfigurationParser.Parse('{"rules": {"ota-notifier-not-removed": {"registerPairs": ["AddWizard"]}}}', Issues);
-  Assert.AreEqual(1, Integer(Length(Issues)));
+  Assert.AreEqual(1, Integer(Length(mFindings)));
+  Assert.Contains(mFindings[0].Message, 'AddWizard');
+  Assert.AreEqual(1, Integer(Length(TRuleAssert.Findings(TOtaNotifierNotRemovedRule.Create, cSource))));
+  TConfigurationParser.Parse('{"rules": {"ota-notifier-not-removed": {"registerPairs": ["AddWizard"]}}}', mIssues);
+  Assert.AreEqual(1, Integer(Length(mIssues)));
 end;
 
 procedure TOpenToolsRulesTests.OffAndExclude;
 begin
-  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TOtaNotifierNotRemovedRule.Create, IssueExample,
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TOtaNotifierNotRemovedRule.Create, cIssueExample,
     '{"rules": {"ota-notifier-not-removed": "off"}}'))));
-  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TOtaNotifierNotRemovedRule.Create, IssueExample,
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TOtaNotifierNotRemovedRule.Create, cIssueExample,
     '{"rules": {"ota-notifier-not-removed": {"exclude": ["Speichern.pas"]}}}', 'Speichern.pas'))));
 end;
 

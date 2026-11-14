@@ -22,7 +22,8 @@
 // Optionen.
 // Sonderformen der Deklaration (#1325): die Minimalfälle F02, F03, F06, F07,
 // F13 und F18 der FP-Prüfung sowie asm- und external-Rümpfe, override und ein
-// gleichnamiger generischer Typ neben dem nicht generischen sind still; echte Überladungen ohne overload und fehlende Rümpfe werden weiter
+// gleichnamiger generischer Typ neben dem nicht generischen sind still; echte Überladungen ohne overload und fehlende
+// Rümpfe werden weiter
 // gemeldet.
 
 interface
@@ -212,51 +213,56 @@ uses
   Atlas.Tests.RuleAssert,
   Atlas.Common.Rules.Profiles;
 
-function ClassUnit(const AMembers, AImplementation: string; const AHead: string = 'TFoo = class'): string;
+function ClassUnit(const AMembers, AImplementation: string; const AHead: string): string; overload;
 begin
   Result := 'unit U;'#10'interface'#10'type'#10'  ' + AHead + #10 + AMembers + #10'  end;'#10 +
     'implementation'#10 + AImplementation + #10'end.';
 end;
 
+function ClassUnit(const AMembers, AImplementation: string): string; overload;
+begin
+  Result := ClassUnit(AMembers, AImplementation, 'TFoo = class');
+end;
+
 /// <summary>Wendet die erste Korrektur des ersten Treffers an (Zeilen mit #10, Einfügung in einer Zeile).</summary>
 function ApplyFirstFix(const AText: string; const AFindings: TArray<TRuleFinding>): string;
 var
-  Lines: TArray<string>;
-  Edit: TRuleEdit;
-  Line: string;
+  mLines: TArray<string>;
+  mEdit: TRuleEdit;
+  mLine: string;
 begin
-  Edit := AFindings[0].Fixes[0].Edits[0];
-  Lines := AText.Split([#10]);
-  Line := Lines[Edit.Range.StartPos.Line];
-  Lines[Edit.Range.StartPos.Line] := Copy(Line, 1, Edit.Range.StartPos.Character) + Edit.NewText +
-    Copy(Line, Edit.Range.EndPos.Character + 1, MaxInt);
-  Result := string.Join(#10, Lines);
+  mEdit := AFindings[0].Fixes[0].Edits[0];
+  mLines := AText.Split([#10]);
+  mLine := mLines[mEdit.Range.StartPos.Line];
+  mLines[mEdit.Range.StartPos.Line] := Copy(mLine, 1, mEdit.Range.StartPos.Character) + mEdit.NewText +
+    Copy(mLine, mEdit.Range.EndPos.Character + 1, MaxInt);
+  Result := string.Join(#10, mLines);
 end;
 
 function ParsesCleanly(const AText: string): Boolean;
 var
-  Tree: TSyntaxTree;
+  mTree: TSyntaxTree;
 begin
-  Tree := TPascalParser.Parse(AText);
+  mTree := TPascalParser.Parse(AText);
   try
-    Result := Length(Tree.Diagnostics) = 0;
+    Result := Length(mTree.Diagnostics) = 0;
   finally
-    Tree.Free;
+    mTree.Free;
   end;
 end;
 
 procedure TDeclarationRulesTests.MissingBodyReportsWithFix;
 var
-  Findings: TArray<TRuleFinding>;
+  mFindings: TArray<TRuleFinding>;
 begin
-  Findings := TRuleAssert.Findings(TDeclaredNotImplementedRule.Create,
+  mFindings := TRuleAssert.Findings(TDeclaredNotImplementedRule.Create,
     ClassUnit('    procedure Lauf(A: Integer);', ''));
-  Assert.AreEqual(1, Integer(Length(Findings)));
-  Assert.AreEqual(Ord(TRuleSeverity.Error), Ord(Findings[0].Severity));
-  Assert.Contains(Findings[0].Message, 'TFoo.Lauf');
-  Assert.AreEqual(4, Findings[0].Range.StartPos.Line);
-  Assert.AreEqual(1, Integer(Length(Findings[0].Fixes)));
-  Assert.Contains(Findings[0].Fixes[0].Edits[0].NewText, 'procedure TFoo.Lauf(A: Integer);');
+  Assert.AreEqual(1, Integer(Length(mFindings)));
+  Assert.AreEqual(Ord(TRuleSeverity.Error), Ord(mFindings[0].Severity));
+  Assert.Contains(mFindings[0].Message, 'TFoo.Lauf');
+  Assert.AreEqual(4, mFindings[0].Range.StartPos.Line);
+  Assert.AreEqual(1, Integer(Length(mFindings[0].Fixes)));
+  Assert.Contains(mFindings[0].Fixes[0].Edits[0].NewText, 'procedure TFoo.Lauf(A: Integer);');
 end;
 
 procedure TDeclarationRulesTests.ImplementedMethodIsSilent;
@@ -269,13 +275,13 @@ end;
 
 procedure TDeclarationRulesTests.MissingOverloadIsReported;
 var
-  Findings: TArray<TRuleFinding>;
+  mFindings: TArray<TRuleFinding>;
 begin
-  Findings := TRuleAssert.Findings(TDeclaredNotImplementedRule.Create,
+  mFindings := TRuleAssert.Findings(TDeclaredNotImplementedRule.Create,
     ClassUnit('    procedure Lauf(A: Integer); overload;'#10'    procedure Lauf(const S: string); overload;',
       'procedure TFoo.Lauf(A: Integer);'#10'begin'#10'end;'));
-  Assert.AreEqual(1, Integer(Length(Findings)));
-  Assert.AreEqual(5, Findings[0].Range.StartPos.Line);
+  Assert.AreEqual(1, Integer(Length(mFindings)));
+  Assert.AreEqual(5, mFindings[0].Range.StartPos.Line);
 end;
 
 procedure TDeclarationRulesTests.AbstractAndExternalAreSilent;
@@ -298,48 +304,48 @@ end;
 
 procedure TDeclarationRulesTests.IncludeLowersConfidence;
 var
-  Findings: TArray<TRuleFinding>;
+  mFindings: TArray<TRuleFinding>;
 begin
-  Findings := TRuleAssert.Findings(TDeclaredNotImplementedRule.Create,
+  mFindings := TRuleAssert.Findings(TDeclaredNotImplementedRule.Create,
     ClassUnit('    procedure Lauf;', '{$I Teile.inc}'));
-  Assert.AreEqual(1, Integer(Length(Findings)));
-  Assert.AreEqual(Ord(TRuleConfidence.Medium), Ord(Findings[0].Confidence));
-  Assert.AreEqual(Ord(TRuleSeverity.Warning), Ord(Findings[0].Severity));
+  Assert.AreEqual(1, Integer(Length(mFindings)));
+  Assert.AreEqual(Ord(TRuleConfidence.Medium), Ord(mFindings[0].Confidence));
+  Assert.AreEqual(Ord(TRuleSeverity.Warning), Ord(mFindings[0].Severity));
 end;
 
 procedure TDeclarationRulesTests.BodyWithoutDeclarationReports;
 var
-  Findings: TArray<TRuleFinding>;
+  mFindings: TArray<TRuleFinding>;
 begin
-  Findings := TRuleAssert.Findings(TImplementedNotDeclaredRule.Create,
+  mFindings := TRuleAssert.Findings(TImplementedNotDeclaredRule.Create,
     ClassUnit('    procedure Lauf;', 'procedure TFoo.Lauf;'#10'begin'#10'end;'#10 +
       'procedure TFoo.Extra(A: Integer);'#10'begin'#10'end;'));
-  Assert.AreEqual(1, Integer(Length(Findings)));
-  Assert.Contains(Findings[0].Message, 'TFoo.Extra');
+  Assert.AreEqual(1, Integer(Length(mFindings)));
+  Assert.Contains(mFindings[0].Message, 'TFoo.Extra');
 end;
 
 procedure TDeclarationRulesTests.FixAddsDeclarationToExistingPrivate;
 var
-  Source, Fixed: string;
+  mSource, mFixed: string;
 begin
-  Source := ClassUnit('  private'#10'    FWert: Integer;', 'function TFoo.Extra(A: Integer): string;'#10'begin'#10'end;');
-  Fixed := ApplyFirstFix(Source, TRuleAssert.Findings(TImplementedNotDeclaredRule.Create, Source));
+  mSource := ClassUnit('  private'#10'    FWert: Integer;', 'function TFoo.Extra(A: Integer): string;'#10'begin'#10'end;');
+  mFixed := ApplyFirstFix(mSource, TRuleAssert.Findings(TImplementedNotDeclaredRule.Create, mSource));
   Assert.AreEqual(ClassUnit('  private'#10'    function Extra(A: Integer): string;'#10'    FWert: Integer;',
-    'function TFoo.Extra(A: Integer): string;'#10'begin'#10'end;'), Fixed);
-  Assert.IsTrue(ParsesCleanly(Fixed));
+    'function TFoo.Extra(A: Integer): string;'#10'begin'#10'end;'), mFixed);
+  Assert.IsTrue(ParsesCleanly(mFixed));
 end;
 
 procedure TDeclarationRulesTests.FixCreatesPrivateSection;
 var
-  Source, Fixed: string;
+  mSource, mFixed: string;
 begin
-  Source := ClassUnit('  public'#10'    procedure Lauf;', 'procedure TFoo.Lauf;'#10'begin'#10'end;'#10 +
+  mSource := ClassUnit('  public'#10'    procedure Lauf;', 'procedure TFoo.Lauf;'#10'begin'#10'end;'#10 +
     'procedure TFoo.Extra;'#10'begin'#10'end;');
-  Fixed := ApplyFirstFix(Source, TRuleAssert.Findings(TImplementedNotDeclaredRule.Create, Source));
+  mFixed := ApplyFirstFix(mSource, TRuleAssert.Findings(TImplementedNotDeclaredRule.Create, mSource));
   Assert.AreEqual(ClassUnit('  public'#10'    procedure Lauf;'#10'  private'#10'    procedure Extra;',
-    'procedure TFoo.Lauf;'#10'begin'#10'end;'#10'procedure TFoo.Extra;'#10'begin'#10'end;'), Fixed);
-  Assert.IsTrue(ParsesCleanly(Fixed));
-  TRuleAssert.Silent(TImplementedNotDeclaredRule.Create, Fixed);
+    'procedure TFoo.Lauf;'#10'begin'#10'end;'#10'procedure TFoo.Extra;'#10'begin'#10'end;'), mFixed);
+  Assert.IsTrue(ParsesCleanly(mFixed));
+  TRuleAssert.Silent(TImplementedNotDeclaredRule.Create, mFixed);
 end;
 
 procedure TDeclarationRulesTests.GlobalRoutineIsSilent;
@@ -351,94 +357,94 @@ end;
 /// <summary>Wendet alle Edits einer Korrektur an (jedes Edit in einer Zeile, von hinten nach vorn).</summary>
 function ApplyAll(const AText: string; const AFix: TRuleFix): string;
 var
-  Lines: TArray<string>;
-  Edit: TRuleEdit;
-  Line: string;
-  Index: Integer;
+  mLines: TArray<string>;
+  mEdit: TRuleEdit;
+  mLine: string;
+  mIndex: Integer;
 begin
-  Lines := AText.Split([#10]);
-  for Index := High(AFix.Edits) downto 0 do
+  mLines := AText.Split([#10]);
+  for mIndex := High(AFix.Edits) downto 0 do
   begin
-    Edit := AFix.Edits[Index];
-    Line := Lines[Edit.Range.StartPos.Line];
-    Lines[Edit.Range.StartPos.Line] := Copy(Line, 1, Edit.Range.StartPos.Character) + Edit.NewText +
-      Copy(Line, Edit.Range.EndPos.Character + 1, MaxInt);
+    mEdit := AFix.Edits[mIndex];
+    mLine := mLines[mEdit.Range.StartPos.Line];
+    mLines[mEdit.Range.StartPos.Line] := Copy(mLine, 1, mEdit.Range.StartPos.Character) + mEdit.NewText +
+      Copy(mLine, mEdit.Range.EndPos.Character + 1, MaxInt);
   end;
-  Result := string.Join(#10, Lines);
+  Result := string.Join(#10, mLines);
 end;
 
 procedure TDeclarationRulesTests.SyncActionCanBeSwitchedOff;
 var
-  Source: string;
-  Findings: TArray<TRuleFinding>;
+  mSource: string;
+  mFindings: TArray<TRuleFinding>;
 begin
   // refactoring.syncSignatures aus (#100): Meldung bleibt, ohne Angleich-Aktionen.
-  Source := ClassUnit('    procedure Foo(A: Integer);', 'procedure TFoo.Foo(const A: Integer);'#10'begin'#10'end;');
-  Findings := TRuleAssert.Findings(TSignatureMismatchRule.Create, Source,
+  mSource := ClassUnit('    procedure Foo(A: Integer);', 'procedure TFoo.Foo(const A: Integer);'#10'begin'#10'end;');
+  mFindings := TRuleAssert.Findings(TSignatureMismatchRule.Create, mSource,
     '{"refactoring": {"syncSignatures": false}}');
-  Assert.AreEqual(1, Integer(Length(Findings)));
-  Assert.AreEqual(0, Integer(Length(Findings[0].Fixes)));
+  Assert.AreEqual(1, Integer(Length(mFindings)));
+  Assert.AreEqual(0, Integer(Length(mFindings[0].Fixes)));
 end;
 
 procedure TDeclarationRulesTests.ModifierMismatchAlignsBothWays;
 var
-  Source: string;
-  Findings: TArray<TRuleFinding>;
+  mSource: string;
+  mFindings: TArray<TRuleFinding>;
 begin
-  Source := ClassUnit('    procedure Foo(A: Integer);', 'procedure TFoo.Foo(const A: Integer);'#10'begin'#10'end;');
-  Findings := TRuleAssert.Findings(TSignatureMismatchRule.Create, Source);
-  Assert.AreEqual(1, Integer(Length(Findings)));
-  Assert.AreEqual('Foo weicht von der Deklaration ab: A mit const (wie E2037).', Findings[0].Message);
+  mSource := ClassUnit('    procedure Foo(A: Integer);', 'procedure TFoo.Foo(const A: Integer);'#10'begin'#10'end;');
+  mFindings := TRuleAssert.Findings(TSignatureMismatchRule.Create, mSource);
+  Assert.AreEqual(1, Integer(Length(mFindings)));
+  Assert.AreEqual('Foo weicht von der Deklaration ab: A mit const (wie E2037).', mFindings[0].Message);
   // Rumpf angleichen zuerst, die Deklaration als zweite Aktion.
-  Assert.AreEqual(2, Integer(Length(Findings[0].Fixes)));
-  Assert.IsFalse(Findings[0].Fixes[0].Alternative);
-  Assert.IsTrue(Findings[0].Fixes[1].Alternative);
+  Assert.AreEqual(2, Integer(Length(mFindings[0].Fixes)));
+  Assert.IsFalse(mFindings[0].Fixes[0].Alternative);
+  Assert.IsTrue(mFindings[0].Fixes[1].Alternative);
   Assert.AreEqual(ClassUnit('    procedure Foo(A: Integer);', 'procedure TFoo.Foo(A: Integer);'#10'begin'#10'end;'),
-    ApplyAll(Source, Findings[0].Fixes[0]));
+    ApplyAll(mSource, mFindings[0].Fixes[0]));
   Assert.AreEqual(ClassUnit('    procedure Foo(const A: Integer);',
-    'procedure TFoo.Foo(const A: Integer);'#10'begin'#10'end;'), ApplyAll(Source, Findings[0].Fixes[1]));
-  TRuleAssert.Silent(TSignatureMismatchRule.Create, ApplyAll(Source, Findings[0].Fixes[0]));
-  TRuleAssert.Silent(TSignatureMismatchRule.Create, ApplyAll(Source, Findings[0].Fixes[1]));
-  Assert.IsTrue(ParsesCleanly(ApplyAll(Source, Findings[0].Fixes[1])));
+    'procedure TFoo.Foo(const A: Integer);'#10'begin'#10'end;'), ApplyAll(mSource, mFindings[0].Fixes[1]));
+  TRuleAssert.Silent(TSignatureMismatchRule.Create, ApplyAll(mSource, mFindings[0].Fixes[0]));
+  TRuleAssert.Silent(TSignatureMismatchRule.Create, ApplyAll(mSource, mFindings[0].Fixes[1]));
+  Assert.IsTrue(ParsesCleanly(ApplyAll(mSource, mFindings[0].Fixes[1])));
   // Die beiden anderen Regeln schweigen: es fehlt kein Name.
-  TRuleAssert.Silent(TDeclaredNotImplementedRule.Create, Source);
-  TRuleAssert.Silent(TImplementedNotDeclaredRule.Create, Source);
+  TRuleAssert.Silent(TDeclaredNotImplementedRule.Create, mSource);
+  TRuleAssert.Silent(TImplementedNotDeclaredRule.Create, mSource);
 end;
 
 procedure TDeclarationRulesTests.DefaultsStayInDeclaration;
 var
-  Source: string;
-  Findings: TArray<TRuleFinding>;
+  mSource: string;
+  mFindings: TArray<TRuleFinding>;
 begin
-  Source := ClassUnit('    function Bar(A: Integer = 5; B: string = ''x;y''): Boolean;',
+  mSource := ClassUnit('    function Bar(A: Integer = 5; B: string = ''x;y''): Boolean;',
     'function TFoo.Bar(const A: Integer; B: string): Boolean;'#10'begin'#10'end;');
-  Findings := TRuleAssert.Findings(TSignatureMismatchRule.Create, Source);
-  Assert.AreEqual('(A: Integer; B: string): Boolean', Findings[0].Fixes[0].Edits[0].NewText);
-  Assert.AreEqual('(const A: Integer = 5; B: string = ''x;y''): Boolean', Findings[0].Fixes[1].Edits[0].NewText);
+  mFindings := TRuleAssert.Findings(TSignatureMismatchRule.Create, mSource);
+  Assert.AreEqual('(A: Integer; B: string): Boolean', mFindings[0].Fixes[0].Edits[0].NewText);
+  Assert.AreEqual('(const A: Integer = 5; B: string = ''x;y''): Boolean', mFindings[0].Fixes[1].Edits[0].NewText);
 end;
 
 procedure TDeclarationRulesTests.SignatureMismatchIssueExample;
 var
-  Source: string;
-  Findings: TArray<TRuleFinding>;
+  mSource: string;
+  mFindings: TArray<TRuleFinding>;
 begin
-  Source := ClassUnit('    procedure Buchen(const Betrag: Currency; Datum: TDate);',
+  mSource := ClassUnit('    procedure Buchen(const Betrag: Currency; Datum: TDate);',
     'procedure TKonto.Buchen(Betrag: Currency; Datum: TDateTime);'#10'begin'#10'end;', 'TKonto = class');
-  Findings := TRuleAssert.Findings(TSignatureMismatchRule.Create, Source);
-  Assert.AreEqual(1, Integer(Length(Findings)));
-  Assert.AreEqual('signature-mismatch', Findings[0].RuleId);
-  Assert.AreEqual(Ord(TRuleSeverity.Error), Ord(Findings[0].Severity));
-  Assert.AreEqual(Ord(TRuleConfidence.High), Ord(Findings[0].Confidence));
+  mFindings := TRuleAssert.Findings(TSignatureMismatchRule.Create, mSource);
+  Assert.AreEqual(1, Integer(Length(mFindings)));
+  Assert.AreEqual('signature-mismatch', mFindings[0].RuleId);
+  Assert.AreEqual(Ord(TRuleSeverity.Error), Ord(mFindings[0].Severity));
+  Assert.AreEqual(Ord(TRuleConfidence.High), Ord(mFindings[0].Confidence));
   Assert.AreEqual('Buchen weicht von der Deklaration ab: Betrag ohne const, Datum TDateTime statt TDate (wie E2037).',
-    Findings[0].Message);
+    mFindings[0].Message);
   // Gemeldet am Namen im Kopf der Implementierung.
-  Assert.AreEqual(7, Findings[0].Range.StartPos.Line);
-  Assert.AreEqual(17, Findings[0].Range.StartPos.Character);
+  Assert.AreEqual(7, mFindings[0].Range.StartPos.Line);
+  Assert.AreEqual(17, mFindings[0].Range.StartPos.Character);
   Assert.AreEqual(ClassUnit('    procedure Buchen(const Betrag: Currency; Datum: TDate);',
     'procedure TKonto.Buchen(const Betrag: Currency; Datum: TDate);'#10'begin'#10'end;', 'TKonto = class'),
-    ApplyAll(Source, Findings[0].Fixes[0]));
+    ApplyAll(mSource, mFindings[0].Fixes[0]));
   // Korrigierte Form und naheliegender Negativfall: anders gruppiert, ohne Parameterliste im Rumpf.
-  TRuleAssert.Silent(TSignatureMismatchRule.Create, ApplyAll(Source, Findings[0].Fixes[0]));
+  TRuleAssert.Silent(TSignatureMismatchRule.Create, ApplyAll(mSource, mFindings[0].Fixes[0]));
   TRuleAssert.Silent(TSignatureMismatchRule.Create, ClassUnit('    procedure Buchen(const A, B: Currency);',
     'procedure TKonto.Buchen(const A: Currency; const B: Currency);'#10'begin'#10'end;', 'TKonto = class'));
   TRuleAssert.Silent(TSignatureMismatchRule.Create, ClassUnit('    procedure Buchen(const A: Currency);',
@@ -481,8 +487,8 @@ end;
 
 procedure TDeclarationRulesTests.SignatureMismatchVariants;
 var
-  Findings: TArray<TRuleFinding>;
-  Source: string;
+  mFindings: TArray<TRuleFinding>;
+  mSource: string;
 begin
   Assert.AreEqual('Foo weicht von der Deklaration ab: 2 statt 1 Parameter (wie E2037).',
     TRuleAssert.Findings(TSignatureMismatchRule.Create, ClassUnit('    procedure Foo(A: Integer);',
@@ -496,44 +502,44 @@ begin
   // Aufrufkonvention: weglassen ist erlaubt, eine andere Angabe nicht.
   TRuleAssert.Silent(TSignatureMismatchRule.Create, ClassUnit('    procedure Foo(A: Integer); stdcall;',
     'procedure TFoo.Foo(A: Integer);'#10'begin'#10'end;'));
-  Source := ClassUnit('    procedure Foo(A: Integer); stdcall;', 'procedure TFoo.Foo(A: Integer); cdecl;'#10'begin'#10'end;');
-  Findings := TRuleAssert.Findings(TSignatureMismatchRule.Create, Source);
-  Assert.AreEqual(1, Integer(Length(Findings)));
-  Assert.AreEqual('Foo weicht von der Deklaration ab: cdecl statt stdcall (wie E2037).', Findings[0].Message);
+  mSource := ClassUnit('    procedure Foo(A: Integer); stdcall;', 'procedure TFoo.Foo(A: Integer); cdecl;'#10'begin'#10'end;');
+  mFindings := TRuleAssert.Findings(TSignatureMismatchRule.Create, mSource);
+  Assert.AreEqual(1, Integer(Length(mFindings)));
+  Assert.AreEqual('Foo weicht von der Deklaration ab: cdecl statt stdcall (wie E2037).', mFindings[0].Message);
   Assert.AreEqual(ClassUnit('    procedure Foo(A: Integer); stdcall;',
-    'procedure TFoo.Foo(A: Integer); stdcall;'#10'begin'#10'end;'), ApplyAll(Source, Findings[0].Fixes[0]));
+    'procedure TFoo.Foo(A: Integer); stdcall;'#10'begin'#10'end;'), ApplyAll(mSource, mFindings[0].Fixes[0]));
   Assert.AreEqual(ClassUnit('    procedure Foo(A: Integer); cdecl;',
-    'procedure TFoo.Foo(A: Integer); cdecl;'#10'begin'#10'end;'), ApplyAll(Source, Findings[0].Fixes[1]));
-  Source := ClassUnit('    procedure Foo(A: Integer);', 'procedure TFoo.Foo(A: Integer); stdcall;'#10'begin'#10'end;');
-  Findings := TRuleAssert.Findings(TSignatureMismatchRule.Create, Source);
-  Assert.AreEqual('Foo weicht von der Deklaration ab: stdcall statt register (wie E2037).', Findings[0].Message);
+    'procedure TFoo.Foo(A: Integer); cdecl;'#10'begin'#10'end;'), ApplyAll(mSource, mFindings[0].Fixes[1]));
+  mSource := ClassUnit('    procedure Foo(A: Integer);', 'procedure TFoo.Foo(A: Integer); stdcall;'#10'begin'#10'end;');
+  mFindings := TRuleAssert.Findings(TSignatureMismatchRule.Create, mSource);
+  Assert.AreEqual('Foo weicht von der Deklaration ab: stdcall statt register (wie E2037).', mFindings[0].Message);
   Assert.AreEqual(ClassUnit('    procedure Foo(A: Integer); stdcall;',
-    'procedure TFoo.Foo(A: Integer); stdcall;'#10'begin'#10'end;'), ApplyAll(Source, Findings[0].Fixes[1]));
+    'procedure TFoo.Foo(A: Integer); stdcall;'#10'begin'#10'end;'), ApplyAll(mSource, mFindings[0].Fixes[1]));
   // Überladung: verglichen wird mit der nächstliegenden Deklaration.
-  Findings := TRuleAssert.Findings(TSignatureMismatchRule.Create, ClassUnit(
+  mFindings := TRuleAssert.Findings(TSignatureMismatchRule.Create, ClassUnit(
     '    procedure Foo(A: Integer); overload;'#10'    procedure Foo(A, B: string); overload;',
     'procedure TFoo.Foo(A: Integer);'#10'begin'#10'end;'#10'procedure TFoo.Foo(A: string; B: Integer);'#10 +
     'begin'#10'end;'));
-  Assert.AreEqual(1, Integer(Length(Findings)));
-  Assert.AreEqual('Foo weicht von der Deklaration ab: B Integer statt string (wie E2037).', Findings[0].Message);
+  Assert.AreEqual(1, Integer(Length(mFindings)));
+  Assert.AreEqual('Foo weicht von der Deklaration ab: B Integer statt string (wie E2037).', mFindings[0].Message);
 end;
 
 procedure TDeclarationRulesTests.SignatureMismatchOffAndExclude;
 var
-  Source: string;
+  mSource: string;
 begin
-  Source := ClassUnit('    procedure Foo(A: Integer);', 'procedure TFoo.Foo(const A: Integer);'#10'begin'#10'end;');
-  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TSignatureMismatchRule.Create, Source,
+  mSource := ClassUnit('    procedure Foo(A: Integer);', 'procedure TFoo.Foo(const A: Integer);'#10'begin'#10'end;');
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TSignatureMismatchRule.Create, mSource,
     '{"rules": {"signature-mismatch": "off"}}'))));
-  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TSignatureMismatchRule.Create, Source,
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TSignatureMismatchRule.Create, mSource,
     '{"rules": {"group:compiler": "off"}}'))));
-  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TSignatureMismatchRule.Create, Source,
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TSignatureMismatchRule.Create, mSource,
     '{"rules": {"signature-mismatch": {"exclude": ["Source/*.pas"]}}}', 'Source/U.pas'))));
   // Ein fehlender Name bleibt bei den anderen Regeln.
-  Source := ClassUnit('    procedure Foo(A: Integer);', 'procedure TFoo.Bar(A: Integer);'#10'begin'#10'end;');
-  TRuleAssert.Silent(TSignatureMismatchRule.Create, Source);
-  TRuleAssert.Reports(TDeclaredNotImplementedRule.Create, Source);
-  TRuleAssert.Reports(TImplementedNotDeclaredRule.Create, Source);
+  mSource := ClassUnit('    procedure Foo(A: Integer);', 'procedure TFoo.Bar(A: Integer);'#10'begin'#10'end;');
+  TRuleAssert.Silent(TSignatureMismatchRule.Create, mSource);
+  TRuleAssert.Reports(TDeclaredNotImplementedRule.Create, mSource);
+  TRuleAssert.Reports(TImplementedNotDeclaredRule.Create, mSource);
 end;
 
 procedure TDeclarationRulesTests.SignatureMismatchBuiltinAliases;
@@ -613,14 +619,14 @@ end;
 
 procedure TDeclarationRulesTests.AmbiguousOverloadOffersNoAlignment;
 var
-  Findings: TArray<TRuleFinding>;
+  mFindings: TArray<TRuleFinding>;
 begin
-  Findings := TRuleAssert.Findings(TImplementedNotDeclaredRule.Create, ClassUnit(
+  mFindings := TRuleAssert.Findings(TImplementedNotDeclaredRule.Create, ClassUnit(
     '    procedure Foo(A: Integer); overload;'#10'    procedure Foo(A: string); overload;',
     'procedure TFoo.Foo(A: Double);'#10'begin'#10'end;'));
-  Assert.AreEqual(1, Integer(Length(Findings)));
+  Assert.AreEqual(1, Integer(Length(mFindings)));
   // Nur "Deklaration ergänzen".
-  Assert.AreEqual(1, Integer(Length(Findings[0].Fixes)));
+  Assert.AreEqual(1, Integer(Length(mFindings[0].Fixes)));
 end;
 
 /// <summary>Unit mit ILogger (Info, Warnung, Fehler) und der Klasse AClass samt AImplementation.</summary>
@@ -635,28 +641,28 @@ begin
 end;
 
 const
-  DateiLog = '  TDateiLog = class(TInterfacedObject, ILogger)'#10'  public'#10 +
+  cDateiLog = '  TDateiLog = class(TInterfacedObject, ILogger)'#10'  public'#10 +
     '    procedure Info(const Text: string);'#10'  end;';
-  DateiLogBody = 'procedure TDateiLog.Info(const Text: string);'#10'begin'#10'end;';
+  cDateiLogBody = 'procedure TDateiLog.Info(const Text: string);'#10'begin'#10'end;';
 
 procedure TDeclarationRulesTests.InterfaceIssueExample;
 var
-  Source, Fixed: string;
-  Findings: TArray<TRuleFinding>;
+  mSource, mFixed: string;
+  mFindings: TArray<TRuleFinding>;
 begin
-  Source := LoggerUnit(DateiLog, DateiLogBody);
-  Findings := TRuleAssert.Findings(TInterfaceNotImplementedRule.Create, Source);
-  Assert.AreEqual(1, Integer(Length(Findings)));
-  Assert.AreEqual('ILogger.Fehler und ILogger.Warnung fehlen in TDateiLog (wie E2291).', Findings[0].Message);
-  Assert.AreEqual(8, Findings[0].Range.StartPos.Line);
-  Assert.AreEqual(1, Integer(Length(Findings[0].Fixes)));
+  mSource := LoggerUnit(cDateiLog, cDateiLogBody);
+  mFindings := TRuleAssert.Findings(TInterfaceNotImplementedRule.Create, mSource);
+  Assert.AreEqual(1, Integer(Length(mFindings)));
+  Assert.AreEqual('ILogger.Fehler und ILogger.Warnung fehlen in TDateiLog (wie E2291).', mFindings[0].Message);
+  Assert.AreEqual(8, mFindings[0].Range.StartPos.Line);
+  Assert.AreEqual(1, Integer(Length(mFindings[0].Fixes)));
   // Die Korrektur deklariert die fehlenden Methoden und legt leere Rümpfe an.
-  Fixed := ApplyAll(Source, Findings[0].Fixes[0]);
-  Assert.IsTrue(Fixed.Contains('    procedure Info(const Text: string);'#10 +
-    '    procedure Warnung(const Text: string);'#10'    procedure Fehler(const Text: string);'#10'  end;'), Fixed);
-  Assert.IsTrue(Fixed.Contains('procedure TDateiLog.Fehler(const Text: string);'), Fixed);
-  Assert.IsTrue(ParsesCleanly(Fixed), Fixed);
-  TRuleAssert.Silent(TInterfaceNotImplementedRule.Create, Fixed);
+  mFixed := ApplyAll(mSource, mFindings[0].Fixes[0]);
+  Assert.IsTrue(mFixed.Contains('    procedure Info(const Text: string);'#10 +
+    '    procedure Warnung(const Text: string);'#10'    procedure Fehler(const Text: string);'#10'  end;'), mFixed);
+  Assert.IsTrue(mFixed.Contains('procedure TDateiLog.Fehler(const Text: string);'), mFixed);
+  Assert.IsTrue(ParsesCleanly(mFixed), mFixed);
+  TRuleAssert.Silent(TInterfaceNotImplementedRule.Create, mFixed);
 end;
 
 procedure TDeclarationRulesTests.InterfaceImplementationsThatCount;
@@ -694,20 +700,20 @@ begin
   TRuleAssert.Silent(TInterfaceNotImplementedRule.Create, LoggerUnit(
     '  TLog = class(TInterfacedObject, IFremd)'#10'    procedure Info(const Text: string);'#10'  end;', ''));
   // Bedingte Klasse.
-  TRuleAssert.Silent(TInterfaceNotImplementedRule.Create, LoggerUnit('{$IFDEF DEBUG}'#10 + DateiLog + #10'{$ENDIF}', ''));
+  TRuleAssert.Silent(TInterfaceNotImplementedRule.Create, LoggerUnit('{$IFDEF DEBUG}'#10 + cDateiLog + #10'{$ENDIF}', ''));
 end;
 
 procedure TDeclarationRulesTests.InterfaceDifferentSignature;
 var
-  Findings: TArray<TRuleFinding>;
+  mFindings: TArray<TRuleFinding>;
 begin
-  Findings := TRuleAssert.Findings(TInterfaceNotImplementedRule.Create, LoggerUnit(
+  mFindings := TRuleAssert.Findings(TInterfaceNotImplementedRule.Create, LoggerUnit(
     '  TLog = class(TInterfacedObject, ILogger)'#10'    procedure Info(const Text: Integer);'#10 +
     '    procedure Warnung(const Text: string);'#10'    procedure Fehler(const Text: string);'#10'  end;', ''));
-  Assert.AreEqual(1, Integer(Length(Findings)));
-  Assert.AreEqual('Info weicht von der Deklaration in ILogger ab (wie E2211).', Findings[0].Message);
-  Assert.AreEqual(9, Findings[0].Range.StartPos.Line);
-  Assert.AreEqual(0, Integer(Length(Findings[0].Fixes)));
+  Assert.AreEqual(1, Integer(Length(mFindings)));
+  Assert.AreEqual('Info weicht von der Deklaration in ILogger ab (wie E2211).', mFindings[0].Message);
+  Assert.AreEqual(9, mFindings[0].Range.StartPos.Line);
+  Assert.AreEqual(0, Integer(Length(mFindings[0].Fixes)));
 end;
 
 function GenericUnit(const AClass: string): string;
@@ -724,7 +730,7 @@ end;
 
 procedure TDeclarationRulesTests.InterfaceGenericArguments;
 var
-  Findings: TArray<TRuleFinding>;
+  mFindings: TArray<TRuleFinding>;
 begin
   // Zweiter Vorfahr mit Typargument (Fehlalarm E2211 aus der IDE).
   TRuleAssert.Silent(TInterfaceNotImplementedRule.Create, GenericUnit(
@@ -755,41 +761,41 @@ begin
     '    function Get(const AKey: Integer): string;'#10 +
     '    procedure Put(const AKey: Integer; const AValue: string);'#10'  end;'));
   // Abweichung bleibt eine Meldung.
-  Findings := TRuleAssert.Findings(TInterfaceNotImplementedRule.Create, GenericUnit(
+  mFindings := TRuleAssert.Findings(TInterfaceNotImplementedRule.Create, GenericUnit(
     '  TScoredItemComparer = class(TInterfacedObject, IComparer<TScoredItem>)'#10 +
     '    function Compare(const Left, Right: Integer): Integer;'#10'  end;'));
-  Assert.AreEqual(1, Integer(Length(Findings)));
-  Assert.AreEqual('Compare weicht von der Deklaration in IComparer ab (wie E2211).', Findings[0].Message);
-  Findings := TRuleAssert.Findings(TInterfaceNotImplementedRule.Create, GenericUnit(
+  Assert.AreEqual(1, Integer(Length(mFindings)));
+  Assert.AreEqual('Compare weicht von der Deklaration in IComparer ab (wie E2211).', mFindings[0].Message);
+  mFindings := TRuleAssert.Findings(TInterfaceNotImplementedRule.Create, GenericUnit(
     '  TMap = class(TInterfacedObject, IMap<string, Integer>)'#10 +
     '    function Get(const AKey: string): Integer;'#10 +
     '    procedure Put(const AKey: Integer; const AValue: string);'#10'  end;'));
-  Assert.AreEqual(1, Integer(Length(Findings)));
-  Assert.AreEqual('Put weicht von der Deklaration in IMap ab (wie E2211).', Findings[0].Message);
+  Assert.AreEqual(1, Integer(Length(mFindings)));
+  Assert.AreEqual('Put weicht von der Deklaration in IMap ab (wie E2211).', mFindings[0].Message);
 end;
 
 procedure TDeclarationRulesTests.InterfaceResolutionForUnlistedInterface;
 var
-  Findings: TArray<TRuleFinding>;
+  mFindings: TArray<TRuleFinding>;
 begin
-  Findings := TRuleAssert.Findings(TInterfaceNotImplementedRule.Create, LoggerUnit(
+  mFindings := TRuleAssert.Findings(TInterfaceNotImplementedRule.Create, LoggerUnit(
     '  TLog = class(TInterfacedObject, ILogger)'#10'    procedure IAnders.Info = Melde;'#10 +
     '    procedure Info(const Text: string);'#10'    procedure Warnung(const Text: string);'#10 +
     '    procedure Fehler(const Text: string);'#10'    procedure Melde(const Text: string);'#10'  end;', ''));
-  Assert.AreEqual(1, Integer(Length(Findings)));
-  Assert.AreEqual('IAnders steht nicht in der Interface-Liste von TLog (wie E2265).', Findings[0].Message);
+  Assert.AreEqual(1, Integer(Length(mFindings)));
+  Assert.AreEqual('IAnders steht nicht in der Interface-Liste von TLog (wie E2265).', mFindings[0].Message);
 end;
 
 procedure TDeclarationRulesTests.InterfaceOffAndExclude;
 var
-  Source: string;
+  mSource: string;
 begin
-  Source := LoggerUnit(DateiLog, DateiLogBody);
-  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TInterfaceNotImplementedRule.Create, Source,
+  mSource := LoggerUnit(cDateiLog, cDateiLogBody);
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TInterfaceNotImplementedRule.Create, mSource,
     '{"rules": {"interface-not-implemented": "off"}}'))));
-  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TInterfaceNotImplementedRule.Create, Source,
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TInterfaceNotImplementedRule.Create, mSource,
     '{"rules": {"group:compiler": "off"}}'))));
-  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TInterfaceNotImplementedRule.Create, Source,
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TInterfaceNotImplementedRule.Create, mSource,
     '{"rules": {"interface-not-implemented": {"exclude": ["Source/*.pas"]}}}', 'Source/U.pas'))));
 end;
 
@@ -801,59 +807,59 @@ end;
 
 procedure TDeclarationOrderRulesTests.FieldAfterMethodIssueExample;
 const
-  Members = '  private'#10'    function GetName: string;'#10'    FName: string;'#10;
+  cMembers = '  private'#10'    function GetName: string;'#10'    FName: string;'#10;
 var
-  Findings: TArray<TRuleFinding>;
-  Text: string;
+  mFindings: TArray<TRuleFinding>;
+  mText: string;
 begin
-  Findings := TRuleAssert.Findings(TFieldAfterMethodRule.Create, Kunde(Members));
-  Assert.AreEqual(1, Integer(Length(Findings)));
-  Assert.AreEqual(cFieldAfterMethodRuleId, Findings[0].RuleId);
-  Assert.AreEqual('Feld nach Methoden im selben Abschnitt (wie E2169).', Findings[0].Message);
-  Assert.AreEqual(Ord(TRuleSeverity.Error), Ord(Findings[0].Severity));
-  Assert.AreEqual(Ord(TRuleConfidence.High), Ord(Findings[0].Confidence));
-  Assert.AreEqual(6, Findings[0].Range.StartPos.Line);
-  Assert.AreEqual(2, Integer(Length(Findings[0].Fixes)));
-  Assert.AreEqual('Feld an den Anfang des Abschnitts verschieben', Findings[0].Fixes[0].Title);
-  Text := TChangeSignature.ApplyEdits(Kunde(Members), Findings[0].Fixes[0].Edits);
-  Assert.AreEqual(Kunde('  private'#10'    FName: string;'#10'    function GetName: string;'#10), Text);
-  TRuleAssert.Silent(TFieldAfterMethodRule.Create, Text);
-  Assert.AreEqual('var davor setzen', Findings[0].Fixes[1].Title);
-  Text := TChangeSignature.ApplyEdits(Kunde(Members), Findings[0].Fixes[1].Edits);
-  Assert.AreEqual(Kunde('  private'#10'    function GetName: string;'#10'    var FName: string;'#10), Text);
-  TRuleAssert.Silent(TFieldAfterMethodRule.Create, Text);
+  mFindings := TRuleAssert.Findings(TFieldAfterMethodRule.Create, Kunde(cMembers));
+  Assert.AreEqual(1, Integer(Length(mFindings)));
+  Assert.AreEqual(cFieldAfterMethodRuleId, mFindings[0].RuleId);
+  Assert.AreEqual('Feld nach Methoden im selben Abschnitt (wie E2169).', mFindings[0].Message);
+  Assert.AreEqual(Ord(TRuleSeverity.Error), Ord(mFindings[0].Severity));
+  Assert.AreEqual(Ord(TRuleConfidence.High), Ord(mFindings[0].Confidence));
+  Assert.AreEqual(6, mFindings[0].Range.StartPos.Line);
+  Assert.AreEqual(2, Integer(Length(mFindings[0].Fixes)));
+  Assert.AreEqual('Feld an den Anfang des Abschnitts verschieben', mFindings[0].Fixes[0].Title);
+  mText := TChangeSignature.ApplyEdits(Kunde(cMembers), mFindings[0].Fixes[0].Edits);
+  Assert.AreEqual(Kunde('  private'#10'    FName: string;'#10'    function GetName: string;'#10), mText);
+  TRuleAssert.Silent(TFieldAfterMethodRule.Create, mText);
+  Assert.AreEqual('var davor setzen', mFindings[0].Fixes[1].Title);
+  mText := TChangeSignature.ApplyEdits(Kunde(cMembers), mFindings[0].Fixes[1].Edits);
+  Assert.AreEqual(Kunde('  private'#10'    function GetName: string;'#10'    var FName: string;'#10), mText);
+  TRuleAssert.Silent(TFieldAfterMethodRule.Create, mText);
 end;
 
 procedure TDeclarationOrderRulesTests.FieldAfterMethodVariants;
 const
-  Members = '  private'#10'    /// <summary>Name</summary>'#10'    [Stored]'#10'    property Name: string read FName;'#10 +
+  cMembers = '  private'#10'    /// <summary>Name</summary>'#10'    [Stored]'#10'    property Name: string read FName;'#10 +
     '    procedure Setzen;'#10'    // Puffer'#10'    [Weak] FPuffer: TObject;'#10'    FA, FB: Integer;'#10;
-  Rec = 'unit R;'#10'interface'#10'type'#10'  TPunkt = record'#10'    procedure Setzen;'#10'    X: Integer;'#10 +
+  cRec = 'unit R;'#10'interface'#10'type'#10'  TPunkt = record'#10'    procedure Setzen;'#10'    X: Integer;'#10 +
     '  end;'#10'implementation'#10'end.';
 var
-  Findings: TArray<TRuleFinding>;
+  mFindings: TArray<TRuleFinding>;
 begin
   // Nach einer Property, mit Attribut und Kommentar; zwei Felder je eine Meldung.
-  Findings := TRuleAssert.Findings(TFieldAfterMethodRule.Create, Kunde(Members));
-  Assert.AreEqual(2, Integer(Length(Findings)));
+  mFindings := TRuleAssert.Findings(TFieldAfterMethodRule.Create, Kunde(cMembers));
+  Assert.AreEqual(2, Integer(Length(mFindings)));
   Assert.AreEqual(Kunde('  private'#10'    // Puffer'#10'    [Weak] FPuffer: TObject;'#10 +
     '    /// <summary>Name</summary>'#10'    [Stored]'#10'    property Name: string read FName;'#10 +
     '    procedure Setzen;'#10'    FA, FB: Integer;'#10),
-    TChangeSignature.ApplyEdits(Kunde(Members), Findings[0].Fixes[0].Edits));
+    TChangeSignature.ApplyEdits(Kunde(cMembers), mFindings[0].Fixes[0].Edits));
   Assert.AreEqual(Kunde('  private'#10'    /// <summary>Name</summary>'#10'    [Stored]'#10 +
     '    property Name: string read FName;'#10'    procedure Setzen;'#10'    // Puffer'#10 +
     '    var [Weak] FPuffer: TObject;'#10'    FA, FB: Integer;'#10),
-    TChangeSignature.ApplyEdits(Kunde(Members), Findings[0].Fixes[1].Edits));
+    TChangeSignature.ApplyEdits(Kunde(cMembers), mFindings[0].Fixes[1].Edits));
   // Record: var zuerst, weil Verschieben das Speicherlayout ändert.
-  Findings := TRuleAssert.Findings(TFieldAfterMethodRule.Create, Rec);
-  Assert.AreEqual(1, Integer(Length(Findings)));
-  Assert.AreEqual('var davor setzen', Findings[0].Fixes[0].Title);
-  Assert.AreEqual('Feld an den Anfang des Abschnitts verschieben', Findings[0].Fixes[1].Title);
+  mFindings := TRuleAssert.Findings(TFieldAfterMethodRule.Create, cRec);
+  Assert.AreEqual(1, Integer(Length(mFindings)));
+  Assert.AreEqual('var davor setzen', mFindings[0].Fixes[0].Title);
+  Assert.AreEqual('Feld an den Anfang des Abschnitts verschieben', mFindings[0].Fixes[1].Title);
   // Feld auf derselben Zeile wie anderes: nur var.
-  Findings := TRuleAssert.Findings(TFieldAfterMethodRule.Create, Kunde('    procedure A; FX: Integer;'#10));
-  Assert.AreEqual(1, Integer(Length(Findings)));
-  Assert.AreEqual(1, Integer(Length(Findings[0].Fixes)));
-  Assert.AreEqual('var davor setzen', Findings[0].Fixes[0].Title);
+  mFindings := TRuleAssert.Findings(TFieldAfterMethodRule.Create, Kunde('    procedure A; FX: Integer;'#10));
+  Assert.AreEqual(1, Integer(Length(mFindings)));
+  Assert.AreEqual(1, Integer(Length(mFindings[0].Fixes)));
+  Assert.AreEqual('var davor setzen', mFindings[0].Fixes[0].Title);
 end;
 
 procedure TDeclarationOrderRulesTests.FieldAfterMethodSilentCases;
@@ -871,90 +877,90 @@ end;
 
 procedure TDeclarationOrderRulesTests.FieldAfterMethodConditional;
 var
-  Findings: TArray<TRuleFinding>;
+  mFindings: TArray<TRuleFinding>;
 begin
   // Methode ohne Bedingung, Feld unter DEBUG: dort immer ein Fehler, verschoben wird nicht.
-  Findings := TRuleAssert.Findings(TFieldAfterMethodRule.Create, Kunde('    procedure A;'#10'{$IFDEF DEBUG}'#10 +
+  mFindings := TRuleAssert.Findings(TFieldAfterMethodRule.Create, Kunde('    procedure A;'#10'{$IFDEF DEBUG}'#10 +
     '    FX: Integer;'#10'{$ENDIF}'#10));
-  Assert.AreEqual(1, Integer(Length(Findings)));
-  Assert.AreEqual(1, Integer(Length(Findings[0].Fixes)));
-  Assert.AreEqual('var davor setzen', Findings[0].Fixes[0].Title);
+  Assert.AreEqual(1, Integer(Length(mFindings)));
+  Assert.AreEqual(1, Integer(Length(mFindings[0].Fixes)));
+  Assert.AreEqual('var davor setzen', mFindings[0].Fixes[0].Title);
 end;
 
 procedure TDeclarationOrderRulesTests.FieldAfterMethodOffAndExclude;
 const
-  Members = '    procedure A;'#10'    FX: Integer;'#10;
+  cMembers = '    procedure A;'#10'    FX: Integer;'#10;
 begin
-  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TFieldAfterMethodRule.Create, Kunde(Members),
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TFieldAfterMethodRule.Create, Kunde(cMembers),
     '{"rules": {"field-after-method": "off"}}', 'Kunden.pas'))));
-  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TFieldAfterMethodRule.Create, Kunde(Members),
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TFieldAfterMethodRule.Create, Kunde(cMembers),
     '{"rules": {"group:compiler": "off"}}', 'Kunden.pas'))));
-  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TFieldAfterMethodRule.Create, Kunde(Members),
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TFieldAfterMethodRule.Create, Kunde(cMembers),
     '{"rules": {"field-after-method": {"exclude": ["Alt/*.pas"]}}}', 'Alt/Kunden.pas'))));
-  Assert.AreEqual(1, Integer(Length(TRuleAssert.Findings(TFieldAfterMethodRule.Create, Kunde(Members),
+  Assert.AreEqual(1, Integer(Length(TRuleAssert.Findings(TFieldAfterMethodRule.Create, Kunde(cMembers),
     '{"rules": {"field-after-method": {"exclude": ["Alt/*.pas"]}}}', 'Neu/Kunden.pas'))));
 end;
 
 procedure TDeclarationOrderRulesTests.OverloadIssueExample;
 const
-  Members = '    procedure Laden(const Datei: string);'#10'    procedure Laden(Strom: TStream);'#10;
+  cMembers = '    procedure Laden(const Datei: string);'#10'    procedure Laden(Strom: TStream);'#10;
 var
-  Findings: TArray<TRuleFinding>;
-  Text: string;
+  mFindings: TArray<TRuleFinding>;
+  mText: string;
 begin
-  Findings := TRuleAssert.Findings(TOverloadDirectiveMissingRule.Create, Kunde(Members));
-  Assert.AreEqual(1, Integer(Length(Findings)));
-  Assert.AreEqual(cOverloadDirectiveMissingRuleId, Findings[0].RuleId);
-  Assert.AreEqual('Laden ist überladen, aber nicht mit overload markiert (wie E2254).', Findings[0].Message);
-  Assert.AreEqual(Ord(TRuleSeverity.Error), Ord(Findings[0].Severity));
-  Assert.AreEqual(5, Findings[0].Range.StartPos.Line);
-  Assert.AreEqual(14, Findings[0].Range.StartPos.Character);
-  Assert.AreEqual('overload; an alle Deklarationen anhängen', Findings[0].Fixes[0].Title);
-  Text := TChangeSignature.ApplyEdits(Kunde(Members), Findings[0].Fixes[0].Edits);
+  mFindings := TRuleAssert.Findings(TOverloadDirectiveMissingRule.Create, Kunde(cMembers));
+  Assert.AreEqual(1, Integer(Length(mFindings)));
+  Assert.AreEqual(cOverloadDirectiveMissingRuleId, mFindings[0].RuleId);
+  Assert.AreEqual('Laden ist überladen, aber nicht mit overload markiert (wie E2254).', mFindings[0].Message);
+  Assert.AreEqual(Ord(TRuleSeverity.Error), Ord(mFindings[0].Severity));
+  Assert.AreEqual(5, mFindings[0].Range.StartPos.Line);
+  Assert.AreEqual(14, mFindings[0].Range.StartPos.Character);
+  Assert.AreEqual('overload; an alle Deklarationen anhängen', mFindings[0].Fixes[0].Title);
+  mText := TChangeSignature.ApplyEdits(Kunde(cMembers), mFindings[0].Fixes[0].Edits);
   Assert.AreEqual(Kunde('    procedure Laden(const Datei: string); overload;'#10 +
-    '    procedure Laden(Strom: TStream); overload;'#10), Text);
-  TRuleAssert.Silent(TOverloadDirectiveMissingRule.Create, Text);
+    '    procedure Laden(Strom: TStream); overload;'#10), mText);
+  TRuleAssert.Silent(TOverloadDirectiveMissingRule.Create, mText);
 end;
 
 procedure TDeclarationOrderRulesTests.OverloadVariants;
 var
-  Findings: TArray<TRuleFinding>;
+  mFindings: TArray<TRuleFinding>;
 begin
   // Frühere ohne overload (E2267); overload vor den übrigen Direktiven.
-  Findings := TRuleAssert.Findings(TOverloadDirectiveMissingRule.Create, Kunde(
+  mFindings := TRuleAssert.Findings(TOverloadDirectiveMissingRule.Create, Kunde(
     '    procedure Laden(const Datei: string); virtual;'#10'    procedure Laden(Strom: TStream); overload;'#10));
-  Assert.AreEqual(1, Integer(Length(Findings)));
+  Assert.AreEqual(1, Integer(Length(mFindings)));
   Assert.AreEqual('Laden ist überladen, die frühere Deklaration in Zeile 5 trägt kein overload (wie E2267).',
-    Findings[0].Message);
+    mFindings[0].Message);
   Assert.AreEqual(Kunde('    procedure Laden(const Datei: string); overload; virtual;'#10 +
     '    procedure Laden(Strom: TStream); overload;'#10), TChangeSignature.ApplyEdits(Kunde(
     '    procedure Laden(const Datei: string); virtual;'#10'    procedure Laden(Strom: TStream); overload;'#10),
-    Findings[0].Fixes[0].Edits));
+    mFindings[0].Fixes[0].Edits));
   // Gleiche Parameter (E2252) und gleiches Ergebnis (E2301), auch mit anderen Namen.
-  Findings := TRuleAssert.Findings(TOverloadDirectiveMissingRule.Create, Kunde(
+  mFindings := TRuleAssert.Findings(TOverloadDirectiveMissingRule.Create, Kunde(
     '    procedure Laden(A, B: Integer); overload;'#10'    procedure Laden(X: Integer; Y: integer); overload;'#10 +
     '    function Wert(const S: string): Integer; overload;'#10'    function Wert(const T: string): Integer; overload;'#10));
-  Assert.AreEqual(2, Integer(Length(Findings)));
-  Assert.AreEqual('Laden mit denselben Parametern gibt es schon in Zeile 5 (wie E2252).', Findings[0].Message);
-  Assert.AreEqual(0, Integer(Length(Findings[0].Fixes)));
+  Assert.AreEqual(2, Integer(Length(mFindings)));
+  Assert.AreEqual('Laden mit denselben Parametern gibt es schon in Zeile 5 (wie E2252).', mFindings[0].Message);
+  Assert.AreEqual(0, Integer(Length(mFindings[0].Fixes)));
   Assert.AreEqual('Wert mit denselben Parametern und demselben Ergebnistyp gibt es schon in Zeile 7 (wie E2301).',
-    Findings[1].Message);
+    mFindings[1].Message);
   // Routinen der Unit: interface und implementation zusammen, Rumpf zur Deklaration zählt nicht.
-  Findings := TRuleAssert.Findings(TOverloadDirectiveMissingRule.Create, 'unit U;'#10'interface'#10 +
+  mFindings := TRuleAssert.Findings(TOverloadDirectiveMissingRule.Create, 'unit U;'#10'interface'#10 +
     'procedure Global(A: Integer);'#10'implementation'#10'procedure Global(A: Integer);'#10'begin'#10'end;'#10 +
     'procedure Global(const S: string);'#10'begin'#10'end;'#10'end.');
-  Assert.AreEqual(1, Integer(Length(Findings)));
-  Assert.AreEqual(7, Findings[0].Range.StartPos.Line);
+  Assert.AreEqual(1, Integer(Length(mFindings)));
+  Assert.AreEqual(7, mFindings[0].Range.StartPos.Line);
   Assert.AreEqual('unit U;'#10'interface'#10'procedure Global(A: Integer); overload;'#10'implementation'#10 +
     'procedure Global(A: Integer);'#10'begin'#10'end;'#10'procedure Global(const S: string); overload;'#10'begin'#10 +
     'end;'#10'end.', TChangeSignature.ApplyEdits('unit U;'#10'interface'#10'procedure Global(A: Integer);'#10 +
     'implementation'#10'procedure Global(A: Integer);'#10'begin'#10'end;'#10'procedure Global(const S: string);'#10 +
-    'begin'#10'end;'#10'end.', Findings[0].Fixes[0].Edits));
+    'begin'#10'end;'#10'end.', mFindings[0].Fixes[0].Edits));
   // Verschachtelte Routinen bilden einen eigenen Bereich.
-  Findings := TRuleAssert.Findings(TOverloadDirectiveMissingRule.Create, 'unit U;'#10'interface'#10'implementation'#10 +
+  mFindings := TRuleAssert.Findings(TOverloadDirectiveMissingRule.Create, 'unit U;'#10'interface'#10'implementation'#10 +
     'procedure Aussen;'#10'  procedure Innen; begin end;'#10'  procedure Innen(X: Integer); begin end;'#10'begin'#10 +
     'end;'#10'end.');
-  Assert.AreEqual(1, Integer(Length(Findings)));
+  Assert.AreEqual(1, Integer(Length(mFindings)));
 end;
 
 procedure TDeclarationOrderRulesTests.OverloadSilentCases;
@@ -974,13 +980,13 @@ end;
 
 procedure TDeclarationOrderRulesTests.OverloadOffAndExclude;
 const
-  Members = '    procedure Laden(const Datei: string);'#10'    procedure Laden(Strom: TStream);'#10;
+  cMembers = '    procedure Laden(const Datei: string);'#10'    procedure Laden(Strom: TStream);'#10;
 begin
-  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TOverloadDirectiveMissingRule.Create, Kunde(Members),
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TOverloadDirectiveMissingRule.Create, Kunde(cMembers),
     '{"rules": {"overload-directive-missing": "off"}}', 'Kunden.pas'))));
-  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TOverloadDirectiveMissingRule.Create, Kunde(Members),
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TOverloadDirectiveMissingRule.Create, Kunde(cMembers),
     '{"rules": {"group:compiler": "off"}}', 'Kunden.pas'))));
-  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TOverloadDirectiveMissingRule.Create, Kunde(Members),
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TOverloadDirectiveMissingRule.Create, Kunde(cMembers),
     '{"rules": {"overload-directive-missing": {"exclude": ["Alt/*.pas"]}}}', 'Alt/Kunden.pas'))));
 end;
 
@@ -1091,30 +1097,30 @@ end;
 
 procedure TDeclarationOrderRulesTests.SpecialFormCounterChecks;
 var
-  Findings: TArray<TRuleFinding>;
+  mFindings: TArray<TRuleFinding>;
 begin
   // Zwei echte Überladungen ohne overload, auch neben einem class constructor.
-  Findings := TRuleAssert.Findings(TOverloadDirectiveMissingRule.Create, Kunde('    class constructor Create;'#10 +
+  mFindings := TRuleAssert.Findings(TOverloadDirectiveMissingRule.Create, Kunde('    class constructor Create;'#10 +
     '    constructor Create;'#10'    constructor Create(X: Integer);'#10));
-  Assert.AreEqual(1, Integer(Length(Findings)));
-  Assert.AreEqual('Create ist überladen, aber nicht mit overload markiert (wie E2254).', Findings[0].Message);
+  Assert.AreEqual(1, Integer(Length(mFindings)));
+  Assert.AreEqual('Create ist überladen, aber nicht mit overload markiert (wie E2254).', mFindings[0].Message);
   // Offene Arrays mit gleichem Elementtyp sind gleiche Parameter (E2252).
-  Findings := TRuleAssert.Findings(TOverloadDirectiveMissingRule.Create, Kunde(
+  mFindings := TRuleAssert.Findings(TOverloadDirectiveMissingRule.Create, Kunde(
     '    procedure Fill(const A: array of Integer); overload;'#10 +
     '    procedure Fill(const B: array of Integer); overload;'#10));
-  Assert.AreEqual(1, Integer(Length(Findings)));
-  Assert.AreEqual('Fill mit denselben Parametern gibt es schon in Zeile 5 (wie E2252).', Findings[0].Message);
+  Assert.AreEqual(1, Integer(Length(mFindings)));
+  Assert.AreEqual('Fill mit denselben Parametern gibt es schon in Zeile 5 (wie E2252).', mFindings[0].Message);
   // Die Kurzform passt nicht, wenn es zwei Deklarationen gleichen Namens gibt.
-  Findings := TRuleAssert.Findings(TOverloadDirectiveMissingRule.Create, 'unit U;'#10'interface'#10 +
+  mFindings := TRuleAssert.Findings(TOverloadDirectiveMissingRule.Create, 'unit U;'#10'interface'#10 +
     'procedure P(A: Integer); overload;'#10'procedure P(S: string); overload;'#10'implementation'#10 +
     'procedure P;'#10'begin'#10'end;'#10'end.');
-  Assert.AreEqual(1, Integer(Length(Findings)));
+  Assert.AreEqual(1, Integer(Length(mFindings)));
   // Ein wirklich fehlender Rumpf, auch neben "()" und Kurzform.
-  Findings := TRuleAssert.Findings(TDeclaredNotImplementedRule.Create, Kunde('    procedure Lauf;'#10 +
+  mFindings := TRuleAssert.Findings(TDeclaredNotImplementedRule.Create, Kunde('    procedure Lauf;'#10 +
     '    procedure Halt(A: Integer);'#10'    procedure Fehlt;'#10).Replace('implementation'#10,
     'implementation'#10'procedure TKunde.Lauf(); begin end;'#10'procedure TKunde.Halt; begin end;'#10));
-  Assert.AreEqual(1, Integer(Length(Findings)));
-  Assert.AreEqual('"TKunde.Fehlt" ist deklariert, aber nicht implementiert', Findings[0].Message);
+  Assert.AreEqual(1, Integer(Length(mFindings)));
+  Assert.AreEqual('"TKunde.Fehlt" ist deklariert, aber nicht implementiert', mFindings[0].Message);
 end;
 
 function Rechnung(const ADeclarations: string): string;
@@ -1125,96 +1131,96 @@ end;
 
 procedure TDeclarationOrderRulesTests.DuplicateDeclarationIssueExample;
 var
-  Findings: TArray<TRuleFinding>;
-  Text: string;
+  mFindings: TArray<TRuleFinding>;
+  mText: string;
 begin
-  Findings := TRuleAssert.Findings(TDuplicateDeclarationRule.Create, Rechnung('var'#10'  Betrag: Currency;'#10));
-  Assert.AreEqual(1, Integer(Length(Findings)));
-  Assert.AreEqual(cDuplicateDeclarationRuleId, Findings[0].RuleId);
-  Assert.AreEqual('Betrag ist schon als Parameter deklariert (wie E2004).', Findings[0].Message);
-  Assert.AreEqual(Ord(TRuleSeverity.Error), Ord(Findings[0].Severity));
-  Assert.AreEqual(5, Findings[0].Range.StartPos.Line);
-  Assert.AreEqual(2, Findings[0].Range.StartPos.Character);
+  mFindings := TRuleAssert.Findings(TDuplicateDeclarationRule.Create, Rechnung('var'#10'  Betrag: Currency;'#10));
+  Assert.AreEqual(1, Integer(Length(mFindings)));
+  Assert.AreEqual(cDuplicateDeclarationRuleId, mFindings[0].RuleId);
+  Assert.AreEqual('Betrag ist schon als Parameter deklariert (wie E2004).', mFindings[0].Message);
+  Assert.AreEqual(Ord(TRuleSeverity.Error), Ord(mFindings[0].Severity));
+  Assert.AreEqual(5, mFindings[0].Range.StartPos.Line);
+  Assert.AreEqual(2, mFindings[0].Range.StartPos.Character);
   // Einzige Variable: der var-Abschnitt geht mit.
-  Assert.AreEqual('Zweite Deklaration entfernen', Findings[0].Fixes[0].Title);
-  Text := TChangeSignature.ApplyEdits(Rechnung('var'#10'  Betrag: Currency;'#10), Findings[0].Fixes[0].Edits);
-  Assert.AreEqual(Rechnung(''), Text);
-  TRuleAssert.Silent(TDuplicateDeclarationRule.Create, Text);
+  Assert.AreEqual('Zweite Deklaration entfernen', mFindings[0].Fixes[0].Title);
+  mText := TChangeSignature.ApplyEdits(Rechnung('var'#10'  Betrag: Currency;'#10), mFindings[0].Fixes[0].Edits);
+  Assert.AreEqual(Rechnung(''), mText);
+  TRuleAssert.Silent(TDuplicateDeclarationRule.Create, mText);
   // Unter mehreren: nur die Zeile bzw. der Name.
-  Findings := TRuleAssert.Findings(TDuplicateDeclarationRule.Create, Rechnung('var'#10'  Summe: Currency;'#10 +
+  mFindings := TRuleAssert.Findings(TDuplicateDeclarationRule.Create, Rechnung('var'#10'  Summe: Currency;'#10 +
     '  Betrag: Currency;'#10));
   Assert.AreEqual(Rechnung('var'#10'  Summe: Currency;'#10), TChangeSignature.ApplyEdits(Rechnung('var'#10 +
-    '  Summe: Currency;'#10'  Betrag: Currency;'#10), Findings[0].Fixes[0].Edits));
-  Findings := TRuleAssert.Findings(TDuplicateDeclarationRule.Create, Rechnung('var'#10'  Betrag, Summe: Currency;'#10));
+    '  Summe: Currency;'#10'  Betrag: Currency;'#10), mFindings[0].Fixes[0].Edits));
+  mFindings := TRuleAssert.Findings(TDuplicateDeclarationRule.Create, Rechnung('var'#10'  Betrag, Summe: Currency;'#10));
   Assert.AreEqual(Rechnung('var'#10'  Summe: Currency;'#10), TChangeSignature.ApplyEdits(Rechnung('var'#10 +
-    '  Betrag, Summe: Currency;'#10), Findings[0].Fixes[0].Edits));
-  Findings := TRuleAssert.Findings(TDuplicateDeclarationRule.Create, Rechnung('var'#10'  Summe, Betrag: Currency;'#10));
+    '  Betrag, Summe: Currency;'#10), mFindings[0].Fixes[0].Edits));
+  mFindings := TRuleAssert.Findings(TDuplicateDeclarationRule.Create, Rechnung('var'#10'  Summe, Betrag: Currency;'#10));
   Assert.AreEqual(Rechnung('var'#10'  Summe: Currency;'#10), TChangeSignature.ApplyEdits(Rechnung('var'#10 +
-    '  Summe, Betrag: Currency;'#10), Findings[0].Fixes[0].Edits));
+    '  Summe, Betrag: Currency;'#10), mFindings[0].Fixes[0].Edits));
 end;
 
 procedure TDeclarationOrderRulesTests.DuplicateDeclarationScopes;
 var
-  Findings: TArray<TRuleFinding>;
+  mFindings: TArray<TRuleFinding>;
 begin
   // Konstante und Variable, Typ und Label in einer Routine; zwei Parameter.
-  Findings := TRuleAssert.Findings(TDuplicateDeclarationRule.Create, Rechnung('label'#10'  Weiter, Weiter;'#10 +
+  mFindings := TRuleAssert.Findings(TDuplicateDeclarationRule.Create, Rechnung('label'#10'  Weiter, Weiter;'#10 +
     'const'#10'  Satz = 19;'#10'type'#10'  TSatz = Integer;'#10'var'#10'  Satz: Integer;'#10'  TSatz: Integer;'#10));
-  Assert.AreEqual(3, Integer(Length(Findings)));
-  Assert.AreEqual('Weiter ist schon als Label deklariert (wie E2004).', Findings[0].Message);
-  Assert.AreEqual('Satz ist schon als Konstante deklariert (wie E2004).', Findings[1].Message);
-  Assert.AreEqual('TSatz ist schon als Typ deklariert (wie E2004).', Findings[2].Message);
-  Findings := TRuleAssert.Findings(TDuplicateDeclarationRule.Create, 'unit U;'#10'interface'#10'implementation'#10 +
+  Assert.AreEqual(3, Integer(Length(mFindings)));
+  Assert.AreEqual('Weiter ist schon als Label deklariert (wie E2004).', mFindings[0].Message);
+  Assert.AreEqual('Satz ist schon als Konstante deklariert (wie E2004).', mFindings[1].Message);
+  Assert.AreEqual('TSatz ist schon als Typ deklariert (wie E2004).', mFindings[2].Message);
+  mFindings := TRuleAssert.Findings(TDuplicateDeclarationRule.Create, 'unit U;'#10'interface'#10'implementation'#10 +
     'procedure P(A: Integer; var A: string);'#10'begin'#10'end;'#10'end.');
-  Assert.AreEqual(1, Integer(Length(Findings)));
-  Assert.AreEqual(0, Integer(Length(Findings[0].Fixes)));
+  Assert.AreEqual(1, Integer(Length(mFindings)));
+  Assert.AreEqual(0, Integer(Length(mFindings[0].Fixes)));
   // Felder, Methode und Property eines Typs; varianter Teil eines Records.
-  Findings := TRuleAssert.Findings(TDuplicateDeclarationRule.Create, 'unit U;'#10'interface'#10'type'#10 +
+  mFindings := TRuleAssert.Findings(TDuplicateDeclarationRule.Create, 'unit U;'#10'interface'#10'type'#10 +
     '  TKunde = class'#10'    FName, FOrt: string;'#10'  private'#10'    FName: string;'#10'    function Ort: string;'#10 +
     '    property Ort: string read FOrt;'#10'  end;'#10'  TForm = record'#10'    Art: Integer;'#10 +
     '    case Integer of'#10'      0: (Art: Byte);'#10'  end;'#10'implementation'#10'end.');
-  Assert.AreEqual(3, Integer(Length(Findings)));
-  Assert.AreEqual('FName ist schon als Feld deklariert (wie E2004).', Findings[0].Message);
-  Assert.AreEqual('Ort ist schon als Methode deklariert (wie E2004).', Findings[1].Message);
-  Assert.AreEqual(0, Integer(Length(Findings[1].Fixes)));
-  Assert.AreEqual('Art ist schon als Feld deklariert (wie E2004).', Findings[2].Message);
+  Assert.AreEqual(3, Integer(Length(mFindings)));
+  Assert.AreEqual('FName ist schon als Feld deklariert (wie E2004).', mFindings[0].Message);
+  Assert.AreEqual('Ort ist schon als Methode deklariert (wie E2004).', mFindings[1].Message);
+  Assert.AreEqual(0, Integer(Length(mFindings[1].Fixes)));
+  Assert.AreEqual('Art ist schon als Feld deklariert (wie E2004).', mFindings[2].Message);
   // Überladene Array-Properties übersetzt dcc (#1383, Cm.W1075); eine einfache Property gleichen Namens nicht.
-  Findings := TRuleAssert.Findings(TDuplicateDeclarationRule.Create, 'unit U;'#10'interface'#10'type'#10 +
+  mFindings := TRuleAssert.Findings(TDuplicateDeclarationRule.Create, 'unit U;'#10'interface'#10'type'#10 +
     '  TListe = class'#10'    function NachZahl(I: Integer): string;'#10'    function NachByte(I: Byte): string;'#10 +
     '    property Eintrag[I: Integer]: string read NachZahl; default;'#10 +
     '    property Eintrag[I: Byte]: string read NachByte; default;'#10 +
     '    property Eintrag: string read NachZahl;'#10'  end;'#10'implementation'#10'end.');
-  Assert.AreEqual(1, Integer(Length(Findings)));
-  Assert.AreEqual('Eintrag ist schon als Property deklariert (wie E2004).', Findings[0].Message);
-  Assert.AreEqual(8, Findings[0].Range.StartPos.Line);
+  Assert.AreEqual(1, Integer(Length(mFindings)));
+  Assert.AreEqual('Eintrag ist schon als Property deklariert (wie E2004).', mFindings[0].Message);
+  Assert.AreEqual(8, mFindings[0].Range.StartPos.Line);
   // Unit: interface und implementation sind ein Bereich.
-  Findings := TRuleAssert.Findings(TDuplicateDeclarationRule.Create, 'unit U;'#10'interface'#10'var'#10 +
+  mFindings := TRuleAssert.Findings(TDuplicateDeclarationRule.Create, 'unit U;'#10'interface'#10'var'#10 +
     '  Zaehler: Integer;'#10'implementation'#10'type'#10'  Zaehler = Integer;'#10'procedure Zaehler;'#10'begin'#10 +
     'end;'#10'end.');
-  Assert.AreEqual(2, Integer(Length(Findings)));
-  Assert.AreEqual('Zaehler ist schon als Variable deklariert (wie E2004).', Findings[0].Message);
-  Assert.AreEqual('Zaehler ist schon als Variable deklariert (wie E2004).', Findings[1].Message);
+  Assert.AreEqual(2, Integer(Length(mFindings)));
+  Assert.AreEqual('Zaehler ist schon als Variable deklariert (wie E2004).', mFindings[0].Message);
+  Assert.AreEqual('Zaehler ist schon als Variable deklariert (wie E2004).', mFindings[1].Message);
 end;
 
 procedure TDeclarationOrderRulesTests.DuplicateDeclarationUses;
 const
-  Source = 'unit U;'#10'interface'#10'uses'#10'  System.SysUtils, System.Classes, System.SysUtils;'#10 +
+  cSource = 'unit U;'#10'interface'#10'uses'#10'  System.SysUtils, System.Classes, System.SysUtils;'#10 +
     'implementation'#10'uses'#10'  System.Classes;'#10'end.';
 var
-  Findings: TArray<TRuleFinding>;
+  mFindings: TArray<TRuleFinding>;
 begin
-  Findings := TRuleAssert.Findings(TDuplicateDeclarationRule.Create, Source);
-  Assert.AreEqual(2, Integer(Length(Findings)));
-  Assert.AreEqual('Unit System.SysUtils steht schon in uses (wie E2004).', Findings[0].Message);
-  Assert.AreEqual('Unit System.Classes steht schon im uses des interface (wie E2004).', Findings[1].Message);
-  Assert.AreEqual('Doppelten Eintrag entfernen', Findings[0].Fixes[0].Title);
+  mFindings := TRuleAssert.Findings(TDuplicateDeclarationRule.Create, cSource);
+  Assert.AreEqual(2, Integer(Length(mFindings)));
+  Assert.AreEqual('Unit System.SysUtils steht schon in uses (wie E2004).', mFindings[0].Message);
+  Assert.AreEqual('Unit System.Classes steht schon im uses des interface (wie E2004).', mFindings[1].Message);
+  Assert.AreEqual('Doppelten Eintrag entfernen', mFindings[0].Fixes[0].Title);
   Assert.AreEqual('unit U;'#10'interface'#10'uses'#10'  System.SysUtils, System.Classes;'#10 +
-    'implementation'#10'uses'#10'  System.Classes;'#10'end.', TChangeSignature.ApplyEdits(Source,
-    Findings[0].Fixes[0].Edits));
+    'implementation'#10'uses'#10'  System.Classes;'#10'end.', TChangeSignature.ApplyEdits(cSource,
+    mFindings[0].Fixes[0].Edits));
   Assert.AreEqual('unit U;'#10'interface'#10'uses'#10'  System.SysUtils, System.Classes, System.SysUtils;'#10 +
-    'implementation'#10'end.', TChangeSignature.ApplyEdits(Source, Findings[1].Fixes[0].Edits));
+    'implementation'#10'end.', TChangeSignature.ApplyEdits(cSource, mFindings[1].Fixes[0].Edits));
   // checkUses = false schaltet nur diesen Teil ab.
-  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TDuplicateDeclarationRule.Create, Source,
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TDuplicateDeclarationRule.Create, cSource,
     '{"rules": {"duplicate-declaration": {"checkUses": false}}}', 'U.pas'))));
   Assert.AreEqual(1, Integer(Length(TRuleAssert.Findings(TDuplicateDeclarationRule.Create,
     Rechnung('var'#10'  Betrag: Currency;'#10), '{"rules": {"duplicate-declaration": {"checkUses": false}}}',
@@ -1255,7 +1261,7 @@ end;
 
 procedure TDeclarationOrderRulesTests.DuplicateDeclarationOptions;
 var
-  Issues: TArray<TConfigurationIssue>;
+  mIssues: TArray<TConfigurationIssue>;
 begin
   Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TDuplicateDeclarationRule.Create,
     Rechnung('var'#10'  Betrag: Currency;'#10), '{"rules": {"duplicate-declaration": "off"}}', 'U.pas'))));
@@ -1264,8 +1270,8 @@ begin
   Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TDuplicateDeclarationRule.Create,
     Rechnung('var'#10'  Betrag: Currency;'#10), '{"rules": {"duplicate-declaration": {"exclude": ["Alt/*.pas"]}}}',
     'Alt/U.pas'))));
-  TConfigurationParser.Parse('{"rules": {"duplicate-declaration": {"checkUses": "ja"}}}', Issues);
-  Assert.AreEqual(1, Integer(Length(Issues)));
+  TConfigurationParser.Parse('{"rules": {"duplicate-declaration": {"checkUses": "ja"}}}', mIssues);
+  Assert.AreEqual(1, Integer(Length(mIssues)));
 end;
 
 function Wert(const ABranches: string): string;
@@ -1283,120 +1289,120 @@ end;
 
 procedure TDeclarationTypeRulesTests.VariantManagedIssueExample;
 var
-  Source: string;
-  Findings: TArray<TRuleFinding>;
-  Tree: TSyntaxTree;
+  mSource: string;
+  mFindings: TArray<TRuleFinding>;
+  mTree: TSyntaxTree;
 begin
-  Source := Wert('      waZahl: (Zahl: Double);'#10'      waText: (Text: string);'#10);
-  Findings := TRuleAssert.Findings(TVariantRecordManagedFieldRule.Create, Source);
-  Assert.AreEqual(1, Integer(Length(Findings)));
-  Assert.AreEqual('variant-record-managed-field', Findings[0].RuleId);
-  Assert.AreEqual(Ord(TRuleSeverity.Error), Ord(Findings[0].Severity));
-  Assert.AreEqual(Ord(TRuleConfidence.High), Ord(Findings[0].Confidence));
+  mSource := Wert('      waZahl: (Zahl: Double);'#10'      waText: (Text: string);'#10);
+  mFindings := TRuleAssert.Findings(TVariantRecordManagedFieldRule.Create, mSource);
+  Assert.AreEqual(1, Integer(Length(mFindings)));
+  Assert.AreEqual('variant-record-managed-field', mFindings[0].RuleId);
+  Assert.AreEqual(Ord(TRuleSeverity.Error), Ord(mFindings[0].Severity));
+  Assert.AreEqual(Ord(TRuleConfidence.High), Ord(mFindings[0].Confidence));
   Assert.AreEqual('string braucht Finalisierung und ist im varianten Teil nicht erlaubt (wie E2154).',
-    Findings[0].Message);
-  Assert.AreEqual(7, Findings[0].Range.StartPos.Line);
-  Assert.AreEqual(21, Findings[0].Range.StartPos.Character);
-  Assert.AreEqual(27, Findings[0].Range.EndPos.Character);
-  Assert.AreEqual(2, Integer(Length(Findings[0].Fixes)));
-  Assert.AreEqual('ShortString verwenden (höchstens 255 Zeichen)', Findings[0].Fixes[0].Title);
-  Assert.AreEqual('Text in den festen Teil verschieben', Findings[0].Fixes[1].Title);
+    mFindings[0].Message);
+  Assert.AreEqual(7, mFindings[0].Range.StartPos.Line);
+  Assert.AreEqual(21, mFindings[0].Range.StartPos.Character);
+  Assert.AreEqual(27, mFindings[0].Range.EndPos.Character);
+  Assert.AreEqual(2, Integer(Length(mFindings[0].Fixes)));
+  Assert.AreEqual('ShortString verwenden (höchstens 255 Zeichen)', mFindings[0].Fixes[0].Title);
+  Assert.AreEqual('Text in den festen Teil verschieben', mFindings[0].Fixes[1].Title);
   Assert.AreEqual(Wert('      waZahl: (Zahl: Double);'#10'      waText: (Text: ShortString);'#10),
-    TChangeSignature.ApplyEdits(Source, Findings[0].Fixes[0].Edits));
-  Source := TChangeSignature.ApplyEdits(Source, Findings[0].Fixes[1].Edits);
+    TChangeSignature.ApplyEdits(mSource, mFindings[0].Fixes[0].Edits));
+  mSource := TChangeSignature.ApplyEdits(mSource, mFindings[0].Fixes[1].Edits);
   Assert.AreEqual('unit U;'#10'interface'#10'type'#10'  TArt = (waZahl, waText);'#10'  TWert = record'#10 +
     '    Text: string;'#10'    case Art: TArt of'#10'      waZahl: (Zahl: Double);'#10'      waText: ();'#10 +
-    '  end;'#10'implementation'#10'end.', Source);
-  Tree := TPascalParser.Parse(Source);
+    '  end;'#10'implementation'#10'end.', mSource);
+  mTree := TPascalParser.Parse(mSource);
   try
-    Assert.AreEqual(0, Integer(Length(Tree.Diagnostics)));
+    Assert.AreEqual(0, Integer(Length(mTree.Diagnostics)));
   finally
-    Tree.Free;
+    mTree.Free;
   end;
-  TRuleAssert.Silent(TVariantRecordManagedFieldRule.Create, Source);
+  TRuleAssert.Silent(TVariantRecordManagedFieldRule.Create, mSource);
 end;
 
 procedure TDeclarationTypeRulesTests.VariantManagedKinds;
 var
-  Findings: TArray<TRuleFinding>;
+  mFindings: TArray<TRuleFinding>;
 begin
-  Findings := TRuleAssert.Findings(TVariantRecordManagedFieldRule.Create, Typen('  TWert = record'#10 +
+  mFindings := TRuleAssert.Findings(TVariantRecordManagedFieldRule.Create, Typen('  TWert = record'#10 +
     '    case Integer of'#10'      0: (A: array of Integer);'#10'      1: (B: TBytes);'#10'      2: (C: IInterface);'#10 +
     '      3: (D: Variant);'#10'      4: (E: TName);'#10'      5: (F: array[0..1] of WideString);'#10 +
     '      6: (G: TZaehler);'#10'  end;'#10));
-  Assert.AreEqual(7, Integer(Length(Findings)));
+  Assert.AreEqual(7, Integer(Length(mFindings)));
   Assert.AreEqual('array of Integer braucht Finalisierung und ist im varianten Teil nicht erlaubt (wie E2154).',
-    Findings[0].Message);
+    mFindings[0].Message);
   Assert.AreEqual('TName braucht Finalisierung und ist im varianten Teil nicht erlaubt (wie E2154).',
-    Findings[4].Message);
-  Assert.AreEqual(1, Integer(Length(Findings[4].Fixes)));
+    mFindings[4].Message);
+  Assert.AreEqual(1, Integer(Length(mFindings[4].Fixes)));
   Assert.AreEqual('TZaehler braucht Initialisierung und ist im varianten Teil nicht erlaubt (wie E2418).',
-    Findings[6].Message);
+    mFindings[6].Message);
 end;
 
 procedure TDeclarationTypeRulesTests.VariantManagedMoveFixes;
 var
-  Source: string;
-  Findings: TArray<TRuleFinding>;
+  mSource: string;
+  mFindings: TArray<TRuleFinding>;
 begin
   // Letztes Feld eines Zweigs mit Vorgänger, Feld in der Mitte.
-  Source := Wert('      waZahl: (Zahl: Double; Name, Text: string);'#10'      waText: (Wert: string; N: Integer);'#10);
-  Findings := TRuleAssert.Findings(TVariantRecordManagedFieldRule.Create, Source);
-  Assert.AreEqual(2, Integer(Length(Findings)));
-  Assert.AreEqual('Name,Text in den festen Teil verschieben', Findings[0].Fixes[1].Title);
+  mSource := Wert('      waZahl: (Zahl: Double; Name, Text: string);'#10'      waText: (Wert: string; N: Integer);'#10);
+  mFindings := TRuleAssert.Findings(TVariantRecordManagedFieldRule.Create, mSource);
+  Assert.AreEqual(2, Integer(Length(mFindings)));
+  Assert.AreEqual('Name,Text in den festen Teil verschieben', mFindings[0].Fixes[1].Title);
   Assert.AreEqual(Wert('      waZahl: (Zahl: Double);'#10'      waText: (Wert: string; N: Integer);'#10).Replace(
-    '    case', '    Name, Text: string;'#10'    case'), TChangeSignature.ApplyEdits(Source, Findings[0].Fixes[1].Edits));
+    '    case', '    Name, Text: string;'#10'    case'), TChangeSignature.ApplyEdits(mSource, mFindings[0].Fixes[1].Edits));
   Assert.AreEqual(Wert('      waZahl: (Zahl: Double; Name, Text: string);'#10'      waText: (N: Integer);'#10).Replace(
-    '    case', '    Wert: string;'#10'    case'), TChangeSignature.ApplyEdits(Source, Findings[1].Fixes[1].Edits));
+    '    case', '    Wert: string;'#10'    case'), TChangeSignature.ApplyEdits(mSource, mFindings[1].Fixes[1].Edits));
   // Verschachtelter varianter Teil: nur ShortString.
-  Findings := TRuleAssert.Findings(TVariantRecordManagedFieldRule.Create, Wert('      waZahl: (Zahl: Double);'#10 +
+  mFindings := TRuleAssert.Findings(TVariantRecordManagedFieldRule.Create, Wert('      waZahl: (Zahl: Double);'#10 +
     '      waText: (case Boolean of'#10'        True: (Text: string));'#10));
-  Assert.AreEqual(1, Integer(Length(Findings)));
-  Assert.AreEqual(1, Integer(Length(Findings[0].Fixes)));
+  Assert.AreEqual(1, Integer(Length(mFindings)));
+  Assert.AreEqual(1, Integer(Length(mFindings[0].Fixes)));
 end;
 
 procedure TDeclarationTypeRulesTests.VariantManagedGenericAndFile;
 var
-  Source: string;
-  Findings: TArray<TRuleFinding>;
+  mSource: string;
+  mFindings: TArray<TRuleFinding>;
 begin
-  Source := Typen('  TBox<T> = record'#10'    case Integer of'#10'      0: (Wert: T);'#10'      1: (Zahl: Integer);'#10 +
+  mSource := Typen('  TBox<T> = record'#10'    case Integer of'#10'      0: (Wert: T);'#10'      1: (Zahl: Integer);'#10 +
     '  end;'#10'  TDatei = file of string;'#10'  TZaehlerDatei = file of TZaehler;'#10);
-  Findings := TRuleAssert.Findings(TVariantRecordManagedFieldRule.Create, Source);
-  Assert.AreEqual(3, Integer(Length(Findings)));
+  mFindings := TRuleAssert.Findings(TVariantRecordManagedFieldRule.Create, mSource);
+  Assert.AreEqual(3, Integer(Length(mFindings)));
   Assert.AreEqual('Typparameter T kann Finalisierung brauchen und ist im varianten Teil nicht erlaubt; ' +
-    'record-Einschränkung verwenden (wie E2569).', Findings[0].Message);
-  Assert.AreEqual('T: record einschränken', Findings[0].Fixes[1].Title);
+    'record-Einschränkung verwenden (wie E2569).', mFindings[0].Message);
+  Assert.AreEqual('T: record einschränken', mFindings[0].Fixes[1].Title);
   TRuleAssert.Silent(TVariantRecordManagedFieldRule.Create, Typen('  TBox<T: record> = record'#10 +
     '    case Integer of'#10'      0: (Wert: T);'#10'  end;'#10));
-  Assert.IsTrue(TChangeSignature.ApplyEdits(Source, Findings[0].Fixes[1].Edits).Contains('TBox<T: record> = record'));
+  Assert.IsTrue(TChangeSignature.ApplyEdits(mSource, mFindings[0].Fixes[1].Edits).Contains('TBox<T: record> = record'));
   Assert.AreEqual('string braucht Finalisierung und ist in einem Dateityp nicht erlaubt (wie E2155).',
-    Findings[1].Message);
-  Assert.IsTrue(TChangeSignature.ApplyEdits(Source, Findings[1].Fixes[0].Edits).Contains('file of ShortString;'));
+    mFindings[1].Message);
+  Assert.IsTrue(TChangeSignature.ApplyEdits(mSource, mFindings[1].Fixes[0].Edits).Contains('file of ShortString;'));
   Assert.AreEqual('TZaehler braucht Initialisierung und ist in einem Dateityp nicht erlaubt (wie E2417).',
-    Findings[2].Message);
+    mFindings[2].Message);
   // <K, V> ohne Einschränkung: Meldung ohne Korrektur zum Einschränken.
-  Findings := TRuleAssert.Findings(TVariantRecordManagedFieldRule.Create, Typen('  TPaar<K, V> = record'#10 +
+  mFindings := TRuleAssert.Findings(TVariantRecordManagedFieldRule.Create, Typen('  TPaar<K, V> = record'#10 +
     '    case Integer of'#10'      0: (Schluessel: K);'#10'  end;'#10));
-  Assert.AreEqual(1, Integer(Length(Findings)));
-  Assert.AreEqual(1, Integer(Length(Findings[0].Fixes)));
+  Assert.AreEqual(1, Integer(Length(mFindings)));
+  Assert.AreEqual(1, Integer(Length(mFindings[0].Fixes)));
 end;
 
 procedure TDeclarationTypeRulesTests.VariantManagedFromIndex;
 var
-  Index: ISymbolIndex;
-  Findings: TArray<TRuleFinding>;
+  mIndex: ISymbolIndex;
+  mFindings: TArray<TRuleFinding>;
 begin
-  Index := TSymbolIndex.Create;
-  Index.AddUnit(TIndexExtractor.ExtractText('unit Fremd;'#10'interface'#10'type'#10'  TFremd = record'#10 +
+  mIndex := TSymbolIndex.Create;
+  mIndex.AddUnit(TIndexExtractor.ExtractText('unit Fremd;'#10'interface'#10'type'#10'  TFremd = record'#10 +
     '    Name: string;'#10'  end;'#10'  TFremdZaehler = record'#10'    class operator Finalize(var ADest: TFremdZaehler);'#10 +
     '  end;'#10'  TFremdZahl = record'#10'    N: Integer;'#10'  end;'#10'implementation'#10'end.', 'C:\P\Fremd.pas', nil));
-  Findings := TRuleAssert.IndexFindings(TVariantRecordManagedFieldRule.Create, 'unit U;'#10'interface'#10'uses'#10 +
+  mFindings := TRuleAssert.IndexFindings(TVariantRecordManagedFieldRule.Create, 'unit U;'#10'interface'#10'uses'#10 +
     '  Fremd;'#10'type'#10'  TWert = record'#10'    case Integer of'#10'      0: (A: TFremd);'#10 +
-    '      1: (B: TFremdZaehler);'#10'      2: (C: TFremdZahl);'#10'  end;'#10'implementation'#10'end.', Index, '', '');
-  Assert.AreEqual(2, Integer(Length(Findings)));
-  Assert.IsTrue(Findings[0].Message.StartsWith('TFremd braucht Finalisierung'));
-  Assert.IsTrue(Findings[1].Message.StartsWith('TFremdZaehler braucht Initialisierung'));
+    '      1: (B: TFremdZaehler);'#10'      2: (C: TFremdZahl);'#10'  end;'#10'implementation'#10'end.', mIndex, '', '');
+  Assert.AreEqual(2, Integer(Length(mFindings)));
+  Assert.IsTrue(mFindings[0].Message.StartsWith('TFremd braucht Finalisierung'));
+  Assert.IsTrue(mFindings[1].Message.StartsWith('TFremdZaehler braucht Initialisierung'));
 end;
 
 procedure TDeclarationTypeRulesTests.VariantManagedSilentCases;
@@ -1412,12 +1418,12 @@ end;
 
 procedure TDeclarationTypeRulesTests.VariantManagedOffAndExclude;
 var
-  Source: string;
+  mSource: string;
 begin
-  Source := Wert('      waText: (Text: string);'#10);
-  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TVariantRecordManagedFieldRule.Create, Source,
+  mSource := Wert('      waText: (Text: string);'#10);
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TVariantRecordManagedFieldRule.Create, mSource,
     '{"rules": {"variant-record-managed-field": "off"}}'))));
-  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TVariantRecordManagedFieldRule.Create, Source,
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TVariantRecordManagedFieldRule.Create, mSource,
     '{"rules": {"variant-record-managed-field": {"exclude": ["Source/*.pas"]}}}', 'Source/U.pas'))));
 end;
 
@@ -1428,17 +1434,17 @@ end;
 
 procedure TDeclarationTypeRulesTests.TypeTooLargeIssueExample;
 var
-  Findings: TArray<TRuleFinding>;
+  mFindings: TArray<TRuleFinding>;
 begin
-  Findings := TRuleAssert.Findings(TTypeTooLargeRule.Create, Groesse('  TPuffer = array[0..High(Integer)] of Int64;'#10));
-  Assert.AreEqual(1, Integer(Length(Findings)));
-  Assert.AreEqual('type-too-large', Findings[0].RuleId);
-  Assert.AreEqual(Ord(TRuleSeverity.Error), Ord(Findings[0].Severity));
-  Assert.AreEqual(Ord(TRuleConfidence.High), Ord(Findings[0].Confidence));
-  Assert.AreEqual('TPuffer ist 16 GB groß; erlaubt sind 2 GB (wie E2100).', Findings[0].Message);
-  Assert.AreEqual(3, Findings[0].Range.StartPos.Line);
-  Assert.AreEqual(2, Findings[0].Range.StartPos.Character);
-  Assert.AreEqual(9, Findings[0].Range.EndPos.Character);
+  mFindings := TRuleAssert.Findings(TTypeTooLargeRule.Create, Groesse('  TPuffer = array[0..High(Integer)] of Int64;'#10));
+  Assert.AreEqual(1, Integer(Length(mFindings)));
+  Assert.AreEqual('type-too-large', mFindings[0].RuleId);
+  Assert.AreEqual(Ord(TRuleSeverity.Error), Ord(mFindings[0].Severity));
+  Assert.AreEqual(Ord(TRuleConfidence.High), Ord(mFindings[0].Confidence));
+  Assert.AreEqual('TPuffer ist 16 GB groß; erlaubt sind 2 GB (wie E2100).', mFindings[0].Message);
+  Assert.AreEqual(3, mFindings[0].Range.StartPos.Line);
+  Assert.AreEqual(2, mFindings[0].Range.StartPos.Character);
+  Assert.AreEqual(9, mFindings[0].Range.EndPos.Character);
   // Korrigierte Form: halber Indexbereich bzw. dynamisches Array.
   TRuleAssert.Silent(TTypeTooLargeRule.Create, Groesse('  TPuffer = array[0..High(Integer) div 16] of Int64;'#10 +
     '  TListe = array of Int64;'#10));
@@ -1446,41 +1452,41 @@ end;
 
 procedure TDeclarationTypeRulesTests.TypeTooLargeRecordsAndNames;
 var
-  Findings: TArray<TRuleFinding>;
+  mFindings: TArray<TRuleFinding>;
 begin
   // Konstanten, Aufzählung als Index, mehrdimensional, Record aus zwei großen Feldern, Variable, Folgefehler.
-  Findings := TRuleAssert.Findings(TTypeTooLargeRule.Create, 'unit U;'#10'interface'#10'const'#10 +
+  mFindings := TRuleAssert.Findings(TTypeTooLargeRule.Create, 'unit U;'#10'interface'#10'const'#10 +
     '  Anzahl = 1 shl 20;'#10'type'#10'  TFarbe = (Rot, Gruen, Blau);'#10 +
     '  TBlock = array[0..Anzahl - 1] of Byte;'#10'  TFlaeche = array[TFarbe, 0..Anzahl - 1, Word] of Byte;'#10 +
     '  TPaar = record'#10'    A, B: array[1..1024] of TBlock;'#10'  end;'#10'  TGross = record'#10 +
     '    Paar: TPaar;'#10'  end;'#10'var'#10'  Feld: array[Integer] of Byte;'#10'implementation'#10'end.');
-  Assert.AreEqual(3, Integer(Length(Findings)));
-  Assert.AreEqual('TFlaeche ist 192 GB groß; erlaubt sind 2 GB (wie E2100).', Findings[0].Message);
-  Assert.AreEqual('TPaar ist mindestens 2 GB groß; erlaubt sind 2 GB (wie E2100).', Findings[1].Message);
-  Assert.AreEqual('Feld ist 4 GB groß; erlaubt sind 2 GB (wie E2100).', Findings[2].Message);
+  Assert.AreEqual(3, Integer(Length(mFindings)));
+  Assert.AreEqual('TFlaeche ist 192 GB groß; erlaubt sind 2 GB (wie E2100).', mFindings[0].Message);
+  Assert.AreEqual('TPaar ist mindestens 2 GB groß; erlaubt sind 2 GB (wie E2100).', mFindings[1].Message);
+  Assert.AreEqual('Feld ist 4 GB groß; erlaubt sind 2 GB (wie E2100).', mFindings[2].Message);
   // Unbekannte Teile zählen 0, Zeiger mindestens 4 Byte.
-  Findings := TRuleAssert.Findings(TTypeTooLargeRule.Create, Groesse('  TListe = array[0..$3FFFFFFF] of record'#10 +
+  mFindings := TRuleAssert.Findings(TTypeTooLargeRule.Create, Groesse('  TListe = array[0..$3FFFFFFF] of record'#10 +
     '    Text: string;'#10'    Fremd: TUnbekannt;'#10'  end;'#10));
-  Assert.AreEqual(1, Integer(Length(Findings)));
-  Assert.AreEqual('TListe ist mindestens 4 GB groß; erlaubt sind 2 GB (wie E2100).', Findings[0].Message);
+  Assert.AreEqual(1, Integer(Length(mFindings)));
+  Assert.AreEqual('TListe ist mindestens 4 GB groß; erlaubt sind 2 GB (wie E2100).', mFindings[0].Message);
   // Inneres Feld über der Grenze: dort gemeldet, der Record nicht noch einmal.
-  Findings := TRuleAssert.Findings(TTypeTooLargeRule.Create, Groesse('  TDaten = record'#10 +
+  mFindings := TRuleAssert.Findings(TTypeTooLargeRule.Create, Groesse('  TDaten = record'#10 +
     '    A, B: array[0..MaxInt] of Int64;'#10'  end;'#10));
-  Assert.AreEqual(1, Integer(Length(Findings)));
-  Assert.AreEqual('A, B ist 16 GB groß; erlaubt sind 2 GB (wie E2100).', Findings[0].Message);
+  Assert.AreEqual(1, Integer(Length(mFindings)));
+  Assert.AreEqual('A, B ist 16 GB groß; erlaubt sind 2 GB (wie E2100).', mFindings[0].Message);
 end;
 
 procedure TDeclarationTypeRulesTests.TypeTooLargeGenericInstance;
 var
-  Findings: TArray<TRuleFinding>;
+  mFindings: TArray<TRuleFinding>;
 begin
-  Findings := TRuleAssert.Findings(TTypeTooLargeRule.Create, Groesse('  TFeld<T> = array[0..$FFFFFFF] of T;'#10 +
+  mFindings := TRuleAssert.Findings(TTypeTooLargeRule.Create, Groesse('  TFeld<T> = array[0..$FFFFFFF] of T;'#10 +
     '  TKlein = TFeld<Byte>;'#10'  TGross = TFeld<Int64>;'#10'  THuelle = record'#10'    Werte: TFeld<Double>;'#10 +
     '  end;'#10));
-  Assert.AreEqual(2, Integer(Length(Findings)));
-  Assert.AreEqual('TFeld<Int64> ist 2 GB groß; erlaubt sind 2 GB (wie E2543).', Findings[0].Message);
-  Assert.AreEqual(5, Findings[0].Range.StartPos.Line);
-  Assert.AreEqual('TFeld<Double> ist 2 GB groß; erlaubt sind 2 GB (wie E2543).', Findings[1].Message);
+  Assert.AreEqual(2, Integer(Length(mFindings)));
+  Assert.AreEqual('TFeld<Int64> ist 2 GB groß; erlaubt sind 2 GB (wie E2543).', mFindings[0].Message);
+  Assert.AreEqual(5, mFindings[0].Range.StartPos.Line);
+  Assert.AreEqual('TFeld<Double> ist 2 GB groß; erlaubt sind 2 GB (wie E2543).', mFindings[1].Message);
 end;
 
 procedure TDeclarationTypeRulesTests.TypeTooLargeSilentCases;
@@ -1495,120 +1501,128 @@ end;
 
 procedure TDeclarationTypeRulesTests.TypeTooLargeOffAndExclude;
 var
-  Source: string;
+  mSource: string;
 begin
-  Source := Groesse('  TPuffer = array[0..High(Integer)] of Int64;'#10);
-  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TTypeTooLargeRule.Create, Source,
+  mSource := Groesse('  TPuffer = array[0..High(Integer)] of Int64;'#10);
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TTypeTooLargeRule.Create, mSource,
     '{"rules": {"type-too-large": "off"}}'))));
-  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TTypeTooLargeRule.Create, Source,
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TTypeTooLargeRule.Create, mSource,
     '{"rules": {"type-too-large": {"exclude": ["Source/*.pas"]}}}', 'Source/U.pas'))));
 end;
 
 const
-  DefaultOn = '{"rules": {"default-parameter": "warning"}}';
+  cDefaultOn = '{"rules": {"default-parameter": "warning"}}';
 
 function DefaultFindings(const ASource: string): TArray<TRuleFinding>;
 begin
-  Result := TRuleAssert.Findings(TDefaultParameterRule.Create, ASource, DefaultOn);
+  Result := TRuleAssert.Findings(TDefaultParameterRule.Create, ASource, cDefaultOn);
 end;
 
 /// <summary>Wendet die einzige Korrektur an; das Ergebnis muss fehlerfrei parsen.</summary>
 function DefaultFixed(const ASource: string): string;
 var
-  Findings: TArray<TRuleFinding>;
-  Tree: TSyntaxTree;
+  mFindings: TArray<TRuleFinding>;
+  mTree: TSyntaxTree;
 begin
-  Findings := DefaultFindings(ASource);
-  Assert.AreEqual(1, Integer(Length(Findings)));
-  Assert.AreEqual(1, Integer(Length(Findings[0].Fixes)));
-  Result := TChangeSignature.ApplyEdits(ASource, Findings[0].Fixes[0].Edits);
-  Tree := TPascalParser.Parse(Result);
+  mFindings := DefaultFindings(ASource);
+  Assert.AreEqual(1, Integer(Length(mFindings)));
+  Assert.AreEqual(1, Integer(Length(mFindings[0].Fixes)));
+  Result := TChangeSignature.ApplyEdits(ASource, mFindings[0].Fixes[0].Edits);
+  mTree := TPascalParser.Parse(Result);
   try
-    Assert.AreEqual(0, Integer(Length(Tree.Diagnostics)), Result);
+    Assert.AreEqual(0, Integer(Length(mTree.Diagnostics)), Result);
   finally
-    Tree.Free;
+    mTree.Free;
   end;
 end;
 
 procedure TDeclarationTypeRulesTests.DefaultParameterReportedWithFix;
 var
-  Source: string;
-  Findings: TArray<TRuleFinding>;
+  mSource: string;
+  mFindings: TArray<TRuleFinding>;
 begin
   Assert.IsTrue(TRuleProfiles.IsExperimental((TDefaultParameterRule.Create as IRule).Descriptor.Id), 'Standard aus');
-  Source := 'unit U;'#10'interface'#10'procedure Exportieren(const Datei: string; MitKopf: Boolean = True);'#10 +
+  mSource := 'unit U;'#10'interface'#10'procedure Exportieren(const Datei: string; MitKopf: Boolean = True);'#10 +
     'implementation'#10'procedure Exportieren(const Datei: string; MitKopf: Boolean);'#10'begin'#10'end;'#10'end.';
-  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TDefaultParameterRule.Create, Source))));
-  Findings := DefaultFindings(Source);
-  Assert.AreEqual(1, Integer(Length(Findings)));
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TDefaultParameterRule.Create, mSource))));
+  mFindings := DefaultFindings(mSource);
+  Assert.AreEqual(1, Integer(Length(mFindings)));
   Assert.AreEqual('Standardparameter; eine Überladung ohne MitKopf hält den Vorgabewert in der Bibliothek.',
-    Findings[0].Message);
-  Assert.AreEqual(2, Findings[0].Range.StartPos.Line);
+    mFindings[0].Message);
+  Assert.AreEqual(2, mFindings[0].Range.StartPos.Line);
   Assert.AreEqual('unit U;'#10'interface'#10'procedure Exportieren(const Datei: string); overload;'#10 +
     'procedure Exportieren(const Datei: string; MitKopf: Boolean); overload;'#10'implementation'#10 +
     'procedure Exportieren(const Datei: string);'#10'begin'#10'  Exportieren(Datei, True);'#10'end;'#10#10 +
     'procedure Exportieren(const Datei: string; MitKopf: Boolean);'#10'begin'#10'end;'#10'end.',
-    DefaultFixed(Source));
+    DefaultFixed(mSource));
   // Die korrigierte Form meldet nichts mehr.
-  Assert.AreEqual(0, Integer(Length(DefaultFindings(DefaultFixed(Source)))));
+  Assert.AreEqual(0, Integer(Length(DefaultFindings(DefaultFixed(mSource)))));
 end;
 
 procedure TDeclarationTypeRulesTests.DefaultParameterMethodWithSeveral;
 var
-  Source: string;
-  Findings: TArray<TRuleFinding>;
+  mSource: string;
+  mFindings: TArray<TRuleFinding>;
 begin
   // Der Rumpf wiederholt einen Standardwert; er fällt weg.
-  Source := ClassUnit('  public'#10'    function Summe(A: Integer; B: Integer = 1; C: Integer = 2): Integer;',
+  mSource := ClassUnit('  public'#10'    function Summe(A: Integer; B: Integer = 1; C: Integer = 2): Integer;',
     'function TRechner.Summe(A: Integer; B: Integer = 1; C: Integer = 2): Integer;'#10'begin'#10 +
     '  Result := A + B + C;'#10'end;', 'TRechner = class');
-  Findings := DefaultFindings(Source);
-  Assert.AreEqual(1, Integer(Length(Findings)));
+  mFindings := DefaultFindings(mSource);
+  Assert.AreEqual(1, Integer(Length(mFindings)));
   Assert.AreEqual('Standardparameter; Überladungen ohne B und C halten die Vorgabewerte in der Bibliothek.',
-    Findings[0].Message);
+    mFindings[0].Message);
   Assert.AreEqual(ClassUnit('  public'#10'    function Summe(A: Integer): Integer; overload;'#10 +
     '    function Summe(A: Integer; B: Integer): Integer; overload;'#10 +
     '    function Summe(A: Integer; B: Integer; C: Integer): Integer; overload;',
     'function TRechner.Summe(A: Integer): Integer;'#10'begin'#10'  Result := Summe(A, 1, 2);'#10'end;'#10#10 +
     'function TRechner.Summe(A: Integer; B: Integer): Integer;'#10'begin'#10'  Result := Summe(A, B, 2);'#10 +
     'end;'#10#10'function TRechner.Summe(A: Integer; B: Integer; C: Integer): Integer;'#10'begin'#10 +
-    '  Result := A + B + C;'#10'end;', 'TRechner = class'), DefaultFixed(Source));
+    '  Result := A + B + C;'#10'end;', 'TRechner = class'), DefaultFixed(mSource));
 end;
 
 procedure TDeclarationTypeRulesTests.DefaultParameterImplementationOnly;
 var
-  Source: string;
+  mSource: string;
 begin
-  Source := 'unit U;'#10'interface'#10'implementation'#10'function Teil(const S: string; N: Integer = 3): string;'#10 +
+  mSource := 'unit U;'#10'interface'#10'implementation'#10'function Teil(const S: string; N: Integer = 3): string;'#10 +
     'begin'#10'  Result := Copy(S, 1, N);'#10'end;'#10'end.';
-  Assert.AreEqual('unit U;'#10'interface'#10'implementation'#10'function Teil(const S: string): string; overload;'#10 +
-    'begin'#10'  Result := Teil(S, 3);'#10'end;'#10#10'function Teil(const S: string; N: Integer): string; overload;'#10 +
-    'begin'#10'  Result := Copy(S, 1, N);'#10'end;'#10'end.', DefaultFixed(Source));
+  // Die Überladung ruft die volle Fassung auf und steht deshalb dahinter (sonst E2034).
+  Assert.AreEqual('unit U;'#10'interface'#10'implementation'#10 +
+    'function Teil(const S: string; N: Integer): string; overload;'#10'begin'#10'  Result := Copy(S, 1, N);'#10'end;'#10#10 +
+    'function Teil(const S: string): string; overload;'#10'begin'#10'  Result := Teil(S, 3);'#10'end;'#10'end.',
+    DefaultFixed(mSource));
+  mSource := 'program P;'#10'procedure Lauf(A: Integer = 1; B: Integer = 2);'#10'begin'#10'end;'#10#10 +
+    'procedure Weiter;'#10'begin'#10'  Lauf;'#10'end;'#10'begin'#10'end.';
+  Assert.AreEqual('program P;'#10'procedure Lauf(A: Integer; B: Integer); overload;'#10'begin'#10'end;'#10#10 +
+    'procedure Lauf; overload;'#10'begin'#10'  Lauf(1, 2);'#10'end;'#10#10 +
+    'procedure Lauf(A: Integer); overload;'#10'begin'#10'  Lauf(A, 2);'#10'end;'#10#10 +
+    'procedure Weiter;'#10'begin'#10'  Lauf;'#10'end;'#10'begin'#10'end.', DefaultFixed(mSource));
   // Keine andere Unit sieht Teil: sicher, auch für --fix und die Sammelkorrektur.
-  Assert.IsTrue(DefaultFindings(Source)[0].Fixes[0].Safe);
+  Assert.IsTrue(DefaultFindings(mSource)[0].Fixes[0].Safe);
 end;
 
 procedure TDeclarationTypeRulesTests.DefaultParameterSafeOnlyInsideUnit;
 var
-  Source: string;
+  mSource: string;
 begin
   // interface: Eine andere Unit könnte Exportieren als Methodenzeiger nehmen; nur einzeln anwendbar.
-  Source := 'unit U;'#10'interface'#10'procedure Exportieren(const Datei: string; MitKopf: Boolean = True);'#10 +
+  mSource := 'unit U;'#10'interface'#10'procedure Exportieren(const Datei: string; MitKopf: Boolean = True);'#10 +
     'implementation'#10'procedure Exportieren(const Datei: string; MitKopf: Boolean);'#10'begin'#10'end;'#10'end.';
-  Assert.IsFalse(DefaultFindings(Source)[0].Fixes[0].Safe);
+  Assert.IsFalse(DefaultFindings(mSource)[0].Fixes[0].Safe);
   // Methode einer Klasse aus dem implementation-Teil: unitintern, sicher.
-  Source := 'unit U;'#10'interface'#10'implementation'#10'type'#10'  TRechner = class'#10 +
+  mSource := 'unit U;'#10'interface'#10'implementation'#10'type'#10'  TRechner = class'#10 +
     '    function Summe(A: Integer; B: Integer = 1): Integer;'#10'  end;'#10 +
     'function TRechner.Summe(A: Integer; B: Integer): Integer;'#10'begin'#10'  Result := A + B;'#10'end;'#10'end.';
-  Assert.IsTrue(DefaultFindings(Source)[0].Fixes[0].Safe);
+  Assert.IsTrue(DefaultFindings(mSource)[0].Fixes[0].Safe);
   // Programmdatei: niemand bindet sie ein.
-  Source := 'program P;'#10'procedure Lauf(N: Integer = 1);'#10'begin'#10'end;'#10'begin'#10'  Lauf;'#10'end.';
-  Assert.IsTrue(DefaultFindings(Source)[0].Fixes[0].Safe);
+  mSource := 'program P;'#10'procedure Lauf(N: Integer = 1);'#10'begin'#10'end;'#10'begin'#10'  Lauf;'#10'end.';
+  Assert.IsTrue(DefaultFindings(mSource)[0].Fixes[0].Safe);
 end;
 
 procedure TDeclarationTypeRulesTests.DefaultParameterWithoutFix;
 const
-  Cases: array[0..4] of string = (
+  cCases: array[0..4] of string = (
     // virtual: Nachfahren überschreiben genau diese Signatur.
     'unit U;'#10'interface'#10'type'#10'  TFoo = class'#10'    procedure P(A: Integer = 0); virtual;'#10'  end;'#10 +
     'implementation'#10'procedure TFoo.P(A: Integer);'#10'begin'#10'end;'#10'end.',
@@ -1626,14 +1640,14 @@ const
     'unit U;'#10'interface'#10'{$IFDEF DEBUG}'#10'procedure P(A: Integer = 0);'#10'{$ENDIF}'#10'implementation'#10 +
     '{$IFDEF DEBUG}'#10'procedure P(A: Integer);'#10'begin'#10'end;'#10'{$ENDIF}'#10'end.');
 var
-  Source: string;
-  Findings: TArray<TRuleFinding>;
+  mSource: string;
+  mFindings: TArray<TRuleFinding>;
 begin
-  for Source in Cases do
+  for mSource in cCases do
   begin
-    Findings := DefaultFindings(Source);
-    Assert.AreEqual(1, Integer(Length(Findings)), Source);
-    Assert.AreEqual(0, Integer(Length(Findings[0].Fixes)), Source);
+    mFindings := DefaultFindings(mSource);
+    Assert.AreEqual(1, Integer(Length(mFindings)), mSource);
+    Assert.AreEqual(0, Integer(Length(mFindings[0].Fixes)), mSource);
   end;
   // Ohne Standardwert keine Meldung; der Rumpf zur Deklaration zählt nicht doppelt.
   Assert.AreEqual(0, Integer(Length(DefaultFindings('unit U;'#10'interface'#10'procedure P(A: Integer);'#10 +
@@ -1642,14 +1656,14 @@ end;
 
 procedure TDeclarationTypeRulesTests.DefaultParameterSwitchedOff;
 var
-  Source: string;
+  mSource: string;
 begin
-  Source := 'unit U;'#10'interface'#10'implementation'#10'procedure P(A: Integer = 0);'#10'begin'#10'end;'#10'end.';
-  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TDefaultParameterRule.Create, Source,
+  mSource := 'unit U;'#10'interface'#10'implementation'#10'procedure P(A: Integer = 0);'#10'begin'#10'end;'#10'end.';
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TDefaultParameterRule.Create, mSource,
     '{"rules": {"default-parameter": "off"}}'))));
-  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TDefaultParameterRule.Create, Source,
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TDefaultParameterRule.Create, mSource,
     '{"rules": {"default-parameter": {"severity": "warning", "exclude": ["Alt/**"]}}}', 'Alt/U.pas'))));
-  Assert.AreEqual(1, Integer(Length(TRuleAssert.Findings(TDefaultParameterRule.Create, Source,
+  Assert.AreEqual(1, Integer(Length(TRuleAssert.Findings(TDefaultParameterRule.Create, mSource,
     '{"rules": {"default-parameter": {"severity": "warning", "exclude": ["Alt/**"]}}}', 'Neu/U.pas'))));
 end;
 

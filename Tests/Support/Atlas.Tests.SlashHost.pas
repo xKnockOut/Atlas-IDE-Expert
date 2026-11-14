@@ -57,14 +57,14 @@ implementation
 /// <summary>Wert zu AName aus 'name=wert'-Paaren; False ohne.</summary>
 function ValueOf(const APairs: TArray<string>; const AName: string; out AValue: string): Boolean;
 var
-  Pair: string;
+  mPair: string;
 begin
   AValue := '';
-  for Pair in APairs do
+  for mPair in APairs do
   begin
-    if SameText(Copy(Pair, 1, Pos('=', Pair) - 1), AName) then
+    if SameText(Copy(mPair, 1, Pos('=', mPair) - 1), AName) then
     begin
-      AValue := Copy(Pair, Pos('=', Pair) + 1, MaxInt);
+      AValue := Copy(mPair, Pos('=', mPair) + 1, MaxInt);
       Exit(True);
     end;
   end;

@@ -56,11 +56,11 @@ uses
   Atlas.Common.Lsp.InvertBoolean;
 
 const
-  PanelsFile = 'C:\P\Panels.pas';
-  MainFile = 'C:\P\Main.pas';
-  MainForm = 'C:\P\Main.dfm';
+  cPanelsFile = 'C:\P\Panels.pas';
+  cMainFile = 'C:\P\Main.pas';
+  cMainForm = 'C:\P\Main.dfm';
 
-  UnitPanels =
+  cUnitPanels =
     'unit Panels;'#10 +                                                                // 0
     'interface'#10 +                                                                   // 1
     'type'#10 +                                                                        // 2
@@ -107,7 +107,7 @@ const
     '  Result := inherited IsEmpty and not Ready;'#10 +
     'end;'#10 +
     'end.'#10;
-  UnitMain =
+  cUnitMain =
     'unit Main;'#10 +
     'interface'#10 +
     'uses'#10 +
@@ -124,7 +124,7 @@ const
     '    Log(''Hidden'');'#10 +
     'end;'#10 +
     'end.'#10;
-  FormMain =
+  cFormMain =
     'object Form1: TForm1'#10 +
     '  object Panel1: TFooPanel'#10 +
     '    Hidden = True'#10 +
@@ -139,17 +139,17 @@ const
 
 function TextOf(const AFileName: string): string;
 begin
-  if SameText(AFileName, PanelsFile) then
+  if SameText(AFileName, cPanelsFile) then
   begin
-    Result := UnitPanels;
+    Result := cUnitPanels;
   end
-  else if SameText(AFileName, MainFile) then
+  else if SameText(AFileName, cMainFile) then
   begin
-    Result := UnitMain;
+    Result := cUnitMain;
   end
-  else if SameText(AFileName, MainForm) then
+  else if SameText(AFileName, cMainForm) then
   begin
-    Result := FormMain;
+    Result := cFormMain;
   end
   else
   begin
@@ -159,25 +159,25 @@ end;
 
 function Apply(const AText: string; ADocument: TJSONObject): string;
 var
-  Item: TJSONValue;
-  Edits: TArray<TTextEdit>;
-  Range: TJSONObject;
+  mItem: TJSONValue;
+  mEdits: TArray<TTextEdit>;
+  mRange: TJSONObject;
 begin
-  Edits := nil;
-  for Item in ADocument.GetValue('edits') as TJSONArray do
+  mEdits := nil;
+  for mItem in ADocument.GetValue('edits') as TJSONArray do
   begin
-    Range := TJSONObject(Item).GetValue('range') as TJSONObject;
-    Edits := Edits + [TTextEdit.Create(TTextRange.Create(TLspPositions.ReadPosition(Range.GetValue('start')),
-      TLspPositions.ReadPosition(Range.GetValue('end'))), TJSONObject(Item).GetValue('newText').Value)];
+    mRange := TJSONObject(mItem).GetValue('range') as TJSONObject;
+    mEdits := mEdits + [TTextEdit.Create(TTextRange.Create(TLspPositions.ReadPosition(mRange.GetValue('start')),
+      TLspPositions.ReadPosition(mRange.GetValue('end'))), TJSONObject(mItem).GetValue('newText').Value)];
   end;
-  Result := TChangeSignature.ApplyEdits(AText, Edits);
+  Result := TChangeSignature.ApplyEdits(AText, mEdits);
 end;
 
 function Context(const AIndex: ISymbolIndex): TInvertBooleanContext;
 begin
   Result := Default(TInvertBooleanContext);
   Result.Index := AIndex;
-  Result.Files := [PanelsFile, MainFile];
+  Result.Files := [cPanelsFile, cMainFile];
   Result.Prefix := 'Not';
   Result.IncludeDfm := True;
   Result.ReadText :=
@@ -192,49 +192,49 @@ end;
 function Run(const AIndex: ISymbolIndex; const AFileName: string; const APosition: TTextPosition;
   const ANewName: string; out AWarnings: TArray<string>): TArray<string>;
 var
-  Tree: TSyntaxTree;
-  Resolver: TNameResolver;
-  Answer: TJSONObject;
-  Item: TJSONValue;
-  Document: TJSONObject;
-  FileName: string;
+  mTree: TSyntaxTree;
+  mResolver: TNameResolver;
+  mAnswer: TJSONObject;
+  mItem: TJSONValue;
+  mDocument: TJSONObject;
+  mFileName: string;
   mContext: TInvertBooleanContext;
 begin
   Result := nil;
   AWarnings := nil;
-  Tree := TPascalParser.Parse(TextOf(AFileName));
-  Resolver := TNameResolver.Create(AIndex, nil);
-  Answer := nil;
+  mTree := TPascalParser.Parse(TextOf(AFileName));
+  mResolver := TNameResolver.Create(AIndex, nil);
+  mAnswer := nil;
   try
     mContext := Context(AIndex);
     mContext.NewName := ANewName;
-    Answer := TLspInvertBoolean.Execute(Resolver, Tree, AFileName, TextOf(AFileName), APosition, mContext);
-    for Item in (Answer.GetValue('edit') as TJSONObject).GetValue('documentChanges') as TJSONArray do
+    mAnswer := TLspInvertBoolean.Execute(mResolver, mTree, AFileName, TextOf(AFileName), APosition, mContext);
+    for mItem in (mAnswer.GetValue('edit') as TJSONObject).GetValue('documentChanges') as TJSONArray do
     begin
-      Document := TJSONObject(Item);
-      FileName := TDocumentUris.ToPath((Document.GetValue('textDocument') as TJSONObject).GetValue('uri').Value);
-      Result := Result + [ExtractFileName(FileName) + '|' + Apply(TextOf(FileName), Document)];
+      mDocument := TJSONObject(mItem);
+      mFileName := TDocumentUris.ToPath((mDocument.GetValue('textDocument') as TJSONObject).GetValue('uri').Value);
+      Result := Result + [ExtractFileName(mFileName) + '|' + Apply(TextOf(mFileName), mDocument)];
     end;
-    for Item in Answer.GetValue('warnings') as TJSONArray do
+    for mItem in mAnswer.GetValue('warnings') as TJSONArray do
     begin
-      AWarnings := AWarnings + [Item.Value];
+      AWarnings := AWarnings + [mItem.Value];
     end;
   finally
-    Answer.Free;
-    Resolver.Free;
-    Tree.Free;
+    mAnswer.Free;
+    mResolver.Free;
+    mTree.Free;
   end;
 end;
 
 function FileText(const AResults: TArray<string>; const AName: string): string;
 var
-  Item: string;
+  mItem: string;
 begin
-  for Item in AResults do
+  for mItem in AResults do
   begin
-    if SameText(Copy(Item, 1, Pos('|', Item) - 1), AName) then
+    if SameText(Copy(mItem, 1, Pos('|', mItem) - 1), AName) then
     begin
-      Exit(Copy(Item, Pos('|', Item) + 1, MaxInt));
+      Exit(Copy(mItem, Pos('|', mItem) + 1, MaxInt));
     end;
   end;
   Result := '';
@@ -243,8 +243,8 @@ end;
 procedure TLspInvertBooleanTests.Setup;
 begin
   FIndex := TSymbolIndex.Create;
-  FIndex.AddUnit(TIndexExtractor.ExtractText(UnitPanels, PanelsFile, nil));
-  FIndex.AddUnit(TIndexExtractor.ExtractText(UnitMain, MainFile, nil));
+  FIndex.AddUnit(TIndexExtractor.ExtractText(cUnitPanels, cPanelsFile, nil));
+  FIndex.AddUnit(TIndexExtractor.ExtractText(cUnitMain, cMainFile, nil));
 end;
 
 procedure TLspInvertBooleanTests.TearDown;
@@ -254,130 +254,130 @@ end;
 
 procedure TLspInvertBooleanTests.PropertyWithFieldSetterAndForm;
 var
-  Results, Warnings: TArray<string>;
-  Panels, Main, Form: string;
+  mResults, mWarnings: TArray<string>;
+  mPanels, mMain, mForm: string;
 begin
-  Results := Run(FIndex, PanelsFile, TTextPosition.Create(12, 14), 'Visible', Warnings);
-  Panels := FileText(Results, 'Panels.pas');
-  Main := FileText(Results, 'Main.pas');
-  Form := FileText(Results, 'Main.dfm');
-  Assert.AreEqual(3, Integer(Length(Results)), string.Join(#10'----'#10, Results));
-  Assert.Contains(Panels, '    FVisible: Boolean;'#10'    procedure SetVisible(const Value: Boolean);');
-  Assert.Contains(Panels, '    property Visible: Boolean read FVisible write SetVisible default True;');
+  mResults := Run(FIndex, cPanelsFile, TTextPosition.Create(12, 14), 'Visible', mWarnings);
+  mPanels := FileText(mResults, 'Panels.pas');
+  mMain := FileText(mResults, 'Main.pas');
+  mForm := FileText(mResults, 'Main.dfm');
+  Assert.AreEqual(3, Integer(Length(mResults)), string.Join(#10'----'#10, mResults));
+  Assert.Contains(mPanels, '    FVisible: Boolean;'#10'    procedure SetVisible(const Value: Boolean);');
+  Assert.Contains(mPanels, '    property Visible: Boolean read FVisible write SetVisible default True;');
   // Das Feld startet mit False; umgekehrt setzt der Konstruktor True.
-  Assert.Contains(Panels, '  inherited Create;'#10'  FVisible := True;'#10'  Ready := True;');
-  Assert.Contains(Panels, 'procedure TFooPanel.SetVisible(const Value: Boolean);'#10'begin'#10 +
+  Assert.Contains(mPanels, '  inherited Create;'#10'  FVisible := True;'#10'  Ready := True;');
+  Assert.Contains(mPanels, 'procedure TFooPanel.SetVisible(const Value: Boolean);'#10'begin'#10 +
     '  if FVisible = Value then'#10'    Exit;'#10'  FVisible := Value;');
-  Assert.Contains(Panels, '    SetVisible(True);');
-  Assert.Contains(Main, '  P.Visible := P.IsEmpty;'#10'  if not P.Visible then');
-  Assert.Contains(Form, '  object Panel1: TFooPanel'#10'    Visible = False');
-  Assert.Contains(Form, '  object Panel2: TBigPanel'#10'    Visible = True');
-  Assert.Contains(Form, '  object Other1: TOther'#10'    Hidden = True');
-  Assert.IsTrue(Length(Warnings) >= 2, string.Join(#10, Warnings));
-  Assert.Contains(string.Join(#10, Warnings), 'Main.pas, Zeile 14');
-  Assert.Contains(string.Join(#10, Warnings), 'published');
+  Assert.Contains(mPanels, '    SetVisible(True);');
+  Assert.Contains(mMain, '  P.Visible := P.IsEmpty;'#10'  if not P.Visible then');
+  Assert.Contains(mForm, '  object Panel1: TFooPanel'#10'    Visible = False');
+  Assert.Contains(mForm, '  object Panel2: TBigPanel'#10'    Visible = True');
+  Assert.Contains(mForm, '  object Other1: TOther'#10'    Hidden = True');
+  Assert.IsTrue(Length(mWarnings) >= 2, string.Join(#10, mWarnings));
+  Assert.Contains(string.Join(#10, mWarnings), 'Main.pas, Zeile 14');
+  Assert.Contains(string.Join(#10, mWarnings), 'published');
 end;
 
 procedure TLspInvertBooleanTests.FunctionWithOverride;
 var
-  Results, Warnings: TArray<string>;
-  Panels, Main: string;
+  mResults, mWarnings: TArray<string>;
+  mPanels, mMain: string;
 begin
-  Results := Run(FIndex, PanelsFile, TTextPosition.Create(9, 14), 'HasItems', Warnings);
-  Panels := FileText(Results, 'Panels.pas');
-  Main := FileText(Results, 'Main.pas');
-  Assert.Contains(Panels, '    function HasItems: Boolean; virtual;');
-  Assert.Contains(Panels, '    function HasItems: Boolean; override;');
-  Assert.Contains(Panels, 'function TFooPanel.HasItems: Boolean;'#10'begin'#10'  Result := False;');
-  Assert.Contains(Panels, 'function TBigPanel.HasItems: Boolean;'#10'begin'#10 +
+  mResults := Run(FIndex, cPanelsFile, TTextPosition.Create(9, 14), 'HasItems', mWarnings);
+  mPanels := FileText(mResults, 'Panels.pas');
+  mMain := FileText(mResults, 'Main.pas');
+  Assert.Contains(mPanels, '    function HasItems: Boolean; virtual;');
+  Assert.Contains(mPanels, '    function HasItems: Boolean; override;');
+  Assert.Contains(mPanels, 'function TFooPanel.HasItems: Boolean;'#10'begin'#10'  Result := False;');
+  Assert.Contains(mPanels, 'function TBigPanel.HasItems: Boolean;'#10'begin'#10 +
     '  Result := inherited HasItems or Ready;');
-  Assert.Contains(Main, '  P.Hidden := P.HasItems;');
+  Assert.Contains(mMain, '  P.Hidden := P.HasItems;');
 end;
 
 procedure TLspInvertBooleanTests.ParameterWithDefault;
 var
-  Results, Warnings: TArray<string>;
-  Panels, Main: string;
+  mResults, mWarnings: TArray<string>;
+  mPanels, mMain: string;
 begin
-  Results := Run(FIndex, PanelsFile, TTextPosition.Create(10, 20), 'ASlow', Warnings);
-  Panels := FileText(Results, 'Panels.pas');
-  Main := FileText(Results, 'Main.pas');
-  Assert.Contains(Panels, '    procedure Show(ASlow: Boolean = True);');
-  Assert.Contains(Panels, 'procedure TFooPanel.Show(ASlow: Boolean);'#10'begin'#10'  if ASlow then');
-  Assert.Contains(Main, '    P.Show(False);'#10'  P.Show;');
+  mResults := Run(FIndex, cPanelsFile, TTextPosition.Create(10, 20), 'ASlow', mWarnings);
+  mPanels := FileText(mResults, 'Panels.pas');
+  mMain := FileText(mResults, 'Main.pas');
+  Assert.Contains(mPanels, '    procedure Show(ASlow: Boolean = True);');
+  Assert.Contains(mPanels, 'procedure TFooPanel.Show(ASlow: Boolean);'#10'begin'#10'  if ASlow then');
+  Assert.Contains(mMain, '    P.Show(False);'#10'  P.Show;');
 end;
 
 procedure TLspInvertBooleanTests.GlobalVariableGetsStartValue;
 var
-  Results, Warnings: TArray<string>;
-  Panels, Main: string;
+  mResults, mWarnings: TArray<string>;
+  mPanels, mMain: string;
 begin
-  Results := Run(FIndex, PanelsFile, TTextPosition.Create(19, 3), 'NotReady', Warnings);
-  Panels := FileText(Results, 'Panels.pas');
-  Main := FileText(Results, 'Main.pas');
-  Assert.Contains(Panels, '  NotReady: Boolean = True;');
-  Assert.Contains(Panels, '  NotReady := False;');
-  Assert.Contains(Panels, '  Result := inherited IsEmpty and NotReady;');
-  Assert.Contains(Main, '  if not NotReady then');
+  mResults := Run(FIndex, cPanelsFile, TTextPosition.Create(19, 3), 'NotReady', mWarnings);
+  mPanels := FileText(mResults, 'Panels.pas');
+  mMain := FileText(mResults, 'Main.pas');
+  Assert.Contains(mPanels, '  NotReady: Boolean = True;');
+  Assert.Contains(mPanels, '  NotReady := False;');
+  Assert.Contains(mPanels, '  Result := inherited IsEmpty and NotReady;');
+  Assert.Contains(mMain, '  if not NotReady then');
 end;
 
 procedure TLspInvertBooleanTests.AccessorFieldIsRefused;
 var
-  Warnings: TArray<string>;
+  mWarnings: TArray<string>;
 begin
   Assert.WillRaise(
     procedure
     begin
-      Run(FIndex, PanelsFile, TTextPosition.Create(5, 5), 'FVisible', Warnings);
+      Run(FIndex, cPanelsFile, TTextPosition.Create(5, 5), 'FVisible', mWarnings);
     end, EJsonRpcError);
   // Prozeduren sind keine Booleans.
   Assert.WillRaise(
     procedure
     begin
-      Run(FIndex, PanelsFile, TTextPosition.Create(10, 15), 'Hide', Warnings);
+      Run(FIndex, cPanelsFile, TTextPosition.Create(10, 15), 'Hide', mWarnings);
     end, EJsonRpcError);
 end;
 
 procedure TLspInvertBooleanTests.ActionFollowsSetting;
 var
-  Tree: TSyntaxTree;
-  Resolver: TNameResolver;
-  Actions: TArray<TJSONObject>;
-  Action: TJSONObject;
+  mTree: TSyntaxTree;
+  mResolver: TNameResolver;
+  mActions: TArray<TJSONObject>;
+  mAction: TJSONObject;
 begin
-  Tree := TPascalParser.Parse(UnitPanels);
-  Resolver := TNameResolver.Create(FIndex, nil);
+  mTree := TPascalParser.Parse(cUnitPanels);
+  mResolver := TNameResolver.Create(FIndex, nil);
   try
-    Actions := TLspInvertBoolean.Actions(Resolver, Tree, PanelsFile, 'file:///C:/P/Panels.pas',
+    mActions := TLspInvertBoolean.Actions(mResolver, mTree, cPanelsFile, 'file:///C:/P/Panels.pas',
       TTextPosition.Create(5, 5), Context(FIndex));
     try
-      Assert.AreEqual(1, Integer(Length(Actions)));
-      Assert.AreEqual('Bedeutung umkehren (FHidden → FVisible)', Actions[0].GetValue('title').Value);
+      Assert.AreEqual(1, Integer(Length(mActions)));
+      Assert.AreEqual('Bedeutung umkehren (FHidden → FVisible)', mActions[0].GetValue('title').Value);
       Assert.AreEqual(TLspInvertBoolean.cClientCommand,
-        (Actions[0].GetValue('command') as TJSONObject).GetValue('command').Value);
+        (mActions[0].GetValue('command') as TJSONObject).GetValue('command').Value);
     finally
-      for Action in Actions do
+      for mAction in mActions do
       begin
-        Action.Free;
+        mAction.Free;
       end;
     end;
-    Assert.AreEqual(0, Integer(Length(TLspInvertBoolean.Actions(Resolver, Tree, PanelsFile,
+    Assert.AreEqual(0, Integer(Length(TLspInvertBoolean.Actions(mResolver, mTree, cPanelsFile,
       'file:///C:/P/Panels.pas', TTextPosition.Create(10, 15), Context(FIndex)))));
   finally
-    Resolver.Free;
-    Tree.Free;
+    mResolver.Free;
+    mTree.Free;
   end;
 end;
 
 procedure TLspInvertBooleanTests.ReadsParameterModifiers;
 const
-  Signature = 'procedure Toggle(var A, B: Boolean; C: Integer; out D: Boolean; [ref] const E: Boolean)';
+  cSignature = 'procedure Toggle(var A, B: Boolean; C: Integer; out D: Boolean; [ref] const E: Boolean)';
 begin
-  Assert.AreEqual('var', TLspInvertBoolean.ParameterModifier(Signature, 0));
-  Assert.AreEqual('var', TLspInvertBoolean.ParameterModifier(Signature, 1));
-  Assert.AreEqual('', TLspInvertBoolean.ParameterModifier(Signature, 2));
-  Assert.AreEqual('out', TLspInvertBoolean.ParameterModifier(Signature, 3));
-  Assert.AreEqual('', TLspInvertBoolean.ParameterModifier(Signature, 4));
+  Assert.AreEqual('var', TLspInvertBoolean.ParameterModifier(cSignature, 0));
+  Assert.AreEqual('var', TLspInvertBoolean.ParameterModifier(cSignature, 1));
+  Assert.AreEqual('', TLspInvertBoolean.ParameterModifier(cSignature, 2));
+  Assert.AreEqual('out', TLspInvertBoolean.ParameterModifier(cSignature, 3));
+  Assert.AreEqual('', TLspInvertBoolean.ParameterModifier(cSignature, 4));
   Assert.AreEqual('', TLspInvertBoolean.ParameterModifier('procedure Run', 0));
 end;
 

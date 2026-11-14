@@ -48,207 +48,207 @@ uses
 
 function Parses(const AText: string): Boolean;
 var
-  Tree: TSyntaxTree;
+  mTree: TSyntaxTree;
 begin
-  Tree := TPascalParser.Parse(AText);
+  mTree := TPascalParser.Parse(AText);
   try
-    Result := Length(Tree.Diagnostics) = 0;
+    Result := Length(mTree.Diagnostics) = 0;
   finally
-    Tree.Free;
+    mTree.Free;
   end;
 end;
 
 /// <summary>Wendet ein Edit an, dessen Bereich in einer Zeile liegt; Zeilen mit #10.</summary>
 function ApplyOne(const AText: string; const AEdit: TRuleEdit): string;
 var
-  Lines: TArray<string>;
-  Line: string;
+  mLines: TArray<string>;
+  mLine: string;
 begin
-  Lines := AText.Split([#10]);
-  Line := Lines[AEdit.Range.StartPos.Line];
-  Lines[AEdit.Range.StartPos.Line] := Copy(Line, 1, AEdit.Range.StartPos.Character) + AEdit.NewText +
-    Copy(Line, AEdit.Range.EndPos.Character + 1, MaxInt);
-  Result := string.Join(#10, Lines);
+  mLines := AText.Split([#10]);
+  mLine := mLines[AEdit.Range.StartPos.Line];
+  mLines[AEdit.Range.StartPos.Line] := Copy(mLine, 1, AEdit.Range.StartPos.Character) + AEdit.NewText +
+    Copy(mLine, AEdit.Range.EndPos.Character + 1, MaxInt);
+  Result := string.Join(#10, mLines);
 end;
 
 procedure TUnitTemplatesTests.FormUnitParses;
 var
-  Text: string;
-  Spec: TFormUnitSpec;
+  mText: string;
+  mSpec: TFormUnitSpec;
 begin
-  Spec := TFormUnitSpec.Create('KundenForm', 'TKundenForm', TFormKind.Form);
-  Spec.GlobalVariable := True;
-  Text := TUnitTemplates.FormUnit(Spec, #13#10);
-  Assert.IsTrue(Parses(Text), Text);
-  Assert.IsTrue(Pos('  TKundenForm = class(TForm)'#13#10, Text) > 0, Text);
-  Assert.IsTrue(Pos('var'#13#10'  KundenForm: TKundenForm;', Text) > 0, Text);
-  Assert.IsTrue(Pos('{$R *.dfm}', Text) > 0, Text);
-  Spec := TFormUnitSpec.Create('Daten', 'TDM', TFormKind.DataModule);
-  Spec.GlobalVariable := True;
-  Text := TUnitTemplates.FormUnit(Spec, #10);
-  Assert.IsTrue(Pos('uses'#10'  System.SysUtils, System.Classes;', Text) > 0, Text);
-  Assert.IsTrue(Parses(Text), Text);
+  mSpec := TFormUnitSpec.Create('KundenForm', 'TKundenForm', TFormKind.Form);
+  mSpec.GlobalVariable := True;
+  mText := TUnitTemplates.FormUnit(mSpec, #13#10);
+  Assert.IsTrue(Parses(mText), mText);
+  Assert.IsTrue(Pos('  TKundenForm = class(TForm)'#13#10, mText) > 0, mText);
+  Assert.IsTrue(Pos('var'#13#10'  KundenForm: TKundenForm;', mText) > 0, mText);
+  Assert.IsTrue(Pos('{$R *.dfm}', mText) > 0, mText);
+  mSpec := TFormUnitSpec.Create('Daten', 'TDM', TFormKind.DataModule);
+  mSpec.GlobalVariable := True;
+  mText := TUnitTemplates.FormUnit(mSpec, #10);
+  Assert.IsTrue(Pos('uses'#10'  System.SysUtils, System.Classes;', mText) > 0, mText);
+  Assert.IsTrue(Parses(mText), mText);
 end;
 
 procedure TUnitTemplatesTests.FormUnitWithoutVariable;
 var
-  Text: string;
-  Spec: TFormUnitSpec;
+  mText: string;
+  mSpec: TFormUnitSpec;
 begin
-  Spec := TFormUnitSpec.Create('Kunde', 'TKundeForm', TFormKind.Form);
-  Spec.Ancestor := 'TBasisForm';
-  Spec.AncestorUnit := 'BasisForm';
-  Text := TUnitTemplates.FormUnit(Spec, #10);
-  Assert.AreEqual(0, Pos('var', Text), Text);
-  Assert.IsTrue(Pos('class(TBasisForm)', Text) > 0, Text);
-  Assert.IsTrue(Pos('Vcl.Dialogs,'#10'  BasisForm;', Text) > 0, Text);
-  Assert.IsTrue(Parses(Text), Text);
+  mSpec := TFormUnitSpec.Create('Kunde', 'TKundeForm', TFormKind.Form);
+  mSpec.Ancestor := 'TBasisForm';
+  mSpec.AncestorUnit := 'BasisForm';
+  mText := TUnitTemplates.FormUnit(mSpec, #10);
+  Assert.AreEqual(0, Pos('var', mText), mText);
+  Assert.IsTrue(Pos('class(TBasisForm)', mText) > 0, mText);
+  Assert.IsTrue(Pos('Vcl.Dialogs,'#10'  BasisForm;', mText) > 0, mText);
+  Assert.IsTrue(Parses(mText), mText);
 end;
 
 procedure TUnitTemplatesTests.FormDfmParses;
 var
-  Kind: TFormKind;
-  Document: TDfmDocument;
+  mKind: TFormKind;
+  mDocument: TDfmDocument;
 begin
-  for Kind := Low(TFormKind) to High(TFormKind) do
+  for mKind := Low(TFormKind) to High(TFormKind) do
   begin
-    Document := TDfmParser.Parse(TUnitTemplates.FormDfm('TAdresse', Kind, False, #13#10));
+    mDocument := TDfmParser.Parse(TUnitTemplates.FormDfm('TAdresse', mKind, False, #13#10));
     try
-      Assert.AreEqual(0, Integer(Length(Document.Errors)));
-      Assert.AreEqual('Adresse', Document.Root.Name);
-      Assert.AreEqual('TAdresse', Document.Root.TypeName);
+      Assert.AreEqual(0, Integer(Length(mDocument.Errors)));
+      Assert.AreEqual('Adresse', mDocument.Root.Name);
+      Assert.AreEqual('TAdresse', mDocument.Root.TypeName);
     finally
-      Document.Free;
+      mDocument.Free;
     end;
   end;
 end;
 
 procedure TUnitTemplatesTests.InheritedDfm;
 var
-  Document: TDfmDocument;
+  mDocument: TDfmDocument;
 begin
-  Document := TDfmParser.Parse(TUnitTemplates.FormDfm('TKundeForm', TFormKind.Form, True, #10));
+  mDocument := TDfmParser.Parse(TUnitTemplates.FormDfm('TKundeForm', TFormKind.Form, True, #10));
   try
-    Assert.AreEqual(0, Integer(Length(Document.Errors)));
-    Assert.AreEqual<TDfmObjectKind>(TDfmObjectKind.Inherited_, Document.Root.Kind);
+    Assert.AreEqual(0, Integer(Length(mDocument.Errors)));
+    Assert.AreEqual<TDfmObjectKind>(TDfmObjectKind.Inherited_, mDocument.Root.Kind);
   finally
-    Document.Free;
+    mDocument.Free;
   end;
 end;
 
 procedure TUnitTemplatesTests.ComponentUnitRegisters;
 var
-  Text: string;
+  mText: string;
 begin
-  Text := TUnitTemplates.ComponentUnit('MyButton', 'TMyButton', 'TButton', 'Vcl.StdCtrls', 'Eigene', #10);
-  Assert.IsTrue(Parses(Text), Text);
-  Assert.IsTrue(Pos('  TMyButton = class(TButton)', Text) > 0, Text);
-  Assert.IsTrue(Pos('  published'#10, Text) > 0, Text);
-  Assert.IsTrue(Pos('  RegisterComponents(''Eigene'', [TMyButton]);', Text) > 0, Text);
-  Assert.IsTrue(Pos('System.Classes, Vcl.StdCtrls;', Text) > 0, Text);
+  mText := TUnitTemplates.ComponentUnit('MyButton', 'TMyButton', 'TButton', 'Vcl.StdCtrls', 'Eigene', #10);
+  Assert.IsTrue(Parses(mText), mText);
+  Assert.IsTrue(Pos('  TMyButton = class(TButton)', mText) > 0, mText);
+  Assert.IsTrue(Pos('  published'#10, mText) > 0, mText);
+  Assert.IsTrue(Pos('  RegisterComponents(''Eigene'', [TMyButton]);', mText) > 0, mText);
+  Assert.IsTrue(Pos('System.Classes, Vcl.StdCtrls;', mText) > 0, mText);
 end;
 
 const
-  ProgramText =
+  cProgramText =
     'program App;'#10#10'uses'#10'  Vcl.Forms,'#10'  Haupt in ''Haupt.pas'' {HauptForm};'#10#10'{$R *.res}'#10#10 +
     'begin'#10'  Application.Initialize;'#10'  Application.CreateForm(THauptForm, HauptForm);'#10 +
     '  Application.Run;'#10'end.';
 
 procedure TUnitTemplatesTests.ProgramGetsUsesAndCreateForm;
 var
-  Edits: TArray<TRuleEdit>;
-  Text: string;
+  mEdits: TArray<TRuleEdit>;
+  mText: string;
 begin
-  Assert.IsTrue(TUnitTemplates.ProgramEdits(ProgramText, 'KundenForm', 'KundenForm.pas', 'TKundenForm',
-    TFormKind.Form, Edits));
-  Assert.AreEqual(2, Integer(Length(Edits)));
+  Assert.IsTrue(TUnitTemplates.ProgramEdits(cProgramText, 'KundenForm', 'KundenForm.pas', 'TKundenForm',
+    TFormKind.Form, mEdits));
+  Assert.AreEqual(2, Integer(Length(mEdits)));
   // Hinteres Edit zuerst.
-  Text := ApplyOne(ApplyOne(ProgramText, Edits[1]), Edits[0]);
+  mText := ApplyOne(ApplyOne(cProgramText, mEdits[1]), mEdits[0]);
   Assert.IsTrue(Pos('  Haupt in ''Haupt.pas'' {HauptForm},'#10'  KundenForm in ''KundenForm.pas'' {KundenForm};',
-    Text) > 0, Text);
-  Assert.IsTrue(Pos('  Application.CreateForm(TKundenForm, KundenForm);'#10'  Application.Run;', Text) > 0, Text);
-  Assert.IsTrue(Parses(Text), Text);
+    mText) > 0, mText);
+  Assert.IsTrue(Pos('  Application.CreateForm(TKundenForm, KundenForm);'#10'  Application.Run;', mText) > 0, mText);
+  Assert.IsTrue(Parses(mText), mText);
 end;
 
 procedure TUnitTemplatesTests.ProgramFrameWithoutCreateForm;
 var
-  Edits: TArray<TRuleEdit>;
+  mEdits: TArray<TRuleEdit>;
 begin
-  Assert.IsTrue(TUnitTemplates.ProgramEdits(ProgramText, 'Adresse', 'Adresse.pas', 'TAdresseFrame',
-    TFormKind.Frame, Edits));
-  Assert.AreEqual(1, Integer(Length(Edits)));
-  Assert.AreEqual(','#10'  Adresse in ''Adresse.pas'' {AdresseFrame: TFrame}', Edits[0].NewText);
+  Assert.IsTrue(TUnitTemplates.ProgramEdits(cProgramText, 'Adresse', 'Adresse.pas', 'TAdresseFrame',
+    TFormKind.Frame, mEdits));
+  Assert.AreEqual(1, Integer(Length(mEdits)));
+  Assert.AreEqual(','#10'  Adresse in ''Adresse.pas'' {AdresseFrame: TFrame}', mEdits[0].NewText);
   Assert.IsFalse(TUnitTemplates.ProgramEdits('program P;'#10'begin'#10'end.', 'A', 'A.pas', 'TA', TFormKind.Form,
-    Edits));
+    mEdits));
 end;
 
 procedure TUnitTemplatesTests.ProgramGetsPlainUnit;
 const
-  Tests = 'program Tests;'#10'uses'#10'  DUnitX.TestFramework,'#10'  Kunden.Tests in ''Kunden.Tests.pas'';'#10 +
+  cTests = 'program Tests;'#10'uses'#10'  DUnitX.TestFramework,'#10'  Kunden.Tests in ''Kunden.Tests.pas'';'#10 +
     'begin'#10'end.';
 var
-  Edit: TRuleEdit;
-  Text: string;
+  mEdit: TRuleEdit;
+  mText: string;
 begin
-  Assert.IsTrue(TUnitTemplates.UnitProgramEdit(Tests, 'Rechnung.Tests', 'Sub\Rechnung.Tests.pas', Edit));
-  Text := ApplyOne(Tests, Edit);
+  Assert.IsTrue(TUnitTemplates.UnitProgramEdit(cTests, 'Rechnung.Tests', 'Sub\Rechnung.Tests.pas', mEdit));
+  mText := ApplyOne(cTests, mEdit);
   Assert.IsTrue(Pos('  Kunden.Tests in ''Kunden.Tests.pas'','#10'  Rechnung.Tests in ''Sub\Rechnung.Tests.pas'';',
-    Text) > 0, Text);
-  Assert.IsTrue(Parses(Text), Text);
+    mText) > 0, mText);
+  Assert.IsTrue(Parses(mText), mText);
   // Schon eingetragen (auch mit anderer Schreibweise): kein Edit.
-  Assert.IsFalse(TUnitTemplates.UnitProgramEdit(Tests, 'kunden.tests', 'Kunden.Tests.pas', Edit));
-  Assert.IsFalse(TUnitTemplates.UnitProgramEdit('program P;'#10'begin'#10'end.', 'A', 'A.pas', Edit));
+  Assert.IsFalse(TUnitTemplates.UnitProgramEdit(cTests, 'kunden.tests', 'Kunden.Tests.pas', mEdit));
+  Assert.IsFalse(TUnitTemplates.UnitProgramEdit('program P;'#10'begin'#10'end.', 'A', 'A.pas', mEdit));
 end;
 
 procedure TUnitTemplatesTests.ProjectGetsReference;
 const
-  Project = '<Project>'#10'    <ItemGroup>'#10'        <DelphiCompile Include="App.dpr"/>'#10 +
+  cProject = '<Project>'#10'    <ItemGroup>'#10'        <DelphiCompile Include="App.dpr"/>'#10 +
     '        <DCCReference Include="Haupt.pas">'#10'            <Form>HauptForm</Form>'#10 +
     '        </DCCReference>'#10'    </ItemGroup>'#10'</Project>';
 var
-  Edit: TRuleEdit;
-  Text: string;
+  mEdit: TRuleEdit;
+  mText: string;
 begin
-  Assert.IsTrue(TUnitTemplates.ProjectEdit(Project, 'Daten.pas', 'TDM', TFormKind.DataModule, True, Edit));
-  Text := ApplyOne(Project, Edit);
+  Assert.IsTrue(TUnitTemplates.ProjectEdit(cProject, 'Daten.pas', 'TDM', TFormKind.DataModule, True, mEdit));
+  mText := ApplyOne(cProject, mEdit);
   Assert.IsTrue(Pos('        </DCCReference>'#10'        <DCCReference Include="Daten.pas">'#10 +
     '            <Form>DM</Form>'#10'            <FormType>dfm</FormType>'#10 +
-    '            <DesignClass>TDataModule</DesignClass>'#10'        </DCCReference>'#10'    </ItemGroup>', Text) > 0,
-    Text);
-  Assert.IsTrue(TUnitTemplates.ProjectEdit(Project, 'Werkzeug.pas', '', TFormKind.Form, False, Edit));
-  Assert.AreEqual(#10'        <DCCReference Include="Werkzeug.pas"/>', Edit.NewText);
-  Assert.IsFalse(TUnitTemplates.ProjectEdit('<Project/>', 'A.pas', 'TA', TFormKind.Form, True, Edit));
+    '            <DesignClass>TDataModule</DesignClass>'#10'        </DCCReference>'#10'    </ItemGroup>', mText) > 0,
+    mText);
+  Assert.IsTrue(TUnitTemplates.ProjectEdit(cProject, 'Werkzeug.pas', '', TFormKind.Form, False, mEdit));
+  Assert.AreEqual(#10'        <DCCReference Include="Werkzeug.pas"/>', mEdit.NewText);
+  Assert.IsFalse(TUnitTemplates.ProjectEdit('<Project/>', 'A.pas', 'TA', TFormKind.Form, True, mEdit));
 end;
 
 procedure TUnitTemplatesTests.PackageGetsContains;
 const
-  Package = 'package Paket;'#10'requires'#10'  rtl,'#10'  vcl;'#10'contains'#10 +
+  cPackage = 'package Paket;'#10'requires'#10'  rtl,'#10'  vcl;'#10'contains'#10 +
     '  Haupt in ''Haupt.pas'';'#10'end.';
 var
-  Edit: TRuleEdit;
-  Text: string;
+  mEdit: TRuleEdit;
+  mText: string;
 begin
   // Units einer .dpk stehen unter contains, nicht unter requires (#299).
-  Assert.IsTrue(TUnitTemplates.UnitProgramEdit(Package, 'Knopf', 'Knopf.pas', Edit));
-  Text := ApplyOne(Package, Edit);
+  Assert.IsTrue(TUnitTemplates.UnitProgramEdit(cPackage, 'Knopf', 'Knopf.pas', mEdit));
+  mText := ApplyOne(cPackage, mEdit);
   Assert.IsTrue(Pos('  vcl;'#10'contains'#10'  Haupt in ''Haupt.pas'','#10'  Knopf in ''Knopf.pas'';'#10'end.',
-    Text) > 0, Text);
-  Assert.IsFalse(TUnitTemplates.UnitProgramEdit(Package, 'haupt', 'Haupt.pas', Edit));
+    mText) > 0, mText);
+  Assert.IsFalse(TUnitTemplates.UnitProgramEdit(cPackage, 'haupt', 'Haupt.pas', mEdit));
 end;
 
 procedure TUnitTemplatesTests.ProjectWithoutUnitsGetsReference;
 const
-  Project = '<Project>'#10'    <ItemGroup>'#10'        <DelphiCompile Include="App.dpr"/>'#10 +
+  cProject = '<Project>'#10'    <ItemGroup>'#10'        <DelphiCompile Include="App.dpr"/>'#10 +
     '        <BuildConfiguration Include="Base">'#10'            <Key>Base</Key>'#10 +
     '        </BuildConfiguration>'#10'    </ItemGroup>'#10'</Project>';
 var
-  Edit: TRuleEdit;
-  Text: string;
+  mEdit: TRuleEdit;
+  mText: string;
 begin
-  Assert.IsTrue(TUnitTemplates.ProjectEdit(Project, 'Werkzeug.pas', '', TFormKind.Form, False, Edit));
-  Text := ApplyOne(Project, Edit);
+  Assert.IsTrue(TUnitTemplates.ProjectEdit(cProject, 'Werkzeug.pas', '', TFormKind.Form, False, mEdit));
+  mText := ApplyOne(cProject, mEdit);
   Assert.IsTrue(Pos('<DelphiCompile Include="App.dpr"/>'#10'        <DCCReference Include="Werkzeug.pas"/>'#10 +
-    '        <BuildConfiguration Include="Base">', Text) > 0, Text);
+    '        <BuildConfiguration Include="Base">', mText) > 0, mText);
 end;
 
 initialization

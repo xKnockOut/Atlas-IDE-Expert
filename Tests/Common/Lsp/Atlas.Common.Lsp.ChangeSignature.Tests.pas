@@ -91,13 +91,13 @@ uses
   Atlas.Common.Lsp.Rename;
 
 const
-  BasisFile = 'C:\P\Basis.pas';
-  HauptFile = 'C:\P\Haupt.pas';
-  MaskeFile = 'C:\P\Maske.pas';
-  MaskeDfm = 'C:\P\Maske.dfm';
-  KlassenFile = 'C:\Lib\Klassen.pas';
+  cBasisFile = 'C:\P\Basis.pas';
+  cHauptFile = 'C:\P\Haupt.pas';
+  cMaskeFile = 'C:\P\Maske.pas';
+  cMaskeDfm = 'C:\P\Maske.dfm';
+  cKlassenFile = 'C:\Lib\Klassen.pas';
 
-  UnitBasis =
+  cUnitBasis =
     'unit Basis;'#10 +
     'interface'#10 +
     'type'#10 +
@@ -139,7 +139,7 @@ const
     'end;'#10 +
     'end.';
 
-  UnitHaupt =
+  cUnitHaupt =
     'unit Haupt;'#10 +
     'interface'#10 +
     'uses Basis;'#10 +
@@ -159,7 +159,7 @@ const
     'end;'#10 +
     'end.';
 
-  UnitKlassen =
+  cUnitKlassen =
     'unit Klassen;'#10 +
     'interface'#10 +
     'type'#10 +
@@ -173,7 +173,7 @@ const
     'implementation'#10 +
     'end.';
 
-  UnitMaske =
+  cUnitMaske =
     'unit Maske;'#10 +
     'interface'#10 +
     'uses Klassen;'#10 +
@@ -199,7 +199,7 @@ const
     'end;'#10 +
     'end.';
 
-  FormMaske =
+  cFormMaske =
     'object Maske: TMaske'#10 +
     '  object Button1: TButton'#10 +
     '    OnClick = Button1Click'#10 +
@@ -211,36 +211,36 @@ const
 
 function PositionOf(const AText, AMarker: string): TTextPosition;
 var
-  Index, Line, LineStart, I: Integer;
+  mIndex, mLine, mLineStart, I: Integer;
 begin
-  Index := Pos(AMarker, AText);
-  if Index = 0 then
+  mIndex := Pos(AMarker, AText);
+  if mIndex = 0 then
   begin
     raise Exception.CreateFmt('"%s" nicht gefunden', [AMarker]);
   end;
-  Line := 0;
-  LineStart := 1;
-  for I := 1 to Index - 1 do
+  mLine := 0;
+  mLineStart := 1;
+  for I := 1 to mIndex - 1 do
   begin
     if AText[I] = #10 then
     begin
-      Inc(Line);
-      LineStart := I + 1;
+      Inc(mLine);
+      mLineStart := I + 1;
     end;
   end;
-  Result := TTextPosition.Create(Line, Index - LineStart);
+  Result := TTextPosition.Create(mLine, mIndex - mLineStart);
 end;
 
 function Count(const AText, APart: string): Integer;
 var
-  Offset: Integer;
+  mOffset: Integer;
 begin
   Result := 0;
-  Offset := PosEx(APart, AText, 1);
-  while Offset > 0 do
+  mOffset := PosEx(APart, AText, 1);
+  while mOffset > 0 do
   begin
     Inc(Result);
-    Offset := PosEx(APart, AText, Offset + 1);
+    mOffset := PosEx(APart, AText, mOffset + 1);
   end;
 end;
 
@@ -274,13 +274,13 @@ end;
 
 function TLspChangeSignatureTests.TextOf(const AFileName: string): string;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
-  for Index := 0 to High(FFiles) do
+  for mIndex := 0 to High(FFiles) do
   begin
-    if SameText(FFiles[Index], AFileName) then
+    if SameText(FFiles[mIndex], AFileName) then
     begin
-      Exit(FTexts[Index]);
+      Exit(FTexts[mIndex]);
     end;
   end;
   Result := '';
@@ -288,8 +288,8 @@ end;
 
 procedure TLspChangeSignatureTests.LoadProject;
 begin
-  AddFile(BasisFile, UnitBasis);
-  AddFile(HauptFile, UnitHaupt);
+  AddFile(cBasisFile, cUnitBasis);
+  AddFile(cHauptFile, cUnitHaupt);
 end;
 
 function TLspChangeSignatureTests.SourceAt(AResolver: TNameResolver; ATree: TSyntaxTree; const AFileName: string;
@@ -301,7 +301,7 @@ begin
   Result.Tree := ATree;
   Result.FileName := AFileName;
   Result.Position := APosition;
-  Result.Files := [BasisFile, HauptFile, MaskeFile, MaskeDfm];
+  Result.Files := [cBasisFile, cHauptFile, cMaskeFile, cMaskeDfm];
   Result.ReadText :=
     function(const AName: string; out AText: string): Boolean
     begin
@@ -312,18 +312,18 @@ end;
 
 function TLspChangeSignatureTests.Info(const AFileName, AMarker: string): TChangeSignatureInfo;
 var
-  Resolver: TNameResolver;
-  Tree: TSyntaxTree;
-  Text: string;
+  mResolver: TNameResolver;
+  mTree: TSyntaxTree;
+  mText: string;
 begin
-  Text := TextOf(AFileName);
-  Resolver := TNameResolver.Create(FIndex);
-  Tree := TPascalParser.Parse(Text);
+  mText := TextOf(AFileName);
+  mResolver := TNameResolver.Create(FIndex);
+  mTree := TPascalParser.Parse(mText);
   try
-    Result := TLspChangeSignature.Prepare(SourceAt(Resolver, Tree, AFileName, PositionOf(Text, AMarker)));
+    Result := TLspChangeSignature.Prepare(SourceAt(mResolver, mTree, AFileName, PositionOf(mText, AMarker)));
   finally
-    Tree.Free;
-    Resolver.Free;
+    mTree.Free;
+    mResolver.Free;
   end;
 end;
 
@@ -336,26 +336,26 @@ end;
 function TLspChangeSignatureTests.Run(const AFileName, AMarker: string; const AChanges: TArray<TParameterChange>;
   AMode: TNewParameterMode; AVirtual: Boolean): TChangeSignatureOutcome;
 var
-  Resolver: TNameResolver;
-  Tree: TSyntaxTree;
-  Text: string;
-  Request: TChangeSignatureRequest;
+  mResolver: TNameResolver;
+  mTree: TSyntaxTree;
+  mText: string;
+  mRequest: TChangeSignatureRequest;
 begin
-  Text := TextOf(AFileName);
-  Request.Changes := AChanges;
-  Request.Mode := AMode;
-  Request.VirtualOverload := AVirtual;
-  Resolver := TNameResolver.Create(FIndex);
-  Tree := TPascalParser.Parse(Text);
+  mText := TextOf(AFileName);
+  mRequest.Changes := AChanges;
+  mRequest.Mode := AMode;
+  mRequest.VirtualOverload := AVirtual;
+  mResolver := TNameResolver.Create(FIndex);
+  mTree := TPascalParser.Parse(mText);
   try
-    Result := TLspChangeSignature.Execute(SourceAt(Resolver, Tree, AFileName, PositionOf(Text, AMarker)), Request,
+    Result := TLspChangeSignature.Execute(SourceAt(mResolver, mTree, AFileName, PositionOf(mText, AMarker)), mRequest,
       function(const AName: string): Boolean
       begin
         Result := SameText(AName, FReadOnly);
       end);
   finally
-    Tree.Free;
-    Resolver.Free;
+    mTree.Free;
+    mResolver.Free;
   end;
 end;
 
@@ -373,262 +373,262 @@ end;
 
 function TLspChangeSignatureTests.Applied(const AOutcome: TChangeSignatureOutcome; const AFileName: string): string;
 var
-  Edits: TArray<TTextEdit>;
-  Edit: TRenameEdit;
+  mEdits: TArray<TTextEdit>;
+  mEdit: TRenameEdit;
 begin
-  Edits := nil;
-  for Edit in AOutcome.Edits do
+  mEdits := nil;
+  for mEdit in AOutcome.Edits do
   begin
-    if SameText(Edit.FileName, AFileName) then
+    if SameText(mEdit.FileName, AFileName) then
     begin
-      Edits := Edits + [TTextEdit.Create(Edit.Range, Edit.NewText)];
+      mEdits := mEdits + [TTextEdit.Create(mEdit.Range, mEdit.NewText)];
     end;
   end;
-  Result := TChangeSignature.ApplyEdits(TextOf(AFileName), Edits);
+  Result := TChangeSignature.ApplyEdits(TextOf(AFileName), mEdits);
 end;
 
 procedure TLspChangeSignatureTests.AssertParses(const AOutcome: TChangeSignatureOutcome);
 var
-  Tree: TSyntaxTree;
-  FileName: string;
+  mTree: TSyntaxTree;
+  mFileName: string;
 begin
-  for FileName in [BasisFile, HauptFile, MaskeFile] do
+  for mFileName in [cBasisFile, cHauptFile, cMaskeFile] do
   begin
-    if TextOf(FileName) = '' then
+    if TextOf(mFileName) = '' then
     begin
       Continue;
     end;
-    Tree := TPascalParser.Parse(Applied(AOutcome, FileName));
+    mTree := TPascalParser.Parse(Applied(AOutcome, mFileName));
     try
-      Assert.AreEqual(0, Integer(Length(Tree.Diagnostics)), FileName);
+      Assert.AreEqual(0, Integer(Length(mTree.Diagnostics)), mFileName);
     finally
-      Tree.Free;
+      mTree.Free;
     end;
   end;
 end;
 
 procedure TLspChangeSignatureTests.PrepareListsParametersAndMembers;
 var
-  Found: TChangeSignatureInfo;
+  mFound: TChangeSignatureInfo;
 begin
   LoadProject;
-  Found := Info(BasisFile, 'Zeige(const Text: string; Anzahl: Integer); override');
-  Assert.AreEqual('Zeige', Found.Name);
-  Assert.AreEqual('TBasis', Found.Container);
-  Assert.AreEqual('procedure', Found.Keyword);
-  Assert.AreEqual(2, Integer(Length(Found.Parameters)));
-  Assert.AreEqual('const', Found.Parameters[0].Modifier);
+  mFound := Info(cBasisFile, 'Zeige(const Text: string; Anzahl: Integer); override');
+  Assert.AreEqual('Zeige', mFound.Name);
+  Assert.AreEqual('TBasis', mFound.Container);
+  Assert.AreEqual('procedure', mFound.Keyword);
+  Assert.AreEqual(2, Integer(Length(mFound.Parameters)));
+  Assert.AreEqual('const', mFound.Parameters[0].Modifier);
   // Deklaration in TBasis und die Überschreibung in TKind.
-  Assert.AreEqual(2, Found.Members);
-  Assert.IsFalse(Found.InterfaceMethod);
+  Assert.AreEqual(2, mFound.Members);
+  Assert.IsFalse(mFound.InterfaceMethod);
 end;
 
 procedure TLspChangeSignatureTests.OverloadKeepsOldSignature;
 var
-  Outcome: TChangeSignatureOutcome;
-  Basis: string;
+  mOutcome: TChangeSignatureOutcome;
+  mBasis: string;
 begin
   LoadProject;
-  Outcome := Run(BasisFile, 'Zeige(const Text: string; Anzahl: Integer); virtual', [TParameterChange.Kept(0, 'Text'),
+  mOutcome := Run(cBasisFile, 'Zeige(const Text: string; Anzahl: Integer); virtual', [TParameterChange.Kept(0, 'Text'),
     TParameterChange.Kept(1, 'Anzahl'), TParameterChange.Added('Farbe', 'Integer', '', 'clBlack')],
     TNewParameterMode.Overload);
-  Assert.AreEqual(Ord(TNewParameterMode.Overload), Ord(Outcome.Mode));
-  Basis := Applied(Outcome, BasisFile);
-  Assert.Contains(Basis, '    procedure Zeige(const Text: string; Anzahl: Integer; Farbe: Integer); overload; virtual;'#10 +
+  Assert.AreEqual(Ord(TNewParameterMode.Overload), Ord(mOutcome.Mode));
+  mBasis := Applied(mOutcome, cBasisFile);
+  Assert.Contains(mBasis, '    procedure Zeige(const Text: string; Anzahl: Integer; Farbe: Integer); overload; virtual;'#10 +
     '    procedure Zeige(const Text: string; Anzahl: Integer); overload;'#10);
-  Assert.Contains(Basis, 'procedure Zeige(const Text: string; Anzahl: Integer; Farbe: Integer); overload; override;');
-  Assert.Contains(Basis, 'procedure TBasis.Zeige(const Text: string; Anzahl: Integer; Farbe: Integer);'#10'begin');
-  Assert.Contains(Basis, 'procedure TBasis.Zeige(const Text: string; Anzahl: Integer);'#10'begin'#10 +
+  Assert.Contains(mBasis, 'procedure Zeige(const Text: string; Anzahl: Integer; Farbe: Integer); overload; override;');
+  Assert.Contains(mBasis, 'procedure TBasis.Zeige(const Text: string; Anzahl: Integer; Farbe: Integer);'#10'begin');
+  Assert.Contains(mBasis, 'procedure TBasis.Zeige(const Text: string; Anzahl: Integer);'#10'begin'#10 +
     '  Zeige(Text, Anzahl, clBlack);'#10'end;');
   // Die Überschreibung reicht den neuen Parameter weiter, statt sich über die alte Überladung selbst aufzurufen.
-  Assert.Contains(Basis, '  inherited Zeige(Text, Anzahl, Farbe);');
-  Assert.AreEqual(UnitHaupt, Applied(Outcome, HauptFile));
-  Assert.AreEqual(0, Count(Basis, 'Farbe: Integer ='));
-  AssertParses(Outcome);
+  Assert.Contains(mBasis, '  inherited Zeige(Text, Anzahl, Farbe);');
+  Assert.AreEqual(cUnitHaupt, Applied(mOutcome, cHauptFile));
+  Assert.AreEqual(0, Count(mBasis, 'Farbe: Integer ='));
+  AssertParses(mOutcome);
 end;
 
 procedure TLspChangeSignatureTests.VirtualOverloadOnRequest;
 var
-  Outcome: TChangeSignatureOutcome;
+  mOutcome: TChangeSignatureOutcome;
 begin
   LoadProject;
-  Outcome := Run(BasisFile, 'Zeige(const Text: string; Anzahl: Integer); virtual', [TParameterChange.Kept(0, 'Text'),
+  mOutcome := Run(cBasisFile, 'Zeige(const Text: string; Anzahl: Integer); virtual', [TParameterChange.Kept(0, 'Text'),
     TParameterChange.Kept(1, 'Anzahl'), TParameterChange.Added('Farbe', 'Integer', '', '0')],
     TNewParameterMode.Overload, True);
-  Assert.Contains(Applied(Outcome, BasisFile), 'procedure Zeige(const Text: string; Anzahl: Integer); overload; virtual;');
+  Assert.Contains(Applied(mOutcome, cBasisFile), 'procedure Zeige(const Text: string; Anzahl: Integer); overload; virtual;');
 end;
 
 procedure TLspChangeSignatureTests.UpdateCallersPassesValue;
 var
-  Outcome: TChangeSignatureOutcome;
-  Basis, Haupt: string;
+  mOutcome: TChangeSignatureOutcome;
+  mBasis, mHaupt: string;
 begin
   LoadProject;
-  Outcome := Run(BasisFile, 'Zeige(const Text: string; Anzahl: Integer); virtual', [TParameterChange.Kept(0, 'Text'),
+  mOutcome := Run(cBasisFile, 'Zeige(const Text: string; Anzahl: Integer); virtual', [TParameterChange.Kept(0, 'Text'),
     TParameterChange.Kept(1, 'Anzahl'), TParameterChange.Added('Farbe', 'Integer', '', '0')],
     TNewParameterMode.UpdateCallers);
-  Basis := Applied(Outcome, BasisFile);
-  Haupt := Applied(Outcome, HauptFile);
-  Assert.Contains(Haupt, 'B.Zeige(''x'', 1, 0);');
-  Assert.Contains(Haupt, 'K.Zeige(''y'', 2, 0);');
-  Assert.Contains(Basis, '  inherited Zeige(Text, Anzahl, Farbe);');
-  Assert.AreEqual(0, Count(Basis, 'overload'));
-  Assert.AreEqual(4, Count(Basis, 'Anzahl: Integer; Farbe: Integer)'));
-  AssertParses(Outcome);
+  mBasis := Applied(mOutcome, cBasisFile);
+  mHaupt := Applied(mOutcome, cHauptFile);
+  Assert.Contains(mHaupt, 'B.Zeige(''x'', 1, 0);');
+  Assert.Contains(mHaupt, 'K.Zeige(''y'', 2, 0);');
+  Assert.Contains(mBasis, '  inherited Zeige(Text, Anzahl, Farbe);');
+  Assert.AreEqual(0, Count(mBasis, 'overload'));
+  Assert.AreEqual(4, Count(mBasis, 'Anzahl: Integer; Farbe: Integer)'));
+  AssertParses(mOutcome);
 end;
 
 procedure TLspChangeSignatureTests.ReorderChangesCallersInAllUnits;
 var
-  Outcome: TChangeSignatureOutcome;
-  Haupt: string;
+  mOutcome: TChangeSignatureOutcome;
+  mHaupt: string;
 begin
   LoadProject;
-  Outcome := Run(HauptFile, 'Teile(6', [TParameterChange.Kept(1, 'B'), TParameterChange.Kept(0, 'A')],
+  mOutcome := Run(cHauptFile, 'Teile(6', [TParameterChange.Kept(1, 'B'), TParameterChange.Kept(0, 'A')],
     TNewParameterMode.Overload);
-  Haupt := Applied(Outcome, HauptFile);
-  Assert.Contains(Haupt, 'B.Teile(2, 6);');
-  Assert.Contains(Haupt, 'B.Teile(2, B.Teile(4, 8));');
-  Assert.Contains(Applied(Outcome, BasisFile), 'function TBasis.Teile(B, A: Integer): Integer;');
-  Assert.Contains(Applied(Outcome, BasisFile), '    function Teile(B, A: Integer): Integer;');
-  AssertParses(Outcome);
+  mHaupt := Applied(mOutcome, cHauptFile);
+  Assert.Contains(mHaupt, 'B.Teile(2, 6);');
+  Assert.Contains(mHaupt, 'B.Teile(2, B.Teile(4, 8));');
+  Assert.Contains(Applied(mOutcome, cBasisFile), 'function TBasis.Teile(B, A: Integer): Integer;');
+  Assert.Contains(Applied(mOutcome, cBasisFile), '    function Teile(B, A: Integer): Integer;');
+  AssertParses(mOutcome);
 end;
 
 procedure TLspChangeSignatureTests.RemovesUnusedParameter;
 var
-  Outcome: TChangeSignatureOutcome;
+  mOutcome: TChangeSignatureOutcome;
 begin
   LoadProject;
-  Outcome := Run(BasisFile, 'Leer(A: Integer; B: Integer);'#10'  end', [TParameterChange.Kept(1, 'B')],
+  mOutcome := Run(cBasisFile, 'Leer(A: Integer; B: Integer);'#10'  end', [TParameterChange.Kept(1, 'B')],
     TNewParameterMode.Overload);
-  Assert.Contains(Applied(Outcome, HauptFile), 'B.Leer(2);');
-  Assert.Contains(Applied(Outcome, BasisFile), 'procedure TBasis.Leer(B: Integer);');
-  AssertParses(Outcome);
+  Assert.Contains(Applied(mOutcome, cHauptFile), 'B.Leer(2);');
+  Assert.Contains(Applied(mOutcome, cBasisFile), 'procedure TBasis.Leer(B: Integer);');
+  AssertParses(mOutcome);
 end;
 
 procedure TLspChangeSignatureTests.RejectsRemovingUsedParameter;
 begin
   LoadProject;
-  Assert.Contains(Error(BasisFile, 'Teile(A, B: Integer): Integer;'#10'    procedure', [TParameterChange.Kept(0, 'A')]),
+  Assert.Contains(Error(cBasisFile, 'Teile(A, B: Integer): Integer;'#10'    procedure', [TParameterChange.Kept(0, 'A')]),
     'Zeile 26');
 end;
 
 procedure TLspChangeSignatureTests.RenamesParameterEverywhere;
 var
-  Outcome: TChangeSignatureOutcome;
-  Basis: string;
+  mOutcome: TChangeSignatureOutcome;
+  mBasis: string;
 begin
   LoadProject;
-  Outcome := Run(BasisFile, 'Zeige(const Text: string; Anzahl: Integer); virtual', [TParameterChange.Kept(0, 'Text'),
+  mOutcome := Run(cBasisFile, 'Zeige(const Text: string; Anzahl: Integer); virtual', [TParameterChange.Kept(0, 'Text'),
     TParameterChange.Kept(1, 'Menge')], TNewParameterMode.Overload);
-  Basis := Applied(Outcome, BasisFile);
-  Assert.Contains(Basis, '/// <param name="Menge">Wie oft</param>');
-  Assert.Contains(Basis, '  Writeln(Text, Menge);');
-  Assert.Contains(Basis, '  inherited Zeige(Text, Menge);');
-  Assert.AreEqual(0, Count(Basis, 'Anzahl'));
-  Assert.AreEqual(UnitHaupt, Applied(Outcome, HauptFile));
-  AssertParses(Outcome);
+  mBasis := Applied(mOutcome, cBasisFile);
+  Assert.Contains(mBasis, '/// <param name="Menge">Wie oft</param>');
+  Assert.Contains(mBasis, '  Writeln(Text, Menge);');
+  Assert.Contains(mBasis, '  inherited Zeige(Text, Menge);');
+  Assert.AreEqual(0, Count(mBasis, 'Anzahl'));
+  Assert.AreEqual(cUnitHaupt, Applied(mOutcome, cHauptFile));
+  AssertParses(mOutcome);
 end;
 
 procedure TLspChangeSignatureTests.InterfaceForcesUpdateCallers;
 var
-  Outcome: TChangeSignatureOutcome;
-  Basis: string;
+  mOutcome: TChangeSignatureOutcome;
+  mBasis: string;
 begin
   LoadProject;
-  Assert.IsTrue(Info(BasisFile, 'Summe(A, B: Integer): Integer;'#10'  end;'#10'  TBasis').InterfaceMethod);
-  Outcome := Run(BasisFile, 'Summe(A, B: Integer): Integer;'#10'  end;'#10'  TBasis', [TParameterChange.Kept(0, 'A'),
+  Assert.IsTrue(Info(cBasisFile, 'Summe(A, B: Integer): Integer;'#10'  end;'#10'  TBasis').InterfaceMethod);
+  mOutcome := Run(cBasisFile, 'Summe(A, B: Integer): Integer;'#10'  end;'#10'  TBasis', [TParameterChange.Kept(0, 'A'),
     TParameterChange.Kept(1, 'B'), TParameterChange.Added('C', 'Integer', '', '0')], TNewParameterMode.Overload);
-  Assert.AreEqual(Ord(TNewParameterMode.UpdateCallers), Ord(Outcome.Mode));
-  Basis := Applied(Outcome, BasisFile);
-  Assert.AreEqual(3, Count(Basis, 'Summe(A, B: Integer; C: Integer): Integer;'));
-  Assert.Contains(Applied(Outcome, HauptFile), 'R.Summe(1, 2, 0);');
-  Assert.AreEqual(0, Count(Basis, 'overload'));
-  AssertParses(Outcome);
+  Assert.AreEqual(Ord(TNewParameterMode.UpdateCallers), Ord(mOutcome.Mode));
+  mBasis := Applied(mOutcome, cBasisFile);
+  Assert.AreEqual(3, Count(mBasis, 'Summe(A, B: Integer; C: Integer): Integer;'));
+  Assert.Contains(Applied(mOutcome, cHauptFile), 'R.Summe(1, 2, 0);');
+  Assert.AreEqual(0, Count(mBasis, 'overload'));
+  AssertParses(mOutcome);
 end;
 
 procedure TLspChangeSignatureTests.StartsFromOverrideOrCall;
 begin
   LoadProject;
   // Von der Überschreibung, vom Rumpf und vom Aufruf aus dieselbe Kette.
-  Assert.AreEqual('TBasis', Info(BasisFile, 'Zeige(const Text: string; Anzahl: Integer); override').Container);
-  Assert.AreEqual('TBasis', Info(BasisFile, 'Zeige(Text, Anzahl);').Container);
-  Assert.AreEqual(2, Info(HauptFile, 'Zeige(''y''').Members);
+  Assert.AreEqual('TBasis', Info(cBasisFile, 'Zeige(const Text: string; Anzahl: Integer); override').Container);
+  Assert.AreEqual('TBasis', Info(cBasisFile, 'Zeige(Text, Anzahl);').Container);
+  Assert.AreEqual(2, Info(cHauptFile, 'Zeige(''y''').Members);
 end;
 
 procedure TLspChangeSignatureTests.RejectsLibraryEventHandler;
 var
-  Outcome: TChangeSignatureOutcome;
-  Found: TChangeSignatureInfo;
+  mOutcome: TChangeSignatureOutcome;
+  mFound: TChangeSignatureInfo;
 begin
-  AddFile(KlassenFile, UnitKlassen);
-  AddFile(MaskeFile, UnitMaske);
-  AddFile(MaskeDfm, FormMaske);
-  Found := Info(MaskeFile, 'Button1Click(Sender: TObject);'#10'    procedure');
-  Assert.AreEqual('TNotifyEvent', Found.BoundEvent);
-  Assert.IsTrue(Found.EventFixed);
-  Assert.Contains(Error(MaskeFile, 'Button1Click(Sender: TObject);'#10'    procedure',
+  AddFile(cKlassenFile, cUnitKlassen);
+  AddFile(cMaskeFile, cUnitMaske);
+  AddFile(cMaskeDfm, cFormMaske);
+  mFound := Info(cMaskeFile, 'Button1Click(Sender: TObject);'#10'    procedure');
+  Assert.AreEqual('TNotifyEvent', mFound.BoundEvent);
+  Assert.IsTrue(mFound.EventFixed);
+  Assert.Contains(Error(cMaskeFile, 'Button1Click(Sender: TObject);'#10'    procedure',
     [TParameterChange.Kept(0, 'Sender'), TParameterChange.Added('X', 'Integer', '', '0')]), 'TNotifyEvent');
   // Umbenennen bleibt möglich.
-  Outcome := Run(MaskeFile, 'Button1Click(Sender: TObject);'#10'    procedure', [TParameterChange.Kept(0, 'Quelle')],
+  mOutcome := Run(cMaskeFile, 'Button1Click(Sender: TObject);'#10'    procedure', [TParameterChange.Kept(0, 'Quelle')],
     TNewParameterMode.Overload);
-  Assert.Contains(Applied(Outcome, MaskeFile), 'procedure TMaske.Button1Click(Quelle: TObject);');
+  Assert.Contains(Applied(mOutcome, cMaskeFile), 'procedure TMaske.Button1Click(Quelle: TObject);');
 end;
 
 procedure TLspChangeSignatureTests.ChangesProjectEventType;
 var
-  Outcome: TChangeSignatureOutcome;
-  Maske: string;
+  mOutcome: TChangeSignatureOutcome;
+  mMaske: string;
 begin
-  AddFile(KlassenFile, UnitKlassen);
-  AddFile(MaskeFile, UnitMaske);
-  AddFile(MaskeDfm, FormMaske);
-  Outcome := Run(MaskeFile, 'BoxWert(Sender: TObject; Wert: Integer);'#10'  end', [TParameterChange.Kept(0, 'Sender'),
+  AddFile(cKlassenFile, cUnitKlassen);
+  AddFile(cMaskeFile, cUnitMaske);
+  AddFile(cMaskeDfm, cFormMaske);
+  mOutcome := Run(cMaskeFile, 'BoxWert(Sender: TObject; Wert: Integer);'#10'  end', [TParameterChange.Kept(0, 'Sender'),
     TParameterChange.Kept(1, 'Wert'), TParameterChange.Added('Alt', 'Integer', '', '0')], TNewParameterMode.Overload);
   // Gebundener Handler: keine Überladung, der Ereignistyp ändert sich mit.
-  Assert.AreEqual(Ord(TNewParameterMode.UpdateCallers), Ord(Outcome.Mode));
-  Maske := Applied(Outcome, MaskeFile);
-  Assert.Contains(Maske, 'TWertEvent = procedure(Sender: TObject; Wert: Integer; Alt: Integer) of object;');
-  Assert.Contains(Maske, 'procedure TMaske.BoxWert(Sender: TObject; Wert: Integer; Alt: Integer);');
-  Assert.IsTrue(Length(Outcome.Warnings) > 0);
-  AssertParses(Outcome);
+  Assert.AreEqual(Ord(TNewParameterMode.UpdateCallers), Ord(mOutcome.Mode));
+  mMaske := Applied(mOutcome, cMaskeFile);
+  Assert.Contains(mMaske, 'TWertEvent = procedure(Sender: TObject; Wert: Integer; Alt: Integer) of object;');
+  Assert.Contains(mMaske, 'procedure TMaske.BoxWert(Sender: TObject; Wert: Integer; Alt: Integer);');
+  Assert.IsTrue(Length(mOutcome.Warnings) > 0);
+  AssertParses(mOutcome);
 end;
 
 procedure TLspChangeSignatureTests.RejectsCollidingOverload;
 var
-  Text: string;
+  mText: string;
 begin
-  Text := StringReplace(UnitBasis, '    function Teile(A, B: Integer): Integer;'#10,
+  mText := StringReplace(cUnitBasis, '    function Teile(A, B: Integer): Integer;'#10,
     '    function Teile(A, B: Integer): Integer; overload;'#10 +
     '    function Teile(A, B, C: Integer): Integer; overload;'#10, []);
-  AddFile(BasisFile, Text);
-  AddFile(HauptFile, UnitHaupt);
-  Assert.Contains(Error(BasisFile, 'Teile(A, B: Integer): Integer; overload', [TParameterChange.Kept(0, 'A'),
+  AddFile(cBasisFile, mText);
+  AddFile(cHauptFile, cUnitHaupt);
+  Assert.Contains(Error(cBasisFile, 'Teile(A, B: Integer): Integer; overload', [TParameterChange.Kept(0, 'A'),
     TParameterChange.Kept(1, 'B'), TParameterChange.Added('C', 'Integer', '', '0')]), 'kollidiert');
 end;
 
 procedure TLspChangeSignatureTests.WarnsAboutPointersAndReadOnlyCallers;
 var
-  Outcome: TChangeSignatureOutcome;
-  Text: string;
+  mOutcome: TChangeSignatureOutcome;
+  mText: string;
 begin
-  Text := StringReplace(UnitHaupt, '  R.Summe(1, 2);'#10, '  R.Summe(1, 2);'#10'  P := @B.Teile;'#10, []);
-  AddFile(BasisFile, UnitBasis);
-  AddFile(HauptFile, Text);
-  FReadOnly := HauptFile;
-  Outcome := Run(BasisFile, 'Teile(A, B: Integer): Integer;'#10'    procedure', [TParameterChange.Kept(1, 'B'),
+  mText := StringReplace(cUnitHaupt, '  R.Summe(1, 2);'#10, '  R.Summe(1, 2);'#10'  P := @B.Teile;'#10, []);
+  AddFile(cBasisFile, cUnitBasis);
+  AddFile(cHauptFile, mText);
+  FReadOnly := cHauptFile;
+  mOutcome := Run(cBasisFile, 'Teile(A, B: Integer): Integer;'#10'    procedure', [TParameterChange.Kept(1, 'B'),
     TParameterChange.Kept(0, 'A')], TNewParameterMode.Overload);
-  Assert.AreEqual(Text, Applied(Outcome, HauptFile));
-  Assert.Contains(string.Join(#10, Outcome.Warnings), 'Methodenzeiger');
-  Assert.Contains(string.Join(#10, Outcome.Warnings), 'Haupt.pas');
+  Assert.AreEqual(mText, Applied(mOutcome, cHauptFile));
+  Assert.Contains(string.Join(#10, mOutcome.Warnings), 'Methodenzeiger');
+  Assert.Contains(string.Join(#10, mOutcome.Warnings), 'Haupt.pas');
   // Die Deklaration selbst schreibgeschützt: Abbruch.
-  FReadOnly := BasisFile;
-  Assert.Contains(Error(BasisFile, 'Teile(A, B: Integer): Integer;'#10'    procedure', [TParameterChange.Kept(1, 'B'),
+  FReadOnly := cBasisFile;
+  Assert.Contains(Error(cBasisFile, 'Teile(A, B: Integer): Integer;'#10'    procedure', [TParameterChange.Kept(1, 'B'),
     TParameterChange.Kept(0, 'A')]), 'Basis.pas');
 end;
 
 procedure TLspChangeSignatureTests.RoutineWithoutDeclaration;
 const
-  UnitHilfe =
+  cUnitHilfe =
     'unit Hilfe;'#10 +
     'interface'#10 +
     'implementation'#10 +
@@ -642,80 +642,80 @@ const
     'end;'#10 +
     'end.';
 var
-  Outcome: TChangeSignatureOutcome;
-  Hilfe: string;
+  mOutcome: TChangeSignatureOutcome;
+  mHilfe: string;
 begin
-  AddFile(BasisFile, UnitHilfe);
-  Outcome := Run(BasisFile, 'Doppelt(A: Integer)', [TParameterChange.Kept(0, 'A'),
+  AddFile(cBasisFile, cUnitHilfe);
+  mOutcome := Run(cBasisFile, 'Doppelt(A: Integer)', [TParameterChange.Kept(0, 'A'),
     TParameterChange.Added('Faktor', 'Integer', '', '2')], TNewParameterMode.Overload);
-  Hilfe := Applied(Outcome, BasisFile);
-  Assert.Contains(Hilfe, 'function Doppelt(A: Integer; Faktor: Integer): Integer; overload;'#10'begin');
-  Assert.Contains(Hilfe, 'function Doppelt(A: Integer): Integer; overload;'#10'begin'#10 +
+  mHilfe := Applied(mOutcome, cBasisFile);
+  Assert.Contains(mHilfe, 'function Doppelt(A: Integer; Faktor: Integer): Integer; overload;'#10'begin');
+  Assert.Contains(mHilfe, 'function Doppelt(A: Integer): Integer; overload;'#10'begin'#10 +
     '  Result := Doppelt(A, 2);'#10'end;');
-  Assert.Contains(Hilfe, '  Doppelt(3);');
-  AssertParses(Outcome);
+  Assert.Contains(mHilfe, '  Doppelt(3);');
+  AssertParses(mOutcome);
 end;
 
 procedure TLspChangeSignatureTests.OffersActionOnlyWhenEnabled;
 var
-  Resolver: TNameResolver;
-  Tree: TSyntaxTree;
-  Actions: TArray<TJSONObject>;
-  Action: TJSONObject;
+  mResolver: TNameResolver;
+  mTree: TSyntaxTree;
+  mActions: TArray<TJSONObject>;
+  mAction: TJSONObject;
 begin
   LoadProject;
-  Resolver := TNameResolver.Create(FIndex);
-  Tree := TPascalParser.Parse(UnitHaupt);
+  mResolver := TNameResolver.Create(FIndex);
+  mTree := TPascalParser.Parse(cUnitHaupt);
   try
-    Actions := TLspChangeSignature.Actions(True, Resolver, Tree, HauptFile, 'file:///C:/P/Haupt.pas',
-      PositionOf(UnitHaupt, 'Teile(6'));
-    Assert.AreEqual(1, Integer(Length(Actions)));
+    mActions := TLspChangeSignature.Actions(True, mResolver, mTree, cHauptFile, 'file:///C:/P/Haupt.pas',
+      PositionOf(cUnitHaupt, 'Teile(6'));
+    Assert.AreEqual(1, Integer(Length(mActions)));
     try
-      Assert.AreEqual(TLspChangeSignature.cClientCommand, Actions[0].GetValue<string>('command.command'));
+      Assert.AreEqual(TLspChangeSignature.cClientCommand, mActions[0].GetValue<string>('command.command'));
     finally
-      for Action in Actions do
+      for mAction in mActions do
       begin
-        Action.Free;
+        mAction.Free;
       end;
     end;
-    Assert.AreEqual(0, Integer(Length(TLspChangeSignature.Actions(False, Resolver, Tree, HauptFile, 'x',
-      PositionOf(UnitHaupt, 'Teile(6')))));
+    Assert.AreEqual(0, Integer(Length(TLspChangeSignature.Actions(False, mResolver, mTree, cHauptFile, 'x',
+      PositionOf(cUnitHaupt, 'Teile(6')))));
     // Auf einer Variablen gibt es die Aktion nicht.
-    Assert.AreEqual(0, Integer(Length(TLspChangeSignature.Actions(True, Resolver, Tree, HauptFile, 'x',
-      PositionOf(UnitHaupt, 'B: TBasis')))));
+    Assert.AreEqual(0, Integer(Length(TLspChangeSignature.Actions(True, mResolver, mTree, cHauptFile, 'x',
+      PositionOf(cUnitHaupt, 'B: TBasis')))));
   finally
-    Tree.Free;
-    Resolver.Free;
+    mTree.Free;
+    mResolver.Free;
   end;
 end;
 
 procedure TLspChangeSignatureTests.ReadsRequestJson;
 var
-  Value: TJSONValue;
-  Request: TChangeSignatureRequest;
-  Answer: TJSONObject;
-  Outcome: TChangeSignatureOutcome;
+  mValue: TJSONValue;
+  mRequest: TChangeSignatureRequest;
+  mAnswer: TJSONObject;
+  mOutcome: TChangeSignatureOutcome;
 begin
-  Value := TJSONObject.ParseJSONValue('{"parameters": [{"origin": 1, "name": "B"}, {"origin": -1, "name": "C", ' +
+  mValue := TJSONObject.ParseJSONValue('{"parameters": [{"origin": 1, "name": "B"}, {"origin": -1, "name": "C", ' +
     '"type": "Integer", "modifier": "const", "value": "0"}], "newParameter": "updateCallers"}');
   try
-    Request := TLspChangeSignature.ReadRequest(Value, TNewParameterMode.Overload, True);
+    mRequest := TLspChangeSignature.ReadRequest(mValue, TNewParameterMode.Overload, True);
   finally
-    Value.Free;
+    mValue.Free;
   end;
-  Assert.AreEqual(2, Integer(Length(Request.Changes)));
-  Assert.AreEqual(1, Request.Changes[0].Origin);
-  Assert.AreEqual('const', Request.Changes[1].Modifier);
-  Assert.AreEqual(Ord(TNewParameterMode.UpdateCallers), Ord(Request.Mode));
-  Assert.IsTrue(Request.VirtualOverload);
-  Outcome := Default(TChangeSignatureOutcome);
-  Outcome.Warnings := ['W'];
-  Answer := TLspChangeSignature.OutcomeToJson(Outcome);
+  Assert.AreEqual(2, Integer(Length(mRequest.Changes)));
+  Assert.AreEqual(1, mRequest.Changes[0].Origin);
+  Assert.AreEqual('const', mRequest.Changes[1].Modifier);
+  Assert.AreEqual(Ord(TNewParameterMode.UpdateCallers), Ord(mRequest.Mode));
+  Assert.IsTrue(mRequest.VirtualOverload);
+  mOutcome := Default(TChangeSignatureOutcome);
+  mOutcome.Warnings := ['W'];
+  mAnswer := TLspChangeSignature.OutcomeToJson(mOutcome);
   try
-    Assert.AreEqual('overload', Answer.GetValue<string>('newParameter'));
-    Assert.IsNotNull(Answer.GetValue('edit'));
+    Assert.AreEqual('overload', mAnswer.GetValue<string>('newParameter'));
+    Assert.IsNotNull(mAnswer.GetValue('edit'));
   finally
-    Answer.Free;
+    mAnswer.Free;
   end;
 end;
 

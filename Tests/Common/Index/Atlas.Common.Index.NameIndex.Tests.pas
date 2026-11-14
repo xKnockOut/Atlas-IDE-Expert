@@ -45,17 +45,17 @@ end;
 
 procedure TImportNameIndexTests.KeepsOnlyImportableSymbolsProjectFirst;
 var
-  Index: ISymbolIndex;
-  Names: TImportNameIndex;
+  mIndex: ISymbolIndex;
+  mNames: TImportNameIndex;
 begin
-  Index := TSymbolIndex.Create;
-  Index.AddUnit(MakeUnit('Bib', True, [Symbol('TBib', '', True)]));
-  Index.AddUnit(MakeUnit('Proj', False, [Symbol('TProj', '', True), Symbol('Feld', 'TProj', True),
+  mIndex := TSymbolIndex.Create;
+  mIndex.AddUnit(MakeUnit('Bib', True, [Symbol('TBib', '', True)]));
+  mIndex.AddUnit(MakeUnit('Proj', False, [Symbol('TProj', '', True), Symbol('Feld', 'TProj', True),
     Symbol('Intern', '', False)]));
-  Names := TImportNameIndex.Build(Index);
-  Assert.AreEqual(2, Integer(Names.Count));
-  Assert.AreEqual('TProj', Names.Units[Names.Entries[0].UnitPos].Symbols[Names.Entries[0].SymbolPos].Name);
-  Assert.AreEqual('TBib', Names.Units[Names.Entries[1].UnitPos].Symbols[Names.Entries[1].SymbolPos].Name);
+  mNames := TImportNameIndex.Build(mIndex);
+  Assert.AreEqual(2, Integer(mNames.Count));
+  Assert.AreEqual('TProj', mNames.Units[mNames.Entries[0].UnitPos].Symbols[mNames.Entries[0].SymbolPos].Name);
+  Assert.AreEqual('TBib', mNames.Units[mNames.Entries[1].UnitPos].Symbols[mNames.Entries[1].SymbolPos].Name);
 end;
 
 procedure TImportNameIndexTests.MaskRejectsNamesWithoutQueryCharacters;
@@ -68,16 +68,16 @@ end;
 
 procedure TImportNameIndexTests.CurrentRebuildsAfterIndexChange;
 var
-  Index: ISymbolIndex;
+  mIndex: ISymbolIndex;
 begin
-  Index := TSymbolIndex.Create;
-  Index.AddUnit(MakeUnit('A', False, [Symbol('TA', '', True)]));
-  Assert.AreEqual(1, TImportNames.Current(Index).Count);
-  Index.AddUnit(MakeUnit('B', False, [Symbol('TB', '', True)]));
-  Assert.AreEqual(2, TImportNames.Current(Index).Count);
+  mIndex := TSymbolIndex.Create;
+  mIndex.AddUnit(MakeUnit('A', False, [Symbol('TA', '', True)]));
+  Assert.AreEqual(1, TImportNames.Current(mIndex).Count);
+  mIndex.AddUnit(MakeUnit('B', False, [Symbol('TB', '', True)]));
+  Assert.AreEqual(2, TImportNames.Current(mIndex).Count);
   // Ein neuer Index an möglicherweise derselben Adresse wird nicht mit dem alten verwechselt.
-  Index := TSymbolIndex.Create;
-  Assert.AreEqual(0, TImportNames.Current(Index).Count);
+  mIndex := TSymbolIndex.Create;
+  Assert.AreEqual(0, TImportNames.Current(mIndex).Count);
 end;
 
 initialization

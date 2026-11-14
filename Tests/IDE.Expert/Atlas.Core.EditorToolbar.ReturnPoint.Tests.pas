@@ -45,8 +45,8 @@ uses
   Atlas.Core.EditorToolbar.ReturnPoint;
 
 const
-  FileA = 'C:\Projekt\uKundeForm.pas';
-  FileB = 'C:\Projekt\uKundeDaten.pas';
+  cFileA = 'C:\Projekt\uKundeForm.pas';
+  cFileB = 'C:\Projekt\uKundeDaten.pas';
 
 function Points(ATests: TAtlasReturnPointsTests): TAtlasReturnPoints;
 begin
@@ -65,89 +65,89 @@ end;
 
 procedure TAtlasReturnPointsTests.FirstOriginStays;
 var
-  Point: TAtlasReturnPoint;
+  mPoint: TAtlasReturnPoint;
 begin
-  Assert.IsFalse(Points(Self).Find(FileA, Point));
+  Assert.IsFalse(Points(Self).Find(cFileA, mPoint));
   // Abschnittssprung von Zeile 213 (Editor 214) zum interface, dann zum implementation-Teil.
-  Points(Self).Jumped(FileA, 213, 2, 'TfrmKunde.btnSpeichernClick');
-  Points(Self).Jumped(FileA, 2, 40, '');
-  Assert.IsTrue(Points(Self).Find(FileA, Point));
-  Assert.AreEqual(213, Point.Line, 'erster Ausgangspunkt');
-  Assert.AreEqual('TfrmKunde.btnSpeichernClick', Point.Context);
-  Assert.AreEqual(FileA, Point.FileName);
+  Points(Self).Jumped(cFileA, 213, 2, 'TfrmKunde.btnSpeichernClick');
+  Points(Self).Jumped(cFileA, 2, 40, '');
+  Assert.IsTrue(Points(Self).Find(cFileA, mPoint));
+  Assert.AreEqual(213, mPoint.Line, 'erster Ausgangspunkt');
+  Assert.AreEqual('TfrmKunde.btnSpeichernClick', mPoint.Context);
+  Assert.AreEqual(cFileA, mPoint.FileName);
   // Sprung auf dieselbe Zeile: nichts zu merken.
-  Points(Self).Jumped(FileB, 5, 5, '');
-  Assert.IsFalse(Points(Self).Find(FileB, Point));
+  Points(Self).Jumped(cFileB, 5, 5, '');
+  Assert.IsFalse(Points(Self).Find(cFileB, mPoint));
   Points(Self).Jumped('', 1, 2, '');
   Assert.AreEqual(1, Integer(Points(Self).Count));
 end;
 
 procedure TAtlasReturnPointsTests.LinesAboveMoveThePoint;
 var
-  Point: TAtlasReturnPoint;
+  mPoint: TAtlasReturnPoint;
 begin
-  Points(Self).Jumped(FileA, 213, 2, '');
+  Points(Self).Jumped(cFileA, 213, 2, '');
   // Zwei Zeilen im interface eingefügt: Die Zeilennummer wandert mit.
-  Points(Self).LinesChanged(FileA, 4, 2);
-  Points(Self).Find(FileA, Point);
-  Assert.AreEqual(215, Point.Line);
+  Points(Self).LinesChanged(cFileA, 4, 2);
+  Points(Self).Find(cFileA, mPoint);
+  Assert.AreEqual(215, mPoint.Line);
   // Darunter eingefügt: bleibt.
-  Points(Self).LinesChanged(FileA, 300, 5);
-  Points(Self).Find(FileA, Point);
-  Assert.AreEqual(215, Point.Line);
+  Points(Self).LinesChanged(cFileA, 300, 5);
+  Points(Self).Find(cFileA, mPoint);
+  Assert.AreEqual(215, mPoint.Line);
   // Andere Datei: bleibt.
-  Points(Self).LinesChanged(FileB, 0, 10);
-  Points(Self).Find(FileA, Point);
-  Assert.AreEqual(215, Point.Line);
+  Points(Self).LinesChanged(cFileB, 0, 10);
+  Points(Self).Find(cFileA, mPoint);
+  Assert.AreEqual(215, mPoint.Line);
   // Darüber gelöscht.
-  Points(Self).LinesChanged(FileA, 10, -5);
-  Points(Self).Find(FileA, Point);
-  Assert.AreEqual(210, Point.Line);
+  Points(Self).LinesChanged(cFileA, 10, -5);
+  Points(Self).Find(cFileA, mPoint);
+  Assert.AreEqual(210, mPoint.Line);
   // Die Zeile selbst gelöscht: an die Stelle der Löschung.
-  Points(Self).LinesChanged(FileA, 205, -10);
-  Points(Self).Find(FileA, Point);
-  Assert.AreEqual(205, Point.Line);
+  Points(Self).LinesChanged(cFileA, 205, -10);
+  Points(Self).Find(cFileA, mPoint);
+  Assert.AreEqual(205, mPoint.Line);
 end;
 
 procedure TAtlasReturnPointsTests.ReturningToTheLineFinishes;
 var
-  Point: TAtlasReturnPoint;
+  mPoint: TAtlasReturnPoint;
 begin
-  Points(Self).Jumped(FileA, 213, 2, '');
-  Assert.IsFalse(Points(Self).Caret(FileA, 2), 'am Ziel');
-  Assert.IsFalse(Points(Self).Caret(FileA, 3), 'Tippen am Ziel');
-  Assert.IsFalse(Points(Self).Caret(FileB, 213), 'andere Datei');
-  Assert.IsTrue(Points(Self).Caret(FileA, 213), 'zurück (Klick oder Alt+←)');
-  Assert.IsFalse(Points(Self).Find(FileA, Point), 'Knopf verschwindet');
-  Assert.IsFalse(Points(Self).Caret(FileA, 213), 'nichts mehr zu erledigen');
+  Points(Self).Jumped(cFileA, 213, 2, '');
+  Assert.IsFalse(Points(Self).Caret(cFileA, 2), 'am Ziel');
+  Assert.IsFalse(Points(Self).Caret(cFileA, 3), 'Tippen am Ziel');
+  Assert.IsFalse(Points(Self).Caret(cFileB, 213), 'andere Datei');
+  Assert.IsTrue(Points(Self).Caret(cFileA, 213), 'zurück (Klick oder Alt+←)');
+  Assert.IsFalse(Points(Self).Find(cFileA, mPoint), 'Knopf verschwindet');
+  Assert.IsFalse(Points(Self).Caret(cFileA, 213), 'nichts mehr zu erledigen');
   // Nach dem Rücksprung beginnt ein neuer Abschnittssprung wieder vorn.
-  Points(Self).Jumped(FileA, 100, 2, '');
-  Points(Self).Find(FileA, Point);
-  Assert.AreEqual(100, Point.Line);
+  Points(Self).Jumped(cFileA, 100, 2, '');
+  Points(Self).Find(cFileA, mPoint);
+  Assert.AreEqual(100, mPoint.Line);
 end;
 
 procedure TAtlasReturnPointsTests.PerFileAndClosedFiles;
 var
-  Point: TAtlasReturnPoint;
+  mPoint: TAtlasReturnPoint;
 begin
-  Points(Self).Jumped(FileA, 213, 2, '');
-  Points(Self).Jumped(FileB, 50, 3, '');
+  Points(Self).Jumped(cFileA, 213, 2, '');
+  Points(Self).Jumped(cFileB, 50, 3, '');
   Assert.AreEqual(2, Integer(Points(Self).Count));
-  Assert.IsTrue(Points(Self).Find(UpperCase(FileB), Point), 'Dateiname ohne Groß-/Kleinschreibung');
-  Assert.AreEqual(50, Point.Line);
-  Points(Self).KeepOnly([FileA]);
-  Assert.IsFalse(Points(Self).Find(FileB, Point), 'Datei geschlossen');
-  Assert.IsTrue(Points(Self).Find(FileA, Point));
-  Points(Self).Forget(FileA);
+  Assert.IsTrue(Points(Self).Find(UpperCase(cFileB), mPoint), 'Dateiname ohne Groß-/Kleinschreibung');
+  Assert.AreEqual(50, mPoint.Line);
+  Points(Self).KeepOnly([cFileA]);
+  Assert.IsFalse(Points(Self).Find(cFileB, mPoint), 'Datei geschlossen');
+  Assert.IsTrue(Points(Self).Find(cFileA, mPoint));
+  Points(Self).Forget(cFileA);
   Assert.AreEqual(0, Integer(Points(Self).Count));
-  Points(Self).Jumped(FileA, 9, 2, '');
+  Points(Self).Jumped(cFileA, 9, 2, '');
   Points(Self).Clear;
   Assert.AreEqual(0, Integer(Points(Self).Count));
 end;
 
 procedure TAtlasReturnPointsTests.ContextIsTheEnclosingMethod;
 const
-  Code =
+  cCode =
     'unit U;'#10 +                                            // 0
     'interface'#10 +                                          // 1
     'type'#10 +                                               // 2
@@ -167,25 +167,25 @@ const
     'end;'#10 +                                               // 16
     'end.';
 var
-  Tree: TSyntaxTree;
-  Symbols: TJSONArray;
-  Nodes: TAtlasOutlineNodes;
+  mTree: TSyntaxTree;
+  mSymbols: TJSONArray;
+  mNodes: TAtlasOutlineNodes;
 begin
-  Tree := TPascalParser.Parse(Code);
+  mTree := TPascalParser.Parse(cCode);
   try
-    Symbols := TLspDocumentSymbols.BuildSymbols(Tree, Code);
+    mSymbols := TLspDocumentSymbols.BuildSymbols(mTree, cCode);
   finally
-    Tree.Free;
+    mTree.Free;
   end;
   try
-    Nodes := TAtlasOutline.FromJson(Symbols);
+    mNodes := TAtlasOutline.FromJson(mSymbols);
   finally
-    Symbols.Free;
+    mSymbols.Free;
   end;
-  Assert.AreEqual('TfrmKunde.btnSpeichernClick', TAtlasReturnPoints.ContextAt(Nodes, 12));
-  Assert.AreEqual('TfrmKunde.btnSpeichernClick', TAtlasReturnPoints.ContextAt(Nodes, 4), 'Deklaration');
-  Assert.AreEqual('Hilfe', TAtlasReturnPoints.ContextAt(Nodes, 15));
-  Assert.AreEqual('', TAtlasReturnPoints.ContextAt(Nodes, 1));
+  Assert.AreEqual('TfrmKunde.btnSpeichernClick', TAtlasReturnPoints.ContextAt(mNodes, 12));
+  Assert.AreEqual('TfrmKunde.btnSpeichernClick', TAtlasReturnPoints.ContextAt(mNodes, 4), 'Deklaration');
+  Assert.AreEqual('Hilfe', TAtlasReturnPoints.ContextAt(mNodes, 15));
+  Assert.AreEqual('', TAtlasReturnPoints.ContextAt(mNodes, 1));
   Assert.AreEqual('', TAtlasReturnPoints.ContextAt(nil, 12));
 end;
 

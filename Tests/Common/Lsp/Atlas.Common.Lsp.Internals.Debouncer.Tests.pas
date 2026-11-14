@@ -102,164 +102,164 @@ end;
 
 procedure TDebouncerTests.RunsImmediatelyWithoutDelay;
 var
-  Debouncer: TDebouncer;
-  Count: Integer;
+  mDebouncer: TDebouncer;
+  mCount: Integer;
 begin
-  Count := 0;
-  Debouncer := TDebouncer.Create(0);
+  mCount := 0;
+  mDebouncer := TDebouncer.Create(0);
   try
-    Debouncer.Schedule('a',
+    mDebouncer.Schedule('a',
       procedure
       begin
-        Inc(Count);
+        Inc(mCount);
       end);
-    Assert.AreEqual(1, Count);
+    Assert.AreEqual(1, mCount);
   finally
-    Debouncer.Free;
+    mDebouncer.Free;
   end;
 end;
 
 procedure TDebouncerTests.RunsOnlyLastActionPerKey;
 var
-  Debouncer: TDebouncer;
-  Recorder: TRecorder;
-  Index: Integer;
+  mDebouncer: TDebouncer;
+  mRecorder: TRecorder;
+  mIndex: Integer;
 begin
-  Recorder := TRecorder.Create(1);
-  Debouncer := TDebouncer.Create(50);
+  mRecorder := TRecorder.Create(1);
+  mDebouncer := TDebouncer.Create(50);
   try
-    for Index := 1 to 5 do
+    for mIndex := 1 to 5 do
     begin
-      Debouncer.Schedule('a', Recorder.Action(IntToStr(Index)));
+      mDebouncer.Schedule('a', mRecorder.Action(IntToStr(mIndex)));
     end;
-    Assert.IsTrue(Recorder.WaitFor(2000));
+    Assert.IsTrue(mRecorder.WaitFor(2000));
     Sleep(150);
-    Assert.AreEqual('5', Recorder.Text);
+    Assert.AreEqual('5', mRecorder.Text);
   finally
-    Debouncer.Free;
-    Recorder.Free;
+    mDebouncer.Free;
+    mRecorder.Free;
   end;
 end;
 
 procedure TDebouncerTests.KeepsKeysSeparate;
 var
-  Debouncer: TDebouncer;
-  Recorder: TRecorder;
+  mDebouncer: TDebouncer;
+  mRecorder: TRecorder;
 begin
-  Recorder := TRecorder.Create(2);
-  Debouncer := TDebouncer.Create(20);
+  mRecorder := TRecorder.Create(2);
+  mDebouncer := TDebouncer.Create(20);
   try
-    Debouncer.Schedule('a', Recorder.Action('a'));
-    Debouncer.Schedule('b', Recorder.Action('b'));
-    Assert.IsTrue(Recorder.WaitFor(2000));
-    Assert.AreEqual('a,b', Recorder.Text);
+    mDebouncer.Schedule('a', mRecorder.Action('a'));
+    mDebouncer.Schedule('b', mRecorder.Action('b'));
+    Assert.IsTrue(mRecorder.WaitFor(2000));
+    Assert.AreEqual('a,b', mRecorder.Text);
   finally
-    Debouncer.Free;
-    Recorder.Free;
+    mDebouncer.Free;
+    mRecorder.Free;
   end;
 end;
 
 procedure TDebouncerTests.WaitIdleWaitsForPendingAndRunningActions;
 var
-  Debouncer: TDebouncer;
-  Finished: Integer;
+  mDebouncer: TDebouncer;
+  mFinished: Integer;
 begin
   // #177: Messungen im Dauerlauf erst, wenn nichts mehr geplant ist und nichts läuft.
-  Finished := 0;
-  Debouncer := TDebouncer.Create(20);
+  mFinished := 0;
+  mDebouncer := TDebouncer.Create(20);
   try
-    Assert.IsTrue(Debouncer.WaitIdle(0), 'leer ist sofort ruhig');
-    Debouncer.Schedule('a',
+    Assert.IsTrue(mDebouncer.WaitIdle(0), 'leer ist sofort ruhig');
+    mDebouncer.Schedule('a',
       procedure
       begin
         TThread.Sleep(50);
-        TInterlocked.Increment(Finished);
+        TInterlocked.Increment(mFinished);
       end);
-    Assert.IsFalse(Debouncer.WaitIdle(5), 'geplant ist nicht ruhig');
-    Assert.IsTrue(Debouncer.WaitIdle(2000));
-    Assert.AreEqual(1, TInterlocked.CompareExchange(Finished, 0, 0), 'erst nach der laufenden Aktion ruhig');
+    Assert.IsFalse(mDebouncer.WaitIdle(5), 'geplant ist nicht ruhig');
+    Assert.IsTrue(mDebouncer.WaitIdle(2000));
+    Assert.AreEqual(1, TInterlocked.CompareExchange(mFinished, 0, 0), 'erst nach der laufenden Aktion ruhig');
   finally
-    Debouncer.Free;
+    mDebouncer.Free;
   end;
 end;
 
 procedure TDebouncerTests.CancelDropsPendingAction;
 var
-  Debouncer: TDebouncer;
-  Done: TEvent;
-  Cancelled: Boolean;
+  mDebouncer: TDebouncer;
+  mDone: TEvent;
+  mCancelled: Boolean;
 begin
-  Cancelled := False;
-  Done := TEvent.Create(nil, True, False, '');
-  Debouncer := TDebouncer.Create(50);
+  mCancelled := False;
+  mDone := TEvent.Create(nil, True, False, '');
+  mDebouncer := TDebouncer.Create(50);
   try
-    Debouncer.Schedule('a',
+    mDebouncer.Schedule('a',
       procedure
       begin
-        Cancelled := True;
+        mCancelled := True;
       end);
-    Debouncer.Cancel('a');
-    Debouncer.Schedule('b',
+    mDebouncer.Cancel('a');
+    mDebouncer.Schedule('b',
       procedure
       begin
-        Done.SetEvent;
+        mDone.SetEvent;
       end);
-    Assert.AreEqual<TWaitResult>(TWaitResult.wrSignaled, Done.WaitFor(2000));
-    Assert.IsFalse(Cancelled);
+    Assert.AreEqual<TWaitResult>(TWaitResult.wrSignaled, mDone.WaitFor(2000));
+    Assert.IsFalse(mCancelled);
   finally
-    Debouncer.Free;
-    Done.Free;
+    mDebouncer.Free;
+    mDone.Free;
   end;
 end;
 
 procedure TDebouncerTests.ReportsErrorsAndKeepsRunning;
 var
-  Debouncer: TDebouncer;
-  Done: TEvent;
-  Error: string;
+  mDebouncer: TDebouncer;
+  mDone: TEvent;
+  mError: string;
 begin
-  Error := '';
-  Done := TEvent.Create(nil, True, False, '');
-  Debouncer := TDebouncer.Create(10);
+  mError := '';
+  mDone := TEvent.Create(nil, True, False, '');
+  mDebouncer := TDebouncer.Create(10);
   try
-    Debouncer.OnError :=
-      procedure(E: Exception)
+    mDebouncer.OnError :=
+      procedure(AE: Exception)
       begin
-        Error := E.Message;
+        mError := AE.Message;
       end;
-    Debouncer.Schedule('a',
+    mDebouncer.Schedule('a',
       procedure
       begin
         raise Exception.Create('kaputt');
       end);
     Sleep(100);
-    Debouncer.Schedule('a',
+    mDebouncer.Schedule('a',
       procedure
       begin
-        Done.SetEvent;
+        mDone.SetEvent;
       end);
-    Assert.AreEqual<TWaitResult>(TWaitResult.wrSignaled, Done.WaitFor(2000));
-    Assert.AreEqual('kaputt', Error);
+    Assert.AreEqual<TWaitResult>(TWaitResult.wrSignaled, mDone.WaitFor(2000));
+    Assert.AreEqual('kaputt', mError);
   finally
-    Debouncer.Free;
-    Done.Free;
+    mDebouncer.Free;
+    mDone.Free;
   end;
 end;
 
 procedure TDebouncerTests.DestroyDropsPendingActions;
 var
-  Debouncer: TDebouncer;
-  Ran: Boolean;
+  mDebouncer: TDebouncer;
+  mRan: Boolean;
 begin
-  Ran := False;
-  Debouncer := TDebouncer.Create(1000);
-  Debouncer.Schedule('a',
+  mRan := False;
+  mDebouncer := TDebouncer.Create(1000);
+  mDebouncer.Schedule('a',
     procedure
     begin
-      Ran := True;
+      mRan := True;
     end);
-  Debouncer.Free;
-  Assert.IsFalse(Ran);
+  mDebouncer.Free;
+  Assert.IsFalse(mRan);
 end;
 
 initialization

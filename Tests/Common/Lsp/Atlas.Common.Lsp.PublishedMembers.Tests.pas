@@ -61,10 +61,10 @@ uses
   Atlas.Common.Lsp.PublishedMembers;
 
 const
-  BasisFile = 'C:\P\Basis.pas';
-  KnopfFile = 'C:\P\Knopf.pas';
+  cBasisFile = 'C:\P\Basis.pas';
+  cKnopfFile = 'C:\P\Knopf.pas';
 
-  UnitBasis =
+  cUnitBasis =
     'unit Basis;'#10 +
     'interface'#10 +
     'type'#10 +
@@ -104,7 +104,7 @@ const
     'implementation'#10 +
     'end.';
 
-  UnitKnopf =
+  cUnitKnopf =
     'unit Knopf;'#10 +
     'interface'#10 +
     'uses Basis;'#10 +
@@ -122,13 +122,13 @@ const
 function ReadSource(const AFileName: string; out AText: string): Boolean;
 begin
   Result := True;
-  if SameText(AFileName, BasisFile) then
+  if SameText(AFileName, cBasisFile) then
   begin
-    AText := UnitBasis;
+    AText := cUnitBasis;
   end
-  else if SameText(AFileName, KnopfFile) then
+  else if SameText(AFileName, cKnopfFile) then
   begin
-    AText := UnitKnopf;
+    AText := cUnitKnopf;
   end
   else
   begin
@@ -153,8 +153,8 @@ end;
 procedure TPublishedMembersTests.Setup;
 begin
   FIndex := TSymbolIndex.Create;
-  FIndex.AddUnit(TIndexExtractor.ExtractText(UnitBasis, BasisFile, nil));
-  FIndex.AddUnit(TIndexExtractor.ExtractText(UnitKnopf, KnopfFile, nil));
+  FIndex.AddUnit(TIndexExtractor.ExtractText(cUnitBasis, cBasisFile, nil));
+  FIndex.AddUnit(TIndexExtractor.ExtractText(cUnitKnopf, cKnopfFile, nil));
 end;
 
 procedure TPublishedMembersTests.TearDown;
@@ -164,64 +164,64 @@ end;
 
 procedure TPublishedMembersTests.CollectsOwnAndInheritedProperties;
 var
-  Members: TArray<TPublishedMember>;
+  mMembers: TArray<TPublishedMember>;
 begin
-  Members := TPublishedMembers.Collect(FIndex, 'TKnopf', ReadSource);
-  Assert.AreEqual(5, Integer(Length(Members)));
-  Assert.AreEqual('Caption', Members[0].Name);
+  mMembers := TPublishedMembers.Collect(FIndex, 'TKnopf', ReadSource);
+  Assert.AreEqual(5, Integer(Length(mMembers)));
+  Assert.AreEqual('Caption', mMembers[0].Name);
   // Published wird Caption in TKnopf, deklariert (mit Typ) in TBasis.
-  Assert.AreEqual('TBasis', Members[0].DeclaringClass);
-  Assert.AreEqual('TKnopf', Members[0].PublishedIn);
-  Assert.AreEqual('TBasis', Members[Find(Members, 'Tag')].DeclaringClass);
+  Assert.AreEqual('TBasis', mMembers[0].DeclaringClass);
+  Assert.AreEqual('TKnopf', mMembers[0].PublishedIn);
+  Assert.AreEqual('TBasis', mMembers[Find(mMembers, 'Tag')].DeclaringClass);
 end;
 
 procedure TPublishedMembersTests.ReadsDefaultValues;
 var
-  Members: TArray<TPublishedMember>;
+  mMembers: TArray<TPublishedMember>;
 begin
-  Members := TPublishedMembers.Collect(FIndex, 'TKnopf', ReadSource);
-  Assert.AreEqual('True', Members[Find(Members, 'Enabled')].DefaultValue);
-  Assert.AreEqual('0', Members[Find(Members, 'Tag')].DefaultValue);
-  Assert.AreEqual('', Members[Find(Members, 'OnKlick')].DefaultValue);
+  mMembers := TPublishedMembers.Collect(FIndex, 'TKnopf', ReadSource);
+  Assert.AreEqual('True', mMembers[Find(mMembers, 'Enabled')].DefaultValue);
+  Assert.AreEqual('0', mMembers[Find(mMembers, 'Tag')].DefaultValue);
+  Assert.AreEqual('', mMembers[Find(mMembers, 'OnKlick')].DefaultValue);
 end;
 
 procedure TPublishedMembersTests.SkipsNonPublishedProperties;
 var
-  Members: TArray<TPublishedMember>;
+  mMembers: TArray<TPublishedMember>;
 begin
-  Members := TPublishedMembers.Collect(FIndex, 'TBasis', ReadSource);
-  Assert.AreEqual(-1, Find(Members, 'Caption'));
-  Assert.AreEqual(-1, Find(Members, 'Items'));
-  Assert.AreEqual(2, Integer(Length(Members)));
+  mMembers := TPublishedMembers.Collect(FIndex, 'TBasis', ReadSource);
+  Assert.AreEqual(-1, Find(mMembers, 'Caption'));
+  Assert.AreEqual(-1, Find(mMembers, 'Items'));
+  Assert.AreEqual(2, Integer(Length(mMembers)));
 end;
 
 procedure TPublishedMembersTests.RedeclarationTakesTypeFromAncestor;
 var
-  Members: TArray<TPublishedMember>;
+  mMembers: TArray<TPublishedMember>;
 begin
-  Members := TPublishedMembers.Collect(FIndex, 'TKnopf', ReadSource);
-  Assert.AreEqual('string', Members[Find(Members, 'Caption')].TypeName);
+  mMembers := TPublishedMembers.Collect(FIndex, 'TKnopf', ReadSource);
+  Assert.AreEqual('string', mMembers[Find(mMembers, 'Caption')].TypeName);
 end;
 
 procedure TPublishedMembersTests.SeparatesEvents;
 var
-  Members: TArray<TPublishedMember>;
+  mMembers: TArray<TPublishedMember>;
 begin
-  Members := TPublishedMembers.Collect(FIndex, 'TKnopf', ReadSource);
-  Assert.IsTrue(Members[Find(Members, 'OnKlick')].IsEvent);
-  Assert.IsTrue(Members[Find(Members, 'OnChange')].IsEvent);
-  Assert.IsFalse(Members[Find(Members, 'Enabled')].IsEvent);
+  mMembers := TPublishedMembers.Collect(FIndex, 'TKnopf', ReadSource);
+  Assert.IsTrue(mMembers[Find(mMembers, 'OnKlick')].IsEvent);
+  Assert.IsTrue(mMembers[Find(mMembers, 'OnChange')].IsEvent);
+  Assert.IsFalse(mMembers[Find(mMembers, 'Enabled')].IsEvent);
 end;
 
 procedure TPublishedMembersTests.WritesGroupedMarkdown;
 var
-  Text: string;
+  mText: string;
 begin
-  Text := TPublishedMembers.ToMarkdown(TPublishedMembers.Collect(FIndex, 'TKnopf', ReadSource));
-  Assert.IsTrue(Pos('**Published-Properties** (3)', Text) > 0, Text);
-  Assert.IsTrue(Pos('**Ereignisse** (2)', Text) > 0, Text);
-  Assert.IsTrue(Pos('*TBasis*', Text) > 0, Text);
-  Assert.IsTrue(Pos('- `Enabled`: `Boolean` = `True`', Text) > 0, Text);
+  mText := TPublishedMembers.ToMarkdown(TPublishedMembers.Collect(FIndex, 'TKnopf', ReadSource));
+  Assert.IsTrue(Pos('**Published-Properties** (3)', mText) > 0, mText);
+  Assert.IsTrue(Pos('**Ereignisse** (2)', mText) > 0, mText);
+  Assert.IsTrue(Pos('*TBasis*', mText) > 0, mText);
+  Assert.IsTrue(Pos('- `Enabled`: `Boolean` = `True`', mText) > 0, mText);
 end;
 
 procedure TPublishedMembersTests.UnknownClassGivesNothing;
@@ -232,145 +232,145 @@ end;
 
 procedure TPublishedMembersTests.EventTailFallsBackToNotifyEvent;
 var
-  Tail: string;
+  mTail: string;
 begin
   // TNotifyEvent steht nicht im Index: die bekannte Signatur; geerbt von TBasis (#113).
-  Assert.IsTrue(TPublishedMembers.EventTail(FIndex, ReadSource, 'TKnopf', 'OnChange', Tail));
-  Assert.AreEqual(TPublishedMembers.cNotifyTail, Tail);
+  Assert.IsTrue(TPublishedMembers.EventTail(FIndex, ReadSource, 'TKnopf', 'OnChange', mTail));
+  Assert.AreEqual(TPublishedMembers.cNotifyTail, mTail);
   // Ereignistyp im Index: seine Parameter.
-  Assert.IsTrue(TPublishedMembers.EventTail(FIndex, ReadSource, 'TKnopf', 'OnKlick', Tail));
-  Assert.AreEqual('(Sender: TObject; X: Integer)', Tail);
+  Assert.IsTrue(TPublishedMembers.EventTail(FIndex, ReadSource, 'TKnopf', 'OnKlick', mTail));
+  Assert.AreEqual('(Sender: TObject; X: Integer)', mTail);
   // Unbekannter Ereignistyp und unbekanntes Ereignis: keine Signatur.
-  Assert.IsFalse(TPublishedMembers.EventTail(FIndex, ReadSource, 'TVarianten', 'OnFremd', Tail));
-  Assert.IsFalse(TPublishedMembers.EventTail(FIndex, ReadSource, 'TKnopf', 'OnFehlt', Tail));
+  Assert.IsFalse(TPublishedMembers.EventTail(FIndex, ReadSource, 'TVarianten', 'OnFremd', mTail));
+  Assert.IsFalse(TPublishedMembers.EventTail(FIndex, ReadSource, 'TKnopf', 'OnFehlt', mTail));
 end;
 
 procedure TPublishedMembersTests.EventTypeWithoutEventInName;
 var
-  Members: TArray<TPublishedMember>;
+  mMembers: TArray<TPublishedMember>;
 begin
-  Members := TPublishedMembers.Collect(FIndex, 'TVarianten', ReadSource);
-  Assert.IsTrue(Members[Find(Members, 'Rueckruf')].IsEvent);
+  mMembers := TPublishedMembers.Collect(FIndex, 'TVarianten', ReadSource);
+  Assert.IsTrue(mMembers[Find(mMembers, 'Rueckruf')].IsEvent);
 end;
 
 procedure TPublishedMembersTests.OnPrefixWithoutMethodPointerIsNoEvent;
 var
-  Members: TArray<TPublishedMember>;
+  mMembers: TArray<TPublishedMember>;
 begin
-  Members := TPublishedMembers.Collect(FIndex, 'TVarianten', ReadSource);
-  Assert.IsFalse(Members[Find(Members, 'OnlineStatus')].IsEvent);
+  mMembers := TPublishedMembers.Collect(FIndex, 'TVarianten', ReadSource);
+  Assert.IsFalse(mMembers[Find(mMembers, 'OnlineStatus')].IsEvent);
   // Unbekannter Typ: der Name allein macht kein Ereignis.
-  Assert.IsFalse(Members[Find(Members, 'OnFremd')].IsEvent);
+  Assert.IsFalse(mMembers[Find(mMembers, 'OnFremd')].IsEvent);
 end;
 
 procedure TPublishedMembersTests.MethodReferenceAndAliasAreEvents;
 var
-  Members: TArray<TPublishedMember>;
+  mMembers: TArray<TPublishedMember>;
 begin
-  Members := TPublishedMembers.Collect(FIndex, 'TVarianten', ReadSource);
-  Assert.IsTrue(Members[Find(Members, 'Abfrage')].IsEvent);
-  Assert.IsTrue(Members[Find(Members, 'Kurz')].IsEvent);
+  mMembers := TPublishedMembers.Collect(FIndex, 'TVarianten', ReadSource);
+  Assert.IsTrue(mMembers[Find(mMembers, 'Abfrage')].IsEvent);
+  Assert.IsTrue(mMembers[Find(mMembers, 'Kurz')].IsEvent);
   Assert.IsTrue(TPublishedMembers.IsEventType(FIndex, ReadSource, 'TKurzRueckruf'));
   Assert.IsFalse(TPublishedMembers.IsEventType(FIndex, ReadSource, 'TAusrichtung'));
 end;
 
 procedure TPublishedMembersTests.DistinguishesDefaultVariants;
 var
-  Members: TArray<TPublishedMember>;
-  Text: string;
+  mMembers: TArray<TPublishedMember>;
+  mText: string;
 begin
-  Members := TPublishedMembers.Collect(FIndex, 'TVarianten', ReadSource);
-  Assert.AreEqual<TPublishedDefaultKind>(TPublishedDefaultKind.Explicit, Members[Find(Members, 'Breite')].DefaultKind);
-  Assert.AreEqual('64', Members[Find(Members, 'Breite')].DefaultValue);
-  Assert.AreEqual<TPublishedDefaultKind>(TPublishedDefaultKind.Implicit, Members[Find(Members, 'Aktiv')].DefaultKind);
-  Assert.AreEqual('False', Members[Find(Members, 'Aktiv')].DefaultValue);
-  Assert.AreEqual<TPublishedDefaultKind>(TPublishedDefaultKind.NoDefault, Members[Find(Members, 'Zahl')].DefaultKind);
-  Assert.AreEqual('False', Members[Find(Members, 'Titel')].Stored);
-  Assert.AreEqual<TPublishedDefaultKind>(TPublishedDefaultKind.None, Members[Find(Members, 'Titel')].DefaultKind);
-  Assert.AreEqual('IsFarbeStored', Members[Find(Members, 'Farbe')].Stored);
-  Assert.AreEqual('5', Members[Find(Members, 'Farbe')].DefaultValue);
-  Assert.AreEqual('arLinks', Members[Find(Members, 'Ausrichtung')].DefaultValue);
+  mMembers := TPublishedMembers.Collect(FIndex, 'TVarianten', ReadSource);
+  Assert.AreEqual<TPublishedDefaultKind>(TPublishedDefaultKind.Explicit, mMembers[Find(mMembers, 'Breite')].DefaultKind);
+  Assert.AreEqual('64', mMembers[Find(mMembers, 'Breite')].DefaultValue);
+  Assert.AreEqual<TPublishedDefaultKind>(TPublishedDefaultKind.Implicit, mMembers[Find(mMembers, 'Aktiv')].DefaultKind);
+  Assert.AreEqual('False', mMembers[Find(mMembers, 'Aktiv')].DefaultValue);
+  Assert.AreEqual<TPublishedDefaultKind>(TPublishedDefaultKind.NoDefault, mMembers[Find(mMembers, 'Zahl')].DefaultKind);
+  Assert.AreEqual('False', mMembers[Find(mMembers, 'Titel')].Stored);
+  Assert.AreEqual<TPublishedDefaultKind>(TPublishedDefaultKind.None, mMembers[Find(mMembers, 'Titel')].DefaultKind);
+  Assert.AreEqual('IsFarbeStored', mMembers[Find(mMembers, 'Farbe')].Stored);
+  Assert.AreEqual('5', mMembers[Find(mMembers, 'Farbe')].DefaultValue);
+  Assert.AreEqual('arLinks', mMembers[Find(mMembers, 'Ausrichtung')].DefaultValue);
   // Der Name "Default" ist keine Angabe; implizit 0.
-  Assert.AreEqual<TPublishedDefaultKind>(TPublishedDefaultKind.Implicit, Members[Find(Members, 'Default')].DefaultKind);
-  Assert.AreEqual('0', Members[Find(Members, 'Default')].DefaultValue);
-  Assert.AreEqual('default 5, stored IsFarbeStored', TPublishedMembers.DefaultText(Members[Find(Members, 'Farbe')]));
-  Assert.AreEqual('default False (implizit)', TPublishedMembers.DefaultText(Members[Find(Members, 'Aktiv')]));
-  Assert.AreEqual('nodefault', TPublishedMembers.DefaultText(Members[Find(Members, 'Zahl')]));
-  Text := TPublishedMembers.ToMarkdown(Members);
-  Assert.IsTrue(Pos('- `Breite`: `Integer` = `64`', Text) > 0, Text);
-  Assert.IsTrue(Pos('- `Aktiv`: `Boolean` = `False` (implizit)', Text) > 0, Text);
-  Assert.IsTrue(Pos('- `Zahl`: `Integer` · nodefault', Text) > 0, Text);
-  Assert.IsTrue(Pos('- `Titel`: `string` · stored `False`', Text) > 0, Text);
+  Assert.AreEqual<TPublishedDefaultKind>(TPublishedDefaultKind.Implicit, mMembers[Find(mMembers, 'Default')].DefaultKind);
+  Assert.AreEqual('0', mMembers[Find(mMembers, 'Default')].DefaultValue);
+  Assert.AreEqual('default 5, stored IsFarbeStored', TPublishedMembers.DefaultText(mMembers[Find(mMembers, 'Farbe')]));
+  Assert.AreEqual('default False (implizit)', TPublishedMembers.DefaultText(mMembers[Find(mMembers, 'Aktiv')]));
+  Assert.AreEqual('nodefault', TPublishedMembers.DefaultText(mMembers[Find(mMembers, 'Zahl')]));
+  mText := TPublishedMembers.ToMarkdown(mMembers);
+  Assert.IsTrue(Pos('- `Breite`: `Integer` = `64`', mText) > 0, mText);
+  Assert.IsTrue(Pos('- `Aktiv`: `Boolean` = `False` (implizit)', mText) > 0, mText);
+  Assert.IsTrue(Pos('- `Zahl`: `Integer` · nodefault', mText) > 0, mText);
+  Assert.IsTrue(Pos('- `Titel`: `string` · stored `False`', mText) > 0, mText);
 end;
 
 procedure TPublishedMembersTests.ArrayDefaultIsDefaultProperty;
 var
-  Text: string;
+  mText: string;
 begin
   // Array-Property mit default: Standard-Property, kein Vorgabewert; auch geerbt.
   Assert.AreEqual('Strings[Index: Integer]: string',
     TPublishedMembers.DefaultProperty(FIndex, 'TVariantenKind', ReadSource));
   Assert.AreEqual('', TPublishedMembers.DefaultProperty(FIndex, 'TKnopf', ReadSource));
-  Text := TPublishedMembers.ToMarkdown(TPublishedMembers.Collect(FIndex, 'TVarianten', ReadSource),
+  mText := TPublishedMembers.ToMarkdown(TPublishedMembers.Collect(FIndex, 'TVarianten', ReadSource),
     'Strings[Index: Integer]: string');
-  Assert.AreEqual(1, Pos('**Standard-Property:** `Strings[Index: Integer]: string`', Text), Text);
-  Assert.AreEqual(0, Pos('- `Strings`', Text), Text);
+  Assert.AreEqual(1, Pos('**Standard-Property:** `Strings[Index: Integer]: string`', mText), mText);
+  Assert.AreEqual(0, Pos('- `Strings`', mText), mText);
 end;
 
 procedure TPublishedMembersTests.DeclaringClassIsFirstTypedDeclaration;
 var
-  Text: string;
+  mText: string;
 begin
   // Gruppen nach deklarierender Klasse: Caption steht unter TBasis, nicht unter TKnopf.
-  Text := TPublishedMembers.ToMarkdown(TPublishedMembers.Collect(FIndex, 'TKnopf', ReadSource));
-  Assert.IsTrue(Pos('*TBasis*'#10'- `Caption`', Text) > 0, Text);
+  mText := TPublishedMembers.ToMarkdown(TPublishedMembers.Collect(FIndex, 'TKnopf', ReadSource));
+  Assert.IsTrue(Pos('*TBasis*'#10'- `Caption`', mText) > 0, mText);
 end;
 
 procedure TPublishedMembersTests.WritesJsonForTooltip;
 
   function Member(AJson: TJSONObject; const AName: string): TJSONObject;
   var
-    Value: TJSONValue;
+    mValue: TJSONValue;
   begin
-    for Value in AJson.GetValue<TJSONArray>('members') do
+    for mValue in AJson.GetValue<TJSONArray>('members') do
     begin
-      if TJSONObject(Value).GetValue<string>('name') = AName then
+      if TJSONObject(mValue).GetValue<string>('name') = AName then
       begin
-        Exit(TJSONObject(Value));
+        Exit(TJSONObject(mValue));
       end;
     end;
     Result := nil;
   end;
 
 var
-  Json: TJSONObject;
+  mJson: TJSONObject;
 begin
   // atlas.published (#110): je Mitglied Typ, Vorgabe samt Art, stored, Herkunft und Ereignis.
   Assert.IsNull(TPublishedMembers.ToJson(nil, ''));
-  Json := TPublishedMembers.ToJson(TPublishedMembers.Collect(FIndex, 'TVarianten', ReadSource),
+  mJson := TPublishedMembers.ToJson(TPublishedMembers.Collect(FIndex, 'TVarianten', ReadSource),
     'Strings[Index: Integer]: string');
   try
-    Assert.AreEqual('Strings[Index: Integer]: string', Json.GetValue<string>('defaultProperty'));
-    Assert.AreEqual('Integer', Member(Json, 'Breite').GetValue<string>('type'));
-    Assert.AreEqual('64', Member(Json, 'Breite').GetValue<string>('default'));
-    Assert.AreEqual('explicit', Member(Json, 'Breite').GetValue<string>('defaultKind'));
-    Assert.AreEqual('implicit', Member(Json, 'Aktiv').GetValue<string>('defaultKind'));
-    Assert.AreEqual('nodefault', Member(Json, 'Zahl').GetValue<string>('defaultKind'));
-    Assert.IsNull(Member(Json, 'Zahl').GetValue('default'));
-    Assert.AreEqual('False', Member(Json, 'Titel').GetValue<string>('stored'));
-    Assert.IsNull(Member(Json, 'Titel').GetValue('defaultKind'));
-    Assert.AreEqual('TVarianten', Member(Json, 'Titel').GetValue<string>('declaringClass'));
-    Assert.IsTrue(Member(Json, 'Rueckruf').GetValue('event') is TJSONTrue);
-    Assert.IsNull(Member(Json, 'OnlineStatus').GetValue('event'));
+    Assert.AreEqual('Strings[Index: Integer]: string', mJson.GetValue<string>('defaultProperty'));
+    Assert.AreEqual('Integer', Member(mJson, 'Breite').GetValue<string>('type'));
+    Assert.AreEqual('64', Member(mJson, 'Breite').GetValue<string>('default'));
+    Assert.AreEqual('explicit', Member(mJson, 'Breite').GetValue<string>('defaultKind'));
+    Assert.AreEqual('implicit', Member(mJson, 'Aktiv').GetValue<string>('defaultKind'));
+    Assert.AreEqual('nodefault', Member(mJson, 'Zahl').GetValue<string>('defaultKind'));
+    Assert.IsNull(Member(mJson, 'Zahl').GetValue('default'));
+    Assert.AreEqual('False', Member(mJson, 'Titel').GetValue<string>('stored'));
+    Assert.IsNull(Member(mJson, 'Titel').GetValue('defaultKind'));
+    Assert.AreEqual('TVarianten', Member(mJson, 'Titel').GetValue<string>('declaringClass'));
+    Assert.IsTrue(Member(mJson, 'Rueckruf').GetValue('event') is TJSONTrue);
+    Assert.IsNull(Member(mJson, 'OnlineStatus').GetValue('event'));
   finally
-    Json.Free;
+    mJson.Free;
   end;
   // Standard-Property allein reicht für ein Objekt.
-  Json := TPublishedMembers.ToJson(nil, 'Items[I: Integer]: string');
+  mJson := TPublishedMembers.ToJson(nil, 'Items[I: Integer]: string');
   try
-    Assert.AreEqual(0, Json.GetValue<TJSONArray>('members').Count);
+    Assert.AreEqual(0, mJson.GetValue<TJSONArray>('members').Count);
   finally
-    Json.Free;
+    mJson.Free;
   end;
 end;
 

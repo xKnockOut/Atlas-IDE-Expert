@@ -170,13 +170,13 @@ end;
 
 procedure TCollectingSink.AddItems(const AItems: TAtlasCompletionItems);
 var
-  Item: TAtlasCompletionItem;
+  mItem: TAtlasCompletionItem;
 begin
   FLock.Enter;
   try
-    for Item in AItems do
+    for mItem in AItems do
     begin
-      FNames.Add(Item.Name);
+      FNames.Add(mItem.Name);
     end;
   finally
     FLock.Leave;
@@ -204,16 +204,16 @@ end;
 
 function TCollectingSink.Names: string;
 var
-  List: TArray<string>;
+  mList: TArray<string>;
 begin
   FLock.Enter;
   try
-    List := FNames.ToArray;
+    mList := FNames.ToArray;
   finally
     FLock.Leave;
   end;
-  TArray.Sort<string>(List);
-  Result := string.Join(',', List);
+  TArray.Sort<string>(mList);
+  Result := string.Join(',', mList);
 end;
 
 function TCollectingSink.Completed: Integer;
@@ -237,11 +237,11 @@ end;
 
 procedure TAtlasCompletionProviderTests.ReadsTextEditOfPostfixItems;
 var
-  Response: TJSONValue;
-  Items: TAtlasCompletionItems;
+  mResponse: TJSONValue;
+  mItems: TAtlasCompletionItems;
 begin
   // Liste.for (#188): ersetzt ab dem Anfang von "Liste" bis zum Cursor.
-  Response := TJSONObject.ParseJSONValue(
+  mResponse := TJSONObject.ParseJSONValue(
     '{"isIncomplete":false,"items":[{"label":"for","kind":15,"filterText":"Liste.for",' +
     '"textEdit":{"range":{"start":{"line":7,"character":2},"end":{"line":7,"character":10}},' +
     '"newText":"for var Item in Liste do\n    "},"data":{"action":"postfix"}},{"label":"Count","kind":10},' +
@@ -249,161 +249,161 @@ begin
     '"textEdit":{"range":{"start":{"line":7,"character":2},"end":{"line":7,"character":13}},' +
     '"newText":"if Assigned(Wert) then\n    $0"},"data":{"action":"postfix"}}]}');
   try
-    Items := TAtlasServerCompletionProvider.ItemsFromLsp(Response);
+    mItems := TAtlasServerCompletionProvider.ItemsFromLsp(mResponse);
   finally
-    Response.Free;
+    mResponse.Free;
   end;
   // Gefiltert wird über das Kürzel hinter dem Punkt.
-  Assert.IsTrue(Items[0].Postfix);
-  Assert.AreEqual('for', Items[0].FilterText);
-  Assert.IsFalse(Items[1].Postfix);
-  Assert.AreEqual('notnil', Items[2].FilterText);
-  Assert.AreEqual('if Assigned(Wert) then'#10'    $0', Items[2].Snippet);
+  Assert.IsTrue(mItems[0].Postfix);
+  Assert.AreEqual('for', mItems[0].FilterText);
+  Assert.IsFalse(mItems[1].Postfix);
+  Assert.AreEqual('notnil', mItems[2].FilterText);
+  Assert.AreEqual('if Assigned(Wert) then'#10'    $0', mItems[2].Snippet);
   // completion.snippets aus lässt Postfix-Vorlagen stehen; sie haben einen eigenen Schalter.
-  Assert.AreEqual(3, Integer(Length(TAtlasServerCompletionProvider.WithoutSnippets(Items))));
-  Assert.AreEqual(Ord(TAtlasItemKind.Snippet), Ord(Items[0].Kind));
-  Assert.IsTrue(Items[0].HasTextEdit);
-  Assert.AreEqual(7, Items[0].TextEdit.StartLine);
-  Assert.AreEqual(2, Items[0].TextEdit.StartCharacter);
-  Assert.AreEqual(10, Items[0].TextEdit.EndCharacter);
-  Assert.AreEqual('for var Item in Liste do'#10'    ', Items[0].TextEdit.NewText);
-  Assert.IsFalse(Items[1].HasTextEdit);
+  Assert.AreEqual(3, Integer(Length(TAtlasServerCompletionProvider.WithoutSnippets(mItems))));
+  Assert.AreEqual(Ord(TAtlasItemKind.Snippet), Ord(mItems[0].Kind));
+  Assert.IsTrue(mItems[0].HasTextEdit);
+  Assert.AreEqual(7, mItems[0].TextEdit.StartLine);
+  Assert.AreEqual(2, mItems[0].TextEdit.StartCharacter);
+  Assert.AreEqual(10, mItems[0].TextEdit.EndCharacter);
+  Assert.AreEqual('for var Item in Liste do'#10'    ', mItems[0].TextEdit.NewText);
+  Assert.IsFalse(mItems[1].HasTextEdit);
 end;
 
 procedure TAtlasCompletionProviderTests.KeepsAnonymousMethodsWithoutSnippets;
 var
-  Response: TJSONValue;
-  Items: TAtlasCompletionItems;
+  mResponse: TJSONValue;
+  mItems: TAtlasCompletionItems;
 begin
   // #468: Typ als methodRef; completion.snippets aus macht das Gerüst zu Klartext, statt es zu entfernen.
-  Response := TJSONObject.ParseJSONValue(
+  mResponse := TJSONObject.ParseJSONValue(
     '{"isIncomplete":false,"items":[' +
     '{"label":"procedure","kind":15,"insertTextFormat":2,' +
     '"textEdit":{"range":{"start":{"line":3,"character":12},"end":{"line":3,"character":12}},' +
     '"newText":"procedure\n  begin\n    $0\n  end"},"data":{"methodRef":"TProc","action":"anonymous"}}]}');
   try
-    Items := TAtlasServerCompletionProvider.ItemsFromLsp(Response);
+    mItems := TAtlasServerCompletionProvider.ItemsFromLsp(mResponse);
   finally
-    Response.Free;
+    mResponse.Free;
   end;
-  Assert.AreEqual('TProc', Items[0].MethodRef);
-  Items := TAtlasServerCompletionProvider.WithoutSnippets(Items);
-  Assert.AreEqual(1, Integer(Length(Items)));
-  Assert.AreEqual('', Items[0].Snippet);
-  Assert.AreEqual('procedure'#10'  begin'#10'    '#10'  end', Items[0].TextEdit.NewText);
+  Assert.AreEqual('TProc', mItems[0].MethodRef);
+  mItems := TAtlasServerCompletionProvider.WithoutSnippets(mItems);
+  Assert.AreEqual(1, Integer(Length(mItems)));
+  Assert.AreEqual('', mItems[0].Snippet);
+  Assert.AreEqual('procedure'#10'  begin'#10'    '#10'  end', mItems[0].TextEdit.NewText);
 end;
 
 procedure TAtlasCompletionProviderTests.ReadsSyntaxNotice;
 var
-  Response: TJSONValue;
-  Notice: TAtlasSyntaxNotice;
+  mResponse: TJSONValue;
+  mNotice: TAtlasSyntaxNotice;
 begin
   // #457: syntaxNotice der CompletionList; ohne Angabe sicher.
-  Response := TJSONObject.ParseJSONValue('{"isIncomplete":false,"items":[],"syntaxNotice":' +
+  mResponse := TJSONObject.ParseJSONValue('{"isIncomplete":false,"items":[],"syntaxNotice":' +
     '{"trust":"unknown","line":13,"character":12,"message":"Ausdruck erwartet"}}');
   try
-    Notice := TAtlasServerCompletionProvider.SyntaxNoticeOf(Response);
+    mNotice := TAtlasServerCompletionProvider.SyntaxNoticeOf(mResponse);
   finally
-    Response.Free;
+    mResponse.Free;
   end;
-  Assert.AreEqual(Ord(TAtlasSyntaxTrust.Unknown), Ord(Notice.Trust));
-  Assert.AreEqual(13, Notice.Line);
-  Assert.AreEqual(12, Notice.Character);
-  Assert.AreEqual('Ausdruck erwartet', Notice.Message);
-  Response := TJSONObject.ParseJSONValue('{"isIncomplete":false,"items":[]}');
+  Assert.AreEqual(Ord(TAtlasSyntaxTrust.Unknown), Ord(mNotice.Trust));
+  Assert.AreEqual(13, mNotice.Line);
+  Assert.AreEqual(12, mNotice.Character);
+  Assert.AreEqual('Ausdruck erwartet', mNotice.Message);
+  mResponse := TJSONObject.ParseJSONValue('{"isIncomplete":false,"items":[]}');
   try
-    Notice := TAtlasServerCompletionProvider.SyntaxNoticeOf(Response);
+    mNotice := TAtlasServerCompletionProvider.SyntaxNoticeOf(mResponse);
   finally
-    Response.Free;
+    mResponse.Free;
   end;
-  Assert.AreEqual(Ord(TAtlasSyntaxTrust.Sure), Ord(Notice.Trust));
-  Assert.AreEqual(-1, Notice.Line);
+  Assert.AreEqual(Ord(TAtlasSyntaxTrust.Sure), Ord(mNotice.Trust));
+  Assert.AreEqual(-1, mNotice.Line);
 end;
 
 procedure TAtlasCompletionProviderTests.ReadsHiddenMembersWithActions;
 var
-  Response: TJSONValue;
-  Items: TAtlasCompletionItems;
+  mResponse: TJSONValue;
+  mItems: TAtlasCompletionItems;
 begin
-  Response := TJSONObject.ParseJSONValue('{"isIncomplete":false,"items":[],"hiddenMembers":{"count":2,' +
+  mResponse := TJSONObject.ParseJSONValue('{"isIncomplete":false,"items":[],"hiddenMembers":{"count":2,' +
     '"items":[{"name":"FEintraege","kind":5,"visibility":"private","container":"TZaehler","unit":"Zaehler",' +
     '"uri":"file:///C:/P/Zaehler.pas","line":7,"character":4,"external":false},' +
     '{"name":"FHandle","kind":5,"visibility":"private","container":"TStream","unit":"System.Classes",' +
     '"uri":"file:///C:/BDS/System.Classes.pas","line":9,"character":4,"external":true}]}}');
   try
-    Items := TAtlasServerCompletionProvider.HiddenMembersOf(Response, 10);
+    mItems := TAtlasServerCompletionProvider.HiddenMembersOf(mResponse, 10);
   finally
-    Response.Free;
+    mResponse.Free;
   end;
-  Assert.AreEqual(2, Integer(Length(Items)));
-  Assert.AreEqual('FEintraege', Items[0].Name);
-  Assert.AreEqual('private', Items[0].Inaccessible);
-  Assert.AreEqual('TZaehler', Items[0].DeclaringClass);
-  Assert.AreEqual(10, Items[0].Rank);
-  Assert.AreEqual(TAtlasServerCompletionProvider.cMemberActionsCommand, Items[0].Command);
+  Assert.AreEqual(2, Integer(Length(mItems)));
+  Assert.AreEqual('FEintraege', mItems[0].Name);
+  Assert.AreEqual('private', mItems[0].Inaccessible);
+  Assert.AreEqual('TZaehler', mItems[0].DeclaringClass);
+  Assert.AreEqual(10, mItems[0].Rank);
+  Assert.AreEqual(TAtlasServerCompletionProvider.cMemberActionsCommand, mItems[0].Command);
   Assert.AreEqual('["file:///C:/P/Zaehler.pas",{"line":7,"character":4},"FEintraege"]',
-    Items[0].CommandArguments);
+    mItems[0].CommandArguments);
   // Fremder Code: ausgegraut, aber ohne Aktionen.
-  Assert.AreEqual('FHandle', Items[1].Name);
-  Assert.AreEqual('', Items[1].Command);
+  Assert.AreEqual('FHandle', mItems[1].Name);
+  Assert.AreEqual('', mItems[1].Command);
 end;
 
 procedure TAtlasCompletionProviderTests.KeepsRaiseItemsWithoutSnippets;
 var
-  Response: TJSONValue;
-  Items: TAtlasCompletionItems;
+  mResponse: TJSONValue;
+  mItems: TAtlasCompletionItems;
 begin
   // #483: Gruppe und Reihenfolge-Warnung aus data; nach raise bleibt "EFoo.Create('')" ohne Platzhalter.
-  Response := TJSONObject.ParseJSONValue(
+  mResponse := TJSONObject.ParseJSONValue(
     '{"isIncomplete":false,"items":[' +
     '{"label":"EAppError","kind":7,"insertTextFormat":2,' +
     '"textEdit":{"range":{"start":{"line":3,"character":8},"end":{"line":3,"character":8}},' +
     '"newText":"EAppError.Create(''$0'')"},"data":{"exceptionGroup":"raise"}},' +
     '{"label":"EConvertError","kind":7,"data":{"exceptionGroup":"general","unreachable":"Exception"}}]}');
   try
-    Items := TAtlasServerCompletionProvider.ItemsFromLsp(Response);
+    mItems := TAtlasServerCompletionProvider.ItemsFromLsp(mResponse);
   finally
-    Response.Free;
+    mResponse.Free;
   end;
-  Assert.AreEqual('raise', Items[0].ExceptionGroup);
-  Assert.AreEqual('general', Items[1].ExceptionGroup);
-  Assert.AreEqual('Exception', Items[1].Unreachable);
-  Items := TAtlasServerCompletionProvider.WithoutSnippets(Items);
-  Assert.AreEqual(2, Integer(Length(Items)));
-  Assert.AreEqual('', Items[0].Snippet);
-  Assert.AreEqual('EAppError.Create('''')', Items[0].TextEdit.NewText);
+  Assert.AreEqual('raise', mItems[0].ExceptionGroup);
+  Assert.AreEqual('general', mItems[1].ExceptionGroup);
+  Assert.AreEqual('Exception', mItems[1].Unreachable);
+  mItems := TAtlasServerCompletionProvider.WithoutSnippets(mItems);
+  Assert.AreEqual(2, Integer(Length(mItems)));
+  Assert.AreEqual('', mItems[0].Snippet);
+  Assert.AreEqual('EAppError.Create('''')', mItems[0].TextEdit.NewText);
 end;
 
 procedure TAtlasCompletionProviderTests.ReadsScopeUnitAndHiddenNames;
 var
-  Response: TJSONValue;
-  Items: TAtlasCompletionItems;
+  mResponse: TJSONValue;
+  mItems: TAtlasCompletionItems;
 begin
   // #488: Bereichsstufe, Unit bei Stufe 5 und verdeckte Deklarationen.
-  Response := TJSONObject.ParseJSONValue(
+  mResponse := TJSONObject.ParseJSONValue(
     '{"isIncomplete":false,"items":[' +
     '{"label":"Name","kind":6,"data":{"scope":1,"hides":["Feld TFoo.Name","Werkzeug.Name"]}},' +
     '{"label":"Rechne","kind":3,"data":{"scope":5,"unit":"Werkzeug"}}]}');
   try
-    Items := TAtlasServerCompletionProvider.ItemsFromLsp(Response);
+    mItems := TAtlasServerCompletionProvider.ItemsFromLsp(mResponse);
   finally
-    Response.Free;
+    mResponse.Free;
   end;
-  Assert.AreEqual(1, Items[0].Scope);
-  Assert.AreEqual(2, Integer(Length(Items[0].Hides)));
-  Assert.AreEqual('Feld TFoo.Name', Items[0].Hides[0]);
-  Assert.AreEqual('Werkzeug.Name', Items[0].Hides[1]);
-  Assert.AreEqual(5, Items[1].Scope);
-  Assert.AreEqual('Werkzeug', Items[1].DeclaringUnit);
-  Assert.AreEqual(0, Integer(Length(Items[1].Hides)));
+  Assert.AreEqual(1, mItems[0].Scope);
+  Assert.AreEqual(2, Integer(Length(mItems[0].Hides)));
+  Assert.AreEqual('Feld TFoo.Name', mItems[0].Hides[0]);
+  Assert.AreEqual('Werkzeug.Name', mItems[0].Hides[1]);
+  Assert.AreEqual(5, mItems[1].Scope);
+  Assert.AreEqual('Werkzeug', mItems[1].DeclaringUnit);
+  Assert.AreEqual(0, Integer(Length(mItems[1].Hides)));
 end;
 
 procedure TAtlasCompletionProviderTests.MapsLspCompletionList;
 var
-  Response: TJSONValue;
-  Items: TAtlasCompletionItems;
+  mResponse: TJSONValue;
+  mItems: TAtlasCompletionItems;
 begin
-  Response := TJSONObject.ParseJSONValue(
+  mResponse := TJSONObject.ParseJSONValue(
     '{"isIncomplete":false,"items":[' +
     '{"label":"Add","kind":2,"detail":"function Add(const S: string): Integer",' +
     '"documentation":{"kind":"plaintext","value":"Hängt S an."},' +
@@ -411,34 +411,34 @@ begin
     '"newText":", System.Classes"}]},' +
     '{"label":"TFoo","kind":7,"documentation":"Klasse"}]}');
   try
-    Items := TAtlasServerCompletionProvider.ItemsFromLsp(Response);
+    mItems := TAtlasServerCompletionProvider.ItemsFromLsp(mResponse);
   finally
-    Response.Free;
+    mResponse.Free;
   end;
-  Assert.AreEqual(2, Integer(Length(Items)));
-  Assert.AreEqual('Add', Items[0].Name);
-  Assert.AreEqual(Ord(TAtlasItemKind.Method), Ord(Items[0].Kind));
-  Assert.AreEqual('function Add(const S: string): Integer', Items[0].Signature);
-  Assert.AreEqual('Hängt S an.', Items[0].Documentation);
-  Assert.AreEqual(1, Integer(Length(Items[0].AdditionalEdits)));
-  Assert.AreEqual(2, Items[0].AdditionalEdits[0].StartLine);
-  Assert.AreEqual(5, Items[0].AdditionalEdits[0].EndCharacter);
-  Assert.AreEqual(', System.Classes', Items[0].AdditionalEdits[0].NewText);
-  Assert.IsFalse(Items[0].UnitUsed, 'Eintrag mit uses-Ergänzung');
-  Assert.AreEqual(Ord(TAtlasItemKind.Class_), Ord(Items[1].Kind));
-  Assert.AreEqual('Klasse', Items[1].Documentation);
-  Assert.IsTrue(Items[1].UnitUsed);
-  Assert.AreEqual(1, Items[1].Rank);
+  Assert.AreEqual(2, Integer(Length(mItems)));
+  Assert.AreEqual('Add', mItems[0].Name);
+  Assert.AreEqual(Ord(TAtlasItemKind.Method), Ord(mItems[0].Kind));
+  Assert.AreEqual('function Add(const S: string): Integer', mItems[0].Signature);
+  Assert.AreEqual('Hängt S an.', mItems[0].Documentation);
+  Assert.AreEqual(1, Integer(Length(mItems[0].AdditionalEdits)));
+  Assert.AreEqual(2, mItems[0].AdditionalEdits[0].StartLine);
+  Assert.AreEqual(5, mItems[0].AdditionalEdits[0].EndCharacter);
+  Assert.AreEqual(', System.Classes', mItems[0].AdditionalEdits[0].NewText);
+  Assert.IsFalse(mItems[0].UnitUsed, 'Eintrag mit uses-Ergänzung');
+  Assert.AreEqual(Ord(TAtlasItemKind.Class_), Ord(mItems[1].Kind));
+  Assert.AreEqual('Klasse', mItems[1].Documentation);
+  Assert.IsTrue(mItems[1].UnitUsed);
+  Assert.AreEqual(1, mItems[1].Rank);
 end;
 
 procedure TAtlasCompletionProviderTests.ServerSnippetsUsePlaceholderMode;
 var
-  Response: TJSONValue;
-  Items: TAtlasCompletionItems;
+  mResponse: TJSONValue;
+  mItems: TAtlasCompletionItems;
 begin
   // Kontextabhängige Vorlage des Servers (#51): insertTextFormat 2 wird zum Snippet für den Platzhalter-Modus,
   // die Setter-Änderungen sind keine uses-Ergänzung.
-  Response := TJSONObject.ParseJSONValue(
+  mResponse := TJSONObject.ParseJSONValue(
     '{"isIncomplete":false,"items":[' +
     '{"label":"prop Farbe","kind":15,"insertTextFormat":2,"data":{"action":"snippet"},' +
     '"textEdit":{"range":{"start":{"line":9,"character":4},"end":{"line":9,"character":7}},' +
@@ -447,55 +447,55 @@ begin
     '"newText":"  private\n    procedure SetFarbe(const Value: TColor);\n"}]},' +
     '{"label":"Farbe","kind":5,"insertText":"Farbe"}]}');
   try
-    Items := TAtlasServerCompletionProvider.ItemsFromLsp(Response);
+    mItems := TAtlasServerCompletionProvider.ItemsFromLsp(mResponse);
   finally
-    Response.Free;
+    mResponse.Free;
   end;
-  Assert.AreEqual(2, Integer(Length(Items)));
-  Assert.AreEqual(Ord(TAtlasItemKind.Snippet), Ord(Items[0].Kind));
-  Assert.AreEqual('property ${1:Farbe}: TColor read FFarbe write SetFarbe;$0', Items[0].Snippet);
-  Assert.IsTrue(Items[0].HasTextEdit);
-  Assert.AreEqual(4, Items[0].TextEdit.StartCharacter);
-  Assert.AreEqual(1, Integer(Length(Items[0].AdditionalEdits)));
-  Assert.IsTrue(Items[0].UnitUsed, 'Keine uses-Ergänzung');
-  Assert.AreEqual('', Items[1].Snippet);
+  Assert.AreEqual(2, Integer(Length(mItems)));
+  Assert.AreEqual(Ord(TAtlasItemKind.Snippet), Ord(mItems[0].Kind));
+  Assert.AreEqual('property ${1:Farbe}: TColor read FFarbe write SetFarbe;$0', mItems[0].Snippet);
+  Assert.IsTrue(mItems[0].HasTextEdit);
+  Assert.AreEqual(4, mItems[0].TextEdit.StartCharacter);
+  Assert.AreEqual(1, Integer(Length(mItems[0].AdditionalEdits)));
+  Assert.IsTrue(mItems[0].UnitUsed, 'Keine uses-Ergänzung');
+  Assert.AreEqual('', mItems[1].Snippet);
   // completion.snippets aus: wie ohne die Funktion.
-  Items := TAtlasServerCompletionProvider.WithoutSnippets(Items);
-  Assert.AreEqual(1, Integer(Length(Items)));
-  Assert.AreEqual('Farbe', Items[0].Name);
+  mItems := TAtlasServerCompletionProvider.WithoutSnippets(mItems);
+  Assert.AreEqual(1, Integer(Length(mItems)));
+  Assert.AreEqual('Farbe', mItems[0].Name);
 end;
 
 procedure TAtlasCompletionProviderTests.PartialItemsContinueRank;
 var
-  Response: TJSONValue;
-  Items: TAtlasCompletionItems;
+  mResponse: TJSONValue;
+  mItems: TAtlasCompletionItems;
 begin
   // Teilergebnis als CompletionItem[] (#616): Rang zählt ab dem ersten Eintrag dieses Teils.
-  Response := TJSONObject.ParseJSONValue('[{"label":"A","kind":6},5,{"label":"B","kind":6}]');
+  mResponse := TJSONObject.ParseJSONValue('[{"label":"A","kind":6},5,{"label":"B","kind":6}]');
   try
-    Items := TAtlasServerCompletionProvider.ItemsFromLsp(Response, 10);
+    mItems := TAtlasServerCompletionProvider.ItemsFromLsp(mResponse, 10);
   finally
-    Response.Free;
+    mResponse.Free;
   end;
-  Assert.AreEqual(2, Integer(Length(Items)), 'Nicht-Objekte übersprungen');
-  Assert.AreEqual('B', Items[1].Name);
-  Assert.AreEqual(10, Items[0].Rank);
-  Assert.AreEqual(12, Items[1].Rank);
+  Assert.AreEqual(2, Integer(Length(mItems)), 'Nicht-Objekte übersprungen');
+  Assert.AreEqual('B', mItems[1].Name);
+  Assert.AreEqual(10, mItems[0].Rank);
+  Assert.AreEqual(12, mItems[1].Rank);
 end;
 
 procedure TAtlasCompletionProviderTests.ReadsItemArrayAndNull;
 var
-  Response: TJSONValue;
+  mResponse: TJSONValue;
 begin
-  Response := TJSONObject.ParseJSONValue('[{"label":"A"},{"label":"B","kind":99,"filterText":"mylist"}]');
+  mResponse := TJSONObject.ParseJSONValue('[{"label":"A"},{"label":"B","kind":99,"filterText":"mylist"}]');
   try
-    Assert.AreEqual(2, Integer(Length(TAtlasServerCompletionProvider.ItemsFromLsp(Response))));
+    Assert.AreEqual(2, Integer(Length(TAtlasServerCompletionProvider.ItemsFromLsp(mResponse))));
     Assert.AreEqual(Ord(TAtlasItemKind.Unknown),
-      Ord(TAtlasServerCompletionProvider.ItemsFromLsp(Response)[1].Kind));
+      Ord(TAtlasServerCompletionProvider.ItemsFromLsp(mResponse)[1].Kind));
     // Der filterText des Servers ist das getippte Wort (für VS Code); Atlas filtert gegen den Namen.
-    Assert.AreEqual('', TAtlasServerCompletionProvider.ItemsFromLsp(Response)[1].FilterText);
+    Assert.AreEqual('', TAtlasServerCompletionProvider.ItemsFromLsp(mResponse)[1].FilterText);
   finally
-    Response.Free;
+    mResponse.Free;
   end;
   Assert.AreEqual(0, Integer(Length(TAtlasServerCompletionProvider.ItemsFromLsp(nil))));
 end;
@@ -532,19 +532,19 @@ end;
 
 procedure TAtlasCompletionProviderTests.ReadsResolvedDetails;
 var
-  Response: TJSONValue;
-  Items: TAtlasCompletionItems;
-  Details: TAtlasItemDetails;
+  mResponse: TJSONValue;
+  mItems: TAtlasCompletionItems;
+  mDetails: TAtlasItemDetails;
 begin
   // data bleibt für completionItem/resolve erhalten.
-  Response := TJSONObject.ParseJSONValue('[{"label":"Add","data":{"file":"C:\\P\\A.pas","line":9,"character":13}}]');
+  mResponse := TJSONObject.ParseJSONValue('[{"label":"Add","data":{"file":"C:\\P\\A.pas","line":9,"character":13}}]');
   try
-    Items := TAtlasServerCompletionProvider.ItemsFromLsp(Response);
+    mItems := TAtlasServerCompletionProvider.ItemsFromLsp(mResponse);
   finally
-    Response.Free;
+    mResponse.Free;
   end;
-  Assert.Contains(Items[0].ResolveData, '"line":9');
-  Response := TJSONObject.ParseJSONValue(
+  Assert.Contains(mItems[0].ResolveData, '"line":9');
+  mResponse := TJSONObject.ParseJSONValue(
     '{"label":"Add","detail":"function Add(const S: string): Integer; virtual;","data":{"atlas":{' +
     '"declaration":"function Add(const S: string): Integer; virtual;","unit":"Liste","container":"TListe",' +
     '"visibility":"public","directives":["virtual","deprecated"],"deprecated":"Neu verwenden",' +
@@ -554,128 +554,128 @@ begin
     '{"kind":"paramref","text":"S"},{"kind":"text","text":" an."}]}]},' +
     '"xmlDoc":{"full":true,"maxLines":20}}}}');
   try
-    Details := TAtlasServerCompletionProvider.DetailsFromLsp(Response);
+    mDetails := TAtlasServerCompletionProvider.DetailsFromLsp(mResponse);
   finally
-    Response.Free;
+    mResponse.Free;
   end;
-  Assert.AreEqual('function Add(const S: string): Integer; virtual;', Details.Declaration);
-  Assert.AreEqual('Liste', Details.UnitName);
-  Assert.AreEqual('TListe', Details.Container);
-  Assert.AreEqual('public', Details.Visibility);
-  Assert.AreEqual(2, Integer(Length(Details.Directives)));
-  Assert.IsTrue(Details.IsDeprecated);
-  Assert.AreEqual('Neu verwenden', Details.DeprecatedText);
-  Assert.AreEqual('Hängt S an.', Details.Summary);
-  Assert.AreEqual('Index.', Details.Returns);
-  Assert.AreEqual('Der Text.', Details.Params[0].Text);
-  Assert.AreEqual('EListError', Details.Exceptions[0].Name);
+  Assert.AreEqual('function Add(const S: string): Integer; virtual;', mDetails.Declaration);
+  Assert.AreEqual('Liste', mDetails.UnitName);
+  Assert.AreEqual('TListe', mDetails.Container);
+  Assert.AreEqual('public', mDetails.Visibility);
+  Assert.AreEqual(2, Integer(Length(mDetails.Directives)));
+  Assert.IsTrue(mDetails.IsDeprecated);
+  Assert.AreEqual('Neu verwenden', mDetails.DeprecatedText);
+  Assert.AreEqual('Hängt S an.', mDetails.Summary);
+  Assert.AreEqual('Index.', mDetails.Returns);
+  Assert.AreEqual('Der Text.', mDetails.Params[0].Text);
+  Assert.AreEqual('EListError', mDetails.Exceptions[0].Name);
   // Vollständige XMLDoc und Anzeige (#654).
-  Assert.AreEqual(1, Integer(Length(Details.Doc.Sections)));
-  Assert.AreEqual('Hängt S an.', Details.Doc.Sections[0].Text);
-  Assert.IsTrue(Details.Display.Known);
-  Assert.AreEqual(20, Details.Display.MaxLines);
-  Assert.IsFalse(Details.IsHelper);
+  Assert.AreEqual(1, Integer(Length(mDetails.Doc.Sections)));
+  Assert.AreEqual('Hängt S an.', mDetails.Doc.Sections[0].Text);
+  Assert.IsTrue(mDetails.Display.Known);
+  Assert.AreEqual(20, mDetails.Display.MaxLines);
+  Assert.IsFalse(mDetails.IsHelper);
   AssertHelperAndForeignDetails;
 end;
 
 procedure TAtlasCompletionProviderTests.MergesProvidersAndCompletesOnce;
 var
-  Providers: TAtlasCompletionProviders;
-  Provider: IAtlasCompletionProvider;
-  Sink: TCollectingSink;
-  SinkRef: IAtlasCompletionSink;
+  mProviders: TAtlasCompletionProviders;
+  mProvider: IAtlasCompletionProvider;
+  mSink: TCollectingSink;
+  mSinkRef: IAtlasCompletionSink;
 begin
-  Providers := TAtlasCompletionProviders.Create;
-  Provider := Providers;
-  Providers.Add(TAtlasFixedCompletionProvider.Create([Item('Beta')]));
-  Providers.Add(TAtlasFixedCompletionProvider.Create([Item('Alpha'), Item('Gamma')], 50));
-  Sink := TCollectingSink.Create;
-  SinkRef := Sink;
-  Provider.Query(Context, SinkRef);
-  Assert.IsTrue(Sink.WaitDone(3000), 'Complete kam nicht');
-  Assert.AreEqual('Alpha,Beta,Gamma', Sink.Names);
-  Assert.AreEqual(1, Sink.Completed);
+  mProviders := TAtlasCompletionProviders.Create;
+  mProvider := mProviders;
+  mProviders.Add(TAtlasFixedCompletionProvider.Create([Item('Beta')]));
+  mProviders.Add(TAtlasFixedCompletionProvider.Create([Item('Alpha'), Item('Gamma')], 50));
+  mSink := TCollectingSink.Create;
+  mSinkRef := mSink;
+  mProvider.Query(Context, mSinkRef);
+  Assert.IsTrue(mSink.WaitDone(3000), 'Complete kam nicht');
+  Assert.AreEqual('Alpha,Beta,Gamma', mSink.Names);
+  Assert.AreEqual(1, mSink.Completed);
 end;
 
 procedure TAtlasCompletionProviderTests.CancelDropsLateItems;
 var
-  Providers: TAtlasCompletionProviders;
-  Provider: IAtlasCompletionProvider;
-  Sink: TCollectingSink;
-  SinkRef: IAtlasCompletionSink;
+  mProviders: TAtlasCompletionProviders;
+  mProvider: IAtlasCompletionProvider;
+  mSink: TCollectingSink;
+  mSinkRef: IAtlasCompletionSink;
 begin
-  Providers := TAtlasCompletionProviders.Create;
-  Provider := Providers;
-  Providers.Add(TAtlasFixedCompletionProvider.Create([Item('Spaet')], 200));
-  Sink := TCollectingSink.Create;
-  SinkRef := Sink;
-  Provider.Query(Context, SinkRef);
-  Provider.Cancel;
-  Assert.IsFalse(Sink.WaitDone(400), 'Nach Cancel darf kein Complete kommen');
-  Assert.AreEqual('', Sink.Names);
+  mProviders := TAtlasCompletionProviders.Create;
+  mProvider := mProviders;
+  mProviders.Add(TAtlasFixedCompletionProvider.Create([Item('Spaet')], 200));
+  mSink := TCollectingSink.Create;
+  mSinkRef := mSink;
+  mProvider.Query(Context, mSinkRef);
+  mProvider.Cancel;
+  Assert.IsFalse(mSink.WaitDone(400), 'Nach Cancel darf kein Complete kommen');
+  Assert.AreEqual('', mSink.Names);
 end;
 
 procedure TAtlasCompletionProviderTests.NewQueryReplacesRunningQuery;
 var
-  Providers: TAtlasCompletionProviders;
-  Provider: IAtlasCompletionProvider;
-  First, Second: TCollectingSink;
-  FirstRef, SecondRef: IAtlasCompletionSink;
+  mProviders: TAtlasCompletionProviders;
+  mProvider: IAtlasCompletionProvider;
+  mFirst, mSecond: TCollectingSink;
+  mFirstRef, mSecondRef: IAtlasCompletionSink;
 begin
-  Providers := TAtlasCompletionProviders.Create;
-  Provider := Providers;
-  Providers.Add(TAtlasFixedCompletionProvider.Create([Item('X')], 100));
-  First := TCollectingSink.Create;
-  FirstRef := First;
-  Second := TCollectingSink.Create;
-  SecondRef := Second;
-  Provider.Query(Context, FirstRef);
-  Provider.Query(Context, SecondRef);
-  Assert.IsTrue(Second.WaitDone(3000), 'Complete des neuen Query kam nicht');
-  Assert.AreEqual('X', Second.Names);
-  Assert.AreEqual(0, First.Completed, 'Der ersetzte Query wurde noch beendet');
-  Assert.AreEqual('', First.Names);
+  mProviders := TAtlasCompletionProviders.Create;
+  mProvider := mProviders;
+  mProviders.Add(TAtlasFixedCompletionProvider.Create([Item('X')], 100));
+  mFirst := TCollectingSink.Create;
+  mFirstRef := mFirst;
+  mSecond := TCollectingSink.Create;
+  mSecondRef := mSecond;
+  mProvider.Query(Context, mFirstRef);
+  mProvider.Query(Context, mSecondRef);
+  Assert.IsTrue(mSecond.WaitDone(3000), 'Complete des neuen Query kam nicht');
+  Assert.AreEqual('X', mSecond.Names);
+  Assert.AreEqual(0, mFirst.Completed, 'Der ersetzte Query wurde noch beendet');
+  Assert.AreEqual('', mFirst.Names);
 end;
 
 procedure TAtlasCompletionProviderTests.WithoutSessionCompletesEmpty;
 var
-  Server: TAtlasServerCompletionProvider;
-  Provider: IAtlasCompletionProvider;
-  Sink: TCollectingSink;
-  SinkRef: IAtlasCompletionSink;
-  Logged: string;
+  mServer: TAtlasServerCompletionProvider;
+  mProvider: IAtlasCompletionProvider;
+  mSink: TCollectingSink;
+  mSinkRef: IAtlasCompletionSink;
+  mLogged: string;
 begin
-  Server := TAtlasServerCompletionProvider.Create(
+  mServer := TAtlasServerCompletionProvider.Create(
     function: TLspSession
     begin
       Result := nil;
     end);
-  Provider := Server;
+  mProvider := mServer;
   // Warum die Liste leer bleibt, steht im Diagnoselog des Plugins (#647).
-  Logged := '';
-  Server.OnLog :=
+  mLogged := '';
+  mServer.OnLog :=
     procedure(const AMessage: string)
     begin
-      Logged := Logged + AMessage;
+      mLogged := mLogged + AMessage;
     end;
-  Sink := TCollectingSink.Create;
-  SinkRef := Sink;
-  Provider.Query(Context, SinkRef);
-  Assert.IsTrue(Sink.WaitDone(0), 'Ohne Server sofort fertig');
-  Assert.AreEqual('', Sink.Names);
-  Assert.Contains(Logged, 'kein Server');
+  mSink := TCollectingSink.Create;
+  mSinkRef := mSink;
+  mProvider.Query(Context, mSinkRef);
+  Assert.IsTrue(mSink.WaitDone(0), 'Ohne Server sofort fertig');
+  Assert.AreEqual('', mSink.Names);
+  Assert.Contains(mLogged, 'kein Server');
 end;
 
 { TAtlasServerCompletionTests }
 
 procedure TAtlasItemDetailsTests.AvailabilityAloneIsNotEmpty;
 var
-  Details: TAtlasItemDetails;
+  mDetails: TAtlasItemDetails;
 begin
-  Details := Default(TAtlasItemDetails);
-  Assert.IsTrue(Details.IsEmpty);
-  Details.Availability := 'Nicht verfügbar: Die Bedingung „WIN64“ ist für Win32 · Debug nicht erfüllt.';
-  Assert.IsFalse(Details.IsEmpty);
+  mDetails := Default(TAtlasItemDetails);
+  Assert.IsTrue(mDetails.IsEmpty);
+  mDetails.Availability := 'Nicht verfügbar: Die Bedingung „WIN64“ ist für Win32 · Debug nicht erfüllt.';
+  Assert.IsFalse(mDetails.IsEmpty);
 end;
 
 procedure TAtlasServerCompletionTests.WarmUpFirstUse;
@@ -711,53 +711,53 @@ const
 
 procedure TAtlasServerCompletionTests.CompletesMembersFromServer;
 var
-  ServerExe: string;
-  Server: TLspServerProcess;
-  Session: TLspSession;
-  Provider: TAtlasServerCompletionProvider;
-  ProviderRef: IAtlasCompletionProvider;
-  Sink: TCollectingSink;
-  SinkRef: IAtlasCompletionSink;
-  Query: TAtlasContext;
+  mServerExe: string;
+  mServer: TLspServerProcess;
+  mSession: TLspSession;
+  mProvider: TAtlasServerCompletionProvider;
+  mProviderRef: IAtlasCompletionProvider;
+  mSink: TCollectingSink;
+  mSinkRef: IAtlasCompletionSink;
+  mQuery: TAtlasContext;
 begin
-  ServerExe := TPath.Combine(ExtractFilePath(ParamStr(0)), 'AtlasServer.exe');
-  if not FileExists(ServerExe) then
+  mServerExe := TPath.Combine(ExtractFilePath(ParamStr(0)), 'AtlasServer.exe');
+  if not FileExists(mServerExe) then
   begin
-    Assert.Pass('Server nicht neben dem Testprogramm gebaut: ' + ServerExe);
+    Assert.Pass('Server nicht neben dem Testprogramm gebaut: ' + mServerExe);
   end;
-  Server := TLspServerProcess.Create(ServerExe, '');
+  mServer := TLspServerProcess.Create(mServerExe, '');
   try
-    Session := TLspSession.Create(Server.Client, 5000);
+    mSession := TLspSession.Create(mServer.Client, 5000);
     try
-      Session.Initialize;
-      Provider := TAtlasServerCompletionProvider.Create(
+      mSession.Initialize;
+      mProvider := TAtlasServerCompletionProvider.Create(
         function: TLspSession
         begin
-          Result := Session;
+          Result := mSession;
         end, 5000);
-      ProviderRef := Provider;
-      Query := Default(TAtlasContext);
-      Query.FileName := TPath.Combine(TPath.GetTempPath, 'AtlasCompletionProbe.pas');
-      Query.Text := cCompletesMembersUnitText;
-      Query.Line := 11;
+      mProviderRef := mProvider;
+      mQuery := Default(TAtlasContext);
+      mQuery.FileName := TPath.Combine(TPath.GetTempPath, 'AtlasCompletionProbe.pas');
+      mQuery.Text := cCompletesMembersUnitText;
+      mQuery.Line := 11;
       // Hinter "  Self.FWe".
-      Query.Character := 10;
-      Query.Prefix := 'FWe';
-      Query.Kind := TAtlasContextKind.MemberAccess;
-      Sink := TCollectingSink.Create;
-      SinkRef := Sink;
-      ProviderRef.Query(Query, SinkRef);
-      Assert.IsTrue(Sink.WaitDone(10000), 'Keine Antwort vom Server');
-      Assert.Contains(Sink.Names, 'FWeite');
-      Assert.Contains(Sink.Names, 'FWert');
+      mQuery.Character := 10;
+      mQuery.Prefix := 'FWe';
+      mQuery.Kind := TAtlasContextKind.MemberAccess;
+      mSink := TCollectingSink.Create;
+      mSinkRef := mSink;
+      mProviderRef.Query(mQuery, mSinkRef);
+      Assert.IsTrue(mSink.WaitDone(10000), 'Keine Antwort vom Server');
+      Assert.Contains(mSink.Names, 'FWeite');
+      Assert.Contains(mSink.Names, 'FWert');
       // Vor dem Freigeben der Sitzung auf laufende Anfragen warten.
-      Provider.Shutdown;
-      ProviderRef := nil;
+      mProvider.Shutdown;
+      mProviderRef := nil;
     finally
-      Session.Free;
+      mSession.Free;
     end;
   finally
-    Server.Free;
+    mServer.Free;
   end;
 end;
 
@@ -774,7 +774,7 @@ end;
 
 procedure TAtlasXmlDocTests.OffersParamsOfFollowingMethod;
 const
-  Text = 'type'#13#10 +
+  cText = 'type'#13#10 +
     '  TFoo = class'#13#10 +
     '    /// <'#13#10 +
     '    /// weiter'#13#10 +
@@ -782,20 +782,20 @@ const
     '      Rate, Extra: Double): Currency;'#13#10 +
     '  end;';
 var
-  Declaration, Names: string;
-  Item: TAtlasCompletionItem;
+  mDeclaration, mNames: string;
+  mItem: TAtlasCompletionItem;
 begin
-  Declaration := TAtlasXmlDoc.FollowingDeclaration(Text, 2);
-  Assert.AreEqual('function CalcDiscount(const Customer: TCustomer; Rate, Extra: Double): Currency;', Declaration);
-  Assert.AreEqual('Customer,Rate,Extra', String.Join(',', TAtlasXmlDoc.ParamNames(Declaration)));
-  Names := '';
-  for Item in TAtlasXmlDoc.TagItems(Declaration) do
+  mDeclaration := TAtlasXmlDoc.FollowingDeclaration(cText, 2);
+  Assert.AreEqual('function CalcDiscount(const Customer: TCustomer; Rate, Extra: Double): Currency;', mDeclaration);
+  Assert.AreEqual('Customer,Rate,Extra', String.Join(',', TAtlasXmlDoc.ParamNames(mDeclaration)));
+  mNames := '';
+  for mItem in TAtlasXmlDoc.TagItems(mDeclaration) do
   begin
-    Names := Names + Item.Name + '|';
+    mNames := mNames + mItem.Name + '|';
   end;
-  Assert.IsTrue(Names.StartsWith('summary|param name="Customer"|param name="Rate"|param name="Extra"|returns|'),
-    Names);
-  Assert.AreEqual('summary>$0</summary>', TAtlasXmlDoc.TagItems(Declaration)[0].InsertText);
+  Assert.IsTrue(mNames.StartsWith('summary|param name="Customer"|param name="Rate"|param name="Extra"|returns|'),
+    mNames);
+  Assert.AreEqual('summary>$0</summary>', TAtlasXmlDoc.TagItems(mDeclaration)[0].InsertText);
   // Prozedur: kein returns.
   Assert.AreNotEqual('returns', String.Join('|', [TAtlasXmlDoc.TagItems('procedure Add(A: Integer);')[2].Name]));
 end;
@@ -804,77 +804,77 @@ end;
 
 procedure TAtlasMatchingBudgetTests.Filters5000EntriesWithin12ms;
 const
-  Words: array[0..11] of string = ('Add', 'String', 'List', 'Item', 'Get', 'Set', 'Count', 'Object', 'Begin',
+  cWords: array[0..11] of string = ('Add', 'String', 'List', 'Item', 'Get', 'Set', 'Count', 'Object', 'Begin',
     'Update', 'Index', 'Value');
 var
-  Items: TAtlasCompletionItems;
-  Index, Run: Integer;
-  Pattern: string;
-  Watch: TStopwatch;
-  Times: TArray<Int64>;
+  mItems: TAtlasCompletionItems;
+  mIndex, mRun: Integer;
+  mPattern: string;
+  mWatch: TStopwatch;
+  mTimes: TArray<Int64>;
 begin
-  SetLength(Items, 5000);
-  for Index := 0 to High(Items) do
+  SetLength(mItems, 5000);
+  for mIndex := 0 to High(mItems) do
   begin
-    Items[Index].Name := Words[Index mod 12] + Words[(Index div 12) mod 12] + Words[(Index div 144) mod 12] +
-      IntToStr(Index);
-    Items[Index].Rank := Index;
+    mItems[mIndex].Name := cWords[mIndex mod 12] + cWords[(mIndex div 12) mod 12] + cWords[(mIndex div 144) mod 12] +
+      IntToStr(mIndex);
+    mItems[mIndex].Rank := mIndex;
   end;
   // Typische Schritte beim Tippen: Anfang, CamelCase, Teilfolge, kein Treffer.
-  for Pattern in ['A', 'Ad', 'AddS', 'ASL', 'stl', 'xyz'] do
+  for mPattern in ['A', 'Ad', 'AddS', 'ASL', 'stl', 'xyz'] do
   begin
-    TAtlasCompletionMatcher.Filter(Items, Pattern);
-    Times := nil;
-    for Run := 1 to 5 do
+    TAtlasCompletionMatcher.Filter(mItems, mPattern);
+    mTimes := nil;
+    for mRun := 1 to 5 do
     begin
-      Watch := TStopwatch.StartNew;
-      TAtlasCompletionMatcher.Filter(Items, Pattern);
-      Times := Times + [Watch.ElapsedMilliseconds];
+      mWatch := TStopwatch.StartNew;
+      TAtlasCompletionMatcher.Filter(mItems, mPattern);
+      mTimes := mTimes + [mWatch.ElapsedMilliseconds];
     end;
     // Median von fünf Läufen, damit ein einzelner Ausreißer der Maschine nicht zählt.
-    TArray.Sort<Int64>(Times);
-    Assert.IsTrue(Times[2] <= 12, Format('Filtern nach "%s" dauerte %d ms', [Pattern, Times[2]]));
+    TArray.Sort<Int64>(mTimes);
+    Assert.IsTrue(mTimes[2] <= 12, Format('Filtern nach "%s" dauerte %d ms', [mPattern, mTimes[2]]));
   end;
 end;
 
 procedure TAtlasMatchingBudgetTests.Orders5000EntriesWithRestWithin16ms;
 const
-  Words: array[0..11] of string = ('Add', 'String', 'List', 'Item', 'Get', 'Set', 'Count', 'Object', 'Begin',
+  cWords: array[0..11] of string = ('Add', 'String', 'List', 'Item', 'Get', 'Set', 'Count', 'Object', 'Begin',
     'Update', 'Index', 'Value');
 var
-  Items: TAtlasCompletionItems;
-  Index, Run, RestStart: Integer;
-  Pattern: string;
-  Watch: TStopwatch;
-  Times: TArray<Int64>;
-  Options: TAtlasRankOptions;
-  Order: TArray<Integer>;
+  mItems: TAtlasCompletionItems;
+  mIndex, mRun, mRestStart: Integer;
+  mPattern: string;
+  mWatch: TStopwatch;
+  mTimes: TArray<Int64>;
+  mOptions: TAtlasRankOptions;
+  mOrder: TArray<Integer>;
 begin
-  SetLength(Items, 5000);
-  for Index := 0 to High(Items) do
+  SetLength(mItems, 5000);
+  for mIndex := 0 to High(mItems) do
   begin
-    Items[Index].Name := Words[Index mod 12] + Words[(Index div 12) mod 12] + Words[(Index div 144) mod 12] +
-      IntToStr(Index);
-    Items[Index].Rank := Index;
+    mItems[mIndex].Name := cWords[mIndex mod 12] + cWords[(mIndex div 12) mod 12] + cWords[(mIndex div 144) mod 12] +
+      IntToStr(mIndex);
+    mItems[mIndex].Rank := mIndex;
   end;
-  Options := TAtlasRankOptions.Defaults;
-  Options.ListMode := TAtlasListMode.Rest;
-  for Pattern in ['A', 'AddS', 'ASL', 'xyz'] do
+  mOptions := TAtlasRankOptions.Defaults;
+  mOptions.ListMode := TAtlasListMode.Rest;
+  for mPattern in ['A', 'AddS', 'ASL', 'xyz'] do
   begin
-    Order := TAtlasRanking.Order(Items, Pattern, Options, RestStart);
-    Assert.AreEqual(5000, TAtlasRanking.ItemCount(Order), 'Alle Einträge bleiben sichtbar');
-    Times := nil;
-    for Run := 1 to 5 do
+    mOrder := TAtlasRanking.Order(mItems, mPattern, mOptions, mRestStart);
+    Assert.AreEqual(5000, TAtlasRanking.ItemCount(mOrder), 'Alle Einträge bleiben sichtbar');
+    mTimes := nil;
+    for mRun := 1 to 5 do
     begin
-      Watch := TStopwatch.StartNew;
-      TAtlasRanking.Order(Items, Pattern, Options, RestStart);
-      Times := Times + [Watch.ElapsedMilliseconds];
+      mWatch := TStopwatch.StartNew;
+      TAtlasRanking.Order(mItems, mPattern, mOptions, mRestStart);
+      mTimes := mTimes + [mWatch.ElapsedMilliseconds];
     end;
-    TArray.Sort<Int64>(Times);
-    Assert.IsTrue(Times[2] <= 16, Format('Ordnen mit Rest nach "%s" dauerte %d ms', [Pattern, Times[2]]));
+    TArray.Sort<Int64>(mTimes);
+    Assert.IsTrue(mTimes[2] <= 16, Format('Ordnen mit Rest nach "%s" dauerte %d ms', [mPattern, mTimes[2]]));
   end;
-  Items := nil;
-  Order := nil;
+  mItems := nil;
+  mOrder := nil;
 end;
 
 { TAtlasWordTests }
@@ -917,57 +917,57 @@ end;
 
 procedure TAtlasMatchingBudgetTests.TyposAppearUnderDidYouMean;
 var
-  Items: TAtlasCompletionItems;
-  Order: TArray<Integer>;
-  Name: string;
-  Item: TAtlasCompletionItem;
+  mItems: TAtlasCompletionItems;
+  mOrder: TArray<Integer>;
+  mName: string;
+  mItem: TAtlasCompletionItem;
 begin
   Assert.AreEqual(1, TAtlasCompletionMatcher.Distance('Lenght', 'Length'), 'Vertauschung zählt 1');
   Assert.AreEqual(1, TAtlasCompletionMatcher.Distance('lengh', 'Length'));
   Assert.AreEqual(0, TAtlasCompletionMatcher.TypoLimit('Le'));
-  Items := nil;
-  for Name in ['Length', 'Low', 'High', 'Lengthy'] do
+  mItems := nil;
+  for mName in ['Length', 'Low', 'High', 'Lengthy'] do
   begin
-    Item := Default(TAtlasCompletionItem);
-    Item.Name := Name;
-    Items := Items + [Item];
+    mItem := Default(TAtlasCompletionItem);
+    mItem.Name := mName;
+    mItems := mItems + [mItem];
   end;
-  Order := TAtlasRanking.Order(Items, 'Lenght', TAtlasRankOptions.Defaults);
-  Assert.AreEqual(TAtlasRanking.cTypoHeader, Order[0], 'keine regulären Treffer: gleich „Meintest du“');
-  Assert.AreEqual('Length', Items[Order[1]].Name);
-  Assert.AreEqual(2, TAtlasRanking.ItemCount(Order), 'Length und Lengthy (Anfang), nicht Low');
-  Assert.IsTrue(TAtlasRanking.OnlyTypos(Order), 'Fußzeile: Keine Treffer für „Lenght“');
+  mOrder := TAtlasRanking.Order(mItems, 'Lenght', TAtlasRankOptions.Defaults);
+  Assert.AreEqual(TAtlasRanking.cTypoHeader, mOrder[0], 'keine regulären Treffer: gleich „Meintest du“');
+  Assert.AreEqual('Length', mItems[mOrder[1]].Name);
+  Assert.AreEqual(2, TAtlasRanking.ItemCount(mOrder), 'Length und Lengthy (Anfang), nicht Low');
+  Assert.IsTrue(TAtlasRanking.OnlyTypos(mOrder), 'Fußzeile: Keine Treffer für „Lenght“');
   // Mit genug regulären Treffern keine Tippfehler-Gruppe.
-  Order := TAtlasRanking.Order(Items, 'L', TAtlasRankOptions.Defaults);
-  Assert.IsFalse(TAtlasRanking.IsHeader(Order[0]));
-  Assert.IsFalse(TAtlasRanking.OnlyTypos(Order));
+  mOrder := TAtlasRanking.Order(mItems, 'L', TAtlasRankOptions.Defaults);
+  Assert.IsFalse(TAtlasRanking.IsHeader(mOrder[0]));
+  Assert.IsFalse(TAtlasRanking.OnlyTypos(mOrder));
   Assert.IsFalse(TAtlasRanking.OnlyTypos([TAtlasRanking.cTypoHeader]));
 end;
 
 procedure TAtlasMatchingBudgetTests.AnnouncementNamesKindPositionAndDetail;
 var
-  Item: TAtlasCompletionItem;
+  mItem: TAtlasCompletionItem;
 begin
-  Item := Default(TAtlasCompletionItem);
-  Item.Name := 'ShowMessage';
-  Item.Signature := 'procedure ShowMessage(const Msg: string)';
+  mItem := Default(TAtlasCompletionItem);
+  mItem.Name := 'ShowMessage';
+  mItem.Signature := 'procedure ShowMessage(const Msg: string)';
   Assert.AreEqual('ShowMessage, Methode, 3 von 12. procedure ShowMessage(const Msg: string)',
-    TAtlasItemPresentation.Announcement(Item, 'Methode', '%d von %d', 3, 12));
-  Item.Signature := '';
-  Assert.AreEqual('ShowMessage, 1 von 1.', TAtlasItemPresentation.Announcement(Item, '', '%d von %d', 1, 1));
+    TAtlasItemPresentation.Announcement(mItem, 'Methode', '%d von %d', 3, 12));
+  mItem.Signature := '';
+  Assert.AreEqual('ShowMessage, 1 von 1.', TAtlasItemPresentation.Announcement(mItem, '', '%d von %d', 1, 1));
 end;
 
 procedure TAtlasMatchingBudgetTests.TagTextNamesStatesInWords;
 var
-  Item: TAtlasCompletionItem;
+  mItem: TAtlasCompletionItem;
 begin
-  Item := Default(TAtlasCompletionItem);
-  Item.Name := 'AddPair';
-  Assert.AreEqual('', TAtlasItemPresentation.TagText(Item));
-  Item.Directives := ['deprecated'];
-  Item.IsHelper := True;
-  Assert.AreEqual('deprecated, Helper', TAtlasItemPresentation.TagText(Item));
-  Item.Directives := nil;
+  mItem := Default(TAtlasCompletionItem);
+  mItem.Name := 'AddPair';
+  Assert.AreEqual('', TAtlasItemPresentation.TagText(mItem));
+  mItem.Directives := ['deprecated'];
+  mItem.IsHelper := True;
+  Assert.AreEqual('deprecated, Helper', TAtlasItemPresentation.TagText(mItem));
+  mItem.Directives := nil;
 end;
 
 procedure TAtlasMatchingBudgetTests.CommitTextFixesCase;

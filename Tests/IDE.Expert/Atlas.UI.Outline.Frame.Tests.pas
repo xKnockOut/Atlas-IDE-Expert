@@ -58,7 +58,7 @@ uses
   Atlas.Core.Outline.Model;
 
 const
-  FormCode =
+  cFormCode =
     'unit F;'#13#10 +
     'interface'#13#10 +
     'type'#13#10 +
@@ -80,46 +80,46 @@ const
 
 function Nodes: TAtlasOutlineNodes;
 var
-  Tree: TSyntaxTree;
-  Symbols: TJSONArray;
+  mTree: TSyntaxTree;
+  mSymbols: TJSONArray;
 begin
-  Tree := TPascalParser.Parse(FormCode);
+  mTree := TPascalParser.Parse(cFormCode);
   try
-    Symbols := TLspDocumentSymbols.BuildSymbols(Tree, FormCode);
+    mSymbols := TLspDocumentSymbols.BuildSymbols(mTree, cFormCode);
   finally
-    Tree.Free;
+    mTree.Free;
   end;
   try
-    Result := TAtlasOutline.FromJson(Symbols);
+    Result := TAtlasOutline.FromJson(mSymbols);
   finally
-    Symbols.Free;
+    mSymbols.Free;
   end;
 end;
 
 function Names(AFrame: TAtlasOutlineFrame): string;
 var
-  Row: TAtlasOutlineRow;
+  mRow: TAtlasOutlineRow;
 begin
   Result := '';
-  for Row in AFrame.Rows do
+  for mRow in AFrame.Rows do
   begin
     if Result <> '' then
     begin
       Result := Result + ',';
     end;
-    Result := Result + AFrame.Nodes[Row.Node].Name;
+    Result := Result + AFrame.Nodes[mRow.Node].Name;
   end;
 end;
 
 function RowOf(AFrame: TAtlasOutlineFrame; const AName: string): Integer;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
-  for Index := 0 to High(AFrame.Rows) do
+  for mIndex := 0 to High(AFrame.Rows) do
   begin
-    if AFrame.Nodes[AFrame.Rows[Index].Node].Name = AName then
+    if AFrame.Nodes[AFrame.Rows[mIndex].Node].Name = AName then
     begin
-      Exit(Index);
+      Exit(mIndex);
     end;
   end;
   Result := -1;
@@ -127,13 +127,13 @@ end;
 
 function MenuItem(AMenu: TPopupMenu; const ACaption: string): TMenuItem;
 var
-  Item: TMenuItem;
+  mItem: TMenuItem;
 begin
-  for Item in AMenu.Items do
+  for mItem in AMenu.Items do
   begin
-    if Item.Caption = ACaption then
+    if mItem.Caption = ACaption then
     begin
-      Exit(Item);
+      Exit(mItem);
     end;
   end;
   Result := nil;
@@ -181,14 +181,14 @@ end;
 
 procedure TAtlasOutlineFrameTests.PublishedMenuShowsFormFieldsAndHandlers;
 var
-  Item: TMenuItem;
+  mItem: TMenuItem;
 begin
   // Aus „alle“ heraus wählt der Klick genau diese Sichtbarkeit.
-  Item := MenuItem(FFrame.VisibilityMenu, 'published');
-  Assert.IsNotNull(Item);
-  Item.Click;
+  mItem := MenuItem(FFrame.VisibilityMenu, 'published');
+  Assert.IsNotNull(mItem);
+  mItem.Click;
   Assert.AreEqual('interface,TForm1,Button1,Button1Click', Names(FFrame));
-  Assert.IsTrue(Item.Checked);
+  Assert.IsTrue(mItem.Checked);
   Assert.IsFalse(MenuItem(FFrame.VisibilityMenu, 'private').Checked);
   // Art „Felder“ dazu: nur Button1.
   MenuItem(FFrame.KindMenu, TAtlasStrings.Text(TAtlasTextId.OutlineKindFields)).Click;
@@ -221,19 +221,19 @@ end;
 
 procedure TAtlasOutlineFrameTests.HighlightsEntryAtCursorWithoutOpening;
 var
-  Opened: Integer;
+  mOpened: Integer;
 begin
-  Opened := 0;
+  mOpened := 0;
   FFrame.OnOpen :=
     procedure(ANode: Integer; AImplementation: Boolean)
     begin
-      Inc(Opened);
+      Inc(mOpened);
     end;
   FFrame.ToggleRow(RowOf(FFrame, 'TForm1'));
   // Cursor im Rumpf von Button1Click (Zeile 14): Deklaration gewählt, Eltern aufgeklappt.
   Assert.IsTrue(FFrame.HighlightAt(14, 0));
   Assert.AreEqual('Button1Click', FFrame.Nodes[FFrame.SelectedNode].Name);
-  Assert.AreEqual(0, Opened, 'Hervorheben springt nicht');
+  Assert.AreEqual(0, mOpened, 'Hervorheben springt nicht');
   // Ausgefiltert: der nächste gezeigte Elternknoten.
   FFrame.SetCategories([TAtlasOutlineCategory.Field]);
   Assert.IsTrue(FFrame.HighlightAt(8, 14));
@@ -243,24 +243,24 @@ end;
 
 procedure TAtlasOutlineFrameTests.OpensDeclarationAndImplementation;
 var
-  Node: Integer;
-  Implementation_: Boolean;
+  mNode: Integer;
+  mImplementation_: Boolean;
 begin
-  Node := -1;
-  Implementation_ := False;
+  mNode := -1;
+  mImplementation_ := False;
   FFrame.OnOpen :=
     procedure(ANode: Integer; AImplementation: Boolean)
     begin
-      Node := ANode;
-      Implementation_ := AImplementation;
+      mNode := ANode;
+      mImplementation_ := AImplementation;
     end;
   FFrame.SelectRow(RowOf(FFrame, 'Make'));
   FFrame.OpenSelected(False);
-  Assert.AreEqual('Make', FFrame.Nodes[Node].Name);
-  Assert.IsFalse(Implementation_);
+  Assert.AreEqual('Make', FFrame.Nodes[mNode].Name);
+  Assert.IsFalse(mImplementation_);
   FFrame.OpenSelected(True);
-  Assert.IsTrue(Implementation_);
-  Assert.IsTrue(FFrame.Nodes[Node].Body >= 0, 'Make hat einen Rumpf');
+  Assert.IsTrue(mImplementation_);
+  Assert.IsTrue(FFrame.Nodes[mNode].Body >= 0, 'Make hat einen Rumpf');
   // Kontextmenü: „Zur Implementierung“ nur mit Rumpf.
   FFrame.SelectRow(RowOf(FFrame, 'Missing'));
   FFrame.ListMenu.OnPopup(FFrame.ListMenu);
@@ -270,19 +270,19 @@ end;
 
 procedure TAtlasOutlineFrameTests.ShowsConditionUnlessSwitchedOff;
 var
-  List: TAtlasOutlineNodes;
-  Index: Integer;
+  mList: TAtlasOutlineNodes;
+  mIndex: Integer;
 begin
   // #845: Bedingung des aktiven Zweigs hinter dem Eintrag, abschaltbar.
-  List := FFrame.Nodes;
-  for Index := 0 to High(List) do
+  mList := FFrame.Nodes;
+  for mIndex := 0 to High(mList) do
   begin
-    if List[Index].Name = 'Make' then
+    if mList[mIndex].Name = 'Make' then
     begin
-      List[Index].Condition := 'CPUX64';
+      mList[mIndex].Condition := 'CPUX64';
     end;
   end;
-  FFrame.SetNodes(List);
+  FFrame.SetNodes(mList);
   Assert.AreEqual('+ Make · class · CPUX64', FFrame.RowText(RowOf(FFrame, 'Make')));
   FFrame.ShowConditions := False;
   Assert.AreEqual('+ Make · class', FFrame.RowText(RowOf(FFrame, 'Make')));
@@ -290,27 +290,27 @@ end;
 
 procedure TAtlasOutlineFrameTests.SortButtonAndMessage;
 var
-  Sorted: Boolean;
-  Follow: Boolean;
+  mSorted: Boolean;
+  mFollow: Boolean;
 begin
-  Sorted := False;
-  Follow := True;
+  mSorted := False;
+  mFollow := True;
   FFrame.OnSortChanged :=
     procedure(AValue: Boolean)
     begin
-      Sorted := AValue;
+      mSorted := AValue;
     end;
   FFrame.OnFollowChanged :=
     procedure(AValue: Boolean)
     begin
-      Follow := AValue;
+      mFollow := AValue;
     end;
   FFrame.Alphabetical := True;
   Assert.AreEqual('interface,TForm1,Button1,Button1Click,FCount,Make,Missing', Names(FFrame));
   MenuItem(FFrame.ListMenu, TAtlasOutlineStrings.Text(TAtlasOutlineTextId.OutlineFollowCursor)).Click;
-  Assert.IsFalse(Follow);
+  Assert.IsFalse(mFollow);
   Assert.IsFalse(FFrame.FollowCursor);
-  Assert.IsFalse(Sorted);
+  Assert.IsFalse(mSorted);
   FFrame.SetMessage('Keine Gliederung');
   Assert.AreEqual(0, Integer(Length(FFrame.Rows)));
   Assert.IsTrue(FFrame.MessageLabel.Visible);

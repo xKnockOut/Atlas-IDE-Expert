@@ -195,7 +195,9 @@ var
     end;
   end;
 
-  // Neue Routinen bzw. Köpfe vor ADecl: je eine Überladung ohne die letzten Standardparameter.
+  // Je eine Überladung ohne die letzten Standardparameter: Köpfe vor ADecl, Rümpfe vor ABody. Ist ADecl selbst der
+  // Rumpf (Routine nur im implementation-Teil oder Programm), stehen die neuen Routinen danach, weil sie die volle
+  // Fassung aufrufen und Pascal nur schon Deklariertes kennt.
   function Fix(const ADecl: TSignatureHeader; ADeclNode: TSyntaxNode; const ABody: TBodyMatch; ADeclIsBody: Boolean;
     AFirst: Integer): TArray<TRuleEdit>;
   var
@@ -236,8 +238,8 @@ var
       end;
       if ADeclIsBody then
       begin
-        mDeclarations := mDeclarations + Routine(ADecl, ADecl.QualifiedName,
-          TChangeSignature.OverloadDirectives(ADecl, False)) + mIndent;
+        mRoutines := mRoutines + mLineBreak + mLineBreak + TrimRight(Routine(ADecl, ADecl.QualifiedName,
+          TChangeSignature.OverloadDirectives(ADecl, False)));
       end
       else
       begin
@@ -249,9 +251,12 @@ var
         end;
       end;
     end;
-    Result := [TRuleEdit.Create(TTextRange.Create(mTokens[ADecl.StartToken].StartPos,
-      mTokens[ADecl.StartToken].StartPos),
-      mDeclarations)] + DefaultRemovals(ADeclNode);
+    Result := DefaultRemovals(ADeclNode);
+    if mDeclarations <> '' then
+    begin
+      Result := [TRuleEdit.Create(TTextRange.Create(mTokens[ADecl.StartToken].StartPos,
+        mTokens[ADecl.StartToken].StartPos), mDeclarations)] + Result;
+    end;
     if not ADecl.HasDirective('overload') then
     begin
       Result := Result + [TRuleEdit.Create(TTextRange.Create(mTokens[ADecl.EndToken].EndPos,
@@ -263,6 +268,11 @@ var
         mTokens[ABody.Header.StartToken].StartPos), mRoutines)];
       // Ein im Rumpf wiederholter Standardwert fällt ebenfalls weg.
       Result := Result + DefaultRemovals(ABody.Node);
+    end;
+    if ADeclIsBody then
+    begin
+      Result := Result + [TRuleEdit.Create(TTextRange.Create(ADeclNode.Parent.EndPos, ADeclNode.Parent.EndPos),
+        mRoutines)];
     end;
   end;
 

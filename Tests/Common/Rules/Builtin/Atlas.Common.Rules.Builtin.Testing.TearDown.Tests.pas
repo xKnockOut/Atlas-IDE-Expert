@@ -67,12 +67,17 @@ begin
     '  TDUnitX.RegisterTestFixture(TFallTests);'#10'end.';
 end;
 
-function Findings(const ASource: string; const AConfig: string = ''): TArray<TRuleFinding>;
+function Findings(const ASource: string; const AConfig: string): TArray<TRuleFinding>; overload;
 begin
   Result := TRuleAssert.Findings(TDUnitXSetupNotTornDownRule.Create, ASource, AConfig, 'Fall.Tests.pas');
 end;
 
-function Messages(const ASource: string; const AConfig: string = ''): string;
+function Findings(const ASource: string): TArray<TRuleFinding>; overload;
+begin
+  Result := Findings(ASource, '');
+end;
+
+function Messages(const ASource: string; const AConfig: string): string; overload;
 var
   mFinding: TRuleFinding;
 begin
@@ -85,6 +90,11 @@ begin
     end;
     Result := Result + IntToStr(mFinding.Range.StartPos.Line) + ': ' + mFinding.Message;
   end;
+end;
+
+function Messages(const ASource: string): string; overload;
+begin
+  Result := Messages(ASource, '');
 end;
 
 /// <summary>ASource nach der ersten Korrektur des ersten Befunds.</summary>

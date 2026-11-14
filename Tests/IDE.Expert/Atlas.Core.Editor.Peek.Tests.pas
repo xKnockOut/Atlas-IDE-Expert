@@ -47,7 +47,7 @@ uses
   Atlas.Core.Editor.Peek;
 
 const
-  UnitText: array[0..41] of string = (
+  cUnitText: array[0..41] of string = (
     'unit U;',                                           // 0
     'interface',                                         // 1
     'type',                                              // 2
@@ -93,12 +93,12 @@ const
 
 function Lines: TArray<string>;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
-  SetLength(Result, Length(UnitText));
-  for Index := 0 to High(UnitText) do
+  SetLength(Result, Length(cUnitText));
+  for mIndex := 0 to High(cUnitText) do
   begin
-    Result[Index] := UnitText[Index];
+    Result[mIndex] := cUnitText[mIndex];
   end;
 end;
 
@@ -162,10 +162,10 @@ end;
 
 procedure TAtlasPeekTests.PairsOverloadsWithImplementations;
 var
-  Targets: TArray<TAtlasPeekTarget>;
+  mTargets: TArray<TAtlasPeekTarget>;
 begin
   // Drei Überladungen samt Implementierungen; "Gehe zu Definition" führt von 10 → 19, 11 → 32, 13 → 35.
-  Targets := TAtlasPeek.Pair([At(10, 14), At(11, 14), At(13, 14), At(19, 15), At(32, 15), At(35, 15)],
+  mTargets := TAtlasPeek.Pair([At(10, 14), At(11, 14), At(13, 14), At(19, 15), At(32, 15), At(35, 15)],
     function(const APlace: TAtlasPeekPlace; out ATarget: TAtlasPeekPlace): Boolean
     begin
       Result := True;
@@ -177,16 +177,16 @@ begin
         Result := False;
       end;
     end);
-  Assert.AreEqual(3, Integer(Length(Targets)));
-  Assert.AreEqual(10, Targets[0].Place.Line);
-  Assert.IsTrue(Targets[0].HasBody);
-  Assert.AreEqual(19, Targets[0].Body.Line);
-  Assert.AreEqual(32, Targets[1].Body.Line);
-  Assert.AreEqual(35, Targets[2].Body.Line);
+  Assert.AreEqual(3, Integer(Length(mTargets)));
+  Assert.AreEqual(10, mTargets[0].Place.Line);
+  Assert.IsTrue(mTargets[0].HasBody);
+  Assert.AreEqual(19, mTargets[0].Body.Line);
+  Assert.AreEqual(32, mTargets[1].Body.Line);
+  Assert.AreEqual(35, mTargets[2].Body.Line);
   // Ohne Ziel (abstrakt): eigenes Ziel ohne Implementierung.
-  Targets := TAtlasPeek.Pair([At(14, 19)], nil);
-  Assert.AreEqual(1, Integer(Length(Targets)));
-  Assert.IsFalse(Targets[0].HasBody);
+  mTargets := TAtlasPeek.Pair([At(14, 19)], nil);
+  Assert.AreEqual(1, Integer(Length(mTargets)));
+  Assert.IsFalse(mTargets[0].HasBody);
 end;
 
 function Symbol(const AName, AContainer: string; AKind, ALine: Integer): TAtlasSymbol;
@@ -201,46 +201,46 @@ end;
 
 procedure TAtlasPeekTests.FindsOverloadsInOutline;
 var
-  Symbols: TArray<TAtlasSymbol>;
-  Places: TArray<TAtlasPeekPlace>;
+  mSymbols: TArray<TAtlasSymbol>;
+  mPlaces: TArray<TAtlasPeekPlace>;
 begin
-  Symbols := [Symbol('TBar', 'interface', 5, 6), Symbol('Add', 'TBar', 6, 10), Symbol('Add', 'TBar', 6, 11),
+  mSymbols := [Symbol('TBar', 'interface', 5, 6), Symbol('Add', 'TBar', 6, 10), Symbol('Add', 'TBar', 6, 11),
     Symbol('Add', 'TBar', 6, 13), Symbol('Make', 'TBar', 12, 14), Symbol('Add', 'TOther', 6, 16),
     Symbol('TBar.Add', 'implementation', 6, 32), Symbol('TBar.Add', 'implementation', 6, 19),
     Symbol('TBar.Add', 'implementation', 6, 35), Symbol('Add', 'interface', 12, 3)];
-  Places := TAtlasPeek.Overloads(Symbols, 11);
+  mPlaces := TAtlasPeek.Overloads(mSymbols, 11);
   // Drei Deklarationen und drei Implementierungen, nach Zeile; TOther.Add und die freie Funktion nicht.
-  Assert.AreEqual(6, Integer(Length(Places)));
-  Assert.AreEqual(10, Places[0].Line);
-  Assert.AreEqual(11, Places[1].Line);
-  Assert.AreEqual(13, Places[2].Line);
-  Assert.AreEqual(19, Places[3].Line);
-  Assert.AreEqual(32, Places[4].Line);
-  Assert.AreEqual(35, Places[5].Line);
+  Assert.AreEqual(6, Integer(Length(mPlaces)));
+  Assert.AreEqual(10, mPlaces[0].Line);
+  Assert.AreEqual(11, mPlaces[1].Line);
+  Assert.AreEqual(13, mPlaces[2].Line);
+  Assert.AreEqual(19, mPlaces[3].Line);
+  Assert.AreEqual(32, mPlaces[4].Line);
+  Assert.AreEqual(35, mPlaces[5].Line);
   // Freie Routine: interface und implementation sind derselbe Besitzer.
-  Symbols := Symbols + [Symbol('Add', 'implementation', 12, 50)];
-  Places := TAtlasPeek.Overloads(Symbols, 3);
-  Assert.AreEqual(2, Integer(Length(Places)));
-  Assert.AreEqual(50, Places[1].Line);
+  mSymbols := mSymbols + [Symbol('Add', 'implementation', 12, 50)];
+  mPlaces := TAtlasPeek.Overloads(mSymbols, 3);
+  Assert.AreEqual(2, Integer(Length(mPlaces)));
+  Assert.AreEqual(50, mPlaces[1].Line);
   // Kein Routinenname in der Zeile (Klasse): leer.
-  Assert.AreEqual(0, Integer(Length(TAtlasPeek.Overloads(Symbols, 6))));
+  Assert.AreEqual(0, Integer(Length(TAtlasPeek.Overloads(mSymbols, 6))));
 end;
 
 procedure TAtlasPeekTests.BodyOutsideTheListIsTaken;
 var
-  Targets: TArray<TAtlasPeekTarget>;
+  mTargets: TArray<TAtlasPeekTarget>;
 begin
-  Targets := TAtlasPeek.Pair([At(10, 14)],
+  mTargets := TAtlasPeek.Pair([At(10, 14)],
     function(const APlace: TAtlasPeekPlace; out ATarget: TAtlasPeekPlace): Boolean
     begin
       ATarget := TAtlasPeekPlace.Create('V.pas', 70, 2);
       Result := True;
     end);
-  Assert.AreEqual(1, Integer(Length(Targets)));
-  Assert.IsTrue(Targets[0].HasBody);
-  Assert.AreEqual('V.pas', Targets[0].Body.FileName);
+  Assert.AreEqual(1, Integer(Length(mTargets)));
+  Assert.IsTrue(mTargets[0].HasBody);
+  Assert.AreEqual('V.pas', mTargets[0].Body.FileName);
   // Implementierung, die zurück zu einer schon vergebenen Deklaration führt: kein Rumpf.
-  Targets := TAtlasPeek.Pair([At(10, 14), At(19, 15), At(40, 1)],
+  mTargets := TAtlasPeek.Pair([At(10, 14), At(19, 15), At(40, 1)],
     function(const APlace: TAtlasPeekPlace; out ATarget: TAtlasPeekPlace): Boolean
     begin
       Result := True;
@@ -250,105 +250,105 @@ begin
         ATarget := At(10, 14);
       end;
     end);
-  Assert.AreEqual(2, Integer(Length(Targets)));
-  Assert.AreEqual(40, Targets[1].Place.Line);
-  Assert.IsFalse(Targets[1].HasBody);
+  Assert.AreEqual(2, Integer(Length(mTargets)));
+  Assert.AreEqual(40, mTargets[1].Place.Line);
+  Assert.IsFalse(mTargets[1].HasBody);
 end;
 
 procedure TAtlasPeekTests.DefinitionRowsShowDeclarationAndBody;
 var
-  Target: TAtlasPeekTarget;
-  Rows: TArray<TAtlasPeekRow>;
+  mTarget: TAtlasPeekTarget;
+  mRows: TArray<TAtlasPeekRow>;
 begin
-  Target.Place := At(11, 14);
-  Target.HasBody := True;
-  Target.Body := At(32, 15);
-  Rows := TAtlasPeek.DefinitionRows(Target, Lines, Lines, True, 4);
+  mTarget.Place := At(11, 14);
+  mTarget.HasBody := True;
+  mTarget.Body := At(32, 15);
+  mRows := TAtlasPeek.DefinitionRows(mTarget, Lines, Lines, True, 4);
   // Zwei Zeilen Deklaration, Trennzeile, drei Zeilen Implementierung.
-  Assert.AreEqual(6, Integer(Length(Rows)));
-  Assert.IsTrue(Rows[0].Target);
-  Assert.AreEqual('Add', Copy(Rows[0].Text, Rows[0].NameStart + 1, Rows[0].NameStop - Rows[0].NameStart));
-  Assert.IsFalse(Rows[1].Target);
-  Assert.AreEqual(Ord(TAtlasPeekRowKind.Separator), Ord(Rows[2].Kind));
-  Assert.AreEqual(32, Rows[2].Line);
-  Assert.AreEqual(32, Rows[3].Line);
-  Assert.AreEqual(34, Rows[5].Line);
+  Assert.AreEqual(6, Integer(Length(mRows)));
+  Assert.IsTrue(mRows[0].Target);
+  Assert.AreEqual('Add', Copy(mRows[0].Text, mRows[0].NameStart + 1, mRows[0].NameStop - mRows[0].NameStart));
+  Assert.IsFalse(mRows[1].Target);
+  Assert.AreEqual(Ord(TAtlasPeekRowKind.Separator), Ord(mRows[2].Kind));
+  Assert.AreEqual(32, mRows[2].Line);
+  Assert.AreEqual(32, mRows[3].Line);
+  Assert.AreEqual(34, mRows[5].Line);
   // Implementierung abgeschaltet: nur die Deklaration.
-  Rows := TAtlasPeek.DefinitionRows(Target, Lines, Lines, False, 4);
-  Assert.AreEqual(2, Integer(Length(Rows)));
+  mRows := TAtlasPeek.DefinitionRows(mTarget, Lines, Lines, False, 4);
+  Assert.AreEqual(2, Integer(Length(mRows)));
 end;
 
 procedure TAtlasPeekTests.ReferenceRowsMarkTheName;
 var
-  Rows: TArray<TAtlasPeekRow>;
-  Source: TArray<string>;
-  Index: Integer;
+  mRows: TArray<TAtlasPeekRow>;
+  mSource: TArray<string>;
+  mIndex: Integer;
 begin
-  SetLength(Source, 100);
-  for Index := 0 to High(Source) do
+  SetLength(mSource, 100);
+  for mIndex := 0 to High(mSource) do
   begin
-    Source[Index] := Format('L%d', [Index]);
+    mSource[mIndex] := Format('L%d', [mIndex]);
   end;
-  Source[50] := #9'Foo(1);';
-  Rows := TAtlasPeek.ReferenceRows(At(50, 1), Source, 4);
-  Assert.AreEqual(TAtlasPeek.cReferenceBefore + TAtlasPeek.cReferenceAfter + 1, Integer(Length(Rows)));
-  Assert.AreEqual(47, Rows[0].Line);
-  Assert.IsTrue(Rows[3].Target);
-  Assert.AreEqual('    Foo(1);', Rows[3].Text);
-  Assert.AreEqual(4, Rows[3].NameStart);
-  Assert.AreEqual(7, Rows[3].NameStop);
+  mSource[50] := #9'Foo(1);';
+  mRows := TAtlasPeek.ReferenceRows(At(50, 1), mSource, 4);
+  Assert.AreEqual(TAtlasPeek.cReferenceBefore + TAtlasPeek.cReferenceAfter + 1, Integer(Length(mRows)));
+  Assert.AreEqual(47, mRows[0].Line);
+  Assert.IsTrue(mRows[3].Target);
+  Assert.AreEqual('    Foo(1);', mRows[3].Text);
+  Assert.AreEqual(4, mRows[3].NameStart);
+  Assert.AreEqual(7, mRows[3].NameStop);
   // Am Dateianfang und -ende abgeschnitten.
-  Rows := TAtlasPeek.ReferenceRows(At(0, 0), Source, 4);
-  Assert.AreEqual(0, Rows[0].Line);
-  Rows := TAtlasPeek.ReferenceRows(At(99, 0), Source, 4);
-  Assert.AreEqual(99, Rows[High(Rows)].Line);
+  mRows := TAtlasPeek.ReferenceRows(At(0, 0), mSource, 4);
+  Assert.AreEqual(0, mRows[0].Line);
+  mRows := TAtlasPeek.ReferenceRows(At(99, 0), mSource, 4);
+  Assert.AreEqual(99, mRows[High(mRows)].Line);
   Assert.AreEqual('L1', TAtlasPeek.Excerpt(#9' L1  '));
 end;
 
 procedure TAtlasPeekTests.ViewSelectsAndScrolls;
 var
-  View: TAtlasPeekView;
-  Entries: TArray<TAtlasPeekEntry>;
-  Source: TArray<string>;
-  Index: Integer;
+  mView: TAtlasPeekView;
+  mEntries: TArray<TAtlasPeekEntry>;
+  mSource: TArray<string>;
+  mIndex: Integer;
 begin
-  SetLength(Source, 100);
-  for Index := 0 to High(Source) do
+  SetLength(mSource, 100);
+  for mIndex := 0 to High(mSource) do
   begin
-    Source[Index] := Format('L%d', [Index]);
+    mSource[mIndex] := Format('L%d', [mIndex]);
   end;
-  SetLength(Entries, 2);
-  Entries[0].Target.Place := At(10, 0);
-  Entries[0].Rows := TAtlasPeek.ReferenceRows(At(10, 0), Source, 4);
-  Entries[1].Target.Place := At(60, 0);
-  Entries[1].Rows := TAtlasPeek.ReferenceRows(At(60, 0), Source, 4);
-  View := TAtlasPeekView.Create(TAtlasPeekMode.References, 'Foo', Entries);
+  SetLength(mEntries, 2);
+  mEntries[0].Target.Place := At(10, 0);
+  mEntries[0].Rows := TAtlasPeek.ReferenceRows(At(10, 0), mSource, 4);
+  mEntries[1].Target.Place := At(60, 0);
+  mEntries[1].Rows := TAtlasPeek.ReferenceRows(At(60, 0), mSource, 4);
+  mView := TAtlasPeekView.Create(TAtlasPeekMode.References, 'Foo', mEntries);
   try
-    View.PageRows := 15;
-    Assert.AreEqual(0, View.Top);
-    View.PageDown;
-    Assert.AreEqual(14, View.Top);
-    View.PageDown;
-    View.PageDown;
-    Assert.AreEqual(View.MaxTop, View.Top);
-    Assert.AreEqual(44 - 15, View.MaxTop);
+    mView.PageRows := 15;
+    Assert.AreEqual(0, mView.Top);
+    mView.PageDown;
+    Assert.AreEqual(14, mView.Top);
+    mView.PageDown;
+    mView.PageDown;
+    Assert.AreEqual(mView.MaxTop, mView.Top);
+    Assert.AreEqual(44 - 15, mView.MaxTop);
     // Zielzeile außer Sicht: Enter öffnet die oberste sichtbare Zeile.
-    Assert.AreEqual(7 + View.Top, View.OpenPlace.Line);
-    View.PageUp;
-    View.PageUp;
-    View.PageUp;
-    Assert.AreEqual(0, View.Top);
-    Assert.AreEqual(10, View.OpenPlace.Line);
-    View.SelectNext;
-    Assert.AreEqual(1, View.Selected);
-    View.SelectNext;
-    Assert.AreEqual(1, View.Selected);
-    Assert.AreEqual(60, View.OpenPlace.Line);
-    View.SelectPrevious;
-    View.SelectPrevious;
-    Assert.AreEqual(0, View.Selected);
+    Assert.AreEqual(7 + mView.Top, mView.OpenPlace.Line);
+    mView.PageUp;
+    mView.PageUp;
+    mView.PageUp;
+    Assert.AreEqual(0, mView.Top);
+    Assert.AreEqual(10, mView.OpenPlace.Line);
+    mView.SelectNext;
+    Assert.AreEqual(1, mView.Selected);
+    mView.SelectNext;
+    Assert.AreEqual(1, mView.Selected);
+    Assert.AreEqual(60, mView.OpenPlace.Line);
+    mView.SelectPrevious;
+    mView.SelectPrevious;
+    Assert.AreEqual(0, mView.Selected);
   finally
-    View.Free;
+    mView.Free;
   end;
 end;
 

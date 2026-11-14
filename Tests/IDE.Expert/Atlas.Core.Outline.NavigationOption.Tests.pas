@@ -49,12 +49,12 @@ end;
 
 procedure TAtlasNavigationOptionTests.CandidatesForTheLog;
 var
-  Names: TArray<string>;
+  mNames: TArray<string>;
 begin
-  Names := TAtlasNavigationOption.Candidates(['AutoIndent', 'ShowToolbar', 'NavigateBack', 'RightMargin']);
-  Assert.AreEqual(2, Integer(Length(Names)));
-  Assert.AreEqual('ShowToolbar', Names[0]);
-  Assert.AreEqual('NavigateBack', Names[1]);
+  mNames := TAtlasNavigationOption.Candidates(['AutoIndent', 'ShowToolbar', 'NavigateBack', 'RightMargin']);
+  Assert.AreEqual(2, Integer(Length(mNames)));
+  Assert.AreEqual('ShowToolbar', mNames[0]);
+  Assert.AreEqual('NavigateBack', mNames[1]);
   Assert.AreEqual(0, Integer(Length(TAtlasNavigationOption.Candidates(['AutoIndent']))));
 end;
 
@@ -73,20 +73,20 @@ end;
 
 procedure TAtlasNavigationOptionTests.WritesInTheSameKind;
 var
-  Value: Variant;
+  mValue: Variant;
 begin
-  Value := TAtlasNavigationOption.Encode(True, False);
-  Assert.IsTrue(VarIsType(Value, varBoolean), 'Boolean bleibt Boolean');
-  Assert.IsFalse(Boolean(Value));
-  Value := TAtlasNavigationOption.Encode(1, False);
-  Assert.IsFalse(VarIsType(Value, varBoolean), 'Zahl bleibt Zahl');
-  Assert.AreEqual(0, Integer(Value));
-  Value := TAtlasNavigationOption.Encode('True', False);
-  Assert.IsTrue(VarIsStr(Value), 'Text bleibt Text');
-  Assert.AreEqual('False', VarToStr(Value));
-  Value := TAtlasNavigationOption.Encode(Unassigned, True);
-  Assert.IsTrue(VarIsType(Value, varBoolean), 'ohne Wert als Boolean');
-  Assert.IsTrue(Boolean(Value));
+  mValue := TAtlasNavigationOption.Encode(True, False);
+  Assert.IsTrue(VarIsType(mValue, varBoolean), 'Boolean bleibt Boolean');
+  Assert.IsFalse(Boolean(mValue));
+  mValue := TAtlasNavigationOption.Encode(1, False);
+  Assert.IsFalse(VarIsType(mValue, varBoolean), 'Zahl bleibt Zahl');
+  Assert.AreEqual(0, Integer(mValue));
+  mValue := TAtlasNavigationOption.Encode('True', False);
+  Assert.IsTrue(VarIsStr(mValue), 'Text bleibt Text');
+  Assert.AreEqual('False', VarToStr(mValue));
+  mValue := TAtlasNavigationOption.Encode(Unassigned, True);
+  Assert.IsTrue(VarIsType(mValue, varBoolean), 'ohne Wert als Boolean');
+  Assert.IsTrue(Boolean(mValue));
 end;
 
 end.

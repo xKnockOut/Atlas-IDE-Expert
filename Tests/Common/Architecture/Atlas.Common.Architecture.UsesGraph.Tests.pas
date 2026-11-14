@@ -74,16 +74,16 @@ end;
 
 function Names(AGraph: TUsesGraph; const ANodes: TArray<Integer>): string;
 var
-  Node: Integer;
+  mNode: Integer;
 begin
   Result := '';
-  for Node in ANodes do
+  for mNode in ANodes do
   begin
     if Result <> '' then
     begin
       Result := Result + ',';
     end;
-    Result := Result + AGraph.Node(Node).UnitName;
+    Result := Result + AGraph.Node(mNode).UnitName;
   end;
 end;
 
@@ -96,349 +96,350 @@ end;
 
 procedure TUsesGraphTests.FindsCycleOverThreeUnitsWithPath;
 var
-  Graph: TUsesGraph;
-  Cycles: TArray<TUsesCycle>;
-  Text: string;
+  mGraph: TUsesGraph;
+  mCycles: TArray<TUsesCycle>;
+  mText: string;
 begin
   // A → B (interface), B → C (implementation), C → A (interface), dazu D außerhalb.
-  Graph := NewGraph([UsesUnit('A', ['B'], nil), UsesUnit('B', nil, ['C']), UsesUnit('C', ['A'], nil),
+  mGraph := NewGraph([UsesUnit('A', ['B'], nil), UsesUnit('B', nil, ['C']), UsesUnit('C', ['A'], nil),
     UsesUnit('D', ['A'], nil)]);
   try
-    Cycles := Graph.AllCycles;
-    Assert.AreEqual(1, Integer(Length(Cycles)));
-    Text := Graph.Describe(Cycles[0].Edges);
-    Assert.AreEqual('A → B → C → A', Text);
-    Assert.AreEqual('A,B,C', Names(Graph, Cycles[0].Component));
-    Assert.IsFalse(Cycles[0].InterfaceOnly, 'B → C steht im implementation');
-    Assert.AreEqual(Ord(TUsesSection.Implementation_), Ord(Cycles[0].Edges[1].Section));
-    Assert.AreEqual(0, Integer(Length(Graph.Cycles(cInterfaceUsesOnly))), 'kein Compilerfehler');
+    mCycles := mGraph.AllCycles;
+    Assert.AreEqual(1, Integer(Length(mCycles)));
+    mText := mGraph.Describe(mCycles[0].Edges);
+    Assert.AreEqual('A → B → C → A', mText);
+    Assert.AreEqual('A,B,C', Names(mGraph, mCycles[0].Component));
+    Assert.IsFalse(mCycles[0].InterfaceOnly, 'B → C steht im implementation');
+    Assert.AreEqual(Ord(TUsesSection.Implementation_), Ord(mCycles[0].Edges[1].Section));
+    Assert.AreEqual(0, Integer(Length(mGraph.Cycles(cInterfaceUsesOnly))), 'kein Compilerfehler');
   finally
-    Graph.Free;
+    mGraph.Free;
   end;
 end;
 
 procedure TUsesGraphTests.InterfaceCycleIsCompilerError;
 var
-  Graph: TUsesGraph;
-  Cycles: TArray<TUsesCycle>;
+  mGraph: TUsesGraph;
+  mCycles: TArray<TUsesCycle>;
 begin
-  Graph := NewGraph([UsesUnit('X', ['Y'], nil), UsesUnit('Y', ['X'], nil)]);
+  mGraph := NewGraph([UsesUnit('X', ['Y'], nil), UsesUnit('Y', ['X'], nil)]);
   try
-    Cycles := Graph.Cycles(cInterfaceUsesOnly);
-    Assert.AreEqual(1, Integer(Length(Cycles)));
-    Assert.IsTrue(Cycles[0].InterfaceOnly);
-    Assert.AreEqual('X,Y', Names(Graph, Cycles[0].Units));
+    mCycles := mGraph.Cycles(cInterfaceUsesOnly);
+    Assert.AreEqual(1, Integer(Length(mCycles)));
+    Assert.IsTrue(mCycles[0].InterfaceOnly);
+    Assert.AreEqual('X,Y', Names(mGraph, mCycles[0].Units));
   finally
-    Graph.Free;
+    mGraph.Free;
   end;
 end;
 
 procedure TUsesGraphTests.AllCyclesListsErrorsFirstWithoutRepeating;
 var
-  Graph: TUsesGraph;
-  Cycles: TArray<TUsesCycle>;
+  mGraph: TUsesGraph;
+  mCycles: TArray<TUsesCycle>;
 begin
   // X ↔ Y nur interface (Fehler); P → Q → P über implementation; X, Y tauchen kein zweites Mal auf.
-  Graph := NewGraph([UsesUnit('X', ['Y'], nil), UsesUnit('Y', ['X'], nil), UsesUnit('P', ['Q'], nil),
+  mGraph := NewGraph([UsesUnit('X', ['Y'], nil), UsesUnit('Y', ['X'], nil), UsesUnit('P', ['Q'], nil),
     UsesUnit('Q', nil, ['P'])]);
   try
-    Cycles := Graph.AllCycles;
-    Assert.AreEqual(2, Integer(Length(Cycles)));
-    Assert.IsTrue(Cycles[0].InterfaceOnly);
-    Assert.AreEqual('X,Y', Names(Graph, Cycles[0].Component));
-    Assert.IsFalse(Cycles[1].InterfaceOnly);
-    Assert.AreEqual('P,Q', Names(Graph, Cycles[1].Component));
+    mCycles := mGraph.AllCycles;
+    Assert.AreEqual(2, Integer(Length(mCycles)));
+    Assert.IsTrue(mCycles[0].InterfaceOnly);
+    Assert.AreEqual('X,Y', Names(mGraph, mCycles[0].Component));
+    Assert.IsFalse(mCycles[1].InterfaceOnly);
+    Assert.AreEqual('P,Q', Names(mGraph, mCycles[1].Component));
   finally
-    Graph.Free;
+    mGraph.Free;
   end;
 end;
 
 procedure TUsesGraphTests.SelfUseIsCycle;
 var
-  Graph: TUsesGraph;
-  Cycles: TArray<TUsesCycle>;
+  mGraph: TUsesGraph;
+  mCycles: TArray<TUsesCycle>;
 begin
-  Graph := NewGraph([UsesUnit('S', nil, ['S'])]);
+  mGraph := NewGraph([UsesUnit('S', nil, ['S'])]);
   try
-    Cycles := Graph.AllCycles;
-    Assert.AreEqual(1, Integer(Length(Cycles)));
-    Assert.AreEqual('S → S', Graph.Describe(Cycles[0].Edges));
+    mCycles := mGraph.AllCycles;
+    Assert.AreEqual(1, Integer(Length(mCycles)));
+    Assert.AreEqual('S → S', mGraph.Describe(mCycles[0].Edges));
   finally
-    Graph.Free;
+    mGraph.Free;
   end;
 end;
 
 procedure TUsesGraphTests.ShortestPathPrefersEarlierEntry;
 var
-  Graph: TUsesGraph;
-  Path: TUsesEdges;
+  mGraph: TUsesGraph;
+  mPath: TUsesEdges;
 begin
   // A → B → D und A → C → D gleich lang: B steht im uses zuerst. A → E → F → D ist länger.
-  Graph := NewGraph([UsesUnit('A', ['E', 'B'], ['C']), UsesUnit('B', ['D'], nil), UsesUnit('C', ['D'], nil),
+  mGraph := NewGraph([UsesUnit('A', ['E', 'B'], ['C']), UsesUnit('B', ['D'], nil), UsesUnit('C', ['D'], nil),
     UsesUnit('D', nil, nil), UsesUnit('E', ['F'], nil), UsesUnit('F', ['D'], nil)]);
   try
-    Path := Graph.Path(Graph.IndexOf('A'), Graph.IndexOf('D'), cAllUsesSections);
-    Assert.AreEqual('A → B → D', Graph.Describe(Path));
-    Path := Graph.Path(Graph.IndexOf('A'), Graph.IndexOf('C'), cInterfaceUsesOnly);
-    Assert.AreEqual(0, Integer(Length(Path)), 'A → C nur über implementation');
+    mPath := mGraph.Path(mGraph.IndexOf('A'), mGraph.IndexOf('D'), cAllUsesSections);
+    Assert.AreEqual('A → B → D', mGraph.Describe(mPath));
+    mPath := mGraph.Path(mGraph.IndexOf('A'), mGraph.IndexOf('C'), cInterfaceUsesOnly);
+    Assert.AreEqual(0, Integer(Length(mPath)), 'A → C nur über implementation');
   finally
-    Graph.Free;
+    mGraph.Free;
   end;
 end;
 
 procedure TUsesGraphTests.NoPathGivesEmptyResult;
 var
-  Graph: TUsesGraph;
+  mGraph: TUsesGraph;
 begin
-  Graph := NewGraph([UsesUnit('A', ['B'], nil), UsesUnit('B', nil, nil)]);
+  mGraph := NewGraph([UsesUnit('A', ['B'], nil), UsesUnit('B', nil, nil)]);
   try
-    Assert.AreEqual(0, Integer(Length(Graph.Path(Graph.IndexOf('B'), Graph.IndexOf('A'), cAllUsesSections))));
-    Assert.AreEqual(0, Integer(Length(Graph.Path(Graph.IndexOf('A'), Graph.IndexOf('A'), cAllUsesSections))));
-    Assert.AreEqual(0, Integer(Length(Graph.Path(Graph.IndexOf('A'), -1, cAllUsesSections))));
+    Assert.AreEqual(0, Integer(Length(mGraph.Path(mGraph.IndexOf('B'), mGraph.IndexOf('A'), cAllUsesSections))));
+    Assert.AreEqual(0, Integer(Length(mGraph.Path(mGraph.IndexOf('A'), mGraph.IndexOf('A'), cAllUsesSections))));
+    Assert.AreEqual(0, Integer(Length(mGraph.Path(mGraph.IndexOf('A'), -1, cAllUsesSections))));
   finally
-    Graph.Free;
+    mGraph.Free;
   end;
 end;
 
 procedure TUsesGraphTests.TransitiveDependenciesAndDependents;
 var
-  Graph: TUsesGraph;
+  mGraph: TUsesGraph;
 begin
-  Graph := NewGraph([UsesUnit('App', ['Ui'], ['Data']), UsesUnit('Ui', ['Core'], nil), UsesUnit('Data', nil, ['Core']),
+  mGraph := NewGraph([UsesUnit('App', ['Ui'], ['Data']), UsesUnit('Ui', ['Core'], nil), UsesUnit('Data', nil, ['Core']),
     UsesUnit('Core', nil, nil)]);
   try
-    Assert.AreEqual('Core,Data,Ui', Names(Graph, Graph.Dependencies(Graph.IndexOf('App'), cAllUsesSections)));
-    Assert.AreEqual('Core,Ui', Names(Graph, Graph.Dependencies(Graph.IndexOf('App'), cInterfaceUsesOnly)));
-    Assert.AreEqual('App,Data,Ui', Names(Graph, Graph.Dependents(Graph.IndexOf('Core'), cAllUsesSections)));
-    Assert.AreEqual('Data,Ui', Names(Graph, Graph.DirectDependents(Graph.IndexOf('Core'), cAllUsesSections)));
-    Assert.AreEqual('Ui', Names(Graph, Graph.DirectDependencies(Graph.IndexOf('App'), cInterfaceUsesOnly)));
+    Assert.AreEqual('Core,Data,Ui', Names(mGraph, mGraph.Dependencies(mGraph.IndexOf('App'), cAllUsesSections)));
+    Assert.AreEqual('Core,Ui', Names(mGraph, mGraph.Dependencies(mGraph.IndexOf('App'), cInterfaceUsesOnly)));
+    Assert.AreEqual('App,Data,Ui', Names(mGraph, mGraph.Dependents(mGraph.IndexOf('Core'), cAllUsesSections)));
+    Assert.AreEqual('Data,Ui', Names(mGraph, mGraph.DirectDependents(mGraph.IndexOf('Core'), cAllUsesSections)));
+    Assert.AreEqual('Ui', Names(mGraph, mGraph.DirectDependencies(mGraph.IndexOf('App'), cInterfaceUsesOnly)));
   finally
-    Graph.Free;
+    mGraph.Free;
   end;
 end;
 
 procedure TUsesGraphTests.RecompileSetFollowsInterfaceUses;
 var
-  Graph: TUsesGraph;
+  mGraph: TUsesGraph;
 begin
   // Y verwendet X im interface, Z verwendet Y im implementation, W verwendet Z im interface:
   // Ändert sich X, werden Y (direkt) und Z (über Ys Schnittstelle) übersetzt, W nicht.
-  Graph := NewGraph([UsesUnit('X', nil, nil), UsesUnit('Y', ['X'], nil), UsesUnit('Z', nil, ['Y']),
+  mGraph := NewGraph([UsesUnit('X', nil, nil), UsesUnit('Y', ['X'], nil), UsesUnit('Z', nil, ['Y']),
     UsesUnit('W', ['Z'], nil), UsesUnit('V', nil, ['X'])]);
   try
-    Assert.AreEqual('V,Y,Z', Names(Graph, Graph.RecompileSet(Graph.IndexOf('X'))));
-    Assert.AreEqual('W', Names(Graph, Graph.RecompileSet(Graph.IndexOf('Z'))));
-    Assert.AreEqual(3, Graph.RecompileCount(Graph.IndexOf('X')));
+    Assert.AreEqual('V,Y,Z', Names(mGraph, mGraph.RecompileSet(mGraph.IndexOf('X'))));
+    Assert.AreEqual('W', Names(mGraph, mGraph.RecompileSet(mGraph.IndexOf('Z'))));
+    Assert.AreEqual(3, mGraph.RecompileCount(mGraph.IndexOf('X')));
   finally
-    Graph.Free;
+    mGraph.Free;
   end;
 end;
 
 procedure TUsesGraphTests.InitializationOrderIsDepthFirst;
 var
-  Graph: TUsesGraph;
-  Units: TArray<TUnitIndex>;
+  mGraph: TUsesGraph;
+  mUnits: TArray<TUnitIndex>;
 begin
-  Units := [UsesUnit('P', nil, ['A', 'B']), UsesUnit('A', ['C'], ['B']), UsesUnit('B', nil, nil),
+  mUnits := [UsesUnit('P', nil, ['A', 'B']), UsesUnit('A', ['C'], ['B']), UsesUnit('B', nil, nil),
     UsesUnit('C', nil, nil)];
-  Units[0].FileName := 'C:\Projekt\P.dpr';
-  Units[1].HasInitialization := True;
-  Units[2].HasInitialization := True;
-  Graph := NewGraph(Units);
+  mUnits[0].FileName := 'C:\Projekt\P.dpr';
+  mUnits[1].HasInitialization := True;
+  mUnits[2].HasInitialization := True;
+  mGraph := NewGraph(mUnits);
   try
-    Assert.IsTrue(Graph.Node(Graph.IndexOf('P')).IsProgram);
-    Assert.AreEqual('C,B,A,P', Names(Graph, Graph.InitializationOrder(Graph.IndexOf('P'), False)));
-    Assert.AreEqual('B,A', Names(Graph, Graph.InitializationOrder(Graph.IndexOf('P'), True)));
+    Assert.IsTrue(mGraph.Node(mGraph.IndexOf('P')).IsProgram);
+    Assert.AreEqual('C,B,A,P', Names(mGraph, mGraph.InitializationOrder(mGraph.IndexOf('P'), False)));
+    Assert.AreEqual('B,A', Names(mGraph, mGraph.InitializationOrder(mGraph.IndexOf('P'), True)));
   finally
-    Graph.Free;
+    mGraph.Free;
   end;
 end;
 
 procedure TUsesGraphTests.ResolvesNamesWithoutNamespace;
 var
-  Graph: TUsesGraph;
-  Options: TUsesGraphOptions;
+  mGraph: TUsesGraph;
+  mOptions: TUsesGraphOptions;
 begin
-  Options := TUsesGraphOptions.Default;
-  Options.Namespaces := ['System', 'Vcl'];
-  Graph := TUsesGraph.Create([UsesUnit('Main', ['SysUtils', 'Forms'], nil), UsesUnit('System.SysUtils', nil, nil),
-    UsesUnit('Vcl.Forms', nil, nil)], Options);
+  mOptions := TUsesGraphOptions.Default;
+  mOptions.Namespaces := ['System', 'Vcl'];
+  mGraph := TUsesGraph.Create([UsesUnit('Main', ['SysUtils', 'Forms'], nil), UsesUnit('System.SysUtils', nil, nil),
+    UsesUnit('Vcl.Forms', nil, nil)], mOptions);
   try
     Assert.AreEqual('System.SysUtils,Vcl.Forms',
-      Names(Graph, Graph.DirectDependencies(Graph.IndexOf('Main'), cAllUsesSections)));
-    Assert.AreEqual(Graph.IndexOf('Vcl.Forms'), Graph.IndexOf('Forms'));
-    Assert.AreEqual('SysUtils', Graph.Node(Graph.IndexOf('Main')).Outgoing[0].Name, 'Name wie im uses');
+      Names(mGraph, mGraph.DirectDependencies(mGraph.IndexOf('Main'), cAllUsesSections)));
+    Assert.AreEqual(mGraph.IndexOf('Vcl.Forms'), mGraph.IndexOf('Forms'));
+    Assert.AreEqual('SysUtils', mGraph.Node(mGraph.IndexOf('Main')).Outgoing[0].Name, 'Name wie im uses');
   finally
-    Graph.Free;
+    mGraph.Free;
   end;
 end;
 
 procedure TUsesGraphTests.LibraryUnitsOnlyOnRequest;
 var
-  Graph: TUsesGraph;
-  Options: TUsesGraphOptions;
-  Units: TArray<TUnitIndex>;
+  mGraph: TUsesGraph;
+  mOptions: TUsesGraphOptions;
+  mUnits: TArray<TUnitIndex>;
 begin
-  Units := [UsesUnit('Main', ['Lib'], nil), UsesUnit('Lib', nil, nil)];
-  Units[1].Library_ := True;
-  Graph := NewGraph(Units);
+  mUnits := [UsesUnit('Main', ['Lib'], nil), UsesUnit('Lib', nil, nil)];
+  mUnits[1].Library_ := True;
+  mGraph := NewGraph(mUnits);
   try
-    Assert.AreEqual(1, Graph.ActiveCount);
-    Assert.AreEqual(0, Graph.EdgeCount);
+    Assert.AreEqual(1, mGraph.ActiveCount);
+    Assert.AreEqual(0, mGraph.EdgeCount);
   finally
-    Graph.Free;
+    mGraph.Free;
   end;
-  Options := TUsesGraphOptions.Default;
-  Options.IncludeLibrary := True;
-  Graph := TUsesGraph.Create(Units, Options);
+  mOptions := TUsesGraphOptions.Default;
+  mOptions.IncludeLibrary := True;
+  mGraph := TUsesGraph.Create(mUnits, mOptions);
   try
-    Assert.AreEqual(2, Graph.ActiveCount);
-    Assert.AreEqual(1, Graph.EdgeCount);
-    Assert.IsTrue(Graph.Node(Graph.IndexOf('Lib')).Library_);
+    Assert.AreEqual(2, mGraph.ActiveCount);
+    Assert.AreEqual(1, mGraph.EdgeCount);
+    Assert.IsTrue(mGraph.Node(mGraph.IndexOf('Lib')).Library_);
   finally
-    Graph.Free;
+    mGraph.Free;
   end;
 end;
 
 procedure TUsesGraphTests.ExcludeMatchesNameOrPath;
 var
-  Graph: TUsesGraph;
-  Options: TUsesGraphOptions;
-  Units: TArray<TUnitIndex>;
+  mGraph: TUsesGraph;
+  mOptions: TUsesGraphOptions;
+  mUnits: TArray<TUnitIndex>;
 begin
-  Units := [UsesUnit('Main', ['Kern'], nil), UsesUnit('Kern', nil, nil), UsesUnit('Kern.Tests', ['Kern'], nil),
+  mUnits := [UsesUnit('Main', ['Kern'], nil), UsesUnit('Kern', nil, nil), UsesUnit('Kern.Tests', ['Kern'], nil),
     UsesUnit('Hilfe', nil, nil)];
-  Units[3].FileName := 'C:\Projekt\Werkzeuge\Hilfe.pas';
-  Options := TUsesGraphOptions.Default;
-  Options.Root := 'C:\Projekt';
-  Options.Exclude := ['*.Tests', 'Werkzeuge/**'];
-  Graph := TUsesGraph.Create(Units, Options);
+  mUnits[3].FileName := 'C:\Projekt\Werkzeuge\Hilfe.pas';
+  mOptions := TUsesGraphOptions.Default;
+  mOptions.Root := 'C:\Projekt';
+  mOptions.Exclude := ['*.Tests', 'Werkzeuge/**'];
+  mGraph := TUsesGraph.Create(mUnits, mOptions);
   try
-    Assert.AreEqual('Kern,Main', Names(Graph, Graph.SortedNodes));
-    Assert.AreEqual('Main', Names(Graph, Graph.DirectDependents(Graph.IndexOf('Kern'), cAllUsesSections)));
+    Assert.AreEqual('Kern,Main', Names(mGraph, mGraph.SortedNodes));
+    Assert.AreEqual('Main', Names(mGraph, mGraph.DirectDependents(mGraph.IndexOf('Kern'), cAllUsesSections)));
   finally
-    Graph.Free;
+    mGraph.Free;
   end;
 end;
 
 procedure TUsesGraphTests.UpdateReplacesOnlyChangedUnit;
 var
-  Graph: TUsesGraph;
-  Changed: TUnitIndex;
+  mGraph: TUsesGraph;
+  mChanged: TUnitIndex;
 begin
-  Graph := NewGraph([UsesUnit('A', ['B'], nil), UsesUnit('B', nil, nil), UsesUnit('C', nil, nil)]);
+  mGraph := NewGraph([UsesUnit('A', ['B'], nil), UsesUnit('B', nil, nil), UsesUnit('C', nil, nil)]);
   try
-    Changed := UsesUnit('A', nil, ['C']);
-    Assert.IsTrue(Graph.Update(Changed));
-    Assert.AreEqual('C', Names(Graph, Graph.DirectDependencies(Graph.IndexOf('A'), cAllUsesSections)));
-    Assert.AreEqual('', Names(Graph, Graph.DirectDependents(Graph.IndexOf('B'), cAllUsesSections)));
-    Assert.AreEqual('A', Names(Graph, Graph.DirectDependents(Graph.IndexOf('C'), cAllUsesSections)));
-    Assert.AreEqual(3, Graph.NodeCount, 'gleiche Knotennummern');
+    mChanged := UsesUnit('A', nil, ['C']);
+    Assert.IsTrue(mGraph.Update(mChanged));
+    Assert.AreEqual('C', Names(mGraph, mGraph.DirectDependencies(mGraph.IndexOf('A'), cAllUsesSections)));
+    Assert.AreEqual('', Names(mGraph, mGraph.DirectDependents(mGraph.IndexOf('B'), cAllUsesSections)));
+    Assert.AreEqual('A', Names(mGraph, mGraph.DirectDependents(mGraph.IndexOf('C'), cAllUsesSections)));
+    Assert.AreEqual(3, mGraph.NodeCount, 'gleiche Knotennummern');
   finally
-    Graph.Free;
+    mGraph.Free;
   end;
 end;
 
 procedure TUsesGraphTests.NewUnitResolvesWaitingEdges;
 var
-  Graph: TUsesGraph;
+  mGraph: TUsesGraph;
 begin
-  Graph := NewGraph([UsesUnit('A', ['B'], nil)]);
+  mGraph := NewGraph([UsesUnit('A', ['B'], nil)]);
   try
-    Assert.AreEqual(0, Graph.EdgeCount, 'B fehlt noch');
-    Graph.Update(UsesUnit('B', nil, nil));
-    Assert.AreEqual(1, Graph.EdgeCount);
-    Assert.AreEqual('A', Names(Graph, Graph.DirectDependents(Graph.IndexOf('B'), cAllUsesSections)));
+    Assert.AreEqual(0, mGraph.EdgeCount, 'B fehlt noch');
+    mGraph.Update(UsesUnit('B', nil, nil));
+    Assert.AreEqual(1, mGraph.EdgeCount);
+    Assert.AreEqual('A', Names(mGraph, mGraph.DirectDependents(mGraph.IndexOf('B'), cAllUsesSections)));
   finally
-    Graph.Free;
+    mGraph.Free;
   end;
 end;
 
 procedure TUsesGraphTests.RemoveLeavesEdgesOpen;
 var
-  Graph: TUsesGraph;
+  mGraph: TUsesGraph;
 begin
-  Graph := NewGraph([UsesUnit('A', ['B'], nil), UsesUnit('B', nil, nil)]);
+  mGraph := NewGraph([UsesUnit('A', ['B'], nil), UsesUnit('B', nil, nil)]);
   try
-    Graph.Remove(Graph.Node(Graph.IndexOf('B')).FileName);
-    Assert.AreEqual(-1, Graph.IndexOf('B'));
-    Assert.AreEqual(1, Graph.ActiveCount);
-    Assert.AreEqual(0, Graph.EdgeCount);
+    mGraph.Remove(mGraph.Node(mGraph.IndexOf('B')).FileName);
+    Assert.AreEqual(-1, mGraph.IndexOf('B'));
+    Assert.AreEqual(1, mGraph.ActiveCount);
+    Assert.AreEqual(0, mGraph.EdgeCount);
     // Kommt B zurück, gilt die Kante wieder.
-    Graph.Update(UsesUnit('B', nil, nil));
-    Assert.AreEqual(1, Graph.EdgeCount);
+    mGraph.Update(UsesUnit('B', nil, nil));
+    Assert.AreEqual(1, mGraph.EdgeCount);
   finally
-    Graph.Free;
+    mGraph.Free;
   end;
 end;
 
 procedure TUsesGraphTests.SynchronizeAddsChangesAndRemoves;
 var
-  Graph: TUsesGraph;
+  mGraph: TUsesGraph;
 begin
-  Graph := NewGraph([UsesUnit('A', ['B'], nil), UsesUnit('B', nil, nil), UsesUnit('C', nil, nil)]);
+  mGraph := NewGraph([UsesUnit('A', ['B'], nil), UsesUnit('B', nil, nil), UsesUnit('C', nil, nil)]);
   try
-    Assert.AreEqual(0, Graph.Synchronize([UsesUnit('A', ['B'], nil), UsesUnit('B', nil, nil),
+    Assert.AreEqual(0, mGraph.Synchronize([UsesUnit('A', ['B'], nil), UsesUnit('B', nil, nil),
       UsesUnit('C', nil, nil)]), 'unverändert');
     // A geändert, C entfernt, D neu.
-    Assert.AreEqual(3, Graph.Synchronize([UsesUnit('A', ['B', 'D'], nil), UsesUnit('B', nil, nil),
+    Assert.AreEqual(3, mGraph.Synchronize([UsesUnit('A', ['B', 'D'], nil), UsesUnit('B', nil, nil),
       UsesUnit('D', nil, nil)]));
-    Assert.AreEqual('A,B,D', Names(Graph, Graph.SortedNodes));
-    Assert.AreEqual('B,D', Names(Graph, Graph.DirectDependencies(Graph.IndexOf('A'), cAllUsesSections)));
+    Assert.AreEqual('A,B,D', Names(mGraph, mGraph.SortedNodes));
+    Assert.AreEqual('B,D', Names(mGraph, mGraph.DirectDependencies(mGraph.IndexOf('A'), cAllUsesSections)));
   finally
-    Graph.Free;
+    mGraph.Free;
   end;
 end;
 
 procedure TUsesGraphTests.ResultsAreDeterministic;
 var
-  First, Second: TUsesGraph;
-  Units, Reversed: TArray<TUnitIndex>;
-  Index: Integer;
+  mFirst, mSecond: TUsesGraph;
+  mUnits, mReversed: TArray<TUnitIndex>;
+  mIndex: Integer;
 begin
-  Units := [UsesUnit('M', ['N'], nil), UsesUnit('N', nil, ['O']), UsesUnit('O', ['M'], nil),
+  mUnits := [UsesUnit('M', ['N'], nil), UsesUnit('N', nil, ['O']), UsesUnit('O', ['M'], nil),
     UsesUnit('K', nil, ['L']), UsesUnit('L', ['K'], nil)];
-  SetLength(Reversed, Length(Units));
-  for Index := 0 to High(Units) do
+  SetLength(mReversed, Length(mUnits));
+  for mIndex := 0 to High(mUnits) do
   begin
-    Reversed[High(Units) - Index] := Units[Index];
+    mReversed[High(mUnits) - mIndex] := mUnits[mIndex];
   end;
-  First := NewGraph(Units);
-  Second := NewGraph(Reversed);
+  mFirst := NewGraph(mUnits);
+  mSecond := NewGraph(mReversed);
   try
-    Assert.AreEqual(Integer(Length(First.AllCycles)), Integer(Length(Second.AllCycles)));
-    for Index := 0 to High(First.AllCycles) do
+    Assert.AreEqual(Integer(Length(mFirst.AllCycles)), Integer(Length(mSecond.AllCycles)));
+    for mIndex := 0 to High(mFirst.AllCycles) do
     begin
-      Assert.AreEqual(First.Describe(First.AllCycles[Index].Edges), Second.Describe(Second.AllCycles[Index].Edges));
+      Assert.AreEqual(mFirst.Describe(mFirst.AllCycles[mIndex].Edges),
+        mSecond.Describe(mSecond.AllCycles[mIndex].Edges));
     end;
   finally
-    Second.Free;
-    First.Free;
+    mSecond.Free;
+    mFirst.Free;
   end;
 end;
 
 procedure TUsesGraphTests.TwoThousandUnitsAreFast;
 var
-  Units: TArray<TUnitIndex>;
-  Index: Integer;
-  Graph: TUsesGraph;
-  Watch: TStopwatch;
+  mUnits: TArray<TUnitIndex>;
+  mIndex: Integer;
+  mGraph: TUsesGraph;
+  mWatch: TStopwatch;
 begin
   // Ring über 2000 Units mit Querverweisen: Aufbau, Zyklen und Neuübersetzung zusammen deutlich unter 2 s.
-  SetLength(Units, 2000);
-  for Index := 0 to High(Units) do
+  SetLength(mUnits, 2000);
+  for mIndex := 0 to High(mUnits) do
   begin
-    Units[Index] := UsesUnit(Format('U%.4d', [Index]), [Format('U%.4d', [(Index + 1) mod 2000])],
-      [Format('U%.4d', [(Index * 7) mod 2000]), Format('U%.4d', [(Index * 13 + 5) mod 2000])]);
+    mUnits[mIndex] := UsesUnit(Format('U%.4d', [mIndex]), [Format('U%.4d', [(mIndex + 1) mod 2000])],
+      [Format('U%.4d', [(mIndex * 7) mod 2000]), Format('U%.4d', [(mIndex * 13 + 5) mod 2000])]);
   end;
-  Watch := TStopwatch.StartNew;
-  Graph := NewGraph(Units);
+  mWatch := TStopwatch.StartNew;
+  mGraph := NewGraph(mUnits);
   try
-    Assert.AreEqual(1, Integer(Length(Graph.AllCycles)));
-    Assert.AreEqual(1999, Integer(Length(Graph.RecompileSet(0))));
-    Assert.IsTrue(Watch.ElapsedMilliseconds < 2000, Format('%d ms', [Watch.ElapsedMilliseconds]));
+    Assert.AreEqual(1, Integer(Length(mGraph.AllCycles)));
+    Assert.AreEqual(1999, Integer(Length(mGraph.RecompileSet(0))));
+    Assert.IsTrue(mWatch.ElapsedMilliseconds < 2000, Format('%d ms', [mWatch.ElapsedMilliseconds]));
   finally
-    Graph.Free;
+    mGraph.Free;
   end;
 end;
 

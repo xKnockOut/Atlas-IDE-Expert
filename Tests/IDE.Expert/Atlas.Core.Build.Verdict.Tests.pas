@@ -65,142 +65,142 @@ end;
 
 procedure TAtlasBuildVerdictTests.ParsesWarningsAsErrorsCodes;
 var
-  Codes: TArray<string>;
+  mCodes: TArray<string>;
 begin
-  Codes := TAtlasBuildVerdicts.ParseCodes(' w1035;H2164, E2003 W1035 W12 x1035');
-  Assert.AreEqual(2, Integer(Length(Codes)));
-  Assert.AreEqual('W1035', Codes[0]);
-  Assert.AreEqual('H2164', Codes[1]);
+  mCodes := TAtlasBuildVerdicts.ParseCodes(' w1035;H2164, E2003 W1035 W12 x1035');
+  Assert.AreEqual(2, Integer(Length(mCodes)));
+  Assert.AreEqual('W1035', mCodes[0]);
+  Assert.AreEqual('H2164', mCodes[1]);
   Assert.AreEqual('W1035, H2164', TAtlasBuildVerdicts.NormalizeCodes('w1035 h2164'));
   Assert.AreEqual('', TAtlasBuildVerdicts.NormalizeCodes(''));
 end;
 
 procedure TAtlasBuildVerdictTests.CountsWarningsAndHints;
 var
-  Verdict: TAtlasBuildVerdict;
+  mVerdict: TAtlasBuildVerdict;
 begin
-  Verdict := TAtlasBuildVerdicts.Evaluate([Msg('Hint', 'H2164 Variable X ist deklariert, aber nicht verwendet', 5),
+  mVerdict := TAtlasBuildVerdicts.Evaluate([Msg('Hint', 'H2164 Variable X ist deklariert, aber nicht verwendet', 5),
     Msg('Info', 'Erfolg', 0)], nil, True, Settings(False, ''));
-  Assert.AreEqual(0, Verdict.Errors);
-  Assert.AreEqual(0, Verdict.Warnings);
-  Assert.AreEqual(1, Verdict.Hints);
-  Assert.IsTrue(Verdict.Effective);
-  Assert.IsFalse(Verdict.BaselineChecked);
+  Assert.AreEqual(0, mVerdict.Errors);
+  Assert.AreEqual(0, mVerdict.Warnings);
+  Assert.AreEqual(1, mVerdict.Hints);
+  Assert.IsTrue(mVerdict.Effective);
+  Assert.IsFalse(mVerdict.BaselineChecked);
 end;
 
 procedure TAtlasBuildVerdictTests.ZeroHintsRejectsBuild;
 var
-  Verdict: TAtlasBuildVerdict;
+  mVerdict: TAtlasBuildVerdict;
 begin
-  Verdict := TAtlasBuildVerdicts.Evaluate([Msg('Hint', 'H2164 X', 5)], nil, True, Settings(True, ''));
-  Assert.IsFalse(Verdict.Effective);
-  Assert.AreEqual<TAtlasBuildVerdictReason>(TAtlasBuildVerdictReason.ZeroHints, Verdict.Reason);
-  Verdict := TAtlasBuildVerdicts.Evaluate([Msg('Info', 'Erfolg', 0)], nil, True, Settings(True, ''));
-  Assert.IsTrue(Verdict.Effective, 'ohne Warnungen und Hinweise');
+  mVerdict := TAtlasBuildVerdicts.Evaluate([Msg('Hint', 'H2164 X', 5)], nil, True, Settings(True, ''));
+  Assert.IsFalse(mVerdict.Effective);
+  Assert.AreEqual<TAtlasBuildVerdictReason>(TAtlasBuildVerdictReason.ZeroHints, mVerdict.Reason);
+  mVerdict := TAtlasBuildVerdicts.Evaluate([Msg('Info', 'Erfolg', 0)], nil, True, Settings(True, ''));
+  Assert.IsTrue(mVerdict.Effective, 'ohne Warnungen und Hinweise');
 end;
 
 procedure TAtlasBuildVerdictTests.WarningsAsErrorsOnlyListedCodes;
 var
-  Verdict: TAtlasBuildVerdict;
+  mVerdict: TAtlasBuildVerdict;
 begin
-  Verdict := TAtlasBuildVerdicts.Evaluate([Msg('Warning', 'W1036 Variable X ist vielleicht nicht initialisiert', 4),
+  mVerdict := TAtlasBuildVerdicts.Evaluate([Msg('Warning', 'W1036 Variable X ist vielleicht nicht initialisiert', 4),
     Msg('Warning', 'W1035 Ergebnis der Funktion F ist vielleicht undefiniert', 9)], nil, True,
     Settings(False, 'W1035'));
-  Assert.AreEqual<TAtlasBuildVerdictReason>(TAtlasBuildVerdictReason.WarningsAsErrors, Verdict.Reason);
-  Assert.AreEqual(1, Verdict.Promoted);
-  Assert.AreEqual('W1035', Verdict.PromotedCode);
-  Assert.AreEqual(1, Verdict.First, 'zeigt auf W1035');
-  Verdict := TAtlasBuildVerdicts.Evaluate([Msg('Warning', 'W1036 X', 4)], nil, True, Settings(False, 'W1035'));
-  Assert.IsTrue(Verdict.Effective, 'andere Warnungen nicht');
-  Assert.AreEqual(1, Verdict.Warnings);
+  Assert.AreEqual<TAtlasBuildVerdictReason>(TAtlasBuildVerdictReason.WarningsAsErrors, mVerdict.Reason);
+  Assert.AreEqual(1, mVerdict.Promoted);
+  Assert.AreEqual('W1035', mVerdict.PromotedCode);
+  Assert.AreEqual(1, mVerdict.First, 'zeigt auf W1035');
+  mVerdict := TAtlasBuildVerdicts.Evaluate([Msg('Warning', 'W1036 X', 4)], nil, True, Settings(False, 'W1035'));
+  Assert.IsTrue(mVerdict.Effective, 'andere Warnungen nicht');
+  Assert.AreEqual(1, mVerdict.Warnings);
 end;
 
 procedure TAtlasBuildVerdictTests.BaselinedMessagesDoNotCount;
 var
-  Messages: TArray<TAtlasCompilerMessage>;
-  Verdict: TAtlasBuildVerdict;
+  mMessages: TArray<TAtlasCompilerMessage>;
+  mVerdict: TAtlasBuildVerdict;
 begin
-  Messages := [Msg('Hint', 'H2164 X', 5), Msg('Hint', 'H2164 Y', 8)];
-  Verdict := TAtlasBuildVerdicts.Evaluate(Messages, TArray<Boolean>.Create(True, False), True, Settings(True, ''));
-  Assert.IsTrue(Verdict.BaselineChecked);
-  Assert.AreEqual(1, Verdict.Baselined);
-  Assert.AreEqual(1, Verdict.Hints, 'die neue Meldung zählt');
-  Assert.IsFalse(Verdict.Effective);
-  Assert.AreEqual(1, Verdict.First);
-  Verdict := TAtlasBuildVerdicts.Evaluate([Messages[0]], TArray<Boolean>.Create(True), True, Settings(True, ''));
-  Assert.IsTrue(Verdict.Effective, 'nur die bekannte Meldung');
-  Assert.AreEqual(0, Verdict.Hints);
+  mMessages := [Msg('Hint', 'H2164 X', 5), Msg('Hint', 'H2164 Y', 8)];
+  mVerdict := TAtlasBuildVerdicts.Evaluate(mMessages, TArray<Boolean>.Create(True, False), True, Settings(True, ''));
+  Assert.IsTrue(mVerdict.BaselineChecked);
+  Assert.AreEqual(1, mVerdict.Baselined);
+  Assert.AreEqual(1, mVerdict.Hints, 'die neue Meldung zählt');
+  Assert.IsFalse(mVerdict.Effective);
+  Assert.AreEqual(1, mVerdict.First);
+  mVerdict := TAtlasBuildVerdicts.Evaluate([mMessages[0]], TArray<Boolean>.Create(True), True, Settings(True, ''));
+  Assert.IsTrue(mVerdict.Effective, 'nur die bekannte Meldung');
+  Assert.AreEqual(0, mVerdict.Hints);
   // Auch warningsAsErrors gilt nur für gezählte Meldungen.
-  Verdict := TAtlasBuildVerdicts.Evaluate([Messages[0]], TArray<Boolean>.Create(True), True,
+  mVerdict := TAtlasBuildVerdicts.Evaluate([mMessages[0]], TArray<Boolean>.Create(True), True,
     Settings(False, 'H2164'));
-  Assert.IsTrue(Verdict.Effective);
+  Assert.IsTrue(mVerdict.Effective);
 end;
 
 procedure TAtlasBuildVerdictTests.CompilerFailureWins;
 var
-  Verdict: TAtlasBuildVerdict;
+  mVerdict: TAtlasBuildVerdict;
 begin
-  Verdict := TAtlasBuildVerdicts.Evaluate([Msg('Error', 'E2003 Undeklarierter Bezeichner: X', 7)], nil, False,
+  mVerdict := TAtlasBuildVerdicts.Evaluate([Msg('Error', 'E2003 Undeklarierter Bezeichner: X', 7)], nil, False,
     Settings(True, 'W1035'));
-  Assert.AreEqual<TAtlasBuildVerdictReason>(TAtlasBuildVerdictReason.CompilerFailed, Verdict.Reason);
-  Assert.AreEqual(1, Verdict.Errors);
-  Verdict := TAtlasBuildVerdicts.Evaluate(nil, nil, False, Settings(False, ''));
+  Assert.AreEqual<TAtlasBuildVerdictReason>(TAtlasBuildVerdictReason.CompilerFailed, mVerdict.Reason);
+  Assert.AreEqual(1, mVerdict.Errors);
+  mVerdict := TAtlasBuildVerdicts.Evaluate(nil, nil, False, Settings(False, ''));
   Assert.AreEqual<TAtlasBuildVerdictReason>(TAtlasBuildVerdictReason.CompilerFailed,
-    Verdict.Reason, 'ohne Meldung, z. B. Linker');
-  Assert.AreEqual(-1, Verdict.First);
+    mVerdict.Reason, 'ohne Meldung, z. B. Linker');
+  Assert.AreEqual(-1, mVerdict.First);
 end;
 
 procedure TAtlasBuildVerdictTests.FirstPointsToRelevantMessage;
 var
-  Messages: TArray<TAtlasCompilerMessage>;
-  Verdict: TAtlasBuildVerdict;
+  mMessages: TArray<TAtlasCompilerMessage>;
+  mVerdict: TAtlasBuildVerdict;
 begin
-  Messages := [Msg('Hint', 'H2164 X', 5), Msg('Error', 'E2003 X', 7)];
-  Messages[0].FileName := '';
-  Verdict := TAtlasBuildVerdicts.Evaluate(Messages, nil, False, Settings(False, ''));
-  Assert.AreEqual(1, Verdict.First, 'Fehler zuerst');
-  Verdict := TAtlasBuildVerdicts.Evaluate([Messages[0]], nil, True, Settings(True, ''));
-  Assert.AreEqual(-1, Verdict.First, 'ohne Datei kein Ziel');
+  mMessages := [Msg('Hint', 'H2164 X', 5), Msg('Error', 'E2003 X', 7)];
+  mMessages[0].FileName := '';
+  mVerdict := TAtlasBuildVerdicts.Evaluate(mMessages, nil, False, Settings(False, ''));
+  Assert.AreEqual(1, mVerdict.First, 'Fehler zuerst');
+  mVerdict := TAtlasBuildVerdicts.Evaluate([mMessages[0]], nil, True, Settings(True, ''));
+  Assert.AreEqual(-1, mVerdict.First, 'ohne Datei kein Ziel');
 end;
 
 procedure TAtlasBuildVerdictTests.RunAsksServerOnlyWhenNeeded;
 var
-  Asked: Integer;
-  Got: TAtlasBuildVerdict;
-  Classify: TAtlasBuildClassify;
+  mAsked: Integer;
+  mGot: TAtlasBuildVerdict;
+  mClassify: TAtlasBuildClassify;
 begin
-  Asked := 0;
-  Classify :=
+  mAsked := 0;
+  mClassify :=
     function(const AMessages: TArray<TAtlasCompilerMessage>; const ADone: TAtlasBuildBaselined): Boolean
     begin
-      Inc(Asked);
+      Inc(mAsked);
       ADone(TArray<Boolean>.Create(True));
       Result := True;
     end;
-  TAtlasBuildVerdicts.Run([Msg('Info', 'Erfolg', 0)], True, Settings(True, ''), Classify,
+  TAtlasBuildVerdicts.Run([Msg('Info', 'Erfolg', 0)], True, Settings(True, ''), mClassify,
     procedure(const AVerdict: TAtlasBuildVerdict)
     begin
-      Got := AVerdict;
+      mGot := AVerdict;
     end);
-  Assert.AreEqual(0, Asked, 'nichts zu fragen');
-  Assert.IsTrue(Got.Effective);
-  TAtlasBuildVerdicts.Run([Msg('Hint', 'H2164 X', 5)], True, Settings(True, ''), Classify,
+  Assert.AreEqual(0, mAsked, 'nichts zu fragen');
+  Assert.IsTrue(mGot.Effective);
+  TAtlasBuildVerdicts.Run([Msg('Hint', 'H2164 X', 5)], True, Settings(True, ''), mClassify,
     procedure(const AVerdict: TAtlasBuildVerdict)
     begin
-      Got := AVerdict;
+      mGot := AVerdict;
     end);
-  Assert.AreEqual(1, Asked);
-  Assert.AreEqual(1, Got.Baselined);
-  Assert.IsTrue(Got.Effective);
-  Classify := nil;
+  Assert.AreEqual(1, mAsked);
+  Assert.AreEqual(1, mGot.Baselined);
+  Assert.IsTrue(mGot.Effective);
+  mClassify := nil;
 end;
 
 procedure TAtlasBuildVerdictTests.RunCountsAllWithoutAnswer;
 var
-  Calls: Integer;
-  Got: TAtlasBuildVerdict;
+  mCalls: Integer;
+  mGot: TAtlasBuildVerdict;
 begin
-  Calls := 0;
+  mCalls := 0;
   // Kein Server: Classify fragt nicht, Run bewertet sofort.
   TAtlasBuildVerdicts.Run([Msg('Hint', 'H2164 X', 5)], True, Settings(True, ''),
     function(const AMessages: TArray<TAtlasCompilerMessage>; const ADone: TAtlasBuildBaselined): Boolean
@@ -209,12 +209,12 @@ begin
     end,
     procedure(const AVerdict: TAtlasBuildVerdict)
     begin
-      Inc(Calls);
-      Got := AVerdict;
+      Inc(mCalls);
+      mGot := AVerdict;
     end);
-  Assert.AreEqual(1, Calls);
-  Assert.AreEqual(1, Got.Hints);
-  Assert.IsFalse(Got.Effective);
+  Assert.AreEqual(1, mCalls);
+  Assert.AreEqual(1, mGot.Hints);
+  Assert.IsFalse(mGot.Effective);
   // Antwort unbrauchbar (nil): alles zählt.
   TAtlasBuildVerdicts.Run([Msg('Hint', 'H2164 X', 5)], True, Settings(True, ''),
     function(const AMessages: TArray<TAtlasCompilerMessage>; const ADone: TAtlasBuildBaselined): Boolean
@@ -224,60 +224,60 @@ begin
     end,
     procedure(const AVerdict: TAtlasBuildVerdict)
     begin
-      Inc(Calls);
-      Got := AVerdict;
+      Inc(mCalls);
+      mGot := AVerdict;
     end);
-  Assert.AreEqual(2, Calls, 'genau einmal je Lauf');
-  Assert.AreEqual(1, Got.Hints);
+  Assert.AreEqual(2, mCalls, 'genau einmal je Lauf');
+  Assert.AreEqual(1, mGot.Hints);
 end;
 
 procedure TAtlasBuildVerdictTests.ArgumentsAndAnswer;
 var
-  Answer, Arguments: TJSONValue;
-  Item: TJSONObject;
-  Baselined: TArray<Boolean>;
+  mAnswer, mArguments: TJSONValue;
+  mItem: TJSONObject;
+  mBaselined: TArray<Boolean>;
 begin
-  Arguments := TJSONObject.ParseJSONValue(TAtlasBuildVerdicts.Arguments('file:///C:/P/P.dproj',
+  mArguments := TJSONObject.ParseJSONValue(TAtlasBuildVerdicts.Arguments('file:///C:/P/P.dproj',
     [Msg('Hint', 'H2164 X', 5)]));
   try
-    Assert.IsTrue(Arguments is TJSONArray);
-    Assert.AreEqual('file:///C:/P/P.dproj', TJSONArray(Arguments).Items[0].Value);
-    Item := TJSONObject(TJSONArray(TJSONArray(Arguments).Items[1]).Items[0]);
-    Assert.AreEqual('C:\P\U.pas', Item.GetValue('file').Value);
-    Assert.AreEqual(5, Item.GetValue<Integer>('line', 0));
-    Assert.AreEqual('H2164', Item.GetValue('code').Value);
+    Assert.IsTrue(mArguments is TJSONArray);
+    Assert.AreEqual('file:///C:/P/P.dproj', TJSONArray(mArguments).Items[0].Value);
+    mItem := TJSONObject(TJSONArray(TJSONArray(mArguments).Items[1]).Items[0]);
+    Assert.AreEqual('C:\P\U.pas', mItem.GetValue('file').Value);
+    Assert.AreEqual(5, mItem.GetValue<Integer>('line', 0));
+    Assert.AreEqual('H2164', mItem.GetValue('code').Value);
   finally
-    Arguments.Free;
+    mArguments.Free;
   end;
-  Answer := TJSONObject.ParseJSONValue('{"format": 1, "baseline": "valid", "baselined": [0, 2, 7]}');
+  mAnswer := TJSONObject.ParseJSONValue('{"format": 1, "baseline": "valid", "baselined": [0, 2, 7]}');
   try
-    Baselined := TAtlasBuildVerdicts.BaselinedOf(Answer, 3);
+    mBaselined := TAtlasBuildVerdicts.BaselinedOf(mAnswer, 3);
   finally
-    Answer.Free;
+    mAnswer.Free;
   end;
-  Assert.AreEqual(3, Integer(Length(Baselined)));
-  Assert.IsTrue(Baselined[0]);
-  Assert.IsFalse(Baselined[1]);
-  Assert.IsTrue(Baselined[2]);
+  Assert.AreEqual(3, Integer(Length(mBaselined)));
+  Assert.IsTrue(mBaselined[0]);
+  Assert.IsFalse(mBaselined[1]);
+  Assert.IsTrue(mBaselined[2]);
   Assert.AreEqual(0, Integer(Length(TAtlasBuildVerdicts.BaselinedOf(nil, 3))), 'keine Antwort');
 end;
 
 procedure TAtlasBuildVerdictTests.AddAnswer;
 var
-  Answer: TJSONValue;
-  Added: TAtlasCompilerBaselineAdd;
+  mAnswer: TJSONValue;
+  mAdded: TAtlasCompilerBaselineAdd;
 begin
-  Answer := TJSONObject.ParseJSONValue('{"format": 1, "file": "C:\\P\\atlas-baseline.json", "previous": "none", ' +
+  mAnswer := TJSONObject.ParseJSONValue('{"format": 1, "file": "C:\\P\\atlas-baseline.json", "previous": "none", ' +
     '"total": 3, "files": 2, "added": 3, "removed": 0, "unchanged": 0, "skipped": 1}');
   try
-    Assert.IsTrue(TAtlasCompilerBaselineAdd.FromServer(Answer, Added));
+    Assert.IsTrue(TAtlasCompilerBaselineAdd.FromServer(mAnswer, mAdded));
   finally
-    Answer.Free;
+    mAnswer.Free;
   end;
-  Assert.AreEqual('C:\P\atlas-baseline.json', Added.FileName);
-  Assert.AreEqual(3, Added.Total);
-  Assert.AreEqual(1, Added.Skipped);
-  Assert.IsFalse(TAtlasCompilerBaselineAdd.FromServer(nil, Added));
+  Assert.AreEqual('C:\P\atlas-baseline.json', mAdded.FileName);
+  Assert.AreEqual(3, mAdded.Total);
+  Assert.AreEqual(1, mAdded.Skipped);
+  Assert.IsFalse(TAtlasCompilerBaselineAdd.FromServer(nil, mAdded));
 end;
 
 initialization

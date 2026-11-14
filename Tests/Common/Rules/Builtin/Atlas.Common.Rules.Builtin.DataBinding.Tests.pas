@@ -55,7 +55,7 @@ uses
   Atlas.Tests.RuleAssert;
 
 const
-  FormUnit =
+  cFormUnit =
     'unit Haupt;'#10'interface'#10'type'#10 +
     '  TForm1 = class(TForm)'#10 +
     '  end;'#10'implementation'#10'end.';
@@ -67,47 +67,47 @@ end;
 
 function Count(const ARule: IRule; const AFormText: string): Integer;
 begin
-  Result := Length(TRuleAssert.FormFindings(ARule, FormUnit, AFormText));
+  Result := Length(TRuleAssert.FormFindings(ARule, cFormUnit, AFormText));
 end;
 
 const
-  Tables =
+  cTables =
     '  object dsA: TDataSource'#10'    DataSet = tblA'#10'  end'#10 +
     '  object dsB: TDataSource'#10'    DataSet = tblB'#10'  end'#10;
 
 procedure TDataBindingRulesTests.CircularDataSourceReports;
 var
-  Findings: TArray<TRuleFinding>;
+  mFindings: TArray<TRuleFinding>;
 begin
-  Findings := TRuleAssert.FormFindings(TDfmCircularDataSourceRule.Create, FormUnit, Form(Tables +
+  mFindings := TRuleAssert.FormFindings(TDfmCircularDataSourceRule.Create, cFormUnit, Form(cTables +
     '  object tblA: TFDQuery'#10'    MasterSource = dsB'#10'    MasterFields = ''ID'''#10'  end'#10 +
     '  object tblB: TFDQuery'#10'    MasterSource = dsA'#10'    MasterFields = ''ID'''#10'  end'#10));
-  Assert.AreEqual(1, Integer(Length(Findings)));
+  Assert.AreEqual(1, Integer(Length(mFindings)));
   // Gemeldet an der Formularklasse in der Unit.
-  Assert.AreEqual(3, Findings[0].Range.StartPos.Line);
+  Assert.AreEqual(3, mFindings[0].Range.StartPos.Line);
 end;
 
 procedure TDataBindingRulesTests.LinearMasterDetailIsSilent;
 begin
-  Assert.AreEqual(0, Count(TDfmCircularDataSourceRule.Create, Form(Tables +
+  Assert.AreEqual(0, Count(TDfmCircularDataSourceRule.Create, Form(cTables +
     '  object tblA: TFDQuery'#10'  end'#10 +
     '  object tblB: TFDQuery'#10'    MasterSource = dsA'#10'    MasterFields = ''ID'''#10'  end'#10)));
 end;
 
 procedure TDataBindingRulesTests.MasterWithoutFieldsReports;
 begin
-  Assert.AreEqual(1, Count(TDfmMasterWithoutFieldsRule.Create, Form(Tables +
+  Assert.AreEqual(1, Count(TDfmMasterWithoutFieldsRule.Create, Form(cTables +
     '  object tblB: TFDQuery'#10'    MasterSource = dsA'#10'  end'#10)));
 end;
 
 procedure TDataBindingRulesTests.MasterWithFieldsIsSilent;
 begin
-  Assert.AreEqual(0, Count(TDfmMasterWithoutFieldsRule.Create, Form(Tables +
+  Assert.AreEqual(0, Count(TDfmMasterWithoutFieldsRule.Create, Form(cTables +
     '  object tblB: TFDQuery'#10'    MasterSource = dsA'#10'    MasterFields = ''ID'''#10'  end'#10)));
 end;
 
 const
-  PersistentTable =
+  cPersistentTable =
     '  object dsA: TDataSource'#10'    DataSet = tblA'#10'  end'#10 +
     '  object tblA: TFDQuery'#10 +
     '    object tblAName: TStringField'#10'      FieldName = ''Name'''#10'      Required = True'#10'    end'#10 +
@@ -116,9 +116,9 @@ const
 
 procedure TDataBindingRulesTests.RequiredFieldWithoutControlReports;
 begin
-  Assert.AreEqual(1, Count(TDfmRequiredFieldWithoutControlRule.Create, Form(PersistentTable)));
+  Assert.AreEqual(1, Count(TDfmRequiredFieldWithoutControlRule.Create, Form(cPersistentTable)));
   // Nur unsichtbar gebunden zählt nicht.
-  Assert.AreEqual(1, Count(TDfmRequiredFieldWithoutControlRule.Create, Form(PersistentTable +
+  Assert.AreEqual(1, Count(TDfmRequiredFieldWithoutControlRule.Create, Form(cPersistentTable +
     '  object Panel1: TPanel'#10'    Visible = False'#10 +
     '    object edName: TDBEdit'#10'      DataSource = dsA'#10'      DataField = ''Name'''#10'    end'#10 +
     '  end'#10)));
@@ -126,50 +126,50 @@ end;
 
 procedure TDataBindingRulesTests.RequiredFieldInGridIsSilent;
 begin
-  Assert.AreEqual(0, Count(TDfmRequiredFieldWithoutControlRule.Create, Form(PersistentTable +
+  Assert.AreEqual(0, Count(TDfmRequiredFieldWithoutControlRule.Create, Form(cPersistentTable +
     '  object Grid: TDBGrid'#10'    DataSource = dsA'#10'  end'#10)));
-  Assert.AreEqual(0, Count(TDfmRequiredFieldWithoutControlRule.Create, Form(PersistentTable +
+  Assert.AreEqual(0, Count(TDfmRequiredFieldWithoutControlRule.Create, Form(cPersistentTable +
     '  object edName: TDBEdit'#10'    DataSource = dsA'#10'    DataField = ''Name'''#10'  end'#10)));
 end;
 
 procedure TDataBindingRulesTests.WithoutPersistentFieldsIsSilent;
 begin
-  Assert.AreEqual(0, Count(TDfmRequiredFieldWithoutControlRule.Create, Form(Tables +
+  Assert.AreEqual(0, Count(TDfmRequiredFieldWithoutControlRule.Create, Form(cTables +
     '  object tblA: TFDQuery'#10'  end'#10)));
-  Assert.AreEqual(0, Count(TDfmControlFieldTypeMismatchRule.Create, Form(Tables +
+  Assert.AreEqual(0, Count(TDfmControlFieldTypeMismatchRule.Create, Form(cTables +
     '  object tblA: TFDQuery'#10'  end'#10 +
     '  object edX: TDBEdit'#10'    DataSource = dsA'#10'    DataField = ''Aktiv'''#10'  end'#10)));
 end;
 
 procedure TDataBindingRulesTests.EditOnBooleanFieldReports;
 begin
-  Assert.AreEqual(1, Count(TDfmControlFieldTypeMismatchRule.Create, Form(PersistentTable +
+  Assert.AreEqual(1, Count(TDfmControlFieldTypeMismatchRule.Create, Form(cPersistentTable +
     '  object edAktiv: TDBEdit'#10'    DataSource = dsA'#10'    DataField = ''Aktiv'''#10'  end'#10)));
 end;
 
 procedure TDataBindingRulesTests.CheckBoxOnBooleanFieldIsSilent;
 begin
-  Assert.AreEqual(0, Count(TDfmControlFieldTypeMismatchRule.Create, Form(PersistentTable +
+  Assert.AreEqual(0, Count(TDfmControlFieldTypeMismatchRule.Create, Form(cPersistentTable +
     '  object cbAktiv: TDBCheckBox'#10'    DataSource = dsA'#10'    DataField = ''Aktiv'''#10'  end'#10 +
     '  object edName: TDBEdit'#10'    DataSource = dsA'#10'    DataField = ''Name'''#10'  end'#10)));
 end;
 
 procedure TDataBindingRulesTests.DuplicateBindingReports;
 begin
-  Assert.AreEqual(1, Count(TDfmDuplicateBindingRule.Create, Form(PersistentTable +
+  Assert.AreEqual(1, Count(TDfmDuplicateBindingRule.Create, Form(cPersistentTable +
     '  object ed1: TDBEdit'#10'    DataSource = dsA'#10'    DataField = ''Name'''#10'  end'#10 +
     '  object ed2: TDBEdit'#10'    DataSource = dsA'#10'    DataField = ''Name'''#10'  end'#10)));
 end;
 
 procedure TDataBindingRulesTests.TextBesideEditIsSilent;
 begin
-  Assert.AreEqual(0, Count(TDfmDuplicateBindingRule.Create, Form(PersistentTable +
+  Assert.AreEqual(0, Count(TDfmDuplicateBindingRule.Create, Form(cPersistentTable +
     '  object ed1: TDBEdit'#10'    DataSource = dsA'#10'    DataField = ''Name'''#10'  end'#10 +
     '  object lb1: TDBText'#10'    DataSource = dsA'#10'    DataField = ''Name'''#10'  end'#10)));
 end;
 
 const
-  OtherFormUnit =
+  cOtherFormUnit =
     'unit Zweit;'#10'interface'#10'type'#10 +
     '  TForm2 = class(TForm)'#10'    Edit1: TEdit;'#10'  end;'#10 +
     '  THelfer = class'#10'    Wert: Integer;'#10'  end;'#10 +
@@ -178,46 +178,46 @@ const
 
 function IndexWith(const ASource: string): ISymbolIndex;
 var
-  Tree: TSyntaxTree;
+  mTree: TSyntaxTree;
 begin
   Result := TSymbolIndex.Create;
-  Tree := TPascalParser.Parse(ASource);
+  mTree := TPascalParser.Parse(ASource);
   try
-    Result.AddUnit(TIndexExtractor.Extract(Tree, 'C:\P\Zweit.pas'));
+    Result.AddUnit(TIndexExtractor.Extract(mTree, 'C:\P\Zweit.pas'));
   finally
-    Tree.Free;
+    mTree.Free;
   end;
 end;
 
 function RunForeign(const AStatements: string): TArray<TRuleFinding>;
 var
-  Context: TRuleContext;
-  Tree: TSyntaxTree;
-  Source: string;
+  mContext: TRuleContext;
+  mTree: TSyntaxTree;
+  mSource: string;
 begin
-  Source := 'unit Haupt;'#10'interface'#10'implementation'#10'uses Zweit;'#10'procedure Run;'#10'begin'#10 +
+  mSource := 'unit Haupt;'#10'interface'#10'implementation'#10'uses Zweit;'#10'procedure Run;'#10'begin'#10 +
     AStatements + #10'end;'#10'end.';
-  Tree := TPascalParser.Parse(Source);
+  mTree := TPascalParser.Parse(mSource);
   try
-    Context := Default(TRuleContext);
-    Context.UnitName := 'Haupt';
-    Context.Text := Source;
-    Context.Tree := Tree;
-    Context.Index := IndexWith(OtherFormUnit);
-    Result := TRuleEngine.Run([TForeignFormControlAccessRule.Create], TServerSettings.Default, Context);
+    mContext := Default(TRuleContext);
+    mContext.UnitName := 'Haupt';
+    mContext.Text := mSource;
+    mContext.Tree := mTree;
+    mContext.Index := IndexWith(cOtherFormUnit);
+    Result := TRuleEngine.Run([TForeignFormControlAccessRule.Create], TServerSettings.Default, mContext);
   finally
-    Tree.Free;
+    mTree.Free;
   end;
 end;
 
 procedure TDataBindingRulesTests.ForeignFormAccessReports;
 var
-  Findings: TArray<TRuleFinding>;
+  mFindings: TArray<TRuleFinding>;
 begin
-  Findings := RunForeign('  Form2.Edit1.Text := ''x'';');
-  Assert.AreEqual(1, Integer(Length(Findings)));
-  Assert.AreEqual(6, Findings[0].Range.StartPos.Line);
-  Assert.AreEqual(Ord(TRuleConfidence.Medium), Ord(Findings[0].Confidence));
+  mFindings := RunForeign('  Form2.Edit1.Text := ''x'';');
+  Assert.AreEqual(1, Integer(Length(mFindings)));
+  Assert.AreEqual(6, mFindings[0].Range.StartPos.Line);
+  Assert.AreEqual(Ord(TRuleConfidence.Medium), Ord(mFindings[0].Confidence));
 end;
 
 procedure TDataBindingRulesTests.OwnFieldsAndNonFormsAreSilent;

@@ -61,7 +61,7 @@ uses
   Atlas.Common.Editing.UsesClause;
 
 const
-  UnitText =
+  cUnitText =
     'unit Haupt;'#10 +
     'interface'#10 +
     'uses System.SysUtils, Werkzeug in ''Werkzeug.pas'';'#10 +
@@ -76,15 +76,15 @@ const
 
 function Apply(const AText: string; const AEdit: TRuleEdit): string;
 var
-  Lines: TArray<string>;
-  Line: string;
+  mLines: TArray<string>;
+  mLine: string;
 begin
   // Einfügungen (StartPos = EndPos) in die Zeile übernehmen; die Tests brauchen nur das.
-  Lines := AText.Split([#10]);
-  Line := Lines[AEdit.Range.StartPos.Line];
-  Insert(AEdit.NewText, Line, AEdit.Range.StartPos.Character + 1);
-  Lines[AEdit.Range.StartPos.Line] := Line;
-  Result := string.Join(#10, Lines);
+  mLines := AText.Split([#10]);
+  mLine := mLines[AEdit.Range.StartPos.Line];
+  Insert(AEdit.NewText, mLine, AEdit.Range.StartPos.Character + 1);
+  mLines[AEdit.Range.StartPos.Line] := mLine;
+  Result := string.Join(#10, mLines);
 end;
 
 function OffsetOf(const AText, AMarker: string): Integer;
@@ -95,56 +95,56 @@ end;
 procedure TUsesClauseTests.ReadsUsedUnitsOfBothSections;
 begin
   Assert.AreEqual('System.SysUtils Werkzeug Classes Daten.Kunden',
-    string.Join(' ', TUsesClauses.UsedUnits(TPascalLexer.Tokenize(UnitText))));
+    string.Join(' ', TUsesClauses.UsedUnits(TPascalLexer.Tokenize(cUnitText))));
 end;
 
 procedure TUsesClauseTests.ReadsUsedUnitsOfText;
 begin
-  Assert.AreEqual('System.SysUtils Werkzeug Classes Daten.Kunden', string.Join(' ', TUsesClauses.UsedUnitsOf(UnitText)));
+  Assert.AreEqual('System.SysUtils Werkzeug Classes Daten.Kunden', string.Join(' ', TUsesClauses.UsedUnitsOf(cUnitText)));
   Assert.AreEqual(0, Integer(Length(TUsesClauses.UsedUnitsOf(''))));
 end;
 
 procedure TUsesClauseTests.ReadsReferencesWithPositions;
 var
-  References: TArray<TUsesReference>;
-  Name: string;
+  mReferences: TArray<TUsesReference>;
+  mName: string;
 begin
   // Zeile 2: "uses A, B.C in 'b.pas';" – Position über alle Namensteile, ohne Pfad.
-  References := TUsesClauses.References(TPascalLexer.Tokenize(
+  mReferences := TUsesClauses.References(TPascalLexer.Tokenize(
     'unit U;'#10'interface'#10'uses A, B.C in ''b.pas'';'#10'implementation'#10'end.'));
-  Assert.AreEqual(2, Integer(Length(References)));
-  Name := References[1].Name;
-  Assert.AreEqual('B.C', Name);
-  Assert.AreEqual(2, References[1].Range.StartPos.Line);
-  Assert.AreEqual(8, References[1].Range.StartPos.Character);
-  Assert.AreEqual(11, References[1].Range.EndPos.Character);
+  Assert.AreEqual(2, Integer(Length(mReferences)));
+  mName := mReferences[1].Name;
+  Assert.AreEqual('B.C', mName);
+  Assert.AreEqual(2, mReferences[1].Range.StartPos.Line);
+  Assert.AreEqual(8, mReferences[1].Range.StartPos.Character);
+  Assert.AreEqual(11, mReferences[1].Range.EndPos.Character);
   // Packages: requires und contains, auch wenn sie als Bezeichner gelesen werden.
-  References := TUsesClauses.References(TPascalLexer.Tokenize(
+  mReferences := TUsesClauses.References(TPascalLexer.Tokenize(
     'package P;'#10'requires rtl;'#10'contains X in ''x.pas'', Y;'#10'end.'));
-  Assert.AreEqual(3, Integer(Length(References)));
-  Name := References[2].Name;
-  Assert.AreEqual('Y', Name);
+  Assert.AreEqual(3, Integer(Length(mReferences)));
+  mName := mReferences[2].Name;
+  Assert.AreEqual('Y', mName);
   // Art der Liste (#1109).
-  Assert.AreEqual(Ord(TUsesListKind.RequiresList), Ord(References[0].List));
-  Assert.AreEqual(Ord(TUsesListKind.ContainsList), Ord(References[1].List));
-  Assert.AreEqual(Ord(TUsesListKind.ContainsList), Ord(References[2].List));
-  References := TUsesClauses.References(TPascalLexer.Tokenize(
+  Assert.AreEqual(Ord(TUsesListKind.RequiresList), Ord(mReferences[0].List));
+  Assert.AreEqual(Ord(TUsesListKind.ContainsList), Ord(mReferences[1].List));
+  Assert.AreEqual(Ord(TUsesListKind.ContainsList), Ord(mReferences[2].List));
+  mReferences := TUsesClauses.References(TPascalLexer.Tokenize(
     'unit U;'#10'interface'#10'uses A, B.C in ''b.pas'';'#10'implementation'#10'end.'));
-  Assert.AreEqual(Ord(TUsesListKind.UsesList), Ord(References[0].List));
+  Assert.AreEqual(Ord(TUsesListKind.UsesList), Ord(mReferences[0].List));
   // Abschnitt je Eintrag (#268): interface bis "implementation", in Packages und Programmen nie.
-  Assert.IsTrue(References[0].InInterface);
-  References := TUsesClauses.References(TPascalLexer.Tokenize(
+  Assert.IsTrue(mReferences[0].InInterface);
+  mReferences := TUsesClauses.References(TPascalLexer.Tokenize(
     'unit U;'#10'interface'#10'uses A;'#10'type IX = interface end;'#10'implementation'#10'uses B;'#10'end.'));
-  Assert.AreEqual(2, Integer(Length(References)));
-  Assert.IsTrue(References[0].InInterface, 'A');
-  Assert.IsFalse(References[1].InInterface, 'B');
-  References := TUsesClauses.References(TPascalLexer.Tokenize('program P;'#10'uses A;'#10'begin end.'));
-  Assert.IsFalse(References[0].InInterface, 'Programm');
+  Assert.AreEqual(2, Integer(Length(mReferences)));
+  Assert.IsTrue(mReferences[0].InInterface, 'A');
+  Assert.IsFalse(mReferences[1].InInterface, 'B');
+  mReferences := TUsesClauses.References(TPascalLexer.Tokenize('program P;'#10'uses A;'#10'begin end.'));
+  Assert.IsFalse(mReferences[0].InInterface, 'Programm');
 end;
 
 procedure TUsesClauseTests.ReadsOwnName;
 begin
-  Assert.AreEqual('Haupt', TUsesClauses.OwnName(TPascalLexer.Tokenize(UnitText)));
+  Assert.AreEqual('Haupt', TUsesClauses.OwnName(TPascalLexer.Tokenize(cUnitText)));
   Assert.AreEqual('App.Main', TUsesClauses.OwnName(TPascalLexer.Tokenize('program App.Main;'#10'begin'#10'end.')));
 end;
 
@@ -158,74 +158,74 @@ end;
 
 procedure TUsesClauseTests.AppendsToSingleLineUses;
 var
-  Edit: TRuleEdit;
+  mEdit: TRuleEdit;
 begin
-  Assert.IsTrue(TUsesClauses.AddUnit(TPascalLexer.Tokenize(UnitText), OffsetOf(UnitText, 'interface'),
-    'Vcl.Forms', #10, Edit));
-  Assert.AreEqual('uses System.SysUtils, Werkzeug in ''Werkzeug.pas'', Vcl.Forms;', Apply(UnitText, Edit).Split([#10])[2]);
+  Assert.IsTrue(TUsesClauses.AddUnit(TPascalLexer.Tokenize(cUnitText), OffsetOf(cUnitText, 'interface'),
+    'Vcl.Forms', #10, mEdit));
+  Assert.AreEqual('uses System.SysUtils, Werkzeug in ''Werkzeug.pas'', Vcl.Forms;', Apply(cUnitText, mEdit).Split([#10])[2]);
 end;
 
 procedure TUsesClauseTests.AppendsToMultiLineUsesOnOwnLine;
 var
-  Edit: TRuleEdit;
+  mEdit: TRuleEdit;
 begin
-  Assert.IsTrue(TUsesClauses.AddUnit(TPascalLexer.Tokenize(UnitText), OffsetOf(UnitText, 'begin'), 'Vcl.Forms',
-    #10, Edit));
+  Assert.IsTrue(TUsesClauses.AddUnit(TPascalLexer.Tokenize(cUnitText), OffsetOf(cUnitText, 'begin'), 'Vcl.Forms',
+    #10, mEdit));
   Assert.IsTrue(Pos('uses'#10'  Classes,'#10'  Daten.Kunden,'#10'  Vcl.Forms;'#10'procedure',
-    Apply(UnitText, Edit)) > 0, Apply(UnitText, Edit));
+    Apply(cUnitText, mEdit)) > 0, Apply(cUnitText, mEdit));
 end;
 
 procedure TUsesClauseTests.ChoosesImplementationSectionByOffset;
 var
-  Edit: TRuleEdit;
+  mEdit: TRuleEdit;
 begin
-  Assert.IsTrue(TUsesClauses.AddUnit(TPascalLexer.Tokenize(UnitText), OffsetOf(UnitText, 'Rechne'), 'X', #10, Edit));
-  Assert.AreEqual(6, Edit.Range.StartPos.Line);
-  Assert.IsTrue(TUsesClauses.AddUnit(TPascalLexer.Tokenize(UnitText), OffsetOf(UnitText, 'uses System'), 'X', #10, Edit));
-  Assert.AreEqual(2, Edit.Range.StartPos.Line);
+  Assert.IsTrue(TUsesClauses.AddUnit(TPascalLexer.Tokenize(cUnitText), OffsetOf(cUnitText, 'Rechne'), 'X', #10, mEdit));
+  Assert.AreEqual(6, mEdit.Range.StartPos.Line);
+  Assert.IsTrue(TUsesClauses.AddUnit(TPascalLexer.Tokenize(cUnitText), OffsetOf(cUnitText, 'uses System'), 'X', #10, mEdit));
+  Assert.AreEqual(2, mEdit.Range.StartPos.Line);
 end;
 
 procedure TUsesClauseTests.CreatesUsesWhenMissing;
 const
-  Text = 'unit A;'#10'interface'#10'implementation'#10'end.';
+  cText = 'unit A;'#10'interface'#10'implementation'#10'end.';
 var
-  Edit: TRuleEdit;
+  mEdit: TRuleEdit;
 begin
-  Assert.IsTrue(TUsesClauses.AddUnit(TPascalLexer.Tokenize(Text), OffsetOf(Text, 'end.'), 'B', #10, Edit));
-  Assert.AreEqual('unit A;'#10'interface'#10'implementation'#10#10'uses'#10'  B;'#10'end.', Apply(Text, Edit));
+  Assert.IsTrue(TUsesClauses.AddUnit(TPascalLexer.Tokenize(cText), OffsetOf(cText, 'end.'), 'B', #10, mEdit));
+  Assert.AreEqual('unit A;'#10'interface'#10'implementation'#10#10'uses'#10'  B;'#10'end.', Apply(cText, mEdit));
 end;
 
 procedure TUsesClauseTests.AddsToProgramUses;
 const
-  Text = 'program App;'#10'uses A;'#10'begin'#10'end.';
+  cText = 'program App;'#10'uses A;'#10'begin'#10'end.';
 var
-  Edit: TRuleEdit;
+  mEdit: TRuleEdit;
 begin
-  Assert.IsTrue(TUsesClauses.AddUnit(TPascalLexer.Tokenize(Text), OffsetOf(Text, 'end.'), 'B', #10, Edit));
-  Assert.AreEqual('program App;'#10'uses A, B;'#10'begin'#10'end.', Apply(Text, Edit));
+  Assert.IsTrue(TUsesClauses.AddUnit(TPascalLexer.Tokenize(cText), OffsetOf(cText, 'end.'), 'B', #10, mEdit));
+  Assert.AreEqual('program App;'#10'uses A, B;'#10'begin'#10'end.', Apply(cText, mEdit));
 end;
 
 procedure TUsesClauseTests.FailsWithoutSection;
 var
-  Edit: TRuleEdit;
+  mEdit: TRuleEdit;
 begin
-  Assert.IsFalse(TUsesClauses.AddUnit(TPascalLexer.Tokenize(''), 0, 'B', #10, Edit));
-  Assert.IsFalse(TUsesClauses.AddUnit(TPascalLexer.Tokenize('unit A;'#10'type'), 0, 'B', #10, Edit));
+  Assert.IsFalse(TUsesClauses.AddUnit(TPascalLexer.Tokenize(''), 0, 'B', #10, mEdit));
+  Assert.IsFalse(TUsesClauses.AddUnit(TPascalLexer.Tokenize('unit A;'#10'type'), 0, 'B', #10, mEdit));
 end;
 
 /// <summary>Offset ab 0 zu einer Position; Zeilenwechsel #10.</summary>
 function TextOffset(const AText: string; const APosition: TTextPosition): Integer;
 var
-  Line: Integer;
+  mLine: Integer;
 begin
   Result := 0;
-  Line := 0;
-  while Line < APosition.Line do
+  mLine := 0;
+  while mLine < APosition.Line do
   begin
     Inc(Result);
     if AText[Result] = #10 then
     begin
-      Inc(Line);
+      Inc(mLine);
     end;
   end;
   Result := Result + APosition.Character;
@@ -234,24 +234,24 @@ end;
 /// <summary>Edits (auch Ersetzungen) von hinten nach vorn anwenden, damit die Positionen gültig bleiben.</summary>
 function ApplyAll(const AText: string; const AEdits: TArray<TRuleEdit>): string;
 var
-  Index, StartOffset, EndOffset: Integer;
+  mIndex, mStartOffset, mEndOffset: Integer;
 begin
   Result := AText;
-  for Index := High(AEdits) downto 0 do
+  for mIndex := High(AEdits) downto 0 do
   begin
-    StartOffset := TextOffset(Result, AEdits[Index].Range.StartPos);
-    EndOffset := TextOffset(Result, AEdits[Index].Range.EndPos);
-    Result := Copy(Result, 1, StartOffset) + AEdits[Index].NewText + Copy(Result, EndOffset + 1, MaxInt);
+    mStartOffset := TextOffset(Result, AEdits[mIndex].Range.StartPos);
+    mEndOffset := TextOffset(Result, AEdits[mIndex].Range.EndPos);
+    Result := Copy(Result, 1, mStartOffset) + AEdits[mIndex].NewText + Copy(Result, mEndOffset + 1, MaxInt);
   end;
 end;
 
 function Organized(const AText: string; ASort: Boolean): string;
 var
-  Edits: TArray<TRuleEdit>;
+  mEdits: TArray<TRuleEdit>;
 begin
-  if TUsesClauses.Organize(TPascalLexer.Tokenize(AText), AText, ASort, #10, Edits) then
+  if TUsesClauses.Organize(TPascalLexer.Tokenize(AText), AText, ASort, #10, mEdits) then
   begin
-    Result := ApplyAll(AText, Edits);
+    Result := ApplyAll(AText, mEdits);
   end
   else
   begin
@@ -279,18 +279,18 @@ end;
 
 procedure TUsesClauseTests.OrganizeKeepsListsWithDirectives;
 const
-  Text = 'unit A;'#10'interface'#10'uses Z, {$IFDEF X} Y, {$ENDIF} A;'#10'implementation'#10'end.';
+  cText = 'unit A;'#10'interface'#10'uses Z, {$IFDEF X} Y, {$ENDIF} A;'#10'implementation'#10'end.';
 begin
-  Assert.AreEqual(Text, Organized(Text, True));
+  Assert.AreEqual(cText, Organized(cText, True));
 end;
 
 procedure TUsesClauseTests.OrganizeWithoutChangeGivesNothing;
 var
-  Edits: TArray<TRuleEdit>;
+  mEdits: TArray<TRuleEdit>;
 const
-  Text = 'unit A;'#10'interface'#10'uses A1, B2;'#10'implementation'#10'end.';
+  cText = 'unit A;'#10'interface'#10'uses A1, B2;'#10'implementation'#10'end.';
 begin
-  Assert.IsFalse(TUsesClauses.Organize(TPascalLexer.Tokenize(Text), Text, True, #10, Edits));
+  Assert.IsFalse(TUsesClauses.Organize(TPascalLexer.Tokenize(cText), cText, True, #10, mEdits));
 end;
 
 procedure TUsesClauseTests.DUnitXUses_IsTestUnit;

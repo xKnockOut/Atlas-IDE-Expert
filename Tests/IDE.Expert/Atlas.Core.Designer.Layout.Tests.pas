@@ -79,9 +79,14 @@ begin
   Result := False;
 end;
 
-procedure AssertRect(const AExpected, AActual: TRect; const AMessage: string = '');
+procedure AssertRect(const AExpected, AActual: TRect; const AMessage: string); overload;
 begin
   Assert.AreEqual(TRecordText.Rect(AExpected), TRecordText.Rect(AActual), AMessage);
+end;
+
+procedure AssertRect(const AExpected, AActual: TRect); overload;
+begin
+  AssertRect(AExpected, AActual, '');
 end;
 
 { TAtlasFormLayoutTests }

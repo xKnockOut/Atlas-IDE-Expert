@@ -26,7 +26,8 @@ type
     procedure WarmUpFirstUse;
     [Test]
     procedure OffersFormComponentsByNameAndType;
-    /// <summary>#882: Formular-Komponenten auch über Kürzel und Teilwort, mit dem getippten Wort als filterText.</summary>
+    /// <summary>#882: Formular-Komponenten auch über Kürzel und Teilwort, mit dem getippten Wort als
+    /// filterText.</summary>
     [Test]
     procedure OffersFormComponentsFuzzyWithFilterText;
     /// <summary>#882: Anfang vor Kürzel vor Teilwort auch in der Punktzahl des Servers (Kürzen auf MaxItems).</summary>
@@ -90,7 +91,7 @@ end;
 
 procedure TLspCompletionFormProposalTests.OffersFormComponentsByNameAndType;
 const
-  UnitSteuer =
+  cUnitSteuer =
     'unit Steuer;'#13#10 +
     'interface'#13#10 +
     'type'#13#10 +
@@ -109,7 +110,7 @@ const
     'implementation'#13#10 +
     'end.';
   // Formular wie aus dem Designer; der Panel-Inhalt zählt mit.
-  FormText =
+  cFormText =
     'object frmMain: TfrmMain'#13#10 +
     '  Caption = ''Haupt'''#13#10 +
     '  object pnlOben: TPanel'#13#10 +
@@ -154,46 +155,46 @@ const
   /// <summary>Komponenten mit ATyped vor dem Cursor, in der Methode des Formulars oder in Frei.</summary>
   function Components(const ATyped: string; AInForm: Boolean; out AItems: TArray<TCompletionItem>): Boolean;
   var
-    Text: string;
-    Tree: TSyntaxTree;
-    Resolver: TNameResolver;
-    Position: TTextPosition;
+    mText: string;
+    mTree: TSyntaxTree;
+    mResolver: TNameResolver;
+    mPosition: TTextPosition;
   begin
     if AInForm then
     begin
-      Text := Source('', ATyped);
-      Position := TTextPosition.Create(19, 2 + Length(ATyped));
+      mText := Source('', ATyped);
+      mPosition := TTextPosition.Create(19, 2 + Length(ATyped));
     end
     else
     begin
-      Text := Source(ATyped, '');
-      Position := TTextPosition.Create(15, 2 + Length(ATyped));
+      mText := Source(ATyped, '');
+      mPosition := TTextPosition.Create(15, 2 + Length(ATyped));
     end;
-    Tree := TPascalParser.Parse(Text);
-    Resolver := TNameResolver.Create(FIndex);
+    mTree := TPascalParser.Parse(mText);
+    mResolver := TNameResolver.Create(FIndex);
     try
-      Result := ComponentsAt(LookupOf(Resolver, nil, Tree, Text,
+      Result := ComponentsAt(LookupOf(mResolver, nil, mTree, mText,
         function(const AFileName: string; out AText: string): Boolean
         begin
-          AText := FormText;
+          AText := cFormText;
           Result := SameText(ExtractFileExt(AFileName), '.dfm');
         end),
-        Position, AItems);
+        mPosition, AItems);
     finally
-      Resolver.Free;
-      Tree.Free;
+      mResolver.Free;
+      mTree.Free;
     end;
   end;
 
   function Joined(const AItems: TArray<TCompletionItem>): string;
   var
-    Item: TCompletionItem;
+    mItem: TCompletionItem;
   begin
     Result := '';
-    for Item in AItems do
+    for mItem in AItems do
     begin
-      Result := Result + Item.Name;
-      if Item.ByType then
+      Result := Result + mItem.Name;
+      if mItem.ByType then
       begin
         Result := Result + '*';
       end;
@@ -203,27 +204,27 @@ const
   end;
 
 var
-  Items: TArray<TCompletionItem>;
+  mItems: TArray<TCompletionItem>;
 begin
-  FIndex.AddUnit(TIndexExtractor.ExtractText(UnitSteuer, 'C:\P\Steuer.pas', nil));
+  FIndex.AddUnit(TIndexExtractor.ExtractText(cUnitSteuer, 'C:\P\Steuer.pas', nil));
   // Ohne Getipptes alle Komponenten in der Reihenfolge der Formulardatei, mit Typ und Formularname.
-  Assert.IsTrue(Components('', True, Items));
-  Assert.AreEqual('pnlOben btnSave btnLoad chkAktiv', Joined(Items));
-  Assert.AreEqual('TButton', Items[1].Detail);
-  Assert.AreEqual('frmMain', Items[1].Form);
-  Assert.AreEqual(3, Items[1].Scope);
+  Assert.IsTrue(Components('', True, mItems));
+  Assert.AreEqual('pnlOben btnSave btnLoad chkAktiv', Joined(mItems));
+  Assert.AreEqual('TButton', mItems[1].Detail);
+  Assert.AreEqual('frmMain', mItems[1].Form);
+  Assert.AreEqual(3, mItems[1].Scope);
   // Über den Namen.
-  Assert.IsTrue(Components('btn', True, Items));
-  Assert.AreEqual('btnSave btnLoad', Joined(Items));
+  Assert.IsTrue(Components('btn', True, mItems));
+  Assert.AreEqual('btnSave btnLoad', Joined(mItems));
   // Über den Typ: TButton selbst und TBitBtn als Nachfahr, nicht TCheckBox über TButtonControl.
-  Assert.IsTrue(Components('button', True, Items));
-  Assert.AreEqual('btnSave* btnLoad*', Joined(Items));
+  Assert.IsTrue(Components('button', True, mItems));
+  Assert.AreEqual('btnSave* btnLoad*', Joined(mItems));
   // Außerhalb der Methoden des Formulars nichts.
-  Assert.IsFalse(Components('', False, Items));
+  Assert.IsFalse(Components('', False, mItems));
 end;
 procedure TLspCompletionFormProposalTests.OffersFormComponentsFuzzyWithFilterText;
 const
-  UnitSteuer =
+  cUnitSteuer =
     'unit Steuer;'#13#10 +
     'interface'#13#10 +
     'type'#13#10 +
@@ -233,14 +234,14 @@ const
     '  end;'#13#10 +
     'implementation'#13#10 +
     'end.';
-  FormText =
+  cFormText =
     'object frmMain: TfrmMain'#13#10 +
     '  object btnSave: TButton'#13#10 +
     '  end'#13#10 +
     '  object SaveButton: TButton'#13#10 +
     '  end'#13#10 +
     'end';
-  Source =
+  cSource =
     'unit Haupt;'#13#10 +
     'interface'#13#10 +
     'uses Steuer;'#13#10 +
@@ -260,36 +261,36 @@ const
 
   function Components(const ATyped: string): TArray<TCompletionItem>;
   var
-    Text: string;
-    Tree: TSyntaxTree;
-    Resolver: TNameResolver;
+    mText: string;
+    mTree: TSyntaxTree;
+    mResolver: TNameResolver;
   begin
-    Text := Format(Source, [ATyped]);
-    Tree := TPascalParser.Parse(Text);
-    Resolver := TNameResolver.Create(FIndex);
+    mText := Format(cSource, [ATyped]);
+    mTree := TPascalParser.Parse(mText);
+    mResolver := TNameResolver.Create(FIndex);
     try
-      ComponentsAt(LookupOf(Resolver, nil, Tree, Text,
+      ComponentsAt(LookupOf(mResolver, nil, mTree, mText,
         function(const AFileName: string; out AText: string): Boolean
         begin
-          AText := FormText;
+          AText := cFormText;
           Result := SameText(ExtractFileExt(AFileName), '.dfm');
         end),
         TTextPosition.Create(13, 2 + Length(ATyped)), Result);
     finally
-      Resolver.Free;
-      Tree.Free;
+      mResolver.Free;
+      mTree.Free;
     end;
   end;
 
   function Find(const AItems: TArray<TCompletionItem>; const AName: string; out AItem: TCompletionItem): Boolean;
   var
-    Item: TCompletionItem;
+    mItem: TCompletionItem;
   begin
-    for Item in AItems do
+    for mItem in AItems do
     begin
-      if Item.Name = AName then
+      if mItem.Name = AName then
       begin
-        AItem := Item;
+        AItem := mItem;
         Exit(True);
       end;
     end;
@@ -298,42 +299,42 @@ const
   end;
 
 var
-  Items: TArray<TCompletionItem>;
-  Item: TCompletionItem;
+  mItems: TArray<TCompletionItem>;
+  mItem: TCompletionItem;
 begin
-  FIndex.AddUnit(TIndexExtractor.ExtractText(UnitSteuer, 'C:\P\Steuer.pas', nil));
+  FIndex.AddUnit(TIndexExtractor.ExtractText(cUnitSteuer, 'C:\P\Steuer.pas', nil));
   // Kürzel über Wortanfänge: "SB" → SaveButton, "bs" → btnSave.
-  Items := Components('SB');
-  Assert.IsTrue(Find(Items, 'SaveButton', Item), 'SB → SaveButton');
-  Assert.IsFalse(Item.ByType);
-  Assert.AreEqual('SB', Item.FilterText);
-  Items := Components('bs');
-  Assert.IsTrue(Find(Items, 'btnSave', Item), 'bs → btnSave');
-  Assert.AreEqual('bs', Item.FilterText);
+  mItems := Components('SB');
+  Assert.IsTrue(Find(mItems, 'SaveButton', mItem), 'SB → SaveButton');
+  Assert.IsFalse(mItem.ByType);
+  Assert.AreEqual('SB', mItem.FilterText);
+  mItems := Components('bs');
+  Assert.IsTrue(Find(mItems, 'btnSave', mItem), 'bs → btnSave');
+  Assert.AreEqual('bs', mItem.FilterText);
   // Teilwort: "Button" mitten im Namen.
-  Items := Components('Button');
-  Assert.IsTrue(Find(Items, 'SaveButton', Item), 'Button → SaveButton');
-  Assert.AreEqual('Button', Item.FilterText);
+  mItems := Components('Button');
+  Assert.IsTrue(Find(mItems, 'SaveButton', mItem), 'Button → SaveButton');
+  Assert.AreEqual('Button', mItem.FilterText);
   // Passender Anfang braucht keinen filterText.
-  Items := Components('btn');
-  Assert.IsTrue(Find(Items, 'btnSave', Item));
-  Assert.AreEqual('', Item.FilterText);
-  Items := nil;
-  Item := Default(TCompletionItem);
+  mItems := Components('btn');
+  Assert.IsTrue(Find(mItems, 'btnSave', mItem));
+  Assert.AreEqual('', mItem.FilterText);
+  mItems := nil;
+  mItem := Default(TCompletionItem);
 end;
 procedure TLspCompletionFormProposalTests.MatchScoreRanksAbbreviationBeforeSubstring;
 var
-  Prefix, Abbreviation, Substring, WordSubstring: Integer;
+  mPrefix, mAbbreviation, mSubstring, mWordSubstring: Integer;
 begin
-  Prefix := MatchScore('SbList', 'sb', TCompletionMatching.Fuzzy);
-  Abbreviation := MatchScore('SaveButton', 'sb', TCompletionMatching.Fuzzy);
-  Substring := MatchScore('Ausbau', 'sb', TCompletionMatching.Fuzzy);
-  WordSubstring := MatchScore('lstSbox', 'sb', TCompletionMatching.Fuzzy);
-  Assert.AreNotEqual(Integer(TFuzzyMatch.cNoMatch), Abbreviation);
-  Assert.IsTrue(Prefix > Abbreviation, Format('Anfang %d vor Kürzel %d', [Prefix, Abbreviation]));
-  Assert.IsTrue(Abbreviation > Substring, Format('Kürzel %d vor Teilwort %d', [Abbreviation, Substring]));
-  Assert.IsTrue(Abbreviation > WordSubstring,
-    Format('Kürzel %d vor Teilwort am Wortanfang %d', [Abbreviation, WordSubstring]));
+  mPrefix := MatchScore('SbList', 'sb', TCompletionMatching.Fuzzy);
+  mAbbreviation := MatchScore('SaveButton', 'sb', TCompletionMatching.Fuzzy);
+  mSubstring := MatchScore('Ausbau', 'sb', TCompletionMatching.Fuzzy);
+  mWordSubstring := MatchScore('lstSbox', 'sb', TCompletionMatching.Fuzzy);
+  Assert.AreNotEqual(Integer(TFuzzyMatch.cNoMatch), mAbbreviation);
+  Assert.IsTrue(mPrefix > mAbbreviation, Format('Anfang %d vor Kürzel %d', [mPrefix, mAbbreviation]));
+  Assert.IsTrue(mAbbreviation > mSubstring, Format('Kürzel %d vor Teilwort %d', [mAbbreviation, mSubstring]));
+  Assert.IsTrue(mAbbreviation > mWordSubstring,
+    Format('Kürzel %d vor Teilwort am Wortanfang %d', [mAbbreviation, mWordSubstring]));
   // Mit completion.matching = prefix bleibt es beim Anfang.
   Assert.AreEqual(Integer(TFuzzyMatch.cNoMatch), MatchScore('SaveButton', 'sb', TCompletionMatching.Prefix));
 end;
@@ -395,46 +396,46 @@ const
 
 procedure TLspCompletionFormProposalTests.CastsSenderToAssignedComponents;
 var
-  Tree: TSyntaxTree;
-  Resolver: TNameResolver;
-  Items: TCompletionItems;
-  ReadForm: TCompletionReadText;
+  mTree: TSyntaxTree;
+  mResolver: TNameResolver;
+  mItems: TCompletionItems;
+  mReadForm: TCompletionReadText;
 begin
   FIndex.AddUnit(TIndexExtractor.ExtractText(cSenderUnitSteuer, 'C:\P\Steuer.pas', nil));
-  ReadForm :=
+  mReadForm :=
     function(const AFileName: string; out AText: string): Boolean
     begin
       AText := cSenderFormText;
       Result := SameText(ExtractFileExt(AFileName), '.dfm');
     end;
-  Tree := TPascalParser.Parse(cSenderText);
-  Resolver := TNameResolver.Create(FIndex);
+  mTree := TPascalParser.Parse(cSenderText);
+  mResolver := TNameResolver.Create(FIndex);
   try
     // btnSave (TButton) und btnLoad (TBitBtn): gemeinsamer Vorfahr TButton.
-    Assert.IsTrue(SendersAt(LookupOf(Resolver, FIndex, Tree, cSenderText, ReadForm),
-      TTextPosition.Create(14, 12), TCompletionSenderCast.AsOperator, Items));
-    Assert.AreEqual('Caption', Names(Items));
-    Assert.AreEqual('TButton', Items.Items[0].Sender);
-    Assert.AreEqual('btnSave, btnLoad', Items.Items[0].SenderOf);
-    Assert.IsTrue(Items.Items[0].HasTextEdit);
-    Assert.AreEqual('(Sender as TButton).Caption', Items.Items[0].TextEdit.NewText);
-    Assert.AreEqual(2, Items.Items[0].TextEdit.Range.StartPos.Character);
-    Assert.AreEqual(12, Items.Items[0].TextEdit.Range.EndPos.Character);
-    Assert.IsTrue(SendersAt(LookupOf(Resolver, FIndex, Tree, cSenderText, ReadForm),
-      TTextPosition.Create(14, 12), TCompletionSenderCast.HardCast, Items));
-    Assert.AreEqual('TButton(Sender).Caption', Items.Items[0].TextEdit.NewText);
+    Assert.IsTrue(SendersAt(LookupOf(mResolver, FIndex, mTree, cSenderText, mReadForm),
+      TTextPosition.Create(14, 12), TCompletionSenderCast.AsOperator, mItems));
+    Assert.AreEqual('Caption', Names(mItems));
+    Assert.AreEqual('TButton', mItems.Items[0].Sender);
+    Assert.AreEqual('btnSave, btnLoad', mItems.Items[0].SenderOf);
+    Assert.IsTrue(mItems.Items[0].HasTextEdit);
+    Assert.AreEqual('(Sender as TButton).Caption', mItems.Items[0].TextEdit.NewText);
+    Assert.AreEqual(2, mItems.Items[0].TextEdit.Range.StartPos.Character);
+    Assert.AreEqual(12, mItems.Items[0].TextEdit.Range.EndPos.Character);
+    Assert.IsTrue(SendersAt(LookupOf(mResolver, FIndex, mTree, cSenderText, mReadForm),
+      TTextPosition.Create(14, 12), TCompletionSenderCast.HardCast, mItems));
+    Assert.AreEqual('TButton(Sender).Caption', mItems.Items[0].TextEdit.NewText);
     // Ohne Zuweisung im Formular bleibt es bei den Mitgliedern von TObject.
-    Assert.IsFalse(SendersAt(LookupOf(Resolver, FIndex, Tree, cSenderText, ReadForm),
-      TTextPosition.Create(18, 9), TCompletionSenderCast.AsOperator, Items));
+    Assert.IsFalse(SendersAt(LookupOf(mResolver, FIndex, mTree, cSenderText, mReadForm),
+      TTextPosition.Create(18, 9), TCompletionSenderCast.AsOperator, mItems));
   finally
-    Resolver.Free;
-    Tree.Free;
+    mResolver.Free;
+    mTree.Free;
   end;
 end;
 
 procedure TLspCompletionFormProposalTests.OffersDataFieldNames;
 const
-  FormText =
+  cFormText =
     'object frmOrders: TfrmOrders'#13#10 +
     '  object qryOrders: TSQLQuery'#13#10 +
     '    SQL.Strings = ('#13#10 +
@@ -450,46 +451,46 @@ const
     Result := DataNamesAt(LookupOf(nil, nil, nil, 'unit Haupt;'#13#10'{$R *.dfm}'#13#10 + ALine + #13#10,
       function(const AFileName: string; out AText: string): Boolean
       begin
-        AText := FormText;
+        AText := cFormText;
         Result := SameText(ExtractFileExt(AFileName), '.dfm');
       end),
       TTextPosition.Create(2, ACharacter), AItems);
   end;
 
 var
-  Found: TCompletionItems;
-  Json: TJSONObject;
+  mFound: TCompletionItems;
+  mJson: TJSONObject;
 begin
   // qryOrders.FieldByName('cu|'): persistente Felder, dann Spalten; der ganze String-Inhalt wird ersetzt.
-  Assert.IsTrue(Items('  qryOrders.FieldByName(''cu'').AsInteger;', 27, Found));
-  Assert.AreEqual(3, Integer(Length(Found.Items)));
-  Assert.AreEqual('CUSTOMER_ID', Found.Items[0].Name);
-  Assert.AreEqual('Integer', Found.Items[0].Detail);
-  Assert.AreEqual('CURRENCY', Found.Items[1].Name);
-  Assert.AreEqual('TOTAL', Found.Items[2].Name);
-  Assert.IsTrue(Found.Items[1].HasTextEdit);
-  Assert.AreEqual(25, Found.Items[1].TextEdit.Range.StartPos.Character);
-  Assert.AreEqual(27, Found.Items[1].TextEdit.Range.EndPos.Character);
-  Assert.AreEqual('CURRENCY', Found.Items[1].TextEdit.NewText);
-  Json := TLspCompletion.ToJson(Found);
+  Assert.IsTrue(Items('  qryOrders.FieldByName(''cu'').AsInteger;', 27, mFound));
+  Assert.AreEqual(3, Integer(Length(mFound.Items)));
+  Assert.AreEqual('CUSTOMER_ID', mFound.Items[0].Name);
+  Assert.AreEqual('Integer', mFound.Items[0].Detail);
+  Assert.AreEqual('CURRENCY', mFound.Items[1].Name);
+  Assert.AreEqual('TOTAL', mFound.Items[2].Name);
+  Assert.IsTrue(mFound.Items[1].HasTextEdit);
+  Assert.AreEqual(25, mFound.Items[1].TextEdit.Range.StartPos.Character);
+  Assert.AreEqual(27, mFound.Items[1].TextEdit.Range.EndPos.Character);
+  Assert.AreEqual('CURRENCY', mFound.Items[1].TextEdit.NewText);
+  mJson := TLspCompletion.ToJson(mFound);
   try
-    Assert.IsTrue(Json.ToJSON.Contains('"dataSet":"qryOrders"'));
-    Assert.IsTrue(Json.ToJSON.Contains('"dataSource":"select O.CUSTOMER_ID'));
+    Assert.IsTrue(mJson.ToJSON.Contains('"dataSet":"qryOrders"'));
+    Assert.IsTrue(mJson.ToJSON.Contains('"dataSource":"select O.CUSTOMER_ID'));
   finally
-    Json.Free;
+    mJson.Free;
   end;
   // ParamByName: die Platzhalter.
-  Assert.IsTrue(Items('  qryOrders.ParamByName('''')', 25, Found));
-  Assert.AreEqual(1, Integer(Length(Found.Items)));
-  Assert.AreEqual('OrderId', Found.Items[0].Name);
+  Assert.IsTrue(Items('  qryOrders.ParamByName('''')', 25, mFound));
+  Assert.AreEqual(1, Integer(Length(mFound.Items)));
+  Assert.AreEqual('OrderId', mFound.Items[0].Name);
   // Zur Laufzeit erzeugt: im String, aber ohne Vorschlag.
-  Assert.IsTrue(Items('  qryNeu.FieldByName(''cu'')', 24, Found));
-  Assert.AreEqual(0, Integer(Length(Found.Items)));
+  Assert.IsTrue(Items('  qryNeu.FieldByName(''cu'')', 24, mFound));
+  Assert.AreEqual(0, Integer(Length(mFound.Items)));
   // Andere Strings gehören nicht dazu.
-  Assert.IsFalse(Items('  ShowMessage(''cu'');', 17, Found));
+  Assert.IsFalse(Items('  ShowMessage(''cu'');', 17, mFound));
 end;
 const
-  FormUnitSteuer =
+  cFormUnitSteuer =
     'unit Steuer;'#13#10 +
     'interface'#13#10 +
     'type'#13#10 +
@@ -505,7 +506,7 @@ const
     '  end;'#13#10 +
     'implementation'#13#10 +
     'end.';
-  FormDfm =
+  cFormDfm =
     'object frmMain: TfrmMain'#13#10 +
     '  object btnSave: TButton'#13#10 +
     '    OnClick = btnAnyClick'#13#10 +
@@ -541,151 +542,151 @@ begin
 end;
 procedure TLspCompletionFormProposalTests.ComponentItemsOutsideRoutineDoesNotReadForm;
 var
-  Text: string;
-  Tree: TSyntaxTree;
-  Resolver: TNameResolver;
-  Items: TArray<TCompletionItem>;
-  Reads: Integer;
-  ReadForm: TCompletionReadText;
+  mText: string;
+  mTree: TSyntaxTree;
+  mResolver: TNameResolver;
+  mItems: TArray<TCompletionItem>;
+  mReads: Integer;
+  mReadForm: TCompletionReadText;
 begin
-  FIndex.AddUnit(TIndexExtractor.ExtractText(FormUnitSteuer, 'C:\P\Steuer.pas', nil));
-  Reads := 0;
-  ReadForm :=
+  FIndex.AddUnit(TIndexExtractor.ExtractText(cFormUnitSteuer, 'C:\P\Steuer.pas', nil));
+  mReads := 0;
+  mReadForm :=
     function(const AFileName: string; out AText: string): Boolean
     begin
-      Inc(Reads);
-      AText := FormDfm;
+      Inc(mReads);
+      AText := cFormDfm;
       Result := SameText(ExtractFileExt(AFileName), '.dfm');
     end;
-  Resolver := TNameResolver.Create(FIndex);
+  mResolver := TNameResolver.Create(FIndex);
   try
     // Im Klassenrumpf: keine Routine, also kein Lesezugriff.
-    Text := FormSource('btn', '');
-    Tree := TPascalParser.Parse(Text);
+    mText := FormSource('btn', '');
+    mTree := TPascalParser.Parse(mText);
     try
-      Assert.IsFalse(ComponentsAt(LookupOf(Resolver, nil, Tree, Text, ReadForm),
-        TTextPosition.Create(7, 7), Items));
-      Assert.AreEqual(0, Reads);
+      Assert.IsFalse(ComponentsAt(LookupOf(mResolver, nil, mTree, mText, mReadForm),
+        TTextPosition.Create(7, 7), mItems));
+      Assert.AreEqual(0, mReads);
     finally
-      Tree.Free;
+      mTree.Free;
     end;
     // In der Methode: einmal gelesen, beide Komponenten.
-    Text := FormSource('', 'btn');
-    Tree := TPascalParser.Parse(Text);
+    mText := FormSource('', 'btn');
+    mTree := TPascalParser.Parse(mText);
     try
-      Assert.IsTrue(ComponentsAt(LookupOf(Resolver, nil, Tree, Text, ReadForm),
-        TTextPosition.Create(14, 5), Items));
-      Assert.AreEqual(1, Reads);
-      Assert.AreEqual(2, Integer(Length(Items)));
-      Assert.AreEqual('btnSave', Items[0].Name);
-      Assert.AreEqual('frmMain', Items[0].Form);
-      Assert.AreEqual('TfrmMain', Items[0].Container);
+      Assert.IsTrue(ComponentsAt(LookupOf(mResolver, nil, mTree, mText, mReadForm),
+        TTextPosition.Create(14, 5), mItems));
+      Assert.AreEqual(1, mReads);
+      Assert.AreEqual(2, Integer(Length(mItems)));
+      Assert.AreEqual('btnSave', mItems[0].Name);
+      Assert.AreEqual('frmMain', mItems[0].Form);
+      Assert.AreEqual('TfrmMain', mItems[0].Container);
     finally
-      Tree.Free;
+      mTree.Free;
     end;
   finally
-    Resolver.Free;
+    mResolver.Free;
   end;
 end;
 procedure TLspCompletionFormProposalTests.ComponentItemsSecondRequestUsesCache;
 var
-  Folder, UnitFile, DfmFile, Text, Answer: string;
-  Store: IDocumentStore;
-  Completion: TLspCompletion;
-  Dispatcher: TJsonRpcDispatcher;
-  Reads, Id: Integer;
+  mFolder, mUnitFile, mDfmFile, mText, mAnswer: string;
+  mStore: IDocumentStore;
+  mCompletion: TLspCompletion;
+  mDispatcher: TJsonRpcDispatcher;
+  mReads, mId: Integer;
 
   function Ask: string;
   var
-    Request, Response: TJSONObject;
+    mRequest, mResponse: TJSONObject;
   begin
-    Inc(Id);
-    Request := TJSONObject.ParseJSONValue('{"jsonrpc":"2.0","id":' + IntToStr(Id) +
+    Inc(mId);
+    mRequest := TJSONObject.ParseJSONValue('{"jsonrpc":"2.0","id":' + IntToStr(mId) +
       ',"method":"textDocument/completion","params":{"textDocument":{"uri":"' +
-      TDocumentUris.FromPath(UnitFile).Replace('\', '\\') + '"},"position":{"line":14,"character":5}}}') as TJSONObject;
+      TDocumentUris.FromPath(mUnitFile).Replace('\', '\\') + '"},"position":{"line":14,"character":5}}}') as TJSONObject;
     try
-      Response := Dispatcher.DispatchMessage(Request);
+      mResponse := mDispatcher.DispatchMessage(mRequest);
       try
-        Result := Response.ToJSON;
+        Result := mResponse.ToJSON;
       finally
-        Response.Free;
+        mResponse.Free;
       end;
     finally
-      Request.Free;
+      mRequest.Free;
     end;
   end;
 
 begin
-  Folder := TPath.Combine(TPath.GetTempPath, 'AtlasFormCache' + IntToStr(Random(1000000)));
-  ForceDirectories(Folder);
-  UnitFile := TPath.Combine(Folder, 'Haupt.pas');
-  DfmFile := TPath.Combine(Folder, 'Haupt.dfm');
-  TFile.WriteAllText(DfmFile, FormDfm);
-  Text := FormSource('', 'btn');
-  FIndex.AddUnit(TIndexExtractor.ExtractText(FormUnitSteuer, TPath.Combine(Folder, 'Steuer.pas'), nil));
-  Store := TDocumentStore.Create;
-  Store.Open(TDocumentUris.FromPath(UnitFile), 'delphi', 1, Text);
-  Reads := 0;
-  Id := 0;
-  Completion := TLspCompletion.Create(Store, FIndex);
-  Dispatcher := TJsonRpcDispatcher.Create;
+  mFolder := TPath.Combine(TPath.GetTempPath, 'AtlasFormCache' + IntToStr(Random(1000000)));
+  ForceDirectories(mFolder);
+  mUnitFile := TPath.Combine(mFolder, 'Haupt.pas');
+  mDfmFile := TPath.Combine(mFolder, 'Haupt.dfm');
+  TFile.WriteAllText(mDfmFile, cFormDfm);
+  mText := FormSource('', 'btn');
+  FIndex.AddUnit(TIndexExtractor.ExtractText(cFormUnitSteuer, TPath.Combine(mFolder, 'Steuer.pas'), nil));
+  mStore := TDocumentStore.Create;
+  mStore.Open(TDocumentUris.FromPath(mUnitFile), 'delphi', 1, mText);
+  mReads := 0;
+  mId := 0;
+  mCompletion := TLspCompletion.Create(mStore, FIndex);
+  mDispatcher := TJsonRpcDispatcher.Create;
   try
-    Completion.Hooks.ReadText :=
+    mCompletion.Hooks.ReadText :=
       function(const AFileName: string; out AText: string): Boolean
       begin
-        Result := SameText(AFileName, DfmFile) and FileExists(AFileName);
+        Result := SameText(AFileName, mDfmFile) and FileExists(AFileName);
         if Result then
         begin
-          Inc(Reads);
+          Inc(mReads);
           AText := TFile.ReadAllText(AFileName, TEncoding.UTF8);
         end;
       end;
-    Completion.Attach(Dispatcher);
-    Answer := Ask;
-    Assert.IsTrue(Answer.Contains('"btnSave"'), Answer);
-    Assert.AreEqual(1, Reads);
+    mCompletion.Attach(mDispatcher);
+    mAnswer := Ask;
+    Assert.IsTrue(mAnswer.Contains('"btnSave"'), mAnswer);
+    Assert.AreEqual(1, mReads);
     // Unveränderte Datei: kein weiterer Lesezugriff.
-    Answer := Ask;
-    Assert.IsTrue(Answer.Contains('"btnLoad"'), Answer);
-    Assert.AreEqual(1, Reads);
+    mAnswer := Ask;
+    Assert.IsTrue(mAnswer.Contains('"btnLoad"'), mAnswer);
+    Assert.AreEqual(1, mReads);
     // Komponente umbenannt, Datei mit neuer Zeit: neu gelesen.
-    TFile.WriteAllText(DfmFile, FormDfm.Replace('btnLoad', 'btnOpen'));
-    FileSetDate(DfmFile, DateTimeToFileDate(Now + 1));
-    Answer := Ask;
-    Assert.AreEqual(2, Reads);
+    TFile.WriteAllText(mDfmFile, cFormDfm.Replace('btnLoad', 'btnOpen'));
+    FileSetDate(mDfmFile, DateTimeToFileDate(Now + 1));
+    mAnswer := Ask;
+    Assert.AreEqual(2, mReads);
     // btnLoad bleibt als Feld der Klasse in der Liste, nur nicht mehr als Komponente des Formulars.
-    Assert.IsTrue(Answer.Contains('"btnOpen"'), Answer);
+    Assert.IsTrue(mAnswer.Contains('"btnOpen"'), mAnswer);
   finally
-    Dispatcher.Free;
-    Completion.Free;
-    TDirectory.Delete(Folder, True);
+    mDispatcher.Free;
+    mCompletion.Free;
+    TDirectory.Delete(mFolder, True);
   end;
 end;
 procedure TLspCompletionFormProposalTests.SenderItemsFindsHeaderFarAboveAndSkipsLocalRoutines;
 const
-  Filler = 2100;
+  cFiller = 2100;
 var
-  Text, Body: string;
-  Tree: TSyntaxTree;
-  Resolver: TNameResolver;
-  Items: TCompletionItems;
-  ReadForm: TCompletionReadText;
-  Index, Line: Integer;
+  mText, mBody: string;
+  mTree: TSyntaxTree;
+  mResolver: TNameResolver;
+  mItems: TCompletionItems;
+  mReadForm: TCompletionReadText;
+  mIndex, mLine: Integer;
 begin
-  FIndex.AddUnit(TIndexExtractor.ExtractText(FormUnitSteuer, 'C:\P\Steuer.pas', nil));
-  ReadForm :=
+  FIndex.AddUnit(TIndexExtractor.ExtractText(cFormUnitSteuer, 'C:\P\Steuer.pas', nil));
+  mReadForm :=
     function(const AFileName: string; out AText: string): Boolean
     begin
-      AText := FormDfm;
+      AText := cFormDfm;
       Result := SameText(ExtractFileExt(AFileName), '.dfm');
     end;
   // Lokale Prozedur zwischen Kopf und Cursor, dann mehr Zeilen, als die frühere Zeilensuche (2000) prüfte.
-  Body := '';
-  for Index := 1 to Filler do
+  mBody := '';
+  for mIndex := 1 to cFiller do
   begin
-    Body := Body + '  // Zeile'#13#10;
+    mBody := mBody + '  // Zeile'#13#10;
   end;
-  Text :=
+  mText :=
     'unit Haupt;'#13#10 +
     'interface'#13#10 +
     'uses Steuer;'#13#10 +
@@ -702,23 +703,23 @@ begin
     '  begin'#13#10 +
     '  end;'#13#10 +
     'begin'#13#10 +
-    Body +
+    mBody +
     '  Sender.Cap'#13#10 +
     'end;'#13#10 +
     'end.';
-  Line := 16 + Filler;
-  Tree := TPascalParser.Parse(Text);
-  Resolver := TNameResolver.Create(FIndex);
+  mLine := 16 + cFiller;
+  mTree := TPascalParser.Parse(mText);
+  mResolver := TNameResolver.Create(FIndex);
   try
-    Assert.IsTrue(SendersAt(LookupOf(Resolver, FIndex, Tree, Text, ReadForm),
-      TTextPosition.Create(Line, 12), TCompletionSenderCast.AsOperator, Items));
-    Assert.AreEqual('Caption', Names(Items));
-    Assert.AreEqual('TButton', Items.Items[0].Sender);
+    Assert.IsTrue(SendersAt(LookupOf(mResolver, FIndex, mTree, mText, mReadForm),
+      TTextPosition.Create(mLine, 12), TCompletionSenderCast.AsOperator, mItems));
+    Assert.AreEqual('Caption', Names(mItems));
+    Assert.AreEqual('TButton', mItems.Items[0].Sender);
     // btnLoad hat zwei Ereignisse auf die Methode, zählt aber einmal.
-    Assert.AreEqual('btnSave, btnLoad', Items.Items[0].SenderOf);
+    Assert.AreEqual('btnSave, btnLoad', mItems.Items[0].SenderOf);
   finally
-    Resolver.Free;
-    Tree.Free;
+    mResolver.Free;
+    mTree.Free;
   end;
 end;
 

@@ -56,41 +56,41 @@ end;
 
 function ApplyFix(const AText: string; const AFix: TRuleFix): string;
 var
-  Index: Integer;
-  Edit: TRuleEdit;
+  mIndex: Integer;
+  mEdit: TRuleEdit;
 
   function OffsetOf(const APosition: TTextPosition): Integer;
   var
-    Line, Position: Integer;
+    mLine, mPosition: Integer;
   begin
-    Position := 0;
-    for Line := 1 to APosition.Line do
+    mPosition := 0;
+    for mLine := 1 to APosition.Line do
     begin
-      Position := Pos(#10, AText, Position + 1);
+      mPosition := Pos(#10, AText, mPosition + 1);
     end;
-    Result := Position + APosition.Character;
+    Result := mPosition + APosition.Character;
   end;
 
 begin
   Result := AText;
-  for Index := High(AFix.Edits) downto 0 do
+  for mIndex := High(AFix.Edits) downto 0 do
   begin
-    Edit := AFix.Edits[Index];
-    Result := Copy(Result, 1, OffsetOf(Edit.Range.StartPos)) + Edit.NewText +
-      Copy(Result, OffsetOf(Edit.Range.EndPos) + 1, MaxInt);
+    mEdit := AFix.Edits[mIndex];
+    Result := Copy(Result, 1, OffsetOf(mEdit.Range.StartPos)) + mEdit.NewText +
+      Copy(Result, OffsetOf(mEdit.Range.EndPos) + 1, MaxInt);
   end;
 end;
 
 procedure TFormFieldRulesTests.DeletedObjectWithFieldReports;
 var
-  Findings: TArray<TRuleFinding>;
+  mFindings: TArray<TRuleFinding>;
 begin
-  Findings := TRuleAssert.FormFindings(TFormFieldWithoutObjectRule.Create,
+  mFindings := TRuleAssert.FormFindings(TFormFieldWithoutObjectRule.Create,
     FormUnit('    Edit1: TEdit;'#10'    Button1: TButton;'),
     'object Form1: TForm1'#10'  object Button1: TButton'#10'  end'#10'end'#10);
-  Assert.AreEqual(1, Integer(Length(Findings)));
-  Assert.AreEqual(4, Findings[0].Range.StartPos.Line);
-  Assert.IsTrue(Pos('Edit1', Findings[0].Message) > 0, Findings[0].Message);
+  Assert.AreEqual(1, Integer(Length(mFindings)));
+  Assert.AreEqual(4, mFindings[0].Range.StartPos.Line);
+  Assert.IsTrue(Pos('Edit1', mFindings[0].Message) > 0, mFindings[0].Message);
 end;
 
 procedure TFormFieldRulesTests.NonPublishedFieldIsSilent;
@@ -102,55 +102,55 @@ end;
 
 procedure TFormFieldRulesTests.ObjectWithoutFieldAddsField;
 var
-  Source: string;
-  Findings: TArray<TRuleFinding>;
+  mSource: string;
+  mFindings: TArray<TRuleFinding>;
 begin
-  Source := FormUnit('    Button1: TButton;');
-  Findings := TRuleAssert.FormFindings(TFormObjectWithoutFieldRule.Create, Source,
+  mSource := FormUnit('    Button1: TButton;');
+  mFindings := TRuleAssert.FormFindings(TFormObjectWithoutFieldRule.Create, mSource,
     'object Form1: TForm1'#10'  object Button1: TButton'#10'  end'#10'  object Edit1: TEdit'#10'  end'#10'end'#10);
-  Assert.AreEqual(1, Integer(Length(Findings)));
-  Assert.AreEqual(FormUnit('    Button1: TButton;'#10'    Edit1: TEdit;'), ApplyFix(Source, Findings[0].Fixes[0]));
+  Assert.AreEqual(1, Integer(Length(mFindings)));
+  Assert.AreEqual(FormUnit('    Button1: TButton;'#10'    Edit1: TEdit;'), ApplyFix(mSource, mFindings[0].Fixes[0]));
 end;
 
 procedure TFormFieldRulesTests.TypeMismatchFixesType;
 var
-  Source: string;
-  Findings: TArray<TRuleFinding>;
+  mSource: string;
+  mFindings: TArray<TRuleFinding>;
 begin
-  Source := FormUnit('    Edit1: TEdit;');
-  Findings := TRuleAssert.FormFindings(TFormFieldTypeMismatchRule.Create, Source,
+  mSource := FormUnit('    Edit1: TEdit;');
+  mFindings := TRuleAssert.FormFindings(TFormFieldTypeMismatchRule.Create, mSource,
     'object Form1: TForm1'#10'  object Edit1: TMaskEdit'#10'  end'#10'end'#10);
-  Assert.AreEqual(1, Integer(Length(Findings)));
-  Assert.AreEqual(FormUnit('    Edit1: TMaskEdit;'), ApplyFix(Source, Findings[0].Fixes[0]));
+  Assert.AreEqual(1, Integer(Length(mFindings)));
+  Assert.AreEqual(FormUnit('    Edit1: TMaskEdit;'), ApplyFix(mSource, mFindings[0].Fixes[0]));
 end;
 
 procedure TFormFieldRulesTests.InheritedFormIsSilent;
 const
-  Form = 'inherited Form1: TForm1'#10'  inherited Ok: TButton'#10'    Caption = ''Los'''#10'  end'#10'end'#10;
+  cForm = 'inherited Form1: TForm1'#10'  inherited Ok: TButton'#10'    Caption = ''Los'''#10'  end'#10'end'#10;
 begin
   // Ok ist ein Feld des Vorfahren.
   Assert.AreEqual(0, Integer(Length(TRuleAssert.FormFindings(TFormObjectWithoutFieldRule.Create,
-    FormUnit(''), Form))));
+    FormUnit(''), cForm))));
   Assert.AreEqual(0, Integer(Length(TRuleAssert.FormFindings(TFormFieldWithoutObjectRule.Create,
-    FormUnit(''), Form))));
+    FormUnit(''), cForm))));
 end;
 
 procedure TFormFieldRulesTests.FrameObjectsAreSilent;
 const
-  Form = 'object Form1: TForm1'#10'  inline Rahmen1: TRahmen'#10'    inherited Liste: TListBox'#10'    end'#10 +
+  cForm = 'object Form1: TForm1'#10'  inline Rahmen1: TRahmen'#10'    inherited Liste: TListBox'#10'    end'#10 +
     '    object Extra: TLabel'#10'    end'#10'  end'#10'end'#10;
 begin
   // Liste und Extra gehören zur Frame-Klasse; nur Rahmen1 braucht ein Feld.
   Assert.AreEqual(0, Integer(Length(TRuleAssert.FormFindings(TFormObjectWithoutFieldRule.Create,
-    FormUnit('    Rahmen1: TRahmen;'), Form))));
+    FormUnit('    Rahmen1: TRahmen;'), cForm))));
 end;
 
 procedure TFormFieldRulesTests.UnnamedMenuItemIsSilent;
 const
-  Form = 'object Form1: TForm1'#10'  object Menu: TMainMenu'#10'    object TMenuItem'#10'    end'#10'  end'#10'end'#10;
+  cForm = 'object Form1: TForm1'#10'  object Menu: TMainMenu'#10'    object TMenuItem'#10'    end'#10'  end'#10'end'#10;
 begin
   Assert.AreEqual(0, Integer(Length(TRuleAssert.FormFindings(TFormObjectWithoutFieldRule.Create,
-    FormUnit('    Menu: TMainMenu;'), Form))));
+    FormUnit('    Menu: TMainMenu;'), cForm))));
 end;
 
 procedure TFormFieldRulesTests.WithoutFormFileIsSilent;
@@ -169,18 +169,18 @@ end;
 
 procedure TFormFieldRulesTests.FormAccessIssueExample;
 var
-  Findings: TArray<TRuleFinding>;
+  mFindings: TArray<TRuleFinding>;
 begin
-  Findings := TRuleAssert.AutoCreateFindings(TFormAccessBeforeCreateRule.Create,
+  mFindings := TRuleAssert.AutoCreateFindings(TFormAccessBeforeCreateRule.Create,
     Haupt('  lblNutzer.Caption := dmDaten.Benutzer;'#10), '', ['frmHaupt', 'dmDaten'], '', '');
-  Assert.AreEqual(1, Integer(Length(Findings)));
-  Assert.AreEqual('form-access-before-create', Findings[0].RuleId);
-  Assert.AreEqual(Ord(TRuleSeverity.Warning), Ord(Findings[0].Severity));
-  Assert.AreEqual(Ord(TRuleConfidence.Medium), Ord(Findings[0].Confidence));
-  Assert.AreEqual('dmDaten wird in der .dpr erst nach frmHaupt erzeugt und ist hier noch nil.', Findings[0].Message);
-  Assert.AreEqual(13, Findings[0].Range.StartPos.Line);
-  Assert.AreEqual(23, Findings[0].Range.StartPos.Character);
-  Assert.AreEqual(0, Integer(Length(Findings[0].Fixes)));
+  Assert.AreEqual(1, Integer(Length(mFindings)));
+  Assert.AreEqual('form-access-before-create', mFindings[0].RuleId);
+  Assert.AreEqual(Ord(TRuleSeverity.Warning), Ord(mFindings[0].Severity));
+  Assert.AreEqual(Ord(TRuleConfidence.Medium), Ord(mFindings[0].Confidence));
+  Assert.AreEqual('dmDaten wird in der .dpr erst nach frmHaupt erzeugt und ist hier noch nil.', mFindings[0].Message);
+  Assert.AreEqual(13, mFindings[0].Range.StartPos.Line);
+  Assert.AreEqual(23, mFindings[0].Range.StartPos.Character);
+  Assert.AreEqual(0, Integer(Length(mFindings[0].Fixes)));
   // Richtige Reihenfolge in der .dpr: still.
   Assert.AreEqual(0, Integer(Length(TRuleAssert.AutoCreateFindings(TFormAccessBeforeCreateRule.Create,
     Haupt('  lblNutzer.Caption := dmDaten.Benutzer;'#10), '', ['dmDaten', 'frmHaupt'], '', ''))));
@@ -188,23 +188,23 @@ end;
 
 procedure TFormFieldRulesTests.FormAccessVariants;
 var
-  Source: string;
-  Findings: TArray<TRuleFinding>;
+  mSource: string;
+  mFindings: TArray<TRuleFinding>;
 begin
   // Handler aus der Formulardatei, mehrfacher Zugriff nur einmal gemeldet, Konstruktor.
-  Source := StringReplace(Haupt('  lblNutzer.Caption := dmDaten.Benutzer + dmDaten.Rolle;'#10),
+  mSource := StringReplace(Haupt('  lblNutzer.Caption := dmDaten.Benutzer + dmDaten.Rolle;'#10),
     'FormCreate', 'Anlegen', [rfReplaceAll]);
-  Findings := TRuleAssert.AutoCreateFindings(TFormAccessBeforeCreateRule.Create, Source,
+  mFindings := TRuleAssert.AutoCreateFindings(TFormAccessBeforeCreateRule.Create, mSource,
     'object frmHaupt: TfrmHaupt'#10'  OnCreate = Anlegen'#10'  object lblNutzer: TLabel'#10'  end'#10'end'#10,
     ['frmHaupt', 'dmDaten', 'frmLog'], '', '');
-  Assert.AreEqual(1, Integer(Length(Findings)));
-  Source := StringReplace(StringReplace(Haupt('  inherited Create(AOwner);'#10'  frmLog.Show;'#10),
+  Assert.AreEqual(1, Integer(Length(mFindings)));
+  mSource := StringReplace(StringReplace(Haupt('  inherited Create(AOwner);'#10'  frmLog.Show;'#10),
     'procedure FormCreate(Sender: TObject)', 'constructor Create(AOwner: TComponent); override', []),
     'procedure TfrmHaupt.FormCreate(Sender: TObject)', 'constructor TfrmHaupt.Create(AOwner: TComponent)', []);
-  Findings := TRuleAssert.AutoCreateFindings(TFormAccessBeforeCreateRule.Create, Source, '',
+  mFindings := TRuleAssert.AutoCreateFindings(TFormAccessBeforeCreateRule.Create, mSource, '',
     ['frmHaupt', 'dmDaten', 'frmLog'], '', '');
-  Assert.AreEqual(1, Integer(Length(Findings)));
-  Assert.AreEqual('frmLog wird in der .dpr erst nach frmHaupt erzeugt und ist hier noch nil.', Findings[0].Message);
+  Assert.AreEqual(1, Integer(Length(mFindings)));
+  Assert.AreEqual('frmLog wird in der .dpr erst nach frmHaupt erzeugt und ist hier noch nil.', mFindings[0].Message);
   // Reihenfolge aus der .dpr.
   Assert.AreEqual('frmHaupt,dmDaten', string.Join(',', TFormAccessBeforeCreateRule.AutoCreatedForms(
     'program P;'#10'uses Vcl.Forms;'#10'begin'#10'  Application.Initialize;'#10 +
@@ -244,12 +244,12 @@ end;
 
 procedure TFormFieldRulesTests.FormAccessOffAndExclude;
 var
-  Source: string;
+  mSource: string;
 begin
-  Source := Haupt('  dmDaten.Oeffnen;'#10);
-  Assert.AreEqual(0, Integer(Length(TRuleAssert.AutoCreateFindings(TFormAccessBeforeCreateRule.Create, Source, '',
+  mSource := Haupt('  dmDaten.Oeffnen;'#10);
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.AutoCreateFindings(TFormAccessBeforeCreateRule.Create, mSource, '',
     ['frmHaupt', 'dmDaten'], '{"rules": {"form-access-before-create": "off"}}', ''))));
-  Assert.AreEqual(0, Integer(Length(TRuleAssert.AutoCreateFindings(TFormAccessBeforeCreateRule.Create, Source, '',
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.AutoCreateFindings(TFormAccessBeforeCreateRule.Create, mSource, '',
     ['frmHaupt', 'dmDaten'], '{"rules": {"form-access-before-create": {"exclude": ["Source/*.pas"]}}}',
     'Source/Haupt.pas'))));
 end;

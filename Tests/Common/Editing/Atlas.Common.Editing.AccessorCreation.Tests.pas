@@ -56,71 +56,71 @@ uses
   Atlas.Common.Editing.AccessorCreation;
 
 const
-  Kopf =
+  cKopf =
     'unit Haupt;'#10 +
     'interface'#10 +
     'type'#10;
-  Fuss =
+  cFuss =
     'implementation'#10 +
     #10 +
     'end.'#10;
 
 function Join(const ALines: array of string): string;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
   Result := '';
-  for Index := 0 to High(ALines) do
+  for mIndex := 0 to High(ALines) do
   begin
-    Result := Result + ALines[Index] + #10;
+    Result := Result + ALines[mIndex] + #10;
   end;
 end;
 
 /// <summary>Wendet AEdits an; sie dürfen sich nicht überlappen. Gleiche Stelle in der gegebenen Reihenfolge.</summary>
 function ApplyEdits(const AText: string; const AEdits: TArray<TTextEdit>): string;
 var
-  Lines: TArray<string>;
-  Order: TArray<Integer>;
-  Index, Inner, Swap, Start, Stop: Integer;
+  mLines: TArray<string>;
+  mOrder: TArray<Integer>;
+  mIndex, mInner, mSwap, mStart, mStop: Integer;
 
   function OffsetOf(const APos: TTextPosition): Integer;
   var
-    Line: Integer;
+    mLine: Integer;
   begin
     Result := 0;
-    for Line := 0 to APos.Line - 1 do
+    for mLine := 0 to APos.Line - 1 do
     begin
-      Inc(Result, Length(Lines[Line]) + 1);
+      Inc(Result, Length(mLines[mLine]) + 1);
     end;
     Inc(Result, APos.Character);
   end;
 
 begin
-  Lines := AText.Split([#10]);
-  SetLength(Order, Length(AEdits));
-  for Index := 0 to High(Order) do
+  mLines := AText.Split([#10]);
+  SetLength(mOrder, Length(AEdits));
+  for mIndex := 0 to High(mOrder) do
   begin
-    Order[Index] := Index;
+    mOrder[mIndex] := mIndex;
   end;
   // Von hinten anwenden.
-  for Index := 0 to High(Order) do
+  for mIndex := 0 to High(mOrder) do
   begin
-    for Inner := Index + 1 to High(Order) do
+    for mInner := mIndex + 1 to High(mOrder) do
     begin
-      if OffsetOf(AEdits[Order[Index]].Range.StartPos) <= OffsetOf(AEdits[Order[Inner]].Range.StartPos) then
+      if OffsetOf(AEdits[mOrder[mIndex]].Range.StartPos) <= OffsetOf(AEdits[mOrder[mInner]].Range.StartPos) then
       begin
-        Swap := Order[Index];
-        Order[Index] := Order[Inner];
-        Order[Inner] := Swap;
+        mSwap := mOrder[mIndex];
+        mOrder[mIndex] := mOrder[mInner];
+        mOrder[mInner] := mSwap;
       end;
     end;
   end;
   Result := AText;
-  for Index in Order do
+  for mIndex in mOrder do
   begin
-    Start := OffsetOf(AEdits[Index].Range.StartPos);
-    Stop := OffsetOf(AEdits[Index].Range.EndPos);
-    Result := Copy(Result, 1, Start) + AEdits[Index].NewText + Copy(Result, Stop + 1, MaxInt);
+    mStart := OffsetOf(AEdits[mIndex].Range.StartPos);
+    mStop := OffsetOf(AEdits[mIndex].Range.EndPos);
+    Result := Copy(Result, 1, mStart) + AEdits[mIndex].NewText + Copy(Result, mStop + 1, MaxInt);
   end;
 end;
 
@@ -144,47 +144,47 @@ end;
 function Created(const AText, AMarker: string; const APlan: TAccessorPlan; const AIndex: ISymbolIndex;
   out AWithField: Boolean): string; overload;
 var
-  Lines: TArray<string>;
-  Slash: TSlashContext;
-  Source: TCommandSource;
-  ClassSymbol: TIndexSymbol;
-  Edits: TArray<TTextEdit>;
-  Line: Integer;
+  mLines: TArray<string>;
+  mSlash: TSlashContext;
+  mSource: TCommandSource;
+  mClassSymbol: TIndexSymbol;
+  mEdits: TArray<TTextEdit>;
+  mLine: Integer;
 begin
   Result := '-';
   AWithField := False;
-  Lines := AText.Split([#10]);
-  Slash := Default(TSlashContext);
-  Slash.Text := AText;
-  Slash.Line := -1;
-  for Line := 0 to High(Lines) do
+  mLines := AText.Split([#10]);
+  mSlash := Default(TSlashContext);
+  mSlash.Text := AText;
+  mSlash.Line := -1;
+  for mLine := 0 to High(mLines) do
   begin
-    if Pos(AMarker, Lines[Line]) > 0 then
+    if Pos(AMarker, mLines[mLine]) > 0 then
     begin
-      Slash.Line := Line;
-      Slash.LineText := Lines[Line];
+      mSlash.Line := mLine;
+      mSlash.LineText := mLines[mLine];
       Break;
     end;
   end;
-  Assert.IsTrue(Slash.Line >= 0, AMarker);
-  Slash.Index := AIndex;
-  Source := TCommandSource.Create(Slash);
+  Assert.IsTrue(mSlash.Line >= 0, AMarker);
+  mSlash.Index := AIndex;
+  mSource := TCommandSource.Create(mSlash);
   try
-    Assert.IsTrue(Source.ClassAt(ClassSymbol), 'Klasse');
-    if TAccessorCreation.Edits(Source, AIndex, ClassSymbol, APlan, Edits, AWithField) then
+    Assert.IsTrue(mSource.ClassAt(mClassSymbol), 'Klasse');
+    if TAccessorCreation.Edits(mSource, AIndex, mClassSymbol, APlan, mEdits, AWithField) then
     begin
-      Result := ApplyEdits(AText, Edits);
+      Result := ApplyEdits(AText, mEdits);
     end;
   finally
-    Source.Free;
+    mSource.Free;
   end;
 end;
 
 function Created(const AText, AMarker: string; const APlan: TAccessorPlan): string; overload;
 var
-  WithField: Boolean;
+  mWithField: Boolean;
 begin
-  Result := Created(AText, AMarker, APlan, nil, WithField);
+  Result := Created(AText, AMarker, APlan, nil, mWithField);
 end;
 
 { TAccessorCreationTests }
@@ -221,10 +221,10 @@ end;
 
 procedure TAccessorCreationTests.FollowsAliasesInIndex;
 var
-  Index: ISymbolIndex;
+  mIndex: ISymbolIndex;
 begin
-  Index := TSymbolIndex.Create;
-  Index.AddUnit(TIndexExtractor.ExtractText(Join([
+  mIndex := TSymbolIndex.Create;
+  mIndex.AddUnit(TIndexExtractor.ExtractText(Join([
     'unit Typen;',
     'interface',
     'type',
@@ -238,26 +238,26 @@ begin
     '  TFarbe = (Rot, Gruen);',
     'implementation',
     'end.']), 'Typen.pas', nil));
-  Assert.IsFalse(TAccessorCreation.IsComparable('TPunkt', Index));
-  Assert.IsFalse(TAccessorCreation.IsComparable('TMeldung', Index));
-  Assert.IsFalse(TAccessorCreation.IsComparable('TPunkte', Index));
-  Assert.IsTrue(TAccessorCreation.IsComparable('TKurz', Index));
-  Assert.IsTrue(TAccessorCreation.IsComparable('TFarbe', Index));
+  Assert.IsFalse(TAccessorCreation.IsComparable('TPunkt', mIndex));
+  Assert.IsFalse(TAccessorCreation.IsComparable('TMeldung', mIndex));
+  Assert.IsFalse(TAccessorCreation.IsComparable('TPunkte', mIndex));
+  Assert.IsTrue(TAccessorCreation.IsComparable('TKurz', mIndex));
+  Assert.IsTrue(TAccessorCreation.IsComparable('TFarbe', mIndex));
 end;
 
 procedure TAccessorCreationTests.CreatesFieldBehindFields;
 const
-  Text = Kopf +
+  cText = cKopf +
     '  TFoo = class'#10 +
     '  private'#10 +
     '    FName: string;'#10 +
     '    procedure Machen;'#10 +
     '  public'#10 +
     '    property Caption: string read '#10 +
-    '  end;'#10 + Fuss;
+    '  end;'#10 + cFuss;
 begin
   // Abnahme: Das Feld FCaption: string; steht hinter den Feldern im private-Abschnitt.
-  Assert.AreEqual(Kopf +
+  Assert.AreEqual(cKopf +
     '  TFoo = class'#10 +
     '  private'#10 +
     '    FName: string;'#10 +
@@ -265,22 +265,22 @@ begin
     '    procedure Machen;'#10 +
     '  public'#10 +
     '    property Caption: string read '#10 +
-    '  end;'#10 + Fuss,
-    Created(Text, 'property Caption', Plan(TAccessorKind.Field, 'Caption', 'string')));
+    '  end;'#10 + cFuss,
+    Created(cText, 'property Caption', Plan(TAccessorKind.Field, 'Caption', 'string')));
 end;
 
 procedure TAccessorCreationTests.CreatesFieldInStrictPrivate;
 const
-  Text = Kopf +
+  cText = cKopf +
     '  TFoo = class'#10 +
     '  strict private'#10 +
     '  private'#10 +
     '    FName: string;'#10 +
     '  public'#10 +
     '    property Wert: Integer read '#10 +
-    '  end;'#10 + Fuss;
+    '  end;'#10 + cFuss;
 begin
-  Assert.AreEqual(Kopf +
+  Assert.AreEqual(cKopf +
     '  TFoo = class'#10 +
     '  strict private'#10 +
     '    FWert: Integer;'#10 +
@@ -288,58 +288,58 @@ begin
     '    FName: string;'#10 +
     '  public'#10 +
     '    property Wert: Integer read '#10 +
-    '  end;'#10 + Fuss,
-    Created(Text, 'property Wert', Plan(TAccessorKind.Field, 'Wert', 'Integer')));
+    '  end;'#10 + cFuss,
+    Created(cText, 'property Wert', Plan(TAccessorKind.Field, 'Wert', 'Integer')));
 end;
 
 procedure TAccessorCreationTests.CreatesGetterWithFieldResult;
 const
-  Text = Kopf +
+  cText = cKopf +
     '  TFoo = class'#10 +
     '  private'#10 +
     '    FCaption: string;'#10 +
     '  public'#10 +
     '    property Caption: string read '#10 +
-    '  end;'#10 + Fuss;
+    '  end;'#10 + cFuss;
 var
   Result: string;
 begin
-  Result := Created(Text, 'property Caption', Plan(TAccessorKind.Getter, 'Caption', 'string'));
+  Result := Created(cText, 'property Caption', Plan(TAccessorKind.Getter, 'Caption', 'string'));
   Assert.Contains(Result, '    FCaption: string;'#10'    function GetCaption: string;'#10'  public'#10);
   Assert.Contains(Result, 'function TFoo.GetCaption: string;'#10'begin'#10'  Result := FCaption;'#10'end;');
 end;
 
 procedure TAccessorCreationTests.CreatesGetterWithDefaultWithoutField;
 const
-  Text = Kopf +
+  cText = cKopf +
     '  TFoo = class'#10 +
     '  private'#10 +
     '    FName: string;'#10 +
     '  public'#10 +
     '    property Anzahl: Integer read '#10 +
-    '  end;'#10 + Fuss;
+    '  end;'#10 + cFuss;
 begin
-  Assert.Contains(Created(Text, 'property Anzahl', Plan(TAccessorKind.Getter, 'Anzahl', 'Integer')),
+  Assert.Contains(Created(cText, 'property Anzahl', Plan(TAccessorKind.Getter, 'Anzahl', 'Integer')),
     'function TFoo.GetAnzahl: Integer;'#10'begin'#10'  Result := Default(Integer);'#10'end;');
 end;
 
 procedure TAccessorCreationTests.CreatesSetterWithFieldAndCheck;
 const
-  Text = Kopf +
+  cText = cKopf +
     '  TFoo = class'#10 +
     '  private'#10 +
     '    FName: string;'#10 +
     '    procedure Machen;'#10 +
     '  public'#10 +
     '    property Caption: string read FCaption write '#10 +
-    '  end;'#10 + Fuss;
+    '  end;'#10 + cFuss;
 var
   Result: string;
-  WithField: Boolean;
+  mWithField: Boolean;
 begin
   // Abnahme: „SetCaption anlegen“ legt Deklaration und Rumpf mit Gleichheitsprüfung an, das fehlende Feld mit.
-  Result := Created(Text, 'property Caption', Plan(TAccessorKind.Setter, 'Caption', 'string'), nil, WithField);
-  Assert.IsTrue(WithField);
+  Result := Created(cText, 'property Caption', Plan(TAccessorKind.Setter, 'Caption', 'string'), nil, mWithField);
+  Assert.IsTrue(mWithField);
   Assert.Contains(Result, '    FName: string;'#10'    FCaption: string;'#10'    procedure Machen;'#10 +
     '    procedure SetCaption(const Value: string);'#10'  public'#10);
   Assert.Contains(Result, 'procedure TFoo.SetCaption(const Value: string);'#10'begin'#10 +
@@ -349,27 +349,27 @@ end;
 
 procedure TAccessorCreationTests.CreatesSetterWithoutCheckForArrays;
 const
-  Text = Kopf +
+  cText = cKopf +
     '  TFoo = class'#10 +
     '  private'#10 +
     '    FBereich: TArray<Integer>;'#10 +
     '  public'#10 +
     '    property Bereich: TArray<Integer> read FBereich write '#10 +
-    '  end;'#10 + Fuss;
+    '  end;'#10 + cFuss;
 var
   Result: string;
-  WithField: Boolean;
+  mWithField: Boolean;
 begin
-  Result := Created(Text, 'property Bereich', Plan(TAccessorKind.Setter, 'Bereich', 'TArray<Integer>'), nil,
-    WithField);
-  Assert.IsFalse(WithField);
+  Result := Created(cText, 'property Bereich', Plan(TAccessorKind.Setter, 'Bereich', 'TArray<Integer>'), nil,
+    mWithField);
+  Assert.IsFalse(mWithField);
   Assert.Contains(Result, 'procedure TFoo.SetBereich(const Value: TArray<Integer>);'#10'begin'#10 +
     '  FBereich := Value;'#10'end;');
 end;
 
 procedure TAccessorCreationTests.CreatesSetterWithoutCheckForOwnRecord;
 const
-  Text = Kopf +
+  cText = cKopf +
     '  TPunkt = record'#10 +
     '    X, Y: Integer;'#10 +
     '  end;'#10 +
@@ -378,18 +378,18 @@ const
     '    FPunkt: TPunkt;'#10 +
     '  public'#10 +
     '    property Punkt: TPunkt read FPunkt write '#10 +
-    '  end;'#10 + Fuss;
+    '  end;'#10 + cFuss;
 var
-  WithField: Boolean;
+  mWithField: Boolean;
 begin
   // Der Record der eigenen Unit steht noch nicht im Index: <> ginge nicht, also ohne Prüfung.
-  Assert.Contains(Created(Text, 'property Punkt', Plan(TAccessorKind.Setter, 'Punkt', 'TPunkt'), nil, WithField),
+  Assert.Contains(Created(cText, 'property Punkt', Plan(TAccessorKind.Setter, 'Punkt', 'TPunkt'), nil, mWithField),
     'procedure TFoo.SetPunkt(const Value: TPunkt);'#10'begin'#10'  FPunkt := Value;'#10'end;');
 end;
 
 procedure TAccessorCreationTests.CreatesProtectedMethods;
 const
-  Text = Kopf +
+  cText = cKopf +
     '  TFoo = class'#10 +
     '  private'#10 +
     '    FWert: Integer;'#10 +
@@ -397,46 +397,46 @@ const
     '    procedure Machen;'#10 +
     '  public'#10 +
     '    property Wert: Integer read '#10 +
-    '  end;'#10 + Fuss;
+    '  end;'#10 + cFuss;
 begin
-  Assert.Contains(Created(Text, 'property Wert', Plan(TAccessorKind.Getter, 'Wert', 'Integer', '', 'protected')),
+  Assert.Contains(Created(cText, 'property Wert', Plan(TAccessorKind.Getter, 'Wert', 'Integer', '', 'protected')),
     '  protected'#10'    procedure Machen;'#10'    function GetWert: Integer;'#10'  public'#10);
 end;
 
 procedure TAccessorCreationTests.OpensSectionBeforeProperty;
 const
-  Text = Kopf +
+  cText = cKopf +
     '  TFoo = class'#10 +
     '  public'#10 +
     '    procedure Machen;'#10 +
     '    property Caption: string read FCaption write '#10 +
-    '  end;'#10 + Fuss;
+    '  end;'#10 + cFuss;
 var
   Result: string;
-  WithField: Boolean;
+  mWithField: Boolean;
 begin
   // Kein private davor: eigener Abschnitt vor der Eigenschaft, Kopf nur einmal, danach weiter public.
-  Result := Created(Text, 'property Caption', Plan(TAccessorKind.Setter, 'Caption', 'string'), nil, WithField);
+  Result := Created(cText, 'property Caption', Plan(TAccessorKind.Setter, 'Caption', 'string'), nil, mWithField);
   Assert.Contains(Result, '    procedure Machen;'#10'  private'#10'    FCaption: string;'#10 +
     '    procedure SetCaption(const Value: string);'#10'  public'#10'    property Caption');
 end;
 
 procedure TAccessorCreationTests.CreatesIndexedSetterWithoutField;
 const
-  Text = Kopf +
+  cText = cKopf +
     '  TFoo = class'#10 +
     '  private'#10 +
     '    FListe: TArray<Double>;'#10 +
     '  public'#10 +
     '    property Items[Index: Integer]: Double read GetItems write '#10 +
-    '  end;'#10 + Fuss;
+    '  end;'#10 + cFuss;
 var
   Result: string;
-  WithField: Boolean;
+  mWithField: Boolean;
 begin
-  Result := Created(Text, 'property Items', Plan(TAccessorKind.Setter, 'Items', 'Double', 'Index: Integer',
-    'private'), nil, WithField);
-  Assert.IsFalse(WithField);
+  Result := Created(cText, 'property Items', Plan(TAccessorKind.Setter, 'Items', 'Double', 'Index: Integer',
+    'private'), nil, mWithField);
+  Assert.IsFalse(mWithField);
   Assert.Contains(Result, '    FListe: TArray<Double>;'#10 +
     '    procedure SetItems(Index: Integer; const Value: Double);'#10'  public'#10);
   Assert.Contains(Result, 'procedure TFoo.SetItems(Index: Integer; const Value: Double);'#10'begin'#10'end;');
@@ -445,18 +445,18 @@ end;
 
 procedure TAccessorCreationTests.RefusesExistingMemberAndIndexedField;
 const
-  Text = Kopf +
+  cText = cKopf +
     '  TFoo = class'#10 +
     '  private'#10 +
     '    FCaption: string;'#10 +
     '    function GetCaption: string;'#10 +
     '  public'#10 +
     '    property Caption: string read '#10 +
-    '  end;'#10 + Fuss;
+    '  end;'#10 + cFuss;
 begin
-  Assert.AreEqual('-', Created(Text, 'property Caption', Plan(TAccessorKind.Field, 'Caption', 'string')));
-  Assert.AreEqual('-', Created(Text, 'property Caption', Plan(TAccessorKind.Getter, 'Caption', 'string')));
-  Assert.AreEqual('-', Created(Text, 'property Caption', Plan(TAccessorKind.Field, 'Titel', 'string',
+  Assert.AreEqual('-', Created(cText, 'property Caption', Plan(TAccessorKind.Field, 'Caption', 'string')));
+  Assert.AreEqual('-', Created(cText, 'property Caption', Plan(TAccessorKind.Getter, 'Caption', 'string')));
+  Assert.AreEqual('-', Created(cText, 'property Caption', Plan(TAccessorKind.Field, 'Titel', 'string',
     'Index: Integer', 'private')));
 end;
 

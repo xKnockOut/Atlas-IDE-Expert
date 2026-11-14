@@ -178,73 +178,73 @@ end;
 
 procedure TOperatorDeclarationInvalidTests.IssueExampleWithFix;
 var
-  Source: string;
+  mSource: string;
 begin
   // Beispiel aus #1030: Equal mit Integer-Ergebnis. dcc übersetzt Vergleiche mit anderem Ergebnis als Boolean
   // (Spring4D Persistence.Criteria, OP1-OP5, #1328); E2520 meldet die Regel daher nicht mehr.
-  Source := Geld('    class operator Equal(const A, B: TGeld): Integer;'#10,
+  mSource := Geld('    class operator Equal(const A, B: TGeld): Integer;'#10,
     'class operator TGeld.Equal(const A, B: TGeld): Integer;'#10'begin'#10'  Result := 0;'#10'end;'#10);
-  Assert.AreEqual(0, Integer(Length(OperatorFindings(Source))));
+  Assert.AreEqual(0, Integer(Length(OperatorFindings(mSource))));
   Assert.AreEqual(0, Integer(Length(OperatorFindings(Geld('    class operator LessThan(const A, B: TGeld): TGeld;'#10)))));
 end;
 
 procedure TOperatorDeclarationInvalidTests.UnknownOperatorName;
 var
-  Source, Fixed: string;
-  Found: TArray<TRuleFinding>;
+  mSource, mFixed: string;
+  mFound: TArray<TRuleFinding>;
 begin
-  Source := Geld('    class operator Addition(const A, B: TGeld): TGeld;'#10,
+  mSource := Geld('    class operator Addition(const A, B: TGeld): TGeld;'#10,
     'class operator TGeld.Addition(const A, B: TGeld): TGeld;'#10'begin'#10'end;'#10);
-  Found := OperatorFindings(Source);
+  mFound := OperatorFindings(mSource);
   // Zum Rumpf meldet dcc E2037 (Cm.E2393, #1380).
-  Assert.AreEqual(2, Integer(Length(Found)));
-  Assert.AreEqual('Unbekannter Operator Addition (wie E2393).', Found[0].Message);
+  Assert.AreEqual(2, Integer(Length(mFound)));
+  Assert.AreEqual('Unbekannter Operator Addition (wie E2393).', mFound[0].Message);
   Assert.AreEqual('Zu TGeld.Addition gibt es keine gültige Deklaration; der Rumpf passt zu nichts (wie E2037).',
-    Found[1].Message);
-  Assert.AreEqual(8, Found[1].Range.StartPos.Line);
-  Assert.AreEqual(21, Found[1].Range.StartPos.Character);
-  Source := Geld('    class operator Substract(const A, B: TGeld): TGeld;'#10,
+    mFound[1].Message);
+  Assert.AreEqual(8, mFound[1].Range.StartPos.Line);
+  Assert.AreEqual(21, mFound[1].Range.StartPos.Character);
+  mSource := Geld('    class operator Substract(const A, B: TGeld): TGeld;'#10,
     'class operator TGeld.Substract(const A, B: TGeld): TGeld;'#10'begin'#10'end;'#10);
-  Found := OperatorFindings(Source);
-  Assert.AreEqual(2, Integer(Length(Found)));
-  Assert.AreEqual('Unbekannter Operator Substract; gemeint ist wohl Subtract (wie E2393).', Found[0].Message);
-  Assert.AreEqual('In Subtract umbenennen', Found[0].Fixes[0].Title);
-  Fixed := TChangeSignature.ApplyEdits(Source, Found[0].Fixes[0].Edits);
+  mFound := OperatorFindings(mSource);
+  Assert.AreEqual(2, Integer(Length(mFound)));
+  Assert.AreEqual('Unbekannter Operator Substract; gemeint ist wohl Subtract (wie E2393).', mFound[0].Message);
+  Assert.AreEqual('In Subtract umbenennen', mFound[0].Fixes[0].Title);
+  mFixed := TChangeSignature.ApplyEdits(mSource, mFound[0].Fixes[0].Edits);
   Assert.AreEqual(Geld('    class operator Subtract(const A, B: TGeld): TGeld;'#10,
-    'class operator TGeld.Subtract(const A, B: TGeld): TGeld;'#10'begin'#10'end;'#10), Fixed);
+    'class operator TGeld.Subtract(const A, B: TGeld): TGeld;'#10'begin'#10'end;'#10), mFixed);
 end;
 
 procedure TOperatorDeclarationInvalidTests.ParameterCount;
 var
-  Source, Fixed: string;
-  Found: TArray<TRuleFinding>;
+  mSource, mFixed: string;
+  mFound: TArray<TRuleFinding>;
 begin
-  Source := Geld('    class operator Negative(const A, B: TGeld): TGeld;'#10);
-  Found := OperatorFindings(Source);
-  Assert.AreEqual(1, Integer(Length(Found)));
-  Assert.AreEqual('Der Operator Negative muss 1 Parameter haben (wie E2517).', Found[0].Message);
-  Assert.AreEqual('Parameter nach Vorlage: (const A: TGeld)', Found[0].Fixes[0].Title);
-  Fixed := TChangeSignature.ApplyEdits(Source, Found[0].Fixes[0].Edits);
-  Assert.AreEqual(Geld('    class operator Negative(const A: TGeld): TGeld;'#10), Fixed);
-  Found := OperatorFindings(Geld('    class operator Add(const A: TGeld): TGeld;'#10));
-  Assert.AreEqual(1, Integer(Length(Found)));
-  Assert.AreEqual('Der Operator Add muss 2 Parameter haben (wie E2517).', Found[0].Message);
+  mSource := Geld('    class operator Negative(const A, B: TGeld): TGeld;'#10);
+  mFound := OperatorFindings(mSource);
+  Assert.AreEqual(1, Integer(Length(mFound)));
+  Assert.AreEqual('Der Operator Negative muss 1 Parameter haben (wie E2517).', mFound[0].Message);
+  Assert.AreEqual('Parameter nach Vorlage: (const A: TGeld)', mFound[0].Fixes[0].Title);
+  mFixed := TChangeSignature.ApplyEdits(mSource, mFound[0].Fixes[0].Edits);
+  Assert.AreEqual(Geld('    class operator Negative(const A: TGeld): TGeld;'#10), mFixed);
+  mFound := OperatorFindings(Geld('    class operator Add(const A: TGeld): TGeld;'#10));
+  Assert.AreEqual(1, Integer(Length(mFound)));
+  Assert.AreEqual('Der Operator Add muss 2 Parameter haben (wie E2517).', mFound[0].Message);
   // Umwandlungen ohne Vorlage.
-  Found := OperatorFindings(Geld('    class operator Implicit(A: Integer; B: TGeld): TGeld;'#10));
-  Assert.AreEqual(1, Integer(Length(Found)));
-  Assert.AreEqual(0, Integer(Length(Found[0].Fixes)));
+  mFound := OperatorFindings(Geld('    class operator Implicit(A: Integer; B: TGeld): TGeld;'#10));
+  Assert.AreEqual(1, Integer(Length(mFound)));
+  Assert.AreEqual(0, Integer(Length(mFound[0].Fixes)));
 end;
 
 procedure TOperatorDeclarationInvalidTests.OwnTypeMissing;
 var
-  Found: TArray<TRuleFinding>;
+  mFound: TArray<TRuleFinding>;
 begin
-  Found := OperatorFindings(Geld('    class operator Add(A, B: Integer): TGeld;'#10));
-  Assert.AreEqual(1, Integer(Length(Found)));
-  Assert.AreEqual('Der Operator Add muss TGeld in mindestens einem Parameter haben (wie E2518).', Found[0].Message);
-  Found := OperatorFindings(Geld('    class operator Implicit(A: Integer): string;'#10));
-  Assert.AreEqual(1, Integer(Length(Found)));
-  Assert.AreEqual('Implicit muss TGeld als Parameter oder Ergebnis haben (wie E2521).', Found[0].Message);
+  mFound := OperatorFindings(Geld('    class operator Add(A, B: Integer): TGeld;'#10));
+  Assert.AreEqual(1, Integer(Length(mFound)));
+  Assert.AreEqual('Der Operator Add muss TGeld in mindestens einem Parameter haben (wie E2518).', mFound[0].Message);
+  mFound := OperatorFindings(Geld('    class operator Implicit(A: Integer): string;'#10));
+  Assert.AreEqual(1, Integer(Length(mFound)));
+  Assert.AreEqual('Implicit muss TGeld als Parameter oder Ergebnis haben (wie E2521).', mFound[0].Message);
   // Unbekannter Typ aus einer anderen Unit: keine Aussage.
   Assert.AreEqual(0, Integer(Length(OperatorFindings(Geld('    class operator Add(A, B: TFremd): TGeld;'#10)))));
   // Alias des eigenen Typs.
@@ -254,44 +254,44 @@ end;
 
 procedure TOperatorDeclarationInvalidTests.IncResultAndAncestor;
 var
-  Source, Fixed: string;
-  Found: TArray<TRuleFinding>;
+  mSource, mFixed: string;
+  mFound: TArray<TRuleFinding>;
 begin
-  Source := Geld('    class operator Inc(const A: TGeld): Integer;'#10);
-  Found := OperatorFindings(Source);
-  Assert.AreEqual(1, Integer(Length(Found)));
+  mSource := Geld('    class operator Inc(const A: TGeld): Integer;'#10);
+  mFound := OperatorFindings(mSource);
+  Assert.AreEqual(1, Integer(Length(mFound)));
   Assert.AreEqual('Inc muss denselben Typ liefern wie den ersten Parameter, hier TGeld (wie E2519).',
-    Found[0].Message);
-  Fixed := TChangeSignature.ApplyEdits(Source, Found[0].Fixes[0].Edits);
-  Assert.AreEqual(Geld('    class operator Inc(const A: TGeld): TGeld;'#10), Fixed);
+    mFound[0].Message);
+  mFixed := TChangeSignature.ApplyEdits(mSource, mFound[0].Fixes[0].Edits);
+  Assert.AreEqual(Geld('    class operator Inc(const A: TGeld): TGeld;'#10), mFixed);
   // Klasse mit Umwandlung in den Vorfahren: Delphi 13 lehnt den Operator in einer Klasse schon als E2123 ab
   // (Regel syntax), E2522 gibt es nicht mehr (#1382).
-  Found := OperatorFindings('unit Tiere;'#10'interface'#10'type'#10'  TTier = class'#10'  end;'#10 +
+  mFound := OperatorFindings('unit Tiere;'#10'interface'#10'type'#10'  TTier = class'#10'  end;'#10 +
     '  THund = class(TTier)'#10'    class operator Implicit(A: THund): TTier;'#10'  end;'#10'implementation'#10'end.');
-  Assert.AreEqual(0, Integer(Length(Found)));
+  Assert.AreEqual(0, Integer(Length(mFound)));
   // Klassenoperatoren gibt es nur in Records: Der Rumpf passt zu nichts (Cm.E2522, #1380).
-  Found := OperatorFindings('unit Tiere;'#10'interface'#10'type'#10'  TTier = class'#10'  end;'#10 +
+  mFound := OperatorFindings('unit Tiere;'#10'interface'#10'type'#10'  TTier = class'#10'  end;'#10 +
     '  THund = class(TTier)'#10'    class operator Implicit(A: THund): TTier;'#10'  end;'#10'implementation'#10#10 +
     'class operator THund.Implicit(A: THund): TTier;'#10'begin'#10'  Result := A;'#10'end;'#10#10'end.');
-  Assert.AreEqual(1, Integer(Length(Found)));
+  Assert.AreEqual(1, Integer(Length(mFound)));
   Assert.AreEqual('Zu THund.Implicit gibt es keine gültige Deklaration; der Rumpf passt zu nichts (wie E2037).',
-    Found[0].Message);
+    mFound[0].Message);
 end;
 
 procedure TOperatorDeclarationInvalidTests.AssignNeedsVar;
 var
-  Source, Fixed: string;
-  Found: TArray<TRuleFinding>;
+  mSource, mFixed: string;
+  mFound: TArray<TRuleFinding>;
 begin
-  Source := Geld('    class operator Assign(const Dest: TGeld; const [ref] Src: TGeld);'#10);
-  Found := OperatorFindings(Source);
-  Assert.AreEqual(1, Integer(Length(Found)));
-  Assert.AreEqual('Der erste Parameter von Assign muss ein var-Parameter des eigenen Typs sein (wie E2617).', Found[0].Message);
-  Fixed := TChangeSignature.ApplyEdits(Source, Found[0].Fixes[0].Edits);
-  Assert.AreEqual(Geld('    class operator Assign(var Dest: TGeld; const [ref] Src: TGeld);'#10), Fixed);
-  Source := Geld('    class operator Assign(Dest: TGeld; const [ref] Src: TGeld);'#10);
-  Fixed := TChangeSignature.ApplyEdits(Source, OperatorFindings(Source)[0].Fixes[0].Edits);
-  Assert.AreEqual(Geld('    class operator Assign(var Dest: TGeld; const [ref] Src: TGeld);'#10), Fixed);
+  mSource := Geld('    class operator Assign(const Dest: TGeld; const [ref] Src: TGeld);'#10);
+  mFound := OperatorFindings(mSource);
+  Assert.AreEqual(1, Integer(Length(mFound)));
+  Assert.AreEqual('Der erste Parameter von Assign muss ein var-Parameter des eigenen Typs sein (wie E2617).', mFound[0].Message);
+  mFixed := TChangeSignature.ApplyEdits(mSource, mFound[0].Fixes[0].Edits);
+  Assert.AreEqual(Geld('    class operator Assign(var Dest: TGeld; const [ref] Src: TGeld);'#10), mFixed);
+  mSource := Geld('    class operator Assign(Dest: TGeld; const [ref] Src: TGeld);'#10);
+  mFixed := TChangeSignature.ApplyEdits(mSource, OperatorFindings(mSource)[0].Fixes[0].Edits);
+  Assert.AreEqual(Geld('    class operator Assign(var Dest: TGeld; const [ref] Src: TGeld);'#10), mFixed);
 end;
 
 procedure TOperatorDeclarationInvalidTests.CorrectOperatorsAreSilent;
@@ -319,15 +319,15 @@ end;
 
 procedure TOperatorDeclarationInvalidTests.OffAndExclude;
 var
-  Source: string;
+  mSource: string;
 begin
-  Source := Geld('    class operator Inc(const A: TGeld): Integer;'#10);
-  Assert.AreEqual(1, Integer(Length(OperatorFindings(Source, '', 'Source/Geld.pas'))));
-  Assert.AreEqual(0, Integer(Length(OperatorFindings(Source, '{"rules": {"operator-declaration-invalid": "off"}}',
+  mSource := Geld('    class operator Inc(const A: TGeld): Integer;'#10);
+  Assert.AreEqual(1, Integer(Length(OperatorFindings(mSource, '', 'Source/Geld.pas'))));
+  Assert.AreEqual(0, Integer(Length(OperatorFindings(mSource, '{"rules": {"operator-declaration-invalid": "off"}}',
     'Source/Geld.pas'))));
-  Assert.AreEqual(0, Integer(Length(OperatorFindings(Source, '{"rules": {"group:compiler": "off"}}',
+  Assert.AreEqual(0, Integer(Length(OperatorFindings(mSource, '{"rules": {"group:compiler": "off"}}',
     'Source/Geld.pas'))));
-  Assert.AreEqual(0, Integer(Length(OperatorFindings(Source,
+  Assert.AreEqual(0, Integer(Length(OperatorFindings(mSource,
     '{"rules": {"operator-declaration-invalid": {"exclude": ["Source/*.pas"]}}}', 'Source/Geld.pas'))));
 end;
 
@@ -344,16 +344,16 @@ end;
 /// <summary>Meldungen von AFound mit Zeile (ab 1), getrennt durch |.</summary>
 function Messages(const AFound: TArray<TRuleFinding>): string;
 var
-  Finding: TRuleFinding;
+  mFinding: TRuleFinding;
 begin
   Result := '';
-  for Finding in AFound do
+  for mFinding in AFound do
   begin
     if Result <> '' then
     begin
       Result := Result + '|';
     end;
-    Result := Result + IntToStr(Finding.Range.StartPos.Line + 1) + ': ' + Finding.Message;
+    Result := Result + IntToStr(mFinding.Range.StartPos.Line + 1) + ': ' + mFinding.Message;
   end;
 end;
 
@@ -365,16 +365,16 @@ end;
 
 procedure TGenericDeclarationInvalidTests.IssueExample;
 var
-  Found: TArray<TRuleFinding>;
+  mFound: TArray<TRuleFinding>;
 begin
-  Found := GenericFindings('unit G;'#10'interface'#10'procedure Tauschen<T>(var A, B: T);'#10'implementation'#10 +
+  mFound := GenericFindings('unit G;'#10'interface'#10'procedure Tauschen<T>(var A, B: T);'#10'implementation'#10 +
     'procedure Tauschen<T>(var A, B: T);'#10'begin'#10'end;'#10'end.');
-  Assert.AreEqual(1, Integer(Length(Found)));
+  Assert.AreEqual(1, Integer(Length(mFound)));
   Assert.AreEqual('Globale Routinen dürfen keine Typparameter haben; als class-Methode eines Records deklarieren ' +
-    '(wie E2530).', Found[0].Message);
-  Assert.AreEqual(2, Found[0].Range.StartPos.Line);
-  Assert.AreEqual(10, Found[0].Range.StartPos.Character);
-  Assert.AreEqual(21, Found[0].Range.EndPos.Character);
+    '(wie E2530).', mFound[0].Message);
+  Assert.AreEqual(2, mFound[0].Range.StartPos.Line);
+  Assert.AreEqual(10, mFound[0].Range.StartPos.Character);
+  Assert.AreEqual(21, mFound[0].Range.EndPos.Character);
   // Nur im implementation-Teil: dort gemeldet.
   Assert.AreEqual('4: Globale Routinen dürfen keine Typparameter haben; als class-Methode eines Records ' +
     'deklarieren (wie E2530).', Messages(GenericFindings('unit G;'#10'interface'#10'implementation'#10 +
@@ -418,11 +418,11 @@ end;
 
 procedure TGenericDeclarationInvalidTests.TypesWithoutParameters;
 const
-  Hint = ' darf keine Typparameter haben; erlaubt sind sie an Klassen, Records, Interfaces, Arrays und ' +
+  cHint = ' darf keine Typparameter haben; erlaubt sind sie an Klassen, Records, Interfaces, Arrays und ' +
     'Prozedurtypen (wie E2508).';
 begin
-  Assert.AreEqual('4: Der Typ TE' + Hint + '|5: Der Typ TL' + Hint + '|6: Der Typ TZ' + Hint + '|7: Der Typ TM' +
-    Hint + '|8: Der Typ TH' + Hint, Messages(GenericFindings(GenericUnit(
+  Assert.AreEqual('4: Der Typ TE' + cHint + '|5: Der Typ TL' + cHint + '|6: Der Typ TZ' + cHint + '|7: Der Typ TM' +
+    cHint + '|8: Der Typ TH' + cHint, Messages(GenericFindings(GenericUnit(
     '  TE<T> = (eA, eB);'#10'  TL<T> = TList<T>;'#10'  TZ<T> = ^Integer;'#10'  TM<T> = set of Byte;'#10 +
     '  TH<T> = class helper for TObject'#10'  end;'#10, ''))));
   Assert.AreEqual('', Messages(GenericFindings(GenericUnit(
@@ -508,15 +508,15 @@ end;
 
 procedure TGenericDeclarationInvalidTests.TypeArgumentCount;
 var
-  Source: string;
+  mSource: string;
 begin
-  Source := GenericUnit('  TA = class'#10'    class function F<T>(X: T): T; static;'#10 +
+  mSource := GenericUnit('  TA = class'#10'    class function F<T>(X: T): T; static;'#10 +
     '    class function F<T, U>(X: T; Y: U): T; overload; static;'#10'    procedure M;'#10'  end;'#10,
     'procedure TA.M;'#10'begin'#10'  F<Integer>(1);'#10'  TA.F<Integer, string>(1, ''a'');'#10 +
     '  Self.F<Integer, string, Byte>(2);'#10'  X := TA.F<Integer, Byte, Word>(1) + 1;'#10'end;'#10);
   Assert.AreEqual('14: F hat keine Variante mit 3 Typparametern; deklariert: F<T>, F<T, U> (wie E2551).|' +
     '15: F hat keine Variante mit 3 Typparametern; deklariert: F<T>, F<T, U> (wie E2551).',
-    Messages(GenericFindings(Source)));
+    Messages(GenericFindings(mSource)));
   // Vorfahr außerhalb der Datei, with und nicht generische Variante: still.
   Assert.AreEqual('', Messages(GenericFindings(GenericUnit(
     '  TA = class(TFremd)'#10'    class function F<T>: T; static;'#10'    procedure M;'#10'  end;'#10 +
@@ -528,9 +528,9 @@ end;
 
 procedure TGenericDeclarationInvalidTests.LocalSymbolsInGenericMethods;
 var
-  Source: string;
+  mSource: string;
 begin
-  Source := GenericUnit('  TListe<T> = class'#10'    procedure Pruefen;'#10'  end;'#10 +
+  mSource := GenericUnit('  TListe<T> = class'#10'    procedure Pruefen;'#10'  end;'#10 +
     '  TWerkzeug = class'#10'    class function Neu<T>: T; static;'#10'  end;'#10,
     'const'#10'  Grenze = 10;'#10'type'#10'  THilfe = class'#10'  end;'#10 +
     'function Hilf: Integer;'#10'begin'#10'  Result := 1;'#10'end;'#10 +
@@ -544,15 +544,15 @@ begin
     '24: TListe.Pruefen gehört zu einem generischen Typ bzw. ist generisch, steht im interface-Teil und darf ' +
     'Grenze aus dem implementation-Teil nicht verwenden (wie E2506).|' +
     '32: TWerkzeug.Neu gehört zu einem generischen Typ bzw. ist generisch, steht im interface-Teil und darf Hilf ' +
-    'aus dem implementation-Teil nicht verwenden (wie E2506).', Messages(GenericFindings(Source)));
+    'aus dem implementation-Teil nicht verwenden (wie E2506).', Messages(GenericFindings(mSource)));
   // Gleichnamige Mitglieder, lokale Namen, Deklarationen im interface-Teil, with und nicht generische Typen.
-  Source := GenericUnit('  TListe<T> = class'#10'  private'#10'    Grenze: Integer;'#10'    procedure Pruefen;'#10 +
+  mSource := GenericUnit('  TListe<T> = class'#10'  private'#10'    Grenze: Integer;'#10'    procedure Pruefen;'#10 +
     '  end;'#10'  TFest = class'#10'    procedure Pruefen;'#10'  end;'#10'const'#10'  Oben = 1;'#10,
     'const'#10'  Grenze = 10;'#10'  Hilf = 2;'#10'  Oben = 3;'#10 +
     'procedure TListe<T>.Pruefen;'#10'var'#10'  Hilf: Integer;'#10'begin'#10'  Hilf := Grenze + Oben;'#10 +
     '  with Self do'#10'    Hilf := Grenze;'#10'end;'#10 +
     'procedure TFest.Pruefen;'#10'begin'#10'  if Hilf > Grenze then'#10'    Exit;'#10'end;'#10);
-  Assert.AreEqual('', Messages(GenericFindings(Source)));
+  Assert.AreEqual('', Messages(GenericFindings(mSource)));
 end;
 
 /// <summary>Index mit der Unit Klassen (TBasis, TZweite, IZeigbar, TZahl als Alias).</summary>
@@ -591,12 +591,12 @@ end;
 
 procedure TGenericDeclarationInvalidTests.LocalRoutinesInGenericMethods;
 const
-  Hint = ' nicht erlaubt: Methoden generischer Typen und generische Methoden haben keine lokalen Routinen; als ' +
+  cHint = ' nicht erlaubt: Methoden generischer Typen und generische Methoden haben keine lokalen Routinen; als ' +
     'private Methode oder anonyme Methode schreiben (wie E2570).';
 begin
   // Fall Cm.E2570: Methode eines generischen Typs; dazu eine generische Methode einer normalen Klasse.
-  Assert.AreEqual('13: Die lokale Routine Innen ist in TBehaelter.Machen' + Hint + '|' +
-    '21: Die lokale Routine Zaehlen ist in TWerkzeug.Neu' + Hint, Messages(GenericFindings(GenericUnit(
+  Assert.AreEqual('13: Die lokale Routine Innen ist in TBehaelter.Machen' + cHint + '|' +
+    '21: Die lokale Routine Zaehlen ist in TWerkzeug.Neu' + cHint, Messages(GenericFindings(GenericUnit(
     '  TBehaelter<T> = class'#10'    procedure Machen;'#10'  end;'#10 +
     '  TWerkzeug = class'#10'    function Neu<T>: Integer;'#10'  end;'#10,
     'procedure TBehaelter<T>.Machen;'#10#10'  procedure Innen;'#10'  begin'#10'  end;'#10#10'begin'#10 +
@@ -615,20 +615,20 @@ end;
 
 procedure TGenericDeclarationInvalidTests.TypedInstantiatedType;
 var
-  Source, Fixed: string;
-  Found: TArray<TRuleFinding>;
+  mSource, mFixed: string;
+  mFound: TArray<TRuleFinding>;
 begin
   // Fall Cm.E2574.
-  Source := GenericUnit('  TBehaelter<T> = class'#10'  end;'#10#10'  TEigen = type TBehaelter<Integer>;'#10, '');
-  Found := GenericFindings(Source);
+  mSource := GenericUnit('  TBehaelter<T> = class'#10'  end;'#10#10'  TEigen = type TBehaelter<Integer>;'#10, '');
+  mFound := GenericFindings(mSource);
   Assert.AreEqual('7: Der instanziierte Typ TBehaelter<Integer> lässt sich nicht mit type als eigener Typ ' +
-    'deklarieren (wie E2574).', Messages(Found));
-  Assert.AreEqual(11, Found[0].Range.StartPos.Character);
-  Assert.AreEqual(1, Integer(Length(Found[0].Fixes)));
-  Fixed := TChangeSignature.ApplyEdits(Source, Found[0].Fixes[0].Edits);
+    'deklarieren (wie E2574).', Messages(mFound));
+  Assert.AreEqual(11, mFound[0].Range.StartPos.Character);
+  Assert.AreEqual(1, Integer(Length(mFound[0].Fixes)));
+  mFixed := TChangeSignature.ApplyEdits(mSource, mFound[0].Fixes[0].Edits);
   Assert.AreEqual(GenericUnit('  TBehaelter<T> = class'#10'  end;'#10#10'  TEigen = TBehaelter<Integer>;'#10, ''),
-    Fixed);
-  Assert.AreEqual('', Messages(GenericFindings(Fixed)));
+    mFixed);
+  Assert.AreEqual('', Messages(GenericFindings(mFixed)));
   // Gegenfälle: Alias auf den instanziierten Typ, type vor einem normalen Typ, generische Typen.
   Assert.AreEqual('', Messages(GenericFindings(GenericUnit('  TBehaelter<T> = class'#10'  end;'#10 +
     '  TListe = TBehaelter<Integer>;'#10'  TZahl = type Integer;'#10'  TOffen<T> = class(TBehaelter<T>)'#10 +
@@ -637,15 +637,15 @@ end;
 
 procedure TGenericDeclarationInvalidTests.OffAndExclude;
 var
-  Source: string;
+  mSource: string;
 begin
-  Source := GenericUnit('  TA<T: class, record> = class'#10'  end;'#10, '');
-  Assert.AreEqual(1, Integer(Length(GenericFindings(Source, '', 'Source/G.pas'))));
-  Assert.AreEqual(0, Integer(Length(GenericFindings(Source, '{"rules": {"generic-declaration-invalid": "off"}}',
+  mSource := GenericUnit('  TA<T: class, record> = class'#10'  end;'#10, '');
+  Assert.AreEqual(1, Integer(Length(GenericFindings(mSource, '', 'Source/G.pas'))));
+  Assert.AreEqual(0, Integer(Length(GenericFindings(mSource, '{"rules": {"generic-declaration-invalid": "off"}}',
     'Source/G.pas'))));
-  Assert.AreEqual(0, Integer(Length(GenericFindings(Source, '{"rules": {"group:compiler": "off"}}',
+  Assert.AreEqual(0, Integer(Length(GenericFindings(mSource, '{"rules": {"group:compiler": "off"}}',
     'Source/G.pas'))));
-  Assert.AreEqual(0, Integer(Length(GenericFindings(Source,
+  Assert.AreEqual(0, Integer(Length(GenericFindings(mSource,
     '{"rules": {"generic-declaration-invalid": {"exclude": ["Source/*.pas"]}}}', 'Source/G.pas'))));
 end;
 
@@ -661,27 +661,27 @@ end;
 
 procedure TTypeRestrictionViolatedTests.IssueExampleWithFix;
 var
-  Source, Fixed: string;
-  Found: TArray<TRuleFinding>;
+  mSource, mFixed: string;
+  mFound: TArray<TRuleFinding>;
 begin
-  Source := GenericUnit('  TPunkt = record'#10'    X, Y: Integer;'#10'    function Laenge: Double; virtual;'#10 +
+  mSource := GenericUnit('  TPunkt = record'#10'    X, Y: Integer;'#10'    function Laenge: Double; virtual;'#10 +
     '  end;'#10, '');
-  Found := RestrictionFindings(Source);
-  Assert.AreEqual('6: Records erlauben keine virtuellen Methoden (wie E2379).', Messages(Found));
-  Assert.AreEqual(1, Integer(Length(Found[0].Fixes)));
-  Assert.AreEqual('virtual entfernen', Found[0].Fixes[0].Title);
-  Fixed := TChangeSignature.ApplyEdits(Source, Found[0].Fixes[0].Edits);
+  mFound := RestrictionFindings(mSource);
+  Assert.AreEqual('6: Records erlauben keine virtuellen Methoden (wie E2379).', Messages(mFound));
+  Assert.AreEqual(1, Integer(Length(mFound[0].Fixes)));
+  Assert.AreEqual('virtual entfernen', mFound[0].Fixes[0].Title);
+  mFixed := TChangeSignature.ApplyEdits(mSource, mFound[0].Fixes[0].Edits);
   Assert.AreEqual(GenericUnit('  TPunkt = record'#10'    X, Y: Integer;'#10'    function Laenge: Double;'#10 +
-    '  end;'#10, ''), Fixed);
-  Assert.AreEqual('', Messages(RestrictionFindings(Fixed)));
+    '  end;'#10, ''), mFixed);
+  Assert.AreEqual('', Messages(RestrictionFindings(mFixed)));
 end;
 
 procedure TTypeRestrictionViolatedTests.RecordMembers;
 var
-  Source, Fixed: string;
-  Found: TArray<TRuleFinding>;
+  mSource, mFixed: string;
+  mFound: TArray<TRuleFinding>;
 begin
-  Source := GenericUnit('  TR = record'#10 +
+  mSource := GenericUnit('  TR = record'#10 +
     '    procedure A; override;'#10 +
     '    function B: Integer; virtual; abstract;'#10 +
     '    constructor Create;'#10 +
@@ -689,20 +689,20 @@ begin
     '    destructor Destroy;'#10 +
     '    class procedure C;'#10 +
     '  end;'#10, '');
-  Found := RestrictionFindings(Source);
+  mFound := RestrictionFindings(mSource);
   Assert.AreEqual('5: Die Direktive override ist in Records nicht erlaubt (wie E2463).|' +
     '6: Records erlauben keine virtuellen Methoden (wie E2379).|' +
     '7: Records erlauben keine parameterlosen Konstruktoren (wie E2394).|' +
     '8: Records erlauben keine Konstruktoren, die ohne Argumente aufrufbar sind; alle Parameter haben ' +
     'Vorgabewerte (wie E2471).|' +
     '9: Records dürfen keinen Destruktor einführen (wie E2465).|' +
-    '10: Klassenmethoden in Records müssen static sein (wie E2398).', Messages(Found));
+    '10: Klassenmethoden in Records müssen static sein (wie E2398).', Messages(mFound));
   // virtual und abstract gehen zusammen weg.
-  Fixed := TChangeSignature.ApplyEdits(Source, Found[1].Fixes[0].Edits);
-  Assert.IsTrue(Pos('    function B: Integer;'#10, Fixed) > 0, Fixed);
-  Assert.AreEqual('static ergänzen', Found[5].Fixes[0].Title);
-  Fixed := TChangeSignature.ApplyEdits(Source, Found[5].Fixes[0].Edits);
-  Assert.IsTrue(Pos('    class procedure C; static;'#10, Fixed) > 0, Fixed);
+  mFixed := TChangeSignature.ApplyEdits(mSource, mFound[1].Fixes[0].Edits);
+  Assert.IsTrue(Pos('    function B: Integer;'#10, mFixed) > 0, mFixed);
+  Assert.AreEqual('static ergänzen', mFound[5].Fixes[0].Title);
+  mFixed := TChangeSignature.ApplyEdits(mSource, mFound[5].Fixes[0].Edits);
+  Assert.IsTrue(Pos('    class procedure C; static;'#10, mFixed) > 0, mFixed);
   // Erlaubtes.
   Assert.AreEqual('', Messages(RestrictionFindings(GenericUnit('  TR = record'#10 +
     '    constructor Create(X: Integer; Y: Integer = 1);'#10'    class function Neu: TR; static;'#10 +
@@ -851,25 +851,25 @@ end;
 
 procedure TTypeRestrictionViolatedTests.DisabledChecksOffAndExclude;
 var
-  Source: string;
-  Issues: TArray<TConfigurationIssue>;
+  mSource: string;
+  mIssues: TArray<TConfigurationIssue>;
 begin
-  Source := GenericUnit('  TPunkt = record'#10'    function Laenge: Double; virtual;'#10'    class procedure C;'#10 +
+  mSource := GenericUnit('  TPunkt = record'#10'    function Laenge: Double; virtual;'#10'    class procedure C;'#10 +
     '  end;'#10, '');
-  Assert.AreEqual(2, Integer(Length(RestrictionFindings(Source, '', 'Source/G.pas'))));
-  Assert.AreEqual('6: Klassenmethoden in Records müssen static sein (wie E2398).', Messages(RestrictionFindings(Source,
+  Assert.AreEqual(2, Integer(Length(RestrictionFindings(mSource, '', 'Source/G.pas'))));
+  Assert.AreEqual('6: Klassenmethoden in Records müssen static sein (wie E2398).', Messages(RestrictionFindings(mSource,
     '{"rules": {"type-restriction-violated": {"disabledChecks": ["E2379"]}}}', 'Source/G.pas')));
-  Assert.AreEqual(0, Integer(Length(RestrictionFindings(Source, '{"rules": {"type-restriction-violated": "off"}}',
+  Assert.AreEqual(0, Integer(Length(RestrictionFindings(mSource, '{"rules": {"type-restriction-violated": "off"}}',
     'Source/G.pas'))));
-  Assert.AreEqual(0, Integer(Length(RestrictionFindings(Source, '{"rules": {"group:compiler": "off"}}',
+  Assert.AreEqual(0, Integer(Length(RestrictionFindings(mSource, '{"rules": {"group:compiler": "off"}}',
     'Source/G.pas'))));
-  Assert.AreEqual(0, Integer(Length(RestrictionFindings(Source,
+  Assert.AreEqual(0, Integer(Length(RestrictionFindings(mSource,
     '{"rules": {"type-restriction-violated": {"exclude": ["Source/*.pas"]}}}', 'Source/G.pas'))));
   // Parser: disabledChecks muss eine Liste von Texten sein.
-  TConfigurationParser.Parse('{"rules": {"type-restriction-violated": {"disabledChecks": "E2379"}}}', Issues);
-  Assert.AreEqual(1, Integer(Length(Issues)));
-  TConfigurationParser.Parse('{"rules": {"type-restriction-violated": {"disabledChecks": ["E2379"]}}}', Issues);
-  Assert.AreEqual(0, Integer(Length(Issues)));
+  TConfigurationParser.Parse('{"rules": {"type-restriction-violated": {"disabledChecks": "E2379"}}}', mIssues);
+  Assert.AreEqual(1, Integer(Length(mIssues)));
+  TConfigurationParser.Parse('{"rules": {"type-restriction-violated": {"disabledChecks": ["E2379"]}}}', mIssues);
+  Assert.AreEqual(0, Integer(Length(mIssues)));
 end;
 
 function AttributeFindings(const ASource: string): TArray<TRuleFinding>; overload;
@@ -884,15 +884,15 @@ end;
 
 procedure TAttributeUsageInvalidTests.IssueExample;
 var
-  Found: TArray<TRuleFinding>;
+  mFound: TArray<TRuleFinding>;
 begin
-  Found := AttributeFindings(GenericUnit('  TZaehler = class'#10'  private'#10'    [Weak] FZaehler: Integer;'#10 +
+  mFound := AttributeFindings(GenericUnit('  TZaehler = class'#10'  private'#10'    [Weak] FZaehler: Integer;'#10 +
     '  end;'#10, ''));
   Assert.AreEqual('6: [Weak] ist nur an Klassen- und Interface-Referenzen erlaubt; FZaehler hat den Typ Integer ' +
-    '(wie E2584).', Messages(Found));
-  Assert.AreEqual(5, Found[0].Range.StartPos.Character);
-  Assert.AreEqual(9, Found[0].Range.EndPos.Character);
-  Assert.AreEqual(0, Integer(Length(Found[0].Fixes)));
+    '(wie E2584).', Messages(mFound));
+  Assert.AreEqual(5, mFound[0].Range.StartPos.Character);
+  Assert.AreEqual(9, mFound[0].Range.EndPos.Character);
+  Assert.AreEqual(0, Integer(Length(mFound[0].Fixes)));
   // Korrigiert: [Weak] an einer Interface-Referenz.
   Assert.AreEqual('', Messages(AttributeFindings(GenericUnit('  TZaehler = class'#10'  private'#10 +
     '    [Weak] FBesitzer: IInterface;'#10'    FZaehler: Integer;'#10'  end;'#10, ''))));
@@ -982,15 +982,15 @@ end;
 
 procedure TAttributeUsageInvalidTests.OffAndExclude;
 var
-  Source: string;
+  mSource: string;
 begin
-  Source := GenericUnit('  TZaehler = class'#10'    [Weak] FZaehler: Integer;'#10'  end;'#10, '');
-  Assert.AreEqual(1, Integer(Length(AttributeFindings(Source, '', 'Source/G.pas'))));
-  Assert.AreEqual(0, Integer(Length(AttributeFindings(Source, '{"rules": {"attribute-usage-invalid": "off"}}',
+  mSource := GenericUnit('  TZaehler = class'#10'    [Weak] FZaehler: Integer;'#10'  end;'#10, '');
+  Assert.AreEqual(1, Integer(Length(AttributeFindings(mSource, '', 'Source/G.pas'))));
+  Assert.AreEqual(0, Integer(Length(AttributeFindings(mSource, '{"rules": {"attribute-usage-invalid": "off"}}',
     'Source/G.pas'))));
-  Assert.AreEqual(0, Integer(Length(AttributeFindings(Source, '{"rules": {"group:compiler": "off"}}',
+  Assert.AreEqual(0, Integer(Length(AttributeFindings(mSource, '{"rules": {"group:compiler": "off"}}',
     'Source/G.pas'))));
-  Assert.AreEqual(0, Integer(Length(AttributeFindings(Source,
+  Assert.AreEqual(0, Integer(Length(AttributeFindings(mSource,
     '{"rules": {"attribute-usage-invalid": {"exclude": ["Source/*.pas"]}}}', 'Source/G.pas'))));
 end;
 
@@ -1014,18 +1014,18 @@ end;
 
 procedure TTypeInfoInvalidTests.IssueExampleWithFix;
 var
-  Source, Fixed: string;
-  Found: TArray<TRuleFinding>;
+  mSource, mFixed: string;
+  mFound: TArray<TRuleFinding>;
 begin
-  Source := StatusUnit('GetEnumName(TypeInfo(Status), Ord(Status))');
-  Found := TypeInfoFindings(Source);
+  mSource := StatusUnit('GetEnumName(TypeInfo(Status), Ord(Status))');
+  mFound := TypeInfoFindings(mSource);
   Assert.AreEqual('9: TypeInfo erwartet einen Typ, Status ist eine Variable; gemeint ist TypeInfo(TStatus) ' +
-    '(wie E2133).', Messages(Found));
-  Assert.AreEqual(1, Integer(Length(Found[0].Fixes)));
-  Assert.AreEqual('TypeInfo(TStatus) einsetzen', Found[0].Fixes[0].Title);
-  Fixed := TChangeSignature.ApplyEdits(Source, Found[0].Fixes[0].Edits);
-  Assert.AreEqual(StatusUnit('GetEnumName(TypeInfo(TStatus), Ord(Status))'), Fixed);
-  Assert.AreEqual(0, Integer(Length(TypeInfoFindings(Fixed))), Fixed);
+    '(wie E2133).', Messages(mFound));
+  Assert.AreEqual(1, Integer(Length(mFound[0].Fixes)));
+  Assert.AreEqual('TypeInfo(TStatus) einsetzen', mFound[0].Fixes[0].Title);
+  mFixed := TChangeSignature.ApplyEdits(mSource, mFound[0].Fixes[0].Edits);
+  Assert.AreEqual(StatusUnit('GetEnumName(TypeInfo(TStatus), Ord(Status))'), mFixed);
+  Assert.AreEqual(0, Integer(Length(TypeInfoFindings(mFixed))), mFixed);
 end;
 
 procedure TTypeInfoInvalidTests.Variables;
@@ -1089,15 +1089,15 @@ end;
 
 procedure TTypeInfoInvalidTests.OffAndExclude;
 var
-  Source: string;
+  mSource: string;
 begin
-  Source := StatusUnit('GetEnumName(TypeInfo(Status), Ord(Status))');
-  Assert.AreEqual(1, Integer(Length(TypeInfoFindings(Source, '', 'Source/G.pas'))));
-  Assert.AreEqual(0, Integer(Length(TypeInfoFindings(Source, '{"rules": {"typeinfo-invalid": "off"}}',
+  mSource := StatusUnit('GetEnumName(TypeInfo(Status), Ord(Status))');
+  Assert.AreEqual(1, Integer(Length(TypeInfoFindings(mSource, '', 'Source/G.pas'))));
+  Assert.AreEqual(0, Integer(Length(TypeInfoFindings(mSource, '{"rules": {"typeinfo-invalid": "off"}}',
     'Source/G.pas'))));
-  Assert.AreEqual(0, Integer(Length(TypeInfoFindings(Source, '{"rules": {"group:compiler": "off"}}',
+  Assert.AreEqual(0, Integer(Length(TypeInfoFindings(mSource, '{"rules": {"group:compiler": "off"}}',
     'Source/G.pas'))));
-  Assert.AreEqual(0, Integer(Length(TypeInfoFindings(Source,
+  Assert.AreEqual(0, Integer(Length(TypeInfoFindings(mSource,
     '{"rules": {"typeinfo-invalid": {"exclude": ["Source/*.pas"]}}}', 'Source/G.pas'))));
 end;
 

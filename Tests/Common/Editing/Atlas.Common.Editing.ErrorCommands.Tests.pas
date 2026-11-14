@@ -56,17 +56,17 @@ end;
 /// <summary>Wendet AEdits (nicht überlappend) auf AText an.</summary>
 function Apply(const AText: string; AEdits: TArray<TRuleEdit>): string;
 var
-  Lines: TArray<string>;
-  Edit: TRuleEdit;
-  Offsets: TArray<Integer>;
-  Index, Start, Stop: Integer;
+  mLines: TArray<string>;
+  mEdit: TRuleEdit;
+  mOffsets: TArray<Integer>;
+  mIndex, mStart, mStop: Integer;
 begin
-  Lines := AText.Split([#10]);
-  SetLength(Offsets, Length(Lines) + 1);
-  Offsets[0] := 0;
-  for Index := 0 to High(Lines) do
+  mLines := AText.Split([#10]);
+  SetLength(mOffsets, Length(mLines) + 1);
+  mOffsets[0] := 0;
+  for mIndex := 0 to High(mLines) do
   begin
-    Offsets[Index + 1] := Offsets[Index] + Length(Lines[Index]) + 1;
+    mOffsets[mIndex + 1] := mOffsets[mIndex] + Length(mLines[mIndex]) + 1;
   end;
   TArray.Sort<TRuleEdit>(AEdits, TComparer<TRuleEdit>.Construct(
     function(const ALeft, ARight: TRuleEdit): Integer
@@ -75,45 +75,45 @@ begin
         ARight.Range.StartPos.Character - ALeft.Range.StartPos.Character;
     end));
   Result := AText;
-  for Edit in AEdits do
+  for mEdit in AEdits do
   begin
-    Start := Offsets[Edit.Range.StartPos.Line] + Edit.Range.StartPos.Character;
-    Stop := Offsets[Edit.Range.EndPos.Line] + Edit.Range.EndPos.Character;
-    Result := Copy(Result, 1, Start) + Edit.NewText + Copy(Result, Stop + 1, MaxInt);
+    mStart := mOffsets[mEdit.Range.StartPos.Line] + mEdit.Range.StartPos.Character;
+    mStop := mOffsets[mEdit.Range.EndPos.Line] + mEdit.Range.EndPos.Character;
+    Result := Copy(Result, 1, mStart) + mEdit.NewText + Copy(Result, mStop + 1, MaxInt);
   end;
 end;
 
 function Expand(const AText: string; ALine: Integer): string;
 var
-  Edits: TArray<TRuleEdit>;
+  mEdits: TArray<TRuleEdit>;
 begin
-  Assert.IsTrue(Run(AText, ALine, Edits), AText);
-  Result := Apply(AText, Edits);
+  Assert.IsTrue(Run(AText, ALine, mEdits), AText);
+  Result := Apply(AText, mEdits);
 end;
 
 function ProblemOf(const AText: string): string;
 var
-  Problems: TArray<TSlashProblem>;
+  mProblems: TArray<TSlashProblem>;
 begin
-  Problems := TSlashCommandRegistry.Shared.Problems(AText, nil);
-  Assert.AreEqual(1, Integer(Length(Problems)));
-  Result := Problems[0].Message;
+  mProblems := TSlashCommandRegistry.Shared.Problems(AText, nil);
+  Assert.AreEqual(1, Integer(Length(mProblems)));
+  Result := mProblems[0].Message;
 end;
 
 function Parses(const AText: string): Boolean;
 var
-  Tree: TSyntaxTree;
+  mTree: TSyntaxTree;
 begin
-  Tree := TPascalParser.Parse(AText);
+  mTree := TPascalParser.Parse(AText);
   try
-    Result := Length(Tree.Diagnostics) = 0;
+    Result := Length(mTree.Diagnostics) = 0;
   finally
-    Tree.Free;
+    mTree.Free;
   end;
 end;
 
 const
-  RoutineUnit =
+  cRoutineUnit =
     'unit U;'#10 +                                                          // 0
     'interface'#10 +                                                        // 1
     'implementation'#10 +                                                   // 2
@@ -131,74 +131,74 @@ const
 
 function WithCommand(const ACommand: string): string;
 begin
-  Result := Format(RoutineUnit, [ACommand]);
+  Result := Format(cRoutineUnit, [ACommand]);
 end;
 
 procedure TErrorCommandsTests.ParametersFromSignature;
 var
-  Parameters: TArray<TGuardParameter>;
+  mParameters: TArray<TGuardParameter>;
 begin
-  Parameters := RoutineParameters('procedure P(const A, B: TFoo; var C: Integer = 0)');
-  Assert.AreEqual(3, Integer(Length(Parameters)));
-  Assert.AreEqual('B', Parameters[1].Name);
-  Assert.AreEqual('TFoo', Parameters[1].TypeName);
-  Assert.AreEqual('Integer', Parameters[2].TypeName);
+  mParameters := RoutineParameters('procedure P(const A, B: TFoo; var C: Integer = 0)');
+  Assert.AreEqual(3, Integer(Length(mParameters)));
+  Assert.AreEqual('B', mParameters[1].Name);
+  Assert.AreEqual('TFoo', mParameters[1].TypeName);
+  Assert.AreEqual('Integer', mParameters[2].TypeName);
 end;
 
 procedure TErrorCommandsTests.GuardChecksOnlyObjects;
 var
-  Text: string;
+  mText: string;
 begin
-  Text := Expand(WithCommand('/guard'), 9);
+  mText := Expand(WithCommand('/guard'), 9);
   Assert.IsTrue(Pos('begin'#10'  if not Assigned(AObj) then'#10'    raise EArgumentNilException.Create(''AObj'');'#10 +
-    '  if not Assigned(AListe) then'#10'    raise EArgumentNilException.Create(''AListe'');'#10'  X := 1;', Text) > 0,
-    Text);
-  Assert.AreEqual(0, Pos('Assigned(S)', Text), Text);
-  Assert.AreEqual(0, Pos('Assigned(X)', Text), Text);
-  Assert.AreEqual(0, Pos('Assigned(P)', Text), Text);
-  Assert.IsTrue(Parses(Text), Text);
+    '  if not Assigned(AListe) then'#10'    raise EArgumentNilException.Create(''AListe'');'#10'  X := 1;', mText) > 0,
+    mText);
+  Assert.AreEqual(0, Pos('Assigned(S)', mText), mText);
+  Assert.AreEqual(0, Pos('Assigned(X)', mText), mText);
+  Assert.AreEqual(0, Pos('Assigned(P)', mText), mText);
+  Assert.IsTrue(Parses(mText), mText);
 end;
 
 procedure TErrorCommandsTests.GuardSingleParameter;
 var
-  Text: string;
+  mText: string;
 begin
-  Text := Expand(WithCommand('/guard AListe'), 9);
-  Assert.AreEqual(0, Pos('Assigned(AObj)', Text), Text);
-  Assert.IsTrue(Pos('Assigned(AListe)', Text) > 0, Text);
+  mText := Expand(WithCommand('/guard AListe'), 9);
+  Assert.AreEqual(0, Pos('Assigned(AObj)', mText), mText);
+  Assert.IsTrue(Pos('Assigned(AListe)', mText) > 0, mText);
   Assert.AreEqual('X ist kein ungeprüfter Objekt-, Interface- oder Zeigerparameter',
     ProblemOf(WithCommand('/guard X')));
 end;
 
 procedure TErrorCommandsTests.GuardChecksPointers;
 const
-  Text = 'unit U;'#10'interface'#10'implementation'#10'uses'#10'  System.SysUtils;'#10#10 +
+  cText = 'unit U;'#10'interface'#10'implementation'#10'uses'#10'  System.SysUtils;'#10#10 +
     'procedure Lauf(Data: Pointer; AKnoten: PKnoten; AOnDone: TNotifyEvent; N: Integer);'#10'begin'#10 +
     '  /guard'#10'  N := 1;'#10'end;'#10#10'end.';
 var
-  Result_: string;
+  mResult_: string;
 begin
-  Result_ := Expand(Text, 8);
-  Assert.IsTrue(Pos('Assigned(Data)', Result_) > 0, Result_);
-  Assert.IsTrue(Pos('Assigned(AKnoten)', Result_) > 0, Result_);
-  Assert.AreEqual(0, Pos('Assigned(AOnDone)', Result_), Result_);
-  Assert.AreEqual(0, Pos('Assigned(N)', Result_), Result_);
+  mResult_ := Expand(cText, 8);
+  Assert.IsTrue(Pos('Assigned(Data)', mResult_) > 0, mResult_);
+  Assert.IsTrue(Pos('Assigned(AKnoten)', mResult_) > 0, mResult_);
+  Assert.AreEqual(0, Pos('Assigned(AOnDone)', mResult_), mResult_);
+  Assert.AreEqual(0, Pos('Assigned(N)', mResult_), mResult_);
 end;
 
 procedure TErrorCommandsTests.GuardDoesNotDuplicate;
 var
-  Text: string;
+  mText: string;
 begin
-  Text := StringReplace(WithCommand('/guard'), '  X := 1;', '  if AObj = nil then Exit;'#10 +
+  mText := StringReplace(WithCommand('/guard'), '  X := 1;', '  if AObj = nil then Exit;'#10 +
     '  Assert(Assigned(AListe));', []);
-  Assert.AreEqual('Keine ungeprüften Objekt-, Interface- oder Zeigerparameter', ProblemOf(Text));
+  Assert.AreEqual('Keine ungeprüften Objekt-, Interface- oder Zeigerparameter', ProblemOf(mText));
 end;
 
 procedure TErrorCommandsTests.GuardOutsideRoutineFails;
 const
-  Text = 'unit U;'#10'interface'#10'/guard'#10#10'implementation'#10'end.';
+  cText = 'unit U;'#10'interface'#10'/guard'#10#10'implementation'#10'end.';
 begin
-  Assert.AreEqual('/guard gilt nur im Rumpf einer Routine', ProblemOf(Text));
+  Assert.AreEqual('/guard gilt nur im Rumpf einer Routine', ProblemOf(cText));
 end;
 
 procedure TErrorCommandsTests.RaiseKnownClass;
@@ -215,23 +215,23 @@ end;
 
 procedure TErrorCommandsTests.RaiseUnknownClassCreatesIt;
 const
-  Text = 'unit U;'#10'interface'#10'implementation'#10#10'procedure P;'#10'begin'#10'  /raise EImport Datei fehlt'#10 +
+  cText = 'unit U;'#10'interface'#10'implementation'#10#10'procedure P;'#10'begin'#10'  /raise EImport Datei fehlt'#10 +
     'end;'#10#10'end.';
 var
-  Result_: string;
+  mResult_: string;
 begin
-  Result_ := Expand(Text, 6);
-  Assert.IsTrue(Pos('uses'#10'  System.SysUtils;'#10, Result_) > 0, Result_);
+  mResult_ := Expand(cText, 6);
+  Assert.IsTrue(Pos('uses'#10'  System.SysUtils;'#10, mResult_) > 0, mResult_);
   Assert.IsTrue(Pos('type'#10'  EImport = class(Exception);'#10#10'procedure P;'#10'begin'#10 +
-    '  raise EImport.Create(''Datei fehlt'');'#10'end;', Result_) > 0, Result_);
-  Assert.IsTrue(Parses(Result_), Result_);
+    '  raise EImport.Create(''Datei fehlt'');'#10'end;', mResult_) > 0, mResult_);
+  Assert.IsTrue(Parses(mResult_), mResult_);
 end;
 
 procedure TErrorCommandsTests.RaiseOutsideRoutineFails;
 const
-  Text = 'unit U;'#10'interface'#10'/raise EX Text'#10#10'implementation'#10'end.';
+  cText = 'unit U;'#10'interface'#10'/raise EX Text'#10#10'implementation'#10'end.';
 begin
-  Assert.AreEqual('/raise gilt nur im Rumpf einer Routine', ProblemOf(Text));
+  Assert.AreEqual('/raise gilt nur im Rumpf einer Routine', ProblemOf(cText));
   Assert.AreEqual('Erwartet wird /raise EKlasse Text', ProblemOf(WithCommand('/raise EX')));
 end;
 

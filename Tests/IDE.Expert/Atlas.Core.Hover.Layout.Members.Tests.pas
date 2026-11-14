@@ -186,43 +186,43 @@ end;
 
 procedure THoverLayoutMembersTests.PublishedMembersAsTables;
 var
-  HoverView: TAtlasHoverView;
-  HoverInput: TAtlasHoverInput;
-  Layout: TAtlasHoverLayout;
-  Hint: TAtlasHoverMember;
+  mHoverView: TAtlasHoverView;
+  mHoverInput: TAtlasHoverInput;
+  mLayout: TAtlasHoverLayout;
+  mHint: TAtlasHoverMember;
 begin
-  HoverView := ActionsView;
-  HoverView.Data.Location.Name := 'TKnopf';
-  Hint := Member('Hint', 'string', 'TControl', hdNone, '');
-  Hint.Stored := 'False';
-  HoverView.Data.Members := [Member('Cancel', 'Boolean', 'TKnopf', hdImplicit, 'False'),
+  mHoverView := ActionsView;
+  mHoverView.Data.Location.Name := 'TKnopf';
+  mHint := Member('Hint', 'string', 'TControl', hdNone, '');
+  mHint.Stored := 'False';
+  mHoverView.Data.Members := [Member('Cancel', 'Boolean', 'TKnopf', hdImplicit, 'False'),
     Member('Default', 'Boolean', 'TKnopf', hdImplicit, 'False'),
     Member('Cursor', 'TCursor', 'TControl', hdExplicit, 'crDefault'),
-    Member('Height', 'Integer', 'TControl', hdNoDefault, ''), Hint,
+    Member('Height', 'Integer', 'TControl', hdNoDefault, ''), mHint,
     Member('Left', 'Integer', 'TControl', hdNone, ''), Member('Top', 'Integer', 'TControl', hdNone, ''),
     Member('Width', 'Integer', 'TControl', hdNone, ''),
     EventMember('OnClick', 'TNotifyEvent', 'TControl'), EventMember('OnEnter', 'TNotifyEvent', 'TWinControl'),
     EventMember('OnKeyDown', 'TKeyEvent', 'TWinControl'), EventMember('OnExit', 'TNotifyEvent', 'TWinControl'),
     EventMember('OnRueckmeldung', 'TMeinRueckruf', 'TKnopf')];
-  HoverView.Data.DefaultProperty := 'Controls[Index: Integer]: TControl';
-  HoverInput := HoverTestInput(HoverView, 460);
-  HoverInput.Texts.PublishedSummary := 'published: %d Properties · %d Ereignisse';
-  HoverInput.Texts.PublishedInherited := 'geerbte';
-  HoverInput.Texts.PublishedOnlyDefaults := 'nur mit default';
-  HoverInput.Texts.PublishedProperties := 'Properties';
-  HoverInput.Texts.PublishedEvents := 'Ereignisse';
-  HoverInput.Texts.PublishedName := 'Name';
-  HoverInput.Texts.PublishedImplicit := 'implizit';
-  HoverInput.Texts.PublishedMoreProperties := '+ %d weitere Properties';
-  HoverInput.Texts.PublishedMoreEvents := '+ %d weitere Ereignisse';
-  HoverInput.Texts.PublishedArrayProperty := 'Array-Property';
-  HoverInput.Texts.PublishedDefaultProperty := 'Standard-Property';
-  HoverInput.Texts.PublishedCopyList := 'Liste';
-  Layout := BuildLayout(HoverInput);
-  AssertPublishedToggles(HoverView, HoverInput, Layout);
+  mHoverView.Data.DefaultProperty := 'Controls[Index: Integer]: TControl';
+  mHoverInput := HoverTestInput(mHoverView, 460);
+  mHoverInput.Texts.PublishedSummary := 'published: %d Properties · %d Ereignisse';
+  mHoverInput.Texts.PublishedInherited := 'geerbte';
+  mHoverInput.Texts.PublishedOnlyDefaults := 'nur mit default';
+  mHoverInput.Texts.PublishedProperties := 'Properties';
+  mHoverInput.Texts.PublishedEvents := 'Ereignisse';
+  mHoverInput.Texts.PublishedName := 'Name';
+  mHoverInput.Texts.PublishedImplicit := 'implizit';
+  mHoverInput.Texts.PublishedMoreProperties := '+ %d weitere Properties';
+  mHoverInput.Texts.PublishedMoreEvents := '+ %d weitere Ereignisse';
+  mHoverInput.Texts.PublishedArrayProperty := 'Array-Property';
+  mHoverInput.Texts.PublishedDefaultProperty := 'Standard-Property';
+  mHoverInput.Texts.PublishedCopyList := 'Liste';
+  mLayout := BuildLayout(mHoverInput);
+  AssertPublishedToggles(mHoverView, mHoverInput, mLayout);
   // Ohne Mitglieder kein Abschnitt.
-  Layout := BuildLayout(HoverTestInput(ActionsView, 460));
-  Assert.AreEqual('', PublishedCodes(Layout));
+  mLayout := BuildLayout(HoverTestInput(ActionsView, 460));
+  Assert.AreEqual('', PublishedCodes(mLayout));
 end;
 
 /// <summary>Komponente mit 40 Properties, alle gezeigt.</summary>

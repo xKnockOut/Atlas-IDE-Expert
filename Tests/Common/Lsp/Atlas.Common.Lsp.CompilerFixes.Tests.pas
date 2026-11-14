@@ -36,8 +36,8 @@ uses
   Atlas.Common.Lsp.CompilerFixes;
 
 const
-  Uri = 'file:///C:/Projekt/A.pas';
-  Source =
+  cUri = 'file:///C:/Projekt/A.pas';
+  cSource =
     'unit A;' + #10 +                              // 0
     'interface' + #10 +                            // 1
     'implementation' + #10 +                       // 2
@@ -78,30 +78,30 @@ end;
 
 function Titles(AEnabled: Boolean; const ARange: TTextRange): string;
 var
-  Tree: TSyntaxTree;
-  Actions: TArray<TJSONObject>;
-  Action: TJSONObject;
+  mTree: TSyntaxTree;
+  mActions: TArray<TJSONObject>;
+  mAction: TJSONObject;
   mRequest: TCompilerFixRequest;
 begin
   Result := '';
-  Tree := TPascalParser.Parse(Source);
+  mTree := TPascalParser.Parse(cSource);
   try
-    mRequest.Text := Source;
-    mRequest.Tree := Tree;
-    mRequest.Uri := Uri;
+    mRequest.Text := cSource;
+    mRequest.Tree := mTree;
+    mRequest.Uri := cUri;
     mRequest.Range := ARange;
     mRequest.Context := Context;
-    Actions := TLspCompilerFixes.Actions(AEnabled, mRequest,
+    mActions := TLspCompilerFixes.Actions(AEnabled, mRequest,
       [Msg(8, 'W1057', 'x ''AnsiString'' y ''string'''), Msg(8, 'W1057', 'x ''AnsiString'' y ''string'''),
       Msg(9, 'W1057', 'x ''AnsiString'' y ''string'''), Msg(6, 'E2003', 'Undeclared identifier: ''TStringList'''),
       Msg(-1, 'W1057', 'ohne Zeile')]);
-    for Action in Actions do
+    for mAction in mActions do
     begin
-      Result := Result + Action.GetValue<string>('title', '') + ' [' + Action.GetValue<string>('kind', '') + ']|';
-      Action.Free;
+      Result := Result + mAction.GetValue<string>('title', '') + ' [' + mAction.GetValue<string>('kind', '') + ']|';
+      mAction.Free;
     end;
   finally
-    Tree.Free;
+    mTree.Free;
   end;
 end;
 

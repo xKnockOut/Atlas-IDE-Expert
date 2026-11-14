@@ -39,109 +39,109 @@ end;
 
 procedure TLspSettingsCommandsTests.ChecksTextWithServerParser;
 var
-  Args: TJSONArray;
-  Answer: TJSONObject;
-  Issue: TJSONObject;
+  mArgs: TJSONArray;
+  mAnswer: TJSONObject;
+  mIssue: TJSONObject;
 begin
-  Args := Arguments('{'#10'  "logLevel": "laut"'#10'}');
+  mArgs := Arguments('{'#10'  "logLevel": "laut"'#10'}');
   try
-    Answer := TLspSettingsCommands.Check(Args);
+    mAnswer := TLspSettingsCommands.Check(mArgs);
     try
-      Assert.IsFalse((Answer.GetValue('valid') as TJSONBool).AsBoolean);
-      Issue := TJSONArray(Answer.GetValue('issues')).Items[0] as TJSONObject;
-      Assert.AreEqual(1, Issue.GetValue<Integer>('line'));
-      Assert.Contains(Issue.GetValue<string>('message'), '"debug"');
-      Assert.IsTrue((Issue.GetValue('error') as TJSONBool).AsBoolean);
+      Assert.IsFalse((mAnswer.GetValue('valid') as TJSONBool).AsBoolean);
+      mIssue := TJSONArray(mAnswer.GetValue('issues')).Items[0] as TJSONObject;
+      Assert.AreEqual(1, mIssue.GetValue<Integer>('line'));
+      Assert.Contains(mIssue.GetValue<string>('message'), '"debug"');
+      Assert.IsTrue((mIssue.GetValue('error') as TJSONBool).AsBoolean);
     finally
-      Answer.Free;
+      mAnswer.Free;
     end;
   finally
-    Args.Free;
+    mArgs.Free;
   end;
-  Args := Arguments('// Kommentar'#10'{"rules": {"empty-except": "off"}}');
+  mArgs := Arguments('// Kommentar'#10'{"rules": {"empty-except": "off"}}');
   try
-    Answer := TLspSettingsCommands.Check(Args);
+    mAnswer := TLspSettingsCommands.Check(mArgs);
     try
-      Assert.IsTrue((Answer.GetValue('valid') as TJSONBool).AsBoolean);
-      Assert.AreEqual(0, TJSONArray(Answer.GetValue('issues')).Count);
+      Assert.IsTrue((mAnswer.GetValue('valid') as TJSONBool).AsBoolean);
+      Assert.AreEqual(0, TJSONArray(mAnswer.GetValue('issues')).Count);
     finally
-      Answer.Free;
+      mAnswer.Free;
     end;
   finally
-    Args.Free;
+    mArgs.Free;
   end;
 end;
 
 procedure TLspSettingsCommandsTests.ReportsKeysAtTheWrongPlace;
 var
-  Args: TJSONArray;
-  Answer: TJSONObject;
-  Issues: TJSONArray;
+  mArgs: TJSONArray;
+  mAnswer: TJSONObject;
+  mIssues: TJSONArray;
 begin
   // Als atlas.json (Vorgabe): der globale Schlüssel ist eine Warnung, der Text bleibt gültig.
-  Args := Arguments('{"rules": {}, "platform": "Win64", "memoryBudgetMb": 512}');
+  mArgs := Arguments('{"rules": {}, "platform": "Win64", "memoryBudgetMb": 512}');
   try
-    Answer := TLspSettingsCommands.Check(Args);
+    mAnswer := TLspSettingsCommands.Check(mArgs);
     try
-      Assert.IsTrue((Answer.GetValue('valid') as TJSONBool).AsBoolean);
-      Issues := TJSONArray(Answer.GetValue('issues'));
-      Assert.AreEqual(1, Integer(Issues.Count));
-      Assert.Contains((Issues.Items[0] as TJSONObject).GetValue<string>('message'), '"memoryBudgetMb"');
-      Assert.IsFalse(((Issues.Items[0] as TJSONObject).GetValue('error') as TJSONBool).AsBoolean);
+      Assert.IsTrue((mAnswer.GetValue('valid') as TJSONBool).AsBoolean);
+      mIssues := TJSONArray(mAnswer.GetValue('issues'));
+      Assert.AreEqual(1, Integer(mIssues.Count));
+      Assert.Contains((mIssues.Items[0] as TJSONObject).GetValue<string>('message'), '"memoryBudgetMb"');
+      Assert.IsFalse(((mIssues.Items[0] as TJSONObject).GetValue('error') as TJSONBool).AsBoolean);
     finally
-      Answer.Free;
+      mAnswer.Free;
     end;
     // Als globale Datei: platform gehört zum Projekt; rules geht an beiden Orten.
-    Args.Add('global');
-    Answer := TLspSettingsCommands.Check(Args);
+    mArgs.Add('global');
+    mAnswer := TLspSettingsCommands.Check(mArgs);
     try
-      Issues := TJSONArray(Answer.GetValue('issues'));
-      Assert.AreEqual(1, Integer(Issues.Count));
-      Assert.Contains((Issues.Items[0] as TJSONObject).GetValue<string>('message'), '"platform"');
+      mIssues := TJSONArray(mAnswer.GetValue('issues'));
+      Assert.AreEqual(1, Integer(mIssues.Count));
+      Assert.Contains((mIssues.Items[0] as TJSONObject).GetValue<string>('message'), '"platform"');
     finally
-      Answer.Free;
+      mAnswer.Free;
     end;
   finally
-    Args.Free;
+    mArgs.Free;
   end;
 end;
 
 procedure TLspSettingsCommandsTests.ListsRuleCatalogInLanguage;
 var
-  Args: TJSONArray;
-  Entries: TArray<TRuleCatalogEntry>;
-  Answer: TJSONObject;
-  Rules: TJSONArray;
-  Index: Integer;
-  Found: Boolean;
+  mArgs: TJSONArray;
+  mEntries: TArray<TRuleCatalogEntry>;
+  mAnswer: TJSONObject;
+  mRules: TJSONArray;
+  mIndex: Integer;
+  mFound: Boolean;
 begin
-  Args := Arguments('de');
+  mArgs := Arguments('de');
   try
-    Entries := TLspSettingsCommands.CatalogEntries(Args);
+    mEntries := TLspSettingsCommands.CatalogEntries(mArgs);
   finally
-    Args.Free;
+    mArgs.Free;
   end;
-  Assert.IsTrue(Length(Entries) > 10);
-  Answer := TLspSettingsCommands.Catalog(Entries, 'C:\Users\x\AppData\Roaming\Atlas\settings.json');
+  Assert.IsTrue(Length(mEntries) > 10);
+  mAnswer := TLspSettingsCommands.Catalog(mEntries, 'C:\Users\x\AppData\Roaming\Atlas\settings.json');
   try
-    Rules := Answer.GetValue('rules') as TJSONArray;
-    Assert.AreEqual(Integer(Length(Entries)), Rules.Count);
-    Found := False;
-    for Index := 0 to Rules.Count - 1 do
+    mRules := mAnswer.GetValue('rules') as TJSONArray;
+    Assert.AreEqual(Integer(Length(mEntries)), mRules.Count);
+    mFound := False;
+    for mIndex := 0 to mRules.Count - 1 do
     begin
-      if Rules.Items[Index].GetValue<string>('id') = 'syntax' then
+      if mRules.Items[mIndex].GetValue<string>('id') = 'syntax' then
       begin
-        Found := True;
-        Assert.AreEqual('error', Rules.Items[Index].GetValue<string>('severity'));
-        Assert.AreEqual('bug', Rules.Items[Index].GetValue<string>('category'));
-        Assert.AreNotEqual('', Rules.Items[Index].GetValue<string>('name'));
+        mFound := True;
+        Assert.AreEqual('error', mRules.Items[mIndex].GetValue<string>('severity'));
+        Assert.AreEqual('bug', mRules.Items[mIndex].GetValue<string>('category'));
+        Assert.AreNotEqual('', mRules.Items[mIndex].GetValue<string>('name'));
       end;
     end;
-    Assert.IsTrue(Found);
-    Assert.AreEqual('C:\Users\x\AppData\Roaming\Atlas\settings.json', Answer.GetValue<string>('globalFile'));
-    Assert.AreNotEqual('', Answer.GetValue<string>('version'));
+    Assert.IsTrue(mFound);
+    Assert.AreEqual('C:\Users\x\AppData\Roaming\Atlas\settings.json', mAnswer.GetValue<string>('globalFile'));
+    Assert.AreNotEqual('', mAnswer.GetValue<string>('version'));
   finally
-    Answer.Free;
+    mAnswer.Free;
   end;
 end;
 
@@ -177,69 +177,69 @@ end;
 
 procedure TLspSettingsCommandsTests.CatalogCarriesGroupOptionsAndExperimental;
 var
-  Args: TJSONArray;
-  Entries: TArray<TRuleCatalogEntry>;
-  Answer: TJSONObject;
-  Rules: TJSONArray;
-  Rule: TJSONValue;
-  Overrides: TJSONArray;
-  Index: Integer;
-  SeenMetric: Boolean;
-  SeenSyntax: Boolean;
-  SeenMagic: Boolean;
+  mArgs: TJSONArray;
+  mEntries: TArray<TRuleCatalogEntry>;
+  mAnswer: TJSONObject;
+  mRules: TJSONArray;
+  mRule: TJSONValue;
+  mOverrides: TJSONArray;
+  mIndex: Integer;
+  mSeenMetric: Boolean;
+  mSeenSyntax: Boolean;
+  mSeenMagic: Boolean;
 begin
-  Args := Arguments('de');
+  mArgs := Arguments('de');
   try
-    Entries := TLspSettingsCommands.CatalogEntries(Args);
+    mEntries := TLspSettingsCommands.CatalogEntries(mArgs);
   finally
-    Args.Free;
+    mArgs.Free;
   end;
-  Answer := TLspSettingsCommands.Catalog(Entries, '');
+  mAnswer := TLspSettingsCommands.Catalog(mEntries, '');
   try
-    Rules := Answer.GetValue('rules') as TJSONArray;
-    SeenMetric := False;
-    SeenSyntax := False;
-    SeenMagic := False;
-    for Index := 0 to Rules.Count - 1 do
+    mRules := mAnswer.GetValue('rules') as TJSONArray;
+    mSeenMetric := False;
+    mSeenSyntax := False;
+    mSeenMagic := False;
+    for mIndex := 0 to mRules.Count - 1 do
     begin
-      Rule := Rules.Items[Index];
-      Assert.AreNotEqual('', Rule.GetValue<string>('group'), Rule.GetValue<string>('id'));
-      if Rule.GetValue<string>('id') = 'metric-method-length' then
+      mRule := mRules.Items[mIndex];
+      Assert.AreNotEqual('', mRule.GetValue<string>('group'), mRule.GetValue<string>('id'));
+      if mRule.GetValue<string>('id') = 'metric-method-length' then
       begin
-        SeenMetric := True;
-        AssertMethodLengthEntry(Rule);
+        mSeenMetric := True;
+        AssertMethodLengthEntry(mRule);
       end;
       // Tabelle der Symbole (#1133): Spalten, Listen markiert.
-      if Rule.GetValue<string>('id') = 'forbidden-symbol' then
+      if mRule.GetValue<string>('id') = 'forbidden-symbol' then
       begin
-        AssertForbiddenSymbolColumns(Rule);
+        AssertForbiddenSymbolColumns(mRule);
       end;
       // Experimentell laut "profiles" des Katalogs (#145).
-      if Rule.GetValue<string>('id') = 'magic-number' then
+      if mRule.GetValue<string>('id') = 'magic-number' then
       begin
-        SeenMagic := True;
-        Assert.IsTrue(Rule.GetValue<Boolean>('experimental'));
+        mSeenMagic := True;
+        Assert.IsTrue(mRule.GetValue<Boolean>('experimental'));
       end;
       // Gegenregel (#1025).
-      if Rule.GetValue<string>('id') = 'redundant-begin-end' then
+      if mRule.GetValue<string>('id') = 'redundant-begin-end' then
       begin
-        Overrides := Rule.GetValue<TJSONArray>('overriddenBy');
-        Assert.AreEqual(1, Integer(Overrides.Count));
-        Assert.AreEqual('missing-begin-end', Overrides.Items[0].Value);
+        mOverrides := mRule.GetValue<TJSONArray>('overriddenBy');
+        Assert.AreEqual(1, Integer(mOverrides.Count));
+        Assert.AreEqual('missing-begin-end', mOverrides.Items[0].Value);
       end;
-      if Rule.GetValue<string>('id') = 'syntax' then
+      if mRule.GetValue<string>('id') = 'syntax' then
       begin
-        SeenSyntax := True;
-        Assert.IsNull(Rule.FindValue('experimental'));
-        Assert.IsNull(Rule.FindValue('overriddenBy'));
-        Assert.AreEqual(0, Rule.GetValue<TJSONArray>('options').Count);
+        mSeenSyntax := True;
+        Assert.IsNull(mRule.FindValue('experimental'));
+        Assert.IsNull(mRule.FindValue('overriddenBy'));
+        Assert.AreEqual(0, mRule.GetValue<TJSONArray>('options').Count);
       end;
     end;
-    Assert.IsTrue(SeenMetric);
-    Assert.IsTrue(SeenSyntax);
-    Assert.IsTrue(SeenMagic);
+    Assert.IsTrue(mSeenMetric);
+    Assert.IsTrue(mSeenSyntax);
+    Assert.IsTrue(mSeenMagic);
   finally
-    Answer.Free;
+    mAnswer.Free;
   end;
 end;
 

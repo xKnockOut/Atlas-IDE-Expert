@@ -43,12 +43,17 @@ const
   cLabelAscent = 12;
   cFieldBaseline = 16;
 
-function Lbl(const AName: string; ALeft, ATop, AWidth: Integer; const APartner: string = ''): TAtlasGridItem;
+function Lbl(const AName: string; ALeft, ATop, AWidth: Integer; const APartner: string): TAtlasGridItem; overload;
 begin
   Result := TAtlasGridItem.Create(AName, Bounds(ALeft, ATop, AWidth, 15), True, APartner, cLabelAscent);
 end;
 
-function Fld(const AName: string; ALeft, ATop, AWidth: Integer; AHeight: Integer = 23): TAtlasGridItem;
+function Lbl(const AName: string; ALeft, ATop, AWidth: Integer): TAtlasGridItem; overload;
+begin
+  Result := Lbl(AName, ALeft, ATop, AWidth, '');
+end;
+
+function Fld(const AName: string; ALeft, ATop, AWidth: Integer; AHeight: Integer): TAtlasGridItem; overload;
 var
   mBaseline: Integer;
 begin
@@ -60,7 +65,12 @@ begin
   Result := TAtlasGridItem.Create(AName, Bounds(ALeft, ATop, AWidth, AHeight), False, '', mBaseline);
 end;
 
-function Options(AAlign: TAtlasGridLabelAlign = TAtlasGridLabelAlign.Left): TAtlasGridOptions;
+function Fld(const AName: string; ALeft, ATop, AWidth: Integer): TAtlasGridItem; overload;
+begin
+  Result := Fld(AName, ALeft, ATop, AWidth, 23);
+end;
+
+function Options(AAlign: TAtlasGridLabelAlign): TAtlasGridOptions;
 begin
   Result.RowGap := 8;
   Result.LabelGap := 8;
@@ -107,7 +117,7 @@ procedure TAtlasFormGridTests.ScatteredPairsBecomeGrid;
 var
   mResult: TAtlasGridResult;
 begin
-  mResult := TAtlasFormGrid.Arrange(Address, Options);
+  mResult := TAtlasFormGrid.Arrange(Address, Options(TAtlasGridLabelAlign.Left));
   // Labelspalte: breitestes Label 70 + 8 → Felder ab 8 + 78 = 86; Zeilen 23 + 8.
   Assert.AreEqual(86, mResult.Bounds[1].Left);
   Assert.AreEqual(86, mResult.Bounds[3].Left);
@@ -155,7 +165,7 @@ var
   mResult: TAtlasGridResult;
 begin
   mResult := TAtlasFormGrid.Arrange([Lbl('lblName', 8, 12, 40), Fld('edtName', 60, 8, 150),
-    Fld('chkAktiv', 70, 40, 100, 17), Lbl('lblNotiz', 8, 70, 40), Fld('memNotiz', 60, 66, 200, 80)], Options);
+    Fld('chkAktiv', 70, 40, 100, 17), Lbl('lblNotiz', 8, 70, 40), Fld('memNotiz', 60, 66, 200, 80)], Options(TAtlasGridLabelAlign.Left));
   Assert.AreEqual(56, mResult.Bounds[2].Left, 'Checkbox in der Feldspalte');
   Assert.AreEqual(39, mResult.Bounds[2].Top);
   Assert.AreEqual(64, mResult.Bounds[4].Top);
@@ -168,7 +178,7 @@ var
   mOptions: TAtlasGridOptions;
   mResult: TAtlasGridResult;
 begin
-  mOptions := Options;
+  mOptions := Options(TAtlasGridLabelAlign.Left);
   mOptions.TwoPerRow := True;
   mResult := TAtlasFormGrid.Arrange(Address, mOptions);
   // Spalte: 78 Labels + 158 (PLZ 50 + 8 + Ort 100) = 236; zweite Spalte ab 8 + 236 + 16 = 260.
@@ -185,7 +195,7 @@ var
   mOptions: TAtlasGridOptions;
   mResult: TAtlasGridResult;
 begin
-  mOptions := Options;
+  mOptions := Options(TAtlasGridLabelAlign.Left);
   mOptions.EqualWidth := True;
   mResult := TAtlasFormGrid.Arrange(Address, mOptions);
   Assert.AreEqual(150, mResult.Bounds[1].Width);

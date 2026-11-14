@@ -81,10 +81,10 @@ uses
   Atlas.Common.Index.SymbolIndex;
 
 const
-  KundeFile = 'C:\P\Kunde.pas';
-  CacheFile = 'C:\Cache\Index\37.0\P\index.atlasidx';
+  cKundeFile = 'C:\P\Kunde.pas';
+  cCacheFile = 'C:\Cache\Index\37.0\P\index.atlasidx';
   // Zeilen 0-basiert; die Tests nennen Zeilennummern.
-  UnitKunde =
+  cUnitKunde =
     'unit Kunde;'#13#10 +                                                          // 0
     'interface'#13#10 +                                                            // 1
     'type'#13#10 +                                                                 // 2
@@ -112,18 +112,18 @@ const
 
 function ExtractKunde(AUsages: Boolean): TUnitIndex;
 begin
-  Result := TIndexExtractor.ExtractText(UnitKunde, KundeFile, nil, nil, AUsages);
+  Result := TIndexExtractor.ExtractText(cUnitKunde, cKundeFile, nil, nil, AUsages);
 end;
 
 function Find(const AUnit: TUnitIndex; const AQualifiedName: string): TIndexSymbol;
 var
-  Symbol: TIndexSymbol;
+  mSymbol: TIndexSymbol;
 begin
-  for Symbol in AUnit.Symbols do
+  for mSymbol in AUnit.Symbols do
   begin
-    if SameText(Symbol.QualifiedName, AQualifiedName) then
+    if SameText(mSymbol.QualifiedName, AQualifiedName) then
     begin
-      Exit(Symbol);
+      Exit(mSymbol);
     end;
   end;
   Assert.Fail('Symbol fehlt: ' + AQualifiedName);
@@ -132,13 +132,13 @@ end;
 
 function FindUsage(const AUsages: TArray<TIndexUsage>; const AName: string; out AUsage: TIndexUsage): Boolean;
 var
-  Usage: TIndexUsage;
+  mUsage: TIndexUsage;
 begin
-  for Usage in AUsages do
+  for mUsage in AUsages do
   begin
-    if SameText(Usage.Name, AName) then
+    if SameText(mUsage.Name, AName) then
     begin
-      AUsage := Usage;
+      AUsage := mUsage;
       Exit(True);
     end;
   end;
@@ -153,32 +153,32 @@ end;
 /// <summary>Unit mit 20 virtuellen Methoden und 10 Feldern für den Zeittest.</summary>
 function GenerateUnit(ANumber: Integer): string;
 var
-  Builder: TStringBuilder;
-  Index: Integer;
+  mBuilder: TStringBuilder;
+  mIndex: Integer;
 begin
-  Builder := TStringBuilder.Create;
+  mBuilder := TStringBuilder.Create;
   try
-    Builder.Append('unit U').Append(ANumber).Append(';'#13#10'interface'#13#10'type'#13#10);
-    Builder.Append('  TKlasse').Append(ANumber).Append(' = class'#13#10'  private'#13#10);
-    for Index := 1 to 10 do
+    mBuilder.Append('unit U').Append(ANumber).Append(';'#13#10'interface'#13#10'type'#13#10);
+    mBuilder.Append('  TKlasse').Append(ANumber).Append(' = class'#13#10'  private'#13#10);
+    for mIndex := 1 to 10 do
     begin
-      Builder.Append('    FFeld').Append(Index).Append(': Integer;'#13#10);
+      mBuilder.Append('    FFeld').Append(mIndex).Append(': Integer;'#13#10);
     end;
-    Builder.Append('  public'#13#10);
-    for Index := 1 to 20 do
+    mBuilder.Append('  public'#13#10);
+    for mIndex := 1 to 20 do
     begin
-      Builder.Append('    procedure Methode').Append(Index).Append('(A: Integer); virtual;'#13#10);
+      mBuilder.Append('    procedure Methode').Append(mIndex).Append('(A: Integer); virtual;'#13#10);
     end;
-    Builder.Append('  end;'#13#10'implementation'#13#10);
-    for Index := 1 to 20 do
+    mBuilder.Append('  end;'#13#10'implementation'#13#10);
+    for mIndex := 1 to 20 do
     begin
-      Builder.Append('procedure TKlasse').Append(ANumber).Append('.Methode').Append(Index)
+      mBuilder.Append('procedure TKlasse').Append(ANumber).Append('.Methode').Append(mIndex)
         .Append('(A: Integer); begin FFeld1 := A; end;'#13#10);
     end;
-    Builder.Append('end.');
-    Result := Builder.ToString;
+    mBuilder.Append('end.');
+    Result := mBuilder.ToString;
   finally
-    Builder.Free;
+    mBuilder.Free;
   end;
 end;
 
@@ -187,20 +187,20 @@ end;
 procedure TIndexContentTests.ExtractsSignatureDirectivesAndSummary;
 var
   U: TUnitIndex;
-  Symbol: TIndexSymbol;
+  mSymbol: TIndexSymbol;
 begin
   U := ExtractKunde(False);
-  Symbol := Find(U, 'TKunde');
-  Assert.AreEqual('TKunde = class(TObject)', Symbol.Signature);
-  Assert.AreEqual('Ein Kunde mit Name.', Symbol.Summary);
-  Symbol := Find(U, 'TKunde.GetName');
-  Assert.IsTrue(Symbol.Signature.StartsWith('function GetName(AIndex: Integer = 0): string'), Symbol.Signature);
-  Assert.IsTrue(Symbol.HasDirective('virtual'));
-  Assert.IsTrue(Symbol.HasDirective('overload'));
-  Assert.AreEqual('Liefert den Namen.', Symbol.Summary);
-  Symbol := Find(U, 'TKunde.Neu');
-  Assert.IsTrue(Symbol.HasDirective('static'));
-  Assert.IsTrue(Symbol.HasDirective('inline'));
+  mSymbol := Find(U, 'TKunde');
+  Assert.AreEqual('TKunde = class(TObject)', mSymbol.Signature);
+  Assert.AreEqual('Ein Kunde mit Name.', mSymbol.Summary);
+  mSymbol := Find(U, 'TKunde.GetName');
+  Assert.IsTrue(mSymbol.Signature.StartsWith('function GetName(AIndex: Integer = 0): string'), mSymbol.Signature);
+  Assert.IsTrue(mSymbol.HasDirective('virtual'));
+  Assert.IsTrue(mSymbol.HasDirective('overload'));
+  Assert.AreEqual('Liefert den Namen.', mSymbol.Summary);
+  mSymbol := Find(U, 'TKunde.Neu');
+  Assert.IsTrue(mSymbol.HasDirective('static'));
+  Assert.IsTrue(mSymbol.HasDirective('inline'));
   Assert.IsTrue(Find(U, 'TKunde.Alt').HasDirective('deprecated'));
   // Grund für Hover und Regel deprecated-symbol (#38).
   Assert.AreEqual('Neu nehmen', Find(U, 'TKunde.Alt').DeprecatedText);
@@ -257,18 +257,18 @@ end;
 procedure TIndexContentTests.CollectsUsagesWithoutDeclarations;
 var
   U: TUnitIndex;
-  Usage: TIndexUsage;
+  mUsage: TIndexUsage;
 begin
   U := ExtractKunde(True);
-  Assert.IsTrue(FindUsage(U.Usages, 'Zaehler', Usage));
+  Assert.IsTrue(FindUsage(U.Usages, 'Zaehler', mUsage));
   // Die Deklaration in Zeile 15 zählt nicht.
-  Assert.AreEqual<NativeInt>(1, Length(Usage.Positions));
-  Assert.AreEqual(19, Usage.Positions[0].Line);
-  Assert.IsTrue(FindUsage(U.Usages, 'IntToStr', Usage));
-  Assert.AreEqual<NativeInt>(2, Length(Usage.Positions));
-  Assert.IsFalse(FindUsage(U.Usages, 'Result', Usage));
-  Assert.IsFalse(FindUsage(U.Usages, 'virtual', Usage));
-  Assert.IsFalse(FindUsage(U.Usages, 'begin', Usage));
+  Assert.AreEqual<NativeInt>(1, Length(mUsage.Positions));
+  Assert.AreEqual(19, mUsage.Positions[0].Line);
+  Assert.IsTrue(FindUsage(U.Usages, 'IntToStr', mUsage));
+  Assert.AreEqual<NativeInt>(2, Length(mUsage.Positions));
+  Assert.IsFalse(FindUsage(U.Usages, 'Result', mUsage));
+  Assert.IsFalse(FindUsage(U.Usages, 'virtual', mUsage));
+  Assert.IsFalse(FindUsage(U.Usages, 'begin', mUsage));
 end;
 
 procedure TIndexContentTests.UsagesOnlyOnRequest;
@@ -285,86 +285,86 @@ end;
 
 procedure TIndexContentTests.CacheRoundTripsContentAndUsages;
 var
-  Units: TArray<TUnitIndex>;
-  Symbol: TIndexSymbol;
-  Usage: TIndexUsage;
+  mUnits: TArray<TUnitIndex>;
+  mSymbol: TIndexSymbol;
+  mUsage: TIndexUsage;
 begin
-  Units := TIndexCache.Deserialize(TIndexCache.Serialize([ExtractKunde(True)]));
-  Assert.AreEqual<NativeInt>(1, Length(Units));
-  Symbol := Find(Units[0], 'TKunde.GetName');
-  Assert.IsTrue(Symbol.Signature.StartsWith('function GetName('), Symbol.Signature);
-  Assert.IsTrue(Symbol.HasDirective('virtual'));
-  Assert.AreEqual('Liefert den Namen.', Symbol.Summary);
-  Assert.AreEqual('Neu nehmen', Find(Units[0], 'TKunde.Alt').DeprecatedText);
-  Assert.IsTrue(Units[0].UsagesIndexed);
-  Assert.IsTrue(FindUsage(Units[0].Usages, 'Zaehler', Usage));
-  Assert.AreEqual(19, Usage.Positions[0].Line);
-  Assert.IsTrue(FindUsage(Units[0].Usages, 'IntToStr', Usage));
-  Assert.AreEqual<NativeInt>(2, Length(Usage.Positions));
-  Assert.IsTrue(Usage.Positions[0].Character < Usage.Positions[1].Character);
+  mUnits := TIndexCache.Deserialize(TIndexCache.Serialize([ExtractKunde(True)]));
+  Assert.AreEqual<NativeInt>(1, Length(mUnits));
+  mSymbol := Find(mUnits[0], 'TKunde.GetName');
+  Assert.IsTrue(mSymbol.Signature.StartsWith('function GetName('), mSymbol.Signature);
+  Assert.IsTrue(mSymbol.HasDirective('virtual'));
+  Assert.AreEqual('Liefert den Namen.', mSymbol.Summary);
+  Assert.AreEqual('Neu nehmen', Find(mUnits[0], 'TKunde.Alt').DeprecatedText);
+  Assert.IsTrue(mUnits[0].UsagesIndexed);
+  Assert.IsTrue(FindUsage(mUnits[0].Usages, 'Zaehler', mUsage));
+  Assert.AreEqual(19, mUsage.Positions[0].Line);
+  Assert.IsTrue(FindUsage(mUnits[0].Usages, 'IntToStr', mUsage));
+  Assert.AreEqual<NativeInt>(2, Length(mUsage.Positions));
+  Assert.IsTrue(mUsage.Positions[0].Character < mUsage.Positions[1].Character);
 end;
 
 procedure TIndexContentTests.ChecksumRejectsChangedByte;
 var
-  Data, Changed: TBytes;
-  Reason: string;
+  mData, mChanged: TBytes;
+  mReason: string;
 begin
-  Data := TIndexCache.Serialize([ExtractKunde(True)]);
-  Assert.AreEqual<NativeInt>(1, Length(TIndexCache.ReadEntries(Data, Reason)));
-  Assert.AreEqual('', Reason);
-  Changed := Copy(Data);
-  Changed[High(Changed)] := Changed[High(Changed)] xor $FF;
-  Assert.AreEqual<NativeInt>(0, Length(TIndexCache.ReadEntries(Changed, Reason)));
-  Assert.AreEqual('Prüfsumme stimmt nicht', Reason);
+  mData := TIndexCache.Serialize([ExtractKunde(True)]);
+  Assert.AreEqual<NativeInt>(1, Length(TIndexCache.ReadEntries(mData, mReason)));
+  Assert.AreEqual('', mReason);
+  mChanged := Copy(mData);
+  mChanged[High(mChanged)] := mChanged[High(mChanged)] xor $FF;
+  Assert.AreEqual<NativeInt>(0, Length(TIndexCache.ReadEntries(mChanged, mReason)));
+  Assert.AreEqual('Prüfsumme stimmt nicht', mReason);
   // Abgeschnitten: ebenfalls die Prüfsumme.
-  Changed := Copy(Data, 0, Length(Data) - 3);
-  Assert.AreEqual<NativeInt>(0, Length(TIndexCache.ReadEntries(Changed, Reason)));
-  Assert.AreEqual('Prüfsumme stimmt nicht', Reason);
-  Changed := Copy(Data);
-  Changed[8] := 11;
-  Assert.AreEqual<NativeInt>(0, Length(TIndexCache.ReadEntries(Changed, Reason)));
-  Assert.AreEqual(Format('Formatversion 11 statt %d', [TIndexCache.cFormatVersion]), Reason);
-  Assert.AreEqual<NativeInt>(0, Length(TIndexCache.ReadEntries(TEncoding.UTF8.GetBytes('{"units":[]}'), Reason)));
-  Assert.IsTrue(Reason.StartsWith('kein Atlas-Index'), Reason);
-  Assert.AreEqual<NativeInt>(0, Length(TIndexCache.ReadEntries(nil, Reason)));
-  Assert.AreEqual('', Reason);
+  mChanged := Copy(mData, 0, Length(mData) - 3);
+  Assert.AreEqual<NativeInt>(0, Length(TIndexCache.ReadEntries(mChanged, mReason)));
+  Assert.AreEqual('Prüfsumme stimmt nicht', mReason);
+  mChanged := Copy(mData);
+  mChanged[8] := 11;
+  Assert.AreEqual<NativeInt>(0, Length(TIndexCache.ReadEntries(mChanged, mReason)));
+  Assert.AreEqual(Format('Formatversion 11 statt %d', [TIndexCache.cFormatVersion]), mReason);
+  Assert.AreEqual<NativeInt>(0, Length(TIndexCache.ReadEntries(TEncoding.UTF8.GetBytes('{"units":[]}'), mReason)));
+  Assert.IsTrue(mReason.StartsWith('kein Atlas-Index'), mReason);
+  Assert.AreEqual<NativeInt>(0, Length(TIndexCache.ReadEntries(nil, mReason)));
+  Assert.AreEqual('', mReason);
 end;
 
 procedure TIndexContentTests.ExpandWithoutUsagesMarksOffloaded;
 var
-  Entries: TArray<TIndexCacheEntry>;
+  mEntries: TArray<TIndexCacheEntry>;
   U: TUnitIndex;
-  Usages: TArray<TIndexUsage>;
-  Usage: TIndexUsage;
+  mUsages: TArray<TIndexUsage>;
+  mUsage: TIndexUsage;
 begin
-  Entries := TIndexCache.ReadEntries(TIndexCache.Serialize([ExtractKunde(True)]));
-  Assert.AreEqual<NativeInt>(1, Length(Entries));
-  Assert.IsTrue(TIndexCache.Expand(Entries[0], U, False));
+  mEntries := TIndexCache.ReadEntries(TIndexCache.Serialize([ExtractKunde(True)]));
+  Assert.AreEqual<NativeInt>(1, Length(mEntries));
+  Assert.IsTrue(TIndexCache.Expand(mEntries[0], U, False));
   Assert.IsTrue(U.UsagesIndexed);
   Assert.IsTrue(U.UsagesOffloaded);
   Assert.AreEqual<NativeInt>(0, Length(U.Usages));
   Assert.IsTrue(Length(U.Symbols) > 0);
-  Assert.IsTrue(TIndexCache.ExpandUsages(Entries[0], Usages));
-  Assert.IsTrue(FindUsage(Usages, 'Zaehler', Usage));
-  Assert.AreEqual(19, Usage.Positions[0].Line);
+  Assert.IsTrue(TIndexCache.ExpandUsages(mEntries[0], mUsages));
+  Assert.IsTrue(FindUsage(mUsages, 'Zaehler', mUsage));
+  Assert.AreEqual(19, mUsage.Positions[0].Line);
 end;
 
 procedure TIndexContentTests.BudgetOffloadsUsagesFirst;
 var
-  Index: ISymbolIndex;
-  U, Found: TUnitIndex;
+  mIndex: ISymbolIndex;
+  U, mFound: TUnitIndex;
 begin
   U := ExtractKunde(True);
-  Index := TSymbolIndex.Create;
+  mIndex := TSymbolIndex.Create;
   // Ohne Verwendungen passt die Unit ins Budget: Es wird nur ausgelagert, nicht verdichtet.
-  Index.SetBudget(TIndexMemory.UnitBytes(TIndexMemory.WithoutUsages(U)) + 16);
-  Index.AddUnit(U);
-  Assert.AreEqual(1, Index.OffloadedCount);
-  Assert.AreEqual(0, Index.CompactCount);
-  Assert.IsTrue(Index.FindFile(KundeFile, Found));
-  Assert.IsTrue(Found.UsagesOffloaded);
-  Assert.IsFalse(Found.Compact);
-  Assert.AreEqual<NativeInt>(Length(U.Symbols), Length(Found.Symbols));
+  mIndex.SetBudget(TIndexMemory.UnitBytes(TIndexMemory.WithoutUsages(U)) + 16);
+  mIndex.AddUnit(U);
+  Assert.AreEqual(1, mIndex.OffloadedCount);
+  Assert.AreEqual(0, mIndex.CompactCount);
+  Assert.IsTrue(mIndex.FindFile(cKundeFile, mFound));
+  Assert.IsTrue(mFound.UsagesOffloaded);
+  Assert.IsFalse(mFound.Compact);
+  Assert.AreEqual<NativeInt>(Length(U.Symbols), Length(mFound.Symbols));
 end;
 
 { TIndexServiceCacheTests }
@@ -383,7 +383,7 @@ procedure TIndexServiceCacheTests.Setup;
 begin
   FFiles := TMemoryIndexFileSystem.Create;
   FFilesRef := FFiles;
-  FFiles.Put(KundeFile, UnitKunde, 1);
+  FFiles.Put(cKundeFile, cUnitKunde, 1);
 end;
 
 procedure TIndexServiceCacheTests.TearDown;
@@ -395,7 +395,7 @@ end;
 function TIndexServiceCacheTests.Start(const AIndex: ISymbolIndex; const AFiles: TArray<string>;
   AUsages: Boolean): TIndexService;
 var
-  Request: TIndexRequest;
+  mRequest: TIndexRequest;
 begin
   FResult := Default(TIndexBuildResult);
   FRejected := '';
@@ -410,12 +410,12 @@ begin
     begin
       FRejected := AReason;
     end;
-  Request := Default(TIndexRequest);
-  Request.Files := AFiles;
-  Request.ResolveUnit := ResolveNothing;
-  Request.CacheFile := CacheFile;
-  Request.Usages := AUsages;
-  Result.Start(Request);
+  mRequest := Default(TIndexRequest);
+  mRequest.Files := AFiles;
+  mRequest.ResolveUnit := ResolveNothing;
+  mRequest.CacheFile := cCacheFile;
+  mRequest.Usages := AUsages;
+  Result.Start(mRequest);
   Result.WaitFor;
 end;
 
@@ -426,126 +426,126 @@ end;
 
 procedure TIndexServiceCacheTests.DamagedCacheIsRebuiltSilently;
 var
-  Data: TBytes;
-  Reason: string;
-  Index: ISymbolIndex;
-  Found: TUnitIndex;
+  mData: TBytes;
+  mReason: string;
+  mIndex: ISymbolIndex;
+  mFound: TUnitIndex;
 begin
-  Build(TSymbolIndex.Create, [KundeFile], True);
-  Assert.IsTrue(FFiles.ReadBytes(CacheFile, Data));
-  Data[High(Data)] := Data[High(Data)] xor $FF;
-  FFiles.WriteBytes(CacheFile, Data);
-  Index := TSymbolIndex.Create;
-  Build(Index, [KundeFile], True);
+  Build(TSymbolIndex.Create, [cKundeFile], True);
+  Assert.IsTrue(FFiles.ReadBytes(cCacheFile, mData));
+  mData[High(mData)] := mData[High(mData)] xor $FF;
+  FFiles.WriteBytes(cCacheFile, mData);
+  mIndex := TSymbolIndex.Create;
+  Build(mIndex, [cKundeFile], True);
   // Verworfen mit Grund fürs Log, neu gelesen, ohne Fehler.
   Assert.AreEqual('Prüfsumme stimmt nicht', FRejected);
   Assert.AreEqual(1, FResult.Parsed);
   Assert.AreEqual(0, FResult.FromCache);
-  Assert.IsTrue(Index.FindUnit('Kunde', Found));
+  Assert.IsTrue(mIndex.FindUnit('Kunde', mFound));
   // Der neu geschriebene Cache ist wieder gültig.
-  Assert.IsTrue(FFiles.ReadBytes(CacheFile, Data));
-  Assert.AreEqual<NativeInt>(1, Length(TIndexCache.ReadEntries(Data, Reason)));
-  Assert.AreEqual('', Reason);
+  Assert.IsTrue(FFiles.ReadBytes(cCacheFile, mData));
+  Assert.AreEqual<NativeInt>(1, Length(TIndexCache.ReadEntries(mData, mReason)));
+  Assert.AreEqual('', mReason);
 end;
 
 procedure TIndexServiceCacheTests.OffloadedUsagesComeBackFromCache;
 var
-  First, Index: ISymbolIndex;
-  Service: TIndexService;
-  Found: TUnitIndex;
-  Usages: TArray<TIndexUsage>;
-  Usage: TIndexUsage;
+  mFirst, mIndex: ISymbolIndex;
+  mService: TIndexService;
+  mFound: TUnitIndex;
+  mUsages: TArray<TIndexUsage>;
+  mUsage: TIndexUsage;
 begin
-  First := TSymbolIndex.Create;
-  Build(First, [KundeFile], True);
-  Assert.IsTrue(First.FindFile(KundeFile, Found));
-  Index := TSymbolIndex.Create;
-  Index.SetBudget(TIndexMemory.UnitBytes(TIndexMemory.WithoutUsages(Found)) + 16);
-  Service := Start(Index, [KundeFile], True);
+  mFirst := TSymbolIndex.Create;
+  Build(mFirst, [cKundeFile], True);
+  Assert.IsTrue(mFirst.FindFile(cKundeFile, mFound));
+  mIndex := TSymbolIndex.Create;
+  mIndex.SetBudget(TIndexMemory.UnitBytes(TIndexMemory.WithoutUsages(mFound)) + 16);
+  mService := Start(mIndex, [cKundeFile], True);
   try
     Assert.AreEqual(1, FResult.FromCache);
-    Assert.IsTrue(Index.FindFile(KundeFile, Found));
-    Assert.IsTrue(Found.UsagesOffloaded);
-    Assert.AreEqual(1, Index.OffloadedCount);
+    Assert.IsTrue(mIndex.FindFile(cKundeFile, mFound));
+    Assert.IsTrue(mFound.UsagesOffloaded);
+    Assert.AreEqual(1, mIndex.OffloadedCount);
     // Die Quelle ist weg: Die Verwendungen kommen aus dem Cache.
-    FFiles.Delete(KundeFile);
-    Assert.IsTrue(Service.UsagesOf(KundeFile, Usages));
-    Assert.IsTrue(FindUsage(Usages, 'Zaehler', Usage));
-    Assert.AreEqual(19, Usage.Positions[0].Line);
+    FFiles.Delete(cKundeFile);
+    Assert.IsTrue(mService.UsagesOf(cKundeFile, mUsages));
+    Assert.IsTrue(FindUsage(mUsages, 'Zaehler', mUsage));
+    Assert.AreEqual(19, mUsage.Positions[0].Line);
   finally
-    Service.Free;
+    mService.Free;
   end;
 end;
 
 procedure TIndexServiceCacheTests.SwitchingUsagesOnRereadsCachedUnits;
 var
-  Index: ISymbolIndex;
-  Found: TUnitIndex;
+  mIndex: ISymbolIndex;
+  mFound: TUnitIndex;
 begin
-  Build(TSymbolIndex.Create, [KundeFile], False);
+  Build(TSymbolIndex.Create, [cKundeFile], False);
   // Cache ohne Verwendungen passt nicht, wenn sie jetzt gewünscht sind.
-  Index := TSymbolIndex.Create;
-  Build(Index, [KundeFile], True);
+  mIndex := TSymbolIndex.Create;
+  Build(mIndex, [cKundeFile], True);
   Assert.AreEqual(1, FResult.Parsed);
   Assert.AreEqual(0, FResult.FromCache);
-  Assert.IsTrue(Index.FindFile(KundeFile, Found));
-  Assert.IsTrue(Found.UsagesIndexed);
-  Index := TSymbolIndex.Create;
-  Build(Index, [KundeFile], True);
+  Assert.IsTrue(mIndex.FindFile(cKundeFile, mFound));
+  Assert.IsTrue(mFound.UsagesIndexed);
+  mIndex := TSymbolIndex.Create;
+  Build(mIndex, [cKundeFile], True);
   Assert.AreEqual(1, FResult.FromCache);
   // Abgeschaltet: der Cache passt weiter, die Verwendungen bleiben draußen.
-  Index := TSymbolIndex.Create;
-  Build(Index, [KundeFile], False);
+  mIndex := TSymbolIndex.Create;
+  Build(mIndex, [cKundeFile], False);
   Assert.AreEqual(1, FResult.FromCache);
-  Assert.IsTrue(Index.FindFile(KundeFile, Found));
-  Assert.IsFalse(Found.UsagesIndexed);
-  Assert.AreEqual<NativeInt>(0, Length(Found.Usages));
+  Assert.IsTrue(mIndex.FindFile(cKundeFile, mFound));
+  Assert.IsFalse(mFound.UsagesIndexed);
+  Assert.AreEqual<NativeInt>(0, Length(mFound.Usages));
 end;
 
 procedure TIndexServiceCacheTests.ReopensThousandUnitsFromCacheWithinThreeSeconds;
 const
-  UnitCount = 1000;
+  cUnitCount = 1000;
 var
-  Files: TArray<string>;
-  Number: Integer;
-  Index: ISymbolIndex;
-  Watch: TStopwatch;
+  mFiles: TArray<string>;
+  mNumber: Integer;
+  mIndex: ISymbolIndex;
+  mWatch: TStopwatch;
 begin
-  SetLength(Files, UnitCount);
-  for Number := 1 to UnitCount do
+  SetLength(mFiles, cUnitCount);
+  for mNumber := 1 to cUnitCount do
   begin
-    Files[Number - 1] := Format('C:\P\U%d.pas', [Number]);
-    FFiles.Put(Files[Number - 1], GenerateUnit(Number), 1);
+    mFiles[mNumber - 1] := Format('C:\P\U%d.pas', [mNumber]);
+    FFiles.Put(mFiles[mNumber - 1], GenerateUnit(mNumber), 1);
   end;
-  Build(TSymbolIndex.Create, Files, True);
-  Assert.AreEqual(UnitCount, FResult.Parsed);
-  Index := TSymbolIndex.Create;
-  Watch := TStopwatch.StartNew;
-  Build(Index, Files, True);
-  Watch.Stop;
-  Assert.AreEqual(UnitCount, FResult.FromCache);
-  Assert.AreEqual(UnitCount, Index.UnitCount);
-  Assert.IsTrue(Watch.ElapsedMilliseconds < 3000, Format('%d ms', [Watch.ElapsedMilliseconds]));
+  Build(TSymbolIndex.Create, mFiles, True);
+  Assert.AreEqual(cUnitCount, FResult.Parsed);
+  mIndex := TSymbolIndex.Create;
+  mWatch := TStopwatch.StartNew;
+  Build(mIndex, mFiles, True);
+  mWatch.Stop;
+  Assert.AreEqual(cUnitCount, FResult.FromCache);
+  Assert.AreEqual(cUnitCount, mIndex.UnitCount);
+  Assert.IsTrue(mWatch.ElapsedMilliseconds < 3000, Format('%d ms', [mWatch.ElapsedMilliseconds]));
 end;
 
 procedure TIndexServiceCacheTests.SavedDeclarationIsAvailableWithinOneSecond;
 var
-  Index: ISymbolIndex;
-  Service: TIndexService;
-  Watch: TStopwatch;
+  mIndex: ISymbolIndex;
+  mService: TIndexService;
+  mWatch: TStopwatch;
 begin
-  Index := TSymbolIndex.Create;
-  Service := Start(Index, [KundeFile], True);
+  mIndex := TSymbolIndex.Create;
+  mService := Start(mIndex, [cKundeFile], True);
   try
-    Assert.AreEqual(0, Integer(Length(Index.FindSymbols('NeueFunktion'))));
-    FFiles.Put(KundeFile, StringReplace(UnitKunde, 'var'#13#10, 'procedure NeueFunktion;'#13#10'var'#13#10, []), 2);
-    Watch := TStopwatch.StartNew;
-    Assert.AreEqual(1, Service.ApplyChanges([TFileChange.Create(KundeFile, TFileChangeKind.Changed)]));
-    Watch.Stop;
-    Assert.AreEqual(1, Integer(Length(Index.FindSymbols('NeueFunktion'))));
-    Assert.IsTrue(Watch.ElapsedMilliseconds < 1000, Format('%d ms', [Watch.ElapsedMilliseconds]));
+    Assert.AreEqual(0, Integer(Length(mIndex.FindSymbols('NeueFunktion'))));
+    FFiles.Put(cKundeFile, StringReplace(cUnitKunde, 'var'#13#10, 'procedure NeueFunktion;'#13#10'var'#13#10, []), 2);
+    mWatch := TStopwatch.StartNew;
+    Assert.AreEqual(1, mService.ApplyChanges([TFileChange.Create(cKundeFile, TFileChangeKind.Changed)]));
+    mWatch.Stop;
+    Assert.AreEqual(1, Integer(Length(mIndex.FindSymbols('NeueFunktion'))));
+    Assert.IsTrue(mWatch.ElapsedMilliseconds < 1000, Format('%d ms', [mWatch.ElapsedMilliseconds]));
   finally
-    Service.Free;
+    mService.Free;
   end;
 end;
 

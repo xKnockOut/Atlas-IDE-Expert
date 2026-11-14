@@ -52,7 +52,7 @@ uses
 
 const
   /// <summary>Antwort des Plugins wie TAtlasBuildInbox.SuccessText (Zeilen und Spalten 1-basiert).</summary>
-  PluginAnswer = '{"ok":true,"build":{"project":"C:\\P\\App.dproj","kind":"make","configuration":"Debug",' +
+  cPluginAnswer = '{"ok":true,"build":{"project":"C:\\P\\App.dproj","kind":"make","configuration":"Debug",' +
     '"platform":"Win32","success":false,"durationMs":1200,"finishedAt":"2026-10-16T10:00:00.000+02:00",' +
     '"requestedBy":"mcp","messages":[{"file":"C:\\P\\Main.pas","line":12,"column":3,"severity":"error",' +
     '"code":"E2003","text":"Undeklarierter Bezeichner: ''Foo''"}]}}';
@@ -68,22 +68,22 @@ end;
 /// <summary>Wie das Plugin: Auftrag übernehmen (umbenennen), lesen und mit AAnswer beantworten.</summary>
 function Plugin(const AInbox, AAnswer: string; out ARequest: string): Boolean;
 var
-  Request: string;
+  mRequest: string;
 begin
   Result := False;
   if not TDirectory.Exists(AInbox) then
   begin
     Exit;
   end;
-  for Request in TDirectory.GetFiles(AInbox, '*.json') do
+  for mRequest in TDirectory.GetFiles(AInbox, '*.json') do
   begin
-    if not Request.EndsWith('.result.json') then
+    if not mRequest.EndsWith('.result.json') then
     begin
-      RenameFile(Request, ChangeFileExt(Request, '.taken'));
-      ARequest := TFile.ReadAllText(ChangeFileExt(Request, '.taken'), TEncoding.UTF8);
+      RenameFile(mRequest, ChangeFileExt(mRequest, '.taken'));
+      ARequest := TFile.ReadAllText(ChangeFileExt(mRequest, '.taken'), TEncoding.UTF8);
       if AAnswer <> '' then
       begin
-        TFile.WriteAllText(ChangeFileExt(Request, '') + '.result.json', AAnswer, TEncoding.UTF8);
+        TFile.WriteAllText(ChangeFileExt(mRequest, '') + '.result.json', AAnswer, TEncoding.UTF8);
       end;
       Exit(True);
     end;
@@ -123,136 +123,136 @@ end;
 
 procedure TMcpIdeBuildsTests.ReadsIdeEntry;
 var
-  Entry: TMcpIdeEntry;
+  mEntry: TMcpIdeEntry;
 begin
   Assert.IsTrue(TMcpIdeBuilds.ParseEntry('{"pid": 4711, "files": [], "open": [], ' +
-    '"projects": ["C:\\P\\App.dproj", "C:\\P\\Lib.dproj"], "activeProject": "C:\\P\\App.dproj"}', Entry));
-  Assert.AreEqual(Cardinal(4711), Entry.Pid);
-  Assert.AreEqual(2, Integer(Length(Entry.Projects)));
-  Assert.AreEqual('C:\P\Lib.dproj', Entry.Projects[1]);
-  Assert.AreEqual('C:\P\App.dproj', Entry.ActiveProject);
+    '"projects": ["C:\\P\\App.dproj", "C:\\P\\Lib.dproj"], "activeProject": "C:\\P\\App.dproj"}', mEntry));
+  Assert.AreEqual(Cardinal(4711), mEntry.Pid);
+  Assert.AreEqual(2, Integer(Length(mEntry.Projects)));
+  Assert.AreEqual('C:\P\Lib.dproj', mEntry.Projects[1]);
+  Assert.AreEqual('C:\P\App.dproj', mEntry.ActiveProject);
   // Älteres Plugin ohne Projekte: Eintrag ja, Projekte leer.
-  Assert.IsTrue(TMcpIdeBuilds.ParseEntry('{"pid": 1, "files": []}', Entry));
-  Assert.AreEqual(0, Integer(Length(Entry.Projects)));
-  Assert.IsFalse(TMcpIdeBuilds.ParseEntry('{"files": []}', Entry));
-  Assert.IsFalse(TMcpIdeBuilds.ParseEntry('kaputt', Entry));
+  Assert.IsTrue(TMcpIdeBuilds.ParseEntry('{"pid": 1, "files": []}', mEntry));
+  Assert.AreEqual(0, Integer(Length(mEntry.Projects)));
+  Assert.IsFalse(TMcpIdeBuilds.ParseEntry('{"files": []}', mEntry));
+  Assert.IsFalse(TMcpIdeBuilds.ParseEntry('kaputt', mEntry));
 end;
 
 procedure TMcpIdeBuildsTests.PicksActiveProjectUnderRoot;
 var
-  Pid: Cardinal;
-  Project, Reason: string;
+  mPid: Cardinal;
+  mProject, mReason: string;
 begin
   Assert.IsTrue(TMcpIdeBuilds.Pick([Ide(1, ['C:\Other\X.dproj'], 'C:\Other\X.dproj'),
-    Ide(2, ['C:\P\App.dproj'], 'C:\P\App.dproj')], 'C:\P', '', Pid, Project, Reason));
-  Assert.AreEqual(Cardinal(2), Pid);
-  Assert.AreEqual('C:\P\App.dproj', Project);
-  Assert.IsFalse(TMcpIdeBuilds.Pick([Ide(1, ['C:\Other\X.dproj'], 'C:\Other\X.dproj')], 'C:\P', '', Pid, Project,
-    Reason));
-  Assert.IsTrue(Pos('aktives Projekt', Reason) > 0, Reason);
+    Ide(2, ['C:\P\App.dproj'], 'C:\P\App.dproj')], 'C:\P', '', mPid, mProject, mReason));
+  Assert.AreEqual(Cardinal(2), mPid);
+  Assert.AreEqual('C:\P\App.dproj', mProject);
+  Assert.IsFalse(TMcpIdeBuilds.Pick([Ide(1, ['C:\Other\X.dproj'], 'C:\Other\X.dproj')], 'C:\P', '', mPid, mProject,
+    mReason));
+  Assert.IsTrue(Pos('aktives Projekt', mReason) > 0, mReason);
 end;
 
 procedure TMcpIdeBuildsTests.PicksProjectByName;
 var
-  Pid: Cardinal;
-  Project, Reason: string;
+  mPid: Cardinal;
+  mProject, mReason: string;
 begin
   // Dateiname, Name ohne Endung und voller Pfad; nicht aktive Projekte zählen auch.
   Assert.IsTrue(TMcpIdeBuilds.Pick([Ide(7, ['C:\P\App.dproj', 'C:\P\Lib\Lib.dproj'], 'C:\P\App.dproj')], 'C:\P',
-    'Lib.dproj', Pid, Project, Reason));
-  Assert.AreEqual('C:\P\Lib\Lib.dproj', Project);
-  Assert.IsTrue(TMcpIdeBuilds.Pick([Ide(7, ['C:\P\App.dproj'], '')], 'C:\P', 'app', Pid, Project, Reason));
-  Assert.AreEqual('C:\P\App.dproj', Project);
-  Assert.IsTrue(TMcpIdeBuilds.Pick([Ide(7, ['C:\P\App.dproj'], '')], 'C:\P', 'C:\P\App.dproj', Pid, Project, Reason));
-  Assert.AreEqual(Cardinal(7), Pid);
+    'Lib.dproj', mPid, mProject, mReason));
+  Assert.AreEqual('C:\P\Lib\Lib.dproj', mProject);
+  Assert.IsTrue(TMcpIdeBuilds.Pick([Ide(7, ['C:\P\App.dproj'], '')], 'C:\P', 'app', mPid, mProject, mReason));
+  Assert.AreEqual('C:\P\App.dproj', mProject);
+  Assert.IsTrue(TMcpIdeBuilds.Pick([Ide(7, ['C:\P\App.dproj'], '')], 'C:\P', 'C:\P\App.dproj', mPid, mProject, mReason));
+  Assert.AreEqual(Cardinal(7), mPid);
 end;
 
 procedure TMcpIdeBuildsTests.ExplainsWhenNoIdeHasTheProject;
 var
-  Pid: Cardinal;
-  Project, Reason: string;
+  mPid: Cardinal;
+  mProject, mReason: string;
 begin
-  Assert.IsFalse(TMcpIdeBuilds.Pick(nil, 'C:\P', 'App', Pid, Project, Reason));
-  Assert.IsTrue(Pos('Keine RAD-Studio-IDE', Reason) > 0, Reason);
-  Assert.IsFalse(TMcpIdeBuilds.Pick([Ide(7, ['C:\P\App.dproj'], '')], 'C:\P', 'Kasse', Pid, Project, Reason));
-  Assert.IsTrue(Pos('Kasse', Reason) > 0, Reason);
-  Assert.AreEqual(Cardinal(0), Pid);
+  Assert.IsFalse(TMcpIdeBuilds.Pick(nil, 'C:\P', 'App', mPid, mProject, mReason));
+  Assert.IsTrue(Pos('Keine RAD-Studio-IDE', mReason) > 0, mReason);
+  Assert.IsFalse(TMcpIdeBuilds.Pick([Ide(7, ['C:\P\App.dproj'], '')], 'C:\P', 'Kasse', mPid, mProject, mReason));
+  Assert.IsTrue(Pos('Kasse', mReason) > 0, mReason);
+  Assert.AreEqual(Cardinal(0), mPid);
 end;
 
 procedure TMcpIdeBuildsTests.ReportsBuildOfThePlugin;
 var
-  BuildText, Reason, Seen: string;
-  Json: TJSONValue;
-  Build: TIdeBuild;
-  Wanted: TMcpIdeBuildRequest;
+  mBuildText, mReason, mSeen: string;
+  mJson: TJSONValue;
+  mBuild: TIdeBuild;
+  mWanted: TMcpIdeBuildRequest;
 begin
-  Wanted := Request('C:\P\App.dproj', 'Build');
-  Wanted.Configuration := 'Release';
-  Assert.AreEqual<TMcpIdeBuildOutcome>(TMcpIdeBuildOutcome.Done, TMcpIdeBuilds.Send(FInbox, Wanted,
+  mWanted := Request('C:\P\App.dproj', 'Build');
+  mWanted.Configuration := 'Release';
+  Assert.AreEqual<TMcpIdeBuildOutcome>(TMcpIdeBuildOutcome.Done, TMcpIdeBuilds.Send(FInbox, mWanted,
     procedure
     begin
       Inc(Now_, 100);
-      Plugin(FInbox, PluginAnswer, Seen);
-    end, Clock, BuildText, Reason), Reason);
-  Json := TJSONObject.ParseJSONValue(Seen);
+      Plugin(FInbox, cPluginAnswer, mSeen);
+    end, Clock, mBuildText, mReason), mReason);
+  mJson := TJSONObject.ParseJSONValue(mSeen);
   try
-    Assert.AreEqual('C:\P\App.dproj', Json.GetValue<string>('project'));
-    Assert.AreEqual('build', Json.GetValue<string>('mode'), 'klein geschrieben');
-    Assert.AreEqual('Release', Json.GetValue<string>('configuration'));
-    Assert.AreEqual('', Json.GetValue<string>('platform'));
+    Assert.AreEqual('C:\P\App.dproj', mJson.GetValue<string>('project'));
+    Assert.AreEqual('build', mJson.GetValue<string>('mode'), 'klein geschrieben');
+    Assert.AreEqual('Release', mJson.GetValue<string>('configuration'));
+    Assert.AreEqual('', mJson.GetValue<string>('platform'));
   finally
-    Json.Free;
+    mJson.Free;
   end;
   // Das Ergebnis hat das Format von get_last_build.
-  Assert.IsTrue(TMcpBuildTools.FromFileText(BuildText, Build));
-  Assert.AreEqual('mcp', Build.RequestedBy);
-  Assert.AreEqual(1, Integer(Length(Build.Messages)));
-  Assert.AreEqual(11, Build.Messages[0].Line);
-  Assert.AreEqual(Ord(TCompilerSeverity.Error), Ord(Build.Messages[0].Severity));
+  Assert.IsTrue(TMcpBuildTools.FromFileText(mBuildText, mBuild));
+  Assert.AreEqual('mcp', mBuild.RequestedBy);
+  Assert.AreEqual(1, Integer(Length(mBuild.Messages)));
+  Assert.AreEqual(11, mBuild.Messages[0].Line);
+  Assert.AreEqual(Ord(TCompilerSeverity.Error), Ord(mBuild.Messages[0].Severity));
   Assert.AreEqual(0, Integer(Length(TDirectory.GetFiles(FInbox, '*.result.json'))), 'Antwort gelesen und gelöscht');
 end;
 
 procedure TMcpIdeBuildsTests.ReportsRefusal;
 var
-  BuildText, Reason, Seen: string;
+  mBuildText, mReason, mSeen: string;
 begin
   Assert.AreEqual<TMcpIdeBuildOutcome>(TMcpIdeBuildOutcome.Refused,
     TMcpIdeBuilds.Send(FInbox, Request('C:\P\App.dproj', 'make'),
     procedure
     begin
       Inc(Now_, 100);
-      Plugin(FInbox, '{"ok":false,"reason":"In der IDE läuft der Debugger"}', Seen);
-    end, Clock, BuildText, Reason));
-  Assert.AreEqual('In der IDE läuft der Debugger', Reason);
-  Assert.AreEqual('', BuildText);
+      Plugin(FInbox, '{"ok":false,"reason":"In der IDE läuft der Debugger"}', mSeen);
+    end, Clock, mBuildText, mReason));
+  Assert.AreEqual('In der IDE läuft der Debugger', mReason);
+  Assert.AreEqual('', mBuildText);
 end;
 
 procedure TMcpIdeBuildsTests.WithdrawsWhenNobodyTakesTheRequest;
 var
-  BuildText, Reason: string;
+  mBuildText, mReason: string;
 begin
   Assert.AreEqual<TMcpIdeBuildOutcome>(TMcpIdeBuildOutcome.NotTaken,
     TMcpIdeBuilds.Send(FInbox, Request('C:\P\App.dproj', 'make'),
     procedure
     begin
       Inc(Now_, 100);
-    end, Clock, BuildText, Reason));
-  Assert.IsNotEmpty(Reason);
+    end, Clock, mBuildText, mReason));
+  Assert.IsNotEmpty(mReason);
   Assert.AreEqual(0, Integer(Length(TDirectory.GetFiles(FInbox))), 'Auftrag zurückgezogen');
 end;
 
 procedure TMcpIdeBuildsTests.TimesOutWhenTakenButNeverAnswered;
 var
-  BuildText, Reason, Seen: string;
+  mBuildText, mReason, mSeen: string;
 begin
   Assert.AreEqual<TMcpIdeBuildOutcome>(TMcpIdeBuildOutcome.TimedOut,
     TMcpIdeBuilds.Send(FInbox, Request('C:\P\App.dproj', 'check'), TMcpIdeBuildWaiting.Make(
     procedure
     begin
       Inc(Now_, 1000);
-      Plugin(FInbox, '', Seen);
-    end, Clock, 5000, 3000), BuildText, Reason));
-  Assert.IsNotEmpty(Reason);
+      Plugin(FInbox, '', mSeen);
+    end, Clock, 5000, 3000), mBuildText, mReason));
+  Assert.IsNotEmpty(mReason);
   Assert.IsTrue(TMcpIdeBuilds.ModeValid('Check'));
   Assert.IsFalse(TMcpIdeBuilds.ModeValid('clean'));
 end;

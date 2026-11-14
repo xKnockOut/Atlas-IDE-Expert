@@ -59,20 +59,20 @@ uses
   Atlas.Common.Lsp.SafeDelete;
 
 const
-  ShapesFile = 'C:\P\Shapes.pas';
-  CircleFile = 'C:\P\Circle.pas';
-  UseFile = 'C:\P\Use.pas';
-  HelpersFile = 'C:\P\Helpers.pas';
-  MainFile = 'C:\P\Main.pas';
-  MainForm = 'C:\P\Main.dfm';
+  cShapesFile = 'C:\P\Shapes.pas';
+  cCircleFile = 'C:\P\Circle.pas';
+  cUseFile = 'C:\P\Use.pas';
+  cHelpersFile = 'C:\P\Helpers.pas';
+  cMainFile = 'C:\P\Main.pas';
+  cMainForm = 'C:\P\Main.dfm';
 
-  UnitHelpers =
+  cUnitHelpers =
     'unit Helpers;'#10'interface'#10 +
     'function Twice(A: Integer): Integer;'#10 +
     'implementation'#10#10 +
     'function Twice(A: Integer): Integer;'#10'begin'#10'  Result := A * 2;'#10'end;'#10#10 +
     'end.'#10;
-  UnitShapes =
+  cUnitShapes =
     'unit Shapes;'#10 +                                                   // 0
     'interface'#10 +                                                      // 1
     'type'#10 +                                                           // 2
@@ -99,7 +99,7 @@ const
     'procedure TShape.Refresh;'#10'begin'#10'  FCache := Twice(FCache);'#10'end;'#10#10 + // 32
     'function TShape.GetSize: Integer;'#10'begin'#10'  Result := FSize;'#10'end;'#10#10 +
     'end.'#10;
-  UnitCircle =
+  cUnitCircle =
     'unit Circle;'#10'interface'#10'uses'#10'  Shapes, Helpers;'#10'type'#10 +
     '  TCircle = class(TShape)'#10 +
     '  public'#10 +
@@ -108,11 +108,11 @@ const
     'implementation'#10#10 +
     'procedure TCircle.Draw;'#10'begin'#10'  inherited;'#10'end;'#10#10 +
     'end.'#10;
-  UnitUse =
+  cUnitUse =
     'unit Use;'#10'interface'#10'uses'#10'  Shapes, Helpers;'#10'implementation'#10#10 +
     'procedure Go(AShape: TShape);'#10'begin'#10'  AShape.Used;'#10'  Twice(2);'#10'end;'#10#10 +
     'end.'#10;
-  UnitMain =
+  cUnitMain =
     'unit Main;'#10 +                                                     // 0
     'interface'#10 +                                                      // 1
     'type'#10 +                                                           // 2
@@ -124,7 +124,7 @@ const
     '{$R *.dfm}'#10#10 +
     'procedure TMainForm.Button1Click(Sender: TObject);'#10'begin'#10'end;'#10#10 +
     'end.'#10;
-  FormMain =
+  cFormMain =
     'object MainForm: TMainForm'#10 +
     '  Caption = ''Main'''#10 +
     '  object Button1: TButton'#10 +
@@ -134,29 +134,29 @@ const
 
 function TextOf(const AFileName: string): string;
 begin
-  if SameText(AFileName, ShapesFile) then
+  if SameText(AFileName, cShapesFile) then
   begin
-    Result := UnitShapes;
+    Result := cUnitShapes;
   end
-  else if SameText(AFileName, CircleFile) then
+  else if SameText(AFileName, cCircleFile) then
   begin
-    Result := UnitCircle;
+    Result := cUnitCircle;
   end
-  else if SameText(AFileName, UseFile) then
+  else if SameText(AFileName, cUseFile) then
   begin
-    Result := UnitUse;
+    Result := cUnitUse;
   end
-  else if SameText(AFileName, HelpersFile) then
+  else if SameText(AFileName, cHelpersFile) then
   begin
-    Result := UnitHelpers;
+    Result := cUnitHelpers;
   end
-  else if SameText(AFileName, MainFile) then
+  else if SameText(AFileName, cMainFile) then
   begin
-    Result := UnitMain;
+    Result := cUnitMain;
   end
-  else if SameText(AFileName, MainForm) then
+  else if SameText(AFileName, cMainForm) then
   begin
-    Result := FormMain;
+    Result := cFormMain;
   end
   else
   begin
@@ -168,7 +168,7 @@ function Context(const AIndex: ISymbolIndex): TSafeDeleteContext;
 begin
   Result := Default(TSafeDeleteContext);
   Result.Index := AIndex;
-  Result.Files := [ShapesFile, CircleFile, UseFile, HelpersFile, MainFile];
+  Result.Files := [cShapesFile, cCircleFile, cUseFile, cHelpersFile, cMainFile];
   Result.ReadText :=
     function(const AFileName: string; out AText: string): Boolean
     begin
@@ -213,90 +213,90 @@ end;
 /// <summary>Text von AFileName nach dem WorkspaceEdit in AAnswer; '&lt;gelöscht&gt;' bei einer Löschung.</summary>
 function After(AAnswer: TJSONObject; const AFileName: string): string;
 var
-  Item, Edit: TJSONValue;
-  Document, Range: TJSONObject;
-  Edits: TArray<TTextEdit>;
-  Uri: string;
+  mItem, mEdit: TJSONValue;
+  mDocument, mRange: TJSONObject;
+  mEdits: TArray<TTextEdit>;
+  mUri: string;
 begin
   Result := TextOf(AFileName);
-  for Item in (AAnswer.GetValue('edit') as TJSONObject).GetValue('documentChanges') as TJSONArray do
+  for mItem in (AAnswer.GetValue('edit') as TJSONObject).GetValue('documentChanges') as TJSONArray do
   begin
-    Document := TJSONObject(Item);
-    if Document.GetValue('kind') <> nil then
+    mDocument := TJSONObject(mItem);
+    if mDocument.GetValue('kind') <> nil then
     begin
-      if SameText(TDocumentUris.ToPath(Document.GetValue('uri').Value), AFileName) then
+      if SameText(TDocumentUris.ToPath(mDocument.GetValue('uri').Value), AFileName) then
       begin
         Result := '<geloescht>';
       end;
       Continue;
     end;
-    Uri := (Document.GetValue('textDocument') as TJSONObject).GetValue('uri').Value;
-    if not SameText(TDocumentUris.ToPath(Uri), AFileName) then
+    mUri := (mDocument.GetValue('textDocument') as TJSONObject).GetValue('uri').Value;
+    if not SameText(TDocumentUris.ToPath(mUri), AFileName) then
     begin
       Continue;
     end;
-    Edits := nil;
-    for Edit in Document.GetValue('edits') as TJSONArray do
+    mEdits := nil;
+    for mEdit in mDocument.GetValue('edits') as TJSONArray do
     begin
-      Range := TJSONObject(Edit).GetValue('range') as TJSONObject;
-      Edits := Edits + [TTextEdit.Create(TTextRange.Create(TLspPositions.ReadPosition(Range.GetValue('start')),
-        TLspPositions.ReadPosition(Range.GetValue('end'))), TJSONObject(Edit).GetValue('newText').Value)];
+      mRange := TJSONObject(mEdit).GetValue('range') as TJSONObject;
+      mEdits := mEdits + [TTextEdit.Create(TTextRange.Create(TLspPositions.ReadPosition(mRange.GetValue('start')),
+        TLspPositions.ReadPosition(mRange.GetValue('end'))), TJSONObject(mEdit).GetValue('newText').Value)];
     end;
-    Result := TTextChanges.Apply(Result, Edits);
+    Result := TTextChanges.Apply(Result, mEdits);
   end;
 end;
 
 function Prepare(const AIndex: ISymbolIndex; const AFileName: string; ALine, ACharacter: Integer): TJSONObject;
 var
-  Tree: TSyntaxTree;
-  Resolver: TNameResolver;
+  mTree: TSyntaxTree;
+  mResolver: TNameResolver;
 begin
-  Tree := TPascalParser.Parse(TextOf(AFileName));
-  Resolver := TNameResolver.Create(AIndex, nil);
+  mTree := TPascalParser.Parse(TextOf(AFileName));
+  mResolver := TNameResolver.Create(AIndex, nil);
   try
-    Result := TLspSafeDelete.Prepare(Resolver, Tree, AFileName, TextOf(AFileName),
+    Result := TLspSafeDelete.Prepare(mResolver, mTree, AFileName, TextOf(AFileName),
       TTextPosition.Create(ALine, ACharacter), Context(AIndex));
   finally
-    Resolver.Free;
-    Tree.Free;
+    mResolver.Free;
+    mTree.Free;
   end;
 end;
 
 function Execute(const AIndex: ISymbolIndex; const AFileName: string; ALine, ACharacter: Integer;
   const AChoices: TSafeDeleteChoices): TJSONObject;
 var
-  Tree: TSyntaxTree;
-  Resolver: TNameResolver;
-  WithChoices: TSafeDeleteContext;
+  mTree: TSyntaxTree;
+  mResolver: TNameResolver;
+  mWithChoices: TSafeDeleteContext;
 begin
-  WithChoices := Context(AIndex);
-  WithChoices.Choices := AChoices;
-  Tree := TPascalParser.Parse(TextOf(AFileName));
-  Resolver := TNameResolver.Create(AIndex, nil);
+  mWithChoices := Context(AIndex);
+  mWithChoices.Choices := AChoices;
+  mTree := TPascalParser.Parse(TextOf(AFileName));
+  mResolver := TNameResolver.Create(AIndex, nil);
   try
-    Result := TLspSafeDelete.Execute(Resolver, Tree, AFileName, TextOf(AFileName),
-      TTextPosition.Create(ALine, ACharacter), WithChoices);
+    Result := TLspSafeDelete.Execute(mResolver, mTree, AFileName, TextOf(AFileName),
+      TTextPosition.Create(ALine, ACharacter), mWithChoices);
   finally
-    Resolver.Free;
-    Tree.Free;
+    mResolver.Free;
+    mTree.Free;
   end;
 end;
 
 function Items(AAnswer: TJSONObject; const AName: string): string;
 var
-  Item: TJSONValue;
+  mItem: TJSONValue;
 begin
   Result := '';
-  for Item in AAnswer.GetValue(AName) as TJSONArray do
+  for mItem in AAnswer.GetValue(AName) as TJSONArray do
   begin
-    if Item is TJSONObject then
+    if mItem is TJSONObject then
     begin
-      Result := Result + ExtractFileName(TJSONObject(Item).GetValue('file').Value) + ':' +
-        TJSONObject(Item).GetValue('line').Value + ':' + TJSONObject(Item).GetValue('kind').Value + '|';
+      Result := Result + ExtractFileName(TJSONObject(mItem).GetValue('file').Value) + ':' +
+        TJSONObject(mItem).GetValue('line').Value + ':' + TJSONObject(mItem).GetValue('kind').Value + '|';
     end
     else
     begin
-      Result := Result + Item.Value + '|';
+      Result := Result + mItem.Value + '|';
     end;
   end;
 end;
@@ -304,11 +304,11 @@ end;
 procedure TLspSafeDeleteTests.Setup;
 begin
   FIndex := TSymbolIndex.Create;
-  FIndex.AddUnit(TIndexExtractor.ExtractText(UnitHelpers, HelpersFile, nil));
-  FIndex.AddUnit(TIndexExtractor.ExtractText(UnitShapes, ShapesFile, nil));
-  FIndex.AddUnit(TIndexExtractor.ExtractText(UnitCircle, CircleFile, nil));
-  FIndex.AddUnit(TIndexExtractor.ExtractText(UnitUse, UseFile, nil));
-  FIndex.AddUnit(TIndexExtractor.ExtractText(UnitMain, MainFile, nil));
+  FIndex.AddUnit(TIndexExtractor.ExtractText(cUnitHelpers, cHelpersFile, nil));
+  FIndex.AddUnit(TIndexExtractor.ExtractText(cUnitShapes, cShapesFile, nil));
+  FIndex.AddUnit(TIndexExtractor.ExtractText(cUnitCircle, cCircleFile, nil));
+  FIndex.AddUnit(TIndexExtractor.ExtractText(cUnitUse, cUseFile, nil));
+  FIndex.AddUnit(TIndexExtractor.ExtractText(cUnitMain, cMainFile, nil));
 end;
 
 procedure TLspSafeDeleteTests.TearDown;
@@ -318,177 +318,177 @@ end;
 
 procedure TLspSafeDeleteTests.OffersAction;
 var
-  Tree: TSyntaxTree;
-  Actions: TArray<TJSONObject>;
-  Action: TJSONObject;
+  mTree: TSyntaxTree;
+  mActions: TArray<TJSONObject>;
+  mAction: TJSONObject;
 begin
-  Tree := TPascalParser.Parse(UnitShapes);
+  mTree := TPascalParser.Parse(cUnitShapes);
   try
-    Actions := TLspSafeDelete.Actions(True, Tree, UnitShapes, 'file:///C:/P/Shapes.pas', TTextPosition.Create(9, 15));
-    Assert.AreEqual(1, Integer(Length(Actions)));
-    Assert.IsTrue(ContainsText(Actions[0].GetValue('title').Value, 'Unused'));
-    Assert.AreEqual(TLspSafeDelete.cClientCommand, (Actions[0].GetValue('command') as TJSONObject).GetValue('command').Value);
-    for Action in Actions do
+    mActions := TLspSafeDelete.Actions(True, mTree, cUnitShapes, 'file:///C:/P/Shapes.pas', TTextPosition.Create(9, 15));
+    Assert.AreEqual(1, Integer(Length(mActions)));
+    Assert.IsTrue(ContainsText(mActions[0].GetValue('title').Value, 'Unused'));
+    Assert.AreEqual(TLspSafeDelete.cClientCommand, (mActions[0].GetValue('command') as TJSONObject).GetValue('command').Value);
+    for mAction in mActions do
     begin
-      Action.Free;
+      mAction.Free;
     end;
-    Assert.AreEqual(0, Integer(Length(TLspSafeDelete.Actions(False, Tree, UnitShapes, 'file:///C:/P/Shapes.pas',
+    Assert.AreEqual(0, Integer(Length(TLspSafeDelete.Actions(False, mTree, cUnitShapes, 'file:///C:/P/Shapes.pas',
       TTextPosition.Create(9, 15)))), 'abgeschaltet');
-    Assert.AreEqual(0, Integer(Length(TLspSafeDelete.Actions(True, Tree, UnitShapes, 'file:///C:/P/Shapes.pas',
+    Assert.AreEqual(0, Integer(Length(TLspSafeDelete.Actions(True, mTree, cUnitShapes, 'file:///C:/P/Shapes.pas',
       TTextPosition.Create(15, 2)))), 'implementation');
   finally
-    Tree.Free;
+    mTree.Free;
   end;
 end;
 
 procedure TLspSafeDeleteTests.DeletesUnusedMethod;
 var
-  Answer: TJSONObject;
-  Text: string;
+  mAnswer: TJSONObject;
+  mText: string;
 begin
-  Answer := Prepare(FIndex, ShapesFile, 9, 15);
+  mAnswer := Prepare(FIndex, cShapesFile, 9, 15);
   try
-    Assert.AreEqual('', Items(Answer, 'usages'));
-    Assert.AreEqual('', Items(Answer, 'overrides'));
-    Assert.AreEqual('Unused', Answer.GetValue('name').Value);
+    Assert.AreEqual('', Items(mAnswer, 'usages'));
+    Assert.AreEqual('', Items(mAnswer, 'overrides'));
+    Assert.AreEqual('Unused', mAnswer.GetValue('name').Value);
   finally
-    Answer.Free;
+    mAnswer.Free;
   end;
-  Answer := Execute(FIndex, ShapesFile, 9, 15, Choices(False, False, False));
+  mAnswer := Execute(FIndex, cShapesFile, 9, 15, Choices(False, False, False));
   try
-    Text := After(Answer, ShapesFile);
-    Assert.IsFalse(ContainsText(Text, 'Unused'), Text);
-    Assert.IsTrue(ContainsText(Text, 'procedure TShape.Used;'), Text);
-    Assert.AreEqual(1, (Answer.GetValue('files') as TJSONNumber).AsInt);
+    mText := After(mAnswer, cShapesFile);
+    Assert.IsFalse(ContainsText(mText, 'Unused'), mText);
+    Assert.IsTrue(ContainsText(mText, 'procedure TShape.Used;'), mText);
+    Assert.AreEqual(1, (mAnswer.GetValue('files') as TJSONNumber).AsInt);
   finally
-    Answer.Free;
+    mAnswer.Free;
   end;
 end;
 
 procedure TLspSafeDeleteTests.BlocksUsedMethod;
 var
-  Answer: TJSONObject;
+  mAnswer: TJSONObject;
 begin
-  Answer := Prepare(FIndex, ShapesFile, 10, 15);
+  mAnswer := Prepare(FIndex, cShapesFile, 10, 15);
   try
-    Assert.AreEqual('Use.pas:8:code|', Items(Answer, 'usages'));
+    Assert.AreEqual('Use.pas:8:code|', Items(mAnswer, 'usages'));
   finally
-    Answer.Free;
+    mAnswer.Free;
   end;
   Assert.WillRaise(
     procedure
     begin
-      Execute(FIndex, ShapesFile, 10, 15, Choices(False, False, False)).Free;
+      Execute(FIndex, cShapesFile, 10, 15, Choices(False, False, False)).Free;
     end, EJsonRpcError);
-  Answer := Execute(FIndex, ShapesFile, 10, 15, Choices(False, False, True));
+  mAnswer := Execute(FIndex, cShapesFile, 10, 15, Choices(False, False, True));
   try
-    Assert.IsFalse(ContainsText(After(Answer, ShapesFile), 'TShape.Used'));
-    Assert.IsTrue(ContainsText(Items(Answer, 'warnings'), 'Trotz 1'));
+    Assert.IsFalse(ContainsText(After(mAnswer, cShapesFile), 'TShape.Used'));
+    Assert.IsTrue(ContainsText(Items(mAnswer, 'warnings'), 'Trotz 1'));
   finally
-    Answer.Free;
+    mAnswer.Free;
   end;
 end;
 
 procedure TLspSafeDeleteTests.HandlesOverrides;
 var
-  Answer: TJSONObject;
+  mAnswer: TJSONObject;
 begin
-  Answer := Prepare(FIndex, ShapesFile, 8, 15);
+  mAnswer := Prepare(FIndex, cShapesFile, 8, 15);
   try
-    Assert.AreEqual('Circle.pas:7:override|', Items(Answer, 'overrides'));
+    Assert.AreEqual('Circle.pas:7:override|', Items(mAnswer, 'overrides'));
   finally
-    Answer.Free;
+    mAnswer.Free;
   end;
   Assert.WillRaise(
     procedure
     begin
-      Execute(FIndex, ShapesFile, 8, 15, Choices(False, False, False)).Free;
+      Execute(FIndex, cShapesFile, 8, 15, Choices(False, False, False)).Free;
     end, EJsonRpcError);
-  Answer := Execute(FIndex, ShapesFile, 8, 15, Choices(True, False, False));
+  mAnswer := Execute(FIndex, cShapesFile, 8, 15, Choices(True, False, False));
   try
-    Assert.IsFalse(ContainsText(After(Answer, ShapesFile), 'Draw'));
-    Assert.IsFalse(ContainsText(After(Answer, CircleFile), 'Draw'), After(Answer, CircleFile));
-    Assert.AreEqual(2, (Answer.GetValue('files') as TJSONNumber).AsInt);
+    Assert.IsFalse(ContainsText(After(mAnswer, cShapesFile), 'Draw'));
+    Assert.IsFalse(ContainsText(After(mAnswer, cCircleFile), 'Draw'), After(mAnswer, cCircleFile));
+    Assert.AreEqual(2, (mAnswer.GetValue('files') as TJSONNumber).AsInt);
   finally
-    Answer.Free;
+    mAnswer.Free;
   end;
 end;
 
 procedure TLspSafeDeleteTests.OffersCascade;
 var
-  Answer: TJSONObject;
-  Text: string;
+  mAnswer: TJSONObject;
+  mText: string;
 begin
   // Refresh benutzt FCache und als einzige Routine Helpers.
-  Answer := Prepare(FIndex, ShapesFile, 11, 15);
+  mAnswer := Prepare(FIndex, cShapesFile, 11, 15);
   try
-    Assert.AreEqual('FCache|uses Helpers|', Items(Answer, 'cascade'));
+    Assert.AreEqual('FCache|uses Helpers|', Items(mAnswer, 'cascade'));
   finally
-    Answer.Free;
+    mAnswer.Free;
   end;
-  Answer := Execute(FIndex, ShapesFile, 11, 15, Choices(False, True, False));
+  mAnswer := Execute(FIndex, cShapesFile, 11, 15, Choices(False, True, False));
   try
-    Text := After(Answer, ShapesFile);
-    Assert.IsFalse(ContainsText(Text, 'FCache'), Text);
-    Assert.IsFalse(ContainsText(Text, 'Helpers'), Text);
-    Assert.IsTrue(ContainsText(Text, 'FSize'), Text);
+    mText := After(mAnswer, cShapesFile);
+    Assert.IsFalse(ContainsText(mText, 'FCache'), mText);
+    Assert.IsFalse(ContainsText(mText, 'Helpers'), mText);
+    Assert.IsTrue(ContainsText(mText, 'FSize'), mText);
   finally
-    Answer.Free;
+    mAnswer.Free;
   end;
-  Answer := Execute(FIndex, ShapesFile, 11, 15, Choices(False, False, False));
+  mAnswer := Execute(FIndex, cShapesFile, 11, 15, Choices(False, False, False));
   try
-    Assert.IsTrue(ContainsText(After(Answer, ShapesFile), 'FCache'), 'ohne Folgeschritt');
+    Assert.IsTrue(ContainsText(After(mAnswer, cShapesFile), 'FCache'), 'ohne Folgeschritt');
   finally
-    Answer.Free;
+    mAnswer.Free;
   end;
   // Property Size: der öffentliche Getter wird frei, FSize über ihn.
-  Answer := Prepare(FIndex, ShapesFile, 13, 15);
+  mAnswer := Prepare(FIndex, cShapesFile, 13, 15);
   try
-    Assert.AreEqual('GetSize|', Items(Answer, 'cascade'));
+    Assert.AreEqual('GetSize|', Items(mAnswer, 'cascade'));
   finally
-    Answer.Free;
+    mAnswer.Free;
   end;
 end;
 
 procedure TLspSafeDeleteTests.FindsFormReferences;
 var
-  Answer: TJSONObject;
+  mAnswer: TJSONObject;
 begin
-  Answer := Prepare(FIndex, MainFile, 5, 15);
+  mAnswer := Prepare(FIndex, cMainFile, 5, 15);
   try
-    Assert.AreEqual('Main.dfm:3:form|', Items(Answer, 'usages'));
+    Assert.AreEqual('Main.dfm:3:form|', Items(mAnswer, 'usages'));
   finally
-    Answer.Free;
+    mAnswer.Free;
   end;
-  Answer := Prepare(FIndex, MainFile, 4, 6);
+  mAnswer := Prepare(FIndex, cMainFile, 4, 6);
   try
-    Assert.AreEqual('Main.dfm:2:form|', Items(Answer, 'usages'));
+    Assert.AreEqual('Main.dfm:2:form|', Items(mAnswer, 'usages'));
   finally
-    Answer.Free;
+    mAnswer.Free;
   end;
 end;
 
 procedure TLspSafeDeleteTests.DeletesWholeUnit;
 var
-  Answer: TJSONObject;
-  Text: string;
+  mAnswer: TJSONObject;
+  mText: string;
 begin
-  Answer := Prepare(FIndex, HelpersFile, 0, 6);
+  mAnswer := Prepare(FIndex, cHelpersFile, 0, 6);
   try
-    Assert.AreEqual('Unit', Answer.GetValue('kind').Value);
+    Assert.AreEqual('Unit', mAnswer.GetValue('kind').Value);
     // Use.pas ruft Twice; Circle.pas bindet sie nur ein; Shapes.pas ruft Twice.
-    Assert.AreEqual('Shapes.pas:0:uses|Use.pas:0:uses|', Items(Answer, 'usages'));
-    Assert.AreEqual(1, (Answer.GetValue('usesFiles') as TJSONNumber).AsInt);
+    Assert.AreEqual('Shapes.pas:0:uses|Use.pas:0:uses|', Items(mAnswer, 'usages'));
+    Assert.AreEqual(1, (mAnswer.GetValue('usesFiles') as TJSONNumber).AsInt);
   finally
-    Answer.Free;
+    mAnswer.Free;
   end;
-  Answer := Execute(FIndex, HelpersFile, 0, 6, Choices(False, False, True));
+  mAnswer := Execute(FIndex, cHelpersFile, 0, 6, Choices(False, False, True));
   try
-    Assert.AreEqual('<geloescht>', After(Answer, HelpersFile));
-    Text := After(Answer, CircleFile);
-    Assert.IsTrue(ContainsText(Text, 'uses'#10'  Shapes;'), Text);
+    Assert.AreEqual('<geloescht>', After(mAnswer, cHelpersFile));
+    mText := After(mAnswer, cCircleFile);
+    Assert.IsTrue(ContainsText(mText, 'uses'#10'  Shapes;'), mText);
   finally
-    Answer.Free;
+    mAnswer.Free;
   end;
 end;
 

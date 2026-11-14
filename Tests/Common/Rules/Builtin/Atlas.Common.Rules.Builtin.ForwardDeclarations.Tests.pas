@@ -46,52 +46,52 @@ uses
   Atlas.Tests.RuleAssert;
 
 const
-  Tree = 'unit U;'#10'interface'#10'type'#10'  TTree = class'#10'    FRoot: TNode;'#10'  end;'#10 +
+  cTree = 'unit U;'#10'interface'#10'type'#10'  TTree = class'#10'    FRoot: TNode;'#10'  end;'#10 +
     '  TNode = class'#10'  end;'#10'implementation'#10'end.';
 
 procedure TForwardDeclarationRulesTests.UsedBeforeIsErrorWithFix;
 var
-  Findings: TArray<TRuleFinding>;
+  mFindings: TArray<TRuleFinding>;
 begin
-  Findings := TRuleAssert.Findings(TTypeUsedBeforeDeclarationRule.Create, Tree);
-  Assert.AreEqual(1, Integer(Length(Findings)));
-  Assert.AreEqual(Ord(TRuleSeverity.Error), Ord(Findings[0].Severity));
-  Assert.AreEqual('"TNode" wird in TTree benutzt, bevor es deklariert ist', Findings[0].Message);
-  Assert.AreEqual(1, Integer(Length(Findings[0].Fixes)));
-  Assert.AreEqual('Forward-Deklaration ergänzen', Findings[0].Fixes[0].Title);
-  Assert.IsTrue(Findings[0].Fixes[0].Safe);
-  Assert.AreEqual('  TNode = class;'#10, Findings[0].Fixes[0].Edits[0].NewText);
-  TRuleAssert.Silent(TUnneededForwardDeclarationRule.Create, Tree);
+  mFindings := TRuleAssert.Findings(TTypeUsedBeforeDeclarationRule.Create, cTree);
+  Assert.AreEqual(1, Integer(Length(mFindings)));
+  Assert.AreEqual(Ord(TRuleSeverity.Error), Ord(mFindings[0].Severity));
+  Assert.AreEqual('"TNode" wird in TTree benutzt, bevor es deklariert ist', mFindings[0].Message);
+  Assert.AreEqual(1, Integer(Length(mFindings[0].Fixes)));
+  Assert.AreEqual('Forward-Deklaration ergänzen', mFindings[0].Fixes[0].Title);
+  Assert.IsTrue(mFindings[0].Fixes[0].Safe);
+  Assert.AreEqual('  TNode = class;'#10, mFindings[0].Fixes[0].Edits[0].NewText);
+  TRuleAssert.Silent(TUnneededForwardDeclarationRule.Create, cTree);
 end;
 
 procedure TForwardDeclarationRulesTests.ReasonWithoutFix;
 var
-  Findings: TArray<TRuleFinding>;
+  mFindings: TArray<TRuleFinding>;
 begin
-  Findings := TRuleAssert.Findings(TTypeUsedBeforeDeclarationRule.Create, 'unit U;'#10'interface'#10'type'#10 +
+  mFindings := TRuleAssert.Findings(TTypeUsedBeforeDeclarationRule.Create, 'unit U;'#10'interface'#10'type'#10 +
     '  TTree = class'#10'    FRoot: TNode;'#10'  end;'#10'var'#10'  Baum: TTree;'#10'type'#10'  TNode = class'#10 +
     '  end;'#10'implementation'#10'end.');
-  Assert.AreEqual(1, Integer(Length(Findings)));
-  Assert.Contains(Findings[0].Message, 'keine Korrektur');
-  Assert.AreEqual(0, Integer(Length(Findings[0].Fixes)));
+  Assert.AreEqual(1, Integer(Length(mFindings)));
+  Assert.Contains(mFindings[0].Message, 'keine Korrektur');
+  Assert.AreEqual(0, Integer(Length(mFindings[0].Fixes)));
 end;
 
 procedure TForwardDeclarationRulesTests.UnneededIsHintWithSafeFix;
 var
-  Findings: TArray<TRuleFinding>;
+  mFindings: TArray<TRuleFinding>;
 begin
-  Findings := TRuleAssert.Findings(TUnneededForwardDeclarationRule.Create, 'unit U;'#10'interface'#10'type'#10 +
+  mFindings := TRuleAssert.Findings(TUnneededForwardDeclarationRule.Create, 'unit U;'#10'interface'#10'type'#10 +
     '  TNode = class;'#10'  TNode = class'#10'  end;'#10'implementation'#10'end.');
-  Assert.AreEqual(1, Integer(Length(Findings)));
-  Assert.AreEqual(Ord(TRuleSeverity.Hint), Ord(Findings[0].Severity));
-  Assert.Contains(Findings[0].Message, 'TNode');
-  Assert.AreEqual('Forward-Deklaration entfernen', Findings[0].Fixes[0].Title);
-  Assert.IsTrue(Findings[0].Fixes[0].Safe);
+  Assert.AreEqual(1, Integer(Length(mFindings)));
+  Assert.AreEqual(Ord(TRuleSeverity.Hint), Ord(mFindings[0].Severity));
+  Assert.Contains(mFindings[0].Message, 'TNode');
+  Assert.AreEqual('Forward-Deklaration entfernen', mFindings[0].Fixes[0].Title);
+  Assert.IsTrue(mFindings[0].Fixes[0].Safe);
 end;
 
 procedure TForwardDeclarationRulesTests.SwitchedOff;
 begin
-  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TTypeUsedBeforeDeclarationRule.Create, Tree,
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TTypeUsedBeforeDeclarationRule.Create, cTree,
     '{"refactoring": {"forwardDeclaration": false}}'))));
   Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TUnneededForwardDeclarationRule.Create,
     'unit U;'#10'interface'#10'type'#10'  TNode = class;'#10'  TNode = class'#10'  end;'#10'implementation'#10'end.',
@@ -110,63 +110,63 @@ end;
 
 function OnlyUnsatisfied(const ASource: string): string;
 var
-  Found: TArray<TRuleFinding>;
+  mFound: TArray<TRuleFinding>;
 begin
-  Found := Unsatisfied(ASource);
-  Assert.AreEqual(1, Integer(Length(Found)), ASource);
-  Result := Found[0].Message;
+  mFound := Unsatisfied(ASource);
+  Assert.AreEqual(1, Integer(Length(mFound)), ASource);
+  Result := mFound[0].Message;
 end;
 
 /// <summary>Wendet eine Korrektur mit einem Edit an einer Einfügestelle an (Zeilen aus #10).</summary>
 function Insert(const AText: string; const AFix: TRuleFix): string;
 var
-  Lines: TArray<string>;
-  Edit: TRuleEdit;
+  mLines: TArray<string>;
+  mEdit: TRuleEdit;
 begin
   Assert.AreEqual(1, Integer(Length(AFix.Edits)));
-  Edit := AFix.Edits[0];
-  Lines := AText.Split([#10]);
-  Lines[Edit.Range.StartPos.Line] := Copy(Lines[Edit.Range.StartPos.Line], 1, Edit.Range.StartPos.Character) +
-    Edit.NewText + Copy(Lines[Edit.Range.StartPos.Line], Edit.Range.StartPos.Character + 1, MaxInt);
-  Result := string.Join(#10, Lines);
+  mEdit := AFix.Edits[0];
+  mLines := AText.Split([#10]);
+  mLines[mEdit.Range.StartPos.Line] := Copy(mLines[mEdit.Range.StartPos.Line], 1, mEdit.Range.StartPos.Character) +
+    mEdit.NewText + Copy(mLines[mEdit.Range.StartPos.Line], mEdit.Range.StartPos.Character + 1, MaxInt);
+  Result := string.Join(#10, mLines);
 end;
 
 procedure TForwardDeclarationRulesTests.UnsatisfiedIssueExample;
 var
-  Source, Fixed: string;
-  Found: TArray<TRuleFinding>;
+  mSource, mFixed: string;
+  mFound: TArray<TRuleFinding>;
 begin
-  Source := 'unit Pruef;'#10'interface'#10#10'function Pruefsumme(const Daten: TBytes): Cardinal;'#10#10 +
+  mSource := 'unit Pruef;'#10'interface'#10#10'function Pruefsumme(const Daten: TBytes): Cardinal;'#10#10 +
     'implementation'#10#10'end.';
-  Found := Unsatisfied(Source);
-  Assert.AreEqual(1, Integer(Length(Found)));
-  Assert.AreEqual('Pruefsumme ist im interface deklariert, aber nicht implementiert (wie E2065).', Found[0].Message);
-  Assert.AreEqual(3, Found[0].Range.StartPos.Line);
-  Assert.AreEqual(9, Found[0].Range.StartPos.Character);
-  Assert.AreEqual(19, Found[0].Range.EndPos.Character);
-  Assert.AreEqual(1, Integer(Length(Found[0].Fixes)));
-  Assert.AreEqual('Leeren Rumpf für Pruefsumme anlegen', Found[0].Fixes[0].Title);
-  Fixed := Insert(Source, Found[0].Fixes[0]);
+  mFound := Unsatisfied(mSource);
+  Assert.AreEqual(1, Integer(Length(mFound)));
+  Assert.AreEqual('Pruefsumme ist im interface deklariert, aber nicht implementiert (wie E2065).', mFound[0].Message);
+  Assert.AreEqual(3, mFound[0].Range.StartPos.Line);
+  Assert.AreEqual(9, mFound[0].Range.StartPos.Character);
+  Assert.AreEqual(19, mFound[0].Range.EndPos.Character);
+  Assert.AreEqual(1, Integer(Length(mFound[0].Fixes)));
+  Assert.AreEqual('Leeren Rumpf für Pruefsumme anlegen', mFound[0].Fixes[0].Title);
+  mFixed := Insert(mSource, mFound[0].Fixes[0]);
   Assert.AreEqual('unit Pruef;'#10'interface'#10#10'function Pruefsumme(const Daten: TBytes): Cardinal;'#10#10 +
-    'implementation'#10#10'function Pruefsumme(const Daten: TBytes): Cardinal;'#10'begin'#10'end;'#10#10'end.', Fixed);
-  TRuleAssert.Silent(TUnsatisfiedForwardRule.Create, Fixed);
+    'implementation'#10#10'function Pruefsumme(const Daten: TBytes): Cardinal;'#10'begin'#10'end;'#10#10'end.', mFixed);
+  TRuleAssert.Silent(TUnsatisfiedForwardRule.Create, mFixed);
 end;
 
 procedure TForwardDeclarationRulesTests.UnsatisfiedFixBeforeInitialization;
 var
-  Source: string;
-  Found: TArray<TRuleFinding>;
+  mSource: string;
+  mFound: TArray<TRuleFinding>;
 begin
-  Source := 'unit Pruef;'#10'interface'#10'procedure Melden(const AText: string = ''x'';'#10 +
+  mSource := 'unit Pruef;'#10'interface'#10'procedure Melden(const AText: string = ''x'';'#10 +
     '  ACode: Integer = 0); overload;'#10'procedure Melden; overload;'#10'implementation'#10 +
     'procedure Melden;'#10'begin'#10'end;'#10'initialization'#10'  Melden;'#10'end.';
-  Found := Unsatisfied(Source);
-  Assert.AreEqual(1, Integer(Length(Found)));
-  Assert.AreEqual(2, Found[0].Range.StartPos.Line);
+  mFound := Unsatisfied(mSource);
+  Assert.AreEqual(1, Integer(Length(mFound)));
+  Assert.AreEqual(2, mFound[0].Range.StartPos.Line);
   Assert.AreEqual('procedure Melden(const AText: string; ACode: Integer); overload;'#10'begin'#10'end;'#10#10,
-    Found[0].Fixes[0].Edits[0].NewText);
-  Assert.AreEqual(9, Found[0].Fixes[0].Edits[0].Range.StartPos.Line);
-  TRuleAssert.Silent(TUnsatisfiedForwardRule.Create, Insert(Source, Found[0].Fixes[0]));
+    mFound[0].Fixes[0].Edits[0].NewText);
+  Assert.AreEqual(9, mFound[0].Fixes[0].Edits[0].Range.StartPos.Line);
+  TRuleAssert.Silent(TUnsatisfiedForwardRule.Create, Insert(mSource, mFound[0].Fixes[0]));
 end;
 
 procedure TForwardDeclarationRulesTests.UnsatisfiedValidFormsAreSilent;
@@ -250,17 +250,17 @@ end;
 
 procedure TForwardDeclarationRulesTests.UnsatisfiedOptions;
 var
-  Source: string;
+  mSource: string;
 begin
-  Source := 'unit Pruef;'#10'interface'#10'procedure Fehlt;'#10'implementation'#10'end.';
-  Assert.AreEqual(1, Integer(Length(Unsatisfied(Source, '', 'Source/Pruef.pas'))));
-  Assert.AreEqual(0, Integer(Length(Unsatisfied(Source, '{"rules": {"unsatisfied-forward": "off"}}',
+  mSource := 'unit Pruef;'#10'interface'#10'procedure Fehlt;'#10'implementation'#10'end.';
+  Assert.AreEqual(1, Integer(Length(Unsatisfied(mSource, '', 'Source/Pruef.pas'))));
+  Assert.AreEqual(0, Integer(Length(Unsatisfied(mSource, '{"rules": {"unsatisfied-forward": "off"}}',
     'Source/Pruef.pas'))));
-  Assert.AreEqual(0, Integer(Length(Unsatisfied(Source, '{"rules": {"group:compiler": "off"}}', 'Source/Pruef.pas'))));
-  Assert.AreEqual(0, Integer(Length(Unsatisfied(Source,
+  Assert.AreEqual(0, Integer(Length(Unsatisfied(mSource, '{"rules": {"group:compiler": "off"}}', 'Source/Pruef.pas'))));
+  Assert.AreEqual(0, Integer(Length(Unsatisfied(mSource,
     '{"rules": {"unsatisfied-forward": {"exclude": ["Source/*.pas"]}}}', 'Source/Pruef.pas'))));
   // Anders als die beiden Forward-Regeln gilt refactoring.forwardDeclaration hier nicht.
-  Assert.AreEqual(1, Integer(Length(Unsatisfied(Source, '{"refactoring": {"forwardDeclaration": false}}',
+  Assert.AreEqual(1, Integer(Length(Unsatisfied(mSource, '{"refactoring": {"forwardDeclaration": false}}',
     'Source/Pruef.pas'))));
 end;
 

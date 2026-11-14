@@ -52,12 +52,12 @@ end;
 
 procedure TLspUnitRenameTests.AdjustsUsingUnits;
 var
-  Answer: TJSONObject;
-  Changes: TJSONArray;
-  Index: Integer;
-  Uris: string;
+  mAnswer: TJSONObject;
+  mChanges: TJSONArray;
+  mIndex: Integer;
+  mUris: string;
 begin
-  Answer := TLspUnitRename.Execute('C:\P\Kunden.pas', 'C:\P\KundenDaten.pas', ['C:\P\KundenDaten.pas',
+  mAnswer := TLspUnitRename.Execute('C:\P\Kunden.pas', 'C:\P\KundenDaten.pas', ['C:\P\KundenDaten.pas',
     'C:\P\A.pas', 'C:\P\B.pas', 'C:\P\C.pas', 'C:\P\D.pas'],
     function(const AFileName: string; out AText: string): Boolean
     begin
@@ -65,20 +65,20 @@ begin
       Result := AText <> '';
     end);
   try
-    Assert.AreEqual(3, (Answer.GetValue('count') as TJSONNumber).AsInt);
-    Assert.AreEqual('Kunden', Answer.GetValue('old').Value);
-    Changes := (Answer.GetValue('edit') as TJSONObject).GetValue('documentChanges') as TJSONArray;
-    Uris := '';
-    for Index := 0 to Changes.Count - 1 do
+    Assert.AreEqual(3, (mAnswer.GetValue('count') as TJSONNumber).AsInt);
+    Assert.AreEqual('Kunden', mAnswer.GetValue('old').Value);
+    mChanges := (mAnswer.GetValue('edit') as TJSONObject).GetValue('documentChanges') as TJSONArray;
+    mUris := '';
+    for mIndex := 0 to mChanges.Count - 1 do
     begin
-      Uris := Uris + ExtractFileName(TDocumentUris.ToPath((((Changes.Items[Index] as TJSONObject).GetValue(
+      mUris := mUris + ExtractFileName(TDocumentUris.ToPath((((mChanges.Items[mIndex] as TJSONObject).GetValue(
         'textDocument')) as TJSONObject).GetValue('uri').Value)) + '|';
     end;
-    Assert.AreEqual('A.pas|B.pas|C.pas|', Uris);
+    Assert.AreEqual('A.pas|B.pas|C.pas|', mUris);
     // B: uses und der qualifizierte Typ.
-    Assert.AreEqual(2, ((Changes.Items[1] as TJSONObject).GetValue('edits') as TJSONArray).Count);
+    Assert.AreEqual(2, ((mChanges.Items[1] as TJSONObject).GetValue('edits') as TJSONArray).Count);
   finally
-    Answer.Free;
+    mAnswer.Free;
   end;
 end;
 

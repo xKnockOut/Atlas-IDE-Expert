@@ -18,7 +18,8 @@ type
     FCatalog: TAtlasSettingsCatalog;
     FGroups: TAtlasSettingsGroups;
     /// <summary>Position der Einstellung AName in den Treffern zu AText; -1 ohne.</summary>
-    function RankOf(const AText, AName: string; AEnglish: Boolean = False): Integer;
+    function RankOf(const AText, AName: string): Integer; overload;
+    function RankOf(const AText, AName: string; AEnglish: Boolean): Integer; overload;
   public
     [Setup]
     procedure Setup;
@@ -97,6 +98,11 @@ procedure TAtlasSettingsSearchTests.TearDown;
 begin
   FreeAndNil(FGroups);
   FreeAndNil(FCatalog);
+end;
+
+function TAtlasSettingsSearchTests.RankOf(const AText, AName: string): Integer;
+begin
+  Result := RankOf(AText, AName, False);
 end;
 
 function TAtlasSettingsSearchTests.RankOf(const AText, AName: string; AEnglish: Boolean): Integer;

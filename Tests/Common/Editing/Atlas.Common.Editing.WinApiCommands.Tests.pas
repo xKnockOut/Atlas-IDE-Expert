@@ -48,52 +48,52 @@ uses
 /// <summary>Führt den Befehl in Zeile ALine aus und wendet die Änderungen an; '' wenn er nicht passt.</summary>
 function Expand(const AText: string; ALine: Integer): string;
 var
-  Edits: TArray<TRuleEdit>;
-  Lines: TArray<string>;
-  Edit: TRuleEdit;
-  Offsets: TArray<Integer>;
-  Index, Start, Stop: Integer;
+  mEdits: TArray<TRuleEdit>;
+  mLines: TArray<string>;
+  mEdit: TRuleEdit;
+  mOffsets: TArray<Integer>;
+  mIndex, mStart, mStop: Integer;
 begin
-  if not TSlashCommandRegistry.Shared.AfterEnter(AText, TTextPosition.Create(ALine + 1, 0), nil, nil, Edits) then
+  if not TSlashCommandRegistry.Shared.AfterEnter(AText, TTextPosition.Create(ALine + 1, 0), nil, nil, mEdits) then
   begin
     Exit('');
   end;
-  Lines := AText.Split([#10]);
-  SetLength(Offsets, Length(Lines) + 1);
-  Offsets[0] := 0;
-  for Index := 0 to High(Lines) do
+  mLines := AText.Split([#10]);
+  SetLength(mOffsets, Length(mLines) + 1);
+  mOffsets[0] := 0;
+  for mIndex := 0 to High(mLines) do
   begin
-    Offsets[Index + 1] := Offsets[Index] + Length(Lines[Index]) + 1;
+    mOffsets[mIndex + 1] := mOffsets[mIndex] + Length(mLines[mIndex]) + 1;
   end;
-  TArray.Sort<TRuleEdit>(Edits, TComparer<TRuleEdit>.Construct(
+  TArray.Sort<TRuleEdit>(mEdits, TComparer<TRuleEdit>.Construct(
     function(const ALeft, ARight: TRuleEdit): Integer
     begin
       Result := (ARight.Range.StartPos.Line - ALeft.Range.StartPos.Line) * 100000 +
         ARight.Range.StartPos.Character - ALeft.Range.StartPos.Character;
     end));
   Result := AText;
-  for Edit in Edits do
+  for mEdit in mEdits do
   begin
-    Start := Offsets[Edit.Range.StartPos.Line] + Edit.Range.StartPos.Character;
-    Stop := Offsets[Edit.Range.EndPos.Line] + Edit.Range.EndPos.Character;
-    Result := Copy(Result, 1, Start) + Edit.NewText + Copy(Result, Stop + 1, MaxInt);
+    mStart := mOffsets[mEdit.Range.StartPos.Line] + mEdit.Range.StartPos.Character;
+    mStop := mOffsets[mEdit.Range.EndPos.Line] + mEdit.Range.EndPos.Character;
+    Result := Copy(Result, 1, mStart) + mEdit.NewText + Copy(Result, mStop + 1, MaxInt);
   end;
 end;
 
 function Parses(const AText: string): Boolean;
 var
-  Tree: TSyntaxTree;
+  mTree: TSyntaxTree;
 begin
-  Tree := TPascalParser.Parse(AText);
+  mTree := TPascalParser.Parse(AText);
   try
-    Result := Length(Tree.Diagnostics) = 0;
+    Result := Length(mTree.Diagnostics) = 0;
   finally
-    Tree.Free;
+    mTree.Free;
   end;
 end;
 
 const
-  Routine =
+  cRoutine =
     'unit U;'#10 +                             // 0
     'interface'#10 +                           // 1
     'uses Winapi.Windows, System.SysUtils;'#10 + // 2
@@ -117,7 +117,7 @@ end;
 
 procedure TWinApiCommandsTests.ExternalUsesConstantForThirdImport;
 const
-  Source =
+  cSource =
     'unit U;'#10 +
     'interface'#10 +
     'procedure A; stdcall; external ''meine.dll'';'#10 +
@@ -126,7 +126,7 @@ const
     'implementation'#10 +
     'end.';
 begin
-  Assert.Contains(Expand(Source, 4), 'const'#10'  MeineDll = ''meine.dll'';'#10#10 +
+  Assert.Contains(Expand(cSource, 4), 'const'#10'  MeineDll = ''meine.dll'';'#10#10 +
     'procedure C(); stdcall; external MeineDll;'#10'implementation');
 end;
 
@@ -138,7 +138,7 @@ end;
 
 procedure TWinApiCommandsTests.ExportsAddsRoutines;
 const
-  Source =
+  cSource =
     'library L;'#10 +
     'procedure A; stdcall;'#10 +
     'begin'#10 +
@@ -154,13 +154,13 @@ const
     'begin'#10 +
     'end.';
 var
-  Text: string;
+  mText: string;
 begin
-  Text := Expand(Source, 11);
-  Assert.Contains(Text, 'end;'#10'exports'#10'  A,'#10'  B;'#10'begin'#10'end.');
-  Assert.IsTrue(Parses(Text), Text);
+  mText := Expand(cSource, 11);
+  Assert.Contains(mText, 'end;'#10'exports'#10'  A,'#10'  B;'#10'begin'#10'end.');
+  Assert.IsTrue(Parses(mText), mText);
   // Zweiter Aufruf: A und B stehen schon drin, Intern fehlt die Aufrufkonvention.
-  Assert.AreEqual('', Expand(StringReplace(Text, 'exports'#10, '/exports'#10'exports'#10, []), 11));
+  Assert.AreEqual('', Expand(StringReplace(mText, 'exports'#10, '/exports'#10'exports'#10, []), 11));
 end;
 
 procedure TWinApiCommandsTests.ExportsOutsideLibraryFails;
@@ -170,43 +170,43 @@ end;
 
 procedure TWinApiCommandsTests.OsCheckWrapsBoolCall;
 var
-  Text: string;
+  mText: string;
 begin
-  Text := Expand(Format(Routine, ['/oscheck', 'CloseHandle(H);']), 8);
-  Assert.Contains(Text, 'begin'#10'  Win32Check(CloseHandle(H));'#10'end;');
+  mText := Expand(Format(cRoutine, ['/oscheck', 'CloseHandle(H);']), 8);
+  Assert.Contains(mText, 'begin'#10'  Win32Check(CloseHandle(H));'#10'end;');
 end;
 
 procedure TWinApiCommandsTests.OsCheckAfterAssignment;
 var
-  Text: string;
+  mText: string;
 begin
-  Text := Expand(Format(Routine, ['/oscheck', 'H := CreateMutex(nil, False, nil);']), 8);
-  Assert.Contains(Text, '  H := CreateMutex(nil, False, nil);'#10'  if H = 0 then'#10'    RaiseLastOSError;'#10);
-  Text := Expand(Format(Routine, ['/oscheck', 'Ok := DeleteFile(''x'');']), 8);
-  Assert.Contains(Text, '  if not Ok then'#10);
+  mText := Expand(Format(cRoutine, ['/oscheck', 'H := CreateMutex(nil, False, nil);']), 8);
+  Assert.Contains(mText, '  H := CreateMutex(nil, False, nil);'#10'  if H = 0 then'#10'    RaiseLastOSError;'#10);
+  mText := Expand(Format(cRoutine, ['/oscheck', 'Ok := DeleteFile(''x'');']), 8);
+  Assert.Contains(mText, '  if not Ok then'#10);
 end;
 
 procedure TWinApiCommandsTests.OsCheckWithoutBoolFails;
 begin
   // GetTickCount ist unbekannt, P liefert nichts.
-  Assert.AreEqual('', Expand(Format(Routine, ['/oscheck', 'GetTickCount();']), 8));
-  Assert.AreEqual('', Expand(Format(Routine, ['/oscheck', 'P(H);']), 8));
-  Assert.AreEqual('', Expand(Format(Routine, ['/oscheck', 'Ok := True;']), 8));
+  Assert.AreEqual('', Expand(Format(cRoutine, ['/oscheck', 'GetTickCount();']), 8));
+  Assert.AreEqual('', Expand(Format(cRoutine, ['/oscheck', 'P(H);']), 8));
+  Assert.AreEqual('', Expand(Format(cRoutine, ['/oscheck', 'Ok := True;']), 8));
 end;
 
 procedure TWinApiCommandsTests.OleCheckWraps;
 var
-  Text: string;
+  mText: string;
 begin
-  Text := Expand(Format(Routine, ['/olecheck', 'Obj.QueryInterface(IID, Intf);']), 8);
-  Assert.Contains(Text, '  OleCheck(Obj.QueryInterface(IID, Intf));'#10);
-  Assert.Contains(Text, 'System.Win.ComObj');
+  mText := Expand(Format(cRoutine, ['/olecheck', 'Obj.QueryInterface(IID, Intf);']), 8);
+  Assert.Contains(mText, '  OleCheck(Obj.QueryInterface(IID, Intf));'#10);
+  Assert.Contains(mText, 'System.Win.ComObj');
   Assert.AreEqual('', Expand('unit U;'#10'interface'#10'/olecheck'#10'implementation'#10'end.', 2));
 end;
 
 procedure TWinApiCommandsTests.ResultsParse;
 begin
-  Assert.IsTrue(Parses(Expand(Format(Routine, ['/oscheck', 'CloseHandle(H);']), 8)));
+  Assert.IsTrue(Parses(Expand(Format(cRoutine, ['/oscheck', 'CloseHandle(H);']), 8)));
   Assert.IsTrue(Parses(Expand('unit U;'#10'interface'#10'/external F f.dll'#10'implementation'#10'end.', 2)));
 end;
 

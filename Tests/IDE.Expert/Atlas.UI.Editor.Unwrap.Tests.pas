@@ -40,7 +40,7 @@ uses
 
 function Entry(const AKind, AVariant: string; AVariants: Integer; AAvailable: Boolean): TAtlasUnwrapEntry;
 var
-  Edit: TLspTextEdit;
+  mEdit: TLspTextEdit;
 begin
   Result := Default(TAtlasUnwrapEntry);
   Result.Kind := AKind;
@@ -49,20 +49,20 @@ begin
   Result.Line := 4;
   if AAvailable then
   begin
-    Edit := Default(TLspTextEdit);
-    Edit.NewText := 'X;';
-    Result.Edits := [Edit];
+    mEdit := Default(TLspTextEdit);
+    mEdit.NewText := 'X;';
+    Result.Edits := [mEdit];
   end;
 end;
 
 function Sample: TArray<TAtlasUnwrapEntry>;
 var
-  Unresolved: TAtlasUnwrapEntry;
+  mUnresolved: TAtlasUnwrapEntry;
 begin
-  Unresolved := Entry('withDo', '', 0, False);
-  Unresolved.Note := 'withUnresolved';
-  Unresolved.NoteText := 'Caption';
-  Result := [Unresolved, Entry('tryFinally', 'keepFinally', 2, True), Entry('tryFinally', 'dropFinally', 2, True)];
+  mUnresolved := Entry('withDo', '', 0, False);
+  mUnresolved.Note := 'withUnresolved';
+  mUnresolved.NoteText := 'Caption';
+  Result := [mUnresolved, Entry('tryFinally', 'keepFinally', 2, True), Entry('tryFinally', 'dropFinally', 2, True)];
 end;
 
 function NewWindow: TAtlasUnwrapWindow;
@@ -81,7 +81,7 @@ end;
 
 procedure TAtlasUnwrapWindowTests.CaptionsAndNotes;
 var
-  Item: TAtlasUnwrapEntry;
+  mItem: TAtlasUnwrapEntry;
 begin
   TAtlasStrings.Language := TAtlasLanguage.German;
   Assert.AreEqual('try … finally … end – finally-Teil behalten',
@@ -94,113 +94,113 @@ begin
   Assert.AreEqual('begin … end', TAtlasUnwrapWindow.EntryCaption(Entry('beginEnd', 'body', 1, True)));
   Assert.AreEqual('{$IFDEF} … {$ENDIF} – {$ELSE}-Zweig behalten',
     TAtlasUnwrapWindow.EntryCaption(Entry('ifdef', 'else', 2, True)));
-  Item := Entry('ifdef', 'branch', 3, True);
-  Item.Branch := 1;
-  Assert.AreEqual('{$IFDEF} … {$ENDIF} – 2. Zweig behalten', TAtlasUnwrapWindow.EntryCaption(Item));
-  Item := Entry('forDo', 'body', 1, True);
-  Item.Note := 'loopVariable';
-  Item.NoteText := 'I';
-  Assert.AreEqual('Bezüge auf die Schleifenvariable I bleiben stehen.', TAtlasUnwrapWindow.EntryNote(Item));
-  Item.Note := 'multipleRaise';
-  Item.NoteText := '2';
-  Assert.AreEqual('Achtung: Der except-Teil enthält 2 raise.', TAtlasUnwrapWindow.EntryNote(Item));
-  Item.Note := '';
-  Assert.AreEqual('', TAtlasUnwrapWindow.EntryNote(Item));
+  mItem := Entry('ifdef', 'branch', 3, True);
+  mItem.Branch := 1;
+  Assert.AreEqual('{$IFDEF} … {$ENDIF} – 2. Zweig behalten', TAtlasUnwrapWindow.EntryCaption(mItem));
+  mItem := Entry('forDo', 'body', 1, True);
+  mItem.Note := 'loopVariable';
+  mItem.NoteText := 'I';
+  Assert.AreEqual('Bezüge auf die Schleifenvariable I bleiben stehen.', TAtlasUnwrapWindow.EntryNote(mItem));
+  mItem.Note := 'multipleRaise';
+  mItem.NoteText := '2';
+  Assert.AreEqual('Achtung: Der except-Teil enthält 2 raise.', TAtlasUnwrapWindow.EntryNote(mItem));
+  mItem.Note := '';
+  Assert.AreEqual('', TAtlasUnwrapWindow.EntryNote(mItem));
 end;
 
 procedure TAtlasUnwrapWindowTests.KeysSkipUnavailableAndReport;
 var
-  Window: TAtlasUnwrapWindow;
-  Reported: Integer;
+  mWindow: TAtlasUnwrapWindow;
+  mReported: Integer;
 begin
-  Reported := -1;
-  Window := NewWindow;
+  mReported := -1;
+  mWindow := NewWindow;
   try
-    Window.OnSelect :=
+    mWindow.OnSelect :=
       procedure(AIndex: Integer)
       begin
-        Reported := AIndex;
+        mReported := AIndex;
       end;
-    Window.ShowFor(Sample, Point(100, 100));
+    mWindow.ShowFor(Sample, Point(100, 100));
     try
-      Assert.IsFalse(Window.Compact);
-      Assert.AreEqual(1, Window.Row, 'with ist nicht übernehmbar');
-      Assert.AreEqual(1, Reported, 'Vorschau beim Öffnen');
-      Assert.IsTrue(Window.MoveRow(1));
-      Assert.AreEqual(2, Window.Row);
-      Assert.AreEqual(2, Reported);
-      Assert.IsTrue(Window.MoveRow(1));
-      Assert.AreEqual(1, Window.Row, 'ringsum, ohne den with-Eintrag');
-      Window.Select(0);
-      Assert.AreEqual(1, Window.Row, 'nicht wählbar');
-      Assert.IsFalse(Window.RowRect(2).IsEmpty);
-      Assert.IsTrue(Window.RowRect(1).Top > Window.RowRect(0).Top, 'untereinander');
+      Assert.IsFalse(mWindow.Compact);
+      Assert.AreEqual(1, mWindow.Row, 'with ist nicht übernehmbar');
+      Assert.AreEqual(1, mReported, 'Vorschau beim Öffnen');
+      Assert.IsTrue(mWindow.MoveRow(1));
+      Assert.AreEqual(2, mWindow.Row);
+      Assert.AreEqual(2, mReported);
+      Assert.IsTrue(mWindow.MoveRow(1));
+      Assert.AreEqual(1, mWindow.Row, 'ringsum, ohne den with-Eintrag');
+      mWindow.Select(0);
+      Assert.AreEqual(1, mWindow.Row, 'nicht wählbar');
+      Assert.IsFalse(mWindow.RowRect(2).IsEmpty);
+      Assert.IsTrue(mWindow.RowRect(1).Top > mWindow.RowRect(0).Top, 'untereinander');
     finally
-      Window.Dismiss;
+      mWindow.Dismiss;
     end;
   finally
-    Window.Free;
+    mWindow.Free;
   end;
 end;
 
 procedure TAtlasUnwrapWindowTests.SingleEntryIsCompact;
 var
-  Window: TAtlasUnwrapWindow;
+  mWindow: TAtlasUnwrapWindow;
 begin
   TAtlasStrings.Language := TAtlasLanguage.German;
-  Window := NewWindow;
+  mWindow := NewWindow;
   try
-    Window.ShowFor([Entry('whileDo', 'body', 1, True)], Point(100, 100));
+    mWindow.ShowFor([Entry('whileDo', 'body', 1, True)], Point(100, 100));
     try
-      Assert.IsTrue(Window.Compact);
-      Assert.AreEqual(0, Window.Row);
-      Assert.AreEqual('Umschließung entfernen: while … do', Window.Caption);
-      Assert.IsTrue(Window.RowRect(0).IsEmpty, 'ohne Liste');
+      Assert.IsTrue(mWindow.Compact);
+      Assert.AreEqual(0, mWindow.Row);
+      Assert.AreEqual('Umschließung entfernen: while … do', mWindow.Caption);
+      Assert.IsTrue(mWindow.RowRect(0).IsEmpty, 'ohne Liste');
     finally
-      Window.Dismiss;
+      mWindow.Dismiss;
     end;
   finally
-    Window.Free;
+    mWindow.Free;
   end;
 end;
 
 procedure TAtlasUnwrapWindowTests.AcceptAndCancel;
 var
-  Window: TAtlasUnwrapWindow;
-  Accepted, Cancelled: Integer;
+  mWindow: TAtlasUnwrapWindow;
+  mAccepted, mCancelled: Integer;
 begin
-  Accepted := -1;
-  Cancelled := 0;
-  Window := NewWindow;
+  mAccepted := -1;
+  mCancelled := 0;
+  mWindow := NewWindow;
   try
-    Window.OnAccept :=
+    mWindow.OnAccept :=
       procedure(AIndex: Integer)
       begin
-        Accepted := AIndex;
+        mAccepted := AIndex;
       end;
-    Window.OnCancel :=
+    mWindow.OnCancel :=
       procedure
       begin
-        Inc(Cancelled);
+        Inc(mCancelled);
       end;
-    Window.ShowFor(Sample, Point(100, 100));
-    Window.MoveRow(1);
-    Window.Accept;
-    Assert.AreEqual(2, Accepted);
-    Assert.IsFalse(Window.IsShown);
-    Window.ShowFor(Sample, Point(100, 100));
-    Window.Cancel;
-    Assert.AreEqual(1, Cancelled);
-    Assert.IsFalse(Window.IsShown);
+    mWindow.ShowFor(Sample, Point(100, 100));
+    mWindow.MoveRow(1);
+    mWindow.Accept;
+    Assert.AreEqual(2, mAccepted);
+    Assert.IsFalse(mWindow.IsShown);
+    mWindow.ShowFor(Sample, Point(100, 100));
+    mWindow.Cancel;
+    Assert.AreEqual(1, mCancelled);
+    Assert.IsFalse(mWindow.IsShown);
     // Nur nicht übernehmbare Einträge: Übernehmen tut nichts.
-    Accepted := -1;
-    Window.ShowFor([Sample[0]], Point(100, 100));
-    Assert.AreEqual(-1, Window.Row);
-    Window.Accept;
-    Assert.AreEqual(-1, Accepted);
-    Window.Dismiss;
+    mAccepted := -1;
+    mWindow.ShowFor([Sample[0]], Point(100, 100));
+    Assert.AreEqual(-1, mWindow.Row);
+    mWindow.Accept;
+    Assert.AreEqual(-1, mAccepted);
+    mWindow.Dismiss;
   finally
-    Window.Free;
+    mWindow.Free;
   end;
 end;
 

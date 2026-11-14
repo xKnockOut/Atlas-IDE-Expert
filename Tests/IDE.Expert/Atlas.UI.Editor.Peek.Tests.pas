@@ -39,25 +39,25 @@ uses
 
 function Entries(ACount: Integer): TArray<TAtlasPeekEntry>;
 var
-  Lines: TArray<string>;
-  Index: Integer;
-  Target: TAtlasPeekTarget;
+  mLines: TArray<string>;
+  mIndex: Integer;
+  mTarget: TAtlasPeekTarget;
 begin
-  SetLength(Lines, 60);
-  for Index := 0 to High(Lines) do
+  SetLength(mLines, 60);
+  for mIndex := 0 to High(mLines) do
   begin
-    Lines[Index] := Format('  X%d := ''{''; // Zeile', [Index]);
+    mLines[mIndex] := Format('  X%d := ''{''; // Zeile', [mIndex]);
   end;
-  Lines[10] := 'procedure TBar.Add(A: Integer);';
+  mLines[10] := 'procedure TBar.Add(A: Integer);';
   SetLength(Result, ACount);
-  for Index := 0 to ACount - 1 do
+  for mIndex := 0 to ACount - 1 do
   begin
-    Target.Place := TAtlasPeekPlace.Create(Format('U%d.pas', [Index]), 10, 15);
-    Target.HasBody := True;
-    Target.Body := TAtlasPeekPlace.Create(Format('U%d.pas', [Index]), 30, 0);
-    Result[Index].Target := Target;
-    Result[Index].Excerpt := TAtlasPeek.Excerpt(Lines[10]);
-    Result[Index].Rows := TAtlasPeek.DefinitionRows(Target, Lines, Lines, True, 4);
+    mTarget.Place := TAtlasPeekPlace.Create(Format('U%d.pas', [mIndex]), 10, 15);
+    mTarget.HasBody := True;
+    mTarget.Body := TAtlasPeekPlace.Create(Format('U%d.pas', [mIndex]), 30, 0);
+    Result[mIndex].Target := mTarget;
+    Result[mIndex].Excerpt := TAtlasPeek.Excerpt(mLines[10]);
+    Result[mIndex].Rows := TAtlasPeek.DefinitionRows(mTarget, mLines, mLines, True, 4);
   end;
 end;
 
@@ -75,103 +75,103 @@ end;
 
 procedure TAtlasPeekUiTests.HeightGrowsWithLines;
 var
-  Window: TAtlasPeekWindow;
-  Small, Large: Integer;
+  mWindow: TAtlasPeekWindow;
+  mSmall, mLarge: Integer;
 begin
-  Window := NewWindow;
+  mWindow := NewWindow;
   try
-    Small := Window.HeightForLines(5);
-    Large := Window.HeightForLines(15);
-    Assert.IsTrue(Large > Small);
+    mSmall := mWindow.HeightForLines(5);
+    mLarge := mWindow.HeightForLines(15);
+    Assert.IsTrue(mLarge > mSmall);
     // Zehn Zeilen mehr: zehnmal dieselbe Zeilenhöhe.
-    Assert.AreEqual(0, (Large - Small) mod 10);
-    Window.SetScaling(192, 1, 'Consolas', 10);
-    Assert.IsTrue(Window.HeightForLines(15) > Large, 'wächst mit Zoom und DPI');
+    Assert.AreEqual(0, (mLarge - mSmall) mod 10);
+    mWindow.SetScaling(192, 1, 'Consolas', 10);
+    Assert.IsTrue(mWindow.HeightForLines(15) > mLarge, 'wächst mit Zoom und DPI');
   finally
-    Window.Free;
+    mWindow.Free;
   end;
 end;
 
 procedure TAtlasPeekUiTests.WindowSetsPageRowsOfView;
 var
-  Window: TAtlasPeekWindow;
+  mWindow: TAtlasPeekWindow;
   Y: Integer;
 begin
-  Window := NewWindow;
+  mWindow := NewWindow;
   try
-    Window.ShowView(TAtlasPeekView.Create(TAtlasPeekMode.Definition, 'Definition: Add', Entries(1)),
-      Rect(100, 100, 900, 100 + Window.HeightForLines(15)));
+    mWindow.ShowView(TAtlasPeekView.Create(TAtlasPeekMode.Definition, 'Definition: Add', Entries(1)),
+      Rect(100, 100, 900, 100 + mWindow.HeightForLines(15)));
     try
-      Assert.IsTrue(Window.IsShown);
-      Assert.AreEqual(15, Window.View.PageRows);
+      Assert.IsTrue(mWindow.IsShown);
+      Assert.AreEqual(15, mWindow.View.PageRows);
       // Ohne Liste gehört jeder Klick in den Ausschnitt.
-      for Y := 0 to Window.ClientHeight - 1 do
+      for Y := 0 to mWindow.ClientHeight - 1 do
       begin
-        Assert.AreEqual(-1, Window.EntryAt(Point(10, Y)));
+        Assert.AreEqual(-1, mWindow.EntryAt(Point(10, Y)));
       end;
     finally
-      Window.Dismiss;
+      mWindow.Dismiss;
     end;
-    Assert.IsFalse(Window.IsShown);
-    Assert.IsNull(Window.View, 'Zustand freigegeben');
+    Assert.IsFalse(mWindow.IsShown);
+    Assert.IsNull(mWindow.View, 'Zustand freigegeben');
   finally
-    Window.Free;
+    mWindow.Free;
   end;
 end;
 
 procedure TAtlasPeekUiTests.ListOnlyWithSeveralTargets;
 var
-  Window: TAtlasPeekWindow;
-  Y, Found: Integer;
+  mWindow: TAtlasPeekWindow;
+  Y, mFound: Integer;
 begin
-  Window := NewWindow;
+  mWindow := NewWindow;
   try
-    Window.ShowView(TAtlasPeekView.Create(TAtlasPeekMode.Definition, 'Definition: Add', Entries(3)),
-      Rect(100, 100, 900, 100 + Window.HeightForLines(15)));
+    mWindow.ShowView(TAtlasPeekView.Create(TAtlasPeekMode.Definition, 'Definition: Add', Entries(3)),
+      Rect(100, 100, 900, 100 + mWindow.HeightForLines(15)));
     try
-      Found := -1;
-      for Y := 0 to Window.ClientHeight - 1 do
+      mFound := -1;
+      for Y := 0 to mWindow.ClientHeight - 1 do
       begin
-        if Window.EntryAt(Point(10, Y)) = 2 then
+        if mWindow.EntryAt(Point(10, Y)) = 2 then
         begin
-          Found := Y;
+          mFound := Y;
           Break;
         end;
       end;
-      Assert.IsTrue(Found > 0, 'Liste links mit drei Einträgen');
-      Assert.AreEqual(-1, Window.EntryAt(Point(Window.ClientWidth - 10, Found)), 'rechts der Ausschnitt');
-      Window.View.Select(2);
-      Window.ViewChanged;
-      Assert.AreEqual(2, Window.View.Selected);
+      Assert.IsTrue(mFound > 0, 'Liste links mit drei Einträgen');
+      Assert.AreEqual(-1, mWindow.EntryAt(Point(mWindow.ClientWidth - 10, mFound)), 'rechts der Ausschnitt');
+      mWindow.View.Select(2);
+      mWindow.ViewChanged;
+      Assert.AreEqual(2, mWindow.View.Selected);
     finally
-      Window.Dismiss;
+      mWindow.Dismiss;
     end;
   finally
-    Window.Free;
+    mWindow.Free;
   end;
 end;
 
 procedure TAtlasPeekUiTests.PaintsInLightAndDarkTheme;
 var
-  Window: TAtlasPeekWindow;
+  mWindow: TAtlasPeekWindow;
 begin
-  Window := NewWindow;
+  mWindow := NewWindow;
   try
-    Window.ShowView(TAtlasPeekView.Create(TAtlasPeekMode.References, 'Referenzen auf Add (3)', Entries(3)),
-      Rect(100, 100, 900, 100 + Window.HeightForLines(15)));
+    mWindow.ShowView(TAtlasPeekView.Create(TAtlasPeekMode.References, 'Referenzen auf Add (3)', Entries(3)),
+      Rect(100, 100, 900, 100 + mWindow.HeightForLines(15)));
     try
-      Window.Repaint;
-      Window.View.PageDown;
-      Window.ViewChanged;
-      Window.Colors := TAtlasColors.Dark;
-      Window.Repaint;
+      mWindow.Repaint;
+      mWindow.View.PageDown;
+      mWindow.ViewChanged;
+      mWindow.Colors := TAtlasColors.Dark;
+      mWindow.Repaint;
       Application.ProcessMessages;
-      Assert.IsTrue(Window.View.Top > 0);
+      Assert.IsTrue(mWindow.View.Top > 0);
     finally
-      Window.Dismiss;
+      mWindow.Dismiss;
     end;
   finally
-    Window.Free;
+    mWindow.Free;
   end;
 end;
 

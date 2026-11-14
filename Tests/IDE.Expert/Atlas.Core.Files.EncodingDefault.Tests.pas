@@ -36,19 +36,19 @@ end;
 
 procedure TAtlasEncodingDefaultTests.NearestAtlasJsonWins;
 var
-  Folder, Sub: string;
+  mFolder, mSub: string;
 begin
-  Folder := TPath.Combine(TPath.GetTempPath, 'Atlas-Encoding-' + IntToStr(Random(MaxInt)));
-  Sub := TPath.Combine(Folder, 'Formulare');
-  TDirectory.CreateDirectory(Sub);
+  mFolder := TPath.Combine(TPath.GetTempPath, 'Atlas-Encoding-' + IntToStr(Random(MaxInt)));
+  mSub := TPath.Combine(mFolder, 'Formulare');
+  TDirectory.CreateDirectory(mSub);
   try
-    TFile.WriteAllText(TPath.Combine(Folder, 'atlas.json'), '{"encoding": "1251"}');
-    Assert.AreEqual(1251, TAtlasEncodingDefault.CodePageFor(TPath.Combine(Sub, 'Unit1.dfm')));
-    TFile.WriteAllText(TPath.Combine(Sub, 'atlas.json'), '{"encoding": "cp1250"}');
-    Assert.AreEqual(1250, TAtlasEncodingDefault.CodePageFor(TPath.Combine(Sub, 'Unit1.dfm')));
-    Assert.AreEqual(1251, TAtlasEncodingDefault.CodePageFor(TPath.Combine(Folder, 'Unit2.pas')));
+    TFile.WriteAllText(TPath.Combine(mFolder, 'atlas.json'), '{"encoding": "1251"}');
+    Assert.AreEqual(1251, TAtlasEncodingDefault.CodePageFor(TPath.Combine(mSub, 'Unit1.dfm')));
+    TFile.WriteAllText(TPath.Combine(mSub, 'atlas.json'), '{"encoding": "cp1250"}');
+    Assert.AreEqual(1250, TAtlasEncodingDefault.CodePageFor(TPath.Combine(mSub, 'Unit1.dfm')));
+    Assert.AreEqual(1251, TAtlasEncodingDefault.CodePageFor(TPath.Combine(mFolder, 'Unit2.pas')));
   finally
-    TDirectory.Delete(Folder, True);
+    TDirectory.Delete(mFolder, True);
   end;
 end;
 
