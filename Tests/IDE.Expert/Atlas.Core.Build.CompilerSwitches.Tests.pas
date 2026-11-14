@@ -99,7 +99,7 @@ begin
   Assert.IsTrue(mView.Rows[0].CanJump);
   Assert.AreEqual('C:\P\A.pas', mView.Rows[0].FileName);
   Assert.AreEqual(9, mView.Rows[0].Line);
-  Assert.IsTrue(mView.Rows[4].Kind = TAtlasSwitchOriginKind.Include);
+  Assert.AreEqual<TAtlasSwitchOriginKind>(TAtlasSwitchOriginKind.Include, mView.Rows[4].Kind);
   Assert.IsTrue(mView.Rows[4].CanJump);
   Assert.AreEqual('C:\P\Opt.inc', mView.Rows[4].FileName);
   Assert.IsFalse(mView.Rows[1].CanJump);

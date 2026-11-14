@@ -116,10 +116,10 @@ begin
   // #721: Dateioperationen in der Reihenfolge des Servers.
   Assert.AreEqual(0, Edit.Unsupported);
   Assert.AreEqual(2, Integer(Length(Edit.Operations)));
-  Assert.IsTrue(Edit.Operations[0].Kind = TLspFileOperationKind.Rename);
+  Assert.AreEqual<TLspFileOperationKind>(TLspFileOperationKind.Rename, Edit.Operations[0].Kind);
   Assert.AreEqual('c:\p\a.pas', Edit.Operations[0].FileName);
   Assert.AreEqual('c:\p\b.pas', Edit.Operations[0].NewFileName);
-  Assert.IsTrue(Edit.Operations[1].Kind = TLspFileOperationKind.Create);
+  Assert.AreEqual<TLspFileOperationKind>(TLspFileOperationKind.Create, Edit.Operations[1].Kind);
   Assert.AreEqual('c:\p\c.pas', Edit.Operations[1].FileName);
   Assert.IsFalse(Edit.IsEmpty);
 end;
@@ -141,7 +141,7 @@ begin
   // overwrite gewinnt über ignoreIfExists.
   Assert.IsTrue(Edit.Operations[0].Overwrite);
   Assert.IsFalse(Edit.Operations[0].IgnoreIfExists);
-  Assert.IsTrue(Edit.Operations[1].Kind = TLspFileOperationKind.Delete);
+  Assert.AreEqual<TLspFileOperationKind>(TLspFileOperationKind.Delete, Edit.Operations[1].Kind);
   Assert.IsTrue(Edit.Operations[1].IgnoreIfNotExists);
   Assert.IsTrue(Edit.Operations[1].Recursive);
   Assert.IsTrue(Edit.Operations[2].IgnoreIfExists);

@@ -229,7 +229,7 @@ begin
   Options := TAtlasGenerateOptions.Create('templates,generate,surround', '', True, True).Only(
     [TAtlasGenerateGroup.Generate, TAtlasGenerateGroup.Templates]);
   Assert.AreEqual(2, Integer(Length(Options.Groups)));
-  Assert.IsTrue(Options.Groups[0] = TAtlasGenerateGroup.Templates);
+  Assert.AreEqual<TAtlasGenerateGroup>(TAtlasGenerateGroup.Templates, Options.Groups[0]);
   // Abgeschaltet, aber verlangt: trotzdem da.
   Options := TAtlasGenerateOptions.Create('generate', '', True, True).Only([TAtlasGenerateGroup.Templates]);
   Assert.IsTrue(Options.HasGroup(TAtlasGenerateGroup.Templates));
@@ -347,7 +347,7 @@ begin
   Assert.AreEqual('/json, tryf', TAtlasGenerateLists.NormalizeHidden('/json, , /json,tryf'));
   Assert.AreEqual(2, Integer(Length(TAtlasGenerateLists.Split('a;; b,'#10))));
   Assert.IsTrue(TAtlasGenerateLists.TryParseGroup(' Surround ', Group));
-  Assert.IsTrue(Group = TAtlasGenerateGroup.Surround);
+  Assert.AreEqual<TAtlasGenerateGroup>(TAtlasGenerateGroup.Surround, Group);
   Assert.AreEqual('recent', TAtlasGenerateLists.GroupName(TAtlasGenerateGroup.Recent));
 end;
 

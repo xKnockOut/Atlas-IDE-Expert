@@ -171,7 +171,7 @@ begin
   Assert.IsTrue(mLines[0].Header);
   Assert.AreEqual(0, mLines[1].Row);
   Assert.IsTrue(mLines[3].Header);
-  Assert.IsTrue(mLines[3].Section = TAtlasSwitchSection.Messages);
+  Assert.AreEqual<TAtlasSwitchSection>(TAtlasSwitchSection.Messages, mLines[3].Section);
   Assert.AreEqual(3, mLines[6].Row);
 end;
 

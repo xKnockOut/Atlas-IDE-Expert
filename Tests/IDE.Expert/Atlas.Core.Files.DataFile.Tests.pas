@@ -128,12 +128,12 @@ var
   Called: Boolean;
 begin
   Called := False;
-  Assert.IsTrue(TAtlasDataFile.Load(DataFile('favoriten.json'), 'Favoriten',
+  Assert.AreEqual<TAtlasDataLoad>(TAtlasDataLoad.Missing, TAtlasDataFile.Load(DataFile('favoriten.json'), 'Favoriten',
     function(const AText: string): Boolean
     begin
       Called := True;
       Result := True;
-    end) = TAtlasDataLoad.Missing);
+    end));
   Assert.IsFalse(Called, 'ohne Datei wird nichts gelesen');
   Assert.IsTrue(TAtlasDataFile.Writable(TAtlasDataLoad.Missing));
   Assert.AreEqual(0, Occurrences('Datendatei', LogText));
@@ -151,12 +151,12 @@ begin
   Assert.AreEqual('[ä]', Text);
   Assert.IsFalse(TAtlasDataFile.TryRead(DataFile('fehlt.json'), Text));
   Assert.AreEqual('', Text);
-  Assert.IsTrue(TAtlasDataFile.Load(DataFile('a.json'), 'Favoriten',
+  Assert.AreEqual<TAtlasDataLoad>(TAtlasDataLoad.Loaded, TAtlasDataFile.Load(DataFile('a.json'), 'Favoriten',
     function(const AText: string): Boolean
     begin
       Seen := AText;
       Result := True;
-    end) = TAtlasDataLoad.Loaded);
+    end));
   Assert.AreEqual('[ä]', Seen);
   Assert.IsTrue(TAtlasDataFile.Writable(TAtlasDataLoad.Loaded));
   Seen := '';
@@ -173,7 +173,7 @@ begin
     begin
       Result := False;
     end);
-  Assert.IsTrue(Load = TAtlasDataLoad.Renewed);
+  Assert.AreEqual<TAtlasDataLoad>(TAtlasDataLoad.Renewed, Load);
   Assert.IsTrue(TAtlasDataFile.Writable(Load));
   Assert.IsFalse(TFile.Exists(DataFile('favoriten.json')));
   Assert.AreEqual('{kaputt', TFile.ReadAllText(DataFile('favoriten.json.defekt'), TEncoding.UTF8));
@@ -185,11 +185,11 @@ end;
 procedure TAtlasDataFileTests.EmptyFileIsSetAsideAsEmpty;
 begin
   TFile.WriteAllBytes(DataFile('notizen.json'), nil);
-  Assert.IsTrue(TAtlasDataFile.Load(DataFile('notizen.json'), 'Notizen',
+  Assert.AreEqual<TAtlasDataLoad>(TAtlasDataLoad.Renewed, TAtlasDataFile.Load(DataFile('notizen.json'), 'Notizen',
     function(const AText: string): Boolean
     begin
       Result := False;
-    end) = TAtlasDataLoad.Renewed);
+    end));
   Assert.IsTrue(TFile.Exists(DataFile('notizen.json.defekt')));
   Assert.Contains(LogText, 'Datendatei Notizen: leer; beiseitegelegt');
 end;
@@ -219,9 +219,11 @@ begin
       end;
       Result := True;
     end;
-  Assert.IsTrue(TAtlasDataFile.Load(DataFile('lesezeichen.json'), 'Lesezeichen', Parse) = TAtlasDataLoad.Kept);
+  Assert.AreEqual<TAtlasDataLoad>(TAtlasDataLoad.Kept,
+    TAtlasDataFile.Load(DataFile('lesezeichen.json'), 'Lesezeichen', Parse));
   Assert.IsFalse(TAtlasDataFile.Writable(TAtlasDataLoad.Kept));
-  Assert.IsTrue(TAtlasDataFile.Load(DataFile('lesezeichen.json'), 'Lesezeichen', Parse) = TAtlasDataLoad.Kept);
+  Assert.AreEqual<TAtlasDataLoad>(TAtlasDataLoad.Kept,
+    TAtlasDataFile.Load(DataFile('lesezeichen.json'), 'Lesezeichen', Parse));
   Assert.AreEqual('{"geheimer Inhalt": 1}', TFile.ReadAllText(DataFile('lesezeichen.json'), TEncoding.UTF8));
   Assert.IsFalse(TFile.Exists(DataFile('lesezeichen.json.defekt')));
   Log := LogText;
@@ -246,10 +248,12 @@ begin
     end;
   Handle := CreateFile(PChar(DataFile('startprofile.json')), GENERIC_READ, 0, nil, OPEN_EXISTING,
     FILE_ATTRIBUTE_NORMAL, 0);
-  Assert.IsTrue(Handle <> INVALID_HANDLE_VALUE);
+  Assert.AreNotEqual<THandle>(INVALID_HANDLE_VALUE, Handle);
   try
-    Assert.IsTrue(TAtlasDataFile.Load(DataFile('startprofile.json'), 'Startprofile', Parse) = TAtlasDataLoad.Kept);
-    Assert.IsTrue(TAtlasDataFile.Load(DataFile('startprofile.json'), 'Startprofile', Parse) = TAtlasDataLoad.Kept);
+    Assert.AreEqual<TAtlasDataLoad>(TAtlasDataLoad.Kept,
+      TAtlasDataFile.Load(DataFile('startprofile.json'), 'Startprofile', Parse));
+    Assert.AreEqual<TAtlasDataLoad>(TAtlasDataLoad.Kept,
+      TAtlasDataFile.Load(DataFile('startprofile.json'), 'Startprofile', Parse));
   finally
     CloseHandle(Handle);
   end;
@@ -267,13 +271,14 @@ begin
   // Lesen geteilt, Löschen nicht: TryRead liest, Umbenennen scheitert.
   Handle := CreateFile(PChar(DataFile('wahl.json')), GENERIC_READ, FILE_SHARE_READ, nil, OPEN_EXISTING,
     FILE_ATTRIBUTE_NORMAL, 0);
-  Assert.IsTrue(Handle <> INVALID_HANDLE_VALUE);
+  Assert.AreNotEqual<THandle>(INVALID_HANDLE_VALUE, Handle);
   try
-    Assert.IsTrue(TAtlasDataFile.Load(DataFile('wahl.json'), 'Wahl des Testprojekts',
+    Assert.AreEqual<TAtlasDataLoad>(TAtlasDataLoad.Kept,
+      TAtlasDataFile.Load(DataFile('wahl.json'), 'Wahl des Testprojekts',
       function(const AText: string): Boolean
       begin
         Result := False;
-      end) = TAtlasDataLoad.Kept);
+      end));
   finally
     CloseHandle(Handle);
   end;

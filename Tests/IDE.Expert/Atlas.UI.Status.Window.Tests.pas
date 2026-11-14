@@ -29,6 +29,7 @@ uses
   System.SysUtils,
   System.Classes,
   Vcl.Forms,
+  Atlas.Core.Style.Color,
   Atlas.Core.Style.Palette,
   Atlas.Core.Style.Signal,
   Atlas.Core.Status.Contract,
@@ -91,7 +92,7 @@ begin
     Int64(Colors.Signals.ForStatus(TAtlasStatusState.Red).Fill));
   Assert.AreEqual(Int64(Colors.Signals.Get(TAtlasSignalKind.Idle).Fill),
     Int64(Colors.Signals.ForStatus(TAtlasStatusState.Neutral).Fill));
-  Assert.IsTrue(Colors.Signals.ForStatus(TAtlasStatusState.Green).Fill <> Colors.Add);
+  Assert.AreNotEqual<TAtlasColor>(Colors.Add, Colors.Signals.ForStatus(TAtlasStatusState.Green).Fill);
 end;
 
 procedure TAtlasStatusWindowTests.ButtonsRunAfterClosing;

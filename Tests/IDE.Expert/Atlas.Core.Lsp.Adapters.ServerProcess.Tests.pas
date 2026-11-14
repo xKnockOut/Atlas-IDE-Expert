@@ -196,7 +196,7 @@ begin
       Report := Session.DocumentDiagnostics(FileName, '', 10000);
       Assert.IsFalse(Report.Unchanged);
       Assert.IsTrue(Length(Report.Problems) > 0, 'Syntaxfehler gemeldet');
-      Assert.IsTrue(Report.Problems[0].Severity = TAtlasProblemSeverity.Error);
+      Assert.AreEqual<TAtlasProblemSeverity>(TAtlasProblemSeverity.Error, Report.Problems[0].Severity);
       Assert.AreEqual(5, Report.Problems[0].StartLine);
       Assert.AreNotEqual('', Report.ResultId);
       Again := Session.DocumentDiagnostics(FileName, Report.ResultId, 10000);
@@ -264,7 +264,7 @@ begin
         begin
           Found := True;
           Assert.AreEqual(5, Problem.StartLine);
-          Assert.IsTrue(Problem.Severity = TAtlasProblemSeverity.Error);
+          Assert.AreEqual<TAtlasProblemSeverity>(TAtlasProblemSeverity.Error, Problem.Severity);
         end;
       end;
       Assert.IsTrue(Found, 'dcc-Meldung in den Diagnosen der geöffneten Datei');

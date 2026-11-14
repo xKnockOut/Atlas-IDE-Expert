@@ -47,7 +47,7 @@ begin
     mCopy.Follow(mEditor);
     Assert.AreEqual(cName, mCopy.Font.Name);
     Assert.AreEqual(cSize, mCopy.Font.Size);
-    Assert.IsTrue(mCopy.Font.Style = [fsItalic]);
+    Assert.AreEqual<TFontStyles>([fsItalic], mCopy.Font.Style);
   finally
     mCopy.Free;
     mEditor.Free;
@@ -89,7 +89,7 @@ begin
     mEditor.Size := cBigger;
     mCopy.Follow(mEditor);
     Assert.AreEqual(cBigger, mCopy.Font.Size);
-    Assert.IsTrue(mCopy.Font.Style = [fsItalic]);
+    Assert.AreEqual<TFontStyles>([fsItalic], mCopy.Font.Style);
   finally
     mCopy.Free;
     mEditor.Free;
@@ -107,7 +107,7 @@ begin
     mEditor.Name := cName;
     mEditor.Style := [fsBold, fsItalic];
     mCopy.Follow(mEditor);
-    Assert.IsTrue(mCopy.Font.Style = []);
+    Assert.AreEqual<TFontStyles>([], mCopy.Font.Style);
   finally
     mCopy.Free;
     mEditor.Free;

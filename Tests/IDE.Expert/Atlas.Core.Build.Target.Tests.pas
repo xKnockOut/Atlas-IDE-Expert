@@ -73,24 +73,26 @@ begin
   Tracker := TAtlasBuildTargetTracker.Create;
   try
     Current := TAtlasBuildTarget.Create(Project, 'Debug', 'Win32', ['DEBUG']);
-    Assert.IsTrue(Tracker.Decide(Current) = TAtlasBuildTargetAction.Query);
+    Assert.AreEqual<TAtlasBuildTargetAction>(TAtlasBuildTargetAction.Query, Tracker.Decide(Current));
     // Während die Anfrage läuft, nichts Neues.
-    Assert.IsTrue(Tracker.Decide(Current) = TAtlasBuildTargetAction.None);
+    Assert.AreEqual<TAtlasBuildTargetAction>(TAtlasBuildTargetAction.None, Tracker.Decide(Current));
     Tracker.Baseline(Project, 'Debug', 'Win32', ['DEBUG'], True);
     Tracker.Finished;
-    Assert.IsTrue(Tracker.Decide(Current) = TAtlasBuildTargetAction.None, 'Server hat dieselbe Auswahl');
+    Assert.AreEqual<TAtlasBuildTargetAction>(TAtlasBuildTargetAction.None,
+      Tracker.Decide(Current), 'Server hat dieselbe Auswahl');
     // Wechsel auf Win64 in der Projektverwaltung.
     Current.Platform := 'Win64';
-    Assert.IsTrue(Tracker.Decide(Current) = TAtlasBuildTargetAction.Select);
+    Assert.AreEqual<TAtlasBuildTargetAction>(TAtlasBuildTargetAction.Select, Tracker.Decide(Current));
     Assert.IsTrue(Tracker.Pending);
     Tracker.Finished;
-    Assert.IsTrue(Tracker.Decide(Current) = TAtlasBuildTargetAction.None, 'nur einmal senden');
+    Assert.AreEqual<TAtlasBuildTargetAction>(TAtlasBuildTargetAction.None,
+      Tracker.Decide(Current), 'nur einmal senden');
     // Server startete mit anderer Auswahl als die IDE.
     Current := TAtlasBuildTarget.Create('C:\P\Other.dproj', 'Release', 'Win32', nil);
-    Assert.IsTrue(Tracker.Decide(Current) = TAtlasBuildTargetAction.Query);
+    Assert.AreEqual<TAtlasBuildTargetAction>(TAtlasBuildTargetAction.Query, Tracker.Decide(Current));
     Tracker.Baseline(Current.Project, 'Debug', 'Win32', nil, True);
     Tracker.Finished;
-    Assert.IsTrue(Tracker.Decide(Current) = TAtlasBuildTargetAction.Select);
+    Assert.AreEqual<TAtlasBuildTargetAction>(TAtlasBuildTargetAction.Select, Tracker.Decide(Current));
   finally
     Tracker.Free;
   end;
@@ -109,7 +111,7 @@ begin
     Tracker.Finished;
     // Neues Symbol in den Projektoptionen, noch nicht gespeichert.
     Current.Defines := ['DEBUG', 'TRACE'];
-    Assert.IsTrue(Tracker.Decide(Current) = TAtlasBuildTargetAction.Select);
+    Assert.AreEqual<TAtlasBuildTargetAction>(TAtlasBuildTargetAction.Select, Tracker.Decide(Current));
   finally
     Tracker.Free;
   end;
@@ -123,13 +125,13 @@ begin
   Tracker := TAtlasBuildTargetTracker.Create;
   try
     Current := TAtlasBuildTarget.Create(Project, 'Debug', 'Win32', nil);
-    Assert.IsTrue(Tracker.Decide(Current) = TAtlasBuildTargetAction.Query);
+    Assert.AreEqual<TAtlasBuildTargetAction>(TAtlasBuildTargetAction.Query, Tracker.Decide(Current));
     Tracker.Baseline(Project, '', '', nil, False);
     Tracker.Finished;
     Current.Platform := 'Win64';
-    Assert.IsTrue(Tracker.Decide(Current) = TAtlasBuildTargetAction.None);
+    Assert.AreEqual<TAtlasBuildTargetAction>(TAtlasBuildTargetAction.None, Tracker.Decide(Current));
     // Ohne Projekt nichts tun.
-    Assert.IsTrue(Tracker.Decide(Default(TAtlasBuildTarget)) = TAtlasBuildTargetAction.None);
+    Assert.AreEqual<TAtlasBuildTargetAction>(TAtlasBuildTargetAction.None, Tracker.Decide(Default(TAtlasBuildTarget)));
   finally
     Tracker.Free;
   end;
@@ -146,7 +148,7 @@ begin
     Tracker.Decide(Current);
     Tracker.Reset;
     Assert.IsFalse(Tracker.Pending);
-    Assert.IsTrue(Tracker.Decide(Current) = TAtlasBuildTargetAction.Query);
+    Assert.AreEqual<TAtlasBuildTargetAction>(TAtlasBuildTargetAction.Query, Tracker.Decide(Current));
   finally
     Tracker.Free;
   end;

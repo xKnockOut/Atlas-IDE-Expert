@@ -221,15 +221,15 @@ var
 begin
   for mOutcome := Low(TAtlasCiOutcome) to High(TAtlasCiOutcome) do
   begin
-    Assert.IsTrue(TAtlasCiBuild.OutcomeOf(TAtlasCiBuild.OutcomeKey(mOutcome)) = mOutcome);
+    Assert.AreEqual<TAtlasCiOutcome>(mOutcome, TAtlasCiBuild.OutcomeOf(TAtlasCiBuild.OutcomeKey(mOutcome)));
   end;
   for mError := Low(TAtlasCiFetchError) to High(TAtlasCiFetchError) do
   begin
-    Assert.IsTrue(TAtlasCiBuild.ErrorOf(TAtlasCiBuild.ErrorKey(mError)) = mError);
+    Assert.AreEqual<TAtlasCiFetchError>(mError, TAtlasCiBuild.ErrorOf(TAtlasCiBuild.ErrorKey(mError)));
   end;
   Assert.AreEqual('', TAtlasCiBuild.ErrorKey(TAtlasCiFetchError.None));
-  Assert.IsTrue(TAtlasCiBuild.OutcomeOf('seltsam') = TAtlasCiOutcome.Unknown);
-  Assert.IsTrue(TAtlasCiBuild.ErrorOf('seltsam') = TAtlasCiFetchError.Network);
+  Assert.AreEqual<TAtlasCiOutcome>(TAtlasCiOutcome.Unknown, TAtlasCiBuild.OutcomeOf('seltsam'));
+  Assert.AreEqual<TAtlasCiFetchError>(TAtlasCiFetchError.Network, TAtlasCiBuild.ErrorOf('seltsam'));
 end;
 
 { TAtlasCiAddressesTests }
@@ -302,7 +302,7 @@ var
 begin
   Assert.IsTrue(TAtlasJenkinsProvider.ParseBuild(Fixture('last-completed-build.json'), mBuild));
   Assert.AreEqual(482, mBuild.Number);
-  Assert.IsTrue(mBuild.Outcome = TAtlasCiOutcome.Unstable);
+  Assert.AreEqual<TAtlasCiOutcome>(TAtlasCiOutcome.Unstable, mBuild.Outcome);
   Assert.AreEqual(Int64(61234), mBuild.DurationMs);
   // 1792138800500 ms = 2026-10-16 08:20:00,5 UTC
   Assert.IsTrue(Abs(mBuild.StartedUtc - (EncodeDate(2026, 10, 16) + EncodeTime(8, 20, 0, 500))) < 1 / 86400000 * 2);
@@ -350,7 +350,7 @@ begin
   Assert.IsFalse(TAtlasJenkinsProvider.ParseBuild('{"result": "SUCCESS"}', mBuild), 'ohne Nummer');
   Assert.IsFalse(TAtlasJenkinsProvider.ParseBuild('{"number": 0}', mBuild));
   Assert.IsTrue(TAtlasJenkinsProvider.ParseBuild('{"number": 5, "result": null}', mBuild), 'läuft noch');
-  Assert.IsTrue(mBuild.Outcome = TAtlasCiOutcome.Unknown);
+  Assert.AreEqual<TAtlasCiOutcome>(TAtlasCiOutcome.Unknown, mBuild.Outcome);
   mBuild := TAtlasCiBuild.Empty;
   Assert.IsFalse(TAtlasJenkinsProvider.ParseTestReport('[]', mBuild));
   Assert.IsFalse(mBuild.TestsKnown);
@@ -374,11 +374,11 @@ end;
 
 procedure TAtlasJenkinsProviderTests.ErrorOfStatus;
 begin
-  Assert.IsTrue(TAtlasJenkinsProvider.ErrorOfStatus(401) = TAtlasCiFetchError.Unauthorized);
-  Assert.IsTrue(TAtlasJenkinsProvider.ErrorOfStatus(403) = TAtlasCiFetchError.Unauthorized);
-  Assert.IsTrue(TAtlasJenkinsProvider.ErrorOfStatus(404) = TAtlasCiFetchError.NotFound);
-  Assert.IsTrue(TAtlasJenkinsProvider.ErrorOfStatus(500) = TAtlasCiFetchError.Server);
-  Assert.IsTrue(TAtlasJenkinsProvider.ErrorOfStatus(302) = TAtlasCiFetchError.Server);
+  Assert.AreEqual<TAtlasCiFetchError>(TAtlasCiFetchError.Unauthorized, TAtlasJenkinsProvider.ErrorOfStatus(401));
+  Assert.AreEqual<TAtlasCiFetchError>(TAtlasCiFetchError.Unauthorized, TAtlasJenkinsProvider.ErrorOfStatus(403));
+  Assert.AreEqual<TAtlasCiFetchError>(TAtlasCiFetchError.NotFound, TAtlasJenkinsProvider.ErrorOfStatus(404));
+  Assert.AreEqual<TAtlasCiFetchError>(TAtlasCiFetchError.Server, TAtlasJenkinsProvider.ErrorOfStatus(500));
+  Assert.AreEqual<TAtlasCiFetchError>(TAtlasCiFetchError.Server, TAtlasJenkinsProvider.ErrorOfStatus(302));
 end;
 
 procedure TAtlasJenkinsProviderTests.FetchReadsBuildAndReport;
@@ -397,7 +397,7 @@ begin
   mProvider := TAtlasJenkinsProvider.Create;
   Assert.AreEqual('jenkins', mProvider.Name);
   Assert.IsTrue(mProvider.Fetch(Job, mKeep, 5000, mBuild, mError));
-  Assert.IsTrue(mError = TAtlasCiFetchError.None);
+  Assert.AreEqual<TAtlasCiFetchError>(TAtlasCiFetchError.None, mError);
   Assert.AreEqual(482, mBuild.Number);
   Assert.IsTrue(mBuild.TestsKnown);
   Assert.AreEqual(2, mBuild.Failed);
@@ -420,9 +420,9 @@ begin
     '{"number": 12, "result": "FAILURE"}');
   mProvider := TAtlasJenkinsProvider.Create;
   Assert.IsTrue(mProvider.Fetch(Job, mKeep, 5000, mBuild, mError), 'Testbericht fehlt (404)');
-  Assert.IsTrue(mError = TAtlasCiFetchError.None);
+  Assert.AreEqual<TAtlasCiFetchError>(TAtlasCiFetchError.None, mError);
   Assert.AreEqual(12, mBuild.Number);
-  Assert.IsTrue(mBuild.Outcome = TAtlasCiOutcome.Failure);
+  Assert.AreEqual<TAtlasCiOutcome>(TAtlasCiOutcome.Failure, mBuild.Outcome);
   Assert.IsFalse(mBuild.TestsKnown);
 end;
 
@@ -439,7 +439,7 @@ begin
   mKeep := mTransport;
   mTransport.FailWith(TAtlasCiFetchError.Timeout);
   Assert.IsFalse(mProvider.Fetch(Job, mKeep, 5000, mBuild, mError));
-  Assert.IsTrue(mError = TAtlasCiFetchError.Timeout);
+  Assert.AreEqual<TAtlasCiFetchError>(TAtlasCiFetchError.Timeout, mError);
   Assert.AreEqual(0, mBuild.Number);
   Assert.AreEqual(1, Integer(Length(mTransport.Calls)), 'nach dem Zeitlimit kein zweiter Aufruf');
 
@@ -447,13 +447,13 @@ begin
   mKeep := mTransport;
   mTransport.Answer('https://ci.firma.de/', 401, '');
   Assert.IsFalse(mProvider.Fetch(Job, mKeep, 5000, mBuild, mError));
-  Assert.IsTrue(mError = TAtlasCiFetchError.Unauthorized);
+  Assert.AreEqual<TAtlasCiFetchError>(TAtlasCiFetchError.Unauthorized, mError);
 
   mTransport := TFakeTransport.Create;
   mKeep := mTransport;
   mTransport.Answer('https://ci.firma.de/', 200, '<html>Anmeldung</html>');
   Assert.IsFalse(mProvider.Fetch(Job, mKeep, 5000, mBuild, mError));
-  Assert.IsTrue(mError = TAtlasCiFetchError.Invalid);
+  Assert.AreEqual<TAtlasCiFetchError>(TAtlasCiFetchError.Invalid, mError);
 end;
 
 procedure TAtlasJenkinsProviderTests.FetchWithoutConfigurationDoesNotCallTransport;
@@ -468,7 +468,7 @@ begin
   mKeep := mTransport;
   mProvider := TAtlasJenkinsProvider.Create;
   Assert.IsFalse(mProvider.Fetch(TAtlasCiJob.Create('jenkins', '', 'kasse', False, ''), mKeep, 5000, mBuild, mError));
-  Assert.IsTrue(mError = TAtlasCiFetchError.NotConfigured);
+  Assert.AreEqual<TAtlasCiFetchError>(TAtlasCiFetchError.NotConfigured, mError);
   Assert.AreEqual(0, Integer(Length(mTransport.Calls)));
 end;
 

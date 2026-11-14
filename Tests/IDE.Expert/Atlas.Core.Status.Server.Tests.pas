@@ -62,7 +62,7 @@ begin
   Assert.AreEqual<Cardinal>(4711, mSnapshot.ProcessId);
   Assert.AreEqual('1.2.0', mSnapshot.Version);
   Assert.AreEqual<Int64>(3900000, mSnapshot.UptimeMs);
-  Assert.IsTrue(mSnapshot.State = TAtlasServerState.Checking);
+  Assert.AreEqual<TAtlasServerState>(TAtlasServerState.Checking, mSnapshot.State);
   Assert.AreEqual(1234, mSnapshot.Units);
   Assert.AreEqual<Int64>(200 * cMb, mSnapshot.Memory[TAtlasServerMemoryPart.Usages]);
   Assert.AreEqual<Int64>(30 * cMb, mSnapshot.Memory[TAtlasServerMemoryPart.TreeCache]);
@@ -103,7 +103,7 @@ begin
   Assert.AreEqual<Int64>(cMb, mSnapshot.MemoryTotal);
   Assert.AreEqual(-1, mSnapshot.IndexHitPercent);
   Assert.AreEqual(0, mSnapshot.CheckSerial);
-  Assert.IsTrue(mSnapshot.State = TAtlasServerState.Unknown);
+  Assert.AreEqual<TAtlasServerState>(TAtlasServerState.Unknown, mSnapshot.State);
 end;
 
 procedure TAtlasServerSnapshotTests.InvalidAnswerIsNotValid;

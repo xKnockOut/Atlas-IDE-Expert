@@ -166,7 +166,7 @@ begin
   Assert.AreEqual(240.0, Bounds.Top, 0.001);
   Assert.AreEqual(200.0, Bounds.Width, 0.001);
   Parent := Child(Next, cUiaNavigateParent);
-  Assert.IsTrue((Parent as IUnknown) = (List as IUnknown));
+  Assert.AreSame((List as IUnknown), (Parent as IUnknown));
   Assert.AreEqual('Assign', string(Prop(Child(List, cUiaNavigateLastChild), NameProperty)));
   Assert.IsNull(Child(Child(List, cUiaNavigateLastChild), cUiaNavigateNextSibling));
 end;

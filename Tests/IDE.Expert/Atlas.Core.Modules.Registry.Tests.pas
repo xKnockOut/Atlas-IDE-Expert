@@ -633,7 +633,7 @@ begin
     Assert.AreEqual('Debugger', mKnown[0].Info.Name);
     Assert.AreEqual('2.0.0', mKnown[0].Info.Version);
     Assert.IsFalse(mKnown[0].Installed);
-    Assert.IsTrue(mKnown[0].Info.Handle = 0, 'ohne Handle');
+    Assert.AreEqual<NativeUInt>(0, mKnown[0].Info.Handle, 'ohne Handle');
     Assert.AreEqual('fremd.b', mKnown[1].Info.Id);
     Assert.IsTrue(mKnown[1].Installed);
   finally
@@ -933,9 +933,9 @@ var
 begin
   mFirst := AtlasModuleRegistry;
   mSecond := AtlasModuleRegistry;
-  Assert.IsTrue(mFirst <> nil);
-  Assert.IsTrue(mFirst = mSecond, 'jeder Aufruf liefert dieselbe Instanz');
-  Assert.IsTrue(AtlasModuleRegistryInstance <> nil);
+  Assert.IsNotNull(mFirst);
+  Assert.AreSame(mSecond, mFirst, 'jeder Aufruf liefert dieselbe Instanz');
+  Assert.IsNotNull(AtlasModuleRegistryInstance);
 end;
 
 initialization

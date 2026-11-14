@@ -90,8 +90,8 @@ begin
   mDialog := TAtlasDialog.CreateDialog(nil, 'Titel', 400);
   try
     Assert.AreEqual('Titel', string(mDialog.Caption));
-    Assert.IsTrue(mDialog.BorderStyle = bsDialog);
-    Assert.IsTrue(mDialog.Position = poMainFormCenter);
+    Assert.AreEqual<TFormBorderStyle>(bsDialog, mDialog.BorderStyle);
+    Assert.AreEqual<TPosition>(poMainFormCenter, mDialog.Position);
     Assert.AreEqual(string(TAtlasUiTheme.cFontName), string(mDialog.Font.Name));
     Assert.AreEqual(mDialog.ScaleValue(400), mDialog.ClientWidth);
   finally
@@ -151,7 +151,7 @@ begin
     mDialog.HandleNeeded;
     Assert.AreEqual(mDialog.ScaleValue(22), mFirst.Height);
     Assert.IsTrue(mSecond.Top > mFirst.Top, Format('Top %d/%d', [mFirst.Top, mSecond.Top]));
-    Assert.IsTrue(mLabel.Parent = mFirst, 'Parent');
+    Assert.AreSame(mFirst, mLabel.Parent, 'Parent');
     mDialog.FitHeight;
     Assert.IsTrue(mDialog.ClientHeight >= mSecond.Top + mSecond.Height,
       Format('ClientHeight %d, Ende %d', [mDialog.ClientHeight, mSecond.Top + mSecond.Height]));
@@ -224,13 +224,13 @@ begin
     mDialog.HandleNeeded;
     mDialog.FitHeight;
     mDialog.AllowResize(mGrow);
-    Assert.IsTrue(mDialog.BorderStyle = bsSizeable);
+    Assert.AreEqual<TFormBorderStyle>(bsSizeable, mDialog.BorderStyle);
     Assert.AreEqual(mDialog.Width, Integer(mDialog.Constraints.MinWidth));
     mMinHeight := mDialog.Constraints.MinHeight;
     Assert.AreEqual(mDialog.Height, mMinHeight);
-    Assert.IsTrue(mTop.Align = alTop);
-    Assert.IsTrue(mGrow.Align = alClient);
-    Assert.IsTrue(mBottom.Align = alBottom);
+    Assert.AreEqual<TAlign>(alTop, mTop.Align);
+    Assert.AreEqual<TAlign>(alClient, mGrow.Align);
+    Assert.AreEqual<TAlign>(alBottom, mBottom.Align);
     mDialog.Height := mMinHeight + mDialog.ScaleValue(100);
     Assert.AreEqual(mDialog.ScaleValue(26), mBottom.Height, 'untere Zeile behält ihre Höhe');
     Assert.IsTrue(mGrow.Height >= mDialog.ScaleValue(60 + 100) - 2, Format('Höhe %d', [mGrow.Height]));

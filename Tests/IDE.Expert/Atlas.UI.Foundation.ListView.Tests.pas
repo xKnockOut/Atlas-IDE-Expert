@@ -85,7 +85,7 @@ begin
   mColumn := FList.AddColumn('Name', 120, taRightJustify);
   Assert.AreEqual(TAtlasScaling.ToDevice(120, FList.CurrentPPI), Integer(mColumn.Width));
   Assert.AreEqual('Name', string(mColumn.Caption));
-  Assert.IsTrue(mColumn.Alignment = taRightJustify);
+  Assert.AreEqual<TAlignment>(taRightJustify, mColumn.Alignment);
 end;
 
 procedure TAtlasListViewTests.DpiChangeScalesColumnsOnce;
@@ -110,7 +110,7 @@ end;
 
 procedure TAtlasListViewTests.ReportViewWithoutOwnColors;
 begin
-  Assert.IsTrue(FList.ViewStyle = vsReport);
+  Assert.AreEqual<TViewStyle>(vsReport, FList.ViewStyle);
   Assert.AreEqual(Integer(clWindow), Integer(FList.Color));
 end;
 

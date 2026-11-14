@@ -116,10 +116,10 @@ begin
   Assert.AreEqual(2, Integer(Length(Entries)));
   Assert.AreEqual('Demo', Entries[0].Profile.Name);
   Assert.AreEqual('-demo', Entries[0].Profile.Parameters, 'gleichnamig: das Profil aus .atlas gilt');
-  Assert.IsTrue(Entries[0].Source = TAtlasStartProfileSource.Team);
+  Assert.AreEqual<TAtlasStartProfileSource>(TAtlasStartProfileSource.Team, Entries[0].Source);
   Assert.AreEqual('C:\Repo\App', Entries[0].BaseFolder);
   Assert.AreEqual('lokal', Entries[1].Profile.Name);
-  Assert.IsTrue(Entries[1].Source = TAtlasStartProfileSource.Personal);
+  Assert.AreEqual<TAtlasStartProfileSource>(TAtlasStartProfileSource.Personal, Entries[1].Source);
   Assert.AreEqual('C:\Repo\App', Entries[1].BaseFolder, 'persönlich: ab dem Ordner der .dproj');
 end;
 

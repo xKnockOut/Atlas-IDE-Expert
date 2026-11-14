@@ -162,11 +162,12 @@ begin
     // bliebe dem Knopf nur der Rest der Zeilenhöhe (Knopf unsichtbar).
     for mIndex := 0 to mRow.ControlCount - 1 do
     begin
-      Assert.IsFalse(mRow.Controls[mIndex].Align = alTop, mRow.Controls[mIndex].ClassName + ' mit alTop neben dem Knopf');
+      Assert.AreNotEqual<TAlign>(alTop,
+        mRow.Controls[mIndex].Align, mRow.Controls[mIndex].ClassName + ' mit alTop neben dem Knopf');
     end;
     Assert.IsTrue(mRow.Height >= mFrame.ReplaceButton.Height + mFrame.ReplaceButton.Margins.Top +
       mFrame.ReplaceButton.Margins.Bottom, 'Zeile so hoch wie der Knopf');
-    Assert.IsTrue(mFrame.Notice.Parent = mRow, 'Hinweis neben dem Knopf');
+    Assert.AreSame(mRow, mFrame.Notice.Parent, 'Hinweis neben dem Knopf');
     Assert.IsFalse(mFrame.Title.Parent = mRow, 'Kopfzeile darüber');
   finally
     mHost.Free;

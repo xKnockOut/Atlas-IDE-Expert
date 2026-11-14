@@ -642,7 +642,7 @@ begin
     // Einzelprojekt wählen.
     mFrame.ScopeBox.ItemIndex := 4;
     mFrame.ScopeBox.OnChange(mFrame.ScopeBox);
-    Assert.IsTrue(mFrame.Scope = TAtlasFindingScope.Project);
+    Assert.AreEqual<TAtlasFindingScope>(TAtlasFindingScope.Project, mFrame.Scope);
     Assert.AreEqual('Atlas.Common', mFrame.ScopeProject);
     Assert.AreEqual(1, mScopes);
     Assert.AreEqual(1, mLayouts);

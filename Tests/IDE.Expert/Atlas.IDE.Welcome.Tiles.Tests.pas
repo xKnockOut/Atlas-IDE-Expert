@@ -158,7 +158,7 @@ begin
     Assert.AreEqual('Kachel', mSection.Title);
     Assert.AreEqual('Zeigt etwas.', mSection.Description);
     Assert.AreEqual(42, mSection.Order);
-    Assert.IsTrue(mSection.Column = TAtlasWelcomeColumn.Right);
+    Assert.AreEqual<TAtlasWelcomeColumn>(TAtlasWelcomeColumn.Right, mSection.Column);
     Assert.IsFalse(mSection.IsEnabled, 'Schalter der Kachel');
     mTile.On_ := True;
     Assert.IsTrue(mSection.IsEnabled);
@@ -201,7 +201,7 @@ begin
     Assert.IsNotNull(mFrame);
     Assert.AreEqual(cTileId, mFrame.SectionId);
     mControl := mTile.LastView.Control;
-    Assert.IsTrue(mControl.Parent = mFrame.Body, 'Inhalt in der Inhaltsfläche');
+    Assert.AreSame(mFrame.Body, mControl.Parent, 'Inhalt in der Inhaltsfläche');
     mFrame.UpdateContent;
     Assert.AreEqual(1, mTile.LastView.Updates);
     Assert.AreEqual(1, Integer(Length(mTiles.FramesOf(cTileId))));

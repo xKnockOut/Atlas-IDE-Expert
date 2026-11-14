@@ -136,8 +136,8 @@ begin
       begin
         Result := mDoneThread <> 0;
       end));
-    Assert.IsTrue(mWorkThread <> MainThreadID, 'Arbeit im Hintergrund');
-    Assert.IsTrue(mDoneThread = MainThreadID, 'Abschluss im Hauptthread');
+    Assert.AreNotEqual<TThreadID>(MainThreadID, mWorkThread, 'Arbeit im Hintergrund');
+    Assert.AreEqual<TThreadID>(MainThreadID, mDoneThread, 'Abschluss im Hauptthread');
     Assert.IsTrue(mOk);
     Assert.IsFalse(mRequest.Busy);
   finally

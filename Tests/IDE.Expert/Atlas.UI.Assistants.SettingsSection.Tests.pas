@@ -58,9 +58,9 @@ begin
   try
     mPage.LoadFrom(TAtlasPluginSettings.Defaults);
     Assert.IsTrue(CheckOf(mPage, 'McpBuild').Checked, 'Builds für KI-Assistenten standardmäßig an');
-    Assert.IsTrue(SheetOf(CheckOf(mPage, 'McpBuild')) = SheetOf(CheckOf(mPage, 'AssistantsEnabled')),
+    Assert.AreSame(SheetOf(CheckOf(mPage, 'AssistantsEnabled')), SheetOf(CheckOf(mPage, 'McpBuild')),
       'alle Schalter auf der Seite des Moduls');
-    Assert.IsTrue(SheetOf(CheckOf(mPage, 'AssistantsEdit')) = SheetOf(CheckOf(mPage, 'AssistantsEnabled')));
+    Assert.AreSame(SheetOf(CheckOf(mPage, 'AssistantsEnabled')), SheetOf(CheckOf(mPage, 'AssistantsEdit')));
     CheckOf(mPage, 'McpBuild').Checked := False;
     mSaved := TAtlasPluginSettings.Defaults;
     mPage.SaveTo(mSaved);

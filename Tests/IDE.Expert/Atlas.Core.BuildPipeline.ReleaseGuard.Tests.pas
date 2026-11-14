@@ -136,9 +136,9 @@ begin
     '-memoryLeaks,versionInfo,outputFolder', mChecks.ToText);
   // Sollwert bleibt auch bei einer abgeschalteten Prüfung erhalten.
   Assert.AreEqual(mChecks.ToText, TAtlasReleaseChecks.Normalized(mChecks.ToText));
-  Assert.IsTrue(TAtlasBuildPipelineSettings.GateOf(' BLOCK ') = TAtlasBuildGate.Block);
-  Assert.IsTrue(TAtlasBuildPipelineSettings.GateOf('warn') = TAtlasBuildGate.Warn);
-  Assert.IsTrue(TAtlasBuildPipelineSettings.GateOf('irgendwas') = TAtlasBuildGate.Off);
+  Assert.AreEqual<TAtlasBuildGate>(TAtlasBuildGate.Block, TAtlasBuildPipelineSettings.GateOf(' BLOCK '));
+  Assert.AreEqual<TAtlasBuildGate>(TAtlasBuildGate.Warn, TAtlasBuildPipelineSettings.GateOf('warn'));
+  Assert.AreEqual<TAtlasBuildGate>(TAtlasBuildGate.Off, TAtlasBuildPipelineSettings.GateOf('irgendwas'));
 end;
 
 procedure TAtlasReleaseGuardTests.ReleaseConfigurations;

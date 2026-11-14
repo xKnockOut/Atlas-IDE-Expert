@@ -211,8 +211,8 @@ begin
   Assert.AreEqual(TAtlasBuildPipelineSettings.cGateMinTimeoutMs, TAtlasGateSettings.Create('block', 0).TimeoutMs);
   Assert.AreEqual(TAtlasBuildPipelineSettings.cGateMaxTimeoutMs, TAtlasGateSettings.Create('block', 999999).TimeoutMs);
   Assert.AreEqual(300, TAtlasGateSettings.Create('block', 300).TimeoutMs);
-  Assert.IsTrue(TAtlasGateSettings.Create('BLOCK', 300).Gate = TAtlasBuildGate.Block);
-  Assert.IsTrue(TAtlasGateSettings.Create('streng', 300).Gate = TAtlasBuildGate.Off);
+  Assert.AreEqual<TAtlasBuildGate>(TAtlasBuildGate.Block, TAtlasGateSettings.Create('BLOCK', 300).Gate);
+  Assert.AreEqual<TAtlasBuildGate>(TAtlasBuildGate.Off, TAtlasGateSettings.Create('streng', 300).Gate);
 end;
 
 procedure TAtlasBuildGateTests.ChangedUnitsByStampOrOutputTime;

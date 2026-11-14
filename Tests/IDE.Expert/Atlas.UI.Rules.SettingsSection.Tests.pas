@@ -162,11 +162,11 @@ begin
     mPage := TAtlasSettingsPage.Create(mHost);
     mPage.Parent := mHost;
     mPage.HandleNeeded;
-    Assert.IsTrue(SheetOf(CheckOf(mPage, 'FixBulk')) = mPage.NodeSheet('rules.window'));
-    Assert.IsTrue(SheetOf(CheckOf(mPage, 'BaselineUpdate')) = mPage.NodeSheet('editor.codeLens'));
-    Assert.IsTrue(SheetOf(CheckOf(mPage, 'DfmPropertyRules')) = mPage.NodeSheet('editor.codeLens'));
-    Assert.IsTrue(SheetOf(CheckOf(mPage, 'OwnershipHints')) = mPage.NodeSheet('editor.ownershipHints'));
-    Assert.IsTrue(SheetOf(CheckOf(mPage, 'OwnershipHintsOnlyProblems')) = mPage.NodeSheet('editor.ownershipHints'));
+    Assert.AreSame(mPage.NodeSheet('rules.window'), SheetOf(CheckOf(mPage, 'FixBulk')));
+    Assert.AreSame(mPage.NodeSheet('editor.codeLens'), SheetOf(CheckOf(mPage, 'BaselineUpdate')));
+    Assert.AreSame(mPage.NodeSheet('editor.codeLens'), SheetOf(CheckOf(mPage, 'DfmPropertyRules')));
+    Assert.AreSame(mPage.NodeSheet('editor.ownershipHints'), SheetOf(CheckOf(mPage, 'OwnershipHints')));
+    Assert.AreSame(mPage.NodeSheet('editor.ownershipHints'), SheetOf(CheckOf(mPage, 'OwnershipHintsOnlyProblems')));
   finally
     mHost.Free;
   end;

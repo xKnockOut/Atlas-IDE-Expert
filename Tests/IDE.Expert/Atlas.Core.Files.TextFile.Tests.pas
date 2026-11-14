@@ -56,22 +56,22 @@ var
   Content: TAtlasTextFileContent;
 begin
   Content := TAtlasTextFile.Decode(TBytes.Create($EF, $BB, $BF, $61, $C3, $A4));
-  Assert.IsTrue(Content.Encoding = TAtlasTextEncoding.Utf8Bom);
+  Assert.AreEqual<TAtlasTextEncoding>(TAtlasTextEncoding.Utf8Bom, Content.Encoding);
   Assert.AreEqual('aä', Content.Text);
   Content := TAtlasTextFile.Decode(TBytes.Create($61, $C3, $A4));
-  Assert.IsTrue(Content.Encoding = TAtlasTextEncoding.Utf8);
+  Assert.AreEqual<TAtlasTextEncoding>(TAtlasTextEncoding.Utf8, Content.Encoding);
   Assert.AreEqual('aä', Content.Text);
   Content := TAtlasTextFile.Decode(TBytes.Create($FF, $FE, $61, $00));
-  Assert.IsTrue(Content.Encoding = TAtlasTextEncoding.Utf16LE);
+  Assert.AreEqual<TAtlasTextEncoding>(TAtlasTextEncoding.Utf16LE, Content.Encoding);
   Assert.AreEqual('a', Content.Text);
   Content := TAtlasTextFile.Decode(TBytes.Create($FE, $FF, $00, $61));
-  Assert.IsTrue(Content.Encoding = TAtlasTextEncoding.Utf16BE);
+  Assert.AreEqual<TAtlasTextEncoding>(TAtlasTextEncoding.Utf16BE, Content.Encoding);
   Assert.AreEqual('a', Content.Text);
   // $E4 allein ist kein UTF-8: ANSI wie in der IDE.
   Content := TAtlasTextFile.Decode(TBytes.Create($61, $E4));
-  Assert.IsTrue(Content.Encoding = TAtlasTextEncoding.Ansi);
+  Assert.AreEqual<TAtlasTextEncoding>(TAtlasTextEncoding.Ansi, Content.Encoding);
   Content := TAtlasTextFile.Decode(nil);
-  Assert.IsTrue(Content.Encoding = TAtlasTextEncoding.Utf8);
+  Assert.AreEqual<TAtlasTextEncoding>(TAtlasTextEncoding.Utf8, Content.Encoding);
   Assert.AreEqual('', Content.Text);
 end;
 
@@ -168,7 +168,7 @@ begin
     TFile.WriteAllText(FileName, '{}');
     Handle := CreateFile(PChar(FileName), GENERIC_READ, FILE_SHARE_READ or FILE_SHARE_WRITE or FILE_SHARE_DELETE,
       nil, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, 0);
-    Assert.IsTrue(Handle <> INVALID_HANDLE_VALUE);
+    Assert.AreNotEqual<THandle>(INVALID_HANDLE_VALUE, Handle);
     try
       Content := TAtlasTextFile.Load(FileName);
       Content.Text := '{"metrics": false}';
@@ -202,7 +202,7 @@ begin
     // So las TFile.ReadAllBytes: Lesen geteilt, Löschen nicht.
     Handle := CreateFile(PChar(FileName), GENERIC_READ, FILE_SHARE_READ, nil, OPEN_EXISTING,
       FILE_ATTRIBUTE_NORMAL, 0);
-    Assert.IsTrue(Handle <> INVALID_HANDLE_VALUE);
+    Assert.AreNotEqual<THandle>(INVALID_HANDLE_VALUE, Handle);
     try
       Content := TAtlasTextFile.Load(FileName);
       Content.Text := '{"metrics": false}';
@@ -235,7 +235,7 @@ begin
     // Wie Save beim Ersetzen: offen zum Löschen. TFile.ReadAllBytes scheitert daran, ReadAllBytes nicht.
     Handle := CreateFile(PChar(FileName), _DELETE or SYNCHRONIZE,
       FILE_SHARE_READ or FILE_SHARE_WRITE or FILE_SHARE_DELETE, nil, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, 0);
-    Assert.IsTrue(Handle <> INVALID_HANDLE_VALUE);
+    Assert.AreNotEqual<THandle>(INVALID_HANDLE_VALUE, Handle);
     try
       Assert.AreEqual(2, Integer(Length(TAtlasTextFile.ReadAllBytes(FileName))));
     finally
@@ -263,13 +263,14 @@ begin
   // "Š" ist in Codepage 1250 $8A; außerhalb der Änderung bleibt jedes Byte gleich.
   Source := TBytes.Create($8A, $0D, $0A, Ord('x'));
   Content := TAtlasTextFile.Decode(Source, 1250);
-  Assert.IsTrue(Content.Encoding = TAtlasTextEncoding.Ansi);
+  Assert.AreEqual<TAtlasTextEncoding>(TAtlasTextEncoding.Ansi, Content.Encoding);
   Assert.AreEqual(1250, Content.CodePage);
   Assert.AreEqual(#$0160#13#10'x', Content.Text);
   Content.Text := StringReplace(Content.Text, 'x', 'y', []);
   Assert.AreEqual(Hex(TBytes.Create($8A, $0D, $0A, Ord('y'))), Hex(TAtlasTextFile.Encode(Content)));
   // Gültiges UTF-8 bleibt UTF-8, auch mit ANSI-Vorgabe.
-  Assert.IsTrue(TAtlasTextFile.Decode(TBytes.Create($61, $C3, $A4), 1250).Encoding = TAtlasTextEncoding.Utf8);
+  Assert.AreEqual<TAtlasTextEncoding>(TAtlasTextEncoding.Utf8,
+    TAtlasTextFile.Decode(TBytes.Create($61, $C3, $A4), 1250).Encoding);
   // Vorgabe UTF-8: ANSI in der Codepage des Systems.
   Assert.AreEqual(0, TAtlasTextFile.Decode(TBytes.Create($61, $E4), TAtlasTextFile.cUtf8CodePage).CodePage);
 end;
@@ -279,10 +280,10 @@ var
   Content: TAtlasTextFileContent;
 begin
   Content := TAtlasTextFile.Decode(TBytes.Create($61), 1250);
-  Assert.IsTrue(Content.Encoding = TAtlasTextEncoding.Ansi);
+  Assert.AreEqual<TAtlasTextEncoding>(TAtlasTextEncoding.Ansi, Content.Encoding);
   Content.Text := Content.Text + #$010D;
   Assert.AreEqual(Hex(TBytes.Create($61, $E8)), Hex(TAtlasTextFile.Encode(Content)));
-  Assert.IsTrue(TAtlasTextFile.Decode(TBytes.Create($61)).Encoding = TAtlasTextEncoding.Utf8);
+  Assert.AreEqual<TAtlasTextEncoding>(TAtlasTextEncoding.Utf8, TAtlasTextFile.Decode(TBytes.Create($61)).Encoding);
 end;
 
 procedure TAtlasTextFileTests.ParsesCodePages;

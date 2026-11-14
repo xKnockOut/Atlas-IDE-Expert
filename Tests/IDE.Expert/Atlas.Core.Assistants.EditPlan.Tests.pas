@@ -51,7 +51,7 @@ var
   mDecision: TAtlasEditInboxDecision;
 begin
   mDecision := TAtlasEditInboxPlan.Decide(TAtlasEditorFile.Closed, 'a');
-  Assert.IsTrue(mDecision.Step = TAtlasEditInboxStep.NotOpen, 'nicht offen');
+  Assert.AreEqual<TAtlasEditInboxStep>(TAtlasEditInboxStep.NotOpen, mDecision.Step, 'nicht offen');
   Assert.IsFalse(mDecision.Applies, 'nicht anwenden');
   Assert.IsTrue(mDecision.ServerWrites, 'der MCP-Server schreibt selbst');
   Assert.AreEqual(TAtlasEditInboxPlan.cReasonNotOpen, mDecision.Reason);
@@ -63,7 +63,7 @@ var
   mDecision: TAtlasEditInboxDecision;
 begin
   mDecision := TAtlasEditInboxPlan.Decide(TAtlasEditorFile.Opened('a getippt', True), 'a');
-  Assert.IsTrue(mDecision.Step = TAtlasEditInboxStep.ModifiedInEditor, 'ungespeichert geändert');
+  Assert.AreEqual<TAtlasEditInboxStep>(TAtlasEditInboxStep.ModifiedInEditor, mDecision.Step, 'ungespeichert geändert');
   Assert.IsFalse(mDecision.Applies, 'nicht anwenden');
   Assert.IsFalse(mDecision.ServerWrites, 'die Änderung des Benutzers geht vor');
   Assert.AreEqual(TAtlasEditInboxPlan.cReasonModified, mDecision.Reason);
@@ -74,7 +74,7 @@ var
   mDecision: TAtlasEditInboxDecision;
 begin
   mDecision := TAtlasEditInboxPlan.Decide(TAtlasEditorFile.Opened('a'#13#10, False), 'a'#10);
-  Assert.IsTrue(mDecision.Step = TAtlasEditInboxStep.DiffersFromDisk, 'andere Zeilenenden');
+  Assert.AreEqual<TAtlasEditInboxStep>(TAtlasEditInboxStep.DiffersFromDisk, mDecision.Step, 'andere Zeilenenden');
   Assert.IsFalse(mDecision.Applies, 'nicht anwenden');
   Assert.IsTrue(mDecision.ServerWrites, 'der MCP-Server schreibt, die IDE lädt neu');
   Assert.AreEqual(TAtlasEditInboxPlan.cReasonDiffers, mDecision.Reason);

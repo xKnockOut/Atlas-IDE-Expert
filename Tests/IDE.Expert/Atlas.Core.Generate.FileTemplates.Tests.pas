@@ -59,8 +59,8 @@ begin
   Assert.AreEqual(2, Integer(Length(TAtlasFileTemplates.OfKind(nil, TAtlasNewFileKind.UnitFile))));
   for Snippet in TAtlasFileTemplates.BuiltIn do
   begin
-    Assert.IsTrue(Snippet.FileKind <> '', Snippet.Prefix);
-    Assert.IsTrue(Snippet.Origin = TAtlasSnippetOrigin.BuiltIn, Snippet.Prefix);
+    Assert.AreNotEqual('', Snippet.FileKind, Snippet.Prefix);
+    Assert.AreEqual<TAtlasSnippetOrigin>(TAtlasSnippetOrigin.BuiltIn, Snippet.Origin, Snippet.Prefix);
     Assert.Contains(Snippet.Body, 'unit %Unit%;', Snippet.Prefix);
   end;
   Assert.AreEqual('test', TAtlasFileTemplates.KindWord(TAtlasNewFileKind.TestFile));
@@ -92,8 +92,8 @@ begin
   Assert.AreEqual('snippet:newunit', Entries[0].Id);
   Assert.AreEqual('Leere Unit', Entries[0].Caption);
   Assert.AreEqual(0, Entries[0].Source);
-  Assert.IsTrue(Entries[2].Group = TAtlasGenerateGroup.Templates);
-  Assert.IsTrue(Entries[2].Kind = TAtlasGenerateKind.Snippet);
+  Assert.AreEqual<TAtlasGenerateGroup>(TAtlasGenerateGroup.Templates, Entries[2].Group);
+  Assert.AreEqual<TAtlasGenerateKind>(TAtlasGenerateKind.Snippet, Entries[2].Kind);
   Assert.AreEqual(2, Entries[2].Source);
   Assert.IsFalse(Entries[2].NeedsStep, 'Dateivorlagen brauchen kein Argument');
 end;
@@ -107,7 +107,7 @@ begin
   Assert.Contains(Text, '  TKunden = class');
   Assert.Contains(Text, 'constructor TKunden.Create;');
   Assert.IsTrue(Text.EndsWith('end.'#13#10), Text);
-  Assert.IsTrue(Pos('%', Text) = 0, Text);
+  Assert.AreEqual(0, Pos('%', Text), Text);
   // Platzhalter und $$ wie bei Code-Vorlagen.
   Assert.AreEqual('unit U;'#10'const C = ''Name'';'#10'// $1'#10,
     TAtlasFileTemplates.Render('unit %unit%;'#10'const C = ''${1:Name}'';'#10'// $$1'#10#10, 'U', '', '', #10));

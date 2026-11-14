@@ -242,7 +242,7 @@ begin
     mPoint := Middle(FBar.KindRect(TAtlasFindingKind.Warning));
     FBar.ClickAt(mPoint.X, mPoint.Y);
     Assert.AreEqual(1, mProbe.FKindHit);
-    Assert.IsTrue(mProbe.FKind = TAtlasFindingKind.Warning, 'Warnung');
+    Assert.AreEqual<TAtlasFindingKind>(TAtlasFindingKind.Warning, mProbe.FKind, 'Warnung');
     mPoint := Middle(FBar.KindRect(TAtlasFindingKind.Error));
     FBar.DoubleClickAt(mPoint.X, mPoint.Y);
     Assert.AreEqual(1, mProbe.FOpened, 'Doppelklick öffnet „Atlas-Prüfung“');
