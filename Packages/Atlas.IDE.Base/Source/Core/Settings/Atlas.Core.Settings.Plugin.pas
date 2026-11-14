@@ -91,6 +91,8 @@ type
     cMaxTestsOnSaveMax = Atlas.Core.Settings.Plugin.Build.cMaxTestsOnSaveMax;
     cMinTestsSlowMs = Atlas.Core.Settings.Plugin.Build.cMinTestsSlowMs;
     cMaxTestsSlowMs = Atlas.Core.Settings.Plugin.Build.cMaxTestsSlowMs;
+    cMinTestsRepeatCount = Atlas.Core.Settings.Plugin.Build.cMinTestsRepeatCount;
+    cMaxTestsRepeatCount = Atlas.Core.Settings.Plugin.Build.cMaxTestsRepeatCount;
     cMinTestsFlakyRuns = Atlas.Core.Settings.Plugin.Build.cMinTestsFlakyRuns;
     cMaxTestsFlakyRuns = Atlas.Core.Settings.Plugin.Build.cMaxTestsFlakyRuns;
     cMinTestsBoundaryMax = Atlas.Core.Settings.Plugin.Build.cMinTestsBoundaryMax;
@@ -184,6 +186,8 @@ type
     cDesignerUsagesUnit = Atlas.Core.Settings.Plugin.Editor.cDesignerUsagesUnit;
     cDesignerUsagesProject = Atlas.Core.Settings.Plugin.Editor.cDesignerUsagesProject;
     cDesignerUsagesGroup = Atlas.Core.Settings.Plugin.Editor.cDesignerUsagesGroup;
+    cDesignerLayoutPrevious = Atlas.Core.Settings.Plugin.Editor.cDesignerLayoutPrevious;
+    cDesignerLayoutDefault = Atlas.Core.Settings.Plugin.Editor.cDesignerLayoutDefault;
     cDesignerScopeParent = Atlas.Core.Settings.Plugin.Editor.cDesignerScopeParent;
     cDesignerSetsLocal = Atlas.Core.Settings.Plugin.Editor.cDesignerSetsLocal;
     cDesignerSetsShared = Atlas.Core.Settings.Plugin.Editor.cDesignerSetsShared;
@@ -440,6 +444,7 @@ type
     property TestsBoundaryCases: Boolean read FBuild.TestsBoundaryCases write FBuild.TestsBoundaryCases;
     property TestsBoundaryMax: Integer read FBuild.TestsBoundaryMax write FBuild.TestsBoundaryMax;
     property TestsLeaks: Boolean read FBuild.TestsLeaks write FBuild.TestsLeaks;
+    property TestsRepeatCount: Integer read FBuild.TestsRepeatCount write FBuild.TestsRepeatCount;
     property TestsFlaky: Boolean read FBuild.TestsFlaky write FBuild.TestsFlaky;
     property TestsFlakyRuns: Integer read FBuild.TestsFlakyRuns write FBuild.TestsFlakyRuns;
     property BuildZeroHints: Boolean read FBuild.BuildZeroHints write FBuild.BuildZeroHints;
@@ -862,6 +867,12 @@ type
     property DesignerExtractFrame: Boolean read FEditorView.DesignerExtractFrame
       write FEditorView.DesignerExtractFrame;
     property DesignerEventMap: Boolean read FEditorView.DesignerEventMap write FEditorView.DesignerEventMap;
+    property DesignerLayout: Boolean read FEditorView.DesignerLayout write FEditorView.DesignerLayout;
+    property DesignerLayoutName: string read FEditorView.DesignerLayoutName write FEditorView.DesignerLayoutName;
+    property DesignerLayoutReturnTo: string read FEditorView.DesignerLayoutReturnTo
+      write FEditorView.DesignerLayoutReturnTo;
+    property DesignerLayoutSkipWhileDebugging: Boolean read FEditorView.DesignerLayoutSkipWhileDebugging
+      write FEditorView.DesignerLayoutSkipWhileDebugging;
     property DesignerFitToText:Boolean read FEditorView.DesignerFitToText write FEditorView.DesignerFitToText;
     property DesignerFitToTextMinWidth: Integer read FEditorView.DesignerFitToTextMinWidth
       write FEditorView.DesignerFitToTextMinWidth;

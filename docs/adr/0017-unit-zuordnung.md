@@ -1412,6 +1412,7 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.Core.Designer.Layout` | `Core/Designer/Atlas.Core.Designer.Layout.pas` | Ordner `Core/Designer` |
 | `Atlas.Core.Designer.Scale` | `Core/Designer/Atlas.Core.Designer.Scale.pas` | Ordner `Core/Designer` |
 | `Atlas.Core.Designer.TabOrder` | `Core/Designer/Atlas.Core.Designer.TabOrder.pas` | Ordner `Core/Designer` |
+| `Atlas.Core.Designer.DesktopSwitch` | `Core/Designer/Atlas.Core.Designer.DesktopSwitch.pas` | Ordner `Core/Designer` |
 | `Atlas.Core.Designer.NameSuggest` | `Core/Designer/Atlas.Core.Designer.NameSuggest.pas` | Ordner `Core/Designer` |
 | `Atlas.Core.Designer.CodeLink` | `Core/Designer/Atlas.Core.Designer.CodeLink.pas` | Ordner `Core/Designer` |
 | `Atlas.Core.Designer.PropertySearch` | `Core/Designer/Atlas.Core.Designer.PropertySearch.pas` | Ordner `Core/Designer` |
@@ -1474,6 +1475,7 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.IDE.Designer.ExtractFrame` | `IDE/Designer/Atlas.IDE.Designer.ExtractFrame.pas` | Ordner `IDE/Designer` |
 | `Atlas.IDE.Designer.EventMap` | `IDE/Designer/Atlas.IDE.Designer.EventMap.pas` | Ordner `IDE/Designer` |
 | `Atlas.IDE.Designer.Usages` | `IDE/Designer/Atlas.IDE.Designer.Usages.pas` | Ordner `IDE/Designer` |
+| `Atlas.IDE.Designer.DesktopLayout` | `IDE/Designer/Atlas.IDE.Designer.DesktopLayout.pas` | Ordner `IDE/Designer` |
 | `Atlas.IDE.Designer.UndoApply` | `IDE/Designer/Atlas.IDE.Designer.UndoApply.pas` | Ordner `IDE/Designer` |
 | `Atlas.IDE.Designer.Undo` | `IDE/Designer/Atlas.IDE.Designer.Undo.pas` | Ordner `IDE/Designer` |
 | `Atlas.UI.Designer.Bar` | `UI/Designer/Atlas.UI.Designer.Bar.pas` | Ordner `UI/Designer` |
@@ -1604,6 +1606,7 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.Core.Tests.Durations` | `Core/Tests/Atlas.Core.Tests.Durations.pas` | Ordner `Core/Tests` |
 | `Atlas.Core.Tests.Flaky` | `Core/Tests/Atlas.Core.Tests.Flaky.pas` | Ordner `Core/Tests` |
 | `Atlas.Core.Tests.Explorer` | `Core/Tests/Atlas.Core.Tests.Explorer.pas` | Ordner `Core/Tests` |
+| `Atlas.Core.Tests.Series` | `Core/Tests/Atlas.Core.Tests.Series.pas` | Ordner `Core/Tests`; Serien N-mal bzw. zufällige Reihenfolge (#1782) |
 | `Atlas.Core.Tests.Lists` | `Core/Tests/Atlas.Core.Tests.Lists.pas` | Ordner `Core/Tests`; Testlisten: Regeln, Mitglieder, Argumente eines Laufs, JSON (#2167) |
 | `Atlas.Core.Tests.ListText` | `Core/Tests/Atlas.Core.Tests.ListText.pas` | Ordner `Core/Tests`; Beschreibung und Prüfung einer Testliste (#2167) |
 | `Atlas.Core.Tests.ListFile` | `Core/Tests/Atlas.Core.Tests.ListFile.pas` | Ordner `Core/Tests`; Ablage „nur für mich“ der Testlisten (#2167) |
@@ -1629,6 +1632,7 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.IDE.Tests.Explorer` | `IDE/Tests/Atlas.IDE.Tests.Explorer.pas` | Ordner `IDE/Tests` |
 | `Atlas.IDE.Tests.StatusField` | `IDE/Tests/Atlas.IDE.Tests.StatusField.pas` | Ordner `IDE/Tests` |
 | `Atlas.IDE.Tests.ExplorerWindow` | `IDE/Tests/Atlas.IDE.Tests.ExplorerWindow.pas` | Ordner `IDE/Tests` |
+| `Atlas.IDE.Tests.Series` | `IDE/Tests/Atlas.IDE.Tests.Series.pas` | Ordner `IDE/Tests`; Befehle „N-mal ausführen …“, zufällige Reihenfolge (#1782) |
 | `Atlas.IDE.Tests.Lists` | `IDE/Tests/Atlas.IDE.Tests.Lists.pas` | Ordner `IDE/Tests`; Testlisten laden, speichern, ausführen (#2167) |
 | `Atlas.IDE.Tests.ExplorerLog` | `IDE/Tests/Atlas.IDE.Tests.ExplorerLog.pas` | Ordner `IDE/Tests`; Protokoll je Test (#2168) |
 | `Atlas.IDE.Tests.CaseTable` | `IDE/Tests/Atlas.IDE.Tests.CaseTable.pas` | Ordner `IDE/Tests` |
@@ -1648,6 +1652,7 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.UI.Tests.Compare` | `UI/Tests/Atlas.UI.Tests.Compare.pas` | Ordner `UI/Tests` |
 | `Atlas.UI.Tests.Slowest` | `UI/Tests/Atlas.UI.Tests.Slowest.pas` | Ordner `UI/Tests` |
 | `Atlas.UI.Tests.ExplorerFrame` | `UI/Tests/Atlas.UI.Tests.ExplorerFrame.pas` | Ordner `UI/Tests` |
+| `Atlas.UI.Tests.SeriesMenu` | `UI/Tests/Atlas.UI.Tests.SeriesMenu.pas` | Ordner `UI/Tests`; Kontextmenü und Anzahl der Serien (#1782) |
 | `Atlas.UI.Tests.ListBar` | `UI/Tests/Atlas.UI.Tests.ListBar.pas` | Ordner `UI/Tests`; Reiter und Menüs der Testlisten (#2167) |
 | `Atlas.UI.Tests.ListDialog` | `UI/Tests/Atlas.UI.Tests.ListDialog.pas` | Ordner `UI/Tests`; Dialog einer Testliste (#2167) |
 | `Atlas.UI.Tests.ExplorerDetails` | `UI/Tests/Atlas.UI.Tests.ExplorerDetails.pas` | Ordner `UI/Tests`; Einzelheiten und Protokoll (#2168) |

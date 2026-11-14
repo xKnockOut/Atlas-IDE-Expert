@@ -33,6 +33,10 @@ const
   cMinTestsSlowMs = 50;
   cMaxTestsSlowMs = 60000;
   cDefaultTestsSlowMs = 500;
+  /// <summary>Grenzen und Vorgabe für tests.repeat.count (#1782).</summary>
+  cMinTestsRepeatCount = 2;
+  cMaxTestsRepeatCount = 1000;
+  cDefaultTestsRepeatCount = 20;
   /// <summary>Grenzen und Vorgabe für tests.flaky.runs (#1773).</summary>
   cMinTestsFlakyRuns = 3;
   cMaxTestsFlakyRuns = 50;
@@ -178,6 +182,9 @@ type
     /// <summary>Lecks je Test (#1774, tests.leaks): Ein Test, den DUnitX nur wegen eines Lecks als fehlgeschlagen
     /// meldet, gilt als bestanden mit Leck (gelbe Marke, Warnung in Atlas-Probleme). Aus = wie im Bericht.</summary>
     TestsLeaks: Boolean;
+    /// <summary>Vorgabe für „N-mal ausführen …“ (#1782, tests.repeat.count), cMinTestsRepeatCount bis
+    /// cMaxTestsRepeatCount.</summary>
+    TestsRepeatCount: Integer;
     /// <summary>Wackelnde Tests erkennen (#1773, tests.flaky): Verlauf der letzten Läufe je Test, Marke „wackelt“
     /// an der Testlinse und Filter im Fenster „Atlas-Tests“. Aus = kein Verlauf, keine Marke.</summary>
     TestsFlaky: Boolean;
@@ -363,6 +370,7 @@ begin
     cMaxTestsUntestedWarnPercent);
   TestsOnSaveMax := EnsureRange(TestsOnSaveMax, cMinTestsOnSaveMax, cMaxTestsOnSaveMax);
   TestsSlowMs := EnsureRange(TestsSlowMs, cMinTestsSlowMs, cMaxTestsSlowMs);
+  TestsRepeatCount := EnsureRange(TestsRepeatCount, cMinTestsRepeatCount, cMaxTestsRepeatCount);
   TestsFlakyRuns := EnsureRange(TestsFlakyRuns, cMinTestsFlakyRuns, cMaxTestsFlakyRuns);
   TestsBoundaryMax := EnsureRange(TestsBoundaryMax, cMinTestsBoundaryMax, cMaxTestsBoundaryMax);
   TestsListsRunKey := EnsureRange(TestsListsRunKey, 0, $FFFF);
@@ -441,6 +449,7 @@ begin
   TestsBoundaryCases := True;
   TestsBoundaryMax := cDefaultTestsBoundaryMax;
   TestsLeaks := True;
+  TestsRepeatCount := cDefaultTestsRepeatCount;
   TestsFlaky := True;
   TestsFlakyRuns := cDefaultTestsFlakyRuns;
 end;
@@ -477,6 +486,7 @@ begin
   AIo.Flag('TestsBoundaryCases', TestsBoundaryCases);
   AIo.Number('TestsBoundaryMax', TestsBoundaryMax);
   AIo.Flag('TestsLeaks', TestsLeaks);
+  AIo.Number('TestsRepeatCount', TestsRepeatCount);
   AIo.Flag('TestsFlaky', TestsFlaky);
   AIo.Number('TestsFlakyRuns', TestsFlakyRuns);
 end;

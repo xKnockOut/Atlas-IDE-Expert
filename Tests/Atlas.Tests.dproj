@@ -1343,6 +1343,8 @@
         <DCCReference Include="IDE.Expert\Atlas.Core.Tests.Approval.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Tests\Source\Core\Tests\Atlas.Core.Tests.Durations.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Tests.Durations.Tests.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Tests\Source\Core\Tests\Atlas.Core.Tests.Series.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.Core.Tests.Series.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Tests\Source\Core\Tests\Atlas.Core.Tests.Flaky.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Tests.Flaky.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Tests\Source\Core\Tests\Atlas.Core.Tests.Explorer.pas"/>
@@ -2487,6 +2489,8 @@
         <DCCReference Include="IDE.Expert\Atlas.Core.Designer.Components.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Designer\Source\Core\Designer\Atlas.Core.Designer.TabOrder.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Designer.TabOrder.Tests.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Designer\Source\Core\Designer\Atlas.Core.Designer.DesktopSwitch.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.Core.Designer.DesktopSwitch.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Designer\Source\Core\Designer\Atlas.Core.Designer.CodeLink.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Designer.CodeLink.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Designer\Source\Core\Designer\Atlas.Core.Designer.PropertySearch.pas"/>
