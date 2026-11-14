@@ -2249,6 +2249,20 @@
       "x-parent": "debug.memoryTimeline",
       "x-issue": "#858"
     },
+    "DebugMemoryTimelineObjectCount": {
+      "type": "boolean",
+      "default": false,
+      "description": "Objekte je Klasse zählen und vergleichen: Im Fenster „Atlas: Speicher“ zählt „Objekte zählen“ im angehaltenen Programm die lebenden Objekte je Klasse (Anzahl, Größe), indem Atlas den Speicher nach Verweisen auf Klassen durchsucht; unabhängig vom Speichermanager, eine Näherung. Jede Zählung wird mit der vorigen verglichen, Zuwächse stehen oben, ein Filter schränkt auf Klassen ein. Aus = kein Bereich, nichts wird gelesen.",
+      "x-key": "debug.memoryTimeline.objectCount",
+      "x-area": "debug",
+      "x-feature": "Debugger",
+      "x-page": "Debuggen",
+      "x-experimental": true,
+      "x-parent": "debug.memoryTimeline",
+      "x-caption": "Objekte je Klasse zählen",
+      "x-captionEn": "Count objects per class",
+      "x-issue": "#858"
+    },
     "DebugWhyHere": {
       "description": "Warum bin ich hier? Beim Halt stehen am Ende der Kopfzeilen der umgebenden if, while, repeat, for und case die Werte ihrer Bedingungen; Aufrufe und Getter erst auf Klick.",
       "type": "boolean",

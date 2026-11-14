@@ -240,6 +240,7 @@ begin
   Assert.AreEqual(5, ASettings.DebugInlineValuesPerLine, 'debug.inlineValuesPerLine (#508)');
   Assert.IsTrue(ASettings.DebugMemoryTimeline, 'debug.memoryTimeline (#858)');
   Assert.AreEqual(1000, ASettings.DebugMemoryTimelineIntervalMs, 'debug.memoryTimeline.intervalMs (#858)');
+  Assert.IsFalse(ASettings.DebugMemoryTimelineObjectCount, 'debug.memoryTimeline.objectCount (#858)');
   Assert.IsTrue(ASettings.DebugWhyHere, 'debug.whyHere (#1878)');
   Assert.AreEqual(3, ASettings.DebugWhyHereDepth, 'debug.whyHere.depth (#1878)');
   Assert.IsTrue(ASettings.DebugVariablesWindow, 'debug.variablesWindow (#853)');
@@ -451,6 +452,7 @@ begin
   ASettings.DebugInlineValuesPerLine := 7;
   ASettings.DebugMemoryTimeline := False;
   ASettings.DebugMemoryTimelineIntervalMs := 2500;
+  ASettings.DebugMemoryTimelineObjectCount := True;
   ASettings.DebugWhyHere := False;
   ASettings.DebugWhyHereDepth := 6;
   ASettings.DebugVariablesWindow := False;
@@ -639,6 +641,7 @@ begin
   Assert.AreEqual(7, ALoaded.DebugInlineValuesPerLine, 'debug.inlineValuesPerLine (#508)');
   Assert.IsFalse(ALoaded.DebugMemoryTimeline, 'debug.memoryTimeline (#858)');
   Assert.AreEqual(2500, ALoaded.DebugMemoryTimelineIntervalMs, 'debug.memoryTimeline.intervalMs (#858)');
+  Assert.IsTrue(ALoaded.DebugMemoryTimelineObjectCount, 'debug.memoryTimeline.objectCount (#858)');
   Assert.IsFalse(ALoaded.DebugWhyHere, 'debug.whyHere (#1878)');
   Assert.AreEqual(6, ALoaded.DebugWhyHereDepth, 'debug.whyHere.depth (#1878)');
   Assert.IsFalse(ALoaded.DebugVariablesWindow, 'debug.variablesWindow (#853)');

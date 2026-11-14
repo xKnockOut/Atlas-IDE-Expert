@@ -267,6 +267,9 @@ type
     DebugMemoryTimeline: Boolean;
     /// <summary>Abstand der Messungen in Millisekunden (#858, debug.memoryTimeline.intervalMs).</summary>
     DebugMemoryTimelineIntervalMs: Integer;
+    /// <summary>Objekte je Klasse zählen und vergleichen (#858, debug.memoryTimeline.objectCount, experimentell):
+    /// Bereich „Objekte zählen“ im Fenster „Atlas: Speicher“. Aus = kein Bereich, nichts wird gelesen.</summary>
+    DebugMemoryTimelineObjectCount: Boolean;
     /// <summary>„Warum bin ich hier?“ (#1878, debug.whyHere): Beim Halt zeigt Atlas am Ende der Kopfzeilen der
     /// umgebenden if, while, repeat, for und case die Werte ihrer Bedingungen („True and (1200 > 1000) → True“,
     /// „I = 3 von 7“); Aufrufe nur auf Klick. Aus = keine Anfrage, keine Werte.</summary>
@@ -559,6 +562,7 @@ begin
   DebugPinnedValues := True;
   DebugMemoryTimeline := True;
   DebugMemoryTimelineIntervalMs := cDefaultMemoryTimelineIntervalMs;
+  DebugMemoryTimelineObjectCount := False;
   DebugCallStackWindow := True;
   DebugCallStackWindowEvaluateParams := True;
   DebugOwnCodeFolders := '';
@@ -596,6 +600,7 @@ begin
   AIo.Flag('DebugPinnedValues', DebugPinnedValues);
   AIo.Flag('DebugMemoryTimeline', DebugMemoryTimeline);
   AIo.Number('DebugMemoryTimelineIntervalMs', DebugMemoryTimelineIntervalMs);
+  AIo.Flag('DebugMemoryTimelineObjectCount', DebugMemoryTimelineObjectCount);
   AIo.Flag('DebugCallStackWindow', DebugCallStackWindow);
   AIo.Flag('DebugCallStackWindowEvaluateParams', DebugCallStackWindowEvaluateParams);
   AIo.Text('DebugOwnCodeFolders', DebugOwnCodeFolders);

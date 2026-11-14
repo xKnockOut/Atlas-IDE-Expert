@@ -1,0 +1,2 @@
+### Neu
+- Objektzählung im Fenster „Atlas: Speicher“ (#858, Teil 2, experimentell, `debug.memoryTimeline.objectCount`, Vorgabe aus): „Objekte zählen“ durchsucht im angehaltenen Programm den Speicher nach Verweisen auf gültige Klassen (Selbstzeiger der VMT, Win32 und Win64) und zeigt Anzahl und Größe lebender Objekte je Klasse. Jede weitere Zählung wird mit der vorigen verglichen, Zuwächse stehen oben, „Klasse filtern“ schränkt ein. Unabhängig vom Speichermanager, eine Näherung (Klassenverweise in Feldern zählen mit).
