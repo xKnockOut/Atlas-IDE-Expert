@@ -7,8 +7,8 @@
 // - die Teile der Feature-Tabelle (Visualisierer, eigene Darstellungen,
 //   Exception-Verlauf und -Leiste, nur eigener Code, Werte im Editor,
 //   „kein Zugriff“ erklären, Zugriffsverletzung, Vervollständigung in
-//   Debugger-Dialogen, Fenster „Auswerten“, Schrittfilter, „Was wartet worauf?“, Speicherverlauf; die Teile
-//   für Werte und Ausdrücke stehen in Atlas.IDE.Debug.Composition.Values, die für
+//   Debugger-Dialogen, Fenster „Auswerten“, Schrittfilter, „Was wartet worauf?“, Speicherverlauf, Profiler;
+//   die Teile für Werte und Ausdrücke stehen in Atlas.IDE.Debug.Composition.Values, die für
 //   Exceptions und Threads in Atlas.IDE.Debug.Composition.Session),
 // - Befehle (Palette), Einträge im Atlas-Menü und im Kontextmenü des Editors,
 //   die Taste von „Gezielt hineinspringen“,
@@ -546,7 +546,7 @@ function Parts: TArray<IAtlasFeaturePart>;
 begin
   Result := LeadingParts + DebugExceptionParts + DebugValueParts(ExpressionProvider, GScope);
   Result := Result + [StepFilterPart] + DebugThreadParts(GScope) + DebugLeakParts(GScope) +
-    BreakpointParts + RunParts + DebugMemoryParts;
+    BreakpointParts + RunParts(CurrentScope) + DebugMemoryParts;
 end;
 
 class function TAtlasDebugModule.RegisterModule: Boolean;

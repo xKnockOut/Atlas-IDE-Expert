@@ -1,0 +1,5 @@
+### Experimentell
+- Profiler im Plugin (#2057, Teil 1b, `debug.profiler`, Vorgabe aus; `debug.profiler.intervalMs`, Vorgabe 10 ms, 1 bis 100): „Mit Profil ausführen“ (Atlas-Menü, Befehl `Atlas.DebugProfileRun`) übersetzt das aktive Projekt bei Bedarf, startet es ohne Debugger mit seinen Startoptionen und lässt den Server messen; „Profil starten/beenden“ (`Atlas.DebugProfileToggle`) misst das gerade debuggte Programm. Der Server nimmt die Aufrufstapel aller Threads, ohne das Programm anzuhalten, und löst sie über die Map-Datei auf (Linker-Option „Map-Datei = Detailliert“). Endet das Programm, endet die Messung. Das Fenster „Atlas: Profil“ (`Atlas.DebugProfile`) zeigt die letzten fünf Läufe mit Eigen- und Gesamtanteil und heißester Zeile je Methode, „Nur eigener Code“ und „Mit vorigem Lauf vergleichen“; Doppelklick öffnet die Zeile.
+
+### Geändert
+- Profildatei und Auswertung des Profilers (#2057) heißen jetzt `Atlas.Text.Profile` und `Atlas.Text.ProfileReport` (vorher `Atlas.Common.Profiling.*`), damit das Plugin sie als Quelltext mitnehmen kann.

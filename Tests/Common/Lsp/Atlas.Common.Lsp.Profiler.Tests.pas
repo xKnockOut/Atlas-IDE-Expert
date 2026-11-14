@@ -44,7 +44,7 @@ uses
   System.JSON,
   Atlas.Common.JsonRpc.Dispatcher,
   Atlas.Common.Lsp.Commands,
-  Atlas.Common.Profiling.Profile;
+  Atlas.Text.Profile;
 
 type
   /// <summary>Prober zum Testen: liefert einen festen Lauf; Ended simuliert das Ende des Programms.</summary>

@@ -72,6 +72,8 @@ contains
   Atlas.Text.MapFile in '..\Atlas.Text\Source\MapFile\Atlas.Text.MapFile.pas',
   Atlas.Text.PeImage in '..\Atlas.Text\Source\MapFile\Atlas.Text.PeImage.pas',
   Atlas.Text.LeakReport in '..\Atlas.Text\Source\LeakReport\Atlas.Text.LeakReport.pas',
+  Atlas.Text.Profile in '..\Atlas.Text\Source\Profile\Atlas.Text.Profile.pas',
+  Atlas.Text.ProfileReport in '..\Atlas.Text\Source\Profile\Atlas.Text.ProfileReport.pas',
   Atlas.Text.CrashReport in '..\Atlas.Text\Source\CrashReport\Atlas.Text.CrashReport.pas',
   Atlas.Core.Localization.Language in 'Source\Core\Localization\Atlas.Core.Localization.Language.pas',
   Atlas.Core.Lsp.Progress in 'Source\Core\Lsp\Atlas.Core.Lsp.Progress.pas',
