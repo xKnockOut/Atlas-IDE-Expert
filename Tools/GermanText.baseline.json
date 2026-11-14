@@ -212,7 +212,7 @@
   "Application/Source/Shell/Shell.Composition.Workspaces.pas": 4,
   "Application/Source/Shell/Shell.CrashCases.pas": 11,
   "Application/Source/Shell/Shell.Diagnostics.pas": 3,
-  "Application/Source/Shell/Shell.Mcp.pas": 2,
+  "Application/Source/Shell/Shell.Mcp.pas": 1,
   "Application/Source/Shell/Shell.SlashHost.pas": 5,
   "Application/Source/Shell/Shell.Workspace.Build.pas": 3,
   "Application/Source/Shell/Shell.Workspace.Cache.pas": 6,

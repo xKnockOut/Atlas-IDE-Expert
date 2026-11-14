@@ -71,6 +71,8 @@ type
   TCoveredRequest = record
     /// <summary>Projektdateien aller Projekte (Referenzsuche).</summary>
     Files: TArray<string>;
+    /// <summary>Liest eine der Dateien (Puffer des Editors oder Datei).</summary>
+    ReadText: TReferenceReadText;
     /// <summary>Tiefe, Treffersicherheit, Testunits und Zeitlimit.</summary>
     Options: TImpactOptions;
     /// <summary>Auch private und protected Methoden sowie Routinen nur im implementation-Teil.</summary>
@@ -128,15 +130,13 @@ type
       const AScope: TImpactTestScope): Boolean; static;
     /// <summary>Tests je Methode der Unit AText (Datei AFileName).</summary>
     class function Determine(AResolver: TNameResolver; const AIndex: ISymbolIndex; const AFileName, AText: string;
-      const ARequest: TCoveredRequest; const AReadText: TReferenceReadText;
-      const ACancellation: IJsonRpcCancellationToken): TCoveredResult; static;
+      const ARequest: TCoveredRequest; const ACancellation: IJsonRpcCancellationToken): TCoveredResult; static;
     /// <summary>Stand der Unit AResult (Datei AFileName) für die Liste des Projekts.</summary>
     class function UntestedOf(const AResult: TCoveredResult; const AFileName: string): TUntestedUnit; static;
     /// <summary>Ungetestete Methoden aller Units aus ARequest.Files (nur .pas, ohne Testunits und ohne Units ohne
     /// Methoden); höchstens ABudgetMs insgesamt.</summary>
     class function Project(AResolver: TNameResolver; const AIndex: ISymbolIndex; const ARequest: TCoveredRequest;
-      const AReadText: TReferenceReadText; const ACancellation: IJsonRpcCancellationToken;
-      ABudgetMs: Integer): TUntestedResult; static;
+      const ACancellation: IJsonRpcCancellationToken; ABudgetMs: Integer): TUntestedResult; static;
     /// <summary>Antwort von atlas/untestedMethods; der Aufrufer übernimmt das Objekt.</summary>
     class function ProjectToJson(const AResult: TUntestedResult): TJSONObject; static;
     /// <summary>"public", "published", "protected", "private".</summary>
@@ -479,7 +479,7 @@ begin
 end;
 
 class function TCoveredBy.Determine(AResolver: TNameResolver; const AIndex: ISymbolIndex;
-  const AFileName, AText: string; const ARequest: TCoveredRequest; const AReadText: TReferenceReadText;
+  const AFileName, AText: string; const ARequest: TCoveredRequest;
   const ACancellation: IJsonRpcCancellationToken): TCoveredResult;
 var
   mOptions: TImpactOptions;
@@ -518,7 +518,7 @@ begin
     Exit;
   end;
   mFound := TImpactAnalysis.AnalyzeEach(AResolver, AIndex, mStarts, TImpactSources.Create(ARequest.Files,
-    AReadText), mOptions, ACancellation);
+    ARequest.ReadText), mOptions, ACancellation);
   for mIndex := 0 to High(mFound) do
   begin
     Result.Limits := Result.Limits + mFound[mIndex].Limits;
@@ -636,9 +636,19 @@ begin
   end;
 end;
 
+/// <summary>Zeitlimit einer Unit: der Rest ALeft der Gesamtzeit, höchstens das Limit AOwnMs der Anfrage.</summary>
+function UnitTimeout(AOwnMs: Integer; ALeft: Int64): Integer;
+begin
+  Result := Integer(ALeft);
+  if AOwnMs > 0 then
+  begin
+    Result := Integer(Min(Int64(AOwnMs), ALeft));
+  end;
+end;
+
 class function TCoveredBy.Project(AResolver: TNameResolver; const AIndex: ISymbolIndex;
-  const ARequest: TCoveredRequest; const AReadText: TReferenceReadText;
-  const ACancellation: IJsonRpcCancellationToken; ABudgetMs: Integer): TUntestedResult;
+  const ARequest: TCoveredRequest; const ACancellation: IJsonRpcCancellationToken;
+  ABudgetMs: Integer): TUntestedResult;
 var
   mClock: TStopwatch;
   mFileName, mText: string;
@@ -668,16 +678,12 @@ begin
       Inc(Result.Skipped);
       Continue;
     end;
-    if not (Assigned(AReadText) and AReadText(mFileName, mText)) then
+    if not (Assigned(ARequest.ReadText) and ARequest.ReadText(mFileName, mText)) then
     begin
       Continue;
     end;
-    mRequest.Options.TimeoutMs := Integer(mLeft);
-    if ARequest.Options.TimeoutMs > 0 then
-    begin
-      mRequest.Options.TimeoutMs := Integer(Min(Int64(ARequest.Options.TimeoutMs), mLeft));
-    end;
-    mFound := Determine(AResolver, AIndex, mFileName, mText, mRequest, AReadText, ACancellation);
+    mRequest.Options.TimeoutMs := UnitTimeout(ARequest.Options.TimeoutMs, mLeft);
+    mFound := Determine(AResolver, AIndex, mFileName, mText, mRequest, ACancellation);
     Result.Limits := Result.Limits + mFound.Limits;
     if not mFound.IsTestUnit and (Length(mFound.Methods) > 0) then
     begin

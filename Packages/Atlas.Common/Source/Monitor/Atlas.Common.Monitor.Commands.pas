@@ -256,6 +256,32 @@ begin
   end;
 end;
 
+/// <summary>Betroffene Tests: gegen AffectedBase bzw. den letzten Commit, auf Wunsch mit ungespeicherten
+/// Änderungen.</summary>
+procedure AddAffectedTests(var AArgs: TArgs; const AOptions: TMonitorOptions; const AOutputFile: string);
+begin
+  if AOptions.AffectedBase <> '' then
+  begin
+    AArgs.Add('--affected-tests=' + AOptions.AffectedBase);
+  end
+  else
+  begin
+    AArgs.Add('--affected-tests');
+  end;
+  AArgs.Flag('--include-uncommitted', AOptions.IncludeUncommitted);
+  AArgs.Value('--output', AOutputFile);
+end;
+
+/// <summary>Formatieren prüfen (AWrite = False) bzw. schreiben, Ausgabe als diff.</summary>
+procedure AddFormat(var AArgs: TArgs; AWrite: Boolean; const AOptions: TMonitorOptions; const AOutputFile: string);
+begin
+  AArgs.Flag('--format-check', not AWrite);
+  AArgs.Flag('--format-write', AWrite);
+  AArgs.Value('--format', 'diff');
+  AddSelection(AArgs, AOptions);
+  AArgs.Value('--output', AOutputFile);
+end;
+
 procedure AddCommand(var AArgs: TArgs; ACommand: TMonitorCommand; const AOptions: TMonitorOptions;
   const AOutputFile: string);
 begin
@@ -270,13 +296,7 @@ begin
         AArgs.Value('--output', AOutputFile);
       end;
     TMonitorCommand.FormatCheck, TMonitorCommand.FormatWrite:
-      begin
-        AArgs.Flag('--format-check', ACommand = TMonitorCommand.FormatCheck);
-        AArgs.Flag('--format-write', ACommand = TMonitorCommand.FormatWrite);
-        AArgs.Value('--format', 'diff');
-        AddSelection(AArgs, AOptions);
-        AArgs.Value('--output', AOutputFile);
-      end;
+      AddFormat(AArgs, ACommand = TMonitorCommand.FormatWrite, AOptions, AOutputFile);
     TMonitorCommand.FixDryRun, TMonitorCommand.Fix:
       begin
         AArgs.Value('--fix', FixRulesOf(AOptions));
@@ -285,18 +305,7 @@ begin
         AArgs.Value('--output', AOutputFile);
       end;
     TMonitorCommand.AffectedTests:
-      begin
-        if AOptions.AffectedBase <> '' then
-        begin
-          AArgs.Add('--affected-tests=' + AOptions.AffectedBase);
-        end
-        else
-        begin
-          AArgs.Add('--affected-tests');
-        end;
-        AArgs.Flag('--include-uncommitted', AOptions.IncludeUncommitted);
-        AArgs.Value('--output', AOutputFile);
-      end;
+      AddAffectedTests(AArgs, AOptions, AOutputFile);
     TMonitorCommand.Architecture:
       AddReport(AArgs, '--architecture', AOutputFile, 'architecture.html');
     TMonitorCommand.ArchitectureSave:

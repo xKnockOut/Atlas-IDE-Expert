@@ -123,7 +123,8 @@ var
 begin
   mTree := TSyntaxTreeCache.Parse(AText);
   try
-    Result := TLearnedSuggestions.Suggest(mTree, AText, ALine, AUnits, AOptions, AKnown, ASuggestion);
+    Result := TLearnedSuggestions.Suggest(mTree, AText, ALine, TLearnedProject.Create(AUnits, AKnown), AOptions,
+      ASuggestion);
   finally
     mTree.Free;
   end;

@@ -117,6 +117,13 @@ type
     CompilerMessages: TCompilerMessagesProvider;
     /// <summary>Index und usesKeep für ungenutzte uses (#621).</summary>
     UsesContext: TUsesContextProvider;
+    // Die Dienste für AUri bzw. AFileName; ohne Dienst leer bzw. False.
+    function CurrentDefines(const AUri: string; out ADefines: TArray<string>): Boolean;
+    function CurrentVersion(const AUri: string): string;
+    function CurrentTarget(const AUri: string; out APlatform, AConfig: string): Boolean;
+    function CurrentRules(const AUri: string; out AContext: TRuleCheckContext): Boolean;
+    function CurrentCompilerMessages(const AFileName: string): TArray<TCompilerMessage>;
+    function CurrentUses(const AUri: string; out AContext: TUsesContext): Boolean;
   end;
 
   /// <summary>Was BuildParams außer dem Dokument braucht.</summary>
@@ -159,12 +166,6 @@ type
     function IsCurrent(const ADocument: ITextDocument): Boolean;
     function GetOnError: TProc<Exception>;
     procedure SetOnError(const AValue: TProc<Exception>);
-    function CurrentDefines(const AUri: string; out ADefines: TArray<string>): Boolean;
-    function CurrentVersion(const AUri: string): string;
-    function CurrentTarget(const AUri: string; out APlatform, AConfig: string): Boolean;
-    function CurrentRules(const AUri: string; out AContext: TRuleCheckContext): Boolean;
-    function CurrentCompilerMessages(const AFileName: string): TArray<TCompilerMessage>;
-    function CurrentUses(const AUri: string; out AContext: TUsesContext): Boolean;
     /// <summary>Auffällige uses (#621) als Darstellung der Regeln unused-uses (#1135) und
     /// uses-only-in-implementation (#1136) in AItems.</summary>
     procedure AddUnusedUses(AItems: TJSONArray; const ADocument: ITextDocument; const AInput: TSyntaxDiagnosticsInput;
@@ -315,6 +316,80 @@ begin
   end;
 end;
 
+{ TSyntaxDiagnosticsProviders }
+
+function TSyntaxDiagnosticsProviders.CurrentDefines(const AUri: string; out ADefines: TArray<string>): Boolean;
+var
+  mProvider: TDefinesProvider;
+begin
+  mProvider := Defines;
+  ADefines := nil;
+  Result := Assigned(mProvider) and mProvider(AUri, ADefines);
+end;
+
+function TSyntaxDiagnosticsProviders.CurrentVersion(const AUri: string): string;
+var
+  mProvider: TDelphiVersionProvider;
+begin
+  mProvider := Version;
+  if Assigned(mProvider) then
+  begin
+    Result := mProvider(AUri);
+  end
+  else
+  begin
+    Result := '';
+  end;
+end;
+
+function TSyntaxDiagnosticsProviders.CurrentTarget(const AUri: string; out APlatform, AConfig: string): Boolean;
+var
+  mProvider: TBuildTargetProvider;
+begin
+  mProvider := BuildTarget;
+  APlatform := '';
+  AConfig := '';
+  Result := Assigned(mProvider) and mProvider(AUri, APlatform, AConfig);
+  if not Result then
+  begin
+    APlatform := '';
+    AConfig := '';
+  end;
+end;
+
+function TSyntaxDiagnosticsProviders.CurrentRules(const AUri: string; out AContext: TRuleCheckContext): Boolean;
+var
+  mProvider: TRuleContextProvider;
+begin
+  mProvider := Rules;
+  AContext := Default(TRuleCheckContext);
+  Result := Assigned(mProvider) and mProvider(AUri, AContext);
+end;
+
+function TSyntaxDiagnosticsProviders.CurrentUses(const AUri: string; out AContext: TUsesContext): Boolean;
+var
+  mProvider: TUsesContextProvider;
+begin
+  mProvider := UsesContext;
+  AContext := Default(TUsesContext);
+  Result := Assigned(mProvider) and mProvider(AUri, AContext);
+end;
+
+function TSyntaxDiagnosticsProviders.CurrentCompilerMessages(const AFileName: string): TArray<TCompilerMessage>;
+var
+  mProvider: TCompilerMessagesProvider;
+begin
+  mProvider := CompilerMessages;
+  if Assigned(mProvider) then
+  begin
+    Result := mProvider(AFileName);
+  end
+  else
+  begin
+    Result := nil;
+  end;
+end;
+
 { TLspSyntaxDiagnostics }
 
 constructor TLspSyntaxDiagnostics.Create(const AStore: IDocumentStore; const ATransport: IJsonRpcTransport;
@@ -367,78 +442,6 @@ begin
   FRefreshDebouncer.OnError := AValue;
 end;
 
-function TLspSyntaxDiagnostics.CurrentDefines(const AUri: string; out ADefines: TArray<string>): Boolean;
-var
-  mProvider: TDefinesProvider;
-begin
-  mProvider := FProviders.Defines;
-  ADefines := nil;
-  Result := Assigned(mProvider) and mProvider(AUri, ADefines);
-end;
-
-function TLspSyntaxDiagnostics.CurrentVersion(const AUri: string): string;
-var
-  mProvider: TDelphiVersionProvider;
-begin
-  mProvider := FProviders.Version;
-  if Assigned(mProvider) then
-  begin
-    Result := mProvider(AUri);
-  end
-  else
-  begin
-    Result := '';
-  end;
-end;
-
-function TLspSyntaxDiagnostics.CurrentTarget(const AUri: string; out APlatform, AConfig: string): Boolean;
-var
-  mProvider: TBuildTargetProvider;
-begin
-  mProvider := FProviders.BuildTarget;
-  APlatform := '';
-  AConfig := '';
-  Result := Assigned(mProvider) and mProvider(AUri, APlatform, AConfig);
-  if not Result then
-  begin
-    APlatform := '';
-    AConfig := '';
-  end;
-end;
-
-function TLspSyntaxDiagnostics.CurrentRules(const AUri: string; out AContext: TRuleCheckContext): Boolean;
-var
-  mProvider: TRuleContextProvider;
-begin
-  mProvider := FProviders.Rules;
-  AContext := Default(TRuleCheckContext);
-  Result := Assigned(mProvider) and mProvider(AUri, AContext);
-end;
-
-function TLspSyntaxDiagnostics.CurrentUses(const AUri: string; out AContext: TUsesContext): Boolean;
-var
-  mProvider: TUsesContextProvider;
-begin
-  mProvider := FProviders.UsesContext;
-  AContext := Default(TUsesContext);
-  Result := Assigned(mProvider) and mProvider(AUri, AContext);
-end;
-
-function TLspSyntaxDiagnostics.CurrentCompilerMessages(const AFileName: string): TArray<TCompilerMessage>;
-var
-  mProvider: TCompilerMessagesProvider;
-begin
-  mProvider := FProviders.CompilerMessages;
-  if Assigned(mProvider) then
-  begin
-    Result := mProvider(AFileName);
-  end
-  else
-  begin
-    Result := nil;
-  end;
-end;
-
 procedure TLspSyntaxDiagnostics.RefreshFiles(const AFileNames: TArray<string>);
 var
   mFileName, mUri: string;
@@ -468,7 +471,7 @@ begin
       Continue;
     end;
     mItems := TJSONArray.Create;
-    for mItem in CurrentCompilerMessages(mFileName) do
+    for mItem in FProviders.CurrentCompilerMessages(mFileName) do
     begin
       mItems.AddElement(TLspDiagnosticItems.CompilerMessageToJson(mItem, '', False));
     end;
@@ -585,18 +588,18 @@ begin
   end;
   mInput := Default(TSyntaxDiagnosticsInput);
   mIssues := nil;
-  if CurrentDefines(ADocument.Uri, mInput.Defines) then
+  if FProviders.CurrentDefines(ADocument.Uri, mInput.Defines) then
   begin
     mInput.Inactive := InactiveOf(ADocument, mInput.Defines, mIssues);
   end;
-  mHasRules := CurrentRules(ADocument.Uri, mInput.Rules);
+  mHasRules := FProviders.CurrentRules(ADocument.Uri, mInput.Rules);
   if not mHasRules then
   begin
     mInput.Rules := Default(TRuleCheckContext);
   end;
   mInput.Rules.Cancelled := ACancelled;
-  mInput.DelphiVersion := CurrentVersion(ADocument.Uri);
-  CurrentTarget(ADocument.Uri, mInput.Platform, mInput.Config);
+  mInput.DelphiVersion := FProviders.CurrentVersion(ADocument.Uri);
+  FProviders.CurrentTarget(ADocument.Uri, mInput.Platform, mInput.Config);
   Result := BuildParams(ADocument, mInput);
   mItems := Result.GetValue('diagnostics') as TJSONArray;
   for mIssue in mIssues do
@@ -604,7 +607,7 @@ begin
     mItems.AddElement(TLspDiagnosticItems.IssueToJson(mIssue));
   end;
   AddUnusedUses(mItems, ADocument, mInput, mHasRules);
-  AddCompilerMessages(mItems, ADocument, CurrentCompilerMessages(TDocumentUris.ToPath(ADocument.Uri)));
+  AddCompilerMessages(mItems, ADocument, FProviders.CurrentCompilerMessages(TDocumentUris.ToPath(ADocument.Uri)));
 end;
 
 /// <summary>Ist die Regel ARuleId für die Datei aus ARules an (Einstellungen, exclude, Gruppen)?</summary>
@@ -636,7 +639,7 @@ begin
   begin
     mShown := mShown - [TUsesEntryState.OnlyImplementation];
   end;
-  if (mShown = []) or not CurrentUses(ADocument.Uri, mUses) then
+  if (mShown = []) or not FProviders.CurrentUses(ADocument.Uri, mUses) then
   begin
     Exit;
   end;

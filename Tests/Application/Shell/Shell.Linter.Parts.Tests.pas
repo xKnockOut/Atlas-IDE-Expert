@@ -312,9 +312,9 @@ begin
   Assert.IsFalse(TLinterSettings.Validate(TCommandLineOptions.Parse(['--check', FFolder, '--metrics', '--format',
     'sarif'])));
   mSettings := TServerSettings.Default;
-  mWithout := TLinterCheck.DescriptorsOf(nil, mSettings, False);
+  mWithout := TLinterSettings.DescriptorsOf(nil, mSettings, False);
   Assert.AreEqual(2, Integer(Length(mWithout)), 'Syntax und Sprachstand');
-  mWith := TLinterCheck.DescriptorsOf(nil, mSettings, True);
+  mWith := TLinterSettings.DescriptorsOf(nil, mSettings, True);
   Assert.AreEqual(Integer(Length(mWithout)), Integer(Length(mWith)), 'ohne gespeicherte Abfragen');
 end;
 

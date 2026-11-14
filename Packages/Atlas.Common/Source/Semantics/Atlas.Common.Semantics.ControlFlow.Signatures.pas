@@ -165,12 +165,44 @@ begin
     end;
 end;
 
+/// <summary>Kurzname der Routine mit dem Kopf AHeader, ohne Klasse und generische Parameter; '' bei anderen
+/// Knoten und namenlosen Köpfen.</summary>
+function RoutineShortName(AHeader: TSyntaxNode): string;
+begin
+  Result := '';
+  if AHeader.Kind <> TSyntaxKind.RoutineHeader then
+  begin
+    Exit;
+  end;
+  Result := AHeader.Name;
+  if (Result = '') and (AHeader.Parent <> nil) and (AHeader.Parent.Kind = TSyntaxKind.RoutineDecl) then
+  begin
+    Result := AHeader.Parent.Name;
+  end;
+  Result := Copy(Result, LastDelimiter('.', Result) + 1, MaxInt);
+  if Pos('<', Result) > 0 then
+  begin
+    Result := Copy(Result, 1, Pos('<', Result) - 1);
+  end;
+end;
+
+/// <summary>Trägt der Kopf AHeader die Direktive noreturn?</summary>
+function HasNoReturn(AHeader: TSyntaxNode): Boolean;
+var
+  mIndex: Integer;
+begin
+  Result := False;
+  for mIndex := 0 to AHeader.ChildCount - 1 do
+  begin
+    Result := Result or (AHeader[mIndex].Kind = TSyntaxKind.Directive) and SameText(AHeader[mIndex].Name, 'noreturn');
+  end;
+end;
+
 class function TFlowSignatures.NoReturnVerdicts(ARoot: TSyntaxNode): TArray<TPair<string, Boolean>>;
 var
   mPending: TStack<TSyntaxNode>;
   mNode: TSyntaxNode;
   mIndex, mCount: Integer;
-  mNoReturn: Boolean;
   mName: string;
 begin
   Result := nil;
@@ -186,36 +218,14 @@ begin
     while mPending.Count > 0 do
     begin
       mNode := mPending.Pop;
-      mName := '';
-      if mNode.Kind = TSyntaxKind.RoutineHeader then
-      begin
-        mName := mNode.Name;
-        if (mName = '') and (mNode.Parent <> nil) and (mNode.Parent.Kind = TSyntaxKind.RoutineDecl) then
-        begin
-          mName := mNode.Parent.Name;
-        end;
-        mName := Copy(mName, LastDelimiter('.', mName) + 1, MaxInt);
-        if Pos('<', mName) > 0 then
-        begin
-          mName := Copy(mName, 1, Pos('<', mName) - 1);
-        end;
-      end;
+      mName := RoutineShortName(mNode);
       if mName <> '' then
       begin
-        mNoReturn := False;
-        for mIndex := 0 to mNode.ChildCount - 1 do
-        begin
-          if (mNode[mIndex].Kind = TSyntaxKind.Directive) and SameText(mNode[mIndex].Name, 'noreturn') then
-          begin
-            mNoReturn := True;
-          end;
-        end;
         if Length(Result) = mCount then
         begin
           SetLength(Result, 2 * mCount + 8);
         end;
-        Result[mCount] := TPair<string, Boolean>.Create(
-          LowerCase(mName), mNoReturn);
+        Result[mCount] := TPair<string, Boolean>.Create(LowerCase(mName), HasNoReturn(mNode));
         Inc(mCount);
       end;
       for mIndex := 0 to mNode.ChildCount - 1 do

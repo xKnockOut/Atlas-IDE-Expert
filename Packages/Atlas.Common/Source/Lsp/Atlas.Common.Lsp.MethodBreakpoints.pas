@@ -817,14 +817,53 @@ begin
   Result := False;
 end;
 
+/// <summary>Treffer für ACandidate, noch ohne Zeilen des Rumpfs.</summary>
+function HitOf(const ACandidate: TCandidate): TMethodBreakpointHit;
+begin
+  Result := Default(TMethodBreakpointHit);
+  Result.UnitName := ACandidate.UnitName;
+  Result.FileName := ACandidate.FileName;
+  Result.Container := TLspStepFilter.PlainName(ACandidate.Symbol.Container);
+  Result.Name := ACandidate.Symbol.Name;
+  Result.Signature := ACandidate.Symbol.Signature;
+  Result.ParamTypes := ACandidate.Symbol.ParamTypes;
+  Result.DeclarationLine := ACandidate.Symbol.SelectionRange.StartPos.Line;
+  Result.Reason := ACandidate.Reason;
+  Result.Via := ACandidate.Via;
+  Result.HeaderLine := -1;
+  Result.Line := -1;
+end;
+
+/// <summary>Rumpf des Treffers AHit unter ABodies: bei Überladungen der mit denselben Parametertypen, sonst der
+/// erste mit dem Namen; -1 ohne.</summary>
+function BodyOfHit(const ABodies: TArray<TMethodBody>; const AHit: TMethodBreakpointHit): Integer;
+var
+  mIndex: Integer;
+begin
+  Result := -1;
+  for mIndex := 0 to High(ABodies) do
+  begin
+    if not SameText(ABodies[mIndex].Container, AHit.Container) or not SameText(ABodies[mIndex].Name, AHit.Name) then
+    begin
+      Continue;
+    end;
+    if ABodies[mIndex].HasParams and SameParams(ABodies[mIndex].ParamTypes, AHit.ParamTypes) then
+    begin
+      Exit(mIndex);
+    end;
+    if Result < 0 then
+    begin
+      Result := mIndex;
+    end;
+  end;
+end;
+
 procedure TMethodSearch.AddHit(const ACandidate: TCandidate);
 var
   mHit: TMethodBreakpointHit;
   mKey: string;
-  mBody: TMethodBody;
   mBodies: TArray<TMethodBody>;
-  mFirst, mExact: Integer;
-  mIndex: Integer;
+  mBody: Integer;
 begin
   if ACandidate.Symbol.HasDirective('abstract') or ACandidate.Symbol.HasDirective('external') then
   begin
@@ -834,52 +873,19 @@ begin
   begin
     Exit;
   end;
-  mHit := Default(TMethodBreakpointHit);
-  mHit.UnitName := ACandidate.UnitName;
-  mHit.FileName := ACandidate.FileName;
-  mHit.Container := TLspStepFilter.PlainName(ACandidate.Symbol.Container);
-  mHit.Name := ACandidate.Symbol.Name;
-  mHit.Signature := ACandidate.Symbol.Signature;
-  mHit.ParamTypes := ACandidate.Symbol.ParamTypes;
-  mHit.DeclarationLine := ACandidate.Symbol.SelectionRange.StartPos.Line;
-  mHit.Reason := ACandidate.Reason;
-  mHit.Via := ACandidate.Via;
+  mHit := HitOf(ACandidate);
   mKey := LowerCase(mHit.FileName + '|' + mHit.Container + '|' + mHit.Name + '|') + ParamKey(mHit.ParamTypes);
   if FSeen.ContainsKey(mKey) then
   begin
     Exit;
   end;
   FSeen.Add(mKey, True);
-  // Rumpf: bei Überladungen der mit denselben Parametertypen, sonst der erste mit dem Namen.
-  mHit.HeaderLine := -1;
-  mHit.Line := -1;
   mBodies := BodiesOf(mHit.FileName);
-  mFirst := -1;
-  mExact := -1;
-  for mIndex := 0 to High(mBodies) do
+  mBody := BodyOfHit(mBodies, mHit);
+  if mBody >= 0 then
   begin
-    mBody := mBodies[mIndex];
-    if not SameText(mBody.Container, mHit.Container) or not SameText(mBody.Name, mHit.Name) then
-    begin
-      Continue;
-    end;
-    if mFirst < 0 then
-    begin
-      mFirst := mIndex;
-    end;
-    if (mExact < 0) and mBody.HasParams and SameParams(mBody.ParamTypes, mHit.ParamTypes) then
-    begin
-      mExact := mIndex;
-    end;
-  end;
-  if mExact < 0 then
-  begin
-    mExact := mFirst;
-  end;
-  if mExact >= 0 then
-  begin
-    mHit.HeaderLine := mBodies[mExact].HeaderLine;
-    mHit.Line := mBodies[mExact].Line;
+    mHit.HeaderLine := mBodies[mBody].HeaderLine;
+    mHit.Line := mBodies[mBody].Line;
   end;
   FHits.Add(mHit);
 end;

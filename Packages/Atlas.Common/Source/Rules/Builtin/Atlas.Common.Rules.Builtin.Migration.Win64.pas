@@ -397,11 +397,17 @@ var
     end;
   end;
 
+  /// <summary>Ist das Token AIndex vorhanden und lautet AText?</summary>
+  function TokenIs(AIndex: Integer; const AText: string): Boolean;
+  begin
+    Result := (AIndex <= High(mTokens)) and (mTokens[AIndex].Text = AText);
+  end;
+
   /// <summary>Korrektur „X als T deklarieren“ für eine lokale Variable dieser Datei, die allein mit "X: Typ;"
   /// deklariert ist.</summary>
   function DeclarationFix(const ASymbol: TResolvedSymbol; const ATypeName: string; out AFix: TRuleFix): Boolean;
   var
-    mIndex, mNext: Integer;
+    mIndex: Integer;
   begin
     Result := False;
     if ASymbol.IsParameter or (ASymbol.SymbolKind <> TIndexSymbolKind.Variable) or
@@ -416,17 +422,14 @@ var
       Exit;
     end;
     mIndex := NextToken(mIndex + 1);
-    if (mIndex > High(mTokens)) or (mTokens[mIndex].Text <> ':') then
+    if not TokenIs(mIndex, ':') then
     begin
       Exit;
     end;
+    // Genau ein Typname bis zum Semikolon.
     mIndex := NextToken(mIndex + 1);
-    if (mIndex > High(mTokens)) or (mTokens[mIndex].Kind <> TPascalTokenKind.Identifier) then
-    begin
-      Exit;
-    end;
-    mNext := NextToken(mIndex + 1);
-    if (mNext > High(mTokens)) or (mTokens[mNext].Text <> ';') then
+    if (mIndex > High(mTokens)) or (mTokens[mIndex].Kind <> TPascalTokenKind.Identifier) or
+      not TokenIs(NextToken(mIndex + 1), ';') then
     begin
       Exit;
     end;
@@ -543,10 +546,28 @@ begin
   end;
 end;
 
+/// <summary>Edits von F(Handle, Index[, Wert]) auf die Ptr-Fassung ARoutine mit dem Index AIndex; ein Wert mit
+/// 32-Bit-Typumwandlung wird zu LONG_PTR.</summary>
+function LongPtrEdits(ACall, AIndexNode: TSyntaxNode; const ARoutine, AIndex: string): TArray<TTextEdit>;
+var
+  mValue: TSyntaxNode;
+begin
+  Result := [TTextEdit.Create(NodeRange(ACall[0]), ARoutine), TTextEdit.Create(NodeRange(AIndexNode), AIndex)];
+  if ACall.ChildCount <= 3 then
+  begin
+    Exit;
+  end;
+  mValue := Unwrapped(ACall[3]);
+  if IsSingleCast(mValue) and TMigrationTypes.Is32BitInteger(mValue.Name) then
+  begin
+    Result := Result + [TTextEdit.Create(NodeRange(mValue[0]), 'LONG_PTR')];
+  end;
+end;
+
 procedure TWindowLongPtrRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
 var
   mMigration: TMigrationScope;
-  mNode, mIndexNode, mValue: TSyntaxNode;
+  mNode, mIndexNode: TSyntaxNode;
   mRoutine, mIndex: string;
   mEdits: TArray<TTextEdit>;
 begin
@@ -576,15 +597,7 @@ begin
       begin
         Continue;
       end;
-      mEdits := [TTextEdit.Create(NodeRange(mNode[0]), mRoutine), TTextEdit.Create(NodeRange(mIndexNode), mIndex)];
-      if mNode.ChildCount > 3 then
-      begin
-        mValue := Unwrapped(mNode[3]);
-        if IsSingleCast(mValue) and TMigrationTypes.Is32BitInteger(mValue.Name) then
-        begin
-          mEdits := mEdits + [TTextEdit.Create(NodeRange(mValue[0]), 'LONG_PTR')];
-        end;
-      end;
+      mEdits := LongPtrEdits(mNode, mIndexNode, mRoutine, mIndex);
       AReport.Add(NodeRange(mNode), cTexts[TMigrationWin64Text.LongTruncates].Fmt([mNode.Name, mIndexNode.Name]),
         TRuleConfidence.High, [TRuleFix.Create(cTexts[TMigrationWin64Text.UseLongPtr].Fmt([mRoutine, mIndex]),
         mEdits)]);

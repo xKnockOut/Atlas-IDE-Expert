@@ -54,6 +54,7 @@ type
     FEnded: Integer;
     FLastRefresh: Int64;
     procedure LoadModules;
+    procedure AddThread(AId: DWORD);
     procedure RefreshThreads;
     function Walk(AThread: TSampledThread; out AFrames: TArray<UInt64>): Boolean;
     procedure SampleThread(AThread: TSampledThread);
@@ -337,13 +338,26 @@ begin
   end;
 end;
 
+/// <summary>Öffnet den neuen Thread AId des Programms zum Abtasten.</summary>
+procedure TAtlasWindowsProfileSampler.AddThread(AId: DWORD);
+var
+  mThread: TSampledThread;
+begin
+  mThread := TSampledThread.Create;
+  mThread.Id := AId;
+  mThread.Handle := SamplerOpenThread(cThreadSuspendResume or cThreadGetContext or cThreadQueryInformation, False,
+    AId);
+  SamplerQueryThreadCycleTime(mThread.Handle, mThread.LastCycles);
+  FThreads.Add(mThread.Id, mThread);
+end;
+
 procedure TAtlasWindowsProfileSampler.RefreshThreads;
 var
   mSnapshot: THandle;
   mEntry: TThreadEntry32;
-  mThread: TSampledThread;
   mSeen: THashSet<DWORD>;
   mId: DWORD;
+  mMore: Boolean;
 begin
   mSnapshot := CreateToolhelp32Snapshot(TH32CS_SNAPTHREAD, 0);
   if mSnapshot = INVALID_HANDLE_VALUE then
@@ -353,23 +367,20 @@ begin
   mSeen := THashSet<DWORD>.Create;
   try
     mEntry.dwSize := SizeOf(mEntry);
-    if Thread32First(mSnapshot, mEntry) then
-      repeat
-        if mEntry.th32OwnerProcessID = FProcessId then
+    mMore := Thread32First(mSnapshot, mEntry);
+    while mMore do
+    begin
+      if mEntry.th32OwnerProcessID = FProcessId then
+      begin
+        mSeen.Add(mEntry.th32ThreadID);
+        if not FThreads.ContainsKey(mEntry.th32ThreadID) then
         begin
-          mSeen.Add(mEntry.th32ThreadID);
-          if not FThreads.ContainsKey(mEntry.th32ThreadID) then
-          begin
-            mThread := TSampledThread.Create;
-            mThread.Id := mEntry.th32ThreadID;
-            mThread.Handle := SamplerOpenThread(cThreadSuspendResume or cThreadGetContext or
-              cThreadQueryInformation, False, mEntry.th32ThreadID);
-            SamplerQueryThreadCycleTime(mThread.Handle, mThread.LastCycles);
-            FThreads.Add(mThread.Id, mThread);
-          end;
+          AddThread(mEntry.th32ThreadID);
         end;
-        mEntry.dwSize := SizeOf(mEntry);
-      until not Thread32Next(mSnapshot, mEntry);
+      end;
+      mEntry.dwSize := SizeOf(mEntry);
+      mMore := Thread32Next(mSnapshot, mEntry);
+    end;
     for mId in FThreads.Keys.ToArray do
     begin
       if not mSeen.Contains(mId) then

@@ -88,6 +88,7 @@ begin
   mAffected := TShellAffectedTestsRequest.RequestFor(AServices, AUri, AServices.Settings.SettingsFor(AUri));
   Result := Default(TCoveredRequest);
   Result.Files := mAffected.Files;
+  Result.ReadText := AServices.ReadText;
   Result.Options := mAffected.Options;
   if not AParams.TryGetValue<Integer>('depth', mDepth) then
   begin
@@ -121,8 +122,7 @@ begin
   mResolver := TNameResolver.Create(AServices.Index, AServices.EnsureUnit);
   try
     mResolver.Namespaces := AServices.Namespaces();
-    mFound := TCoveredBy.Determine(mResolver, AServices.Index, mFileName, mText, mRequest, AServices.ReadText,
-      ACancellation);
+    mFound := TCoveredBy.Determine(mResolver, AServices.Index, mFileName, mText, mRequest, ACancellation);
   finally
     mResolver.Free;
   end;
@@ -140,8 +140,7 @@ begin
   mResolver := TNameResolver.Create(AServices.Index, AServices.EnsureUnit);
   try
     mResolver.Namespaces := AServices.Namespaces();
-    mFound := TCoveredBy.Project(mResolver, AServices.Index, mRequest, AServices.ReadText, ACancellation,
-      TCoveredBy.cProjectTimeoutMs);
+    mFound := TCoveredBy.Project(mResolver, AServices.Index, mRequest, ACancellation, TCoveredBy.cProjectTimeoutMs);
   finally
     mResolver.Free;
   end;

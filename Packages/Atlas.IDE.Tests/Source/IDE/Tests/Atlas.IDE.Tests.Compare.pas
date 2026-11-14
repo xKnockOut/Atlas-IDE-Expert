@@ -85,8 +85,9 @@ type
     /// <summary>Text der Testmarke zu ASelection: „Vergleichen“, bei Vergleichsdateien „Abweichung ·
     /// Vergleich“ bzw. „Neu · Vergleich“.</summary>
     function CaptionOf(const ASelection: TAtlasTestSelection): string;
-    /// <summary>Testprojekt des zuletzt gemeldeten Laufs; '' ohne.</summary>
-    property LastProject: string read FLastProject;
+    /// <summary>Befehl „Liegengebliebene .received-Dateien löschen“ (#1881): im Testprojekt des letzten Laufs,
+    /// ohne Lauf im aktiven Projekt.</summary>
+    procedure CleanApprovalFiles;
   end;
 
 implementation
@@ -101,6 +102,7 @@ uses
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Results.Commands,
   Atlas.IDE.Tests.Debug,
+  Atlas.IDE.Tests.ApprovalFiles,
   Atlas.UI.Tests.Compare,
   Atlas.UI.Tests.Strings;
 
@@ -378,6 +380,11 @@ begin
   begin
     Open(mCase);
   end;
+end;
+
+procedure TAtlasIdeTestCompare.CleanApprovalFiles;
+begin
+  TAtlasIdeApprovalFiles.Clean(FTests, FLastProject);
 end;
 
 end.

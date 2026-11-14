@@ -203,57 +203,68 @@ begin
   Result := False;
 end;
 
+/// <summary>Quelltext des Knotens ANode.</summary>
+function NodeText(const AText: string; ANode: TSyntaxNode): string;
+begin
+  Result := Copy(AText, ANode.StartOffset + 1, ANode.EndOffset - ANode.StartOffset);
+end;
+
+/// <summary>Innerste Zuweisung über ANode und die Routine darum; False, wenn eins davon fehlt.</summary>
+function EnclosingAssignment(ANode: TSyntaxNode; out ARoutine, AAssign: TSyntaxNode): Boolean;
+begin
+  AAssign := nil;
+  ARoutine := ANode;
+  while (ARoutine <> nil) and (ARoutine.Kind <> TSyntaxKind.RoutineDecl) do
+  begin
+    if (AAssign = nil) and (ARoutine.Kind = TSyntaxKind.AssignStatement) then
+    begin
+      AAssign := ARoutine;
+    end;
+    ARoutine := ARoutine.Parent;
+  end;
+  Result := (ARoutine <> nil) and (AAssign <> nil);
+end;
+
+/// <summary>Steht AAssign innerhalb von ARoutine in einem Zweig von if bzw. case, dessen Bedingung einen der
+/// Parameter AParams nennt?</summary>
+function InParameterBranch(const AText: string; AAssign, ARoutine: TSyntaxNode;
+  const AParams: TArray<string>): Boolean;
+var
+  mNode, mChild: TSyntaxNode;
+begin
+  Result := False;
+  mChild := AAssign;
+  mNode := AAssign.Parent;
+  while not Result and (mNode <> nil) and (mNode <> ARoutine) do
+  begin
+    Result := (mNode.Kind in [TSyntaxKind.IfStatement, TSyntaxKind.CaseStatement]) and (mNode.ChildCount > 1) and
+      (mNode[0] <> mChild) and MentionsAny(NodeText(AText, mNode[0]), AParams);
+    mChild := mNode;
+    mNode := mNode.Parent;
+  end;
+end;
+
 /// <summary>Begrenzt der Setter den Wert, bevor er die Property erneut schreibt ("if A &lt; 0 then V := 0 else
 /// FV := A")? Dann endet die Rekursion meist nach einem Schritt (FP-Prüfung 28.10.2026): Die Zuweisung steht in
 /// einem Zweig, dessen Bedingung einen Parameter prüft, und weist nicht den Parameter selbst zu.</summary>
 function IsClampedWrite(const AContext: TRuleContext; const ATrap: TAccessorTrap): Boolean;
 var
-  mNode, mChild, mRoutine, mAssign: TSyntaxNode;
+  mRoutine, mAssign: TSyntaxNode;
   mParams: TArray<string>;
-
-  function TextOf(ANode: TSyntaxNode): string;
-  begin
-    Result := Copy(AContext.Text, ANode.StartOffset + 1, ANode.EndOffset - ANode.StartOffset);
-  end;
-
 begin
   Result := False;
   if not ATrap.IsSetter or (AContext.Tree.Root = nil) then
   begin
     Exit;
   end;
-  mNode := DeepestAt(AContext.Tree.Root, ATrap.Range.StartPos);
-  mAssign := nil;
-  mRoutine := mNode;
-  while (mRoutine <> nil) and (mRoutine.Kind <> TSyntaxKind.RoutineDecl) do
-  begin
-    if (mAssign = nil) and (mRoutine.Kind = TSyntaxKind.AssignStatement) then
-    begin
-      mAssign := mRoutine;
-    end;
-    mRoutine := mRoutine.Parent;
-  end;
-  if (mRoutine = nil) or (mAssign = nil) or (mAssign.ChildCount < 2) then
+  if not EnclosingAssignment(DeepestAt(AContext.Tree.Root, ATrap.Range.StartPos), mRoutine, mAssign) or
+    (mAssign.ChildCount < 2) then
   begin
     Exit;
   end;
   mParams := ParameterNames(mRoutine);
-  if (mParams = nil) or MatchText(Trim(TextOf(mAssign[1])), mParams) then
-  begin
-    Exit;
-  end;
-  mChild := mAssign;
-  mNode := mAssign.Parent;
-  while (mNode <> nil) and (mNode <> mRoutine) do
-  begin
-    if (mNode.Kind in [TSyntaxKind.IfStatement, TSyntaxKind.CaseStatement]) and (mNode.ChildCount > 1) and
-      (mNode[0] <> mChild) and MentionsAny(TextOf(mNode[0]), mParams) then
-    begin
-      Exit(True);
-    end;
-    mChild := mNode;
-    mNode := mNode.Parent;
-  end;
+  Result := (mParams <> nil) and not MatchText(Trim(NodeText(AContext.Text, mAssign[1])), mParams) and
+    InParameterBranch(AContext.Text, mAssign, mRoutine, mParams);
 end;
 
 procedure TSetterRecursionRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);

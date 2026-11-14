@@ -431,7 +431,7 @@ begin
     begin
       // Wählt Konfiguration und Plattform und lädt neu: nur in der Schleife.
       Workspace := mWorkspaceOf(mUri);
-      if (Workspace <> nil) and not Workspace.SelectBuild(mConfig, mPlatformName, Error) then
+      if (Workspace <> nil) and not Workspace.SelectBuild(mConfig, mPlatformName, nil, False, Error) then
       begin
         mLogger.Warning(Error);
       end;
