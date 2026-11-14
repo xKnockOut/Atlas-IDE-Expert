@@ -131,7 +131,6 @@ Atlas.Common.Editing.TestUnits.Tests
 Atlas.Common.Editing.TypeAlias.Tests
 Atlas.Common.Editing.TypeAlias.Names.Tests
 Atlas.Common.Editing.TypeComments.Tests
-Atlas.Common.Editing.HoistedDeclarations.Tests
 Atlas.Common.Editing.UnitRename.Tests
 Atlas.Common.Editing.UnitTemplates.Tests
 Atlas.Common.Editing.Unwrap.Tests

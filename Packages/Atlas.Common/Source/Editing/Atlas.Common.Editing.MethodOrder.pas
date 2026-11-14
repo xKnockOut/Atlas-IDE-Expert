@@ -8,10 +8,6 @@
 // Routinen, Rümpfe ohne Deklaration, {$REGION}-Klammern und alles zwischen
 // den Rümpfen bleibt stehen. Kommentare direkt über einem Rumpf (ohne
 // Leerzeile) wandern mit.
-// Ausnahme: Rückt ein Rumpf über eine freie Routine oder eine Deklaration
-// (const, var, type) nach vorn, die er braucht, wandert sie mit allem Code
-// zwischen den Rümpfen davor vor den ersten Rumpf. Sonst übersetzte die Unit
-// nicht mehr.
 //
 // Nicht verschoben ("bleibt") wird ein Rumpf,
 //   - der in einer Region oder einem {$IF…}-Zweig liegt oder dessen Bereich
@@ -146,7 +142,6 @@ uses
   Atlas.Common.Index.Contract,
   Atlas.Common.Index.Extractor,
   Atlas.Common.Editing.ClassBodies,
-  Atlas.Common.Editing.HoistedDeclarations,
   Atlas.Common.Editing.ClassCompletion;
 
 type
@@ -1000,85 +995,29 @@ begin
   end;
 end;
 
-/// <summary>Code zwischen den Plätzen, der vor den ersten Platz wandert (THoistedDeclarations); nil ohne.
-/// </summary>
-function HoistedOf(const ALines: TArray<string>; const ABlocks, ASlots, ATarget: TBlocks): TArray<Boolean>;
-var
-  mBodies, mSlots: TArray<TBodySpan>;
-  mOrigins: TArray<Integer>;
-  mIndex: Integer;
-begin
-  SetLength(mBodies, Length(ABlocks));
-  for mIndex := 0 to High(ABlocks) do
-  begin
-    mBodies[mIndex] := TBodySpan.Create(ABlocks[mIndex].First, ABlocks[mIndex].Last);
-  end;
-  SetLength(mSlots, Length(ASlots));
-  SetLength(mOrigins, Length(ASlots));
-  for mIndex := 0 to High(ASlots) do
-  begin
-    mSlots[mIndex] := TBodySpan.Create(ASlots[mIndex].First, ASlots[mIndex].Last);
-    mOrigins[mIndex] := IndexOfBlock(ASlots, ATarget[mIndex]);
-  end;
-  Result := THoistedDeclarations.LinesOf(ALines, mBodies, mSlots, mOrigins);
-end;
-
-/// <summary>Ist die Zeile ALine in AMarks gesetzt? AMarks darf nil sein.</summary>
-function Marked(const AMarks: TArray<Boolean>; ALine: Integer): Boolean;
-begin
-  Result := (ALine < Length(AMarks)) and AMarks[ALine];
-end;
-
-/// <summary>Setzt die wandernden Zeilen AHoisted (ohne die mit ASkip) an das Ende von AText, mit einer
-/// Leerzeile dahinter.</summary>
-procedure AddHoisted(var AText: TOrderText; const ALines: TArray<string>; const AHoisted, ASkip: TArray<Boolean>);
-var
-  mLine: Integer;
-  mAdded: Boolean;
-begin
-  mAdded := False;
-  for mLine := 0 to High(AHoisted) do
-  begin
-    if AHoisted[mLine] and not ASkip[mLine] then
-    begin
-      AText.Add(ALines[mLine], mLine);
-      mAdded := True;
-    end;
-  end;
-  if mAdded and (Trim(AText.Lines[High(AText.Lines)]) <> '') then
-  begin
-    AText.Add('', -1);
-  end;
-end;
-
 /// <summary>Neuer Text: jeder Platz ASlots[I] bekommt den Rumpf ATarget[I], die Kommentare der Typen stehen vor
 /// ihrem ersten Rumpf.</summary>
 function Rearranged(const ALines: TArray<string>; const ABlocks, ASlots, ATarget: TBlocks;
   const AHeaders: THeaders): TOrderText;
 var
-  mSkip, mHoisted: TArray<Boolean>;
+  mSkip: TArray<Boolean>;
   mLine, mSlot: Integer;
 begin
   Result := Default(TOrderText);
   mSkip := SkipOf(AHeaders, Length(ALines));
-  mHoisted := HoistedOf(ALines, ABlocks, ASlots, ATarget);
   mLine := 0;
   mSlot := 0;
   while mLine < Length(ALines) do
   begin
     if (mSlot < Length(ASlots)) and (mLine = ASlots[mSlot].First) then
     begin
-      if mSlot = 0 then
-      begin
-        AddHoisted(Result, ALines, mHoisted, mSkip);
-      end;
       Result.AddBlock(ALines, ATarget[mSlot]);
       mLine := ASlots[mSlot].Last + 1;
       Inc(mSlot);
     end
     else
     begin
-      if not mSkip[mLine] and not Marked(mHoisted, mLine) then
+      if not mSkip[mLine] then
       begin
         Result.Add(ALines[mLine], mLine);
       end;
