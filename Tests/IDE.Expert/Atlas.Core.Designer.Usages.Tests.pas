@@ -54,11 +54,14 @@ type
     FOptions: TBindingOptions;
     FComputed: TComponent;
     function GetComputed: TComponent;
+    procedure SetMenu(AValue: TComponent);
+  protected
+    procedure Notification(AComponent: TComponent; AOperation: TOperation); override;
   public
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
   published
-    property Menu: TComponent read FMenu write FMenu;
+    property Menu: TComponent read FMenu write SetMenu;
     property Options: TBindingOptions read FOptions;
     property Computed: TComponent read GetComputed write FComputed;
   end;
@@ -72,6 +75,32 @@ end;
 function TBindingHost.GetComputed: TComponent;
 begin
   Result := FComputed;
+end;
+
+procedure TBindingHost.SetMenu(AValue: TComponent);
+begin
+  if FMenu = AValue then
+  begin
+    Exit;
+  end;
+  if FMenu <> nil then
+  begin
+    FMenu.RemoveFreeNotification(Self);
+  end;
+  FMenu := AValue;
+  if FMenu <> nil then
+  begin
+    FMenu.FreeNotification(Self);
+  end;
+end;
+
+procedure TBindingHost.Notification(AComponent: TComponent; AOperation: TOperation);
+begin
+  inherited Notification(AComponent, AOperation);
+  if (AOperation = opRemove) and (AComponent = FMenu) then
+  begin
+    FMenu := nil;
+  end;
 end;
 
 destructor TBindingHost.Destroy;

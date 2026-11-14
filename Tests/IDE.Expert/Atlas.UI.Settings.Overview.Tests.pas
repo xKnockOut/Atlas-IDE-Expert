@@ -30,13 +30,15 @@ uses
   Atlas.UI.Settings.Overview;
 
 procedure TAtlasSettingsOverviewTests.WarmUp;
+var
+  mPage: TAtlasSettingsOverview;
 begin
-  with TAtlasSettingsOverview.Create(nil) do
+  mPage := TAtlasSettingsOverview.Create(nil);
   try
-    Load(1, 1, 1);
-    SearchFor('enabled');
+    mPage.Load(1, 1, 1);
+    mPage.SearchFor('enabled');
   finally
-    Free;
+    mPage.Free;
   end;
 end;
 
@@ -80,20 +82,21 @@ end;
 
 procedure TAtlasSettingsOverviewTests.PackagesClickOpensModules;
 var
+  mPage: TAtlasSettingsOverview;
   mSetting: string;
 begin
   mSetting := '-';
-  with TAtlasSettingsOverview.Create(nil) do
+  mPage := TAtlasSettingsOverview.Create(nil);
   try
-    OnOpen :=
+    mPage.OnOpen :=
       procedure(ASetting, ASwitch: string)
       begin
         mSetting := ASetting;
       end;
-    ClickPackages;
+    mPage.ClickPackages;
     Assert.AreEqual('', mSetting, 'Knoten Module');
   finally
-    Free;
+    mPage.Free;
   end;
 end;
 

@@ -8,7 +8,6 @@ interface
 
 uses
   DUnitX.TestFramework,
-  Atlas.Core.Debug.CallStack,
   Atlas.Core.Debug.CallStackView;
 
 type
@@ -46,7 +45,8 @@ implementation
 
 uses
   System.SysUtils,
-  Atlas.Core.Debug.OwnCode;
+  Atlas.Core.Debug.OwnCode,
+  Atlas.Core.Debug.CallStack;
 
 function Frame(const AHeader, AFileName: string; ALine: Integer; AOwn: Boolean): TAtlasDebugFrame;
 begin

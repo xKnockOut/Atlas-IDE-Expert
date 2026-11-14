@@ -233,8 +233,8 @@ var
   end;
 
   /// <summary>Ist ACondition (oder ein mit and verknüpfter Teil) wahr nur bei nicht leerem S (ANonEmpty) bzw. nur
-  /// bei leerem S (not ANonEmpty)? Erkannt: S &lt;&gt; '', Length(S) &gt; 0, &gt;= 1, &lt;&gt; 0 und dieselben Vergleiche mit der
-  /// Länge aus SetLength(S, N).</summary>
+  /// bei leerem S (not ANonEmpty)? Erkannt: S &lt;&gt; '', Length(S) &gt; 0, &gt;= 1, &lt;&gt; 0 und dieselben
+  /// Vergleiche mit der Länge aus SetLength(S, N).</summary>
   function ConditionSays(ACondition: TSyntaxNode; const ABase, ARoutine: string; ANonEmpty: Boolean): Boolean;
   var
     mOperator, mLeft, mRight: string;

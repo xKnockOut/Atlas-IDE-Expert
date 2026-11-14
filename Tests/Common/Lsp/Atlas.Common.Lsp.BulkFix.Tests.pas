@@ -32,7 +32,6 @@ uses
   System.JSON,
   Atlas.Common.JsonRpc.Contract,
   Atlas.Common.Configuration.Contract,
-  Atlas.Common.Rules.Contract,
   Atlas.Common.Rules.Checker,
   Atlas.Common.Rules.Baseline,
   Atlas.Common.Rules.Builtin,

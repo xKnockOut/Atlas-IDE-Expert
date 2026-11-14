@@ -104,8 +104,7 @@ type
     /// <summary>Normalform eines Knotens für den Vergleich: Token ohne Kommentare, Groß- und Kleinschreibung
     /// egal außer in String-Literalen. Direktiven nur mit AKeepDirectives (gleiche Stellen, #2054: ein anderes
     /// {$IFDEF} ändert die Bedeutung).</summary>
-    class function NormalText(ATree: TSyntaxTree; ANode: TSyntaxNode; AKeepDirectives: Boolean = False): string;
-      static;
+    class function NormalText(ATree: TSyntaxTree; ANode: TSyntaxNode; AKeepDirectives: Boolean): string; static;
     /// <summary>Liegt ANode in einer anonymen Methode, einem with-Rumpf oder asm innerhalb von ABody? Dort hätten
     /// Namen in einer neuen Routine eine andere Bedeutung.</summary>
     class function InsideBlocked(ANode, ABody: TSyntaxNode; out AReason: string): Boolean; static;

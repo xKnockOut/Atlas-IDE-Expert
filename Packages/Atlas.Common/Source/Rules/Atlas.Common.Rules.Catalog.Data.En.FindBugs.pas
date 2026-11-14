@@ -979,9 +979,10 @@ const
     '      "severity": "warning",',
     '      "group": "find-bugs",',
     '      "description": "A local variable receives the result of a function that always returns a new object, and the routine neither releases nor passes on that object (same rules as local-object-not-fr' +
-    'eed). A function of the same file counts when every assignment to Result is T.Create(…) without an owner, Result is otherwise only used through its members or released (cleanup in except) and never pa' +
-    'ssed on, and every Exit(…) creates an object as well; overloads of the same name must all qualify. It is matched when called without qualification, through Self or through a type name; methods of othe' +
-    'r objects are only known from the option factories. Medium confidence. Quick fix: wrap the following statements of the block in try … finally with Free.",',
+    'eed). A function of the same file counts when its result type is a class (not a record from a class function Create), every assignment to Result is T.Create(…) without an owner, Result is otherwise on' +
+    'ly used through its members or released (cleanup in except) and never passed on, and every Exit(…) creates an object as well; overloads of the same name must all qualify. It is matched when called wit' +
+    'hout qualification, through Self or through a type name; methods of other objects are only known from the option factories. Medium confidence. Quick fix: wrap the following statements of the block in ' +
+    'try … finally with Free.",',
     '      "bad": "function NewList: TStringList;\nbegin\n  Result := TStringList.Create;\nend;\n…\n  Lines := NewList;\n  Memo.Lines.Assign(Lines);",',
     '      "good": "  Lines := NewList;\n  try\n    Memo.Lines.Assign(Lines);\n  finally\n    Lines.Free;\n  end;",',
     '      "options": [',

@@ -32,7 +32,6 @@ implementation
 uses
   System.SysUtils,
   Atlas.Common.Configuration.Contract,
-  Atlas.Common.Rules.Contract,
   Atlas.Common.Rules.Builtin,
   Atlas.Common.Lsp.References,
   Atlas.Common.Todos.Contract,

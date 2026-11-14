@@ -16,7 +16,6 @@ uses
   Atlas.Core.Welcome.QuickActions,
   Atlas.UI.Strings,
   Atlas.UI.Welcome.QuickActions,
-  Atlas.UI.Welcome.QuickActions.Texts,
   DUnitX.TestFramework;
 
 type
@@ -108,7 +107,8 @@ uses
   Vcl.Forms,
   Vcl.Menus,
   Vcl.ExtCtrls,
-  Atlas.Core.VersionControl.Pull;
+  Atlas.Core.VersionControl.Pull,
+  Atlas.UI.Welcome.QuickActions.Texts;
 
 const
   cProjectOne = 'C:\P\Eins.dproj';

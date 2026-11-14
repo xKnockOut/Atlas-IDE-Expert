@@ -86,7 +86,6 @@ uses
   System.SyncObjs,
   System.JSON,
   Atlas.Common.Configuration.Contract,
-  Atlas.Common.Rules.Contract,
   Atlas.Tests.RuleAssert,
   Atlas.Common.JsonRpc.Contract,
   Atlas.Common.JsonRpc.PendingRequests,

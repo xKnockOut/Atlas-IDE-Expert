@@ -123,6 +123,14 @@ type
     procedure OffAndExclude;
   end;
 
+  /// <summary>Gemeinsame Hilfen der Regeln (TRoutineHead, TFileTypes).</summary>
+  [TestFixture]
+  TTypeRestrictionHeadsTests = class
+  public
+    [Test]
+    procedure ReadsRoutineHeadAndFileTypes;
+  end;
+
 implementation
 
 uses
@@ -133,6 +141,8 @@ uses
   Atlas.Common.Index.Contract,
   Atlas.Common.Index.SymbolIndex,
   Atlas.Common.Index.Extractor,
+  Atlas.Common.Pascal.SyntaxTree,
+  Atlas.Common.Pascal.TreeCache,
   Atlas.Common.Rules.Builtin.TypeRestrictions,
   Atlas.Common.Rules.Builtin.TypeRestrictions.Heads,
   Atlas.Common.Rules.Builtin.TypeRestrictions.Operators,
@@ -1091,11 +1101,57 @@ begin
     '{"rules": {"typeinfo-invalid": {"exclude": ["Source/*.pas"]}}}', 'Source/G.pas'))));
 end;
 
+{ TTypeRestrictionHeadsTests }
+
+/// <summary>Erster Knoten der Art AKind in ARoot; nil ohne.</summary>
+function FirstOfKind(ARoot: TSyntaxNode; AKind: TSyntaxKind): TSyntaxNode;
+var
+  mFound: TSyntaxNode;
+begin
+  mFound := nil;
+  ARoot.Walk(
+    function(ANode: TSyntaxNode): Boolean
+    begin
+      if (mFound = nil) and (ANode.Kind = AKind) then
+      begin
+        mFound := ANode;
+      end;
+      Result := mFound = nil;
+    end);
+  Result := mFound;
+end;
+
+procedure TTypeRestrictionHeadsTests.ReadsRoutineHeadAndFileTypes;
+var
+  mTree: TSyntaxTree;
+  mHead: TRoutineHead;
+  mTypes: TFileTypes;
+begin
+  mTree := TSyntaxTreeCache.Parse('unit U;'#10'interface'#10'type'#10'  TA = class'#10'  end;'#10'  TB = TA;'#10 +
+    'function F(A, B: Integer; C: string): Boolean;'#10'implementation'#10 +
+    'function F(A, B: Integer; C: string): Boolean;'#10'begin'#10'  Result := True;'#10'end;'#10'end.');
+  try
+    mHead := TRoutineHead.Read(mTree.Tokens, FirstOfKind(mTree.Root, TSyntaxKind.RoutineHeader));
+    Assert.AreEqual('function', mHead.Keyword);
+    Assert.IsFalse(mHead.IsClass);
+    Assert.AreEqual(3, mHead.ParameterCount, 'A, B zählt zwei');
+    Assert.IsNotNull(mHead.ResultType);
+    Assert.IsFalse(mHead.HasDirective('virtual'));
+    mTypes := TFileTypes.Collect(mTree.Root);
+    Assert.IsTrue(mTypes.IndexOf('TA') >= 0, 'TA');
+    Assert.AreEqual('TA', mTypes.AliasOf[mTypes.IndexOf('TB')]);
+    Assert.AreEqual(-1, mTypes.IndexOf('TC'));
+  finally
+    mTree.Free;
+  end;
+end;
+
 initialization
   TDUnitX.RegisterTestFixture(TOperatorDeclarationInvalidTests);
   TDUnitX.RegisterTestFixture(TGenericDeclarationInvalidTests);
   TDUnitX.RegisterTestFixture(TTypeRestrictionViolatedTests);
   TDUnitX.RegisterTestFixture(TAttributeUsageInvalidTests);
   TDUnitX.RegisterTestFixture(TTypeInfoInvalidTests);
+  TDUnitX.RegisterTestFixture(TTypeRestrictionHeadsTests);
 
 end.

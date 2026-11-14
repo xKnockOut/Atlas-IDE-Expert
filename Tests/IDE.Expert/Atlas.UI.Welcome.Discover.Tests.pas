@@ -37,8 +37,7 @@ uses
   Atlas.Core.Welcome.Discover,
   Atlas.UI.Welcome.Discover,
   System.IOUtils,
-  Vcl.Imaging.pngimage,
-  Atlas.UI.Welcome.TestSupport;
+  Vcl.Imaging.pngimage;
 
 
 type

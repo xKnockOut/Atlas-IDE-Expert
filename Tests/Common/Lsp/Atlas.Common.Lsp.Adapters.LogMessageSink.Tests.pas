@@ -23,7 +23,6 @@ uses
   System.Generics.Collections,
   System.JSON,
   Atlas.Common.Logging.Contract,
-  Atlas.Common.JsonRpc.Contract,
   Atlas.Common.JsonRpc.StreamTransport,
   Atlas.Common.Lsp.Adapters.LogMessageSink,
   Atlas.Common.JsonRpc.TestSupport;

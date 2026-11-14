@@ -35,11 +35,10 @@
 //                                     unbedingte {$I} selbst einbindet (E2245).
 //
 // Die Regel liest die Direktiven-Token des ganzen Textes, auch in inaktiven
-// Zweigen; dort zählt Delphi die Verschachtelung ebenfalls. Unbekannte Namen
-// prüft sie nicht in Zweigen, deren Bedingung FPC abfragt ({$IFDEF FPC}{$MODE
-// DELPHI}{$ENDIF}); in anderen bedingten Zweigen meldet sie sie mit niedriger
-// Konfidenz, weil dcc sie in nicht geltenden Zweigen überspringt. {$PUSHOPT}/{$POPOPT} prüft sie nur, wenn keines davon in
-// einem bedingten Zweig steht.
+// Zweigen; dort zählt Delphi die Verschachtelung ebenfalls. Unbekannte Namen prüft sie nicht in Zweigen, deren
+// Bedingung FPC abfragt ({$IFDEF FPC}{$MODE DELPHI}{$ENDIF}); in anderen bedingten Zweigen meldet sie sie mit niedriger
+// Konfidenz, weil dcc sie in nicht geltenden Zweigen überspringt. {$PUSHOPT}/{$POPOPT} prüft sie nur, wenn keines davon
+// in einem bedingten Zweig steht.
 //
 // compiler-directive-invalid prüft nur Direktiven außerhalb bedingter Zweige:
 // Welcher Zweig gilt, weiß die Regel nicht, und dcc meldet nur aus geltenden.

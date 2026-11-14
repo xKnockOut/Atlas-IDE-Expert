@@ -7,7 +7,7 @@
 //   exception-not-raised      Exception erzeugt, aber nicht ausgelöst
 //   assert-side-effect        Assert mit Seiteneffekt im Argument; fällt mit {$C-} weg
 //   ifthen-side-effect        IfThen wertet beide Zweige aus: Nil-Zugriff oder Funktionsaufruf darin
-//   random-without-randomize  Random ohne Randomize in der Unit (Standard aus, niedrige Konfidenz)
+//   random-without-randomize  Random ohne Randomize in der Unit und im Projekt (Standard aus, niedrige Konfidenz)
 
 interface
 
@@ -1117,7 +1117,8 @@ var
   mIndex, mFirst: Integer;
   mCache: IRuleDerivedCache;
 begin
-  if AContext.Tree = nil then
+  // Randomize gehört einmal an den Programmstart (.dpr); ruft eine Unit des Projekts es auf, gilt es für alle.
+  if (AContext.Tree = nil) or ((AContext.Index <> nil) and (AContext.Index.UsageCount('Randomize') > 0)) then
   begin
     Exit;
   end;

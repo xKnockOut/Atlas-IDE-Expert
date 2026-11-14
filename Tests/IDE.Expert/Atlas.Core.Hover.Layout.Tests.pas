@@ -15,8 +15,7 @@ uses
   Atlas.Core.Hover.Layout,
   Atlas.Core.Hover.Layout.Contract,
   Atlas.Core.Hover.View,
-  Atlas.Core.Hover.Texts,
-  Atlas.Core.Hover.Layout.TestSupport;
+  Atlas.Core.Hover.Texts;
 
 type
   [TestFixture]
@@ -106,10 +105,10 @@ uses
   Atlas.Core.Hover.History,
   System.SysUtils,
   Atlas.Core.Style.Palette,
-  Atlas.Core.Style.Wrap,
   Atlas.Core.Problems.Contract,
   Atlas.Core.Problems.Explanation,
-  Atlas.Core.Hover.DebugValue;
+  Atlas.Core.Hover.DebugValue,
+  Atlas.Core.Hover.Layout.TestSupport;
 
 { THoverLayoutTests }
 

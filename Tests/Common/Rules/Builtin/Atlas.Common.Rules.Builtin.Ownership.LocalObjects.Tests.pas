@@ -257,6 +257,13 @@ begin
     '  L.Add(Result);'#10'end;'#10'function Teil(O: TComponent): TComponent;'#10'begin'#10 +
     '  Result := TComponent.Create(O);'#10'end;'#10'procedure Lauf(L: TList);'#10'var'#10'  A: TObject;'#10 +
     '  B: TComponent;'#10'begin'#10'  A := Neu(L);'#10'  B := Teil(nil);'#10'end;'#10'end.');
+  // Klassenfunktion Create, die einen Record liefert: kein Objekt (Selbstlauf, TAtlasGitHubPulls.Create).
+  TRuleAssert.Silent(TCreatedResultNotFreedRule.Create, 'unit U;'#10'interface'#10'type'#10 +
+    '  TErgebnis = record'#10'    N: Integer;'#10'  end;'#10'  TBau = class(TObject)'#10 +
+    '    class function Create(A: Integer): TErgebnis; static;'#10'  end;'#10'implementation'#10 +
+    'class function TBau.Create(A: Integer): TErgebnis;'#10'begin'#10'  Result.N := A;'#10'end;'#10 +
+    'function Neu: TErgebnis;'#10'begin'#10'  Result := TBau.Create(1);'#10'end;'#10'procedure Lauf;'#10'var'#10 +
+    '  E: TErgebnis;'#10'begin'#10'  E := Neu;'#10'end;'#10'end.');
 end;
 
 procedure TCreatedResultNotFreedTests.FactoryFromSettings;

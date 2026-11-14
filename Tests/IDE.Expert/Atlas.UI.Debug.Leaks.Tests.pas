@@ -34,7 +34,6 @@ uses
   System.SysUtils,
   Winapi.Windows,
   Vcl.Forms,
-  Atlas.Text.LeakReport,
   Atlas.Core.Debug.LeakCapture,
   Atlas.Core.Debug.LeakView,
   Atlas.UI.Debug.Leaks,

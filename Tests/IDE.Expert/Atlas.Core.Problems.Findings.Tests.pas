@@ -126,7 +126,6 @@ uses
   Atlas.Core.Problems.FindingsView,
   Atlas.Core.Problems.FindingsCache,
   Atlas.Core.Style.Color,
-  Atlas.Core.Style.Palette,
   Atlas.Core.Problems.Colors;
 
 function Problem(ALine: Integer; const ACode, AMessage: string; ASeverity: TAtlasProblemSeverity): TAtlasProblem;

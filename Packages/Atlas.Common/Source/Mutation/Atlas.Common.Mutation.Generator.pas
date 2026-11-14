@@ -513,6 +513,8 @@ begin
       Unary(mNode);
     TSyntaxKind.Identifier, TSyntaxKind.Literal:
       Leaf(mNode);
+  else
+    // Übrige Werte bewusst ohne Wirkung.
   end;
   for mIndex := mNode.ChildCount - 1 downto 0 do
   begin

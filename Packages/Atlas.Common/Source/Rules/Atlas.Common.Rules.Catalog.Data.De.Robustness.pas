@@ -10,8 +10,8 @@ const
     '{',
     '      "id": "random-without-randomize",',
     '      "name": "Random ohne Randomize",',
-    '      "description": "Random wird verwendet, aber die Unit ruft nie Randomize auf; jeder Start liefert dieselbe Folge. Ein eigenes Random (Aufzählungswert, Routine) ist nicht System.Random. Randomize ' +
-    'steht oft in der .dpr, deshalb ist die Regel standardmäßig aus und hat niedrige Konfidenz."',
+    '      "description": "Random wird verwendet, aber weder die Unit noch eine andere Unit des Projekts (laut Index, etwa die .dpr) ruft Randomize auf; jeder Start liefert dieselbe Folge. Ein eigenes Rand' +
+    'om (Aufzählungswert, Routine) ist nicht System.Random. Ohne Index sieht die Regel nur die Unit, deshalb ist sie standardmäßig aus und hat niedrige Konfidenz."',
     '    },',
     '{',
     '      "id": "format-without-settings",',

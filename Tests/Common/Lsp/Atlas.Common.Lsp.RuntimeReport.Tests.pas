@@ -265,22 +265,15 @@ end;
 
 procedure TLspRuntimeReportTests.ClearRemovesMessages;
 var
-  mArguments: TJSONArray;
   mResult: TJSONValue;
 begin
   Run('{"text":' + TJsonText.Quote(cMadExcept) + '}');
   FPublished := nil;
-  mArguments := TJSONArray.Create;
+  mResult := FCommand.Clear;
   try
-    mArguments.Add('file:///C:/Projekt/Kunden.dpr');
-    mResult := FCommand.Clear(mArguments);
-    try
-      Assert.AreEqual('{"cleared":2}', mResult.ToJSON([]));
-    finally
-      mResult.Free;
-    end;
+    Assert.AreEqual('{"cleared":2}', mResult.ToJSON([]));
   finally
-    mArguments.Free;
+    mResult.Free;
   end;
   Assert.AreEqual(2, Integer(Length(FPublished)));
   Assert.AreEqual(0, Integer(Length(FResults.MessagesFor(cListe))));

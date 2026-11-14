@@ -2598,6 +2598,8 @@ begin
   {$IFDEF DEBUG}
   TShutdownLeaks.Enable(ReportShutdownLeak);
   {$ENDIF}
+  // Tests bilden Namen von Arbeitsordnern mit Random; ohne Randomize hätten zwei gleichzeitige Läufe dieselben.
+  Randomize;
   // Protokoll der Absturzsicherung in einen eigenen Ordner: Die Tests lösen absichtlich Fehler aus („Fehler in
   // Quelle Testquelle“), die sonst im atlas.log der installierten Atlas-Version landen und bei der Fehlersuche wie
   // echte Fehler aussehen.

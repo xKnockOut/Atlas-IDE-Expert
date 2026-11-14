@@ -460,6 +460,16 @@ begin
     IsFileCallName(ATokens, AIndex);
 end;
 
+/// <summary>Steht bei AIndex eine Eingabe: ParamStr, ein Mitglied wie Edit1.Text bzw. Request.QueryFields oder
+/// ein Objekt Request mit Mitglied (Request.PathInfo)? Eine schlichte Variable namens Request oder Text (Schleife
+/// über TDirectory.GetFiles) ist keine Eingabe.</summary>
+function IsInputMarker(const ATokens: TArray<TPascalToken>; AIndex: Integer): Boolean;
+begin
+  Result := IsOneOf(ATokens[AIndex].Text, cInputMarkers) and (SameText(ATokens[AIndex].Text, 'ParamStr') or
+    ((AIndex > 0) and ATokens[AIndex - 1].IsSymbol('.')) or
+    ((AIndex < High(ATokens)) and ATokens[AIndex + 1].IsSymbol('.')));
+end;
+
 /// <summary>Nennt ATokens[AFirst..ALast] Eingabedaten, ohne den Pfad zu prüfen (GetFullPath …)?</summary>
 function UncheckedInput(const ATokens: TArray<TPascalToken>; AFirst, ALast: Integer): Boolean;
 var
@@ -472,7 +482,7 @@ begin
   begin
     if ATokens[mInner].Kind = TPascalTokenKind.Identifier then
     begin
-      mFromInput := mFromInput or IsOneOf(ATokens[mInner].Text, cInputMarkers);
+      mFromInput := mFromInput or IsInputMarker(ATokens, mInner);
       mChecked := mChecked or IsOneOf(ATokens[mInner].Text, ['GetFullPath', 'ExpandFileName', 'ExtractFileName']);
     end;
   end;

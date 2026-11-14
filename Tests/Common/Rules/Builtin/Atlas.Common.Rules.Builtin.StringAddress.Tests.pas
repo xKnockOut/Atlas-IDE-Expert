@@ -40,7 +40,6 @@ implementation
 
 uses
   System.SysUtils,
-  Atlas.Common.Documents.Contract,
   Atlas.Common.Rules.Contract,
   Atlas.Common.Rules.Builtin.StringAddress,
   Atlas.Common.Index.Contract,

@@ -120,7 +120,8 @@ begin
   Result := (AText <> '') and TTextChars.IsIdentStart(AText[1]) and not EndsStr('.', AText);
   for mIndex := 2 to Length(AText) do
   begin
-    if Result and not (TTextChars.IsIdentChar(AText[mIndex]) or ((AText[mIndex] = '.') and (AText[mIndex - 1] <> '.'))) then
+    if Result and not (TTextChars.IsIdentChar(AText[mIndex]) or
+      ((AText[mIndex] = '.') and (AText[mIndex - 1] <> '.'))) then
     begin
       Result := False;
     end;

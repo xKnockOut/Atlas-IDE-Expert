@@ -38,6 +38,7 @@ type
     FSteps: TArray<TAtlasRestartStepInfo>;
     FCurrent: Integer;
     FFailed: Boolean;
+    FFormat: TFormatSettings;
     function IndexOf(AStep: TAtlasRestartStep): Integer;
   public
     /// <summary>Schritte für ARunning (Programm läuft) und AChanged (seit dem letzten Build geändert).</summary>
@@ -53,10 +54,13 @@ type
     function Done: Boolean;
     function Failed: Boolean;
     function Steps: TArray<TAtlasRestartStepInfo>;
-    /// <summary>Zeile für die Leiste; ADone und AFailed sind die Zeichen für fertig und gescheitert.</summary>
+    /// <summary>Zeile für die Leiste; ADone und AFailed sind die Zeichen für fertig und gescheitert. Dauern mit dem
+    /// Dezimaltrenner aus NumberFormat.</summary>
     function Text(const ACaptions: TAtlasRestartCaptions; const ADone, AFailed: string): string;
     /// <summary>Dauer als "0,3 s" (Dezimaltrenner aus AFormat).</summary>
     class function SecondsText(AMs: UInt64; const AFormat: TFormatSettings): string; static;
+    /// <summary>Zahlenformat für Text; Vorgabe die Einstellungen der Anwendung beim Anlegen.</summary>
+    property NumberFormat: TFormatSettings read FFormat write FFormat;
   end;
 
   TAtlasRestartBreakpoints = record
@@ -97,6 +101,7 @@ var
 begin
   inherited Create;
   FCurrent := -1;
+  FFormat := FormatSettings;
   for mStep := Low(TAtlasRestartStep) to High(TAtlasRestartStep) do
   begin
     if ((mStep = TAtlasRestartStep.Stop) and not ARunning) or ((mStep = TAtlasRestartStep.Build) and not AChanged) then
@@ -217,7 +222,7 @@ begin
       TAtlasRestartState.Running:
         mPart := mPart + cRunningMark;
       TAtlasRestartState.Done:
-        mPart := mPart + ' ' + SecondsText(mInfo.DurationMs, FormatSettings) + ' ' + ADone;
+        mPart := mPart + ' ' + SecondsText(mInfo.DurationMs, FFormat) + ' ' + ADone;
       TAtlasRestartState.Failed:
         mPart := mPart + ' ' + AFailed;
       TAtlasRestartState.Waiting, TAtlasRestartState.Skipped:

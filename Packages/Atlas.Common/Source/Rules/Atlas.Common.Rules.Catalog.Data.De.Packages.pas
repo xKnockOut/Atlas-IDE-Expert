@@ -111,7 +111,7 @@ const
     '      "description": "Ein Programm (.dpr), das DUnitX.TestFramework, aber keinen Leckmonitor von DUnitX (DUnitX.MemoryLeakMonitor.FastMM4 oder .FastMM5) verwendet: Ohne ihn misst DUnitX keine Lecks je' +
     ' Test, die Testmarken im Editor zeigen sie nie. DUnitX.MemoryLeakMonitor.Default zählt nicht, er misst nichts. Gemeldet am Eintrag DUnitX.TestFramework. Korrektur (sicher): den Monitor ins uses eintra' +
     'gen, DUnitX.MemoryLeakMonitor.FastMM5, wenn das Programm FastMM5 verwendet, sonst DUnitX.MemoryLeakMonitor.FastMM4, der auch mit dem Speichermanager der RTL ohne FastMM4.pas arbeitet. Units bleiben st' +
-    'ill. Sicherheit hoch."',
+    'ill, ebenso ein Programm, dessen Projekt einen eigenen Monitor anmeldet (eine Unit verwendet laut Index IMemoryLeakMonitor). Sicherheit hoch."',
     '    },',
     '{',
     '      "id": "dunitx-ignore-without-reason",',

@@ -118,7 +118,6 @@ uses
   Atlas.Common.Pascal.Parser,
   Atlas.Core.Completion.Contract,
   Atlas.Core.Completion.Presentation,
-  Atlas.Common.Rules.Contract,
   Atlas.Common.Rules.Builtin.Components,
   Atlas.Tests.RuleAssert,
   Atlas.Core.Completion.Snippets,

@@ -314,6 +314,8 @@ begin
       begin
         ARaw.Place := TOwnershipPlace.AsInterface;
       end;
+  else
+    // Übrige Werte bewusst ohne Wirkung.
   end;
 end;
 

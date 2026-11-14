@@ -116,7 +116,6 @@ uses
   Atlas.Common.Rules.Builtin.DeadCode,
   Atlas.Common.Documents.Uris,
   Atlas.Common.Compiler.Contract,
-  Atlas.Common.Editing.UsesActions,
   Atlas.Common.Editing.Contract,
   Atlas.Common.Lsp.SyntaxDiagnostics,
   Atlas.Common.Lsp.DiagnosticItems;

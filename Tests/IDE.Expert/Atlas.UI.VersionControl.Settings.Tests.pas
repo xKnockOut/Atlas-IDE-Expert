@@ -58,7 +58,6 @@ uses
   Atlas.UI.Settings.Contract,
   Atlas.UI.Settings.Page.TestSupport,
   Atlas.UI.VersionControl.SettingsKind,
-  Atlas.UI.VersionControl.SettingsBranch,
   Atlas.UI.VersionControl.SettingsProject,
   Atlas.UI.VersionControl.SettingsProjects,
   Atlas.UI.VersionControl.SettingsTools,
@@ -139,7 +138,7 @@ begin
   end;
 end;
 /// <summary>Hängt die Ereignisse der Seite an AProbe.</summary>
-procedure WireVcsPage(APage: TAtlasSettingsPage; AProbe: TVcsPageProbe);
+procedure WireVcsPage(AProbe: TVcsPageProbe);
 begin
   AProbe.FCheckedKind := TAtlasVcsKind.None;
   GSection.Tools.OnVcsLocate :=
@@ -198,7 +197,7 @@ begin
 end;
 /// <summary>Pfad ändern prüft nur die Datei; „Prüfen“ fragt im Hintergrund und sperrt den Knopf bis zum
 /// Ergebnis.</summary>
-procedure AssertVcsToolChecks(APage: TAtlasSettingsPage; AProbe: TVcsPageProbe);
+procedure AssertVcsToolChecks(AProbe: TVcsPageProbe);
 var
   mCheck: TAtlasVcsToolCheck;
 begin
@@ -314,7 +313,7 @@ begin
   try
     mPage := NewPage(mHost);
     mPage.HandleNeeded;
-    WireVcsPage(mPage, mProbe);
+    WireVcsPage(mProbe);
     mSettings := TAtlasPluginSettings.Defaults;
     mSettings.VcsProvider := 'svn';
     mSettings.VcsSvnPath := 'D:\Tools\svn.exe';
@@ -328,7 +327,7 @@ begin
     Assert.IsTrue(mVcsNode.Text.StartsWith(TAtlasSettingsMarks.cDot), mVcsNode.Text);
     AssertVcsPageControls(mPage, mVcs);
     Assert.AreEqual(0, mProbe.FProjectCalls, 'kein Prozess ohne CheckShown');
-    AssertVcsToolChecks(mPage, mProbe);
+    AssertVcsToolChecks(mProbe);
     AssertVcsProjectAndLinks(mPage, mProbe, mVcsNode, TopLevelNodes(mPage)[0]);
     EditVcsPage(mPage);
     mSaved := mSettings;
@@ -432,7 +431,7 @@ begin
   AssertVcsServerTexts;
 end;
 /// <summary>Kontext: Projekt und Gruppe Kasse, eine Zeile aus der .atlas.</summary>
-procedure WireKasseTeamContext(APage: TAtlasSettingsPage);
+procedure WireKasseTeamContext;
 begin
   GSection.Projects.OnVcsContext :=
     function: TAtlasVcsProjectContext
@@ -444,7 +443,7 @@ begin
     end;
 end;
 /// <summary>Persönliche Zeile vor der aus der .atlas; diese nur ansehen.</summary>
-procedure AssertVcsProjectRows(APage: TAtlasSettingsPage; AList: TListView);
+procedure AssertVcsProjectRows(AList: TListView);
 begin
   // Persönliche Zeile vor der aus der .atlas; die .atlas gewinnt für Kasse.
   Assert.AreEqual(2, AList.Items.Count);
@@ -465,7 +464,7 @@ begin
   Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.SettingsIssuesProjectReadOnly), GSection.Projects.VcsProjectNote.Caption);
 end;
 /// <summary>Aktuelles Projekt übernehmen, Hauptbranch prüfen, doppelten Pfad abweisen.</summary>
-procedure EditVcsProjectRows(APage: TAtlasSettingsPage; AList: TListView);
+procedure EditVcsProjectRows(AList: TListView);
 var
   mState: TAtlasVcsProjectState;
 begin
@@ -520,7 +519,7 @@ begin
   try
     mPage := NewPage(mHost);
     mPage.HandleNeeded;
-    WireKasseTeamContext(mPage);
+    WireKasseTeamContext;
     GSection.ProjectAdd.OnBrowseProject :=
       function(AFolder: Boolean; out APath: string): Boolean
       begin
@@ -532,8 +531,8 @@ begin
     mSettings.VcsProjects := '[{"match": "C:\\Projekte", "provider": "svn", "mainBranch": "trunk"}]';
     mPage.LoadFrom(mSettings);
     mList := GSection.Projects.VcsProjectList;
-    AssertVcsProjectRows(mPage, mList);
-    EditVcsProjectRows(mPage, mList);
+    AssertVcsProjectRows(mList);
+    EditVcsProjectRows(mList);
     // Paketordner aus SVN-Externals über die Ordnerauswahl, dann Art Git.
     GSection.ProjectAdd.AddMenu.Items[1].Click;
     Assert.AreEqual('True', mBrowsed);
@@ -579,7 +578,7 @@ begin
   Result.State := TAtlasVcsServerState.LoginNeeded;
 end;
 /// <summary>Nach der Anmeldung wartet die Zeile auf die neue Prüfung und wird erreichbar.</summary>
-procedure AssertVcsLoginRechecked(APage: TAtlasSettingsPage; AList: TListView; const ACheck: TAtlasVcsServerCheck);
+procedure AssertVcsLoginRechecked(AList: TListView; const ACheck: TAtlasVcsServerCheck);
 var
   mCheck: TAtlasVcsServerCheck;
 begin
@@ -602,7 +601,7 @@ type
   end;
 
 /// <summary>Kontext Kasse, bekannter Zustand des Paketordners, Prüfen und Anmelden über AProbe.</summary>
-procedure WireVcsServers(APage: TAtlasSettingsPage; AProbe: TVcsServerProbe);
+procedure WireVcsServers(AProbe: TVcsServerProbe);
 begin
   GSection.Projects.OnVcsContext :=
     function: TAtlasVcsProjectContext
@@ -650,7 +649,7 @@ begin
   try
     mPage := NewPage(mHost);
     mPage.HandleNeeded;
-    WireVcsServers(mPage, mProbe);
+    WireVcsServers(mProbe);
     mSettings := TAtlasPluginSettings.Defaults;
     mSettings.VcsProjects := '[{"match": "C:\\Projekte\\Kasse\\Kasse.groupproj", "provider": "svn"},' +
       ' {"match": "C:\\Projekte\\Pakete\\Basis", "provider": "svn"}]';
@@ -674,7 +673,7 @@ begin
     GSection.Servers.VcsServerLogin.Click;
     Assert.AreEqual(1, Integer(Length(mProbe.FLogins)));
     Assert.AreEqual('C:\Projekte\Kasse|origin', mProbe.FLogins[0]);
-    AssertVcsLoginRechecked(mPage, mList, mCheck);
+    AssertVcsLoginRechecked(mList, mCheck);
     // „Alle prüfen“.
     mProbe.FChecked := nil;
     GSection.Servers.VcsServerCheckAll.Click;

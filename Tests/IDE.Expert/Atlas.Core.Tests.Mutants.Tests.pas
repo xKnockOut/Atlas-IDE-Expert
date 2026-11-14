@@ -123,13 +123,13 @@ var
 begin
   // "10\r\n  else" über zwei Zeilen durch "11" ersetzt: aus zwei Zeilen wird eine.
   Assert.IsTrue(TAtlasMutants.Apply(SampleLines, Mutant(7, 15, 8, 7, '10'#13#10'  else', '11 else'), mMutated));
-  Assert.AreEqual(Length(SampleLines) - 1, Length(mMutated));
+  Assert.AreEqual(Length(SampleLines) - 1, Integer(Length(mMutated)));
   Assert.AreEqual('    Result := 11 else', mMutated[6]);
   Assert.AreEqual('    Result := 0;', mMutated[7]);
   // Ersatz mit Zeilenende fügt eine Zeile ein.
   Assert.IsTrue(TAtlasMutants.Apply(SampleLines, Mutant(13, 3, 13, 19, 'Result := A + A;',
     'Result := A;'#13#10'  Exit;'), mMutated));
-  Assert.AreEqual(Length(SampleLines) + 1, Length(mMutated));
+  Assert.AreEqual(Length(SampleLines) + 1, Integer(Length(mMutated)));
   Assert.AreEqual('  Exit;', mMutated[13]);
 end;
 

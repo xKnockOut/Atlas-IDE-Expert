@@ -46,7 +46,6 @@ uses
   System.SysUtils,
   System.DateUtils,
   Atlas.Core.Projects.Summary,
-  Atlas.Core.Welcome.Projects,
   Atlas.Core.Welcome.Continue,
   Atlas.Core.Welcome.ContinueIssues;
 

@@ -49,7 +49,6 @@ implementation
 
 uses
   System.SysUtils,
-  Atlas.Core.Build.Events,
   Atlas.Core.Build.Messages,
   Atlas.Core.Settings.Plugin,
   Atlas.Core.Build.Requests,

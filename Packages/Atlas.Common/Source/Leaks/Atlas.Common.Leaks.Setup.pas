@@ -335,6 +335,8 @@ begin
           Result := NumberAt(AText, mPos + Length('FastMM '));
         end;
       end;
+  else
+    // TLeakManager.None: ohne Speichermanager keine Version.
   end;
 end;
 

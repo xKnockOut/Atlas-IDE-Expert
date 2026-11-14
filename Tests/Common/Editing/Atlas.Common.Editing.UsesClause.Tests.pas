@@ -56,7 +56,6 @@ implementation
 uses
   System.SysUtils,
   Atlas.Common.Documents.Contract,
-  Atlas.Common.Pascal.Contract,
   Atlas.Common.Pascal.Lexer,
   Atlas.Common.Rules.Contract,
   Atlas.Common.Editing.UsesClause;

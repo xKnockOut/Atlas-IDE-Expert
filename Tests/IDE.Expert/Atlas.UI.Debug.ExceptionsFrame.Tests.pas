@@ -49,7 +49,6 @@ uses
   Atlas.Core.Debug.Exceptions,
   Atlas.Core.Debug.IgnoreList,
   Atlas.Core.Debug.CallStack,
-  Atlas.Core.Debug.OwnCode,
   Atlas.UI.Debug.ExceptionsFrame;
 
 function Sample(ATime: TDateTime; const AClass, AMessage, AFile: string; ALine: Integer): TAtlasDebugException;

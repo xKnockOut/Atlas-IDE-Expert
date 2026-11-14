@@ -12,7 +12,6 @@ uses
   System.Generics.Collections,
   DUnitX.TestFramework,
   Atlas.Core.Debug.Visualizers,
-  Atlas.Core.Debug.Visualizers.Format,
   Atlas.Core.Settings.VisualizerKinds;
 
 type
@@ -76,6 +75,9 @@ type
   end;
 
 implementation
+
+uses
+  Atlas.Core.Debug.Visualizers.Format;
 
 { TVisualizerTests }
 

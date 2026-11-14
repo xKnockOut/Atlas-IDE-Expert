@@ -13,8 +13,8 @@ const
     '      "category": "code-smell",',
     '      "severity": "hint",',
     '      "group": "robustness",',
-    '      "description": "Random is used, but the unit never calls Randomize, so every start yields the same sequence. A Random of your own (enumeration value, routine) is not System.Random. Randomize oft' +
-    'en sits in the .dpr, so the rule is off by default and has low confidence.",',
+    '      "description": "Random is used, but neither the unit nor another unit of the project (according to the index, for example the .dpr) calls Randomize, so every start yields the same sequence. A Ra' +
+    'ndom of your own (enumeration value, routine) is not System.Random. Without an index the rule only sees the unit, so it is off by default and has low confidence.",',
     '      "bad": "Dice := Random(6) + 1;",',
     '      "good": "Randomize; // once at program start\n...\nDice := Random(6) + 1;",',
     '      "safeFix": false,',

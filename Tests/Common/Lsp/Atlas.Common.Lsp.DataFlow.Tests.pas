@@ -68,7 +68,6 @@ uses
   System.Generics.Collections,
   System.JSON,
   Atlas.Common.Documents.Contract,
-  Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.TreeCache,
   Atlas.Common.Index.SymbolIndex,
   Atlas.Common.Index.Extractor;

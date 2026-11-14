@@ -37,7 +37,6 @@ implementation
 
 uses
   System.SysUtils,
-  Atlas.Core.Build.Events,
   Atlas.Core.Build.OpenBuild;
 
 procedure TAtlasOpenBuildTests.WaitsForQuietIde;

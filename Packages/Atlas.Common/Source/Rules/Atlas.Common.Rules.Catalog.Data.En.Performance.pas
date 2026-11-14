@@ -30,9 +30,9 @@ const
     '      "severity": "hint",',
     '      "group": "performance",',
     '      "description": "The condition of while and until is evaluated on every iteration. Calls like Trim or Format and properties like Lines.Text there are recomputed each time; compute them once befor' +
-    'e the loop. Bounds of for loops are evaluated only once and are not reported, nor is .Text when it is a field (record field of a type in the same file, or a field or a property reading a field accordi' +
-    'ng to the name resolution), nor a property whose receiver the loop changes (Items[I].Text), nor FileExists and DirectoryExists (waiting for a file), nor calls whose argument the loop changes (assignme' +
-    'nt, Inc, Dec, Delete, SetLength, Include, Exclude). Off by default.",',
+    'e the loop. Bounds of for loops are evaluated only once and are not reported, nor is .Text when it is a field (record field of a type in the same file, or according to the name resolution a field, var' +
+    'iable, constant, enumeration value such as TXmlNodeKind.Text or a property reading a field), nor a property whose receiver the loop changes (Items[I].Text), nor FileExists and DirectoryExists (waiting' +
+    ' for a file), nor calls whose argument the loop changes (assignment, Inc, Dec, Delete, SetLength, Include, Exclude). Off by default.",',
     '      "bad": "while I < Length(Trim(Memo.Lines.Text)) do\n  Inc(I);",',
     '      "good": "Text := Trim(Memo.Lines.Text);\nwhile I < Length(Text) do\n  Inc(I);",',
     '      "safeFix": false,',

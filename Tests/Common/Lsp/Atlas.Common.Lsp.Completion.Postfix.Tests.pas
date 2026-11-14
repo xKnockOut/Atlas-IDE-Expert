@@ -84,8 +84,7 @@ uses
   Atlas.Common.Lsp.Completion.Lists,
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.Parser,
-  Atlas.Common.Index.SymbolIndex,
-  Atlas.Common.Index.Extractor;
+  Atlas.Common.Index.SymbolIndex;
 
 const
   HauptFile = 'C:\P\Haupt.pas';

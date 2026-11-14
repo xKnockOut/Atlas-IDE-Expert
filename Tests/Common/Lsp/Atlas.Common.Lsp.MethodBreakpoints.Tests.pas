@@ -232,7 +232,7 @@ var
   mTruncated: Boolean;
 begin
   Assert.IsTrue(TMethodPattern.Parse(APattern, FIndex, mPattern), APattern);
-  Result := TLspMethodBreakpoints.Search(FIndex, mPattern, AOptions, BodySource, mTruncated);
+  Result := TLspMethodBreakpoints.Search(FIndex, mPattern, AOptions, BodySource(), mTruncated);
 end;
 
 function TLspMethodBreakpointsTests.Find(const APattern: string): TArray<TMethodBreakpointHit>;
@@ -499,11 +499,11 @@ begin
   Assert.IsTrue(TMethodPattern.Parse('*.Validiere*', FIndex, mPattern));
   mOptions := TMethodBreakpointOptions.Default;
   mOptions.MaxHits := 2;
-  mHits := TLspMethodBreakpoints.Search(FIndex, mPattern, mOptions, BodySource, mTruncated);
+  mHits := TLspMethodBreakpoints.Search(FIndex, mPattern, mOptions, BodySource(), mTruncated);
   Assert.AreEqual(2, Integer(Length(mHits)));
   Assert.IsTrue(mTruncated);
   mOptions.MaxHits := 100;
-  TLspMethodBreakpoints.Search(FIndex, mPattern, mOptions, BodySource, mTruncated);
+  TLspMethodBreakpoints.Search(FIndex, mPattern, mOptions, BodySource(), mTruncated);
   Assert.IsFalse(mTruncated);
 end;
 

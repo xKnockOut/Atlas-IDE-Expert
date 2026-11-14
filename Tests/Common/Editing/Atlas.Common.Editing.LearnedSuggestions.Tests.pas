@@ -357,7 +357,8 @@ begin
   end;
   for mFile in TDirectory.GetFiles(mRoot, '*.pas', TSearchOption.soAllDirectories) do
   begin
-    FUnits := FUnits + [TIndexExtractor.ExtractText(TFile.ReadAllText(mFile), mFile, nil, nil, False, True)];
+    FUnits := FUnits + [TIndexExtractor.ExtractText(TFile.ReadAllText(mFile, TEncoding.UTF8), mFile, nil, nil, False,
+      True)];
   end;
   Assert.IsTrue(Length(FUnits) > 0, 'keine Units im Referenzprojekt');
   // Je Anfrage sammelt der Server die Muster eines Auslösers über alle Units; das muss im Takt des Tippens gehen.
@@ -366,7 +367,7 @@ begin
   mGather := mWatch.ElapsedMilliseconds;
   Assert.IsTrue(mGather < 50, Format('%d ms für %d Units', [mGather, Length(FUnits)]));
   mPatterns := TLearnedSuggestions.Gather(FUnits, nil);
-  Assert.IsTrue(Length(mPatterns) >= 0);
+  Assert.IsTrue(Length(mPatterns) > 0, 'keine Muster im Referenzprojekt');
 end;
 
 initialization

@@ -58,7 +58,7 @@ begin
   Result.Line := ALine;
 end;
 
-function ProjectFile(AFileName: string): Boolean;
+function ProjectFile(const AFileName: string): Boolean;
 begin
   Result := not AFileName.StartsWith('C:\RTL\', True);
 end;

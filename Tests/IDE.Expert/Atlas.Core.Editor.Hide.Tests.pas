@@ -46,7 +46,6 @@ implementation
 
 uses
   System.SysUtils,
-  Atlas.Common.Pascal.Contract,
   Atlas.Common.Pascal.Lexer,
   Atlas.Common.Rules.Suppressions,
   Atlas.Core.Editor.Elements,

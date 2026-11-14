@@ -22,7 +22,6 @@ uses
   System.JSON,
   Atlas.Common.Documents.Contract,
   Atlas.Common.Index.Contract,
-  Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Semantics.NameResolver,
   Atlas.Common.Lsp.CompletionRequest,
   Atlas.Common.Lsp.Completion.Values;

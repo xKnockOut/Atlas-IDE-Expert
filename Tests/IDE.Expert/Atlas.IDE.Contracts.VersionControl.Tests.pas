@@ -34,9 +34,6 @@ uses
   System.SysUtils,
   Atlas.Core.VersionControl.Contract,
   Atlas.Core.VersionControl.BranchPlan,
-  Atlas.Core.VersionControl.Tools,
-  Atlas.Core.VersionControl.ToolCheck,
-  Atlas.Core.VersionControl.ServerCheck,
   Atlas.Core.Projects.VersionControl,
   Atlas.IDE.Contracts.VersionControl;
 

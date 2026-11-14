@@ -49,8 +49,7 @@ uses
   Atlas.UI.Welcome.Projects,
   Atlas.Core.Welcome.QuickActions,
   Atlas.UI.Welcome.QuickActions,
-  Atlas.UI.Welcome.QuickActions.Tests,
-  Atlas.UI.Welcome.TestSupport;
+  Atlas.UI.Welcome.QuickActions.Tests;
 
 
 type

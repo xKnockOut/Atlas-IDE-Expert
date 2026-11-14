@@ -55,8 +55,6 @@ uses
   System.Generics.Defaults,
   Atlas.Common.Documents.Contract,
   Atlas.Common.Rules.Contract,
-  Atlas.Common.Pascal.SyntaxTree,
-  Atlas.Common.Editing.UsesActions,
   Atlas.Common.Editing.SlashCommands,
   Atlas.Common.Editing.Contract,
   Atlas.Common.Editing.MaintenanceCommands,

@@ -35,7 +35,6 @@ uses
   Vcl.ExtCtrls,
   Vcl.ComCtrls,
   Vcl.Forms,
-  Atlas.Core.Style.Color,
   Atlas.Core.Style.Palette,
   Atlas.Core.Tracker.FlowMap;
 
@@ -181,6 +180,7 @@ implementation
 uses
   System.Math,
   Winapi.Windows,
+  Atlas.Core.Style.Color,
   Atlas.UI.Tracker.Flow.Strings;
 
 {$R *.dfm}
