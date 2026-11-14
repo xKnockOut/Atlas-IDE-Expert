@@ -43,14 +43,28 @@ type
   TAtlasTestSelectionCheck = reference to function(const ASelection: TAtlasTestSelection): Boolean;
   TAtlasTestSelectionAction = reference to procedure(const ASelection: TAtlasTestSelection);
   TAtlasTestSelectionText = reference to function(const ASelection: TAtlasTestSelection): string;
+  /// <summary>Ergebnis einer Serie an einer Marke (#1782).</summary>
+  TAtlasTestSeriesMark = record
+    Caption: string;
+    /// <summary>Die Serie läuft noch (kein Stand).</summary>
+    Running: Boolean;
+    /// <summary>Mindestens ein Start bestanden bzw. rot; beides = gemischt (gelb).</summary>
+    AnyPassed: Boolean;
+    AnyFailed: Boolean;
+  end;
+  /// <summary>Serie an der Marke ASelection (#1782); False ohne Serie für diese Marke.</summary>
+  TAtlasTestSeriesMarkFunc = reference to function(const ASelection: TAtlasTestSelection;
+    out AMark: TAtlasTestSeriesMark): Boolean;
 
   /// <summary>Knopf „Vergleichen“ der Testmarke (#1779): Gibt es erwartet und erhalten zur Auswahl, Fenster
   /// zeigen. Ohne Zuweisung kein Knopf. Caption: Text des Knopfs (Vergleichsdateien #1881); nil = „Vergleichen“.
-  /// </summary>
+  /// Series: Ergebnis einer Serie statt des letzten Laufs an der Marke (#1782); nil = keins. Steht hier, weil die
+  /// Lens alle Haken der Marke über diesen Record bekommt.</summary>
   TAtlasTestCompareHooks = record
     CanCompare: TAtlasTestSelectionCheck;
     Show: TAtlasTestSelectionAction;
     Caption: TAtlasTestSelectionText;
+    Series: TAtlasTestSeriesMarkFunc;
   end;
 
   TAtlasTestDebug = class
