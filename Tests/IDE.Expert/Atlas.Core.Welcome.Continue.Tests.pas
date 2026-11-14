@@ -525,18 +525,25 @@ var
   mNow_: TDateTime;
 begin
   mNow_ := Stamp(20, 0);
-  Assert.IsTrue(TAtlasWelcomeContinue.Age(mNow_ - 20 * OneSecond, mNow_, mValue) = TAtlasContinueAge.JustNow);
-  Assert.IsTrue(TAtlasWelcomeContinue.Age(mNow_ + OneMinute, mNow_, mValue) = TAtlasContinueAge.JustNow,
+  Assert.AreEqual<TAtlasContinueAge>(TAtlasContinueAge.JustNow,
+    TAtlasWelcomeContinue.Age(mNow_ - 20 * OneSecond, mNow_, mValue));
+  Assert.AreEqual<TAtlasContinueAge>(TAtlasContinueAge.JustNow,
+    TAtlasWelcomeContinue.Age(mNow_ + OneMinute, mNow_, mValue),
     'Zukunft (Uhr verstellt)');
-  Assert.IsTrue(TAtlasWelcomeContinue.Age(Stamp(19, 35), mNow_, mValue) = TAtlasContinueAge.Minutes);
+  Assert.AreEqual<TAtlasContinueAge>(TAtlasContinueAge.Minutes,
+    TAtlasWelcomeContinue.Age(Stamp(19, 35), mNow_, mValue));
   Assert.AreEqual(25, mValue);
-  Assert.IsTrue(TAtlasWelcomeContinue.Age(Stamp(17, 50), mNow_, mValue) = TAtlasContinueAge.Hours, 'vor 2 Std.');
+  Assert.AreEqual<TAtlasContinueAge>(TAtlasContinueAge.Hours,
+    TAtlasWelcomeContinue.Age(Stamp(17, 50), mNow_, mValue), 'vor 2 Std.');
   Assert.AreEqual(2, mValue);
-  Assert.IsTrue(TAtlasWelcomeContinue.Age(Stamp(18, 40) - 1, mNow_, mValue) = TAtlasContinueAge.Yesterday,
+  Assert.AreEqual<TAtlasContinueAge>(TAtlasContinueAge.Yesterday,
+    TAtlasWelcomeContinue.Age(Stamp(18, 40) - 1, mNow_, mValue),
     'gestern 18:40');
-  Assert.IsTrue(TAtlasWelcomeContinue.Age(Stamp(23, 0) - 1, Stamp(0, 30), mValue) = TAtlasContinueAge.Yesterday,
+  Assert.AreEqual<TAtlasContinueAge>(TAtlasContinueAge.Yesterday,
+    TAtlasWelcomeContinue.Age(Stamp(23, 0) - 1, Stamp(0, 30), mValue),
     'kurz nach Mitternacht: gestern, nicht vor 1 Std.');
-  Assert.IsTrue(TAtlasWelcomeContinue.Age(Stamp(18, 40) - 3, mNow_, mValue) = TAtlasContinueAge.Date);
+  Assert.AreEqual<TAtlasContinueAge>(TAtlasContinueAge.Date,
+    TAtlasWelcomeContinue.Age(Stamp(18, 40) - 3, mNow_, mValue));
 end;
 
 procedure TAtlasWelcomeContinueTests.OrderFollowsTabCaptions;

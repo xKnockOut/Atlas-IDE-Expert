@@ -60,7 +60,7 @@ var
   mCapture: TAtlasLeakCapture;
 begin
   Assert.IsTrue(TAtlasLeakCaptures.FromWindowTexts(TArray<string>.Create('OK', 'Error', cBox), mCapture));
-  Assert.IsTrue(mCapture.Source = TAtlasLeakSource.MessageBox);
+  Assert.AreEqual<TAtlasLeakSource>(TAtlasLeakSource.MessageBox, mCapture.Source);
   Assert.AreEqual(3, mCapture.Report.CountOf('TKunde'));
   Assert.IsFalse(TAtlasLeakCaptures.FromWindowTexts(TArray<string>.Create('OK'), mCapture));
   Assert.IsTrue(mCapture.IsEmpty);
@@ -74,7 +74,7 @@ begin
   mStart := EncodeDate(2026, 11, 13);
   Assert.IsFalse(TAtlasLeakCaptures.FromLogFile('a.txt', cLogWithStack, mStart - 1, mStart, mCapture), 'alt');
   Assert.IsTrue(TAtlasLeakCaptures.FromLogFile('a.txt', cLogWithStack, mStart + 1, mStart, mCapture));
-  Assert.IsTrue(mCapture.Source = TAtlasLeakSource.LogFile);
+  Assert.AreEqual<TAtlasLeakSource>(TAtlasLeakSource.LogFile, mCapture.Source);
   Assert.AreEqual('a.txt', mCapture.FileName);
   Assert.IsFalse(TAtlasLeakCaptures.FromLogFile('a.txt', 'nichts', mStart + 1, mStart, mCapture), 'ohne Bericht');
 end;
@@ -88,9 +88,10 @@ begin
   TAtlasLeakCaptures.FromWindowTexts(TArray<string>.Create(cBox), mBox);
   TAtlasLeakCaptures.FromLogFile('a.txt', cLogWithStack, mStart + 1, mStart, mLog);
   mNone := Default(TAtlasLeakCapture);
-  Assert.IsTrue(TAtlasLeakCaptures.Choose(mBox, mLog).Source = TAtlasLeakSource.LogFile, 'mit Stapeln');
-  Assert.IsTrue(TAtlasLeakCaptures.Choose(mBox, mNone).Source = TAtlasLeakSource.MessageBox);
-  Assert.IsTrue(TAtlasLeakCaptures.Choose(mNone, mLog).Source = TAtlasLeakSource.LogFile);
+  Assert.AreEqual<TAtlasLeakSource>(TAtlasLeakSource.LogFile,
+    TAtlasLeakCaptures.Choose(mBox, mLog).Source, 'mit Stapeln');
+  Assert.AreEqual<TAtlasLeakSource>(TAtlasLeakSource.MessageBox, TAtlasLeakCaptures.Choose(mBox, mNone).Source);
+  Assert.AreEqual<TAtlasLeakSource>(TAtlasLeakSource.LogFile, TAtlasLeakCaptures.Choose(mNone, mLog).Source);
   Assert.IsTrue(TAtlasLeakCaptures.Choose(mNone, mNone).IsEmpty);
 end;
 

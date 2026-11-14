@@ -108,12 +108,12 @@ begin
   Assert.AreEqual(1, mReport.Main);
   Assert.IsTrue(mReport.MainInThreadDestructor);
   Assert.AreEqual(2, Integer(Length(mReport.Patterns)));
-  Assert.IsTrue(mReport.Patterns[0].Kind = TAtlasDebugDeadlockKind.MainWaitsForSynchronize);
+  Assert.AreEqual<TAtlasDebugDeadlockKind>(TAtlasDebugDeadlockKind.MainWaitsForSynchronize, mReport.Patterns[0].Kind);
   Assert.AreEqual(2, Integer(Length(mReport.Patterns[0].Threads)));
   Assert.AreEqual(1, mReport.Patterns[0].Threads[0]);
   Assert.AreEqual(0, mReport.Patterns[0].Threads[1]);
   // Beide warten: auch „alle blockiert“.
-  Assert.IsTrue(mReport.Patterns[1].Kind = TAtlasDebugDeadlockKind.AllBlocked);
+  Assert.AreEqual<TAtlasDebugDeadlockKind>(TAtlasDebugDeadlockKind.AllBlocked, mReport.Patterns[1].Kind);
 end;
 
 procedure TAtlasDebugDeadlocksTests.SynchronizeWhileMainHangsOnLock;
@@ -122,7 +122,7 @@ var
 begin
   mReport := TAtlasDebugWaitReport.Analyze([MainOnLock, WorkerInSynchronize(7), WorkerSleeping(8)]);
   Assert.AreEqual(1, Integer(Length(mReport.Patterns)));
-  Assert.IsTrue(mReport.Patterns[0].Kind = TAtlasDebugDeadlockKind.SynchronizeBlocked);
+  Assert.AreEqual<TAtlasDebugDeadlockKind>(TAtlasDebugDeadlockKind.SynchronizeBlocked, mReport.Patterns[0].Kind);
   Assert.IsFalse(mReport.MainInThreadDestructor);
 end;
 
@@ -132,8 +132,8 @@ var
 begin
   mReport := TAtlasDebugWaitReport.Analyze([MainIdle, WorkerInSynchronize(7)]);
   Assert.AreEqual(0, Integer(Length(mReport.Patterns)));
-  Assert.IsTrue(mReport.Waits[1].Kind = TAtlasDebugWaitKind.Synchronize);
-  Assert.IsTrue(mReport.Waits[0].Kind = TAtlasDebugWaitKind.Idle);
+  Assert.AreEqual<TAtlasDebugWaitKind>(TAtlasDebugWaitKind.Synchronize, mReport.Waits[1].Kind);
+  Assert.AreEqual<TAtlasDebugWaitKind>(TAtlasDebugWaitKind.Idle, mReport.Waits[0].Kind);
 end;
 
 procedure TAtlasDebugDeadlocksTests.ThreadsWaitingAtSameLock;
@@ -143,7 +143,7 @@ begin
   mReport := TAtlasDebugWaitReport.Analyze([MainIdle, WorkerOnLock(7, 'Unit3.TCache.Add'),
     WorkerSleeping(8), WorkerOnLock(9, 'Unit3.TCache.Add')]);
   Assert.AreEqual(1, Integer(Length(mReport.Patterns)));
-  Assert.IsTrue(mReport.Patterns[0].Kind = TAtlasDebugDeadlockKind.SameLock);
+  Assert.AreEqual<TAtlasDebugDeadlockKind>(TAtlasDebugDeadlockKind.SameLock, mReport.Patterns[0].Kind);
   Assert.AreEqual('Unit3.TCache.Add', mReport.Patterns[0].Place);
   Assert.AreEqual(2, Integer(Length(mReport.Patterns[0].Threads)));
   Assert.AreEqual(1, mReport.Patterns[0].Threads[0]);
@@ -165,7 +165,7 @@ var
 begin
   mReport := TAtlasDebugWaitReport.Analyze([MainOnLock, WorkerOnLock(7, 'Unit3.TCache.Add')]);
   Assert.AreEqual(1, Integer(Length(mReport.Patterns)));
-  Assert.IsTrue(mReport.Patterns[0].Kind = TAtlasDebugDeadlockKind.AllBlocked);
+  Assert.AreEqual<TAtlasDebugDeadlockKind>(TAtlasDebugDeadlockKind.AllBlocked, mReport.Patterns[0].Kind);
   Assert.AreEqual(2, Integer(Length(mReport.Patterns[0].Threads)));
 end;
 
@@ -175,7 +175,7 @@ var
 begin
   mReport := TAtlasDebugWaitReport.Analyze([MainOnLock, WorkerSleeping(8)]);
   Assert.AreEqual(0, Integer(Length(mReport.Patterns)));
-  Assert.IsTrue(mReport.Waits[1].Kind = TAtlasDebugWaitKind.Sleep);
+  Assert.AreEqual<TAtlasDebugWaitKind>(TAtlasDebugWaitKind.Sleep, mReport.Waits[1].Kind);
 end;
 
 procedure TAtlasDebugDeadlocksTests.UnreadableStacksAreSkipped;
@@ -187,7 +187,7 @@ begin
   mUnreadable.Readable := False;
   mReport := TAtlasDebugWaitReport.Analyze([MainOnLock, WorkerOnLock(7, 'Unit3.TCache.Add'), mUnreadable]);
   Assert.AreEqual(1, Integer(Length(mReport.Patterns)));
-  Assert.IsTrue(mReport.Patterns[0].Kind = TAtlasDebugDeadlockKind.AllBlocked);
+  Assert.AreEqual<TAtlasDebugDeadlockKind>(TAtlasDebugDeadlockKind.AllBlocked, mReport.Patterns[0].Kind);
 end;
 
 end.

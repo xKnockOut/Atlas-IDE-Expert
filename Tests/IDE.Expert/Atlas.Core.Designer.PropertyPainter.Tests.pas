@@ -75,22 +75,26 @@ end;
 
 procedure TAtlasPropertyPainterTests.Groups;
 begin
-  Assert.IsTrue(TAtlasPropertyPainter.GroupOf(P('Font.Color', 'TColor')) = TAtlasPaintGroup.Font);
-  Assert.IsTrue(TAtlasPropertyPainter.GroupOf(P('ParentColor', 'Boolean')) = TAtlasPaintGroup.Colors);
-  Assert.IsTrue(TAtlasPropertyPainter.GroupOf(P('Margins.Left', 'TMarginSize')) = TAtlasPaintGroup.Layout);
-  Assert.IsTrue(TAtlasPropertyPainter.GroupOf(P('Hint', 'string')) = TAtlasPaintGroup.Text);
-  Assert.IsTrue(TAtlasPropertyPainter.GroupOf(P('PopupMenu', 'TPopupMenu')) = TAtlasPaintGroup.Behavior);
-  Assert.IsTrue(TAtlasPropertyPainter.GroupOf(P('Top', 'Integer')) = TAtlasPaintGroup.Position);
-  Assert.IsTrue(TAtlasPropertyPainter.GroupOf(TAtlasPaintProperty.Create('OnClick', 'TNotifyEvent', True)) =
-    TAtlasPaintGroup.Events);
-  Assert.IsTrue(TAtlasPropertyPainter.GroupOf(P('WordWrap', 'Boolean')) = TAtlasPaintGroup.Other);
+  Assert.AreEqual<TAtlasPaintGroup>(TAtlasPaintGroup.Font, TAtlasPropertyPainter.GroupOf(P('Font.Color', 'TColor')));
+  Assert.AreEqual<TAtlasPaintGroup>(TAtlasPaintGroup.Colors,
+    TAtlasPropertyPainter.GroupOf(P('ParentColor', 'Boolean')));
+  Assert.AreEqual<TAtlasPaintGroup>(TAtlasPaintGroup.Layout,
+    TAtlasPropertyPainter.GroupOf(P('Margins.Left', 'TMarginSize')));
+  Assert.AreEqual<TAtlasPaintGroup>(TAtlasPaintGroup.Text, TAtlasPropertyPainter.GroupOf(P('Hint', 'string')));
+  Assert.AreEqual<TAtlasPaintGroup>(TAtlasPaintGroup.Behavior,
+    TAtlasPropertyPainter.GroupOf(P('PopupMenu', 'TPopupMenu')));
+  Assert.AreEqual<TAtlasPaintGroup>(TAtlasPaintGroup.Position, TAtlasPropertyPainter.GroupOf(P('Top', 'Integer')));
+  Assert.AreEqual<TAtlasPaintGroup>(TAtlasPaintGroup.Events,
+    TAtlasPropertyPainter.GroupOf(TAtlasPaintProperty.Create('OnClick', 'TNotifyEvent', True)));
+  Assert.AreEqual<TAtlasPaintGroup>(TAtlasPaintGroup.Other, TAtlasPropertyPainter.GroupOf(P('WordWrap', 'Boolean')));
 end;
 
 procedure TAtlasPropertyPainterTests.ParseGroupList;
 begin
-  Assert.IsTrue(TAtlasPropertyPainter.ParseGroups('font, colors,size ;layout, unknown') =
-    [TAtlasPaintGroup.Font, TAtlasPaintGroup.Colors, TAtlasPaintGroup.Size, TAtlasPaintGroup.Layout]);
-  Assert.IsTrue(TAtlasPropertyPainter.ParseGroups('') = []);
+  Assert.AreEqual<TAtlasPaintGroups>([TAtlasPaintGroup.Font, TAtlasPaintGroup.Colors, TAtlasPaintGroup.Size,
+    TAtlasPaintGroup.Layout],
+    TAtlasPropertyPainter.ParseGroups('font, colors,size ;layout, unknown'));
+  Assert.AreEqual<TAtlasPaintGroups>([], TAtlasPropertyPainter.ParseGroups(''));
 end;
 
 procedure TAtlasPropertyPainterTests.RowsNestUnderNode;

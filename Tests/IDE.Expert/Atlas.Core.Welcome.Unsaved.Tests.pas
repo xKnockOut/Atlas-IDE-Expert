@@ -403,27 +403,27 @@ begin
   mView := TAtlasWelcomeUnsaved.View([Project('C:\Repo\Demo\Demo.dproj', mState)], NowUtc, Options);
   Assert.AreEqual(3, Integer(Length(mView.Rows)), 'Änderungen, Commits, Stash');
   // Älteste zuerst: Änderungen (48 h), Commits (30 h), Stash (5 h).
-  Assert.IsTrue(mView.Rows[0].Item.Kind = TAtlasUnsavedKind.Changes);
+  Assert.AreEqual<TAtlasUnsavedKind>(TAtlasUnsavedKind.Changes, mView.Rows[0].Item.Kind);
   Assert.AreEqual(4, Integer(mView.Rows[0].Item.Count));
   Assert.AreEqual(2, mView.Rows[0].Item.Modified);
   Assert.AreEqual(1, mView.Rows[0].Item.Added);
   Assert.AreEqual(1, mView.Rows[0].Item.Deleted);
   TAtlasWelcomeUnsaved.Age(mView.Rows[0].Item.Since, NowUtc, mValue, mAgeUnit);
   Assert.AreEqual(2, mValue, 'seit 2 Tagen');
-  Assert.IsTrue(mAgeUnit = TAtlasUnsavedAgeUnit.Days);
-  Assert.IsTrue(mView.Rows[1].Item.Kind = TAtlasUnsavedKind.Commits);
+  Assert.AreEqual<TAtlasUnsavedAgeUnit>(TAtlasUnsavedAgeUnit.Days, mAgeUnit);
+  Assert.AreEqual<TAtlasUnsavedKind>(TAtlasUnsavedKind.Commits, mView.Rows[1].Item.Kind);
   Assert.AreEqual(3, Integer(mView.Rows[1].Item.Count));
   Assert.AreEqual('main', mView.Rows[1].Item.Branches[0]);
   AssertNear(HoursAgo(30), mView.Rows[1].Item.Since, 1E-6, 'ältester nicht gepushter Commit');
   Assert.IsTrue(mView.Rows[1].Item.CanPush);
-  Assert.IsTrue(mView.Rows[2].Item.Kind = TAtlasUnsavedKind.Stashes);
+  Assert.AreEqual<TAtlasUnsavedKind>(TAtlasUnsavedKind.Stashes, mView.Rows[2].Item.Kind);
   Assert.AreEqual('WIP Hover-Cache', mView.Rows[2].Item.Name);
   Assert.AreEqual('s1', mView.Rows[2].Item.Ref);
   Assert.IsFalse(mView.Rows[2].Item.CanPush);
   Assert.AreEqual('Demo', mView.Rows[0].Name);
   Assert.AreEqual('main', mView.Rows[0].Branch);
-  Assert.IsTrue(mView.Rows[0].Level = TAtlasUnsavedLevel.Warning, '48 h: gelb');
-  Assert.IsTrue(mView.Rows[2].Level = TAtlasUnsavedLevel.Fresh, '5 h: grün');
+  Assert.AreEqual<TAtlasUnsavedLevel>(TAtlasUnsavedLevel.Warning, mView.Rows[0].Level, '48 h: gelb');
+  Assert.AreEqual<TAtlasUnsavedLevel>(TAtlasUnsavedLevel.Fresh, mView.Rows[2].Level, '5 h: grün');
   Assert.IsFalse(mView.Clean);
 end;
 
@@ -452,7 +452,7 @@ begin
   mState := TAtlasWelcomeUnsaved.Merge(TAtlasUnsavedState.Empty, mState, NowUtc);
   mView := TAtlasWelcomeUnsaved.View([Project('C:\Repo\Demo.dproj', mState)], NowUtc, Options);
   Assert.AreEqual(1, Integer(Length(mView.Rows)), 'keine Push- oder Stash-Zeile');
-  Assert.IsTrue(mView.Rows[0].Item.Kind = TAtlasUnsavedKind.Changes);
+  Assert.AreEqual<TAtlasUnsavedKind>(TAtlasUnsavedKind.Changes, mView.Rows[0].Item.Kind);
   Assert.AreEqual(2, Integer(mView.Rows[0].Item.Count), '2 Dateien geändert');
   Assert.AreEqual(2, mView.Rows[0].Item.Modified);
   Assert.AreEqual(0, mView.Rows[0].Item.Added);
@@ -621,7 +621,7 @@ begin
     end, mState));
   Assert.AreEqual(1, Integer(Length(mFake.Calls)), 'kein weiterer Aufruf');
   Assert.IsTrue(mTicks > 0);
-  Assert.IsTrue(mState.Queried = [TAtlasUnsavedKind.Changes, TAtlasUnsavedKind.Conflicts]);
+  Assert.AreEqual<TAtlasUnsavedKinds>([TAtlasUnsavedKind.Changes, TAtlasUnsavedKind.Conflicts], mState.Queried);
   // Was nicht abgefragt wurde, kommt aus dem gespeicherten Stand.
   mOld := GitState(cRoot, [Item(TAtlasUnsavedKind.Stashes, 2, 100), Item(TAtlasUnsavedKind.Changes, 9, 100)]);
   mMerged := TAtlasWelcomeUnsaved.Merge(mOld, mState, NowUtc);
@@ -638,17 +638,17 @@ var
 begin
   TAtlasWelcomeUnsaved.Age(NowUtc, NowUtc, mValue, mAgeUnit);
   Assert.AreEqual(1, mValue, 'mindestens 1 Minute');
-  Assert.IsTrue(mAgeUnit = TAtlasUnsavedAgeUnit.Minutes);
+  Assert.AreEqual<TAtlasUnsavedAgeUnit>(TAtlasUnsavedAgeUnit.Minutes, mAgeUnit);
   TAtlasWelcomeUnsaved.Age(HoursAgo(0.5), NowUtc, mValue, mAgeUnit);
   Assert.AreEqual(30, mValue);
   TAtlasWelcomeUnsaved.Age(HoursAgo(1), NowUtc, mValue, mAgeUnit);
   Assert.AreEqual(1, mValue);
-  Assert.IsTrue(mAgeUnit = TAtlasUnsavedAgeUnit.Hours);
+  Assert.AreEqual<TAtlasUnsavedAgeUnit>(TAtlasUnsavedAgeUnit.Hours, mAgeUnit);
   TAtlasWelcomeUnsaved.Age(HoursAgo(23.9), NowUtc, mValue, mAgeUnit);
   Assert.AreEqual(23, mValue);
   TAtlasWelcomeUnsaved.Age(HoursAgo(24), NowUtc, mValue, mAgeUnit);
   Assert.AreEqual(1, mValue);
-  Assert.IsTrue(mAgeUnit = TAtlasUnsavedAgeUnit.Days);
+  Assert.AreEqual<TAtlasUnsavedAgeUnit>(TAtlasUnsavedAgeUnit.Days, mAgeUnit);
   TAtlasWelcomeUnsaved.Age(HoursAgo(24 * 9 + 5), NowUtc, mValue, mAgeUnit);
   Assert.AreEqual(9, mValue);
   AssertNear(0.0, TAtlasWelcomeUnsaved.AgeHours(0, NowUtc), 1E-9, 'unbekannt');
@@ -660,15 +660,21 @@ var
   mSettings: TAtlasUnsavedOptions;
 begin
   mSettings := TAtlasUnsavedOptions.Create(0, 24, 72);
-  Assert.IsTrue(TAtlasWelcomeUnsaved.Level(HoursAgo(23), NowUtc, mSettings) = TAtlasUnsavedLevel.Fresh);
-  Assert.IsTrue(TAtlasWelcomeUnsaved.Level(HoursAgo(24), NowUtc, mSettings) = TAtlasUnsavedLevel.Warning,
+  Assert.AreEqual<TAtlasUnsavedLevel>(TAtlasUnsavedLevel.Fresh,
+    TAtlasWelcomeUnsaved.Level(HoursAgo(23), NowUtc, mSettings));
+  Assert.AreEqual<TAtlasUnsavedLevel>(TAtlasUnsavedLevel.Warning,
+    TAtlasWelcomeUnsaved.Level(HoursAgo(24), NowUtc, mSettings),
     'gelb ab warnHours');
-  Assert.IsTrue(TAtlasWelcomeUnsaved.Level(HoursAgo(71), NowUtc, mSettings) = TAtlasUnsavedLevel.Warning);
-  Assert.IsTrue(TAtlasWelcomeUnsaved.Level(HoursAgo(72), NowUtc, mSettings) = TAtlasUnsavedLevel.Alert,
+  Assert.AreEqual<TAtlasUnsavedLevel>(TAtlasUnsavedLevel.Warning,
+    TAtlasWelcomeUnsaved.Level(HoursAgo(71), NowUtc, mSettings));
+  Assert.AreEqual<TAtlasUnsavedLevel>(TAtlasUnsavedLevel.Alert,
+    TAtlasWelcomeUnsaved.Level(HoursAgo(72), NowUtc, mSettings),
     'rot ab alertHours');
-  Assert.IsTrue(TAtlasWelcomeUnsaved.Level(0, NowUtc, mSettings) = TAtlasUnsavedLevel.Fresh, 'unbekannt');
+  Assert.AreEqual<TAtlasUnsavedLevel>(TAtlasUnsavedLevel.Fresh,
+    TAtlasWelcomeUnsaved.Level(0, NowUtc, mSettings), 'unbekannt');
   mSettings := TAtlasUnsavedOptions.Create(0, 1, 2);
-  Assert.IsTrue(TAtlasWelcomeUnsaved.Level(HoursAgo(1.5), NowUtc, mSettings) = TAtlasUnsavedLevel.Warning);
+  Assert.AreEqual<TAtlasUnsavedLevel>(TAtlasUnsavedLevel.Warning,
+    TAtlasWelcomeUnsaved.Level(HoursAgo(1.5), NowUtc, mSettings));
 end;
 
 procedure TAtlasWelcomeUnsavedTests.OlderThanAlertIsRed;
@@ -678,7 +684,7 @@ begin
   mView := TAtlasWelcomeUnsaved.View([Project('C:\Repo\Demo.dproj',
     GitState(cRoot, [Item(TAtlasUnsavedKind.Changes, 1, 80)]))], NowUtc, Options);
   Assert.AreEqual(1, Integer(Length(mView.Rows)));
-  Assert.IsTrue(mView.Rows[0].Level = TAtlasUnsavedLevel.Alert);
+  Assert.AreEqual<TAtlasUnsavedLevel>(TAtlasUnsavedLevel.Alert, mView.Rows[0].Level);
 end;
 
 procedure TAtlasWelcomeUnsavedTests.SortsOldestFirst;
@@ -691,13 +697,13 @@ begin
     Project('C:\B\Zwei.dproj', GitState('C:\B', [Item(TAtlasUnsavedKind.Changes, 3, 10),
       Item(TAtlasUnsavedKind.Conflicts, 1, 10)]))], NowUtc, Options);
   Assert.AreEqual(5, Integer(Length(mView.Rows)));
-  Assert.IsTrue(mView.Rows[0].Item.Kind = TAtlasUnsavedKind.Stashes, 'älteste zuerst');
+  Assert.AreEqual<TAtlasUnsavedKind>(TAtlasUnsavedKind.Stashes, mView.Rows[0].Item.Kind, 'älteste zuerst');
   Assert.AreEqual('Zwei', mView.Rows[1].Name);
-  Assert.IsTrue(mView.Rows[1].Item.Kind = TAtlasUnsavedKind.Changes, 'gleich alt: nach Art');
-  Assert.IsTrue(mView.Rows[2].Item.Kind = TAtlasUnsavedKind.Conflicts);
+  Assert.AreEqual<TAtlasUnsavedKind>(TAtlasUnsavedKind.Changes, mView.Rows[1].Item.Kind, 'gleich alt: nach Art');
+  Assert.AreEqual<TAtlasUnsavedKind>(TAtlasUnsavedKind.Conflicts, mView.Rows[2].Item.Kind);
   Assert.AreEqual('Eins', mView.Rows[3].Name);
-  Assert.IsTrue(mView.Rows[3].Item.Kind = TAtlasUnsavedKind.Changes);
-  Assert.IsTrue(mView.Rows[4].Item.Kind = TAtlasUnsavedKind.Commits, 'unbekanntes Alter zuletzt');
+  Assert.AreEqual<TAtlasUnsavedKind>(TAtlasUnsavedKind.Changes, mView.Rows[3].Item.Kind);
+  Assert.AreEqual<TAtlasUnsavedKind>(TAtlasUnsavedKind.Commits, mView.Rows[4].Item.Kind, 'unbekanntes Alter zuletzt');
 end;
 
 procedure TAtlasWelcomeUnsavedTests.MinimumAgeAndIgnoreHideRows;
@@ -716,7 +722,7 @@ begin
   mView := TAtlasWelcomeUnsaved.View([Project('C:\Repo\Demo.dproj', mState)], NowUtc,
     TAtlasUnsavedOptions.Create(4, 24, 72));
   Assert.AreEqual(1, Integer(Length(mView.Rows)), 'Stash bis morgen ignoriert, Commits wieder da');
-  Assert.IsTrue(mView.Rows[0].Item.Kind = TAtlasUnsavedKind.Commits);
+  Assert.AreEqual<TAtlasUnsavedKind>(TAtlasUnsavedKind.Commits, mView.Rows[0].Item.Kind);
   Assert.AreEqual(2, mView.Hidden);
   // Alles ausgeblendet: nichts zu zeigen, aber nicht „alles gesichert“ im Sinne von keinen Einträgen.
   TAtlasWelcomeUnsaved.Ignore(mState, TAtlasUnsavedKind.Commits, NowUtc + 0.5);
@@ -738,9 +744,9 @@ begin
       Item(TAtlasUnsavedKind.Commits, 3, 6), Item(TAtlasUnsavedKind.Stashes, 1, 7)]))], NowUtc, Options);
   Assert.AreEqual(4, Integer(Length(mView.Rows)));
   Assert.AreEqual('Gruppe', mView.Rows[0].Name, 'Stash beim zuerst genannten Projekt');
-  Assert.IsTrue(mView.Rows[0].Item.Kind = TAtlasUnsavedKind.Stashes);
+  Assert.AreEqual<TAtlasUnsavedKind>(TAtlasUnsavedKind.Stashes, mView.Rows[0].Item.Kind);
   Assert.AreEqual('Gruppe', mView.Rows[1].Name);
-  Assert.IsTrue(mView.Rows[1].Item.Kind = TAtlasUnsavedKind.Commits);
+  Assert.AreEqual<TAtlasUnsavedKind>(TAtlasUnsavedKind.Commits, mView.Rows[1].Item.Kind);
   Assert.AreEqual('Gruppe', mView.Rows[2].Name);
   Assert.AreEqual('Tests', mView.Rows[3].Name);
 end;
@@ -900,7 +906,7 @@ begin
   mFake.AddOutgoing('feature/x', '', mMany);
   mPending := Item(TAtlasUnsavedKind.Commits, 3, 3);
   mPending.Branches := ['main', 'dev'];
-  Assert.IsTrue(TAtlasWelcomeUnsaved.PushPlans(mLocal, mPending, mPlans) = TAtlasVcsOutcome.Ok);
+  Assert.AreEqual<TAtlasVcsOutcome>(TAtlasVcsOutcome.Ok, TAtlasWelcomeUnsaved.PushPlans(mLocal, mPending, mPlans));
   Assert.AreEqual(1, Integer(Length(mPlans)), 'dev ist gleichauf');
   Assert.AreEqual('main', mPlans[0].Branch);
   Assert.AreEqual('origin', mPlans[0].Remote);
@@ -910,18 +916,18 @@ begin
   Assert.AreEqual(3, Integer(Length(mPlans[0].Commits)));
   Assert.AreEqual('c3', mPlans[0].Commits[0].Hash, 'neueste zuerst');
   Assert.IsFalse(mPlans[0].More);
-  Assert.IsFalse(mFake.Calls[High(mFake.Calls)] = 'push', 'nur geplant, nicht gepusht');
+  Assert.AreNotEqual('push', mFake.Calls[High(mFake.Calls)], 'nur geplant, nicht gepusht');
   mLonely := Item(TAtlasUnsavedKind.NoUpstream, 1, 3);
   mLonely.Branches := ['feature/x'];
-  Assert.IsTrue(TAtlasWelcomeUnsaved.PushPlans(mLocal, mLonely, mPlans) = TAtlasVcsOutcome.Ok);
+  Assert.AreEqual<TAtlasVcsOutcome>(TAtlasVcsOutcome.Ok, TAtlasWelcomeUnsaved.PushPlans(mLocal, mLonely, mPlans));
   Assert.AreEqual(1, Integer(Length(mPlans)));
   Assert.AreEqual('origin', mPlans[0].Remote, 'einziges Remote');
   Assert.AreEqual('origin/feature/x', mPlans[0].Target);
   Assert.IsTrue(mPlans[0].SetUpstream);
   Assert.AreEqual(TAtlasWelcomeUnsaved.cPushListMax, Integer(Length(mPlans[0].Commits)));
   Assert.IsTrue(mPlans[0].More);
-  Assert.IsTrue(TAtlasWelcomeUnsaved.PushPlans(mLocal, Item(TAtlasUnsavedKind.Stashes, 1, 1), mPlans) =
-    TAtlasVcsOutcome.Failed, 'Stash wird nicht gepusht');
+  Assert.AreEqual<TAtlasVcsOutcome>(TAtlasVcsOutcome.Failed,
+    TAtlasWelcomeUnsaved.PushPlans(mLocal, Item(TAtlasUnsavedKind.Stashes, 1, 1), mPlans), 'Stash wird nicht gepusht');
 end;
 
 procedure TAtlasWelcomeUnsavedTests.PushPlansWithoutRemoteAreEmpty;
@@ -939,14 +945,14 @@ begin
   mLonely := Item(TAtlasUnsavedKind.NoUpstream, 1, 1);
   mLonely.Branches := ['feature/x'];
   // Kein Remote: kein Ziel.
-  Assert.IsTrue(TAtlasWelcomeUnsaved.PushPlans(mLocal, mLonely, mPlans) = TAtlasVcsOutcome.Ok);
+  Assert.AreEqual<TAtlasVcsOutcome>(TAtlasVcsOutcome.Ok, TAtlasWelcomeUnsaved.PushPlans(mLocal, mLonely, mPlans));
   Assert.AreEqual(0, Integer(Length(mPlans)));
   // Mehrere Remotes ohne "origin": kein eindeutiges Ziel.
   mFake.FRemotes := ['a', 'b'];
-  Assert.IsTrue(TAtlasWelcomeUnsaved.PushPlans(mLocal, mLonely, mPlans) = TAtlasVcsOutcome.Ok);
+  Assert.AreEqual<TAtlasVcsOutcome>(TAtlasVcsOutcome.Ok, TAtlasWelcomeUnsaved.PushPlans(mLocal, mLonely, mPlans));
   Assert.AreEqual(0, Integer(Length(mPlans)));
   mFake.FRemotes := ['upstream', 'origin'];
-  Assert.IsTrue(TAtlasWelcomeUnsaved.PushPlans(mLocal, mLonely, mPlans) = TAtlasVcsOutcome.Ok);
+  Assert.AreEqual<TAtlasVcsOutcome>(TAtlasVcsOutcome.Ok, TAtlasWelcomeUnsaved.PushPlans(mLocal, mLonely, mPlans));
   Assert.AreEqual(1, Integer(Length(mPlans)));
   Assert.AreEqual('origin', mPlans[0].Remote);
 end;

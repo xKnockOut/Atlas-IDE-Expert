@@ -121,12 +121,12 @@ begin
   mSetup.UndefinedDefineCount := 1;
   mLines := TAtlasWelcomeSetup.Lines(mSetup, 6, mMore);
   Assert.AreEqual(3, Integer(Length(mLines)));
-  Assert.IsTrue(mLines[0].Kind = TAtlasSetupFindingKind.MissingUnit);
+  Assert.AreEqual<TAtlasSetupFindingKind>(TAtlasSetupFindingKind.MissingUnit, mLines[0].Kind);
   Assert.AreEqual('Xml.Helpers', mLines[0].Name, 'fehlende Unit mit Namen');
   Assert.AreEqual('Src\Main.pas', mLines[0].FileName);
   Assert.AreEqual(12, mLines[0].Line);
   Assert.AreEqual(2, Integer(mLines[0].Count));
-  Assert.IsTrue(mLines[2].Kind = TAtlasSetupFindingKind.UndefinedDefine);
+  Assert.AreEqual<TAtlasSetupFindingKind>(TAtlasSetupFindingKind.UndefinedDefine, mLines[2].Kind);
   // Drei weitere Units stehen nur in der Zahl.
   Assert.AreEqual(3, mMore);
   mLines := TAtlasWelcomeSetup.Lines(mSetup, 2, mMore);
@@ -194,7 +194,7 @@ begin
   mSetup := TAtlasWelcomeSetup.Checked(mPrevious, 'C:\Projekte\XmlInspector\XmlInspector.dproj', mCheck, mStamp);
   Assert.IsTrue(mSetup.Dismissed, '„nicht mehr fragen“ bleibt');
   Assert.IsTrue(mSetup.Checked);
-  Assert.IsTrue(mSetup.CheckedAt = mStamp);
+  Assert.AreEqual<TDateTime>(mStamp, mSetup.CheckedAt);
   Assert.AreEqual(7, mSetup.Files);
   Assert.AreEqual(1, mSetup.Unreadable);
   Assert.AreEqual(1, mSetup.MissingUnitCount);
@@ -231,7 +231,7 @@ begin
   TAtlasWelcomeSetup.BaselineWritten(mRules, mStamp);
   Assert.IsTrue(mRules.Known);
   Assert.AreEqual(0, mRules.NewHits);
-  Assert.IsTrue(mRules.At = mStamp);
+  Assert.AreEqual<TDateTime>(mStamp, mRules.At);
   Assert.AreEqual(-1, TAtlasSetupCard.Empty.BaselineNewHits, 'ohne Zusammenfassung unbekannt');
 end;
 
@@ -320,7 +320,7 @@ begin
   mCombined := TAtlasWelcomeSetup.Combined('C:\G\Alle.groupproj', mGroup, [mApp, mLib], mChecked);
   Assert.AreEqual(2, mChecked);
   Assert.IsTrue(mCombined.Checked);
-  Assert.IsTrue(mCombined.CheckedAt = EncodeDate(2026, 10, 16));
+  Assert.AreEqual<TDateTime>(EncodeDate(2026, 10, 16), mCombined.CheckedAt);
   Assert.AreEqual(7, mCombined.Files);
   Assert.AreEqual(1, mCombined.MissingUnitCount);
   Assert.AreEqual(2, mCombined.UndefinedDefineCount);

@@ -205,7 +205,7 @@ begin
     Assert.AreEqual(1, mFrame.Patterns.Items.Count);
     Assert.IsTrue(mFrame.Patterns.Items[0].Selected, 'Auswahl bleibt an der Stelle');
     Assert.IsTrue(mLog.Enabled);
-    Assert.IsTrue(mLog.Kinds = [TStepFilterKind.Getters]);
+    Assert.AreEqual<TStepFilterKinds>([TStepFilterKind.Getters], mLog.Kinds);
   finally
     mHost.Free;
     mLog.Patterns := nil;
@@ -231,7 +231,7 @@ begin
     mFrame.EnabledCheck.Checked := True;
     Assert.AreEqual(1, mLog.Count);
     Assert.IsTrue(mLog.Enabled);
-    Assert.IsTrue(mLog.Kinds = [TStepFilterKind.Trivial]);
+    Assert.AreEqual<TStepFilterKinds>([TStepFilterKind.Trivial], mLog.Kinds);
     Assert.AreEqual('*.Log*', TStepFilterNames.PatternsText(mLog.Patterns));
   finally
     mHost.Free;

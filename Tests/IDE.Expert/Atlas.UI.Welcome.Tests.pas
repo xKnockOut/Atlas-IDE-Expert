@@ -372,7 +372,7 @@ begin
       Section(TAtlasWelcomeIds.cState, 10, TAtlasWelcomeColumn.Right)], TAtlasWelcomeLayout.Atlas, 2);
     mKept := mBoard.View(TAtlasWelcomeIds.cContinue);
     mBoard.Rebuild([Section(TAtlasWelcomeIds.cContinue, 20, TAtlasWelcomeColumn.Left)], TAtlasWelcomeLayout.Atlas, 2);
-    Assert.IsTrue(mKept = mBoard.View(TAtlasWelcomeIds.cContinue), 'sichtbarer Bereich behält seinen Frame');
+    Assert.AreSame(mBoard.View(TAtlasWelcomeIds.cContinue), mKept, 'sichtbarer Bereich behält seinen Frame');
     Assert.IsNull(mBoard.View(TAtlasWelcomeIds.cState), 'ausgeschalteter Bereich verschwindet');
     mBefore := TTestSection(mKept).Updates;
     mBoard.UpdateSection(TAtlasWelcomeIds.cContinue);

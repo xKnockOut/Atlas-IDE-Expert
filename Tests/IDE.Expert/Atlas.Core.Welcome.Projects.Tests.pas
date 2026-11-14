@@ -149,11 +149,11 @@ begin
   Assert.AreEqual('main', mItem.Branch);
   mPills := TAtlasWelcomeProjects.Pills(mItem);
   Assert.AreEqual(1, Integer(Length(mPills)));
-  Assert.IsTrue(mPills[0].Kind = TAtlasProjectPillKind.Build);
-  Assert.IsTrue(mPills[0].Level = TAtlasProjectPillLevel.Good);
+  Assert.AreEqual<TAtlasProjectPillKind>(TAtlasProjectPillKind.Build, mPills[0].Kind);
+  Assert.AreEqual<TAtlasProjectPillLevel>(TAtlasProjectPillLevel.Good, mPills[0].Level);
   Assert.AreEqual(0, mPills[0].A + mPills[0].B + mPills[0].C);
   Assert.IsFalse(mPills[0].Clickable);
-  Assert.IsTrue(TAtlasWelcomeProjects.Level(mPills) = TAtlasProjectPillLevel.Good);
+  Assert.AreEqual<TAtlasProjectPillLevel>(TAtlasProjectPillLevel.Good, TAtlasWelcomeProjects.Level(mPills));
 end;
 
 procedure TAtlasWelcomeProjectsTests.BuildErrorsAreRedAndJump;
@@ -166,13 +166,13 @@ begin
   mSummary.Build.First.FileName := 'C:\Projekte\Main.pas';
   mSummary.Build.First.Line := 12;
   mPills := TAtlasWelcomeProjects.Pills(Entry(mSummary));
-  Assert.IsTrue(mPills[0].Kind = TAtlasProjectPillKind.BuildErrors);
-  Assert.IsTrue(mPills[0].Level = TAtlasProjectPillLevel.Error);
+  Assert.AreEqual<TAtlasProjectPillKind>(TAtlasProjectPillKind.BuildErrors, mPills[0].Kind);
+  Assert.AreEqual<TAtlasProjectPillLevel>(TAtlasProjectPillLevel.Error, mPills[0].Level);
   Assert.AreEqual(2, mPills[0].A);
   Assert.IsTrue(mPills[0].Clickable);
   Assert.AreEqual('C:\Projekte\Main.pas', mPills[0].Target.FileName);
   Assert.AreEqual(12, mPills[0].Target.Line);
-  Assert.IsTrue(TAtlasWelcomeProjects.Level(mPills) = TAtlasProjectPillLevel.Error);
+  Assert.AreEqual<TAtlasProjectPillLevel>(TAtlasProjectPillLevel.Error, TAtlasWelcomeProjects.Level(mPills));
 end;
 
 procedure TAtlasWelcomeProjectsTests.WarningsAndHintsAreYellow;
@@ -180,12 +180,13 @@ var
   mPills: TArray<TAtlasProjectPill>;
 begin
   mPills := TAtlasWelcomeProjects.Pills(Entry(WithBuild(OnMain, True, 0, 3, 1)));
-  Assert.IsTrue(mPills[0].Kind = TAtlasProjectPillKind.Build);
-  Assert.IsTrue(mPills[0].Level = TAtlasProjectPillLevel.Warning);
+  Assert.AreEqual<TAtlasProjectPillKind>(TAtlasProjectPillKind.Build, mPills[0].Kind);
+  Assert.AreEqual<TAtlasProjectPillLevel>(TAtlasProjectPillLevel.Warning, mPills[0].Level);
   Assert.AreEqual(3, mPills[0].B);
   Assert.AreEqual(1, mPills[0].C);
   mPills := TAtlasWelcomeProjects.Pills(Entry(WithBuild(OnMain, True, 0, 0, 2)));
-  Assert.IsTrue(mPills[0].Level = TAtlasProjectPillLevel.Warning, 'Hinweise auch: Ziel ist 0/0/0');
+  Assert.AreEqual<TAtlasProjectPillLevel>(TAtlasProjectPillLevel.Warning,
+    mPills[0].Level, 'Hinweise auch: Ziel ist 0/0/0');
 end;
 
 procedure TAtlasWelcomeProjectsTests.FailedBuildWithoutMessagesIsRed;
@@ -193,8 +194,8 @@ var
   mPills: TArray<TAtlasProjectPill>;
 begin
   mPills := TAtlasWelcomeProjects.Pills(Entry(WithBuild(OnMain, False, 0, 0, 0)));
-  Assert.IsTrue(mPills[0].Kind = TAtlasProjectPillKind.Build);
-  Assert.IsTrue(mPills[0].Level = TAtlasProjectPillLevel.Error);
+  Assert.AreEqual<TAtlasProjectPillKind>(TAtlasProjectPillKind.Build, mPills[0].Kind);
+  Assert.AreEqual<TAtlasProjectPillLevel>(TAtlasProjectPillLevel.Error, mPills[0].Level);
   Assert.IsFalse(mPills[0].Clickable);
 end;
 
@@ -210,7 +211,7 @@ begin
   mSummary.Check.At := mSummary.Build.At + 1 / 24;
   mPills := TAtlasWelcomeProjects.Pills(Entry(mSummary));
   Assert.AreEqual(2, Integer(Length(mPills)));
-  Assert.IsTrue(mPills[1].Kind = TAtlasProjectPillKind.CheckErrors);
+  Assert.AreEqual<TAtlasProjectPillKind>(TAtlasProjectPillKind.CheckErrors, mPills[1].Kind);
   Assert.IsTrue(mPills[1].Clickable);
   mSummary.Check.At := mSummary.Build.At - 1 / 24;
   Assert.AreEqual(1, Integer(Length(TAtlasWelcomeProjects.Pills(Entry(mSummary)))), 'ältere Prüfung zählt nicht');
@@ -232,14 +233,14 @@ begin
   mSummary.Rules.NewHits := 3;
   mPills := TAtlasWelcomeProjects.Pills(Entry(mSummary));
   Assert.AreEqual(3, Integer(Length(mPills)), 'ohne Build keine Build-Marke');
-  Assert.IsTrue(mPills[0].Kind = TAtlasProjectPillKind.Changes);
+  Assert.AreEqual<TAtlasProjectPillKind>(TAtlasProjectPillKind.Changes, mPills[0].Kind);
   Assert.AreEqual(4, mPills[0].A);
-  Assert.IsTrue(mPills[0].Level = TAtlasProjectPillLevel.Warning);
-  Assert.IsTrue(mPills[1].Kind = TAtlasProjectPillKind.Sync);
+  Assert.AreEqual<TAtlasProjectPillLevel>(TAtlasProjectPillLevel.Warning, mPills[0].Level);
+  Assert.AreEqual<TAtlasProjectPillKind>(TAtlasProjectPillKind.Sync, mPills[1].Kind);
   Assert.AreEqual(2, mPills[1].A);
   Assert.AreEqual(0, mPills[1].B, 'unbekannt zählt als 0');
-  Assert.IsTrue(mPills[1].Level = TAtlasProjectPillLevel.Neutral);
-  Assert.IsTrue(mPills[2].Kind = TAtlasProjectPillKind.Rules);
+  Assert.AreEqual<TAtlasProjectPillLevel>(TAtlasProjectPillLevel.Neutral, mPills[1].Level);
+  Assert.AreEqual<TAtlasProjectPillKind>(TAtlasProjectPillKind.Rules, mPills[2].Kind);
   Assert.AreEqual(3, mPills[2].A);
 end;
 
@@ -256,7 +257,8 @@ begin
   Assert.AreEqual('', mItem.Branch);
   Assert.IsFalse(mItem.VcsStale, 'kein „Stand vom …“');
   Assert.AreEqual(0, Integer(Length(TAtlasWelcomeProjects.Pills(mItem))));
-  Assert.IsTrue(TAtlasWelcomeProjects.Level(TAtlasWelcomeProjects.Pills(mItem)) = TAtlasProjectPillLevel.Neutral);
+  Assert.AreEqual<TAtlasProjectPillLevel>(TAtlasProjectPillLevel.Neutral,
+    TAtlasWelcomeProjects.Level(TAtlasWelcomeProjects.Pills(mItem)));
   // Gespeicherter Stand mit Arbeitskopie: bis zur frischen Abfrage „Stand vom …“.
   mItem := Entry(OnMain);
   Assert.IsTrue(mItem.VcsStale);

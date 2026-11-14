@@ -221,7 +221,7 @@ begin
   Assert.AreEqual(Int64(31), mNumber);
   Assert.IsFalse(TAtlasVisualizerFormat.ParseInteger('''abc''', mNumber));
   Assert.IsTrue(TAtlasVisualizerFormat.ParseAddress(':0A3F1C20', mAddress));
-  Assert.IsTrue(mAddress = $0A3F1C20, 'Adresse');
+  Assert.AreEqual<UInt64>($0A3F1C20, mAddress, 'Adresse');
   Assert.IsFalse(TAtlasVisualizerFormat.ParseAddress('nil', mAddress));
   Assert.IsTrue(TAtlasVisualizerFormat.ParseAddress('$FFFF800000001000', mAddress), 'höchstes Bit gesetzt');
   Assert.IsTrue(TAtlasVisualizerFormat.ParseByteList('(72, 101, $6C)', mBytes));

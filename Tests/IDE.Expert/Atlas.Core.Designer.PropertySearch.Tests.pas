@@ -109,16 +109,16 @@ begin
   Assert.AreEqual(3, Integer(Length(mQuery.Conditions)), '„und“ im String teilt nicht');
   Assert.AreEqual('Font.Name', mQuery.Conditions[0].Path);
   Assert.AreEqual('Tahoma', mQuery.Conditions[0].Value, 'ohne Hochkommas');
-  Assert.IsTrue(mQuery.Conditions[1].Op = TAtlasPropertyOp.NotEquals);
-  Assert.IsTrue(mQuery.Conditions[2].Op = TAtlasPropertyOp.Contains);
+  Assert.AreEqual<TAtlasPropertyOp>(TAtlasPropertyOp.NotEquals, mQuery.Conditions[1].Op);
+  Assert.AreEqual<TAtlasPropertyOp>(TAtlasPropertyOp.Contains, mQuery.Conditions[2].Op);
   Assert.AreEqual('und', mQuery.Conditions[2].Value);
   mQuery := TAtlasPropertyQuery.Parse('Klasse = TDBGrid und Hint nicht gesetzt und Tag gesetzt');
   Assert.AreEqual('', mQuery.Conditions[0].Path, 'Klasse');
-  Assert.IsTrue(mQuery.Conditions[1].Op = TAtlasPropertyOp.NotSet);
-  Assert.IsTrue(mQuery.Conditions[2].Op = TAtlasPropertyOp.IsSet);
+  Assert.AreEqual<TAtlasPropertyOp>(TAtlasPropertyOp.NotSet, mQuery.Conditions[1].Op);
+  Assert.AreEqual<TAtlasPropertyOp>(TAtlasPropertyOp.IsSet, mQuery.Conditions[2].Op);
   mQuery := TAtlasPropertyQuery.Parse('Class = TEdit and Hint is set and Caption contains ''x''');
   Assert.IsTrue(mQuery.Valid, 'englisch');
-  Assert.IsTrue(mQuery.Conditions[1].Op = TAtlasPropertyOp.IsSet);
+  Assert.AreEqual<TAtlasPropertyOp>(TAtlasPropertyOp.IsSet, mQuery.Conditions[1].Op);
 end;
 
 procedure TAtlasPropertySearchTests.RejectsBrokenInput;

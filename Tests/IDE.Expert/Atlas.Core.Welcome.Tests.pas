@@ -478,14 +478,14 @@ end;
 
 procedure TAtlasWelcomeGreetingTests.DayTimeByHour;
 begin
-  Assert.IsTrue(TAtlasWelcomeGreeting.DayTimeOf(0) = TAtlasDayTime.Night);
-  Assert.IsTrue(TAtlasWelcomeGreeting.DayTimeOf(4) = TAtlasDayTime.Night);
-  Assert.IsTrue(TAtlasWelcomeGreeting.DayTimeOf(5) = TAtlasDayTime.Morning);
-  Assert.IsTrue(TAtlasWelcomeGreeting.DayTimeOf(10) = TAtlasDayTime.Morning);
-  Assert.IsTrue(TAtlasWelcomeGreeting.DayTimeOf(11) = TAtlasDayTime.Day);
-  Assert.IsTrue(TAtlasWelcomeGreeting.DayTimeOf(17) = TAtlasDayTime.Day);
-  Assert.IsTrue(TAtlasWelcomeGreeting.DayTimeOf(18) = TAtlasDayTime.Evening);
-  Assert.IsTrue(TAtlasWelcomeGreeting.DayTimeOf(23) = TAtlasDayTime.Evening);
+  Assert.AreEqual<TAtlasDayTime>(TAtlasDayTime.Night, TAtlasWelcomeGreeting.DayTimeOf(0));
+  Assert.AreEqual<TAtlasDayTime>(TAtlasDayTime.Night, TAtlasWelcomeGreeting.DayTimeOf(4));
+  Assert.AreEqual<TAtlasDayTime>(TAtlasDayTime.Morning, TAtlasWelcomeGreeting.DayTimeOf(5));
+  Assert.AreEqual<TAtlasDayTime>(TAtlasDayTime.Morning, TAtlasWelcomeGreeting.DayTimeOf(10));
+  Assert.AreEqual<TAtlasDayTime>(TAtlasDayTime.Day, TAtlasWelcomeGreeting.DayTimeOf(11));
+  Assert.AreEqual<TAtlasDayTime>(TAtlasDayTime.Day, TAtlasWelcomeGreeting.DayTimeOf(17));
+  Assert.AreEqual<TAtlasDayTime>(TAtlasDayTime.Evening, TAtlasWelcomeGreeting.DayTimeOf(18));
+  Assert.AreEqual<TAtlasDayTime>(TAtlasDayTime.Evening, TAtlasWelcomeGreeting.DayTimeOf(23));
 end;
 
 procedure TAtlasWelcomeGreetingTests.FirstNameFromDisplayName;

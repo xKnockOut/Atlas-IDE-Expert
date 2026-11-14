@@ -84,11 +84,13 @@ const
   cR = TAtlasAnchorSide.Right;
   cB = TAtlasAnchorSide.Bottom;
 begin
-  Assert.IsTrue(TAtlasContainerWrap.ContainerAnchors([[cL, cT], [cL, cT, cR]]) = [cL, cT]);
-  Assert.IsTrue(TAtlasContainerWrap.ContainerAnchors([[cR, cB], [cR, cB]]) = [cR, cB], 'alle unten rechts');
-  Assert.IsTrue(TAtlasContainerWrap.ContainerAnchors([[cL, cT, cR], [cL, cT, cR]]) = [cL, cT, cR]);
-  Assert.IsTrue(TAtlasContainerWrap.ContainerAnchors([[cR, cT], [cL, cB]]) = [cL, cT], 'nichts gemeinsam');
-  Assert.IsTrue(TAtlasContainerWrap.ContainerAnchors([]) = [cL, cT]);
+  Assert.AreEqual<TAtlasAnchorSet>([cL, cT], TAtlasContainerWrap.ContainerAnchors([[cL, cT], [cL, cT, cR]]));
+  Assert.AreEqual<TAtlasAnchorSet>([cR, cB],
+    TAtlasContainerWrap.ContainerAnchors([[cR, cB], [cR, cB]]), 'alle unten rechts');
+  Assert.AreEqual<TAtlasAnchorSet>([cL, cT, cR], TAtlasContainerWrap.ContainerAnchors([[cL, cT, cR], [cL, cT, cR]]));
+  Assert.AreEqual<TAtlasAnchorSet>([cL, cT],
+    TAtlasContainerWrap.ContainerAnchors([[cR, cT], [cL, cB]]), 'nichts gemeinsam');
+  Assert.AreEqual<TAtlasAnchorSet>([cL, cT], TAtlasContainerWrap.ContainerAnchors([]));
 end;
 
 procedure TAtlasContainerWrapTests.GridOfSix;

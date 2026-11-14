@@ -103,10 +103,10 @@ begin
   mRule := Rule;
   mRule.Thread := TAtlasThreadFilter.MainThread;
   mState := TAtlasRuleState.Start(mRule);
-  Assert.IsTrue(TAtlasBreakpointRules.Decide(mRule, mState, TAtlasStopThread.Create('Worker', cWorker, cMain)) =
-    TAtlasRuleDecision.Continue);
+  Assert.AreEqual<TAtlasRuleDecision>(TAtlasRuleDecision.Continue,
+    TAtlasBreakpointRules.Decide(mRule, mState, TAtlasStopThread.Create('Worker', cWorker, cMain)));
   Assert.AreEqual(0, mState.Hits, 'Anderer Thread zählt nicht');
-  Assert.IsTrue(TAtlasBreakpointRules.Decide(mRule, mState, MainStop) = TAtlasRuleDecision.Stop);
+  Assert.AreEqual<TAtlasRuleDecision>(TAtlasRuleDecision.Stop, TAtlasBreakpointRules.Decide(mRule, mState, MainStop));
 end;
 
 procedure TAtlasBreakpointRulesTests.ThreadNameAndId;
@@ -136,16 +136,18 @@ begin
   mState := TAtlasRuleState.Start(mRule);
   // Programmstart: unscharf, ausgeschaltet; ein Halt dort zählt nicht.
   Assert.IsFalse(TAtlasBreakpointRules.ShouldBeEnabled(mRule, mState));
-  Assert.IsTrue(TAtlasBreakpointRules.Decide(mRule, mState, MainStop) = TAtlasRuleDecision.Continue);
+  Assert.AreEqual<TAtlasRuleDecision>(TAtlasRuleDecision.Continue,
+    TAtlasBreakpointRules.Decide(mRule, mState, MainStop));
   Assert.IsTrue(mRule.TriggeredBy('c:\src\haupt.pas', 10));
   Assert.IsTrue(TAtlasBreakpointRules.Arm(mRule, mState));
   Assert.IsTrue(TAtlasBreakpointRules.ShouldBeEnabled(mRule, mState));
-  Assert.IsTrue(TAtlasBreakpointRules.Decide(mRule, mState, MainStop) = TAtlasRuleDecision.Stop);
+  Assert.AreEqual<TAtlasRuleDecision>(TAtlasRuleDecision.Stop, TAtlasBreakpointRules.Decide(mRule, mState, MainStop));
   // „nur einmal“: danach wieder unscharf, bis der Auslöser erneut hält.
   Assert.IsFalse(TAtlasBreakpointRules.ShouldBeEnabled(mRule, mState));
-  Assert.IsTrue(TAtlasBreakpointRules.Decide(mRule, mState, MainStop) = TAtlasRuleDecision.Continue);
+  Assert.AreEqual<TAtlasRuleDecision>(TAtlasRuleDecision.Continue,
+    TAtlasBreakpointRules.Decide(mRule, mState, MainStop));
   Assert.IsTrue(TAtlasBreakpointRules.Arm(mRule, mState));
-  Assert.IsTrue(TAtlasBreakpointRules.Decide(mRule, mState, MainStop) = TAtlasRuleDecision.Stop);
+  Assert.AreEqual<TAtlasRuleDecision>(TAtlasRuleDecision.Stop, TAtlasBreakpointRules.Decide(mRule, mState, MainStop));
 end;
 
 procedure TAtlasBreakpointRulesTests.DependentUntilEnd;
@@ -159,8 +161,8 @@ begin
   mState := TAtlasRuleState.Start(mRule);
   Assert.IsTrue(TAtlasBreakpointRules.Arm(mRule, mState));
   Assert.IsFalse(TAtlasBreakpointRules.Arm(mRule, mState), 'Schon scharf');
-  Assert.IsTrue(TAtlasBreakpointRules.Decide(mRule, mState, MainStop) = TAtlasRuleDecision.Stop);
-  Assert.IsTrue(TAtlasBreakpointRules.Decide(mRule, mState, MainStop) = TAtlasRuleDecision.Stop);
+  Assert.AreEqual<TAtlasRuleDecision>(TAtlasRuleDecision.Stop, TAtlasBreakpointRules.Decide(mRule, mState, MainStop));
+  Assert.AreEqual<TAtlasRuleDecision>(TAtlasRuleDecision.Stop, TAtlasBreakpointRules.Decide(mRule, mState, MainStop));
   Assert.IsTrue(TAtlasBreakpointRules.ShouldBeEnabled(mRule, mState));
 end;
 

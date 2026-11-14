@@ -45,37 +45,46 @@ uses
 
 procedure TAtlasDebugDialogCompletionTests.RecognizesDialogs;
 begin
-  Assert.IsTrue(TAtlasDebugDialogs.DialogOf('TEvaluateDialog', 'Auswerten/Ändern') = TAtlasDebugDialog.Evaluate);
-  Assert.IsTrue(TAtlasDebugDialogs.DialogOf('TForm1', 'Evaluate/Modify') = TAtlasDebugDialog.Evaluate);
-  Assert.IsTrue(TAtlasDebugDialogs.DialogOf('TWatchPropertiesDlg', 'Watch Properties') = TAtlasDebugDialog.Watch);
-  Assert.IsTrue(TAtlasDebugDialogs.DialogOf('TDialog', 'Überwachungseigenschaften') = TAtlasDebugDialog.Watch);
-  Assert.IsTrue(TAtlasDebugDialogs.DialogOf('TSourceBreakpointDlg', 'Add Source Breakpoint') =
-    TAtlasDebugDialog.Breakpoint);
-  Assert.IsTrue(TAtlasDebugDialogs.DialogOf('TBpDialog', 'Quelltext-Haltepunkt hinzufügen') =
-    TAtlasDebugDialog.Breakpoint);
-  Assert.IsTrue(TAtlasDebugDialogs.DialogOf('TAppBuilder', 'Projekt1 - RAD Studio') = TAtlasDebugDialog.None);
+  Assert.AreEqual<TAtlasDebugDialog>(TAtlasDebugDialog.Evaluate,
+    TAtlasDebugDialogs.DialogOf('TEvaluateDialog', 'Auswerten/Ändern'));
+  Assert.AreEqual<TAtlasDebugDialog>(TAtlasDebugDialog.Evaluate,
+    TAtlasDebugDialogs.DialogOf('TForm1', 'Evaluate/Modify'));
+  Assert.AreEqual<TAtlasDebugDialog>(TAtlasDebugDialog.Watch,
+    TAtlasDebugDialogs.DialogOf('TWatchPropertiesDlg', 'Watch Properties'));
+  Assert.AreEqual<TAtlasDebugDialog>(TAtlasDebugDialog.Watch,
+    TAtlasDebugDialogs.DialogOf('TDialog', 'Überwachungseigenschaften'));
+  Assert.AreEqual<TAtlasDebugDialog>(TAtlasDebugDialog.Breakpoint,
+    TAtlasDebugDialogs.DialogOf('TSourceBreakpointDlg', 'Add Source Breakpoint'));
+  Assert.AreEqual<TAtlasDebugDialog>(TAtlasDebugDialog.Breakpoint,
+    TAtlasDebugDialogs.DialogOf('TBpDialog', 'Quelltext-Haltepunkt hinzufügen'));
+  Assert.AreEqual<TAtlasDebugDialog>(TAtlasDebugDialog.None,
+    TAtlasDebugDialogs.DialogOf('TAppBuilder', 'Projekt1 - RAD Studio'));
 end;
 
 procedure TAtlasDebugDialogCompletionTests.RecognizesFields;
 begin
-  Assert.IsTrue(TAtlasDebugDialogs.FieldOf(TAtlasDebugDialog.Evaluate, '&Ausdruck:') =
-    TAtlasDebugField.Expression);
-  Assert.IsTrue(TAtlasDebugDialogs.FieldOf(TAtlasDebugDialog.Evaluate, '') = TAtlasDebugField.Expression,
+  Assert.AreEqual<TAtlasDebugField>(TAtlasDebugField.Expression,
+    TAtlasDebugDialogs.FieldOf(TAtlasDebugDialog.Evaluate, '&Ausdruck:'));
+  Assert.AreEqual<TAtlasDebugField>(TAtlasDebugField.Expression,
+    TAtlasDebugDialogs.FieldOf(TAtlasDebugDialog.Evaluate, ''),
     'ohne Beschriftung');
-  Assert.IsTrue(TAtlasDebugDialogs.FieldOf(TAtlasDebugDialog.Evaluate, '&New value:') = TAtlasDebugField.None);
-  Assert.IsTrue(TAtlasDebugDialogs.FieldOf(TAtlasDebugDialog.Watch, 'E&xpression:') = TAtlasDebugField.Expression);
-  Assert.IsTrue(TAtlasDebugDialogs.FieldOf(TAtlasDebugDialog.Watch, '') = TAtlasDebugField.None,
+  Assert.AreEqual<TAtlasDebugField>(TAtlasDebugField.None,
+    TAtlasDebugDialogs.FieldOf(TAtlasDebugDialog.Evaluate, '&New value:'));
+  Assert.AreEqual<TAtlasDebugField>(TAtlasDebugField.Expression,
+    TAtlasDebugDialogs.FieldOf(TAtlasDebugDialog.Watch, 'E&xpression:'));
+  Assert.AreEqual<TAtlasDebugField>(TAtlasDebugField.None, TAtlasDebugDialogs.FieldOf(TAtlasDebugDialog.Watch, ''),
     'Gruppenname ohne Beschriftung nicht');
-  Assert.IsTrue(TAtlasDebugDialogs.FieldOf(TAtlasDebugDialog.Breakpoint, '&Bedingung:') =
-    TAtlasDebugField.Condition);
-  Assert.IsTrue(TAtlasDebugDialogs.FieldOf(TAtlasDebugDialog.Breakpoint, 'Eval e&xpression:') =
-    TAtlasDebugField.LogExpression);
-  Assert.IsTrue(TAtlasDebugDialogs.FieldOf(TAtlasDebugDialog.Breakpoint, 'Log &message:') = TAtlasDebugField.None,
+  Assert.AreEqual<TAtlasDebugField>(TAtlasDebugField.Condition,
+    TAtlasDebugDialogs.FieldOf(TAtlasDebugDialog.Breakpoint, '&Bedingung:'));
+  Assert.AreEqual<TAtlasDebugField>(TAtlasDebugField.LogExpression,
+    TAtlasDebugDialogs.FieldOf(TAtlasDebugDialog.Breakpoint, 'Eval e&xpression:'));
+  Assert.AreEqual<TAtlasDebugField>(TAtlasDebugField.None,
+    TAtlasDebugDialogs.FieldOf(TAtlasDebugDialog.Breakpoint, 'Log &message:'),
     'Meldung ist Text, kein Ausdruck');
-  Assert.IsTrue(TAtlasDebugDialogs.FieldOf(TAtlasDebugDialog.Breakpoint, '&Dateiname:') =
-    TAtlasDebugField.FileName);
-  Assert.IsTrue(TAtlasDebugDialogs.FieldOf(TAtlasDebugDialog.Breakpoint, '&Line number:') =
-    TAtlasDebugField.LineNumber);
+  Assert.AreEqual<TAtlasDebugField>(TAtlasDebugField.FileName,
+    TAtlasDebugDialogs.FieldOf(TAtlasDebugDialog.Breakpoint, '&Dateiname:'));
+  Assert.AreEqual<TAtlasDebugField>(TAtlasDebugField.LineNumber,
+    TAtlasDebugDialogs.FieldOf(TAtlasDebugDialog.Breakpoint, '&Line number:'));
   Assert.IsTrue(TAtlasDebugDialogs.Completes(TAtlasDebugField.LogExpression));
   Assert.IsFalse(TAtlasDebugDialogs.Completes(TAtlasDebugField.LineNumber));
 end;

@@ -94,18 +94,25 @@ end;
 
 procedure TAtlasDebugThreadsTests.KnowsWaitRoutines;
 begin
-  Assert.IsTrue(TAtlasDebugWaits.KindOf('System.Classes.TThread.WaitFor') = TAtlasDebugWaitKind.ThreadWaitFor);
-  Assert.IsTrue(TAtlasDebugWaits.KindOf('System.Classes.TThread.Synchronize') = TAtlasDebugWaitKind.Synchronize);
-  Assert.IsTrue(TAtlasDebugWaits.KindOf('System.TMonitor.Enter') = TAtlasDebugWaitKind.MonitorEnter);
-  Assert.IsTrue(TAtlasDebugWaits.KindOf('System.TMonitor.Wait') = TAtlasDebugWaitKind.MonitorWait);
-  Assert.IsTrue(TAtlasDebugWaits.KindOf('System.SyncObjs.TCriticalSection.Enter') =
-    TAtlasDebugWaitKind.CriticalSection);
-  Assert.IsTrue(TAtlasDebugWaits.KindOf('ntdll.RtlEnterCriticalSection') = TAtlasDebugWaitKind.CriticalSection);
-  Assert.IsTrue(TAtlasDebugWaits.KindOf('System.SyncObjs.THandleObject.WaitFor') = TAtlasDebugWaitKind.EventWait);
-  Assert.IsTrue(TAtlasDebugWaits.KindOf('KERNELBASE.WaitForSingleObjectEx') = TAtlasDebugWaitKind.Handle);
-  Assert.IsTrue(TAtlasDebugWaits.KindOf('KERNELBASE.SleepEx') = TAtlasDebugWaitKind.Sleep);
-  Assert.IsTrue(TAtlasDebugWaits.KindOf('user32.GetMessageW') = TAtlasDebugWaitKind.Idle);
-  Assert.IsTrue(TAtlasDebugWaits.KindOf('Unit1.TForm1.Button1Click') = TAtlasDebugWaitKind.None);
+  Assert.AreEqual<TAtlasDebugWaitKind>(TAtlasDebugWaitKind.ThreadWaitFor,
+    TAtlasDebugWaits.KindOf('System.Classes.TThread.WaitFor'));
+  Assert.AreEqual<TAtlasDebugWaitKind>(TAtlasDebugWaitKind.Synchronize,
+    TAtlasDebugWaits.KindOf('System.Classes.TThread.Synchronize'));
+  Assert.AreEqual<TAtlasDebugWaitKind>(TAtlasDebugWaitKind.MonitorEnter,
+    TAtlasDebugWaits.KindOf('System.TMonitor.Enter'));
+  Assert.AreEqual<TAtlasDebugWaitKind>(TAtlasDebugWaitKind.MonitorWait,
+    TAtlasDebugWaits.KindOf('System.TMonitor.Wait'));
+  Assert.AreEqual<TAtlasDebugWaitKind>(TAtlasDebugWaitKind.CriticalSection,
+    TAtlasDebugWaits.KindOf('System.SyncObjs.TCriticalSection.Enter'));
+  Assert.AreEqual<TAtlasDebugWaitKind>(TAtlasDebugWaitKind.CriticalSection,
+    TAtlasDebugWaits.KindOf('ntdll.RtlEnterCriticalSection'));
+  Assert.AreEqual<TAtlasDebugWaitKind>(TAtlasDebugWaitKind.EventWait,
+    TAtlasDebugWaits.KindOf('System.SyncObjs.THandleObject.WaitFor'));
+  Assert.AreEqual<TAtlasDebugWaitKind>(TAtlasDebugWaitKind.Handle,
+    TAtlasDebugWaits.KindOf('KERNELBASE.WaitForSingleObjectEx'));
+  Assert.AreEqual<TAtlasDebugWaitKind>(TAtlasDebugWaitKind.Sleep, TAtlasDebugWaits.KindOf('KERNELBASE.SleepEx'));
+  Assert.AreEqual<TAtlasDebugWaitKind>(TAtlasDebugWaitKind.Idle, TAtlasDebugWaits.KindOf('user32.GetMessageW'));
+  Assert.AreEqual<TAtlasDebugWaitKind>(TAtlasDebugWaitKind.None, TAtlasDebugWaits.KindOf('Unit1.TForm1.Button1Click'));
 end;
 
 procedure TAtlasDebugThreadsTests.FindsHighLevelWaitAboveOwnCode;
@@ -119,7 +126,7 @@ begin
     'System.Classes.TThread.Destroy',
     'Unit1.TForm1.FormDestroy(Self=$02A3F2C0)|C:\P\Unit1.pas|42|own',
     'Project1.Project1|C:\P\Project1.dpr|19|own']));
-  Assert.IsTrue(mWait.Kind = TAtlasDebugWaitKind.ThreadWaitFor);
+  Assert.AreEqual<TAtlasDebugWaitKind>(TAtlasDebugWaitKind.ThreadWaitFor, mWait.Kind);
   Assert.AreEqual(2, mWait.Frame);
   Assert.AreEqual('System.Classes.TThread.WaitFor', mWait.Routine);
   Assert.IsTrue(mWait.Blocked);
@@ -133,7 +140,7 @@ begin
   mWait := TAtlasDebugWaits.Find(Stack(1, [
     'Unit2.Compute|C:\P\Unit2.pas|10|own',
     'System.Classes.TThread.WaitFor']));
-  Assert.IsTrue(mWait.Kind = TAtlasDebugWaitKind.None);
+  Assert.AreEqual<TAtlasDebugWaitKind>(TAtlasDebugWaitKind.None, mWait.Kind);
   Assert.AreEqual(-1, mWait.Frame);
   Assert.IsFalse(mWait.Blocked);
 end;
@@ -147,16 +154,16 @@ begin
     'System.TMonitor.Wait',
     'System.Threading.TThreadPool.TQueueWorkerThread.Execute',
     'System.Classes.ThreadProc']));
-  Assert.IsTrue(mWait.Kind = TAtlasDebugWaitKind.MonitorWait);
+  Assert.AreEqual<TAtlasDebugWaitKind>(TAtlasDebugWaitKind.MonitorWait, mWait.Kind);
   Assert.AreEqual(1, mWait.Frame);
 end;
 
 procedure TAtlasDebugThreadsTests.RunningThreadDoesNotWait;
 begin
-  Assert.IsTrue(TAtlasDebugWaits.Find(Stack(1, [
+  Assert.AreEqual<TAtlasDebugWaitKind>(TAtlasDebugWaitKind.None, TAtlasDebugWaits.Find(Stack(1, [
     'Unit2.TWorker.Execute|C:\P\Unit2.pas|30|own',
-    'System.Classes.ThreadProc'])).Kind = TAtlasDebugWaitKind.None);
-  Assert.IsTrue(TAtlasDebugWaits.Find(Stack(1, [])).Kind = TAtlasDebugWaitKind.None);
+    'System.Classes.ThreadProc'])).Kind);
+  Assert.AreEqual<TAtlasDebugWaitKind>(TAtlasDebugWaitKind.None, TAtlasDebugWaits.Find(Stack(1, [])).Kind);
 end;
 
 procedure TAtlasDebugThreadsTests.MessageLoopIsIdle;
@@ -170,7 +177,7 @@ begin
     'Vcl.Forms.TApplication.HandleMessage',
     'Vcl.Forms.TApplication.Run',
     'Project1.Project1|C:\P\Project1.dpr|19|own']));
-  Assert.IsTrue(mWait.Kind = TAtlasDebugWaitKind.Idle);
+  Assert.AreEqual<TAtlasDebugWaitKind>(TAtlasDebugWaitKind.Idle, mWait.Kind);
   Assert.IsFalse(mWait.Blocked);
 end;
 

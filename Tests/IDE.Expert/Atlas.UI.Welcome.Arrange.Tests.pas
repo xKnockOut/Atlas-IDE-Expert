@@ -212,7 +212,7 @@ begin
     Assert.IsNull(mBoard.GripOf(TAtlasWelcomeIds.cState));
     Assert.IsFalse(mBoard.Arranger.HiddenBar.Visible);
     Assert.IsFalse(mBoard.Arranger.InsertLine.Visible);
-    Assert.IsTrue(mBoard.View(TAtlasWelcomeIds.cState).TitleBar.PopupMenu = mBoard.Menus.SectionMenu, 'Rechtsklick');
+    Assert.AreSame(mBoard.Menus.SectionMenu, mBoard.View(TAtlasWelcomeIds.cState).TitleBar.PopupMenu, 'Rechtsklick');
     // Bearbeitungsmodus.
     mSource.EditingOn := True;
     mBoard.Rebuild([Section(TAtlasWelcomeIds.cState, 10, TAtlasWelcomeColumn.Right),

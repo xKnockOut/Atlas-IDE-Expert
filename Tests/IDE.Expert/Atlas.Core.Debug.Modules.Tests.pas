@@ -80,7 +80,7 @@ begin
   mFault := TAtlasDebugFault.Parse(
     'Zugriffsverletzung bei Adresse 0040ABCD in Modul ''Demo.exe''. Lesen von Adresse 0000001C.');
   Assert.IsTrue(mFault.CodeAddressKnown);
-  Assert.IsTrue(mFault.CodeAddress = UInt64($0040ABCD), 'Adresse des Codes');
+  Assert.AreEqual<UInt64>(UInt64($0040ABCD), mFault.CodeAddress, 'Adresse des Codes');
   Assert.AreEqual('Demo.exe', mFault.ModuleName);
 end;
 
@@ -91,7 +91,7 @@ begin
   mFault := TAtlasDebugFault.Parse(
     'Access violation at address 00007FFA12345678 in module ''vcl370.bpl''. Read of address 0000000000000008.');
   Assert.IsTrue(mFault.CodeAddressKnown);
-  Assert.IsTrue(mFault.CodeAddress = UInt64($00007FFA12345678), 'Adresse des Codes');
+  Assert.AreEqual<UInt64>(UInt64($00007FFA12345678), mFault.CodeAddress, 'Adresse des Codes');
   Assert.AreEqual('vcl370.bpl', mFault.ModuleName);
 end;
 
@@ -101,10 +101,10 @@ var
 begin
   mFault := TAtlasDebugFault.Parse('access violation at 0x10001234: read of address 0x0000001c');
   Assert.IsTrue(mFault.CodeAddressKnown);
-  Assert.IsTrue(mFault.CodeAddress = UInt64($10001234), 'Adresse des Codes');
+  Assert.AreEqual<UInt64>(UInt64($10001234), mFault.CodeAddress, 'Adresse des Codes');
   Assert.AreEqual('', mFault.ModuleName, 'Der Debugger nennt kein Modul');
   mFault := TAtlasDebugFault.Parse('Zugriffsverletzung bei 0x50001000: Schreiben von Adresse 0x00000000');
-  Assert.IsTrue(mFault.CodeAddress = UInt64($50001000), 'Adresse des Codes');
+  Assert.AreEqual<UInt64>(UInt64($50001000), mFault.CodeAddress, 'Adresse des Codes');
 end;
 
 procedure TAtlasDebugModulesTests.ParsesNothingWithoutAddress;

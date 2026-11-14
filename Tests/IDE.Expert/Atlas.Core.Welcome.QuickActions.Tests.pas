@@ -160,8 +160,8 @@ var
   mItems: TAtlasQuickActions;
 begin
   mItems := TAtlasWelcomeQuickActions.ParseItems(TAtlasWelcomeQuickActions.cDefaultItems);
-  Assert.IsTrue(mItems = [TAtlasQuickAction.Build, TAtlasQuickAction.Tests, TAtlasQuickAction.Run,
-    TAtlasQuickAction.Pull, TAtlasQuickAction.Folder, TAtlasQuickAction.Console, TAtlasQuickAction.Tasks],
+  Assert.AreEqual<TAtlasQuickActions>([TAtlasQuickAction.Build, TAtlasQuickAction.Tests, TAtlasQuickAction.Run,
+    TAtlasQuickAction.Pull, TAtlasQuickAction.Folder, TAtlasQuickAction.Console, TAtlasQuickAction.Tasks], mItems,
     'Vorgabe: alle');
   Assert.AreEqual('tests,tasks', TAtlasWelcomeQuickActions.NormalizedItems('Tasks tests'));
   Assert.AreEqual('build,pull,console', TAtlasWelcomeQuickActions.NormalizedItems(' Console; PULL build build x'),
@@ -178,11 +178,11 @@ begin
   mButtons := TAtlasWelcomeQuickActions.Buttons(TAtlasWelcomeQuickActions.ParseItems('build,tests,run,pull,folder'),
     Vcs(True, 'git', 0), False);
   Assert.AreEqual(5, Integer(Length(mButtons)));
-  Assert.IsTrue(mButtons[0].Action = TAtlasQuickAction.Build);
-  Assert.IsTrue(mButtons[1].Action = TAtlasQuickAction.Tests);
-  Assert.IsTrue(mButtons[2].Action = TAtlasQuickAction.Run);
-  Assert.IsTrue(mButtons[3].Action = TAtlasQuickAction.Pull);
-  Assert.IsTrue(mButtons[4].Action = TAtlasQuickAction.Folder);
+  Assert.AreEqual<TAtlasQuickAction>(TAtlasQuickAction.Build, mButtons[0].Action);
+  Assert.AreEqual<TAtlasQuickAction>(TAtlasQuickAction.Tests, mButtons[1].Action);
+  Assert.AreEqual<TAtlasQuickAction>(TAtlasQuickAction.Run, mButtons[2].Action);
+  Assert.AreEqual<TAtlasQuickAction>(TAtlasQuickAction.Pull, mButtons[3].Action);
+  Assert.AreEqual<TAtlasQuickAction>(TAtlasQuickAction.Folder, mButtons[4].Action);
   Assert.AreEqual(-1, TAtlasWelcomeQuickActions.IndexOf(mButtons, TAtlasQuickAction.Console));
   Assert.IsTrue(mButtons[0].HasMenu and mButtons[2].HasMenu, 'Konfiguration bzw. Startprofil wählbar');
   Assert.IsFalse(mButtons[1].HasMenu);
@@ -202,18 +202,20 @@ var
   mButtons: TAtlasQuickActionButtons;
   mIndex: Integer;
 begin
-  Assert.IsTrue(TAtlasWelcomeQuickActions.PullBlock(Vcs(True, 'git', 2)) = TAtlasPullBlock.LocalChanges);
-  Assert.IsTrue(TAtlasWelcomeQuickActions.PullBlock(Vcs(True, 'svn', 1)) = TAtlasPullBlock.LocalChanges);
-  Assert.IsTrue(TAtlasWelcomeQuickActions.PullBlock(Vcs(True, 'git', 0)) = TAtlasPullBlock.None);
+  Assert.AreEqual<TAtlasPullBlock>(TAtlasPullBlock.LocalChanges,
+    TAtlasWelcomeQuickActions.PullBlock(Vcs(True, 'git', 2)));
+  Assert.AreEqual<TAtlasPullBlock>(TAtlasPullBlock.LocalChanges,
+    TAtlasWelcomeQuickActions.PullBlock(Vcs(True, 'svn', 1)));
+  Assert.AreEqual<TAtlasPullBlock>(TAtlasPullBlock.None, TAtlasWelcomeQuickActions.PullBlock(Vcs(True, 'git', 0)));
   // Unbekannter Stand sperrt nicht: Pull prüft selbst.
-  Assert.IsTrue(TAtlasWelcomeQuickActions.PullBlock(Vcs(True, 'git', -1)) = TAtlasPullBlock.None);
-  Assert.IsTrue(TAtlasWelcomeQuickActions.PullBlock(Vcs(False, '', 0)) = TAtlasPullBlock.None);
+  Assert.AreEqual<TAtlasPullBlock>(TAtlasPullBlock.None, TAtlasWelcomeQuickActions.PullBlock(Vcs(True, 'git', -1)));
+  Assert.AreEqual<TAtlasPullBlock>(TAtlasPullBlock.None, TAtlasWelcomeQuickActions.PullBlock(Vcs(False, '', 0)));
   mButtons := TAtlasWelcomeQuickActions.Buttons(TAtlasWelcomeQuickActions.ParseItems('pull,folder'),
     Vcs(True, 'git', 3), False);
   mIndex := TAtlasWelcomeQuickActions.IndexOf(mButtons, TAtlasQuickAction.Pull);
   Assert.AreEqual(0, mIndex);
   Assert.IsFalse(mButtons[mIndex].Enabled, 'gesperrt bei lokalen Änderungen');
-  Assert.IsTrue(mButtons[mIndex].Block = TAtlasPullBlock.LocalChanges);
+  Assert.AreEqual<TAtlasPullBlock>(TAtlasPullBlock.LocalChanges, mButtons[mIndex].Block);
   Assert.IsTrue(mButtons[1].Enabled, 'Ordner bleibt nutzbar');
 end;
 
@@ -221,13 +223,14 @@ procedure TAtlasWelcomeQuickActionsTests.PullBlockedWithoutWorkingCopyOrWhileBus
 var
   mButtons: TAtlasQuickActionButtons;
 begin
-  Assert.IsTrue(TAtlasWelcomeQuickActions.PullBlock(Vcs(True, 'none', 0)) = TAtlasPullBlock.NoWorkingCopy);
+  Assert.AreEqual<TAtlasPullBlock>(TAtlasPullBlock.NoWorkingCopy,
+    TAtlasWelcomeQuickActions.PullBlock(Vcs(True, 'none', 0)));
   mButtons := TAtlasWelcomeQuickActions.Buttons([TAtlasQuickAction.Pull], Vcs(True, 'git', 0), True);
   Assert.IsFalse(mButtons[0].Enabled);
-  Assert.IsTrue(mButtons[0].Block = TAtlasPullBlock.Busy);
+  Assert.AreEqual<TAtlasPullBlock>(TAtlasPullBlock.Busy, mButtons[0].Block);
   // Lokale Änderungen gehen als Grund vor.
   mButtons := TAtlasWelcomeQuickActions.Buttons([TAtlasQuickAction.Pull], Vcs(True, 'git', 1), True);
-  Assert.IsTrue(mButtons[0].Block = TAtlasPullBlock.LocalChanges);
+  Assert.AreEqual<TAtlasPullBlock>(TAtlasPullBlock.LocalChanges, mButtons[0].Block);
 end;
 
 procedure TAtlasWelcomeQuickActionsTests.SvnButtonIsUpdate;
@@ -251,19 +254,20 @@ begin
     TAtlasWelcomeQuickActions.cDefaultItems), Vcs(True, 'git', 0), True);
   for mButton in mButtons do
   begin
-    Assert.IsTrue(((mButton.Action = TAtlasQuickAction.Folder) or (mButton.Action = TAtlasQuickAction.Console)) =
-      mButton.Enabled, TAtlasWelcomeQuickActions.cNames[mButton.Action]);
+    Assert.AreEqual<Boolean>(mButton.Enabled,
+      (mButton.Action = TAtlasQuickAction.Folder) or (mButton.Action = TAtlasQuickAction.Console),
+      TAtlasWelcomeQuickActions.cNames[mButton.Action]);
   end;
   // Aktion eines anderen Projekts in der IDE: nur die Knöpfe, die die IDE brauchen, sind gesperrt.
   mButtons := TAtlasWelcomeQuickActions.Buttons(TAtlasWelcomeQuickActions.ParseItems(
     TAtlasWelcomeQuickActions.cDefaultItems), Vcs(True, 'git', 0), False, True);
   for mButton in mButtons do
   begin
-    Assert.IsTrue(TAtlasWelcomeQuickActions.UsesIde(mButton.Action) <> mButton.Enabled,
+    Assert.AreNotEqual<Boolean>(mButton.Enabled, TAtlasWelcomeQuickActions.UsesIde(mButton.Action),
       TAtlasWelcomeQuickActions.cNames[mButton.Action]);
   end;
-  Assert.IsTrue(mButtons[TAtlasWelcomeQuickActions.IndexOf(mButtons, TAtlasQuickAction.Pull)].Block =
-    TAtlasPullBlock.None);
+  Assert.AreEqual<TAtlasPullBlock>(TAtlasPullBlock.None,
+    mButtons[TAtlasWelcomeQuickActions.IndexOf(mButtons, TAtlasQuickAction.Pull)].Block);
 end;
 
 procedure TAtlasWelcomeQuickActionsTests.UpdateAsksForExternalsOnlyUnderSvn;
@@ -486,16 +490,16 @@ var
 begin
   mAll := TAtlasWelcomeQuickActions.ParseItems(TAtlasWelcomeQuickActions.cDefaultItems);
   Assert.IsTrue(TAtlasWelcomeQuickActions.ActionForKey($4042, $4042, $4054, mAll, mAction));
-  Assert.IsTrue(mAction = TAtlasQuickAction.Build, 'Strg+B');
+  Assert.AreEqual<TAtlasQuickAction>(TAtlasQuickAction.Build, mAction, 'Strg+B');
   Assert.IsTrue(TAtlasWelcomeQuickActions.ActionForKey($4054, $4042, $4054, mAll, mAction));
-  Assert.IsTrue(mAction = TAtlasQuickAction.Tests, 'Strg+T');
+  Assert.AreEqual<TAtlasQuickAction>(TAtlasQuickAction.Tests, mAction, 'Strg+T');
   Assert.IsFalse(TAtlasWelcomeQuickActions.ActionForKey($4054, $4042, $4054, [TAtlasQuickAction.Build], mAction),
     'Knopf nicht eingestellt');
   Assert.IsFalse(TAtlasWelcomeQuickActions.ActionForKey($4042, 0, $4054, mAll, mAction), 'Taste abgeschaltet');
   Assert.IsFalse(TAtlasWelcomeQuickActions.ActionForKey(0, 0, 0, mAll, mAction));
   // Geänderte Taste (#399).
   Assert.IsTrue(TAtlasWelcomeQuickActions.ActionForKey($6042, $6042, $4054, mAll, mAction));
-  Assert.IsTrue(mAction = TAtlasQuickAction.Build);
+  Assert.AreEqual<TAtlasQuickAction>(TAtlasQuickAction.Build, mAction);
 end;
 
 procedure TAtlasWelcomeQuickActionsTests.ArrowsMoveRowAndButton;
@@ -528,7 +532,7 @@ begin
   Assert.AreEqual(0, mState.ElapsedSeconds(5000));
   mState := TAtlasQuickActionState.Started(TAtlasQuickAction.Build, 1000);
   Assert.IsTrue(mState.Running);
-  Assert.IsTrue(mState.Action = TAtlasQuickAction.Build);
+  Assert.AreEqual<TAtlasQuickAction>(TAtlasQuickAction.Build, mState.Action);
   Assert.AreEqual(12, mState.ElapsedSeconds(13500), '„baut … 12 s“');
   Assert.AreEqual(0, mState.ElapsedSeconds(500));
 end;
@@ -541,24 +545,24 @@ begin
   mStart := TAtlasQuickActionState.Started(TAtlasQuickAction.Pull, 1000);
   mStart.Detail := 'alt';
   mState := mStart.AfterPull(TAtlasPullOutcome.Updated, TAtlasVcsOutcome.Ok, mNote);
-  Assert.IsTrue(mState.Phase = TAtlasQuickActionPhase.Succeeded);
-  Assert.IsTrue(mState.Pull = TAtlasPullOutcome.Updated);
-  Assert.IsTrue(mNote = TAtlasPullNote.None);
+  Assert.AreEqual<TAtlasQuickActionPhase>(TAtlasQuickActionPhase.Succeeded, mState.Phase);
+  Assert.AreEqual<TAtlasPullOutcome>(TAtlasPullOutcome.Updated, mState.Pull);
+  Assert.AreEqual<TAtlasPullNote>(TAtlasPullNote.None, mNote);
   Assert.AreEqual('', mState.Detail, 'altes Detail weg');
   Assert.AreEqual(UInt64(1000), mState.StartedMs, 'Beginn bleibt');
   mState := mStart.AfterPull(TAtlasPullOutcome.UpToDate, TAtlasVcsOutcome.Ok, mNote);
-  Assert.IsTrue(mState.Phase = TAtlasQuickActionPhase.Succeeded);
+  Assert.AreEqual<TAtlasQuickActionPhase>(TAtlasQuickActionPhase.Succeeded, mState.Phase);
   mState := mStart.AfterPull(TAtlasPullOutcome.Blocked, TAtlasVcsOutcome.Ok, mNote);
-  Assert.IsTrue(mState.Phase = TAtlasQuickActionPhase.Failed);
-  Assert.IsTrue(mNote = TAtlasPullNote.LocalChanges);
+  Assert.AreEqual<TAtlasQuickActionPhase>(TAtlasQuickActionPhase.Failed, mState.Phase);
+  Assert.AreEqual<TAtlasPullNote>(TAtlasPullNote.LocalChanges, mNote);
   mState := mStart.AfterPull(TAtlasPullOutcome.NoWorkingCopy, TAtlasVcsOutcome.NoWorkingCopy, mNote);
-  Assert.IsTrue(mNote = TAtlasPullNote.NoWorkingCopy);
+  Assert.AreEqual<TAtlasPullNote>(TAtlasPullNote.NoWorkingCopy, mNote);
   mState := mStart.AfterPull(TAtlasPullOutcome.Failed, TAtlasVcsOutcome.LoginNeeded, mNote);
-  Assert.IsTrue(mNote = TAtlasPullNote.Login);
+  Assert.AreEqual<TAtlasPullNote>(TAtlasPullNote.Login, mNote);
   Assert.AreEqual('', mState.Detail, 'Text der Anmeldung setzt die IDE');
   mState := mStart.AfterPull(TAtlasPullOutcome.Failed, TAtlasVcsOutcome.TimedOut, mNote);
-  Assert.IsTrue(mState.Phase = TAtlasQuickActionPhase.Failed);
-  Assert.IsTrue(mNote = TAtlasPullNote.Failed);
+  Assert.AreEqual<TAtlasQuickActionPhase>(TAtlasQuickActionPhase.Failed, mState.Phase);
+  Assert.AreEqual<TAtlasPullNote>(TAtlasPullNote.Failed, mNote);
   Assert.AreEqual(AtlasVcsOutcomeName(TAtlasVcsOutcome.TimedOut), mState.Detail);
 end;
 

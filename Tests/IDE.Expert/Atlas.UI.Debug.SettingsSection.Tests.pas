@@ -91,7 +91,7 @@ begin
     Assert.IsNotNull(CheckOf(mPage, 'DebugEnabled'), 'Modulschalter im Abschnitt');
     Assert.AreEqual(TAtlasSettingsPageNames.Caption('Debuggen', TAtlasStrings.Language = TAtlasLanguage.English),
       SheetOf(CheckOf(mPage, 'DebugHoverValues')).Caption);
-    Assert.IsTrue(SheetOf(CheckOf(mPage, 'DebugEnabled')) = SheetOf(CheckOf(mPage, 'DebugInlineValues')));
+    Assert.AreSame(SheetOf(CheckOf(mPage, 'DebugInlineValues')), SheetOf(CheckOf(mPage, 'DebugEnabled')));
   finally
     mPage.Free;
   end;

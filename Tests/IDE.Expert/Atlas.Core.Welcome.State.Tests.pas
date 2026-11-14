@@ -255,7 +255,7 @@ begin
     for mRow in TAtlasWelcomeState.Rows(mRegistry.Items) do
     begin
       mItem := mRegistry.Find(mRow.Id);
-      Assert.IsTrue(mItem <> nil, mRow.Id);
+      Assert.IsNotNull(mItem, mRow.Id);
       Assert.AreEqual(Ord(mItem.State), Ord(mRow.State), mRow.Id);
       Assert.AreEqual(Ord(mItem.HasAction), Ord(mRow.HasAction), mRow.Id);
     end;
@@ -679,7 +679,7 @@ begin
   Assert.AreEqual(-1, mBack.Units, 'anderes Format');
   mBack := TAtlasIndexSnapshot.FromJson('{"format": 1, "units": -3, "at": "Unsinn"}');
   Assert.AreEqual(-1, mBack.Units);
-  Assert.IsTrue(mBack.At = 0);
+  Assert.AreEqual<TDateTime>(0, mBack.At);
 end;
 
 procedure TAtlasIndexStoreTests.TrackerRecordsEndOfIndexing;
@@ -689,11 +689,11 @@ begin
   mTracker := TAtlasIndexTracker.Create(TAtlasIndexSnapshot.Empty);
   try
     Assert.IsFalse(mTracker.Observe(True, True, -1, Today(18, 30)), 'Indizierung läuft');
-    Assert.IsTrue(mTracker.Snapshot.FullAt = 0);
+    Assert.AreEqual<TDateTime>(0, mTracker.Snapshot.FullAt);
     Assert.IsTrue(mTracker.Observe(True, False, 1284, Today(18, 40)), 'Ende der Indizierung');
-    Assert.IsTrue(mTracker.Snapshot.FullAt = Today(18, 40));
+    Assert.AreEqual<TDateTime>(Today(18, 40), mTracker.Snapshot.FullAt);
     Assert.AreEqual(1284, mTracker.Snapshot.Units);
-    Assert.IsTrue(mTracker.Snapshot.At = Today(18, 40));
+    Assert.AreEqual<TDateTime>(Today(18, 40), mTracker.Snapshot.At);
   finally
     mTracker.Free;
   end;
@@ -722,7 +722,7 @@ begin
     mTracker.Observe(True, False, 1284, Today(9, 1));
     mTracker.Observe(True, False, 1284, Today(9, 30));
     Assert.IsTrue(mTracker.Observe(False, False, -1, Today(9, 31)), 'Server hört auf');
-    Assert.IsTrue(mTracker.Snapshot.At = Today(9, 30), 'zuletzt bestätigt');
+    Assert.AreEqual<TDateTime>(Today(9, 30), mTracker.Snapshot.At, 'zuletzt bestätigt');
     Assert.IsFalse(mTracker.Observe(False, False, -1, Today(9, 32)), 'nur einmal');
   finally
     mTracker.Free;
@@ -742,9 +742,9 @@ begin
   try
     Assert.IsFalse(mTracker.Observe(True, False, -1, Today(9, 0)), 'Units noch unbekannt');
     Assert.IsFalse(mTracker.Observe(True, False, 1200, Today(9, 1)), 'unverändert');
-    Assert.IsTrue(mTracker.Snapshot.At = Today(9, 1), 'Stand im Speicher nachgeführt');
+    Assert.AreEqual<TDateTime>(Today(9, 1), mTracker.Snapshot.At, 'Stand im Speicher nachgeführt');
     Assert.IsTrue(mTracker.Observe(True, False, 1210, Today(9, 2)), 'Units geändert');
-    Assert.IsTrue(mTracker.Snapshot.FullAt = Today(8, 0), 'keine neue Indizierung');
+    Assert.AreEqual<TDateTime>(Today(8, 0), mTracker.Snapshot.FullAt, 'keine neue Indizierung');
   finally
     mTracker.Free;
   end;
@@ -765,14 +765,14 @@ begin
     mInfo := mTracker.Info(False, False, -1, -1);
     Assert.IsTrue(mInfo.Offline);
     Assert.AreEqual(1284, mInfo.Units);
-    Assert.IsTrue(mInfo.StoredAt = Today(8, 30));
+    Assert.AreEqual<TDateTime>(Today(8, 30), mInfo.StoredAt);
     Assert.AreEqual('Stand vom 08:30', TAtlasStatusLines.IndexDetail(mInfo, Today(9, 0)));
     mInfo := mTracker.Info(True, True, 45, 300);
     Assert.IsFalse(mInfo.Offline);
     Assert.IsTrue(mInfo.Indexing);
     Assert.AreEqual(45, mInfo.Percent);
     Assert.AreEqual(300, mInfo.Units);
-    Assert.IsTrue(mInfo.FullAt = Today(8, 0), 'letzte vollständige Indizierung');
+    Assert.AreEqual<TDateTime>(Today(8, 0), mInfo.FullAt, 'letzte vollständige Indizierung');
   finally
     mTracker.Free;
   end;

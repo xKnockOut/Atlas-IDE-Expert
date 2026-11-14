@@ -44,7 +44,7 @@ var
 begin
   mMatch := TAtlasLabelPairs.FindField(Bounds(8, 12, 60, 15), [Bounds(76, 8, 120, 23)], 16);
   Assert.AreEqual(0, mMatch.Field);
-  Assert.IsTrue(mMatch.Side = TAtlasPairSide.Left);
+  Assert.AreEqual<TAtlasPairSide>(TAtlasPairSide.Left, mMatch.Side);
 end;
 
 procedure TAtlasLabelPairsTests.AboveField;
@@ -53,7 +53,7 @@ var
 begin
   mMatch := TAtlasLabelPairs.FindField(Bounds(10, 8, 60, 15), [Bounds(8, 26, 120, 23)], 16);
   Assert.AreEqual(0, mMatch.Field);
-  Assert.IsTrue(mMatch.Side = TAtlasPairSide.Above);
+  Assert.AreEqual<TAtlasPairSide>(TAtlasPairSide.Above, mMatch.Side);
 end;
 
 procedure TAtlasLabelPairsTests.TooFarOrBeside;
@@ -77,7 +77,7 @@ begin
   Assert.AreEqual(1, mMatch.Field, 'näheres Feld');
   mMatch := TAtlasLabelPairs.FindField(Bounds(8, 12, 60, 15), [Bounds(8, 28, 120, 23), Bounds(80, 8, 120, 23)], 16);
   Assert.AreEqual(1, mMatch.Field, 'links vor darüber');
-  Assert.IsTrue(mMatch.Side = TAtlasPairSide.Left);
+  Assert.AreEqual<TAtlasPairSide>(TAtlasPairSide.Left, mMatch.Side);
 end;
 
 procedure TAtlasLabelPairsTests.Baseline;

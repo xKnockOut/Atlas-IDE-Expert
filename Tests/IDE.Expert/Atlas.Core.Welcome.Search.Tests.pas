@@ -545,10 +545,10 @@ begin
   // "a" passt auf Projekt, Dateien und Befehle; Kandidaten in gemischter Reihenfolge.
   mResults := TAtlasWelcomeSearch.Search('a', [Candidates[3], Candidates[1], Candidates[0]], 'Hinweis');
   Assert.AreEqual(4, Integer(Length(mResults)));
-  Assert.IsTrue(mResults[0].Group = TAtlasWelcomeSearchGroup.Projects);
-  Assert.IsTrue(mResults[1].Group = TAtlasWelcomeSearchGroup.Files);
-  Assert.IsTrue(mResults[2].Group = TAtlasWelcomeSearchGroup.Symbols);
-  Assert.IsTrue(mResults[3].Group = TAtlasWelcomeSearchGroup.Commands);
+  Assert.AreEqual<TAtlasWelcomeSearchGroup>(TAtlasWelcomeSearchGroup.Projects, mResults[0].Group);
+  Assert.AreEqual<TAtlasWelcomeSearchGroup>(TAtlasWelcomeSearchGroup.Files, mResults[1].Group);
+  Assert.AreEqual<TAtlasWelcomeSearchGroup>(TAtlasWelcomeSearchGroup.Symbols, mResults[2].Group);
+  Assert.AreEqual<TAtlasWelcomeSearchGroup>(TAtlasWelcomeSearchGroup.Commands, mResults[3].Group);
 end;
 
 procedure TAtlasWelcomeSearchTests.LimitsEachGroupToFour;
@@ -634,8 +634,8 @@ var
   mFlat: TArray<TAtlasWelcomeHit>;
 begin
   mFlat := TAtlasWelcomeSearch.Flatten(TAtlasWelcomeSearch.Search('a', Candidates, 'Hinweis'));
-  Assert.IsTrue(mFlat[0].Group = TAtlasWelcomeSearchGroup.Projects);
-  Assert.IsTrue(mFlat[High(mFlat)].Group = TAtlasWelcomeSearchGroup.Commands);
+  Assert.AreEqual<TAtlasWelcomeSearchGroup>(TAtlasWelcomeSearchGroup.Projects, mFlat[0].Group);
+  Assert.AreEqual<TAtlasWelcomeSearchGroup>(TAtlasWelcomeSearchGroup.Commands, mFlat[High(mFlat)].Group);
 end;
 
 procedure TAtlasWelcomeSearchTests.RowsWithHeadersHintAndMore;
@@ -652,15 +652,15 @@ begin
   mRows := TAtlasWelcomeSearch.Rows(TAtlasWelcomeSearch.Search('unit', mHits, 'Hinweis'));
   // Dateien: Kopf, 4 Treffer, „2 weitere“; Symbole: Kopf, Hinweis; Befehle: Kopf, Treffer.
   Assert.AreEqual(10, Integer(Length(mRows)));
-  Assert.IsTrue(mRows[0].Kind = TAtlasWelcomeRowKind.Group);
-  Assert.IsTrue(mRows[0].Group = TAtlasWelcomeSearchGroup.Files);
+  Assert.AreEqual<TAtlasWelcomeRowKind>(TAtlasWelcomeRowKind.Group, mRows[0].Kind);
+  Assert.AreEqual<TAtlasWelcomeSearchGroup>(TAtlasWelcomeSearchGroup.Files, mRows[0].Group);
   Assert.AreEqual(0, mRows[1].Index);
   Assert.AreEqual(3, mRows[4].Index);
-  Assert.IsTrue(mRows[5].Kind = TAtlasWelcomeRowKind.More);
+  Assert.AreEqual<TAtlasWelcomeRowKind>(TAtlasWelcomeRowKind.More, mRows[5].Kind);
   Assert.AreEqual(2, mRows[5].Index);
-  Assert.IsTrue(mRows[7].Kind = TAtlasWelcomeRowKind.Hint);
+  Assert.AreEqual<TAtlasWelcomeRowKind>(TAtlasWelcomeRowKind.Hint, mRows[7].Kind);
   Assert.AreEqual('Hinweis', mRows[7].Text);
-  Assert.IsTrue(mRows[9].Kind = TAtlasWelcomeRowKind.Hit);
+  Assert.AreEqual<TAtlasWelcomeRowKind>(TAtlasWelcomeRowKind.Hit, mRows[9].Kind);
   Assert.AreEqual(4, mRows[9].Index);
 end;
 

@@ -69,10 +69,10 @@ var
 begin
   mSites := TAtlasAsyncSites.Find('C:\P\Unit1.pas', cUnit);
   Assert.AreEqual(2, Integer(Length(mSites)));
-  Assert.IsTrue(mSites[0].Kind = TAtlasAsyncKind.Queue);
+  Assert.AreEqual<TAtlasAsyncKind>(TAtlasAsyncKind.Queue, mSites[0].Kind);
   Assert.AreEqual(3, mSites[0].Line);
   Assert.AreEqual(7, mSites[0].EndLine, 'die Klammer in der Zeichenkette zählt nicht');
-  Assert.IsTrue(mSites[1].Kind = TAtlasAsyncKind.TaskRun);
+  Assert.AreEqual<TAtlasAsyncKind>(TAtlasAsyncKind.TaskRun, mSites[1].Kind);
   Assert.AreEqual(8, mSites[1].Line);
   Assert.AreEqual(8, mSites[1].EndLine);
   Assert.AreEqual('C:\P\Unit1.pas', mSites[0].FileName);
@@ -87,11 +87,11 @@ begin
     'TThread.Synchronize(nil, P); System.Classes.TThread.ForceQueue(nil, P);' + sLineBreak +
     'T := TTask.Create(P); tparallel.for(1, 10, Q); TThread . Queue (nil, P);');
   Assert.AreEqual(5, Integer(Length(mSites)));
-  Assert.IsTrue(mSites[0].Kind = TAtlasAsyncKind.Synchronize);
-  Assert.IsTrue(mSites[1].Kind = TAtlasAsyncKind.ForceQueue);
-  Assert.IsTrue(mSites[2].Kind = TAtlasAsyncKind.TaskCreate);
-  Assert.IsTrue(mSites[3].Kind = TAtlasAsyncKind.ParallelFor);
-  Assert.IsTrue(mSites[4].Kind = TAtlasAsyncKind.Queue);
+  Assert.AreEqual<TAtlasAsyncKind>(TAtlasAsyncKind.Synchronize, mSites[0].Kind);
+  Assert.AreEqual<TAtlasAsyncKind>(TAtlasAsyncKind.ForceQueue, mSites[1].Kind);
+  Assert.AreEqual<TAtlasAsyncKind>(TAtlasAsyncKind.TaskCreate, mSites[2].Kind);
+  Assert.AreEqual<TAtlasAsyncKind>(TAtlasAsyncKind.ParallelFor, mSites[3].Kind);
+  Assert.AreEqual<TAtlasAsyncKind>(TAtlasAsyncKind.Queue, mSites[4].Kind);
   Assert.AreEqual(2, mSites[4].Line);
   Assert.AreEqual('TParallel.For', TAtlasAsyncSites.KindName(TAtlasAsyncKind.ParallelFor));
   mSites := nil;

@@ -89,12 +89,12 @@ begin
   mRows := TAtlasLeakViews.Rows(Entries(''), TAtlasLeakViews.PlacesFromJson(cAnswer), nil, False);
   // UnicodeString x 5 steht im Bericht vor TKunde x 3 (nach Anzahl).
   Assert.AreEqual(5, Integer(Length(mRows)));
-  Assert.IsTrue(mRows[0].Kind = TAtlasLeakRowKind.Name);
+  Assert.AreEqual<TAtlasLeakRowKind>(TAtlasLeakRowKind.Name, mRows[0].Kind);
   Assert.AreEqual('UnicodeString', mRows[0].Entry.Name);
-  Assert.IsTrue(mRows[1].Kind = TAtlasLeakRowKind.Hint, 'folgt aus Objekten');
+  Assert.AreEqual<TAtlasLeakRowKind>(TAtlasLeakRowKind.Hint, mRows[1].Kind, 'folgt aus Objekten');
   Assert.AreEqual('TKunde', mRows[2].Entry.Name);
   Assert.AreEqual(2, mRows[2].PlaceCount);
-  Assert.IsTrue(mRows[3].Kind = TAtlasLeakRowKind.Place);
+  Assert.AreEqual<TAtlasLeakRowKind>(TAtlasLeakRowKind.Place, mRows[3].Kind);
   Assert.IsTrue(TAtlasLeakViews.CanOpen(mRows[3]));
   Assert.IsFalse(TAtlasLeakViews.CanOpen(mRows[2]));
 end;
@@ -116,7 +116,7 @@ begin
     TArray<TLeakGroup>.Create(mGroup), False);
   Assert.AreEqual(4, Integer(Length(mRows)));
   Assert.AreEqual(1, mRows[2].PlaceCount);
-  Assert.IsTrue(mRows[3].Kind = TAtlasLeakRowKind.Group);
+  Assert.AreEqual<TAtlasLeakRowKind>(TAtlasLeakRowKind.Group, mRows[3].Kind);
   Assert.IsTrue(TAtlasLeakViews.CanOpen(mRows[3]));
 end;
 

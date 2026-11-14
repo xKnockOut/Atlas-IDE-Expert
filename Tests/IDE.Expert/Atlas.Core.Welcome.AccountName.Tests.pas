@@ -122,8 +122,8 @@ begin
       Assert.AreEqual('', mName.Name, 'vor der Antwort leer');
       Assert.IsTrue(WaitUntil(Reported(mProbe)));
       Assert.AreEqual('Muster, Erika', mName.Name);
-      Assert.IsTrue(mProbe.LookupThread <> MainThreadID, 'Abfrage im Hintergrund');
-      Assert.IsTrue(mProbe.ReportThread = MainThreadID, 'Meldung im Hauptthread');
+      Assert.AreNotEqual<TThreadID>(MainThreadID, mProbe.LookupThread, 'Abfrage im Hintergrund');
+      Assert.AreEqual<TThreadID>(MainThreadID, mProbe.ReportThread, 'Meldung im Hauptthread');
     finally
       mName.Free;
     end;

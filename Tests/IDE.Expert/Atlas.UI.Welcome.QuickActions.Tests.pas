@@ -348,9 +348,9 @@ begin
     Assert.IsTrue(mHost.Bar.Active);
     mButtons := mHost.Bar.ButtonsOf(0);
     Assert.AreEqual(7, Integer(Length(mButtons)), 'alle sieben Knöpfe');
-    Assert.IsTrue(mButtons[0].Action = TAtlasQuickAction.Build);
-    Assert.IsTrue(mButtons[5].Action = TAtlasQuickAction.Console);
-    Assert.IsTrue(mButtons[6].Action = TAtlasQuickAction.Tasks);
+    Assert.AreEqual<TAtlasQuickAction>(TAtlasQuickAction.Build, mButtons[0].Action);
+    Assert.AreEqual<TAtlasQuickAction>(TAtlasQuickAction.Console, mButtons[5].Action);
+    Assert.AreEqual<TAtlasQuickAction>(TAtlasQuickAction.Tasks, mButtons[6].Action);
     // items ohne console: nur dieser Knopf fehlt.
     mFake.Items := TAtlasWelcomeQuickActions.ParseItems('build,tests,run,pull,folder');
     mHost.Bar.SetRows([cProjectOne, cProjectTwo]);

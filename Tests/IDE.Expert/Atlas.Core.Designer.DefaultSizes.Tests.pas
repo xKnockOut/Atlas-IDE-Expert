@@ -49,14 +49,14 @@ begin
   mEntries := TAtlasDefaultSizes.Parse('TButton=88,25; TCustomEdit=,23;TCheckBox = text , ');
   Assert.AreEqual(3, Integer(Length(mEntries)));
   Assert.AreEqual('TButton', mEntries[0].ClassName);
-  Assert.IsTrue(mEntries[0].Width.Kind = TAtlasSizeKind.Fixed);
+  Assert.AreEqual<TAtlasSizeKind>(TAtlasSizeKind.Fixed, mEntries[0].Width.Kind);
   Assert.AreEqual(88, mEntries[0].Width.Value);
   Assert.AreEqual(25, mEntries[0].Height.Value);
-  Assert.IsTrue(mEntries[1].Width.Kind = TAtlasSizeKind.Keep);
+  Assert.AreEqual<TAtlasSizeKind>(TAtlasSizeKind.Keep, mEntries[1].Width.Kind);
   Assert.AreEqual(23, mEntries[1].Height.Value);
   Assert.AreEqual('TCheckBox', mEntries[2].ClassName);
-  Assert.IsTrue(mEntries[2].Width.Kind = TAtlasSizeKind.Text);
-  Assert.IsTrue(mEntries[2].Height.Kind = TAtlasSizeKind.Keep);
+  Assert.AreEqual<TAtlasSizeKind>(TAtlasSizeKind.Text, mEntries[2].Width.Kind);
+  Assert.AreEqual<TAtlasSizeKind>(TAtlasSizeKind.Keep, mEntries[2].Height.Kind);
 end;
 
 procedure TAtlasDefaultSizesTests.ParseSkipsBadEntries;

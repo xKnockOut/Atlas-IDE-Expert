@@ -238,12 +238,12 @@ var
   mTrail: TAtlasBindingTrail;
 begin
   mTrail := TAtlasDataBindings.Trail(All, 'frmKunden', 'edtOrt');
-  Assert.IsTrue(mTrail.Selected.Finding = TAtlasBindingFinding.FieldMissing);
+  Assert.AreEqual<TAtlasBindingFinding>(TAtlasBindingFinding.FieldMissing, mTrail.Selected.Finding);
   Assert.AreEqual('KUNDE_ORTX', mTrail.Selected.MissingField);
   Assert.AreEqual('cdsKunden', mTrail.Selected.DataSet);
   // Ohne persistente Felder (qrySchema) ist nichts bekannt.
   mTrail := TAtlasDataBindings.Trail(All, 'frmKunden', 'SchemaCombo');
-  Assert.IsTrue(mTrail.Selected.Finding = TAtlasBindingFinding.None);
+  Assert.AreEqual<TAtlasBindingFinding>(TAtlasBindingFinding.None, mTrail.Selected.Finding);
 end;
 
 procedure TAtlasDataBindingsTests.NoDataSource;
@@ -251,7 +251,7 @@ var
   mTrail: TAtlasBindingTrail;
 begin
   mTrail := TAtlasDataBindings.Trail(All, 'frmKunden', 'edtFrei');
-  Assert.IsTrue(mTrail.Selected.Finding = TAtlasBindingFinding.NoDataSource);
+  Assert.AreEqual<TAtlasBindingFinding>(TAtlasBindingFinding.NoDataSource, mTrail.Selected.Finding);
   Assert.AreEqual('FREI', mTrail.Selected.MissingField);
   Assert.AreEqual(1, mTrail.Size);
 end;

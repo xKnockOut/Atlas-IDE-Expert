@@ -98,8 +98,9 @@ var
 begin
   mSeries := TAtlasWelcomeTrends.ParseSeries('todos; WARNINGS unbekannt,todos');
   Assert.AreEqual(2, Integer(Length(mSeries)));
-  Assert.IsTrue(mSeries[0] = TAtlasTrendSeries.Warnings, 'Reihenfolge der Kacheln, nicht der Liste');
-  Assert.IsTrue(mSeries[1] = TAtlasTrendSeries.Todos);
+  Assert.AreEqual<TAtlasTrendSeries>(TAtlasTrendSeries.Warnings,
+    mSeries[0], 'Reihenfolge der Kacheln, nicht der Liste');
+  Assert.AreEqual<TAtlasTrendSeries>(TAtlasTrendSeries.Todos, mSeries[1]);
   Assert.AreEqual(5, Integer(Length(TAtlasWelcomeTrends.ParseSeries(TAtlasWelcomeTrends.cDefaultSeries))));
   Assert.AreEqual(0, Integer(Length(TAtlasWelcomeTrends.ParseSeries(''))));
 end;
@@ -135,8 +136,8 @@ begin
   Assert.AreEqual('Kasse', mView.Name);
   Assert.AreEqual(30, mView.Limit);
   Assert.AreEqual(2, Integer(Length(mView.Tiles)));
-  Assert.IsTrue(mView.Tiles[0].Series = TAtlasTrendSeries.Warnings);
-  Assert.IsTrue(mView.Tiles[1].Series = TAtlasTrendSeries.Todos);
+  Assert.AreEqual<TAtlasTrendSeries>(TAtlasTrendSeries.Warnings, mView.Tiles[0].Series);
+  Assert.AreEqual<TAtlasTrendSeries>(TAtlasTrendSeries.Todos, mView.Tiles[1].Series);
   Assert.AreEqual(4, Integer(Length(mView.Tiles[1].Values)));
   Assert.IsFalse(mView.Tiles[1].Has[0], 'Lücke');
   Assert.IsTrue(mView.Tiles[1].Has[1]);
