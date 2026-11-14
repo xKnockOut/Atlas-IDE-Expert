@@ -513,9 +513,9 @@ begin
   Assert.IsFalse(mTruncated);
 end;
 
-procedure TLspMethodBreakpointsTests.FirstLineSkipsTryLabelsAndDeclarations;
 const
-  cText =
+  /// <summary>Quelle zu FirstLineSkipsTryLabelsAndDeclarations; die Kommentare zählen die Zeilen ab 0.</summary>
+  cFirstLineText =
     'unit U;'#10 +                       // 0
     'interface'#10 +                     // 1
     'implementation'#10 +                // 2
@@ -555,11 +555,13 @@ const
     '  until False;'#10 +                // 36
     'end;'#10 +                          // 37
     'end.';
+
+procedure TLspMethodBreakpointsTests.FirstLineSkipsTryLabelsAndDeclarations;
 var
   mTree: TSyntaxTree;
   mBodies: TArray<TMethodBody>;
 begin
-  mTree := TSyntaxTreeCache.Parse(cText);
+  mTree := TSyntaxTreeCache.Parse(cFirstLineText);
   try
     mBodies := TLspMethodBreakpoints.Bodies(mTree);
   finally

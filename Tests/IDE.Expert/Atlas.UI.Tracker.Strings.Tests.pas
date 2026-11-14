@@ -57,10 +57,10 @@ begin
   Result.Text := AText;
 end;
 
-/// <summary>Die Texttabellen aller Features des Moduls.</summary>
-function Tables: TArray<TTable>;
+/// <summary>Texttabellen der Issue-Ansichten (Issue bis Anhänge).</summary>
+function IssueTables: TArray<TTable>;
 begin
-  SetLength(Result, 13);
+  SetLength(Result, 7);
   Result[0] := Table('Issue', Ord(High(TAtlasIssueTextId)) + 1,
     function(AIndex: Integer): string
     begin
@@ -96,36 +96,48 @@ begin
     begin
       Result := TAtlasAttachStrings.Text(TAtlasAttachTextId(AIndex));
     end);
-  Result[7] := Table('NewIssue', Ord(High(TAtlasNewIssueTextId)) + 1,
+end;
+
+/// <summary>Übrige Texttabellen des Trackers (Neues Issue bis Befehle).</summary>
+function MoreTables: TArray<TTable>;
+begin
+  SetLength(Result, 6);
+  Result[0] := Table('NewIssue', Ord(High(TAtlasNewIssueTextId)) + 1,
     function(AIndex: Integer): string
     begin
       Result := TAtlasNewIssueStrings.Text(TAtlasNewIssueTextId(AIndex));
     end);
-  Result[8] := Table('Settings', Ord(High(TAtlasOptionsTextId)) + 1,
+  Result[1] := Table('Settings', Ord(High(TAtlasOptionsTextId)) + 1,
     function(AIndex: Integer): string
     begin
       Result := TAtlasOptionsStrings.Text(TAtlasOptionsTextId(AIndex));
     end);
-  Result[9] := Table('MyIssues', Ord(High(TAtlasMyIssuesTextId)) + 1,
+  Result[2] := Table('MyIssues', Ord(High(TAtlasMyIssuesTextId)) + 1,
     function(AIndex: Integer): string
     begin
       Result := TAtlasMyIssuesStrings.Text(TAtlasMyIssuesTextId(AIndex));
     end);
-  Result[10] := Table('Sprint', Ord(High(TAtlasSprintTextId)) + 1,
+  Result[3] := Table('Sprint', Ord(High(TAtlasSprintTextId)) + 1,
     function(AIndex: Integer): string
     begin
       Result := TAtlasSprintStrings.Text(TAtlasSprintTextId(AIndex));
     end);
-  Result[11] := Table('TestResults', Ord(High(TAtlasTestResultsTextId)) + 1,
+  Result[4] := Table('TestResults', Ord(High(TAtlasTestResultsTextId)) + 1,
     function(AIndex: Integer): string
     begin
       Result := TAtlasTestResultsStrings.Text(TAtlasTestResultsTextId(AIndex));
     end);
-  Result[12] := Table('Commands', Ord(High(TAtlasCommandsTextId)) + 1,
+  Result[5] := Table('Commands', Ord(High(TAtlasCommandsTextId)) + 1,
     function(AIndex: Integer): string
     begin
       Result := TAtlasCommandsStrings.Text(TAtlasCommandsTextId(AIndex));
     end);
+end;
+
+/// <summary>Die Texttabellen aller Features des Moduls.</summary>
+function Tables: TArray<TTable>;
+begin
+  Result := IssueTables + MoreTables;
 end;
 
 procedure TAtlasTrackerStringsTests.EveryTextExistsInBothLanguages;
