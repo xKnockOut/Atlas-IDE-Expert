@@ -42,6 +42,8 @@ type
     class procedure AreNotEqual<T>(const AExpected, AActual: T; const AMessage: string = ''); overload; static;
     class procedure AreSame(AExpected, AActual: TObject; const AMessage: string = ''); overload; static;
     class procedure AreSame(const AExpected, AActual: IInterface; const AMessage: string = ''); overload; static;
+    class procedure AreNotSame(AExpected, AActual: TObject; const AMessage: string = ''); overload; static;
+    class procedure AreNotSame(const AExpected, AActual: IInterface; const AMessage: string = ''); overload; static;
     class procedure Contains(const AText, ASub: string; const AMessage: string = ''); overload; static;
     class procedure Contains(const AText, ASub: string; AIgnoreCase: Boolean; const AMessage: string = ''); overload; static;
     class procedure Contains<T>(const AArray: TArray<T>; const AValue: T; const AMessage: string = ''); overload; static;
@@ -103,6 +105,8 @@ class procedure Assert.AreNotEqual<T>(const AExpected, AActual: T; const AMessag
 begin if CompareMem(@AExpected, @AActual, SizeOf(T)) then Fails('AreNotEqual<T>', AMessage); end;
 class procedure Assert.AreSame(AExpected, AActual: TObject; const AMessage: string); begin if AExpected <> AActual then Fails('AreSame', AMessage); end;
 class procedure Assert.AreSame(const AExpected, AActual: IInterface; const AMessage: string); begin if AExpected <> AActual then Fails('AreSame', AMessage); end;
+class procedure Assert.AreNotSame(AExpected, AActual: TObject; const AMessage: string); begin if AExpected = AActual then Fails('AreNotSame', AMessage); end;
+class procedure Assert.AreNotSame(const AExpected, AActual: IInterface; const AMessage: string); begin if AExpected = AActual then Fails('AreNotSame', AMessage); end;
 class procedure Assert.Contains(const AText, ASub: string; const AMessage: string); begin Contains(AText, ASub, True, AMessage); end;
 class procedure Assert.Contains(const AText, ASub: string; AIgnoreCase: Boolean; const AMessage: string);
 begin

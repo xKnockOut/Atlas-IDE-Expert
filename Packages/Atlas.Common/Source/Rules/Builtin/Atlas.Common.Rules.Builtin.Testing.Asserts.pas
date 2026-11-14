@@ -5,11 +5,15 @@
 //   dunitx-istrue-equality   Assert.IsTrue(A = B), Assert.IsFalse(A <> B), Assert.IsTrue(X = nil),
 //                            Assert.IsTrue(Assigned(X)) und dasselbe mit not: Beim Fehlschlag meldet DUnitX nur,
 //                            dass die Bedingung nicht gilt, ohne die Werte. Korrektur zu AreEqual bzw. AreNotEqual
-//                            (Konstante vorn als erwarteter Wert) oder IsNull bzw. IsNotNull, die Meldung bleibt
+//                            (Konstante vorn als erwarteter Wert), AreSame bzw. AreNotSame (zwei Objekte oder zwei
+//                            Interfaces) oder IsNull bzw. IsNotNull, die Meldung bleibt
 //                            als weiteres Argument. Angeboten nur, wenn eine Überladung sicher passt: beide Seiten
 //                            string, Boolean oder Ganzzahl bis Integer, bei nil und Assigned eine Klasse, ein
-//                            Interface oder ein Zeiger. Sonst (Gleitkomma braucht ein Delta, Mengen, Records,
-//                            unbekannte Typen) nur der Hinweis.
+//                            Interface oder ein Zeiger. Sonst (Gleitkomma braucht ein Delta, Mengen, unbekannte
+//                            Typen) nur der Hinweis. Still bleiben Vergleiche, für die es kein passendes Assert
+//                            gibt (#2197): Records (AreEqual<T> vergleicht binär statt mit ihrem =, die Meldung
+//                            zeigt nur "(record)") sowie nil und Assigned bei Methodenzeigern und -referenzen
+//                            (IsNull und IsNotNull nehmen sie nicht).
 //   dunitx-swapped-expected  Assert.AreEqual, AreNotEqual, AreSame oder AreNotSame, deren erstes Argument kein
 //                            Literal und keine Konstante ist, das zweite aber schon: erwartet und erhalten sind
 //                            vertauscht, die Meldung beim Fehlschlag führt in die Irre. Korrektur tauscht die beiden
@@ -42,7 +46,9 @@ implementation
 uses
   System.SysUtils,
   System.StrUtils,
+  System.Math,
   System.Generics.Collections,
+  System.RegularExpressions,
   Atlas.Common.Documents.Contract,
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Pascal.SyntaxTree,
@@ -52,7 +58,8 @@ uses
   Atlas.Common.Semantics.NameResolver,
   Atlas.Common.Semantics.ExpressionTypes,
   Atlas.Common.Semantics.ExpressionTypes.Contract,
-  Atlas.Common.Localization.Texts;
+  Atlas.Common.Localization.Texts,
+  Atlas.Common.Rules.Builtin.Events;
 
 {$SCOPEDENUMS ON}
 
@@ -87,6 +94,10 @@ const
   cBooleanTypes: array[0..1] of string = ('Boolean', 'System.Boolean');
   cNullableTypes: array[0..3] of string = ('Pointer', 'TObject', 'IInterface', 'IUnknown');
 
+const
+  /// <summary>Rechte Seite der Deklaration eines Methodenzeigers oder einer Methodenreferenz.</summary>
+  cProceduralPattern = '^\s*(reference\s+to\s+)?(procedure|function)\b';
+
 type
   /// <summary>Vorschlag für die Bedingung in Assert.IsTrue bzw. Assert.IsFalse.</summary>
   TSuggestion = record
@@ -96,6 +107,8 @@ type
     Arguments: string;
     /// <summary>Passt eine Überladung sicher (Korrektur anbieten)?</summary>
     Safe: Boolean;
+    /// <summary>Gibt es überhaupt ein passendes Assert? Sonst kein Befund (Record, Methodenzeiger).</summary>
+    Fitting: Boolean;
   end;
 
   /// <summary>Eine Prüfung einer Datei für eine der beiden Regeln.</summary>
@@ -114,6 +127,11 @@ type
     function TypeOf(ANode: TSyntaxNode): string;
     function KindOf(ANode: TSyntaxNode): TValueKind;
     function IsNullable(ANode: TSyntaxNode): Boolean;
+    function IsReference(ANode: TSyntaxNode; out AKind: TIndexSymbolKind): Boolean;
+    function IndexedTypeIs(const ATypeName: string; AKind: TIndexSymbolKind; const APattern: string): Boolean;
+    function DeclaredText(const AType: TResolvedSymbol): string;
+    function IsRecord(ANode: TSyntaxNode): Boolean;
+    function IsProcedural(ANode: TSyntaxNode): Boolean;
     function SuggestNull(AValue: TSyntaxNode; AIsNull: Boolean): TSuggestion;
     function SuggestEqual(ACompare: TSyntaxNode; AEqual: Boolean): TSuggestion;
     function Suggest(ACondition: TSyntaxNode; APositive: Boolean; out ASuggestion: TSuggestion): Boolean;
@@ -318,6 +336,89 @@ begin
   Result := MatchText(TypeOf(Unwrapped(ANode)), cNullableTypes);
 end;
 
+function TAssertsCheck.IsReference(ANode: TSyntaxNode; out AKind: TIndexSymbolKind): Boolean;
+var
+  mSymbol, mType: TResolvedSymbol;
+begin
+  // Klasse oder Interface mit sicher bekanntem Typ: Vergleich auf Identität (AreSame, AreNotSame).
+  AKind := TIndexSymbolKind.TypeAlias;
+  Result := FScope.SureType(Unwrapped(ANode), mSymbol, mType) and (mType.Kind <> TResolvedKind.None) and
+    (mType.SymbolKind in [TIndexSymbolKind.ClassType, TIndexSymbolKind.InterfaceType]);
+  if Result then
+  begin
+    AKind := mType.SymbolKind;
+  end;
+end;
+
+function TAssertsCheck.IndexedTypeIs(const ATypeName: string; AKind: TIndexSymbolKind;
+  const APattern: string): Boolean;
+var
+  mLocation: TSymbolLocation;
+begin
+  // Typ aus einer anderen Unit: Art und Deklaration aus dem Index (ohne Index: unbekannt).
+  Result := False;
+  if (FContext.Index = nil) or (ATypeName = '') then
+  begin
+    Exit;
+  end;
+  for mLocation in FContext.Index.FindSymbols(Copy(ATypeName, LastDelimiter('.', ATypeName) + 1, MaxInt)) do
+  begin
+    if (mLocation.Symbol.Container = '') and (mLocation.Symbol.Kind = AKind) and ((APattern = '') or
+      TRegEx.IsMatch(Copy(mLocation.Symbol.Signature, Pos('=', mLocation.Symbol.Signature) + 1, MaxInt), APattern,
+      [roIgnoreCase])) then
+    begin
+      Exit(True);
+    end;
+  end;
+end;
+
+function TAssertsCheck.DeclaredText(const AType: TResolvedSymbol): string;
+var
+  mFirst, mLast, mIndex: Integer;
+begin
+  // Deklaration eines Typs dieser Unit hinter dem =, sonst ''.
+  Result := '';
+  if not SameFileName(AType.FileName, FScope.FileName) then
+  begin
+    Exit;
+  end;
+  mFirst := FScope.TokenAtPosition(AType.Range.StartPos);
+  mLast := Min(FScope.TokenAtPosition(AType.Range.EndPos), High(FScope.Tokens));
+  for mIndex := mFirst to mLast do
+  begin
+    Result := Result + ' ' + FScope.Tokens[mIndex].Text;
+  end;
+  Result := Copy(Result, Pos('=', Result) + 1, MaxInt);
+end;
+
+function TAssertsCheck.IsRecord(ANode: TSyntaxNode): Boolean;
+var
+  mSymbol, mType: TResolvedSymbol;
+begin
+  if FScope.SureType(Unwrapped(ANode), mSymbol, mType) and (mType.Kind <> TResolvedKind.None) then
+  begin
+    // Eingebaute Typen (Double, Integer) führt der Resolver als RecordType; Record-Helfer ebenso wenig.
+    Exit((mType.SymbolKind = TIndexSymbolKind.RecordType) and not mType.Builtin and not mType.IsHelper);
+  end;
+  Result := IndexedTypeIs(TypeOf(Unwrapped(ANode)), TIndexSymbolKind.RecordType, '');
+end;
+
+function TAssertsCheck.IsProcedural(ANode: TSyntaxNode): Boolean;
+var
+  mSymbol, mType: TResolvedSymbol;
+  mName: string;
+begin
+  if FScope.SureType(Unwrapped(ANode), mSymbol, mType) and (mType.Kind <> TResolvedKind.None) and
+    (mType.SymbolKind = TIndexSymbolKind.TypeAlias) and
+    TRegEx.IsMatch(DeclaredText(mType), cProceduralPattern, [roIgnoreCase]) then
+  begin
+    Exit(True);
+  end;
+  mName := TypeOf(Unwrapped(ANode));
+  Result := TEventCallWithoutAssignedRule.IsKnownEventType(mName) or
+    IndexedTypeIs(mName, TIndexSymbolKind.TypeAlias, cProceduralPattern);
+end;
+
 function TAssertsCheck.SuggestNull(AValue: TSyntaxNode; AIsNull: Boolean): TSuggestion;
 begin
   Result.Method := 'IsNotNull';
@@ -327,12 +428,14 @@ begin
   end;
   Result.Arguments := Source(AValue);
   Result.Safe := IsNullable(AValue);
+  Result.Fitting := Result.Safe or not IsProcedural(AValue);
 end;
 
 function TAssertsCheck.SuggestEqual(ACompare: TSyntaxNode; AEqual: Boolean): TSuggestion;
 var
   mExpected, mActual: TSyntaxNode;
   mKind: TValueKind;
+  mLeft, mRight: TIndexSymbolKind;
 begin
   // Die Konstante gehört als erwarteter Wert nach vorn; ohne Konstante links bleibt rechts der erwartete Wert.
   mExpected := ACompare[1];
@@ -350,6 +453,16 @@ begin
   Result.Arguments := Source(mExpected) + ', ' + Source(mActual);
   mKind := KindOf(mExpected);
   Result.Safe := (mKind <> TValueKind.Unknown) and (mKind = KindOf(mActual));
+  if not Result.Safe and IsReference(mExpected, mLeft) and IsReference(mActual, mRight) and (mLeft = mRight) then
+  begin
+    Result.Method := 'AreNotSame';
+    if AEqual then
+    begin
+      Result.Method := 'AreSame';
+    end;
+    Result.Safe := True;
+  end;
+  Result.Fitting := Result.Safe or not (IsRecord(mExpected) or IsRecord(mActual));
 end;
 
 function TAssertsCheck.Suggest(ACondition: TSyntaxNode; APositive: Boolean; out ASuggestion: TSuggestion): Boolean;
@@ -407,7 +520,7 @@ var
   mSuggestion: TSuggestion;
   mFixes: TArray<TRuleFix>;
 begin
-  if not Suggest(ACall[1], SameText(AMethod, 'IsTrue'), mSuggestion) then
+  if not Suggest(ACall[1], SameText(AMethod, 'IsTrue'), mSuggestion) or not mSuggestion.Fitting then
   begin
     Exit;
   end;

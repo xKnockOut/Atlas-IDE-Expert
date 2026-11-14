@@ -1,8 +1,9 @@
 ﻿unit Atlas.Common.Rules.Builtin.Testing.Asserts.Tests;
 
 // Tests der Regeln dunitx-istrue-equality und dunitx-swapped-expected (#1780): Korrektur zu AreEqual, AreNotEqual,
-// IsNull und IsNotNull samt Meldungsargument, Hinweis ohne Korrektur bei Gleitkomma, Aufzählung, NativeInt und
-// Methodenzeiger, vertauschte Argumente mit Literal, Konstante und Aufzählungswert, stille Fälle.
+// AreSame, AreNotSame, IsNull und IsNotNull samt Meldungsargument, Hinweis ohne Korrektur bei Gleitkomma,
+// Aufzählung und NativeInt, still bei Records und nil/Assigned auf Methodenzeigern und -referenzen (kein
+// passendes Assert, #2197), vertauschte Argumente mit Literal, Konstante und Aufzählungswert, stille Fälle.
 
 interface
 
@@ -21,6 +22,8 @@ type
     procedure HintWithoutFix;
     [Test]
     procedure EqualitySilent;
+    [Test]
+    procedure SilentWithoutFittingAssert;
     [Test]
     procedure SwappedArguments;
     [Test]
@@ -42,7 +45,7 @@ uses
 
 const
   // Zeile der ersten Anweisung im Rumpf von Pruefe (ab 0).
-  cBodyLine = 33;
+  cBodyLine = 34;
 
 /// <summary>Testunit mit ABody als Rumpf von TFallTests.Pruefe.</summary>
 function TestUnit(const ABody: string): string;
@@ -50,9 +53,12 @@ begin
   Result := 'unit Fall.Tests;'#10'interface'#10'uses'#10'  DUnitX.TestFramework;'#10'type'#10 +
     '  TFake = class'#10'  public'#10'    Calls: Integer;'#10'    Name: string;'#10'    Wert: Double;'#10 +
     '  end;'#10'  IDing = interface'#10'  end;'#10'  TFarbe = (Rot, Gruen);'#10 +
-    '  TAktion = procedure of object;'#10'  [TestFixture]'#10'  TFallTests = class'#10'  private'#10 +
-    '    FFake: TFake;'#10'    FDing: IDing;'#10'    FListe: TArray<Integer>;'#10'    FFarbe: TFarbe;'#10 +
-    '    FAktion: TAktion;'#10'  public'#10'    [Test]'#10'    procedure Pruefe;'#10'  end;'#10 +
+    '  TAktion = procedure of object; TFrage = reference to function: Boolean;'#10 +
+    '  TPunkt = record X: Integer; class operator Equal(const A, B: TPunkt): Boolean; end;'#10 +
+    '  [TestFixture]'#10'  TFallTests = class'#10'  private'#10 +
+    '    FFake, FAnderer: TFake;'#10'    FDing: IDing;'#10'    FListe: TArray<Integer>;'#10'    FFarbe: TFarbe;'#10 +
+    '    FAktion: TAktion; FFrage: TFrage; FPunkt, FAnders: TPunkt;'#10'  public'#10'    [Test]'#10 +
+    '    procedure Pruefe;'#10'  end;'#10 +
     'implementation'#10'const'#10'  cVier = 4;'#10'  cName = ''Atlas'';'#10 +
     'procedure TFallTests.Pruefe;'#10'begin'#10 + ABody + #10'end;'#10'initialization'#10 +
     '  TDUnitX.RegisterTestFixture(TFallTests);'#10'end.';
@@ -112,6 +118,9 @@ begin
   Assert.AreEqual('Assert.IsNotNull(FDing, ''da'');', Equality('  Assert.IsTrue(Assigned(FDing), ''da'');'));
   Assert.AreEqual('Assert.IsNull(FFake);', Equality('  Assert.IsFalse(Assigned(FFake));'));
   Assert.AreEqual('Assert.IsNotNull(FFake);', Equality('  Assert.IsFalse(nil = FFake);'));
+  // Zwei Objekte: Identität.
+  Assert.AreEqual('Assert.AreSame(FAnderer, FFake);', Equality('  Assert.IsTrue(FFake = FAnderer);'));
+  Assert.AreEqual('Assert.AreNotSame(FAnderer, FFake);', Equality('  Assert.IsFalse(FFake = FAnderer);'));
 end;
 
 procedure TDUnitXAssertsTests.HintWithoutFix;
@@ -142,6 +151,17 @@ begin
     []);
   Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TDUnitXIsTrueEqualityRule.Create, mSource, '',
     'Fall.Tests.pas'))));
+end;
+
+procedure TDUnitXAssertsTests.SilentWithoutFittingAssert;
+begin
+  // Record mit eigenem =: AreEqual<T> vergliche binär. Methodenzeiger und -referenzen: IsNull passt nicht.
+  Assert.AreEqual(0, Count(TDUnitXIsTrueEqualityRule.Create, '  Assert.IsTrue(FPunkt = FAnders);'#10 +
+    '  Assert.IsFalse(FPunkt <> FAnders);'#10'  Assert.IsTrue(Assigned(FAktion));'#10 +
+    '  Assert.IsFalse(FFrage = nil);'#10'  Assert.IsTrue(not Assigned(FFrage));'));
+  // Ein Objekt daneben meldet weiter.
+  Assert.AreEqual(1, Count(TDUnitXIsTrueEqualityRule.Create, '  Assert.IsTrue(FPunkt = FAnders);'#10 +
+    '  Assert.IsTrue(Assigned(FFake));'));
 end;
 
 procedure TDUnitXAssertsTests.SwappedArguments;

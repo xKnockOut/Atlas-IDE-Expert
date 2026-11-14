@@ -127,9 +127,11 @@ const
     '      "group": "packages",',
     '      "description": "Assert.IsTrue(A = B), Assert.IsFalse(A <> B), Assert.IsTrue(X = nil), Assert.IsTrue(Assigned(X)) and the same with not: when the test fails, DUnitX only reports that the conditio' +
     'n does not hold, without the compared values. Assert.AreEqual or AreNotEqual shows expected and actual, IsNull and IsNotNull say what was found. Quick fix (safe): AreEqual or AreNotEqual with the cons' +
-    'tant or literal first as the expected value, IsNull or IsNotNull for nil and Assigned; a message argument is kept. It is offered only when an overload certainly fits: both sides string, Boolean or an ' +
-    'integer up to Integer, for nil and Assigned a class, an interface or a pointer. Floating point (AreEqual needs a tolerance), Cardinal, Int64, NativeInt (Length of a dynamic array), enumerations, sets,' +
-    ' records, method pointers and unknown types get the hint without a fix. Only in test units (uses DUnitX.TestFramework, TestFramework or TestInsight.*). High confidence.",',
+    'tant or literal first as the expected value, AreSame or AreNotSame for two objects or two interfaces, IsNull or IsNotNull for nil and Assigned; a message argument is kept. It is offered only when an o' +
+    'verload certainly fits: both sides string, Boolean or an integer up to Integer, for nil and Assigned a class, an interface or a pointer. Floating point (AreEqual needs a tolerance), Cardinal, Int64, N' +
+    'ativeInt (Length of a dynamic array), enumerations, sets and unknown types get the hint without a fix (AreEqual<T> with an explicit type, or with a tolerance). Records (AreEqual<T> compares bytes inst' +
+    'ead of using their =) and nil or Assigned on method pointers and method references stay silent: no assertion fits them. Only in test units (uses DUnitX.TestFramework, TestFramework or TestInsight.*). ' +
+    'High confidence.",',
     '      "bad": "Assert.IsTrue(FFake.Calls = 1, ''Aufrufe'');",',
     '      "good": "Assert.AreEqual(1, FFake.Calls, ''Aufrufe'');",',
     '      "safeFix": true',
