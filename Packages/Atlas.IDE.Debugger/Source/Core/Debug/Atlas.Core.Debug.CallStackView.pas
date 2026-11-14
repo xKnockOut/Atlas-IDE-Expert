@@ -105,6 +105,35 @@ uses
   System.SysUtils,
   System.Math;
 
+/// <summary>Vergleichswert eines Parameters: der ausgewertete Wert, wenn beide einen haben, sonst der der IDE.
+/// </summary>
+function SameParam(const A, B: TAtlasCallStackParam): Boolean;
+begin
+  if (A.Value <> '') and (B.Value <> '') then
+  begin
+    Result := A.Value = B.Value;
+  end
+  else
+  begin
+    Result := A.Raw = B.Raw;
+  end;
+end;
+
+/// <summary>Indizes der Einträge, die zum Stapel des Threads gehören (ohne Herkunft).</summary>
+function ThreadEntries(const AEntries: TAtlasDebugStackEntries): TArray<Integer>;
+var
+  mIndex: Integer;
+begin
+  Result := nil;
+  for mIndex := 0 to High(AEntries) do
+  begin
+    if not AEntries[mIndex].Origin then
+    begin
+      Result := Result + [mIndex];
+    end;
+  end;
+end;
+
 { TAtlasDebugStackEntry }
 
 function TAtlasDebugStackEntry.Routine: string;
@@ -349,58 +378,6 @@ begin
   end;
 end;
 
-class function TAtlasDebugStackView.AreaOf(const AUnitName: string): string;
-const
-  cPrefixes: array[0..6] of string = ('Vcl', 'FMX', 'System', 'SysInit', 'Winapi', 'Data', 'Xml');
-  cAreas: array[0..6] of string = ('VCL', 'FMX', 'RTL', 'RTL', 'Windows', 'Data', 'XML');
-var
-  mFirst: string;
-  mIndex: Integer;
-begin
-  mFirst := AUnitName;
-  if Pos('.', mFirst) > 0 then
-  begin
-    mFirst := Copy(mFirst, 1, Pos('.', mFirst) - 1);
-  end;
-  for mIndex := 0 to High(cPrefixes) do
-  begin
-    if SameText(mFirst, cPrefixes[mIndex]) then
-    begin
-      Exit(cAreas[mIndex]);
-    end;
-  end;
-  Result := mFirst;
-end;
-
-/// <summary>Vergleichswert eines Parameters: der ausgewertete Wert, wenn beide einen haben, sonst der der IDE.
-/// </summary>
-function SameParam(const A, B: TAtlasCallStackParam): Boolean;
-begin
-  if (A.Value <> '') and (B.Value <> '') then
-  begin
-    Result := A.Value = B.Value;
-  end
-  else
-  begin
-    Result := A.Raw = B.Raw;
-  end;
-end;
-
-/// <summary>Indizes der Einträge, die zum Stapel des Threads gehören (ohne Herkunft).</summary>
-function ThreadEntries(const AEntries: TAtlasDebugStackEntries): TArray<Integer>;
-var
-  mIndex: Integer;
-begin
-  Result := nil;
-  for mIndex := 0 to High(AEntries) do
-  begin
-    if not AEntries[mIndex].Origin then
-    begin
-      Result := Result + [mIndex];
-    end;
-  end;
-end;
-
 procedure TAtlasDebugStackView.CompareWith(const APrevious: TAtlasDebugStackView);
 var
   mStep, mCurrent, mOld, mParam: Integer;
@@ -477,6 +454,29 @@ begin
   begin
     Result.Entries := Result.Entries + [Entries[mIndex]];
   end;
+end;
+
+class function TAtlasDebugStackView.AreaOf(const AUnitName: string): string;
+const
+  cPrefixes: array[0..6] of string = ('Vcl', 'FMX', 'System', 'SysInit', 'Winapi', 'Data', 'Xml');
+  cAreas: array[0..6] of string = ('VCL', 'FMX', 'RTL', 'RTL', 'Windows', 'Data', 'XML');
+var
+  mFirst: string;
+  mIndex: Integer;
+begin
+  mFirst := AUnitName;
+  if Pos('.', mFirst) > 0 then
+  begin
+    mFirst := Copy(mFirst, 1, Pos('.', mFirst) - 1);
+  end;
+  for mIndex := 0 to High(cPrefixes) do
+  begin
+    if SameText(mFirst, cPrefixes[mIndex]) then
+    begin
+      Exit(cAreas[mIndex]);
+    end;
+  end;
+  Result := mFirst;
 end;
 
 { TAtlasDebugStackHistory }

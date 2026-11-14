@@ -56,6 +56,7 @@ uses
   Shell.Mcp.Services,
   Shell.Mcp.Tools,
   Shell.Mcp.Startup,
+  Shell.Mcp.ServerSetup,
   Atlas.Text.LogMarks,
   Atlas.Common.Localization.Texts;
 

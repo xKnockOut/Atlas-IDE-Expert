@@ -176,6 +176,7 @@
         <DCCReference Include="Source\Shell\Shell.Mcp.Ide.pas"/>
         <DCCReference Include="Source\Shell\Shell.Mcp.Services.pas"/>
         <DCCReference Include="Source\Shell\Shell.Mcp.Startup.pas"/>
+        <DCCReference Include="Source\Shell\Shell.Mcp.ServerSetup.pas"/>
         <DCCReference Include="Source\Shell\Shell.Mcp.Tools.pas"/>
         <DCCReference Include="Source\Shell\Shell.Mcp.NavigationTools.pas"/>
         <DCCReference Include="Source\Shell\Shell.Mcp.BuildTestTools.pas"/>
