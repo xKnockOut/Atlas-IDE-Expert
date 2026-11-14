@@ -227,8 +227,8 @@ Atlas.Common.Diagnostics.RuntimeReport.Tests
 Atlas.Common.Metrics.Calculator.Tests
 Atlas.Common.Metrics.Report.Tests
 Atlas.Common.Monitor.Servers.Tests
-Atlas.Common.Profiling.Profile.Tests
-Atlas.Common.Profiling.Report.Tests
+Atlas.Text.Profile.Tests
+Atlas.Text.ProfileReport.Tests
 Atlas.Common.Monitor.Settings.Tests
 Atlas.Common.Monitor.Texts.Tests
 Atlas.Common.Monitor.Commands.Tests

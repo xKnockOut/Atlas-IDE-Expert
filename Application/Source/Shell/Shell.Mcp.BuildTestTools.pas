@@ -29,7 +29,7 @@ uses
   Atlas.Common.Mcp.BuildTools,
   Atlas.Common.Mcp.TestTools,
   Atlas.Common.Mcp.ProfileTools,
-  Atlas.Common.Profiling.Profile,
+  Atlas.Text.Profile,
   Atlas.Common.Compiler.Contract,
   Atlas.Text.Lines,
   Atlas.Text.DUnitX,

@@ -1,4 +1,4 @@
-﻿unit Atlas.Common.Profiling.Profile.Tests;
+﻿unit Atlas.Text.Profile.Tests;
 
 // Tests für die Profildatei des Stichproben-Profilers (#2057): Zusammenfassen gleicher Rahmen und Stapel, JSON hin
 // und zurück, kaputte Dateien, Ablage der letzten fünf Läufe und Bibliotheks-Units.
@@ -29,7 +29,7 @@ implementation
 uses
   System.SysUtils,
   System.DateUtils,
-  Atlas.Common.Profiling.Profile;
+  Atlas.Text.Profile;
 
 function Frame(const ARoutine: string; ALine: Integer; AIsLibrary: Boolean): TAtlasProfileFrame;
 begin

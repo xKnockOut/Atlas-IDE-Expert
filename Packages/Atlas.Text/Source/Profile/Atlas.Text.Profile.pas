@@ -1,4 +1,4 @@
-﻿unit Atlas.Common.Profiling.Profile;
+﻿unit Atlas.Text.Profile;
 
 // Stichproben-Profiler (#2057), Fachlogik: ein Lauf als Datei. Wer die Proben nimmt (Prober im Plugin bzw. Server),
 // gibt je Probe den aufgelösten Aufrufstapel an TAtlasProfileBuilder; daraus entsteht ein TAtlasProfile mit
@@ -7,7 +7,7 @@
 //   {"version":1, "program":…, "project":…, "platform":…, "startedAt":ISO 8601, "durationMs":…, "intervalMs":…,
 //    "samples":…, "frames":[{"routine","unit","file","line","library"}],
 //    "stacks":[{"frames":[0,4,7], "count":12}]}            Index 0 eines Stapels = innerster Rahmen.
-// Auswertung (Methoden, Zeilen, Vergleich) in Atlas.Common.Profiling.Report.
+// Auswertung (Methoden, Zeilen, Vergleich) in Atlas.Text.ProfileReport.
 
 interface
 

@@ -1,6 +1,6 @@
-﻿unit Atlas.Common.Profiling.Report;
+﻿unit Atlas.Text.ProfileReport;
 
-// Stichproben-Profiler (#2057), Fachlogik: Auswertung eines Laufs (Atlas.Common.Profiling.Profile).
+// Stichproben-Profiler (#2057), Fachlogik: Auswertung eines Laufs (Atlas.Text.Profile).
 // - Methoden nach Eigenanteil (innerster Rahmen) und Gesamtanteil (irgendwo im Stapel, je Probe einmal), dazu die
 //   heißeste Zeile jeder Methode (die Zeile, an der sie in den meisten Proben stand).
 // - „Nur eigener Code“: Folgen von Bibliotheksrahmen (RTL, VCL …) zählen als ihr äußerster Rahmen, also die
@@ -14,7 +14,7 @@ interface
 uses
   System.SysUtils,
   System.Generics.Collections,
-  Atlas.Common.Profiling.Profile;
+  Atlas.Text.Profile;
 
 type
   TAtlasProfileMethod = record
