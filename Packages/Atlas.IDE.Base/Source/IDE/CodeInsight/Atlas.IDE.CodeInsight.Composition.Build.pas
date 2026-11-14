@@ -33,6 +33,7 @@ procedure MetricsReport;
 implementation
 
 uses
+  System.Generics.Collections, // Inline-Funktionen von TJSONArray (H2443)
   System.SysUtils,
   System.JSON,
   System.IOUtils,

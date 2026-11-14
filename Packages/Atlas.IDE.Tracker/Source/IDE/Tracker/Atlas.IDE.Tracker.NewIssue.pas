@@ -97,6 +97,7 @@ uses
   Atlas.IDE.Tracker.IssuesContext,
   Atlas.IDE.Tracker.NewIssuePlace,
   Atlas.IDE.Contracts.VersionControl,
+  Atlas.Core.Settings.TeamFile, // TAtlasTeamSettings
   Atlas.IDE.Foundation.TeamFile,
   Atlas.IDE.Foundation.Files;
 

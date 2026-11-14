@@ -2115,6 +2115,8 @@ uses
   Shell.Composition.Refactorings.Fixes in '..\Application\Source\Shell\Shell.Composition.Refactorings.Fixes.pas',
   Shell.Composition.Refactorings.Editing in '..\Application\Source\Shell\Shell.Composition.Refactorings.Editing.pas',
   Shell.Composition.Stepping in '..\Application\Source\Shell\Shell.Composition.Stepping.pas',
+  Shell.Composition.MethodBreakpoints in '..\Application\Source\Shell\Shell.Composition.MethodBreakpoints.pas',
+  Shell.Composition.Profiler in '..\Application\Source\Shell\Shell.Composition.Profiler.pas',
   Shell.Composition.Baselines in '..\Application\Source\Shell\Shell.Composition.Baselines.pas',
   Shell.Composition.Overviews in '..\Application\Source\Shell\Shell.Composition.Overviews.pas',
   Shell.Composition.Analysis in '..\Application\Source\Shell\Shell.Composition.Analysis.pas',

@@ -36,6 +36,7 @@ type
 implementation
 
 uses
+  System.Generics.Collections, // Inline-Funktionen von TJSONArray (H2443)
   Atlas.Common.Pascal.TreeCache,
   Atlas.Common.Editing.CodeActions,
   Atlas.Common.Editing.RaiseVisibility,

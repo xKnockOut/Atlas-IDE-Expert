@@ -141,6 +141,7 @@ uses
   Vcl.ExtCtrls,
   Atlas.WinBase.Process,
   Atlas.Core.Projects.Matching,
+  Atlas.Core.Settings.Layers,
   Atlas.Core.Settings.TeamFile,
   Atlas.Core.Projects.VcsSettings,
   Atlas.IDE.Foundation.TeamFile;
@@ -256,6 +257,13 @@ begin
     on Exception do
       Result := TVcsSettings.Default;
   end;
+end;
+
+/// <summary>Globale Einstellungsdatei (%APPDATA%\Atlas\settings.json); beim Umbau nach Core (#1967) mit
+/// ReadSettings entfallen, von Current aber weiter gebraucht.</summary>
+function SettingsFile: string;
+begin
+  Result := TAtlasSettingsFiles.GlobalFile(GetEnvironmentVariable('APPDATA'));
 end;
 
 function Current: TVcsSettings;

@@ -25,6 +25,8 @@ implementation
 
 uses
   System.SysUtils,
+  // Inline-Funktionen von TJSONArray (H2443).
+  System.Generics.Collections,
   Atlas.Common.JsonRpc.Contract,
   Atlas.Common.Lsp.Contract,
   Atlas.Common.Documents.Uris,

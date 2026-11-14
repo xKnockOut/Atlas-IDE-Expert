@@ -16,11 +16,13 @@ uses
   Vcl.ComCtrls,
   Vcl.ActnList,
   Vcl.Forms,
+  Vcl.Menus,
   Atlas.Core.Tracker.Contract,
   Atlas.Core.Tracker.Preview,
   Atlas.UI.Tracker.DocBox,
   Atlas.UI.Tracker.DevelopmentView,
-  Atlas.UI.Tracker.IssueBoxes;
+  Atlas.UI.Tracker.IssueBoxes,
+  Atlas.UI.Tracker.CommentEditor;
 
 type
   {$SCOPEDENUMS ON}

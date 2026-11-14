@@ -64,6 +64,7 @@ type
 implementation
 
 uses
+  System.Generics.Collections, // Inline-Funktionen von TJSONArray (H2443)
   System.RegularExpressions,
   Atlas.Text.Lines,
   Atlas.Common.JsonRpc.Contract,

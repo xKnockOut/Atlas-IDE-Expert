@@ -98,6 +98,7 @@ type
     FState: TState;
     procedure BuildColumns;
     procedure CaptureColumns;
+    function ListReady: Boolean;
     procedure Fill;
     procedure FillKeeping(ASelected: TStrings);
     procedure AddItems(const AEntry: TAtlasBreakpointGroupEntry; AGroupId: Integer; ASelected: TStrings);
@@ -461,7 +462,7 @@ begin
   AFrame.FControls.List.FullDrag := True;
   AFrame.FControls.List.OnKeyDown := AActions.ListKeyDown;
   AFrame.FControls.List.OnDblClick := AActions.OpenClick;
-  AFrame.FControls.List.OnSelectItem := ListSelectItem;
+  AFrame.FControls.List.OnSelectItem := AFrame.ListSelectItem;
 end;
 
 procedure CreateMenu(AFrame: TAtlasDebugBreakpointsFrame; AActions: TBreakpointsActions);
@@ -695,12 +696,24 @@ begin
   Fill;
 end;
 
+/// <summary>Fenster der Liste anlegen, sobald der Frame eines hat.</summary>
+/// <remarks>Kindfenster entstehen erst beim Zeigen; ohne das blieben Spalten und Zeilen auf einem
+/// nicht gezeigten Formular bzw. Reiter still leer (CreateWnd des Frames läuft vor dem der Liste).</remarks>
+function TAtlasDebugBreakpointsFrame.ListReady: Boolean;
+begin
+  if not FControls.List.HandleAllocated and HandleAllocated then
+  begin
+    FControls.List.HandleNeeded;
+  end;
+  Result := FControls.List.HandleAllocated;
+end;
+
 procedure TAtlasDebugBreakpointsFrame.BuildColumns;
 var
   mInfo: TAtlasBreakpointColumnInfo;
   mColumn: TListColumn;
 begin
-  if not FControls.List.HandleAllocated then
+  if not ListReady then
   begin
     Exit;
   end;
@@ -762,7 +775,7 @@ var
   mIndex: Integer;
   mGroup: TListGroup;
 begin
-  if not FControls.List.HandleAllocated then
+  if not ListReady then
   begin
     ASelected.Free;
     Exit;

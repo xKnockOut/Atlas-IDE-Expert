@@ -37,6 +37,7 @@ uses
   System.SysUtils,
   System.Classes,
   System.IOUtils,
+  DUnitX.Exceptions, // ETestFailure
   Atlas.Testing.Approval;
 
 procedure WriteFile(const AFileName, AText: string);
@@ -106,6 +107,18 @@ begin
   Assert.AreEqual('{"a": 1}'#10'{"b": 2}', TApproval.Normalized(TFile.ReadAllText(mReceived, TEncoding.UTF8)));
 end;
 
+/// <summary>Normalisierer „Großbuchstaben“ in eigener Routine: Anonyme Methode als Argument einer Überladung lehnt
+/// Delphi ab (E2250); in einer lokalen Variablen, die die Testmethode einfängt, hielte sich der Rahmen selbst fest.
+/// </summary>
+function UpperNormalizer: TApprovalNormalizer;
+begin
+  Result :=
+    function(const AText: string): string
+    begin
+      Result := UpperCase(AText);
+    end;
+end;
+
 procedure TAtlasTestingApprovalTests.VerifyFailsWithTheMessage;
 begin
   TApproval.Folder := FFolder;
@@ -125,11 +138,7 @@ begin
   Assert.WillNotRaise(
     procedure
     begin
-      TApproval.Verify('wert', 'TBeispiel.Neu', '.txt',
-        function(const AText: string): string
-        begin
-          Result := UpperCase(AText);
-        end);
+      TApproval.Verify('wert', 'TBeispiel.Neu', '.txt', UpperNormalizer());
     end);
 end;
 

@@ -439,7 +439,9 @@ begin
     Assert.IsTrue(mWide.ChildCount > 16, IntToStr(mWide.ChildCount));
     for mOffset := 0 to Length(mText) + 1 do
     begin
-      Assert.AreSame(LinearChildAround(mWide, mOffset), TResolverNodes.ChildAround(mWide, mOffset),
+      // Zeigervergleich statt Assert.AreSame: DUnitX ruft dort Equals auf dem erwarteten Objekt auf und
+      // stürzt bei nil ab (Offset zwischen zwei Kindern, beide Suchen liefern nil).
+      Assert.IsTrue(LinearChildAround(mWide, mOffset) = TResolverNodes.ChildAround(mWide, mOffset),
         IntToStr(mOffset));
     end;
   finally

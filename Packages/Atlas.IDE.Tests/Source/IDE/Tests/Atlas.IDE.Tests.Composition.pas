@@ -115,6 +115,7 @@ uses
   Atlas.Core.VersionControl.Adapters.ProcessRunner,
   Atlas.Core.Modules.FeatureParts,
   Atlas.IDE.Foundation.Settings,
+  Atlas.Core.Tests.Debug, // TAtlasTestCompareHooks
   Atlas.IDE.Tests.Output,
   Atlas.IDE.Tests.Runner,
   Atlas.IDE.Tests.OnSave,

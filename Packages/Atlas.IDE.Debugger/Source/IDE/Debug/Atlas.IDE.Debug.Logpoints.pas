@@ -78,6 +78,7 @@ type
 implementation
 
 uses
+  Winapi.Windows, // GetTickCount64 (in Delphi nicht über System.SysUtils)
   ToolsAPI.Editor,
   Atlas.Core.Debug.Logpoint,
   Atlas.IDE.Foundation.EditorBuffer,

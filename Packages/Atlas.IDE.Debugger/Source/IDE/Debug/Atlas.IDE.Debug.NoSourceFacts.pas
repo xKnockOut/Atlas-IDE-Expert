@@ -214,7 +214,7 @@ begin
   begin
     Exit;
   end;
-  TAtlasNoSource.Locate(mPlace, Folders, FileExistsFunc, Result);
+  TAtlasNoSource.Locate(mPlace, Folders, FileExistsFunc(), Result);
   mLibrary := LibraryFolder;
   Result.LibraryUnit := (Result.DcuPath <> '') and (mLibrary <> '') and
     TAtlasNoSource.IsUnder(Result.DcuPath, [mLibrary]);

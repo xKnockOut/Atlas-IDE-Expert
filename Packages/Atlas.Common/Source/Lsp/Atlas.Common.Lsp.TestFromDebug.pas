@@ -40,6 +40,7 @@ type
 implementation
 
 uses
+  System.Generics.Collections, // Inline-Funktionen von TJSONArray (H2443)
   System.SysUtils,
   Atlas.Text.Json,
   Atlas.Common.Documents.Uris,

@@ -47,6 +47,7 @@ type
 implementation
 
 uses
+  System.Generics.Collections, // Inline-Funktionen von TJSONArray (H2443)
   Atlas.Common.Documents.Contract,
   Atlas.Common.JsonRpc.Contract,
   Atlas.Common.Pascal.SyntaxTree,

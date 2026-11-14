@@ -125,6 +125,7 @@ uses
   Atlas.Core.Settings.Plugin,
   Atlas.Core.Debug.CallStack,
   Atlas.Core.Debug.Forecast,
+  Atlas.IDE.Foundation.EditorBuffer,
   Atlas.IDE.Foundation.Files,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Debug.Sources,

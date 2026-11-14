@@ -337,7 +337,8 @@ begin
     mState.Ticks := GetTickCount64;
     mState.Debugging := Debugging;
     mState.ProjectLoading := FProjectLoading;
-    mState.CurrentLayout := mCombo.Text;
+    // Text ist in TCustomComboBox protected (E2362): über die Zugriffsklasse.
+    mState.CurrentLayout := TComboAccess(mCombo).Text;
     mState.Layouts := ItemsOf(mCombo);
     if mOptions.ReturnTo = TAtlasDesktopReturn.IdeDefault then
     begin

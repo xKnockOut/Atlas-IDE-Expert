@@ -21,8 +21,6 @@ type
   [TestFixture]
   THoverLayoutTests = class
   private
-    /// <summary>Kurze Texte, an denen die Tests die Abschnitte erkennen.</summary>
-    function Texts: TAtlasHoverTexts;
     function Input(const AView: TAtlasHoverView; AWidth: Integer): TAtlasHoverInput;
     function Build(const AView: TAtlasHoverView; AWidth: Integer): TAtlasHoverLayout; overload;
     function Build(const AInput: TAtlasHoverInput): TAtlasHoverLayout; overload;
@@ -173,11 +171,6 @@ begin
 end;
 
 { THoverLayoutTests }
-
-function THoverLayoutTests.Texts: TAtlasHoverTexts;
-begin
-  Result := HoverTestTexts;
-end;
 
 function THoverLayoutTests.Input(const AView: TAtlasHoverView; AWidth: Integer): TAtlasHoverInput;
 begin

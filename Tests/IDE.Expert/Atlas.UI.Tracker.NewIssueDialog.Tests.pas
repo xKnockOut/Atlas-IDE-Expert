@@ -295,7 +295,7 @@ begin
     Assert.AreEqual(1, mDialog.Parts.Content.FormPanel.Inputs[1].Box.Choice -
       mDialog.Parts.Content.FormPanel.Inputs[1].BoxOffset,
       'Delphi 13 (64-Bit-IDE)');
-    Assert.IsTrue(mDialog.Parts.Content.FormPanel.Inputs[3].Memo.Text.Contains('// TODO Speicherleck'),
+    Assert.IsTrue(string(mDialog.Parts.Content.FormPanel.Inputs[3].Memo.Text).Contains('// TODO Speicherleck'),
       'Code ins textarea mit render');
     mDialog.Parts.Content.FormPanel.Inputs[2].Memo.Text := 'Öffnen und schließen';
     mDraft := mDialog.Draft;
@@ -308,7 +308,7 @@ begin
     mDialog.Parts.TemplateBox.OnChange(mDialog.Parts.TemplateBox);
     Assert.AreEqual('[Wunsch] Speicherleck beim Schließen', mDialog.Parts.TitleEdit.Text);
     Assert.IsFalse(mDialog.Parts.Content.FormPanel.Visible);
-    Assert.IsTrue(mDialog.Parts.Content.DescriptionMemo.Text.StartsWith('## Was fehlt?'));
+    Assert.IsTrue(string(mDialog.Parts.Content.DescriptionMemo.Text).StartsWith('## Was fehlt?'));
   finally
     mDialog.Free;
   end;

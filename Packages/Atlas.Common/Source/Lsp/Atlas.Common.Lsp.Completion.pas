@@ -137,6 +137,7 @@ type
 implementation
 
 uses
+  System.Generics.Collections, // Inline-Funktionen von TJSONArray (H2443)
   Atlas.Common.Lsp.Completion.Forms,
   System.SysUtils,
   Atlas.Common.Configuration.Contract,

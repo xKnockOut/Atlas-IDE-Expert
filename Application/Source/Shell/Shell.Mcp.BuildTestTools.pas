@@ -21,6 +21,8 @@ uses
   Winapi.Windows,
 {$ENDIF}
   System.SysUtils,
+  // Inline-Funktionen von TJSONArray (H2443).
+  System.Generics.Collections,
   System.Classes,
   System.SyncObjs,
   System.IOUtils,

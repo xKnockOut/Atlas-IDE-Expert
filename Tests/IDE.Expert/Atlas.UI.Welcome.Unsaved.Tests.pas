@@ -25,6 +25,7 @@ type
 implementation
 
 uses
+  System.UITypes, // TColor
   System.Classes,
   Winapi.Windows,
   System.SysUtils,
@@ -154,6 +155,7 @@ begin
     TAtlasStrings.Language := mSaved;
   end;
 end;
+
 procedure TAtlasWelcomeUnsavedFrameTests.EmptyTextNamesState;
 var
   mSaved: TAtlasLanguage;

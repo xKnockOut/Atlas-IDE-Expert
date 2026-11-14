@@ -141,6 +141,7 @@ type
 implementation
 
 uses
+  System.Generics.Collections, // Inline-Funktionen von TJSONArray (H2443)
   Atlas.Common.Lsp.Internals.Namespaces,
   Atlas.Common.Index.Files,
   System.Math,

@@ -26,12 +26,13 @@ type
     cDebugDcusOption = 'DCC_DebugDCUs';
     cDebugInfoOption = 'DCC_DebugInformation';
   private
-    class function Confirm(const AText: string): Boolean; static;
     class function HasDebugInfo(const AProject: IOTAProject; const AName: string): Boolean; static;
     /// <summary>„Debug“ mit Debug-Informationen, sonst die erste mit (ohne „Base“); '' ohne.</summary>
     class function ChooseConfiguration(const AProject: IOTAProject): string; static;
     class function ExecuteAction(const AName: string; AShortCut: TShortCut): Boolean; static;
   public
+    /// <summary>Ja/Nein-Rückfrage mit AText (auch für Reattach).</summary>
+    class function Confirm(const AText: string): Boolean; static;
     /// <summary>Text der Korrektur im Tooltip.</summary>
     class function FixText(AFix: TAtlasUnavailableFix): string; static;
     /// <summary>Einfügung für AFix (Routine oder Unit) aus AFacts nach Vorschau anwenden.</summary>

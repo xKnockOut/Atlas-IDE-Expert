@@ -105,6 +105,8 @@ uses
 const
   cDialogClass = '#32770';
   cMaxText = 8192;
+  // Fehlt in Delphis Winapi.Windows (FPC kennt sie): selbst deklariert.
+  PROCESS_QUERY_LIMITED_INFORMATION = $1000;
 
 function QueryFullProcessImageNameW(AProcess: THandle; AFlags: DWORD; AExeName: PWideChar;
   var ASize: DWORD): BOOL; stdcall; external kernel32 name 'QueryFullProcessImageNameW';

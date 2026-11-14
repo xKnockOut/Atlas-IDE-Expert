@@ -16,6 +16,7 @@
 interface
 
 uses
+  Winapi.Windows, // MulDiv; vor Vcl.Graphics, sonst verdeckt es TBitmap
   System.SysUtils,
   System.Classes,
   System.Types,

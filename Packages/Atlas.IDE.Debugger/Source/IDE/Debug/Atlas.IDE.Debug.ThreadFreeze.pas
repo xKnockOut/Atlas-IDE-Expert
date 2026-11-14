@@ -40,6 +40,13 @@ implementation
 uses
   Winapi.Windows;
 
+// Fehlen in Delphis Winapi.Windows (FPC kennt beide): selbst deklariert.
+const
+  THREAD_SUSPEND_RESUME = $0002;
+
+function OpenThread(dwDesiredAccess: DWORD; bInheritHandle: BOOL; dwThreadId: DWORD): THandle; stdcall;
+  external kernel32 name 'OpenThread';
+
 { TAtlasIdeDebugThreadFreeze }
 
 class function TAtlasIdeDebugThreadFreeze.IndexOf(AThreadId: Cardinal): Integer;

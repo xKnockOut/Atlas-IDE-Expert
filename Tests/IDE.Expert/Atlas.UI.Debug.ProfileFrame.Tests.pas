@@ -34,6 +34,7 @@ type
 implementation
 
 uses
+  System.Classes, // Inline-Funktion TCollection.GetCount (H2443)
   System.SysUtils,
   Atlas.Core.Debug.Profiler,
   Atlas.UI.Debug.ProfileFrame;

@@ -84,7 +84,7 @@ begin
     Assert.AreEqual('TKeep', mPanel.Grid.Cells[0, 2]);
     Assert.AreEqual('0', mPanel.Grid.Cells[2, 2]);
     Assert.StartsWith('1015 Objekte in 2 Klassen', mPanel.SummaryLabel.Caption);
-    Assert.IsTrue(mPanel.SummaryLabel.Caption.EndsWith('gegenüber der vorigen Zählung.'),
+    Assert.IsTrue(string(mPanel.SummaryLabel.Caption).EndsWith('gegenüber der vorigen Zählung.'),
       mPanel.SummaryLabel.Caption);
   finally
     mPanel.Free;
@@ -100,7 +100,7 @@ begin
     mPanel.SetCounts(Default(TAtlasObjectCount), Counted(['TA', 'TB'], [2, 9]), False);
     Assert.AreEqual('TB', mPanel.Grid.Cells[0, 1]);
     Assert.AreEqual('', mPanel.Grid.Cells[2, 1], 'ohne Basis kein Zuwachs');
-    Assert.IsFalse(mPanel.SummaryLabel.Caption.Contains('vorigen'), mPanel.SummaryLabel.Caption);
+    Assert.IsFalse(string(mPanel.SummaryLabel.Caption).Contains('vorigen'), mPanel.SummaryLabel.Caption);
   finally
     mPanel.Free;
   end;

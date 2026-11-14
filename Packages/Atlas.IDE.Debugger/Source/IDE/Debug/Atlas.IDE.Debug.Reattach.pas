@@ -118,6 +118,7 @@ uses
   Atlas.Core.Debug.Reattach,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Debug.Processes,
+  Atlas.IDE.Debug.UnavailableFixes,
   Atlas.UI.Debug.ProcessChoice,
   Atlas.UI.Debug.Strings;
 
@@ -357,7 +358,8 @@ begin
     Exit;
   end;
   try
-    mServices.AttachProcess(Integer(APid));
+    // In Delphi 13 hat IOTADebuggerServices nur noch die Form mit PauseAfterAttach und DetachOnReset (E2035).
+    mServices.AttachProcess(Integer(APid), False, False);
     Say(TAtlasDebugStrings.Fmt(TAtlasDebugTextId.ReattachAttached, [AName, APid]));
   except
     // Kein Zugriff (anderer Benutzer, Dienst) oder falsche Plattform: klar melden statt still scheitern.

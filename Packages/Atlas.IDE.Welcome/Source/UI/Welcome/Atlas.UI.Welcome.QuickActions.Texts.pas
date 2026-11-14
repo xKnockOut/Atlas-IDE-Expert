@@ -37,7 +37,10 @@ implementation
 
 uses
   System.SysUtils,
+  System.Classes, // TShortCut
+  Vcl.Menus, // ShortCutToText
   Atlas.Core.VersionControl.Pull,
+  Atlas.UI.Strings, // TAtlasStrings
   Atlas.UI.Welcome.Strings;
 
 const

@@ -135,7 +135,7 @@ begin
   end;
   mSaved := SaveDC(ADC);
   try
-    SelectObject(ADC, FFont.Handle);
+    SelectObject(ADC, FFont.Font.Handle);
     SetBkMode(ADC, TRANSPARENT);
     SetTextColor(ADC, FTextColor);
     GetTextExtentPoint32W(ADC, PChar(AText), Length(AText), mSize);
@@ -162,7 +162,7 @@ begin
   mCaption := AItem.Caption;
   mSaved := SaveDC(ADC);
   try
-    SelectObject(ADC, FFont.Handle);
+    SelectObject(ADC, FFont.Font.Handle);
     SetBkMode(ADC, TRANSPARENT);
     GetTextExtentPoint32W(ADC, PChar(mCaption), Length(mCaption), mSize);
     GetTextExtentPoint32W(ADC, cClose, Length(cClose), mCloseSize);

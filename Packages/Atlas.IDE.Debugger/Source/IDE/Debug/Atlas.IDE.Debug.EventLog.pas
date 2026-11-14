@@ -156,13 +156,13 @@ end;
 procedure TProcessWatch.ProcessModuleCreated(const ProcessModule: IOTAProcessModule);
 begin
   TAtlasIdeDebugEventLog.AddEntry(TAtlasEventKind.Module, '',
-    TAtlasDebugStrings.Fmt(TAtlasDebugTextId.DebugEventLogModuleLoaded, [ProcessModule.FileName]));
+    TAtlasDebugStrings.Fmt(TAtlasDebugTextId.DebugEventLogModuleLoaded, [ProcessModule.GetModuleFileName]));
 end;
 
 procedure TProcessWatch.ProcessModuleDestroyed(const ProcessModule: IOTAProcessModule);
 begin
   TAtlasIdeDebugEventLog.AddEntry(TAtlasEventKind.Module, '',
-    TAtlasDebugStrings.Fmt(TAtlasDebugTextId.DebugEventLogModuleUnloaded, [ProcessModule.FileName]));
+    TAtlasDebugStrings.Fmt(TAtlasDebugTextId.DebugEventLogModuleUnloaded, [ProcessModule.GetModuleFileName]));
 end;
 
 procedure TProcessWatch.Destroyed;

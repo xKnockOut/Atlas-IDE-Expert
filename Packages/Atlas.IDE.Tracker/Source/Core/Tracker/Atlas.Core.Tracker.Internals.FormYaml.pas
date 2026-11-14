@@ -386,7 +386,7 @@ begin
   while (FPos <= Length(FText)) and not CharInSet(FText[FPos], AStops) do
   begin
     // ": " beendet einen Schlüssel, ":" in einer Adresse nicht.
-    if (FText[FPos] = ':') and ('}' in AStops) and ((FPos = Length(FText)) or
+    if (FText[FPos] = ':') and CharInSet('}', AStops) and ((FPos = Length(FText)) or
       CharInSet(FText[FPos + 1], [' ', #10, ',', '}'])) then
     begin
       Break;

@@ -73,6 +73,7 @@ uses
   System.Math,
   System.UITypes,
   Vcl.Controls,
+  Vcl.Graphics, // fsBold
   Vcl.ExtCtrls,
   Vcl.Forms,
   Atlas.UI.Tests.Strings;

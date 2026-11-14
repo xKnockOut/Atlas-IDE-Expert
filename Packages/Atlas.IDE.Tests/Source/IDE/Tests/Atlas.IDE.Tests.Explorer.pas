@@ -336,7 +336,7 @@ begin
         if AWithUnits then
         begin
           ReadUnits;
-          FNodes := TAtlasTestExplorer.Build(FUnits, ResultsOfProject);
+          FNodes := TAtlasTestExplorer.Build(FUnits, StatusInput(FProject).Cases);
           FDirty := True;
         end;
         Result.Project := FProject;

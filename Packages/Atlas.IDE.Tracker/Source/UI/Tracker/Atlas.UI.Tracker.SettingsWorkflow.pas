@@ -97,6 +97,7 @@ type
 implementation
 
 uses
+  System.SysUtils, // Trim
   Atlas.Core.Tracker.Connections,
   Atlas.Core.Tracker.Review,
   Vcl.Graphics,

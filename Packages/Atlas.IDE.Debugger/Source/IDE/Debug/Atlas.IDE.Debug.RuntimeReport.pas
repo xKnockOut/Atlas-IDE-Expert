@@ -240,7 +240,7 @@ begin
     Exit;
   end;
   if (TAtlasIdeHost.ActiveSession = nil) or not TAtlasIdeHost.RunServerCommandAsync(AScope, TAtlasFeature.Debugger,
-    TAtlasRuntimeReports.cCommand, TAtlasRuntimeReports.ArgumentsJson(mProject, mText), cTimeoutMs, ReportAnswer) then
+    TAtlasRuntimeReports.cCommand, TAtlasRuntimeReports.ArgumentsJson(mProject, mText), cTimeoutMs, ReportAnswer()) then
   begin
     Say(TAtlasDebugTextId.RuntimeReportNoServer, []);
   end;
@@ -253,7 +253,7 @@ begin
   mProject := TAtlasIdeFiles.ActiveProjectFile;
   if (TAtlasIdeHost.RunningSession = nil) or not TAtlasIdeHost.RunServerCommandAsync(AScope, TAtlasFeature.Debugger,
     TAtlasRuntimeReports.cClearCommand, TAtlasRuntimeReports.ClearArgumentsJson(mProject), cTimeoutMs,
-    ClearAnswer) then
+    ClearAnswer()) then
   begin
     Say(TAtlasDebugTextId.RuntimeReportNoServer, []);
   end;
@@ -266,7 +266,7 @@ begin
     Exit;
   end;
   if (TAtlasIdeHost.ActiveSession = nil) or not TAtlasIdeHost.RunServerCommandAsync(AScope, TAtlasFeature.Debugger,
-    TAtlasRuntimeReports.cCommand, TAtlasRuntimeReports.ArgumentsJson(AProject, AText), cTimeoutMs, MarkAnswer) then
+    TAtlasRuntimeReports.cCommand, TAtlasRuntimeReports.ArgumentsJson(AProject, AText), cTimeoutMs, MarkAnswer()) then
   begin
     Say(TAtlasDebugTextId.RuntimeReportNoServer, []);
   end;

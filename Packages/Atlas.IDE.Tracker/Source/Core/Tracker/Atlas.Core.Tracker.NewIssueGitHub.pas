@@ -158,6 +158,7 @@ type
 implementation
 
 uses
+  System.Generics.Collections, // Inline-Funktionen von TJSONArray (H2443)
   System.StrUtils,
   System.DateUtils,
   Atlas.Text.Json,

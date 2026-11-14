@@ -134,7 +134,7 @@ begin
       end;
     mFrame.Chart.SelectRange(2000, 0);
     Assert.AreEqual(Int64(0), mFrame.Chart.SelectionFromMs, 'Reihenfolge egal');
-    Assert.IsTrue(mFrame.RangeLabel.Caption.Contains('Handles +5'), mFrame.RangeLabel.Caption);
+    Assert.IsTrue(string(mFrame.RangeLabel.Caption).Contains('Handles +5'), mFrame.RangeLabel.Caption);
     mFrame.ClearButton.Click;
     Assert.AreEqual(1, mCleared);
     Assert.IsFalse(mFrame.Chart.HasSelection);

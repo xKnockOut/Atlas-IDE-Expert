@@ -1221,6 +1221,11 @@ begin
     Exit;
   end;
   FView := AView;
+  // Eigene Kopien der Arrays: Dynamische Arrays sind in Delphi Referenzen ohne Copy-on-Write. Ändert der Aufrufer
+  // danach seine Ansicht in place (Extras[0].State := …), änderte er sonst auch FView, und SameAs hielte die
+  // nächste Ansicht für unverändert.
+  FView.Items := Copy(AView.Items);
+  FView.Extras := Copy(AView.Extras);
   FLaidOut := False;
   Invalidate;
 end;

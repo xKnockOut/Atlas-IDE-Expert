@@ -36,6 +36,7 @@ type
 implementation
 
 uses
+  System.Generics.Collections, // Inline-Funktionen von TJSONArray (H2443)
   Atlas.Common.Compiler.Contract,
   System.JSON,
   Atlas.Common.Index.SymbolIndex,

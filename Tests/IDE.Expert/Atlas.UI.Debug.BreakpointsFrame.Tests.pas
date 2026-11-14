@@ -44,6 +44,7 @@ type
 implementation
 
 uses
+  System.Classes, // Inline-Funktion TCollection.GetCount (H2443)
   System.SysUtils,
   Vcl.Forms,
   Atlas.Core.Debug.BreakpointList,

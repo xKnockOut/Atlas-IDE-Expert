@@ -39,6 +39,7 @@ implementation
 uses
   System.SysUtils,
   System.JSON,
+  System.Generics.Collections, // Inline-Funktionen von TJSONArray (H2443)
   Atlas.Core.Tracker.Internals.FormYaml;
 
 function Lines(const ALines: array of string): string;

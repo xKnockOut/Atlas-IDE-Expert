@@ -128,7 +128,7 @@ begin
   end
   else
   begin
-    FNote.ShowNote(TAtlasDebugStrings.Text(TAtlasDebugTextId.LogpointFormats), TAtlasSignalKind.None);
+    FNote.ShowNote(TAtlasDebugStrings.Text(TAtlasDebugTextId.LogpointFormats), TAtlasSignalKind.Info);
   end;
   FSet.Enabled := (Trim(FText.Text) <> '') and mTemplate.Valid;
 end;

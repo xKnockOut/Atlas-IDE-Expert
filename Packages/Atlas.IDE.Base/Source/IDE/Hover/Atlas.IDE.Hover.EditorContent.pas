@@ -472,7 +472,7 @@ begin
     end;
     if Assigned(FOnDebugTree) and (FView <> nil) then
     begin
-      Result.DebugValue := FOnDebugTree(Result.DebugValue, FView.Buffer.FileName, FLine, DebugTreeRefresh);
+      Result.DebugValue := FOnDebugTree(Result.DebugValue, FView.Buffer.FileName, FLine, DebugTreeRefresh());
     end;
     // Aktionen wirken auf die gewählte Zeile (#895).
     if Assigned(FOnDebugActions) then
@@ -721,6 +721,7 @@ procedure TAtlasEditorHoverDebug.EvaluateDebugValue;
 var
   mOwner: TAtlasEditorHoverDebug;
   mKey: string;
+  mDone: TAtlasDebugValueEvent;
 begin
   FDebug.Cancel;
   FDebugValue := Default(TAtlasDebugValue);
@@ -731,11 +732,13 @@ begin
   mOwner := Self;
   mKey := FKey;
   // Im Hauptthread: Der Debugger der IDE ist nicht threadsicher. Sofortige Werte stehen gleich im Tooltip.
-  FDebugValue := Explain(mKey, FDebug.Evaluate(FDebugExpression, FView.Buffer.FileName, FLine,
+  // Anonyme Methode als Argument bei Überladungen (E2250 in Delphi): erst in eine typisierte Variable.
+  mDone :=
     procedure(const AValue: TAtlasDebugValue)
     begin
       mOwner.DebugValueDone(mKey, mOwner.Explain(mKey, AValue));
-    end));
+    end;
+  FDebugValue := Explain(mKey, FDebug.Evaluate(FDebugExpression, FView.Buffer.FileName, FLine, mDone));
 end;
 
 { TAtlasEditorHoverActions }

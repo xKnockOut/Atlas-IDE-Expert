@@ -59,6 +59,7 @@ implementation
 uses
   System.SysUtils,
   System.JSON,
+  System.Generics.Collections, // Inline-Funktionen von TJSONArray (H2443)
   Atlas.Common.Index.SymbolIndex,
   Atlas.Common.Index.Extractor,
   Atlas.Common.Lsp.Impact;

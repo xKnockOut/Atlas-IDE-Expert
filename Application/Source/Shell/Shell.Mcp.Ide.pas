@@ -24,6 +24,7 @@ function BuildInIde(const ARoot, AProject, AMode, AConfiguration, APlatform: str
 implementation
 
 uses
+  System.Generics.Collections, // Inline-Funktionen von TJSONArray (H2443)
   System.SysUtils,
   System.Classes,
   System.IOUtils,

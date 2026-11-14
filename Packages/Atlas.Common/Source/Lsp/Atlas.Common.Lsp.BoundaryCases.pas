@@ -68,6 +68,7 @@ type
 implementation
 
 uses
+  System.Generics.Collections, // Inline-Funktionen von TJSONArray (H2443)
   System.Math,
   System.StrUtils,
   Atlas.Common.JsonRpc.Contract,

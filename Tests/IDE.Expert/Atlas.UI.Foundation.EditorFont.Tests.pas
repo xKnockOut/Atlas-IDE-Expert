@@ -25,6 +25,7 @@ type
 implementation
 
 uses
+  System.UITypes, // Inline-Funktion TFont.GetStyle (H2443)
   Vcl.Graphics,
   Atlas.UI.Foundation.EditorFont;
 

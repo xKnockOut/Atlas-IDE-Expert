@@ -27,7 +27,15 @@ type
     constructor Create(AMaxBytes: Int64);
     /// <summary>Wie TBytesStream; würde die Grenze überschritten, wird nichts geschrieben, Exceeded gesetzt und
     /// EAtlasStreamLimit ausgelöst.</summary>
-    function Write(const ABuffer; ACount: Longint): Longint; override;
+    function Write(const ABuffer; ACount: Longint): Longint; overload; override;
+{$IF RTLVersion >= 37.0}
+    // Ab Delphi 13 ruft WriteBuffer unter Win64 die NativeInt-Überladung auf, die an der
+    // Longint-Fassung vorbeigeht; ohne diese Überschreibung griff die Grenze nicht. Unter Win32
+    // sind beide Signaturen gleich, dort genügt die obere.
+  {$IF SizeOf(Longint) <> SizeOf(NativeInt)}
+    function Write(const ABuffer; ACount: NativeInt): NativeInt; overload; override;
+  {$IFEND}
+{$IFEND}
     property MaxBytes: Int64 read FMaxBytes;
     /// <summary>Wurde versucht, mehr als MaxBytes zu schreiben?</summary>
     property Exceeded: Boolean read FExceeded;
@@ -53,5 +61,19 @@ begin
   end;
   Result := inherited Write(ABuffer, ACount); // console-ok: TBytesStream.Write, nicht System.Write
 end;
+
+{$IF RTLVersion >= 37.0}
+  {$IF SizeOf(Longint) <> SizeOf(NativeInt)}
+function TAtlasBoundedStream.Write(const ABuffer; ACount: NativeInt): NativeInt;
+begin
+  if (ACount > 0) and (Position + ACount > FMaxBytes) then
+  begin
+    FExceeded := True;
+    raise EAtlasStreamLimit.Create(IntToStr(FMaxBytes));
+  end;
+  Result := inherited Write(ABuffer, ACount); // console-ok: TBytesStream.Write, nicht System.Write
+end;
+  {$IFEND}
+{$IFEND}
 
 end.

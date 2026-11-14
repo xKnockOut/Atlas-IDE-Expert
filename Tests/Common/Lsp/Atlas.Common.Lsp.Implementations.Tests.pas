@@ -15,8 +15,7 @@ type
   private
     FIndex: ISymbolIndex;
     FResolver: TNameResolver;
-    function TargetsAt(const AMarker: string): TArray<TDefinitionTarget>; overload;
-    function TargetsAt(const AMarker: string; AOffset: Integer): TArray<TDefinitionTarget>; overload;
+    function TargetsAt(const AMarker: string; AOffset: Integer): TArray<TDefinitionTarget>;
     function Lines(const ATargets: TArray<TDefinitionTarget>): string;
   public
     [Setup]
@@ -107,11 +106,6 @@ begin
 end;
 
 { TLspImplementationsTests }
-
-function TLspImplementationsTests.TargetsAt(const AMarker: string): TArray<TDefinitionTarget>;
-begin
-  Result := TargetsAt(AMarker, 0);
-end;
 
 function TLspImplementationsTests.TargetsAt(const AMarker: string; AOffset: Integer): TArray<TDefinitionTarget>;
 var

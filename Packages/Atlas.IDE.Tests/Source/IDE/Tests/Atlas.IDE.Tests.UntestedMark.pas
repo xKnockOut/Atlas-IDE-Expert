@@ -62,6 +62,7 @@ implementation
 
 uses
   System.SysUtils,
+  System.Classes, // TNotifyEvent
   Vcl.Graphics,
   ToolsAPI,
   Atlas.Core.Diagnostics.Guard,
