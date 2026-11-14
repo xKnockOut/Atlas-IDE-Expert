@@ -55,57 +55,57 @@ uses
   Atlas.Common.Lsp.ExitPoints;
 
 const
-  LB = #13#10;
-  MainFile = 'C:\P\Haupt.pas';
-  LoaderFile = 'C:\P\Lader.pas';
+  cLB = #13#10;
+  cMainFile = 'C:\P\Haupt.pas';
+  cLoaderFile = 'C:\P\Lader.pas';
 
-  UnitLoader =
-    'unit Lader;' + LB +
-    'interface' + LB +
-    'type' + LB +
-    '  EBasis = class(TObject);' + LB +
-    '  EFehler = class(EBasis);' + LB +
-    '/// <summary>Liest.</summary>' + LB +
-    '/// <exception cref="EFehler">kaputt</exception>' + LB +
-    'procedure Lade;' + LB +
-    'implementation' + LB +
-    'procedure Lade;' + LB +
-    'begin' + LB +
-    'end;' + LB +
+  cUnitLoader =
+    'unit Lader;' + cLB +
+    'interface' + cLB +
+    'type' + cLB +
+    '  EBasis = class(TObject);' + cLB +
+    '  EFehler = class(EBasis);' + cLB +
+    '/// <summary>Liest.</summary>' + cLB +
+    '/// <exception cref="EFehler">kaputt</exception>' + cLB +
+    'procedure Lade;' + cLB +
+    'implementation' + cLB +
+    'procedure Lade;' + cLB +
+    'begin' + cLB +
+    'end;' + cLB +
     'end.';
 
-  UnitMain =
-    'unit Haupt;' + LB +
-    'interface' + LB +
-    'uses Lader;' + LB +
-    'function Wert(A: Integer): Integer;' + LB +
-    'procedure Probe;' + LB +
-    'implementation' + LB +
-    'function Wert(A: Integer): Integer;' + LB +    // 6
-    'begin' + LB +
-    '  if A < 0 then' + LB +
-    '    Exit;' + LB +                              // 9
-    '  Result := A;' + LB +
-    'end;' + LB +
-    'procedure Probe;' + LB +                       // 12
-    'begin' + LB +
-    '  try' + LB +
-    '    Lade;' + LB +                              // 15
-    '  except' + LB +
-    '    on E: EBasis do' + LB +                    // 17
-    '      Exit;' + LB +
-    '  end;' + LB +
-    'end;' + LB +
+  cUnitMain =
+    'unit Haupt;' + cLB +
+    'interface' + cLB +
+    'uses Lader;' + cLB +
+    'function Wert(A: Integer): Integer;' + cLB +
+    'procedure Probe;' + cLB +
+    'implementation' + cLB +
+    'function Wert(A: Integer): Integer;' + cLB +    // 6
+    'begin' + cLB +
+    '  if A < 0 then' + cLB +
+    '    Exit;' + cLB +                              // 9
+    '  Result := A;' + cLB +
+    'end;' + cLB +
+    'procedure Probe;' + cLB +                       // 12
+    'begin' + cLB +
+    '  try' + cLB +
+    '    Lade;' + cLB +                              // 15
+    '  except' + cLB +
+    '    on E: EBasis do' + cLB +                    // 17
+    '      Exit;' + cLB +
+    '  end;' + cLB +
+    'end;' + cLB +
     'end.';
 
 /// <summary>Liest nur die Unit des Laders.</summary>
 function LoaderReader(const AFileName: string; out AText: string): Boolean;
 begin
   AText := '';
-  Result := SameText(AFileName, LoaderFile);
+  Result := SameText(AFileName, cLoaderFile);
   if Result then
   begin
-    AText := UnitLoader;
+    AText := cUnitLoader;
   end;
 end;
 
@@ -115,8 +115,8 @@ procedure TLspExitPointsTests.Setup;
 begin
   FStore := TDocumentStore.Create;
   FIndex := TSymbolIndex.Create;
-  FIndex.AddUnit(TIndexExtractor.ExtractText(UnitLoader, LoaderFile, nil));
-  FIndex.AddUnit(TIndexExtractor.ExtractText(UnitMain, MainFile, nil));
+  FIndex.AddUnit(TIndexExtractor.ExtractText(cUnitLoader, cLoaderFile, nil));
+  FIndex.AddUnit(TIndexExtractor.ExtractText(cUnitMain, cMainFile, nil));
 end;
 
 procedure TLspExitPointsTests.TearDown;
@@ -129,116 +129,116 @@ end;
 function TLspExitPointsTests.Run(const AText: string; ALine, ACharacter: Integer;
   const ASettings: string): TJSONObject;
 var
-  Uri: string;
-  Arguments: TJSONArray;
-  Position: TJSONObject;
-  Reply: TJSONValue;
+  mUri: string;
+  mArguments: TJSONArray;
+  mPosition: TJSONObject;
+  mReply: TJSONValue;
 begin
-  Uri := TDocumentUris.FromPath(MainFile);
-  FStore.Close(Uri);
-  FStore.Open(Uri, 'delphi', 1, AText);
-  Arguments := TJSONArray.Create;
+  mUri := TDocumentUris.FromPath(cMainFile);
+  FStore.Close(mUri);
+  FStore.Open(mUri, 'delphi', 1, AText);
+  mArguments := TJSONArray.Create;
   try
-    Arguments.Add(Uri);
-    Position := TJSONObject.Create;
-    Position.AddPair('line', TJSONNumber.Create(ALine));
-    Position.AddPair('character', TJSONNumber.Create(ACharacter));
-    Arguments.AddElement(Position);
+    mArguments.Add(mUri);
+    mPosition := TJSONObject.Create;
+    mPosition.AddPair('line', TJSONNumber.Create(ALine));
+    mPosition.AddPair('character', TJSONNumber.Create(ACharacter));
+    mArguments.AddElement(mPosition);
     if ASettings <> '' then
     begin
-      Arguments.AddElement(TJSONObject.ParseJSONValue(ASettings));
+      mArguments.AddElement(TJSONObject.ParseJSONValue(ASettings));
     end;
-    Reply := TLspExitPoints.Execute(FStore, FIndex, nil, nil, TExitPointsReaders.Create(LoaderReader, FSettingsFor),
-      Arguments);
+    mReply := TLspExitPoints.Execute(FStore, FIndex, nil, nil, TExitPointsReaders.Create(LoaderReader, FSettingsFor),
+      mArguments);
   finally
-    Arguments.Free;
+    mArguments.Free;
   end;
-  Assert.IsTrue(Reply is TJSONObject);
-  Result := TJSONObject(Reply);
+  Assert.IsTrue(mReply is TJSONObject);
+  Result := TJSONObject(mReply);
 end;
 
 class function TLspExitPointsTests.Points(AReply: TJSONObject): string;
 var
-  Item: TJSONValue;
-  Point: TJSONObject;
+  mItem: TJSONValue;
+  mPoint: TJSONObject;
 begin
   Result := '';
-  for Item in AReply.GetValue('points') as TJSONArray do
+  for mItem in AReply.GetValue('points') as TJSONArray do
   begin
-    Point := Item as TJSONObject;
+    mPoint := mItem as TJSONObject;
     if Result <> '' then
     begin
       Result := Result + ' ';
     end;
-    Result := Result + Point.GetValue('kind').Value + '@' + Point.GetValue('line').Value + ':' +
-      Point.GetValue('character').Value;
+    Result := Result + mPoint.GetValue('kind').Value + '@' + mPoint.GetValue('line').Value + ':' +
+      mPoint.GetValue('character').Value;
   end;
 end;
 
 procedure TLspExitPointsTests.ReplyCarriesRoutineAndPoints;
 var
-  Reply, Routine, First: TJSONObject;
+  mReply, mRoutine, mFirst: TJSONObject;
 begin
   // Auf Exit in Wert: die Routine, ihr Exit (ohne Result) und das Ende.
-  Reply := Run(UnitMain, 9, 5, '');
+  mReply := Run(cUnitMain, 9, 5, '');
   try
-    Assert.AreEqual('routine', Reply.GetValue('query').Value);
-    Routine := Reply.GetValue('routine') as TJSONObject;
-    Assert.AreEqual('Wert', Routine.GetValue('name').Value);
-    Assert.AreEqual('6', Routine.GetValue('line').Value);
-    Assert.AreEqual('9', Routine.GetValue('character').Value);
-    Assert.AreEqual('13', Routine.GetValue('endCharacter').Value);
-    Assert.AreEqual('true', Reply.GetValue('function').Value);
-    Assert.AreEqual('true', Reply.GetValue('resultMissing').Value);
-    Assert.AreEqual('exit@9:4 end@11:0', Points(Reply));
-    First := (Reply.GetValue('points') as TJSONArray).Items[0] as TJSONObject;
-    Assert.AreEqual('8', First.GetValue('endCharacter').Value);
-    Assert.AreEqual('true', First.GetValue('resultMissing').Value);
+    Assert.AreEqual('routine', mReply.GetValue('query').Value);
+    mRoutine := mReply.GetValue('routine') as TJSONObject;
+    Assert.AreEqual('Wert', mRoutine.GetValue('name').Value);
+    Assert.AreEqual('6', mRoutine.GetValue('line').Value);
+    Assert.AreEqual('9', mRoutine.GetValue('character').Value);
+    Assert.AreEqual('13', mRoutine.GetValue('endCharacter').Value);
+    Assert.AreEqual('true', mReply.GetValue('function').Value);
+    Assert.AreEqual('true', mReply.GetValue('resultMissing').Value);
+    Assert.AreEqual('exit@9:4 end@11:0', Points(mReply));
+    mFirst := (mReply.GetValue('points') as TJSONArray).Items[0] as TJSONObject;
+    Assert.AreEqual('8', mFirst.GetValue('endCharacter').Value);
+    Assert.AreEqual('true', mFirst.GetValue('resultMissing').Value);
   finally
-    Reply.Free;
+    mReply.Free;
   end;
   // Auf Result: die Zuweisungen und die Austritte, an denen Result fehlen kann.
-  Reply := Run(UnitMain, 10, 3, '');
+  mReply := Run(cUnitMain, 10, 3, '');
   try
-    Assert.AreEqual('result', Reply.GetValue('query').Value);
-    Assert.AreEqual('exit@9:4 result@10:2 end@11:0', Points(Reply));
+    Assert.AreEqual('result', mReply.GetValue('query').Value);
+    Assert.AreEqual('exit@9:4 result@10:2 end@11:0', Points(mReply));
   finally
-    Reply.Free;
+    mReply.Free;
   end;
 end;
 
 procedure TLspExitPointsTests.ExceptionsFromDeclaringUnit;
 var
-  Reply, Source: TJSONObject;
+  mReply, mSource: TJSONObject;
 begin
   // Lade steht in Lader und löst laut Doku EFehler aus, das von EBasis abstammt.
-  Reply := Run(UnitMain, 17, 5, '');
+  mReply := Run(cUnitMain, 17, 5, '');
   try
-    Assert.AreEqual('exceptions', Reply.GetValue('query').Value);
-    Assert.AreEqual('source@15:4 handler@17:4', Points(Reply));
-    Source := (Reply.GetValue('points') as TJSONArray).Items[0] as TJSONObject;
-    Assert.AreEqual('EFehler', Source.GetValue('exception').Value);
+    Assert.AreEqual('exceptions', mReply.GetValue('query').Value);
+    Assert.AreEqual('source@15:4 handler@17:4', Points(mReply));
+    mSource := (mReply.GetValue('points') as TJSONArray).Items[0] as TJSONObject;
+    Assert.AreEqual('EFehler', mSource.GetValue('exception').Value);
   finally
-    Reply.Free;
+    mReply.Free;
   end;
 end;
 
 procedure TLspExitPointsTests.SwitchesFromArguments;
 var
-  Reply: TJSONObject;
+  mReply: TJSONObject;
 begin
-  Reply := Run(UnitMain, 17, 5, '{"exceptions":false,"loops":true}');
+  mReply := Run(cUnitMain, 17, 5, '{"exceptions":false,"loops":true}');
   try
-    Assert.AreEqual('', Reply.GetValue('query').Value);
-    Assert.AreEqual('', Points(Reply));
+    Assert.AreEqual('', mReply.GetValue('query').Value);
+    Assert.AreEqual('', Points(mReply));
   finally
-    Reply.Free;
+    mReply.Free;
   end;
 end;
 
 procedure TLspExitPointsTests.KeywordsFromConfiguration;
 var
-  Reply: TJSONObject;
+  mReply: TJSONObject;
 begin
   // Ohne Exit in der Liste bleibt in Wert nur das Ende.
   FSettingsFor :=
@@ -247,29 +247,29 @@ begin
       Result := THighlightSettings.Default;
       Result.ExitKeywords := TArray<string>.Create('raise');
     end;
-  Reply := Run(UnitMain, 6, 10, '');
+  mReply := Run(cUnitMain, 6, 10, '');
   try
-    Assert.AreEqual('routine', Reply.GetValue('query').Value);
-    Assert.AreEqual('end@11:0', Points(Reply));
+    Assert.AreEqual('routine', mReply.GetValue('query').Value);
+    Assert.AreEqual('end@11:0', Points(mReply));
   finally
-    Reply.Free;
+    mReply.Free;
   end;
 end;
 
 procedure TLspExitPointsTests.UnknownDocumentGivesError;
 var
-  Arguments: TJSONArray;
+  mArguments: TJSONArray;
 begin
-  Arguments := TJSONObject.ParseJSONValue('["file:///C:/P/Fehlt.pas",{"line":0,"character":0}]') as TJSONArray;
+  mArguments := TJSONObject.ParseJSONValue('["file:///C:/P/Fehlt.pas",{"line":0,"character":0}]') as TJSONArray;
   try
     Assert.WillRaise(
       procedure
       begin
-        TLspExitPoints.Execute(FStore, FIndex, nil, nil, TExitPointsReaders.Create(nil, nil), Arguments).Free;
+        TLspExitPoints.Execute(FStore, FIndex, nil, nil, TExitPointsReaders.Create(nil, nil), mArguments).Free;
       end,
       EJsonRpcError);
   finally
-    Arguments.Free;
+    mArguments.Free;
   end;
 end;
 

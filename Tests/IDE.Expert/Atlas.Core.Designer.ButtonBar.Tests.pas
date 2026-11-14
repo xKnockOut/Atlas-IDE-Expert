@@ -95,7 +95,8 @@ procedure TAtlasButtonBarTests.BottomRight;
 var
   mRects: TArray<TRect>;
 begin
-  mRects := TAtlasButtonBar.Layout(3, TSize.Create(75, 25), TAtlasButtonBarPosition.BottomRight, Rect(0, 0, 400, 300), 8, 6);
+  mRects := TAtlasButtonBar.Layout(3, TSize.Create(75, 25), TAtlasButtonBarPosition.BottomRight, Rect(0, 0, 400, 300),
+    8, 6);
   Assert.AreEqual(392, mRects[2].Right);
   Assert.AreEqual(317, mRects[2].Left);
   Assert.AreEqual(311, mRects[1].Right, 'Abstand 6');
@@ -107,14 +108,17 @@ procedure TAtlasButtonBarTests.OtherPositions;
 var
   mRects: TArray<TRect>;
 begin
-  mRects := TAtlasButtonBar.Layout(2, TSize.Create(75, 25), TAtlasButtonBarPosition.BottomLeft, Rect(0, 0, 400, 300), 8, 8);
+  mRects := TAtlasButtonBar.Layout(2, TSize.Create(75, 25), TAtlasButtonBarPosition.BottomLeft, Rect(0, 0, 400, 300), 8,
+    8);
   Assert.AreEqual(8, mRects[0].Left);
   Assert.AreEqual(91, mRects[1].Left);
-  mRects := TAtlasButtonBar.Layout(2, TSize.Create(75, 25), TAtlasButtonBarPosition.RightTop, Rect(0, 0, 400, 300), 8, 8);
+  mRects := TAtlasButtonBar.Layout(2, TSize.Create(75, 25), TAtlasButtonBarPosition.RightTop, Rect(0, 0, 400, 300), 8,
+    8);
   Assert.AreEqual(317, mRects[0].Left);
   Assert.AreEqual(8, mRects[0].Top);
   Assert.AreEqual(41, mRects[1].Top, 'darunter');
-  mRects := TAtlasButtonBar.Layout(2, TSize.Create(75, 25), TAtlasButtonBarPosition.RightBottom, Rect(0, 0, 400, 300), 8, 8);
+  mRects := TAtlasButtonBar.Layout(2, TSize.Create(75, 25), TAtlasButtonBarPosition.RightBottom, Rect(0, 0, 400, 300),
+    8, 8);
   Assert.AreEqual(267, mRects[1].Top, 'letzter unten');
   Assert.AreEqual(234, mRects[0].Top);
   Assert.AreEqual<TAtlasButtonBarPosition>(TAtlasButtonBarPosition.RightTop, TAtlasButtonBar.PositionOf('RIGHTTOP'));

@@ -54,11 +54,11 @@ uses
   Atlas.Common.Editing.TestFromDebug;
 
 const
-  GewichtFile = 'C:\P\Quelle\Gewichte.pas';
-  TestFile = 'C:\P\Tests\Gewichte.Tests.pas';
-  TestsDpr = 'C:\P\Tests\Tests.dpr';
-  TestsDproj = 'C:\P\Tests\Tests.dproj';
-  GewichtText =
+  cGewichtFile = 'C:\P\Quelle\Gewichte.pas';
+  cTestFile = 'C:\P\Tests\Gewichte.Tests.pas';
+  cTestsDpr = 'C:\P\Tests\Tests.dpr';
+  cTestsDproj = 'C:\P\Tests\Tests.dproj';
+  cGewichtText =
     'unit Gewichte;'#10 +                                    // 0
     'interface'#10 +                                         // 1
     'type'#10 +                                              // 2
@@ -73,19 +73,19 @@ const
     '  Result := 0;'#10 +                                    // 11
     'end;'#10 +                                              // 12
     'end.';
-  DprText =
+  cDprText =
     'program Tests;'#13#10 +
     'uses'#13#10 +
     '  DUnitX.TestFramework;'#13#10 +
     'begin'#13#10 +
     'end.';
-  DprojText =
+  cDprojText =
     '<Project>'#13#10 +
     '    <ItemGroup>'#13#10 +
     '        <DelphiCompile Include="Tests.dpr"/>'#13#10 +
     '    </ItemGroup>'#13#10 +
     '</Project>';
-  TestText =
+  cTestText =
     'unit Gewichte.Tests;'#13#10 +
     'interface'#13#10 +
     'uses'#13#10 +
@@ -97,7 +97,7 @@ const
     '  end;'#13#10 +
     'implementation'#13#10 +
     'end.'#13#10;
-  RaisesRequest = '{"mode": "create", "kind": "raises", "exceptionClass": "EConvertError", ' +
+  cRaisesRequest = '{"mode": "create", "kind": "raises", "exceptionClass": "EConvertError", ' +
     '"parameters": [{"name": "AText", "text": "''12,5 kg''"}], "fields": [{"name": "Genau", "text": "True"}], ' +
     '"stoppedAt": "2026-11-13 14:05"}';
 
@@ -106,10 +106,10 @@ begin
   FStore := TDocumentStore.Create;
   FFiles := TDictionary<string, string>.Create;
   FUnits := TDictionary<string, string>.Create;
-  FFiles.Add(TestsDpr, DprText);
-  FFiles.Add(TestsDproj, DprojText);
-  FUnits.Add('gewichte', GewichtFile);
-  FStore.Open(TDocumentUris.FromPath(GewichtFile), 'pascal', 1, GewichtText);
+  FFiles.Add(cTestsDpr, cDprText);
+  FFiles.Add(cTestsDproj, cDprojText);
+  FUnits.Add('gewichte', cGewichtFile);
+  FStore.Open(TDocumentUris.FromPath(cGewichtFile), 'pascal', 1, cGewichtText);
   FTestUnits := TLspTestUnits.Create(FStore,
     function(const AUri: string; out AContext: TTestUnitContext): Boolean
     begin
@@ -130,18 +130,18 @@ end;
 
 function TLspTestFromDebugTests.Context: TTestUnitContext;
 var
-  Files, Units: TDictionary<string, string>;
+  mFiles, mUnits: TDictionary<string, string>;
 begin
-  Files := FFiles;
-  Units := FUnits;
+  mFiles := FFiles;
+  mUnits := FUnits;
   Result := Default(TTestUnitContext);
   Result.Settings := TTestUnitSettings.Default;
   Result.Root := 'C:\P';
-  Result.TestProgram := TestsDpr;
+  Result.TestProgram := cTestsDpr;
   Result.ReadText :=
     function(const AFileName: string): string
     begin
-      if not Files.TryGetValue(AFileName, Result) then
+      if not mFiles.TryGetValue(AFileName, Result) then
       begin
         Result := '';
       end;
@@ -149,12 +149,12 @@ begin
   Result.Exists :=
     function(const AFileName: string): Boolean
     begin
-      Result := Files.ContainsKey(AFileName);
+      Result := mFiles.ContainsKey(AFileName);
     end;
   Result.FindUnit :=
     function(const AUnitName: string): string
     begin
-      if not Units.TryGetValue(LowerCase(AUnitName), Result) then
+      if not mUnits.TryGetValue(LowerCase(AUnitName), Result) then
       begin
         Result := '';
       end;
@@ -164,96 +164,96 @@ end;
 /// <summary>Befehl an ALine mit der Anfrage ARequest (JSON); Antwort als JSON-Text.</summary>
 function TLspTestFromDebugTests.Run(ALine: Integer; const ARequest: string): string;
 var
-  Arguments: TJSONArray;
-  Answer: TJSONValue;
+  mArguments: TJSONArray;
+  mAnswer: TJSONValue;
 begin
-  Arguments := TJSONArray.Create;
+  mArguments := TJSONArray.Create;
   try
-    Arguments.Add(TDocumentUris.FromPath(GewichtFile));
-    Arguments.Add(ALine);
-    Arguments.AddElement(TJSONObject.ParseJSONValue(ARequest));
-    Answer := FFromDebug.Execute(Arguments);
+    mArguments.Add(TDocumentUris.FromPath(cGewichtFile));
+    mArguments.Add(ALine);
+    mArguments.AddElement(TJSONObject.ParseJSONValue(ARequest));
+    mAnswer := FFromDebug.Execute(mArguments);
     try
-      Result := Answer.ToJSON;
+      Result := mAnswer.ToJSON;
     finally
-      Answer.Free;
+      mAnswer.Free;
     end;
   finally
-    Arguments.Free;
+    mArguments.Free;
   end;
 end;
 
 procedure TLspTestFromDebugTests.DescribeNamesValuesAndLiterals;
 var
-  Text: string;
+  mText: string;
 begin
-  Text := Run(11, '{"mode": "describe", "parameters": [{"name": "AText", "text": "''12,5 kg''"}], ' +
+  mText := Run(11, '{"mode": "describe", "parameters": [{"name": "AText", "text": "''12,5 kg''"}], ' +
     '"fields": [{"name": "Genau", "text": "$1"}]}');
-  Assert.IsTrue(ContainsStr(Text, '"target":"TGewicht.Parse"'), Text);
-  Assert.IsTrue(ContainsStr(Text, '"resultType":"Double"'), Text);
-  Assert.IsTrue(ContainsStr(Text, '"name":"AText","type":"string"'), Text);
-  Assert.IsTrue(ContainsStr(Text, '"todo":false,"literal":"''12,5 kg''"'), Text);
-  Assert.IsTrue(ContainsStr(Text, '"name":"Genau","type":"Boolean","modifier":"","accessible":true,"todo":true'),
-    Text);
-  Assert.IsTrue(ContainsStr(Text, '"testUnit":"Gewichte.Tests"'), Text);
-  Assert.IsTrue(ContainsStr(Text, '"testUnitExists":false'), Text);
-  Assert.IsTrue(ContainsStr(Text, '12_5Kg"'), 'Name: ' + Text);
+  Assert.IsTrue(ContainsStr(mText, '"target":"TGewicht.Parse"'), mText);
+  Assert.IsTrue(ContainsStr(mText, '"resultType":"Double"'), mText);
+  Assert.IsTrue(ContainsStr(mText, '"name":"AText","type":"string"'), mText);
+  Assert.IsTrue(ContainsStr(mText, '"todo":false,"literal":"''12,5 kg''"'), mText);
+  Assert.IsTrue(ContainsStr(mText, '"name":"Genau","type":"Boolean","modifier":"","accessible":true,"todo":true'),
+    mText);
+  Assert.IsTrue(ContainsStr(mText, '"testUnit":"Gewichte.Tests"'), mText);
+  Assert.IsTrue(ContainsStr(mText, '"testUnitExists":false'), mText);
+  Assert.IsTrue(ContainsStr(mText, '12_5Kg"'), 'Name: ' + mText);
 end;
 
 procedure TLspTestFromDebugTests.CreateAddsToExistingTestUnit;
 var
-  Text: string;
+  mText: string;
 begin
-  FFiles.Add(TestFile, TestText);
-  FUnits.Add('gewichte.tests', TestFile);
-  Text := Run(6, RaisesRequest);
-  Assert.IsTrue(ContainsStr(Text, '"documentChanges"'), Text);
-  Assert.IsTrue(ContainsStr(Text, 'Assert.WillRaise('), Text);
-  Assert.IsTrue(ContainsStr(Text, 'EConvertError);'), Text);
-  Assert.IsTrue(ContainsStr(Text, 'Genau := True;'), Text);
-  Assert.IsTrue(ContainsStr(Text, '"fixture":"TGewichtTests"'), Text);
-  Assert.IsTrue(ContainsStr(Text, 'Gewichte.Tests.pas"'), 'uri: ' + Text);
-  Assert.IsTrue(ContainsStr(Text, 'ConvertError"'), 'testName: ' + Text);
-  Assert.IsFalse(ContainsStr(Text, '"reason"'), Text);
+  FFiles.Add(cTestFile, cTestText);
+  FUnits.Add('gewichte.tests', cTestFile);
+  mText := Run(6, cRaisesRequest);
+  Assert.IsTrue(ContainsStr(mText, '"documentChanges"'), mText);
+  Assert.IsTrue(ContainsStr(mText, 'Assert.WillRaise('), mText);
+  Assert.IsTrue(ContainsStr(mText, 'EConvertError);'), mText);
+  Assert.IsTrue(ContainsStr(mText, 'Genau := True;'), mText);
+  Assert.IsTrue(ContainsStr(mText, '"fixture":"TGewichtTests"'), mText);
+  Assert.IsTrue(ContainsStr(mText, 'Gewichte.Tests.pas"'), 'uri: ' + mText);
+  Assert.IsTrue(ContainsStr(mText, 'ConvertError"'), 'testName: ' + mText);
+  Assert.IsFalse(ContainsStr(mText, '"reason"'), mText);
 end;
 
 procedure TLspTestFromDebugTests.CreateWithoutTestUnitCreatesIt;
 var
-  Text: string;
+  mText: string;
 begin
-  Text := Run(6, RaisesRequest);
-  Assert.IsTrue(ContainsStr(Text, '"kind":"create"'), 'neue Datei: ' + Text);
-  Assert.IsTrue(ContainsStr(Text, 'Assert.WillRaise('), Text);
-  Assert.IsTrue(ContainsStr(Text, 'Tests.dpr'), 'Testprojekt: ' + Text);
+  mText := Run(6, cRaisesRequest);
+  Assert.IsTrue(ContainsStr(mText, '"kind":"create"'), 'neue Datei: ' + mText);
+  Assert.IsTrue(ContainsStr(mText, 'Assert.WillRaise('), mText);
+  Assert.IsTrue(ContainsStr(mText, 'Tests.dpr'), 'Testprojekt: ' + mText);
 end;
 
 procedure TLspTestFromDebugTests.NoMethodGivesReason;
 var
-  Text: string;
+  mText: string;
 begin
-  Text := Run(2, '{"mode": "describe"}');
-  Assert.IsTrue(ContainsStr(Text, '"reason"'), Text);
-  Assert.IsFalse(ContainsStr(Text, '"target"'), Text);
+  mText := Run(2, '{"mode": "describe"}');
+  Assert.IsTrue(ContainsStr(mText, '"reason"'), mText);
+  Assert.IsFalse(ContainsStr(mText, '"target"'), mText);
 end;
 
 procedure TLspTestFromDebugTests.ReadRequestDefaults;
 var
-  Json: TJSONObject;
-  Request: TDebugStopRequest;
+  mJson: TJSONObject;
+  mRequest: TDebugStopRequest;
 begin
-  Request := TLspTestFromDebug.ReadRequest(nil);
-  Assert.AreEqual<TTestDraftKind>(TTestDraftKind.Works, Request.Kind);
-  Assert.AreEqual(TTestFromDebug.cDefaultMaxArray, Request.MaxArray);
-  Json := TJSONObject.ParseJSONValue('{"kind": "raises", "maxArray": 5, "testName": "X"}') as TJSONObject;
+  mRequest := TLspTestFromDebug.ReadRequest(nil);
+  Assert.AreEqual<TTestDraftKind>(TTestDraftKind.Works, mRequest.Kind);
+  Assert.AreEqual(TTestFromDebug.cDefaultMaxArray, mRequest.MaxArray);
+  mJson := TJSONObject.ParseJSONValue('{"kind": "raises", "maxArray": 5, "testName": "X"}') as TJSONObject;
   try
-    Request := TLspTestFromDebug.ReadRequest(Json);
+    mRequest := TLspTestFromDebug.ReadRequest(mJson);
   finally
-    Json.Free;
+    mJson.Free;
   end;
-  Assert.AreEqual<TTestDraftKind>(TTestDraftKind.Raises, Request.Kind);
-  Assert.AreEqual(5, Request.MaxArray);
-  Assert.AreEqual('X', Request.TestName);
-  Request := Default(TDebugStopRequest);
+  Assert.AreEqual<TTestDraftKind>(TTestDraftKind.Raises, mRequest.Kind);
+  Assert.AreEqual(5, mRequest.MaxArray);
+  Assert.AreEqual('X', mRequest.TestName);
+  mRequest := Default(TDebugStopRequest);
 end;
 
 initialization

@@ -18,9 +18,9 @@ uses
   Atlas.Common.Lsp.Completion.Values;
 
 const
-  HauptFile = 'C:\P\Haupt.pas';
+  cHauptFile = 'C:\P\Haupt.pas';
 
-  UnitWerkzeug =
+  cUnitWerkzeug =
     'unit Werkzeug;'#10 +
     'interface'#10 +
     'type'#10 +
@@ -41,7 +41,7 @@ const
     'end;'#10 +
     'end.';
 
-  UnitHaupt =
+  cUnitHaupt =
     'unit Haupt;'#10 +
     'interface'#10 +
     'uses Werkzeug;'#10 +
@@ -143,31 +143,31 @@ uses
 
 function PositionOf(const AText, AMarker: string): TTextPosition;
 var
-  Index, Line, LineStart, Scan: Integer;
+  mIndex, mLine, mLineStart, mScan: Integer;
 begin
   // Cursor hinter AMarker.
-  Index := Pos(AMarker, AText);
-  if Index = 0 then
+  mIndex := Pos(AMarker, AText);
+  if mIndex = 0 then
   begin
     raise Exception.CreateFmt('"%s" nicht gefunden', [AMarker]);
   end;
-  Inc(Index, Length(AMarker));
-  Line := 0;
-  LineStart := 1;
-  for Scan := 1 to Index - 1 do
+  Inc(mIndex, Length(AMarker));
+  mLine := 0;
+  mLineStart := 1;
+  for mScan := 1 to mIndex - 1 do
   begin
-    if AText[Scan] = #10 then
+    if AText[mScan] = #10 then
     begin
-      Inc(Line);
-      LineStart := Scan + 1;
+      Inc(mLine);
+      mLineStart := mScan + 1;
     end;
   end;
-  Result := TTextPosition.Create(Line, Index - LineStart);
+  Result := TTextPosition.Create(mLine, mIndex - mLineStart);
 end;
 
 function WithCode(const ACode: string): string;
 begin
-  Result := StringReplace(UnitHaupt, '  { Kommentar Wert } |', ACode, []);
+  Result := StringReplace(cUnitHaupt, '  { Kommentar Wert } |', ACode, []);
 end;
 
 /// <summary>Was TCompletionValues aus der Datei HauptFile braucht.</summary>
@@ -178,7 +178,7 @@ begin
   Result.Index := AIndex;
   Result.Tree := ATree;
   Result.Text := AText;
-  Result.FileName := HauptFile;
+  Result.FileName := cHauptFile;
   Result.ReadText := AReadText;
 end;
 
@@ -225,7 +225,7 @@ end;
 procedure TLspCompletionTestCase.Prepare;
 begin
   FIndex := TSymbolIndex.Create;
-  FIndex.AddUnit(TIndexExtractor.ExtractText(UnitWerkzeug, 'C:\P\Werkzeug.pas', nil));
+  FIndex.AddUnit(TIndexExtractor.ExtractText(cUnitWerkzeug, 'C:\P\Werkzeug.pas', nil));
   FResolver := TNameResolver.Create(FIndex);
 end;
 
@@ -243,24 +243,24 @@ end;
 function TLspCompletionTestCase.ItemsAt(const AText, AMarker: string;
   AMatching: TCompletionMatching): TCompletionItems;
 var
-  Tree: TSyntaxTree;
+  mTree: TSyntaxTree;
 begin
-  Tree := TPascalParser.Parse(AText);
+  mTree := TPascalParser.Parse(AText);
   try
-    Result := TCompletionLists.Collect(FResolver, FIndex, Tree, HauptFile, PositionOf(AText, AMarker), AMatching);
+    Result := TCompletionLists.Collect(FResolver, FIndex, mTree, cHauptFile, PositionOf(AText, AMarker), AMatching);
   finally
-    Tree.Free;
+    mTree.Free;
   end;
 end;
 
 function TLspCompletionTestCase.Names(const AItems: TCompletionItems): string;
 var
-  Item: TCompletionItem;
+  mItem: TCompletionItem;
 begin
   Result := '';
-  for Item in AItems.Items do
+  for mItem in AItems.Items do
   begin
-    Result := Result + Item.Name + ' ';
+    Result := Result + mItem.Name + ' ';
   end;
   Result := Result.Trim;
 end;
@@ -268,23 +268,23 @@ end;
 function TLspCompletionTestCase.AssignItem(const AText, AMarker: string; ASnippets, AOn: Boolean;
   out AItem: TCompletionItem): Boolean;
 var
-  Tree: TSyntaxTree;
-  Request: TCompletionRequest;
-  Settings: TCompletionSettings;
+  mTree: TSyntaxTree;
+  mRequest: TCompletionRequest;
+  mSettings: TCompletionSettings;
 begin
-  Tree := TPascalParser.Parse(AText);
-  Request := TCompletionRequest.Create(AText, HauptFile, PositionOf(AText, AMarker));
+  mTree := TPascalParser.Parse(AText);
+  mRequest := TCompletionRequest.Create(AText, cHauptFile, PositionOf(AText, AMarker));
   try
-    Request.Tree := Tree;
-    Request.Resolver := FResolver;
-    Request.Index := FIndex;
-    Settings := TCompletionSettings.Default;
-    Settings.AssignAllFields := AOn;
-    Request.Settings := Settings;
-    Result := TCompletionValues.AssignAllItem(Request, ASnippets, AItem);
+    mRequest.Tree := mTree;
+    mRequest.Resolver := FResolver;
+    mRequest.Index := FIndex;
+    mSettings := TCompletionSettings.Default;
+    mSettings.AssignAllFields := AOn;
+    mRequest.Settings := mSettings;
+    Result := TCompletionValues.AssignAllItem(mRequest, ASnippets, AItem);
   finally
-    Request.Free;
-    Tree.Free;
+    mRequest.Free;
+    mTree.Free;
   end;
 end;
 

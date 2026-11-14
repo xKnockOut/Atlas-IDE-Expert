@@ -29,40 +29,40 @@ uses
 
 procedure TJsonTreeCommentTests.SkipsLineAndBlockComments;
 var
-  Node: TJsonNode;
+  mNode: TJsonNode;
 begin
-  Node := TJsonTree.Parse('{ // a'#10'"x": /* b */ 1, }');
+  mNode := TJsonTree.Parse('{ // a'#10'"x": /* b */ 1, }');
   try
-    Assert.IsNotNull(Node);
+    Assert.IsNotNull(mNode);
   finally
-    Node.Free;
+    mNode.Free;
   end;
 end;
 
 procedure TJsonTreeCommentTests.LineCommentEndsAtCr;
 var
-  Node: TJsonNode;
+  mNode: TJsonNode;
 begin
-  Node := TJsonTree.Parse('{ // a'#13'"x": 1 }');
+  mNode := TJsonTree.Parse('{ // a'#13'"x": 1 }');
   try
-    Assert.IsNotNull(Node);
+    Assert.IsNotNull(mNode);
   finally
-    Node.Free;
+    mNode.Free;
   end;
 end;
 
 procedure TJsonTreeCommentTests.OpenBlockCommentFailsAtItsStart;
 var
-  Offset: Integer;
+  mOffset: Integer;
 begin
-  Offset := -1;
+  mOffset := -1;
   try
     TJsonTree.Parse('{ "x": 1 /* offen').Free;
   except
     on E: EJsonTreeError do
-      Offset := E.Offset;
+      mOffset := E.Offset;
   end;
-  Assert.AreEqual(9, Offset);
+  Assert.AreEqual(9, mOffset);
 end;
 
 initialization

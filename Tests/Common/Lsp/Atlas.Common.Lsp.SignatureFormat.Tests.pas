@@ -66,10 +66,10 @@ uses
   Atlas.Common.Lsp.SignatureFormat;
 
 const
-  SysUtilsFile = 'C:\P\System.SysUtils.pas';
-  HauptFile = 'C:\P\Haupt.pas';
+  cSysUtilsFile = 'C:\P\System.SysUtils.pas';
+  cHauptFile = 'C:\P\Haupt.pas';
 
-  UnitSysUtils =
+  cUnitSysUtils =
     'unit System.SysUtils;'#10 +
     'interface'#10 +
     'function Format(const Format: string; const Args: array of const): string;'#10 +
@@ -84,7 +84,7 @@ const
     'end.';
 
   // | ist der Cursor; der Rumpf ersetzt ihn.
-  UnitHaupt =
+  cUnitHaupt =
     'unit Haupt;'#10 +
     'interface'#10 +
     'uses System.SysUtils;'#10 +
@@ -105,14 +105,14 @@ const
 
 function ReadText(const AFileName: string; out AText: string): Boolean;
 begin
-  AText := UnitSysUtils;
-  Result := SameText(AFileName, SysUtilsFile);
+  AText := cUnitSysUtils;
+  Result := SameText(AFileName, cSysUtilsFile);
 end;
 
 procedure TSignatureFormatTests.Setup;
 begin
   FIndex := TSymbolIndex.Create;
-  FIndex.AddUnit(TIndexExtractor.ExtractText(UnitSysUtils, SysUtilsFile, nil));
+  FIndex.AddUnit(TIndexExtractor.ExtractText(cUnitSysUtils, cSysUtilsFile, nil));
   FResolver := TNameResolver.Create(FIndex);
 end;
 
@@ -129,7 +129,7 @@ var
   mLine, mCharacter, mIndex: Integer;
   mRequest: TSignatureHelpRequest;
 begin
-  mText := StringReplace(UnitHaupt, '@', ABody, []);
+  mText := StringReplace(cUnitHaupt, '@', ABody, []);
   mIndex := Pos('|', mText);
   Assert.IsTrue(mIndex > 0, 'Cursor fehlt');
   Delete(mText, mIndex, 1);
@@ -149,8 +149,8 @@ begin
   end;
   mTree := TPascalParser.Parse(mText);
   try
-    FIndex.AddUnit(TIndexExtractor.Extract(mTree, HauptFile));
-    mRequest := TSignatureHelpRequest.Create(FResolver, FIndex, mTree, mText, HauptFile, ReadText);
+    FIndex.AddUnit(TIndexExtractor.Extract(mTree, cHauptFile));
+    mRequest := TSignatureHelpRequest.Create(FResolver, FIndex, mTree, mText, cHauptFile, ReadText);
     mRequest.Routines := ARoutines;
     Result := TLspSignatureHelp.HelpAt(mRequest, TTextPosition.Create(mLine, mCharacter));
   finally

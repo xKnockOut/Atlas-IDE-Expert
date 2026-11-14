@@ -61,24 +61,24 @@ end;
 
 procedure TWinApiDocsTests.HoverTextNamesReplacement;
 var
-  Text: string;
+  mText: string;
 begin
-  Text := TWinApiDocs.HoverText('SetWindowLong');
-  Assert.IsTrue(StartsStr('[Microsoft-Dokumentation](', Text), Text);
-  Assert.IsTrue(Pos('SetWindowLongPtr', Text) > 0, Text);
+  mText := TWinApiDocs.HoverText('SetWindowLong');
+  Assert.IsTrue(StartsStr('[Microsoft-Dokumentation](', mText), mText);
+  Assert.IsTrue(Pos('SetWindowLongPtr', mText) > 0, mText);
 end;
 
 procedure TWinApiDocsTests.KnownUrlsWellFormed;
 var
-  Url: string;
+  mUrl: string;
 begin
   Assert.IsTrue(Length(TWinApiDocs.KnownUrls) > 0);
-  for Url in TWinApiDocs.KnownUrls do
+  for mUrl in TWinApiDocs.KnownUrls do
   begin
-    Assert.IsTrue(StartsStr(TWinApiDocs.cApiBase, Url), Url);
-    Assert.AreEqual(0, Pos(' ', Url), Url);
-    Assert.AreEqual(LowerCase(Url), Url);
-    Assert.IsTrue(ContainsStr(Url, '/nf-') or ContainsStr(Url, '/ns-'), Url);
+    Assert.IsTrue(StartsStr(TWinApiDocs.cApiBase, mUrl), mUrl);
+    Assert.AreEqual(0, Pos(' ', mUrl), mUrl);
+    Assert.AreEqual(LowerCase(mUrl), mUrl);
+    Assert.IsTrue(ContainsStr(mUrl, '/nf-') or ContainsStr(mUrl, '/ns-'), mUrl);
   end;
 end;
 

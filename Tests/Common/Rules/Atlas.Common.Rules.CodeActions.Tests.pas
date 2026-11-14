@@ -39,14 +39,14 @@ uses
   Atlas.Common.Rules.CodeActions;
 
 const
-  LB = #13#10;
-  Body =
-    'procedure P;' + LB +
-    'var' + LB +
-    '  L: TStringList;' + LB +
-    'begin' + LB +
-    '  L := TStringList.Create;' + LB +
-    '  L.Add(''x'');' + LB +
+  cLB = #13#10;
+  cBody =
+    'procedure P;' + cLB +
+    'var' + cLB +
+    '  L: TStringList;' + cLB +
+    'begin' + cLB +
+    '  L := TStringList.Create;' + cLB +
+    '  L.Add(''x'');' + cLB +
     'end;';
 
 function FindingWith(ALine: Integer; const ANewText: string; ASafe: Boolean): TRuleFinding;
@@ -59,117 +59,117 @@ end;
 
 procedure TRuleCodeActionTests.FixAllTakesOnlySafeFixes;
 var
-  Action: TCodeAction;
+  mAction: TCodeAction;
 begin
-  Assert.IsFalse(TRuleCodeActions.FixAll([FindingWith(0, 'a', False)], Action));
+  Assert.IsFalse(TRuleCodeActions.FixAll([FindingWith(0, 'a', False)], mAction));
   Assert.IsTrue(TRuleCodeActions.FixAll([FindingWith(0, 'a', False), FindingWith(2, 'b', True), FindingWith(4, 'c', True)],
-    Action));
-  Assert.AreEqual(cFixAllKind, Action.Kind);
-  Assert.AreEqual(2, Integer(Length(Action.Edits)));
-  Assert.AreEqual('b', Action.Edits[0].NewText);
-  Assert.AreEqual('c', Action.Edits[1].NewText);
+    mAction));
+  Assert.AreEqual(cFixAllKind, mAction.Kind);
+  Assert.AreEqual(2, Integer(Length(mAction.Edits)));
+  Assert.AreEqual('b', mAction.Edits[0].NewText);
+  Assert.AreEqual('c', mAction.Edits[1].NewText);
 end;
 
 procedure TRuleCodeActionTests.FixAllSkipsOverlappingFixes;
 var
-  Action: TCodeAction;
+  mAction: TCodeAction;
 begin
-  Assert.IsTrue(TRuleCodeActions.FixAll([FindingWith(1, 'a', True), FindingWith(1, 'b', True)], Action));
-  Assert.AreEqual(1, Integer(Length(Action.Edits)));
-  Assert.AreEqual('a', Action.Edits[0].NewText);
+  Assert.IsTrue(TRuleCodeActions.FixAll([FindingWith(1, 'a', True), FindingWith(1, 'b', True)], mAction));
+  Assert.AreEqual(1, Integer(Length(mAction.Edits)));
+  Assert.AreEqual('a', mAction.Edits[0].NewText);
 end;
 
 procedure TRuleCodeActionTests.FindingInRangeGivesFixAndSuppressions;
 var
-  Finding: TRuleFinding;
-  Actions: TArray<TCodeAction>;
+  mFinding: TRuleFinding;
+  mActions: TArray<TCodeAction>;
 begin
-  Finding := Default(TRuleFinding);
-  Finding.RuleId := 'marker';
-  Finding.Range := TTextRange.Create(5, 2, 5, 3);
-  Finding.Fixes := [TRuleFix.Create('Beheben', [TRuleEdit.Create(Finding.Range, 'M')])];
-  Actions := TRuleCodeActions.ForFindings([Finding], Body, TTextRange.Create(5, 0, 5, 0));
-  Assert.AreEqual(3, Integer(Length(Actions)));
-  Assert.AreEqual('Beheben', Actions[0].Title);
-  Assert.IsTrue(Actions[0].IsPreferred);
-  Assert.AreEqual(cQuickFixKind, Actions[1].Kind);
-  Assert.AreEqual('marker', Actions[2].RuleId);
+  mFinding := Default(TRuleFinding);
+  mFinding.RuleId := 'marker';
+  mFinding.Range := TTextRange.Create(5, 2, 5, 3);
+  mFinding.Fixes := [TRuleFix.Create('Beheben', [TRuleEdit.Create(mFinding.Range, 'M')])];
+  mActions := TRuleCodeActions.ForFindings([mFinding], cBody, TTextRange.Create(5, 0, 5, 0));
+  Assert.AreEqual(3, Integer(Length(mActions)));
+  Assert.AreEqual('Beheben', mActions[0].Title);
+  Assert.IsTrue(mActions[0].IsPreferred);
+  Assert.AreEqual(cQuickFixKind, mActions[1].Kind);
+  Assert.AreEqual('marker', mActions[2].RuleId);
   // Fenster „Atlas-Prüfung“ und Befund-Hover wählen über die Tags (#909).
-  Assert.AreEqual(cRuleFixTag, Actions[0].Tag);
-  Assert.AreEqual(cRuleSuppressLineTag, Actions[1].Tag);
-  Assert.AreEqual(cRuleSuppressFileTag, Actions[2].Tag);
+  Assert.AreEqual(cRuleFixTag, mActions[0].Tag);
+  Assert.AreEqual(cRuleSuppressLineTag, mActions[1].Tag);
+  Assert.AreEqual(cRuleSuppressFileTag, mActions[2].Tag);
 end;
 
 procedure TRuleCodeActionTests.AlternativeFixesCarryNoFixTag;
 var
-  Finding: TRuleFinding;
-  Fix: TRuleFix;
-  Actions: TArray<TCodeAction>;
+  mFinding: TRuleFinding;
+  mFix: TRuleFix;
+  mActions: TArray<TCodeAction>;
 begin
-  Finding := Default(TRuleFinding);
-  Finding.RuleId := 'marker';
-  Finding.Range := TTextRange.Create(5, 2, 5, 3);
-  Fix := TRuleFix.Create('A', [TRuleEdit.Create(Finding.Range, 'A')]);
-  Fix.Alternative := True;
-  Finding.Fixes := [Fix];
-  Actions := TRuleCodeActions.ForFindings([Finding], Body, TTextRange.Create(5, 0, 5, 0));
-  Assert.AreEqual('', Actions[0].Tag);
-  Assert.IsFalse(Actions[0].IsPreferred);
+  mFinding := Default(TRuleFinding);
+  mFinding.RuleId := 'marker';
+  mFinding.Range := TTextRange.Create(5, 2, 5, 3);
+  mFix := TRuleFix.Create('A', [TRuleEdit.Create(mFinding.Range, 'A')]);
+  mFix.Alternative := True;
+  mFinding.Fixes := [mFix];
+  mActions := TRuleCodeActions.ForFindings([mFinding], cBody, TTextRange.Create(5, 0, 5, 0));
+  Assert.AreEqual('', mActions[0].Tag);
+  Assert.IsFalse(mActions[0].IsPreferred);
 end;
 
 procedure TRuleCodeActionTests.UnitRelationsFixRunsClientCommand;
 var
-  Finding: TRuleFinding;
-  Actions: TArray<TCodeAction>;
+  mFinding: TRuleFinding;
+  mActions: TArray<TCodeAction>;
 begin
   // „Graph zeigen“ an einem Unit-Zyklus (#896): ohne Änderung, mit Client-Befehl.
-  Finding := Default(TRuleFinding);
-  Finding.RuleId := 'uses-cycle';
-  Finding.Range := TTextRange.Create(5, 2, 5, 3);
-  Finding.Fixes := [TRuleFix.UnitRelations('Graph zeigen (Unit-Beziehungen)')];
-  Actions := TRuleCodeActions.ForFindings([Finding], Body, TTextRange.Create(5, 0, 5, 0));
-  Assert.AreEqual('Graph zeigen (Unit-Beziehungen)', Actions[0].Title);
-  Assert.AreEqual(cShowUnitRelationsCommand, Actions[0].Command);
-  Assert.AreEqual(0, Integer(Length(Actions[0].Edits)));
+  mFinding := Default(TRuleFinding);
+  mFinding.RuleId := 'uses-cycle';
+  mFinding.Range := TTextRange.Create(5, 2, 5, 3);
+  mFinding.Fixes := [TRuleFix.UnitRelations('Graph zeigen (Unit-Beziehungen)')];
+  mActions := TRuleCodeActions.ForFindings([mFinding], cBody, TTextRange.Create(5, 0, 5, 0));
+  Assert.AreEqual('Graph zeigen (Unit-Beziehungen)', mActions[0].Title);
+  Assert.AreEqual(cShowUnitRelationsCommand, mActions[0].Command);
+  Assert.AreEqual(0, Integer(Length(mActions[0].Edits)));
 end;
 
 procedure TRuleCodeActionTests.FindingOutsideRangeIgnored;
 var
-  Finding: TRuleFinding;
+  mFinding: TRuleFinding;
 begin
-  Finding := Default(TRuleFinding);
-  Finding.RuleId := 'marker';
-  Finding.Range := TTextRange.Create(1, 0, 1, 3);
-  Assert.AreEqual(0, Integer(Length(TRuleCodeActions.ForFindings([Finding], Body, TTextRange.Create(5, 0, 5, 0)))));
+  mFinding := Default(TRuleFinding);
+  mFinding.RuleId := 'marker';
+  mFinding.Range := TTextRange.Create(1, 0, 1, 3);
+  Assert.AreEqual(0, Integer(Length(TRuleCodeActions.ForFindings([mFinding], cBody, TTextRange.Create(5, 0, 5, 0)))));
 end;
 
 procedure TRuleCodeActionTests.ForRangeAddsTryFinally;
 var
-  Actions: TArray<TCodeAction>;
+  mActions: TArray<TCodeAction>;
 begin
-  Actions := TRuleCodeActions.ForRange(nil, Body, TTextRange.Create(4, 0, 4, 0));
-  Assert.AreEqual(1, Integer(Length(Actions)));
-  Assert.AreEqual('', Actions[0].RuleId);
+  mActions := TRuleCodeActions.ForRange(nil, cBody, TTextRange.Create(4, 0, 4, 0));
+  Assert.AreEqual(1, Integer(Length(mActions)));
+  Assert.AreEqual('', mActions[0].RuleId);
 end;
 
 procedure TRuleCodeActionTests.FixWithOtherFiles;
 var
-  Finding: TRuleFinding;
-  Other: TRuleFileEdits;
-  Actions: TArray<TCodeAction>;
-  Action: TCodeAction;
+  mFinding: TRuleFinding;
+  mOther: TRuleFileEdits;
+  mActions: TArray<TCodeAction>;
+  mAction: TCodeAction;
 begin
   // Korrektur über mehrere Units (#1105): alle Dateien in einer Aktion, aber nie in source.fixAll.
-  Finding := FindingWith(2, 'X', True);
-  Other.FileName := 'C:\P\Andere.pas';
-  Other.Edits := [TRuleEdit.Create(TTextRange.Create(1, 0, 1, 1), 'Y')];
-  Finding.Fixes[0].OtherFiles := [Other];
-  Actions := TRuleCodeActions.ForFindings([Finding], Body, TTextRange.Create(2, 0, 2, 0));
-  Assert.AreEqual('X', Actions[0].Edits[0].NewText);
-  Assert.AreEqual(1, Integer(Length(Actions[0].FileEdits)));
-  Assert.AreEqual('C:\P\Andere.pas', Actions[0].FileEdits[0].FileName);
-  Assert.AreEqual('Y', Actions[0].FileEdits[0].Edits[0].NewText);
-  Assert.IsFalse(TRuleCodeActions.FixAll([Finding], Action));
+  mFinding := FindingWith(2, 'X', True);
+  mOther.FileName := 'C:\P\Andere.pas';
+  mOther.Edits := [TRuleEdit.Create(TTextRange.Create(1, 0, 1, 1), 'Y')];
+  mFinding.Fixes[0].OtherFiles := [mOther];
+  mActions := TRuleCodeActions.ForFindings([mFinding], cBody, TTextRange.Create(2, 0, 2, 0));
+  Assert.AreEqual('X', mActions[0].Edits[0].NewText);
+  Assert.AreEqual(1, Integer(Length(mActions[0].FileEdits)));
+  Assert.AreEqual('C:\P\Andere.pas', mActions[0].FileEdits[0].FileName);
+  Assert.AreEqual('Y', mActions[0].FileEdits[0].Edits[0].NewText);
+  Assert.IsFalse(TRuleCodeActions.FixAll([mFinding], mAction));
 end;
 
 initialization

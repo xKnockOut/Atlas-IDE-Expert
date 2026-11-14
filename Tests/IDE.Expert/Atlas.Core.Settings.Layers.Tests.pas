@@ -59,22 +59,22 @@ uses
   Atlas.Core.Files.TextFile;
 
 const
-  LB = #13#10;
-  ProjectText =
-    '{' + LB +
-    '  // Projekt' + LB +
-    '  "language": "en",' + LB +
-    '  "rules": {' + LB +
-    '    "no-with": "error", // streng' + LB +
-    '    "magic-number": { "severity": "hint", "ignore": [0, 1] }' + LB +
-    '  },' + LB +
-    '  "unknown": [1, 2]' + LB +
-    '}' + LB;
-  GlobalText =
-    '{' + LB +
-    '  "language": "de",' + LB +
-    '  "memoryBudgetMb": 512' + LB +
-    '}' + LB;
+  cLB = #13#10;
+  cProjectText =
+    '{' + cLB +
+    '  // Projekt' + cLB +
+    '  "language": "en",' + cLB +
+    '  "rules": {' + cLB +
+    '    "no-with": "error", // streng' + cLB +
+    '    "magic-number": { "severity": "hint", "ignore": [0, 1] }' + cLB +
+    '  },' + cLB +
+    '  "unknown": [1, 2]' + cLB +
+    '}' + cLB;
+  cGlobalText =
+    '{' + cLB +
+    '  "language": "de",' + cLB +
+    '  "memoryBudgetMb": 512' + cLB +
+    '}' + cLB;
 
 function Model(const AText, AGlobal: string; AGlobalMode: Boolean): TAtlasSettingsModel;
 begin
@@ -83,267 +83,267 @@ end;
 
 procedure TAtlasSettingsLayersTests.ProjectOverridesGlobalOverridesDefault;
 var
-  Settings: TAtlasSettingsModel;
-  Language, Budget, Timeout: Integer;
+  mSettings: TAtlasSettingsModel;
+  mLanguage, mBudget, mTimeout: Integer;
 begin
-  Settings := Model(ProjectText, GlobalText, False);
+  mSettings := Model(cProjectText, cGlobalText, False);
   try
-    Language := Settings.IndexOf('language');
-    Budget := Settings.IndexOf('memoryBudgetMb');
-    Timeout := Settings.IndexOf('requestTimeoutMs');
-    Assert.AreEqual<TAtlasSettingOrigin>(TAtlasSettingOrigin.Project, Settings.Origin(Language));
-    Assert.AreEqual('"en"', Settings.Effective(Language));
-    Assert.AreEqual('"de"', Settings.Inherited_(Language));
-    Assert.AreEqual<TAtlasSettingOrigin>(TAtlasSettingOrigin.Global, Settings.Origin(Budget));
-    Assert.AreEqual('512', Settings.Effective(Budget));
-    Assert.AreEqual<TAtlasSettingOrigin>(TAtlasSettingOrigin.Default_, Settings.Origin(Timeout));
-    Assert.AreEqual(Settings.Fields[Timeout].DefaultJson, Settings.Effective(Timeout));
+    mLanguage := mSettings.IndexOf('language');
+    mBudget := mSettings.IndexOf('memoryBudgetMb');
+    mTimeout := mSettings.IndexOf('requestTimeoutMs');
+    Assert.AreEqual<TAtlasSettingOrigin>(TAtlasSettingOrigin.Project, mSettings.Origin(mLanguage));
+    Assert.AreEqual('"en"', mSettings.Effective(mLanguage));
+    Assert.AreEqual('"de"', mSettings.Inherited_(mLanguage));
+    Assert.AreEqual<TAtlasSettingOrigin>(TAtlasSettingOrigin.Global, mSettings.Origin(mBudget));
+    Assert.AreEqual('512', mSettings.Effective(mBudget));
+    Assert.AreEqual<TAtlasSettingOrigin>(TAtlasSettingOrigin.Default_, mSettings.Origin(mTimeout));
+    Assert.AreEqual(mSettings.Fields[mTimeout].DefaultJson, mSettings.Effective(mTimeout));
   finally
-    Settings.Free;
+    mSettings.Free;
   end;
 end;
 
 procedure TAtlasSettingsLayersTests.ResetToGlobalRemovesOnlyThatKey;
 var
-  Settings: TAtlasSettingsModel;
-  Language: Integer;
+  mSettings: TAtlasSettingsModel;
+  mLanguage: Integer;
 begin
-  Settings := Model(ProjectText, GlobalText, False);
+  mSettings := Model(cProjectText, cGlobalText, False);
   try
-    Language := Settings.IndexOf('language');
-    Settings.Reset(Language);
-    Assert.AreEqual<TAtlasSettingOrigin>(TAtlasSettingOrigin.Global, Settings.Origin(Language));
-    Assert.AreEqual('"de"', Settings.Effective(Language));
-    Assert.AreEqual(StringReplace(ProjectText, '  "language": "en",' + LB, '', []), Settings.ResultText);
+    mLanguage := mSettings.IndexOf('language');
+    mSettings.Reset(mLanguage);
+    Assert.AreEqual<TAtlasSettingOrigin>(TAtlasSettingOrigin.Global, mSettings.Origin(mLanguage));
+    Assert.AreEqual('"de"', mSettings.Effective(mLanguage));
+    Assert.AreEqual(StringReplace(cProjectText, '  "language": "en",' + cLB, '', []), mSettings.ResultText);
   finally
-    Settings.Free;
+    mSettings.Free;
   end;
 end;
 
 procedure TAtlasSettingsLayersTests.UnchangedFileStaysByteIdentical;
 var
-  Settings: TAtlasSettingsModel;
-  Language: Integer;
+  mSettings: TAtlasSettingsModel;
+  mLanguage: Integer;
 begin
-  Settings := Model(ProjectText, GlobalText, False);
+  mSettings := Model(cProjectText, cGlobalText, False);
   try
-    Assert.IsFalse(Settings.Modified);
-    Assert.AreEqual(ProjectText, Settings.ResultText);
+    Assert.IsFalse(mSettings.Modified);
+    Assert.AreEqual(cProjectText, mSettings.ResultText);
     // Derselbe Wert noch einmal gesetzt: keine Änderung.
-    Language := Settings.IndexOf('language');
-    Settings.SetValue(Language, '"en"');
-    Assert.AreEqual(ProjectText, Settings.ResultText);
+    mLanguage := mSettings.IndexOf('language');
+    mSettings.SetValue(mLanguage, '"en"');
+    Assert.AreEqual(cProjectText, mSettings.ResultText);
     // Ein Wert geändert: nur er unterscheidet sich.
-    Settings.SetValue(Language, '"de"');
-    Assert.AreEqual(StringReplace(ProjectText, '"language": "en"', '"language": "de"', []), Settings.ResultText);
+    mSettings.SetValue(mLanguage, '"de"');
+    Assert.AreEqual(StringReplace(cProjectText, '"language": "en"', '"language": "de"', []), mSettings.ResultText);
   finally
-    Settings.Free;
+    mSettings.Free;
   end;
 end;
 
 procedure TAtlasSettingsLayersTests.GlobalModeEditsGlobalFile;
 var
-  Settings: TAtlasSettingsModel;
-  Budget: Integer;
+  mSettings: TAtlasSettingsModel;
+  mBudget: Integer;
 begin
-  Settings := Model(GlobalText, ProjectText, True);
+  mSettings := Model(cGlobalText, cProjectText, True);
   try
-    Budget := Settings.IndexOf('memoryBudgetMb');
-    Assert.IsTrue(Settings.Global);
-    Assert.AreEqual<TAtlasSettingOrigin>(TAtlasSettingOrigin.Global, Settings.Origin(Budget));
+    mBudget := mSettings.IndexOf('memoryBudgetMb');
+    Assert.IsTrue(mSettings.Global);
+    Assert.AreEqual<TAtlasSettingOrigin>(TAtlasSettingOrigin.Global, mSettings.Origin(mBudget));
     // Global erbt nichts vom Projekt.
-    Assert.AreEqual('', Settings.Inherited_(Settings.IndexOf('rules')));
-    Settings.SetValue(Budget, '1024');
-    Assert.AreEqual(StringReplace(GlobalText, '512', '1024', []), Settings.ResultText);
+    Assert.AreEqual('', mSettings.Inherited_(mSettings.IndexOf('rules')));
+    mSettings.SetValue(mBudget, '1024');
+    Assert.AreEqual(StringReplace(cGlobalText, '512', '1024', []), mSettings.ResultText);
   finally
-    Settings.Free;
+    mSettings.Free;
   end;
 end;
 
 procedure TAtlasSettingsLayersTests.ComplexAndMismatchedValuesAreJsonFields;
 var
-  Settings: TAtlasSettingsModel;
+  mSettings: TAtlasSettingsModel;
 begin
-  Settings := Model('{"profile": {"editor": "fast"}, "language": "de"}', '', False);
+  mSettings := Model('{"profile": {"editor": "fast"}, "language": "de"}', '', False);
   try
-    Assert.IsFalse(Settings.Typed(Settings.IndexOf('rules')));
-    Assert.IsFalse(Settings.Typed(Settings.IndexOf('profile')), 'Profil als Objekt');
-    Assert.IsTrue(Settings.Typed(Settings.IndexOf('language')));
+    Assert.IsFalse(mSettings.Typed(mSettings.IndexOf('rules')));
+    Assert.IsFalse(mSettings.Typed(mSettings.IndexOf('profile')), 'Profil als Objekt');
+    Assert.IsTrue(mSettings.Typed(mSettings.IndexOf('language')));
     // Auch Complex-Felder lassen sich als JSON-Text ändern.
-    Settings.SetValue(Settings.IndexOf('overrides'), '[{"files": ["Tests/**"], "rules": {"*": "hint"}}]');
-    Assert.IsTrue(Pos('"overrides": [{"files"', Settings.ResultText) > 0);
+    mSettings.SetValue(mSettings.IndexOf('overrides'), '[{"files": ["Tests/**"], "rules": {"*": "hint"}}]');
+    Assert.IsTrue(Pos('"overrides": [{"files"', mSettings.ResultText) > 0);
   finally
-    Settings.Free;
+    mSettings.Free;
   end;
 end;
 
 procedure TAtlasSettingsLayersTests.SchemaReadsControlExamplesRestart;
 var
-  Fields: TArray<TAtlasSettingField>;
-  Field: TAtlasSettingField;
-  Seen: Integer;
+  mFields: TArray<TAtlasSettingField>;
+  mField: TAtlasSettingField;
+  mSeen: Integer;
 begin
-  Fields := TAtlasSettingsSchema.Fields(AtlasSchemaJson);
-  Seen := 0;
-  for Field in Fields do
+  mFields := TAtlasSettingsSchema.Fields(AtlasSchemaJson);
+  mSeen := 0;
+  for mField in mFields do
   begin
-    if Field.Path = 'logFile' then
+    if mField.Path = 'logFile' then
     begin
-      Assert.IsTrue(Field.PicksFile);
-      Assert.IsTrue(Field.Restart);
-      Inc(Seen);
+      Assert.IsTrue(mField.PicksFile);
+      Assert.IsTrue(mField.Restart);
+      Inc(mSeen);
     end
-    else if Field.Path = 'encoding' then
+    else if mField.Path = 'encoding' then
     begin
-      Assert.AreEqual(3, Integer(Length(Field.Examples)));
-      Assert.AreEqual('windows-1252', Field.Examples[1]);
-      Assert.IsFalse(Field.PicksFile);
-      Inc(Seen);
+      Assert.AreEqual(3, Integer(Length(mField.Examples)));
+      Assert.AreEqual('windows-1252', mField.Examples[1]);
+      Assert.IsFalse(mField.PicksFile);
+      Inc(mSeen);
     end
-    else if Field.Path = 'config' then
+    else if mField.Path = 'config' then
     begin
-      Assert.AreEqual('Auswahl aus der .dproj', Field.Control);
-      Inc(Seen);
+      Assert.AreEqual('Auswahl aus der .dproj', mField.Control);
+      Inc(mSeen);
     end;
   end;
-  Assert.AreEqual(3, Seen);
+  Assert.AreEqual(3, mSeen);
 end;
 
 procedure TAtlasSettingsLayersTests.DelphiVersionsShowProductAndStoreNumber;
 var
-  Choices: TArray<TAtlasSettingChoice>;
+  mChoices: TArray<TAtlasSettingChoice>;
 begin
-  Choices := TAtlasSettingChoices.DelphiVersions(['23.0', '37.0', '23.0', '99.0']);
-  Assert.AreEqual(3, Integer(Length(Choices)));
-  Assert.AreEqual('99.0', Choices[0].Caption, 'unbekannt: nur die Nummer');
-  Assert.AreEqual('Delphi 13 (37.0)', Choices[1].Caption);
-  Assert.AreEqual('"37.0"', Choices[1].Json);
-  Assert.AreEqual('Delphi 12 (23.0)', Choices[2].Caption);
-  Assert.AreEqual('"23.0"', Choices[2].Json);
-  Assert.AreEqual(2, TAtlasSettingChoices.IndexOf(Choices, '"23.0"'));
-  Assert.AreEqual(-1, TAtlasSettingChoices.IndexOf(Choices, '"12"'));
+  mChoices := TAtlasSettingChoices.DelphiVersions(['23.0', '37.0', '23.0', '99.0']);
+  Assert.AreEqual(3, Integer(Length(mChoices)));
+  Assert.AreEqual('99.0', mChoices[0].Caption, 'unbekannt: nur die Nummer');
+  Assert.AreEqual('Delphi 13 (37.0)', mChoices[1].Caption);
+  Assert.AreEqual('"37.0"', mChoices[1].Json);
+  Assert.AreEqual('Delphi 12 (23.0)', mChoices[2].Caption);
+  Assert.AreEqual('"23.0"', mChoices[2].Json);
+  Assert.AreEqual(2, TAtlasSettingChoices.IndexOf(mChoices, '"23.0"'));
+  Assert.AreEqual(-1, TAtlasSettingChoices.IndexOf(mChoices, '"12"'));
 end;
 
 procedure TAtlasSettingsLayersTests.KnownVersionsForMinDelphiVersion;
 var
-  Choices: TArray<TAtlasSettingChoice>;
+  mChoices: TArray<TAtlasSettingChoice>;
 begin
   // #1126: auch nicht installierte Versionen, neueste zuerst.
-  Choices := TAtlasSettingChoices.DelphiVersions(TAtlasSettingChoices.KnownVersions);
-  Assert.AreEqual(Integer(Length(TAtlasSettingChoices.KnownVersions)), Integer(Length(Choices)));
-  Assert.AreEqual('Delphi 13 (37.0)', Choices[0].Caption);
-  Assert.IsTrue(TAtlasSettingChoices.IndexOf(Choices, '"23.0"') >= 0);
-  Assert.IsTrue(TAtlasSettingChoices.IndexOf(Choices, '"20.0"') >= 0);
+  mChoices := TAtlasSettingChoices.DelphiVersions(TAtlasSettingChoices.KnownVersions);
+  Assert.AreEqual(Integer(Length(TAtlasSettingChoices.KnownVersions)), Integer(Length(mChoices)));
+  Assert.AreEqual('Delphi 13 (37.0)', mChoices[0].Caption);
+  Assert.IsTrue(TAtlasSettingChoices.IndexOf(mChoices, '"23.0"') >= 0);
+  Assert.IsTrue(TAtlasSettingChoices.IndexOf(mChoices, '"20.0"') >= 0);
 end;
 
 procedure TAtlasSettingsLayersTests.ReadsConfigsAndPlatformsFromDproj;
 const
-  Dproj =
-    '<Project>' + LB +
-    '  <ItemGroup>' + LB +
-    '    <BuildConfiguration Include="Base"><Key>Base</Key></BuildConfiguration>' + LB +
-    '    <BuildConfiguration Include="Debug"><Key>Cfg_1</Key></BuildConfiguration>' + LB +
-    '    <BuildConfiguration Include="Release"><Key>Cfg_2</Key></BuildConfiguration>' + LB +
-    '  </ItemGroup>' + LB +
-    '  <Platforms>' + LB +
-    '    <Platform value="Win32">True</Platform>' + LB +
-    '    <Platform value="Win64">True</Platform>' + LB +
-    '    <Platform value="Linux64">False</Platform>' + LB +
-    '  </Platforms>' + LB +
+  cDproj =
+    '<Project>' + cLB +
+    '  <ItemGroup>' + cLB +
+    '    <BuildConfiguration Include="Base"><Key>Base</Key></BuildConfiguration>' + cLB +
+    '    <BuildConfiguration Include="Debug"><Key>Cfg_1</Key></BuildConfiguration>' + cLB +
+    '    <BuildConfiguration Include="Release"><Key>Cfg_2</Key></BuildConfiguration>' + cLB +
+    '  </ItemGroup>' + cLB +
+    '  <Platforms>' + cLB +
+    '    <Platform value="Win32">True</Platform>' + cLB +
+    '    <Platform value="Win64">True</Platform>' + cLB +
+    '    <Platform value="Linux64">False</Platform>' + cLB +
+    '  </Platforms>' + cLB +
     '</Project>';
 var
-  Items: TArray<string>;
+  mItems: TArray<string>;
 begin
-  Items := TAtlasSettingChoices.DprojConfigs(Dproj);
-  Assert.AreEqual(2, Integer(Length(Items)));
-  Assert.AreEqual('Debug', Items[0]);
-  Assert.AreEqual('Release', Items[1]);
-  Items := TAtlasSettingChoices.DprojPlatforms(Dproj);
-  Assert.AreEqual(2, Integer(Length(Items)));
-  Assert.AreEqual('Win64', Items[1]);
+  mItems := TAtlasSettingChoices.DprojConfigs(cDproj);
+  Assert.AreEqual(2, Integer(Length(mItems)));
+  Assert.AreEqual('Debug', mItems[0]);
+  Assert.AreEqual('Release', mItems[1]);
+  mItems := TAtlasSettingChoices.DprojPlatforms(cDproj);
+  Assert.AreEqual(2, Integer(Length(mItems)));
+  Assert.AreEqual('Win64', mItems[1]);
   Assert.AreEqual(0, Integer(Length(TAtlasSettingChoices.DprojConfigs(''))));
 end;
 
 procedure TAtlasSettingsLayersTests.ProfilesIncludeOwnOnes;
 var
-  Items: TArray<string>;
+  mItems: TArray<string>;
 begin
-  Items := TAtlasSettingChoices.Profiles('{"team": {"extends": "fast"}, "strict": {}}');
-  Assert.AreEqual(6, Integer(Length(Items)));
-  Assert.AreEqual('standard', Items[0]);
-  Assert.AreEqual('team', Items[5]);
+  mItems := TAtlasSettingChoices.Profiles('{"team": {"extends": "fast"}, "strict": {}}');
+  Assert.AreEqual(6, Integer(Length(mItems)));
+  Assert.AreEqual('standard', mItems[0]);
+  Assert.AreEqual('team', mItems[5]);
   Assert.AreEqual(5, Integer(Length(TAtlasSettingChoices.Profiles(''))));
 end;
 
 procedure TAtlasSettingsLayersTests.RuleSeverityChangeTouchesOnlyThatRule;
 var
-  Settings: TAtlasSettingsModel;
+  mSettings: TAtlasSettingsModel;
 begin
   // Pfade rules.<id> bzw. rules.<id>.severity (Regeltabelle des Moduls Prüfregeln) ändern nur diesen Wert.
-  Settings := Model(ProjectText, '', False);
+  mSettings := Model(cProjectText, '', False);
   try
-    Settings.SetPath('rules.no-with', '"off"');
-    Assert.AreEqual(StringReplace(ProjectText, '"no-with": "error"', '"no-with": "off"', []), Settings.ResultText);
-    Settings.SetPath('rules.magic-number.severity', '"warning"');
-    Assert.IsTrue(Pos('{ "severity": "warning", "ignore": [0, 1] }', Settings.ResultText) > 0);
-    Assert.IsTrue(Pos('// streng', Settings.ResultText) > 0);
+    mSettings.SetPath('rules.no-with', '"off"');
+    Assert.AreEqual(StringReplace(cProjectText, '"no-with": "error"', '"no-with": "off"', []), mSettings.ResultText);
+    mSettings.SetPath('rules.magic-number.severity', '"warning"');
+    Assert.IsTrue(Pos('{ "severity": "warning", "ignore": [0, 1] }', mSettings.ResultText) > 0);
+    Assert.IsTrue(Pos('// streng', mSettings.ResultText) > 0);
   finally
-    Settings.Free;
+    mSettings.Free;
   end;
 end;
 
 procedure TAtlasSettingsLayersTests.ReadsServerCheckAnswer;
 var
-  Answer: TJSONValue;
-  Issues: TArray<TAtlasSettingIssue>;
-  Valid: Boolean;
-  Lines: TArray<string>;
+  mAnswer: TJSONValue;
+  mIssues: TArray<TAtlasSettingIssue>;
+  mValid: Boolean;
+  mLines: TArray<string>;
 begin
-  Answer := TJSONObject.ParseJSONValue('{"valid": false, "issues": [' +
+  mAnswer := TJSONObject.ParseJSONValue('{"valid": false, "issues": [' +
     '{"line": 3, "character": 2, "message": "Unbekannter Schlüssel", "error": false},' +
     '{"line": 1, "character": 14, "message": "Ungültiger Wert", "error": true}]}');
   try
-    Assert.IsTrue(TAtlasSettingsValidation.FromAnswer(Answer, Issues, Valid));
-    Assert.IsFalse(Valid);
-    Assert.AreEqual(2, Integer(Length(Issues)));
-    Assert.IsTrue(Issues[1].Error);
-    Lines := TAtlasSettingsValidation.Lines(Issues);
-    Assert.AreEqual('Zeile 2: Ungültiger Wert', Lines[0]);
-    Assert.AreEqual('Zeile 4: Unbekannter Schlüssel', Lines[1]);
+    Assert.IsTrue(TAtlasSettingsValidation.FromAnswer(mAnswer, mIssues, mValid));
+    Assert.IsFalse(mValid);
+    Assert.AreEqual(2, Integer(Length(mIssues)));
+    Assert.IsTrue(mIssues[1].Error);
+    mLines := TAtlasSettingsValidation.Lines(mIssues);
+    Assert.AreEqual('Zeile 2: Ungültiger Wert', mLines[0]);
+    Assert.AreEqual('Zeile 4: Unbekannter Schlüssel', mLines[1]);
   finally
-    Answer.Free;
+    mAnswer.Free;
   end;
-  Assert.IsFalse(TAtlasSettingsValidation.FromAnswer(nil, Issues, Valid), 'ohne Server');
+  Assert.IsFalse(TAtlasSettingsValidation.FromAnswer(nil, mIssues, mValid), 'ohne Server');
 end;
 
 procedure TAtlasSettingsLayersTests.SyntaxCheckWithoutServer;
 var
-  Issues: TArray<TAtlasSettingIssue>;
+  mIssues: TArray<TAtlasSettingIssue>;
 begin
-  Assert.IsTrue(TAtlasSettingsValidation.Syntax(ProjectText, Issues));
-  Assert.IsTrue(TAtlasSettingsValidation.Syntax('', Issues));
-  Assert.IsFalse(TAtlasSettingsValidation.Syntax('{"a": ', Issues));
-  Assert.AreEqual(1, Integer(Length(Issues)));
-  Assert.IsTrue(Issues[0].Error);
+  Assert.IsTrue(TAtlasSettingsValidation.Syntax(cProjectText, mIssues));
+  Assert.IsTrue(TAtlasSettingsValidation.Syntax('', mIssues));
+  Assert.IsFalse(TAtlasSettingsValidation.Syntax('{"a": ', mIssues));
+  Assert.AreEqual(1, Integer(Length(mIssues)));
+  Assert.IsTrue(mIssues[0].Error);
 end;
 
 procedure TAtlasSettingsLayersTests.CountsBaselineAndSuppressions;
 var
-  Entries: Integer;
-  Rows: TArray<TAtlasSuppressionRow>;
+  mEntries: Integer;
+  mRows: TArray<TAtlasSuppressionRow>;
 begin
   Assert.AreEqual(5, TAtlasBaselineInfo.Count('{"version": 1, "findings": [' +
     '{"path": "a.pas", "rule": "x", "fingerprint": "f", "count": 3},' +
-    '{"path": "b.pas", "rule": "y", "fingerprint": "g", "count": 2}]}', Entries));
-  Assert.AreEqual(2, Entries);
-  Assert.AreEqual(-1, TAtlasBaselineInfo.Count('kaputt', Entries));
-  Rows := TAtlasBaselineInfo.Suppressions('{"suppressions":[{"rule":"no-with","total":4,"line":3,"file":1,' +
+    '{"path": "b.pas", "rule": "y", "fingerprint": "g", "count": 2}]}', mEntries));
+  Assert.AreEqual(2, mEntries);
+  Assert.AreEqual(-1, TAtlasBaselineInfo.Count('kaputt', mEntries));
+  mRows := TAtlasBaselineInfo.Suppressions('{"suppressions":[{"rule":"no-with","total":4,"line":3,"file":1,' +
     '"unused":1,"files":2}],"files":10}');
-  Assert.AreEqual(1, Integer(Length(Rows)));
-  Assert.AreEqual('no-with', Rows[0].Rule);
-  Assert.AreEqual(4, Rows[0].Total);
-  Assert.AreEqual(1, Rows[0].Unused);
-  Assert.AreEqual(2, Rows[0].Files);
+  Assert.AreEqual(1, Integer(Length(mRows)));
+  Assert.AreEqual('no-with', mRows[0].Rule);
+  Assert.AreEqual(4, mRows[0].Total);
+  Assert.AreEqual(1, mRows[0].Unused);
+  Assert.AreEqual(2, mRows[0].Files);
 end;
 
 procedure TAtlasSettingsLayersTests.GlobalFileUnderAppData;
@@ -355,44 +355,44 @@ end;
 
 procedure TAtlasSettingsLayersTests.KeepsEncodingAndLineEndings;
 var
-  Bytes, Saved: TBytes;
-  Content: TAtlasTextFileContent;
-  Settings: TAtlasSettingsModel;
-  Text: string;
-  Index: Integer;
-  Ansi: TEncoding;
+  mBytes, mSaved: TBytes;
+  mContent: TAtlasTextFileContent;
+  mSettings: TAtlasSettingsModel;
+  mText: string;
+  mIndex: Integer;
+  mAnsi: TEncoding;
 begin
   // ANSI (Windows-1252) mit Umlaut im Kommentar und LF-Zeilenenden (#121).
-  Text := '{'#10'  // Prüfregeln für Größen'#10'  "language": "de"'#10'}'#10;
-  Ansi := TEncoding.GetEncoding(1252);
+  mText := '{'#10'  // Prüfregeln für Größen'#10'  "language": "de"'#10'}'#10;
+  mAnsi := TEncoding.GetEncoding(1252);
   try
-    Bytes := Ansi.GetBytes(Text);
+    mBytes := mAnsi.GetBytes(mText);
   finally
-    Ansi.Free;
+    mAnsi.Free;
   end;
-  Content := TAtlasTextFile.Decode(Bytes, 1252);
-  Assert.AreEqual<TAtlasTextEncoding>(TAtlasTextEncoding.Ansi, Content.Encoding);
-  Settings := TAtlasSettingsModel.Create(TAtlasSettingsSchema.Fields(AtlasSchemaJson), Content.Text, '', False);
+  mContent := TAtlasTextFile.Decode(mBytes, 1252);
+  Assert.AreEqual<TAtlasTextEncoding>(TAtlasTextEncoding.Ansi, mContent.Encoding);
+  mSettings := TAtlasSettingsModel.Create(TAtlasSettingsSchema.Fields(AtlasSchemaJson), mContent.Text, '', False);
   try
-    Content.Text := Settings.ResultText;
-    Saved := TAtlasTextFile.Encode(Content);
-    Assert.AreEqual(Integer(Length(Bytes)), Integer(Length(Saved)));
-    for Index := 0 to High(Bytes) do
+    mContent.Text := mSettings.ResultText;
+    mSaved := TAtlasTextFile.Encode(mContent);
+    Assert.AreEqual(Integer(Length(mBytes)), Integer(Length(mSaved)));
+    for mIndex := 0 to High(mBytes) do
     begin
-      Assert.AreEqual(Bytes[Index], Saved[Index]);
+      Assert.AreEqual(mBytes[mIndex], mSaved[mIndex]);
     end;
-    Settings.SetValue(Settings.IndexOf('language'), '"en"');
-    Content.Text := Settings.ResultText;
-    Assert.AreEqual(StringReplace(Text, '"de"', '"en"', []), Content.Text);
+    mSettings.SetValue(mSettings.IndexOf('language'), '"en"');
+    mContent.Text := mSettings.ResultText;
+    Assert.AreEqual(StringReplace(mText, '"de"', '"en"', []), mContent.Text);
   finally
-    Settings.Free;
+    mSettings.Free;
   end;
   // UTF-8 mit BOM bleibt mit BOM.
-  Bytes := TEncoding.UTF8.GetPreamble + TEncoding.UTF8.GetBytes('{"language": "de"}');
-  Content := TAtlasTextFile.Decode(Bytes);
-  Assert.AreEqual<TAtlasTextEncoding>(TAtlasTextEncoding.Utf8Bom, Content.Encoding);
-  Saved := TAtlasTextFile.Encode(Content);
-  Assert.AreEqual(Integer(Length(Bytes)), Integer(Length(Saved)));
+  mBytes := TEncoding.UTF8.GetPreamble + TEncoding.UTF8.GetBytes('{"language": "de"}');
+  mContent := TAtlasTextFile.Decode(mBytes);
+  Assert.AreEqual<TAtlasTextEncoding>(TAtlasTextEncoding.Utf8Bom, mContent.Encoding);
+  mSaved := TAtlasTextFile.Encode(mContent);
+  Assert.AreEqual(Integer(Length(mBytes)), Integer(Length(mSaved)));
 end;
 
 initialization

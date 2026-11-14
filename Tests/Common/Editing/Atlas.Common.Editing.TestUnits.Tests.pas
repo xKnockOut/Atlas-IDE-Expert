@@ -46,7 +46,7 @@ uses
   Atlas.Common.Editing.TestUnits;
 
 const
-  KundenText =
+  cKundenText =
     'unit Kunden;'#10 +
     'interface'#10 +
     'type'#10 +
@@ -103,18 +103,18 @@ const
 
 function KundenIndex: TUnitIndex;
 begin
-  Result := TIndexExtractor.ExtractText(KundenText, 'C:\Projekt\Kunden.pas', nil);
+  Result := TIndexExtractor.ExtractText(cKundenText, 'C:\Projekt\Kunden.pas', nil);
 end;
 
 function Parses(const AText: string): Boolean;
 var
-  Tree: TSyntaxTree;
+  mTree: TSyntaxTree;
 begin
-  Tree := TPascalParser.Parse(AText);
+  mTree := TPascalParser.Parse(AText);
   try
-    Result := Length(Tree.Diagnostics) = 0;
+    Result := Length(mTree.Diagnostics) = 0;
   finally
-    Tree.Free;
+    mTree.Free;
   end;
 end;
 
@@ -129,16 +129,16 @@ end;
 
 procedure TTestUnitsTests.TestedNameOnlyForMatchingPattern;
 var
-  Name: string;
+  mName: string;
 begin
-  Assert.IsTrue(TTestUnits.TestedUnitName('Kunden.Tests', '{unit}.Tests', Name));
-  Assert.AreEqual('Kunden', Name);
-  Assert.IsTrue(TTestUnits.TestedUnitName('kunden.logik.tests', '{unit}.Tests', Name), 'ohne Groß/klein');
-  Assert.AreEqual('kunden.logik', Name);
-  Assert.IsTrue(TTestUnits.TestedUnitName('Test.Kunden', 'Test.{unit}', Name));
-  Assert.AreEqual('Kunden', Name);
-  Assert.IsFalse(TTestUnits.TestedUnitName('Kunden', '{unit}.Tests', Name));
-  Assert.IsFalse(TTestUnits.TestedUnitName('.Tests', '{unit}.Tests', Name), 'leerer Name');
+  Assert.IsTrue(TTestUnits.TestedUnitName('Kunden.Tests', '{unit}.Tests', mName));
+  Assert.AreEqual('Kunden', mName);
+  Assert.IsTrue(TTestUnits.TestedUnitName('kunden.logik.tests', '{unit}.Tests', mName), 'ohne Groß/klein');
+  Assert.AreEqual('kunden.logik', mName);
+  Assert.IsTrue(TTestUnits.TestedUnitName('Test.Kunden', 'Test.{unit}', mName));
+  Assert.AreEqual('Kunden', mName);
+  Assert.IsFalse(TTestUnits.TestedUnitName('Kunden', '{unit}.Tests', mName));
+  Assert.IsFalse(TTestUnits.TestedUnitName('.Tests', '{unit}.Tests', mName), 'leerer Name');
 end;
 
 procedure TTestUnitsTests.FixtureNames;
@@ -150,132 +150,132 @@ end;
 
 procedure TTestUnitsTests.ClassAtDeclarationAndMethod;
 var
-  Index: TUnitIndex;
+  mIndex: TUnitIndex;
 begin
-  Index := KundenIndex;
-  Assert.AreEqual('TKunde', TTestUnits.ClassAt(Index, 3), 'Kopf der Klasse');
-  Assert.AreEqual('TKunde', TTestUnits.ClassAt(Index, 12), 'Methode in der Deklaration');
-  Assert.AreEqual('TAuftrag', TTestUnits.ClassAt(Index, 17));
-  Assert.AreEqual('', TTestUnits.ClassAt(Index, 1), 'interface');
-  Assert.AreEqual('TKunde', TTestUnits.ClassAt(Index, 37), 'Rumpf von TKunde.Rabatt');
-  Assert.AreEqual('TAuftrag', TTestUnits.ClassAt(Index, 49), 'Rumpf von TAuftrag.Buchen');
-  Assert.AreEqual('TKunde', TTestUnits.FirstClass(Index));
+  mIndex := KundenIndex;
+  Assert.AreEqual('TKunde', TTestUnits.ClassAt(mIndex, 3), 'Kopf der Klasse');
+  Assert.AreEqual('TKunde', TTestUnits.ClassAt(mIndex, 12), 'Methode in der Deklaration');
+  Assert.AreEqual('TAuftrag', TTestUnits.ClassAt(mIndex, 17));
+  Assert.AreEqual('', TTestUnits.ClassAt(mIndex, 1), 'interface');
+  Assert.AreEqual('TKunde', TTestUnits.ClassAt(mIndex, 37), 'Rumpf von TKunde.Rabatt');
+  Assert.AreEqual('TAuftrag', TTestUnits.ClassAt(mIndex, 49), 'Rumpf von TAuftrag.Buchen');
+  Assert.AreEqual('TKunde', TTestUnits.FirstClass(mIndex));
 end;
 
 procedure TTestUnitsTests.MethodsPublicOnlyAndOverloadsNumbered;
 var
-  Methods: TArray<TTestUnitMethod>;
+  mMethods: TArray<TTestUnitMethod>;
 begin
-  Methods := TTestUnits.TestMethods(KundenIndex, 'TKunde');
+  mMethods := TTestUnits.TestMethods(KundenIndex, 'TKunde');
   // Ohne Konstruktor, Destroy und private Intern.
-  Assert.AreEqual(3, Integer(Length(Methods)));
-  Assert.AreEqual('TestRabatt', Methods[0].Name);
-  Assert.AreEqual('TKunde.Rabatt', Methods[0].Target);
-  Assert.AreEqual('TestRabatt2', Methods[1].Name);
-  Assert.AreEqual('TestSpeichern', Methods[2].Name);
+  Assert.AreEqual(3, Integer(Length(mMethods)));
+  Assert.AreEqual('TestRabatt', mMethods[0].Name);
+  Assert.AreEqual('TKunde.Rabatt', mMethods[0].Target);
+  Assert.AreEqual('TestRabatt2', mMethods[1].Name);
+  Assert.AreEqual('TestSpeichern', mMethods[2].Name);
 end;
 
 procedure TTestUnitsTests.RoutinesWithoutClass;
 const
-  Text = 'unit Werkzeug;'#10'interface'#10'function Summe(A, B: Integer): Integer;'#10 +
+  cText = 'unit Werkzeug;'#10'interface'#10'function Summe(A, B: Integer): Integer;'#10 +
     'procedure Leeren;'#10'implementation'#10'function Summe(A, B: Integer): Integer;'#10'begin'#10 +
     '  Result := A + B;'#10'end;'#10'procedure Leeren;'#10'begin'#10'end;'#10'procedure Intern;'#10 +
     'begin'#10'end;'#10'end.';
 var
-  Index: TUnitIndex;
-  Methods: TArray<TTestUnitMethod>;
-  Unit_: string;
+  mIndex: TUnitIndex;
+  mMethods: TArray<TTestUnitMethod>;
+  mUnit_: string;
 begin
-  Index := TIndexExtractor.ExtractText(Text, 'Werkzeug.pas', nil);
-  Methods := TTestUnits.TestMethods(Index, '');
-  Assert.AreEqual(2, Integer(Length(Methods)));
-  Assert.AreEqual('TestSumme', Methods[0].Name);
-  Assert.AreEqual('TestLeeren', Methods[1].Name);
-  Unit_ := TTestUnits.UnitText('Werkzeug.Tests', Index, '', #13#10);
-  Assert.IsTrue(Parses(Unit_), Unit_);
-  Assert.IsTrue(Pos('TWerkzeugTests = class', Unit_) > 0, Unit_);
-  Assert.AreEqual(0, Pos('FSubject', Unit_), Unit_);
+  mIndex := TIndexExtractor.ExtractText(cText, 'Werkzeug.pas', nil);
+  mMethods := TTestUnits.TestMethods(mIndex, '');
+  Assert.AreEqual(2, Integer(Length(mMethods)));
+  Assert.AreEqual('TestSumme', mMethods[0].Name);
+  Assert.AreEqual('TestLeeren', mMethods[1].Name);
+  mUnit_ := TTestUnits.UnitText('Werkzeug.Tests', mIndex, '', #13#10);
+  Assert.IsTrue(Parses(mUnit_), mUnit_);
+  Assert.IsTrue(Pos('TWerkzeugTests = class', mUnit_) > 0, mUnit_);
+  Assert.AreEqual(0, Pos('FSubject', mUnit_), mUnit_);
 end;
 
 procedure TTestUnitsTests.CreateExpressions;
 const
-  Text = 'unit U;'#10'interface'#10'type'#10 +
+  cText = 'unit U;'#10'interface'#10'type'#10 +
     '  TOhne = class end;'#10 +
     '  TMitArg = class public constructor Create(AName: string); end;'#10 +
     '  TOwner = class public constructor Create(AOwner: TComponent); end;'#10 +
     '  TListe<T> = class end;'#10 +
     'implementation'#10'end.';
 var
-  Index: TUnitIndex;
+  mIndex: TUnitIndex;
 begin
-  Index := TIndexExtractor.ExtractText(Text, 'U.pas', nil);
-  Assert.AreEqual('TOhne.Create', TTestUnits.CreateExpression(Index, 'TOhne'));
-  Assert.AreEqual('', TTestUnits.CreateExpression(Index, 'TMitArg'));
-  Assert.AreEqual('TOwner.Create(nil)', TTestUnits.CreateExpression(Index, 'TOwner'));
-  Assert.AreEqual('', TTestUnits.CreateExpression(Index, 'TListe'));
+  mIndex := TIndexExtractor.ExtractText(cText, 'U.pas', nil);
+  Assert.AreEqual('TOhne.Create', TTestUnits.CreateExpression(mIndex, 'TOhne'));
+  Assert.AreEqual('', TTestUnits.CreateExpression(mIndex, 'TMitArg'));
+  Assert.AreEqual('TOwner.Create(nil)', TTestUnits.CreateExpression(mIndex, 'TOwner'));
+  Assert.AreEqual('', TTestUnits.CreateExpression(mIndex, 'TListe'));
   Assert.AreEqual('TKunde.Create', TTestUnits.CreateExpression(KundenIndex, 'TKunde'));
   Assert.AreEqual('TAuftrag.Create(nil)', TTestUnits.CreateExpression(KundenIndex, 'TAuftrag'), 'Komponente');
 end;
 
 procedure TTestUnitsTests.UnitTextParsesWithFixture;
 var
-  Text: string;
+  mText: string;
 begin
-  Text := TTestUnits.UnitText('Kunden.Tests', KundenIndex, 'TKunde', #13#10);
-  Assert.IsTrue(Parses(Text), Text);
-  Assert.IsTrue(Text.StartsWith('unit Kunden.Tests;'#13#10), Text);
-  Assert.IsTrue(Pos('uses'#13#10'  DUnitX.TestFramework,'#13#10'  Kunden;', Text) > 0, Text);
-  Assert.IsTrue(Pos('  [TestFixture]'#13#10'  TKundeTests = class', Text) > 0, Text);
-  Assert.IsTrue(Pos('    FSubject: TKunde;', Text) > 0, Text);
-  Assert.IsTrue(Pos('    [Setup]'#13#10'    procedure Setup;', Text) > 0, Text);
-  Assert.IsTrue(Pos('    [TearDown]'#13#10'    procedure TearDown;', Text) > 0, Text);
-  Assert.IsTrue(Pos('    [Test]'#13#10'    procedure TestRabatt2;', Text) > 0, Text);
-  Assert.IsTrue(Pos('  FSubject := TKunde.Create;', Text) > 0, Text);
-  Assert.IsTrue(Pos('  FSubject.Free;', Text) > 0, Text);
-  Assert.IsTrue(Pos('  Assert.Fail(''Test für TKunde.Speichern fehlt noch'');', Text) > 0, Text);
-  Assert.IsTrue(Pos('initialization'#13#10'  TDUnitX.RegisterTestFixture(TKundeTests);', Text) > 0, Text);
-  Assert.IsTrue(Text.EndsWith('end.'#13#10), Text);
+  mText := TTestUnits.UnitText('Kunden.Tests', KundenIndex, 'TKunde', #13#10);
+  Assert.IsTrue(Parses(mText), mText);
+  Assert.IsTrue(mText.StartsWith('unit Kunden.Tests;'#13#10), mText);
+  Assert.IsTrue(Pos('uses'#13#10'  DUnitX.TestFramework,'#13#10'  Kunden;', mText) > 0, mText);
+  Assert.IsTrue(Pos('  [TestFixture]'#13#10'  TKundeTests = class', mText) > 0, mText);
+  Assert.IsTrue(Pos('    FSubject: TKunde;', mText) > 0, mText);
+  Assert.IsTrue(Pos('    [Setup]'#13#10'    procedure Setup;', mText) > 0, mText);
+  Assert.IsTrue(Pos('    [TearDown]'#13#10'    procedure TearDown;', mText) > 0, mText);
+  Assert.IsTrue(Pos('    [Test]'#13#10'    procedure TestRabatt2;', mText) > 0, mText);
+  Assert.IsTrue(Pos('  FSubject := TKunde.Create;', mText) > 0, mText);
+  Assert.IsTrue(Pos('  FSubject.Free;', mText) > 0, mText);
+  Assert.IsTrue(Pos('  Assert.Fail(''Test für TKunde.Speichern fehlt noch'');', mText) > 0, mText);
+  Assert.IsTrue(Pos('initialization'#13#10'  TDUnitX.RegisterTestFixture(TKundeTests);', mText) > 0, mText);
+  Assert.IsTrue(mText.EndsWith('end.'#13#10), mText);
 end;
 
 procedure TTestUnitsTests.UnitTextWithoutCreatableSubject;
 const
-  Text = 'unit U;'#10'interface'#10'type'#10 +
+  cText = 'unit U;'#10'interface'#10'type'#10 +
     '  TMitArg = class public constructor Create(AName: string); procedure Tu; end;'#10 +
     'implementation'#10'end.';
 var
-  Unit_: string;
+  mUnit_: string;
 begin
-  Unit_ := TTestUnits.UnitText('U.Tests', TIndexExtractor.ExtractText(Text, 'U.pas', nil), 'TMitArg', #10);
-  Assert.IsTrue(Parses(Unit_), Unit_);
-  Assert.IsTrue(Pos('// TMitArg braucht Argumente im Konstruktor', Unit_) > 0, Unit_);
-  Assert.AreEqual(0, Pos('FSubject := TMitArg', Unit_), Unit_);
+  mUnit_ := TTestUnits.UnitText('U.Tests', TIndexExtractor.ExtractText(cText, 'U.pas', nil), 'TMitArg', #10);
+  Assert.IsTrue(Parses(mUnit_), mUnit_);
+  Assert.IsTrue(Pos('// TMitArg braucht Argumente im Konstruktor', mUnit_) > 0, mUnit_);
+  Assert.AreEqual(0, Pos('FSubject := TMitArg', mUnit_), mUnit_);
 end;
 
 procedure TTestUnitsTests.TestProgramDetected;
 const
-  TestProgram = 'program Tests;'#10'{$APPTYPE CONSOLE}'#10'uses'#10'  DUnitX.TestFramework,'#10 +
+  cTestProgram = 'program Tests;'#10'{$APPTYPE CONSOLE}'#10'uses'#10'  DUnitX.TestFramework,'#10 +
     '  DUnitX.Loggers.Console;'#10'begin'#10'end.';
-  App = 'program App;'#10'uses'#10'  Vcl.Forms;'#10'begin'#10'end.';
-  TestUnit = 'unit X.Tests;'#10'interface'#10'uses DUnitX.TestFramework;'#10'implementation'#10'end.';
+  cApp = 'program App;'#10'uses'#10'  Vcl.Forms;'#10'begin'#10'end.';
+  cTestUnit = 'unit X.Tests;'#10'interface'#10'uses DUnitX.TestFramework;'#10'implementation'#10'end.';
 var
-  Found: string;
+  mFound: string;
 begin
-  Assert.IsTrue(TTestUnits.IsTestProgram(TestProgram));
-  Assert.IsFalse(TTestUnits.IsTestProgram(App));
-  Assert.IsFalse(TTestUnits.IsTestProgram(TestUnit), 'eine Unit ist kein Programm');
-  Found := TTestUnits.FindTestProgram(['C:\P\App.dpr', 'C:\P\App.dproj', 'C:\P\Tests\Tests.dpr'],
+  Assert.IsTrue(TTestUnits.IsTestProgram(cTestProgram));
+  Assert.IsFalse(TTestUnits.IsTestProgram(cApp));
+  Assert.IsFalse(TTestUnits.IsTestProgram(cTestUnit), 'eine Unit ist kein Programm');
+  mFound := TTestUnits.FindTestProgram(['C:\P\App.dpr', 'C:\P\App.dproj', 'C:\P\Tests\Tests.dpr'],
     function(const AFileName: string): string
     begin
       if AFileName = 'C:\P\Tests\Tests.dpr' then
       begin
-        Result := TestProgram;
+        Result := cTestProgram;
       end
       else
       begin
-        Result := App;
+        Result := cApp;
       end;
     end);
-  Assert.AreEqual('C:\P\Tests\Tests.dpr', Found);
+  Assert.AreEqual('C:\P\Tests\Tests.dpr', mFound);
 end;
 
 procedure TTestUnitsTests.RelativePaths;

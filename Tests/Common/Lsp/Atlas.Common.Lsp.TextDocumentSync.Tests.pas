@@ -51,7 +51,7 @@ uses
   Atlas.Common.Lsp.Positions;
 
 const
-  Uri = 'file:///c%3A/projekt/Main.pas';
+  cUri = 'file:///c%3A/projekt/Main.pas';
 
 { TLspTextDocumentSyncTests }
 
@@ -81,119 +81,119 @@ end;
 
 procedure TLspTextDocumentSyncTests.Send(const AJson: string);
 var
-  Message: TJSONObject;
+  mMessage: TJSONObject;
 begin
-  Message := TJsonRpcTestSupport.Parse(AJson);
+  mMessage := TJsonRpcTestSupport.Parse(AJson);
   try
-    Assert.IsNull(FDispatcher.DispatchMessage(Message));
+    Assert.IsNull(FDispatcher.DispatchMessage(mMessage));
   finally
-    Message.Free;
+    mMessage.Free;
   end;
 end;
 
 function TLspTextDocumentSyncTests.TextOf(const AUri: string): string;
 var
-  Document: ITextDocument;
+  mDocument: ITextDocument;
 begin
-  Assert.IsTrue(FStore.TryGet(AUri, Document), 'Dokument nicht geöffnet');
-  Result := Document.Text;
+  Assert.IsTrue(FStore.TryGet(AUri, mDocument), 'Dokument nicht geöffnet');
+  Result := mDocument.Text;
 end;
 
 procedure TLspTextDocumentSyncTests.DidOpenStoresDocument;
 var
-  Document: ITextDocument;
+  mDocument: ITextDocument;
 begin
   Send('{"jsonrpc":"2.0","method":"textDocument/didOpen","params":{"textDocument":' +
-    '{"uri":"' + Uri + '","languageId":"pascal","version":3,"text":"unit Main;\r\nend."}}}');
-  Assert.IsTrue(FStore.TryGet(Uri, Document));
-  Assert.AreEqual('unit Main;'#13#10'end.', Document.Text);
-  Assert.AreEqual(3, Document.Version);
-  Assert.AreEqual('pascal', Document.LanguageId);
+    '{"uri":"' + cUri + '","languageId":"pascal","version":3,"text":"unit Main;\r\nend."}}}');
+  Assert.IsTrue(FStore.TryGet(cUri, mDocument));
+  Assert.AreEqual('unit Main;'#13#10'end.', mDocument.Text);
+  Assert.AreEqual(3, mDocument.Version);
+  Assert.AreEqual('pascal', mDocument.LanguageId);
 end;
 
 procedure TLspTextDocumentSyncTests.DidChangeAppliesIncrementalChangesInOrder;
 var
-  Document: ITextDocument;
+  mDocument: ITextDocument;
 begin
   Send('{"jsonrpc":"2.0","method":"textDocument/didOpen","params":{"textDocument":' +
-    '{"uri":"' + Uri + '","languageId":"pascal","version":1,"text":"unit Main;\nend."}}}');
+    '{"uri":"' + cUri + '","languageId":"pascal","version":1,"text":"unit Main;\nend."}}}');
   Send('{"jsonrpc":"2.0","method":"textDocument/didChange","params":{' +
-    '"textDocument":{"uri":"' + Uri + '","version":2},"contentChanges":[' +
+    '"textDocument":{"uri":"' + cUri + '","version":2},"contentChanges":[' +
     '{"range":{"start":{"line":0,"character":5},"end":{"line":0,"character":9}},"text":"Haupt"},' +
     '{"range":{"start":{"line":1,"character":0},"end":{"line":1,"character":0}},"text":"begin\n"}]}}');
-  Assert.IsTrue(FStore.TryGet(Uri, Document));
-  Assert.AreEqual('unit Haupt;'#10'begin'#10'end.', Document.Text);
-  Assert.AreEqual(2, Document.Version);
+  Assert.IsTrue(FStore.TryGet(cUri, mDocument));
+  Assert.AreEqual('unit Haupt;'#10'begin'#10'end.', mDocument.Text);
+  Assert.AreEqual(2, mDocument.Version);
 end;
 
 procedure TLspTextDocumentSyncTests.DidChangeWithoutRangeReplacesText;
 begin
   Send('{"jsonrpc":"2.0","method":"textDocument/didOpen","params":{"textDocument":' +
-    '{"uri":"' + Uri + '","languageId":"pascal","version":1,"text":"alt"}}}');
+    '{"uri":"' + cUri + '","languageId":"pascal","version":1,"text":"alt"}}}');
   Send('{"jsonrpc":"2.0","method":"textDocument/didChange","params":{' +
-    '"textDocument":{"uri":"' + Uri + '","version":2},"contentChanges":[{"text":"neu"}]}}');
-  Assert.AreEqual('neu', TextOf(Uri));
+    '"textDocument":{"uri":"' + cUri + '","version":2},"contentChanges":[{"text":"neu"}]}}');
+  Assert.AreEqual('neu', TextOf(cUri));
 end;
 
 procedure TLspTextDocumentSyncTests.DidSaveAndDidCloseReachStore;
 var
-  Document: ITextDocument;
+  mDocument: ITextDocument;
 begin
   Send('{"jsonrpc":"2.0","method":"textDocument/didOpen","params":{"textDocument":' +
-    '{"uri":"' + Uri + '","languageId":"pascal","version":1,"text":"x"}}}');
-  Send('{"jsonrpc":"2.0","method":"textDocument/didSave","params":{"textDocument":{"uri":"' + Uri + '"}}}');
+    '{"uri":"' + cUri + '","languageId":"pascal","version":1,"text":"x"}}}');
+  Send('{"jsonrpc":"2.0","method":"textDocument/didSave","params":{"textDocument":{"uri":"' + cUri + '"}}}');
   Assert.AreEqual(1, FSaved);
-  Send('{"jsonrpc":"2.0","method":"textDocument/didClose","params":{"textDocument":{"uri":"' + Uri + '"}}}');
-  Assert.IsFalse(FStore.TryGet(Uri, Document));
+  Send('{"jsonrpc":"2.0","method":"textDocument/didClose","params":{"textDocument":{"uri":"' + cUri + '"}}}');
+  Assert.IsFalse(FStore.TryGet(cUri, mDocument));
 end;
 
 procedure TLspTextDocumentSyncTests.RejectsMissingFieldsWithInvalidParams;
 var
-  Code: Integer;
+  mCode: Integer;
 begin
   // Benachrichtigungen erhalten keine Antwort; der Fehler geht an die
   // Nachrichtenschleife, die ihn protokolliert.
-  Code := 0;
+  mCode := 0;
   try
-    Send('{"jsonrpc":"2.0","method":"textDocument/didOpen","params":{"textDocument":{"uri":"' + Uri + '"}}}');
+    Send('{"jsonrpc":"2.0","method":"textDocument/didOpen","params":{"textDocument":{"uri":"' + cUri + '"}}}');
   except
     on E: EJsonRpcError do
-      Code := E.Code;
+      mCode := E.Code;
   end;
-  Assert.AreEqual(TJsonRpcErrorCode.cInvalidParams, Code);
+  Assert.AreEqual(TJsonRpcErrorCode.cInvalidParams, mCode);
 end;
 
 procedure TLspTextDocumentSyncTests.CapabilityAnnouncesIncrementalSync;
 var
-  Capability: TJSONObject;
+  mCapability: TJSONObject;
 begin
-  Capability := TLspTextDocumentSync.Capability;
+  mCapability := TLspTextDocumentSync.Capability;
   try
-    Assert.IsTrue(Capability.GetValue<Boolean>('openClose'));
-    Assert.AreEqual(2, Capability.GetValue<Integer>('change'));
-    Assert.IsFalse(Capability.GetValue<Boolean>('save.includeText'));
+    Assert.IsTrue(mCapability.GetValue<Boolean>('openClose'));
+    Assert.AreEqual(2, mCapability.GetValue<Integer>('change'));
+    Assert.IsFalse(mCapability.GetValue<Boolean>('save.includeText'));
   finally
-    Capability.Free;
+    mCapability.Free;
   end;
 end;
 
 procedure TLspTextDocumentSyncTests.ConvertsRangeToJsonAndBack;
 var
-  Json: TJSONObject;
-  Range: TTextRange;
+  mJson: TJSONObject;
+  mRange: TTextRange;
 begin
-  Json := TLspPositions.RangeToJson(TTextRange.Create(1, 2, 3, 4));
+  mJson := TLspPositions.RangeToJson(TTextRange.Create(1, 2, 3, 4));
   try
-    Assert.AreEqual(1, Json.GetValue<Integer>('start.line'));
-    Assert.AreEqual(4, Json.GetValue<Integer>('end.character'));
-    Range := TLspPositions.ReadRange(Json);
+    Assert.AreEqual(1, mJson.GetValue<Integer>('start.line'));
+    Assert.AreEqual(4, mJson.GetValue<Integer>('end.character'));
+    mRange := TLspPositions.ReadRange(mJson);
   finally
-    Json.Free;
+    mJson.Free;
   end;
-  Assert.AreEqual(1, Range.StartPos.Line);
-  Assert.AreEqual(2, Range.StartPos.Character);
-  Assert.AreEqual(3, Range.EndPos.Line);
-  Assert.AreEqual(4, Range.EndPos.Character);
+  Assert.AreEqual(1, mRange.StartPos.Line);
+  Assert.AreEqual(2, mRange.StartPos.Character);
+  Assert.AreEqual(3, mRange.EndPos.Line);
+  Assert.AreEqual(4, mRange.EndPos.Character);
 end;
 
 initialization

@@ -58,13 +58,13 @@ end;
 /// erfasst, nicht als Variable des Aufrufers.</summary>
 function Hanging(ARelease: TEvent; const ASignal: IInterface): TProc;
 var
-  Signal: IInterface;
+  mSignal: IInterface;
 begin
-  Signal := ASignal;
+  mSignal := ASignal;
   Result :=
     procedure
     begin
-      if Signal <> nil then
+      if mSignal <> nil then
       begin
         ARelease.WaitFor(5000);
       end;
@@ -80,109 +80,109 @@ end;
 
 procedure TThreadListTests.StartedThreadDoesNotFreeItself;
 var
-  List: TAtlasThreadList;
-  Thread: TThread;
+  mList: TAtlasThreadList;
+  mThread: TThread;
 begin
-  List := TAtlasThreadList.Create;
+  mList := TAtlasThreadList.Create;
   try
-    Thread := List.Start(
+    mThread := mList.Start(
       procedure
       begin
       end);
-    Assert.IsFalse(Thread.FreeOnTerminate);
-    Assert.IsTrue(List.StopAll(5000));
-    Assert.AreEqual(0, Integer(List.Count));
+    Assert.IsFalse(mThread.FreeOnTerminate);
+    Assert.IsTrue(mList.StopAll(5000));
+    Assert.AreEqual(0, Integer(mList.Count));
   finally
-    List.Free;
+    mList.Free;
   end;
 end;
 
 procedure TThreadListTests.StopAllWaitsForRunningThread;
 var
-  List: TAtlasThreadList;
-  Release: TEvent;
-  Done: Boolean;
+  mList: TAtlasThreadList;
+  mRelease: TEvent;
+  mDone: Boolean;
 begin
-  Done := False;
-  Release := TEvent.Create(nil, True, False, '');
-  List := TAtlasThreadList.Create;
+  mDone := False;
+  mRelease := TEvent.Create(nil, True, False, '');
+  mList := TAtlasThreadList.Create;
   try
-    List.Start(
+    mList.Start(
       procedure
       begin
-        Release.WaitFor(5000);
+        mRelease.WaitFor(5000);
         Sleep(50);
-        Done := True;
+        mDone := True;
       end);
-    Release.SetEvent;
-    Assert.IsTrue(List.StopAll(5000));
+    mRelease.SetEvent;
+    Assert.IsTrue(mList.StopAll(5000));
     // Erst nach dem Ende des Threads kehrt StopAll zurück.
-    Assert.IsTrue(Done);
+    Assert.IsTrue(mDone);
   finally
-    List.Free;
-    Release.Free;
+    mList.Free;
+    mRelease.Free;
   end;
 end;
 
 procedure TThreadListTests.StartPrunesFinishedThreads;
 var
-  List: TAtlasThreadList;
-  First: TThread;
-  Waited: Integer;
+  mList: TAtlasThreadList;
+  mFirst: TThread;
+  mWaited: Integer;
 begin
-  List := TAtlasThreadList.Create;
+  mList := TAtlasThreadList.Create;
   try
-    First := List.Start(
+    mFirst := mList.Start(
       procedure
       begin
       end);
-    Waited := 0;
-    while not First.Finished and (Waited < 5000) do
+    mWaited := 0;
+    while not mFirst.Finished and (mWaited < 5000) do
     begin
       Sleep(5);
-      Inc(Waited, 5);
+      Inc(mWaited, 5);
     end;
-    Assert.IsTrue(First.Finished);
-    List.Start(
+    Assert.IsTrue(mFirst.Finished);
+    mList.Start(
       procedure
       begin
       end);
     // Der erste ist beendet und beim zweiten Start freigegeben worden.
-    Assert.AreEqual(1, Integer(List.Count));
-    Assert.IsTrue(List.StopAll(5000));
+    Assert.AreEqual(1, Integer(mList.Count));
+    Assert.IsTrue(mList.StopAll(5000));
   finally
-    List.Free;
+    mList.Free;
   end;
 end;
 
 procedure TThreadListTests.StopAllReportsHangingThread;
 var
-  List: TAtlasThreadList;
-  Release, Freed: TEvent;
-  Signaled: Boolean;
+  mList: TAtlasThreadList;
+  mRelease, mFreed: TEvent;
+  mSignaled: Boolean;
 begin
-  Signaled := False;
-  Release := TEvent.Create(nil, True, False, '');
-  Freed := TEvent.Create(nil, True, False, '');
-  List := TAtlasThreadList.Create;
+  mSignaled := False;
+  mRelease := TEvent.Create(nil, True, False, '');
+  mFreed := TEvent.Create(nil, True, False, '');
+  mList := TAtlasThreadList.Create;
   try
-    StartHanging(List, Release, Freed);
+    StartHanging(mList, mRelease, mFreed);
     // Hängt der Thread, meldet StopAll das; TAtlasOverdueThreads gibt ihn nach seiner Rückkehr frei.
-    Assert.IsFalse(List.StopAll(50));
-    Assert.AreEqual(0, Integer(List.Count));
+    Assert.IsFalse(mList.StopAll(50));
+    Assert.AreEqual(0, Integer(mList.Count));
     Assert.AreEqual(1, TAtlasOverdueThreads.Pending(HInstance));
-    Release.SetEvent;
+    mRelease.SetEvent;
     Assert.IsTrue(TAtlasOverdueThreads.Settle(HInstance, 5000));
     // Mit dem Thread geht seine anonyme Methode und damit das Signal.
-    Signaled := Freed.WaitFor(5000) = TWaitResult.wrSignaled;
-    Assert.IsTrue(Signaled, 'Überfälliger Thread wurde nicht freigegeben');
+    mSignaled := mFreed.WaitFor(5000) = TWaitResult.wrSignaled;
+    Assert.IsTrue(mSignaled, 'Überfälliger Thread wurde nicht freigegeben');
   finally
-    List.Free;
+    mList.Free;
     // Läuft der Thread noch, greift er später auf beide Ereignisse zu: dann lieber ein Leck im roten Test.
-    if Signaled then
+    if mSignaled then
     begin
-      Freed.Free;
-      Release.Free;
+      mFreed.Free;
+      mRelease.Free;
     end;
   end;
 end;

@@ -15,7 +15,8 @@ type
   private
     FIndex: ISymbolIndex;
     /// <summary>Legt Datei AFileName mit ABody im Rumpf einer Routine an (Verwendungen erfasst).</summary>
-    procedure AddUnit(const AFileName, ABody: string; ALibrary: Boolean = False);
+    procedure AddUnit(const AFileName, ABody: string); overload;
+    procedure AddUnit(const AFileName, ABody: string; ALibrary: Boolean); overload;
   public
     [Setup]
     procedure Setup;
@@ -68,6 +69,11 @@ end;
 procedure TIndexUsageCountsTests.TearDown;
 begin
   FIndex := nil;
+end;
+
+procedure TIndexUsageCountsTests.AddUnit(const AFileName, ABody: string);
+begin
+  AddUnit(AFileName, ABody, False);
 end;
 
 procedure TIndexUsageCountsTests.AddUnit(const AFileName, ABody: string; ALibrary: Boolean);

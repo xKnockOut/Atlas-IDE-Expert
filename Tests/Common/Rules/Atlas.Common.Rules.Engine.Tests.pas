@@ -128,7 +128,7 @@ type
     FId: string;
     FWithFix: Boolean;
   public
-    constructor Create(const AId: string = 'marker'; AWithFix: Boolean = False);
+    constructor Create(const AId: string; AWithFix: Boolean);
     function Descriptor: TRuleDescriptor;
     procedure Check(const AContext: TRuleContext; const AReport: IRuleReport);
   end;
@@ -147,21 +147,21 @@ end;
 
 procedure TMarkerRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
 var
-  Token: TPascalToken;
-  Range: TTextRange;
+  mToken: TPascalToken;
+  mRange: TTextRange;
 begin
-  for Token in AContext.Tree.Tokens do
+  for mToken in AContext.Tree.Tokens do
   begin
-    if (Token.Kind = TPascalTokenKind.Identifier) and SameText(Token.Text, 'Marker') then
+    if (mToken.Kind = TPascalTokenKind.Identifier) and SameText(mToken.Text, 'Marker') then
     begin
-      Range := TTextRange.Create(Token.StartPos, Token.EndPos);
+      mRange := TTextRange.Create(mToken.StartPos, mToken.EndPos);
       if FWithFix then
       begin
-        AReport.Add(Range, 'Marker gefunden', [TRuleFix.Create('Umbenennen', [TRuleEdit.Create(Range, 'Zeichen')])]);
+        AReport.Add(mRange, 'Marker gefunden', [TRuleFix.Create('Umbenennen', [TRuleEdit.Create(mRange, 'Zeichen')])]);
       end
       else
       begin
-        AReport.Add(Range, 'Marker gefunden');
+        AReport.Add(mRange, 'Marker gefunden');
       end;
     end;
   end;
@@ -179,7 +179,7 @@ type
 
 constructor TUncertainMarkerRule.Create(AUndecided: Integer);
 begin
-  inherited Create;
+  inherited Create('marker', False);
   FUndecided := AUndecided;
 end;
 
@@ -236,10 +236,10 @@ end;
 
 procedure TProbeRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
 var
-  Cache: IRuleDerivedCache;
+  mCache: IRuleDerivedCache;
 begin
-  Cache := TRuleDerived.Open(AContext);
-  TRuleDerived.Get<TProbe>(Cache, 'test.probe',
+  mCache := TRuleDerived.Open(AContext);
+  TRuleDerived.Get<TProbe>(mCache, 'test.probe',
     function: TProbe
     begin
       Result := TProbe.Create;
@@ -290,38 +290,38 @@ end;
 
 function JoinNotes(const ANotes: TRequestNotes): string;
 var
-  Note: string;
+  mNote: string;
 begin
   Result := ' ';
-  for Note in ANotes.Notes do
+  for mNote in ANotes.Notes do
   begin
-    Result := Result + Note + ' ';
+    Result := Result + mNote + ' ';
   end;
 end;
 
 /// <summary>Prozedur mit einer Kette aus ACount Subtraktionen: linkslastig und so tief wie lang.</summary>
 function DeepSource(ACount: Integer): string;
 var
-  Builder: TStringBuilder;
-  Index: Integer;
+  mBuilder: TStringBuilder;
+  mIndex: Integer;
 begin
-  Builder := TStringBuilder.Create;
+  mBuilder := TStringBuilder.Create;
   try
-    Builder.Append('unit U;'#13#10'interface'#13#10'implementation'#13#10'procedure P;'#13#10'begin'#13#10);
-    Builder.Append('  Marker := 1');
-    for Index := 1 to ACount do
+    mBuilder.Append('unit U;'#13#10'interface'#13#10'implementation'#13#10'procedure P;'#13#10'begin'#13#10);
+    mBuilder.Append('  Marker := 1');
+    for mIndex := 1 to ACount do
     begin
-      Builder.Append(' - 1');
+      mBuilder.Append(' - 1');
     end;
-    Builder.Append(';'#13#10'end;'#13#10'end.');
-    Result := Builder.ToString;
+    mBuilder.Append(';'#13#10'end;'#13#10'end.');
+    Result := mBuilder.ToString;
   finally
-    Builder.Free;
+    mBuilder.Free;
   end;
 end;
 
 const
-  Source =
+  cSource =
     'unit U;'#13#10 +
     'interface'#13#10 +
     'implementation'#13#10 +
@@ -353,138 +353,138 @@ end;
 
 procedure TRuleEngineTests.RegistryRejectsDuplicateId;
 var
-  Registry: TRuleRegistry;
+  mRegistry: TRuleRegistry;
 begin
-  Registry := TRuleRegistry.Create;
+  mRegistry := TRuleRegistry.Create;
   try
-    Registry.Register(TMarkerRule.Create('a'));
+    mRegistry.Register(TMarkerRule.Create('a', False));
     Assert.WillRaise(
       procedure
       begin
-        Registry.Register(TMarkerRule.Create('A'));
+        mRegistry.Register(TMarkerRule.Create('A', False));
       end, ERuleRegistry);
-    Assert.AreEqual(1, Integer(Length(Registry.Rules)));
+    Assert.AreEqual(1, Integer(Length(mRegistry.Rules)));
   finally
-    Registry.Free;
+    mRegistry.Free;
   end;
 end;
 
 procedure TRuleEngineTests.RegistryFindsIgnoringCase;
 var
-  Registry: TRuleRegistry;
-  Rule: IRule;
+  mRegistry: TRuleRegistry;
+  mRule: IRule;
 begin
-  Registry := TRuleRegistry.Create;
+  mRegistry := TRuleRegistry.Create;
   try
-    Registry.Register(TMarkerRule.Create('empty-except'));
-    Assert.IsTrue(Registry.Find('Empty-Except', Rule));
-    Assert.IsFalse(Registry.Find('other', Rule));
+    mRegistry.Register(TMarkerRule.Create('empty-except', False));
+    Assert.IsTrue(mRegistry.Find('Empty-Except', mRule));
+    Assert.IsFalse(mRegistry.Find('other', mRule));
   finally
-    Registry.Free;
+    mRegistry.Free;
   end;
 end;
 
 procedure TRuleEngineTests.UsesDefaultSeverity;
 var
-  Findings: TArray<TRuleFinding>;
+  mFindings: TArray<TRuleFinding>;
 begin
-  Findings := TRuleAssert.Findings(TMarkerRule.Create, Source);
-  Assert.AreEqual(1, Integer(Length(Findings)));
-  Assert.AreEqual(Ord(TRuleSeverity.Warning), Ord(Findings[0].Severity));
-  Assert.AreEqual('marker', Findings[0].RuleId);
-  Assert.AreEqual(5, Findings[0].Range.StartPos.Line);
+  mFindings := TRuleAssert.Findings(TMarkerRule.Create('marker', False), cSource);
+  Assert.AreEqual(1, Integer(Length(mFindings)));
+  Assert.AreEqual(Ord(TRuleSeverity.Warning), Ord(mFindings[0].Severity));
+  Assert.AreEqual('marker', mFindings[0].RuleId);
+  Assert.AreEqual(5, mFindings[0].Range.StartPos.Line);
 end;
 
 procedure TRuleEngineTests.ConfigurationOverridesSeverity;
 var
-  Findings: TArray<TRuleFinding>;
+  mFindings: TArray<TRuleFinding>;
 begin
-  Findings := TRuleAssert.Findings(TMarkerRule.Create, Source, '{ "rules": { "marker": "error" } }');
-  Assert.AreEqual(1, Integer(Length(Findings)));
-  Assert.AreEqual(Ord(TRuleSeverity.Error), Ord(Findings[0].Severity));
+  mFindings := TRuleAssert.Findings(TMarkerRule.Create('marker', False), cSource, '{ "rules": { "marker": "error" } }');
+  Assert.AreEqual(1, Integer(Length(mFindings)));
+  Assert.AreEqual(Ord(TRuleSeverity.Error), Ord(mFindings[0].Severity));
 end;
 
 procedure TRuleEngineTests.OffDisablesRule;
 begin
-  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TMarkerRule.Create, Source,
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TMarkerRule.Create('marker', False), cSource,
     '{ "rules": { "marker": "off" } }'))));
 end;
 
 procedure TRuleEngineTests.GroupSwitchDisablesAllRulesOfGroup;
 begin
   // Hauptschalter der Gruppe (#909): empty-except gehört zu „Exceptions“.
-  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TMarkerRule.Create('empty-except'), Source,
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TMarkerRule.Create('empty-except', False), cSource,
     '{ "rules": { "group:exceptions": "off" } }'))));
-  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TMarkerRule.Create('empty-except'), Source,
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TMarkerRule.Create('empty-except', False), cSource,
     '{ "rules": { "empty-except": "error", "group:exceptions": "off" } }'))), 'auch einzeln eingestellte');
-  Assert.AreEqual(1, Integer(Length(TRuleAssert.Findings(TMarkerRule.Create('empty-except'), Source,
+  Assert.AreEqual(1, Integer(Length(TRuleAssert.Findings(TMarkerRule.Create('empty-except', False), cSource,
     '{ "rules": { "group:threads": "off" } }'))), 'andere Gruppe');
-  Assert.AreEqual(1, Integer(Length(TRuleAssert.Findings(TMarkerRule.Create('empty-except'), Source,
+  Assert.AreEqual(1, Integer(Length(TRuleAssert.Findings(TMarkerRule.Create('empty-except', False), cSource,
     '{ "rules": { "group:exceptions": "warning" } }'))), 'nur off schaltet ab');
   // Regeln außerhalb des Katalogs haben keine Gruppe.
-  Assert.AreEqual(1, Integer(Length(TRuleAssert.Findings(TMarkerRule.Create, Source,
+  Assert.AreEqual(1, Integer(Length(TRuleAssert.Findings(TMarkerRule.Create('marker', False), cSource,
     '{ "rules": { "group:exceptions": "off" } }'))));
   Assert.IsFalse(TRuleEngine.GroupOff('EMPTY-EXCEPT', TServerSettings.Default));
 end;
 
 procedure TRuleEngineTests.CompilerGroupTypeLevel;
 var
-  Issues: TArray<TConfigurationIssue>;
+  mIssues: TArray<TConfigurationIssue>;
 begin
   // Gruppe „Compiler vorab“ (#1024): argument-count-mismatch hat Stufe T, comparison-as-statement Stufe A.
-  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TMarkerRule.Create('argument-count-mismatch'), Source,
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TMarkerRule.Create('argument-count-mismatch', False), cSource,
     '{ "rules": { "group:compiler": { "typeLevel": "off" } } }'))), 'Stufe T aus');
-  Assert.AreEqual(1, Integer(Length(TRuleAssert.Findings(TMarkerRule.Create('comparison-as-statement'), Source,
+  Assert.AreEqual(1, Integer(Length(TRuleAssert.Findings(TMarkerRule.Create('comparison-as-statement', False), cSource,
     '{ "rules": { "group:compiler": { "typeLevel": "off" } } }'))), 'Stufe A bleibt');
-  Assert.AreEqual(1, Integer(Length(TRuleAssert.Findings(TMarkerRule.Create('argument-count-mismatch'), Source,
+  Assert.AreEqual(1, Integer(Length(TRuleAssert.Findings(TMarkerRule.Create('argument-count-mismatch', False), cSource,
     '{ "rules": { "group:compiler": { "typeLevel": "certain" } } }'))), 'certain');
   // Hauptschalter auch als Objekt.
-  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TMarkerRule.Create('comparison-as-statement'), Source,
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TMarkerRule.Create('comparison-as-statement', False), cSource,
     '{ "rules": { "group:compiler": { "severity": "off", "typeLevel": "certain" } } }'))), 'Objekt mit off');
   // Andere Gruppen kennen typeLevel nicht; ohne Katalog keine Stufe.
-  Assert.AreEqual(1, Integer(Length(TRuleAssert.Findings(TMarkerRule.Create, Source,
+  Assert.AreEqual(1, Integer(Length(TRuleAssert.Findings(TMarkerRule.Create('marker', False), cSource,
     '{ "rules": { "group:compiler": { "typeLevel": "off" } } }'))));
-  TConfigurationParser.Parse('{"rules": {"group:compiler": {"typeLevel": "nie"}}}', Issues);
-  Assert.AreEqual(1, Integer(Length(Issues)));
-  Assert.AreEqual('"typeLevel" muss "certain" oder "off" sein', Issues[0].Message);
-  TConfigurationParser.Parse('{"rules": {"group:compiler": {"typeLevel": "off"}}}', Issues);
-  Assert.AreEqual(0, Integer(Length(Issues)));
+  TConfigurationParser.Parse('{"rules": {"group:compiler": {"typeLevel": "nie"}}}', mIssues);
+  Assert.AreEqual(1, Integer(Length(mIssues)));
+  Assert.AreEqual('"typeLevel" muss "certain" oder "off" sein', mIssues[0].Message);
+  TConfigurationParser.Parse('{"rules": {"group:compiler": {"typeLevel": "off"}}}', mIssues);
+  Assert.AreEqual(0, Integer(Length(mIssues)));
 end;
 
 procedure TRuleEngineTests.ExcludeByGlobInRuleOptions;
 const
-  Config = '{ "rules": { "marker": { "severity": "hint", "exclude": ["Legacy/**"] } } }';
+  cConfig = '{ "rules": { "marker": { "severity": "hint", "exclude": ["Legacy/**"] } } }';
 var
-  Findings: TArray<TRuleFinding>;
+  mFindings: TArray<TRuleFinding>;
 begin
-  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TMarkerRule.Create, Source, Config, 'Legacy\Alt\U.pas'))));
-  Findings := TRuleAssert.Findings(TMarkerRule.Create, Source, Config, 'Neu\U.pas');
-  Assert.AreEqual(1, Integer(Length(Findings)));
-  Assert.AreEqual(Ord(TRuleSeverity.Hint), Ord(Findings[0].Severity));
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TMarkerRule.Create('marker', False), cSource, cConfig, 'Legacy\Alt\U.pas'))));
+  mFindings := TRuleAssert.Findings(TMarkerRule.Create('marker', False), cSource, cConfig, 'Neu\U.pas');
+  Assert.AreEqual(1, Integer(Length(mFindings)));
+  Assert.AreEqual(Ord(TRuleSeverity.Hint), Ord(mFindings[0].Severity));
 end;
 
 procedure TRuleEngineTests.ExcludeByUnitNameInRuleOptions;
 const
-  Config = '{ "rules": { "marker": { "exclude": ["Alt.Unit"] } } }';
+  cConfig = '{ "rules": { "marker": { "exclude": ["Alt.Unit"] } } }';
 begin
-  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TMarkerRule.Create, Source, Config, 'Src\Alt.Unit.pas'))));
-  Assert.AreEqual(1, Integer(Length(TRuleAssert.Findings(TMarkerRule.Create, Source, Config, 'Src\Neu.Unit.pas'))));
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TMarkerRule.Create('marker', False), cSource, cConfig, 'Src\Alt.Unit.pas'))));
+  Assert.AreEqual(1, Integer(Length(TRuleAssert.Findings(TMarkerRule.Create('marker', False), cSource, cConfig, 'Src\Neu.Unit.pas'))));
 end;
 
 procedure TRuleEngineTests.GlobalExcludeSkipsFile;
 begin
-  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TMarkerRule.Create, Source,
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TMarkerRule.Create('marker', False), cSource,
     '{ "exclude": ["Generated/**"] }', 'Generated\U.pas'))));
 end;
 
 procedure TRuleEngineTests.SuppressesSameLine;
 begin
-  TRuleAssert.Silent(TMarkerRule.Create, SourceWith('  Marker := 1; // lsp-ignore: marker'#13#10));
+  TRuleAssert.Silent(TMarkerRule.Create('marker', False), SourceWith('  Marker := 1; // lsp-ignore: marker'#13#10));
 end;
 
 procedure TRuleEngineTests.SuppressesNextLine;
 begin
-  TRuleAssert.Reports(TMarkerRule.Create, SourceWith(
+  TRuleAssert.Reports(TMarkerRule.Create('marker', False), SourceWith(
     '  // lsp-ignore: marker'#13#10 +
     '  Marker := 1;'#13#10 +
     '  Marker := 2;'#13#10), 1);
@@ -492,17 +492,17 @@ end;
 
 procedure TRuleEngineTests.SuppressionNamesOtherRule;
 begin
-  TRuleAssert.Reports(TMarkerRule.Create, SourceWith('  Marker := 1; // lsp-ignore: empty-except'#13#10));
+  TRuleAssert.Reports(TMarkerRule.Create('marker', False), SourceWith('  Marker := 1; // lsp-ignore: empty-except'#13#10));
 end;
 
 procedure TRuleEngineTests.SuppressesWithWildcardInBraceComment;
 begin
-  TRuleAssert.Silent(TMarkerRule.Create, SourceWith('  Marker := 1; { lsp-ignore: empty-except, * }'#13#10));
+  TRuleAssert.Silent(TMarkerRule.Create('marker', False), SourceWith('  Marker := 1; { lsp-ignore: empty-except, * }'#13#10));
 end;
 
 procedure TRuleEngineTests.SuppressesWholeFile;
 begin
-  TRuleAssert.Silent(TMarkerRule.Create, '// lsp-ignore-file: marker'#13#10 +
+  TRuleAssert.Silent(TMarkerRule.Create('marker', False), '// lsp-ignore-file: marker'#13#10 +
     SourceWith('  Marker := 1;'#13#10'  Marker := 2;'#13#10));
 end;
 
@@ -523,50 +523,50 @@ end;
 procedure TRuleEngineTests.SuppressionReasonIsNoId;
 begin
   // Nach "--" steht eine Begründung; das "*" darin gilt nicht als Kennung (#297).
-  TRuleAssert.Reports(TMarkerRule.Create,
+  TRuleAssert.Reports(TMarkerRule.Create('marker', False),
     SourceWith('  Marker := 1; // lsp-ignore: empty-except -- gilt nicht für *'#13#10), 1);
-  TRuleAssert.Silent(TMarkerRule.Create, SourceWith('  Marker := 1; // lsp-ignore: marker -- Absicht'#13#10));
+  TRuleAssert.Silent(TMarkerRule.Create('marker', False), SourceWith('  Marker := 1; // lsp-ignore: marker -- Absicht'#13#10));
 end;
 
 procedure TRuleEngineTests.UnknownRuleIdWithSuggestion;
 const
-  Line = '  Marker := 1; // lsp-ignore: empty-exept, marker';
+  cLine = '  Marker := 1; // lsp-ignore: empty-exept, marker';
 var
-  Findings: TArray<TRuleFinding>;
+  mFindings: TArray<TRuleFinding>;
 begin
   // Abnahme #41: Tippfehler ergibt unknown-rule-id mit Vorschlag, aber keine unused-suppression.
-  Findings := TRuleAssert.Findings(TMarkerRule.Create, SourceWith(Line + #13#10));
-  Assert.AreEqual(1, Integer(Length(Findings)));
-  Assert.AreEqual(cUnknownRuleIdRuleId, Findings[0].RuleId);
-  Assert.AreEqual(Ord(TRuleSeverity.Hint), Ord(Findings[0].Severity));
-  Assert.IsTrue(Pos('"empty-except"', Findings[0].Message) > 0, Findings[0].Message);
+  mFindings := TRuleAssert.Findings(TMarkerRule.Create('marker', False), SourceWith(cLine + #13#10));
+  Assert.AreEqual(1, Integer(Length(mFindings)));
+  Assert.AreEqual(cUnknownRuleIdRuleId, mFindings[0].RuleId);
+  Assert.AreEqual(Ord(TRuleSeverity.Hint), Ord(mFindings[0].Severity));
+  Assert.IsTrue(Pos('"empty-except"', mFindings[0].Message) > 0, mFindings[0].Message);
   // Genau die Kennung ist markiert, die Korrektur ersetzt nur sie.
-  Assert.AreEqual(5, Findings[0].Range.StartPos.Line);
-  Assert.AreEqual(Pos('empty-exept', Line) - 1, Findings[0].Range.StartPos.Character);
-  Assert.AreEqual(Pos('empty-exept', Line) - 1 + Length('empty-exept'), Findings[0].Range.EndPos.Character);
-  Assert.AreEqual(1, Integer(Length(Findings[0].Fixes)));
-  Assert.AreEqual('empty-except', Findings[0].Fixes[0].Edits[0].NewText);
+  Assert.AreEqual(5, mFindings[0].Range.StartPos.Line);
+  Assert.AreEqual(Pos('empty-exept', cLine) - 1, mFindings[0].Range.StartPos.Character);
+  Assert.AreEqual(Pos('empty-exept', cLine) - 1 + Length('empty-exept'), mFindings[0].Range.EndPos.Character);
+  Assert.AreEqual(1, Integer(Length(mFindings[0].Fixes)));
+  Assert.AreEqual('empty-except', mFindings[0].Fixes[0].Edits[0].NewText);
   // Allein in der Zeile und ohne Treffer darunter: weiterhin keine unused-suppression daneben.
-  Findings := TRuleAssert.Findings(TMarkerRule.Create, SourceWith('  // lsp-ignore: empty-exept'#13#10'  X := 1;'#13#10));
-  Assert.AreEqual(1, Integer(Length(Findings)));
-  Assert.AreEqual(cUnknownRuleIdRuleId, Findings[0].RuleId);
+  mFindings := TRuleAssert.Findings(TMarkerRule.Create('marker', False), SourceWith('  // lsp-ignore: empty-exept'#13#10'  X := 1;'#13#10));
+  Assert.AreEqual(1, Integer(Length(mFindings)));
+  Assert.AreEqual(cUnknownRuleIdRuleId, mFindings[0].RuleId);
   // Auch in { } und mit Begründung; die Begründung wird nie gelesen.
-  Findings := TRuleAssert.Findings(TMarkerRule.Create,
+  mFindings := TRuleAssert.Findings(TMarkerRule.Create('marker', False),
     SourceWith('  Marker := 1; { lsp-ignore: marker -- empty-exept }'#13#10));
-  Assert.AreEqual(0, Integer(Length(Findings)));
+  Assert.AreEqual(0, Integer(Length(mFindings)));
 end;
 
 procedure TRuleEngineTests.UnknownRuleIdWithoutSuggestion;
 var
-  Findings: TArray<TRuleFinding>;
+  mFindings: TArray<TRuleFinding>;
 begin
-  Findings := TRuleAssert.Findings(TMarkerRule.Create, SourceWith('  X := 1; // lsp-ignore: voellig-anders'#13#10));
-  Assert.AreEqual(1, Integer(Length(Findings)));
-  Assert.AreEqual(cUnknownRuleIdRuleId, Findings[0].RuleId);
-  Assert.AreEqual(0, Integer(Length(Findings[0].Fixes)));
-  Assert.IsTrue(Pos('wirkt nicht', Findings[0].Message) > 0, Findings[0].Message);
+  mFindings := TRuleAssert.Findings(TMarkerRule.Create('marker', False), SourceWith('  X := 1; // lsp-ignore: voellig-anders'#13#10));
+  Assert.AreEqual(1, Integer(Length(mFindings)));
+  Assert.AreEqual(cUnknownRuleIdRuleId, mFindings[0].RuleId);
+  Assert.AreEqual(0, Integer(Length(mFindings[0].Fixes)));
+  Assert.IsTrue(Pos('wirkt nicht', mFindings[0].Message) > 0, mFindings[0].Message);
   // Kennungen der übergebenen Regeln, des Katalogs und "*" sind bekannt.
-  TRuleAssert.Silent(TMarkerRule.Create, SourceWith('  Marker := 1; // lsp-ignore: marker, *, with-statement'#13#10));
+  TRuleAssert.Silent(TMarkerRule.Create('marker', False), SourceWith('  Marker := 1; // lsp-ignore: marker, *, with-statement'#13#10));
 end;
 
 procedure TRuleEngineTests.UnknownRuleIdInEnglish;
@@ -577,7 +577,7 @@ begin
   mSaved := TAtlasLocale.Language;
   TAtlasLocale.Use(TTextLanguage.English);
   try
-    mFindings := TRuleAssert.Findings(TMarkerRule.Create,
+    mFindings := TRuleAssert.Findings(TMarkerRule.Create('marker', False),
       SourceWith('  Marker := 1; // lsp-ignore: empty-exept, marker'#13#10));
     Assert.AreEqual(1, Integer(Length(mFindings)));
     Assert.AreEqual('Unknown rule id "empty-exept"; probably "empty-except" is meant', mFindings[0].Message);
@@ -589,7 +589,7 @@ end;
 
 procedure TRuleEngineTests.UnknownRuleIdCanBeSwitchedOff;
 begin
-  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TMarkerRule.Create,
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TMarkerRule.Create('marker', False),
     SourceWith('  X := 1; // lsp-ignore: empty-exept'#13#10), '{"rules": {"unknown-rule-id": "off"}}'))));
 end;
 
@@ -605,52 +605,52 @@ end;
 
 procedure TRuleEngineTests.PassesFixesThrough;
 var
-  Findings: TArray<TRuleFinding>;
+  mFindings: TArray<TRuleFinding>;
 begin
-  Findings := TRuleAssert.Findings(TMarkerRule.Create('marker', True), Source);
-  Assert.AreEqual(1, Integer(Length(Findings)));
-  Assert.AreEqual(1, Integer(Length(Findings[0].Fixes)));
-  Assert.AreEqual('Umbenennen', Findings[0].Fixes[0].Title);
-  Assert.AreEqual('Zeichen', Findings[0].Fixes[0].Edits[0].NewText);
+  mFindings := TRuleAssert.Findings(TMarkerRule.Create('marker', True), cSource);
+  Assert.AreEqual(1, Integer(Length(mFindings)));
+  Assert.AreEqual(1, Integer(Length(mFindings[0].Fixes)));
+  Assert.AreEqual('Umbenennen', mFindings[0].Fixes[0].Title);
+  Assert.AreEqual('Zeichen', mFindings[0].Fixes[0].Edits[0].NewText);
 end;
 
 procedure TRuleEngineTests.SortsByPosition;
 var
-  Findings: TArray<TRuleFinding>;
+  mFindings: TArray<TRuleFinding>;
 begin
-  Findings := TRuleAssert.Findings(TMarkerRule.Create, SourceWith(
+  mFindings := TRuleAssert.Findings(TMarkerRule.Create('marker', False), SourceWith(
     '  Marker := 1;'#13#10 +
     '  X := Marker + Marker;'#13#10));
-  Assert.AreEqual(3, Integer(Length(Findings)));
-  Assert.AreEqual(5, Findings[0].Range.StartPos.Line);
-  Assert.AreEqual(6, Findings[1].Range.StartPos.Line);
-  Assert.IsTrue(Findings[1].Range.StartPos.Character < Findings[2].Range.StartPos.Character);
+  Assert.AreEqual(3, Integer(Length(mFindings)));
+  Assert.AreEqual(5, mFindings[0].Range.StartPos.Line);
+  Assert.AreEqual(6, mFindings[1].Range.StartPos.Line);
+  Assert.IsTrue(mFindings[1].Range.StartPos.Character < mFindings[2].Range.StartPos.Character);
 end;
 
 procedure TRuleEngineTests.RuleAssertPositiveAndNegative;
 begin
-  TRuleAssert.Reports(TMarkerRule.Create, Source);
-  TRuleAssert.Silent(TMarkerRule.Create, SourceWith('  X := 1;'#13#10));
+  TRuleAssert.Reports(TMarkerRule.Create('marker', False), cSource);
+  TRuleAssert.Silent(TMarkerRule.Create('marker', False), SourceWith('  X := 1;'#13#10));
 end;
 
 procedure TRuleEngineTests.CancelledStopsBeforeNextRule;
 var
-  Stop: Boolean;
-  Runs: Integer;
-  Context: TRuleContext;
-  Tree: TSyntaxTree;
+  mStop: Boolean;
+  mRuns: Integer;
+  mContext: TRuleContext;
+  mTree: TSyntaxTree;
 begin
-  Stop := False;
-  Runs := 0;
-  Tree := TPascalParser.Parse(Source);
+  mStop := False;
+  mRuns := 0;
+  mTree := TPascalParser.Parse(cSource);
   try
-    Context := Default(TRuleContext);
-    Context.Text := Source;
-    Context.Tree := Tree;
-    Context.Cancelled :=
+    mContext := Default(TRuleContext);
+    mContext.Text := cSource;
+    mContext.Tree := mTree;
+    mContext.Cancelled :=
       function: Boolean
       begin
-        Result := Stop;
+        Result := mStop;
       end;
     Assert.WillRaise(
       procedure
@@ -659,35 +659,35 @@ begin
           TCallbackRule.Create('erste',
             procedure
             begin
-              Inc(Runs);
-              Stop := True;
+              Inc(mRuns);
+              mStop := True;
             end),
           TCallbackRule.Create('zweite',
             procedure
             begin
-              Inc(Runs);
-            end)], TServerSettings.Default, Context);
+              Inc(mRuns);
+            end)], TServerSettings.Default, mContext);
       end, ERuleCheckCancelled);
-    Assert.AreEqual(1, Runs);
+    Assert.AreEqual(1, mRuns);
   finally
     // Context hängt in der Closure und hält über Cancelled die Closure selbst: Kreis lösen.
-    Context.Cancelled := nil;
-    Tree.Free;
+    mContext.Cancelled := nil;
+    mTree.Free;
   end;
 end;
 
 procedure TRuleEngineTests.SlowRuleNamedInDiagnostics;
 var
-  Context: TRuleContext;
-  Tree: TSyntaxTree;
-  Notes: TRequestNotes;
-  Joined, Note: string;
+  mContext: TRuleContext;
+  mTree: TSyntaxTree;
+  mNotes: TRequestNotes;
+  mJoined, mNote: string;
 begin
-  Tree := TPascalParser.Parse(Source);
+  mTree := TPascalParser.Parse(cSource);
   try
-    Context := Default(TRuleContext);
-    Context.Text := Source;
-    Context.Tree := Tree;
+    mContext := Default(TRuleContext);
+    mContext.Text := cSource;
+    mContext.Tree := mTree;
     TRequestDiagnostics.Open;
     try
       TRuleEngine.Run([
@@ -699,143 +699,143 @@ begin
           procedure
           begin
             Sleep(TRuleEngine.cSlowRuleMs + 50);
-          end)], TServerSettings.Default, Context);
+          end)], TServerSettings.Default, mContext);
     finally
-      Notes := TRequestDiagnostics.Close;
+      mNotes := TRequestDiagnostics.Close;
     end;
   finally
-    Tree.Free;
+    mTree.Free;
   end;
-  Joined := '';
-  for Note in Notes.Notes do
+  mJoined := '';
+  for mNote in mNotes.Notes do
   begin
-    Joined := Joined + Note + ' ';
+    mJoined := mJoined + mNote + ' ';
   end;
-  Assert.Contains(Joined, 'slowRule=langsam ');
-  Assert.Contains(Joined, 'slowRuleMs=');
-  Assert.DoesNotContain(Joined, 'schnell');
+  Assert.Contains(mJoined, 'slowRule=langsam ');
+  Assert.Contains(mJoined, 'slowRuleMs=');
+  Assert.DoesNotContain(mJoined, 'schnell');
 end;
 
 procedure TRuleEngineTests.RunSharesDerivedCacheBetweenRules;
 var
-  Context: TRuleContext;
-  Tree: TSyntaxTree;
+  mContext: TRuleContext;
+  mTree: TSyntaxTree;
 begin
   ProbeCreated := 0;
   ProbeFreed := 0;
-  Tree := TPascalParser.Parse(Source);
+  mTree := TPascalParser.Parse(cSource);
   try
-    Context := Default(TRuleContext);
-    Context.Text := Source;
-    Context.Tree := Tree;
+    mContext := Default(TRuleContext);
+    mContext.Text := cSource;
+    mContext.Tree := mTree;
     TRuleEngine.Run([TProbeRule.Create('probe-a'), TProbeRule.Create('probe-b'), TProbeRule.Create('probe-c')],
-      TServerSettings.Default, Context);
+      TServerSettings.Default, mContext);
   finally
-    Tree.Free;
+    mTree.Free;
   end;
   Assert.AreEqual(1, ProbeCreated, 'einmal je Lauf erzeugt');
 end;
 
 procedure TRuleEngineTests.RunClearsOwnCache;
 var
-  Context: TRuleContext;
-  Tree: TSyntaxTree;
+  mContext: TRuleContext;
+  mTree: TSyntaxTree;
 begin
   ProbeCreated := 0;
   ProbeFreed := 0;
-  Tree := TPascalParser.Parse(Source);
+  mTree := TPascalParser.Parse(cSource);
   try
-    Context := Default(TRuleContext);
-    Context.Text := Source;
-    Context.Tree := Tree;
-    TRuleEngine.Run([TProbeRule.Create('probe-a')], TServerSettings.Default, Context);
+    mContext := Default(TRuleContext);
+    mContext.Text := cSource;
+    mContext.Tree := mTree;
+    TRuleEngine.Run([TProbeRule.Create('probe-a')], TServerSettings.Default, mContext);
     // Noch vor dem Baum freigegeben: abgeleitete Objekte zeigen in den Baum.
     Assert.AreEqual(1, ProbeFreed, 'nach dem Lauf freigegeben');
   finally
-    Tree.Free;
+    mTree.Free;
   end;
 end;
 
 procedure TRuleEngineTests.RunKeepsCallerCache;
 var
-  Context: TRuleContext;
-  Tree: TSyntaxTree;
-  Cache: IRuleDerivedCache;
-  Value: TObject;
+  mContext: TRuleContext;
+  mTree: TSyntaxTree;
+  mCache: IRuleDerivedCache;
+  mValue: TObject;
 begin
   ProbeCreated := 0;
   ProbeFreed := 0;
-  Tree := TPascalParser.Parse(Source);
+  mTree := TPascalParser.Parse(cSource);
   try
-    Cache := TRuleDerivedCache.Create;
-    Context := Default(TRuleContext);
-    Context.Text := Source;
-    Context.Tree := Tree;
-    Context.Derived := Cache;
-    TRuleEngine.Run([TProbeRule.Create('probe-a')], TServerSettings.Default, Context);
-    TRuleEngine.Run([TProbeRule.Create('probe-b')], TServerSettings.Default, Context);
+    mCache := TRuleDerivedCache.Create;
+    mContext := Default(TRuleContext);
+    mContext.Text := cSource;
+    mContext.Tree := mTree;
+    mContext.Derived := mCache;
+    TRuleEngine.Run([TProbeRule.Create('probe-a')], TServerSettings.Default, mContext);
+    TRuleEngine.Run([TProbeRule.Create('probe-b')], TServerSettings.Default, mContext);
     Assert.AreEqual(1, ProbeCreated, 'Cache des Aufrufers über beide Läufe');
     Assert.AreEqual(0, ProbeFreed, 'Cache des Aufrufers bleibt gefüllt');
-    Assert.IsTrue(Cache.TryGet('test.probe', Value));
-    Context.Derived := nil;
-    Cache := nil;
+    Assert.IsTrue(mCache.TryGet('test.probe', mValue));
+    mContext.Derived := nil;
+    mCache := nil;
     Assert.AreEqual(1, ProbeFreed, 'mit dem Cache freigegeben');
   finally
-    Tree.Free;
+    mTree.Free;
   end;
 end;
 
 procedure TRuleEngineTests.FailingRuleKeepsOtherFindings;
 var
-  Context: TRuleContext;
-  Tree: TSyntaxTree;
-  Findings: TArray<TRuleFinding>;
-  Notes: TRequestNotes;
-  Joined: string;
+  mContext: TRuleContext;
+  mTree: TSyntaxTree;
+  mFindings: TArray<TRuleFinding>;
+  mNotes: TRequestNotes;
+  mJoined: string;
 begin
-  Tree := TPascalParser.Parse(Source);
+  mTree := TPascalParser.Parse(cSource);
   try
-    Context := Default(TRuleContext);
-    Context.Text := Source;
-    Context.Tree := Tree;
+    mContext := Default(TRuleContext);
+    mContext.Text := cSource;
+    mContext.Tree := mTree;
     TRequestDiagnostics.Open;
     try
       TRequestDiagnostics.Subject('unit#3');
-      Findings := TRuleEngine.Run([TFailingRule.Create('kaputt', EArgumentException), TMarkerRule.Create],
-        TServerSettings.Default, Context);
+      mFindings := TRuleEngine.Run([TFailingRule.Create('kaputt', EArgumentException), TMarkerRule.Create('marker', False)],
+        TServerSettings.Default, mContext);
     finally
-      Notes := TRequestDiagnostics.Close;
+      mNotes := TRequestDiagnostics.Close;
     end;
   finally
-    Tree.Free;
+    mTree.Free;
   end;
-  Assert.AreEqual(1, Integer(Length(Findings)), 'nur der Treffer der heilen Regel');
-  Assert.AreEqual('marker', Findings[0].RuleId);
-  Joined := JoinNotes(Notes);
-  Assert.Contains(Joined, ' failedRules=1 ');
-  Assert.Contains(Joined, ' failRule=kaputt ');
-  Assert.Contains(Joined, ' failRuleUnit=unit#3 ');
-  Assert.Contains(Joined, ' failRuleClass=EArgumentException ');
-  Assert.AreEqual('', Notes.Rule, 'keine Regel mehr offen');
-  Findings := nil;
+  Assert.AreEqual(1, Integer(Length(mFindings)), 'nur der Treffer der heilen Regel');
+  Assert.AreEqual('marker', mFindings[0].RuleId);
+  mJoined := JoinNotes(mNotes);
+  Assert.Contains(mJoined, ' failedRules=1 ');
+  Assert.Contains(mJoined, ' failRule=kaputt ');
+  Assert.Contains(mJoined, ' failRuleUnit=unit#3 ');
+  Assert.Contains(mJoined, ' failRuleClass=EArgumentException ');
+  Assert.AreEqual('', mNotes.Rule, 'keine Regel mehr offen');
+  mFindings := nil;
 end;
 
 procedure TRuleEngineTests.FailingRuleAfterCancelStillRaises;
 var
-  Stop: Boolean;
-  Context: TRuleContext;
-  Tree: TSyntaxTree;
+  mStop: Boolean;
+  mContext: TRuleContext;
+  mTree: TSyntaxTree;
 begin
-  Stop := False;
-  Tree := TPascalParser.Parse(Source);
+  mStop := False;
+  mTree := TPascalParser.Parse(cSource);
   try
-    Context := Default(TRuleContext);
-    Context.Text := Source;
-    Context.Tree := Tree;
-    Context.Cancelled :=
+    mContext := Default(TRuleContext);
+    mContext.Text := cSource;
+    mContext.Tree := mTree;
+    mContext.Cancelled :=
       function: Boolean
       begin
-        Result := Stop;
+        Result := mStop;
       end;
     Assert.WillRaise(
       procedure
@@ -844,94 +844,94 @@ begin
           TFailingRule.Create('kaputt', EArgumentException,
             procedure
             begin
-              Stop := True;
-            end)], TServerSettings.Default, Context);
+              mStop := True;
+            end)], TServerSettings.Default, mContext);
       end, EArgumentException);
   finally
-    Context.Cancelled := nil;
-    Tree.Free;
+    mContext.Cancelled := nil;
+    mTree.Free;
   end;
 end;
 
 procedure TRuleEngineTests.OverflowInRuleRestoresStackGuard;
 var
-  Context: TRuleContext;
-  Tree: TSyntaxTree;
-  Findings: TArray<TRuleFinding>;
-  Restores: Integer;
+  mContext: TRuleContext;
+  mTree: TSyntaxTree;
+  mFindings: TArray<TRuleFinding>;
+  mRestores: Integer;
 begin
-  Restores := 0;
+  mRestores := 0;
   TStackGuard.Restore :=
     procedure
     begin
-      Inc(Restores);
+      Inc(mRestores);
     end;
   try
-    Tree := TPascalParser.Parse(Source);
+    mTree := TPascalParser.Parse(cSource);
     try
-      Context := Default(TRuleContext);
-      Context.Text := Source;
-      Context.Tree := Tree;
-      Findings := TRuleEngine.Run([TFailingRule.Create('tief', EStackOverflow), TMarkerRule.Create],
-        TServerSettings.Default, Context);
+      mContext := Default(TRuleContext);
+      mContext.Text := cSource;
+      mContext.Tree := mTree;
+      mFindings := TRuleEngine.Run([TFailingRule.Create('tief', EStackOverflow), TMarkerRule.Create('marker', False)],
+        TServerSettings.Default, mContext);
     finally
-      Tree.Free;
+      mTree.Free;
     end;
   finally
     TStackGuard.Restore := nil;
   end;
-  Assert.AreEqual(1, Restores);
-  Assert.AreEqual(1, Integer(Length(Findings)));
-  Assert.AreEqual('marker', Findings[0].RuleId);
-  Findings := nil;
+  Assert.AreEqual(1, mRestores);
+  Assert.AreEqual(1, Integer(Length(mFindings)));
+  Assert.AreEqual('marker', mFindings[0].RuleId);
+  mFindings := nil;
 end;
 
 procedure TRuleEngineTests.TooDeepTreeSkipsRules;
 var
-  Context: TRuleContext;
-  Tree: TSyntaxTree;
-  Text, Joined: string;
-  Findings: TArray<TRuleFinding>;
-  Notes: TRequestNotes;
-  Depth: Integer;
+  mContext: TRuleContext;
+  mTree: TSyntaxTree;
+  mText, mJoined: string;
+  mFindings: TArray<TRuleFinding>;
+  mNotes: TRequestNotes;
+  mDepth: Integer;
 begin
-  Text := DeepSource(TRuleEngine.cMaxTreeDepth + 200);
-  Tree := TPascalParser.Parse(Text);
+  mText := DeepSource(TRuleEngine.cMaxTreeDepth + 200);
+  mTree := TPascalParser.Parse(mText);
   try
-    Depth := Tree.Depth;
-    Assert.IsTrue(Depth > TRuleEngine.cMaxTreeDepth, 'Subtraktion bleibt linkslastig');
-    Context := Default(TRuleContext);
-    Context.Text := Text;
-    Context.Tree := Tree;
+    mDepth := mTree.Depth;
+    Assert.IsTrue(mDepth > TRuleEngine.cMaxTreeDepth, 'Subtraktion bleibt linkslastig');
+    mContext := Default(TRuleContext);
+    mContext.Text := mText;
+    mContext.Tree := mTree;
     TRequestDiagnostics.Open;
     try
       TRequestDiagnostics.Subject('unit#5');
-      Findings := TRuleEngine.Run([TMarkerRule.Create], TServerSettings.Default, Context);
+      mFindings := TRuleEngine.Run([TMarkerRule.Create('marker', False)], TServerSettings.Default, mContext);
     finally
-      Notes := TRequestDiagnostics.Close;
+      mNotes := TRequestDiagnostics.Close;
     end;
   finally
-    Tree.Free;
+    mTree.Free;
   end;
   // Statt der Regeln nur der Hinweis, am ersten Glied der Kette ("  Marker := 1" in Zeile 6).
-  Assert.AreEqual(1, Integer(Length(Findings)));
-  Assert.AreEqual(cUnitTooDeepRuleId, Findings[0].RuleId);
-  Assert.AreEqual(Ord(TRuleSeverity.Hint), Ord(Findings[0].Severity));
-  Assert.AreEqual(5, Findings[0].Range.StartPos.Line);
-  Assert.AreEqual(12, Findings[0].Range.StartPos.Character);
-  Assert.IsTrue(Pos(IntToStr(Depth), Findings[0].Message) > 0, Findings[0].Message);
-  Findings := nil;
-  Joined := JoinNotes(Notes);
-  Assert.Contains(Joined, ' deepUnits=1 ');
-  Assert.Contains(Joined, ' deepUnit=unit#5 ');
-  Assert.Contains(Joined, ' deepUnitDepth=' + IntToStr(Depth) + ' ');
+  Assert.AreEqual(1, Integer(Length(mFindings)));
+  Assert.AreEqual(cUnitTooDeepRuleId, mFindings[0].RuleId);
+  Assert.AreEqual(Ord(TRuleSeverity.Hint), Ord(mFindings[0].Severity));
+  Assert.AreEqual(5, mFindings[0].Range.StartPos.Line);
+  Assert.AreEqual(12, mFindings[0].Range.StartPos.Character);
+  Assert.IsTrue(Pos(IntToStr(mDepth), mFindings[0].Message) > 0, mFindings[0].Message);
+  mFindings := nil;
+  mJoined := JoinNotes(mNotes);
+  Assert.Contains(mJoined, ' deepUnits=1 ');
+  Assert.Contains(mJoined, ' deepUnit=unit#5 ');
+  Assert.Contains(mJoined, ' deepUnitDepth=' + IntToStr(mDepth) + ' ');
   // Flache Bäume prüfen die Regeln wie bisher.
-  Assert.AreEqual(1, Integer(Length(TRuleAssert.Findings(TMarkerRule.Create, DeepSource(10)))));
+  Assert.AreEqual(1, Integer(Length(TRuleAssert.Findings(TMarkerRule.Create('marker', False), DeepSource(10)))));
 end;
 
 procedure TRuleEngineTests.TooDeepHintCanBeSwitchedOff;
 begin
-  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TMarkerRule.Create,
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TMarkerRule.Create('marker', False),
     DeepSource(TRuleEngine.cMaxTreeDepth + 200), '{"rules": {"unit-too-deep": "off"}}'))));
 end;
 

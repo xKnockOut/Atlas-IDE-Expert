@@ -52,10 +52,10 @@ uses
   Atlas.Common.Lsp.ReferenceConfidence;
 
 const
-  HauptFile = 'C:\P\Haupt.pas';
-  WerkzeugFile = 'C:\P\Werkzeug.pas';
+  cHauptFile = 'C:\P\Haupt.pas';
+  cWerkzeugFile = 'C:\P\Werkzeug.pas';
 
-  UnitWerkzeug =
+  cUnitWerkzeug =
     'unit Werkzeug;'#10 +
     'interface'#10 +
     'type'#10 +
@@ -70,7 +70,7 @@ const
     'end;'#10 +
     'end.';
 
-  UnitHaupt =
+  cUnitHaupt =
     'unit Haupt;'#10 +
     'interface'#10 +
     'uses Werkzeug;'#10 +
@@ -96,11 +96,11 @@ const
     'end;'#10 +
     'end.';
 
-  DispatchFile = 'C:\P\Ablauf.pas';
+  cDispatchFile = 'C:\P\Ablauf.pas';
 
   // Aufrufe über ein Interface (zwei Umsetzungen) und eine virtuelle Methode (Basis und eine Überschreibung;
   // TSpaet erbt nur), dazu ein gewöhnlicher Aufruf (#1122).
-  UnitDispatch =
+  cUnitDispatch =
     'unit Ablauf;'#10 +
     'interface'#10 +
     'type'#10 +
@@ -139,45 +139,45 @@ const
 
 function ReadDispatch(const AFileName: string; out AText: string): Boolean;
 begin
-  Result := SameText(AFileName, DispatchFile);
+  Result := SameText(AFileName, cDispatchFile);
   if Result then
   begin
-    AText := UnitDispatch;
+    AText := cUnitDispatch;
   end;
 end;
 
 function PositionOf(const AText, AMarker: string): TTextPosition;
 var
-  Index, Line, LineStart, Scan: Integer;
+  mIndex, mLine, mLineStart, mScan: Integer;
 begin
-  Index := Pos(AMarker, AText);
-  if Index = 0 then
+  mIndex := Pos(AMarker, AText);
+  if mIndex = 0 then
   begin
     raise Exception.CreateFmt('"%s" nicht gefunden', [AMarker]);
   end;
-  Line := 0;
-  LineStart := 1;
-  for Scan := 1 to Index - 1 do
+  mLine := 0;
+  mLineStart := 1;
+  for mScan := 1 to mIndex - 1 do
   begin
-    if AText[Scan] = #10 then
+    if AText[mScan] = #10 then
     begin
-      Inc(Line);
-      LineStart := Scan + 1;
+      Inc(mLine);
+      mLineStart := mScan + 1;
     end;
   end;
-  Result := TTextPosition.Create(Line, Index - LineStart);
+  Result := TTextPosition.Create(mLine, mIndex - mLineStart);
 end;
 
 function ReadFile(const AFileName: string; out AText: string): Boolean;
 begin
   Result := True;
-  if SameText(AFileName, HauptFile) then
+  if SameText(AFileName, cHauptFile) then
   begin
-    AText := UnitHaupt;
+    AText := cUnitHaupt;
   end
-  else if SameText(AFileName, WerkzeugFile) then
+  else if SameText(AFileName, cWerkzeugFile) then
   begin
-    AText := UnitWerkzeug;
+    AText := cUnitWerkzeug;
   end
   else
   begin
@@ -190,8 +190,8 @@ end;
 procedure TLspHierarchiesTests.Setup;
 begin
   FIndex := TSymbolIndex.Create;
-  FIndex.AddUnit(TIndexExtractor.ExtractText(UnitWerkzeug, WerkzeugFile, nil));
-  FIndex.AddUnit(TIndexExtractor.ExtractText(UnitHaupt, HauptFile, nil));
+  FIndex.AddUnit(TIndexExtractor.ExtractText(cUnitWerkzeug, cWerkzeugFile, nil));
+  FIndex.AddUnit(TIndexExtractor.ExtractText(cUnitHaupt, cHauptFile, nil));
   FResolver := TNameResolver.Create(FIndex);
 end;
 
@@ -203,23 +203,23 @@ end;
 
 function TLspHierarchiesTests.ItemAt(const AMarker: string; ACall: Boolean): THierarchyItem;
 var
-  Tree: TSyntaxTree;
-  Found: Boolean;
+  mTree: TSyntaxTree;
+  mFound: Boolean;
 begin
-  Tree := TPascalParser.Parse(UnitHaupt);
+  mTree := TPascalParser.Parse(cUnitHaupt);
   try
     if ACall then
     begin
-      Found := TLspHierarchies.CallItemAt(FResolver, Tree, HauptFile, PositionOf(UnitHaupt, AMarker), Result);
+      mFound := TLspHierarchies.CallItemAt(FResolver, mTree, cHauptFile, PositionOf(cUnitHaupt, AMarker), Result);
     end
     else
     begin
-      Found := TLspHierarchies.TypeItemAt(FResolver, Tree, HauptFile, PositionOf(UnitHaupt, AMarker), Result);
+      mFound := TLspHierarchies.TypeItemAt(FResolver, mTree, cHauptFile, PositionOf(cUnitHaupt, AMarker), Result);
     end;
   finally
-    Tree.Free;
+    mTree.Free;
   end;
-  if not Found then
+  if not mFound then
   begin
     raise Exception.CreateFmt('Kein Element bei "%s"', [AMarker]);
   end;
@@ -227,51 +227,51 @@ end;
 
 function TLspHierarchiesTests.Names(const AItems: TArray<THierarchyItem>): string;
 var
-  Item: THierarchyItem;
+  mItem: THierarchyItem;
 begin
   Result := '';
-  for Item in AItems do
+  for mItem in AItems do
   begin
-    Result := Result + Item.Name + ' ';
+    Result := Result + mItem.Name + ' ';
   end;
   Result := Trim(Result);
 end;
 
 function TLspHierarchiesTests.Names(const ACalls: TArray<THierarchyCall>): string;
 var
-  Call: THierarchyCall;
+  mCall: THierarchyCall;
 begin
   Result := '';
-  for Call in ACalls do
+  for mCall in ACalls do
   begin
-    Result := Result + Call.Item.Name + '(' + IntToStr(Length(Call.Ranges)) + ') ';
+    Result := Result + mCall.Item.Name + '(' + IntToStr(Length(mCall.Ranges)) + ') ';
   end;
   Result := Trim(Result);
 end;
 
 procedure TLspHierarchiesTests.PrepareTypeFromVariableAndTypeName;
 var
-  Item: THierarchyItem;
+  mItem: THierarchyItem;
 begin
-  Item := ItemAt('Wert', False);
-  Assert.AreEqual('TKind', Item.Name);
-  Assert.AreEqual(5, Item.LspKind);
-  Item := ItemAt('TBasis, IZaehlbar', False);
-  Assert.AreEqual('TBasis', Item.Name);
-  Assert.AreEqual(WerkzeugFile, Item.FileName);
+  mItem := ItemAt('Wert', False);
+  Assert.AreEqual('TKind', mItem.Name);
+  Assert.AreEqual(5, mItem.LspKind);
+  mItem := ItemAt('TBasis, IZaehlbar', False);
+  Assert.AreEqual('TBasis', mItem.Name);
+  Assert.AreEqual(cWerkzeugFile, mItem.FileName);
 end;
 
 procedure TLspHierarchiesTests.SupertypesFollowAncestorChain;
 var
-  Supers: TArray<THierarchyItem>;
+  mSupers: TArray<THierarchyItem>;
 begin
-  Supers := TLspHierarchies.Supertypes(FResolver, ItemAt('Wert', False), ReadFile);
-  Assert.AreEqual('TFoo', Names(Supers));
-  Supers := TLspHierarchies.Supertypes(FResolver, Supers[0], ReadFile);
-  Assert.AreEqual('TBasis IZaehlbar', Names(Supers));
-  Assert.AreEqual(11, Supers[1].LspKind);
+  mSupers := TLspHierarchies.Supertypes(FResolver, ItemAt('Wert', False), ReadFile);
+  Assert.AreEqual('TFoo', Names(mSupers));
+  mSupers := TLspHierarchies.Supertypes(FResolver, mSupers[0], ReadFile);
+  Assert.AreEqual('TBasis IZaehlbar', Names(mSupers));
+  Assert.AreEqual(11, mSupers[1].LspKind);
   // TObject steht nicht im Index: die Kette endet bei TBasis.
-  Assert.AreEqual('', Names(TLspHierarchies.Supertypes(FResolver, Supers[0], ReadFile)));
+  Assert.AreEqual('', Names(TLspHierarchies.Supertypes(FResolver, mSupers[0], ReadFile)));
 end;
 
 procedure TLspHierarchiesTests.SubtypesAreDirectDescendants;
@@ -282,22 +282,22 @@ end;
 
 procedure TLspHierarchiesTests.IncomingCallsGroupedByCaller;
 var
-  Item: THierarchyItem;
-  Calls: TArray<THierarchyCall>;
+  mItem: THierarchyItem;
+  mCalls: TArray<THierarchyCall>;
 begin
-  Item := ItemAt('Rechne;'#10'  Baz', True);
-  Assert.AreEqual(WerkzeugFile, Item.FileName);
-  Calls := TLspHierarchies.IncomingCalls(FResolver, FIndex, Item, [HauptFile, WerkzeugFile], ReadFile);
-  Assert.AreEqual('Bar(2) Baz(1)', Names(Calls));
-  Assert.AreEqual('TFoo', Calls[0].Item.Container);
-  Assert.AreEqual(15, Calls[0].Ranges[0].StartPos.Line);
+  mItem := ItemAt('Rechne;'#10'  Baz', True);
+  Assert.AreEqual(cWerkzeugFile, mItem.FileName);
+  mCalls := TLspHierarchies.IncomingCalls(FResolver, FIndex, mItem, [cHauptFile, cWerkzeugFile], ReadFile);
+  Assert.AreEqual('Bar(2) Baz(1)', Names(mCalls));
+  Assert.AreEqual('TFoo', mCalls[0].Item.Container);
+  Assert.AreEqual(15, mCalls[0].Ranges[0].StartPos.Line);
   // Auswahl ist der Name im Kopf (procedure TFoo.Bar), nicht der Anfang der Routine (#1120).
-  Assert.AreEqual(11, Calls[0].Item.SelectionRange.StartPos.Line);
-  Assert.AreEqual(15, Calls[0].Item.SelectionRange.StartPos.Character);
-  Assert.AreEqual(18, Calls[0].Item.SelectionRange.EndPos.Character);
+  Assert.AreEqual(11, mCalls[0].Item.SelectionRange.StartPos.Line);
+  Assert.AreEqual(15, mCalls[0].Item.SelectionRange.StartPos.Character);
+  Assert.AreEqual(18, mCalls[0].Item.SelectionRange.EndPos.Character);
   // Der Kopf von TFoo.Baz ist kein Aufruf von Baz.
   Assert.AreEqual('Bar(1)', Names(TLspHierarchies.IncomingCalls(FResolver, FIndex, ItemAt('Baz;'#10'  end', True),
-    [HauptFile, WerkzeugFile], ReadFile)));
+    [cHauptFile, cWerkzeugFile], ReadFile)));
 end;
 
 procedure TLspHierarchiesTests.OutgoingCallsFromBody;
@@ -308,67 +308,67 @@ end;
 
 procedure TLspHierarchiesTests.ItemRoundTripsThroughJson;
 var
-  Item, Back: THierarchyItem;
-  Json: TJSONObject;
+  mItem, mBack: THierarchyItem;
+  mJson: TJSONObject;
 begin
-  Item := ItemAt('Baz;'#10'  end', True);
-  Json := TLspHierarchies.ItemToJson(Item);
+  mItem := ItemAt('Baz;'#10'  end', True);
+  mJson := TLspHierarchies.ItemToJson(mItem);
   try
-    Assert.IsTrue(TLspHierarchies.ItemFromJson(Json, Back));
+    Assert.IsTrue(TLspHierarchies.ItemFromJson(mJson, mBack));
   finally
-    Json.Free;
+    mJson.Free;
   end;
-  Assert.AreEqual('Baz', Back.Name);
-  Assert.AreEqual('TFoo', Back.Container);
-  Assert.AreEqual(Ord(Item.SymbolKind), Ord(Back.SymbolKind));
-  Assert.AreEqual(Item.SelectionRange.StartPos.Line, Back.SelectionRange.StartPos.Line);
-  Assert.AreEqual(HauptFile, Back.FileName);
+  Assert.AreEqual('Baz', mBack.Name);
+  Assert.AreEqual('TFoo', mBack.Container);
+  Assert.AreEqual(Ord(mItem.SymbolKind), Ord(mBack.SymbolKind));
+  Assert.AreEqual(mItem.SelectionRange.StartPos.Line, mBack.SelectionRange.StartPos.Line);
+  Assert.AreEqual(cHauptFile, mBack.FileName);
 end;
 
 procedure TLspHierarchiesTests.OutgoingCallsMarkInterfaceAndVirtual;
 var
-  Index: ISymbolIndex;
-  Resolver: TNameResolver;
-  Tree: TSyntaxTree;
-  Item: THierarchyItem;
-  Calls: TArray<THierarchyCall>;
-  Json: TJSONArray;
-  Dispatch: TJSONValue;
+  mIndex: ISymbolIndex;
+  mResolver: TNameResolver;
+  mTree: TSyntaxTree;
+  mItem: THierarchyItem;
+  mCalls: TArray<THierarchyCall>;
+  mJson: TJSONArray;
+  mDispatch: TJSONValue;
 begin
-  Index := TSymbolIndex.Create;
-  Index.AddUnit(TIndexExtractor.ExtractText(UnitDispatch, DispatchFile, nil));
-  Resolver := TNameResolver.Create(Index);
+  mIndex := TSymbolIndex.Create;
+  mIndex.AddUnit(TIndexExtractor.ExtractText(cUnitDispatch, cDispatchFile, nil));
+  mResolver := TNameResolver.Create(mIndex);
   try
-    Tree := TPascalParser.Parse(UnitDispatch);
+    mTree := TPascalParser.Parse(cUnitDispatch);
     try
-      Assert.IsTrue(TLspHierarchies.CallItemAt(Resolver, Tree, DispatchFile,
-        PositionOf(UnitDispatch, 'Ablauf(const S: ISpeicher; L: TLader);'#10'begin'), Item));
+      Assert.IsTrue(TLspHierarchies.CallItemAt(mResolver, mTree, cDispatchFile,
+        PositionOf(cUnitDispatch, 'Ablauf(const S: ISpeicher; L: TLader);'#10'begin'), mItem));
     finally
-      Tree.Free;
+      mTree.Free;
     end;
-    Calls := TLspHierarchies.OutgoingCalls(Resolver, Index, Item, ReadDispatch, nil);
-    Assert.AreEqual('Speichern(1) Laden(1) Fertig(1)', Names(Calls));
-    Assert.AreEqual(Ord(TReferenceReason.Interface_), Ord(Calls[0].Dispatch));
-    Assert.AreEqual(2, Calls[0].Implementations);
-    Assert.AreEqual(Ord(TReferenceReason.Virtual), Ord(Calls[1].Dispatch));
-    Assert.AreEqual(2, Calls[1].Implementations);
-    Assert.AreEqual(Ord(TReferenceReason.None), Ord(Calls[2].Dispatch));
-    Json := TLspHierarchies.CallsToJson(Calls, 'to');
+    mCalls := TLspHierarchies.OutgoingCalls(mResolver, mIndex, mItem, ReadDispatch, nil);
+    Assert.AreEqual('Speichern(1) Laden(1) Fertig(1)', Names(mCalls));
+    Assert.AreEqual(Ord(TReferenceReason.Interface_), Ord(mCalls[0].Dispatch));
+    Assert.AreEqual(2, mCalls[0].Implementations);
+    Assert.AreEqual(Ord(TReferenceReason.Virtual), Ord(mCalls[1].Dispatch));
+    Assert.AreEqual(2, mCalls[1].Implementations);
+    Assert.AreEqual(Ord(TReferenceReason.None), Ord(mCalls[2].Dispatch));
+    mJson := TLspHierarchies.CallsToJson(mCalls, 'to');
     try
-      Dispatch := Json.Items[0].FindValue('atlasDispatch');
-      Assert.IsNotNull(Dispatch);
-      Assert.AreEqual('interface', Dispatch.GetValue<string>('kind'));
-      Assert.AreEqual(2, Dispatch.GetValue<Integer>('implementations'));
-      Assert.AreEqual('virtual', Json.Items[1].GetValue<string>('atlasDispatch.kind'));
-      Assert.IsNull(Json.Items[2].FindValue('atlasDispatch'));
+      mDispatch := mJson.Items[0].FindValue('atlasDispatch');
+      Assert.IsNotNull(mDispatch);
+      Assert.AreEqual('interface', mDispatch.GetValue<string>('kind'));
+      Assert.AreEqual(2, mDispatch.GetValue<Integer>('implementations'));
+      Assert.AreEqual('virtual', mJson.Items[1].GetValue<string>('atlasDispatch.kind'));
+      Assert.IsNull(mJson.Items[2].FindValue('atlasDispatch'));
     finally
-      Json.Free;
+      mJson.Free;
     end;
     // Ohne Index wie bisher: keine Kennzeichnung.
-    Calls := TLspHierarchies.OutgoingCalls(Resolver, Item, ReadDispatch);
-    Assert.AreEqual(Ord(TReferenceReason.None), Ord(Calls[0].Dispatch));
+    mCalls := TLspHierarchies.OutgoingCalls(mResolver, mItem, ReadDispatch);
+    Assert.AreEqual(Ord(TReferenceReason.None), Ord(mCalls[0].Dispatch));
   finally
-    Resolver.Free;
+    mResolver.Free;
   end;
 end;
 

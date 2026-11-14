@@ -45,48 +45,48 @@ uses
 /// <summary>Führt den Befehl in Zeile ALine aus und wendet die Änderungen an; '' wenn er nicht passt.</summary>
 function Expand(const AText: string; ALine: Integer): string;
 var
-  Edits: TArray<TRuleEdit>;
-  Lines: TArray<string>;
-  Edit: TRuleEdit;
-  Offsets: TArray<Integer>;
-  Index, Start, Stop: Integer;
+  mEdits: TArray<TRuleEdit>;
+  mLines: TArray<string>;
+  mEdit: TRuleEdit;
+  mOffsets: TArray<Integer>;
+  mIndex, mStart, mStop: Integer;
 begin
-  if not TSlashCommandRegistry.Shared.AfterEnter(AText, TTextPosition.Create(ALine + 1, 0), nil, nil, Edits) then
+  if not TSlashCommandRegistry.Shared.AfterEnter(AText, TTextPosition.Create(ALine + 1, 0), nil, nil, mEdits) then
   begin
     Exit('');
   end;
-  Lines := AText.Split([#10]);
-  SetLength(Offsets, Length(Lines) + 1);
-  Offsets[0] := 0;
-  for Index := 0 to High(Lines) do
+  mLines := AText.Split([#10]);
+  SetLength(mOffsets, Length(mLines) + 1);
+  mOffsets[0] := 0;
+  for mIndex := 0 to High(mLines) do
   begin
-    Offsets[Index + 1] := Offsets[Index] + Length(Lines[Index]) + 1;
+    mOffsets[mIndex + 1] := mOffsets[mIndex] + Length(mLines[mIndex]) + 1;
   end;
-  TArray.Sort<TRuleEdit>(Edits, TComparer<TRuleEdit>.Construct(
+  TArray.Sort<TRuleEdit>(mEdits, TComparer<TRuleEdit>.Construct(
     function(const ALeft, ARight: TRuleEdit): Integer
     begin
       Result := (ARight.Range.StartPos.Line - ALeft.Range.StartPos.Line) * 100000 +
         ARight.Range.StartPos.Character - ALeft.Range.StartPos.Character;
     end));
   Result := AText;
-  for Edit in Edits do
+  for mEdit in mEdits do
   begin
-    Start := Offsets[Edit.Range.StartPos.Line] + Edit.Range.StartPos.Character;
-    Stop := Offsets[Edit.Range.EndPos.Line] + Edit.Range.EndPos.Character;
-    Result := Copy(Result, 1, Start) + Edit.NewText + Copy(Result, Stop + 1, MaxInt);
+    mStart := mOffsets[mEdit.Range.StartPos.Line] + mEdit.Range.StartPos.Character;
+    mStop := mOffsets[mEdit.Range.EndPos.Line] + mEdit.Range.EndPos.Character;
+    Result := Copy(Result, 1, mStart) + mEdit.NewText + Copy(Result, mStop + 1, MaxInt);
   end;
 end;
 
 procedure TDocumentationCommandsTests.HeaderOnlyOnce;
 var
-  Once, Twice: string;
+  mOnce, mTwice: string;
 begin
-  Once := Expand('unit U;'#10'/header'#10'interface'#10'implementation'#10'end.', 1);
-  Assert.StartsWith('{ U'#10'  Copyright (c) ' + IntToStr(CurrentYear), Once);
-  Assert.EndsWith('}'#10'unit U;'#10'interface'#10'implementation'#10'end.', Once);
+  mOnce := Expand('unit U;'#10'/header'#10'interface'#10'implementation'#10'end.', 1);
+  Assert.StartsWith('{ U'#10'  Copyright (c) ' + IntToStr(CurrentYear), mOnce);
+  Assert.EndsWith('}'#10'unit U;'#10'interface'#10'implementation'#10'end.', mOnce);
   // Zweiter Aufruf: Der Kopf ist aktuell, nur die Befehlszeile verschwindet.
-  Twice := Expand(StringReplace(Once, 'unit U;'#10, 'unit U;'#10'/header'#10, []), 3);
-  Assert.AreEqual(Once, Twice);
+  mTwice := Expand(StringReplace(mOnce, 'unit U;'#10, 'unit U;'#10'/header'#10, []), 3);
+  Assert.AreEqual(mOnce, mTwice);
 end;
 
 procedure TDocumentationCommandsTests.HeaderUpdatesYear;
@@ -100,20 +100,20 @@ end;
 
 procedure TDocumentationCommandsTests.HeaderWrongPlace;
 const
-  Include = '/header'#10'procedure P;'#10'begin'#10'end;'#10;
+  cInclude = '/header'#10'procedure P;'#10'begin'#10'end;'#10;
 var
-  Problems: TArray<TSlashProblem>;
+  mProblems: TArray<TSlashProblem>;
 begin
   // Include-Datei ohne unit: kein Kopf, die Befehlszeile bleibt mit Hinweis stehen.
-  Assert.AreEqual('', Expand(Include, 0));
-  Problems := TSlashCommandRegistry.Shared.Problems(Include, nil);
-  Assert.AreEqual(1, Integer(Length(Problems)));
-  Assert.AreEqual('/header gilt nur in einer Unit', Problems[0].Message);
+  Assert.AreEqual('', Expand(cInclude, 0));
+  mProblems := TSlashCommandRegistry.Shared.Problems(cInclude, nil);
+  Assert.AreEqual(1, Integer(Length(mProblems)));
+  Assert.AreEqual('/header gilt nur in einer Unit', mProblems[0].Message);
 end;
 
 procedure TDocumentationCommandsTests.DeprecatedAtMethodDeclaration;
 const
-  Source =
+  cSource =
     'unit U;'#10 +                      // 0
     'interface'#10 +                    // 1
     'type'#10 +                         // 2
@@ -141,12 +141,12 @@ begin
     'procedure TFoo.Foo;'#10 +
     'begin'#10 +
     'end;'#10 +
-    'end.', Expand(Source, 8));
+    'end.', Expand(cSource, 8));
 end;
 
 procedure TDocumentationCommandsTests.DeprecatedType;
 const
-  Source =
+  cSource =
     'unit U;'#10 +
     'interface'#10 +
     'type'#10 +
@@ -166,7 +166,7 @@ begin
     '    A: Integer;'#10 +
     '  end deprecated;'#10 +
     'implementation'#10 +
-    'end.', Expand(Source, 3));
+    'end.', Expand(cSource, 3));
 end;
 
 procedure TDocumentationCommandsTests.DeprecatedWrongPlace;
@@ -181,7 +181,7 @@ end;
 
 procedure TDocumentationCommandsTests.RegionAllGroupsMethods;
 const
-  Source =
+  cSource =
     'unit U;'#10 +                                       // 0
     'interface'#10 +                                     // 1
     'type'#10 +                                          // 2
@@ -214,9 +214,9 @@ const
     ''#10 +                                              // 29
     'end.';
 var
-  Result_: string;
+  mResult_: string;
 begin
-  Result_ := Expand(Source, 9);
+  mResult_ := Expand(cSource, 9);
   Assert.AreEqual(
     'implementation'#10 +
     '{$REGION ''Ereignis-Handler''}'#10 +
@@ -236,8 +236,8 @@ begin
     'function TForm1.GetName: string;'#10'begin'#10'end;'#10 +
     '{$ENDREGION}'#10 +
     #10 +
-    'end.', Copy(Result_, Pos('implementation', Result_), MaxInt));
-  Assert.AreEqual(0, Pos('/region-all', Result_));
+    'end.', Copy(mResult_, Pos('implementation', mResult_), MaxInt));
+  Assert.AreEqual(0, Pos('/region-all', mResult_));
 end;
 
 procedure TDocumentationCommandsTests.RegionAllOutsideClassFails;

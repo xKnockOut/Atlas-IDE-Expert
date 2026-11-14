@@ -48,12 +48,12 @@ uses
   Atlas.Common.Lsp.Metrics;
 
 const
-  BasisFile = 'C:\P\Basis.pas';
-  KundeFile = 'C:\P\Kunde.pas';
-  KundeForm = 'C:\P\Kunde.dfm';
-  DienstFile = 'C:\P\Dienst.pas';
+  cBasisFile = 'C:\P\Basis.pas';
+  cKundeFile = 'C:\P\Kunde.pas';
+  cKundeForm = 'C:\P\Kunde.dfm';
+  cDienstFile = 'C:\P\Dienst.pas';
 
-  UnitBasis =
+  cUnitBasis =
     'unit Basis;'#10 +                                     // 0
     'interface'#10 +                                       // 1
     'type'#10 +                                            // 2
@@ -66,7 +66,7 @@ const
     'end;'#10 +                                            // 9
     'end.'#10;
 
-  UnitKunde =
+  cUnitKunde =
     'unit Kunde;'#10 +                                     // 0
     'interface'#10 +                                       // 1
     'uses Basis;'#10 +                                     // 2
@@ -80,7 +80,7 @@ const
     'end;'#10 +                                            // 10
     'end.'#10;
 
-  FormKunde =
+  cFormKunde =
     'inherited frmKunde: TfrmKunde'#10 +
     '  object btnSpeichern: TButton'#10 +
     '    OnClick = btnSpeichernClick'#10 +
@@ -93,7 +93,7 @@ const
     '  end'#10 +
     'end'#10;
 
-  UnitDienst =
+  cUnitDienst =
     'unit Dienst;'#10 +                                    // 0
     'interface'#10 +                                       // 1
     'type'#10 +                                            // 2
@@ -114,19 +114,19 @@ const
 procedure TLspEventHandlersTests.Setup;
 begin
   FIndex := TSymbolIndex.Create;
-  FIndex.AddUnit(TIndexExtractor.ExtractText(UnitBasis, BasisFile, nil));
-  FIndex.AddUnit(TIndexExtractor.ExtractText(UnitKunde, KundeFile, nil));
-  FIndex.AddUnit(TIndexExtractor.ExtractText(UnitDienst, DienstFile, nil));
+  FIndex.AddUnit(TIndexExtractor.ExtractText(cUnitBasis, cBasisFile, nil));
+  FIndex.AddUnit(TIndexExtractor.ExtractText(cUnitKunde, cKundeFile, nil));
+  FIndex.AddUnit(TIndexExtractor.ExtractText(cUnitDienst, cDienstFile, nil));
   FFiles := TDictionary<string, string>.Create;
-  FFiles.Add(LowerCase(BasisFile), UnitBasis);
-  FFiles.Add(LowerCase(KundeFile), UnitKunde);
-  FFiles.Add(LowerCase(KundeForm), FormKunde);
-  FFiles.Add(LowerCase(DienstFile), UnitDienst);
+  FFiles.Add(LowerCase(cBasisFile), cUnitBasis);
+  FFiles.Add(LowerCase(cKundeFile), cUnitKunde);
+  FFiles.Add(LowerCase(cKundeForm), cFormKunde);
+  FFiles.Add(LowerCase(cDienstFile), cUnitDienst);
   FCommand := TLspEventHandlers.Create(
     function(const AFileName: string; AProject: Boolean; out ASource: TLspMetricsSource): Boolean
     begin
       ASource := Default(TLspMetricsSource);
-      ASource.Files := TArray<string>.Create(KundeFile, KundeForm, DienstFile);
+      ASource.Files := TArray<string>.Create(cKundeFile, cKundeForm, cDienstFile);
       Result := True;
     end,
     function(const AFileName: string; out AText: string): Boolean
@@ -146,13 +146,13 @@ end;
 
 function TLspEventHandlersTests.Find(const AComponent, AEvent: string): TEventHandler;
 var
-  Item: TEventHandler;
+  mItem: TEventHandler;
 begin
-  for Item in FHandlers do
+  for mItem in FHandlers do
   begin
-    if SameText(Item.Component, AComponent) and SameText(Item.Event, AEvent) then
+    if SameText(mItem.Component, AComponent) and SameText(mItem.Event, AEvent) then
     begin
-      Exit(Item);
+      Exit(mItem);
     end;
   end;
   Assert.Fail('nicht gefunden: ' + AComponent + '.' + AEvent);
@@ -161,12 +161,12 @@ end;
 
 procedure TLspEventHandlersTests.ProjectFilesWithForms;
 var
-  Unresolved: Integer;
+  mUnresolved: Integer;
 begin
-  FHandlers := FCommand.Collect(TArray<string>.Create(KundeFile, KundeForm, DienstFile), Unresolved);
+  FHandlers := FCommand.Collect(TArray<string>.Create(cKundeFile, cKundeForm, cDienstFile), mUnresolved);
   Assert.AreEqual(3, Integer(Length(FHandlers)));
   Assert.AreEqual(9, Find('btnSpeichern', 'OnClick').Line);
-  Assert.AreEqual(KundeFile, Find('btnSpeichern', 'OnClick').FileName);
+  Assert.AreEqual(cKundeFile, Find('btnSpeichern', 'OnClick').FileName);
   // Zuweisung im Code einer Unit ohne Formular.
   Assert.AreEqual(9, Find('FTimer', 'OnTimer').Line);
   Assert.AreEqual('TDienst', Find('FTimer', 'OnTimer').Container);
@@ -174,69 +174,69 @@ end;
 
 procedure TLspEventHandlersTests.InheritedHandlerFoundInAncestor;
 var
-  Unresolved: Integer;
-  Handler: TEventHandler;
+  mUnresolved: Integer;
+  mHandler: TEventHandler;
 begin
-  FHandlers := FCommand.Collect(TArray<string>.Create(KundeFile), Unresolved);
-  Handler := Find('btnHilfe', 'OnClick');
-  Assert.AreEqual(BasisFile, Handler.FileName);
-  Assert.AreEqual(8, Handler.Line);
-  Assert.AreEqual(9, Handler.BodyLine);
-  Assert.AreEqual('TfrmBasis', Handler.Container);
-  Assert.AreEqual('TfrmKunde', Handler.FormClass);
+  FHandlers := FCommand.Collect(TArray<string>.Create(cKundeFile), mUnresolved);
+  mHandler := Find('btnHilfe', 'OnClick');
+  Assert.AreEqual(cBasisFile, mHandler.FileName);
+  Assert.AreEqual(8, mHandler.Line);
+  Assert.AreEqual(9, mHandler.BodyLine);
+  Assert.AreEqual('TfrmBasis', mHandler.Container);
+  Assert.AreEqual('TfrmKunde', mHandler.FormClass);
 end;
 
 procedure TLspEventHandlersTests.MissingBodyCounted;
 var
-  Unresolved: Integer;
-  Item: TEventHandler;
+  mUnresolved: Integer;
+  mItem: TEventHandler;
 begin
-  FHandlers := FCommand.Collect(TArray<string>.Create(KundeFile), Unresolved);
-  Assert.AreEqual(1, Unresolved);
-  for Item in FHandlers do
+  FHandlers := FCommand.Collect(TArray<string>.Create(cKundeFile), mUnresolved);
+  Assert.AreEqual(1, mUnresolved);
+  for mItem in FHandlers do
   begin
-    Assert.AreNotEqual('btnWeg', Item.Component);
+    Assert.AreNotEqual('btnWeg', mItem.Component);
   end;
 end;
 
 procedure TLspEventHandlersTests.WithoutFilesUsesIndexUnits;
 var
-  Unresolved: Integer;
+  mUnresolved: Integer;
 begin
-  FHandlers := FCommand.Collect(nil, Unresolved);
+  FHandlers := FCommand.Collect(nil, mUnresolved);
   Assert.AreEqual(3, Integer(Length(FHandlers)));
 end;
 
 procedure TLspEventHandlersTests.JsonShape;
 var
-  Json: TJSONValue;
-  Item: TJSONObject;
-  Handlers, Arguments: TJSONArray;
+  mJson: TJSONValue;
+  mItem: TJSONObject;
+  mHandlers, mArguments: TJSONArray;
 begin
-  Arguments := TJSONArray.Create;
+  mArguments := TJSONArray.Create;
   try
-    Json := FCommand.Execute(Arguments);
+    mJson := FCommand.Execute(mArguments);
   finally
-    Arguments.Free;
+    mArguments.Free;
   end;
   try
-    Assert.AreEqual(1, (Json as TJSONObject).GetValue<Integer>('format'));
-    Assert.AreEqual(1, (Json as TJSONObject).GetValue<Integer>('unresolved'));
-    Handlers := (Json as TJSONObject).GetValue<TJSONArray>('handlers');
-    Assert.AreEqual(3, Handlers.Count);
-    Item := Handlers.Items[0] as TJSONObject;
-    Assert.AreEqual('TfrmKunde', Item.GetValue<string>('form'));
-    Assert.AreEqual('btnSpeichern', Item.GetValue<string>('component'));
-    Assert.AreEqual('TButton', Item.GetValue<string>('componentClass'));
-    Assert.AreEqual('OnClick', Item.GetValue<string>('event'));
-    Assert.AreEqual('btnSpeichernClick', Item.GetValue<string>('handler'));
-    Assert.AreEqual('form', Item.GetValue<string>('origin'));
-    Assert.AreEqual(9, Item.GetValue<Integer>('line'));
-    Assert.AreEqual(10, Item.GetValue<Integer>('bodyLine'));
-    Assert.AreEqual(KundeForm, Item.GetValue<string>('source'));
-    Assert.IsNull(Item.FindValue('interval'));
+    Assert.AreEqual(1, (mJson as TJSONObject).GetValue<Integer>('format'));
+    Assert.AreEqual(1, (mJson as TJSONObject).GetValue<Integer>('unresolved'));
+    mHandlers := (mJson as TJSONObject).GetValue<TJSONArray>('handlers');
+    Assert.AreEqual(3, mHandlers.Count);
+    mItem := mHandlers.Items[0] as TJSONObject;
+    Assert.AreEqual('TfrmKunde', mItem.GetValue<string>('form'));
+    Assert.AreEqual('btnSpeichern', mItem.GetValue<string>('component'));
+    Assert.AreEqual('TButton', mItem.GetValue<string>('componentClass'));
+    Assert.AreEqual('OnClick', mItem.GetValue<string>('event'));
+    Assert.AreEqual('btnSpeichernClick', mItem.GetValue<string>('handler'));
+    Assert.AreEqual('form', mItem.GetValue<string>('origin'));
+    Assert.AreEqual(9, mItem.GetValue<Integer>('line'));
+    Assert.AreEqual(10, mItem.GetValue<Integer>('bodyLine'));
+    Assert.AreEqual(cKundeForm, mItem.GetValue<string>('source'));
+    Assert.IsNull(mItem.FindValue('interval'));
   finally
-    Json.Free;
+    mJson.Free;
   end;
 end;
 

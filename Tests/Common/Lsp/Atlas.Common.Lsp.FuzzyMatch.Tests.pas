@@ -61,16 +61,16 @@ end;
 
 procedure TLspFuzzyMatchTests.RanksExactPrefixSubstringSubsequence;
 var
-  Exact, Prefix, Substring, Subsequence: Integer;
+  mExact, mPrefix, mSubstring, mSubsequence: Integer;
 begin
-  Exact := TFuzzyMatch.Score('Liste', 'liste');
-  Prefix := TFuzzyMatch.Score('ListeLeeren', 'liste');
-  Substring := TFuzzyMatch.Score('TListe', 'liste');
-  Subsequence := TFuzzyMatch.Score('LinkSetter', 'liste');
-  Assert.IsTrue(Exact > Prefix);
-  Assert.IsTrue(Prefix > Substring);
-  Assert.IsTrue(Substring > Subsequence);
-  Assert.IsTrue(Subsequence > TFuzzyMatch.cNoMatch);
+  mExact := TFuzzyMatch.Score('Liste', 'liste');
+  mPrefix := TFuzzyMatch.Score('ListeLeeren', 'liste');
+  mSubstring := TFuzzyMatch.Score('TListe', 'liste');
+  mSubsequence := TFuzzyMatch.Score('LinkSetter', 'liste');
+  Assert.IsTrue(mExact > mPrefix);
+  Assert.IsTrue(mPrefix > mSubstring);
+  Assert.IsTrue(mSubstring > mSubsequence);
+  Assert.IsTrue(mSubsequence > TFuzzyMatch.cNoMatch);
   // Kürzerer Name bei gleichem Präfix zuerst.
   Assert.IsTrue(TFuzzyMatch.Score('ListeA', 'liste') > TFuzzyMatch.Score('ListeAB', 'liste'));
 end;

@@ -101,7 +101,7 @@ uses
   Atlas.Core.Commands.ShortcutTips;
 
 const
-  ClassCompletion = 'ecClassCompletion';
+  cClassCompletion = 'ecClassCompletion';
 
 function Moment(AHour, AMinute, ASecond: Word): TDateTime;
 begin
@@ -117,143 +117,143 @@ end;
 
 procedure TAtlasShortcutTipsTests.MouseUseWithShortCutShowsTip;
 var
-  Usage: TAtlasCommandUsage;
+  mUsage: TAtlasCommandUsage;
 begin
-  Usage := TAtlasCommandUsage.Create;
+  mUsage := TAtlasCommandUsage.Create;
   try
     // Abnahme: Klasse vervollständigen über das Kontextmenü zeigt einen Tipp mit Strg+Umschalt+C.
-    Usage.Count(ClassCompletion, TAtlasCommandInput.Mouse, Moment(10, 0, 0));
+    mUsage.Count(cClassCompletion, TAtlasCommandInput.Mouse, Moment(10, 0, 0));
     Assert.AreEqual<TAtlasTipVerdict>(TAtlasTipVerdict.Show,
-      TAtlasShortcutTips.Decide(Usage.Entry(ClassCompletion), Situation(Moment(10, 0, 0))));
-    Assert.AreEqual(1, Usage.Entry(ClassCompletion).Mouse);
+      TAtlasShortcutTips.Decide(mUsage.Entry(cClassCompletion), Situation(Moment(10, 0, 0))));
+    Assert.AreEqual(1, mUsage.Entry(cClassCompletion).Mouse);
   finally
-    Usage.Free;
+    mUsage.Free;
   end;
 end;
 
 procedure TAtlasShortcutTipsTests.SecondTipSameDayIsSuppressed;
 var
-  Entry: TAtlasCommandUsageEntry;
-  Later: TAtlasTipSituation;
+  mEntry: TAtlasCommandUsageEntry;
+  mLater: TAtlasTipSituation;
 begin
-  Entry := TAtlasCommandUsageEntry.Create(ClassCompletion);
+  mEntry := TAtlasCommandUsageEntry.Create(cClassCompletion);
   Assert.AreEqual<TAtlasTipVerdict>(TAtlasTipVerdict.Show,
-    TAtlasShortcutTips.Decide(Entry, Situation(Moment(10, 0, 0))));
-  TAtlasShortcutTips.MarkShown(Entry, Moment(10, 0, 0));
+    TAtlasShortcutTips.Decide(mEntry, Situation(Moment(10, 0, 0))));
+  TAtlasShortcutTips.MarkShown(mEntry, Moment(10, 0, 0));
   // Zweiter Aufruf am selben Tag (lange nach dem 30-s-Abstand): kein Tipp.
-  Later := Situation(Moment(16, 30, 0));
-  Later.LastTipAt := Moment(10, 0, 0);
-  Assert.AreEqual<TAtlasTipVerdict>(TAtlasTipVerdict.ShownToday, TAtlasShortcutTips.Decide(Entry, Later));
+  mLater := Situation(Moment(16, 30, 0));
+  mLater.LastTipAt := Moment(10, 0, 0);
+  Assert.AreEqual<TAtlasTipVerdict>(TAtlasTipVerdict.ShownToday, TAtlasShortcutTips.Decide(mEntry, mLater));
   // Kurz vor Mitternacht noch derselbe Tag, am nächsten Tag wieder.
-  Later := Situation(Moment(23, 59, 59));
-  Assert.AreEqual<TAtlasTipVerdict>(TAtlasTipVerdict.ShownToday, TAtlasShortcutTips.Decide(Entry, Later));
-  Later := Situation(Moment(10, 0, 0) + 1);
-  Assert.AreEqual<TAtlasTipVerdict>(TAtlasTipVerdict.Show, TAtlasShortcutTips.Decide(Entry, Later));
+  mLater := Situation(Moment(23, 59, 59));
+  Assert.AreEqual<TAtlasTipVerdict>(TAtlasTipVerdict.ShownToday, TAtlasShortcutTips.Decide(mEntry, mLater));
+  mLater := Situation(Moment(10, 0, 0) + 1);
+  Assert.AreEqual<TAtlasTipVerdict>(TAtlasTipVerdict.Show, TAtlasShortcutTips.Decide(mEntry, mLater));
   Assert.IsTrue(TAtlasShortcutTips.SameDay(Moment(0, 0, 0), Moment(23, 59, 59)));
   Assert.IsFalse(TAtlasShortcutTips.SameDay(0, Moment(10, 0, 0)), 'nie gezeigt');
 end;
 
 procedure TAtlasShortcutTipsTests.ThreeKeyboardUsesStopTips;
 var
-  Usage: TAtlasCommandUsage;
-  Index: Integer;
+  mUsage: TAtlasCommandUsage;
+  mIndex: Integer;
 begin
-  Usage := TAtlasCommandUsage.Create;
+  mUsage := TAtlasCommandUsage.Create;
   try
-    for Index := 1 to 2 do
+    for mIndex := 1 to 2 do
     begin
-      Usage.Count(ClassCompletion, TAtlasCommandInput.Keyboard, Moment(9, Index, 0));
+      mUsage.Count(cClassCompletion, TAtlasCommandInput.Keyboard, Moment(9, mIndex, 0));
     end;
-    Usage.Count(ClassCompletion, TAtlasCommandInput.Mouse, Moment(10, 0, 0));
+    mUsage.Count(cClassCompletion, TAtlasCommandInput.Mouse, Moment(10, 0, 0));
     Assert.AreEqual<TAtlasTipVerdict>(TAtlasTipVerdict.Show,
-      TAtlasShortcutTips.Decide(Usage.Entry(ClassCompletion), Situation(Moment(10, 0, 0))),
+      TAtlasShortcutTips.Decide(mUsage.Entry(cClassCompletion), Situation(Moment(10, 0, 0))),
       'zwei Mal über das Kürzel: noch ein Tipp');
-    Usage.Count(ClassCompletion, TAtlasCommandInput.Keyboard, Moment(10, 5, 0));
-    Assert.AreEqual(3, Usage.Entry(ClassCompletion).Keyboard);
+    mUsage.Count(cClassCompletion, TAtlasCommandInput.Keyboard, Moment(10, 5, 0));
+    Assert.AreEqual(3, mUsage.Entry(cClassCompletion).Keyboard);
     Assert.AreEqual<TAtlasTipVerdict>(TAtlasTipVerdict.Learned,
-      TAtlasShortcutTips.Decide(Usage.Entry(ClassCompletion), Situation(Moment(11, 0, 0) + 1)),
+      TAtlasShortcutTips.Decide(mUsage.Entry(cClassCompletion), Situation(Moment(11, 0, 0) + 1)),
       'nach dreimaliger Nutzung des Kürzels kein Tipp mehr');
   finally
-    Usage.Free;
+    mUsage.Free;
   end;
 end;
 
 procedure TAtlasShortcutTipsTests.TipsKeepThirtySecondsApart;
 var
-  Entry: TAtlasCommandUsageEntry;
-  Current: TAtlasTipSituation;
+  mEntry: TAtlasCommandUsageEntry;
+  mCurrent: TAtlasTipSituation;
 begin
   // Ein anderer Befehl hat gerade einen Tipp bekommen.
-  Entry := TAtlasCommandUsageEntry.Create('SearchFindCommand');
-  Current := Situation(Moment(10, 0, 29));
-  Current.LastTipAt := Moment(10, 0, 0);
-  Assert.AreEqual<TAtlasTipVerdict>(TAtlasTipVerdict.TooSoon, TAtlasShortcutTips.Decide(Entry, Current));
-  Current := Situation(Moment(10, 0, 31));
-  Current.LastTipAt := Moment(10, 0, 0);
-  Assert.AreEqual<TAtlasTipVerdict>(TAtlasTipVerdict.Show, TAtlasShortcutTips.Decide(Entry, Current));
+  mEntry := TAtlasCommandUsageEntry.Create('SearchFindCommand');
+  mCurrent := Situation(Moment(10, 0, 29));
+  mCurrent.LastTipAt := Moment(10, 0, 0);
+  Assert.AreEqual<TAtlasTipVerdict>(TAtlasTipVerdict.TooSoon, TAtlasShortcutTips.Decide(mEntry, mCurrent));
+  mCurrent := Situation(Moment(10, 0, 31));
+  mCurrent.LastTipAt := Moment(10, 0, 0);
+  Assert.AreEqual<TAtlasTipVerdict>(TAtlasTipVerdict.Show, TAtlasShortcutTips.Decide(mEntry, mCurrent));
   // Zurückgestellte Uhr: auch dann nicht gleich wieder.
-  Current := Situation(Moment(9, 59, 50));
-  Current.LastTipAt := Moment(10, 0, 0);
-  Assert.AreEqual<TAtlasTipVerdict>(TAtlasTipVerdict.TooSoon, TAtlasShortcutTips.Decide(Entry, Current));
+  mCurrent := Situation(Moment(9, 59, 50));
+  mCurrent.LastTipAt := Moment(10, 0, 0);
+  Assert.AreEqual<TAtlasTipVerdict>(TAtlasTipVerdict.TooSoon, TAtlasShortcutTips.Decide(mEntry, mCurrent));
 end;
 
 procedure TAtlasShortcutTipsTests.NeverShowAgainOnlyForThatCommand;
 var
-  Usage: TAtlasCommandUsage;
-  Entry: TAtlasCommandUsageEntry;
+  mUsage: TAtlasCommandUsage;
+  mEntry: TAtlasCommandUsageEntry;
 begin
-  Usage := TAtlasCommandUsage.Create;
+  mUsage := TAtlasCommandUsage.Create;
   try
-    Entry := Usage.Entry(ClassCompletion);
-    Entry.Never := True;
-    Usage.Put(Entry);
+    mEntry := mUsage.Entry(cClassCompletion);
+    mEntry.Never := True;
+    mUsage.Put(mEntry);
     Assert.AreEqual<TAtlasTipVerdict>(TAtlasTipVerdict.Hidden,
-      TAtlasShortcutTips.Decide(Usage.Entry(ClassCompletion), Situation(Moment(10, 0, 0))));
+      TAtlasShortcutTips.Decide(mUsage.Entry(cClassCompletion), Situation(Moment(10, 0, 0))));
     // Dauerhaft: auch an späteren Tagen und nach dem Lesen der Datei.
-    Usage.Parse(Usage.ToJson);
+    mUsage.Parse(mUsage.ToJson);
     Assert.AreEqual<TAtlasTipVerdict>(TAtlasTipVerdict.Hidden,
-      TAtlasShortcutTips.Decide(Usage.Entry(ClassCompletion), Situation(Moment(10, 0, 0) + 30)));
+      TAtlasShortcutTips.Decide(mUsage.Entry(cClassCompletion), Situation(Moment(10, 0, 0) + 30)));
     // Andere Befehle zeigen weiter Tipps.
     Assert.AreEqual<TAtlasTipVerdict>(TAtlasTipVerdict.Show,
-      TAtlasShortcutTips.Decide(Usage.Entry('SearchFindCommand'), Situation(Moment(10, 0, 0))));
+      TAtlasShortcutTips.Decide(mUsage.Entry('SearchFindCommand'), Situation(Moment(10, 0, 0))));
   finally
-    Usage.Free;
+    mUsage.Free;
   end;
 end;
 
 procedure TAtlasShortcutTipsTests.CommandWithoutShortCutShowsNoTip;
 var
-  Current: TAtlasTipSituation;
+  mCurrent: TAtlasTipSituation;
 begin
-  Current := Situation(Moment(10, 0, 0));
-  Current.KeyText := '';
+  mCurrent := Situation(Moment(10, 0, 0));
+  mCurrent.KeyText := '';
   Assert.AreEqual<TAtlasTipVerdict>(TAtlasTipVerdict.NoShortCut,
-    TAtlasShortcutTips.Decide(TAtlasCommandUsageEntry.Create('ProjectOptions'), Current));
-  Current.KeyText := '   ';
+    TAtlasShortcutTips.Decide(TAtlasCommandUsageEntry.Create('ProjectOptions'), mCurrent));
+  mCurrent.KeyText := '   ';
   Assert.AreEqual<TAtlasTipVerdict>(TAtlasTipVerdict.NoShortCut,
-    TAtlasShortcutTips.Decide(TAtlasCommandUsageEntry.Create('ProjectOptions'), Current));
+    TAtlasShortcutTips.Decide(TAtlasCommandUsageEntry.Create('ProjectOptions'), mCurrent));
 end;
 
 procedure TAtlasShortcutTipsTests.KeyboardUseShowsNoTip;
 var
-  Current: TAtlasTipSituation;
+  mCurrent: TAtlasTipSituation;
 begin
-  Current := Situation(Moment(10, 0, 0));
-  Current.ViaKeyboard := True;
+  mCurrent := Situation(Moment(10, 0, 0));
+  mCurrent.ViaKeyboard := True;
   Assert.AreEqual<TAtlasTipVerdict>(TAtlasTipVerdict.ViaKeyboard,
-    TAtlasShortcutTips.Decide(TAtlasCommandUsageEntry.Create(ClassCompletion), Current));
+    TAtlasShortcutTips.Decide(TAtlasCommandUsageEntry.Create(cClassCompletion), mCurrent));
 end;
 
 procedure TAtlasShortcutTipsTests.ScopeAtlasSkipsIdeCommands;
 var
-  Current: TAtlasTipSituation;
+  mCurrent: TAtlasTipSituation;
 begin
-  Current := TAtlasTipSituation.Create(True, TAtlasTipScope.Atlas, False, 'Strg+Umschalt+C', Moment(10, 0, 0));
+  mCurrent := TAtlasTipSituation.Create(True, TAtlasTipScope.Atlas, False, 'Strg+Umschalt+C', Moment(10, 0, 0));
   Assert.AreEqual<TAtlasTipVerdict>(TAtlasTipVerdict.OutOfScope,
-    TAtlasShortcutTips.Decide(TAtlasCommandUsageEntry.Create(ClassCompletion), Current));
-  Current := TAtlasTipSituation.Create(True, TAtlasTipScope.Atlas, True, 'Alt+Eingabe', Moment(10, 0, 0));
+    TAtlasShortcutTips.Decide(TAtlasCommandUsageEntry.Create(cClassCompletion), mCurrent));
+  mCurrent := TAtlasTipSituation.Create(True, TAtlasTipScope.Atlas, True, 'Alt+Eingabe', Moment(10, 0, 0));
   Assert.AreEqual<TAtlasTipVerdict>(TAtlasTipVerdict.Show,
-    TAtlasShortcutTips.Decide(TAtlasCommandUsageEntry.Create('Atlas.CodeActions'), Current));
+    TAtlasShortcutTips.Decide(TAtlasCommandUsageEntry.Create('Atlas.CodeActions'), mCurrent));
   Assert.AreEqual<TAtlasTipScope>(TAtlasTipScope.Atlas, TAtlasShortcutTips.ScopeOf('atlas'));
   Assert.AreEqual<TAtlasTipScope>(TAtlasTipScope.Atlas, TAtlasShortcutTips.ScopeOf(' ATLAS '));
   Assert.AreEqual<TAtlasTipScope>(TAtlasTipScope.All, TAtlasShortcutTips.ScopeOf('all'));
@@ -264,58 +264,58 @@ end;
 
 procedure TAtlasShortcutTipsTests.NoTipWhileDebuggingOrModalOrDisabled;
 var
-  Current: TAtlasTipSituation;
-  Entry: TAtlasCommandUsageEntry;
+  mCurrent: TAtlasTipSituation;
+  mEntry: TAtlasCommandUsageEntry;
 begin
-  Entry := TAtlasCommandUsageEntry.Create(ClassCompletion);
-  Current := Situation(Moment(10, 0, 0));
-  Current.DebugPaused := True;
-  Assert.AreEqual<TAtlasTipVerdict>(TAtlasTipVerdict.Debugging, TAtlasShortcutTips.Decide(Entry, Current));
-  Current := Situation(Moment(10, 0, 0));
-  Current.ModalOpen := True;
-  Assert.AreEqual<TAtlasTipVerdict>(TAtlasTipVerdict.Modal, TAtlasShortcutTips.Decide(Entry, Current));
-  Current := Situation(Moment(10, 0, 0));
-  Current.Enabled := False;
-  Assert.AreEqual<TAtlasTipVerdict>(TAtlasTipVerdict.Disabled, TAtlasShortcutTips.Decide(Entry, Current));
+  mEntry := TAtlasCommandUsageEntry.Create(cClassCompletion);
+  mCurrent := Situation(Moment(10, 0, 0));
+  mCurrent.DebugPaused := True;
+  Assert.AreEqual<TAtlasTipVerdict>(TAtlasTipVerdict.Debugging, TAtlasShortcutTips.Decide(mEntry, mCurrent));
+  mCurrent := Situation(Moment(10, 0, 0));
+  mCurrent.ModalOpen := True;
+  Assert.AreEqual<TAtlasTipVerdict>(TAtlasTipVerdict.Modal, TAtlasShortcutTips.Decide(mEntry, mCurrent));
+  mCurrent := Situation(Moment(10, 0, 0));
+  mCurrent.Enabled := False;
+  Assert.AreEqual<TAtlasTipVerdict>(TAtlasTipVerdict.Disabled, TAtlasShortcutTips.Decide(mEntry, mCurrent));
 end;
 
 procedure TAtlasShortcutTipsTests.TwoStepShortCutsKeepBothSteps;
 var
-  Steps: TArray<TArray<string>>;
-  View: TAtlasShortcutTipView;
+  mSteps: TArray<TArray<string>>;
+  mView: TAtlasShortcutTipView;
 begin
-  Steps := TAtlasShortcutTips.Steps('Strg+Umschalt+C');
-  Assert.AreEqual(1, Integer(Length(Steps)));
-  Assert.AreEqual(3, Integer(Length(Steps[0])));
-  Assert.AreEqual('Strg', Steps[0][0]);
-  Assert.AreEqual('Umschalt', Steps[0][1]);
-  Assert.AreEqual('C', Steps[0][2]);
+  mSteps := TAtlasShortcutTips.Steps('Strg+Umschalt+C');
+  Assert.AreEqual(1, Integer(Length(mSteps)));
+  Assert.AreEqual(3, Integer(Length(mSteps[0])));
+  Assert.AreEqual('Strg', mSteps[0][0]);
+  Assert.AreEqual('Umschalt', mSteps[0][1]);
+  Assert.AreEqual('C', mSteps[0][2]);
   // Zwei Schritte: beide mit ihren Tasten.
-  Steps := TAtlasShortcutTips.Steps('Strg+K, Strg+D');
-  Assert.AreEqual(2, Integer(Length(Steps)));
-  Assert.AreEqual('Strg', Steps[0][0]);
-  Assert.AreEqual('K', Steps[0][1]);
-  Assert.AreEqual('Strg', Steps[1][0]);
-  Assert.AreEqual('D', Steps[1][1]);
-  Assert.AreEqual('Strg+K, Strg+D', TAtlasShortcutTips.StepsText(Steps));
-  Steps := TAtlasShortcutTips.Steps('Ctrl+K, D');
-  Assert.AreEqual(2, Integer(Length(Steps)));
-  Assert.AreEqual(1, Integer(Length(Steps[1])));
-  Assert.AreEqual('D', Steps[1][0]);
+  mSteps := TAtlasShortcutTips.Steps('Strg+K, Strg+D');
+  Assert.AreEqual(2, Integer(Length(mSteps)));
+  Assert.AreEqual('Strg', mSteps[0][0]);
+  Assert.AreEqual('K', mSteps[0][1]);
+  Assert.AreEqual('Strg', mSteps[1][0]);
+  Assert.AreEqual('D', mSteps[1][1]);
+  Assert.AreEqual('Strg+K, Strg+D', TAtlasShortcutTips.StepsText(mSteps));
+  mSteps := TAtlasShortcutTips.Steps('Ctrl+K, D');
+  Assert.AreEqual(2, Integer(Length(mSteps)));
+  Assert.AreEqual(1, Integer(Length(mSteps[1])));
+  Assert.AreEqual('D', mSteps[1][0]);
   // Plus und Komma als Taste.
-  Steps := TAtlasShortcutTips.Steps('Strg++');
-  Assert.AreEqual(1, Integer(Length(Steps)));
-  Assert.AreEqual(2, Integer(Length(Steps[0])));
-  Assert.AreEqual('+', Steps[0][1]);
-  Steps := TAtlasShortcutTips.Steps('Strg+,');
-  Assert.AreEqual(1, Integer(Length(Steps)));
-  Assert.AreEqual(',', Steps[0][1]);
+  mSteps := TAtlasShortcutTips.Steps('Strg++');
+  Assert.AreEqual(1, Integer(Length(mSteps)));
+  Assert.AreEqual(2, Integer(Length(mSteps[0])));
+  Assert.AreEqual('+', mSteps[0][1]);
+  mSteps := TAtlasShortcutTips.Steps('Strg+,');
+  Assert.AreEqual(1, Integer(Length(mSteps)));
+  Assert.AreEqual(',', mSteps[0][1]);
   Assert.AreEqual(0, Integer(Length(TAtlasShortcutTips.Steps(''))));
-  View := TAtlasShortcutTipView.Create('Strg+K, Strg+D', 'Zeile löschen', True);
-  Assert.AreEqual(2, Integer(Length(View.Steps)));
-  Assert.AreEqual('Strg+K, Strg+D', View.KeyText);
-  Assert.AreEqual('Zeile löschen', View.Command);
-  Assert.IsTrue(View.ShowAllKeys);
+  mView := TAtlasShortcutTipView.Create('Strg+K, Strg+D', 'Zeile löschen', True);
+  Assert.AreEqual(2, Integer(Length(mView.Steps)));
+  Assert.AreEqual('Strg+K, Strg+D', mView.KeyText);
+  Assert.AreEqual('Zeile löschen', mView.Command);
+  Assert.IsTrue(mView.ShowAllKeys);
   // Kürzel aus der Menübeschriftung (Text hinter dem Tabulator).
   Assert.AreEqual('Strg+K, Strg+1', TAtlasShortcutTips.KeyTextOfCaption('Lesezeichen &1'#9'Strg+K, Strg+1'));
   Assert.AreEqual('', TAtlasShortcutTips.KeyTextOfCaption('Speichern'));
@@ -323,18 +323,18 @@ end;
 
 procedure TAtlasShortcutTipsTests.ParsesStepsForKeyboardCounting;
 var
-  Keys: TArray<Word>;
+  mKeys: TArray<Word>;
 begin
-  Keys := TAtlasShortcutTips.ParseSteps('Strg+Umschalt+C');
-  Assert.AreEqual(1, Integer(Length(Keys)));
-  Assert.AreEqual(Integer(TAtlasKeyConflicts.cScCtrl or TAtlasKeyConflicts.cScShift or Ord('C')), Integer(Keys[0]));
-  Keys := TAtlasShortcutTips.ParseSteps('Ctrl+K, Ctrl+D');
-  Assert.AreEqual(2, Integer(Length(Keys)));
-  Assert.AreEqual(Integer(TAtlasKeyConflicts.cScCtrl or Ord('K')), Integer(Keys[0]));
-  Assert.AreEqual(Integer(TAtlasKeyConflicts.cScCtrl or Ord('D')), Integer(Keys[1]));
-  Keys := TAtlasShortcutTips.ParseSteps('Strg+K, D');
-  Assert.AreEqual(2, Integer(Length(Keys)));
-  Assert.AreEqual(Integer(Ord('D')), Integer(Keys[1]));
+  mKeys := TAtlasShortcutTips.ParseSteps('Strg+Umschalt+C');
+  Assert.AreEqual(1, Integer(Length(mKeys)));
+  Assert.AreEqual(Integer(TAtlasKeyConflicts.cScCtrl or TAtlasKeyConflicts.cScShift or Ord('C')), Integer(mKeys[0]));
+  mKeys := TAtlasShortcutTips.ParseSteps('Ctrl+K, Ctrl+D');
+  Assert.AreEqual(2, Integer(Length(mKeys)));
+  Assert.AreEqual(Integer(TAtlasKeyConflicts.cScCtrl or Ord('K')), Integer(mKeys[0]));
+  Assert.AreEqual(Integer(TAtlasKeyConflicts.cScCtrl or Ord('D')), Integer(mKeys[1]));
+  mKeys := TAtlasShortcutTips.ParseSteps('Strg+K, D');
+  Assert.AreEqual(2, Integer(Length(mKeys)));
+  Assert.AreEqual(Integer(Ord('D')), Integer(mKeys[1]));
   Assert.AreEqual(0, Integer(Length(TAtlasShortcutTips.ParseSteps('Strg+Unsinn'))));
   Assert.AreEqual(IntToStr(TAtlasKeyConflicts.cScCtrl or Ord('K')) + ',' +
     IntToStr(TAtlasKeyConflicts.cScCtrl or Ord('D')), TAtlasShortcutTips.StepsKey(TAtlasShortcutTips.ParseSteps(
@@ -343,80 +343,80 @@ end;
 
 procedure TAtlasShortcutTipsTests.AtlasCommandFollowsCurrentKey;
 var
-  Settings: TAtlasPluginSettings;
-  Func: TAtlasKeyFunction;
-  Entry: TAtlasKeyEntry;
-  Key: Word;
+  mSettings: TAtlasPluginSettings;
+  mFunc: TAtlasKeyFunction;
+  mEntry: TAtlasKeyEntry;
+  mKey: Word;
 begin
   // Jede Atlas-Taste hat einen Befehl, den die Zählung und die Tipps kennen. Mehrere Tasten können denselben
   // Befehl haben (#775 zwei Tasten, #777 eigene Taste und Strg+F12); der Befehl führt dann zur ersten.
-  for Func := Low(TAtlasKeyFunction) to High(TAtlasKeyFunction) do
+  for mFunc := Low(TAtlasKeyFunction) to High(TAtlasKeyFunction) do
   begin
-    Assert.IsTrue(TAtlasShortcutTips.AtlasCommandId(Func).StartsWith('Atlas.'));
-    Assert.IsTrue(TAtlasShortcutTips.AtlasFunctionOf(TAtlasShortcutTips.AtlasCommandId(Func), Entry.Func));
-    Assert.AreEqual(TAtlasShortcutTips.AtlasCommandId(Func), TAtlasShortcutTips.AtlasCommandId(Entry.Func));
-    Assert.IsTrue(Ord(Entry.Func) <= Ord(Func));
+    Assert.IsTrue(TAtlasShortcutTips.AtlasCommandId(mFunc).StartsWith('Atlas.'));
+    Assert.IsTrue(TAtlasShortcutTips.AtlasFunctionOf(TAtlasShortcutTips.AtlasCommandId(mFunc), mEntry.Func));
+    Assert.AreEqual(TAtlasShortcutTips.AtlasCommandId(mFunc), TAtlasShortcutTips.AtlasCommandId(mEntry.Func));
+    Assert.IsTrue(Ord(mEntry.Func) <= Ord(mFunc));
   end;
-  Assert.IsTrue(TAtlasShortcutTips.AtlasFunctionOf('Atlas.ToggleMethod', Func));
-  Assert.AreEqual<TAtlasKeyFunction>(TAtlasKeyFunction.MethodToggleUp, Func);
-  Assert.IsTrue(TAtlasShortcutTips.AtlasFunctionOf('Atlas.UnitSearch', Func));
-  Assert.AreEqual<TAtlasKeyFunction>(TAtlasKeyFunction.UnitSearch, Func);
-  Assert.IsTrue(TAtlasShortcutTips.AtlasFunctionOf('Atlas.SwitchTestUnit', Func));
-  Assert.AreEqual<TAtlasKeyFunction>(TAtlasKeyFunction.TestUnit, Func);
+  Assert.IsTrue(TAtlasShortcutTips.AtlasFunctionOf('Atlas.ToggleMethod', mFunc));
+  Assert.AreEqual<TAtlasKeyFunction>(TAtlasKeyFunction.MethodToggleUp, mFunc);
+  Assert.IsTrue(TAtlasShortcutTips.AtlasFunctionOf('Atlas.UnitSearch', mFunc));
+  Assert.AreEqual<TAtlasKeyFunction>(TAtlasKeyFunction.UnitSearch, mFunc);
+  Assert.IsTrue(TAtlasShortcutTips.AtlasFunctionOf('Atlas.SwitchTestUnit', mFunc));
+  Assert.AreEqual<TAtlasKeyFunction>(TAtlasKeyFunction.TestUnit, mFunc);
   Assert.AreEqual('Atlas.ExpandSelection', TAtlasShortcutTips.AtlasCommandId(TAtlasKeyFunction.ExpandSelection));
   Assert.AreEqual('Atlas.CommandPalette', TAtlasShortcutTips.AtlasCommandId(TAtlasKeyFunction.Palette));
-  Assert.IsFalse(TAtlasShortcutTips.AtlasFunctionOf('ecClassCompletion', Func));
+  Assert.IsFalse(TAtlasShortcutTips.AtlasFunctionOf('ecClassCompletion', mFunc));
   // Neu belegt: Die Taste kommt aus den aktuellen Einstellungen, nicht aus einem Zwischenstand.
-  Settings := TAtlasPluginSettings.Defaults;
-  Settings.ExpandKey := TAtlasKeyConflicts.cScCtrl or TAtlasKeyConflicts.cScAlt or Ord('E');
-  Assert.IsTrue(TAtlasShortcutTips.AtlasFunctionOf('atlas.expandselection', Func), 'ohne Groß/klein');
-  Key := 0;
-  for Entry in TAtlasKeyEntry.AllFromSettings(Settings) do
+  mSettings := TAtlasPluginSettings.Defaults;
+  mSettings.ExpandKey := TAtlasKeyConflicts.cScCtrl or TAtlasKeyConflicts.cScAlt or Ord('E');
+  Assert.IsTrue(TAtlasShortcutTips.AtlasFunctionOf('atlas.expandselection', mFunc), 'ohne Groß/klein');
+  mKey := 0;
+  for mEntry in TAtlasKeyEntry.AllFromSettings(mSettings) do
   begin
-    if Entry.Func = Func then
+    if mEntry.Func = mFunc then
     begin
-      Key := Entry.Key;
+      mKey := mEntry.Key;
     end;
   end;
-  Assert.AreEqual(Integer(TAtlasKeyConflicts.cScCtrl or TAtlasKeyConflicts.cScAlt or Ord('E')), Integer(Key));
+  Assert.AreEqual(Integer(TAtlasKeyConflicts.cScCtrl or TAtlasKeyConflicts.cScAlt or Ord('E')), Integer(mKey));
 end;
 
 procedure TAtlasShortcutTipsTests.KeyOnlyFunctionsHaveNoPaletteCommand;
 var
-  Func: TAtlasKeyFunction;
+  mFunc: TAtlasKeyFunction;
 begin
   // Karte „Atlas entdecken“ (#757): Tipps zu Tasten ohne Befehl der Palette zeigen die Taste selbst.
-  Assert.IsTrue(TAtlasShortcutTips.IsKeyOnly(TAtlasShortcutTips.cPaletteCommandId, Func));
-  Assert.AreEqual<TAtlasKeyFunction>(TAtlasKeyFunction.Palette, Func);
-  Assert.IsTrue(TAtlasShortcutTips.IsKeyOnly('atlas.completion', Func), 'ohne Groß/klein');
-  Assert.AreEqual<TAtlasKeyFunction>(TAtlasKeyFunction.Completion, Func);
-  Assert.IsTrue(TAtlasShortcutTips.IsKeyOnly('Atlas.Signature', Func));
-  Assert.IsTrue(TAtlasShortcutTips.IsKeyOnly('Atlas.WelcomeSearch', Func));
+  Assert.IsTrue(TAtlasShortcutTips.IsKeyOnly(TAtlasShortcutTips.cPaletteCommandId, mFunc));
+  Assert.AreEqual<TAtlasKeyFunction>(TAtlasKeyFunction.Palette, mFunc);
+  Assert.IsTrue(TAtlasShortcutTips.IsKeyOnly('atlas.completion', mFunc), 'ohne Groß/klein');
+  Assert.AreEqual<TAtlasKeyFunction>(TAtlasKeyFunction.Completion, mFunc);
+  Assert.IsTrue(TAtlasShortcutTips.IsKeyOnly('Atlas.Signature', mFunc));
+  Assert.IsTrue(TAtlasShortcutTips.IsKeyOnly('Atlas.WelcomeSearch', mFunc));
   // Schnellaktionen der Willkommensseite (#764): Knopf und Taste, kein Befehl der Palette.
-  Assert.IsTrue(TAtlasShortcutTips.IsKeyOnly('Atlas.WelcomeQuickBuild', Func));
-  Assert.AreEqual<TAtlasKeyFunction>(TAtlasKeyFunction.WelcomeQuickBuild, Func);
-  Assert.IsTrue(TAtlasShortcutTips.IsKeyOnly('Atlas.WelcomeQuickTests', Func));
-  Assert.AreEqual<TAtlasKeyFunction>(TAtlasKeyFunction.WelcomeQuickTests, Func);
-  Assert.IsFalse(TAtlasShortcutTips.IsKeyOnly('Atlas.ExpandSelection', Func), 'Befehl der Palette');
-  Assert.IsFalse(TAtlasShortcutTips.IsKeyOnly('Atlas.QuickToggles', Func), 'Befehl der Palette');
-  Assert.IsFalse(TAtlasShortcutTips.IsKeyOnly('Atlas.Rename', Func), 'keine Atlas-Taste');
-  Assert.IsFalse(TAtlasShortcutTips.IsKeyOnly('', Func));
+  Assert.IsTrue(TAtlasShortcutTips.IsKeyOnly('Atlas.WelcomeQuickBuild', mFunc));
+  Assert.AreEqual<TAtlasKeyFunction>(TAtlasKeyFunction.WelcomeQuickBuild, mFunc);
+  Assert.IsTrue(TAtlasShortcutTips.IsKeyOnly('Atlas.WelcomeQuickTests', mFunc));
+  Assert.AreEqual<TAtlasKeyFunction>(TAtlasKeyFunction.WelcomeQuickTests, mFunc);
+  Assert.IsFalse(TAtlasShortcutTips.IsKeyOnly('Atlas.ExpandSelection', mFunc), 'Befehl der Palette');
+  Assert.IsFalse(TAtlasShortcutTips.IsKeyOnly('Atlas.QuickToggles', mFunc), 'Befehl der Palette');
+  Assert.IsFalse(TAtlasShortcutTips.IsKeyOnly('Atlas.Rename', mFunc), 'keine Atlas-Taste');
+  Assert.IsFalse(TAtlasShortcutTips.IsKeyOnly('', mFunc));
 end;
 
 procedure TAtlasShortcutTipsTests.PlacesTipBottomRight;
 var
-  Placed: TRect;
+  mPlaced: TRect;
 begin
-  Placed := TAtlasShortcutTips.PlaceBottomRight(Rect(100, 200, 900, 800), 300, 60, 12);
-  Assert.AreEqual(588, Placed.Left);
-  Assert.AreEqual(728, Placed.Top);
-  Assert.AreEqual(888, Placed.Right);
-  Assert.AreEqual(788, Placed.Bottom);
+  mPlaced := TAtlasShortcutTips.PlaceBottomRight(Rect(100, 200, 900, 800), 300, 60, 12);
+  Assert.AreEqual(588, mPlaced.Left);
+  Assert.AreEqual(728, mPlaced.Top);
+  Assert.AreEqual(888, mPlaced.Right);
+  Assert.AreEqual(788, mPlaced.Bottom);
   // Zu klein: bleibt in der Fläche, links bzw. oben bündig.
-  Placed := TAtlasShortcutTips.PlaceBottomRight(Rect(100, 200, 300, 230), 300, 60, 12);
-  Assert.AreEqual(100, Placed.Left);
-  Assert.AreEqual(200, Placed.Top);
-  Assert.AreEqual(400, Placed.Right);
+  mPlaced := TAtlasShortcutTips.PlaceBottomRight(Rect(100, 200, 300, 230), 300, 60, 12);
+  Assert.AreEqual(100, mPlaced.Left);
+  Assert.AreEqual(200, mPlaced.Top);
+  Assert.AreEqual(400, mPlaced.Right);
 end;
 
 procedure TAtlasShortcutTipsTests.RecognizesShortCutStrokes;
@@ -434,489 +434,489 @@ end;
 
 procedure TAtlasCommandUsageTests.CountsAndRoundTrips;
 var
-  Usage, Loaded: TAtlasCommandUsage;
-  Entry: TAtlasCommandUsageEntry;
+  mUsage, mLoaded: TAtlasCommandUsage;
+  mEntry: TAtlasCommandUsageEntry;
 begin
-  Usage := TAtlasCommandUsage.Create;
-  Loaded := TAtlasCommandUsage.Create;
+  mUsage := TAtlasCommandUsage.Create;
+  mLoaded := TAtlasCommandUsage.Create;
   try
-    Assert.IsFalse(Usage.Changed);
-    Usage.Count(ClassCompletion, TAtlasCommandInput.Mouse, Moment(9, 0, 0));
-    Usage.Count('ECCLASSCOMPLETION', TAtlasCommandInput.Mouse, Moment(9, 30, 0));
-    Usage.Count(ClassCompletion, TAtlasCommandInput.Keyboard, Moment(10, 0, 0));
-    Usage.Count('Atlas.CodeActions', TAtlasCommandInput.Mouse, Moment(10, 1, 0));
-    Usage.Count('', TAtlasCommandInput.Mouse, Moment(10, 1, 0));
-    Assert.IsTrue(Usage.Changed);
-    Entry := Usage.Entry(ClassCompletion);
-    TAtlasShortcutTips.MarkShown(Entry, Moment(9, 0, 1));
-    Usage.Put(Entry);
-    Assert.AreEqual(2, Integer(Length(Usage.Entries)), 'Groß/klein egal, leere Id nicht');
+    Assert.IsFalse(mUsage.Changed);
+    mUsage.Count(cClassCompletion, TAtlasCommandInput.Mouse, Moment(9, 0, 0));
+    mUsage.Count('ECCLASSCOMPLETION', TAtlasCommandInput.Mouse, Moment(9, 30, 0));
+    mUsage.Count(cClassCompletion, TAtlasCommandInput.Keyboard, Moment(10, 0, 0));
+    mUsage.Count('Atlas.CodeActions', TAtlasCommandInput.Mouse, Moment(10, 1, 0));
+    mUsage.Count('', TAtlasCommandInput.Mouse, Moment(10, 1, 0));
+    Assert.IsTrue(mUsage.Changed);
+    mEntry := mUsage.Entry(cClassCompletion);
+    TAtlasShortcutTips.MarkShown(mEntry, Moment(9, 0, 1));
+    mUsage.Put(mEntry);
+    Assert.AreEqual(2, Integer(Length(mUsage.Entries)), 'Groß/klein egal, leere Id nicht');
     // Zustand der Tipps aus shortcut-tips.json, Zähler aus usage.json (#757).
-    Assert.IsTrue(Loaded.Parse(Usage.ToJson));
-    Assert.IsTrue(Loaded.ParseCounts(Usage.CountsToJson));
-    Assert.IsTrue(Loaded.Find('ecclasscompletion', Entry));
-    Assert.AreEqual(ClassCompletion, Entry.Id);
-    Assert.AreEqual(2, Entry.Mouse);
-    Assert.AreEqual(1, Entry.Keyboard);
-    Assert.AreEqual(3, Loaded.UseCount(ClassCompletion));
-    Assert.AreEqual(1, Loaded.UseCount('Atlas.CodeActions'));
-    Assert.AreEqual(0, Loaded.UseCount('Unbekannt'));
-    Assert.AreEqual(TAtlasCommandUsage.TimeText(Moment(10, 0, 0)), TAtlasCommandUsage.TimeText(Entry.LastUsed));
-    Assert.AreEqual(TAtlasCommandUsage.TimeText(Moment(9, 0, 1)), TAtlasCommandUsage.TimeText(Entry.LastTip));
-    Assert.IsFalse(Entry.Never);
-    Assert.IsFalse(Loaded.Find('Unbekannt', Entry));
-    Assert.AreEqual('Unbekannt', Entry.Id);
-    Assert.AreEqual(0, Entry.Total);
+    Assert.IsTrue(mLoaded.Parse(mUsage.ToJson));
+    Assert.IsTrue(mLoaded.ParseCounts(mUsage.CountsToJson));
+    Assert.IsTrue(mLoaded.Find('ecclasscompletion', mEntry));
+    Assert.AreEqual(cClassCompletion, mEntry.Id);
+    Assert.AreEqual(2, mEntry.Mouse);
+    Assert.AreEqual(1, mEntry.Keyboard);
+    Assert.AreEqual(3, mLoaded.UseCount(cClassCompletion));
+    Assert.AreEqual(1, mLoaded.UseCount('Atlas.CodeActions'));
+    Assert.AreEqual(0, mLoaded.UseCount('Unbekannt'));
+    Assert.AreEqual(TAtlasCommandUsage.TimeText(Moment(10, 0, 0)), TAtlasCommandUsage.TimeText(mEntry.LastUsed));
+    Assert.AreEqual(TAtlasCommandUsage.TimeText(Moment(9, 0, 1)), TAtlasCommandUsage.TimeText(mEntry.LastTip));
+    Assert.IsFalse(mEntry.Never);
+    Assert.IsFalse(mLoaded.Find('Unbekannt', mEntry));
+    Assert.AreEqual('Unbekannt', mEntry.Id);
+    Assert.AreEqual(0, mEntry.Total);
     Assert.AreEqual('2026-10-15T09:30:00', TAtlasCommandUsage.TimeText(Moment(9, 30, 0)));
     Assert.AreEqual('', TAtlasCommandUsage.TimeText(0));
     Assert.AreEqual(TAtlasCommandUsage.TimeText(Moment(9, 30, 0)),
       TAtlasCommandUsage.TimeText(TAtlasCommandUsage.TimeOf('2026-10-15T09:30:00.123Z')));
     Assert.AreEqual<TDateTime>(0, TAtlasCommandUsage.TimeOf('gestern'));
   finally
-    Loaded.Free;
-    Usage.Free;
+    mLoaded.Free;
+    mUsage.Free;
   end;
 end;
 
 procedure TAtlasCommandUsageTests.KeepsUnknownTopLevelFields;
 var
-  Usage: TAtlasCommandUsage;
-  Json: string;
+  mUsage: TAtlasCommandUsage;
+  mJson: string;
 begin
-  Usage := TAtlasCommandUsage.Create;
+  mUsage := TAtlasCommandUsage.Create;
   try
-    Assert.IsTrue(Usage.Parse('{"format":1,"commands":{"X":{"mouse":1,"keyboard":"2","extra":true}},' +
+    Assert.IsTrue(mUsage.Parse('{"format":1,"commands":{"X":{"mouse":1,"keyboard":"2","extra":true}},' +
       '"discover":{"seen":["Atlas.CodeActions"]}}'));
-    Assert.AreEqual(2, Usage.Entry('X').Keyboard, 'Zahl auch als Text');
-    Json := Usage.ToJson;
-    Assert.Contains(Json, '"discover"');
-    Assert.Contains(Json, 'Atlas.CodeActions');
-    Assert.Contains(Json, '"format":1');
+    Assert.AreEqual(2, mUsage.Entry('X').Keyboard, 'Zahl auch als Text');
+    mJson := mUsage.ToJson;
+    Assert.Contains(mJson, '"discover"');
+    Assert.Contains(mJson, 'Atlas.CodeActions');
+    Assert.Contains(mJson, '"format":1');
   finally
-    Usage.Free;
+    mUsage.Free;
   end;
 end;
 
 procedure TAtlasCommandUsageTests.HigherFormatIsNotOverwritten;
 var
-  Usage: TAtlasCommandUsage;
-  FileName: string;
+  mUsage: TAtlasCommandUsage;
+  mFileName: string;
 begin
-  Usage := TAtlasCommandUsage.Create;
+  mUsage := TAtlasCommandUsage.Create;
   try
-    Assert.IsFalse(Usage.Parse('{"format":2,"commands":{"X":{"mouse":1}}}'));
-    Assert.IsFalse(Usage.Writable);
-    Assert.AreEqual(0, Usage.UseCount('X'));
-    FileName := TPath.Combine(TPath.GetTempPath, 'atlas-usage-' + FormatDateTime('hhnnsszzz', Now) + '.json');
-    TFile.WriteAllText(FileName, '{"format":2}');
+    Assert.IsFalse(mUsage.Parse('{"format":2,"commands":{"X":{"mouse":1}}}'));
+    Assert.IsFalse(mUsage.Writable);
+    Assert.AreEqual(0, mUsage.UseCount('X'));
+    mFileName := TPath.Combine(TPath.GetTempPath, 'atlas-usage-' + FormatDateTime('hhnnsszzz', Now) + '.json');
+    TFile.WriteAllText(mFileName, '{"format":2}');
     try
-      Usage.Clear;
-      Assert.IsTrue(Usage.Writable);
-      Usage.Count('X', TAtlasCommandInput.Mouse, Moment(10, 0, 0));
-      Assert.IsFalse(Usage.SaveToFile(FileName), 'neuere Fassung bleibt');
-      Assert.IsFalse(Usage.Writable);
-      Assert.Contains(TFile.ReadAllText(FileName, TEncoding.UTF8), '"format":2');
+      mUsage.Clear;
+      Assert.IsTrue(mUsage.Writable);
+      mUsage.Count('X', TAtlasCommandInput.Mouse, Moment(10, 0, 0));
+      Assert.IsFalse(mUsage.SaveToFile(mFileName), 'neuere Fassung bleibt');
+      Assert.IsFalse(mUsage.Writable);
+      Assert.Contains(TFile.ReadAllText(mFileName, TEncoding.UTF8), '"format":2');
     finally
-      System.SysUtils.DeleteFile(FileName);
+      System.SysUtils.DeleteFile(mFileName);
     end;
   finally
-    Usage.Free;
+    mUsage.Free;
   end;
 end;
 
 procedure TAtlasCommandUsageTests.BrokenJsonStartsEmpty;
 var
-  Usage: TAtlasCommandUsage;
+  mUsage: TAtlasCommandUsage;
 begin
-  Usage := TAtlasCommandUsage.Create;
+  mUsage := TAtlasCommandUsage.Create;
   try
-    Usage.Count('X', TAtlasCommandInput.Mouse, Moment(10, 0, 0));
-    Assert.IsFalse(Usage.Parse('kein JSON'));
-    Assert.AreEqual(0, Integer(Length(Usage.Entries)));
-    Assert.IsTrue(Usage.Writable);
-    Assert.IsFalse(Usage.Parse('[1,2]'));
-    Assert.IsTrue(Usage.Parse('{"commands":{"":{"mouse":1},"Y":5}}'));
-    Assert.AreEqual(0, Integer(Length(Usage.Entries)), 'leere Namen und Nicht-Objekte übergangen');
-    Assert.IsFalse(Usage.LoadFromFile(TPath.Combine(TPath.GetTempPath, 'atlas-gibt-es-nicht.json')));
+    mUsage.Count('X', TAtlasCommandInput.Mouse, Moment(10, 0, 0));
+    Assert.IsFalse(mUsage.Parse('kein JSON'));
+    Assert.AreEqual(0, Integer(Length(mUsage.Entries)));
+    Assert.IsTrue(mUsage.Writable);
+    Assert.IsFalse(mUsage.Parse('[1,2]'));
+    Assert.IsTrue(mUsage.Parse('{"commands":{"":{"mouse":1},"Y":5}}'));
+    Assert.AreEqual(0, Integer(Length(mUsage.Entries)), 'leere Namen und Nicht-Objekte übergangen');
+    Assert.IsFalse(mUsage.LoadFromFile(TPath.Combine(TPath.GetTempPath, 'atlas-gibt-es-nicht.json')));
   finally
-    Usage.Free;
+    mUsage.Free;
   end;
 end;
 
 procedure TAtlasCommandUsageTests.SavesAndLoadsFile;
 var
-  Usage, Loaded: TAtlasCommandUsage;
-  Folder, FileName: string;
-  Entry: TAtlasCommandUsageEntry;
+  mUsage, mLoaded: TAtlasCommandUsage;
+  mFolder, mFileName: string;
+  mEntry: TAtlasCommandUsageEntry;
 begin
-  Folder := TPath.Combine(TPath.GetTempPath, 'atlas-usage-' + FormatDateTime('hhnnsszzz', Now));
-  FileName := TAtlasCommandUsage.DefaultFile(Folder);
-  Usage := TAtlasCommandUsage.Create;
-  Loaded := TAtlasCommandUsage.Create;
+  mFolder := TPath.Combine(TPath.GetTempPath, 'atlas-usage-' + FormatDateTime('hhnnsszzz', Now));
+  mFileName := TAtlasCommandUsage.DefaultFile(mFolder);
+  mUsage := TAtlasCommandUsage.Create;
+  mLoaded := TAtlasCommandUsage.Create;
   try
-    Usage.Count(ClassCompletion, TAtlasCommandInput.Mouse, Moment(10, 0, 0));
-    Entry := Usage.Entry(ClassCompletion);
-    Entry.Never := True;
-    Usage.Put(Entry);
-    Usage.SaveToFiles(FileName, TAtlasCommandUsage.DefaultUsageFile(Folder));
-    Assert.IsTrue(TFile.Exists(FileName), 'legt den Ordner an');
-    Assert.IsTrue(TFile.Exists(TAtlasCommandUsage.DefaultUsageFile(Folder)));
-    Assert.IsFalse(Usage.Changed);
-    Loaded.LoadFromFiles(FileName, TAtlasCommandUsage.DefaultUsageFile(Folder));
-    Assert.IsTrue(Loaded.Entry(ClassCompletion).Never);
-    Assert.AreEqual(1, Loaded.Entry(ClassCompletion).Mouse);
-    Assert.IsFalse(Loaded.Changed);
-    Assert.IsFalse(TFile.Exists(FileName + '.tmp'));
-    Assert.IsFalse(TFile.Exists(TAtlasCommandUsage.DefaultUsageFile(Folder) + '.tmp'));
+    mUsage.Count(cClassCompletion, TAtlasCommandInput.Mouse, Moment(10, 0, 0));
+    mEntry := mUsage.Entry(cClassCompletion);
+    mEntry.Never := True;
+    mUsage.Put(mEntry);
+    mUsage.SaveToFiles(mFileName, TAtlasCommandUsage.DefaultUsageFile(mFolder));
+    Assert.IsTrue(TFile.Exists(mFileName), 'legt den Ordner an');
+    Assert.IsTrue(TFile.Exists(TAtlasCommandUsage.DefaultUsageFile(mFolder)));
+    Assert.IsFalse(mUsage.Changed);
+    mLoaded.LoadFromFiles(mFileName, TAtlasCommandUsage.DefaultUsageFile(mFolder));
+    Assert.IsTrue(mLoaded.Entry(cClassCompletion).Never);
+    Assert.AreEqual(1, mLoaded.Entry(cClassCompletion).Mouse);
+    Assert.IsFalse(mLoaded.Changed);
+    Assert.IsFalse(TFile.Exists(mFileName + '.tmp'));
+    Assert.IsFalse(TFile.Exists(TAtlasCommandUsage.DefaultUsageFile(mFolder) + '.tmp'));
   finally
-    Loaded.Free;
-    Usage.Free;
-    if TDirectory.Exists(Folder) then
+    mLoaded.Free;
+    mUsage.Free;
+    if TDirectory.Exists(mFolder) then
     begin
-      TDirectory.Delete(Folder, True);
+      TDirectory.Delete(mFolder, True);
     end;
   end;
 end;
 
 procedure TAtlasCommandUsageTests.RarelyByKeyboard;
 var
-  Entry: TAtlasCommandUsageEntry;
+  mEntry: TAtlasCommandUsageEntry;
 begin
-  Entry := TAtlasCommandUsageEntry.Create('X');
-  Entry.Mouse := 2;
-  Assert.IsFalse(Entry.RarelyByKeyboard, 'zu wenige Aufrufe');
-  Entry.Mouse := 3;
-  Assert.IsTrue(Entry.RarelyByKeyboard);
-  Entry.Keyboard := 1;
-  Assert.IsFalse(Entry.RarelyByKeyboard, 'ein Viertel per Tastatur');
-  Entry.Mouse := 8;
-  Assert.IsTrue(Entry.RarelyByKeyboard);
-  Entry.Mouse := 0;
-  Entry.Keyboard := 5;
-  Assert.IsFalse(Entry.RarelyByKeyboard);
+  mEntry := TAtlasCommandUsageEntry.Create('X');
+  mEntry.Mouse := 2;
+  Assert.IsFalse(mEntry.RarelyByKeyboard, 'zu wenige Aufrufe');
+  mEntry.Mouse := 3;
+  Assert.IsTrue(mEntry.RarelyByKeyboard);
+  mEntry.Keyboard := 1;
+  Assert.IsFalse(mEntry.RarelyByKeyboard, 'ein Viertel per Tastatur');
+  mEntry.Mouse := 8;
+  Assert.IsTrue(mEntry.RarelyByKeyboard);
+  mEntry.Mouse := 0;
+  mEntry.Keyboard := 5;
+  Assert.IsFalse(mEntry.RarelyByKeyboard);
 end;
 
 procedure TAtlasCommandUsageTests.FileIsNotTheCompletionUsage;
 var
-  FileName: string;
+  mFileName: string;
 begin
   // %APPDATA%\Atlas\usage.json gehört der lernenden Vervollständigung (#418) und bleibt unberührt; die Zählung
   // der Befehle (#757) liegt in %LOCALAPPDATA%\Atlas\usage.json, der Zustand der Tipps in shortcut-tips.json.
-  FileName := TAtlasCommandUsage.DefaultFile('LocalAppData');
-  Assert.IsTrue(FileName.EndsWith('shortcut-tips.json'));
-  Assert.IsTrue(FileName.StartsWith(IncludeTrailingPathDelimiter('LocalAppData') + 'Atlas'));
-  FileName := TAtlasCommandUsage.DefaultUsageFile('LocalAppData');
+  mFileName := TAtlasCommandUsage.DefaultFile('LocalAppData');
+  Assert.IsTrue(mFileName.EndsWith('shortcut-tips.json'));
+  Assert.IsTrue(mFileName.StartsWith(IncludeTrailingPathDelimiter('LocalAppData') + 'Atlas'));
+  mFileName := TAtlasCommandUsage.DefaultUsageFile('LocalAppData');
   Assert.AreEqual(IncludeTrailingPathDelimiter(IncludeTrailingPathDelimiter('LocalAppData') + 'Atlas') + 'usage.json',
-    FileName);
+    mFileName);
 end;
 
 /// <summary>Namen aller Felder in den Einträgen von "commands", sortiert und ohne Doppelte, mit Komma.</summary>
 function FieldNames(const AJson: string): string;
 var
-  Root: TJSONValue;
-  Commands: TJSONValue;
-  Index, Inner: Integer;
-  Item: TJSONObject;
-  Names: TStringList;
+  mRoot: TJSONValue;
+  mCommands: TJSONValue;
+  mIndex, mInner: Integer;
+  mItem: TJSONObject;
+  mNames: TStringList;
 begin
   Result := '';
-  Root := TJSONObject.ParseJSONValue(AJson);
-  Names := TStringList.Create;
+  mRoot := TJSONObject.ParseJSONValue(AJson);
+  mNames := TStringList.Create;
   try
-    Names.Sorted := True;
-    Names.Duplicates := dupIgnore;
-    if not (Root is TJSONObject) then
+    mNames.Sorted := True;
+    mNames.Duplicates := dupIgnore;
+    if not (mRoot is TJSONObject) then
     begin
       Exit;
     end;
-    Commands := TJSONObject(Root).GetValue('commands');
-    if not (Commands is TJSONObject) then
+    mCommands := TJSONObject(mRoot).GetValue('commands');
+    if not (mCommands is TJSONObject) then
     begin
       Exit;
     end;
-    for Index := 0 to TJSONObject(Commands).Count - 1 do
+    for mIndex := 0 to TJSONObject(mCommands).Count - 1 do
     begin
-      if TJSONObject(Commands).Pairs[Index].JsonValue is TJSONObject then
+      if TJSONObject(mCommands).Pairs[mIndex].JsonValue is TJSONObject then
       begin
-        Item := TJSONObject(TJSONObject(Commands).Pairs[Index].JsonValue);
-        for Inner := 0 to Item.Count - 1 do
+        mItem := TJSONObject(TJSONObject(mCommands).Pairs[mIndex].JsonValue);
+        for mInner := 0 to mItem.Count - 1 do
         begin
-          Names.Add(Item.Pairs[Inner].JsonString.Value);
+          mNames.Add(mItem.Pairs[mInner].JsonString.Value);
         end;
       end;
     end;
-    Result := Names.CommaText;
+    Result := mNames.CommaText;
   finally
-    Names.Free;
-    Root.Free;
+    mNames.Free;
+    mRoot.Free;
   end;
 end;
 
 /// <summary>Namen der Felder oberster Ebene, sortiert, mit Komma.</summary>
 function TopNames(const AJson: string): string;
 var
-  Root: TJSONValue;
-  Index: Integer;
-  Names: TStringList;
+  mRoot: TJSONValue;
+  mIndex: Integer;
+  mNames: TStringList;
 begin
   Result := '';
-  Root := TJSONObject.ParseJSONValue(AJson);
-  Names := TStringList.Create;
+  mRoot := TJSONObject.ParseJSONValue(AJson);
+  mNames := TStringList.Create;
   try
-    Names.Sorted := True;
-    if Root is TJSONObject then
+    mNames.Sorted := True;
+    if mRoot is TJSONObject then
     begin
-      for Index := 0 to TJSONObject(Root).Count - 1 do
+      for mIndex := 0 to TJSONObject(mRoot).Count - 1 do
       begin
-        Names.Add(TJSONObject(Root).Pairs[Index].JsonString.Value);
+        mNames.Add(TJSONObject(mRoot).Pairs[mIndex].JsonString.Value);
       end;
     end;
-    Result := Names.CommaText;
+    Result := mNames.CommaText;
   finally
-    Names.Free;
-    Root.Free;
+    mNames.Free;
+    mRoot.Free;
   end;
 end;
 
 procedure TAtlasCommandUsageTests.UsageJsonHoldsOnlyIdsCountersAndDate;
 var
-  Usage: TAtlasCommandUsage;
-  Entry: TAtlasCommandUsageEntry;
+  mUsage: TAtlasCommandUsage;
+  mEntry: TAtlasCommandUsageEntry;
 begin
   // #757: usage.json enthält nur Befehlskennungen, Zähler und Datum.
-  Usage := TAtlasCommandUsage.Create;
+  mUsage := TAtlasCommandUsage.Create;
   try
-    Usage.Count('Atlas.CodeActions', TAtlasCommandInput.Mouse, Moment(9, 0, 0));
-    Usage.Count(ClassCompletion, TAtlasCommandInput.Keyboard, Moment(9, 5, 0));
-    Entry := Usage.Entry(ClassCompletion);
-    Entry.Never := True;
-    TAtlasShortcutTips.MarkShown(Entry, Moment(9, 6, 0));
-    Usage.Put(Entry);
-    Usage.SetSection('discover', '{"blocked":["rename"],"last":"codeActions"}');
-    Assert.AreEqual('commands,format', TopNames(Usage.CountsToJson));
-    Assert.AreEqual('keyboard,lastUsed,mouse', FieldNames(Usage.CountsToJson));
-    Assert.Contains(Usage.CountsToJson, '"Atlas.CodeActions"');
-    Assert.Contains(Usage.CountsToJson, '"lastUsed":"2026-10-15T09:05:00"');
-    Assert.DoesNotContain(Usage.CountsToJson, 'rename');
+    mUsage.Count('Atlas.CodeActions', TAtlasCommandInput.Mouse, Moment(9, 0, 0));
+    mUsage.Count(cClassCompletion, TAtlasCommandInput.Keyboard, Moment(9, 5, 0));
+    mEntry := mUsage.Entry(cClassCompletion);
+    mEntry.Never := True;
+    TAtlasShortcutTips.MarkShown(mEntry, Moment(9, 6, 0));
+    mUsage.Put(mEntry);
+    mUsage.SetSection('discover', '{"blocked":["rename"],"last":"codeActions"}');
+    Assert.AreEqual('commands,format', TopNames(mUsage.CountsToJson));
+    Assert.AreEqual('keyboard,lastUsed,mouse', FieldNames(mUsage.CountsToJson));
+    Assert.Contains(mUsage.CountsToJson, '"Atlas.CodeActions"');
+    Assert.Contains(mUsage.CountsToJson, '"lastUsed":"2026-10-15T09:05:00"');
+    Assert.DoesNotContain(mUsage.CountsToJson, 'rename');
     // Zustand der Tipps ohne Zähler in shortcut-tips.json.
-    Assert.AreEqual('lastTip,never', FieldNames(Usage.ToJson));
-    Assert.AreEqual('commands,discover,format', TopNames(Usage.ToJson));
-    Assert.DoesNotContain(Usage.ToJson, 'Atlas.CodeActions', False, 'ohne Tipp-Zustand kein Eintrag');
+    Assert.AreEqual('lastTip,never', FieldNames(mUsage.ToJson));
+    Assert.AreEqual('commands,discover,format', TopNames(mUsage.ToJson));
+    Assert.DoesNotContain(mUsage.ToJson, 'Atlas.CodeActions', False, 'ohne Tipp-Zustand kein Eintrag');
   finally
-    Usage.Free;
+    mUsage.Free;
   end;
 end;
 
 procedure TAtlasCommandUsageTests.TrackingOffCountsNothing;
 var
-  Usage: TAtlasCommandUsage;
-  Entry: TAtlasCommandUsageEntry;
+  mUsage: TAtlasCommandUsage;
+  mEntry: TAtlasCommandUsageEntry;
 begin
-  Usage := TAtlasCommandUsage.Create;
+  mUsage := TAtlasCommandUsage.Create;
   try
-    Assert.IsTrue(Usage.Tracking, 'Vorgabe: zählen');
-    Usage.Tracking := False;
-    Usage.Count('Atlas.CodeActions', TAtlasCommandInput.Mouse, Moment(9, 0, 0));
-    Usage.Count('Atlas.CodeActions', TAtlasCommandInput.Keyboard, Moment(9, 0, 0));
-    Assert.AreEqual(0, Usage.UseCount('Atlas.CodeActions'));
-    Assert.IsFalse(Usage.CountsChanged, 'nichts zu schreiben');
+    Assert.IsTrue(mUsage.Tracking, 'Vorgabe: zählen');
+    mUsage.Tracking := False;
+    mUsage.Count('Atlas.CodeActions', TAtlasCommandInput.Mouse, Moment(9, 0, 0));
+    mUsage.Count('Atlas.CodeActions', TAtlasCommandInput.Keyboard, Moment(9, 0, 0));
+    Assert.AreEqual(0, mUsage.UseCount('Atlas.CodeActions'));
+    Assert.IsFalse(mUsage.CountsChanged, 'nichts zu schreiben');
     // Tipps dürfen weiter ihren Zustand merken.
-    Entry := Usage.Entry('Atlas.CodeActions');
-    Entry.Never := True;
-    Usage.Put(Entry);
-    Assert.IsTrue(Usage.TipsChanged);
-    Assert.IsFalse(Usage.CountsChanged);
-    Usage.Clear;
-    Assert.IsFalse(Usage.Tracking, 'Clear lässt die Einstellung');
-    Usage.Tracking := True;
-    Usage.Count('Atlas.CodeActions', TAtlasCommandInput.Mouse, Moment(9, 0, 0));
-    Assert.AreEqual(1, Usage.UseCount('Atlas.CodeActions'));
+    mEntry := mUsage.Entry('Atlas.CodeActions');
+    mEntry.Never := True;
+    mUsage.Put(mEntry);
+    Assert.IsTrue(mUsage.TipsChanged);
+    Assert.IsFalse(mUsage.CountsChanged);
+    mUsage.Clear;
+    Assert.IsFalse(mUsage.Tracking, 'Clear lässt die Einstellung');
+    mUsage.Tracking := True;
+    mUsage.Count('Atlas.CodeActions', TAtlasCommandInput.Mouse, Moment(9, 0, 0));
+    Assert.AreEqual(1, mUsage.UseCount('Atlas.CodeActions'));
   finally
-    Usage.Free;
+    mUsage.Free;
   end;
 end;
 
 procedure TAtlasCommandUsageTests.ResetCountsKeepsTipState;
 var
-  Usage: TAtlasCommandUsage;
-  Entry: TAtlasCommandUsageEntry;
+  mUsage: TAtlasCommandUsage;
+  mEntry: TAtlasCommandUsageEntry;
 begin
-  Usage := TAtlasCommandUsage.Create;
+  mUsage := TAtlasCommandUsage.Create;
   try
-    Usage.Count('Atlas.CodeActions', TAtlasCommandInput.Mouse, Moment(9, 0, 0));
-    Usage.Count(ClassCompletion, TAtlasCommandInput.Mouse, Moment(9, 0, 0));
-    Entry := Usage.Entry(ClassCompletion);
-    Entry.Never := True;
-    Usage.Put(Entry);
-    Usage.Changed := False;
-    Usage.ResetCounts;
-    Assert.IsTrue(Usage.CountsChanged);
-    Assert.AreEqual(0, Usage.UseCount('Atlas.CodeActions'));
-    Assert.AreEqual(0, Usage.UseCount(ClassCompletion));
-    Assert.IsTrue(Usage.Entry(ClassCompletion).Never, '„Nicht mehr zeigen“ bleibt');
-    Assert.AreEqual<TDateTime>(0, Usage.Entry('Atlas.CodeActions').LastUsed);
-    Assert.AreEqual('', FieldNames(Usage.CountsToJson), 'usage.json leer');
-    Usage.Changed := False;
-    Usage.ResetCounts;
-    Assert.IsFalse(Usage.Changed, 'nichts mehr zurückzusetzen');
+    mUsage.Count('Atlas.CodeActions', TAtlasCommandInput.Mouse, Moment(9, 0, 0));
+    mUsage.Count(cClassCompletion, TAtlasCommandInput.Mouse, Moment(9, 0, 0));
+    mEntry := mUsage.Entry(cClassCompletion);
+    mEntry.Never := True;
+    mUsage.Put(mEntry);
+    mUsage.Changed := False;
+    mUsage.ResetCounts;
+    Assert.IsTrue(mUsage.CountsChanged);
+    Assert.AreEqual(0, mUsage.UseCount('Atlas.CodeActions'));
+    Assert.AreEqual(0, mUsage.UseCount(cClassCompletion));
+    Assert.IsTrue(mUsage.Entry(cClassCompletion).Never, '„Nicht mehr zeigen“ bleibt');
+    Assert.AreEqual<TDateTime>(0, mUsage.Entry('Atlas.CodeActions').LastUsed);
+    Assert.AreEqual('', FieldNames(mUsage.CountsToJson), 'usage.json leer');
+    mUsage.Changed := False;
+    mUsage.ResetCounts;
+    Assert.IsFalse(mUsage.Changed, 'nichts mehr zurückzusetzen');
   finally
-    Usage.Free;
+    mUsage.Free;
   end;
 end;
 
 procedure TAtlasCommandUsageTests.OlderTipsFileMovesCountsToUsageJson;
 var
-  Usage, Loaded: TAtlasCommandUsage;
-  Folder, TipsFile, UsageFile: string;
+  mUsage, mLoaded: TAtlasCommandUsage;
+  mFolder, mTipsFile, mUsageFile: string;
 begin
   // Ältere Fassung von #600: Zähler in shortcut-tips.json, usage.json fehlt.
-  Folder := TPath.Combine(TPath.GetTempPath, 'atlas-usage-' + FormatDateTime('hhnnsszzz', Now) + '-m');
-  TipsFile := TAtlasCommandUsage.DefaultFile(Folder);
-  UsageFile := TAtlasCommandUsage.DefaultUsageFile(Folder);
-  ForceDirectories(ExtractFileDir(TipsFile));
-  TFile.WriteAllText(TipsFile, '{"format":1,"commands":{"Atlas.Rename":{"mouse":2,"keyboard":1,' +
+  mFolder := TPath.Combine(TPath.GetTempPath, 'atlas-usage-' + FormatDateTime('hhnnsszzz', Now) + '-m');
+  mTipsFile := TAtlasCommandUsage.DefaultFile(mFolder);
+  mUsageFile := TAtlasCommandUsage.DefaultUsageFile(mFolder);
+  ForceDirectories(ExtractFileDir(mTipsFile));
+  TFile.WriteAllText(mTipsFile, '{"format":1,"commands":{"Atlas.Rename":{"mouse":2,"keyboard":1,' +
     '"lastUsed":"2026-10-01T08:00:00","never":true}}}');
-  Usage := TAtlasCommandUsage.Create;
-  Loaded := TAtlasCommandUsage.Create;
+  mUsage := TAtlasCommandUsage.Create;
+  mLoaded := TAtlasCommandUsage.Create;
   try
-    Usage.LoadFromFiles(TipsFile, UsageFile);
-    Assert.AreEqual(3, Usage.UseCount('Atlas.Rename'));
-    Assert.IsTrue(Usage.Entry('Atlas.Rename').Never);
-    Assert.IsTrue(Usage.CountsChanged, 'beim nächsten Speichern umziehen');
-    Usage.SaveToFiles(TipsFile, UsageFile);
-    Assert.IsTrue(TFile.Exists(UsageFile));
-    Assert.DoesNotContain(TFile.ReadAllText(TipsFile, TEncoding.UTF8), 'mouse');
-    Assert.Contains(TFile.ReadAllText(UsageFile, TEncoding.UTF8), '"mouse":2');
-    Loaded.LoadFromFiles(TipsFile, UsageFile);
-    Assert.AreEqual(3, Loaded.UseCount('Atlas.Rename'));
-    Assert.IsTrue(Loaded.Entry('Atlas.Rename').Never);
-    Assert.IsFalse(Loaded.Changed);
+    mUsage.LoadFromFiles(mTipsFile, mUsageFile);
+    Assert.AreEqual(3, mUsage.UseCount('Atlas.Rename'));
+    Assert.IsTrue(mUsage.Entry('Atlas.Rename').Never);
+    Assert.IsTrue(mUsage.CountsChanged, 'beim nächsten Speichern umziehen');
+    mUsage.SaveToFiles(mTipsFile, mUsageFile);
+    Assert.IsTrue(TFile.Exists(mUsageFile));
+    Assert.DoesNotContain(TFile.ReadAllText(mTipsFile, TEncoding.UTF8), 'mouse');
+    Assert.Contains(TFile.ReadAllText(mUsageFile, TEncoding.UTF8), '"mouse":2');
+    mLoaded.LoadFromFiles(mTipsFile, mUsageFile);
+    Assert.AreEqual(3, mLoaded.UseCount('Atlas.Rename'));
+    Assert.IsTrue(mLoaded.Entry('Atlas.Rename').Never);
+    Assert.IsFalse(mLoaded.Changed);
   finally
-    Loaded.Free;
-    Usage.Free;
-    if TDirectory.Exists(Folder) then
+    mLoaded.Free;
+    mUsage.Free;
+    if TDirectory.Exists(mFolder) then
     begin
-      TDirectory.Delete(Folder, True);
+      TDirectory.Delete(mFolder, True);
     end;
   end;
 end;
 
 procedure TAtlasCommandUsageTests.UsageJsonWinsOverOlderCounts;
 var
-  Usage: TAtlasCommandUsage;
+  mUsage: TAtlasCommandUsage;
 begin
-  Usage := TAtlasCommandUsage.Create;
+  mUsage := TAtlasCommandUsage.Create;
   try
-    Assert.IsTrue(Usage.Parse('{"format":1,"commands":{"A":{"mouse":5,"never":true},"B":{"keyboard":4}}}'));
-    Assert.IsTrue(Usage.ParseCounts('{"format":1,"commands":{"A":{"mouse":1,"lastUsed":"2026-10-01T08:00:00"},' +
+    Assert.IsTrue(mUsage.Parse('{"format":1,"commands":{"A":{"mouse":5,"never":true},"B":{"keyboard":4}}}'));
+    Assert.IsTrue(mUsage.ParseCounts('{"format":1,"commands":{"A":{"mouse":1,"lastUsed":"2026-10-01T08:00:00"},' +
       '"C":{"keyboard":"2"},"":{"mouse":1},"D":7}}'));
-    Assert.AreEqual(1, Usage.UseCount('A'));
-    Assert.IsTrue(Usage.Entry('A').Never);
-    Assert.AreEqual(0, Usage.UseCount('B'), 'alte Zähler fallen weg');
-    Assert.AreEqual(2, Usage.UseCount('C'));
-    Assert.AreEqual(0, Usage.UseCount('D'));
-    Assert.IsFalse(Usage.ParseCounts('kein JSON'));
-    Assert.IsTrue(Usage.CountsWritable);
+    Assert.AreEqual(1, mUsage.UseCount('A'));
+    Assert.IsTrue(mUsage.Entry('A').Never);
+    Assert.AreEqual(0, mUsage.UseCount('B'), 'alte Zähler fallen weg');
+    Assert.AreEqual(2, mUsage.UseCount('C'));
+    Assert.AreEqual(0, mUsage.UseCount('D'));
+    Assert.IsFalse(mUsage.ParseCounts('kein JSON'));
+    Assert.IsTrue(mUsage.CountsWritable);
   finally
-    Usage.Free;
+    mUsage.Free;
   end;
 end;
 
 procedure TAtlasCommandUsageTests.SectionsRoundTrip;
 var
-  Usage, Loaded: TAtlasCommandUsage;
+  mUsage, mLoaded: TAtlasCommandUsage;
 begin
-  Usage := TAtlasCommandUsage.Create;
-  Loaded := TAtlasCommandUsage.Create;
+  mUsage := TAtlasCommandUsage.Create;
+  mLoaded := TAtlasCommandUsage.Create;
   try
-    Assert.AreEqual('', Usage.Section('discover'));
-    Usage.SetSection('discover', '{"blocked":["rename"],"last":"codeActions"}');
-    Assert.IsTrue(Usage.TipsChanged);
-    Assert.IsFalse(Usage.CountsChanged);
-    Assert.Contains(Usage.Section('discover'), '"rename"');
-    Usage.SetSection('other', '[1,2]');
-    Assert.IsTrue(Loaded.Parse(Usage.ToJson));
-    Assert.Contains(Loaded.Section('discover'), '"last":"codeActions"');
-    Assert.AreEqual('[1,2]', Loaded.Section('other'));
+    Assert.AreEqual('', mUsage.Section('discover'));
+    mUsage.SetSection('discover', '{"blocked":["rename"],"last":"codeActions"}');
+    Assert.IsTrue(mUsage.TipsChanged);
+    Assert.IsFalse(mUsage.CountsChanged);
+    Assert.Contains(mUsage.Section('discover'), '"rename"');
+    mUsage.SetSection('other', '[1,2]');
+    Assert.IsTrue(mLoaded.Parse(mUsage.ToJson));
+    Assert.Contains(mLoaded.Section('discover'), '"last":"codeActions"');
+    Assert.AreEqual('[1,2]', mLoaded.Section('other'));
     // Vergebene Namen und kaputter Text ändern nichts.
-    Loaded.SetSection('commands', '{}');
-    Loaded.SetSection('format', '2');
-    Loaded.SetSection('discover', '{kaputt');
-    Assert.Contains(Loaded.ToJson, '"format":1');
-    Assert.Contains(Loaded.Section('discover'), 'codeActions');
-    Loaded.SetSection('discover', '');
-    Assert.AreEqual('', Loaded.Section('discover'));
-    Assert.DoesNotContain(Loaded.ToJson, 'discover');
-    Assert.AreEqual('[1,2]', Loaded.Section('other'));
+    mLoaded.SetSection('commands', '{}');
+    mLoaded.SetSection('format', '2');
+    mLoaded.SetSection('discover', '{kaputt');
+    Assert.Contains(mLoaded.ToJson, '"format":1');
+    Assert.Contains(mLoaded.Section('discover'), 'codeActions');
+    mLoaded.SetSection('discover', '');
+    Assert.AreEqual('', mLoaded.Section('discover'));
+    Assert.DoesNotContain(mLoaded.ToJson, 'discover');
+    Assert.AreEqual('[1,2]', mLoaded.Section('other'));
   finally
-    Loaded.Free;
-    Usage.Free;
+    mLoaded.Free;
+    mUsage.Free;
   end;
 end;
 
 procedure TAtlasCommandUsageTests.HigherFormatUsageJsonIsNotOverwritten;
 var
-  Usage: TAtlasCommandUsage;
-  FileName: string;
+  mUsage: TAtlasCommandUsage;
+  mFileName: string;
 begin
-  Usage := TAtlasCommandUsage.Create;
+  mUsage := TAtlasCommandUsage.Create;
   try
-    Assert.IsFalse(Usage.ParseCounts('{"format":2,"commands":{"X":{"mouse":1}}}'));
-    Assert.IsFalse(Usage.CountsWritable);
-    Assert.AreEqual(0, Usage.UseCount('X'));
-    FileName := TPath.Combine(TPath.GetTempPath, 'atlas-usage-' + FormatDateTime('hhnnsszzz', Now) + '-f.json');
-    TFile.WriteAllText(FileName, '{"format":2}');
+    Assert.IsFalse(mUsage.ParseCounts('{"format":2,"commands":{"X":{"mouse":1}}}'));
+    Assert.IsFalse(mUsage.CountsWritable);
+    Assert.AreEqual(0, mUsage.UseCount('X'));
+    mFileName := TPath.Combine(TPath.GetTempPath, 'atlas-usage-' + FormatDateTime('hhnnsszzz', Now) + '-f.json');
+    TFile.WriteAllText(mFileName, '{"format":2}');
     try
-      Usage.Clear;
-      Assert.IsTrue(Usage.CountsWritable);
-      Usage.Count('X', TAtlasCommandInput.Mouse, Moment(10, 0, 0));
-      Assert.IsFalse(Usage.SaveCountsToFile(FileName), 'neuere Fassung bleibt');
-      Assert.IsFalse(Usage.CountsWritable);
-      Assert.Contains(TFile.ReadAllText(FileName, TEncoding.UTF8), '"format":2');
+      mUsage.Clear;
+      Assert.IsTrue(mUsage.CountsWritable);
+      mUsage.Count('X', TAtlasCommandInput.Mouse, Moment(10, 0, 0));
+      Assert.IsFalse(mUsage.SaveCountsToFile(mFileName), 'neuere Fassung bleibt');
+      Assert.IsFalse(mUsage.CountsWritable);
+      Assert.Contains(TFile.ReadAllText(mFileName, TEncoding.UTF8), '"format":2');
     finally
-      System.SysUtils.DeleteFile(FileName);
+      System.SysUtils.DeleteFile(mFileName);
     end;
   finally
-    Usage.Free;
+    mUsage.Free;
   end;
 end;
 
 procedure TAtlasCommandUsageTests.BrokenFileSetAsideLockedFileKept;
 var
-  Usage: TAtlasCommandUsage;
-  Folder, TipsFile, UsageFile: string;
-  Lock: TFileStream;
+  mUsage: TAtlasCommandUsage;
+  mFolder, mTipsFile, mUsageFile: string;
+  mLock: TFileStream;
 begin
-  Folder := TPath.Combine(TPath.GetTempPath, 'atlas-usage-' + IntToStr(Random(MaxInt)));
-  TipsFile := TPath.Combine(Folder, 'shortcut-tips.json');
-  UsageFile := TPath.Combine(Folder, 'usage.json');
-  ForceDirectories(Folder);
-  Usage := TAtlasCommandUsage.Create;
+  mFolder := TPath.Combine(TPath.GetTempPath, 'atlas-usage-' + IntToStr(Random(MaxInt)));
+  mTipsFile := TPath.Combine(mFolder, 'shortcut-tips.json');
+  mUsageFile := TPath.Combine(mFolder, 'usage.json');
+  ForceDirectories(mFolder);
+  mUsage := TAtlasCommandUsage.Create;
   try
-    TFile.WriteAllText(TipsFile, '{kaputt');
-    TFile.WriteAllText(UsageFile, '[1, 2]');
-    Usage.LoadFromFiles(TipsFile, UsageFile);
-    Assert.IsTrue(TFile.Exists(TipsFile + TAtlasDataFile.cDefectExtension), 'Tipps beiseitegelegt');
-    Assert.IsTrue(TFile.Exists(UsageFile + TAtlasDataFile.cDefectExtension), 'Zähler beiseitegelegt');
-    Assert.IsTrue(Usage.Writable);
-    Assert.IsTrue(Usage.CountsWritable);
-    Usage.Count('X', TAtlasCommandInput.Mouse, Moment(10, 0, 0));
-    Assert.IsTrue(Usage.SaveCountsToFile(UsageFile));
-    Lock := TFileStream.Create(UsageFile, fmOpenRead or fmShareExclusive);
+    TFile.WriteAllText(mTipsFile, '{kaputt');
+    TFile.WriteAllText(mUsageFile, '[1, 2]');
+    mUsage.LoadFromFiles(mTipsFile, mUsageFile);
+    Assert.IsTrue(TFile.Exists(mTipsFile + TAtlasDataFile.cDefectExtension), 'Tipps beiseitegelegt');
+    Assert.IsTrue(TFile.Exists(mUsageFile + TAtlasDataFile.cDefectExtension), 'Zähler beiseitegelegt');
+    Assert.IsTrue(mUsage.Writable);
+    Assert.IsTrue(mUsage.CountsWritable);
+    mUsage.Count('X', TAtlasCommandInput.Mouse, Moment(10, 0, 0));
+    Assert.IsTrue(mUsage.SaveCountsToFile(mUsageFile));
+    mLock := TFileStream.Create(mUsageFile, fmOpenRead or fmShareExclusive);
     try
-      Usage.LoadFromFiles(TipsFile, UsageFile);
+      mUsage.LoadFromFiles(mTipsFile, mUsageFile);
     finally
-      Lock.Free;
+      mLock.Free;
     end;
-    Assert.IsFalse(Usage.CountsWritable, 'beim Lesen gesperrt');
-    Assert.AreEqual(0, Usage.UseCount('X'));
-    Usage.Count('Y', TAtlasCommandInput.Mouse, Moment(10, 0, 0));
-    Assert.IsFalse(Usage.SaveCountsToFile(UsageFile), 'nicht überschreiben');
-    Assert.Contains(TFile.ReadAllText(UsageFile, TEncoding.UTF8), '"X"');
-    Assert.DoesNotContain(TFile.ReadAllText(UsageFile, TEncoding.UTF8), '"Y"');
+    Assert.IsFalse(mUsage.CountsWritable, 'beim Lesen gesperrt');
+    Assert.AreEqual(0, mUsage.UseCount('X'));
+    mUsage.Count('Y', TAtlasCommandInput.Mouse, Moment(10, 0, 0));
+    Assert.IsFalse(mUsage.SaveCountsToFile(mUsageFile), 'nicht überschreiben');
+    Assert.Contains(TFile.ReadAllText(mUsageFile, TEncoding.UTF8), '"X"');
+    Assert.DoesNotContain(TFile.ReadAllText(mUsageFile, TEncoding.UTF8), '"Y"');
   finally
-    Usage.Free;
-    TDirectory.Delete(Folder, True);
+    mUsage.Free;
+    TDirectory.Delete(mFolder, True);
   end;
   // Gemeldete Datendateien vergessen: Das Register bliebe sonst als Leck stehen.
   TAtlasDataFile.ForgetReports;

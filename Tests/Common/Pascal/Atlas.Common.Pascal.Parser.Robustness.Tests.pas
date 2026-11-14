@@ -72,12 +72,12 @@ uses
   Atlas.Tests.SmallStack;
 
 const
-  FuzzSeed = 20261007;
-  FuzzRounds = 2000;
+  cFuzzSeed = 20261007;
+  cFuzzRounds = 2000;
   /// <summary>Obergrenze je Parse; deutlich darüber gilt als Hänger.</summary>
-  HangLimitMs = 2000;
+  cHangLimitMs = 2000;
 
-  Samples: array[0..2] of string = (
+  cSamples: array[0..2] of string = (
     'unit Sample;'#13#10 +
     'interface'#13#10 +
     'uses System.SysUtils, System.Generics.Collections;'#13#10 +
@@ -128,74 +128,74 @@ const
     'exports F;'#13#10 +
     'begin end.');
 
-  Garbage: array[0..9] of string = ('begin', 'end', '(', ')', '[', ']', ';', '''', '{', 'class');
+  cGarbage: array[0..9] of string = ('begin', 'end', '(', ')', '[', ']', ';', '''', '{', 'class');
 
 // Beschädigt den Text zufällig: Zeichen löschen, abschneiden, Klammern und
 // Schlüsselwörter einstreuen, Blöcke verdoppeln.
 function Mutate(const AText: string): string;
 var
-  Round: Integer;
-  Position: Integer;
+  mRound: Integer;
+  mPosition: Integer;
 begin
   Result := AText;
-  for Round := 1 to 1 + Random(5) do
+  for mRound := 1 to 1 + Random(5) do
   begin
     if Result = '' then
     begin
       Exit;
     end;
-    Position := Random(Length(Result));
+    mPosition := Random(Length(Result));
     case Random(5) of
       0:
-        Result := Result.Remove(Position, 1 + Random(20));
+        Result := Result.Remove(mPosition, 1 + Random(20));
       1:
-        Result := Result.Substring(0, Position);
+        Result := Result.Substring(0, mPosition);
       2:
-        Result := Result.Insert(Position, Garbage[Random(Length(Garbage))]);
+        Result := Result.Insert(mPosition, cGarbage[Random(Length(cGarbage))]);
       3:
-        Result := Result.Insert(Position, Result.Substring(Random(Length(Result)), Random(200)));
+        Result := Result.Insert(mPosition, Result.Substring(Random(Length(Result)), Random(200)));
       4:
-        Result := Result.Insert(Position, ' ' + Garbage[Random(Length(Garbage))] + ' ');
+        Result := Result.Insert(mPosition, ' ' + cGarbage[Random(Length(cGarbage))] + ' ');
     end;
   end;
 end;
 
 function Repeated(const AText: string; ACount: Integer): string;
 var
-  Builder: TStringBuilder;
-  Index: Integer;
+  mBuilder: TStringBuilder;
+  mIndex: Integer;
 begin
-  Builder := TStringBuilder.Create;
+  mBuilder := TStringBuilder.Create;
   try
-    for Index := 1 to ACount do
+    for mIndex := 1 to ACount do
     begin
-      Builder.Append(AText);
+      mBuilder.Append(AText);
     end;
-    Result := Builder.ToString;
+    Result := mBuilder.ToString;
   finally
-    Builder.Free;
+    mBuilder.Free;
   end;
 end;
 
 procedure ParseAndFree(const AText: string);
 var
-  Tree: TSyntaxTree;
+  mTree: TSyntaxTree;
 begin
-  Tree := TPascalParser.Parse(AText);
-  Tree.Free;
+  mTree := TPascalParser.Parse(AText);
+  mTree.Free;
 end;
 
 function GenerateUnit(AClasses: Integer): string;
 var
-  Builder: TStringBuilder;
-  Index: Integer;
+  mBuilder: TStringBuilder;
+  mIndex: Integer;
 begin
-  Builder := TStringBuilder.Create;
+  mBuilder := TStringBuilder.Create;
   try
-    Builder.AppendLine('unit Big;').AppendLine('interface').AppendLine('type');
-    for Index := 1 to AClasses do
+    mBuilder.AppendLine('unit Big;').AppendLine('interface').AppendLine('type');
+    for mIndex := 1 to AClasses do
     begin
-      Builder.AppendFormat('  TClass%d = class', [Index]).AppendLine
+      mBuilder.AppendFormat('  TClass%d = class', [mIndex]).AppendLine
         .AppendLine('  private')
         .AppendLine('    FValue: Integer;')
         .AppendLine('  public')
@@ -203,20 +203,20 @@ begin
         .AppendLine('    property Value: Integer read FValue write FValue;')
         .AppendLine('  end;');
     end;
-    Builder.AppendLine('implementation');
-    for Index := 1 to AClasses do
+    mBuilder.AppendLine('implementation');
+    for mIndex := 1 to AClasses do
     begin
-      Builder.AppendFormat('procedure TClass%d.Run(const A: string; B: Integer);', [Index]).AppendLine
+      mBuilder.AppendFormat('procedure TClass%d.Run(const A: string; B: Integer);', [mIndex]).AppendLine
         .AppendLine('var I: Integer;')
         .AppendLine('begin')
         .AppendLine('  for I := 0 to B do')
         .AppendLine('    if A <> '''' then FValue := FValue + Length(A) * I else Exit;')
         .AppendLine('end;');
     end;
-    Builder.Append('end.');
-    Result := Builder.ToString;
+    mBuilder.Append('end.');
+    Result := mBuilder.ToString;
   finally
-    Builder.Free;
+    mBuilder.Free;
   end;
 end;
 
@@ -224,58 +224,58 @@ end;
 
 procedure TPascalParserRobustnessTests.WarmUpFirstUse;
 var
-  Folder, FileName: string;
+  mFolder, mFileName: string;
 begin
   LongChainsDoNotOverflowStack;
   LongConcatenationPassesAllRulesInSmallStack;
   // Wie der Korpustest, nur mit einer Datei.
-  Folder := TPath.Combine(TPath.GetTempPath, 'AtlasKorpus' + TGUID.NewGuid.ToString);
-  TDirectory.CreateDirectory(Folder);
+  mFolder := TPath.Combine(TPath.GetTempPath, 'AtlasKorpus' + TGUID.NewGuid.ToString);
+  TDirectory.CreateDirectory(mFolder);
   try
-    TFile.WriteAllText(TPath.Combine(Folder, 'Probe.pas'), Samples[0], TEncoding.UTF8);
-    for FileName in TDirectory.GetFiles(Folder, '*.pas', TSearchOption.soAllDirectories) do
+    TFile.WriteAllText(TPath.Combine(mFolder, 'Probe.pas'), cSamples[0], TEncoding.UTF8);
+    for mFileName in TDirectory.GetFiles(mFolder, '*.pas', TSearchOption.soAllDirectories) do
     begin
-      ParseAndFree(TFile.ReadAllText(FileName, TEncoding.UTF8));
+      ParseAndFree(TFile.ReadAllText(mFileName, TEncoding.UTF8));
     end;
   finally
-    TDirectory.Delete(Folder, True);
+    TDirectory.Delete(mFolder, True);
   end;
 end;
 
 procedure TPascalParserRobustnessTests.FuzzingNeverCrashesOrHangs;
 var
-  Round: Integer;
-  Text: string;
-  Watch: TStopwatch;
+  mRound: Integer;
+  mText: string;
+  mWatch: TStopwatch;
 begin
-  RandSeed := FuzzSeed;
-  for Round := 1 to FuzzRounds do
+  RandSeed := cFuzzSeed;
+  for mRound := 1 to cFuzzRounds do
   begin
-    Text := Mutate(Samples[Round mod Length(Samples)]);
-    Watch := TStopwatch.StartNew;
+    mText := Mutate(cSamples[mRound mod Length(cSamples)]);
+    mWatch := TStopwatch.StartNew;
     try
-      ParseAndFree(Text);
+      ParseAndFree(mText);
     except
       on E: Exception do
-        Assert.Fail(Format('Runde %d: %s: %s'#13#10'%s', [Round, E.ClassName, E.Message, Text]));
+        Assert.Fail(Format('Runde %d: %s: %s'#13#10'%s', [mRound, E.ClassName, E.Message, mText]));
     end;
-    if Watch.ElapsedMilliseconds > HangLimitMs then
+    if mWatch.ElapsedMilliseconds > cHangLimitMs then
     begin
-      Assert.Fail(Format('Runde %d: %d ms'#13#10'%s', [Round, Watch.ElapsedMilliseconds, Text]));
+      Assert.Fail(Format('Runde %d: %d ms'#13#10'%s', [mRound, mWatch.ElapsedMilliseconds, mText]));
     end;
   end;
 end;
 
 procedure TPascalParserRobustnessTests.DeepNestingIsReportedNotFatal;
 var
-  Tree: TSyntaxTree;
+  mTree: TSyntaxTree;
 begin
-  Tree := TPascalParser.Parse('program P; begin X := ' + StringOfChar('(', 100000) + '1; end.');
+  mTree := TPascalParser.Parse('program P; begin X := ' + StringOfChar('(', 100000) + '1; end.');
   try
-    Assert.IsTrue(Length(Tree.Diagnostics) > 0);
-    Assert.IsTrue(Tree.Diagnostics[0].Message.StartsWith('Zu tief verschachtelt'), Tree.Diagnostics[0].Message);
+    Assert.IsTrue(Length(mTree.Diagnostics) > 0);
+    Assert.IsTrue(mTree.Diagnostics[0].Message.StartsWith('Zu tief verschachtelt'), mTree.Diagnostics[0].Message);
   finally
-    Tree.Free;
+    mTree.Free;
   end;
   ParseAndFree('program P; ' + Repeated('begin ', 50000) + 'end.');
   ParseAndFree('program P; begin X := ' + Repeated('[', 50000) + '; end.');
@@ -284,54 +284,54 @@ end;
 
 procedure TPascalParserRobustnessTests.LongChainsDoNotOverflowStack;
 var
-  Builder: TStringBuilder;
-  Index: Integer;
-  Text: string;
-  Tree: TSyntaxTree;
+  mBuilder: TStringBuilder;
+  mIndex: Integer;
+  mText: string;
+  mTree: TSyntaxTree;
 begin
   // 1+1+...+1 und a.b.c...: lange, aber flache Ketten im Quelltext ergeben tiefe Bäume.
-  Builder := TStringBuilder.Create;
+  mBuilder := TStringBuilder.Create;
   try
-    Builder.Append('program P; begin X := 1');
-    for Index := 1 to 100000 do
+    mBuilder.Append('program P; begin X := 1');
+    for mIndex := 1 to 100000 do
     begin
-      Builder.Append('+1');
+      mBuilder.Append('+1');
     end;
-    Builder.Append('; Y := a');
-    for Index := 1 to 100000 do
+    mBuilder.Append('; Y := a');
+    for mIndex := 1 to 100000 do
     begin
-      Builder.Append('.b');
+      mBuilder.Append('.b');
     end;
-    Builder.Append('; end.');
-    Text := Builder.ToString;
+    mBuilder.Append('; end.');
+    mText := mBuilder.ToString;
   finally
-    Builder.Free;
+    mBuilder.Free;
   end;
-  Tree := TPascalParser.Parse(Text);
+  mTree := TPascalParser.Parse(mText);
   try
-    Assert.AreEqual<NativeInt>(0, Length(Tree.Diagnostics));
-    TLspFoldingRanges.Collect(Tree);
+    Assert.AreEqual<NativeInt>(0, Length(mTree.Diagnostics));
+    TLspFoldingRanges.Collect(mTree);
   finally
-    Tree.Free;
+    mTree.Free;
   end;
 end;
 
 /// <summary>'1' + '2' + … mit ACount Gliedern, jedes eine eigene Zahl.</summary>
 function NumberChain(ACount: Integer; const AOperator: string): string;
 var
-  Builder: TStringBuilder;
-  Index: Integer;
+  mBuilder: TStringBuilder;
+  mIndex: Integer;
 begin
-  Builder := TStringBuilder.Create;
+  mBuilder := TStringBuilder.Create;
   try
-    Builder.Append('1');
-    for Index := 2 to ACount do
+    mBuilder.Append('1');
+    for mIndex := 2 to ACount do
     begin
-      Builder.Append(' ').Append(AOperator).Append(' ').Append(Index);
+      mBuilder.Append(' ').Append(AOperator).Append(' ').Append(mIndex);
     end;
-    Result := Builder.ToString;
+    Result := mBuilder.ToString;
   finally
-    Builder.Free;
+    mBuilder.Free;
   end;
 end;
 
@@ -343,19 +343,19 @@ end;
 
 function FirstOfKind(ANode: TSyntaxNode; AKind: TSyntaxKind): TSyntaxNode;
 var
-  Found: TSyntaxNode;
+  mFound: TSyntaxNode;
 begin
-  Found := nil;
+  mFound := nil;
   ANode.Walk(
     function(AVisited: TSyntaxNode): Boolean
     begin
-      if (Found = nil) and (AVisited.Kind = AKind) then
+      if (mFound = nil) and (AVisited.Kind = AKind) then
       begin
-        Found := AVisited;
+        mFound := AVisited;
       end;
-      Result := Found = nil;
+      Result := mFound = nil;
     end);
-  Result := Found;
+  Result := mFound;
 end;
 
 function TextOf(const AText: string; ANode: TSyntaxNode): string;
@@ -365,145 +365,145 @@ end;
 
 procedure TPascalParserRobustnessTests.LongConcatenationIsBalanced;
 const
-  Count = 5000;
+  cCount = 5000;
 var
-  Expression, Text: string;
-  Tree: TSyntaxTree;
-  Root: TSyntaxNode;
-  Literals: TList<string>;
-  Index: Integer;
-  RangesOk: Boolean;
+  mExpression, mText: string;
+  mTree: TSyntaxTree;
+  mRoot: TSyntaxNode;
+  mLiterals: TList<string>;
+  mIndex: Integer;
+  mRangesOk: Boolean;
 begin
-  Expression := NumberChain(Count, '+');
-  Text := ProcedureWith(Expression);
-  Tree := TPascalParser.Parse(Text);
-  Literals := TList<string>.Create;
+  mExpression := NumberChain(cCount, '+');
+  mText := ProcedureWith(mExpression);
+  mTree := TPascalParser.Parse(mText);
+  mLiterals := TList<string>.Create;
   try
-    Assert.AreEqual<NativeInt>(0, Length(Tree.Diagnostics));
+    Assert.AreEqual<NativeInt>(0, Length(mTree.Diagnostics));
     // Linkslastig wären es über 5000 Ebenen.
-    Assert.IsTrue(Tree.Depth < 40, 'Tiefe ' + IntToStr(Tree.Depth));
-    Root := FirstOfKind(Tree.Root, TSyntaxKind.BinaryExpr);
-    Assert.IsNotNull(Root);
-    Assert.AreEqual(Expression, TextOf(Text, Root), 'Bereich des ganzen Ausdrucks');
-    RangesOk := True;
-    Root.Walk(
+    Assert.IsTrue(mTree.Depth < 40, 'Tiefe ' + IntToStr(mTree.Depth));
+    mRoot := FirstOfKind(mTree.Root, TSyntaxKind.BinaryExpr);
+    Assert.IsNotNull(mRoot);
+    Assert.AreEqual(mExpression, TextOf(mText, mRoot), 'Bereich des ganzen Ausdrucks');
+    mRangesOk := True;
+    mRoot.Walk(
       function(ANode: TSyntaxNode): Boolean
       var
         Part: string;
       begin
         if ANode.Kind = TSyntaxKind.Literal then
         begin
-          Literals.Add(TextOf(Text, ANode));
+          mLiterals.Add(TextOf(mText, ANode));
         end
         else if ANode.Kind = TSyntaxKind.BinaryExpr then
         begin
           // Jeder Teilbaum umfasst genau eine zusammenhängende Folge von Gliedern.
-          Part := TextOf(Text, ANode);
+          Part := TextOf(mText, ANode);
           if (ANode.Name <> '+') or not CharInSet(Part[1], ['0'..'9']) or
             not CharInSet(Part[Length(Part)], ['0'..'9']) or
             (ANode.StartOffset <> ANode.Children[0].StartOffset) or
             (ANode.EndOffset <> ANode.Children[1].EndOffset) then
           begin
-            RangesOk := False;
+            mRangesOk := False;
           end;
         end;
         Result := True;
       end);
-    Assert.IsTrue(RangesOk, 'Bereiche der Teilbäume');
-    Assert.AreEqual(Integer(Count), Integer(Literals.Count));
-    for Index := 0 to Literals.Count - 1 do
+    Assert.IsTrue(mRangesOk, 'Bereiche der Teilbäume');
+    Assert.AreEqual(Integer(cCount), Integer(mLiterals.Count));
+    for mIndex := 0 to mLiterals.Count - 1 do
     begin
-      Assert.AreEqual(IntToStr(Index + 1), Literals[Index], 'Reihenfolge der Glieder');
+      Assert.AreEqual(IntToStr(mIndex + 1), mLiterals[mIndex], 'Reihenfolge der Glieder');
     end;
   finally
-    Literals.Free;
-    Tree.Free;
+    mLiterals.Free;
+    mTree.Free;
   end;
 end;
 
 procedure TPascalParserRobustnessTests.ShortChainsStayLeftDeep;
 var
-  Text: string;
-  Tree: TSyntaxTree;
-  Root: TSyntaxNode;
+  mText: string;
+  mTree: TSyntaxTree;
+  mRoot: TSyntaxNode;
 begin
   // a + b + c = (a + b) + c
-  Text := ProcedureWith('a + b + c');
-  Tree := TPascalParser.Parse(Text);
+  mText := ProcedureWith('a + b + c');
+  mTree := TPascalParser.Parse(mText);
   try
-    Root := FirstOfKind(Tree.Root, TSyntaxKind.BinaryExpr);
-    Assert.AreEqual('a + b + c', TextOf(Text, Root));
-    Assert.AreEqual(Ord(TSyntaxKind.BinaryExpr), Ord(Root.Children[0].Kind));
-    Assert.AreEqual('a + b', TextOf(Text, Root.Children[0]));
-    Assert.AreEqual('c', Root.Children[1].Name);
+    mRoot := FirstOfKind(mTree.Root, TSyntaxKind.BinaryExpr);
+    Assert.AreEqual('a + b + c', TextOf(mText, mRoot));
+    Assert.AreEqual(Ord(TSyntaxKind.BinaryExpr), Ord(mRoot.Children[0].Kind));
+    Assert.AreEqual('a + b', TextOf(mText, mRoot.Children[0]));
+    Assert.AreEqual('c', mRoot.Children[1].Name);
   finally
-    Tree.Free;
+    mTree.Free;
   end;
   // Gemischt: a - b + c - d = ((a - b) + c) - d
-  Text := ProcedureWith('a - b + c - d');
-  Tree := TPascalParser.Parse(Text);
+  mText := ProcedureWith('a - b + c - d');
+  mTree := TPascalParser.Parse(mText);
   try
-    Root := FirstOfKind(Tree.Root, TSyntaxKind.BinaryExpr);
-    Assert.AreEqual('-', Root.Name);
-    Assert.AreEqual('a - b + c', TextOf(Text, Root.Children[0]));
-    Assert.AreEqual('+', Root.Children[0].Name);
-    Assert.AreEqual('a - b', TextOf(Text, Root.Children[0].Children[0]));
+    mRoot := FirstOfKind(mTree.Root, TSyntaxKind.BinaryExpr);
+    Assert.AreEqual('-', mRoot.Name);
+    Assert.AreEqual('a - b + c', TextOf(mText, mRoot.Children[0]));
+    Assert.AreEqual('+', mRoot.Children[0].Name);
+    Assert.AreEqual('a - b', TextOf(mText, mRoot.Children[0].Children[0]));
   finally
-    Tree.Free;
+    mTree.Free;
   end;
   // Nicht assoziativ: auch lange Ketten bleiben linkslastig.
-  Text := ProcedureWith(NumberChain(100, '-'));
-  Tree := TPascalParser.Parse(Text);
+  mText := ProcedureWith(NumberChain(100, '-'));
+  mTree := TPascalParser.Parse(mText);
   try
-    Assert.IsTrue(Tree.Depth > 100, 'Tiefe ' + IntToStr(Tree.Depth));
+    Assert.IsTrue(mTree.Depth > 100, 'Tiefe ' + IntToStr(mTree.Depth));
   finally
-    Tree.Free;
+    mTree.Free;
   end;
 end;
 
 procedure TPascalParserRobustnessTests.LongConcatenationPassesAllRulesInSmallStack;
 var
-  Builder: TStringBuilder;
-  Index, Destroys: Integer;
-  Text, Failure: string;
-  Findings: TArray<TRuleFinding>;
-  Finding: TRuleFinding;
+  mBuilder: TStringBuilder;
+  mIndex, mDestroys: Integer;
+  mText, mFailure: string;
+  mFindings: TArray<TRuleFinding>;
+  mFinding: TRuleFinding;
 begin
   // Wie Rules.Catalog.Data.pas: eine Klasse und eine Funktion mit sehr langer String-Verkettung.
-  Builder := TStringBuilder.Create;
+  mBuilder := TStringBuilder.Create;
   try
-    Builder.Append('unit Katalog;'#13#10'interface'#13#10'type'#13#10 +
+    mBuilder.Append('unit Katalog;'#13#10'interface'#13#10'type'#13#10 +
       '  TKatalog = class'#13#10'  public'#13#10'    destructor Destroy;'#13#10'  end;'#13#10 +
       'function Daten: string;'#13#10'implementation'#13#10 +
       'destructor TKatalog.Destroy;'#13#10'begin'#13#10'  inherited;'#13#10'end;'#13#10 +
       'function Daten: string;'#13#10'begin'#13#10'  Result := ''a''');
-    for Index := 1 to 5000 do
+    for mIndex := 1 to 5000 do
     begin
-      Builder.Append(' + #10 + ''z').Append(Index).Append('''');
+      mBuilder.Append(' + #10 + ''z').Append(mIndex).Append('''');
     end;
-    Builder.Append(';'#13#10'end;'#13#10'end.');
-    Text := Builder.ToString;
+    mBuilder.Append(';'#13#10'end;'#13#10'end.');
+    mText := mBuilder.ToString;
   finally
-    Builder.Free;
+    mBuilder.Free;
   end;
-  Findings := nil;
-  Failure := TSmallStack.Run(512,
+  mFindings := nil;
+  mFailure := TSmallStack.Run(512,
     procedure
     begin
-      Findings := TFileChecker.CheckText(BuiltinRules, TServerSettings.Default, 'Katalog.pas', Text);
+      mFindings := TFileChecker.CheckText(BuiltinRules, TServerSettings.Default, 'Katalog.pas', mText);
     end);
-  Assert.AreEqual('', Failure, 'kein Stapelüberlauf');
+  Assert.AreEqual('', mFailure, 'kein Stapelüberlauf');
   // Die Vererbungsregeln melden weiter, was sie vorher meldeten.
-  Destroys := 0;
-  for Finding in Findings do
+  mDestroys := 0;
+  for mFinding in mFindings do
   begin
-    if Finding.RuleId = 'destroy-without-override' then
+    if mFinding.RuleId = 'destroy-without-override' then
     begin
-      Inc(Destroys);
+      Inc(mDestroys);
     end;
   end;
-  Assert.AreEqual(1, Destroys);
-  Findings := nil;
+  Assert.AreEqual(1, mDestroys);
+  mFindings := nil;
 end;
 
 /// <summary>Wurzel des Korpus aus ATLAS_CORPUS, sonst der Ordner source der Delphi-Installation (BDS); '' ohne.
@@ -570,68 +570,68 @@ end;
 
 procedure TPascalParserRobustnessTests.ParsesDelphiSourceCorpus;
 var
-  Root: string;
-  Directory: string;
-  Files: Integer;
-  Slowest: Int64;
-  SlowestFile: string;
-  Total: TStopwatch;
+  mRoot: string;
+  mDirectory: string;
+  mFiles: Integer;
+  mSlowest: Int64;
+  mSlowestFile: string;
+  mTotal: TStopwatch;
 begin
-  Root := CorpusRoot;
+  mRoot := CorpusRoot;
   // Ohne Assert.Pass: Es hinterließ hier 192 Byte, die der Leckmonitor dem Test anrechnet.
-  if (Root = '') or not TDirectory.Exists(Root) then
+  if (mRoot = '') or not TDirectory.Exists(mRoot) then
   begin
     System.Writeln('  Übersprungen: kein Korpus (ATLAS_CORPUS oder BDS setzen)');
     Exit;
   end;
-  Files := 0;
-  Slowest := 0;
-  SlowestFile := '';
-  Total := TStopwatch.StartNew;
-  for Directory in CorpusDirectories(Root) do
+  mFiles := 0;
+  mSlowest := 0;
+  mSlowestFile := '';
+  mTotal := TStopwatch.StartNew;
+  for mDirectory in CorpusDirectories(mRoot) do
   begin
-    ParseDirectory(Directory, Files, Slowest, SlowestFile);
+    ParseDirectory(mDirectory, mFiles, mSlowest, mSlowestFile);
   end;
-  Assert.IsTrue(Files > 0, 'Keine .pas-Dateien unter ' + Root);
-  Assert.IsTrue(Slowest < HangLimitMs, Format('%s braucht %d ms', [SlowestFile, Slowest]));
+  Assert.IsTrue(mFiles > 0, 'Keine .pas-Dateien unter ' + mRoot);
+  Assert.IsTrue(mSlowest < cHangLimitMs, Format('%s braucht %d ms', [mSlowestFile, mSlowest]));
   System.Writeln(Format('  %d Dateien in %d ms; langsamste: %s (%d ms)',
-    [Files, Total.ElapsedMilliseconds, ExtractFileName(SlowestFile), Slowest]));
+    [mFiles, mTotal.ElapsedMilliseconds, ExtractFileName(mSlowestFile), mSlowest]));
 end;
 
 procedure TPascalParserRobustnessTests.SyntaxDiagnosticsWithin200Ms;
 var
-  Store: IDocumentStore;
-  Document: ITextDocument;
-  Watch: TStopwatch;
-  Params: TJSONObject;
+  mStore: IDocumentStore;
+  mDocument: ITextDocument;
+  mWatch: TStopwatch;
+  mParams: TJSONObject;
 begin
   // Etwa 3000 Zeilen; Zielwert der Spezifikation: Syntaxfehler < 200 ms.
-  Store := TDocumentStore.Create;
-  Document := Store.Open('file:///big.pas', 'objectpascal', 1, GenerateUnit(200));
-  Watch := TStopwatch.StartNew;
-  Params := TLspSyntaxDiagnostics.BuildParams(Document);
-  Watch.Stop;
-  Params.Free;
-  Assert.IsTrue(Watch.ElapsedMilliseconds + TLspSyntaxDiagnostics.cDefaultDelayMs < 200,
-    Format('Parsen dauert %d ms', [Watch.ElapsedMilliseconds]));
+  mStore := TDocumentStore.Create;
+  mDocument := mStore.Open('file:///big.pas', 'objectpascal', 1, GenerateUnit(200));
+  mWatch := TStopwatch.StartNew;
+  mParams := TLspSyntaxDiagnostics.BuildParams(mDocument);
+  mWatch.Stop;
+  mParams.Free;
+  Assert.IsTrue(mWatch.ElapsedMilliseconds + TLspSyntaxDiagnostics.cDefaultDelayMs < 200,
+    Format('Parsen dauert %d ms', [mWatch.ElapsedMilliseconds]));
 end;
 
 procedure TPascalParserRobustnessTests.OutlineAndFoldingWithin100Ms;
 var
-  Tree: TSyntaxTree;
-  Watch: TStopwatch;
-  Symbols: TJSONArray;
+  mTree: TSyntaxTree;
+  mWatch: TStopwatch;
+  mSymbols: TJSONArray;
 begin
-  Tree := TPascalParser.Parse(GenerateUnit(200));
+  mTree := TPascalParser.Parse(GenerateUnit(200));
   try
-    Watch := TStopwatch.StartNew;
-    Symbols := TLspDocumentSymbols.BuildSymbols(Tree);
-    Symbols.Free;
-    TLspFoldingRanges.Collect(Tree);
-    Watch.Stop;
-    Assert.IsTrue(Watch.ElapsedMilliseconds < 100, Format('Gliederung und Faltbereiche: %d ms', [Watch.ElapsedMilliseconds]));
+    mWatch := TStopwatch.StartNew;
+    mSymbols := TLspDocumentSymbols.BuildSymbols(mTree);
+    mSymbols.Free;
+    TLspFoldingRanges.Collect(mTree);
+    mWatch.Stop;
+    Assert.IsTrue(mWatch.ElapsedMilliseconds < 100, Format('Gliederung und Faltbereiche: %d ms', [mWatch.ElapsedMilliseconds]));
   finally
-    Tree.Free;
+    mTree.Free;
   end;
 end;
 

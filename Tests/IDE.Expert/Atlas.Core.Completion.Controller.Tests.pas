@@ -123,25 +123,25 @@ end;
 procedure TFakeView.ShowList(const AItems: TAtlasCompletionItems; const AOrder: TArray<Integer>;
   ASelected: Integer; const APattern: string);
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
   Shown := True;
   Empty := False;
   Inc(ShowCount);
   Names := '';
-  for Index in AOrder do
+  for mIndex in AOrder do
   begin
     if Names <> '' then
     begin
       Names := Names + ',';
     end;
-    if TAtlasRanking.IsHeader(Index) then
+    if TAtlasRanking.IsHeader(mIndex) then
     begin
       Names := Names + '#';
     end
     else
     begin
-      Names := Names + AItems[Index].Name;
+      Names := Names + AItems[mIndex].Name;
     end;
   end;
   Selected := ASelected;
@@ -219,21 +219,21 @@ type
 
 procedure TPrefixProvider.Query(const AContext: TAtlasContext; const ASink: IAtlasCompletionSink);
 var
-  First, Second: TAtlasCompletionItem;
+  mFirst, mSecond: TAtlasCompletionItem;
 begin
   Inc(Queries);
-  First := Default(TAtlasCompletionItem);
-  First.Name := AContext.Prefix + '1';
-  Second := Default(TAtlasCompletionItem);
-  Second.Name := AContext.Prefix + '2';
+  mFirst := Default(TAtlasCompletionItem);
+  mFirst.Name := AContext.Prefix + '1';
+  mSecond := Default(TAtlasCompletionItem);
+  mSecond.Name := AContext.Prefix + '2';
   if Staged then
   begin
-    ASink.AddItems([First]);
-    ASink.AddItems([Second]);
+    ASink.AddItems([mFirst]);
+    ASink.AddItems([mSecond]);
   end
   else
   begin
-    ASink.AddItems([First, Second]);
+    ASink.AddItems([mFirst, mSecond]);
   end;
   if not CompleteList then
   begin
@@ -250,11 +250,16 @@ procedure TPrefixProvider.Cancel;
 begin
 end;
 
-function Item(const AName: string; ARank: Integer = 0): TAtlasCompletionItem;
+function Item(const AName: string; ARank: Integer): TAtlasCompletionItem; overload;
 begin
   Result := Default(TAtlasCompletionItem);
   Result.Name := AName;
   Result.Rank := ARank;
+end;
+
+function Item(const AName: string): TAtlasCompletionItem; overload;
+begin
+  Result := Item(AName, 0);
 end;
 
 function Context(const APrefix: string): TAtlasContext;
@@ -264,20 +269,28 @@ begin
   Result.Prefix := APrefix;
 end;
 
-/// <summary>Arbeitet eingereihte Aufrufe ab, bis ACondition gilt oder die Zeit um ist.</summary>
-function WaitFor(const ACondition: TFunc<Boolean>; ATimeoutMs: Cardinal = 3000): Boolean;
+/// <summary>Arbeitet eingereihte Aufrufe ab, bis ACondition gilt oder ATimeoutMs um sind.</summary>
+function WaitWithin(const ACondition: TFunc<Boolean>; ATimeoutMs: Cardinal): Boolean;
 var
-  Start: UInt64;
+  mStart: UInt64;
 begin
-  Start := TThread.GetTickCount64;
+  mStart := TThread.GetTickCount64;
   repeat
     CheckSynchronize(5);
     if ACondition() then
     begin
       Exit(True);
     end;
-  until TThread.GetTickCount64 - Start > ATimeoutMs;
+  until TThread.GetTickCount64 - mStart > ATimeoutMs;
   Result := False;
+end;
+
+/// <summary>Wie WaitWithin mit der üblichen Wartezeit von drei Sekunden.</summary>
+function WaitFor(const ACondition: TFunc<Boolean>): Boolean;
+const
+  cTimeoutMs = 3000;
+begin
+  Result := WaitWithin(ACondition, cTimeoutMs);
 end;
 
 { TAtlasCompletionMatcherTests }
@@ -423,540 +436,540 @@ end;
 
 procedure TAtlasCompletionMatcherTests.FiltersAndKeepsSourceOrderOnTies;
 var
-  Items: TAtlasCompletionItems;
-  Order: TArray<Integer>;
+  mItems: TAtlasCompletionItems;
+  mOrder: TArray<Integer>;
 begin
-  Items := [Item('Count', 2), Item('Capacity', 1), Item('Clear', 0), Item('Add', 3)];
-  Order := TAtlasCompletionMatcher.Filter(Items, 'c');
+  mItems := [Item('Count', 2), Item('Capacity', 1), Item('Clear', 0), Item('Add', 3)];
+  mOrder := TAtlasCompletionMatcher.Filter(mItems, 'c');
   // Alle drei beginnen mit c: Reihenfolge der Quelle (Rank).
-  Assert.AreEqual(3, Integer(Length(Order)));
-  Assert.AreEqual('Clear', Items[Order[0]].Name);
-  Assert.AreEqual('Capacity', Items[Order[1]].Name);
-  Assert.AreEqual('Count', Items[Order[2]].Name);
-  Order := TAtlasCompletionMatcher.Filter(Items, 'count');
-  Assert.AreEqual('Count', Items[Order[0]].Name);
+  Assert.AreEqual(3, Integer(Length(mOrder)));
+  Assert.AreEqual('Clear', mItems[mOrder[0]].Name);
+  Assert.AreEqual('Capacity', mItems[mOrder[1]].Name);
+  Assert.AreEqual('Count', mItems[mOrder[2]].Name);
+  mOrder := TAtlasCompletionMatcher.Filter(mItems, 'count');
+  Assert.AreEqual('Count', mItems[mOrder[0]].Name);
 end;
 
 { TAtlasCompletionControllerTests }
 
 procedure TAtlasCompletionControllerTests.ShowsItemsFilteredByPrefix;
 var
-  View: TFakeView;
-  ViewRef: IAtlasCompletionView;
-  Controller: TAtlasCompletionController;
+  mView: TFakeView;
+  mViewRef: IAtlasCompletionView;
+  mController: TAtlasCompletionController;
 begin
-  View := TFakeView.Create;
-  ViewRef := View;
-  Controller := TAtlasCompletionController.Create(
+  mView := TFakeView.Create;
+  mViewRef := mView;
+  mController := TAtlasCompletionController.Create(
     TAtlasFixedCompletionProvider.Create([Item('Add'), Item('Clear'), Item('Count')]) as IAtlasCompletionProvider,
-    ViewRef);
+    mViewRef);
   try
-    Controller.Start(Context('C'));
+    mController.Start(Context('C'));
     Assert.IsTrue(WaitFor(
       function: Boolean
       begin
-        Result := not Controller.Loading;
+        Result := not mController.Loading;
       end));
-    Assert.IsTrue(View.Shown);
-    Assert.AreEqual('Clear,Count', View.Names);
-    Assert.AreEqual(0, View.Selected);
-    Assert.IsTrue(Controller.Visible);
+    Assert.IsTrue(mView.Shown);
+    Assert.AreEqual('Clear,Count', mView.Names);
+    Assert.AreEqual(0, mView.Selected);
+    Assert.IsTrue(mController.Visible);
   finally
-    Controller.Free;
+    mController.Free;
   end;
 end;
 
 procedure TAtlasCompletionControllerTests.TypingRefiltersAndResetsSelection;
 var
-  View: TFakeView;
-  ViewRef: IAtlasCompletionView;
-  Controller: TAtlasCompletionController;
+  mView: TFakeView;
+  mViewRef: IAtlasCompletionView;
+  mController: TAtlasCompletionController;
 begin
-  View := TFakeView.Create;
-  ViewRef := View;
-  Controller := TAtlasCompletionController.Create(
+  mView := TFakeView.Create;
+  mViewRef := mView;
+  mController := TAtlasCompletionController.Create(
     TAtlasFixedCompletionProvider.Create([Item('Add'), Item('Clear'), Item('Count')]) as IAtlasCompletionProvider,
-    ViewRef);
+    mViewRef);
   try
-    Controller.Start(Context(''));
+    mController.Start(Context(''));
     Assert.IsTrue(WaitFor(
       function: Boolean
       begin
-        Result := not Controller.Loading;
+        Result := not mController.Loading;
       end));
-    Assert.AreEqual('Add,Clear,Count', View.Names);
-    Controller.HandleKey(TAtlasNavigationKey.Down);
-    Assert.AreEqual(1, View.Selected);
-    Controller.UpdatePrefix('co');
-    Assert.AreEqual('Count', View.Names);
-    Assert.AreEqual(0, View.Selected);
+    Assert.AreEqual('Add,Clear,Count', mView.Names);
+    mController.HandleKey(TAtlasNavigationKey.Down);
+    Assert.AreEqual(1, mView.Selected);
+    mController.UpdatePrefix('co');
+    Assert.AreEqual('Count', mView.Names);
+    Assert.AreEqual(0, mView.Selected);
   finally
-    Controller.Free;
+    mController.Free;
   end;
 end;
 
 procedure TAtlasCompletionControllerTests.KeysMoveSelectionAndEnterCommits;
 var
-  View: TFakeView;
-  ViewRef: IAtlasCompletionView;
-  Controller: TAtlasCompletionController;
-  Committed: string;
+  mView: TFakeView;
+  mViewRef: IAtlasCompletionView;
+  mController: TAtlasCompletionController;
+  mCommitted: string;
 begin
-  View := TFakeView.Create;
-  ViewRef := View;
-  Controller := TAtlasCompletionController.Create(
+  mView := TFakeView.Create;
+  mViewRef := mView;
+  mController := TAtlasCompletionController.Create(
     TAtlasFixedCompletionProvider.Create([Item('A1'), Item('A2'), Item('A3'), Item('A4'), Item('A5')])
-      as IAtlasCompletionProvider, ViewRef);
+      as IAtlasCompletionProvider, mViewRef);
   try
-    Committed := '';
-    Controller.OnCommit :=
+    mCommitted := '';
+    mController.OnCommit :=
       procedure(const AItem: TAtlasCompletionItem)
       begin
-        Committed := AItem.Name;
+        mCommitted := AItem.Name;
       end;
-    Controller.Start(Context('A'));
+    mController.Start(Context('A'));
     Assert.IsTrue(WaitFor(
       function: Boolean
       begin
-        Result := not Controller.Loading;
+        Result := not mController.Loading;
       end));
-    Assert.IsTrue(Controller.HandleKey(TAtlasNavigationKey.Up));
-    Assert.AreEqual(0, View.Selected, 'Oben bleibt oben');
-    Controller.HandleKey(TAtlasNavigationKey.PageDown);
-    Assert.AreEqual(2, View.Selected, 'Bild ab um PageSize - 1');
-    Controller.HandleKey(TAtlasNavigationKey.Last);
-    Assert.AreEqual(4, View.Selected);
-    Controller.HandleKey(TAtlasNavigationKey.First);
-    Controller.HandleKey(TAtlasNavigationKey.Down);
-    Assert.IsTrue(Controller.HandleKey(TAtlasNavigationKey.Accept));
-    Assert.AreEqual('A2', Committed);
-    Assert.IsFalse(Controller.Active, 'Übernahme schließt');
-    Assert.IsFalse(View.Shown);
+    Assert.IsTrue(mController.HandleKey(TAtlasNavigationKey.Up));
+    Assert.AreEqual(0, mView.Selected, 'Oben bleibt oben');
+    mController.HandleKey(TAtlasNavigationKey.PageDown);
+    Assert.AreEqual(2, mView.Selected, 'Bild ab um PageSize - 1');
+    mController.HandleKey(TAtlasNavigationKey.Last);
+    Assert.AreEqual(4, mView.Selected);
+    mController.HandleKey(TAtlasNavigationKey.First);
+    mController.HandleKey(TAtlasNavigationKey.Down);
+    Assert.IsTrue(mController.HandleKey(TAtlasNavigationKey.Accept));
+    Assert.AreEqual('A2', mCommitted);
+    Assert.IsFalse(mController.Active, 'Übernahme schließt');
+    Assert.IsFalse(mView.Shown);
   finally
-    Controller.Free;
+    mController.Free;
   end;
 end;
 
 procedure TAtlasCompletionControllerTests.EscapeClosesAndKeysPassThroughWhenClosed;
 var
-  View: TFakeView;
-  ViewRef: IAtlasCompletionView;
-  Controller: TAtlasCompletionController;
+  mView: TFakeView;
+  mViewRef: IAtlasCompletionView;
+  mController: TAtlasCompletionController;
 begin
-  View := TFakeView.Create;
-  ViewRef := View;
-  Controller := TAtlasCompletionController.Create(
-    TAtlasFixedCompletionProvider.Create([Item('Add')]) as IAtlasCompletionProvider, ViewRef);
+  mView := TFakeView.Create;
+  mViewRef := mView;
+  mController := TAtlasCompletionController.Create(
+    TAtlasFixedCompletionProvider.Create([Item('Add')]) as IAtlasCompletionProvider, mViewRef);
   try
-    Assert.IsFalse(Controller.HandleKey(TAtlasNavigationKey.Down), 'Geschlossen: Taste gehört dem Editor');
-    Controller.Start(Context(''));
+    Assert.IsFalse(mController.HandleKey(TAtlasNavigationKey.Down), 'Geschlossen: Taste gehört dem Editor');
+    mController.Start(Context(''));
     Assert.IsTrue(WaitFor(
       function: Boolean
       begin
-        Result := not Controller.Loading;
+        Result := not mController.Loading;
       end));
-    Assert.IsTrue(Controller.HandleKey(TAtlasNavigationKey.Cancel));
-    Assert.IsFalse(Controller.Active);
-    Assert.IsFalse(View.Shown);
-    Assert.IsFalse(Controller.HandleKey(TAtlasNavigationKey.Accept), 'Enter nach Esc gehört dem Editor');
+    Assert.IsTrue(mController.HandleKey(TAtlasNavigationKey.Cancel));
+    Assert.IsFalse(mController.Active);
+    Assert.IsFalse(mView.Shown);
+    Assert.IsFalse(mController.HandleKey(TAtlasNavigationKey.Accept), 'Enter nach Esc gehört dem Editor');
   finally
-    Controller.Free;
+    mController.Free;
   end;
 end;
 
 procedure TAtlasCompletionControllerTests.EscapeBlocksAutomaticReopenInSameWord;
 var
-  View: TFakeView;
-  ViewRef: IAtlasCompletionView;
-  Controller: TAtlasCompletionController;
-  Typed: TAtlasContext;
+  mView: TFakeView;
+  mViewRef: IAtlasCompletionView;
+  mController: TAtlasCompletionController;
+  mTyped: TAtlasContext;
 begin
   // #414: Nach Esc öffnet Weitertippen im selben Wort nicht automatisch; Strg+Leer schon.
-  View := TFakeView.Create;
-  ViewRef := View;
-  Controller := TAtlasCompletionController.Create(
-    TAtlasFixedCompletionProvider.Create([Item('Add')]) as IAtlasCompletionProvider, ViewRef);
+  mView := TFakeView.Create;
+  mViewRef := mView;
+  mController := TAtlasCompletionController.Create(
+    TAtlasFixedCompletionProvider.Create([Item('Add')]) as IAtlasCompletionProvider, mViewRef);
   try
-    Controller.Start(Context('A'));
+    mController.Start(Context('A'));
     Assert.IsTrue(WaitFor(
       function: Boolean
       begin
-        Result := not Controller.Loading;
+        Result := not mController.Loading;
       end));
-    Assert.IsTrue(Controller.HandleKey(TAtlasNavigationKey.Cancel));
-    Typed := Context('Ad');
-    Typed.Character := Typed.Character + 1;
-    Typed.Automatic := True;
-    Assert.IsTrue(Controller.Dismissed(Typed));
-    Controller.Start(Typed);
-    Assert.IsFalse(Controller.Active, 'automatisch im selben Wort: bleibt zu');
+    Assert.IsTrue(mController.HandleKey(TAtlasNavigationKey.Cancel));
+    mTyped := Context('Ad');
+    mTyped.Character := mTyped.Character + 1;
+    mTyped.Automatic := True;
+    Assert.IsTrue(mController.Dismissed(mTyped));
+    mController.Start(mTyped);
+    Assert.IsFalse(mController.Active, 'automatisch im selben Wort: bleibt zu');
     // Neues Wort: wieder automatisch.
-    Typed.Character := Typed.Character + 5;
-    Assert.IsFalse(Controller.Dismissed(Typed));
+    mTyped.Character := mTyped.Character + 5;
+    Assert.IsFalse(mController.Dismissed(mTyped));
     // Strg+Leer im gesperrten Wort öffnet und hebt die Sperre auf.
-    Typed := Context('Ad');
-    Typed.Character := Typed.Character + 1;
-    Controller.Start(Typed);
-    Assert.IsTrue(Controller.Active, 'Strg+Leer öffnet');
-    Controller.Close;
-    Typed.Automatic := True;
-    Assert.IsFalse(Controller.Dismissed(Typed), 'Schließen ohne Esc sperrt nicht');
+    mTyped := Context('Ad');
+    mTyped.Character := mTyped.Character + 1;
+    mController.Start(mTyped);
+    Assert.IsTrue(mController.Active, 'Strg+Leer öffnet');
+    mController.Close;
+    mTyped.Automatic := True;
+    Assert.IsFalse(mController.Dismissed(mTyped), 'Schließen ohne Esc sperrt nicht');
   finally
-    Controller.Free;
+    mController.Free;
   end;
 end;
 
 procedure TAtlasCompletionControllerTests.NoMatchShowsEmptyState;
 var
-  View: TFakeView;
-  ViewRef: IAtlasCompletionView;
-  Controller: TAtlasCompletionController;
+  mView: TFakeView;
+  mViewRef: IAtlasCompletionView;
+  mController: TAtlasCompletionController;
 begin
-  View := TFakeView.Create;
-  ViewRef := View;
-  Controller := TAtlasCompletionController.Create(
-    TAtlasFixedCompletionProvider.Create([Item('Add'), Item('Clear')]) as IAtlasCompletionProvider, ViewRef);
+  mView := TFakeView.Create;
+  mViewRef := mView;
+  mController := TAtlasCompletionController.Create(
+    TAtlasFixedCompletionProvider.Create([Item('Add'), Item('Clear')]) as IAtlasCompletionProvider, mViewRef);
   try
-    Controller.Start(Context('a'));
+    mController.Start(Context('a'));
     Assert.IsTrue(WaitFor(
       function: Boolean
       begin
-        Result := not Controller.Loading;
+        Result := not mController.Loading;
       end));
     // #423: "Lines.Axq" zeigt den leeren Zustand, Rücktaste bis "Lines.A" wieder Treffer.
-    Controller.UpdatePrefix('axq');
-    Assert.IsTrue(View.Empty);
-    Assert.AreEqual('axq/2', View.EmptyText);
-    Assert.IsTrue(Controller.Active);
-    Assert.IsFalse(Controller.HandleKey(TAtlasNavigationKey.Accept), 'Ohne Treffer gehört Enter dem Editor');
-    Assert.IsFalse(Controller.HandleKey(TAtlasNavigationKey.Down), 'Ohne Treffer gehören Pfeile dem Editor');
-    Controller.UpdatePrefix('a');
-    Assert.IsTrue(View.Shown);
-    Assert.IsFalse(View.Empty);
-    Assert.AreEqual('Add,Clear', View.Names);
+    mController.UpdatePrefix('axq');
+    Assert.IsTrue(mView.Empty);
+    Assert.AreEqual('axq/2', mView.EmptyText);
+    Assert.IsTrue(mController.Active);
+    Assert.IsFalse(mController.HandleKey(TAtlasNavigationKey.Accept), 'Ohne Treffer gehört Enter dem Editor');
+    Assert.IsFalse(mController.HandleKey(TAtlasNavigationKey.Down), 'Ohne Treffer gehören Pfeile dem Editor');
+    mController.UpdatePrefix('a');
+    Assert.IsTrue(mView.Shown);
+    Assert.IsFalse(mView.Empty);
+    Assert.AreEqual('Add,Clear', mView.Names);
   finally
-    Controller.Free;
+    mController.Free;
   end;
 end;
 
 procedure TAtlasCompletionControllerTests.EmptyResultShowsEmptyStateUntilEscape;
 var
-  View: TFakeView;
-  ViewRef: IAtlasCompletionView;
-  Controller: TAtlasCompletionController;
+  mView: TFakeView;
+  mViewRef: IAtlasCompletionView;
+  mController: TAtlasCompletionController;
 begin
-  View := TFakeView.Create;
-  ViewRef := View;
-  Controller := TAtlasCompletionController.Create(
-    TAtlasFixedCompletionProvider.Create(nil) as IAtlasCompletionProvider, ViewRef);
+  mView := TFakeView.Create;
+  mViewRef := mView;
+  mController := TAtlasCompletionController.Create(
+    TAtlasFixedCompletionProvider.Create(nil) as IAtlasCompletionProvider, mViewRef);
   try
-    Controller.Start(Context('mylist'));
+    mController.Start(Context('mylist'));
     Assert.IsTrue(WaitFor(
       function: Boolean
       begin
-        Result := not Controller.Loading;
+        Result := not mController.Loading;
       end));
-    Assert.IsTrue(View.Empty, 'Nichts gefunden: leerer Zustand statt Verschwinden');
-    Assert.AreEqual('mylist/0', View.EmptyText);
-    Assert.IsTrue(Controller.HandleKey(TAtlasNavigationKey.Cancel), 'Esc schließt den leeren Zustand');
-    Assert.IsFalse(Controller.Active);
-    Assert.IsFalse(View.Empty);
+    Assert.IsTrue(mView.Empty, 'Nichts gefunden: leerer Zustand statt Verschwinden');
+    Assert.AreEqual('mylist/0', mView.EmptyText);
+    Assert.IsTrue(mController.HandleKey(TAtlasNavigationKey.Cancel), 'Esc schließt den leeren Zustand');
+    Assert.IsFalse(mController.Active);
+    Assert.IsFalse(mView.Empty);
   finally
-    Controller.Free;
+    mController.Free;
   end;
 end;
 
 procedure TAtlasCompletionControllerTests.CommitCharacterOnlyForClearMatch;
 var
-  View: TFakeView;
-  ViewRef: IAtlasCompletionView;
-  Controller: TAtlasCompletionController;
-  Snippet: TAtlasCompletionItem;
+  mView: TFakeView;
+  mViewRef: IAtlasCompletionView;
+  mController: TAtlasCompletionController;
+  mSnippet: TAtlasCompletionItem;
 begin
-  View := TFakeView.Create;
-  ViewRef := View;
+  mView := TFakeView.Create;
+  mViewRef := mView;
   // Code-Vorlage (#51): nie über ein Zeichen übernommen.
-  Snippet := Item('while');
-  Snippet.Snippet := 'while ${1:Condition} do';
-  Controller := TAtlasCompletionController.Create(
-    TAtlasFixedCompletionProvider.Create([Item('Add'), Item('AddStrings'), Item('Exchange'), Snippet])
-      as IAtlasCompletionProvider, ViewRef);
+  mSnippet := Item('while');
+  mSnippet.Snippet := 'while ${1:Condition} do';
+  mController := TAtlasCompletionController.Create(
+    TAtlasFixedCompletionProvider.Create([Item('Add'), Item('AddStrings'), Item('Exchange'), mSnippet])
+      as IAtlasCompletionProvider, mViewRef);
   try
-    Controller.Start(Context(''));
+    mController.Start(Context(''));
     Assert.IsTrue(WaitFor(
       function: Boolean
       begin
-        Result := not Controller.Loading;
+        Result := not mController.Loading;
       end));
-    Assert.IsFalse(Controller.CanCommitOnCharacter, 'Ohne getipptes Wort übernimmt ";" nichts');
-    Controller.UpdatePrefix('A');
-    Assert.IsTrue(Controller.CanCommitOnCharacter, '"Lines.A" + "(" ergibt "Lines.Add("');
-    Controller.UpdatePrefix('as');
-    Assert.IsTrue(Controller.CanCommitOnCharacter, 'Wortanfänge: AddStrings');
-    Controller.UpdatePrefix('xch');
-    Assert.IsFalse(Controller.CanCommitOnCharacter, 'Nur Teilstring von Exchange: Zeichen bleibt allein');
-    Controller.UpdatePrefix('while');
-    Assert.IsFalse(Controller.CanCommitOnCharacter, '"while(" setzt keine Vorlage ein');
+    Assert.IsFalse(mController.CanCommitOnCharacter, 'Ohne getipptes Wort übernimmt ";" nichts');
+    mController.UpdatePrefix('A');
+    Assert.IsTrue(mController.CanCommitOnCharacter, '"Lines.A" + "(" ergibt "Lines.Add("');
+    mController.UpdatePrefix('as');
+    Assert.IsTrue(mController.CanCommitOnCharacter, 'Wortanfänge: AddStrings');
+    mController.UpdatePrefix('xch');
+    Assert.IsFalse(mController.CanCommitOnCharacter, 'Nur Teilstring von Exchange: Zeichen bleibt allein');
+    mController.UpdatePrefix('while');
+    Assert.IsFalse(mController.CanCommitOnCharacter, '"while(" setzt keine Vorlage ein');
   finally
-    Controller.Free;
+    mController.Free;
   end;
 end;
 procedure TAtlasCompletionControllerTests.TypoSuggestionsTakeOnlyEnter;
 var
-  View: TFakeView;
-  ViewRef: IAtlasCompletionView;
-  Controller: TAtlasCompletionController;
-  Committed: string;
+  mView: TFakeView;
+  mViewRef: IAtlasCompletionView;
+  mController: TAtlasCompletionController;
+  mCommitted: string;
 begin
   // #485, Abnahme: "Lenght" zeigt Length unter „Meintest du“ statt des leeren Zustands; ";" übernimmt
   // nichts, Enter übernimmt.
-  View := TFakeView.Create;
-  ViewRef := View;
-  Controller := TAtlasCompletionController.Create(
+  mView := TFakeView.Create;
+  mViewRef := mView;
+  mController := TAtlasCompletionController.Create(
     TAtlasFixedCompletionProvider.Create([Item('Length'), Item('Low'), Item('High')])
-      as IAtlasCompletionProvider, ViewRef);
+      as IAtlasCompletionProvider, mViewRef);
   try
-    Committed := '';
-    Controller.OnCommit :=
+    mCommitted := '';
+    mController.OnCommit :=
       procedure(const AItem: TAtlasCompletionItem)
       begin
-        Committed := AItem.Name;
+        mCommitted := AItem.Name;
       end;
-    Controller.Start(Context(''));
+    mController.Start(Context(''));
     Assert.IsTrue(WaitFor(
       function: Boolean
       begin
-        Result := not Controller.Loading;
+        Result := not mController.Loading;
       end));
-    Controller.UpdatePrefix('Lenght');
-    Assert.IsFalse(View.Empty, 'Vorschläge statt des Hinweistexts');
-    Assert.AreEqual('#,Length', View.Names);
-    Assert.AreEqual(1, View.Selected, 'Überschrift wird übersprungen');
-    Assert.IsFalse(Controller.CanCommitOnCharacter, '";" fügt nur das Zeichen ein');
-    Assert.IsTrue(Controller.HandleKey(TAtlasNavigationKey.Accept));
-    Assert.AreEqual('Length', Committed);
+    mController.UpdatePrefix('Lenght');
+    Assert.IsFalse(mView.Empty, 'Vorschläge statt des Hinweistexts');
+    Assert.AreEqual('#,Length', mView.Names);
+    Assert.AreEqual(1, mView.Selected, 'Überschrift wird übersprungen');
+    Assert.IsFalse(mController.CanCommitOnCharacter, '";" fügt nur das Zeichen ein');
+    Assert.IsTrue(mController.HandleKey(TAtlasNavigationKey.Accept));
+    Assert.AreEqual('Length', mCommitted);
   finally
-    Controller.Free;
+    mController.Free;
   end;
 end;
 
 procedure TAtlasCompletionControllerTests.ItemsAfterCloseAreDropped;
 var
-  View: TFakeView;
-  ViewRef: IAtlasCompletionView;
-  Controller: TAtlasCompletionController;
+  mView: TFakeView;
+  mViewRef: IAtlasCompletionView;
+  mController: TAtlasCompletionController;
 begin
-  View := TFakeView.Create;
-  ViewRef := View;
-  Controller := TAtlasCompletionController.Create(
-    TAtlasFixedCompletionProvider.Create([Item('Spaet')], 100) as IAtlasCompletionProvider, ViewRef);
+  mView := TFakeView.Create;
+  mViewRef := mView;
+  mController := TAtlasCompletionController.Create(
+    TAtlasFixedCompletionProvider.Create([Item('Spaet')], 100) as IAtlasCompletionProvider, mViewRef);
   try
-    Controller.Start(Context(''));
-    Controller.Close;
-    WaitFor(
+    mController.Start(Context(''));
+    mController.Close;
+    WaitWithin(
       function: Boolean
       begin
         Result := False;
       end, 300);
-    Assert.AreEqual(0, View.ShowCount);
-    Assert.IsFalse(Controller.Active);
+    Assert.AreEqual(0, mView.ShowCount);
+    Assert.IsFalse(mController.Active);
   finally
-    Controller.Free;
+    mController.Free;
   end;
 end;
 
 procedure TAtlasCompletionControllerTests.TruncatedListIsRequeried;
 var
-  View: TFakeView;
-  ViewRef: IAtlasCompletionView;
-  Provider: TPrefixProvider;
-  ProviderRef: IAtlasCompletionProvider;
-  Controller: TAtlasCompletionController;
+  mView: TFakeView;
+  mViewRef: IAtlasCompletionView;
+  mProvider: TPrefixProvider;
+  mProviderRef: IAtlasCompletionProvider;
+  mController: TAtlasCompletionController;
 begin
-  View := TFakeView.Create;
-  ViewRef := View;
-  Provider := TPrefixProvider.Create;
-  ProviderRef := Provider;
-  Controller := TAtlasCompletionController.Create(ProviderRef, ViewRef);
+  mView := TFakeView.Create;
+  mViewRef := mView;
+  mProvider := TPrefixProvider.Create;
+  mProviderRef := mProvider;
+  mController := TAtlasCompletionController.Create(mProviderRef, mViewRef);
   try
-    Controller.Start(Context('ab'));
+    mController.Start(Context('ab'));
     Assert.IsTrue(WaitFor(
       function: Boolean
       begin
-        Result := not Controller.Loading;
+        Result := not mController.Loading;
       end));
-    Assert.AreEqual('ab1,ab2', View.Names);
-    Assert.IsTrue(Controller.Incomplete, 'Gekürzte Liste gemeldet');
+    Assert.AreEqual('ab1,ab2', mView.Names);
+    Assert.IsTrue(mController.Incomplete, 'Gekürzte Liste gemeldet');
     // #431: Weitertippen fragt neu, die neue Liste ersetzt die alte.
-    Controller.Requery(Context('abc'));
+    mController.Requery(Context('abc'));
     Assert.IsTrue(WaitFor(
       function: Boolean
       begin
-        Result := not Controller.Loading;
+        Result := not mController.Loading;
       end));
-    Assert.AreEqual(2, Provider.Queries);
-    Assert.AreEqual('abc1,abc2', View.Names);
-    Assert.IsTrue(View.Shown);
+    Assert.AreEqual(2, mProvider.Queries);
+    Assert.AreEqual('abc1,abc2', mView.Names);
+    Assert.IsTrue(mView.Shown);
   finally
-    Controller.Free;
+    mController.Free;
   end;
 end;
 
 procedure TAtlasCompletionControllerTests.SyntaxNoticeReachesView;
 var
-  View: TFakeView;
-  ViewRef: IAtlasCompletionView;
-  Provider: TPrefixProvider;
-  ProviderRef: IAtlasCompletionProvider;
-  Controller: TAtlasCompletionController;
+  mView: TFakeView;
+  mViewRef: IAtlasCompletionView;
+  mProvider: TPrefixProvider;
+  mProviderRef: IAtlasCompletionProvider;
+  mController: TAtlasCompletionController;
 begin
   // #457: Der Hinweis der Quelle geht an die Ansicht; die nächste Abfrage ohne Hinweis blendet ihn aus.
-  View := TFakeView.Create;
-  ViewRef := View;
-  Provider := TPrefixProvider.Create;
-  Provider.Syntax.Trust := TAtlasSyntaxTrust.Limited;
-  Provider.Syntax.Line := 12;
-  Provider.Syntax.Message := 'Ausdruck erwartet';
-  ProviderRef := Provider;
-  Controller := TAtlasCompletionController.Create(ProviderRef, ViewRef);
+  mView := TFakeView.Create;
+  mViewRef := mView;
+  mProvider := TPrefixProvider.Create;
+  mProvider.Syntax.Trust := TAtlasSyntaxTrust.Limited;
+  mProvider.Syntax.Line := 12;
+  mProvider.Syntax.Message := 'Ausdruck erwartet';
+  mProviderRef := mProvider;
+  mController := TAtlasCompletionController.Create(mProviderRef, mViewRef);
   try
-    Controller.Start(Context('ab'));
+    mController.Start(Context('ab'));
     Assert.IsTrue(WaitFor(
       function: Boolean
       begin
-        Result := not Controller.Loading;
+        Result := not mController.Loading;
       end));
-    Assert.AreEqual(Ord(TAtlasSyntaxTrust.Limited), Ord(Controller.Syntax.Trust));
-    Assert.AreEqual(Ord(TAtlasSyntaxTrust.Limited), Ord(View.Syntax.Trust));
-    Assert.AreEqual(12, View.Syntax.Line);
-    Assert.AreEqual('ab1,ab2', View.Names, 'Einträge bleiben');
-    Provider.Syntax := Default(TAtlasSyntaxNotice);
-    Controller.Requery(Context('abc'));
+    Assert.AreEqual(Ord(TAtlasSyntaxTrust.Limited), Ord(mController.Syntax.Trust));
+    Assert.AreEqual(Ord(TAtlasSyntaxTrust.Limited), Ord(mView.Syntax.Trust));
+    Assert.AreEqual(12, mView.Syntax.Line);
+    Assert.AreEqual('ab1,ab2', mView.Names, 'Einträge bleiben');
+    mProvider.Syntax := Default(TAtlasSyntaxNotice);
+    mController.Requery(Context('abc'));
     Assert.IsTrue(WaitFor(
       function: Boolean
       begin
-        Result := not Controller.Loading;
+        Result := not mController.Loading;
       end));
-    Assert.AreEqual(Ord(TAtlasSyntaxTrust.Sure), Ord(Controller.Syntax.Trust));
-    Assert.AreEqual(Ord(TAtlasSyntaxTrust.Sure), Ord(View.Syntax.Trust));
+    Assert.AreEqual(Ord(TAtlasSyntaxTrust.Sure), Ord(mController.Syntax.Trust));
+    Assert.AreEqual(Ord(TAtlasSyntaxTrust.Sure), Ord(mView.Syntax.Trust));
     // Schließen setzt zurück.
-    Provider.Syntax.Trust := TAtlasSyntaxTrust.Unknown;
-    Controller.Requery(Context('abcd'));
+    mProvider.Syntax.Trust := TAtlasSyntaxTrust.Unknown;
+    mController.Requery(Context('abcd'));
     Assert.IsTrue(WaitFor(
       function: Boolean
       begin
-        Result := not Controller.Loading;
+        Result := not mController.Loading;
       end));
-    Assert.AreEqual(Ord(TAtlasSyntaxTrust.Unknown), Ord(Controller.Syntax.Trust));
-    Controller.Close;
-    Assert.AreEqual(Ord(TAtlasSyntaxTrust.Sure), Ord(Controller.Syntax.Trust));
+    Assert.AreEqual(Ord(TAtlasSyntaxTrust.Unknown), Ord(mController.Syntax.Trust));
+    mController.Close;
+    Assert.AreEqual(Ord(TAtlasSyntaxTrust.Sure), Ord(mController.Syntax.Trust));
   finally
-    Controller.Free;
+    mController.Free;
   end;
 end;
 
 procedure TAtlasCompletionControllerTests.CompleteListFiltersLocallyUntilPrefixShrinks;
 var
-  View: TFakeView;
-  ViewRef: IAtlasCompletionView;
-  Provider: TPrefixProvider;
-  ProviderRef: IAtlasCompletionProvider;
-  Controller: TAtlasCompletionController;
+  mView: TFakeView;
+  mViewRef: IAtlasCompletionView;
+  mProvider: TPrefixProvider;
+  mProviderRef: IAtlasCompletionProvider;
+  mController: TAtlasCompletionController;
 begin
-  View := TFakeView.Create;
-  ViewRef := View;
-  Provider := TPrefixProvider.Create;
-  Provider.CompleteList := True;
-  ProviderRef := Provider;
-  Controller := TAtlasCompletionController.Create(ProviderRef, ViewRef);
+  mView := TFakeView.Create;
+  mViewRef := mView;
+  mProvider := TPrefixProvider.Create;
+  mProvider.CompleteList := True;
+  mProviderRef := mProvider;
+  mController := TAtlasCompletionController.Create(mProviderRef, mViewRef);
   try
-    Controller.Start(Context('ab'));
+    mController.Start(Context('ab'));
     Assert.IsTrue(WaitFor(
       function: Boolean
       begin
-        Result := not Controller.Loading;
+        Result := not mController.Loading;
       end));
-    Assert.IsFalse(Controller.Incomplete);
+    Assert.IsFalse(mController.Incomplete);
     // Der Server hat nach "ab" gefiltert: Weitertippen filtert lokal, kürzer oder anders fragt neu (#616).
-    Assert.IsFalse(Controller.NeedsQuery('abc'));
-    Assert.IsFalse(Controller.NeedsQuery('ABx'), 'Groß- und Kleinschreibung egal');
-    Assert.IsTrue(Controller.NeedsQuery('a'));
-    Assert.IsTrue(Controller.NeedsQuery('xb'));
-    Controller.UpdatePrefix('ab1');
-    Assert.AreEqual(1, Provider.Queries);
+    Assert.IsFalse(mController.NeedsQuery('abc'));
+    Assert.IsFalse(mController.NeedsQuery('ABx'), 'Groß- und Kleinschreibung egal');
+    Assert.IsTrue(mController.NeedsQuery('a'));
+    Assert.IsTrue(mController.NeedsQuery('xb'));
+    mController.UpdatePrefix('ab1');
+    Assert.AreEqual(1, mProvider.Queries);
     // Lokal gefiltert; ab2 steht als Tippfehler-Kandidat unter „Meintest du“ (#485, # = Überschrift).
-    Assert.AreEqual('ab1,#,ab2', View.Names);
-    Controller.Close;
-    Assert.IsFalse(Controller.NeedsQuery('a'), 'geschlossen');
+    Assert.AreEqual('ab1,#,ab2', mView.Names);
+    mController.Close;
+    Assert.IsFalse(mController.NeedsQuery('a'), 'geschlossen');
   finally
-    Controller.Free;
+    mController.Free;
   end;
 end;
 
 procedure TAtlasCompletionControllerTests.PartialResultsReplaceThenAppend;
 var
-  View: TFakeView;
-  ViewRef: IAtlasCompletionView;
-  Provider: TPrefixProvider;
-  ProviderRef: IAtlasCompletionProvider;
-  Controller: TAtlasCompletionController;
+  mView: TFakeView;
+  mViewRef: IAtlasCompletionView;
+  mProvider: TPrefixProvider;
+  mProviderRef: IAtlasCompletionProvider;
+  mController: TAtlasCompletionController;
 begin
-  View := TFakeView.Create;
-  ViewRef := View;
-  Provider := TPrefixProvider.Create;
-  Provider.Staged := True;
-  ProviderRef := Provider;
-  Controller := TAtlasCompletionController.Create(ProviderRef, ViewRef);
+  mView := TFakeView.Create;
+  mViewRef := mView;
+  mProvider := TPrefixProvider.Create;
+  mProvider.Staged := True;
+  mProviderRef := mProvider;
+  mController := TAtlasCompletionController.Create(mProviderRef, mViewRef);
   try
-    Controller.Start(Context('ab'));
+    mController.Start(Context('ab'));
     Assert.IsTrue(WaitFor(
       function: Boolean
       begin
-        Result := not Controller.Loading;
+        Result := not mController.Loading;
       end));
-    Assert.AreEqual('ab1,ab2', View.Names);
+    Assert.AreEqual('ab1,ab2', mView.Names);
     // Requery: Das erste Teil ersetzt die alte Liste, das zweite hängt an (#616).
-    Controller.Requery(Context('a'));
+    mController.Requery(Context('a'));
     Assert.IsTrue(WaitFor(
       function: Boolean
       begin
-        Result := not Controller.Loading;
+        Result := not mController.Loading;
       end));
-    Assert.AreEqual('a1,a2', View.Names);
+    Assert.AreEqual('a1,a2', mView.Names);
   finally
-    Controller.Free;
+    mController.Free;
   end;
 end;
 
 procedure TAtlasCompletionControllerTests.RequeryKeepsSelectedEntry;
 var
-  View: TFakeView;
-  ViewRef: IAtlasCompletionView;
-  Controller: TAtlasCompletionController;
+  mView: TFakeView;
+  mViewRef: IAtlasCompletionView;
+  mController: TAtlasCompletionController;
 begin
-  View := TFakeView.Create;
-  ViewRef := View;
-  Controller := TAtlasCompletionController.Create(TPrefixProvider.Create as IAtlasCompletionProvider, ViewRef);
+  mView := TFakeView.Create;
+  mViewRef := mView;
+  mController := TAtlasCompletionController.Create(TPrefixProvider.Create as IAtlasCompletionProvider, mViewRef);
   try
-    Controller.Start(Context('ab'));
+    mController.Start(Context('ab'));
     Assert.IsTrue(WaitFor(
       function: Boolean
       begin
-        Result := not Controller.Loading;
+        Result := not mController.Loading;
       end));
-    Controller.HandleKey(TAtlasNavigationKey.Down);
-    Assert.AreEqual(1, View.Selected);
+    mController.HandleKey(TAtlasNavigationKey.Down);
+    Assert.AreEqual(1, mView.Selected);
     // Neue Einträge verschieben die Auswahl nicht (#431).
-    Controller.Requery(Context('ab'));
+    mController.Requery(Context('ab'));
     Assert.IsTrue(WaitFor(
       function: Boolean
       begin
-        Result := not Controller.Loading;
+        Result := not mController.Loading;
       end));
-    Assert.AreEqual('ab1,ab2', View.Names);
-    Assert.AreEqual(1, View.Selected);
+    Assert.AreEqual('ab1,ab2', mView.Names);
+    Assert.AreEqual(1, mView.Selected);
   finally
-    Controller.Free;
+    mController.Free;
   end;
 end;
 
@@ -965,19 +978,19 @@ end;
 /// <summary>Zwei Quellen mit Namen: "Langsam" liefert nach ADelayMs, "Schnell" sofort.</summary>
 function TimedProviders(ADelayMs: Cardinal): IAtlasCompletionProvider;
 var
-  Providers: TAtlasCompletionProviders;
-  Slow, Fast: TAtlasFixedCompletionProvider;
+  mProviders: TAtlasCompletionProviders;
+  mSlow, mFast: TAtlasFixedCompletionProvider;
 begin
-  Providers := TAtlasCompletionProviders.Create;
-  Result := Providers;
+  mProviders := TAtlasCompletionProviders.Create;
+  Result := mProviders;
   // Zeitlimit höher als die Verzögerung: Die Quelle liefert spät, wird aber nicht abgebrochen.
-  Providers.TimeLimitMs := 2000;
-  Slow := TAtlasFixedCompletionProvider.Create([Item('Langsam1'), Item('Langsam2')], ADelayMs);
-  Slow.Name := 'Langsam';
-  Providers.Add(Slow);
-  Fast := TAtlasFixedCompletionProvider.Create([Item('Schnell')]);
-  Fast.Name := 'Schnell';
-  Providers.Add(Fast);
+  mProviders.TimeLimitMs := 2000;
+  mSlow := TAtlasFixedCompletionProvider.Create([Item('Langsam1'), Item('Langsam2')], ADelayMs);
+  mSlow.Name := 'Langsam';
+  mProviders.Add(mSlow);
+  mFast := TAtlasFixedCompletionProvider.Create([Item('Schnell')]);
+  mFast.Name := 'Schnell';
+  mProviders.Add(mFast);
 end;
 
 procedure TAtlasCompletionTimingTests.TearDown;
@@ -988,137 +1001,137 @@ end;
 
 procedure TAtlasCompletionTimingTests.DelayedProviderIsOverBudget;
 var
-  View: TFakeView;
-  ViewRef: IAtlasCompletionView;
-  Controller: TAtlasCompletionController;
-  Start: TAtlasContext;
-  Queries: TArray<TAtlasQueryTiming>;
-  Rows: TArray<TAtlasTimingRow>;
-  Row: TAtlasTimingRow;
-  SlowWarn, FastSeen: Boolean;
+  mView: TFakeView;
+  mViewRef: IAtlasCompletionView;
+  mController: TAtlasCompletionController;
+  mStart: TAtlasContext;
+  mQueries: TArray<TAtlasQueryTiming>;
+  mRows: TArray<TAtlasTimingRow>;
+  mRow: TAtlasTimingRow;
+  mSlowWarn, mFastSeen: Boolean;
 begin
   TAtlasQueryTimings.Shared.Clear;
   TAtlasQueryTimings.Enabled := True;
-  View := TFakeView.Create;
-  ViewRef := View;
-  Controller := TAtlasCompletionController.Create(TimedProviders(200), ViewRef);
+  mView := TFakeView.Create;
+  mViewRef := mView;
+  mController := TAtlasCompletionController.Create(TimedProviders(200), mViewRef);
   try
-    Start := Context('');
-    Start.Started := TAtlasQueryTimings.Stamp;
-    Controller.Start(Start);
+    mStart := Context('');
+    mStart.Started := TAtlasQueryTimings.Stamp;
+    mController.Start(mStart);
     Assert.IsTrue(WaitFor(
       function: Boolean
       begin
-        Result := not Controller.Loading;
+        Result := not mController.Loading;
       end));
   finally
-    Controller.Free;
+    mController.Free;
   end;
-  Queries := TAtlasQueryTimings.Shared.Snapshot;
-  Assert.AreEqual(1, Integer(Length(Queries)));
-  Assert.AreEqual(2, Integer(Length(Queries[0].Providers)), 'beide Quellen mit Namen');
-  Assert.IsTrue(Queries[0].ContextMs >= 0, 'Kontext gemessen');
-  Assert.IsTrue(Queries[0].FilterSortSteps > 0, 'Filtern und Sortieren gemessen');
-  Assert.IsTrue(Queries[0].FirstVisibleMs >= 0, 'erste Liste gemessen');
-  Assert.AreEqual(3, Integer(Queries[0].Count));
+  mQueries := TAtlasQueryTimings.Shared.Snapshot;
+  Assert.AreEqual(1, Integer(Length(mQueries)));
+  Assert.AreEqual(2, Integer(Length(mQueries[0].Providers)), 'beide Quellen mit Namen');
+  Assert.IsTrue(mQueries[0].ContextMs >= 0, 'Kontext gemessen');
+  Assert.IsTrue(mQueries[0].FilterSortSteps > 0, 'Filtern und Sortieren gemessen');
+  Assert.IsTrue(mQueries[0].FirstVisibleMs >= 0, 'erste Liste gemessen');
+  Assert.AreEqual(3, Integer(mQueries[0].Count));
   // Abnahme: Die Zeit des verzögerten Providers erscheint in Warnfarbe, die des schnellen nicht.
-  Rows := TAtlasTimingRows.Build(Queries);
-  SlowWarn := False;
-  FastSeen := False;
-  for Row in Rows do
+  mRows := TAtlasTimingRows.Build(mQueries);
+  mSlowWarn := False;
+  mFastSeen := False;
+  for mRow in mRows do
   begin
-    if Row.Kind = TAtlasTimingRowKind.Provider then
+    if mRow.Kind = TAtlasTimingRowKind.Provider then
     begin
-      if Row.Name = 'Langsam' then
+      if mRow.Name = 'Langsam' then
       begin
-        Assert.IsTrue(Row.Last >= 150, 'Verzögerung gemessen');
-        SlowWarn := Row.LastWarn;
+        Assert.IsTrue(mRow.Last >= 150, 'Verzögerung gemessen');
+        mSlowWarn := mRow.LastWarn;
       end
-      else if Row.Name = 'Schnell' then
+      else if mRow.Name = 'Schnell' then
       begin
-        FastSeen := True;
-        Assert.IsFalse(Row.LastWarn, 'schnelle Quelle im Budget');
+        mFastSeen := True;
+        Assert.IsFalse(mRow.LastWarn, 'schnelle Quelle im Budget');
       end;
     end;
   end;
-  Assert.IsTrue(SlowWarn, 'verzögerte Quelle über dem Budget');
-  Assert.IsTrue(FastSeen);
+  Assert.IsTrue(mSlowWarn, 'verzögerte Quelle über dem Budget');
+  Assert.IsTrue(mFastSeen);
 end;
 
 procedure TAtlasCompletionTimingTests.NoSourceTextInMeasurements;
 var
-  View: TFakeView;
-  ViewRef: IAtlasCompletionView;
-  Controller: TAtlasCompletionController;
-  Start: TAtlasContext;
-  Input: TAtlasTimingReportInput;
-  Report: string;
+  mView: TFakeView;
+  mViewRef: IAtlasCompletionView;
+  mController: TAtlasCompletionController;
+  mStart: TAtlasContext;
+  mInput: TAtlasTimingReportInput;
+  mReport: string;
 begin
   TAtlasQueryTimings.Shared.Clear;
   TAtlasQueryTimings.Enabled := True;
-  View := TFakeView.Create;
-  ViewRef := View;
-  Controller := TAtlasCompletionController.Create(TimedProviders(0), ViewRef);
+  mView := TFakeView.Create;
+  mViewRef := mView;
+  mController := TAtlasCompletionController.Create(TimedProviders(0), mViewRef);
   try
-    Start := Context('Lan');
-    Start.FileName := 'C:\Users\Tester\Projekt\GeheimeUnit.pas';
-    Start.Text := 'procedure GeheimerQuelltext; begin Lan end;';
-    Controller.Start(Start);
+    mStart := Context('Lan');
+    mStart.FileName := 'C:\Users\Tester\Projekt\GeheimeUnit.pas';
+    mStart.Text := 'procedure GeheimerQuelltext; begin Lan end;';
+    mController.Start(mStart);
     Assert.IsTrue(WaitFor(
       function: Boolean
       begin
-        Result := not Controller.Loading;
+        Result := not mController.Loading;
       end));
   finally
-    Controller.Free;
+    mController.Free;
   end;
-  Input := Default(TAtlasTimingReportInput);
-  Input.AtlasVersion := '1.0.0';
-  Input.IdeVersion := '37.0';
-  Input.Platform := 'Win64';
-  Input.Settings := '{}';
-  Input.Created := Now;
+  mInput := Default(TAtlasTimingReportInput);
+  mInput.AtlasVersion := '1.0.0';
+  mInput.IdeVersion := '37.0';
+  mInput.Platform := 'Win64';
+  mInput.Settings := '{}';
+  mInput.Created := Now;
   // Abnahme: Der kopierte Bericht enthält keinen Quelltext und ohne Häkchen keinen Dateinamen.
-  Report := TAtlasTimingReport.Build(TAtlasQueryTimings.Shared.Snapshot, Input);
-  Assert.IsFalse(Report.Contains('GeheimerQuelltext'), 'kein Quelltext');
-  Assert.IsFalse(Report.Contains('begin Lan'), 'kein Quelltext');
-  Assert.IsFalse(Report.Contains('GeheimeUnit'), 'Dateiname nur auf Wunsch');
-  Assert.IsFalse(Report.Contains('Tester'), 'kein Ordner');
-  Input.FileNames := True;
-  Report := TAtlasTimingReport.Build(TAtlasQueryTimings.Shared.Snapshot, Input);
-  Assert.IsTrue(Report.Contains('GeheimeUnit.pas'), 'auf Wunsch der Dateiname');
-  Assert.IsFalse(Report.Contains('Tester'), 'auch dann ohne Ordner');
-  Assert.IsFalse(Report.Contains('GeheimerQuelltext'), 'auch dann kein Quelltext');
+  mReport := TAtlasTimingReport.Build(TAtlasQueryTimings.Shared.Snapshot, mInput);
+  Assert.IsFalse(mReport.Contains('GeheimerQuelltext'), 'kein Quelltext');
+  Assert.IsFalse(mReport.Contains('begin Lan'), 'kein Quelltext');
+  Assert.IsFalse(mReport.Contains('GeheimeUnit'), 'Dateiname nur auf Wunsch');
+  Assert.IsFalse(mReport.Contains('Tester'), 'kein Ordner');
+  mInput.FileNames := True;
+  mReport := TAtlasTimingReport.Build(TAtlasQueryTimings.Shared.Snapshot, mInput);
+  Assert.IsTrue(mReport.Contains('GeheimeUnit.pas'), 'auf Wunsch der Dateiname');
+  Assert.IsFalse(mReport.Contains('Tester'), 'auch dann ohne Ordner');
+  Assert.IsFalse(mReport.Contains('GeheimerQuelltext'), 'auch dann kein Quelltext');
 end;
 
 procedure TAtlasCompletionTimingTests.OffMeasuresNothing;
 var
-  View: TFakeView;
-  ViewRef: IAtlasCompletionView;
-  Controller: TAtlasCompletionController;
-  Version: Integer;
+  mView: TFakeView;
+  mViewRef: IAtlasCompletionView;
+  mController: TAtlasCompletionController;
+  mVersion: Integer;
 begin
   // Abnahme: Mit diagnosticMode.enabled aus misst Atlas nichts; der Ablauf ist derselbe.
   TAtlasQueryTimings.Shared.Clear;
   TAtlasQueryTimings.Enabled := False;
-  Version := TAtlasQueryTimings.Shared.Version;
-  View := TFakeView.Create;
-  ViewRef := View;
-  Controller := TAtlasCompletionController.Create(TimedProviders(0), ViewRef);
+  mVersion := TAtlasQueryTimings.Shared.Version;
+  mView := TFakeView.Create;
+  mViewRef := mView;
+  mController := TAtlasCompletionController.Create(TimedProviders(0), mViewRef);
   try
-    Controller.Start(Context(''));
+    mController.Start(Context(''));
     Assert.IsTrue(WaitFor(
       function: Boolean
       begin
-        Result := not Controller.Loading;
+        Result := not mController.Loading;
       end));
     // Beide Quellen liefern wie sonst; die Reihenfolge hängt davon ab, welche zuerst fertig ist.
-    Assert.Contains(View.Names, 'Langsam1');
-    Assert.Contains(View.Names, 'Schnell');
+    Assert.Contains(mView.Names, 'Langsam1');
+    Assert.Contains(mView.Names, 'Schnell');
   finally
-    Controller.Free;
+    mController.Free;
   end;
-  Assert.AreEqual(Version, TAtlasQueryTimings.Shared.Version, 'keine Messung');
+  Assert.AreEqual(mVersion, TAtlasQueryTimings.Shared.Version, 'keine Messung');
   Assert.AreEqual(0, Integer(Length(TAtlasQueryTimings.Shared.Snapshot)));
 end;
 

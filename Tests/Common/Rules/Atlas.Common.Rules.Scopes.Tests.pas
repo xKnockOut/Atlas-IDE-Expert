@@ -34,7 +34,7 @@ uses
   Atlas.Common.Rules.Scopes;
 
 const
-  UnitText =
+  cUnitText =
     'unit U;' + #10 +                      // 0
     'interface' + #10 +                    // 1
     'procedure Frei;' + #10 +              // 2
@@ -60,35 +60,35 @@ const
 
 procedure TFindingScopesTests.MethodHasQualifiedName;
 var
-  Scopes: TFindingScopes;
+  mScopes: TFindingScopes;
 begin
-  Scopes := TFindingScopes.FromText(UnitText);
-  Assert.AreEqual('TFoo.Bar', Scopes.At(4));
-  Assert.AreEqual('TFoo.Bar', Scopes.At(10));
-  Assert.AreEqual('TFoo.Bar', Scopes.At(11));
-  Assert.AreEqual('Frei', Scopes.At(13));
+  mScopes := TFindingScopes.FromText(cUnitText);
+  Assert.AreEqual('TFoo.Bar', mScopes.At(4));
+  Assert.AreEqual('TFoo.Bar', mScopes.At(10));
+  Assert.AreEqual('TFoo.Bar', mScopes.At(11));
+  Assert.AreEqual('Frei', mScopes.At(13));
 end;
 
 procedure TFindingScopesTests.NestedRoutineAppendsName;
 begin
-  Assert.AreEqual('TFoo.Bar.Lokal', TFindingScopes.FromText(UnitText).At(7));
+  Assert.AreEqual('TFoo.Bar.Lokal', TFindingScopes.FromText(cUnitText).At(7));
 end;
 
 procedure TFindingScopesTests.OutsideRoutineIsSection;
 var
-  Scopes: TFindingScopes;
+  mScopes: TFindingScopes;
 begin
-  Scopes := TFindingScopes.FromText(UnitText);
-  Assert.AreEqual('unit', Scopes.At(0));
-  Assert.AreEqual('interface', Scopes.At(2));
-  Assert.AreEqual('implementation', Scopes.At(3));
-  Assert.AreEqual('initialization', Scopes.At(16));
-  Assert.AreEqual('finalization', Scopes.At(18));
+  mScopes := TFindingScopes.FromText(cUnitText);
+  Assert.AreEqual('unit', mScopes.At(0));
+  Assert.AreEqual('interface', mScopes.At(2));
+  Assert.AreEqual('implementation', mScopes.At(3));
+  Assert.AreEqual('initialization', mScopes.At(16));
+  Assert.AreEqual('finalization', mScopes.At(18));
 end;
 
 procedure TFindingScopesTests.ProgramMainBlock;
 const
-  Text =
+  cText =
     'program P;' + #10 +
     'procedure Hilfe;' + #10 +
     'begin' + #10 +
@@ -97,44 +97,44 @@ const
     '  Hilfe;' + #10 +
     'end.';
 var
-  Scopes: TFindingScopes;
+  mScopes: TFindingScopes;
 begin
-  Scopes := TFindingScopes.FromText(Text);
-  Assert.AreEqual('Hilfe', Scopes.At(2));
-  Assert.AreEqual('program', Scopes.At(5));
+  mScopes := TFindingScopes.FromText(cText);
+  Assert.AreEqual('Hilfe', mScopes.At(2));
+  Assert.AreEqual('program', mScopes.At(5));
 end;
 
 procedure TFindingScopesTests.ForwardDeclarationIsNoRoutine;
 var
-  Scopes: TFindingScopes;
+  mScopes: TFindingScopes;
 begin
   // "procedure Frei;" im interface hat keinen Rumpf.
-  Scopes := TFindingScopes.FromText(UnitText);
-  Assert.AreEqual(3, Scopes.RoutineCount);
-  Assert.AreEqual('interface', Scopes.At(2));
+  mScopes := TFindingScopes.FromText(cUnitText);
+  Assert.AreEqual(3, mScopes.RoutineCount);
+  Assert.AreEqual('interface', mScopes.At(2));
 end;
 
 procedure TFindingScopesTests.HeaderLineAndHasRoutine;
 var
-  Scopes: TFindingScopes;
+  mScopes: TFindingScopes;
 begin
-  Scopes := TFindingScopes.FromText(UnitText);
-  Assert.AreEqual(4, Scopes.HeaderLine(10));
-  Assert.AreEqual(5, Scopes.HeaderLine(7));
-  Assert.AreEqual(-1, Scopes.HeaderLine(16));
-  Assert.IsTrue(Scopes.HasRoutine('tfoo.bar'));
-  Assert.IsTrue(Scopes.HasRoutine('TFoo.Bar.Lokal'));
-  Assert.IsFalse(Scopes.HasRoutine('TFoo.Baz'));
+  mScopes := TFindingScopes.FromText(cUnitText);
+  Assert.AreEqual(4, mScopes.HeaderLine(10));
+  Assert.AreEqual(5, mScopes.HeaderLine(7));
+  Assert.AreEqual(-1, mScopes.HeaderLine(16));
+  Assert.IsTrue(mScopes.HasRoutine('tfoo.bar'));
+  Assert.IsTrue(mScopes.HasRoutine('TFoo.Bar.Lokal'));
+  Assert.IsFalse(mScopes.HasRoutine('TFoo.Baz'));
 end;
 
 procedure TFindingScopesTests.EmptyWithoutTree;
 var
-  Scopes: TFindingScopes;
+  mScopes: TFindingScopes;
 begin
-  Scopes := TFindingScopes.FromTree(nil);
-  Assert.AreEqual('', Scopes.At(0));
-  Assert.AreEqual(0, Scopes.RoutineCount);
-  Assert.AreEqual(-1, Scopes.HeaderLine(0));
+  mScopes := TFindingScopes.FromTree(nil);
+  Assert.AreEqual('', mScopes.At(0));
+  Assert.AreEqual(0, mScopes.RoutineCount);
+  Assert.AreEqual(-1, mScopes.HeaderLine(0));
 end;
 
 initialization

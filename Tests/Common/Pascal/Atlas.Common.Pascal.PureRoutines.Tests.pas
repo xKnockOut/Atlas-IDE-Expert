@@ -38,18 +38,18 @@ end;
 
 procedure TPureRoutinesTests.ListHasNoDuplicates;
 var
-  Seen: TDictionary<string, Boolean>;
-  Name: string;
+  mSeen: TDictionary<string, Boolean>;
+  mName: string;
 begin
-  Seen := TDictionary<string, Boolean>.Create;
+  mSeen := TDictionary<string, Boolean>.Create;
   try
-    for Name in TPureRoutines.Names do
+    for mName in TPureRoutines.Names do
     begin
-      Assert.IsFalse(Seen.ContainsKey(LowerCase(Name)), Name);
-      Seen.Add(LowerCase(Name), True);
+      Assert.IsFalse(mSeen.ContainsKey(LowerCase(mName)), mName);
+      mSeen.Add(LowerCase(mName), True);
     end;
   finally
-    Seen.Free;
+    mSeen.Free;
   end;
 end;
 

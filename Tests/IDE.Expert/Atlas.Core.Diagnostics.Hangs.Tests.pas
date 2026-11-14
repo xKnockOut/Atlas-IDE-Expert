@@ -52,243 +52,243 @@ end;
 
 procedure TAtlasHangTests.BelowThresholdWritesNothing;
 var
-  Monitor: TAtlasHangMonitor;
+  mMonitor: TAtlasHangMonitor;
 begin
-  Monitor := TAtlasHangMonitor.Create(500);
+  mMonitor := TAtlasHangMonitor.Create(500);
   try
-    Assert.AreEqual('', Monitor.Finish(MakeHang(499, '')));
-    Assert.AreEqual(0, Integer(Monitor.Count));
+    Assert.AreEqual('', mMonitor.Finish(MakeHang(499, '')));
+    Assert.AreEqual(0, Integer(mMonitor.Count));
   finally
-    Monitor.Free;
+    mMonitor.Free;
   end;
 end;
 
 procedure TAtlasHangTests.ReportNamesAtlasActionAndCountsSession;
 var
-  Monitor: TAtlasHangMonitor;
-  Hang: TAtlasHang;
-  Text: string;
+  mMonitor: TAtlasHangMonitor;
+  mHang: TAtlasHang;
+  mText: string;
 begin
-  Monitor := TAtlasHangMonitor.Create(500);
+  mMonitor := TAtlasHangMonitor.Create(500);
   try
-    Hang := MakeHang(730, 'Vervollständigung filtern');
-    Hang.Window := 'Unit1.pas';
-    Hang.Frames := ['Atlas.IDE.Expert.bpl+1A2B', 'coreide370.bpl+FF'];
-    Text := Monitor.Finish(Hang);
-    Assert.Contains(Text, 'Hänger 730 ms um 10:15:00');
-    Assert.Contains(Text, 'Atlas: Vervollständigung filtern, 730 ms');
-    Assert.Contains(Text, 'Fenster: Unit1.pas');
-    Assert.Contains(Text, 'Atlas.IDE.Expert.bpl+1A2B');
+    mHang := MakeHang(730, 'Vervollständigung filtern');
+    mHang.Window := 'Unit1.pas';
+    mHang.Frames := ['Atlas.IDE.Expert.bpl+1A2B', 'coreide370.bpl+FF'];
+    mText := mMonitor.Finish(mHang);
+    Assert.Contains(mText, 'Hänger 730 ms um 10:15:00');
+    Assert.Contains(mText, 'Atlas: Vervollständigung filtern, 730 ms');
+    Assert.Contains(mText, 'Fenster: Unit1.pas');
+    Assert.Contains(mText, 'Atlas.IDE.Expert.bpl+1A2B');
     // Ohne Aktion, aber Atlas im Stapel: zählt als beteiligt.
-    Hang := MakeHang(1500, '');
-    Hang.Frames := ['Atlas.IDE.Expert.bpl+10'];
-    Assert.Contains(Monitor.Finish(Hang), 'Atlas im Aufrufstapel');
-    Monitor.Finish(MakeHang(600, ''));
-    Assert.AreEqual('Sitzung: 3 Hänger, längster 1500 ms, 2 mit Atlas', Monitor.Summary);
+    mHang := MakeHang(1500, '');
+    mHang.Frames := ['Atlas.IDE.Expert.bpl+10'];
+    Assert.Contains(mMonitor.Finish(mHang), 'Atlas im Aufrufstapel');
+    mMonitor.Finish(MakeHang(600, ''));
+    Assert.AreEqual('Sitzung: 3 Hänger, längster 1500 ms, 2 mit Atlas', mMonitor.Summary);
   finally
-    Monitor.Free;
+    mMonitor.Free;
   end;
 end;
 
 procedure TAtlasHangTests.ActivityScopesNest;
 var
-  Outer, Inner: IInterface;
+  mOuter, mInner: IInterface;
 begin
   Assert.AreEqual('', TAtlasActivity.Current);
-  Outer := TAtlasActivity.Scope('Vervollständigung');
-  Inner := TAtlasActivity.Scope('Filtern');
+  mOuter := TAtlasActivity.Scope('Vervollständigung');
+  mInner := TAtlasActivity.Scope('Filtern');
   Assert.AreEqual('Filtern', TAtlasActivity.Current);
-  Inner := nil;
+  mInner := nil;
   Assert.AreEqual('Vervollständigung', TAtlasActivity.Current);
-  Outer := nil;
+  mOuter := nil;
   Assert.AreEqual('', TAtlasActivity.Current);
 end;
 
 procedure TAtlasHangTests.ActivityTimesOutermostDuringStart;
 var
-  Times: TAtlasStartTimes;
-  Clock: TFunc<Int64>;
-  Tick: Int64;
-  Outer, Inner: IInterface;
-  Parts: TArray<TAtlasStartPart>;
+  mTimes: TAtlasStartTimes;
+  mClock: TFunc<Int64>;
+  mTick: Int64;
+  mOuter, mInner: IInterface;
+  mParts: TArray<TAtlasStartPart>;
 begin
   // Bis zur freien Nachrichtenschleife zählt jede äußerste Atlas-Aktion zu den Startanteilen.
-  Tick := 0;
-  Clock :=
+  mTick := 0;
+  mClock :=
     function: Int64
     begin
-      Inc(Tick, 40);
-      Result := Tick;
+      Inc(mTick, 40);
+      Result := mTick;
     end;
-  Times := TAtlasStartTimes.Create(Clock);
+  mTimes := TAtlasStartTimes.Create(mClock);
   try
-    TAtlasActivity.TimeInto(Times);
+    TAtlasActivity.TimeInto(mTimes);
     try
-      Outer := TAtlasActivity.Scope('Bauen beim Öffnen');
-      Inner := TAtlasActivity.Scope('Compilerprüfung');
-      Inner := nil;
-      Outer := nil;
+      mOuter := TAtlasActivity.Scope('Bauen beim Öffnen');
+      mInner := TAtlasActivity.Scope('Compilerprüfung');
+      mInner := nil;
+      mOuter := nil;
     finally
       TAtlasActivity.TimeInto(nil);
     end;
-    Parts := Times.Slowest(10);
-    Assert.AreEqual(1, Integer(Length(Parts)), 'die innere Aktion steckt in der äußeren');
-    Assert.AreEqual('Aktion Bauen beim Öffnen', Parts[0].Name);
-    Assert.AreEqual(Int64(40), Parts[0].Ms);
+    mParts := mTimes.Slowest(10);
+    Assert.AreEqual(1, Integer(Length(mParts)), 'die innere Aktion steckt in der äußeren');
+    Assert.AreEqual('Aktion Bauen beim Öffnen', mParts[0].Name);
+    Assert.AreEqual(Int64(40), mParts[0].Ms);
     // Nach TimeInto(nil) zählt nichts mehr.
-    Outer := TAtlasActivity.Scope('Symbolhinweis');
-    Outer := nil;
-    Assert.AreEqual(Int64(40), Times.Total);
+    mOuter := TAtlasActivity.Scope('Symbolhinweis');
+    mOuter := nil;
+    Assert.AreEqual(Int64(40), mTimes.Total);
     Assert.AreEqual('', TAtlasActivity.Current);
   finally
-    Times.Free;
+    mTimes.Free;
   end;
 end;
 
 procedure TAtlasHangTests.HangTestRunsAsNamedActivity;
 var
-  Times: TAtlasStartTimes;
-  Tick: Int64;
-  Parts: TArray<TAtlasStartPart>;
+  mTimes: TAtlasStartTimes;
+  mTick: Int64;
+  mParts: TArray<TAtlasStartPart>;
 begin
-  Tick := 0;
-  Times := TAtlasStartTimes.Create(
+  mTick := 0;
+  mTimes := TAtlasStartTimes.Create(
     function: Int64
     begin
-      Inc(Tick, 40);
-      Result := Tick;
+      Inc(mTick, 40);
+      Result := mTick;
     end);
   try
-    TAtlasActivity.TimeInto(Times);
+    TAtlasActivity.TimeInto(mTimes);
     try
       TAtlasActivity.HangTest(1);
     finally
       TAtlasActivity.TimeInto(nil);
     end;
-    Parts := Times.Slowest(10);
-    Assert.AreEqual(1, Integer(Length(Parts)));
-    Assert.AreEqual('Aktion ' + TAtlasActivity.cHangTestName, Parts[0].Name);
+    mParts := mTimes.Slowest(10);
+    Assert.AreEqual(1, Integer(Length(mParts)));
+    Assert.AreEqual('Aktion ' + TAtlasActivity.cHangTestName, mParts[0].Name);
     Assert.AreEqual('', TAtlasActivity.Current);
   finally
-    Times.Free;
+    mTimes.Free;
   end;
 end;
 
 procedure TAtlasHangTests.RunningNamesGuardFeature;
 var
-  Seen: TArray<string>;
-  Other: TThread;
-  OtherName: string;
+  mSeen: TArray<string>;
+  mOther: TThread;
+  mOtherName: string;
 begin
-  Seen := nil;
+  mSeen := nil;
   Assert.AreEqual('', TAtlasActivity.Running);
   TAtlasGuard.Run(TAtlasFeature.EditorToolbar,
     procedure
     var
       Scope: IInterface;
     begin
-      Seen := Seen + [TAtlasActivity.Running];
+      mSeen := mSeen + [TAtlasActivity.Running];
       TAtlasGuard.Run(TAtlasFeature.Breadcrumbs,
         procedure
         begin
-          Seen := Seen + [TAtlasActivity.Running];
+          mSeen := mSeen + [TAtlasActivity.Running];
         end);
-      Seen := Seen + [TAtlasActivity.Running];
+      mSeen := mSeen + [TAtlasActivity.Running];
       TAtlasGuard.RunIde(
         procedure
         begin
-          Seen := Seen + [TAtlasActivity.Running];
+          mSeen := mSeen + [TAtlasActivity.Running];
         end);
       Scope := TAtlasActivity.Scope('Tastenkarte');
-      Seen := Seen + [TAtlasActivity.Running];
+      mSeen := mSeen + [TAtlasActivity.Running];
       Scope := nil;
       raise EAbort.Create('Test');
     end);
   Assert.AreEqual(TAtlasGuard.FeatureName(TAtlasFeature.EditorToolbar) + '|' +
     TAtlasGuard.FeatureName(TAtlasFeature.Breadcrumbs) + '|' + TAtlasGuard.FeatureName(TAtlasFeature.EditorToolbar) +
-    '||Tastenkarte', string.Join('|', Seen));
+    '||Tastenkarte', string.Join('|', mSeen));
   Assert.AreEqual('', TAtlasActivity.Running, 'nach der Exception leer');
   // Aufrufe aus anderen Threads legen nichts auf.
-  OtherName := 'unberührt';
-  Other := TThread.CreateAnonymousThread(
+  mOtherName := 'unberührt';
+  mOther := TThread.CreateAnonymousThread(
     procedure
     begin
       TAtlasGuard.Run(TAtlasFeature.Outline,
         procedure
         begin
-          OtherName := TAtlasGuard.CurrentFeatureName;
+          mOtherName := TAtlasGuard.CurrentFeatureName;
         end);
     end);
-  Other.FreeOnTerminate := False;
+  mOther.FreeOnTerminate := False;
   try
-    Other.Start;
-    Other.WaitFor;
+    mOther.Start;
+    mOther.WaitFor;
   finally
-    Other.Free;
+    mOther.Free;
   end;
-  Assert.AreEqual('', OtherName);
-  Seen := nil;
-  OtherName := '';
+  Assert.AreEqual('', mOtherName);
+  mSeen := nil;
+  mOtherName := '';
 end;
 
 procedure TAtlasHangTests.AtlasFrameBelowShownFramesCounts;
 var
-  Modules: TArray<TAtlasModuleRange>;
-  Addresses: TArray<UInt64>;
-  Index: Integer;
-  Monitor: TAtlasHangMonitor;
-  Hang: TAtlasHang;
-  Text: string;
+  mModules: TArray<TAtlasModuleRange>;
+  mAddresses: TArray<UInt64>;
+  mIndex: Integer;
+  mMonitor: TAtlasHangMonitor;
+  mHang: TAtlasHang;
+  mText: string;
 begin
-  SetLength(Modules, 2);
-  Modules[0].Name := 'coreide370.bpl';
-  Modules[0].Base := $400000;
-  Modules[0].Size := $100000;
-  Modules[1].Name := 'Atlas.IDE.Welcome370.bpl';
-  Modules[1].Base := $50000000;
-  Modules[1].Size := $100000;
+  SetLength(mModules, 2);
+  mModules[0].Name := 'coreide370.bpl';
+  mModules[0].Base := $400000;
+  mModules[0].Size := $100000;
+  mModules[1].Name := 'Atlas.IDE.Welcome370.bpl';
+  mModules[1].Base := $50000000;
+  mModules[1].Size := $100000;
   // 60 Rahmen der IDE (Projekt laden), darunter der Klick der Willkommensseite.
-  Addresses := nil;
-  for Index := 1 to 60 do
+  mAddresses := nil;
+  for mIndex := 1 to 60 do
   begin
-    Addresses := Addresses + [UInt64($400000 + Index * 16)];
+    mAddresses := mAddresses + [UInt64($400000 + mIndex * 16)];
   end;
-  Addresses := Addresses + [UInt64($50000200), UInt64($50000300)];
-  Hang := MakeHang(13900, '');
-  Hang.Frames := TAtlasStackScan.Frames(Addresses, Modules);
-  Hang.AtlasFrame := TAtlasStackScan.FirstIn(Addresses, Modules, 'Atlas');
-  Assert.AreEqual(24, Integer(Length(Hang.Frames)));
-  Assert.AreEqual('Atlas.IDE.Welcome370.bpl+200', Hang.AtlasFrame);
-  Assert.IsTrue(TAtlasHangMonitor.InvolvesAtlas(Hang));
-  Monitor := TAtlasHangMonitor.Create(500);
+  mAddresses := mAddresses + [UInt64($50000200), UInt64($50000300)];
+  mHang := MakeHang(13900, '');
+  mHang.Frames := TAtlasStackScan.Frames(mAddresses, mModules);
+  mHang.AtlasFrame := TAtlasStackScan.FirstIn(mAddresses, mModules, 'Atlas');
+  Assert.AreEqual(24, Integer(Length(mHang.Frames)));
+  Assert.AreEqual('Atlas.IDE.Welcome370.bpl+200', mHang.AtlasFrame);
+  Assert.IsTrue(TAtlasHangMonitor.InvolvesAtlas(mHang));
+  mMonitor := TAtlasHangMonitor.Create(500);
   try
-    Text := Monitor.Finish(Hang);
-    Assert.Contains(Text, 'Atlas im Aufrufstapel');
-    Assert.Contains(Text, '… Atlas.IDE.Welcome370.bpl+200');
+    mText := mMonitor.Finish(mHang);
+    Assert.Contains(mText, 'Atlas im Aufrufstapel');
+    Assert.Contains(mText, '… Atlas.IDE.Welcome370.bpl+200');
   finally
-    Monitor.Free;
+    mMonitor.Free;
   end;
   // Ohne Atlas-Modul im Abzug: leer.
-  Assert.AreEqual('', TAtlasStackScan.FirstIn([UInt64($400010)], Modules, 'Atlas'));
-  Assert.AreEqual('', TAtlasStackScan.FirstIn(Addresses, [Modules[0]], 'Atlas'));
+  Assert.AreEqual('', TAtlasStackScan.FirstIn([UInt64($400010)], mModules, 'Atlas'));
+  Assert.AreEqual('', TAtlasStackScan.FirstIn(mAddresses, [mModules[0]], 'Atlas'));
 end;
 
 procedure TAtlasHangTests.StackScanMapsAddressesToModules;
 var
-  Modules: TArray<TAtlasModuleRange>;
-  Frames: TArray<string>;
+  mModules: TArray<TAtlasModuleRange>;
+  mFrames: TArray<string>;
 begin
-  SetLength(Modules, 2);
-  Modules[0].Name := 'bds.exe';
-  Modules[0].Base := $400000;
-  Modules[0].Size := $10000;
-  Modules[1].Name := 'Atlas.IDE.Expert.bpl';
-  Modules[1].Base := $50000000;
-  Modules[1].Size := $100000;
+  SetLength(mModules, 2);
+  mModules[0].Name := 'bds.exe';
+  mModules[0].Base := $400000;
+  mModules[0].Size := $10000;
+  mModules[1].Name := 'Atlas.IDE.Expert.bpl';
+  mModules[1].Base := $50000000;
+  mModules[1].Size := $100000;
   // Daten ohne Modul fallen weg, gleiche Rahmen direkt hintereinander nur einmal.
-  Frames := TAtlasStackScan.Frames([$401234, $12, $50000100, $50000100, $400010], Modules);
-  Assert.AreEqual('bds.exe+1234|Atlas.IDE.Expert.bpl+100|bds.exe+10', string.Join('|', Frames));
-  Assert.AreEqual(1, Integer(Length(TAtlasStackScan.Frames([$401234, $401235, $401236], Modules, 1))));
+  mFrames := TAtlasStackScan.Frames([$401234, $12, $50000100, $50000100, $400010], mModules);
+  Assert.AreEqual('bds.exe+1234|Atlas.IDE.Expert.bpl+100|bds.exe+10', string.Join('|', mFrames));
+  Assert.AreEqual(1, Integer(Length(TAtlasStackScan.Frames([$401234, $401235, $401236], mModules, 1))));
 end;
 
 initialization

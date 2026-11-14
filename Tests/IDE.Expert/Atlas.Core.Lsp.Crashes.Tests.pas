@@ -82,50 +82,50 @@ end;
 
 procedure TAtlasServerCrashesTests.HoldsAfterSameCrashTwice;
 var
-  Crashes: TAtlasServerCrashes;
-  Clock: TDateTime;
-  ClockFunc: TFunc<TDateTime>;
-  Code: Cardinal;
+  mCrashes: TAtlasServerCrashes;
+  mClock: TDateTime;
+  mClockFunc: TFunc<TDateTime>;
+  mCode: Cardinal;
 begin
-  Clock := EncodeDateTime(2026, 10, 22, 12, 0, 0, 0);
-  ClockFunc :=
+  mClock := EncodeDateTime(2026, 10, 22, 12, 0, 0, 0);
+  mClockFunc :=
     function: TDateTime
     begin
-      Result := Clock;
+      Result := mClock;
     end;
-  Crashes := TAtlasServerCrashes.Create(ClockFunc);
+  mCrashes := TAtlasServerCrashes.Create(mClockFunc);
   try
-    Assert.IsFalse(Crashes.LastCode(Code), 'noch kein Absturz');
-    Assert.IsTrue(Crashes.Crashed($C0000005), 'erster Absturz: neu starten');
-    Clock := IncMinute(Clock, 2);
-    Assert.IsTrue(Crashes.Crashed($C00000FD), 'andere Ursache: neu starten');
-    Clock := IncMinute(Clock, TAtlasServerCrashes.cWindowMinutes + 1);
-    Assert.IsTrue(Crashes.Crashed($C00000FD), 'dieselbe Ursache, aber später: neu starten');
-    Assert.IsFalse(Crashes.Held);
-    Clock := IncMinute(Clock, 3);
-    Assert.IsFalse(Crashes.Crashed($C00000FD), 'zweimal dieselbe Ursache in kurzer Zeit: anhalten');
-    Assert.IsTrue(Crashes.Held);
-    Assert.IsTrue(Crashes.LastCode(Code));
-    Assert.AreEqual<Cardinal>($C00000FD, Code);
+    Assert.IsFalse(mCrashes.LastCode(mCode), 'noch kein Absturz');
+    Assert.IsTrue(mCrashes.Crashed($C0000005), 'erster Absturz: neu starten');
+    mClock := IncMinute(mClock, 2);
+    Assert.IsTrue(mCrashes.Crashed($C00000FD), 'andere Ursache: neu starten');
+    mClock := IncMinute(mClock, TAtlasServerCrashes.cWindowMinutes + 1);
+    Assert.IsTrue(mCrashes.Crashed($C00000FD), 'dieselbe Ursache, aber später: neu starten');
+    Assert.IsFalse(mCrashes.Held);
+    mClock := IncMinute(mClock, 3);
+    Assert.IsFalse(mCrashes.Crashed($C00000FD), 'zweimal dieselbe Ursache in kurzer Zeit: anhalten');
+    Assert.IsTrue(mCrashes.Held);
+    Assert.IsTrue(mCrashes.LastCode(mCode));
+    Assert.AreEqual<Cardinal>($C00000FD, mCode);
   finally
-    Crashes.Free;
+    mCrashes.Free;
   end;
 end;
 
 procedure TAtlasServerCrashesTests.ResetAllowsRestartAgain;
 var
-  Crashes: TAtlasServerCrashes;
+  mCrashes: TAtlasServerCrashes;
 begin
-  Crashes := TAtlasServerCrashes.Create(nil);
+  mCrashes := TAtlasServerCrashes.Create(nil);
   try
-    Crashes.Crashed(1);
-    Assert.IsFalse(Crashes.Crashed(1));
-    Assert.IsTrue(Crashes.Held);
-    Crashes.Reset;
-    Assert.IsFalse(Crashes.Held, 'Neustart von Hand');
-    Assert.IsTrue(Crashes.Crashed(1), 'Zählung von vorn');
+    mCrashes.Crashed(1);
+    Assert.IsFalse(mCrashes.Crashed(1));
+    Assert.IsTrue(mCrashes.Held);
+    mCrashes.Reset;
+    Assert.IsFalse(mCrashes.Held, 'Neustart von Hand');
+    Assert.IsTrue(mCrashes.Crashed(1), 'Zählung von vorn');
   finally
-    Crashes.Free;
+    mCrashes.Free;
   end;
 end;
 

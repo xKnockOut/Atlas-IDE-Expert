@@ -35,14 +35,14 @@ uses
 
 procedure TFileChangeTrackerTests.Setup;
 var
-  Stamps: TDictionary<string, string>;
+  mStamps: TDictionary<string, string>;
 begin
   FStamps := TDictionary<string, string>.Create;
-  Stamps := FStamps;
+  mStamps := FStamps;
   FTracker := TFileChangeTracker.Create(
     function(const AFileName: string): string
     begin
-      if not Stamps.TryGetValue(LowerCase(AFileName), Result) then
+      if not mStamps.TryGetValue(LowerCase(AFileName), Result) then
       begin
         Result := '';
       end;
@@ -57,7 +57,7 @@ end;
 
 procedure TFileChangeTrackerTests.ReportsChangedCreatedAndDeletedFiles;
 var
-  Changed: TArray<string>;
+  mChanged: TArray<string>;
 begin
   FStamps.AddOrSetValue('c:\p\atlas.json', '1');
   FTracker.SetFiles(['c:\p\atlas.json', 'c:\a\settings.json']);
@@ -65,15 +65,15 @@ begin
   // Geändert und neu angelegt.
   FStamps.AddOrSetValue('c:\p\atlas.json', '2');
   FStamps.AddOrSetValue('c:\a\settings.json', '1');
-  Changed := FTracker.Poll;
-  Assert.AreEqual(2, Integer(Length(Changed)));
-  Assert.AreEqual('c:\p\atlas.json', Changed[0]);
+  mChanged := FTracker.Poll;
+  Assert.AreEqual(2, Integer(Length(mChanged)));
+  Assert.AreEqual('c:\p\atlas.json', mChanged[0]);
   Assert.AreEqual(0, Integer(Length(FTracker.Poll)));
   // Gelöscht.
   FStamps.Remove('c:\a\settings.json');
-  Changed := FTracker.Poll;
-  Assert.AreEqual(1, Integer(Length(Changed)));
-  Assert.AreEqual('c:\a\settings.json', Changed[0]);
+  mChanged := FTracker.Poll;
+  Assert.AreEqual(1, Integer(Length(mChanged)));
+  Assert.AreEqual('c:\a\settings.json', mChanged[0]);
 end;
 
 procedure TFileChangeTrackerTests.KeepsStampsOfKnownFiles;
@@ -93,13 +93,13 @@ end;
 
 procedure TFileChangeTrackerTests.ListsDirectoriesOnce;
 var
-  Dirs: TArray<string>;
+  mDirs: TArray<string>;
 begin
   FTracker.SetFiles(['c:\p\atlas.json', 'c:\p\delphi-lsp.json', 'c:\a\settings.json']);
-  Dirs := FTracker.Directories;
-  Assert.AreEqual(2, Integer(Length(Dirs)));
-  Assert.AreEqual('c:\p', Dirs[0]);
-  Assert.AreEqual('c:\a', Dirs[1]);
+  mDirs := FTracker.Directories;
+  Assert.AreEqual(2, Integer(Length(mDirs)));
+  Assert.AreEqual('c:\p', mDirs[0]);
+  Assert.AreEqual('c:\a', mDirs[1]);
 end;
 
 initialization

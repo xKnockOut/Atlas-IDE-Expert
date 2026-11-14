@@ -154,60 +154,60 @@ function Apply(const AText: string; const AEdits: TArray<TRuleEdit>): string;
 
   function OffsetOf(const APosition: TTextPosition): Integer;
   var
-    Line, Index: Integer;
+    mLine, mIndex: Integer;
   begin
-    Line := 0;
-    Index := 1;
-    while (Line < APosition.Line) and (Index <= Length(AText)) do
+    mLine := 0;
+    mIndex := 1;
+    while (mLine < APosition.Line) and (mIndex <= Length(AText)) do
     begin
-      if AText[Index] = #10 then
+      if AText[mIndex] = #10 then
       begin
-        Inc(Line);
+        Inc(mLine);
       end;
-      Inc(Index);
+      Inc(mIndex);
     end;
-    Result := Index + APosition.Character;
+    Result := mIndex + APosition.Character;
   end;
 
 var
-  Order: TArray<Integer>;
-  I, J, Swap, Start, Stop: Integer;
+  mOrder: TArray<Integer>;
+  I, J, mSwap, mStart, mStop: Integer;
 begin
   Result := AText;
-  SetLength(Order, Length(AEdits));
-  for I := 0 to High(Order) do
+  SetLength(mOrder, Length(AEdits));
+  for I := 0 to High(mOrder) do
   begin
-    Order[I] := I;
+    mOrder[I] := I;
   end;
-  for I := 0 to High(Order) do
+  for I := 0 to High(mOrder) do
   begin
-    for J := I + 1 to High(Order) do
+    for J := I + 1 to High(mOrder) do
     begin
-      if OffsetOf(AEdits[Order[J]].Range.StartPos) > OffsetOf(AEdits[Order[I]].Range.StartPos) then
+      if OffsetOf(AEdits[mOrder[J]].Range.StartPos) > OffsetOf(AEdits[mOrder[I]].Range.StartPos) then
       begin
-        Swap := Order[I];
-        Order[I] := Order[J];
-        Order[J] := Swap;
+        mSwap := mOrder[I];
+        mOrder[I] := mOrder[J];
+        mOrder[J] := mSwap;
       end;
     end;
   end;
-  for I in Order do
+  for I in mOrder do
   begin
-    Start := OffsetOf(AEdits[I].Range.StartPos);
-    Stop := OffsetOf(AEdits[I].Range.EndPos);
-    Result := Copy(Result, 1, Start - 1) + AEdits[I].NewText + Copy(Result, Stop, MaxInt);
+    mStart := OffsetOf(AEdits[I].Range.StartPos);
+    mStop := OffsetOf(AEdits[I].Range.EndPos);
+    Result := Copy(Result, 1, mStart - 1) + AEdits[I].NewText + Copy(Result, mStop, MaxInt);
   end;
 end;
 
-function RemoveUnused(const AText: string; const AKeep: TArray<string> = nil): string;
+function RemoveUnused(const AText: string; const AKeep: TArray<string>): string; overload;
 var
-  Tokens: TArray<TPascalToken>;
-  Edits: TArray<TRuleEdit>;
+  mTokens: TArray<TPascalToken>;
+  mEdits: TArray<TRuleEdit>;
 begin
-  Tokens := TPascalLexer.Tokenize(AText);
-  if TUsesActions.RemoveUnits(Tokens, AText, TUsesActions.UnusedUnits(Tokens, Info, AKeep), #10, Edits) then
+  mTokens := TPascalLexer.Tokenize(AText);
+  if TUsesActions.RemoveUnits(mTokens, AText, TUsesActions.UnusedUnits(mTokens, Info, AKeep), #10, mEdits) then
   begin
-    Result := Apply(AText, Edits);
+    Result := Apply(AText, mEdits);
   end
   else
   begin
@@ -215,21 +215,26 @@ begin
   end;
 end;
 
+function RemoveUnused(const AText: string): string; overload;
+begin
+  Result := RemoveUnused(AText, nil);
+end;
+
 procedure TUsesActionsTests.NamesUsedOutsideUsesLists;
 const
-  Text = 'unit X;'#10'interface'#10'uses Werk, TPunkt;'#10'implementation'#10 +
+  cText = 'unit X;'#10'interface'#10'uses Werk, TPunkt;'#10'implementation'#10 +
     'var K: tkunde; L: Werk.TListe<Integer>;'#10'end.';
 var
-  Used: TArray<Boolean>;
+  mUsed: TArray<Boolean>;
 begin
-  Used := TUsesActions.NamesUsed(TPascalLexer.Tokenize(Text), ['TKunde', 'TListe', 'TPunkt', 'Werk']);
-  Assert.AreEqual(4, Integer(Length(Used)));
-  Assert.IsTrue(Used[0]);
-  Assert.IsTrue(Used[1]);
+  mUsed := TUsesActions.NamesUsed(TPascalLexer.Tokenize(cText), ['TKunde', 'TListe', 'TPunkt', 'Werk']);
+  Assert.AreEqual(4, Integer(Length(mUsed)));
+  Assert.IsTrue(mUsed[0]);
+  Assert.IsTrue(mUsed[1]);
   // Namen in der uses-Liste zählen nicht; Werk steht dagegen als Qualifizierer im Code.
-  Assert.IsFalse(Used[2]);
-  Assert.IsTrue(Used[3]);
-  Assert.AreEqual(0, Integer(Length(TUsesActions.NamesUsed(TPascalLexer.Tokenize(Text), nil))));
+  Assert.IsFalse(mUsed[2]);
+  Assert.IsTrue(mUsed[3]);
+  Assert.AreEqual(0, Integer(Length(TUsesActions.NamesUsed(TPascalLexer.Tokenize(cText), nil))));
 end;
 
 procedure TUsesActionsTests.RemovesUnusedUnit;
@@ -240,27 +245,27 @@ end;
 
 procedure TUsesActionsTests.UnitWithInitializationStays;
 var
-  Text: string;
+  mText: string;
 begin
-  Text := Source('Units.Reg, Units.A', '', '', '');
-  Assert.AreEqual(Source('Units.Reg', '', '', ''), RemoveUnused(Text));
+  mText := Source('Units.Reg, Units.A', '', '', '');
+  Assert.AreEqual(Source('Units.Reg', '', '', ''), RemoveUnused(mText));
 end;
 
 procedure TUsesActionsTests.KeepListAndUnknownUnitsStay;
 var
-  Text: string;
+  mText: string;
 begin
-  Text := Source('Units.A, Vcl.Unbekannt', '', '', '');
-  Assert.AreEqual(Text, RemoveUnused(Text, ['units.a']));
+  mText := Source('Units.A, Vcl.Unbekannt', '', '', '');
+  Assert.AreEqual(mText, RemoveUnused(mText, ['units.a']));
 end;
 
 procedure TUsesActionsTests.QualifiedAccessCountsAsUse;
 var
-  Text: string;
+  mText: string;
 begin
   // C wird nur über ein Mitglied, B qualifiziert benutzt.
-  Text := Source('Units.B, Units.C', '', '', 'procedure P;'#10'begin'#10'  X.Qux;'#10'  B.Irgendwas;'#10'end;'#10);
-  Assert.AreEqual(Text, RemoveUnused(Text));
+  mText := Source('Units.B, Units.C', '', '', 'procedure P;'#10'begin'#10'  X.Qux;'#10'  B.Irgendwas;'#10'end;'#10);
+  Assert.AreEqual(mText, RemoveUnused(mText));
 end;
 
 procedure TUsesActionsTests.NameOfUnitWithoutDotIsNoUse;
@@ -272,235 +277,236 @@ end;
 
 procedure TUsesActionsTests.ConditionalBlockStaysUnchanged;
 var
-  Text: string;
+  mText: string;
 begin
-  Text := Source('Units.A, {$IFDEF X}Units.B,{$ENDIF} Units.C', '', '', '');
-  Assert.AreEqual(Text, RemoveUnused(Text));
+  mText := Source('Units.A, {$IFDEF X}Units.B,{$ENDIF} Units.C', '', '', '');
+  Assert.AreEqual(mText, RemoveUnused(mText));
 end;
 
 procedure TUsesActionsTests.MovesUnitUsedOnlyInImplementation;
 var
-  Text: string;
-  Tokens: TArray<TPascalToken>;
-  Units: TArray<string>;
-  Edits: TArray<TRuleEdit>;
+  mText: string;
+  mTokens: TArray<TPascalToken>;
+  mUnits: TArray<string>;
+  mEdits: TArray<TRuleEdit>;
 begin
-  Text := Source('Units.A, Units.B', 'type'#10'  T = Bar;'#10, 'Units.C',
+  mText := Source('Units.A, Units.B', 'type'#10'  T = Bar;'#10, 'Units.C',
     'procedure P;'#10'begin'#10'  Foo; Baz;'#10'end;'#10);
-  Tokens := TPascalLexer.Tokenize(Text);
-  Units := TUsesActions.MovableUnits(Tokens, Info);
-  Assert.AreEqual('Units.A', string.Join(',', Units));
-  Assert.IsTrue(TUsesActions.MoveUnits(Tokens, Text, Units, #10, Edits));
+  mTokens := TPascalLexer.Tokenize(mText);
+  mUnits := TUsesActions.MovableUnits(mTokens, Info);
+  Assert.AreEqual('Units.A', string.Join(',', mUnits));
+  Assert.IsTrue(TUsesActions.MoveUnits(mTokens, mText, mUnits, #10, mEdits));
   Assert.AreEqual(Source('Units.B', 'type'#10'  T = Bar;'#10, 'Units.C,'#10'  Units.A',
-    'procedure P;'#10'begin'#10'  Foo; Baz;'#10'end;'#10), Apply(Text, Edits));
+    'procedure P;'#10'begin'#10'  Foo; Baz;'#10'end;'#10), Apply(mText, mEdits));
 end;
 
 procedure TUsesActionsTests.MovesUnitToInterface;
 var
-  Text: string;
-  Edits: TArray<TRuleEdit>;
+  mText: string;
+  mEdits: TArray<TRuleEdit>;
 begin
   // Unit-Beziehungen (#593): aus dem implementation- ins interface-uses, auch ohne interface-uses.
-  Text := Source('Units.A', '', 'Units.B, Units.C', '');
-  Assert.IsTrue(TUsesActions.MoveUnitsToInterface(TPascalLexer.Tokenize(Text), Text, ['Units.C'], #10, Edits));
-  Assert.AreEqual(Source('Units.A,'#10'  Units.C', '', 'Units.B', ''), Apply(Text, Edits));
-  Text := Source('', '', 'Units.B', '');
-  Assert.IsTrue(TUsesActions.MoveUnitsToInterface(TPascalLexer.Tokenize(Text), Text, ['Units.B'], #10, Edits));
-  Assert.AreEqual('unit U;'#10'interface'#10#10'uses'#10'  Units.B;'#10'implementation'#10#10'end.', Apply(Text, Edits),
+  mText := Source('Units.A', '', 'Units.B, Units.C', '');
+  Assert.IsTrue(TUsesActions.MoveUnitsToInterface(TPascalLexer.Tokenize(mText), mText, ['Units.C'], #10, mEdits));
+  Assert.AreEqual(Source('Units.A,'#10'  Units.C', '', 'Units.B', ''), Apply(mText, mEdits));
+  mText := Source('', '', 'Units.B', '');
+  Assert.IsTrue(TUsesActions.MoveUnitsToInterface(TPascalLexer.Tokenize(mText), mText, ['Units.B'], #10, mEdits));
+  Assert.AreEqual('unit U;'#10'interface'#10#10'uses'#10'  Units.B;'#10'implementation'#10#10'end.', Apply(mText, mEdits),
     'leere Liste fällt weg, neue entsteht');
-  Text := 'program P;'#10'uses'#10'  Units.B;'#10'begin'#10'end.';
-  Assert.IsFalse(TUsesActions.MoveUnitsToInterface(TPascalLexer.Tokenize(Text), Text, ['Units.B'], #10, Edits),
+  mText := 'program P;'#10'uses'#10'  Units.B;'#10'begin'#10'end.';
+  Assert.IsFalse(TUsesActions.MoveUnitsToInterface(TPascalLexer.Tokenize(mText), mText, ['Units.B'], #10, mEdits),
     'Programm ohne interface');
 end;
 
 procedure TUsesActionsTests.UnitUsedInInterfaceIsNotMoved;
 var
-  Text: string;
+  mText: string;
 begin
-  Text := Source('Units.A', 'procedure P(X: Foo);'#10, '', 'procedure P(X: Foo);'#10'begin'#10'  Foo;'#10'end;'#10);
-  Assert.AreEqual(0, Integer(Length(TUsesActions.MovableUnits(TPascalLexer.Tokenize(Text), Info))));
+  mText := Source('Units.A', 'procedure P(X: Foo);'#10, '', 'procedure P(X: Foo);'#10'begin'#10'  Foo;'#10'end;'#10);
+  Assert.AreEqual(0, Integer(Length(TUsesActions.MovableUnits(TPascalLexer.Tokenize(mText), Info))));
 end;
 
 procedure TUsesActionsTests.InterfaceUsagesNameTheNeed;
 var
-  Text: string;
-  Found: TArray<TUsesInterfaceUsage>;
+  mText: string;
+  mFound: TArray<TUsesInterfaceUsage>;
 begin
   // Unit-Zyklus (#896): Bezeichner im interface-Teil, auch qualifiziert über den Unit-Namen; nicht im uses,
   // nicht im implementation-Teil.
-  Text := Source('Units.Kunde', 'type'#10'  TA = class(TKunde) end;'#10'  TB = Kunde.TListe;'#10, 'Units.Kunde',
+  mText := Source('Units.Kunde', 'type'#10'  TA = class(TKunde) end;'#10'  TB = Kunde.TListe;'#10, 'Units.Kunde',
     'var X: TKunde;'#10);
-  Found := TUsesActions.InterfaceUsages(TPascalLexer.Tokenize(Text), 'Units.Kunde',
+  mFound := TUsesActions.InterfaceUsages(TPascalLexer.Tokenize(mText), 'Units.Kunde',
     TArray<string>.Create('TKunde', 'TListe'));
-  Assert.AreEqual(3, Integer(Length(Found)));
-  Assert.AreEqual('TKunde', Found[0].Name);
-  Assert.AreEqual(5, Found[0].Range.StartPos.Line);
-  Assert.AreEqual(13, Found[0].Range.StartPos.Character);
-  Assert.AreEqual('Kunde', Found[1].Name);
-  Assert.AreEqual('TListe', Found[2].Name);
+  Assert.AreEqual(3, Integer(Length(mFound)));
+  Assert.AreEqual('TKunde', mFound[0].Name);
+  Assert.AreEqual(5, mFound[0].Range.StartPos.Line);
+  Assert.AreEqual(13, mFound[0].Range.StartPos.Character);
+  Assert.AreEqual('Kunde', mFound[1].Name);
+  Assert.AreEqual('TListe', mFound[2].Name);
   // Nur im implementation-Teil gebraucht: verschiebbar.
-  Text := Source('Units.Kunde', '', '', 'var X: TKunde;'#10);
-  Assert.AreEqual(0, Integer(Length(TUsesActions.InterfaceUsages(TPascalLexer.Tokenize(Text), 'Units.Kunde',
+  mText := Source('Units.Kunde', '', '', 'var X: TKunde;'#10);
+  Assert.AreEqual(0, Integer(Length(TUsesActions.InterfaceUsages(TPascalLexer.Tokenize(mText), 'Units.Kunde',
     TArray<string>.Create('TKunde')))));
   // Programme haben keinen interface-Teil.
-  Text := 'program P;'#10'uses'#10'  Units.Kunde;'#10'var X: TKunde;'#10'begin'#10'end.';
-  Assert.AreEqual(0, Integer(Length(TUsesActions.InterfaceUsages(TPascalLexer.Tokenize(Text), 'Units.Kunde',
+  mText := 'program P;'#10'uses'#10'  Units.Kunde;'#10'var X: TKunde;'#10'begin'#10'end.';
+  Assert.AreEqual(0, Integer(Length(TUsesActions.InterfaceUsages(TPascalLexer.Tokenize(mText), 'Units.Kunde',
     TArray<string>.Create('TKunde')))));
 end;
 
 procedure TUsesActionsTests.SortsByNamespace;
 var
-  Text: string;
-  Edits: TArray<TRuleEdit>;
+  mText: string;
+  mEdits: TArray<TRuleEdit>;
 begin
-  Text := Source('Eigen, Vcl.Forms, Data.DB, Abc, Vcl.Controls, Data.Bind', '', '', '');
-  Assert.IsTrue(TUsesClauses.Organize(TPascalLexer.Tokenize(Text), Text, True, #10, Edits, True));
+  mText := Source('Eigen, Vcl.Forms, Data.DB, Abc, Vcl.Controls, Data.Bind', '', '', '');
+  Assert.IsTrue(TUsesClauses.Organize(TPascalLexer.Tokenize(mText), mText, True, #10, mEdits, True));
   // "uses" steht in eigener Zeile, also eine Unit je Zeile.
   Assert.AreEqual(Source('Data.Bind,'#10'  Data.DB,'#10'  Vcl.Controls,'#10'  Vcl.Forms,'#10'  Abc,'#10'  Eigen', '', '', ''),
-    Apply(Text, Edits));
+    Apply(mText, mEdits));
 end;
 
 procedure TUsesActionsTests.MissingUnitIsSuggested;
 var
-  Text: string;
-  Tree: TSyntaxTree;
-  Units: TArray<string>;
+  mText: string;
+  mTree: TSyntaxTree;
+  mUnits: TArray<string>;
 begin
-  Text := Source('Units.B', '', '', 'procedure P;'#10'begin'#10'  Foo;'#10'end;'#10);
-  Tree := TPascalParser.Parse(Text);
+  mText := Source('Units.B', '', '', 'procedure P;'#10'begin'#10'  Foo;'#10'end;'#10);
+  mTree := TPascalParser.Parse(mText);
   try
     // Zeile 7: "  Foo;"
-    Units := TUsesActions.MissingUnits(TPascalLexer.Tokenize(Text), Tree, TTextPosition.Create(7, 3), Declaring, nil);
-    Assert.AreEqual('Units.A', string.Join(',', Units));
+    mUnits := TUsesActions.MissingUnits(TPascalLexer.Tokenize(mText), mTree, TTextPosition.Create(7, 3), Declaring,
+      nil);
+    Assert.AreEqual('Units.A', string.Join(',', mUnits));
   finally
-    Tree.Free;
+    mTree.Free;
   end;
 end;
 
 procedure TUsesActionsTests.MissingUnitSkipsUsedAndLocalNames;
 var
-  Text: string;
-  Tree: TSyntaxTree;
+  mText: string;
+  mTree: TSyntaxTree;
 begin
   // Bar kommt aus Units.B (eingebunden), Foo ist lokal deklariert, X.Foo ist ein Mitglied.
-  Text := Source('Units.B', '', '', 'procedure P;'#10'var'#10'  Foo: Integer;'#10'begin'#10'  Bar; Foo := 1; X.Foo;'#10'end;'#10);
-  Tree := TPascalParser.Parse(Text);
+  mText := Source('Units.B', '', '', 'procedure P;'#10'var'#10'  Foo: Integer;'#10'begin'#10'  Bar; Foo := 1; X.Foo;'#10'end;'#10);
+  mTree := TPascalParser.Parse(mText);
   try
-    Assert.AreEqual(0, Integer(Length(TUsesActions.MissingUnits(TPascalLexer.Tokenize(Text), Tree,
+    Assert.AreEqual(0, Integer(Length(TUsesActions.MissingUnits(TPascalLexer.Tokenize(mText), mTree,
       TTextPosition.Create(9, 3), Declaring, nil))));
-    Assert.AreEqual(0, Integer(Length(TUsesActions.MissingUnits(TPascalLexer.Tokenize(Text), Tree,
+    Assert.AreEqual(0, Integer(Length(TUsesActions.MissingUnits(TPascalLexer.Tokenize(mText), mTree,
       TTextPosition.Create(9, 8), Declaring, nil))));
   finally
-    Tree.Free;
+    mTree.Free;
   end;
-  Text := Source('', '', '', 'procedure P;'#10'begin'#10'  X.Foo;'#10'end;'#10);
-  Tree := TPascalParser.Parse(Text);
+  mText := Source('', '', '', 'procedure P;'#10'begin'#10'  X.Foo;'#10'end;'#10);
+  mTree := TPascalParser.Parse(mText);
   try
-    Assert.AreEqual(0, Integer(Length(TUsesActions.MissingUnits(TPascalLexer.Tokenize(Text), Tree,
+    Assert.AreEqual(0, Integer(Length(TUsesActions.MissingUnits(TPascalLexer.Tokenize(mText), mTree,
       TTextPosition.Create(5, 5), Declaring, nil))));
   finally
-    Tree.Free;
+    mTree.Free;
   end;
 end;
 
 procedure TUsesActionsTests.ApplyingTwiceGivesSameResult;
 var
-  Once, Twice: string;
-  Tree: TSyntaxTree;
+  mOnce, mTwice: string;
+  mTree: TSyntaxTree;
 begin
-  Once := RemoveUnused(Source('Units.A, Units.B, Units.C', '', 'Units.Reg', 'procedure P;'#10'begin'#10'  Bar;'#10'end;'#10));
-  Twice := RemoveUnused(Once);
-  Assert.AreEqual(Once, Twice);
-  Tree := TPascalParser.Parse(Once);
+  mOnce := RemoveUnused(Source('Units.A, Units.B, Units.C', '', 'Units.Reg', 'procedure P;'#10'begin'#10'  Bar;'#10'end;'#10));
+  mTwice := RemoveUnused(mOnce);
+  Assert.AreEqual(mOnce, mTwice);
+  mTree := TPascalParser.Parse(mOnce);
   try
-    Assert.AreEqual(0, Integer(Length(Tree.Diagnostics)));
+    Assert.AreEqual(0, Integer(Length(mTree.Diagnostics)));
   finally
-    Tree.Free;
+    mTree.Free;
   end;
 end;
 
 procedure TUsesActionsTests.AddsUnitsToMatchingSection;
 var
-  Text: string;
-  Edits: TArray<TRuleEdit>;
-  Added: TArray<string>;
+  mText: string;
+  mEdits: TArray<TRuleEdit>;
+  mAdded: TArray<string>;
 begin
   // Units suchen (#777): Foo steht im interface, also Units.A dorthin; Units.C ins implementation-uses;
   // Units.B ist schon da, doppelte und die eigene Unit entfallen.
-  Text := Source('Units.B', 'procedure P(X: Foo);'#10, '', 'procedure P(X: Foo);'#10'begin'#10'end;'#10);
-  Assert.IsTrue(TUsesActions.AddUnits(TPascalLexer.Tokenize(Text),
-    TUsesAddRequest.Create(['Units.A', 'Units.C', 'Units.B', 'units.c', 'U'], Declaring, nil, #10), Edits, Added));
-  Assert.AreEqual('Units.A,Units.C', string.Join(',', Added));
+  mText := Source('Units.B', 'procedure P(X: Foo);'#10, '', 'procedure P(X: Foo);'#10'begin'#10'end;'#10);
+  Assert.IsTrue(TUsesActions.AddUnits(TPascalLexer.Tokenize(mText),
+    TUsesAddRequest.Create(['Units.A', 'Units.C', 'Units.B', 'units.c', 'U'], Declaring, nil, #10), mEdits, mAdded));
+  Assert.AreEqual('Units.A,Units.C', string.Join(',', mAdded));
   // Die Einfügehilfe von TUsesClauses setzt je Unit eine Zeile und vor ein neues uses eine Leerzeile.
   Assert.AreEqual('unit U;'#10'interface'#10'uses'#10'  Units.B,'#10'  Units.A;'#10'procedure P(X: Foo);'#10 +
-    'implementation'#10#10'uses'#10'  Units.C;'#10'procedure P(X: Foo);'#10'begin'#10'end;'#10'end.', Apply(Text, Edits));
+    'implementation'#10#10'uses'#10'  Units.C;'#10'procedure P(X: Foo);'#10'begin'#10'end;'#10'end.', Apply(mText, mEdits));
   // Nichts Neues: kein Edit.
-  Assert.IsFalse(TUsesActions.AddUnits(TPascalLexer.Tokenize(Text), TUsesAddRequest.Create(['Units.B'], Declaring, nil,
-    #10), Edits, Added));
-  Assert.AreEqual(0, Integer(Length(Added)));
+  Assert.IsFalse(TUsesActions.AddUnits(TPascalLexer.Tokenize(mText), TUsesAddRequest.Create(['Units.B'], Declaring, nil,
+    #10), mEdits, mAdded));
+  Assert.AreEqual(0, Integer(Length(mAdded)));
   // Programm: das einzige uses.
-  Text := 'program P;'#10'uses'#10'  Units.B;'#10'begin'#10'end.';
-  Assert.IsTrue(TUsesActions.AddUnits(TPascalLexer.Tokenize(Text), TUsesAddRequest.Create(['Units.C'], Declaring, nil,
-    #10), Edits, Added));
-  Assert.AreEqual('program P;'#10'uses'#10'  Units.B,'#10'  Units.C;'#10'begin'#10'end.', Apply(Text, Edits));
+  mText := 'program P;'#10'uses'#10'  Units.B;'#10'begin'#10'end.';
+  Assert.IsTrue(TUsesActions.AddUnits(TPascalLexer.Tokenize(mText), TUsesAddRequest.Create(['Units.C'], Declaring, nil,
+    #10), mEdits, mAdded));
+  Assert.AreEqual('program P;'#10'uses'#10'  Units.B,'#10'  Units.C;'#10'begin'#10'end.', Apply(mText, mEdits));
 end;
 
 procedure TUsesActionsTests.AddsUnitsToChosenSection;
 var
-  Text: string;
-  Edits: TArray<TRuleEdit>;
-  Added: TArray<string>;
+  mText: string;
+  mEdits: TArray<TRuleEdit>;
+  mAdded: TArray<string>;
 begin
   // Unit verwenden (#786): Der Umschalter gilt fest, auch wenn der interface-Teil Foo aus Units.A nennt.
-  Text := Source('Units.B', 'procedure P(X: Foo);'#10, '', 'procedure P(X: Foo);'#10'begin'#10'end;'#10);
-  Assert.IsTrue(TUsesActions.AddUnits(TPascalLexer.Tokenize(Text), TUsesAddRequest.Create(['Units.A', 'Units.C',
-    'Units.B'], Declaring, nil, #10).WithTarget(TUsesAddTarget.Implementation_), Edits, Added));
-  Assert.AreEqual('Units.A,Units.C', string.Join(',', Added), 'ohne Duplikat');
-  Assert.AreEqual(1, Integer(Length(Edits)), 'ein Edit, also ein Rückgängig-Schritt');
+  mText := Source('Units.B', 'procedure P(X: Foo);'#10, '', 'procedure P(X: Foo);'#10'begin'#10'end;'#10);
+  Assert.IsTrue(TUsesActions.AddUnits(TPascalLexer.Tokenize(mText), TUsesAddRequest.Create(['Units.A', 'Units.C',
+    'Units.B'], Declaring, nil, #10).WithTarget(TUsesAddTarget.Implementation_), mEdits, mAdded));
+  Assert.AreEqual('Units.A,Units.C', string.Join(',', mAdded), 'ohne Duplikat');
+  Assert.AreEqual(1, Integer(Length(mEdits)), 'ein Edit, also ein Rückgängig-Schritt');
   Assert.AreEqual('unit U;'#10'interface'#10'uses'#10'  Units.B;'#10'procedure P(X: Foo);'#10 +
     'implementation'#10#10'uses'#10'  Units.A, Units.C;'#10'procedure P(X: Foo);'#10'begin'#10'end;'#10'end.',
-    Apply(Text, Edits));
-  Assert.IsTrue(TUsesActions.AddUnits(TPascalLexer.Tokenize(Text), TUsesAddRequest.Create(['Units.C'], Declaring, nil,
-    #10).WithTarget(TUsesAddTarget.Interface_), Edits, Added));
+    Apply(mText, mEdits));
+  Assert.IsTrue(TUsesActions.AddUnits(TPascalLexer.Tokenize(mText), TUsesAddRequest.Create(['Units.C'], Declaring, nil,
+    #10).WithTarget(TUsesAddTarget.Interface_), mEdits, mAdded));
   Assert.AreEqual('unit U;'#10'interface'#10'uses'#10'  Units.B,'#10'  Units.C;'#10'procedure P(X: Foo);'#10 +
-    'implementation'#10'procedure P(X: Foo);'#10'begin'#10'end;'#10'end.', Apply(Text, Edits));
+    'implementation'#10'procedure P(X: Foo);'#10'begin'#10'end;'#10'end.', Apply(mText, mEdits));
   // Programm: das einzige uses, gleich welcher Abschnitt.
-  Text := 'program P;'#10'uses'#10'  Units.B;'#10'begin'#10'end.';
-  Assert.IsTrue(TUsesActions.AddUnits(TPascalLexer.Tokenize(Text), TUsesAddRequest.Create(['Units.C'], Declaring, nil,
-    #10).WithTarget(TUsesAddTarget.Implementation_), Edits, Added));
-  Assert.AreEqual('program P;'#10'uses'#10'  Units.B,'#10'  Units.C;'#10'begin'#10'end.', Apply(Text, Edits));
+  mText := 'program P;'#10'uses'#10'  Units.B;'#10'begin'#10'end.';
+  Assert.IsTrue(TUsesActions.AddUnits(TPascalLexer.Tokenize(mText), TUsesAddRequest.Create(['Units.C'], Declaring, nil,
+    #10).WithTarget(TUsesAddTarget.Implementation_), mEdits, mAdded));
+  Assert.AreEqual('program P;'#10'uses'#10'  Units.B,'#10'  Units.C;'#10'begin'#10'end.', Apply(mText, mEdits));
 end;
 
 /// <summary>"Name:Zustand" je Eintrag, mit "|" getrennt.</summary>
 function States(const AText: string; const AInactive: TArray<TTextRange>; const AKeep: TArray<string>): string;
 const
-  Names: array[TUsesEntryState] of string = ('unused', 'init', 'keep', 'impl');
+  cNames: array[TUsesEntryState] of string = ('unused', 'init', 'keep', 'impl');
 var
-  Entry: TUsesEntry;
+  mEntry: TUsesEntry;
 begin
   Result := '';
-  for Entry in TUsesActions.Entries(TPascalLexer.Tokenize(AText), AInactive, Info, AKeep) do
+  for mEntry in TUsesActions.Entries(TPascalLexer.Tokenize(AText), AInactive, Info, AKeep) do
   begin
-    Result := Result + Entry.Name + ':' + Names[Entry.State] + '|';
+    Result := Result + mEntry.Name + ':' + cNames[mEntry.State] + '|';
   end;
 end;
 
 procedure TUsesActionsTests.EntriesNameTheirState;
 var
-  Text: string;
-  Entries: TArray<TUsesEntry>;
+  mText: string;
+  mEntries: TArray<TUsesEntry>;
 begin
-  Text := Source('Units.A, Units.B, Units.Reg, Units.C, Vcl.Unbekannt', '', '',
+  mText := Source('Units.A, Units.B, Units.Reg, Units.C, Vcl.Unbekannt', '', '',
     'procedure P;'#10'begin'#10'  Foo;'#10'end;'#10);
-  Assert.AreEqual('Units.A:impl|Units.B:unused|Units.Reg:init|Units.C:keep|', States(Text, nil, ['units.c']));
+  Assert.AreEqual('Units.A:impl|Units.B:unused|Units.Reg:init|Units.C:keep|', States(mText, nil, ['units.c']));
   // Position des Namens: Units.B in Zeile 3 hinter "  Units.A, ".
-  Entries := TUsesActions.Entries(TPascalLexer.Tokenize(Text), nil, Info, nil);
-  Assert.AreEqual(3, Entries[1].Range.StartPos.Line);
-  Assert.AreEqual(11, Entries[1].Range.StartPos.Character);
-  Assert.AreEqual(18, Entries[1].Range.EndPos.Character);
+  mEntries := TUsesActions.Entries(TPascalLexer.Tokenize(mText), nil, Info, nil);
+  Assert.AreEqual(3, mEntries[1].Range.StartPos.Line);
+  Assert.AreEqual(11, mEntries[1].Range.StartPos.Character);
+  Assert.AreEqual(18, mEntries[1].Range.EndPos.Character);
   // Im interface benutzt: unauffällig.
-  Text := Source('Units.A', 'procedure P(X: Foo);'#10, '', 'procedure P(X: Foo);'#10'begin'#10'end;'#10);
-  Assert.AreEqual('', States(Text, nil, nil));
+  mText := Source('Units.A', 'procedure P(X: Foo);'#10, '', 'procedure P(X: Foo);'#10'begin'#10'end;'#10);
+  Assert.AreEqual('', States(mText, nil, nil));
 end;
 
 procedure TUsesActionsTests.FormReferenceCountsAsImplementationUse;
@@ -515,19 +521,19 @@ end;
 
 procedure TUsesActionsTests.EntriesFollowActiveBranch;
 var
-  Text: string;
+  mText: string;
 begin
-  Text := Source('Units.A, {$IFDEF X}Units.B,{$ENDIF} Units.C', '', '',
+  mText := Source('Units.A, {$IFDEF X}Units.B,{$ENDIF} Units.C', '', '',
     'procedure P;'#10'begin'#10'  Baz;'#10'  {$IFDEF X}Bar;{$ENDIF}'#10'end;'#10);
   // X nicht gesetzt: Units.B steht im inaktiven Zweig und fällt nicht auf; Units.A ist ungenutzt.
-  Assert.AreEqual('Units.A:unused|Units.C:impl|', States(Text, TLspInactiveRegions.Ranges(Text, []), nil));
+  Assert.AreEqual('Units.A:unused|Units.C:impl|', States(mText, TLspInactiveRegions.Ranges(mText, []), nil));
   // X gesetzt: Units.B wird im aktiven Zweig benutzt.
-  Assert.AreEqual('Units.A:unused|Units.B:impl|Units.C:impl|', States(Text, TLspInactiveRegions.Ranges(Text, ['X']),
+  Assert.AreEqual('Units.A:unused|Units.B:impl|Units.C:impl|', States(mText, TLspInactiveRegions.Ranges(mText, ['X']),
     nil));
   // Benutzt nur im inaktiven Zweig zählt nicht.
-  Text := Source('', '', 'Units.B', 'procedure P;'#10'begin'#10'  {$IFDEF X}Bar;{$ENDIF}'#10'end;'#10);
-  Assert.AreEqual('Units.B:unused|', States(Text, TLspInactiveRegions.Ranges(Text, []), nil));
-  Assert.AreEqual('', States(Text, TLspInactiveRegions.Ranges(Text, ['X']), nil));
+  mText := Source('', '', 'Units.B', 'procedure P;'#10'begin'#10'  {$IFDEF X}Bar;{$ENDIF}'#10'end;'#10);
+  Assert.AreEqual('Units.B:unused|', States(mText, TLspInactiveRegions.Ranges(mText, []), nil));
+  Assert.AreEqual('', States(mText, TLspInactiveRegions.Ranges(mText, ['X']), nil));
 end;
 
 procedure TUsesActionsTests.ProjectUsesAreNeverUnused;
@@ -554,108 +560,108 @@ end;
 /// <summary>Streicht die Einträge ANames (Bereiche aus References) und prüft, dass das Ergebnis parst.</summary>
 function RemoveNamed(const AText: string; const ANames: TArray<string>; out AResult: string): Boolean;
 var
-  Reference: TUsesReference;
-  Ranges: TArray<TTextRange>;
-  Name: string;
-  Edit: TTextEdit;
-  Tree: TSyntaxTree;
+  mReference: TUsesReference;
+  mRanges: TArray<TTextRange>;
+  mName: string;
+  mEdit: TTextEdit;
+  mTree: TSyntaxTree;
 begin
-  Ranges := nil;
-  for Reference in TUsesClauses.References(TPascalLexer.Tokenize(AText)) do
+  mRanges := nil;
+  for mReference in TUsesClauses.References(TPascalLexer.Tokenize(AText)) do
   begin
-    for Name in ANames do
+    for mName in ANames do
     begin
-      if SameText(Reference.Name, Name) then
+      if SameText(mReference.Name, mName) then
       begin
-        Ranges := Ranges + [Reference.Range];
+        mRanges := mRanges + [mReference.Range];
       end;
     end;
   end;
-  Result := TUsesActions.RemoveEntries(AText, Ranges, Edit);
+  Result := TUsesActions.RemoveEntries(AText, mRanges, mEdit);
   AResult := AText;
   if not Result then
   begin
     Exit;
   end;
-  AResult := Apply(AText, [Edit]);
-  Tree := TPascalParser.Parse(AResult);
+  AResult := Apply(AText, [mEdit]);
+  mTree := TPascalParser.Parse(AResult);
   try
-    Assert.AreEqual(0, Integer(Length(Tree.Diagnostics)), AResult);
+    Assert.AreEqual(0, Integer(Length(mTree.Diagnostics)), AResult);
   finally
-    Tree.Free;
+    mTree.Free;
   end;
 end;
 
 procedure TUsesActionsTests.RemoveEntriesKeepsCodeValid;
 var
-  Text, Removed: string;
+  mText, mRemoved: string;
 begin
-  Text := Source('Units.A, Units.B', '', '', '');
-  Assert.IsTrue(RemoveNamed(Text, ['Units.B'], Removed));
-  Assert.AreEqual(Source('Units.A', '', '', ''), Removed);
-  Assert.IsTrue(RemoveNamed(Text, ['Units.A'], Removed));
-  Assert.AreEqual(Source('Units.B', '', '', ''), Removed);
+  mText := Source('Units.A, Units.B', '', '', '');
+  Assert.IsTrue(RemoveNamed(mText, ['Units.B'], mRemoved));
+  Assert.AreEqual(Source('Units.A', '', '', ''), mRemoved);
+  Assert.IsTrue(RemoveNamed(mText, ['Units.A'], mRemoved));
+  Assert.AreEqual(Source('Units.B', '', '', ''), mRemoved);
   // Alle: das ganze uses mit seiner Zeile.
-  Assert.IsTrue(RemoveNamed(Text, ['Units.A', 'Units.B'], Removed));
-  Assert.AreEqual('unit U;'#10'interface'#10'implementation'#10'end.', Removed);
-  Text := 'unit U;'#10'interface'#10'uses Units.A;'#10'implementation'#10'end.';
-  Assert.IsTrue(RemoveNamed(Text, ['Units.A'], Removed));
-  Assert.AreEqual('unit U;'#10'interface'#10'implementation'#10'end.', Removed);
+  Assert.IsTrue(RemoveNamed(mText, ['Units.A', 'Units.B'], mRemoved));
+  Assert.AreEqual('unit U;'#10'interface'#10'implementation'#10'end.', mRemoved);
+  mText := 'unit U;'#10'interface'#10'uses Units.A;'#10'implementation'#10'end.';
+  Assert.IsTrue(RemoveNamed(mText, ['Units.A'], mRemoved));
+  Assert.AreEqual('unit U;'#10'interface'#10'implementation'#10'end.', mRemoved);
   // Mehrzeilig: der Eintrag mit seiner Zeile.
-  Text := 'unit U;'#10'interface'#10'uses'#10'  Units.A,'#10'  Units.B,'#10'  Units.C;'#10'implementation'#10'end.';
-  Assert.IsTrue(RemoveNamed(Text, ['Units.B'], Removed));
-  Assert.AreEqual('unit U;'#10'interface'#10'uses'#10'  Units.A,'#10'  Units.C;'#10'implementation'#10'end.', Removed);
+  mText := 'unit U;'#10'interface'#10'uses'#10'  Units.A,'#10'  Units.B,'#10'  Units.C;'#10'implementation'#10'end.';
+  Assert.IsTrue(RemoveNamed(mText, ['Units.B'], mRemoved));
+  Assert.AreEqual('unit U;'#10'interface'#10'uses'#10'  Units.A,'#10'  Units.C;'#10'implementation'#10'end.', mRemoved);
   // Direktiven: im Zweig mit dem Komma dahinter; ein Komma jenseits einer Direktive fasst Atlas nicht an.
-  Text := Source('Units.A, {$IFDEF X}Units.B, {$ENDIF}Units.C', '', '', '');
-  Assert.IsTrue(RemoveNamed(Text, ['Units.B'], Removed));
-  Assert.AreEqual(Source('Units.A, {$IFDEF X}{$ENDIF}Units.C', '', '', ''), Removed);
-  Assert.IsTrue(RemoveNamed(Text, ['Units.A'], Removed));
-  Assert.AreEqual(Source('{$IFDEF X}Units.B, {$ENDIF}Units.C', '', '', ''), Removed);
-  Assert.IsFalse(RemoveNamed(Text, ['Units.C'], Removed), 'Komma liegt im Zweig');
+  mText := Source('Units.A, {$IFDEF X}Units.B, {$ENDIF}Units.C', '', '', '');
+  Assert.IsTrue(RemoveNamed(mText, ['Units.B'], mRemoved));
+  Assert.AreEqual(Source('Units.A, {$IFDEF X}{$ENDIF}Units.C', '', '', ''), mRemoved);
+  Assert.IsTrue(RemoveNamed(mText, ['Units.A'], mRemoved));
+  Assert.AreEqual(Source('{$IFDEF X}Units.B, {$ENDIF}Units.C', '', '', ''), mRemoved);
+  Assert.IsFalse(RemoveNamed(mText, ['Units.C'], mRemoved), 'Komma liegt im Zweig');
   // Kommentar am Eintrag davor bleibt.
-  Text := 'unit U;'#10'interface'#10'uses'#10'  Units.A, // a'#10'  Units.B;'#10'implementation'#10'end.';
-  Assert.IsTrue(RemoveNamed(Text, ['Units.B'], Removed));
-  Assert.AreEqual('unit U;'#10'interface'#10'uses'#10'  Units.A // a'#10'  ;'#10'implementation'#10'end.', Removed);
+  mText := 'unit U;'#10'interface'#10'uses'#10'  Units.A, // a'#10'  Units.B;'#10'implementation'#10'end.';
+  Assert.IsTrue(RemoveNamed(mText, ['Units.B'], mRemoved));
+  Assert.AreEqual('unit U;'#10'interface'#10'uses'#10'  Units.A // a'#10'  ;'#10'implementation'#10'end.', mRemoved);
   // "in 'datei'" gehört dazu, CRLF bleibt.
-  Text := 'program P;'#13#10'uses'#13#10'  Units.A in ''a.pas'','#13#10'  Units.B;'#13#10'begin'#13#10'end.';
-  Assert.IsTrue(RemoveNamed(Text, ['Units.A'], Removed));
-  Assert.AreEqual('program P;'#13#10'uses'#13#10'  Units.B;'#13#10'begin'#13#10'end.', Removed);
+  mText := 'program P;'#13#10'uses'#13#10'  Units.A in ''a.pas'','#13#10'  Units.B;'#13#10'begin'#13#10'end.';
+  Assert.IsTrue(RemoveNamed(mText, ['Units.A'], mRemoved));
+  Assert.AreEqual('program P;'#13#10'uses'#13#10'  Units.B;'#13#10'begin'#13#10'end.', mRemoved);
 end;
 
 procedure TUsesActionsTests.ActionsAtEntryCarryTags;
 var
-  Text, Found: string;
-  Context: TUsesContext;
-  Action: TCodeAction;
-  Tree: TSyntaxTree;
+  mText, mFound: string;
+  mContext: TUsesContext;
+  mAction: TCodeAction;
+  mTree: TSyntaxTree;
 begin
-  Text := Source('Units.A, Units.B, Units.C', '', '', 'procedure P;'#10'begin'#10'  Foo;'#10'end;'#10);
-  Context := Default(TUsesContext);
-  Context.Info := Info;
-  Tree := TPascalParser.Parse(Text);
+  mText := Source('Units.A, Units.B, Units.C', '', '', 'procedure P;'#10'begin'#10'  Foo;'#10'end;'#10);
+  mContext := Default(TUsesContext);
+  mContext.Info := Info;
+  mTree := TPascalParser.Parse(mText);
   try
     // Cursor auf Units.B (Zeile 3, Spalte 12).
-    Found := '';
-    for Action in TCodeActions.UsesActions(Text, Tree, TTextRange.Create(3, 12, 3, 12), Context, True, False) do
+    mFound := '';
+    for mAction in TCodeActions.UsesActions(mText, mTree, TTextRange.Create(3, 12, 3, 12), mContext, True, False) do
     begin
-      if Action.Tag <> '' then
+      if mAction.Tag <> '' then
       begin
-        Found := Found + Action.Title + '=' + Action.Tag + '|';
+        mFound := mFound + mAction.Title + '=' + mAction.Tag + '|';
       end;
     end;
-    Assert.AreEqual('Units.B entfernen=uses.remove|Alle ungenutzten uses entfernen (2)=uses.removeAll|', Found);
+    Assert.AreEqual('Units.B entfernen=uses.remove|Alle ungenutzten uses entfernen (2)=uses.removeAll|', mFound);
     // Auf Units.A: nur in der implementation gebraucht, die Aktion für alle trägt die Kennung.
-    Found := '';
-    for Action in TCodeActions.UsesActions(Text, Tree, TTextRange.Create(3, 3, 3, 3), Context, True, False) do
+    mFound := '';
+    for mAction in TCodeActions.UsesActions(mText, mTree, TTextRange.Create(3, 3, 3, 3), mContext, True, False) do
     begin
-      if Action.Tag <> '' then
+      if mAction.Tag <> '' then
       begin
-        Found := Found + Action.Title + '=' + Action.Tag + '|';
+        mFound := mFound + mAction.Title + '=' + mAction.Tag + '|';
       end;
     end;
-    Assert.AreEqual('Units.A ins implementation-uses verschieben=uses.move|', Found);
+    Assert.AreEqual('Units.A ins implementation-uses verschieben=uses.move|', mFound);
   finally
-    Tree.Free;
+    mTree.Free;
   end;
 end;
 

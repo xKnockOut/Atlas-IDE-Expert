@@ -53,16 +53,16 @@ uses
   Atlas.Text.Lines;
 
 const
-  LF = #10;
+  cLF = #10;
 
 function Lines(const ALines: array of string): string;
 var
-  Line: string;
+  mLine: string;
 begin
   Result := '';
-  for Line in ALines do
+  for mLine in ALines do
   begin
-    Result := Result + Line + LF;
+    Result := Result + mLine + cLF;
   end;
 end;
 
@@ -119,83 +119,83 @@ end;
 function Run(const AText: string; const AAt: TPromoteAt; out ATarget: TPromoteTarget; out APromoted: TPromoteResult;
   out AReason, AResult: string): Boolean;
 var
-  Tree, Check: TSyntaxTree;
-  Name: string;
+  mTree, mCheck: TSyntaxTree;
+  mName: string;
 begin
   AResult := '';
   APromoted := Default(TPromoteResult);
-  Tree := TPascalParser.Parse(AText);
+  mTree := TPascalParser.Parse(AText);
   try
-    Assert.AreEqual(0, Integer(Length(Tree.Diagnostics)), 'Quelle parst nicht: ' + AText);
-    Result := TPromoteVariable.Target(AText, Tree, PositionOf(AText, AAt.Marker), TestLookup(Tree), ATarget, AReason);
+    Assert.AreEqual(0, Integer(Length(mTree.Diagnostics)), 'Quelle parst nicht: ' + AText);
+    Result := TPromoteVariable.Target(AText, mTree, PositionOf(AText, AAt.Marker), TestLookup(mTree), ATarget, AReason);
     if not Result then
     begin
       Exit;
     end;
-    Name := AAt.Name;
-    if Name = '' then
+    mName := AAt.Name;
+    if mName = '' then
     begin
-      Name := ATarget.Suggested;
+      mName := ATarget.Suggested;
     end;
-    Result := TPromoteVariable.Execute(AText, Tree, TPromoteRequest.Create(PositionOf(AText, AAt.Marker),
-      TestLookup(Tree), TFormatStyle.Default, Name), APromoted, AReason);
+    Result := TPromoteVariable.Execute(AText, mTree, TPromoteRequest.Create(PositionOf(AText, AAt.Marker),
+      TestLookup(mTree), TFormatStyle.Default, mName), APromoted, AReason);
     if Result then
     begin
       AResult := TChangeSignature.ApplyEdits(AText, APromoted.Edits);
-      Check := TPascalParser.Parse(AResult);
+      mCheck := TPascalParser.Parse(AResult);
       try
-        Assert.AreEqual(0, Integer(Length(Check.Diagnostics)), 'Ergebnis parst nicht: ' + AResult);
+        Assert.AreEqual(0, Integer(Length(mCheck.Diagnostics)), 'Ergebnis parst nicht: ' + AResult);
       finally
-        Check.Free;
+        mCheck.Free;
       end;
     end;
   finally
-    Tree.Free;
+    mTree.Free;
   end;
 end;
 
 function Promoted(const AText, AMarker: string; out ATarget: TPromoteTarget; out AResult: TPromoteResult): string;
 var
-  Reason: string;
+  mReason: string;
 begin
-  Assert.IsTrue(Run(AText, At(AMarker, ''), ATarget, AResult, Reason, Result),
-    'Aktion fehlt (' + Reason + '): ' + AText);
+  Assert.IsTrue(Run(AText, At(AMarker, ''), ATarget, AResult, mReason, Result),
+    'Aktion fehlt (' + mReason + '): ' + AText);
 end;
 
 function PromotedText(const AText, AMarker: string): string;
 var
-  Target: TPromoteTarget;
-  Promote: TPromoteResult;
+  mTarget: TPromoteTarget;
+  mPromote: TPromoteResult;
 begin
-  Result := Promoted(AText, AMarker, Target, Promote);
+  Result := Promoted(AText, AMarker, mTarget, mPromote);
 end;
 
 function Refused(const AText, AMarker: string): string;
 var
-  Target: TPromoteTarget;
-  Promote: TPromoteResult;
-  Text: string;
+  mTarget: TPromoteTarget;
+  mPromote: TPromoteResult;
+  mText: string;
 begin
-  Assert.IsFalse(Run(AText, At(AMarker, ''), Target, Promote, Result, Text), 'Aktion unerwartet: ' + Text);
+  Assert.IsFalse(Run(AText, At(AMarker, ''), mTarget, mPromote, Result, mText), 'Aktion unerwartet: ' + mText);
   Assert.AreNotEqual('', Result);
 end;
 
 /// <summary>Grund, aus dem die Umwandlung mit dem Namen AName scheitert (die Aktion wird angeboten).</summary>
 function RefusedName(const AText, AMarker, AName: string): string;
 var
-  Target: TPromoteTarget;
-  Promote: TPromoteResult;
-  Text: string;
-  Tree: TSyntaxTree;
+  mTarget: TPromoteTarget;
+  mPromote: TPromoteResult;
+  mText: string;
+  mTree: TSyntaxTree;
 begin
-  Tree := TPascalParser.Parse(AText);
+  mTree := TPascalParser.Parse(AText);
   try
-    Assert.IsTrue(TPromoteVariable.Target(AText, Tree, PositionOf(AText, AMarker), TestLookup(Tree), Target, Result),
+    Assert.IsTrue(TPromoteVariable.Target(AText, mTree, PositionOf(AText, AMarker), TestLookup(mTree), mTarget, Result),
       Result);
   finally
-    Tree.Free;
+    mTree.Free;
   end;
-  Assert.IsFalse(Run(AText, At(AMarker, AName), Target, Promote, Result, Text), 'Aktion unerwartet: ' + Text);
+  Assert.IsFalse(Run(AText, At(AMarker, AName), mTarget, mPromote, Result, mText), 'Aktion unerwartet: ' + mText);
 end;
 
 procedure TPromoteVariableTests.Names;
@@ -211,11 +211,11 @@ end;
 
 procedure TPromoteVariableTests.VariableBecomesField;
 var
-  Text, Done: string;
-  Target: TPromoteTarget;
-  Promote: TPromoteResult;
+  mText, mDone: string;
+  mTarget: TPromoteTarget;
+  mPromote: TPromoteResult;
 begin
-  Text := ClassUnit(Lines(['  private', '    FCount: Integer;', '    procedure Show;', '  public',
+  mText := ClassUnit(Lines(['  private', '    FCount: Integer;', '    procedure Show;', '  public',
     '    procedure Run;']), Lines([
     'procedure TFoo.Show;',
     'begin',
@@ -230,10 +230,10 @@ begin
     '    Inc(LLineNo);',
     '  FCount := LLineNo;',
     'end;']));
-  Done := Promoted(Text, 'LLineNo:', Target, Promote);
+  mDone := Promoted(mText, 'LLineNo:', mTarget, mPromote);
   // Der Pfeil steht zwischen den Namen (ohne ihn zu vergleichen: der FPC-Lauf liest ihn anders).
-  Assert.IsTrue(StartsStr(TPromoteVariable.ToFieldTitle + ' (LLineNo ', Target.Title), Target.Title);
-  Assert.IsTrue(EndsStr(' FLineNo)', Target.Title), Target.Title);
+  Assert.IsTrue(StartsStr(TPromoteVariable.ToFieldTitle + ' (LLineNo ', mTarget.Title), mTarget.Title);
+  Assert.IsTrue(EndsStr(' FLineNo)', mTarget.Title), mTarget.Title);
   Assert.AreEqual(ClassUnit(Lines(['  private', '    FCount: Integer;', '    FLineNo: Integer;', '    procedure Show;',
     '  public', '    procedure Run;']), Lines([
     'procedure TFoo.Show;',
@@ -248,21 +248,21 @@ begin
     '  for I := 0 to 9 do',
     '    Inc(FLineNo);',
     '  FCount := FLineNo;',
-    'end;'])), Done);
-  Assert.AreEqual(5, Promote.Places);
-  Assert.AreEqual(0, Integer(Length(Promote.Warnings)));
+    'end;'])), mDone);
+  Assert.AreEqual(5, mPromote.Places);
+  Assert.AreEqual(0, Integer(Length(mPromote.Warnings)));
   // Auch von einer Verwendung aus; der einzige Eintrag nimmt var mit.
-  Text := ClassUnit(Lines(['  private', '    procedure Run;']), Lines(['procedure TFoo.Run;', 'var', '  Total: Integer;',
+  mText := ClassUnit(Lines(['  private', '    procedure Run;']), Lines(['procedure TFoo.Run;', 'var', '  Total: Integer;',
     'begin', '  Total := 1;', 'end;']));
   Assert.AreEqual(ClassUnit(Lines(['  private', '    FTotal: Integer;', '    procedure Run;']),
-    Lines(['procedure TFoo.Run;', 'begin', '  FTotal := 1;', 'end;'])), PromotedText(Text, 'Total := 1'));
+    Lines(['procedure TFoo.Run;', 'begin', '  FTotal := 1;', 'end;'])), PromotedText(mText, 'Total := 1'));
 end;
 
 procedure TPromoteVariableTests.InlineVariableKeepsAssignment;
 var
-  Text: string;
+  mText: string;
 begin
-  Text := ClassUnit(Lines(['  private', '    FCount: Integer;', '  public', '    procedure Run;']), Lines([
+  mText := ClassUnit(Lines(['  private', '    FCount: Integer;', '  public', '    procedure Run;']), Lines([
     'procedure TFoo.Run;',
     'begin',
     '  var LSum: Integer := 0;',
@@ -280,65 +280,65 @@ begin
     '  var LText: string;',
     '  LText := ''a'';',
     '  FCount := FSum + LNext + Length(LText);',
-    'end;'])), PromotedText(Text, 'LSum:'));
+    'end;'])), PromotedText(mText, 'LSum:'));
   // Ohne Typangabe: Typ aus der Ableitung.
-  Assert.IsTrue(ContainsStr(PromotedText(Text, 'LNext :='), '    FNext: Integer;' + LF), Text);
-  Assert.IsTrue(ContainsStr(PromotedText(Text, 'LNext :='), '  FNext := LSum + 1;' + LF), Text);
+  Assert.IsTrue(ContainsStr(PromotedText(mText, 'LNext :='), '    FNext: Integer;' + cLF), mText);
+  Assert.IsTrue(ContainsStr(PromotedText(mText, 'LNext :='), '  FNext := LSum + 1;' + cLF), mText);
   // Ohne Startwert verschwindet die Zeile.
-  Assert.IsTrue(ContainsStr(PromotedText(Text, 'LText:'), 'begin' + LF + '  var LSum: Integer := 0;' + LF +
-    '  var LNext := LSum + 1;' + LF + '  FText := ''a'';' + LF), PromotedText(Text, 'LText:'));
-  Assert.IsTrue(ContainsStr(PromotedText(Text, 'LText:'), '    FText: string;' + LF), Text);
+  Assert.IsTrue(ContainsStr(PromotedText(mText, 'LText:'), 'begin' + cLF + '  var LSum: Integer := 0;' + cLF +
+    '  var LNext := LSum + 1;' + cLF + '  FText := ''a'';' + cLF), PromotedText(mText, 'LText:'));
+  Assert.IsTrue(ContainsStr(PromotedText(mText, 'LText:'), '    FText: string;' + cLF), mText);
 end;
 
 procedure TPromoteVariableTests.NewPrivateSectionAndRecord;
 var
-  Text: string;
+  mText: string;
 begin
   // Kein private-Abschnitt: ein neuer vor end.
-  Text := ClassUnit(Lines(['  public', '    procedure Run;']), Lines(['procedure TFoo.Run;', 'var', '  LValue: Double;',
+  mText := ClassUnit(Lines(['  public', '    procedure Run;']), Lines(['procedure TFoo.Run;', 'var', '  LValue: Double;',
     'begin', '  LValue := 1.5;', 'end;']));
   Assert.AreEqual(ClassUnit(Lines(['  public', '    procedure Run;', '  private', '    FValue: Double;']),
-    Lines(['procedure TFoo.Run;', 'begin', '  FValue := 1.5;', 'end;'])), PromotedText(Text, 'LValue:'));
+    Lines(['procedure TFoo.Run;', 'begin', '  FValue := 1.5;', 'end;'])), PromotedText(mText, 'LValue:'));
   // Record mit Methode: entsprechend.
-  Text := Lines(['unit U;', '', 'interface', '', 'type', '  TPoint3 = record', '  private', '    FX: Integer;',
+  mText := Lines(['unit U;', '', 'interface', '', 'type', '  TPoint3 = record', '  private', '    FX: Integer;',
     '  public', '    procedure Reset;', '  end;', '', 'implementation', '', 'procedure TPoint3.Reset;', 'var',
     '  LY: Integer;', 'begin', '  LY := 0;', '  FX := LY;', 'end;', '', 'end.']);
   Assert.AreEqual(Lines(['unit U;', '', 'interface', '', 'type', '  TPoint3 = record', '  private', '    FX: Integer;',
     '    FY: Integer;', '  public', '    procedure Reset;', '  end;', '', 'implementation', '',
-    'procedure TPoint3.Reset;', 'begin', '  FY := 0;', '  FX := FY;', 'end;', '', 'end.']), PromotedText(Text, 'LY:'));
+    'procedure TPoint3.Reset;', 'begin', '  FY := 0;', '  FX := FY;', 'end;', '', 'end.']), PromotedText(mText, 'LY:'));
 end;
 
 procedure TPromoteVariableTests.FieldNameConflicts;
 var
-  Text: string;
+  mText: string;
 begin
-  Text := ClassUnit(Lines(['  private', '    FTotal: Integer;', '  public', '    procedure Run;', '    procedure Other;']),
+  mText := ClassUnit(Lines(['  private', '    FTotal: Integer;', '  public', '    procedure Run;', '    procedure Other;']),
     Lines(['procedure TFoo.Run;', 'var', '  LSum, LTemp: Integer;', 'begin', '  LSum := FTotal;', '  LTemp := 0;',
     'end;', '', 'procedure TFoo.Other;', 'begin', '  Global := 1;', 'end;']));
   // Vorhandenes und geerbtes Mitglied, lokaler Name, anderer Bezeichner in einer Methode der Klasse, ungültig.
-  Assert.IsTrue(ContainsText(RefusedName(Text, 'LSum,', 'FTotal'), 'Mitglied'));
-  Assert.IsTrue(ContainsText(RefusedName(Text, 'LSum,', 'FBase'), 'erbt'));
-  Assert.IsTrue(ContainsText(RefusedName(Text, 'LSum,', 'LTemp'), 'deklariert'));
-  Assert.IsTrue(ContainsText(RefusedName(Text, 'LSum,', 'Global'), 'anderes'));
-  Assert.IsTrue(ContainsText(RefusedName(Text, 'LSum,', 'begin'), 'Name'));
-  Assert.IsTrue(ContainsText(RefusedName(Text, 'LSum,', '1X'), 'Name'));
+  Assert.IsTrue(ContainsText(RefusedName(mText, 'LSum,', 'FTotal'), 'Mitglied'));
+  Assert.IsTrue(ContainsText(RefusedName(mText, 'LSum,', 'FBase'), 'erbt'));
+  Assert.IsTrue(ContainsText(RefusedName(mText, 'LSum,', 'LTemp'), 'deklariert'));
+  Assert.IsTrue(ContainsText(RefusedName(mText, 'LSum,', 'Global'), 'anderes'));
+  Assert.IsTrue(ContainsText(RefusedName(mText, 'LSum,', 'begin'), 'Name'));
+  Assert.IsTrue(ContainsText(RefusedName(mText, 'LSum,', '1X'), 'Name'));
   // Ein freier, selbst gewählter Name geht.
-  Assert.IsTrue(ContainsStr(PromotedText(Text, 'LSum,'), '  FSum := FTotal;'), Text);
+  Assert.IsTrue(ContainsStr(PromotedText(mText, 'LSum,'), '  FSum := FTotal;'), mText);
 end;
 
 procedure TPromoteVariableTests.FieldWarnings;
 var
-  Text: string;
-  Target: TPromoteTarget;
-  Promote: TPromoteResult;
+  mText: string;
+  mTarget: TPromoteTarget;
+  mPromote: TPromoteResult;
 begin
-  Text := ClassUnit(Lines(['  public', '    procedure Run(N: Integer);']), Lines(['procedure TFoo.Run(N: Integer);',
+  mText := ClassUnit(Lines(['  public', '    procedure Run(N: Integer);']), Lines(['procedure TFoo.Run(N: Integer);',
     'var', '  LList: TObject;', 'begin', '  LList := TObject.Create;', '  try', '    if N > 0 then', '      Run(N - 1);',
     '  finally', '    LList.Free;', '  end;', 'end;']));
-  Promoted(Text, 'LList:', Target, Promote);
-  Assert.AreEqual(2, Integer(Length(Promote.Warnings)));
-  Assert.IsTrue(ContainsText(Promote.Warnings[0], 'freigegeben'), Promote.Warnings[0]);
-  Assert.IsTrue(ContainsText(Promote.Warnings[1], 'selbst'), Promote.Warnings[1]);
+  Promoted(mText, 'LList:', mTarget, mPromote);
+  Assert.AreEqual(2, Integer(Length(mPromote.Warnings)));
+  Assert.IsTrue(ContainsText(mPromote.Warnings[0], 'freigegeben'), mPromote.Warnings[0]);
+  Assert.IsTrue(ContainsText(mPromote.Warnings[1], 'selbst'), mPromote.Warnings[1]);
 end;
 
 procedure TPromoteVariableTests.FieldRefusals;
@@ -361,11 +361,11 @@ end;
 
 procedure TPromoteVariableTests.FieldBecomesLocal;
 var
-  Text, Done: string;
-  Target: TPromoteTarget;
-  Promote: TPromoteResult;
+  mText, mDone: string;
+  mTarget: TPromoteTarget;
+  mPromote: TPromoteResult;
 begin
-  Text := ClassUnit(Lines(['  private', '    FA, FLineNo: Integer;', '  public', '    procedure Run;',
+  mText := ClassUnit(Lines(['  private', '    FA, FLineNo: Integer;', '  public', '    procedure Run;',
     '    procedure Other;']), Lines([
     'procedure TFoo.Run;',
     'var',
@@ -382,9 +382,9 @@ begin
     'begin',
     '  FA := 1;',
     'end;']));
-  Done := Promoted(Text, 'FLineNo:', Target, Promote);
-  Assert.IsTrue(StartsStr(TPromoteVariable.ToLocalTitle + ' (FLineNo ', Target.Title), Target.Title);
-  Assert.IsTrue(EndsStr(' LLineNo)', Target.Title), Target.Title);
+  mDone := Promoted(mText, 'FLineNo:', mTarget, mPromote);
+  Assert.IsTrue(StartsStr(TPromoteVariable.ToLocalTitle + ' (FLineNo ', mTarget.Title), mTarget.Title);
+  Assert.IsTrue(EndsStr(' LLineNo)', mTarget.Title), mTarget.Title);
   Assert.AreEqual(ClassUnit(Lines(['  private', '    FA: Integer;', '  public', '    procedure Run;',
     '    procedure Other;']), Lines([
     'procedure TFoo.Run;',
@@ -402,30 +402,30 @@ begin
     'procedure TFoo.Other;',
     'begin',
     '  FA := 1;',
-    'end;'])), Done);
+    'end;'])), mDone);
   // Ohne var-Abschnitt entsteht einer.
-  Text := ClassUnit(Lines(['  private', '    FTemp: string;', '  public', '    procedure Run;']),
+  mText := ClassUnit(Lines(['  private', '    FTemp: string;', '  public', '    procedure Run;']),
     Lines(['procedure TFoo.Run;', 'begin', '  FTemp := ''x'';', '  Writeln(FTemp);', 'end;']));
   Assert.AreEqual(ClassUnit(Lines(['  public', '    procedure Run;']), Lines(['procedure TFoo.Run;', 'var',
-    '  LTemp: string;', 'begin', '  LTemp := ''x'';', '  Writeln(LTemp);', 'end;'])), PromotedText(Text, 'FTemp:'));
+    '  LTemp: string;', 'begin', '  LTemp := ''x'';', '  Writeln(LTemp);', 'end;'])), PromotedText(mText, 'FTemp:'));
 end;
 
 procedure TPromoteVariableTests.LocalRefusals;
 var
-  Members, Run: string;
+  mMembers, mRun: string;
 begin
-  Members := Lines(['  private', '    FTemp: Integer;', '  public', '    procedure Run;', '    procedure Other;']);
-  Run := Lines(['procedure TFoo.Run;', 'begin', '  FTemp := 1;', '  Other;', 'end;', '']);
+  mMembers := Lines(['  private', '    FTemp: Integer;', '  public', '    procedure Run;', '    procedure Other;']);
+  mRun := Lines(['procedure TFoo.Run;', 'begin', '  FTemp := 1;', '  Other;', 'end;', '']);
   // Zweite Methode.
-  Assert.IsTrue(ContainsText(Refused(ClassUnit(Members, Run + Lines(['procedure TFoo.Other;', 'begin',
+  Assert.IsTrue(ContainsText(Refused(ClassUnit(mMembers, mRun + Lines(['procedure TFoo.Other;', 'begin',
     '  FTemp := 2;', 'end;'])), 'FTemp:'), 'mehreren'));
   // Lesen vor Schreiben, nicht auf jedem Weg geschrieben.
-  Assert.IsTrue(ContainsText(Refused(ClassUnit(Members, Lines(['procedure TFoo.Run;', 'begin', '  Inc(FTemp);', 'end;',
+  Assert.IsTrue(ContainsText(Refused(ClassUnit(mMembers, Lines(['procedure TFoo.Run;', 'begin', '  Inc(FTemp);', 'end;',
     '', 'procedure TFoo.Other;', 'begin', 'end;'])), 'FTemp:'), 'zuerst'));
-  Assert.IsTrue(ContainsText(Refused(ClassUnit(Members, Lines(['procedure TFoo.Run;', 'begin', '  if Tag = 0 then',
+  Assert.IsTrue(ContainsText(Refused(ClassUnit(mMembers, Lines(['procedure TFoo.Run;', 'begin', '  if Tag = 0 then',
     '    FTemp := 1;', '  Other(FTemp);', 'end;', '', 'procedure TFoo.Other;', 'begin', 'end;'])), 'FTemp:'), 'zuerst'));
   // Property, Formular, published, lokale Routine, nicht benutzt.
-  Refused(ClassUnit(Members + Lines(['    property Temp: Integer read FTemp;']), Run + Lines(['procedure TFoo.Other;',
+  Refused(ClassUnit(mMembers + Lines(['    property Temp: Integer read FTemp;']), mRun + Lines(['procedure TFoo.Other;',
     'begin', 'end;'])), 'FTemp:');
   Refused(ClassUnit(Lines(['  private', '    FForm: Integer;', '  public', '    procedure Run;']), Lines([
     'procedure TFoo.Run;', 'begin', '  FForm := 1;', 'end;'])), 'FForm:');
@@ -434,21 +434,21 @@ begin
   Refused(ClassUnit(Lines(['  private', '    FTemp: Integer;', '  public', '    procedure Run;']), Lines([
     'procedure TFoo.Run;', '', '  procedure Inner;', '  begin', '    FTemp := 1;', '  end;', '', 'begin', '  Inner;',
     'end;'])), 'FTemp:');
-  Refused(ClassUnit(Members, Lines(['procedure TFoo.Run;', 'begin', 'end;', '', 'procedure TFoo.Other;', 'begin',
+  Refused(ClassUnit(mMembers, Lines(['procedure TFoo.Run;', 'begin', 'end;', '', 'procedure TFoo.Other;', 'begin',
     'end;'])), 'FTemp:');
   // Über ein anderes Objekt.
-  Refused(ClassUnit(Members, Lines(['procedure TFoo.Run;', 'begin', '  FTemp := 1;', 'end;', '',
+  Refused(ClassUnit(mMembers, Lines(['procedure TFoo.Run;', 'begin', '  FTemp := 1;', 'end;', '',
     'procedure TFoo.Other;', 'var', '  Foo: TFoo;', 'begin', '  Foo.FTemp := 1;', 'end;'])), 'FTemp:');
 end;
 
 procedure TPromoteVariableTests.TargetFromUsage;
 var
-  Text: string;
+  mText: string;
 begin
   // Cursor auf der Verwendung eines Felds in der Methode.
-  Text := ClassUnit(Lines(['  private', '    FTemp: Integer;', '  public', '    procedure Run;']), Lines([
+  mText := ClassUnit(Lines(['  private', '    FTemp: Integer;', '  public', '    procedure Run;']), Lines([
     'procedure TFoo.Run;', 'begin', '  FTemp := 1;', 'end;']));
-  Assert.IsTrue(ContainsStr(PromotedText(Text, 'FTemp := 1'), '  LTemp := 1;'), Text);
+  Assert.IsTrue(ContainsStr(PromotedText(mText, 'FTemp := 1'), '  LTemp := 1;'), mText);
 end;
 
 initialization

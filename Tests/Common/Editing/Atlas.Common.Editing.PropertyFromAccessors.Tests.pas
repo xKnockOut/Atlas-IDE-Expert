@@ -61,7 +61,7 @@ uses
   Atlas.Common.Editing.PropertyFromAccessors;
 
 const
-  Panel =
+  cPanel =
     'unit U;'#10 +                                          // 0
     'interface'#10 +                                        // 1
     'type'#10 +                                             // 2
@@ -91,13 +91,13 @@ end;
 function Find(const AText: string; const AOptions: TPropertyFromAccessorsOptions): TArray<TAccessorProperty>;
   overload;
 var
-  Tree: TSyntaxTree;
+  mTree: TSyntaxTree;
 begin
-  Tree := TPascalParser.Parse(AText);
+  mTree := TPascalParser.Parse(AText);
   try
-    Result := TPropertyFromAccessors.Find(Tree, AText, AOptions);
+    Result := TPropertyFromAccessors.Find(mTree, AText, AOptions);
   finally
-    Tree.Free;
+    mTree.Free;
   end;
 end;
 
@@ -108,13 +108,13 @@ end;
 
 function Parses(const AText: string): Boolean;
 var
-  Tree: TSyntaxTree;
+  mTree: TSyntaxTree;
 begin
-  Tree := TPascalParser.Parse(AText);
+  mTree := TPascalParser.Parse(AText);
   try
-    Result := Length(Tree.Diagnostics) = 0;
+    Result := Length(mTree.Diagnostics) = 0;
   finally
-    Tree.Free;
+    mTree.Free;
   end;
 end;
 
@@ -123,14 +123,14 @@ end;
 function Create_(const AText: string; const AHidden: TArray<string>;
   const AOptions: TPropertyFromAccessorsOptions): string; overload;
 var
-  Tree: TSyntaxTree;
+  mTree: TSyntaxTree;
 begin
-  Tree := TPascalParser.Parse(AText);
+  mTree := TPascalParser.Parse(AText);
   try
-    Result := TChangeSignature.ApplyEdits(AText, TPropertyFromAccessors.Edits(Tree, AText,
-      TPropertyFromAccessors.Find(Tree, AText, AOptions), AHidden, AOptions));
+    Result := TChangeSignature.ApplyEdits(AText, TPropertyFromAccessors.Edits(mTree, AText,
+      TPropertyFromAccessors.Find(mTree, AText, AOptions), AHidden, AOptions));
   finally
-    Tree.Free;
+    mTree.Free;
   end;
   Assert.IsTrue(Parses(Result), Result);
   Assert.AreEqual(0, Integer(Length(Find(Result, AOptions))), Result);
@@ -143,101 +143,101 @@ end;
 
 procedure TPropertyFromAccessorsTests.OnlyGetter;
 var
-  Found: TArray<TAccessorProperty>;
-  Source: string;
+  mFound: TArray<TAccessorProperty>;
+  mSource: string;
 begin
-  Source := UnitText('  TPanel = class'#10'  public'#10'    function GetCaption: string;'#10'  end;'#10, '');
-  Found := Find(Source);
-  Assert.AreEqual(1, Integer(Length(Found)));
-  Assert.AreEqual('Caption', Found[0].Name);
-  Assert.IsFalse(Found[0].Setter.Exists);
-  Assert.AreEqual('property Caption: string read GetCaption;', Found[0].Declaration);
+  mSource := UnitText('  TPanel = class'#10'  public'#10'    function GetCaption: string;'#10'  end;'#10, '');
+  mFound := Find(mSource);
+  Assert.AreEqual(1, Integer(Length(mFound)));
+  Assert.AreEqual('Caption', mFound[0].Name);
+  Assert.IsFalse(mFound[0].Setter.Exists);
+  Assert.AreEqual('property Caption: string read GetCaption;', mFound[0].Declaration);
   Assert.AreEqual(UnitText('  TPanel = class'#10'  public'#10'    function GetCaption: string;'#10 +
-    '    property Caption: string read GetCaption;'#10'  end;'#10, ''), Create_(Source));
+    '    property Caption: string read GetCaption;'#10'  end;'#10, ''), Create_(mSource));
 end;
 
 procedure TPropertyFromAccessorsTests.GetterAndSetter;
 var
-  Found: TArray<TAccessorProperty>;
-  Result_: string;
+  mFound: TArray<TAccessorProperty>;
+  mResult_: string;
 begin
-  Found := Find(Panel);
-  Assert.AreEqual(1, Integer(Length(Found)));
-  Assert.AreEqual('TPanel', Found[0].ClassName);
-  Assert.AreEqual(3, Found[0].ClassLine);
-  Assert.AreEqual(7, Found[0].Getter.NamePos.Line);
-  Assert.AreEqual(13, Found[0].Getter.NamePos.Character);
-  Assert.AreEqual(8, Found[0].Setter.NamePos.Line);
+  mFound := Find(cPanel);
+  Assert.AreEqual(1, Integer(Length(mFound)));
+  Assert.AreEqual('TPanel', mFound[0].ClassName);
+  Assert.AreEqual(3, mFound[0].ClassLine);
+  Assert.AreEqual(7, mFound[0].Getter.NamePos.Line);
+  Assert.AreEqual(13, mFound[0].Getter.NamePos.Character);
+  Assert.AreEqual(8, mFound[0].Setter.NamePos.Line);
   // Der Getter liefert nicht nur das Feld: read GetCaption.
-  Assert.AreEqual('property Caption: string read GetCaption write SetCaption;', Found[0].Declaration);
-  Result_ := Create_(Panel);
-  Assert.Contains(Result_, '    procedure SetCaption(const AValue: string);'#10 +
+  Assert.AreEqual('property Caption: string read GetCaption write SetCaption;', mFound[0].Declaration);
+  mResult_ := Create_(cPanel);
+  Assert.Contains(mResult_, '    procedure SetCaption(const AValue: string);'#10 +
     '    property Caption: string read GetCaption write SetCaption;'#10'  end;');
 end;
 
 procedure TPropertyFromAccessorsTests.IndexedProperty;
 var
-  Found: TArray<TAccessorProperty>;
+  mFound: TArray<TAccessorProperty>;
 begin
-  Found := Find(UnitText('  TList = class'#10'  public'#10'    function GetItem(AIndex: Integer): TObject;'#10 +
+  mFound := Find(UnitText('  TList = class'#10'  public'#10'    function GetItem(AIndex: Integer): TObject;'#10 +
     '    procedure SetItem(AIndex: Integer; const AValue: TObject);'#10'  end;'#10, ''));
-  Assert.AreEqual(1, Integer(Length(Found)));
-  Assert.AreEqual('property Items[AIndex: Integer]: TObject read GetItem write SetItem;', Found[0].Declaration);
+  Assert.AreEqual(1, Integer(Length(mFound)));
+  Assert.AreEqual('property Items[AIndex: Integer]: TObject read GetItem write SetItem;', mFound[0].Declaration);
   // Ohne Getter: Indexparameter aus dem Setter.
-  Found := Find(UnitText('  TList = class'#10'  public'#10 +
+  mFound := Find(UnitText('  TList = class'#10'  public'#10 +
     '    procedure SetEntry(const AName: string; AValue: Integer);'#10'  end;'#10, ''));
-  Assert.AreEqual(1, Integer(Length(Found)));
-  Assert.AreEqual('property Entries[const AName: string]: Integer write SetEntry;', Found[0].Declaration);
+  Assert.AreEqual(1, Integer(Length(mFound)));
+  Assert.AreEqual('property Entries[const AName: string]: Integer write SetEntry;', mFound[0].Declaration);
   // Indexparameter, die nicht passen: nur der Getter.
-  Found := Find(UnitText('  TList = class'#10'  public'#10'    function GetItem(AIndex: Integer): TObject;'#10 +
+  mFound := Find(UnitText('  TList = class'#10'  public'#10'    function GetItem(AIndex: Integer): TObject;'#10 +
     '    procedure SetItem(const AName: string; const AValue: TObject);'#10'  end;'#10, ''));
-  Assert.AreEqual(1, Integer(Length(Found)));
-  Assert.AreEqual('property Items[AIndex: Integer]: TObject read GetItem;', Found[0].Declaration);
+  Assert.AreEqual(1, Integer(Length(mFound)));
+  Assert.AreEqual('property Items[AIndex: Integer]: TObject read GetItem;', mFound[0].Declaration);
 end;
 
 procedure TPropertyFromAccessorsTests.BooleanWithIs;
 var
-  Found: TArray<TAccessorProperty>;
+  mFound: TArray<TAccessorProperty>;
 begin
-  Found := Find(UnitText('  TList = class'#10'  public'#10'    function IsEmpty: Boolean;'#10 +
+  mFound := Find(UnitText('  TList = class'#10'  public'#10'    function IsEmpty: Boolean;'#10 +
     '    function HasName: string;'#10'    function IsVisible: Boolean;'#10 +
     '    procedure SetVisible(AValue: Boolean);'#10'  end;'#10, ''));
-  Assert.AreEqual(2, Integer(Length(Found)));
-  Assert.AreEqual('property Empty: Boolean read IsEmpty;', Found[0].Declaration);
-  Assert.AreEqual('property Visible: Boolean read IsVisible write SetVisible;', Found[1].Declaration);
+  Assert.AreEqual(2, Integer(Length(mFound)));
+  Assert.AreEqual('property Empty: Boolean read IsEmpty;', mFound[0].Declaration);
+  Assert.AreEqual('property Visible: Boolean read IsVisible write SetVisible;', mFound[1].Declaration);
 end;
 
 procedure TPropertyFromAccessorsTests.OwnPrefix;
 var
-  Options: TPropertyFromAccessorsOptions;
-  Found: TArray<TAccessorProperty>;
-  Source: string;
+  mOptions: TPropertyFromAccessorsOptions;
+  mFound: TArray<TAccessorProperty>;
+  mSource: string;
 begin
-  Source := UnitText('  TFile = class'#10'  public'#10'    function ReadSize: Int64;'#10 +
+  mSource := UnitText('  TFile = class'#10'  public'#10'    function ReadSize: Int64;'#10 +
     '    procedure WriteSize(AValue: Int64);'#10'    function GetName: string;'#10'  end;'#10, '');
-  Options := TPropertyFromAccessorsOptions.Default;
-  Options.Prefixes := ['Read', 'Write'];
-  Found := Find(Source, Options);
-  Assert.AreEqual(1, Integer(Length(Found)));
-  Assert.AreEqual('property Size: Int64 read ReadSize write WriteSize;', Found[0].Declaration);
+  mOptions := TPropertyFromAccessorsOptions.Default;
+  mOptions.Prefixes := ['Read', 'Write'];
+  mFound := Find(mSource, mOptions);
+  Assert.AreEqual(1, Integer(Length(mFound)));
+  Assert.AreEqual('property Size: Int64 read ReadSize write WriteSize;', mFound[0].Declaration);
   // Ohne Get in der Liste bleibt GetName unbeachtet; mit den Standardpräfixen nur GetName.
-  Found := Find(Source);
-  Assert.AreEqual(1, Integer(Length(Found)));
-  Assert.AreEqual('Name', Found[0].Name);
+  mFound := Find(mSource);
+  Assert.AreEqual(1, Integer(Length(mFound)));
+  Assert.AreEqual('Name', mFound[0].Name);
 end;
 
 procedure TPropertyFromAccessorsTests.TrivialGetterReadsField;
 var
-  Found: TArray<TAccessorProperty>;
+  mFound: TArray<TAccessorProperty>;
 begin
-  Found := Find(StringReplace(Panel, 'FCaption + ''!''', 'FCaption', []));
-  Assert.AreEqual(1, Integer(Length(Found)));
-  Assert.AreEqual('FCaption', Found[0].ReadField);
-  Assert.AreEqual('property Caption: string read FCaption write SetCaption;', Found[0].Declaration);
+  mFound := Find(StringReplace(cPanel, 'FCaption + ''!''', 'FCaption', []));
+  Assert.AreEqual(1, Integer(Length(mFound)));
+  Assert.AreEqual('FCaption', mFound[0].ReadField);
+  Assert.AreEqual('property Caption: string read FCaption write SetCaption;', mFound[0].Declaration);
   // Feld mit anderem Typ: read GetCaption.
-  Found := Find(StringReplace(StringReplace(Panel, 'FCaption + ''!''', 'FCaption', []), 'FCaption: string',
+  mFound := Find(StringReplace(StringReplace(cPanel, 'FCaption + ''!''', 'FCaption', []), 'FCaption: string',
     'FCaption: TCaption', []));
-  Assert.AreEqual('', Found[0].ReadField);
+  Assert.AreEqual('', mFound[0].ReadField);
 end;
 
 procedure TPropertyFromAccessorsTests.NotOffered;
@@ -256,115 +256,115 @@ end;
 
 procedure TPropertyFromAccessorsTests.MostVisibleSection;
 var
-  Source, Result_: string;
-  Options: TPropertyFromAccessorsOptions;
+  mSource, mResult_: string;
+  mOptions: TPropertyFromAccessorsOptions;
 begin
-  Source := UnitText('  TA = class'#10'  protected'#10'    function GetCaption: string;'#10'  public'#10 +
+  mSource := UnitText('  TA = class'#10'  protected'#10'    function GetCaption: string;'#10'  public'#10 +
     '    procedure SetCaption(const AValue: string);'#10'    procedure Run;'#10'  end;'#10, '');
-  Result_ := Create_(Source);
+  mResult_ := Create_(mSource);
   Assert.AreEqual(UnitText('  TA = class'#10'  protected'#10'    function GetCaption: string;'#10'  public'#10 +
     '    procedure SetCaption(const AValue: string);'#10'    procedure Run;'#10 +
-    '    property Caption: string read GetCaption write SetCaption;'#10'  end;'#10, ''), Result_);
+    '    property Caption: string read GetCaption write SetCaption;'#10'  end;'#10, ''), mResult_);
   // Mindestens public, der public-Abschnitt steht aber vor dem Getter: neuer Abschnitt vor "end".
-  Source := UnitText('  TA = class'#10'  public'#10'    procedure Run;'#10'  private'#10 +
+  mSource := UnitText('  TA = class'#10'  public'#10'    procedure Run;'#10'  private'#10 +
     '    function GetCaption: string;'#10'  end;'#10, '');
-  Options := TPropertyFromAccessorsOptions.Default;
-  Options.Section := TPropertySectionChoice.Public_;
+  mOptions := TPropertyFromAccessorsOptions.Default;
+  mOptions.Section := TPropertySectionChoice.Public_;
   Assert.AreEqual(UnitText('  TA = class'#10'  public'#10'    procedure Run;'#10'  private'#10 +
     '    function GetCaption: string;'#10'  public'#10'    property Caption: string read GetCaption;'#10'  end;'#10,
-    ''), Create_(Source, nil, Options));
+    ''), Create_(mSource, nil, mOptions));
   // Sonst bleibt sie im Abschnitt des Getters.
-  Assert.Contains(Create_(Source), '    function GetCaption: string;'#10'    property Caption: string read GetCaption;');
+  Assert.Contains(Create_(mSource), '    function GetCaption: string;'#10'    property Caption: string read GetCaption;');
 end;
 
 procedure TPropertyFromAccessorsTests.PublishedOpensSection;
 var
-  Options: TPropertyFromAccessorsOptions;
+  mOptions: TPropertyFromAccessorsOptions;
 begin
-  Options := TPropertyFromAccessorsOptions.Default;
-  Options.Section := TPropertySectionChoice.Published_;
+  mOptions := TPropertyFromAccessorsOptions.Default;
+  mOptions.Section := TPropertySectionChoice.Published_;
   Assert.AreEqual(UnitText('  TA = class'#10'  private'#10'    function GetCaption: string;'#10 +
     '    function GetSize: Integer;'#10'  published'#10'    property Caption: string read GetCaption;'#10 +
     '    property Size: Integer read GetSize;'#10'  end;'#10, ''),
     Create_(UnitText('  TA = class'#10'  private'#10'    function GetCaption: string;'#10 +
-    '    function GetSize: Integer;'#10'  end;'#10, ''), nil, Options));
-  Options.Section := TPropertySectionChoice.Public_;
+    '    function GetSize: Integer;'#10'  end;'#10, ''), nil, mOptions));
+  mOptions.Section := TPropertySectionChoice.Public_;
   Assert.Contains(Create_(UnitText('  TA = class'#10'  private'#10'    function GetCaption: string;'#10 +
-    '  end;'#10, ''), nil, Options), '  public'#10'    property Caption: string read GetCaption;'#10'  end;');
+    '  end;'#10, ''), nil, mOptions), '  public'#10'    property Caption: string read GetCaption;'#10'  end;');
 end;
 
 procedure TPropertyFromAccessorsTests.HidesAccessors;
 var
-  Options: TPropertyFromAccessorsOptions;
+  mOptions: TPropertyFromAccessorsOptions;
 begin
-  Options := TPropertyFromAccessorsOptions.Default;
-  Options.Hiding := TAccessorHiding.Private_;
+  mOptions := TPropertyFromAccessorsOptions.Default;
+  mOptions.Hiding := TAccessorHiding.Private_;
   // Mit private-Abschnitt davor: die Methoden wandern dorthin.
   Assert.AreEqual(UnitText('  TPanel = class'#10'  private'#10'    FCaption: string;'#10 +
     '    function GetCaption: string;'#10'    procedure SetCaption(const AValue: string);'#10'  public'#10 +
     '    procedure Run;'#10'    property Caption: string read GetCaption write SetCaption;'#10'  end;'#10, ''),
     Create_(UnitText('  TPanel = class'#10'  private'#10'    FCaption: string;'#10'  public'#10 +
     '    function GetCaption: string;'#10'    procedure SetCaption(const AValue: string);'#10'    procedure Run;'#10 +
-    '  end;'#10, ''), ['GetCaption', 'SetCaption'], Options));
+    '  end;'#10, ''), ['GetCaption', 'SetCaption'], mOptions));
   // Ohne: eigener Abschnitt vor der Property; nur freigegebene Methoden wandern, virtuelle nie.
   Assert.AreEqual(UnitText('  TPanel = class'#10'  public'#10'    procedure SetCaption(const AValue: string); virtual;'#10 +
     '  private'#10'    function GetCaption: string;'#10'  public'#10 +
     '    property Caption: string read GetCaption write SetCaption;'#10'  end;'#10, ''),
     Create_(UnitText('  TPanel = class'#10'  public'#10'    function GetCaption: string;'#10 +
     '    procedure SetCaption(const AValue: string); virtual;'#10'  end;'#10, ''), ['GetCaption', 'SetCaption'],
-    Options));
+    mOptions));
 end;
 
 procedure TPropertyFromAccessorsTests.OfferedOnMethodAndClass;
 var
-  Tree: TSyntaxTree;
-  Whole: Boolean;
-  Found: TArray<TAccessorProperty>;
+  mTree: TSyntaxTree;
+  mWhole: Boolean;
+  mFound: TArray<TAccessorProperty>;
 begin
-  Tree := TPascalParser.Parse(Panel);
+  mTree := TPascalParser.Parse(cPanel);
   try
-    Found := TPropertyFromAccessors.At(Tree, Panel, 8, TPropertyFromAccessorsOptions.Default, Whole);
-    Assert.AreEqual(1, Integer(Length(Found)));
-    Assert.IsFalse(Whole);
-    Found := TPropertyFromAccessors.At(Tree, Panel, 3, TPropertyFromAccessorsOptions.Default, Whole);
-    Assert.AreEqual(1, Integer(Length(Found)));
-    Assert.IsTrue(Whole);
-    Assert.AreEqual(0, Integer(Length(TPropertyFromAccessors.At(Tree, Panel, 5, TPropertyFromAccessorsOptions.Default,
-      Whole))));
+    mFound := TPropertyFromAccessors.At(mTree, cPanel, 8, TPropertyFromAccessorsOptions.Default, mWhole);
+    Assert.AreEqual(1, Integer(Length(mFound)));
+    Assert.IsFalse(mWhole);
+    mFound := TPropertyFromAccessors.At(mTree, cPanel, 3, TPropertyFromAccessorsOptions.Default, mWhole);
+    Assert.AreEqual(1, Integer(Length(mFound)));
+    Assert.IsTrue(mWhole);
+    Assert.AreEqual(0, Integer(Length(TPropertyFromAccessors.At(mTree, cPanel, 5, TPropertyFromAccessorsOptions.Default,
+      mWhole))));
   finally
-    Tree.Free;
+    mTree.Free;
   end;
 end;
 
 procedure TPropertyFromAccessorsTests.ClassGetsAllProperties;
 var
-  Source: string;
+  mSource: string;
 begin
-  Source := UnitText('  TA = class'#10'  public'#10'    function GetCaption: string;'#10'    function IsEmpty: Boolean;'#10 +
+  mSource := UnitText('  TA = class'#10'  public'#10'    function GetCaption: string;'#10'    function IsEmpty: Boolean;'#10 +
     '  end;'#10'  TB = class(TA)'#10'  protected'#10'    function GetSize: Integer;'#10'  end;'#10, '');
   Assert.AreEqual(UnitText('  TA = class'#10'  public'#10'    function GetCaption: string;'#10 +
     '    function IsEmpty: Boolean;'#10'    property Caption: string read GetCaption;'#10 +
     '    property Empty: Boolean read IsEmpty;'#10'  end;'#10'  TB = class(TA)'#10'  protected'#10 +
-    '    function GetSize: Integer;'#10'    property Size: Integer read GetSize;'#10'  end;'#10, ''), Create_(Source));
+    '    function GetSize: Integer;'#10'    property Size: Integer read GetSize;'#10'  end;'#10, ''), Create_(mSource));
 end;
 
 /// <summary>Index des ersten Bezeichners AName ab Zeile ALine.</summary>
 function TokenOf(ATree: TSyntaxTree; const AName: string; ALine: Integer): Integer;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
-  for Index := 0 to High(ATree.Tokens) do
+  for mIndex := 0 to High(ATree.Tokens) do
   begin
-    if (ATree.Tokens[Index].StartPos.Line >= ALine) and SameText(ATree.Tokens[Index].Text, AName) then
+    if (ATree.Tokens[mIndex].StartPos.Line >= ALine) and SameText(ATree.Tokens[mIndex].Text, AName) then
     begin
-      Exit(Index);
+      Exit(mIndex);
     end;
   end;
   Result := -1;
 end;
 
 const
-  Uses_ =
+  cUses_ =
     'unit V;'#10 +                                       // 0
     'interface'#10 +                                     // 1
     'implementation'#10 +                                // 2
@@ -389,26 +389,26 @@ const
 
 procedure TPropertyFromAccessorsTests.ClassifiesUses;
 var
-  Tree: TSyntaxTree;
-  Argument: Integer;
+  mTree: TSyntaxTree;
+  mArgument: Integer;
 
   function UseAt(const AName: string; ALine: Integer; AGetter: Boolean): TAccessorUse;
   begin
-    Result := TPropertyFromAccessors.UseOf(Tree.Tokens, TokenOf(Tree, AName, ALine), AGetter);
+    Result := TPropertyFromAccessors.UseOf(mTree.Tokens, TokenOf(mTree, AName, ALine), AGetter);
   end;
 
 begin
-  Tree := TPascalParser.Parse(Uses_);
+  mTree := TPascalParser.Parse(cUses_);
   try
     Assert.AreEqual(Ord(TAccessorUse.Call), Ord(UseAt('SetCaption', 7, False)));
     Assert.AreEqual(Ord(TAccessorUse.Unclear), Ord(UseAt('GetCaption', 8, True)));
-    Assert.AreEqual('S', Tree.Tokens[TPropertyFromAccessors.UnclearTarget(Tree.Tokens, TokenOf(Tree, 'GetCaption', 8),
-      Argument)].Text);
-    Assert.AreEqual(-1, Argument);
+    Assert.AreEqual('S', mTree.Tokens[TPropertyFromAccessors.UnclearTarget(mTree.Tokens, TokenOf(mTree, 'GetCaption', 8),
+      mArgument)].Text);
+    Assert.AreEqual(-1, mArgument);
     Assert.AreEqual(Ord(TAccessorUse.Unclear), Ord(UseAt('GetCaption', 9, True)));
-    Assert.AreEqual('Show', Tree.Tokens[TPropertyFromAccessors.UnclearTarget(Tree.Tokens,
-      TokenOf(Tree, 'GetCaption', 9), Argument)].Text);
-    Assert.AreEqual(0, Argument);
+    Assert.AreEqual('Show', mTree.Tokens[TPropertyFromAccessors.UnclearTarget(mTree.Tokens,
+      TokenOf(mTree, 'GetCaption', 9), mArgument)].Text);
+    Assert.AreEqual(0, mArgument);
     Assert.AreEqual(Ord(TAccessorUse.Pointer_), Ord(UseAt('GetCaption', 10, True)));
     Assert.AreEqual(Ord(TAccessorUse.Pointer_), Ord(UseAt('SetCaption', 11, False)));
     Assert.AreEqual(Ord(TAccessorUse.Call), Ord(UseAt('GetCaption', 12, True)));
@@ -420,48 +420,48 @@ begin
     Assert.AreEqual(Ord(TAccessorUse.Keep), Ord(UseAt('GetCaption', 17, True)));
     Assert.AreEqual(Ord(TAccessorUse.Call), Ord(UseAt('SetCaption', 18, False)));
   finally
-    Tree.Free;
+    mTree.Free;
   end;
 end;
 
 procedure TPropertyFromAccessorsTests.RewritesCalls;
 var
-  Tree: TSyntaxTree;
-  Caption, Items: TAccessorProperty;
-  Edits, Added: TArray<TTextEdit>;
+  mTree: TSyntaxTree;
+  mCaption, mItems: TAccessorProperty;
+  mEdits, mAdded: TArray<TTextEdit>;
 
   procedure Add(const AName: string; ALine: Integer; const AProperty: TAccessorProperty; AGetter: Boolean);
   begin
-    Assert.IsTrue(TPropertyFromAccessors.CallEdit(Tree.Tokens, TokenOf(Tree, AName, ALine), AProperty, AGetter,
-      Added), AName);
-    Edits := Edits + Added;
+    Assert.IsTrue(TPropertyFromAccessors.CallEdit(mTree.Tokens, TokenOf(mTree, AName, ALine), AProperty, AGetter,
+      mAdded), AName);
+    mEdits := mEdits + mAdded;
   end;
 
 begin
-  Caption := Default(TAccessorProperty);
-  Caption.Name := 'Caption';
-  Items := Default(TAccessorProperty);
-  Items.Name := 'Items';
-  Items.IndexCount := 1;
-  Edits := nil;
-  Tree := TPascalParser.Parse(Uses_);
+  mCaption := Default(TAccessorProperty);
+  mCaption.Name := 'Caption';
+  mItems := Default(TAccessorProperty);
+  mItems.Name := 'Items';
+  mItems.IndexCount := 1;
+  mEdits := nil;
+  mTree := TPascalParser.Parse(cUses_);
   try
-    Add('SetCaption', 7, Caption, False);
-    Add('GetCaption', 8, Caption, True);
-    Add('SetItem', 13, Items, False);
-    Add('GetCaption', 13, Caption, True);
-    Add('GetItem', 14, Items, True);
-    Add('SetCaption', 18, Caption, False);
+    Add('SetCaption', 7, mCaption, False);
+    Add('GetCaption', 8, mCaption, True);
+    Add('SetItem', 13, mItems, False);
+    Add('GetCaption', 13, mCaption, True);
+    Add('GetItem', 14, mItems, True);
+    Add('SetCaption', 18, mCaption, False);
     // Falsche Zahl Argumente: keine Umstellung.
-    Assert.IsFalse(TPropertyFromAccessors.CallEdit(Tree.Tokens, TokenOf(Tree, 'GetItem', 14), Caption, True,
-      Added));
+    Assert.IsFalse(TPropertyFromAccessors.CallEdit(mTree.Tokens, TokenOf(mTree, 'GetItem', 14), mCaption, True,
+      mAdded));
   finally
-    Tree.Free;
+    mTree.Free;
   end;
-  Assert.Contains(TChangeSignature.ApplyEdits(Uses_, Edits), '  P.Caption := ''Bereit'';'#10'  S := P.Caption;'#10);
-  Assert.Contains(TChangeSignature.ApplyEdits(Uses_, Edits), '    L.Items[L.Count - 1] := P.Caption;'#10 +
+  Assert.Contains(TChangeSignature.ApplyEdits(cUses_, mEdits), '  P.Caption := ''Bereit'';'#10'  S := P.Caption;'#10);
+  Assert.Contains(TChangeSignature.ApplyEdits(cUses_, mEdits), '    L.Items[L.Count - 1] := P.Caption;'#10 +
     '  S := L.Items[2] + S;'#10);
-  Assert.Contains(TChangeSignature.ApplyEdits(Uses_, Edits), '  Lists[0].Owner.Caption := S'#10);
+  Assert.Contains(TChangeSignature.ApplyEdits(cUses_, mEdits), '  Lists[0].Owner.Caption := S'#10);
 end;
 
 procedure TPropertyFromAccessorsTests.PluralNames;
@@ -475,12 +475,12 @@ end;
 
 procedure TPropertyFromAccessorsTests.AtFindsOnlyClassAtLine;
 var
-  Source: string;
-  Tree: TSyntaxTree;
-  Whole: Boolean;
-  Found: TArray<TAccessorProperty>;
+  mSource: string;
+  mTree: TSyntaxTree;
+  mWhole: Boolean;
+  mFound: TArray<TAccessorProperty>;
 begin
-  Source := UnitText(
+  mSource := UnitText(
     '  TA = class'#10 +                          // 3
     '  public'#10 +                              // 4
     '    function GetName: string;'#10 +         // 5
@@ -491,19 +491,19 @@ begin
     '  end;'#10,                                 // 10
     'function TA.GetName: string; begin Result := ''''; end;'#10 +
     'function TB.GetTitle: string; begin Result := ''''; end;'#10);
-  Tree := TPascalParser.Parse(Source);
+  mTree := TPascalParser.Parse(mSource);
   try
-    Found := TPropertyFromAccessors.At(Tree, Source, 9, TPropertyFromAccessorsOptions.Default, Whole);
-    Assert.AreEqual(1, Integer(Length(Found)));
-    Assert.AreEqual('Title', Found[0].Name);
-    Found := TPropertyFromAccessors.At(Tree, Source, 7, TPropertyFromAccessorsOptions.Default, Whole);
-    Assert.AreEqual(1, Integer(Length(Found)));
-    Assert.IsTrue(Whole);
-    Assert.AreEqual('TB', Found[0].ClassName);
-    Assert.AreEqual(0, Integer(Length(TPropertyFromAccessors.At(Tree, Source, 12,
-      TPropertyFromAccessorsOptions.Default, Whole))));
+    mFound := TPropertyFromAccessors.At(mTree, mSource, 9, TPropertyFromAccessorsOptions.Default, mWhole);
+    Assert.AreEqual(1, Integer(Length(mFound)));
+    Assert.AreEqual('Title', mFound[0].Name);
+    mFound := TPropertyFromAccessors.At(mTree, mSource, 7, TPropertyFromAccessorsOptions.Default, mWhole);
+    Assert.AreEqual(1, Integer(Length(mFound)));
+    Assert.IsTrue(mWhole);
+    Assert.AreEqual('TB', mFound[0].ClassName);
+    Assert.AreEqual(0, Integer(Length(TPropertyFromAccessors.At(mTree, mSource, 12,
+      TPropertyFromAccessorsOptions.Default, mWhole))));
   finally
-    Tree.Free;
+    mTree.Free;
   end;
 end;
 

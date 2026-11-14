@@ -70,136 +70,136 @@ end;
 
 procedure TLspCommandsTests.CancellableHandlerGetsToken;
 var
-  Commands: TLspCommands;
-  Token, Received: IJsonRpcCancellationToken;
+  mCommands: TLspCommands;
+  mToken, mReceived: IJsonRpcCancellationToken;
 begin
-  Token := TProbeToken.Create;
-  Received := nil;
-  Commands := TLspCommands.Create;
+  mToken := TProbeToken.Create;
+  mReceived := nil;
+  mCommands := TLspCommands.Create;
   try
-    Commands.RegisterCancellable('atlas.test', Recorder(Received));
-    Commands.Execute('atlas.test', nil, Token).Free;
-    Assert.AreSame(Token, Received);
+    mCommands.RegisterCancellable('atlas.test', Recorder(mReceived));
+    mCommands.Execute('atlas.test', nil, mToken).Free;
+    Assert.AreSame(mToken, mReceived);
   finally
-    Commands.Free;
-    Received := nil;
-    Token := nil;
+    mCommands.Free;
+    mReceived := nil;
+    mToken := nil;
   end;
 end;
 
 procedure TLspCommandsTests.ExecuteTakesCurrentRequestToken;
 var
-  Commands: TLspCommands;
-  Token, Received: IJsonRpcCancellationToken;
-  Previous: Pointer;
+  mCommands: TLspCommands;
+  mToken, mReceived: IJsonRpcCancellationToken;
+  mPrevious: Pointer;
 begin
-  Token := TProbeToken.Create;
-  Received := nil;
-  Commands := TLspCommands.Create;
+  mToken := TProbeToken.Create;
+  mReceived := nil;
+  mCommands := TLspCommands.Create;
   try
-    Commands.RegisterCancellable('atlas.test', Recorder(Received));
+    mCommands.RegisterCancellable('atlas.test', Recorder(mReceived));
     // Außerhalb einer Anfrage: kein Token.
-    Commands.Execute('atlas.test', nil).Free;
-    Assert.IsNull(Received);
-    Previous := TJsonRpcCurrentRequest.Enter(Token);
+    mCommands.Execute('atlas.test', nil).Free;
+    Assert.IsNull(mReceived);
+    mPrevious := TJsonRpcCurrentRequest.Enter(mToken);
     try
-      Commands.Execute('atlas.test', nil).Free;
+      mCommands.Execute('atlas.test', nil).Free;
     finally
-      TJsonRpcCurrentRequest.Leave(Previous);
+      TJsonRpcCurrentRequest.Leave(mPrevious);
     end;
-    Assert.AreSame(Token, Received);
+    Assert.AreSame(mToken, mReceived);
   finally
-    Commands.Free;
-    Received := nil;
-    Token := nil;
+    mCommands.Free;
+    mReceived := nil;
+    mToken := nil;
   end;
 end;
 
 procedure TLspCommandsTests.PlainHandlerStillRuns;
 var
-  Commands: TLspCommands;
-  Arguments: TJSONArray;
-  Reply: TJSONValue;
-  Token: IJsonRpcCancellationToken;
+  mCommands: TLspCommands;
+  mArguments: TJSONArray;
+  mReply: TJSONValue;
+  mToken: IJsonRpcCancellationToken;
 begin
-  Commands := TLspCommands.Create;
+  mCommands := TLspCommands.Create;
   try
-    Commands.Register('atlas.plain',
+    mCommands.Register('atlas.plain',
       function(const AArguments: TJSONArray): TJSONValue
       begin
         Result := TJSONString.Create(AArguments.Items[0].Value);
       end);
-    Arguments := TJSONArray.Create;
+    mArguments := TJSONArray.Create;
     try
-      Arguments.Add('x');
+      mArguments.Add('x');
       // Nicht TProbeToken.Create direkt an den const-Interface-Parameter: Delphi zählt dann nie hoch und gibt
       // das Objekt nicht frei (Leck).
-      Token := TProbeToken.Create;
-      Reply := Commands.Execute('atlas.plain', Arguments, Token);
+      mToken := TProbeToken.Create;
+      mReply := mCommands.Execute('atlas.plain', mArguments, mToken);
       try
-        Assert.AreEqual('x', Reply.Value);
+        Assert.AreEqual('x', mReply.Value);
       finally
-        Reply.Free;
+        mReply.Free;
       end;
     finally
-      Arguments.Free;
+      mArguments.Free;
     end;
     // Ohne Ergebnis antwortet der Befehl mit null.
-    Commands.Register('atlas.nothing',
+    mCommands.Register('atlas.nothing',
       function(const AArguments: TJSONArray): TJSONValue
       begin
         Result := nil;
       end);
-    Reply := Commands.Execute('atlas.nothing', nil);
+    mReply := mCommands.Execute('atlas.nothing', nil);
     try
-      Assert.IsTrue(Reply is TJSONNull);
+      Assert.IsTrue(mReply is TJSONNull);
     finally
-      Reply.Free;
+      mReply.Free;
     end;
   finally
-    Commands.Free;
+    mCommands.Free;
   end;
 end;
 
 procedure TLspCommandsTests.ConcurrentCancellableIsConcurrent;
 var
-  Commands: TLspCommands;
-  Received: IJsonRpcCancellationToken;
-  Capability: TJSONObject;
+  mCommands: TLspCommands;
+  mReceived: IJsonRpcCancellationToken;
+  mCapability: TJSONObject;
 begin
-  Received := nil;
-  Commands := TLspCommands.Create;
+  mReceived := nil;
+  mCommands := TLspCommands.Create;
   try
-    Commands.RegisterConcurrentCancellable('atlas.read', Recorder(Received));
-    Commands.RegisterCancellable('atlas.write', Recorder(Received));
-    Assert.IsTrue(Commands.IsConcurrentCommand('atlas.read'));
-    Assert.IsFalse(Commands.IsConcurrentCommand('atlas.write'));
-    Capability := Commands.Capability;
+    mCommands.RegisterConcurrentCancellable('atlas.read', Recorder(mReceived));
+    mCommands.RegisterCancellable('atlas.write', Recorder(mReceived));
+    Assert.IsTrue(mCommands.IsConcurrentCommand('atlas.read'));
+    Assert.IsFalse(mCommands.IsConcurrentCommand('atlas.write'));
+    mCapability := mCommands.Capability;
     try
-      Assert.AreEqual('["atlas.read","atlas.write"]', Capability.GetValue('commands').ToJSON);
+      Assert.AreEqual('["atlas.read","atlas.write"]', mCapability.GetValue('commands').ToJSON);
     finally
-      Capability.Free;
+      mCapability.Free;
     end;
   finally
-    Commands.Free;
-    Received := nil;
+    mCommands.Free;
+    mReceived := nil;
   end;
 end;
 
 procedure TLspCommandsTests.UnknownCommandRaises;
 var
-  Commands: TLspCommands;
+  mCommands: TLspCommands;
 begin
-  Commands := TLspCommands.Create;
+  mCommands := TLspCommands.Create;
   try
     Assert.WillRaise(
       procedure
       begin
-        Commands.Execute('atlas.unknown', nil, nil).Free;
+        mCommands.Execute('atlas.unknown', nil, nil).Free;
       end,
       EJsonRpcError);
   finally
-    Commands.Free;
+    mCommands.Free;
   end;
 end;
 

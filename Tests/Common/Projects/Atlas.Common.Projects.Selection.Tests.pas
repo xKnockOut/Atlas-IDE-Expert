@@ -34,87 +34,87 @@ uses
 
 procedure TProjectSelectionTests.BuildIsMergedAndIgnoresCase;
 var
-  Selection: TProjectSelection;
-  Choice: TProjectBuildChoice;
+  mSelection: TProjectSelection;
+  mChoice: TProjectBuildChoice;
 begin
-  Selection := TProjectSelection.Create('');
+  mSelection := TProjectSelection.Create('');
   try
-    Assert.IsFalse(Selection.Build('C:\P\App.dproj', Choice));
-    Selection.SetBuild('C:\P\App.dproj', 'Release', '');
-    Selection.SetBuild('c:\p\app.dproj', '', 'Win64');
-    Assert.IsTrue(Selection.Build('C:\P\APP.DPROJ', Choice));
-    Assert.AreEqual('Release', Choice.Config);
-    Assert.AreEqual('Win64', Choice.Platform);
-    Selection.SetBuild('C:\P\App.dproj', '', '');
-    Assert.IsFalse(Selection.Build('C:\P\App.dproj', Choice));
+    Assert.IsFalse(mSelection.Build('C:\P\App.dproj', mChoice));
+    mSelection.SetBuild('C:\P\App.dproj', 'Release', '');
+    mSelection.SetBuild('c:\p\app.dproj', '', 'Win64');
+    Assert.IsTrue(mSelection.Build('C:\P\APP.DPROJ', mChoice));
+    Assert.AreEqual('Release', mChoice.Config);
+    Assert.AreEqual('Win64', mChoice.Platform);
+    mSelection.SetBuild('C:\P\App.dproj', '', '');
+    Assert.IsFalse(mSelection.Build('C:\P\App.dproj', mChoice));
   finally
-    Selection.Free;
+    mSelection.Free;
   end;
 end;
 
 procedure TProjectSelectionTests.ProjectCanBeCleared;
 var
-  Selection: TProjectSelection;
+  mSelection: TProjectSelection;
 begin
-  Selection := TProjectSelection.Create('');
+  mSelection := TProjectSelection.Create('');
   try
-    Assert.AreEqual('', Selection.Project('file:///c%3A/P'));
-    Selection.SetProject('file:///c%3A/P', 'C:\P\Kern.dproj');
-    Assert.AreEqual('C:\P\Kern.dproj', Selection.Project('FILE:///C%3A/P'));
-    Selection.SetProject('file:///c%3A/P', '');
-    Assert.AreEqual('', Selection.Project('file:///c%3A/P'));
+    Assert.AreEqual('', mSelection.Project('file:///c%3A/P'));
+    mSelection.SetProject('file:///c%3A/P', 'C:\P\Kern.dproj');
+    Assert.AreEqual('C:\P\Kern.dproj', mSelection.Project('FILE:///C%3A/P'));
+    mSelection.SetProject('file:///c%3A/P', '');
+    Assert.AreEqual('', mSelection.Project('file:///c%3A/P'));
   finally
-    Selection.Free;
+    mSelection.Free;
   end;
 end;
 
 procedure TProjectSelectionTests.SurvivesRestart;
 var
-  FileName: string;
-  Selection: TProjectSelection;
-  Choice: TProjectBuildChoice;
+  mFileName: string;
+  mSelection: TProjectSelection;
+  mChoice: TProjectBuildChoice;
 begin
-  FileName := TPath.Combine(TPath.Combine(TPath.GetTempPath, 'AtlasAuswahlTest'), 'projektauswahl.json');
-  if TFile.Exists(FileName) then
+  mFileName := TPath.Combine(TPath.Combine(TPath.GetTempPath, 'AtlasAuswahlTest'), 'projektauswahl.json');
+  if TFile.Exists(mFileName) then
   begin
-    TFile.Delete(FileName);
+    TFile.Delete(mFileName);
   end;
-  Selection := TProjectSelection.Create(FileName);
+  mSelection := TProjectSelection.Create(mFileName);
   try
-    Selection.SetBuild('C:\P\App.dproj', 'Debug', 'Win32');
-    Selection.SetProject('Gruppe', 'C:\P\App.dproj');
+    mSelection.SetBuild('C:\P\App.dproj', 'Debug', 'Win32');
+    mSelection.SetProject('Gruppe', 'C:\P\App.dproj');
   finally
-    Selection.Free;
+    mSelection.Free;
   end;
-  Assert.IsTrue(TFile.Exists(FileName));
-  Selection := TProjectSelection.Create(FileName);
+  Assert.IsTrue(TFile.Exists(mFileName));
+  mSelection := TProjectSelection.Create(mFileName);
   try
-    Assert.IsTrue(Selection.Build('C:\P\App.dproj', Choice));
-    Assert.AreEqual('Debug', Choice.Config);
-    Assert.AreEqual('Win32', Choice.Platform);
-    Assert.AreEqual('C:\P\App.dproj', Selection.Project('Gruppe'));
+    Assert.IsTrue(mSelection.Build('C:\P\App.dproj', mChoice));
+    Assert.AreEqual('Debug', mChoice.Config);
+    Assert.AreEqual('Win32', mChoice.Platform);
+    Assert.AreEqual('C:\P\App.dproj', mSelection.Project('Gruppe'));
     // Schlüssel behalten ihre Schreibweise.
-    Assert.IsTrue(Selection.ToText.Contains('"C:\\P\\App.dproj":{'), Selection.ToText);
+    Assert.IsTrue(mSelection.ToText.Contains('"C:\\P\\App.dproj":{'), mSelection.ToText);
   finally
-    Selection.Free;
-    TFile.Delete(FileName);
+    mSelection.Free;
+    TFile.Delete(mFileName);
   end;
 end;
 
 procedure TProjectSelectionTests.BrokenFileStartsEmpty;
 var
-  Selection: TProjectSelection;
+  mSelection: TProjectSelection;
 begin
-  Selection := TProjectSelection.Create('');
+  mSelection := TProjectSelection.Create('');
   try
-    Selection.LoadText('{"projects": {"Gruppe": "C:\\P\\App.dproj"}}');
-    Assert.AreEqual('C:\P\App.dproj', Selection.Project('Gruppe'));
-    Selection.LoadText('{kaputt');
-    Assert.AreEqual('', Selection.Project('Gruppe'));
-    Selection.LoadText('{"builds": [], "projects": {"Gruppe": 3}}');
-    Assert.AreEqual('', Selection.Project('Gruppe'));
+    mSelection.LoadText('{"projects": {"Gruppe": "C:\\P\\App.dproj"}}');
+    Assert.AreEqual('C:\P\App.dproj', mSelection.Project('Gruppe'));
+    mSelection.LoadText('{kaputt');
+    Assert.AreEqual('', mSelection.Project('Gruppe'));
+    mSelection.LoadText('{"builds": [], "projects": {"Gruppe": 3}}');
+    Assert.AreEqual('', mSelection.Project('Gruppe'));
   finally
-    Selection.Free;
+    mSelection.Free;
   end;
 end;
 

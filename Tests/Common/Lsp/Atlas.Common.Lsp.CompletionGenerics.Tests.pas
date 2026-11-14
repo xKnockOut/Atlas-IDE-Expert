@@ -72,10 +72,10 @@ uses
   Atlas.Common.Lsp.SignatureHelp;
 
 const
-  HauptFile = 'C:\P\Haupt.pas';
-  ListenFile = 'C:\P\Listen.pas';
+  cHauptFile = 'C:\P\Haupt.pas';
+  cListenFile = 'C:\P\Listen.pas';
 
-  UnitListen =
+  cUnitListen =
     'unit Listen;'#10 +
     'interface'#10 +
     'type'#10 +
@@ -126,7 +126,7 @@ const
     'end;'#10 +
     'end.';
 
-  UnitHaupt =
+  cUnitHaupt =
     'unit Haupt;'#10 +
     'interface'#10 +
     'uses Listen;'#10 +
@@ -144,23 +144,23 @@ const
 /// <summary>Text ohne "|" und die Position des "|".</summary>
 function Split(const AMarked: string; out APosition: TTextPosition): string;
 var
-  Index, Line, Character: Integer;
+  mIndex, mLine, mCharacter: Integer;
 begin
-  Line := 0;
-  Character := 0;
-  for Index := 1 to Pos('|', AMarked) - 1 do
+  mLine := 0;
+  mCharacter := 0;
+  for mIndex := 1 to Pos('|', AMarked) - 1 do
   begin
-    if AMarked[Index] = #10 then
+    if AMarked[mIndex] = #10 then
     begin
-      Inc(Line);
-      Character := 0;
+      Inc(mLine);
+      mCharacter := 0;
     end
     else
     begin
-      Inc(Character);
+      Inc(mCharacter);
     end;
   end;
-  APosition := TTextPosition.Create(Line, Character);
+  APosition := TTextPosition.Create(mLine, mCharacter);
   Result := StringReplace(AMarked, '|', '', []);
 end;
 
@@ -169,7 +169,7 @@ end;
 procedure TCompletionGenericsTests.Setup;
 begin
   FIndex := TSymbolIndex.Create;
-  FIndex.AddUnit(TIndexExtractor.ExtractText(UnitListen, ListenFile, nil));
+  FIndex.AddUnit(TIndexExtractor.ExtractText(cUnitListen, cListenFile, nil));
   FResolver := TNameResolver.Create(FIndex);
 end;
 
@@ -181,51 +181,51 @@ end;
 
 function TCompletionGenericsTests.ItemsAt(const ACode: string): TCompletionItems;
 var
-  Text: string;
-  Position: TTextPosition;
-  Tree: TSyntaxTree;
-  Request: TCompletionRequest;
+  mText: string;
+  mPosition: TTextPosition;
+  mTree: TSyntaxTree;
+  mRequest: TCompletionRequest;
 begin
   // ACode steht im var-Abschnitt (Typ) oder im Rumpf (Code), je nachdem, ob es mit ":" beginnt.
   if ACode.StartsWith(':') then
   begin
-    Text := StringReplace(UnitHaupt, '  L: { Typ };', '  L' + ACode, []);
+    mText := StringReplace(cUnitHaupt, '  L: { Typ };', '  L' + ACode, []);
   end
   else
   begin
-    Text := StringReplace(StringReplace(UnitHaupt, '  L: { Typ };'#10, '', []), '  { Code }', ACode, []);
+    mText := StringReplace(StringReplace(cUnitHaupt, '  L: { Typ };'#10, '', []), '  { Code }', ACode, []);
   end;
-  Text := Split(Text, Position);
-  Tree := TPascalParser.Parse(Text);
-  Request := TCompletionRequest.Create(Text, HauptFile, Position);
+  mText := Split(mText, mPosition);
+  mTree := TPascalParser.Parse(mText);
+  mRequest := TCompletionRequest.Create(mText, cHauptFile, mPosition);
   try
-    Request.Tree := Tree;
-    Request.Resolver := FResolver;
-    Request.Index := FIndex;
-    Request.Matching := TCompletionMatching.Prefix;
-    Request.ReadText :=
+    mRequest.Tree := mTree;
+    mRequest.Resolver := FResolver;
+    mRequest.Index := FIndex;
+    mRequest.Matching := TCompletionMatching.Prefix;
+    mRequest.ReadText :=
       function(const AFileName: string; out AText: string): Boolean
       begin
-        AText := UnitListen;
-        Result := SameText(AFileName, ListenFile);
+        AText := cUnitListen;
+        Result := SameText(AFileName, cListenFile);
       end;
-    Result := TCompletionLists.Collect(Request, Default(TPostfixOptions), nil);
+    Result := TCompletionLists.Collect(mRequest, Default(TPostfixOptions), nil);
   finally
-    Request.Free;
-    Tree.Free;
+    mRequest.Free;
+    mTree.Free;
   end;
 end;
 
 function TCompletionGenericsTests.Find(const AItems: TCompletionItems; const AName: string;
   out AItem: TCompletionItem): Boolean;
 var
-  Item: TCompletionItem;
+  mItem: TCompletionItem;
 begin
-  for Item in AItems.Items do
+  for mItem in AItems.Items do
   begin
-    if SameText(Item.Name, AName) then
+    if SameText(mItem.Name, AName) then
     begin
-      AItem := Item;
+      AItem := mItem;
       Exit(True);
     end;
   end;
@@ -235,72 +235,72 @@ end;
 
 function TCompletionGenericsTests.Has(const AItems: TCompletionItems; const AName: string): Boolean;
 var
-  Item: TCompletionItem;
+  mItem: TCompletionItem;
 begin
-  Result := Find(AItems, AName, Item);
+  Result := Find(AItems, AName, mItem);
 end;
 
 procedure TCompletionGenericsTests.FindsOpenAngleBracket;
 
   function SiteOf(const AMarked: string; out ASite: TGenericArgSite): Boolean;
   var
-    Position: TTextPosition;
-    Tokens: TArray<TPascalToken>;
-    Index, Last: Integer;
+    mPosition: TTextPosition;
+    mTokens: TArray<TPascalToken>;
+    mIndex, mLast: Integer;
   begin
-    Tokens := TPascalLexer.Tokenize(Split(AMarked, Position));
-    Last := -1;
-    for Index := 0 to High(Tokens) do
+    mTokens := TPascalLexer.Tokenize(Split(AMarked, mPosition));
+    mLast := -1;
+    for mIndex := 0 to High(mTokens) do
     begin
-      if (Tokens[Index].StartPos.Line < Position.Line) or (Tokens[Index].StartPos.Line = Position.Line) and
-        (Tokens[Index].EndPos.Character <= Position.Character) then
+      if (mTokens[mIndex].StartPos.Line < mPosition.Line) or (mTokens[mIndex].StartPos.Line = mPosition.Line) and
+        (mTokens[mIndex].EndPos.Character <= mPosition.Character) then
       begin
-        Last := Index;
+        mLast := mIndex;
       end;
     end;
-    ASite := TCompletionGenerics.SiteAt(Tokens, Last);
+    ASite := TCompletionGenerics.SiteAt(mTokens, mLast);
     Result := ASite.Found;
   end;
 
 var
-  Site: TGenericArgSite;
+  mSite: TGenericArgSite;
 begin
-  Assert.IsTrue(SiteOf('L: TObjektListe<|', Site));
-  Assert.AreEqual(0, Site.Parameter);
-  Assert.AreEqual(3, Site.OwnerPosition.Character);
-  Assert.IsTrue(SiteOf('D: TDictionary<string, |', Site));
-  Assert.AreEqual(1, Site.Parameter);
-  Assert.IsTrue(SiteOf('D: TDictionary<TList<Integer>, |', Site), 'verschachtelt');
-  Assert.AreEqual(1, Site.Parameter);
-  Assert.AreEqual(3, Site.OwnerPosition.Character);
-  Assert.IsTrue(SiteOf('D: TDictionary<string, TList<|', Site), 'innere Liste');
-  Assert.AreEqual(0, Site.Parameter);
-  Assert.AreEqual(23, Site.OwnerPosition.Character);
-  Assert.IsFalse(SiteOf('if (A + 1) < |', Site), 'Vergleich nach Klammer');
-  Assert.IsFalse(SiteOf('X := Foo(1, |', Site), 'Aufruf');
+  Assert.IsTrue(SiteOf('L: TObjektListe<|', mSite));
+  Assert.AreEqual(0, mSite.Parameter);
+  Assert.AreEqual(3, mSite.OwnerPosition.Character);
+  Assert.IsTrue(SiteOf('D: TDictionary<string, |', mSite));
+  Assert.AreEqual(1, mSite.Parameter);
+  Assert.IsTrue(SiteOf('D: TDictionary<TList<Integer>, |', mSite), 'verschachtelt');
+  Assert.AreEqual(1, mSite.Parameter);
+  Assert.AreEqual(3, mSite.OwnerPosition.Character);
+  Assert.IsTrue(SiteOf('D: TDictionary<string, TList<|', mSite), 'innere Liste');
+  Assert.AreEqual(0, mSite.Parameter);
+  Assert.AreEqual(23, mSite.OwnerPosition.Character);
+  Assert.IsFalse(SiteOf('if (A + 1) < |', mSite), 'Vergleich nach Klammer');
+  Assert.IsFalse(SiteOf('X := Foo(1, |', mSite), 'Aufruf');
 end;
 
 procedure TCompletionGenericsTests.ReadsParametersWithConstraints;
 var
-  Params: TArray<TGenericParam>;
+  mParams: TArray<TGenericParam>;
 begin
-  Params := TCompletionGenerics.Params(['  TPaar<K; V: class, constructor> = class'], 0, 2);
-  Assert.AreEqual(2, Integer(Length(Params)));
-  Assert.AreEqual('K', Params[0].Name);
-  Assert.AreEqual(0, Integer(Length(Params[0].Constraints)));
-  Assert.AreEqual('V', Params[1].Name);
-  Assert.AreEqual('class|constructor', string.Join('|', Params[1].Constraints));
-  Params := TCompletionGenerics.Params(['  TDictionary<TKey,', '    TValue> = class'], 0, 2);
-  Assert.AreEqual(2, Integer(Length(Params)), 'über zwei Zeilen');
-  Assert.AreEqual('TValue', Params[1].Name);
-  Params := TCompletionGenerics.Params(['  TKunde = class'], 0, 2);
-  Assert.AreEqual(0, Integer(Length(Params)), 'nicht generisch');
+  mParams := TCompletionGenerics.Params(['  TPaar<K; V: class, constructor> = class'], 0, 2);
+  Assert.AreEqual(2, Integer(Length(mParams)));
+  Assert.AreEqual('K', mParams[0].Name);
+  Assert.AreEqual(0, Integer(Length(mParams[0].Constraints)));
+  Assert.AreEqual('V', mParams[1].Name);
+  Assert.AreEqual('class|constructor', string.Join('|', mParams[1].Constraints));
+  mParams := TCompletionGenerics.Params(['  TDictionary<TKey,', '    TValue> = class'], 0, 2);
+  Assert.AreEqual(2, Integer(Length(mParams)), 'über zwei Zeilen');
+  Assert.AreEqual('TValue', mParams[1].Name);
+  mParams := TCompletionGenerics.Params(['  TKunde = class'], 0, 2);
+  Assert.AreEqual(0, Integer(Length(mParams)), 'nicht generisch');
 end;
 
 procedure TCompletionGenericsTests.HintCodesFollowConstraints;
 var
-  Never: TFunc<string, Boolean>;
-  Always: TFunc<Boolean>;
+  mNever: TFunc<string, Boolean>;
+  mAlways: TFunc<Boolean>;
 begin
   Assert.AreEqual('classes', TCompletionGenerics.HintCode(['class'], False));
   Assert.AreEqual('values', TCompletionGenerics.HintCode(['record'], False));
@@ -308,175 +308,175 @@ begin
   Assert.AreEqual('implements:IVergleich', TCompletionGenerics.HintCode(['IVergleich'], True));
   Assert.AreEqual('descends:TBasis', TCompletionGenerics.HintCode(['TBasis'], False));
   Assert.AreEqual('', TCompletionGenerics.HintCode(nil, False));
-  Never :=
+  mNever :=
     function(AName: string): Boolean
     begin
       Result := False;
     end;
-  Always :=
+  mAlways :=
     function: Boolean
     begin
       Result := True;
     end;
-  Assert.IsTrue(TCompletionGenerics.Allowed(TTypeArgKind.Class_, ['class'], Never, Always));
-  Assert.IsFalse(TCompletionGenerics.Allowed(TTypeArgKind.Record_, ['class'], Never, Always));
-  Assert.IsTrue(TCompletionGenerics.Allowed(TTypeArgKind.Basic, ['record'], Never, Always));
-  Assert.IsFalse(TCompletionGenerics.Allowed(TTypeArgKind.Interface_, ['record'], Never, Always));
-  Assert.IsFalse(TCompletionGenerics.Allowed(TTypeArgKind.Class_, ['IVergleich'], Never, Always));
-  Assert.IsTrue(TCompletionGenerics.Allowed(TTypeArgKind.Record_, nil, Never, Always));
+  Assert.IsTrue(TCompletionGenerics.Allowed(TTypeArgKind.Class_, ['class'], mNever, mAlways));
+  Assert.IsFalse(TCompletionGenerics.Allowed(TTypeArgKind.Record_, ['class'], mNever, mAlways));
+  Assert.IsTrue(TCompletionGenerics.Allowed(TTypeArgKind.Basic, ['record'], mNever, mAlways));
+  Assert.IsFalse(TCompletionGenerics.Allowed(TTypeArgKind.Interface_, ['record'], mNever, mAlways));
+  Assert.IsFalse(TCompletionGenerics.Allowed(TTypeArgKind.Class_, ['IVergleich'], mNever, mAlways));
+  Assert.IsTrue(TCompletionGenerics.Allowed(TTypeArgKind.Record_, nil, mNever, mAlways));
 end;
 
 procedure TCompletionGenericsTests.ClassConstraintKeepsClassesOnly;
 var
-  Items: TCompletionItems;
-  Item: TCompletionItem;
+  mItems: TCompletionItems;
+  mItem: TCompletionItem;
 begin
-  Items := ItemsAt(': TObjektListe<T|');
-  Assert.IsTrue(Find(Items, 'TKunde', Item), 'Klasse');
-  Assert.AreEqual('T', Item.TypeParam);
-  Assert.AreEqual('class', Item.Constraint);
-  Assert.AreEqual('classes', Item.ConstraintHint);
-  Assert.IsTrue(Item.HiddenKinds.Contains('records'), Item.HiddenKinds);
-  Assert.IsTrue(Item.HiddenKinds.Contains('enums'), Item.HiddenKinds);
-  Assert.IsFalse(Item.HiddenKinds.Contains('classes'), Item.HiddenKinds);
-  Assert.IsFalse(Has(Items, 'TPunkt'), 'Record');
-  Assert.IsFalse(Has(Items, 'TFarbe'), 'Aufzählung');
-  Assert.IsFalse(Has(Items, 'TDateTime'), 'Grundtyp');
+  mItems := ItemsAt(': TObjektListe<T|');
+  Assert.IsTrue(Find(mItems, 'TKunde', mItem), 'Klasse');
+  Assert.AreEqual('T', mItem.TypeParam);
+  Assert.AreEqual('class', mItem.Constraint);
+  Assert.AreEqual('classes', mItem.ConstraintHint);
+  Assert.IsTrue(mItem.HiddenKinds.Contains('records'), mItem.HiddenKinds);
+  Assert.IsTrue(mItem.HiddenKinds.Contains('enums'), mItem.HiddenKinds);
+  Assert.IsFalse(mItem.HiddenKinds.Contains('classes'), mItem.HiddenKinds);
+  Assert.IsFalse(Has(mItems, 'TPunkt'), 'Record');
+  Assert.IsFalse(Has(mItems, 'TFarbe'), 'Aufzählung');
+  Assert.IsFalse(Has(mItems, 'TDateTime'), 'Grundtyp');
   // Auch mit "<>" dahinter, das der Lexer als ein Token liest.
-  Items := ItemsAt(': TObjektListe<|>;');
-  Assert.IsTrue(Find(Items, 'TKunde', Item), 'vor >');
-  Assert.AreEqual('T', Item.TypeParam);
-  Assert.IsFalse(Has(Items, 'IVergleich'), 'Interface vor >');
+  mItems := ItemsAt(': TObjektListe<|>;');
+  Assert.IsTrue(Find(mItems, 'TKunde', mItem), 'vor >');
+  Assert.AreEqual('T', mItem.TypeParam);
+  Assert.IsFalse(Has(mItems, 'IVergleich'), 'Interface vor >');
 end;
 
 procedure TCompletionGenericsTests.RecordConstraintKeepsValueTypes;
 var
-  Items: TCompletionItems;
-  Item: TCompletionItem;
+  mItems: TCompletionItems;
+  mItem: TCompletionItem;
 begin
-  Items := ItemsAt(': TWerte<|');
-  Assert.IsTrue(Find(Items, 'TPunkt', Item), 'Record');
-  Assert.AreEqual('values', Item.ConstraintHint);
-  Assert.IsTrue(Has(Items, 'TFarbe'), 'Aufzählung');
-  Assert.IsTrue(Has(Items, 'Integer'), 'Grundtyp');
-  Assert.IsFalse(Has(Items, 'TKunde'), 'Klasse');
-  Assert.IsFalse(Has(Items, 'string'), 'string ist kein Werttyp');
-  Assert.IsTrue(Item.HiddenKinds.Contains('classes'), Item.HiddenKinds);
+  mItems := ItemsAt(': TWerte<|');
+  Assert.IsTrue(Find(mItems, 'TPunkt', mItem), 'Record');
+  Assert.AreEqual('values', mItem.ConstraintHint);
+  Assert.IsTrue(Has(mItems, 'TFarbe'), 'Aufzählung');
+  Assert.IsTrue(Has(mItems, 'Integer'), 'Grundtyp');
+  Assert.IsFalse(Has(mItems, 'TKunde'), 'Klasse');
+  Assert.IsFalse(Has(mItems, 'string'), 'string ist kein Werttyp');
+  Assert.IsTrue(mItem.HiddenKinds.Contains('classes'), mItem.HiddenKinds);
 end;
 
 procedure TCompletionGenericsTests.ConstructorConstraintNeedsParameterlessCreate;
 var
-  Items: TCompletionItems;
-  Item: TCompletionItem;
+  mItems: TCompletionItems;
+  mItem: TCompletionItem;
 begin
-  Items := ItemsAt(': TFabrik<T|');
-  Assert.IsTrue(Find(Items, 'TKunde', Item), 'ohne eigenen Konstruktor');
-  Assert.AreEqual('constructible', Item.ConstraintHint);
-  Assert.AreEqual('class, constructor', Item.Constraint);
-  Assert.IsFalse(Has(Items, 'TOhneStandard'), 'Create mit Parameter');
+  mItems := ItemsAt(': TFabrik<T|');
+  Assert.IsTrue(Find(mItems, 'TKunde', mItem), 'ohne eigenen Konstruktor');
+  Assert.AreEqual('constructible', mItem.ConstraintHint);
+  Assert.AreEqual('class, constructor', mItem.Constraint);
+  Assert.IsFalse(Has(mItems, 'TOhneStandard'), 'Create mit Parameter');
 end;
 
 procedure TCompletionGenericsTests.InterfaceConstraintKeepsImplementers;
 var
-  Items: TCompletionItems;
-  Item: TCompletionItem;
+  mItems: TCompletionItems;
+  mItem: TCompletionItem;
 begin
-  Items := ItemsAt(': TSortierer<|');
-  Assert.IsTrue(Find(Items, 'TVergleicher', Item), 'über IVergleichEx');
-  Assert.AreEqual('implements:IVergleich', Item.ConstraintHint);
-  Assert.IsTrue(Has(Items, 'IVergleich'), 'das Interface selbst');
-  Assert.IsTrue(Has(Items, 'IVergleichEx'), 'abgeleitetes Interface');
-  Assert.IsFalse(Has(Items, 'TKunde'), 'Klasse ohne Interface');
-  Assert.IsFalse(Has(Items, 'TPunkt'), 'Record');
+  mItems := ItemsAt(': TSortierer<|');
+  Assert.IsTrue(Find(mItems, 'TVergleicher', mItem), 'über IVergleichEx');
+  Assert.AreEqual('implements:IVergleich', mItem.ConstraintHint);
+  Assert.IsTrue(Has(mItems, 'IVergleich'), 'das Interface selbst');
+  Assert.IsTrue(Has(mItems, 'IVergleichEx'), 'abgeleitetes Interface');
+  Assert.IsFalse(Has(mItems, 'TKunde'), 'Klasse ohne Interface');
+  Assert.IsFalse(Has(mItems, 'TPunkt'), 'Record');
 end;
 
 procedure TCompletionGenericsTests.SecondParameterUsesItsConstraint;
 var
-  Items: TCompletionItems;
-  Item: TCompletionItem;
+  mItems: TCompletionItems;
+  mItem: TCompletionItem;
 begin
-  Items := ItemsAt(': TPaar<TPunkt, T|');
-  Assert.IsTrue(Find(Items, 'TKunde', Item));
-  Assert.AreEqual('V', Item.TypeParam);
-  Assert.IsFalse(Has(Items, 'TPunkt'), 'V: class');
-  Items := ItemsAt(': TPaar<T|');
-  Assert.IsTrue(Find(Items, 'TPunkt', Item), 'K ohne Constraint');
-  Assert.AreEqual('K', Item.TypeParam);
+  mItems := ItemsAt(': TPaar<TPunkt, T|');
+  Assert.IsTrue(Find(mItems, 'TKunde', mItem));
+  Assert.AreEqual('V', mItem.TypeParam);
+  Assert.IsFalse(Has(mItems, 'TPunkt'), 'V: class');
+  mItems := ItemsAt(': TPaar<T|');
+  Assert.IsTrue(Find(mItems, 'TPunkt', mItem), 'K ohne Constraint');
+  Assert.AreEqual('K', mItem.TypeParam);
 end;
 
 procedure TCompletionGenericsTests.WithoutConstraintAllTypesAndBasicTypes;
 var
-  Items: TCompletionItems;
-  Item: TCompletionItem;
-  Json: TJSONArray;
-  Data: TJSONObject;
+  mItems: TCompletionItems;
+  mItem: TCompletionItem;
+  mJson: TJSONArray;
+  mData: TJSONObject;
 begin
-  Items := ItemsAt(': TBeliebig<|');
-  Assert.IsTrue(Find(Items, 'TKunde', Item));
-  Assert.AreEqual('T', Item.TypeParam);
-  Assert.AreEqual('', Item.Constraint);
-  Assert.AreEqual('', Item.ConstraintHint);
-  Assert.AreEqual('', Item.HiddenKinds);
-  Assert.IsTrue(Has(Items, 'TPunkt'));
-  Assert.IsTrue(Has(Items, 'IVergleich'));
-  Assert.IsTrue(Has(Items, 'string'));
-  Assert.IsTrue(Has(Items, 'Integer'));
-  Assert.IsFalse(Has(Items, 'Zahl'), 'keine Variablen');
-  Assert.IsFalse(Has(Items, 'Rot'), 'keine Werte');
+  mItems := ItemsAt(': TBeliebig<|');
+  Assert.IsTrue(Find(mItems, 'TKunde', mItem));
+  Assert.AreEqual('T', mItem.TypeParam);
+  Assert.AreEqual('', mItem.Constraint);
+  Assert.AreEqual('', mItem.ConstraintHint);
+  Assert.AreEqual('', mItem.HiddenKinds);
+  Assert.IsTrue(Has(mItems, 'TPunkt'));
+  Assert.IsTrue(Has(mItems, 'IVergleich'));
+  Assert.IsTrue(Has(mItems, 'string'));
+  Assert.IsTrue(Has(mItems, 'Integer'));
+  Assert.IsFalse(Has(mItems, 'Zahl'), 'keine Variablen');
+  Assert.IsFalse(Has(mItems, 'Rot'), 'keine Werte');
   // Im JSON unter data.typeParam.
-  Json := CompletionItemsToJson([Item], 0);
+  mJson := CompletionItemsToJson([mItem], 0);
   try
-    Data := (Json.Items[0] as TJSONObject).GetValue('data') as TJSONObject;
-    Assert.AreEqual('T', Data.GetValue('typeParam').Value);
+    mData := (mJson.Items[0] as TJSONObject).GetValue('data') as TJSONObject;
+    Assert.AreEqual('T', mData.GetValue('typeParam').Value);
   finally
-    Json.Free;
+    mJson.Free;
   end;
 end;
 
 procedure TCompletionGenericsTests.ComparisonStaysNormalCompletion;
 var
-  Items: TCompletionItems;
-  Item: TCompletionItem;
+  mItems: TCompletionItems;
+  mItem: TCompletionItem;
 begin
-  Items := ItemsAt('  if Zahl < Z|');
-  Assert.IsTrue(Find(Items, 'Zahl', Item), 'Variable im Vergleich');
-  Assert.AreEqual('', Item.TypeParam);
+  mItems := ItemsAt('  if Zahl < Z|');
+  Assert.IsTrue(Find(mItems, 'Zahl', mItem), 'Variable im Vergleich');
+  Assert.AreEqual('', mItem.TypeParam);
 end;
 
 procedure TCompletionGenericsTests.MembersShowBoundTypes;
 var
-  Items: TCompletionItems;
-  Item: TCompletionItem;
+  mItems: TCompletionItems;
+  mItem: TCompletionItem;
 begin
-  Items := ItemsAt('  Kunden.Ers|');
-  Assert.IsTrue(Find(Items, 'Erster', Item));
-  Assert.AreEqual('TKunde', Item.Detail, 'T eingesetzt');
-  Assert.AreEqual('T=TKunde', string.Join('|', Item.Bindings));
+  mItems := ItemsAt('  Kunden.Ers|');
+  Assert.IsTrue(Find(mItems, 'Erster', mItem));
+  Assert.AreEqual('TKunde', mItem.Detail, 'T eingesetzt');
+  Assert.AreEqual('T=TKunde', string.Join('|', mItem.Bindings));
 end;
 
 procedure TCompletionGenericsTests.SignatureShowsBoundTypes;
 var
-  Text: string;
-  Position: TTextPosition;
-  Tree: TSyntaxTree;
-  Help: TSignatureHelp;
+  mText: string;
+  mPosition: TTextPosition;
+  mTree: TSyntaxTree;
+  mHelp: TSignatureHelp;
 begin
-  Text := Split(StringReplace(StringReplace(UnitHaupt, '  L: { Typ };'#10, '', []), '  { Code }',
-    '  Kunden.Add(|);', []), Position);
-  Tree := TPascalParser.Parse(Text);
+  mText := Split(StringReplace(StringReplace(cUnitHaupt, '  L: { Typ };'#10, '', []), '  { Code }',
+    '  Kunden.Add(|);', []), mPosition);
+  mTree := TPascalParser.Parse(mText);
   try
-    Help := TLspSignatureHelp.HelpAt(TSignatureHelpRequest.Create(FResolver, FIndex, Tree, Text, HauptFile,
+    mHelp := TLspSignatureHelp.HelpAt(TSignatureHelpRequest.Create(FResolver, FIndex, mTree, mText, cHauptFile,
       function(const AFileName: string; out AText: string): Boolean
       begin
-        AText := UnitListen;
-        Result := SameText(AFileName, ListenFile);
-      end), Position);
+        AText := cUnitListen;
+        Result := SameText(AFileName, cListenFile);
+      end), mPosition);
   finally
-    Tree.Free;
+    mTree.Free;
   end;
-  Assert.AreEqual(1, Integer(Length(Help.Signatures)));
-  Assert.IsTrue(Help.Signatures[0].Text.Contains('Wert: TKunde'), Help.Signatures[0].Text);
-  Assert.AreEqual('TKunde', Help.Signatures[0].Parameters[0].TypeName);
+  Assert.AreEqual(1, Integer(Length(mHelp.Signatures)));
+  Assert.IsTrue(mHelp.Signatures[0].Text.Contains('Wert: TKunde'), mHelp.Signatures[0].Text);
+  Assert.AreEqual('TKunde', mHelp.Signatures[0].Parameters[0].TypeName);
 end;
 
 end.

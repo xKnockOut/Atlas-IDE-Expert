@@ -40,19 +40,19 @@ uses
   Atlas.Common.Lsp.CompilerSwitches;
 
 const
-  UnitText =
+  cUnitText =
     'unit Schalter;'#10 +   // 0
     '{$R-}'#10 +            // 1
     'interface'#10 +        // 2
     'implementation'#10 +   // 3
     'end.';
 
-  FileName = 'C:\P\Schalter.pas';
+  cFileName = 'C:\P\Schalter.pas';
 
 function ProjectContext(const AUri: string): TCompilerSwitchContext;
 begin
   Result := Default(TCompilerSwitchContext);
-  Result.FileName := FileName;
+  Result.FileName := cFileName;
   Result.HasProject := True;
   Result.Configuration := 'Debug';
   Result.Platform := 'Win64';
@@ -63,73 +63,73 @@ end;
 
 function TLspCompilerSwitchesTests.Answer(const AParams: string; AKnownDocument: Boolean): string;
 var
-  Store: IDocumentStore;
-  Switches: TLspCompilerSwitches;
-  Dispatcher: TJsonRpcDispatcher;
-  Request, Response: TJSONObject;
-  Value: TJSONValue;
+  mStore: IDocumentStore;
+  mSwitches: TLspCompilerSwitches;
+  mDispatcher: TJsonRpcDispatcher;
+  mRequest, mResponse: TJSONObject;
+  mValue: TJSONValue;
 begin
-  Store := TDocumentStore.Create;
+  mStore := TDocumentStore.Create;
   if AKnownDocument then
   begin
-    Store.Open(TDocumentUris.FromPath(FileName), 'delphi', 1, UnitText);
+    mStore.Open(TDocumentUris.FromPath(cFileName), 'delphi', 1, cUnitText);
   end;
-  Switches := TLspCompilerSwitches.Create(Store, ProjectContext);
-  Dispatcher := TJsonRpcDispatcher.Create;
+  mSwitches := TLspCompilerSwitches.Create(mStore, ProjectContext);
+  mDispatcher := TJsonRpcDispatcher.Create;
   try
-    Switches.Attach(Dispatcher);
-    Request := TJSONObject.ParseJSONValue('{"jsonrpc":"2.0","id":1,"method":"' + TLspCompilerSwitches.cMethod +
+    mSwitches.Attach(mDispatcher);
+    mRequest := TJSONObject.ParseJSONValue('{"jsonrpc":"2.0","id":1,"method":"' + TLspCompilerSwitches.cMethod +
       '","params":' + AParams + '}') as TJSONObject;
     try
-      Response := Dispatcher.DispatchMessage(Request);
+      mResponse := mDispatcher.DispatchMessage(mRequest);
     finally
-      Request.Free;
+      mRequest.Free;
     end;
     try
-      Value := Response.GetValue('result');
-      if Value = nil then
+      mValue := mResponse.GetValue('result');
+      if mValue = nil then
       begin
-        Value := Response.GetValue('error');
+        mValue := mResponse.GetValue('error');
       end;
-      Result := Value.ToJSON;
+      Result := mValue.ToJSON;
     finally
-      Response.Free;
+      mResponse.Free;
     end;
   finally
-    Dispatcher.Free;
-    Switches.Free;
+    mDispatcher.Free;
+    mSwitches.Free;
   end;
 end;
 
 function DocumentParams(ALine: Integer): string;
 begin
-  Result := '{"textDocument":{"uri":"' + TDocumentUris.FromPath(FileName).Replace('\', '\\') +
+  Result := '{"textDocument":{"uri":"' + TDocumentUris.FromPath(cFileName).Replace('\', '\\') +
     '"},"position":{"line":' + IntToStr(ALine) + ',"character":0}}';
 end;
 
 procedure TLspCompilerSwitchesTests.StateAtUsesProjectDefines;
 var
-  State: TCompilerSwitchState;
+  mState: TCompilerSwitchState;
 begin
-  State := TLspCompilerSwitches.StateAt(UnitText, TTextPosition.Create(0, 0), ProjectContext(''));
-  Assert.AreEqual('R', State.Switches[0].Name);
-  Assert.AreEqual('+', State.Switches[0].Value);
-  Assert.AreEqual('', State.Summary);
-  State := TLspCompilerSwitches.StateAt(UnitText, TTextPosition.Create(3, 0), ProjectContext(''));
-  Assert.AreEqual('-', State.Switches[0].Value);
-  Assert.AreEqual('R'#$2212, State.Summary);
+  mState := TLspCompilerSwitches.StateAt(cUnitText, TTextPosition.Create(0, 0), ProjectContext(''));
+  Assert.AreEqual('R', mState.Switches[0].Name);
+  Assert.AreEqual('+', mState.Switches[0].Value);
+  Assert.AreEqual('', mState.Summary);
+  mState := TLspCompilerSwitches.StateAt(cUnitText, TTextPosition.Create(3, 0), ProjectContext(''));
+  Assert.AreEqual('-', mState.Switches[0].Value);
+  Assert.AreEqual('R'#$2212, mState.Summary);
 end;
 
 procedure TLspCompilerSwitchesTests.HandlerWritesSwitchesWithOrigin;
 var
-  Text: string;
+  mText: string;
 begin
-  Text := Answer(DocumentParams(3), True);
-  Assert.IsTrue(Text.StartsWith('{"configuration":"Debug","platform":"Win64","hasProject":true,'), Text);
-  Assert.IsTrue(Text.Contains('{"name":"R","longName":"RANGECHECKS","value":"-","projectValue":"+",' +
-    '"deviates":true,"origin":{"kind":"directive","text":"{$R-}","file":"' + FileName.Replace('\', '\\') +
-    '","line":1}}'), Text);
-  Assert.IsTrue(Text.Contains('{"name":"DEBUG","origin":{"kind":"project"'), Text);
+  mText := Answer(DocumentParams(3), True);
+  Assert.IsTrue(mText.StartsWith('{"configuration":"Debug","platform":"Win64","hasProject":true,'), mText);
+  Assert.IsTrue(mText.Contains('{"name":"R","longName":"RANGECHECKS","value":"-","projectValue":"+",' +
+    '"deviates":true,"origin":{"kind":"directive","text":"{$R-}","file":"' + cFileName.Replace('\', '\\') +
+    '","line":1}}'), mText);
+  Assert.IsTrue(mText.Contains('{"name":"DEBUG","origin":{"kind":"project"'), mText);
 end;
 
 procedure TLspCompilerSwitchesTests.UnknownDocumentGivesNull;

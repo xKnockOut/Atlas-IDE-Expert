@@ -47,60 +47,60 @@ uses
 
 function Join(const ALines: array of string): string;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
   Result := '';
-  for Index := 0 to High(ALines) do
+  for mIndex := 0 to High(ALines) do
   begin
-    Result := Result + ALines[Index] + #10;
+    Result := Result + ALines[mIndex] + #10;
   end;
 end;
 
 /// <summary>Namensposition am "|" in AMarked als "Art Typ" ("field TCustomerList", "global …"); '-' ohne.</summary>
 function SiteOf(const AMarked: string): string;
 var
-  Text: string;
-  Line, Character, Index: Integer;
-  Tree: TSyntaxTree;
-  Site: TNameSite;
+  mText: string;
+  mLine, mCharacter, mIndex: Integer;
+  mTree: TSyntaxTree;
+  mSite: TNameSite;
 const
-  Kinds: array[TNamingKind] of string = ('field', 'parameter', 'local');
+  cKinds: array[TNamingKind] of string = ('field', 'parameter', 'local');
 begin
-  Line := 0;
-  Character := 0;
-  for Index := 1 to Pos('|', AMarked) - 1 do
+  mLine := 0;
+  mCharacter := 0;
+  for mIndex := 1 to Pos('|', AMarked) - 1 do
   begin
-    if AMarked[Index] = #10 then
+    if AMarked[mIndex] = #10 then
     begin
-      Inc(Line);
-      Character := 0;
+      Inc(mLine);
+      mCharacter := 0;
     end
     else
     begin
-      Inc(Character);
+      Inc(mCharacter);
     end;
   end;
-  Text := StringReplace(AMarked, '|', '', []);
-  Tree := TPascalParser.Parse(Text);
+  mText := StringReplace(AMarked, '|', '', []);
+  mTree := TPascalParser.Parse(mText);
   try
-    if not TNameSuggestions.Site(Tree, TTextPosition.Create(Line, Character), Site) then
+    if not TNameSuggestions.Site(mTree, TTextPosition.Create(mLine, mCharacter), mSite) then
     begin
       Exit('-');
     end;
-    if Site.Global then
+    if mSite.Global then
     begin
-      Result := 'global ' + Site.TypeText;
+      Result := 'global ' + mSite.TypeText;
     end
     else
     begin
-      Result := Kinds[Site.Kind] + ' ' + Site.TypeText;
+      Result := cKinds[mSite.Kind] + ' ' + mSite.TypeText;
     end;
-    if Site.Typed <> '' then
+    if mSite.Typed <> '' then
     begin
-      Result := Result + ' (' + Site.Typed + ')';
+      Result := Result + ' (' + mSite.Typed + ')';
     end;
   finally
-    Tree.Free;
+    mTree.Free;
   end;
 end;
 
@@ -293,10 +293,10 @@ end;
 
 procedure TNameSuggestionsTests.CountsPrefixesInTree;
 var
-  Tree: TSyntaxTree;
-  Counts: TNamingCounts;
+  mTree: TSyntaxTree;
+  mCounts: TNamingCounts;
 begin
-  Tree := TPascalParser.Parse(Join([
+  mTree := TPascalParser.Parse(Join([
     'unit U;',
     'interface',
     'type',
@@ -317,17 +317,17 @@ begin
     'end;',
     'end.']));
   try
-    Counts := TIndexExtractor.NamingOf(Tree.Root);
+    mCounts := TIndexExtractor.NamingOf(mTree.Root);
   finally
-    Tree.Free;
+    mTree.Free;
   end;
-  Assert.AreEqual(3, Counts[TNamingKind.Field].Total);
-  Assert.AreEqual(2, Counts[TNamingKind.Field].Prefixed);
-  Assert.AreEqual(4, Counts[TNamingKind.Parameter].Total);
-  Assert.AreEqual(2, Counts[TNamingKind.Parameter].Prefixed);
+  Assert.AreEqual(3, mCounts[TNamingKind.Field].Total);
+  Assert.AreEqual(2, mCounts[TNamingKind.Field].Prefixed);
+  Assert.AreEqual(4, mCounts[TNamingKind.Parameter].Total);
+  Assert.AreEqual(2, mCounts[TNamingKind.Parameter].Prefixed);
   // Die globale Variable zählt nicht.
-  Assert.AreEqual(2, Counts[TNamingKind.Local].Total);
-  Assert.AreEqual(2, Counts[TNamingKind.Local].Prefixed);
+  Assert.AreEqual(2, mCounts[TNamingKind.Local].Total);
+  Assert.AreEqual(2, mCounts[TNamingKind.Local].Prefixed);
   Assert.IsTrue(TIndexExtractor.HasNamePrefix('FName', 'F'));
   Assert.IsFalse(TIndexExtractor.HasNamePrefix('Fast', 'F'));
   Assert.IsFalse(TIndexExtractor.HasNamePrefix('F', 'F'));

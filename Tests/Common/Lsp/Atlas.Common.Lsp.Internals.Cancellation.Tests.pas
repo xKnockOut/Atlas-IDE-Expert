@@ -47,26 +47,26 @@ end;
 
 procedure TRequestCancellationTests.WithoutTokenNeverCancelled;
 var
-  Cancellation: IPascalCancellation;
+  mCancellation: IPascalCancellation;
 begin
-  Cancellation := TRequestCancellation.Create(nil);
-  Assert.IsFalse(Cancellation.IsCancelled);
+  mCancellation := TRequestCancellation.Create(nil);
+  Assert.IsFalse(mCancellation.IsCancelled);
 end;
 
 procedure TRequestCancellationTests.FollowsToken;
 var
-  Fake: TFakeToken;
-  Token: IJsonRpcCancellationToken;
-  Cancellation: IPascalCancellation;
+  mFake: TFakeToken;
+  mToken: IJsonRpcCancellationToken;
+  mCancellation: IPascalCancellation;
 begin
-  Fake := TFakeToken.Create;
-  Token := Fake;
-  Cancellation := TRequestCancellation.Create(Token);
-  Assert.IsFalse(Cancellation.IsCancelled);
-  Fake.Cancelled := True;
-  Assert.IsTrue(Cancellation.IsCancelled);
-  Fake.Cancelled := False;
-  Assert.IsFalse(Cancellation.IsCancelled);
+  mFake := TFakeToken.Create;
+  mToken := mFake;
+  mCancellation := TRequestCancellation.Create(mToken);
+  Assert.IsFalse(mCancellation.IsCancelled);
+  mFake.Cancelled := True;
+  Assert.IsTrue(mCancellation.IsCancelled);
+  mFake.Cancelled := False;
+  Assert.IsFalse(mCancellation.IsCancelled);
 end;
 
 initialization

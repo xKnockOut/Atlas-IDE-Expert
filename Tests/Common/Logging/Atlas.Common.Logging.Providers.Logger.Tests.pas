@@ -63,91 +63,91 @@ end;
 
 procedure TLoggerTests.DeliversEntryToAllSinks;
 var
-  First, Second: TList<TLogEntry>;
-  Logger: TLogger;
-  LoggerRef: ILogger;
+  mFirst, mSecond: TList<TLogEntry>;
+  mLogger: TLogger;
+  mLoggerRef: ILogger;
 begin
-  First := TList<TLogEntry>.Create;
-  Second := TList<TLogEntry>.Create;
+  mFirst := TList<TLogEntry>.Create;
+  mSecond := TList<TLogEntry>.Create;
   try
-    Logger := TLogger.Create;
-    LoggerRef := Logger;
-    Logger.AddSink(TCollectingSink.Create(First), TLogLevel.Debug);
-    Logger.AddSink(TCollectingSink.Create(Second), TLogLevel.Debug);
+    mLogger := TLogger.Create;
+    mLoggerRef := mLogger;
+    mLogger.AddSink(TCollectingSink.Create(mFirst), TLogLevel.Debug);
+    mLogger.AddSink(TCollectingSink.Create(mSecond), TLogLevel.Debug);
 
-    LoggerRef.Info('Hallo');
+    mLoggerRef.Info('Hallo');
 
-    Assert.AreEqual<NativeInt>(1, First.Count);
-    Assert.AreEqual<NativeInt>(1, Second.Count);
-    Assert.AreEqual('Hallo', First[0].Text);
-    Assert.AreEqual<TLogLevel>(TLogLevel.Info, First[0].Level);
-    LoggerRef := nil;
+    Assert.AreEqual<NativeInt>(1, mFirst.Count);
+    Assert.AreEqual<NativeInt>(1, mSecond.Count);
+    Assert.AreEqual('Hallo', mFirst[0].Text);
+    Assert.AreEqual<TLogLevel>(TLogLevel.Info, mFirst[0].Level);
+    mLoggerRef := nil;
   finally
-    Second.Free;
-    First.Free;
+    mSecond.Free;
+    mFirst.Free;
   end;
 end;
 
 procedure TLoggerTests.FiltersByMinLevelOfEachSink;
 var
-  All, ErrorsOnly: TList<TLogEntry>;
-  Logger: TLogger;
-  LoggerRef: ILogger;
+  mAll, mErrorsOnly: TList<TLogEntry>;
+  mLogger: TLogger;
+  mLoggerRef: ILogger;
 begin
-  All := TList<TLogEntry>.Create;
-  ErrorsOnly := TList<TLogEntry>.Create;
+  mAll := TList<TLogEntry>.Create;
+  mErrorsOnly := TList<TLogEntry>.Create;
   try
-    Logger := TLogger.Create;
-    LoggerRef := Logger;
-    Logger.AddSink(TCollectingSink.Create(All), TLogLevel.Debug);
-    Logger.AddSink(TCollectingSink.Create(ErrorsOnly), TLogLevel.Error);
+    mLogger := TLogger.Create;
+    mLoggerRef := mLogger;
+    mLogger.AddSink(TCollectingSink.Create(mAll), TLogLevel.Debug);
+    mLogger.AddSink(TCollectingSink.Create(mErrorsOnly), TLogLevel.Error);
 
-    LoggerRef.Debug('d');
-    LoggerRef.Info('i');
-    LoggerRef.Warning('w');
-    LoggerRef.Error('e');
+    mLoggerRef.Debug('d');
+    mLoggerRef.Info('i');
+    mLoggerRef.Warning('w');
+    mLoggerRef.Error('e');
 
-    Assert.AreEqual<NativeInt>(4, All.Count);
-    Assert.AreEqual<NativeInt>(1, ErrorsOnly.Count);
-    Assert.AreEqual('e', ErrorsOnly[0].Text);
-    LoggerRef := nil;
+    Assert.AreEqual<NativeInt>(4, mAll.Count);
+    Assert.AreEqual<NativeInt>(1, mErrorsOnly.Count);
+    Assert.AreEqual('e', mErrorsOnly[0].Text);
+    mLoggerRef := nil;
   finally
-    ErrorsOnly.Free;
-    All.Free;
+    mErrorsOnly.Free;
+    mAll.Free;
   end;
 end;
 
 procedure TLoggerTests.IgnoresFailingSink;
 var
-  Entries: TList<TLogEntry>;
-  Logger: TLogger;
-  LoggerRef: ILogger;
+  mEntries: TList<TLogEntry>;
+  mLogger: TLogger;
+  mLoggerRef: ILogger;
 begin
-  Entries := TList<TLogEntry>.Create;
+  mEntries := TList<TLogEntry>.Create;
   try
-    Logger := TLogger.Create;
-    LoggerRef := Logger;
-    Logger.AddSink(TFailingSink.Create, TLogLevel.Debug);
-    Logger.AddSink(TCollectingSink.Create(Entries), TLogLevel.Debug);
+    mLogger := TLogger.Create;
+    mLoggerRef := mLogger;
+    mLogger.AddSink(TFailingSink.Create, TLogLevel.Debug);
+    mLogger.AddSink(TCollectingSink.Create(mEntries), TLogLevel.Debug);
 
     Assert.WillNotRaise(
       procedure
       begin
-        LoggerRef.Error('trotzdem');
+        mLoggerRef.Error('trotzdem');
       end);
-    Assert.AreEqual<NativeInt>(1, Entries.Count);
-    LoggerRef := nil;
+    Assert.AreEqual<NativeInt>(1, mEntries.Count);
+    mLoggerRef := nil;
   finally
-    Entries.Free;
+    mEntries.Free;
   end;
 end;
 
 procedure TLoggerTests.EntryTextContainsLevelAndText;
 var
-  Entry: TLogEntry;
+  mEntry: TLogEntry;
 begin
-  Entry := TLogEntry.Create(EncodeDateTime(2026, 10, 7, 19, 50, 1, 234), TLogLevel.Warning, 'Achtung');
-  Assert.AreEqual('2026-10-07 19:50:01.234 [WARNING] Achtung', Entry.ToText);
+  mEntry := TLogEntry.Create(EncodeDateTime(2026, 10, 7, 19, 50, 1, 234), TLogLevel.Warning, 'Achtung');
+  Assert.AreEqual('2026-10-07 19:50:01.234 [WARNING] Achtung', mEntry.ToText);
 end;
 
 initialization

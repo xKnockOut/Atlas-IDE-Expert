@@ -41,73 +41,73 @@ end;
 
 procedure TJsonRpcCurrentRequestTests.EnterAffectsCurrentThreadOnly;
 var
-  Token: IJsonRpcCancellationToken;
-  Previous: Pointer;
-  OtherSeen: Boolean;
-  Other: TThread;
+  mToken: IJsonRpcCancellationToken;
+  mPrevious: Pointer;
+  mOtherSeen: Boolean;
+  mOther: TThread;
 begin
-  Token := TJsonRpcCancellation.Create;
-  OtherSeen := True;
-  Previous := TJsonRpcCurrentRequest.Enter(Token);
+  mToken := TJsonRpcCancellation.Create;
+  mOtherSeen := True;
+  mPrevious := TJsonRpcCurrentRequest.Enter(mToken);
   try
-    Other := TThread.CreateAnonymousThread(
+    mOther := TThread.CreateAnonymousThread(
       procedure
       begin
-        OtherSeen := TJsonRpcCurrentRequest.Token <> nil;
+        mOtherSeen := TJsonRpcCurrentRequest.Token <> nil;
       end);
-    Other.FreeOnTerminate := False;
+    mOther.FreeOnTerminate := False;
     try
-      Other.Start;
-      Other.WaitFor;
+      mOther.Start;
+      mOther.WaitFor;
     finally
-      Other.Free;
+      mOther.Free;
     end;
-    Assert.AreSame(Token as IInterface, TJsonRpcCurrentRequest.Token as IInterface);
+    Assert.AreSame(mToken as IInterface, TJsonRpcCurrentRequest.Token as IInterface);
   finally
-    TJsonRpcCurrentRequest.Leave(Previous);
+    TJsonRpcCurrentRequest.Leave(mPrevious);
   end;
-  Assert.IsFalse(OtherSeen);
+  Assert.IsFalse(mOtherSeen);
 end;
 
 procedure TJsonRpcCurrentRequestTests.LeaveRestoresPreviousToken;
 var
-  Outer, Inner: IJsonRpcCancellationToken;
-  OuterPrevious, InnerPrevious: Pointer;
+  mOuter, mInner: IJsonRpcCancellationToken;
+  mOuterPrevious, mInnerPrevious: Pointer;
 begin
-  Outer := TJsonRpcCancellation.Create;
-  Inner := TJsonRpcCancellation.Create;
-  OuterPrevious := TJsonRpcCurrentRequest.Enter(Outer);
+  mOuter := TJsonRpcCancellation.Create;
+  mInner := TJsonRpcCancellation.Create;
+  mOuterPrevious := TJsonRpcCurrentRequest.Enter(mOuter);
   try
-    InnerPrevious := TJsonRpcCurrentRequest.Enter(Inner);
+    mInnerPrevious := TJsonRpcCurrentRequest.Enter(mInner);
     try
-      Assert.AreSame(Inner as IInterface, TJsonRpcCurrentRequest.Token as IInterface);
+      Assert.AreSame(mInner as IInterface, TJsonRpcCurrentRequest.Token as IInterface);
     finally
-      TJsonRpcCurrentRequest.Leave(InnerPrevious);
+      TJsonRpcCurrentRequest.Leave(mInnerPrevious);
     end;
-    Assert.AreSame(Outer as IInterface, TJsonRpcCurrentRequest.Token as IInterface);
+    Assert.AreSame(mOuter as IInterface, TJsonRpcCurrentRequest.Token as IInterface);
   finally
-    TJsonRpcCurrentRequest.Leave(OuterPrevious);
+    TJsonRpcCurrentRequest.Leave(mOuterPrevious);
   end;
   Assert.IsNull(TJsonRpcCurrentRequest.Token);
 end;
 
 procedure TJsonRpcCurrentRequestTests.ThrowIfCancellationRequestedRaisesForCancelledToken;
 var
-  Source: IJsonRpcCancellationSource;
-  Previous: Pointer;
+  mSource: IJsonRpcCancellationSource;
+  mPrevious: Pointer;
 begin
-  Source := TJsonRpcCancellation.Create;
-  Previous := TJsonRpcCurrentRequest.Enter(Source);
+  mSource := TJsonRpcCancellation.Create;
+  mPrevious := TJsonRpcCurrentRequest.Enter(mSource);
   try
     TJsonRpcCurrentRequest.ThrowIfCancellationRequested;
-    Source.Cancel;
+    mSource.Cancel;
     Assert.WillRaise(
       procedure
       begin
         TJsonRpcCurrentRequest.ThrowIfCancellationRequested;
       end, EJsonRpcRequestCancelled);
   finally
-    TJsonRpcCurrentRequest.Leave(Previous);
+    TJsonRpcCurrentRequest.Leave(mPrevious);
   end;
 end;
 

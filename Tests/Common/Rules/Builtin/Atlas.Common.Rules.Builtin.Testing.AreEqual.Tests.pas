@@ -44,9 +44,14 @@ begin
     'procedure Pruefe;'#10'var'#10 + AVars + 'begin'#10 + AStatements + 'end;'#10'end.';
 end;
 
-function Findings(const ASource: string; const AConfig: string = ''): TArray<TRuleFinding>;
+function Findings(const ASource: string; const AConfig: string): TArray<TRuleFinding>; overload;
 begin
   Result := TRuleAssert.Findings(TDUnitXAreEqualLengthRule.Create, ASource, AConfig, 'Fall.Tests.pas');
+end;
+
+function Findings(const ASource: string): TArray<TRuleFinding>; overload;
+begin
+  Result := Findings(ASource, '');
 end;
 
 function Messages(const AFound: TArray<TRuleFinding>): string;

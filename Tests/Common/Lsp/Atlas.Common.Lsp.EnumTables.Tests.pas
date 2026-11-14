@@ -50,10 +50,10 @@ uses
   Atlas.Common.Lsp.EnumTables;
 
 const
-  OrdersFile = 'C:\P\Orders.pas';
-  ShopFile = 'C:\P\Shop.pas';
-  OtherFile = 'C:\P\Other.pas';
-  Orders =
+  cOrdersFile = 'C:\P\Orders.pas';
+  cShopFile = 'C:\P\Shop.pas';
+  cOtherFile = 'C:\P\Other.pas';
+  cOrders =
     'unit Orders;'#10 +                                                   // 0
     'interface'#10 +                                                      // 1
     'type'#10 +                                                           // 2
@@ -63,7 +63,7 @@ const
     'implementation'#10 +                                                 // 6
     'end.'#10;
 
-  Shop =
+  cShop =
     'unit Shop;'#10 +
     'interface'#10 +
     'uses Orders;'#10 +
@@ -80,7 +80,7 @@ const
     'end.'#10;
 
   // Eigenes TOrderState: bleibt unberührt.
-  Other =
+  cOther =
     'unit Other;'#10 +
     'interface'#10 +
     'type'#10 +
@@ -93,17 +93,17 @@ const
 function ReadFile(const AFileName: string; out AText: string): Boolean;
 begin
   Result := True;
-  if SameText(AFileName, OrdersFile) then
+  if SameText(AFileName, cOrdersFile) then
   begin
-    AText := Orders;
+    AText := cOrders;
   end
-  else if SameText(AFileName, ShopFile) then
+  else if SameText(AFileName, cShopFile) then
   begin
-    AText := Shop;
+    AText := cShop;
   end
-  else if SameText(AFileName, OtherFile) then
+  else if SameText(AFileName, cOtherFile) then
   begin
-    AText := Other;
+    AText := cOther;
   end
   else
   begin
@@ -114,9 +114,9 @@ end;
 procedure TLspEnumTablesTests.Setup;
 begin
   FIndex := TSymbolIndex.Create;
-  FIndex.AddUnit(TIndexExtractor.ExtractText(Orders, OrdersFile, nil));
-  FIndex.AddUnit(TIndexExtractor.ExtractText(Shop, ShopFile, nil));
-  FIndex.AddUnit(TIndexExtractor.ExtractText(Other, OtherFile, nil));
+  FIndex.AddUnit(TIndexExtractor.ExtractText(cOrders, cOrdersFile, nil));
+  FIndex.AddUnit(TIndexExtractor.ExtractText(cShop, cShopFile, nil));
+  FIndex.AddUnit(TIndexExtractor.ExtractText(cOther, cOtherFile, nil));
 end;
 
 procedure TLspEnumTablesTests.TearDown;
@@ -128,144 +128,144 @@ function Context(const AIndex: ISymbolIndex): TEnumTablesContext;
 begin
   Result := Default(TEnumTablesContext);
   Result.Index := AIndex;
-  Result.Files := [OrdersFile, ShopFile, OtherFile];
+  Result.Files := [cOrdersFile, cShopFile, cOtherFile];
   Result.ReadText := ReadFile;
 end;
 
 /// <summary>Orders mit dem Baum ATree, Stelle auf TOrderState.</summary>
 function OrdersDocument(ATree: TSyntaxTree): TEnumTablesDocument;
 begin
-  Result := TEnumTablesDocument.Create(ATree, OrdersFile, Orders, TTextPosition.Create(3, 5));
+  Result := TEnumTablesDocument.Create(ATree, cOrdersFile, cOrders, TTextPosition.Create(3, 5));
 end;
 
 function ActionsAt(const AIndex: ISymbolIndex; const AText, AFileName: string; ALine,
   ACharacter: Integer): TArray<TJSONObject>;
 var
-  Tree: TSyntaxTree;
-  Resolver: TNameResolver;
+  mTree: TSyntaxTree;
+  mResolver: TNameResolver;
 begin
-  Tree := TPascalParser.Parse(AText);
-  Resolver := TNameResolver.Create(AIndex);
+  mTree := TPascalParser.Parse(AText);
+  mResolver := TNameResolver.Create(AIndex);
   try
-    Resolver.PinTree(Tree, AFileName);
+    mResolver.PinTree(mTree, AFileName);
     try
-      Result := TLspEnumTables.Actions(Resolver, AIndex, Tree, AText, TDocumentUris.FromPath(AFileName),
+      Result := TLspEnumTables.Actions(mResolver, AIndex, mTree, AText, TDocumentUris.FromPath(AFileName),
         TTextPosition.Create(ALine, ACharacter));
     finally
-      Resolver.UnpinTree;
+      mResolver.UnpinTree;
     end;
   finally
-    Resolver.Free;
-    Tree.Free;
+    mResolver.Free;
+    mTree.Free;
   end;
 end;
 
 procedure FreeAll(const AActions: TArray<TJSONObject>);
 var
-  Action: TJSONObject;
+  mAction: TJSONObject;
 begin
-  for Action in AActions do
+  for mAction in AActions do
   begin
-    Action.Free;
+    mAction.Free;
   end;
 end;
 
 procedure TLspEnumTablesTests.ActionsOnType;
 var
-  Actions: TArray<TJSONObject>;
-  Arguments: TJSONArray;
+  mActions: TArray<TJSONObject>;
+  mArguments: TJSONArray;
 begin
-  Actions := ActionsAt(FIndex, Orders, OrdersFile, 3, 5);
+  mActions := ActionsAt(FIndex, cOrders, cOrdersFile, 3, 5);
   try
-    Assert.AreEqual(3, Integer(Length(Actions)));
-    Assert.AreEqual('Namenstabelle anlegen (TOrderState)', Actions[0].GetValue<string>('title'));
+    Assert.AreEqual(3, Integer(Length(mActions)));
+    Assert.AreEqual('Namenstabelle anlegen (TOrderState)', mActions[0].GetValue<string>('title'));
     Assert.AreEqual('Namenstabelle anlegen, im implementation-Teil (TOrderState)',
-      Actions[1].GetValue<string>('title'));
-    Assert.AreEqual('Tabellen von TOrderState nachziehen', Actions[2].GetValue<string>('title'));
-    Assert.AreEqual(TLspEnumTables.cClientCommand, Actions[0].GetValue<string>('command.command'));
-    Arguments := Actions[0].GetValue<TJSONArray>('command.arguments');
-    Assert.AreEqual(4, Arguments.Count);
-    Assert.AreEqual('COrderStateNames', Arguments.Items[2].Value);
-    Assert.AreEqual('afterType', Arguments.Items[3].Value);
-    Assert.AreEqual('implementation', Actions[1].GetValue<TJSONArray>('command.arguments').Items[3].Value);
-    Assert.AreEqual(TLspEnumTables.cSyncClientCommand, Actions[2].GetValue<string>('command.command'));
-    Assert.AreEqual(2, Actions[2].GetValue<TJSONArray>('command.arguments').Count);
+      mActions[1].GetValue<string>('title'));
+    Assert.AreEqual('Tabellen von TOrderState nachziehen', mActions[2].GetValue<string>('title'));
+    Assert.AreEqual(TLspEnumTables.cClientCommand, mActions[0].GetValue<string>('command.command'));
+    mArguments := mActions[0].GetValue<TJSONArray>('command.arguments');
+    Assert.AreEqual(4, mArguments.Count);
+    Assert.AreEqual('COrderStateNames', mArguments.Items[2].Value);
+    Assert.AreEqual('afterType', mArguments.Items[3].Value);
+    Assert.AreEqual('implementation', mActions[1].GetValue<TJSONArray>('command.arguments').Items[3].Value);
+    Assert.AreEqual(TLspEnumTables.cSyncClientCommand, mActions[2].GetValue<string>('command.command'));
+    Assert.AreEqual(2, mActions[2].GetValue<TJSONArray>('command.arguments').Count);
   finally
-    FreeAll(Actions);
+    FreeAll(mActions);
   end;
 end;
 
 procedure TLspEnumTablesTests.RepairActionOnTable;
 var
-  Actions: TArray<TJSONObject>;
+  mActions: TArray<TJSONObject>;
 begin
-  Actions := ActionsAt(FIndex, Shop, ShopFile, 4, 10);
+  mActions := ActionsAt(FIndex, cShop, cShopFile, 4, 10);
   try
-    Assert.AreEqual(1, Integer(Length(Actions)));
-    Assert.AreEqual('Fehlenden Eintrag ergänzen (osPaid)', Actions[0].GetValue<string>('title'));
-    Assert.AreEqual('quickfix', Actions[0].GetValue<string>('kind'));
-    Assert.IsTrue(Pos('"newText":", ''Paid''"', Actions[0].ToJSON) > 0, Actions[0].ToJSON);
+    Assert.AreEqual(1, Integer(Length(mActions)));
+    Assert.AreEqual('Fehlenden Eintrag ergänzen (osPaid)', mActions[0].GetValue<string>('title'));
+    Assert.AreEqual('quickfix', mActions[0].GetValue<string>('kind'));
+    Assert.IsTrue(Pos('"newText":", ''Paid''"', mActions[0].ToJSON) > 0, mActions[0].ToJSON);
   finally
-    FreeAll(Actions);
+    FreeAll(mActions);
   end;
   // Der eigene Typ von Other hat zwei Werte: dort fehlt osB.
-  Actions := ActionsAt(FIndex, Other, OtherFile, 5, 10);
+  mActions := ActionsAt(FIndex, cOther, cOtherFile, 5, 10);
   try
-    Assert.AreEqual(1, Integer(Length(Actions)));
-    Assert.AreEqual('Fehlenden Eintrag ergänzen (osB)', Actions[0].GetValue<string>('title'));
+    Assert.AreEqual(1, Integer(Length(mActions)));
+    Assert.AreEqual('Fehlenden Eintrag ergänzen (osB)', mActions[0].GetValue<string>('title'));
   finally
-    FreeAll(Actions);
+    FreeAll(mActions);
   end;
 end;
 
 procedure TLspEnumTablesTests.ExecuteCreatesTable;
 var
-  Tree: TSyntaxTree;
-  Answer: TJSONObject;
+  mTree: TSyntaxTree;
+  mAnswer: TJSONObject;
 begin
-  Tree := TPascalParser.Parse(Orders);
+  mTree := TPascalParser.Parse(cOrders);
   try
-    Answer := TLspEnumTables.Execute(OrdersDocument(Tree), 'COrderStateNames', 'afterType', Context(FIndex));
+    mAnswer := TLspEnumTables.Execute(OrdersDocument(mTree), 'COrderStateNames', 'afterType', Context(FIndex));
     try
       Assert.IsTrue(Pos('COrderStateNames: array[TOrderState] of string = (''New'', ''Paid'', ''Payment due'');',
-        Answer.ToJSON) > 0, Answer.ToJSON);
-      Assert.AreEqual(1, Answer.GetValue<Integer>('files'));
+        mAnswer.ToJSON) > 0, mAnswer.ToJSON);
+      Assert.AreEqual(1, mAnswer.GetValue<Integer>('files'));
     finally
-      Answer.Free;
+      mAnswer.Free;
     end;
   finally
-    Tree.Free;
+    mTree.Free;
   end;
 end;
 
 procedure TLspEnumTablesTests.SyncChangesTablesAndCases;
 var
-  Tree: TSyntaxTree;
-  Resolver: TNameResolver;
-  Answer: TJSONObject;
-  Json: string;
+  mTree: TSyntaxTree;
+  mResolver: TNameResolver;
+  mAnswer: TJSONObject;
+  mJson: string;
 begin
-  Tree := TPascalParser.Parse(Orders);
-  Resolver := TNameResolver.Create(FIndex);
+  mTree := TPascalParser.Parse(cOrders);
+  mResolver := TNameResolver.Create(FIndex);
   try
-    Answer := TLspEnumTables.Sync(Resolver, OrdersDocument(Tree), Context(FIndex));
+    mAnswer := TLspEnumTables.Sync(mResolver, OrdersDocument(mTree), Context(FIndex));
     try
-      Json := Answer.ToJSON;
-      Assert.AreEqual(2, Answer.GetValue<Integer>('files'), Json);
-      Assert.IsTrue(Pos(TDocumentUris.FromPath(ShopFile), Json) > 0, Json);
-      Assert.IsFalse(Pos('Other', Json) > 0, Json);
+      mJson := mAnswer.ToJSON;
+      Assert.AreEqual(2, mAnswer.GetValue<Integer>('files'), mJson);
+      Assert.IsTrue(Pos(TDocumentUris.FromPath(cShopFile), mJson) > 0, mJson);
+      Assert.IsFalse(Pos('Other', mJson) > 0, mJson);
       // CCodes ohne Hinweis: hinten ergänzt, mit Warnung.
-      Assert.AreEqual(1, Answer.GetValue<TJSONArray>('warnings').Count, Json);
-      Assert.IsTrue(Pos('"newText":", ''Paid''"', Json) > 0, Json);
-      Assert.IsTrue(Pos('osPaid: ;', Json) > 0, Json);
-      Assert.IsTrue(Answer.GetValue<string>('preview').StartsWith(
-        'TOrderState: 2 Tabellen und 1 case-Anweisungen in 2 Dateien.'), Json);
+      Assert.AreEqual(1, mAnswer.GetValue<TJSONArray>('warnings').Count, mJson);
+      Assert.IsTrue(Pos('"newText":", ''Paid''"', mJson) > 0, mJson);
+      Assert.IsTrue(Pos('osPaid: ;', mJson) > 0, mJson);
+      Assert.IsTrue(mAnswer.GetValue<string>('preview').StartsWith(
+        'TOrderState: 2 Tabellen und 1 case-Anweisungen in 2 Dateien.'), mJson);
     finally
-      Answer.Free;
+      mAnswer.Free;
     end;
   finally
-    Resolver.Free;
-    Tree.Free;
+    mResolver.Free;
+    mTree.Free;
   end;
 end;
 
@@ -276,7 +276,7 @@ begin
     var
       Tree: TSyntaxTree;
     begin
-      Tree := TPascalParser.Parse(Orders);
+      Tree := TPascalParser.Parse(cOrders);
       try
         TLspEnumTables.Execute(OrdersDocument(Tree), 'TOrderState', 'afterType', Context(FIndex)).Free;
       finally
@@ -288,7 +288,7 @@ begin
     var
       Tree: TSyntaxTree;
     begin
-      Tree := TPascalParser.Parse(Orders);
+      Tree := TPascalParser.Parse(cOrders);
       try
         TLspEnumTables.Execute(OrdersDocument(Tree), 'CNames', 'irgendwo', Context(FIndex)).Free;
       finally

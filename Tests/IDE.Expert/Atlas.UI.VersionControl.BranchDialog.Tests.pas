@@ -570,7 +570,8 @@ begin
     Assert.AreEqual(1, Integer(mDialog.Git.PushBox.ItemIndex));
     // „nachfragen“: Anzahl sichtbar, keine Wahl, „Anlegen“ gesperrt.
     Assert.IsTrue(mDialog.Git.UncommittedPanel.Visible);
-    Assert.AreEqual(TAtlasVcsStrings.Fmt(TAtlasVcsTextId.VcsBranchUncommittedCount, [3]), mDialog.Git.UncommittedCount.Caption);
+    Assert.AreEqual(TAtlasVcsStrings.Fmt(TAtlasVcsTextId.VcsBranchUncommittedCount, [3]),
+      mDialog.Git.UncommittedCount.Caption);
     Assert.AreEqual(-1, Integer(mDialog.Git.UncommittedBox.ItemIndex));
     Assert.IsTrue(mDialog.Git.Error.Visible);
     Assert.AreEqual(TAtlasVcsStrings.Text(TAtlasVcsTextId.VcsBranchUncommittedChoose), mDialog.Git.Error.Caption);
@@ -631,7 +632,8 @@ begin
     Assert.AreEqual(TAtlasVcsStrings.Text(TAtlasVcsTextId.VcsBranchFolderInvalid), mDialog.Git.Error.Caption);
     Assert.IsFalse(mDialog.CreateButton.Enabled);
     mDialog.Git.WorktreeEdit.Text := ExcludeTrailingPathDelimiter(GetCurrentDir);
-    Assert.AreEqual(TAtlasVcsStrings.Fmt(TAtlasVcsTextId.VcsBranchFolderExists, [ExcludeTrailingPathDelimiter(GetCurrentDir)]),
+    Assert.AreEqual(TAtlasVcsStrings.Fmt(TAtlasVcsTextId.VcsBranchFolderExists,
+      [ExcludeTrailingPathDelimiter(GetCurrentDir)]),
       mDialog.Git.Error.Caption);
     Assert.IsFalse(mDialog.CreateButton.Enabled);
     mDialog.Names.NameEdit.Text := 'feature/15-a';

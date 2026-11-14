@@ -29,34 +29,34 @@ uses
 
 function PathOf(const ATokens: TArray<TPascalToken>; const APaths: TArray<string>; const AText: string): string;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
   Result := '?';
-  for Index := 0 to High(ATokens) do
+  for mIndex := 0 to High(ATokens) do
   begin
-    if ATokens[Index].Text = AText then
+    if ATokens[mIndex].Text = AText then
     begin
-      Exit(TConditionalBranches.PathAt(APaths, Index));
+      Exit(TConditionalBranches.PathAt(APaths, mIndex));
     end;
   end;
 end;
 
 procedure TConditionalBranchesTests.PathsPerToken;
 var
-  Tokens: TArray<TPascalToken>;
-  Paths: TArray<string>;
+  mTokens: TArray<TPascalToken>;
+  mPaths: TArray<string>;
 begin
-  Tokens := TPascalLexer.Tokenize('A {$IFDEF X} B {$IFNDEF Y} C {$ENDIF} {$ELSEIF Defined(Z)} D {$ELSE} E {$ENDIF} F ' +
+  mTokens := TPascalLexer.Tokenize('A {$IFDEF X} B {$IFNDEF Y} C {$ENDIF} {$ELSEIF Defined(Z)} D {$ELSE} E {$ENDIF} F ' +
     '{$IF A} G {$IFEND}');
-  Paths := TConditionalBranches.Paths(Tokens);
-  Assert.AreEqual(Integer(Length(Tokens)), Integer(Length(Paths)));
-  Assert.AreEqual('', PathOf(Tokens, Paths, 'A'));
-  Assert.AreEqual('0.0', PathOf(Tokens, Paths, 'B'));
-  Assert.AreEqual('0.0/1.0', PathOf(Tokens, Paths, 'C'));
-  Assert.AreEqual('0.1', PathOf(Tokens, Paths, 'D'));
-  Assert.AreEqual('0.2', PathOf(Tokens, Paths, 'E'));
-  Assert.AreEqual('', PathOf(Tokens, Paths, 'F'));
-  Assert.AreEqual('2.0', PathOf(Tokens, Paths, 'G'));
+  mPaths := TConditionalBranches.Paths(mTokens);
+  Assert.AreEqual(Integer(Length(mTokens)), Integer(Length(mPaths)));
+  Assert.AreEqual('', PathOf(mTokens, mPaths, 'A'));
+  Assert.AreEqual('0.0', PathOf(mTokens, mPaths, 'B'));
+  Assert.AreEqual('0.0/1.0', PathOf(mTokens, mPaths, 'C'));
+  Assert.AreEqual('0.1', PathOf(mTokens, mPaths, 'D'));
+  Assert.AreEqual('0.2', PathOf(mTokens, mPaths, 'E'));
+  Assert.AreEqual('', PathOf(mTokens, mPaths, 'F'));
+  Assert.AreEqual('2.0', PathOf(mTokens, mPaths, 'G'));
 end;
 
 procedure TConditionalBranchesTests.WithoutConditionsEmpty;

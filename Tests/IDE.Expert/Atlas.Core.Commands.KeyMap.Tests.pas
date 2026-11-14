@@ -81,12 +81,12 @@ uses
   Atlas.Core.Commands.KeyMap;
 
 const
-  CtrlShiftP = $6050;
-  CtrlW = $4057;
-  CtrlE = $4045;
-  CtrlShiftUp = $6026;
-  CtrlShiftDown = $6028;
-  CtrlF12 = $407B;
+  cCtrlShiftP = $6050;
+  cCtrlW = $4057;
+  cCtrlE = $4045;
+  cCtrlShiftUp = $6026;
+  cCtrlShiftDown = $6028;
+  cCtrlF12 = $407B;
 
 type
   /// <summary>Merkt sich, was Save schreibt, und liefert es Load zurück.</summary>
@@ -154,14 +154,14 @@ end;
 
 function EntryOf(const AEntries: TArray<TAtlasKeyEntry>; AFunc: TAtlasKeyFunction): TAtlasKeyEntry;
 var
-  Entry: TAtlasKeyEntry;
+  mEntry: TAtlasKeyEntry;
 begin
   Result := TAtlasKeyEntry.Create(AFunc, 0, False, False);
-  for Entry in AEntries do
+  for mEntry in AEntries do
   begin
-    if Entry.Func = AFunc then
+    if mEntry.Func = AFunc then
     begin
-      Exit(Entry);
+      Exit(mEntry);
     end;
   end;
 end;
@@ -190,133 +190,133 @@ end;
 
 procedure TAtlasKeyMapTests.AllFromSettingsListsEveryAtlasKey;
 var
-  Settings: TAtlasPluginSettings;
-  Entries: TArray<TAtlasKeyEntry>;
-  Entry: TAtlasKeyEntry;
-  Func: TAtlasKeyFunction;
-  Found: Boolean;
+  mSettings: TAtlasPluginSettings;
+  mEntries: TArray<TAtlasKeyEntry>;
+  mEntry: TAtlasKeyEntry;
+  mFunc: TAtlasKeyFunction;
+  mFound: Boolean;
 begin
-  Settings := TAtlasPluginSettings.Defaults;
-  Settings.EditorKeysPriority := True;
-  Entries := TAtlasKeyEntry.AllFromSettings(Settings);
+  mSettings := TAtlasPluginSettings.Defaults;
+  mSettings.EditorKeysPriority := True;
+  mEntries := TAtlasKeyEntry.AllFromSettings(mSettings);
   // Jede Funktion genau einmal, die ersten neun wie auf der Seite „Tastenkonflikte“ (sechs, dazu drei der schnellen
   // Lesezeichen, #1104).
-  Assert.AreEqual(Ord(High(TAtlasKeyFunction)) + 1, Integer(Length(Entries)));
-  for Func := Low(TAtlasKeyFunction) to High(TAtlasKeyFunction) do
+  Assert.AreEqual(Ord(High(TAtlasKeyFunction)) + 1, Integer(Length(mEntries)));
+  for mFunc := Low(TAtlasKeyFunction) to High(TAtlasKeyFunction) do
   begin
-    Found := False;
-    for Entry in Entries do
+    mFound := False;
+    for mEntry in mEntries do
     begin
-      if Entry.Func = Func then
+      if mEntry.Func = mFunc then
       begin
-        Found := True;
+        mFound := True;
       end;
     end;
-    Assert.IsTrue(Found, 'Funktion ' + IntToStr(Ord(Func)));
+    Assert.IsTrue(mFound, 'Funktion ' + IntToStr(Ord(mFunc)));
   end;
-  Assert.AreEqual(Ord(TAtlasKeyFunction.DiagnosticMode), Ord(Entries[5].Func));
-  Assert.AreEqual(Ord(TAtlasKeyFunction.QuickBookmarkJump), Ord(Entries[8].Func));
-  Assert.AreEqual($800D, Integer(Entries[9].Key), 'Code-Aktionen: Alt+Enter');
-  Assert.IsTrue(Entries[9].Priority, 'Editorbefehle: gemeinsamer Vorrang');
-  Assert.AreEqual(CtrlE, Integer(Entries[16].Key), 'Suchfeld der Willkommensseite: Strg+E');
-  Assert.IsTrue(Entries[16].Priority, 'Das Suchfeld nimmt die Taste auf der Willkommensseite immer');
-  Assert.AreEqual(CtrlShiftP, Integer(Entries[0].Key), 'Befehlspalette #502');
+  Assert.AreEqual(Ord(TAtlasKeyFunction.DiagnosticMode), Ord(mEntries[5].Func));
+  Assert.AreEqual(Ord(TAtlasKeyFunction.QuickBookmarkJump), Ord(mEntries[8].Func));
+  Assert.AreEqual($800D, Integer(mEntries[9].Key), 'Code-Aktionen: Alt+Enter');
+  Assert.IsTrue(mEntries[9].Priority, 'Editorbefehle: gemeinsamer Vorrang');
+  Assert.AreEqual(cCtrlE, Integer(mEntries[16].Key), 'Suchfeld der Willkommensseite: Strg+E');
+  Assert.IsTrue(mEntries[16].Priority, 'Das Suchfeld nimmt die Taste auf der Willkommensseite immer');
+  Assert.AreEqual(cCtrlShiftP, Integer(mEntries[0].Key), 'Befehlspalette #502');
 end;
 
 procedure TAtlasKeyMapTests.AllFromSettingsRoundTripsEditorKeys;
 var
-  Settings, Saved: TAtlasPluginSettings;
-  Entries: TArray<TAtlasKeyEntry>;
+  mSettings, mSaved: TAtlasPluginSettings;
+  mEntries: TArray<TAtlasKeyEntry>;
 begin
-  Settings := TAtlasPluginSettings.Defaults;
-  Settings.ExpandKey := $6045;
-  Settings.RedoKey := 0;
-  Settings.WelcomePageSearchKey := $4046;
-  Settings.EditorKeysPriority := True;
-  Entries := TAtlasKeyEntry.AllFromSettings(Settings);
-  Saved := TAtlasPluginSettings.Defaults;
-  TAtlasKeyEntry.ToSettings(Entries, Saved);
-  Assert.AreEqual($6045, Saved.ExpandKey);
-  Assert.AreEqual(0, Saved.RedoKey);
-  Assert.AreEqual($4046, Saved.WelcomePageSearchKey);
-  Assert.IsTrue(Saved.EditorKeysPriority);
-  Assert.AreEqual(Settings.UndoKey, Saved.UndoKey);
+  mSettings := TAtlasPluginSettings.Defaults;
+  mSettings.ExpandKey := $6045;
+  mSettings.RedoKey := 0;
+  mSettings.WelcomePageSearchKey := $4046;
+  mSettings.EditorKeysPriority := True;
+  mEntries := TAtlasKeyEntry.AllFromSettings(mSettings);
+  mSaved := TAtlasPluginSettings.Defaults;
+  TAtlasKeyEntry.ToSettings(mEntries, mSaved);
+  Assert.AreEqual($6045, mSaved.ExpandKey);
+  Assert.AreEqual(0, mSaved.RedoKey);
+  Assert.AreEqual($4046, mSaved.WelcomePageSearchKey);
+  Assert.IsTrue(mSaved.EditorKeysPriority);
+  Assert.AreEqual(mSettings.UndoKey, mSaved.UndoKey);
   // #775, #189, #777: eigene Tasten zurück; Strg+F12 ist fest und kein Feld.
-  Settings.MethodToggleUpKey := $6049;
-  Settings.MethodToggleDownKey := 0;
-  Settings.TestUnitKey := $C054;
-  Settings.UnitSearchKey := $C055;
-  Saved := TAtlasPluginSettings.Defaults;
-  TAtlasKeyEntry.ToSettings(TAtlasKeyEntry.AllFromSettings(Settings), Saved);
-  Assert.AreEqual($6049, Saved.MethodToggleUpKey);
-  Assert.AreEqual(0, Saved.MethodToggleDownKey);
-  Assert.AreEqual($C054, Saved.TestUnitKey);
-  Assert.AreEqual($C055, Saved.UnitSearchKey);
+  mSettings.MethodToggleUpKey := $6049;
+  mSettings.MethodToggleDownKey := 0;
+  mSettings.TestUnitKey := $C054;
+  mSettings.UnitSearchKey := $C055;
+  mSaved := TAtlasPluginSettings.Defaults;
+  TAtlasKeyEntry.ToSettings(TAtlasKeyEntry.AllFromSettings(mSettings), mSaved);
+  Assert.AreEqual($6049, mSaved.MethodToggleUpKey);
+  Assert.AreEqual(0, mSaved.MethodToggleDownKey);
+  Assert.AreEqual($C054, mSaved.TestUnitKey);
+  Assert.AreEqual($C055, mSaved.UnitSearchKey);
   // Abgeschaltet ändert die Taste nicht: Der Schalter ist eine eigene Einstellung.
-  Settings.MethodToggle := False;
-  Saved := TAtlasPluginSettings.Defaults;
-  TAtlasKeyEntry.ToSettings(TAtlasKeyEntry.AllFromSettings(Settings), Saved);
-  Assert.AreEqual($6049, Saved.MethodToggleUpKey);
-  Assert.IsTrue(Saved.MethodToggle, 'ToSettings schaltet nichts');
+  mSettings.MethodToggle := False;
+  mSaved := TAtlasPluginSettings.Defaults;
+  TAtlasKeyEntry.ToSettings(TAtlasKeyEntry.AllFromSettings(mSettings), mSaved);
+  Assert.AreEqual($6049, mSaved.MethodToggleUpKey);
+  Assert.IsTrue(mSaved.MethodToggle, 'ToSettings schaltet nichts');
 end;
 
 procedure TAtlasKeyMapTests.EveryKeySettingIsInOverview;
 var
-  Store: TKeyStore;
-  StoreRef: IAtlasSettingsStore;
-  Settings: TAtlasPluginSettings;
-  Entries: TArray<TAtlasKeyEntry>;
-  Entry: TAtlasKeyEntry;
-  Name: string;
-  Keys: TDictionary<string, Integer>;
-  Pair: TPair<string, Integer>;
-  Count: Integer;
-  Found: Boolean;
+  mStore: TKeyStore;
+  mStoreRef: IAtlasSettingsStore;
+  mSettings: TAtlasPluginSettings;
+  mEntries: TArray<TAtlasKeyEntry>;
+  mEntry: TAtlasKeyEntry;
+  mName: string;
+  mKeys: TDictionary<string, Integer>;
+  mPair: TPair<string, Integer>;
+  mCount: Integer;
+  mFound: Boolean;
 begin
   // Wächter (#520): Jede gespeicherte Taste (TShortCut, Name auf „Key“) bekommt einen eigenen Wert; jeder muss
   // als eingeschalteter Eintrag in AllFromSettings auftauchen. Fehlt eine neue Taste dort, schlägt der Test fehl:
   // Dann TAtlasKeyFunction, AllFromSettings, ToSettings, CommandIdOf und FunctionCaption ergänzen.
-  Store := TKeyStore.Create;
-  StoreRef := Store;
-  Keys := TDictionary<string, Integer>.Create;
+  mStore := TKeyStore.Create;
+  mStoreRef := mStore;
+  mKeys := TDictionary<string, Integer>.Create;
   try
     // Alle Funktionen an, damit keine Taste wegen eines Schalters fehlt.
-    Settings := TAtlasPluginSettings.Defaults;
-    Settings.MethodToggle := True;
-    Settings.UnitSearchEnabled := True;
-    Settings.WelcomePage := True;
-    Settings.WelcomePageSearch := True;
-    Settings.MultiCursor := True;
-    Settings.Save(StoreRef);
-    Count := 0;
-    for Name in Store.Names.ToArray do
+    mSettings := TAtlasPluginSettings.Defaults;
+    mSettings.MethodToggle := True;
+    mSettings.UnitSearchEnabled := True;
+    mSettings.WelcomePage := True;
+    mSettings.WelcomePageSearch := True;
+    mSettings.MultiCursor := True;
+    mSettings.Save(mStoreRef);
+    mCount := 0;
+    for mName in mStore.Names.ToArray do
     begin
       // DesignerMeasureAltKey ist ein Schalter (Boolean), keine Taste; der Name endet nur zufällig auf Key.
-      if Name.EndsWith('Key') and not SameText(Name, 'DesignerMeasureAltKey') then
+      if mName.EndsWith('Key') and not SameText(mName, 'DesignerMeasureAltKey') then
       begin
-        Inc(Count);
-        Keys.Add(Name, TAtlasKeyConflicts.cScCtrl or TAtlasKeyConflicts.cScAlt or (Ord('A') + Count));
-        Store.WriteInteger(Name, Keys[Name]);
+        Inc(mCount);
+        mKeys.Add(mName, TAtlasKeyConflicts.cScCtrl or TAtlasKeyConflicts.cScAlt or (Ord('A') + mCount));
+        mStore.WriteInteger(mName, mKeys[mName]);
       end;
     end;
-    Assert.IsTrue(Count >= 18, 'Tasten-Einstellungen gefunden: ' + IntToStr(Count));
-    Settings := TAtlasPluginSettings.Defaults;
-    Settings.Load(StoreRef);
-    Entries := TAtlasKeyEntry.AllFromSettings(Settings);
-    for Pair in Keys do
+    Assert.IsTrue(mCount >= 18, 'Tasten-Einstellungen gefunden: ' + IntToStr(mCount));
+    mSettings := TAtlasPluginSettings.Defaults;
+    mSettings.Load(mStoreRef);
+    mEntries := TAtlasKeyEntry.AllFromSettings(mSettings);
+    for mPair in mKeys do
     begin
-      Found := False;
-      for Entry in Entries do
+      mFound := False;
+      for mEntry in mEntries do
       begin
-        if (Entry.Key = Pair.Value) and not Entry.Disabled then
+        if (mEntry.Key = mPair.Value) and not mEntry.Disabled then
         begin
-          Found := True;
+          mFound := True;
         end;
       end;
-      Assert.IsTrue(Found, Pair.Key + ' fehlt in TAtlasKeyEntry.AllFromSettings');
+      Assert.IsTrue(mFound, mPair.Key + ' fehlt in TAtlasKeyEntry.AllFromSettings');
     end;
   finally
-    Keys.Free;
+    mKeys.Free;
   end;
 end;
 
@@ -433,88 +433,88 @@ end;
 
 procedure TAtlasKeyMapTests.NewEditorKeysAreListed;
 var
-  Settings: TAtlasPluginSettings;
-  Entries: TArray<TAtlasKeyEntry>;
-  Entry: TAtlasKeyEntry;
+  mSettings: TAtlasPluginSettings;
+  mEntries: TArray<TAtlasKeyEntry>;
+  mEntry: TAtlasKeyEntry;
 begin
-  Settings := TAtlasPluginSettings.Defaults;
-  Settings.TestUnitKey := $C054;
-  Settings.UnitSearchKey := $C055;
-  Entries := TAtlasKeyEntry.AllFromSettings(Settings);
+  mSettings := TAtlasPluginSettings.Defaults;
+  mSettings.TestUnitKey := $C054;
+  mSettings.UnitSearchKey := $C055;
+  mEntries := TAtlasKeyEntry.AllFromSettings(mSettings);
   // Deklaration ⇄ Implementierung (#775): zwei Tasten, Vorrang wie die übrigen Editorbefehle.
-  Entry := EntryOf(Entries, TAtlasKeyFunction.MethodToggleUp);
-  Assert.AreEqual(CtrlShiftUp, Integer(Entry.Key));
-  Assert.IsFalse(Entry.Disabled);
-  Assert.IsFalse(Entry.Priority, 'EditorKeysPriority ist aus');
-  Entry := EntryOf(Entries, TAtlasKeyFunction.MethodToggleDown);
-  Assert.AreEqual(CtrlShiftDown, Integer(Entry.Key));
-  Assert.IsFalse(Entry.Disabled);
+  mEntry := EntryOf(mEntries, TAtlasKeyFunction.MethodToggleUp);
+  Assert.AreEqual(cCtrlShiftUp, Integer(mEntry.Key));
+  Assert.IsFalse(mEntry.Disabled);
+  Assert.IsFalse(mEntry.Priority, 'EditorKeysPriority ist aus');
+  mEntry := EntryOf(mEntries, TAtlasKeyFunction.MethodToggleDown);
+  Assert.AreEqual(cCtrlShiftDown, Integer(mEntry.Key));
+  Assert.IsFalse(mEntry.Disabled);
   // Unit ⇄ Testunit (#189) und eigene Taste für „Units suchen“ (#777).
-  Assert.AreEqual($C054, Integer(EntryOf(Entries, TAtlasKeyFunction.TestUnit).Key));
-  Assert.AreEqual($C055, Integer(EntryOf(Entries, TAtlasKeyFunction.UnitSearch).Key));
+  Assert.AreEqual($C054, Integer(EntryOf(mEntries, TAtlasKeyFunction.TestUnit).Key));
+  Assert.AreEqual($C055, Integer(EntryOf(mEntries, TAtlasKeyFunction.UnitSearch).Key));
   // „Lesezeichen setzen…“ (#622): Strg+Alt+K als Editorbefehl.
-  Assert.AreEqual($C04B, Integer(EntryOf(Entries, TAtlasKeyFunction.Bookmark).Key));
-  Assert.IsFalse(EntryOf(Entries, TAtlasKeyFunction.Bookmark).Disabled);
+  Assert.AreEqual($C04B, Integer(EntryOf(mEntries, TAtlasKeyFunction.Bookmark).Key));
+  Assert.IsFalse(EntryOf(mEntries, TAtlasKeyFunction.Bookmark).Disabled);
   Assert.AreEqual(Ord(TAtlasKeySource.Binding), Ord(TAtlasKeyMap.SourceOf(TAtlasKeyFunction.Bookmark)));
   // Erzeugen-Menü (#719): Alt+Einfg als Editorbefehl.
-  Assert.AreEqual($802D, Integer(EntryOf(Entries, TAtlasKeyFunction.GenerateMenu).Key));
-  Assert.IsFalse(EntryOf(Entries, TAtlasKeyFunction.GenerateMenu).Disabled);
+  Assert.AreEqual($802D, Integer(EntryOf(mEntries, TAtlasKeyFunction.GenerateMenu).Key));
+  Assert.IsFalse(EntryOf(mEntries, TAtlasKeyFunction.GenerateMenu).Disabled);
   Assert.AreEqual(Ord(TAtlasKeySource.Binding), Ord(TAtlasKeyMap.SourceOf(TAtlasKeyFunction.GenerateMenu)));
   // Benachrichtigungen (#601): Strg+Umschalt+Alt+N als Editorbefehl.
-  Assert.AreEqual($E04E, Integer(EntryOf(Entries, TAtlasKeyFunction.Notifications).Key));
-  Assert.IsFalse(EntryOf(Entries, TAtlasKeyFunction.Notifications).Disabled);
+  Assert.AreEqual($E04E, Integer(EntryOf(mEntries, TAtlasKeyFunction.Notifications).Key));
+  Assert.IsFalse(EntryOf(mEntries, TAtlasKeyFunction.Notifications).Disabled);
   Assert.AreEqual(Ord(TAtlasKeySource.Binding), Ord(TAtlasKeyMap.SourceOf(TAtlasKeyFunction.Notifications)));
   // Schnellaktionen der Willkommensseite (#764): Strg+B und Strg+T, nur dort und immer mit Vorrang.
-  Assert.AreEqual($4042, Integer(EntryOf(Entries, TAtlasKeyFunction.WelcomeQuickBuild).Key));
-  Assert.AreEqual($4054, Integer(EntryOf(Entries, TAtlasKeyFunction.WelcomeQuickTests).Key));
-  Assert.IsTrue(EntryOf(Entries, TAtlasKeyFunction.WelcomeQuickBuild).Priority);
-  Assert.IsFalse(EntryOf(Entries, TAtlasKeyFunction.WelcomeQuickTests).Disabled);
+  Assert.AreEqual($4042, Integer(EntryOf(mEntries, TAtlasKeyFunction.WelcomeQuickBuild).Key));
+  Assert.AreEqual($4054, Integer(EntryOf(mEntries, TAtlasKeyFunction.WelcomeQuickTests).Key));
+  Assert.IsTrue(EntryOf(mEntries, TAtlasKeyFunction.WelcomeQuickBuild).Priority);
+  Assert.IsFalse(EntryOf(mEntries, TAtlasKeyFunction.WelcomeQuickTests).Disabled);
   Assert.AreEqual(Ord(TAtlasKeySource.Window), Ord(TAtlasKeyMap.SourceOf(TAtlasKeyFunction.WelcomeQuickBuild)));
   Assert.AreEqual(Ord(TAtlasKeyContext.WelcomePage),
     Ord(TAtlasKeyMap.ContextOf(TAtlasKeyFunction.WelcomeQuickTests)));
   Assert.AreEqual(Ord(TAtlasKeyContext.Editor), Ord(TAtlasKeyMap.ContextOf(TAtlasKeyFunction.MethodToggleDown)));
   // „Element ausblenden …“ (#628): Strg+. als Editorbefehl, immer mit Vorrang (ohne Element geht die Taste weiter).
-  Assert.AreEqual($40BE, Integer(EntryOf(Entries, TAtlasKeyFunction.HideElement).Key));
-  Assert.IsTrue(EntryOf(Entries, TAtlasKeyFunction.HideElement).Priority);
-  Assert.IsFalse(EntryOf(Entries, TAtlasKeyFunction.HideElement).Disabled);
+  Assert.AreEqual($40BE, Integer(EntryOf(mEntries, TAtlasKeyFunction.HideElement).Key));
+  Assert.IsTrue(EntryOf(mEntries, TAtlasKeyFunction.HideElement).Priority);
+  Assert.IsFalse(EntryOf(mEntries, TAtlasKeyFunction.HideElement).Disabled);
   Assert.AreEqual('Atlas.HideElement', TAtlasKeyMap.CommandIdOf(TAtlasKeyFunction.HideElement));
   // Nächster/vorheriger Befund (#509): Strg+Alt+F8 und Strg+Alt+Umschalt+F8 als Editorbefehle.
-  Assert.AreEqual($C077, Integer(EntryOf(Entries, TAtlasKeyFunction.NextProblem).Key));
-  Assert.AreEqual($E077, Integer(EntryOf(Entries, TAtlasKeyFunction.PreviousProblem).Key));
-  Assert.IsFalse(EntryOf(Entries, TAtlasKeyFunction.NextProblem).Disabled);
+  Assert.AreEqual($C077, Integer(EntryOf(mEntries, TAtlasKeyFunction.NextProblem).Key));
+  Assert.AreEqual($E077, Integer(EntryOf(mEntries, TAtlasKeyFunction.PreviousProblem).Key));
+  Assert.IsFalse(EntryOf(mEntries, TAtlasKeyFunction.NextProblem).Disabled);
   Assert.AreEqual(Ord(TAtlasKeySource.Binding), Ord(TAtlasKeyMap.SourceOf(TAtlasKeyFunction.PreviousProblem)));
   Assert.AreEqual('Atlas.NextProblem', TAtlasKeyMap.CommandIdOf(TAtlasKeyFunction.NextProblem));
   Assert.AreEqual('Atlas.PreviousProblem', TAtlasKeyMap.CommandIdOf(TAtlasKeyFunction.PreviousProblem));
   // Schnell öffnen (#503): Strg+P als Editorbefehl.
-  Assert.AreEqual($4050, Integer(EntryOf(Entries, TAtlasKeyFunction.QuickOpen).Key));
-  Assert.IsFalse(EntryOf(Entries, TAtlasKeyFunction.QuickOpen).Disabled);
+  Assert.AreEqual($4050, Integer(EntryOf(mEntries, TAtlasKeyFunction.QuickOpen).Key));
+  Assert.IsFalse(EntryOf(mEntries, TAtlasKeyFunction.QuickOpen).Disabled);
   Assert.AreEqual('Atlas.QuickOpen', TAtlasKeyMap.CommandIdOf(TAtlasKeyFunction.QuickOpen));
-  AssertNavigationAndEditKeys(Entries);
-  AssertLineAndBookmarkKeys(Settings, Entries);
+  AssertNavigationAndEditKeys(mEntries);
+  AssertLineAndBookmarkKeys(mSettings, mEntries);
 end;
 
 procedure TAtlasKeyMapTests.MultiCursorKeys;
 var
-  Settings, Saved: TAtlasPluginSettings;
-  Entries: TArray<TAtlasKeyEntry>;
-  Index: Integer;
+  mSettings, mSaved: TAtlasPluginSettings;
+  mEntries: TArray<TAtlasKeyEntry>;
+  mIndex: Integer;
 begin
   // #589: Vorgabe aus (experimentell), dann kein Konflikt; eingeschaltet mit Vorrang vor „Quelltext formatieren“.
-  Settings := TAtlasPluginSettings.Defaults;
-  Entries := TAtlasKeyEntry.AllFromSettings(Settings);
-  Assert.IsTrue(EntryOf(Entries, TAtlasKeyFunction.MultiCursorNext).Disabled);
-  Assert.AreEqual(Ord(TAtlasKeyStatus.NoKey), Ord(EntryOf(Entries, TAtlasKeyFunction.MultiCursorNext).Status(
+  mSettings := TAtlasPluginSettings.Defaults;
+  mEntries := TAtlasKeyEntry.AllFromSettings(mSettings);
+  Assert.IsTrue(EntryOf(mEntries, TAtlasKeyFunction.MultiCursorNext).Disabled);
+  Assert.AreEqual(Ord(TAtlasKeyStatus.NoKey), Ord(EntryOf(mEntries, TAtlasKeyFunction.MultiCursorNext).Status(
     'IDE: Quelltext formatieren')));
-  Settings.MultiCursor := True;
-  Entries := TAtlasKeyEntry.AllFromSettings(Settings);
-  Assert.IsFalse(EntryOf(Entries, TAtlasKeyFunction.MultiCursorNext).Disabled);
-  Assert.AreEqual($4044, Integer(EntryOf(Entries, TAtlasKeyFunction.MultiCursorNext).Key));
-  Assert.AreEqual($4044, Integer(EntryOf(Entries, TAtlasKeyFunction.MultiCursorSkip).Key));
-  Assert.AreEqual($A049, Integer(EntryOf(Entries, TAtlasKeyFunction.MultiCursorLineEnds).Key));
-  Assert.AreEqual($C026, Integer(EntryOf(Entries, TAtlasKeyFunction.MultiCursorAbove).Key));
-  Assert.AreEqual($C028, Integer(EntryOf(Entries, TAtlasKeyFunction.MultiCursorBelow).Key));
-  Assert.IsTrue(EntryOf(Entries, TAtlasKeyFunction.MultiCursorBelow).Priority);
-  Assert.AreEqual(Ord(TAtlasKeyStatus.AtlasWins), Ord(EntryOf(Entries, TAtlasKeyFunction.MultiCursorNext).Status(
+  mSettings.MultiCursor := True;
+  mEntries := TAtlasKeyEntry.AllFromSettings(mSettings);
+  Assert.IsFalse(EntryOf(mEntries, TAtlasKeyFunction.MultiCursorNext).Disabled);
+  Assert.AreEqual($4044, Integer(EntryOf(mEntries, TAtlasKeyFunction.MultiCursorNext).Key));
+  Assert.AreEqual($4044, Integer(EntryOf(mEntries, TAtlasKeyFunction.MultiCursorSkip).Key));
+  Assert.AreEqual($A049, Integer(EntryOf(mEntries, TAtlasKeyFunction.MultiCursorLineEnds).Key));
+  Assert.AreEqual($C026, Integer(EntryOf(mEntries, TAtlasKeyFunction.MultiCursorAbove).Key));
+  Assert.AreEqual($C028, Integer(EntryOf(mEntries, TAtlasKeyFunction.MultiCursorBelow).Key));
+  Assert.IsTrue(EntryOf(mEntries, TAtlasKeyFunction.MultiCursorBelow).Priority);
+  Assert.AreEqual(Ord(TAtlasKeyStatus.AtlasWins), Ord(EntryOf(mEntries, TAtlasKeyFunction.MultiCursorNext).Status(
     'IDE: Quelltext formatieren')));
   Assert.AreEqual('Atlas.MultiCursorNext', TAtlasKeyMap.CommandIdOf(TAtlasKeyFunction.MultiCursorNext));
   Assert.AreEqual('Atlas.MultiCursorLineEnds', TAtlasKeyMap.CommandIdOf(TAtlasKeyFunction.MultiCursorLineEnds));
@@ -525,16 +525,16 @@ begin
   Assert.AreEqual(Ord(TAtlasKeySource.Window), Ord(TAtlasKeyMap.SourceOf(TAtlasKeyFunction.MultiCursorSkip)));
   Assert.AreEqual(Ord(TAtlasKeyContext.Editor), Ord(TAtlasKeyMap.ContextOf(TAtlasKeyFunction.MultiCursorSkip)));
   // Zurück in die Einstellungen (Eintrag gezielt suchen: weitere Funktionen stehen dahinter).
-  for Index := 0 to High(Entries) do
+  for mIndex := 0 to High(mEntries) do
   begin
-    if Entries[Index].Func = TAtlasKeyFunction.MultiCursorBelow then
+    if mEntries[mIndex].Func = TAtlasKeyFunction.MultiCursorBelow then
     begin
-      Entries[Index].Key := $A028;
+      mEntries[mIndex].Key := $A028;
     end;
   end;
-  Saved := Settings;
-  TAtlasKeyEntry.ToSettings(Entries, Saved);
-  Assert.AreEqual($A028, Saved.MultiCursorBelowKey);
+  mSaved := mSettings;
+  TAtlasKeyEntry.ToSettings(mEntries, mSaved);
+  Assert.AreEqual($A028, mSaved.MultiCursorBelowKey);
 end;
 
 /// <summary>Vorgaben mit allen abschaltbaren Tastenfunktionen aus.</summary>
@@ -576,7 +576,7 @@ var
 begin
   mSettings := ASettings;
   // Die Taste bleibt eingestellt; nur der Schalter ist aus.
-  Assert.AreEqual(CtrlShiftUp, Integer(EntryOf(AEntries, TAtlasKeyFunction.MethodToggleUp).Key));
+  Assert.AreEqual(cCtrlShiftUp, Integer(EntryOf(AEntries, TAtlasKeyFunction.MethodToggleUp).Key));
   // Unit ⇄ Testunit (#189) hat keinen eigenen Schalter (abschalten heißt Taste 0), bleibt also an.
   Assert.IsFalse(EntryOf(AEntries, TAtlasKeyFunction.TestUnit).Disabled);
   // Das Suchfeld ist auch mit abgeschalteter Willkommensseite aus.
@@ -592,15 +592,15 @@ end;
 
 procedure TAtlasKeyMapTests.SwitchedOffFunctionsAreNoConflict;
 var
-  Settings: TAtlasPluginSettings;
-  Entries: TArray<TAtlasKeyEntry>;
-  Entry: TAtlasKeyEntry;
+  mSettings: TAtlasPluginSettings;
+  mEntries: TArray<TAtlasKeyEntry>;
+  mEntry: TAtlasKeyEntry;
 begin
-  Settings := SwitchedOffSettings;
-  Entries := TAtlasKeyEntry.AllFromSettings(Settings);
-  for Entry in Entries do
+  mSettings := SwitchedOffSettings;
+  mEntries := TAtlasKeyEntry.AllFromSettings(mSettings);
+  for mEntry in mEntries do
   begin
-    if Entry.Func in [TAtlasKeyFunction.MethodToggleUp, TAtlasKeyFunction.MethodToggleDown,
+    if mEntry.Func in [TAtlasKeyFunction.MethodToggleUp, TAtlasKeyFunction.MethodToggleDown,
       TAtlasKeyFunction.UnitSearch, TAtlasKeyFunction.UnitSearchIde, TAtlasKeyFunction.WelcomeSearch,
       TAtlasKeyFunction.Bookmark, TAtlasKeyFunction.GenerateMenu, TAtlasKeyFunction.Notifications,
       TAtlasKeyFunction.WelcomeQuickBuild, TAtlasKeyFunction.WelcomeQuickTests, TAtlasKeyFunction.NextProblem,
@@ -617,85 +617,85 @@ begin
       TAtlasKeyFunction.ExpressionType, TAtlasKeyFunction.SafeDelete, TAtlasKeyFunction.CheckFile,
       TAtlasKeyFunction.SectionAppend] then
     begin
-      Assert.IsTrue(Entry.Disabled, 'abgeschaltet: ' + IntToStr(Ord(Entry.Func)));
-      Assert.AreEqual(Ord(TAtlasKeyStatus.NoKey), Ord(Entry.Status('IDE: Klassennavigation')),
-        'kein Konflikt: ' + IntToStr(Ord(Entry.Func)));
+      Assert.IsTrue(mEntry.Disabled, 'abgeschaltet: ' + IntToStr(Ord(mEntry.Func)));
+      Assert.AreEqual(Ord(TAtlasKeyStatus.NoKey), Ord(mEntry.Status('IDE: Klassennavigation')),
+        'kein Konflikt: ' + IntToStr(Ord(mEntry.Func)));
     end
     else
     begin
-      Assert.IsFalse(Entry.Disabled, 'an: ' + IntToStr(Ord(Entry.Func)));
+      Assert.IsFalse(mEntry.Disabled, 'an: ' + IntToStr(Ord(mEntry.Func)));
     end;
   end;
-  AssertSwitchedOffKeysStay(Settings, Entries);
+  AssertSwitchedOffKeysStay(mSettings, mEntries);
 end;
 
 procedure TAtlasKeyMapTests.UnitSearchTakesOverIdeKey;
 var
-  Settings: TAtlasPluginSettings;
-  Entry: TAtlasKeyEntry;
-  Items: TArray<TAtlasKeyItem>;
-  Plugin: TAtlasKeyItem;
+  mSettings: TAtlasPluginSettings;
+  mEntry: TAtlasKeyEntry;
+  mItems: TArray<TAtlasKeyItem>;
+  mPlugin: TAtlasKeyItem;
 begin
-  Settings := TAtlasPluginSettings.Defaults;
-  Entry := EntryOf(TAtlasKeyEntry.AllFromSettings(Settings), TAtlasKeyFunction.UnitSearchIde);
-  Assert.AreEqual(CtrlF12, Integer(Entry.Key), 'Strg+F12 der IDE-Aktion „Units“');
-  Assert.IsTrue(Entry.Priority, 'bewusst übernommen');
-  Assert.IsFalse(Entry.Disabled);
+  mSettings := TAtlasPluginSettings.Defaults;
+  mEntry := EntryOf(TAtlasKeyEntry.AllFromSettings(mSettings), TAtlasKeyFunction.UnitSearchIde);
+  Assert.AreEqual(cCtrlF12, Integer(mEntry.Key), 'Strg+F12 der IDE-Aktion „Units“');
+  Assert.IsTrue(mEntry.Priority, 'bewusst übernommen');
+  Assert.IsFalse(mEntry.Disabled);
   Assert.AreEqual(Ord(TAtlasKeyContext.Global), Ord(TAtlasKeyMap.ContextOf(TAtlasKeyFunction.UnitSearchIde)));
   Assert.AreEqual(Ord(TAtlasKeySource.Action), Ord(TAtlasKeyMap.SourceOf(TAtlasKeyFunction.UnitSearchIde)));
-  Settings.UnitSearchReplaceIdeDialog := False;
-  Assert.IsTrue(EntryOf(TAtlasKeyEntry.AllFromSettings(Settings), TAtlasKeyFunction.UnitSearchIde).Disabled,
+  mSettings.UnitSearchReplaceIdeDialog := False;
+  Assert.IsTrue(EntryOf(TAtlasKeyEntry.AllFromSettings(mSettings), TAtlasKeyFunction.UnitSearchIde).Disabled,
     'ohne Übernahme gehört Strg+F12 der IDE');
   // Eine Erweiterung belegt Strg+F12 im Editor: Dort gewinnt ihre Tastaturbelegung vor der Aktion, Atlas meldet es.
-  Plugin := TAtlasKeyItem.Create(CtrlF12, 'Strg+F12', 'Tastaturbelegung des Editors',
+  mPlugin := TAtlasKeyItem.Create(cCtrlF12, 'Strg+F12', 'Tastaturbelegung des Editors',
     TAtlasKeyProvenance.Create(TAtlasKeyOrigin.Plugin, 'CnWizards_D120', TAtlasKeyContext.Editor,
-    TAtlasKeySource.Binding, 'Editor.' + IntToStr(CtrlF12), 101));
-  Plugin.Effective := True;
-  Items := [AtlasKey(TAtlasKeyFunction.UnitSearchIde, CtrlF12, True, True), Plugin];
-  TAtlasKeyMap.Analyze(Items);
-  Assert.IsTrue(Items[0].Conflict);
-  Assert.AreEqual(1, Items[0].Winner);
-  Assert.AreEqual(Ord(TAtlasKeyReason.EditorBinding), Ord(Items[0].Reason));
-  Assert.AreEqual(1, Integer(Length(TAtlasKeyMap.AtlasConflicts(Items))));
+    TAtlasKeySource.Binding, 'Editor.' + IntToStr(cCtrlF12), 101));
+  mPlugin.Effective := True;
+  mItems := [AtlasKey(TAtlasKeyFunction.UnitSearchIde, cCtrlF12, True, True), mPlugin];
+  TAtlasKeyMap.Analyze(mItems);
+  Assert.IsTrue(mItems[0].Conflict);
+  Assert.AreEqual(1, mItems[0].Winner);
+  Assert.AreEqual(Ord(TAtlasKeyReason.EditorBinding), Ord(mItems[0].Reason));
+  Assert.AreEqual(1, Integer(Length(TAtlasKeyMap.AtlasConflicts(mItems))));
 end;
 
 procedure TAtlasKeyMapTests.ParsesGermanAndEnglishShortCuts;
 var
-  Modifiers: Word;
+  mModifiers: Word;
 begin
-  Assert.AreEqual(CtrlShiftP, Integer(TAtlasKeyMap.ParseShortCut('Strg+Umschalt+P', Modifiers)));
-  Assert.AreEqual(CtrlShiftP, Integer(TAtlasKeyMap.ParseShortCut(' ctrl + shift + p ', Modifiers)));
-  Assert.AreEqual($800D, Integer(TAtlasKeyMap.ParseShortCut('Alt+Enter', Modifiers)));
-  Assert.AreEqual($4020, Integer(TAtlasKeyMap.ParseShortCut('Strg+Leer', Modifiers)));
-  Assert.AreEqual($C078, Integer(TAtlasKeyMap.ParseShortCut('Strg+Alt+F9', Modifiers)));
-  Assert.AreEqual($74, Integer(TAtlasKeyMap.ParseShortCut('F5', Modifiers)), 'Funktionstaste allein');
-  Assert.AreEqual(0, Integer(TAtlasKeyMap.ParseShortCut('p', Modifiers)), 'ein Zeichen ist Textsuche');
-  Assert.AreEqual(0, Integer(TAtlasKeyMap.ParseShortCut('Strg+Alt', Modifiers)));
-  Assert.AreEqual(TAtlasKeyMap.cScCtrl or TAtlasKeyMap.cScAlt, Integer(Modifiers), 'nur Umschalttasten');
-  Assert.AreEqual(0, Integer(TAtlasKeyMap.ParseShortCut('Strg+', Modifiers)));
-  Assert.AreEqual(TAtlasKeyMap.cScCtrl, Integer(Modifiers));
-  Assert.AreEqual(0, Integer(TAtlasKeyMap.ParseShortCut('Strg+Kompilieren', Modifiers)));
-  Assert.AreEqual(0, Integer(Modifiers), 'kein Tastenname: Textsuche');
-  Assert.AreEqual(0, Integer(TAtlasKeyMap.ParseShortCut('P+Strg', Modifiers)), 'Taste nur am Ende');
-  Assert.AreEqual(0, Integer(TAtlasKeyMap.ParseShortCut('', Modifiers)));
+  Assert.AreEqual(cCtrlShiftP, Integer(TAtlasKeyMap.ParseShortCut('Strg+Umschalt+P', mModifiers)));
+  Assert.AreEqual(cCtrlShiftP, Integer(TAtlasKeyMap.ParseShortCut(' ctrl + shift + p ', mModifiers)));
+  Assert.AreEqual($800D, Integer(TAtlasKeyMap.ParseShortCut('Alt+Enter', mModifiers)));
+  Assert.AreEqual($4020, Integer(TAtlasKeyMap.ParseShortCut('Strg+Leer', mModifiers)));
+  Assert.AreEqual($C078, Integer(TAtlasKeyMap.ParseShortCut('Strg+Alt+F9', mModifiers)));
+  Assert.AreEqual($74, Integer(TAtlasKeyMap.ParseShortCut('F5', mModifiers)), 'Funktionstaste allein');
+  Assert.AreEqual(0, Integer(TAtlasKeyMap.ParseShortCut('p', mModifiers)), 'ein Zeichen ist Textsuche');
+  Assert.AreEqual(0, Integer(TAtlasKeyMap.ParseShortCut('Strg+Alt', mModifiers)));
+  Assert.AreEqual(TAtlasKeyMap.cScCtrl or TAtlasKeyMap.cScAlt, Integer(mModifiers), 'nur Umschalttasten');
+  Assert.AreEqual(0, Integer(TAtlasKeyMap.ParseShortCut('Strg+', mModifiers)));
+  Assert.AreEqual(TAtlasKeyMap.cScCtrl, Integer(mModifiers));
+  Assert.AreEqual(0, Integer(TAtlasKeyMap.ParseShortCut('Strg+Kompilieren', mModifiers)));
+  Assert.AreEqual(0, Integer(mModifiers), 'kein Tastenname: Textsuche');
+  Assert.AreEqual(0, Integer(TAtlasKeyMap.ParseShortCut('P+Strg', mModifiers)), 'Taste nur am Ende');
+  Assert.AreEqual(0, Integer(TAtlasKeyMap.ParseShortCut('', mModifiers)));
 end;
 
 procedure TAtlasKeyMapTests.QueryMatchesKeyModifiersAndText;
 var
-  Item: TAtlasKeyItem;
+  mItem: TAtlasKeyItem;
 begin
-  Item := IdeAction('Projekt compilieren', $4078, 1);
-  Item.KeyText := 'Strg+F9';
-  Item.Category := 'Projekt';
-  Assert.IsTrue(TAtlasKeyQuery.Parse('').Matches(Item));
-  Assert.IsTrue(TAtlasKeyQuery.Parse('Ctrl+F9').Matches(Item), 'englische Taste');
-  Assert.IsFalse(TAtlasKeyQuery.Parse('Strg+Umschalt+F9').Matches(Item));
-  Assert.IsTrue(TAtlasKeyQuery.Parse('Strg').Matches(Item), 'nur Umschalttaste');
-  Assert.IsFalse(TAtlasKeyQuery.Parse('Alt+').Matches(Item));
-  Assert.IsTrue(TAtlasKeyQuery.Parse('compil').Matches(Item), 'Befehl');
-  Assert.IsTrue(TAtlasKeyQuery.Parse('PROJEKT').Matches(Item), 'Kategorie, Großschreibung egal');
-  Assert.IsTrue(TAtlasKeyQuery.Parse('ide').Matches(Item), 'Herkunft');
-  Assert.IsFalse(TAtlasKeyQuery.Parse('formular').Matches(Item));
+  mItem := IdeAction('Projekt compilieren', $4078, 1);
+  mItem.KeyText := 'Strg+F9';
+  mItem.Category := 'Projekt';
+  Assert.IsTrue(TAtlasKeyQuery.Parse('').Matches(mItem));
+  Assert.IsTrue(TAtlasKeyQuery.Parse('Ctrl+F9').Matches(mItem), 'englische Taste');
+  Assert.IsFalse(TAtlasKeyQuery.Parse('Strg+Umschalt+F9').Matches(mItem));
+  Assert.IsTrue(TAtlasKeyQuery.Parse('Strg').Matches(mItem), 'nur Umschalttaste');
+  Assert.IsFalse(TAtlasKeyQuery.Parse('Alt+').Matches(mItem));
+  Assert.IsTrue(TAtlasKeyQuery.Parse('compil').Matches(mItem), 'Befehl');
+  Assert.IsTrue(TAtlasKeyQuery.Parse('PROJEKT').Matches(mItem), 'Kategorie, Großschreibung egal');
+  Assert.IsTrue(TAtlasKeyQuery.Parse('ide').Matches(mItem), 'Herkunft');
+  Assert.IsFalse(TAtlasKeyQuery.Parse('formular').Matches(mItem));
 end;
 
 procedure TAtlasKeyMapTests.CollideNeedsSameKeyOverlapAndOtherOwner;
@@ -724,165 +724,165 @@ end;
 
 procedure TAtlasKeyMapTests.AtlasYieldsToIdeBinding;
 var
-  Items: TArray<TAtlasKeyItem>;
-  Conflicts: TArray<Integer>;
+  mItems: TArray<TAtlasKeyItem>;
+  mConflicts: TArray<Integer>;
 begin
   // Strg+Umschalt+P: Befehlspalette ohne Vorrang gegen „Tastaturmakro abspielen“ (#494).
-  Items := [AtlasKey(TAtlasKeyFunction.Palette, CtrlShiftP, False, False), IdeBinding('Makro abspielen', CtrlShiftP),
+  mItems := [AtlasKey(TAtlasKeyFunction.Palette, cCtrlShiftP, False, False), IdeBinding('Makro abspielen', cCtrlShiftP),
     IdeAction('Speichern', $4053, 1)];
-  Items[1].Effective := True;
-  TAtlasKeyMap.Analyze(Items);
-  Assert.IsTrue(Items[0].Conflict);
-  Assert.IsTrue(Items[1].Conflict);
-  Assert.IsFalse(Items[2].Conflict);
-  Assert.IsTrue(Items[2].Wins, 'ohne Konflikt gewinnt die Belegung selbst');
-  Assert.AreEqual(1, Items[0].Winner);
-  Assert.IsFalse(Items[0].Wins);
-  Assert.IsTrue(Items[1].Wins);
-  Assert.AreEqual(Ord(TAtlasKeyReason.AtlasYields), Ord(Items[0].Reason));
-  Assert.AreEqual(1, TAtlasKeyMap.PartnerOf(Items, 0));
-  Assert.AreEqual(-1, TAtlasKeyMap.PartnerOf(Items, 2));
-  Assert.AreEqual(2, TAtlasKeyMap.ConflictCount(Items));
-  Conflicts := TAtlasKeyMap.AtlasConflicts(Items);
-  Assert.AreEqual(1, Integer(Length(Conflicts)));
-  Assert.AreEqual(0, Conflicts[0]);
-  Assert.AreEqual('Makro abspielen (IDE)', Items[1].Holder);
+  mItems[1].Effective := True;
+  TAtlasKeyMap.Analyze(mItems);
+  Assert.IsTrue(mItems[0].Conflict);
+  Assert.IsTrue(mItems[1].Conflict);
+  Assert.IsFalse(mItems[2].Conflict);
+  Assert.IsTrue(mItems[2].Wins, 'ohne Konflikt gewinnt die Belegung selbst');
+  Assert.AreEqual(1, mItems[0].Winner);
+  Assert.IsFalse(mItems[0].Wins);
+  Assert.IsTrue(mItems[1].Wins);
+  Assert.AreEqual(Ord(TAtlasKeyReason.AtlasYields), Ord(mItems[0].Reason));
+  Assert.AreEqual(1, TAtlasKeyMap.PartnerOf(mItems, 0));
+  Assert.AreEqual(-1, TAtlasKeyMap.PartnerOf(mItems, 2));
+  Assert.AreEqual(2, TAtlasKeyMap.ConflictCount(mItems));
+  mConflicts := TAtlasKeyMap.AtlasConflicts(mItems);
+  Assert.AreEqual(1, Integer(Length(mConflicts)));
+  Assert.AreEqual(0, mConflicts[0]);
+  Assert.AreEqual('Makro abspielen (IDE)', mItems[1].Holder);
 end;
 
 procedure TAtlasKeyMapTests.AtlasWithPriorityWins;
 var
-  Items: TArray<TAtlasKeyItem>;
+  mItems: TArray<TAtlasKeyItem>;
 begin
-  Items := [AtlasKey(TAtlasKeyFunction.Palette, CtrlShiftP, True, True), IdeBinding('Makro abspielen', CtrlShiftP)];
-  Items[0].Effective := True;
-  TAtlasKeyMap.Analyze(Items);
-  Assert.IsTrue(Items[0].Wins);
-  Assert.AreEqual(0, Items[1].Winner);
-  Assert.AreEqual(Ord(TAtlasKeyReason.AtlasPriority), Ord(Items[1].Reason));
-  Assert.AreEqual(0, Integer(Length(TAtlasKeyMap.AtlasConflicts(Items))), 'bewusst entschieden: nichts zu melden');
+  mItems := [AtlasKey(TAtlasKeyFunction.Palette, cCtrlShiftP, True, True), IdeBinding('Makro abspielen', cCtrlShiftP)];
+  mItems[0].Effective := True;
+  TAtlasKeyMap.Analyze(mItems);
+  Assert.IsTrue(mItems[0].Wins);
+  Assert.AreEqual(0, mItems[1].Winner);
+  Assert.AreEqual(Ord(TAtlasKeyReason.AtlasPriority), Ord(mItems[1].Reason));
+  Assert.AreEqual(0, Integer(Length(TAtlasKeyMap.AtlasConflicts(mItems))), 'bewusst entschieden: nichts zu melden');
   // Ohne Abfrage der IDE entscheidet der Vorrang ebenso.
-  Items[0].Effective := False;
-  TAtlasKeyMap.Analyze(Items);
-  Assert.IsTrue(Items[0].Wins);
+  mItems[0].Effective := False;
+  TAtlasKeyMap.Analyze(mItems);
+  Assert.IsTrue(mItems[0].Wins);
 end;
 
 procedure TAtlasKeyMapTests.EditorBindingBeatsAction;
 var
-  Items: TArray<TAtlasKeyItem>;
+  mItems: TArray<TAtlasKeyItem>;
 begin
   // Die Aktion kam nach dem Belegen dazu: Atlas hält die Taste im Editor ohne Vorrang.
-  Items := [IdeAction('Suchen', CtrlW, 3), AtlasKey(TAtlasKeyFunction.ExpandSelection, CtrlW, False, True)];
-  Items[1].Effective := True;
-  TAtlasKeyMap.Analyze(Items);
-  Assert.AreEqual(1, Items[0].Winner, 'im Editor die Tastaturbelegung');
-  Assert.AreEqual(Ord(TAtlasKeyReason.EditorBinding), Ord(Items[0].Reason));
-  Assert.IsTrue(Items[1].Wins);
-  Assert.AreEqual(1, Integer(Length(TAtlasKeyMap.AtlasConflicts(Items))), 'ohne Vorrang offen');
+  mItems := [IdeAction('Suchen', cCtrlW, 3), AtlasKey(TAtlasKeyFunction.ExpandSelection, cCtrlW, False, True)];
+  mItems[1].Effective := True;
+  TAtlasKeyMap.Analyze(mItems);
+  Assert.AreEqual(1, mItems[0].Winner, 'im Editor die Tastaturbelegung');
+  Assert.AreEqual(Ord(TAtlasKeyReason.EditorBinding), Ord(mItems[0].Reason));
+  Assert.IsTrue(mItems[1].Wins);
+  Assert.AreEqual(1, Integer(Length(TAtlasKeyMap.AtlasConflicts(mItems))), 'ohne Vorrang offen');
 end;
 
 procedure TAtlasKeyMapTests.FirstActionWinsAmongActions;
 var
-  Items: TArray<TAtlasKeyItem>;
+  mItems: TArray<TAtlasKeyItem>;
 begin
-  Items := [IdeAction('Neu', $404E, 7), TAtlasKeyItem.Create($404E, 'Taste', 'Fremd',
+  mItems := [IdeAction('Neu', $404E, 7), TAtlasKeyItem.Create($404E, 'Taste', 'Fremd',
     TAtlasKeyProvenance.Create(TAtlasKeyOrigin.Plugin, 'GExperts', TAtlasKeyContext.Global, TAtlasKeySource.Action,
     'GxNew', 3)),
     IdeAction('Neu 2', $404E, 9)];
-  TAtlasKeyMap.Analyze(Items);
-  Assert.IsTrue(Items[0].Conflict);
-  Assert.AreEqual(1, Items[0].Winner, 'erste Aktion der Liste');
-  Assert.AreEqual(Ord(TAtlasKeyReason.FirstAction), Ord(Items[0].Reason));
-  Assert.IsTrue(Items[1].Wins);
-  Assert.AreEqual(0, Integer(Length(TAtlasKeyMap.AtlasConflicts(Items))));
+  TAtlasKeyMap.Analyze(mItems);
+  Assert.IsTrue(mItems[0].Conflict);
+  Assert.AreEqual(1, mItems[0].Winner, 'erste Aktion der Liste');
+  Assert.AreEqual(Ord(TAtlasKeyReason.FirstAction), Ord(mItems[0].Reason));
+  Assert.IsTrue(mItems[1].Wins);
+  Assert.AreEqual(0, Integer(Length(TAtlasKeyMap.AtlasConflicts(mItems))));
 end;
 
 procedure TAtlasKeyMapTests.DoubledAtlasKeyIsConflict;
 var
-  Items: TArray<TAtlasKeyItem>;
+  mItems: TArray<TAtlasKeyItem>;
 begin
   // Absichtlich doppelt belegt: Befehlspalette auf Strg+W wie „Auswahl erweitern“.
-  Items := [AtlasKey(TAtlasKeyFunction.Palette, CtrlW, False, True),
-    AtlasKey(TAtlasKeyFunction.ExpandSelection, CtrlW, False, True)];
-  TAtlasKeyMap.Analyze(Items);
-  Assert.IsTrue(Items[0].Conflict, 'rot');
-  Assert.IsTrue(Items[1].Conflict, 'rot');
-  Assert.AreEqual(Items[0].Winner, Items[1].Winner, 'ein Gewinner für beide');
-  Assert.AreEqual(Ord(TAtlasKeyReason.LastBinding), Ord(Items[0].Reason));
-  Assert.AreEqual(2, Integer(Length(TAtlasKeyMap.AtlasConflicts(Items))));
+  mItems := [AtlasKey(TAtlasKeyFunction.Palette, cCtrlW, False, True),
+    AtlasKey(TAtlasKeyFunction.ExpandSelection, cCtrlW, False, True)];
+  TAtlasKeyMap.Analyze(mItems);
+  Assert.IsTrue(mItems[0].Conflict, 'rot');
+  Assert.IsTrue(mItems[1].Conflict, 'rot');
+  Assert.AreEqual(mItems[0].Winner, mItems[1].Winner, 'ein Gewinner für beide');
+  Assert.AreEqual(Ord(TAtlasKeyReason.LastBinding), Ord(mItems[0].Reason));
+  Assert.AreEqual(2, Integer(Length(TAtlasKeyMap.AtlasConflicts(mItems))));
 end;
 
 procedure TAtlasKeyMapTests.WelcomeSearchWinsOnlyOnWelcomePage;
 var
-  Items: TArray<TAtlasKeyItem>;
+  mItems: TArray<TAtlasKeyItem>;
 begin
-  Items := [IdeAction('Inkrementelle Suche', CtrlE, 1), AtlasKey(TAtlasKeyFunction.WelcomeSearch, CtrlE, True, True),
-    IdeBinding('Editor-Suche', CtrlE)];
-  TAtlasKeyMap.Analyze(Items);
-  Assert.IsTrue(Items[1].Wins);
-  Assert.AreEqual(Ord(TAtlasKeyReason.OwnWindow), Ord(Items[1].Reason));
-  Assert.AreEqual(1, Items[0].Winner, 'die Aktion verliert dort, wo sich beide treffen');
-  Assert.IsFalse(Items[2].Conflict, 'Editor und Willkommensseite überschneiden sich nicht');
-  Assert.AreEqual(0, Integer(Length(TAtlasKeyMap.AtlasConflicts(Items))));
+  mItems := [IdeAction('Inkrementelle Suche', cCtrlE, 1), AtlasKey(TAtlasKeyFunction.WelcomeSearch, cCtrlE, True, True),
+    IdeBinding('Editor-Suche', cCtrlE)];
+  TAtlasKeyMap.Analyze(mItems);
+  Assert.IsTrue(mItems[1].Wins);
+  Assert.AreEqual(Ord(TAtlasKeyReason.OwnWindow), Ord(mItems[1].Reason));
+  Assert.AreEqual(1, mItems[0].Winner, 'die Aktion verliert dort, wo sich beide treffen');
+  Assert.IsFalse(mItems[2].Conflict, 'Editor und Willkommensseite überschneiden sich nicht');
+  Assert.AreEqual(0, Integer(Length(TAtlasKeyMap.AtlasConflicts(mItems))));
 end;
 
 procedure TAtlasKeyMapTests.EffectivePluginBindingWins;
 var
-  Items: TArray<TAtlasKeyItem>;
+  mItems: TArray<TAtlasKeyItem>;
 begin
   // Eine Erweiterung hat sich nach Atlas angemeldet: Ihre Belegung ist wirksam, auch gegen den Vorrang.
-  Items := [AtlasKey(TAtlasKeyFunction.ShrinkSelection, $6057, True, True), TAtlasKeyItem.Create($6057, 'Taste',
+  mItems := [AtlasKey(TAtlasKeyFunction.ShrinkSelection, $6057, True, True), TAtlasKeyItem.Create($6057, 'Taste',
     'Tastaturbelegung', TAtlasKeyProvenance.Create(TAtlasKeyOrigin.Plugin, 'CnWizards_D120', TAtlasKeyContext.Editor,
     TAtlasKeySource.Binding, 'Editor.24663', 101))];
-  Items[1].Effective := True;
-  TAtlasKeyMap.Analyze(Items);
-  Assert.AreEqual(1, Items[0].Winner);
-  Assert.AreEqual(Ord(TAtlasKeyReason.LastBinding), Ord(Items[0].Reason));
-  Assert.AreEqual(1, Integer(Length(TAtlasKeyMap.AtlasConflicts(Items))), 'Vorrang ohne Wirkung bleibt offen');
+  mItems[1].Effective := True;
+  TAtlasKeyMap.Analyze(mItems);
+  Assert.AreEqual(1, mItems[0].Winner);
+  Assert.AreEqual(Ord(TAtlasKeyReason.LastBinding), Ord(mItems[0].Reason));
+  Assert.AreEqual(1, Integer(Length(TAtlasKeyMap.AtlasConflicts(mItems))), 'Vorrang ohne Wirkung bleibt offen');
 end;
 
 procedure TAtlasKeyMapTests.FilterSortsAndKeepsConflicts;
 var
-  Items: TArray<TAtlasKeyItem>;
-  Shown: TArray<Integer>;
+  mItems: TArray<TAtlasKeyItem>;
+  mShown: TArray<Integer>;
 begin
-  Items := [IdeAction('Zeta', $4058, 1), IdeAction('Alpha', $4041, 2),
-    AtlasKey(TAtlasKeyFunction.Palette, CtrlShiftP, False, False), IdeBinding('Makro', CtrlShiftP)];
-  Items[0].KeyText := 'Strg+X';
-  Items[1].KeyText := 'Strg+A';
-  Items[2].KeyText := 'Strg+Umschalt+P';
-  Items[3].KeyText := 'Strg+Umschalt+P';
-  TAtlasKeyMap.Analyze(Items);
-  Shown := TAtlasKeyMap.Filter(Items, '', False);
-  Assert.AreEqual(4, Integer(Length(Shown)));
-  Assert.AreEqual(1, Shown[0], 'nach Tastentext');
-  Assert.AreEqual(0, Shown[3]);
-  Shown := TAtlasKeyMap.Filter(Items, '', True);
-  Assert.AreEqual(2, Integer(Length(Shown)), 'nur Konflikte');
-  Assert.AreEqual(2, Shown[0], 'Atlas vor Makro (Befehl)');
-  Shown := TAtlasKeyMap.Filter(Items, 'Strg+Umschalt+P', False);
-  Assert.AreEqual(2, Integer(Length(Shown)));
-  Shown := TAtlasKeyMap.Filter(Items, 'alpha', False);
-  Assert.AreEqual(1, Integer(Length(Shown)));
-  Assert.AreEqual(1, Shown[0]);
+  mItems := [IdeAction('Zeta', $4058, 1), IdeAction('Alpha', $4041, 2),
+    AtlasKey(TAtlasKeyFunction.Palette, cCtrlShiftP, False, False), IdeBinding('Makro', cCtrlShiftP)];
+  mItems[0].KeyText := 'Strg+X';
+  mItems[1].KeyText := 'Strg+A';
+  mItems[2].KeyText := 'Strg+Umschalt+P';
+  mItems[3].KeyText := 'Strg+Umschalt+P';
+  TAtlasKeyMap.Analyze(mItems);
+  mShown := TAtlasKeyMap.Filter(mItems, '', False);
+  Assert.AreEqual(4, Integer(Length(mShown)));
+  Assert.AreEqual(1, mShown[0], 'nach Tastentext');
+  Assert.AreEqual(0, mShown[3]);
+  mShown := TAtlasKeyMap.Filter(mItems, '', True);
+  Assert.AreEqual(2, Integer(Length(mShown)), 'nur Konflikte');
+  Assert.AreEqual(2, mShown[0], 'Atlas vor Makro (Befehl)');
+  mShown := TAtlasKeyMap.Filter(mItems, 'Strg+Umschalt+P', False);
+  Assert.AreEqual(2, Integer(Length(mShown)));
+  mShown := TAtlasKeyMap.Filter(mItems, 'alpha', False);
+  Assert.AreEqual(1, Integer(Length(mShown)));
+  Assert.AreEqual(1, mShown[0]);
 end;
 
 procedure TAtlasKeyMapTests.OriginFollowsModule;
 var
-  Name: string;
+  mName: string;
 begin
   Assert.AreEqual(Ord(TAtlasKeyOrigin.Atlas), Ord(TAtlasKeyMap.OriginOfModule('C:\Atlas\Atlas.IDE.Expert.bpl',
-    'C:\Studio\37.0\bin\', 'C:\Atlas\Atlas.IDE.Expert.bpl', Name)));
-  Assert.AreEqual('Atlas', Name);
+    'C:\Studio\37.0\bin\', 'C:\Atlas\Atlas.IDE.Expert.bpl', mName)));
+  Assert.AreEqual('Atlas', mName);
   Assert.AreEqual(Ord(TAtlasKeyOrigin.Ide), Ord(TAtlasKeyMap.OriginOfModule('C:\Studio\37.0\bin\coreide370.bpl',
-    'C:\Studio\37.0\bin\', 'C:\Atlas\Atlas.IDE.Expert.bpl', Name)));
-  Assert.AreEqual('IDE', Name);
+    'C:\Studio\37.0\bin\', 'C:\Atlas\Atlas.IDE.Expert.bpl', mName)));
+  Assert.AreEqual('IDE', mName);
   Assert.AreEqual(Ord(TAtlasKeyOrigin.Ide), Ord(TAtlasKeyMap.OriginOfModule('c:\studio\37.0\BIN\x.bpl',
-    'C:\Studio\37.0\bin\', '', Name)), 'Groß-/Kleinschreibung egal');
+    'C:\Studio\37.0\bin\', '', mName)), 'Groß-/Kleinschreibung egal');
   Assert.AreEqual(Ord(TAtlasKeyOrigin.Plugin), Ord(TAtlasKeyMap.OriginOfModule(
     'C:\Users\Marco\Documents\Bpl\CnWizards_D120.dll', 'C:\Studio\37.0\bin\', 'C:\Atlas\Atlas.IDE.Expert.bpl',
-    Name)));
-  Assert.AreEqual('CnWizards_D120', Name, 'ohne Pfad und Benutzernamen');
-  Assert.AreEqual(Ord(TAtlasKeyOrigin.Ide), Ord(TAtlasKeyMap.OriginOfModule('', 'C:\Studio\37.0\bin\', '', Name)),
+    mName)));
+  Assert.AreEqual('CnWizards_D120', mName, 'ohne Pfad und Benutzernamen');
+  Assert.AreEqual(Ord(TAtlasKeyOrigin.Ide), Ord(TAtlasKeyMap.OriginOfModule('', 'C:\Studio\37.0\bin\', '', mName)),
     'unbekanntes Modul');
 end;
 
@@ -921,27 +921,27 @@ end;
 
 procedure TAtlasKeyMapTests.HtmlIsEscapedAndMarksConflicts;
 var
-  Html: string;
+  mHtml: string;
 begin
-  Html := TAtlasKeyMap.Html('de', 'Atlas - Tastenkuerzel', 'Stand: heute', 'Drucken', ['Taste', 'Befehl'],
+  mHtml := TAtlasKeyMap.Html('de', 'Atlas - Tastenkuerzel', 'Stand: heute', 'Drucken', ['Taste', 'Befehl'],
     [TAtlasKeyHtmlRow.Create(['Strg+<P>', 'Suchen & Ersetzen'], True),
     TAtlasKeyHtmlRow.Create(['Strg+S', 'Speichern "alles"'], False)]);
-  Assert.StartsWith('<!DOCTYPE html>', Html);
-  Assert.Contains(Html, '<html lang="de">');
-  Assert.Contains(Html, '<meta charset="utf-8">');
-  Assert.Contains(Html, '<title>Atlas - Tastenkuerzel</title>');
-  Assert.Contains(Html, '<p class="sub">Stand: heute</p>');
-  Assert.Contains(Html, 'window.print()');
-  Assert.Contains(Html, '@media print');
-  Assert.Contains(Html, '<th>Taste</th><th>Befehl</th>');
-  Assert.Contains(Html, '<tr class="conflict"><td class="key">Strg+&lt;P&gt;</td><td>Suchen &amp; Ersetzen</td></tr>');
-  Assert.Contains(Html, '<tr><td class="key">Strg+S</td><td>Speichern &quot;alles&quot;</td></tr>');
-  Assert.Contains(Html, 'tr.conflict td{color:#cf222e}');
+  Assert.StartsWith('<!DOCTYPE html>', mHtml);
+  Assert.Contains(mHtml, '<html lang="de">');
+  Assert.Contains(mHtml, '<meta charset="utf-8">');
+  Assert.Contains(mHtml, '<title>Atlas - Tastenkuerzel</title>');
+  Assert.Contains(mHtml, '<p class="sub">Stand: heute</p>');
+  Assert.Contains(mHtml, 'window.print()');
+  Assert.Contains(mHtml, '@media print');
+  Assert.Contains(mHtml, '<th>Taste</th><th>Befehl</th>');
+  Assert.Contains(mHtml, '<tr class="conflict"><td class="key">Strg+&lt;P&gt;</td><td>Suchen &amp; Ersetzen</td></tr>');
+  Assert.Contains(mHtml, '<tr><td class="key">Strg+S</td><td>Speichern &quot;alles&quot;</td></tr>');
+  Assert.Contains(mHtml, 'tr.conflict td{color:#cf222e}');
   Assert.AreEqual('a&#39;b', TAtlasKeyMap.HtmlEscape('a''b'));
   // Ohne Unterzeile und Druckknopf.
-  Html := TAtlasKeyMap.Html('en', 'T', '', '', ['K'], nil);
-  Assert.DoesNotContain(Html, 'class="sub"');
-  Assert.DoesNotContain(Html, 'window.print()');
+  mHtml := TAtlasKeyMap.Html('en', 'T', '', '', ['K'], nil);
+  Assert.DoesNotContain(mHtml, 'class="sub"');
+  Assert.DoesNotContain(mHtml, 'window.print()');
 end;
 
 procedure TAtlasKeyMapTests.CheckFileKeyFollowsProblems;

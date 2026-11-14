@@ -31,7 +31,7 @@ uses
   Atlas.Core.Diagnostics.Processes;
 
 const
-  Answer =
+  cAnswer =
     '{"workspaces":[{"name":"Gruppe","project":"C:\\p\\App.dproj","cache":"3f9a\\Gruppe.idx","format":17,' +
     '"saved":"vor 12 s","units":412,"lockHolder":"LSP · Atlas IDE Expert (pid 4711)","builtOnce":true,' +
     '"processes":[{"pid":4711,"kind":"LSP","client":"Atlas IDE Expert","state":"baut Index","writer":true,' +
@@ -42,73 +42,73 @@ const
 
 procedure TAtlasProcessesViewTests.ParsesWorkspaceProcessesAndEvents;
 var
-  Value: TJSONValue;
-  Workspaces: TArray<TAtlasProcessWorkspace>;
+  mValue: TJSONValue;
+  mWorkspaces: TArray<TAtlasProcessWorkspace>;
 begin
-  Value := TJSONObject.ParseJSONValue(Answer);
+  mValue := TJSONObject.ParseJSONValue(cAnswer);
   try
-    Workspaces := TAtlasProcessesView.Parse(Value);
-    Assert.AreEqual(2, Integer(Length(Workspaces)));
-    Assert.AreEqual('Gruppe', Workspaces[0].Name);
-    Assert.AreEqual('3f9a\Gruppe.idx', Workspaces[0].Cache);
-    Assert.AreEqual(17, Workspaces[0].Format);
-    Assert.AreEqual('vor 12 s', Workspaces[0].Saved);
-    Assert.AreEqual(412, Workspaces[0].Units);
-    Assert.AreEqual('LSP · Atlas IDE Expert (pid 4711)', Workspaces[0].LockHolder);
-    Assert.IsTrue(Workspaces[0].BuiltOnce);
-    Assert.AreEqual(2, Integer(Length(Workspaces[0].Processes)));
-    Assert.AreEqual(4711, Workspaces[0].Processes[0].Pid);
-    Assert.IsTrue(Workspaces[0].Processes[0].Writer);
-    Assert.IsTrue(Workspaces[0].Processes[0].Own);
-    Assert.AreEqual('MCP', Workspaces[0].Processes[1].Kind);
-    Assert.AreEqual('liest Cache', Workspaces[0].Processes[1].State);
-    Assert.IsFalse(Workspaces[0].Processes[1].Own);
-    Assert.IsTrue(Workspaces[0].HasMcp);
-    Assert.IsFalse(Workspaces[1].HasMcp);
-    Assert.AreEqual(2, Integer(Length(Workspaces[0].Events)));
-    Assert.AreEqual('10:00:02', Workspaces[0].Events[1].Time);
-    Assert.AreEqual('Gruppe', TAtlasProcessesView.GroupName(Workspaces));
-    Assert.AreEqual(2, TAtlasProcessesView.ProcessCount(Workspaces));
-    Assert.AreEqual('## Prozesse am Projekt', TAtlasProcessesView.Markdown(Value));
+    mWorkspaces := TAtlasProcessesView.Parse(mValue);
+    Assert.AreEqual(2, Integer(Length(mWorkspaces)));
+    Assert.AreEqual('Gruppe', mWorkspaces[0].Name);
+    Assert.AreEqual('3f9a\Gruppe.idx', mWorkspaces[0].Cache);
+    Assert.AreEqual(17, mWorkspaces[0].Format);
+    Assert.AreEqual('vor 12 s', mWorkspaces[0].Saved);
+    Assert.AreEqual(412, mWorkspaces[0].Units);
+    Assert.AreEqual('LSP · Atlas IDE Expert (pid 4711)', mWorkspaces[0].LockHolder);
+    Assert.IsTrue(mWorkspaces[0].BuiltOnce);
+    Assert.AreEqual(2, Integer(Length(mWorkspaces[0].Processes)));
+    Assert.AreEqual(4711, mWorkspaces[0].Processes[0].Pid);
+    Assert.IsTrue(mWorkspaces[0].Processes[0].Writer);
+    Assert.IsTrue(mWorkspaces[0].Processes[0].Own);
+    Assert.AreEqual('MCP', mWorkspaces[0].Processes[1].Kind);
+    Assert.AreEqual('liest Cache', mWorkspaces[0].Processes[1].State);
+    Assert.IsFalse(mWorkspaces[0].Processes[1].Own);
+    Assert.IsTrue(mWorkspaces[0].HasMcp);
+    Assert.IsFalse(mWorkspaces[1].HasMcp);
+    Assert.AreEqual(2, Integer(Length(mWorkspaces[0].Events)));
+    Assert.AreEqual('10:00:02', mWorkspaces[0].Events[1].Time);
+    Assert.AreEqual('Gruppe', TAtlasProcessesView.GroupName(mWorkspaces));
+    Assert.AreEqual(2, TAtlasProcessesView.ProcessCount(mWorkspaces));
+    Assert.AreEqual('## Prozesse am Projekt', TAtlasProcessesView.Markdown(mValue));
   finally
-    Value.Free;
+    mValue.Free;
   end;
 end;
 
 procedure TAtlasProcessesViewTests.UnknownAnswerGivesNothing;
 var
-  Value: TJSONValue;
+  mValue: TJSONValue;
 begin
   Assert.AreEqual(0, Integer(Length(TAtlasProcessesView.Parse(nil))));
   Assert.AreEqual('', TAtlasProcessesView.Markdown(nil));
   Assert.AreEqual('', TAtlasProcessesView.GroupName(nil));
-  Value := TJSONObject.ParseJSONValue('{"workspaces":"falsch"}');
+  mValue := TJSONObject.ParseJSONValue('{"workspaces":"falsch"}');
   try
-    Assert.AreEqual(0, Integer(Length(TAtlasProcessesView.Parse(Value))));
+    Assert.AreEqual(0, Integer(Length(TAtlasProcessesView.Parse(mValue))));
   finally
-    Value.Free;
+    mValue.Free;
   end;
 end;
 
 procedure TAtlasProcessesViewTests.CaptionNamesUnknownClient;
 var
-  Row: TAtlasProcessRow;
+  mRow: TAtlasProcessRow;
 begin
-  Row := Default(TAtlasProcessRow);
-  Row.Pid := 42;
-  Assert.AreEqual('unbekannter Client (pid 42)', Row.Caption);
-  Row.Client := 'Claude Code';
-  Assert.AreEqual('Claude Code (pid 42)', Row.Caption);
+  mRow := Default(TAtlasProcessRow);
+  mRow.Pid := 42;
+  Assert.AreEqual('unbekannter Client (pid 42)', mRow.Caption);
+  mRow.Client := 'Claude Code';
+  Assert.AreEqual('Claude Code (pid 42)', mRow.Caption);
 end;
 
 procedure TAtlasProcessesViewTests.DirtyNamesAreSortedWithoutDuplicates;
 var
-  Names: TArray<string>;
+  mNames: TArray<string>;
 begin
-  Names := TAtlasProcessesView.DirtyNames(['C:\p\Zeta.pas', 'C:\p\Alpha.pas', '', 'D:\q\alpha.pas']);
-  Assert.AreEqual(2, Integer(Length(Names)));
-  Assert.AreEqual('Alpha.pas', Names[0]);
-  Assert.AreEqual('Zeta.pas', Names[1]);
+  mNames := TAtlasProcessesView.DirtyNames(['C:\p\Zeta.pas', 'C:\p\Alpha.pas', '', 'D:\q\alpha.pas']);
+  Assert.AreEqual(2, Integer(Length(mNames)));
+  Assert.AreEqual('Alpha.pas', mNames[0]);
+  Assert.AreEqual('Zeta.pas', mNames[1]);
 end;
 
 end.

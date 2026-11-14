@@ -44,13 +44,13 @@ uses
   Atlas.Common.Lsp.Todos;
 
 const
-  MainFile = 'C:\P\Main.pas';
-  HelperFile = 'C:\P\Source\Helper.pas';
+  cMainFile = 'C:\P\Main.pas';
+  cHelperFile = 'C:\P\Source\Helper.pas';
   /// <summary>Liegt im Ordner, gehört aber nicht zum Projekt.</summary>
-  ForeignFile = 'C:\P\Fremd.pas';
-  MainText = 'unit Main;'#10'// TODO 1 -oMarco -cGUI : Fokus'#10'{ DONE -oAnna : Index }'#10 +
+  cForeignFile = 'C:\P\Fremd.pas';
+  cMainText = 'unit Main;'#10'// TODO 1 -oMarco -cGUI : Fokus'#10'{ DONE -oAnna : Index }'#10 +
     '// HACK Umweg'#10'end.';
-  HelperText = 'unit Helper;'#10'// FIXME Rabatt'#10'end.';
+  cHelperText = 'unit Helper;'#10'// FIXME Rabatt'#10'end.';
 
 function NewTodos(const AConfig: string): TLspTodos;
 begin
@@ -65,22 +65,22 @@ begin
       ASource.Title := 'Demo';
       if AProject then
       begin
-        ASource.Files := [MainFile, HelperFile, 'C:\P\Main.dfm'];
+        ASource.Files := [cMainFile, cHelperFile, 'C:\P\Main.dfm'];
       end;
       Result := True;
     end,
     function(const AFileName: string; out AText: string): Boolean
     begin
       Result := True;
-      if SameText(AFileName, MainFile) then
+      if SameText(AFileName, cMainFile) then
       begin
-        AText := MainText;
+        AText := cMainText;
       end
-      else if SameText(AFileName, HelperFile) then
+      else if SameText(AFileName, cHelperFile) then
       begin
-        AText := HelperText;
+        AText := cHelperText;
       end
-      else if SameText(AFileName, ForeignFile) then
+      else if SameText(AFileName, cForeignFile) then
       begin
         AText := 'unit Fremd;'#10'// TODO fremd'#10'end.';
       end
@@ -93,42 +93,42 @@ end;
 
 function Run(ATodos: TLspTodos; const AFileName, AMode, AFilter: string): string;
 var
-  Args: TJSONArray;
-  Answer: TJSONValue;
+  mArgs: TJSONArray;
+  mAnswer: TJSONValue;
 begin
-  Args := TJSONArray.Create;
+  mArgs := TJSONArray.Create;
   try
     if AFileName = '' then
     begin
-      Args.AddElement(TJSONNull.Create);
+      mArgs.AddElement(TJSONNull.Create);
     end
     else
     begin
-      Args.Add(TDocumentUris.FromPath(AFileName));
+      mArgs.Add(TDocumentUris.FromPath(AFileName));
     end;
     if (AMode <> '') or (AFilter <> '') then
     begin
-      Args.Add(AMode);
+      mArgs.Add(AMode);
     end;
     if AFilter <> '' then
     begin
-      Args.AddElement(TJSONObject.ParseJSONValue(AFilter));
+      mArgs.AddElement(TJSONObject.ParseJSONValue(AFilter));
     end;
-    Answer := ATodos.Execute(Args);
+    mAnswer := ATodos.Execute(mArgs);
     try
-      if Answer is TJSONString then
+      if mAnswer is TJSONString then
       begin
-        Result := Answer.Value;
+        Result := mAnswer.Value;
       end
       else
       begin
-        Result := Answer.ToJSON;
+        Result := mAnswer.ToJSON;
       end;
     finally
-      Answer.Free;
+      mAnswer.Free;
     end;
   finally
-    Args.Free;
+    mArgs.Free;
   end;
 end;
 
@@ -136,132 +136,132 @@ end;
 
 procedure TLspTodosTests.SummaryCountsOpenAndDone;
 var
-  Todos: TLspTodos;
-  Text: string;
+  mTodos: TLspTodos;
+  mText: string;
 begin
-  Todos := NewTodos('{}');
+  mTodos := NewTodos('{}');
   try
-    Text := Run(Todos, 'C:\P\Demo.dproj', '', '');
-    Assert.AreEqual('{"format":1,"summary":{"files":2,"open":2,"done":1,"keywords":{"FIXME":1,"TODO":1}}}', Text);
-    Assert.AreEqual(Text, Run(Todos, 'C:\P\Demo.dproj', 'summary', '{"owner": "Marco"}'),
+    mText := Run(mTodos, 'C:\P\Demo.dproj', '', '');
+    Assert.AreEqual('{"format":1,"summary":{"files":2,"open":2,"done":1,"keywords":{"FIXME":1,"TODO":1}}}', mText);
+    Assert.AreEqual(mText, Run(mTodos, 'C:\P\Demo.dproj', 'summary', '{"owner": "Marco"}'),
       'die Zusammenfassung zählt immer alles');
   finally
-    Todos.Free;
+    mTodos.Free;
   end;
 end;
 
 procedure TLspTodosTests.JsonWithRootAndFilter;
 var
-  Todos: TLspTodos;
-  Text: string;
+  mTodos: TLspTodos;
+  mText: string;
 begin
-  Todos := NewTodos('{}');
+  mTodos := NewTodos('{}');
   try
-    Text := Run(Todos, '', 'json', '');
-    Assert.Contains(Text, '"root":"C:\\P"');
+    mText := Run(mTodos, '', 'json', '');
+    Assert.Contains(mText, '"root":"C:\\P"');
     // Ohne „/“ verglichen: ToJSON darf ihn maskieren.
-    Assert.Contains(Text, '"unit":"Helper"');
+    Assert.Contains(mText, '"unit":"Helper"');
     // DUnitX vergleicht ohne Groß-/Kleinschreibung: „"DONE"“ allein träfe den Schlüssel „"done"“.
-    Assert.DoesNotContain(Text, '"keyword":"DONE"');
-    Assert.DoesNotContain(Text, 'fremd');
-    Text := Run(Todos, '', 'json', '{"owner": "anna", "includeDone": true}');
-    Assert.Contains(Text, '"keyword":"DONE","done":true');
-    Assert.DoesNotContain(Text, 'Helper');
-    Text := Run(Todos, '', 'json', '{"unit": "Helper", "keyword": "FIXME"}');
-    Assert.Contains(Text, '"open":1');
-    Assert.Contains(Text, '"text":"Rabatt"');
+    Assert.DoesNotContain(mText, '"keyword":"DONE"');
+    Assert.DoesNotContain(mText, 'fremd');
+    mText := Run(mTodos, '', 'json', '{"owner": "anna", "includeDone": true}');
+    Assert.Contains(mText, '"keyword":"DONE","done":true');
+    Assert.DoesNotContain(mText, 'Helper');
+    mText := Run(mTodos, '', 'json', '{"unit": "Helper", "keyword": "FIXME"}');
+    Assert.Contains(mText, '"open":1');
+    Assert.Contains(mText, '"text":"Rabatt"');
   finally
-    Todos.Free;
+    mTodos.Free;
   end;
 end;
 
 procedure TLspTodosTests.MarkdownOverProject;
 var
-  Todos: TLspTodos;
-  Text: string;
+  mTodos: TLspTodos;
+  mText: string;
 begin
-  Todos := NewTodos('{}');
+  mTodos := NewTodos('{}');
   try
-    Text := Run(Todos, '', 'markdown', '');
-    Assert.StartsWith('# TODOs: Demo', Text);
-    Assert.Contains(Text, '## Helper (1)');
-    Assert.Contains(Text, '`Source/Helper.pas`');
+    mText := Run(mTodos, '', 'markdown', '');
+    Assert.StartsWith('# TODOs: Demo', mText);
+    Assert.Contains(mText, '## Helper (1)');
+    Assert.Contains(mText, '`Source/Helper.pas`');
   finally
-    Todos.Free;
+    mTodos.Free;
   end;
 end;
 
 procedure TLspTodosTests.SingleFileIsJson;
 var
-  Todos: TLspTodos;
-  Text: string;
+  mTodos: TLspTodos;
+  mText: string;
 begin
-  Todos := NewTodos('{}');
+  mTodos := NewTodos('{}');
   try
-    Text := Run(Todos, ForeignFile, '', '');
-    Assert.Contains(Text, '"file":"Fremd.pas"');
-    Assert.Contains(Text, '"open":1');
+    mText := Run(mTodos, cForeignFile, '', '');
+    Assert.Contains(mText, '"file":"Fremd.pas"');
+    Assert.Contains(mText, '"open":1');
   finally
-    Todos.Free;
+    mTodos.Free;
   end;
 end;
 
 procedure TLspTodosTests.KeywordsFromConfiguration;
 var
-  Todos: TLspTodos;
+  mTodos: TLspTodos;
 begin
-  Todos := NewTodos('{"rules": {"todo-comment": {"keywords": ["TODO", "FIXME", "HACK"]}}}');
+  mTodos := NewTodos('{"rules": {"todo-comment": {"keywords": ["TODO", "FIXME", "HACK"]}}}');
   try
-    Assert.Contains(Run(Todos, 'C:\P\Demo.dproj', 'summary', ''), '"open":3');
+    Assert.Contains(Run(mTodos, 'C:\P\Demo.dproj', 'summary', ''), '"open":3');
   finally
-    Todos.Free;
+    mTodos.Free;
   end;
 end;
 
 procedure TLspTodosTests.UnknownModeIsRejected;
 var
-  Todos: TLspTodos;
+  mTodos: TLspTodos;
 begin
-  Todos := NewTodos('{}');
+  mTodos := NewTodos('{}');
   try
     Assert.WillRaise(
       procedure
       begin
-        Run(Todos, '', 'html', '');
+        Run(mTodos, '', 'html', '');
       end, EJsonRpcError);
   finally
-    Todos.Free;
+    mTodos.Free;
   end;
 end;
 
 procedure TLspTodosTests.ParsesModeAndFilter;
 var
-  Mode: TLspTodosMode;
-  Value: TJSONValue;
-  Filter: TTodoFilter;
+  mMode: TLspTodosMode;
+  mValue: TJSONValue;
+  mFilter: TTodoFilter;
 begin
-  Assert.IsTrue(TLspTodos.TryParseMode('', True, Mode));
-  Assert.AreEqual(Ord(TLspTodosMode.Summary), Ord(Mode));
-  Assert.IsTrue(TLspTodos.TryParseMode('', False, Mode));
-  Assert.AreEqual(Ord(TLspTodosMode.Json), Ord(Mode));
-  Assert.IsTrue(TLspTodos.TryParseMode('Markdown', True, Mode));
-  Assert.AreEqual(Ord(TLspTodosMode.Markdown), Ord(Mode));
-  Assert.IsFalse(TLspTodos.TryParseMode('html', True, Mode));
-  Filter := TLspTodos.FilterOf(nil);
-  Assert.IsFalse(Filter.IncludeDone);
-  Assert.AreEqual('', Filter.Owner);
-  Value := TJSONObject.ParseJSONValue('{"category": " GUI ", "owner": "Marco", "unit": "Main", "keyword": "TODO", ' +
+  Assert.IsTrue(TLspTodos.TryParseMode('', True, mMode));
+  Assert.AreEqual(Ord(TLspTodosMode.Summary), Ord(mMode));
+  Assert.IsTrue(TLspTodos.TryParseMode('', False, mMode));
+  Assert.AreEqual(Ord(TLspTodosMode.Json), Ord(mMode));
+  Assert.IsTrue(TLspTodos.TryParseMode('Markdown', True, mMode));
+  Assert.AreEqual(Ord(TLspTodosMode.Markdown), Ord(mMode));
+  Assert.IsFalse(TLspTodos.TryParseMode('html', True, mMode));
+  mFilter := TLspTodos.FilterOf(nil);
+  Assert.IsFalse(mFilter.IncludeDone);
+  Assert.AreEqual('', mFilter.Owner);
+  mValue := TJSONObject.ParseJSONValue('{"category": " GUI ", "owner": "Marco", "unit": "Main", "keyword": "TODO", ' +
     '"includeDone": true}');
   try
-    Filter := TLspTodos.FilterOf(Value);
+    mFilter := TLspTodos.FilterOf(mValue);
   finally
-    Value.Free;
+    mValue.Free;
   end;
-  Assert.AreEqual('GUI', Filter.Category);
-  Assert.AreEqual('Marco', Filter.Owner);
-  Assert.AreEqual('Main', Filter.UnitName);
-  Assert.AreEqual('TODO', Filter.Keyword);
-  Assert.IsTrue(Filter.IncludeDone);
+  Assert.AreEqual('GUI', mFilter.Category);
+  Assert.AreEqual('Marco', mFilter.Owner);
+  Assert.AreEqual('Main', mFilter.UnitName);
+  Assert.AreEqual('TODO', mFilter.Keyword);
+  Assert.IsTrue(mFilter.IncludeDone);
 end;
 
 initialization

@@ -88,77 +88,77 @@ end;
 
 procedure TAtlasWhyHereTests.Load(const AJson: string);
 var
-  Json: TJSONValue;
-  Blocks: TAtlasWhyHereBlocks;
+  mJson: TJSONValue;
+  mBlocks: TAtlasWhyHereBlocks;
 begin
-  Json := TJSONObject.ParseJSONValue(AJson);
+  mJson := TJSONObject.ParseJSONValue(AJson);
   try
-    Assert.IsTrue(TAtlasWhyHere.ReadAnswer(Json, Blocks));
+    Assert.IsTrue(TAtlasWhyHere.ReadAnswer(mJson, mBlocks));
   finally
-    Json.Free;
+    mJson.Free;
   end;
-  FWhy.Start('C:\P\Ablauf.pas', Blocks);
+  FWhy.Start('C:\P\Ablauf.pas', mBlocks);
 end;
 
 function TAtlasWhyHereTests.EvaluateAll(const AValues: string): string;
 var
-  Ref: TAtlasWhyHereRef;
-  Pairs: TArray<string>;
-  Pair: string;
-  Found: Boolean;
-  Order: TArray<string>;
+  mRef: TAtlasWhyHereRef;
+  mPairs: TArray<string>;
+  mPair: string;
+  mFound: Boolean;
+  mOrder: TArray<string>;
 begin
-  Pairs := AValues.Split([';']);
-  Order := nil;
-  while FWhy.NextPending(Ref) do
+  mPairs := AValues.Split([';']);
+  mOrder := nil;
+  while FWhy.NextPending(mRef) do
   begin
-    Order := Order + [Ref.Expression];
-    Found := False;
-    for Pair in Pairs do
+    mOrder := mOrder + [mRef.Expression];
+    mFound := False;
+    for mPair in mPairs do
     begin
-      if Pair.StartsWith(Ref.Expression + '=') then
+      if mPair.StartsWith(mRef.Expression + '=') then
       begin
-        FWhy.Put(Ref, Copy(Pair, Length(Ref.Expression) + 2, MaxInt), True);
-        Found := True;
+        FWhy.Put(mRef, Copy(mPair, Length(mRef.Expression) + 2, MaxInt), True);
+        mFound := True;
         Break;
       end;
     end;
-    if not Found then
+    if not mFound then
     begin
-      FWhy.Put(Ref, '', False);
+      FWhy.Put(mRef, '', False);
     end;
   end;
-  Result := string.Join(',', Order);
+  Result := string.Join(',', mOrder);
 end;
 
 procedure TAtlasWhyHereTests.ReadsAnswerAndArguments;
 var
-  Json: TJSONValue;
-  Blocks: TAtlasWhyHereBlocks;
+  mJson: TJSONValue;
+  mBlocks: TAtlasWhyHereBlocks;
 begin
-  Json := TJSONObject.ParseJSONValue(cAcceptance);
+  mJson := TJSONObject.ParseJSONValue(cAcceptance);
   try
-    Assert.IsTrue(TAtlasWhyHere.ReadAnswer(Json, Blocks));
+    Assert.IsTrue(TAtlasWhyHere.ReadAnswer(mJson, mBlocks));
   finally
-    Json.Free;
+    mJson.Free;
   end;
-  Assert.AreEqual(3, Integer(Length(Blocks)));
-  Assert.AreEqual('if', Blocks[1].Kind);
-  Assert.AreEqual(9, Blocks[1].Line);
-  Assert.AreEqual(6, Integer(Length(Blocks[1].Parts)));
-  Assert.IsTrue(Blocks[1].Parts[4].Call);
-  Assert.AreEqual(1, Blocks[1].Parts[2].Parent);
-  Json := TJSONObject.ParseJSONValue('{"format":2,"blocks":[]}');
+  Assert.AreEqual(3, Integer(Length(mBlocks)));
+  Assert.AreEqual('if', mBlocks[1].Kind);
+  Assert.AreEqual(9, mBlocks[1].Line);
+  Assert.AreEqual(6, Integer(Length(mBlocks[1].Parts)));
+  Assert.IsTrue(mBlocks[1].Parts[4].Call);
+  Assert.AreEqual(1, mBlocks[1].Parts[2].Parent);
+  mJson := TJSONObject.ParseJSONValue('{"format":2,"blocks":[]}');
   try
-    Assert.IsFalse(TAtlasWhyHere.ReadAnswer(Json, Blocks));
+    Assert.IsFalse(TAtlasWhyHere.ReadAnswer(mJson, mBlocks));
   finally
-    Json.Free;
+    mJson.Free;
   end;
-  Assert.IsFalse(TAtlasWhyHere.ReadAnswer(nil, Blocks));
-  Assert.IsFalse(TAtlasWhyHere.ReadAnswerText('', Blocks), 'leere Antwort');
-  Assert.IsFalse(TAtlasWhyHere.ReadAnswerText('{kaputt', Blocks), 'kaputtes JSON');
-  Assert.IsTrue(TAtlasWhyHere.ReadAnswerText('{"format":1,"blocks":[]}', Blocks));
-  Assert.AreEqual(0, Integer(Length(Blocks)));
+  Assert.IsFalse(TAtlasWhyHere.ReadAnswer(nil, mBlocks));
+  Assert.IsFalse(TAtlasWhyHere.ReadAnswerText('', mBlocks), 'leere Antwort');
+  Assert.IsFalse(TAtlasWhyHere.ReadAnswerText('{kaputt', mBlocks), 'kaputtes JSON');
+  Assert.IsTrue(TAtlasWhyHere.ReadAnswerText('{"format":1,"blocks":[]}', mBlocks));
+  Assert.AreEqual(0, Integer(Length(mBlocks)));
   Assert.AreEqual('["file:///c:/a.pas",12,3]', TAtlasWhyHere.Arguments('file:///c:/a.pas', 12, 3));
 end;
 
@@ -187,18 +187,18 @@ end;
 
 procedure TAtlasWhyHereTests.CallStaysUnevaluatedUntilAllowed;
 var
-  Ref: TAtlasWhyHereRef;
+  mRef: TAtlasWhyHereRef;
 begin
   Load(cAcceptance);
   EvaluateAll('Art=paRabatt;Summe > 1000=True;Summe=1200;1000=1000;Aktiv=True;I=3;N=7');
   Assert.AreEqual('Pruefe(I)', string.Join(',', FWhy.CallsAt(9)));
   Assert.AreEqual(0, Integer(Length(FWhy.CallsAt(10))));
   FWhy.AllowCalls(9);
-  Assert.IsTrue(FWhy.NextPending(Ref));
-  Assert.AreEqual('Pruefe(I)', Ref.Expression);
-  Assert.IsTrue(Ref.SideEffects);
-  FWhy.Put(Ref, 'True', True);
-  Assert.IsFalse(FWhy.NextPending(Ref));
+  Assert.IsTrue(FWhy.NextPending(mRef));
+  Assert.AreEqual('Pruefe(I)', mRef.Expression);
+  Assert.IsTrue(mRef.SideEffects);
+  FWhy.Put(mRef, 'True', True);
+  Assert.IsFalse(FWhy.NextPending(mRef));
   Assert.AreEqual(0, Integer(Length(FWhy.CallsAt(9))));
   Assert.AreEqual('(1200 > 1000) and True and True → True', FWhy.LineText('C:\P\Ablauf.pas', 9, FTexts));
 end;

@@ -240,18 +240,18 @@ end;
 
 procedure TAtlasVcsPullTests.PullChecksChangesBeforeFetching;
 var
-  Fake: TFakeVcs;
-  Ref: IAtlasVersionControl;
+  mFake: TFakeVcs;
+  mRef: IAtlasVersionControl;
 begin
-  Fake := TFakeVcs.Create;
-  Ref := Fake;
-  Fake.FChanges := [Change('C:\Repo\a.pas', TAtlasVcsChangeKind.Modified)];
-  Assert.AreEqual<TAtlasPullOutcome>(TAtlasPullOutcome.Blocked, TAtlasVcsPull.Pull(Ref));
-  Assert.IsFalse(Fake.Called('pull'), 'lokale Änderung: nichts holen');
+  mFake := TFakeVcs.Create;
+  mRef := mFake;
+  mFake.FChanges := [Change('C:\Repo\a.pas', TAtlasVcsChangeKind.Modified)];
+  Assert.AreEqual<TAtlasPullOutcome>(TAtlasPullOutcome.Blocked, TAtlasVcsPull.Pull(mRef));
+  Assert.IsFalse(mFake.Called('pull'), 'lokale Änderung: nichts holen');
   // Unversionierte Dateien sperren nicht.
-  Fake.FChanges := [Change('C:\Repo\neu.pas', TAtlasVcsChangeKind.Untracked)];
-  Assert.AreEqual<TAtlasPullOutcome>(TAtlasPullOutcome.UpToDate, TAtlasVcsPull.Pull(Ref));
-  Assert.IsTrue(Fake.Called('pull'));
+  mFake.FChanges := [Change('C:\Repo\neu.pas', TAtlasVcsChangeKind.Untracked)];
+  Assert.AreEqual<TAtlasPullOutcome>(TAtlasPullOutcome.UpToDate, TAtlasVcsPull.Pull(mRef));
+  Assert.IsTrue(mFake.Called('pull'));
   Assert.IsTrue(TAtlasVcsPull.ChangesBlockPull([Change('x', TAtlasVcsChangeKind.Untracked),
     Change('y', TAtlasVcsChangeKind.Conflicted)]));
   Assert.IsFalse(TAtlasVcsPull.ChangesBlockPull(nil));
@@ -259,19 +259,19 @@ end;
 
 procedure TAtlasVcsPullTests.PullReportsUpdatedAndUpToDate;
 var
-  Fake: TFakeVcs;
-  Ref: IAtlasVersionControl;
+  mFake: TFakeVcs;
+  mRef: IAtlasVersionControl;
 begin
-  Fake := TFakeVcs.Create;
-  Ref := Fake;
-  Fake.FPulledRevision := 'bbbb';
-  Assert.AreEqual<TAtlasPullOutcome>(TAtlasPullOutcome.Updated, TAtlasVcsPull.Pull(Ref));
-  Assert.AreEqual('head', Fake.Calls[0]);
-  Assert.AreEqual('changes', Fake.Calls[1]);
-  Assert.AreEqual('pull', Fake.Calls[2]);
-  Assert.AreEqual('head', Fake.Calls[3]);
-  Fake.FPulledRevision := '';
-  Assert.AreEqual<TAtlasPullOutcome>(TAtlasPullOutcome.UpToDate, TAtlasVcsPull.Pull(Ref));
+  mFake := TFakeVcs.Create;
+  mRef := mFake;
+  mFake.FPulledRevision := 'bbbb';
+  Assert.AreEqual<TAtlasPullOutcome>(TAtlasPullOutcome.Updated, TAtlasVcsPull.Pull(mRef));
+  Assert.AreEqual('head', mFake.Calls[0]);
+  Assert.AreEqual('changes', mFake.Calls[1]);
+  Assert.AreEqual('pull', mFake.Calls[2]);
+  Assert.AreEqual('head', mFake.Calls[3]);
+  mFake.FPulledRevision := '';
+  Assert.AreEqual<TAtlasPullOutcome>(TAtlasPullOutcome.UpToDate, TAtlasVcsPull.Pull(mRef));
 end;
 
 procedure TAtlasVcsPullTests.PullWithAndWithoutExternals;
@@ -312,35 +312,35 @@ end;
 
 procedure TAtlasVcsPullTests.PullFailuresAndNoWorkingCopy;
 var
-  Fake: TFakeVcs;
-  Ref: IAtlasVersionControl;
-  Reason: TAtlasVcsOutcome;
+  mFake: TFakeVcs;
+  mRef: IAtlasVersionControl;
+  mReason: TAtlasVcsOutcome;
 begin
   Assert.AreEqual<TAtlasPullOutcome>(TAtlasPullOutcome.NoWorkingCopy, TAtlasVcsPull.Pull(nil));
-  Fake := TFakeVcs.Create;
-  Ref := Fake;
-  Fake.FHeadOutcome := TAtlasVcsOutcome.NoWorkingCopy;
-  Assert.AreEqual<TAtlasPullOutcome>(TAtlasPullOutcome.NoWorkingCopy, TAtlasVcsPull.Pull(Ref));
-  Fake.FHeadOutcome := TAtlasVcsOutcome.ToolMissing;
-  Assert.AreEqual<TAtlasPullOutcome>(TAtlasPullOutcome.Failed, TAtlasVcsPull.Pull(Ref));
-  Fake.FHeadOutcome := TAtlasVcsOutcome.Ok;
-  Fake.FChangesOutcome := TAtlasVcsOutcome.TimedOut;
-  Assert.AreEqual<TAtlasPullOutcome>(TAtlasPullOutcome.Failed, TAtlasVcsPull.Pull(Ref), 'Stand unklar: nicht holen');
-  Assert.IsFalse(Fake.Called('pull'));
+  mFake := TFakeVcs.Create;
+  mRef := mFake;
+  mFake.FHeadOutcome := TAtlasVcsOutcome.NoWorkingCopy;
+  Assert.AreEqual<TAtlasPullOutcome>(TAtlasPullOutcome.NoWorkingCopy, TAtlasVcsPull.Pull(mRef));
+  mFake.FHeadOutcome := TAtlasVcsOutcome.ToolMissing;
+  Assert.AreEqual<TAtlasPullOutcome>(TAtlasPullOutcome.Failed, TAtlasVcsPull.Pull(mRef));
+  mFake.FHeadOutcome := TAtlasVcsOutcome.Ok;
+  mFake.FChangesOutcome := TAtlasVcsOutcome.TimedOut;
+  Assert.AreEqual<TAtlasPullOutcome>(TAtlasPullOutcome.Failed, TAtlasVcsPull.Pull(mRef), 'Stand unklar: nicht holen');
+  Assert.IsFalse(mFake.Called('pull'));
   // Grund für die Meldung: das Ergebnis des gescheiterten Aufrufs.
-  Assert.AreEqual<TAtlasPullOutcome>(TAtlasPullOutcome.Failed, TAtlasVcsPull.Pull(Ref, Reason));
-  Assert.AreEqual<TAtlasVcsOutcome>(TAtlasVcsOutcome.TimedOut, Reason);
-  Fake.FChangesOutcome := TAtlasVcsOutcome.Ok;
-  Fake.FPullOutcome := TAtlasVcsOutcome.Failed;
-  Assert.AreEqual<TAtlasPullOutcome>(TAtlasPullOutcome.Failed, TAtlasVcsPull.Pull(Ref), 'z. B. abweichender Branch');
-  Fake.FPullOutcome := TAtlasVcsOutcome.ToolMissing;
-  Assert.AreEqual<TAtlasPullOutcome>(TAtlasPullOutcome.Failed, TAtlasVcsPull.Pull(Ref, Reason));
-  Assert.AreEqual<TAtlasVcsOutcome>(TAtlasVcsOutcome.ToolMissing, Reason);
-  Fake.FPullOutcome := TAtlasVcsOutcome.Ok;
-  Assert.AreEqual<TAtlasPullOutcome>(TAtlasPullOutcome.UpToDate, TAtlasVcsPull.Pull(Ref, Reason));
-  Assert.AreEqual<TAtlasVcsOutcome>(TAtlasVcsOutcome.Ok, Reason);
-  Ref := TFakeVcsWithoutUpdate.Create;
-  Assert.AreEqual<TAtlasPullOutcome>(TAtlasPullOutcome.Failed, TAtlasVcsPull.Pull(Ref));
+  Assert.AreEqual<TAtlasPullOutcome>(TAtlasPullOutcome.Failed, TAtlasVcsPull.Pull(mRef, mReason));
+  Assert.AreEqual<TAtlasVcsOutcome>(TAtlasVcsOutcome.TimedOut, mReason);
+  mFake.FChangesOutcome := TAtlasVcsOutcome.Ok;
+  mFake.FPullOutcome := TAtlasVcsOutcome.Failed;
+  Assert.AreEqual<TAtlasPullOutcome>(TAtlasPullOutcome.Failed, TAtlasVcsPull.Pull(mRef), 'z. B. abweichender Branch');
+  mFake.FPullOutcome := TAtlasVcsOutcome.ToolMissing;
+  Assert.AreEqual<TAtlasPullOutcome>(TAtlasPullOutcome.Failed, TAtlasVcsPull.Pull(mRef, mReason));
+  Assert.AreEqual<TAtlasVcsOutcome>(TAtlasVcsOutcome.ToolMissing, mReason);
+  mFake.FPullOutcome := TAtlasVcsOutcome.Ok;
+  Assert.AreEqual<TAtlasPullOutcome>(TAtlasPullOutcome.UpToDate, TAtlasVcsPull.Pull(mRef, mReason));
+  Assert.AreEqual<TAtlasVcsOutcome>(TAtlasVcsOutcome.Ok, mReason);
+  mRef := TFakeVcsWithoutUpdate.Create;
+  Assert.AreEqual<TAtlasPullOutcome>(TAtlasPullOutcome.Failed, TAtlasVcsPull.Pull(mRef));
 end;
 
 initialization

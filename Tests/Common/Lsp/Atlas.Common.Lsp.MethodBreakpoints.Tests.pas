@@ -14,7 +14,8 @@ type
     FIndex: ISymbolIndex;
     FTexts: TArray<string>;
     FFiles: TArray<string>;
-    procedure AddUnit(const AFileName, AText: string; ALibrary: Boolean = False);
+    procedure AddUnit(const AFileName, AText: string); overload;
+    procedure AddUnit(const AFileName, AText: string; ALibrary: Boolean); overload;
     function BodySource: TMethodBodySource;
     function Find(const APattern: string; const AOptions: TMethodBreakpointOptions): TArray<TMethodBreakpointHit>;
       overload;
@@ -77,7 +78,7 @@ const
   cAndere = 'C:\P\Andere.pas';
   cRtl = 'C:\Lib\Rtl.Basis.pas';
 
-  UnitKunden =
+  cUnitKunden =
     'unit Kunden;'#10 +
     'interface'#10 +
     'type'#10 +
@@ -140,7 +141,7 @@ const
     'end;'#10 +
     'end.';
 
-  UnitAndere =
+  cUnitAndere =
     'unit Andere;'#10 +
     'interface'#10 +
     'uses Kunden;'#10 +
@@ -155,7 +156,7 @@ const
     'end;'#10 +
     'end.';
 
-  UnitRtl =
+  cUnitRtl =
     'unit Rtl.Basis;'#10 +
     'interface'#10 +
     'type'#10 +
@@ -174,9 +175,9 @@ const
 procedure TLspMethodBreakpointsTests.Setup;
 begin
   FIndex := TSymbolIndex.Create;
-  AddUnit(cKunden, UnitKunden);
-  AddUnit(cAndere, UnitAndere);
-  AddUnit(cRtl, UnitRtl, True);
+  AddUnit(cKunden, cUnitKunden);
+  AddUnit(cAndere, cUnitAndere);
+  AddUnit(cRtl, cUnitRtl, True);
 end;
 
 procedure TLspMethodBreakpointsTests.TearDown;
@@ -184,6 +185,11 @@ begin
   FIndex := nil;
   FTexts := nil;
   FFiles := nil;
+end;
+
+procedure TLspMethodBreakpointsTests.AddUnit(const AFileName, AText: string);
+begin
+  AddUnit(AFileName, AText, False);
 end;
 
 procedure TLspMethodBreakpointsTests.AddUnit(const AFileName, AText: string; ALibrary: Boolean);

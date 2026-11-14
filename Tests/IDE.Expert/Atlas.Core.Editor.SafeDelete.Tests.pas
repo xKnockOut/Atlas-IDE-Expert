@@ -38,7 +38,7 @@ uses
   Atlas.Core.Editor.SafeDelete;
 
 const
-  Prepared =
+  cPrepared =
     '{"kind":"Methode","name":"Draw","title":"Methode Draw sicher loeschen","usages":[' +
     '{"file":"C:\\P\\Use.pas","line":7,"character":9,"text":"AShape.Draw;","kind":"code"}],' +
     '"overrides":[{"file":"C:\\P\\Circle.pas","line":7,"character":4,"text":"TCircle.Draw","kind":"override"}],' +
@@ -47,13 +47,13 @@ const
 
 function Info(const AJson: string): TAtlasSafeDeleteInfo;
 var
-  Value: TJSONValue;
+  mValue: TJSONValue;
 begin
-  Value := TJSONObject.ParseJSONValue(AJson);
+  mValue := TJSONObject.ParseJSONValue(AJson);
   try
-    Result := TAtlasSafeDeleteInfo.FromJson(Value);
+    Result := TAtlasSafeDeleteInfo.FromJson(mValue);
   finally
-    Value.Free;
+    mValue.Free;
   end;
 end;
 
@@ -73,50 +73,50 @@ end;
 
 procedure TAtlasSafeDeleteTests.ReadsPrepareAnswer;
 var
-  Read: TAtlasSafeDeleteInfo;
+  mRead: TAtlasSafeDeleteInfo;
 begin
-  Read := Info(Prepared);
-  Assert.AreEqual('Draw', Read.Name);
-  Assert.AreEqual('Methode', Read.Kind);
-  Assert.AreEqual(1, Integer(Length(Read.Usages)));
-  Assert.AreEqual('C:\P\Use.pas', Read.Usages[0].FileName);
-  Assert.AreEqual(7, Read.Usages[0].Line);
-  Assert.AreEqual(9, Read.Usages[0].Character);
-  Assert.AreEqual('code', Read.Usages[0].Kind);
-  Assert.AreEqual(1, Integer(Length(Read.Overrides)));
-  Assert.AreEqual(2, Integer(Length(Read.Cascade)));
-  Assert.AreEqual('uses Helpers', Read.Cascade[1]);
-  Assert.AreEqual(1, Integer(Length(Read.Warnings)));
-  Assert.IsTrue(Read.PreviewWhenUnused);
-  Assert.AreEqual('always', Read.CascadeMode);
-  Assert.AreEqual('never', Read.OverridesMode);
-  Assert.IsFalse(Read.IsUnit);
+  mRead := Info(cPrepared);
+  Assert.AreEqual('Draw', mRead.Name);
+  Assert.AreEqual('Methode', mRead.Kind);
+  Assert.AreEqual(1, Integer(Length(mRead.Usages)));
+  Assert.AreEqual('C:\P\Use.pas', mRead.Usages[0].FileName);
+  Assert.AreEqual(7, mRead.Usages[0].Line);
+  Assert.AreEqual(9, mRead.Usages[0].Character);
+  Assert.AreEqual('code', mRead.Usages[0].Kind);
+  Assert.AreEqual(1, Integer(Length(mRead.Overrides)));
+  Assert.AreEqual(2, Integer(Length(mRead.Cascade)));
+  Assert.AreEqual('uses Helpers', mRead.Cascade[1]);
+  Assert.AreEqual(1, Integer(Length(mRead.Warnings)));
+  Assert.IsTrue(mRead.PreviewWhenUnused);
+  Assert.AreEqual('always', mRead.CascadeMode);
+  Assert.AreEqual('never', mRead.OverridesMode);
+  Assert.IsFalse(mRead.IsUnit);
 end;
 
 procedure TAtlasSafeDeleteTests.ForeignAnswerGivesDefaults;
 var
-  Read: TAtlasSafeDeleteInfo;
+  mRead: TAtlasSafeDeleteInfo;
 begin
-  Read := TAtlasSafeDeleteInfo.FromJson(nil);
-  Assert.AreEqual('ask', Read.CascadeMode);
-  Assert.AreEqual('ask', Read.OverridesMode);
-  Assert.AreEqual(0, Integer(Length(Read.Usages)));
-  Read := Info('[1, 2]');
-  Assert.AreEqual('', Read.Name);
+  mRead := TAtlasSafeDeleteInfo.FromJson(nil);
+  Assert.AreEqual('ask', mRead.CascadeMode);
+  Assert.AreEqual('ask', mRead.OverridesMode);
+  Assert.AreEqual(0, Integer(Length(mRead.Usages)));
+  mRead := Info('[1, 2]');
+  Assert.AreEqual('', mRead.Name);
 end;
 
 procedure TAtlasSafeDeleteTests.BlockingAndPreview;
 var
-  Read: TAtlasSafeDeleteInfo;
+  mRead: TAtlasSafeDeleteInfo;
 begin
-  Read := Info(Prepared);
-  Assert.AreEqual(2, Integer(Length(Read.Blocking(False))), 'Ueberschreibungen bleiben: sie blockieren');
-  Assert.AreEqual(1, Integer(Length(Read.Blocking(True))));
-  Assert.IsTrue(Read.NeedsPreview(False), 'previewWhenUnused');
-  Read := Info('{"kind":"Feld","name":"FA"}');
-  Assert.AreEqual(0, Integer(Length(Read.Blocking(False))));
-  Assert.IsFalse(Read.NeedsPreview(False), 'ohne Verwendungen sofort');
-  Assert.IsTrue(Read.NeedsPreview(True), 'trotzdem loeschen zeigt die Vorschau');
+  mRead := Info(cPrepared);
+  Assert.AreEqual(2, Integer(Length(mRead.Blocking(False))), 'Ueberschreibungen bleiben: sie blockieren');
+  Assert.AreEqual(1, Integer(Length(mRead.Blocking(True))));
+  Assert.IsTrue(mRead.NeedsPreview(False), 'previewWhenUnused');
+  mRead := Info('{"kind":"Feld","name":"FA"}');
+  Assert.AreEqual(0, Integer(Length(mRead.Blocking(False))));
+  Assert.IsFalse(mRead.NeedsPreview(False), 'ohne Verwendungen sofort');
+  Assert.IsTrue(mRead.NeedsPreview(True), 'trotzdem loeschen zeigt die Vorschau');
   Assert.IsTrue(Info('{"kind":"Unit","name":"U"}').NeedsPreview(False), 'eine Unit immer mit Vorschau');
 end;
 

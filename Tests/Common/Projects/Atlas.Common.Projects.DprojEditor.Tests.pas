@@ -30,7 +30,7 @@ uses
   Atlas.Common.Projects.DprojEditor;
 
 const
-  Dproj =
+  cDproj =
     '<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">'#13#10 +
     '    <PropertyGroup Condition="''$(Base)''!=''''">'#13#10 +
     '        <DCC_UnitSearchPath>Source;$(DCC_UnitSearchPath)</DCC_UnitSearchPath>'#13#10 +
@@ -59,53 +59,53 @@ const
 
 procedure TDprojEditorTests.ConfigKeys;
 begin
-  Assert.AreEqual('Cfg_1', TDprojEditor.ConfigKey(Dproj, 'debug'));
-  Assert.AreEqual('Cfg_2', TDprojEditor.ConfigKey(Dproj, 'Release'));
-  Assert.AreEqual('Base', TDprojEditor.ConfigKey(Dproj, 'Base'));
-  Assert.AreEqual('', TDprojEditor.ConfigKey(Dproj, 'Profil'));
+  Assert.AreEqual('Cfg_1', TDprojEditor.ConfigKey(cDproj, 'debug'));
+  Assert.AreEqual('Cfg_2', TDprojEditor.ConfigKey(cDproj, 'Release'));
+  Assert.AreEqual('Base', TDprojEditor.ConfigKey(cDproj, 'Base'));
+  Assert.AreEqual('', TDprojEditor.ConfigKey(cDproj, 'Profil'));
 end;
 
 procedure TDprojEditorTests.AddsOnlyToExistingLine;
 var
-  NewText: string;
+  mNewText: string;
 begin
-  Assert.AreEqual(Ord(TDprojEditResult.Added), Ord(TDprojEditor.AddToList(Dproj, 'Cfg_1', 'DCC_Define', 'TEST',
-    NewText)));
-  Assert.AreEqual(StringReplace(Dproj, '>DEBUG;', '>TEST;DEBUG;', []), NewText);
-  Assert.AreEqual(Ord(TDprojEditResult.Added), Ord(TDprojEditor.AddToList(Dproj, 'Base', 'DCC_UnitSearchPath',
-    'Lib\A&B', NewText)));
-  Assert.AreEqual(StringReplace(Dproj, '>Source;', '>Lib\A&amp;B;Source;', []), NewText);
+  Assert.AreEqual(Ord(TDprojEditResult.Added), Ord(TDprojEditor.AddToList(cDproj, 'Cfg_1', 'DCC_Define', 'TEST',
+    mNewText)));
+  Assert.AreEqual(StringReplace(cDproj, '>DEBUG;', '>TEST;DEBUG;', []), mNewText);
+  Assert.AreEqual(Ord(TDprojEditResult.Added), Ord(TDprojEditor.AddToList(cDproj, 'Base', 'DCC_UnitSearchPath',
+    'Lib\A&B', mNewText)));
+  Assert.AreEqual(StringReplace(cDproj, '>Source;', '>Lib\A&amp;B;Source;', []), mNewText);
 end;
 
 procedure TDprojEditorTests.PresentValueUnchanged;
 var
-  NewText: string;
+  mNewText: string;
 begin
-  Assert.AreEqual(Ord(TDprojEditResult.Present), Ord(TDprojEditor.AddToList(Dproj, 'Cfg_1', 'DCC_Define', 'debug',
-    NewText)));
-  Assert.AreEqual(Dproj, NewText);
+  Assert.AreEqual(Ord(TDprojEditResult.Present), Ord(TDprojEditor.AddToList(cDproj, 'Cfg_1', 'DCC_Define', 'debug',
+    mNewText)));
+  Assert.AreEqual(cDproj, mNewText);
   Assert.IsTrue(TDprojEditor.ListContains('Source\;$(X)', 'source'));
   Assert.IsFalse(TDprojEditor.ListContains('Source;$(X)', 'Sour'));
 end;
 
 procedure TDprojEditorTests.MissingPropertyGetsLine;
 var
-  NewText: string;
+  mNewText: string;
 begin
   // Bedingung mit Leerzeichen, Eigenschaft fehlt: neue Zeile direkt nach dem öffnenden Tag.
-  Assert.AreEqual(Ord(TDprojEditResult.Added), Ord(TDprojEditor.AddToList(Dproj, 'Cfg_2', 'DCC_Define', 'RELEASE',
-    NewText)));
-  Assert.AreEqual(StringReplace(Dproj, '''$(Cfg_2)'' != ''''">'#13#10, '''$(Cfg_2)'' != ''''">'#13#10 +
-    '        <DCC_Define>RELEASE;$(DCC_Define)</DCC_Define>'#13#10, []), NewText);
+  Assert.AreEqual(Ord(TDprojEditResult.Added), Ord(TDprojEditor.AddToList(cDproj, 'Cfg_2', 'DCC_Define', 'RELEASE',
+    mNewText)));
+  Assert.AreEqual(StringReplace(cDproj, '''$(Cfg_2)'' != ''''">'#13#10, '''$(Cfg_2)'' != ''''">'#13#10 +
+    '        <DCC_Define>RELEASE;$(DCC_Define)</DCC_Define>'#13#10, []), mNewText);
 end;
 
 procedure TDprojEditorTests.UnknownGroup;
 var
-  NewText: string;
+  mNewText: string;
 begin
-  Assert.AreEqual(Ord(TDprojEditResult.NoGroup), Ord(TDprojEditor.AddToList(Dproj, 'Cfg_9', 'DCC_Define', 'X',
-    NewText)));
-  Assert.AreEqual(Dproj, NewText);
+  Assert.AreEqual(Ord(TDprojEditResult.NoGroup), Ord(TDprojEditor.AddToList(cDproj, 'Cfg_9', 'DCC_Define', 'X',
+    mNewText)));
+  Assert.AreEqual(cDproj, mNewText);
 end;
 
 initialization

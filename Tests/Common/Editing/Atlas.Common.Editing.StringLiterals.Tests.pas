@@ -52,16 +52,16 @@ begin
 end;
 
 const
-  Sql = 'select *'#13#10'from Kunde'#13#10'where Name = ''O''''Brien''';
+  cSql = 'select *'#13#10'from Kunde'#13#10'where Name = ''O''''Brien''';
 
-function Concat(const AText: string; ABreak: TStringLiteralBreak; AMaxLineLength: Integer = 0): string;
+function Concat(const AText: string; ABreak: TStringLiteralBreak; AMaxLineLength: Integer): string;
 var
-  Settings: TStringLiteralSettings;
+  mSettings: TStringLiteralSettings;
 begin
-  Settings := TStringLiteralSettings.Default;
-  Settings.LineBreak := ABreak;
-  Settings.MaxLineLength := AMaxLineLength;
-  Result := TStringLiterals.ToLiteral(AText, '  ', False, False, Settings, #10);
+  mSettings := TStringLiteralSettings.Default;
+  mSettings.LineBreak := ABreak;
+  mSettings.MaxLineLength := AMaxLineLength;
+  Result := TStringLiterals.ToLiteral(AText, '  ', False, False, mSettings, #10);
 end;
 
 function Plain(const AExpression: string): string;
@@ -82,13 +82,13 @@ end;
 
 procedure TStringLiteralsTests.ConcatRoundTrip;
 var
-  Literal: string;
+  mLiteral: string;
 begin
-  Literal := Concat(Sql, TStringLiteralBreak.SLineBreak);
+  mLiteral := Concat(cSql, TStringLiteralBreak.SLineBreak, 0);
   Assert.AreEqual('''select *'' + sLineBreak +'#10'  ''from Kunde'' + sLineBreak +'#10 +
-    '  ''where Name = ''''O''''''''Brien''''''', Literal);
-  Assert.AreEqual(Sql, Plain(Literal));
-  Assert.AreEqual(Literal, Concat(Plain(Literal), TStringLiteralBreak.SLineBreak));
+    '  ''where Name = ''''O''''''''Brien''''''', mLiteral);
+  Assert.AreEqual(cSql, Plain(mLiteral));
+  Assert.AreEqual(mLiteral, Concat(Plain(mLiteral), TStringLiteralBreak.SLineBreak, 0));
 end;
 
 procedure TStringLiteralsTests.AutoStyleDependsOnVersion;
@@ -102,91 +102,91 @@ end;
 
 procedure TStringLiteralsTests.PlainTextOfConcatenation;
 var
-  Text: string;
+  mText: string;
 begin
   Assert.AreEqual('select *'#13#10'from Kunde', Plain('''select *'' + sLineBreak + ''from Kunde'''));
   Assert.AreEqual('a'#13#10'b', Plain('''a''#13#10 +'#10'  { Kommentar } ''b'''));
   Assert.AreEqual('a'#13#10'b', Plain('''a''#$0D#$0A''b'''));
-  Assert.IsFalse(TStringLiterals.PlainText('''a'' + Name', Text));
-  Assert.IsFalse(TStringLiterals.PlainText('sLineBreak', Text));
+  Assert.IsFalse(TStringLiterals.PlainText('''a'' + Name', mText));
+  Assert.IsFalse(TStringLiterals.PlainText('sLineBreak', mText));
 end;
 
 procedure TStringLiteralsTests.EachLineBreak;
 const
-  Text = 'select *'#10'from Kunde';
+  cText = 'select *'#10'from Kunde';
 begin
-  Assert.AreEqual('''select *''#13#10 +'#10'  ''from Kunde''', Concat(Text, TStringLiteralBreak.CrLf));
-  Assert.AreEqual('''select *''#10 +'#10'  ''from Kunde''', Concat(Text, TStringLiteralBreak.Lf));
-  Assert.AreEqual('''select * '' +'#10'  ''from Kunde''', Concat(Text, TStringLiteralBreak.Space));
-  Assert.AreEqual('''select *'' +'#10'  ''from Kunde''', Concat(Text, TStringLiteralBreak.None));
-  Assert.AreEqual('select *'#10'from Kunde', Plain(Concat(Text, TStringLiteralBreak.Lf)));
+  Assert.AreEqual('''select *''#13#10 +'#10'  ''from Kunde''', Concat(cText, TStringLiteralBreak.CrLf, 0));
+  Assert.AreEqual('''select *''#10 +'#10'  ''from Kunde''', Concat(cText, TStringLiteralBreak.Lf, 0));
+  Assert.AreEqual('''select * '' +'#10'  ''from Kunde''', Concat(cText, TStringLiteralBreak.Space, 0));
+  Assert.AreEqual('''select *'' +'#10'  ''from Kunde''', Concat(cText, TStringLiteralBreak.None, 0));
+  Assert.AreEqual('select *'#10'from Kunde', Plain(Concat(cText, TStringLiteralBreak.Lf, 0)));
 end;
 
 procedure TStringLiteralsTests.MultilineString;
 var
-  Literal: string;
+  mLiteral: string;
 begin
-  Literal := TStringLiterals.ToLiteral('select *'#10'from Kunde', '  ', False, True, TStringLiteralSettings.Default,
+  mLiteral := TStringLiterals.ToLiteral('select *'#10'from Kunde', '  ', False, True, TStringLiteralSettings.Default,
     #10);
-  Assert.AreEqual('''''''' + #10'    select *'#10'    from Kunde'#10'    ''''''', Literal);
-  Assert.AreEqual('select *'#13#10'from Kunde', Plain(Literal));
+  Assert.AreEqual('''''''' + #10'    select *'#10'    from Kunde'#10'    ''''''', mLiteral);
+  Assert.AreEqual('select *'#13#10'from Kunde', Plain(mLiteral));
   // Mit ''' im Text oder Steuerzeichen geht es nur verkettet.
-  Literal := TStringLiterals.ToLiteral('a'''''''#10'b', '', False, True, TStringLiteralSettings.Default, #10);
-  Assert.AreEqual('''a'''''''''''''' + sLineBreak +'#10'''b''', Literal);
+  mLiteral := TStringLiterals.ToLiteral('a'''''''#10'b', '', False, True, TStringLiteralSettings.Default, #10);
+  Assert.AreEqual('''a'''''''''''''' + sLineBreak +'#10'''b''', mLiteral);
 end;
 
 procedure TStringLiteralsTests.MaxLineLengthWraps;
 const
-  Long = 'select Kunde.Name, Kunde.Ort, Kunde.Strasse, Kunde.Telefon from Kunde';
+  cLong = 'select Kunde.Name, Kunde.Ort, Kunde.Strasse, Kunde.Telefon from Kunde';
 var
-  Literal, Line: string;
+  mLiteral, mLine: string;
 begin
-  Literal := Concat(Long, TStringLiteralBreak.SLineBreak, 40);
-  Assert.IsTrue(Length(Literal.Split([#10])) > 1, Literal);
-  for Line in Literal.Split([#10]) do
+  mLiteral := Concat(cLong, TStringLiteralBreak.SLineBreak, 40);
+  Assert.IsTrue(Length(mLiteral.Split([#10])) > 1, mLiteral);
+  for mLine in mLiteral.Split([#10]) do
   begin
-    Assert.IsTrue(Length(Line) <= 40, Line);
+    Assert.IsTrue(Length(mLine) <= 40, mLine);
   end;
-  Assert.AreEqual(Long, Plain(Literal));
+  Assert.AreEqual(cLong, Plain(mLiteral));
 end;
 
 procedure TStringLiteralsTests.EmptyLinesAndPlaceholders;
 const
-  Text = 'select * from Kunde'#13#10#13#10'where Nr = :Nr and Name like %s';
+  cText = 'select * from Kunde'#13#10#13#10'where Nr = :Nr and Name like %s';
 begin
-  Assert.AreEqual(Text, Plain(Concat(Text, TStringLiteralBreak.SLineBreak)));
-  Assert.IsTrue(Pos(''''' + sLineBreak +', Concat(Text, TStringLiteralBreak.SLineBreak)) > 0);
-  Assert.IsTrue(Pos(':Nr and Name like %s', Concat(Text, TStringLiteralBreak.SLineBreak)) > 0);
+  Assert.AreEqual(cText, Plain(Concat(cText, TStringLiteralBreak.SLineBreak, 0)));
+  Assert.IsTrue(Pos(''''' + sLineBreak +', Concat(cText, TStringLiteralBreak.SLineBreak, 0)) > 0);
+  Assert.IsTrue(Pos(':Nr and Name like %s', Concat(cText, TStringLiteralBreak.SLineBreak, 0)) > 0);
 end;
 
 procedure TStringLiteralsTests.LiteralAtFindsConcatenation;
 const
-  Source = 'begin'#10'  Q.SQL.Text := ''select *'' + sLineBreak +'#10'    ''from Kunde'';'#10'end.';
+  cSource = 'begin'#10'  Q.SQL.Text := ''select *'' + sLineBreak +'#10'    ''from Kunde'';'#10'end.';
 var
-  Range: TTextRange;
+  mRange: TTextRange;
 begin
-  Assert.IsTrue(TStringLiterals.LiteralAt(Source, TTextPosition.Create(2, 7), Range));
-  Assert.AreEqual(1, Range.StartPos.Line);
-  Assert.AreEqual(16, Range.StartPos.Character);
-  Assert.AreEqual(2, Range.EndPos.Line);
-  Assert.AreEqual(16, Range.EndPos.Character);
-  Assert.AreEqual('select *'#13#10'from Kunde', Plain(TStringLiterals.TextOf(Source, Range)));
-  Assert.IsFalse(TStringLiterals.LiteralAt(Source, TTextPosition.Create(1, 4), Range));
+  Assert.IsTrue(TStringLiterals.LiteralAt(cSource, TTextPosition.Create(2, 7), mRange));
+  Assert.AreEqual(1, mRange.StartPos.Line);
+  Assert.AreEqual(16, mRange.StartPos.Character);
+  Assert.AreEqual(2, mRange.EndPos.Line);
+  Assert.AreEqual(16, mRange.EndPos.Character);
+  Assert.AreEqual('select *'#13#10'from Kunde', Plain(TStringLiterals.TextOf(cSource, mRange)));
+  Assert.IsFalse(TStringLiterals.LiteralAt(cSource, TTextPosition.Create(1, 4), mRange));
 end;
 
 procedure TStringLiteralsTests.CodeActions;
 var
-  Actions: TArray<TCodeAction>;
+  mActions: TArray<TCodeAction>;
 begin
-  Actions := LiteralActions('    select *'#10'      from Kunde'#10'x', TTextRange.Create(0, 0, 2, 0));
-  Assert.AreEqual(1, Integer(Length(Actions)));
-  Assert.AreEqual('Als String-Literal', Actions[0].Title);
-  Assert.AreEqual('    ''select *'' + sLineBreak +'#10'    ''  from Kunde''', Actions[0].Edits[0].NewText);
-  Assert.AreEqual(1, Actions[0].Edits[0].Range.EndPos.Line);
-  Actions := LiteralActions('  S := ''a'' + sLineBreak + ''b'';', TTextRange.Create(0, 9, 0, 9));
-  Assert.AreEqual(1, Integer(Length(Actions)));
-  Assert.AreEqual(cCopyTextCommand, Actions[0].Command);
-  Assert.AreEqual('a'#13#10'b', Actions[0].CommandArguments[0]);
+  mActions := LiteralActions('    select *'#10'      from Kunde'#10'x', TTextRange.Create(0, 0, 2, 0));
+  Assert.AreEqual(1, Integer(Length(mActions)));
+  Assert.AreEqual('Als String-Literal', mActions[0].Title);
+  Assert.AreEqual('    ''select *'' + sLineBreak +'#10'    ''  from Kunde''', mActions[0].Edits[0].NewText);
+  Assert.AreEqual(1, mActions[0].Edits[0].Range.EndPos.Line);
+  mActions := LiteralActions('  S := ''a'' + sLineBreak + ''b'';', TTextRange.Create(0, 9, 0, 9));
+  Assert.AreEqual(1, Integer(Length(mActions)));
+  Assert.AreEqual(cCopyTextCommand, mActions[0].Command);
+  Assert.AreEqual('a'#13#10'b', mActions[0].CommandArguments[0]);
   // Ohne Markierung und ohne Literal keine Aktion.
   Assert.AreEqual(0, Integer(Length(LiteralActions('  Save;', TTextRange.Create(0, 2, 0, 2)))));
 end;

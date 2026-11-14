@@ -47,7 +47,7 @@ uses
   Atlas.Common.Editing.DisableWarning;
 
 const
-  Source =
+  cSource =
     'unit A;' + #10 +                    // 0
     '' + #10 +                           // 1
     'interface' + #10 +                  // 2
@@ -66,20 +66,20 @@ const
 function Disabled(const AText: string; ALine: Integer; const ACode: string; AScope: TDisableWarningScope;
   const AReason: string; const AVersion: string): string; overload;
 var
-  Tree: TSyntaxTree;
-  Switch: TDisableWarningSwitch;
-  Edits: TArray<TTextEdit>;
+  mTree: TSyntaxTree;
+  mSwitch: TDisableWarningSwitch;
+  mEdits: TArray<TTextEdit>;
 begin
   Result := '';
-  Assert.IsTrue(TDisableWarning.SwitchFor(ACode, AVersion, Switch), ACode);
-  Tree := TPascalParser.Parse(AText);
+  Assert.IsTrue(TDisableWarning.SwitchFor(ACode, AVersion, mSwitch), ACode);
+  mTree := TPascalParser.Parse(AText);
   try
-    if TDisableWarning.Edits(AText, Tree, ALine, TDisableWarningRequest.Create(Switch, AScope, AReason), Edits) then
+    if TDisableWarning.Edits(AText, mTree, ALine, TDisableWarningRequest.Create(mSwitch, AScope, AReason), mEdits) then
     begin
-      Result := TChangeSignature.ApplyEdits(AText, Edits);
+      Result := TChangeSignature.ApplyEdits(AText, mEdits);
     end;
   finally
-    Tree.Free;
+    mTree.Free;
   end;
 end;
 
@@ -91,62 +91,62 @@ end;
 
 procedure TDisableWarningTests.WarningAroundLine;
 begin
-  Assert.AreEqual(StringReplace(Source, '  Alt;' + #10, '  {$WARN SYMBOL_DEPRECATED OFF}' + #10 + '  Alt;' + #10 +
-    '  {$WARN SYMBOL_DEPRECATED ON}' + #10, []), Disabled(Source, 10, 'W1000', TDisableWarningScope.Line));
+  Assert.AreEqual(StringReplace(cSource, '  Alt;' + #10, '  {$WARN SYMBOL_DEPRECATED OFF}' + #10 + '  Alt;' + #10 +
+    '  {$WARN SYMBOL_DEPRECATED ON}' + #10, []), Disabled(cSource, 10, 'W1000', TDisableWarningScope.Line));
 end;
 
 procedure TDisableWarningTests.HintAroundRoutine;
 var
-  Switch: TDisableWarningSwitch;
+  mSwitch: TDisableWarningSwitch;
 begin
-  Assert.IsTrue(TDisableWarning.SwitchFor('H2164', '', Switch));
-  Assert.IsTrue(Switch.RoutineWide);
-  Assert.AreEqual(StringReplace(StringReplace(Source, 'procedure Foo;', '{$HINTS OFF}' + #10 + 'procedure Foo;', []),
-    'end;' + #10, 'end;' + #10 + '{$HINTS ON}' + #10, []), Disabled(Source, 8, 'H2164',
+  Assert.IsTrue(TDisableWarning.SwitchFor('H2164', '', mSwitch));
+  Assert.IsTrue(mSwitch.RoutineWide);
+  Assert.AreEqual(StringReplace(StringReplace(cSource, 'procedure Foo;', '{$HINTS OFF}' + #10 + 'procedure Foo;', []),
+    'end;' + #10, 'end;' + #10 + '{$HINTS ON}' + #10, []), Disabled(cSource, 8, 'H2164',
     TDisableWarningScope.Routine));
   // Auch um die Zeile möglich (der Server bietet das für Ablaufmeldungen nicht an).
-  Assert.AreEqual(StringReplace(Source, '  X: Integer;' + #10, '  {$HINTS OFF}' + #10 + '  X: Integer;' + #10 +
-    '  {$HINTS ON}' + #10, []), Disabled(Source, 8, 'H2164', TDisableWarningScope.Line));
+  Assert.AreEqual(StringReplace(cSource, '  X: Integer;' + #10, '  {$HINTS OFF}' + #10 + '  X: Integer;' + #10 +
+    '  {$HINTS ON}' + #10, []), Disabled(cSource, 8, 'H2164', TDisableWarningScope.Line));
 end;
 
 procedure TDisableWarningTests.WarningWithoutIdentifierSwitchesAll;
 var
-  Switch: TDisableWarningSwitch;
+  mSwitch: TDisableWarningSwitch;
 begin
-  Assert.IsTrue(TDisableWarning.SwitchFor('W1999', '', Switch));
-  Assert.IsTrue(Switch.AllWarnings);
-  Assert.AreEqual('{$WARNINGS OFF}', Switch.OffText);
-  Assert.AreEqual('{$WARNINGS ON}', Switch.OnText);
-  Assert.IsTrue(TDisableWarning.SwitchFor('W1000', '', Switch));
-  Assert.IsFalse(Switch.AllWarnings);
-  Assert.IsTrue(TDisableWarning.SwitchFor('H2443', '', Switch));
-  Assert.IsFalse(Switch.AllWarnings, 'Hinweise betreffen nur Hinweise');
+  Assert.IsTrue(TDisableWarning.SwitchFor('W1999', '', mSwitch));
+  Assert.IsTrue(mSwitch.AllWarnings);
+  Assert.AreEqual('{$WARNINGS OFF}', mSwitch.OffText);
+  Assert.AreEqual('{$WARNINGS ON}', mSwitch.OnText);
+  Assert.IsTrue(TDisableWarning.SwitchFor('W1000', '', mSwitch));
+  Assert.IsFalse(mSwitch.AllWarnings);
+  Assert.IsTrue(TDisableWarning.SwitchFor('H2443', '', mSwitch));
+  Assert.IsFalse(mSwitch.AllWarnings, 'Hinweise betreffen nur Hinweise');
 end;
 
 procedure TDisableWarningTests.ReasonBecomesComment;
 begin
-  Assert.AreEqual(StringReplace(Source, '  Alt;' + #10, '  {$WARN SYMBOL_DEPRECATED OFF} // bewusst, bis 2027' +
-    #10 + '  Alt;' + #10 + '  {$WARN SYMBOL_DEPRECATED ON}' + #10, []), Disabled(Source, 10, 'W1000',
+  Assert.AreEqual(StringReplace(cSource, '  Alt;' + #10, '  {$WARN SYMBOL_DEPRECATED OFF} // bewusst, bis 2027' +
+    #10 + '  Alt;' + #10 + '  {$WARN SYMBOL_DEPRECATED ON}' + #10, []), Disabled(cSource, 10, 'W1000',
     TDisableWarningScope.Line, '  bewusst,'#13#10'bis 2027 ', ''));
   Assert.AreEqual('', TDisableWarning.ReasonComment('   '));
 end;
 
 procedure TDisableWarningTests.UnitWideAfterHeader;
 const
-  Header = '// Kopfkommentar' + #10 + '{$I Atlas.inc}' + #10 + 'unit' + #10 + '  A.B;' + #10 + 'interface' + #10 +
+  cHeader = '// Kopfkommentar' + #10 + '{$I Atlas.inc}' + #10 + 'unit' + #10 + '  A.B;' + #10 + 'interface' + #10 +
     'end.';
 begin
-  Assert.AreEqual(StringReplace(Source, 'unit A;', 'unit A;' + #10 + '{$WARN SYMBOL_DEPRECATED OFF} // Altlast', []),
-    Disabled(Source, 10, 'W1000', TDisableWarningScope.UnitWide, 'Altlast', ''));
-  Assert.AreEqual(StringReplace(Header, '  A.B;', '  A.B;' + #10 + '{$HINTS OFF}', []),
-    Disabled(Header, 4, 'H2443', TDisableWarningScope.UnitWide));
+  Assert.AreEqual(StringReplace(cSource, 'unit A;', 'unit A;' + #10 + '{$WARN SYMBOL_DEPRECATED OFF} // Altlast', []),
+    Disabled(cSource, 10, 'W1000', TDisableWarningScope.UnitWide, 'Altlast', ''));
+  Assert.AreEqual(StringReplace(cHeader, '  A.B;', '  A.B;' + #10 + '{$HINTS OFF}', []),
+    Disabled(cHeader, 4, 'H2443', TDisableWarningScope.UnitWide));
   Assert.AreEqual('', Disabled('procedure X;' + #10 + 'begin' + #10 + 'end;', 1, 'H2443',
     TDisableWarningScope.UnitWide), 'Include-Datei ohne Kopf');
 end;
 
 procedure TDisableWarningTests.NestedRoutineWins;
 const
-  Nested =
+  cNested =
     'unit A;' + #10 + 'interface' + #10 + 'implementation' + #10 +
     'procedure Outer;' + #10 +           // 3
     '  procedure Inner;' + #10 +         // 4
@@ -158,65 +158,65 @@ const
     '  Inner;' + #10 +                   // 10
     'end;' + #10 + 'end.';
 var
-  Tree: TSyntaxTree;
+  mTree: TSyntaxTree;
 begin
-  Tree := TPascalParser.Parse(Nested);
+  mTree := TPascalParser.Parse(cNested);
   try
-    Assert.AreEqual('Inner', TDisableWarning.RoutineAt(Tree, 6).Name);
-    Assert.AreEqual('Outer', TDisableWarning.RoutineAt(Tree, 10).Name);
+    Assert.AreEqual('Inner', TDisableWarning.RoutineAt(mTree, 6).Name);
+    Assert.AreEqual('Outer', TDisableWarning.RoutineAt(mTree, 10).Name);
   finally
-    Tree.Free;
+    mTree.Free;
   end;
-  Assert.AreEqual(StringReplace(StringReplace(Nested, '  procedure Inner;', '  {$HINTS OFF}' + #10 +
+  Assert.AreEqual(StringReplace(StringReplace(cNested, '  procedure Inner;', '  {$HINTS OFF}' + #10 +
     '  procedure Inner;', []), '  end;' + #10, '  end;' + #10 + '  {$HINTS ON}' + #10, []),
-    Disabled(Nested, 6, 'H2164', TDisableWarningScope.Routine));
+    Disabled(cNested, 6, 'H2164', TDisableWarningScope.Routine));
 end;
 
 procedure TDisableWarningTests.NoRoutineOutsideBodies;
 var
-  Tree: TSyntaxTree;
+  mTree: TSyntaxTree;
 begin
-  Tree := TPascalParser.Parse(Source);
+  mTree := TPascalParser.Parse(cSource);
   try
-    Assert.IsNull(TDisableWarning.RoutineAt(Tree, 2));
-    Assert.IsNull(TDisableWarning.RoutineAt(Tree, 13));
+    Assert.IsNull(TDisableWarning.RoutineAt(mTree, 2));
+    Assert.IsNull(TDisableWarning.RoutineAt(mTree, 13));
   finally
-    Tree.Free;
+    mTree.Free;
   end;
-  Assert.AreEqual('', Disabled(Source, 2, 'W1000', TDisableWarningScope.Routine));
-  Assert.AreEqual('', Disabled(Source, 99, 'W1000', TDisableWarningScope.Line));
+  Assert.AreEqual('', Disabled(cSource, 2, 'W1000', TDisableWarningScope.Routine));
+  Assert.AreEqual('', Disabled(cSource, 99, 'W1000', TDisableWarningScope.Line));
 end;
 
 procedure TDisableWarningTests.KeepsLineBreaks;
 var
-  Crlf: string;
+  mCrlf: string;
 begin
-  Crlf := StringReplace(Source, #10, #13#10, [rfReplaceAll]);
-  Assert.AreEqual(StringReplace(Crlf, '  Alt;' + #13#10, '  {$WARN SYMBOL_DEPRECATED OFF}' + #13#10 + '  Alt;' +
-    #13#10 + '  {$WARN SYMBOL_DEPRECATED ON}' + #13#10, []), Disabled(Crlf, 10, 'W1000', TDisableWarningScope.Line));
+  mCrlf := StringReplace(cSource, #10, #13#10, [rfReplaceAll]);
+  Assert.AreEqual(StringReplace(mCrlf, '  Alt;' + #13#10, '  {$WARN SYMBOL_DEPRECATED OFF}' + #13#10 + '  Alt;' +
+    #13#10 + '  {$WARN SYMBOL_DEPRECATED ON}' + #13#10, []), Disabled(mCrlf, 10, 'W1000', TDisableWarningScope.Line));
   // Letzte Zeile ohne Umbruch am Ende.
-  Assert.AreEqual(StringReplace(Source, 'end.', '{$HINTS OFF}' + #10 + 'end.' + #10 + '{$HINTS ON}', []),
-    Disabled(Source, 13, 'H2443', TDisableWarningScope.Line));
+  Assert.AreEqual(StringReplace(cSource, 'end.', '{$HINTS OFF}' + #10 + 'end.' + #10 + '{$HINTS ON}', []),
+    Disabled(cSource, 13, 'H2443', TDisableWarningScope.Line));
 end;
 
 procedure TDisableWarningTests.RefusesErrors;
 var
-  Switch: TDisableWarningSwitch;
+  mSwitch: TDisableWarningSwitch;
 begin
-  Assert.IsFalse(TDisableWarning.SwitchFor('E2003', '', Switch));
-  Assert.IsFalse(TDisableWarning.SwitchFor('F2613', '', Switch));
-  Assert.IsFalse(TDisableWarning.SwitchFor('', '', Switch));
+  Assert.IsFalse(TDisableWarning.SwitchFor('E2003', '', mSwitch));
+  Assert.IsFalse(TDisableWarning.SwitchFor('F2613', '', mSwitch));
+  Assert.IsFalse(TDisableWarning.SwitchFor('', '', mSwitch));
 end;
 
 procedure TDisableWarningTests.OlderVersionFallsBackToWarnings;
 var
-  Switch: TDisableWarningSwitch;
+  mSwitch: TDisableWarningSwitch;
 begin
-  Assert.IsTrue(TDisableWarning.SwitchFor('W1071', '21.0', Switch));
-  Assert.IsTrue(Switch.AllWarnings);
-  Assert.AreEqual('{$WARNINGS OFF}', Switch.OffText);
-  Assert.IsTrue(TDisableWarning.SwitchFor('W1071', '37.0', Switch));
-  Assert.AreEqual('{$WARN IMPLICIT_INTEGER_CAST_LOSS OFF}', Switch.OffText);
+  Assert.IsTrue(TDisableWarning.SwitchFor('W1071', '21.0', mSwitch));
+  Assert.IsTrue(mSwitch.AllWarnings);
+  Assert.AreEqual('{$WARNINGS OFF}', mSwitch.OffText);
+  Assert.IsTrue(TDisableWarning.SwitchFor('W1071', '37.0', mSwitch));
+  Assert.AreEqual('{$WARN IMPLICIT_INTEGER_CAST_LOSS OFF}', mSwitch.OffText);
 end;
 
 initialization

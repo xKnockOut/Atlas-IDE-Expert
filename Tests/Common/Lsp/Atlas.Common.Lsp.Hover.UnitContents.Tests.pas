@@ -59,9 +59,9 @@ uses
   Atlas.Common.Lsp.Hover;
 
 const
-  WerkFile = 'C:\P\Werk.pas';
+  cWerkFile = 'C:\P\Werk.pas';
 
-  UnitWerk =
+  cUnitWerk =
     'unit Werk;'#10 +
     'interface'#10 +
     'type'#10 +
@@ -104,7 +104,7 @@ const
     'end;'#10 +
     'end.';
 
-  UnitHaupt =
+  cUnitHaupt =
     'unit Haupt;'#10 +
     'interface'#10 +
     'uses Werk;'#10 +
@@ -141,7 +141,7 @@ end;
 
 procedure TLspHoverUnitContentsTests.Setup;
 begin
-  FUnit := TIndexExtractor.ExtractText(UnitWerk, WerkFile, nil);
+  FUnit := TIndexExtractor.ExtractText(cUnitWerk, cWerkFile, nil);
 end;
 
 procedure TLspHoverUnitContentsTests.TearDown;
@@ -165,7 +165,7 @@ begin
   Assert.AreEqual(Ord(THoverUnitGroup.OtherTypes), Ord(mEntries[6].Group));
   Assert.AreEqual(Ord(THoverUnitGroup.Variables), Ord(mEntries[9].Group));
   // Fundort des Namens TKunde (Zeile 3, Spalte 2).
-  Assert.AreEqual(WerkFile, mEntries[1].FileName);
+  Assert.AreEqual(cWerkFile, mEntries[1].FileName);
   Assert.AreEqual(3, mEntries[1].Line);
   Assert.AreEqual(2, mEntries[1].Character);
 end;
@@ -174,14 +174,14 @@ procedure TLspHoverUnitContentsTests.MarksNamesUsedInTheFile;
 begin
   // TKunde direkt, TListe qualifiziert, Lauf als Aufruf; der uses-Eintrag selbst zählt nicht.
   Assert.AreEqual('TAuftrag,TKunde*,TListe<T>*,IDienst,TPunkt,TFarbe,TText,Lauf*,Grenze,Zaehler',
-    Names(Collected(UnitHaupt)));
+    Names(Collected(cUnitHaupt)));
 end;
 
 procedure TLspHoverUnitContentsTests.SelectsByMode;
 var
   mEntries: TArray<THoverUnitEntry>;
 begin
-  mEntries := Collected(UnitHaupt);
+  mEntries := Collected(cUnitHaupt);
   Assert.IsTrue(TLspHoverUnitContents.Select(mEntries, THoverUnitMode.Off).IsEmpty);
   Assert.AreEqual('TAuftrag,TKunde*,TListe<T>*,IDienst,TPunkt,TFarbe,TText',
     Names(TLspHoverUnitContents.Select(mEntries, THoverUnitMode.Types).Entries));
@@ -213,7 +213,7 @@ var
   mSections, mRuns: TJSONArray;
   mSection: TJSONObject;
 begin
-  mContents := TLspHoverUnitContents.Select(Collected(UnitHaupt), THoverUnitMode.UsedFirst);
+  mContents := TLspHoverUnitContents.Select(Collected(cUnitHaupt), THoverUnitMode.UsedFirst);
   mSections := TJSONArray.Create;
   try
     mContents.AddSections(mSections);
@@ -227,7 +227,7 @@ begin
     Assert.AreEqual(3, mRuns.Count);
     Assert.AreEqual('ref', mRuns.Items[0].GetValue<string>('kind'));
     Assert.AreEqual('TKunde', mRuns.Items[0].GetValue<string>('text'));
-    Assert.AreEqual(WerkFile, mRuns.Items[0].GetValue<string>('file'));
+    Assert.AreEqual(cWerkFile, mRuns.Items[0].GetValue<string>('file'));
     Assert.AreEqual(3, mRuns.Items[0].GetValue<Integer>('line'));
     Assert.AreEqual(', ', mRuns.Items[1].GetValue<string>('text'));
     Assert.AreEqual('TListe<T>', mRuns.Items[2].GetValue<string>('text'));
@@ -264,7 +264,7 @@ procedure TLspHoverUnitContentsTests.WritesMarkdownAndPlainText;
 var
   mContents: THoverUnitContents;
 begin
-  mContents := TLspHoverUnitContents.Select(Collected(UnitHaupt), THoverUnitMode.All);
+  mContents := TLspHoverUnitContents.Select(Collected(cUnitHaupt), THoverUnitMode.All);
   Assert.AreEqual('**IN DIESER DATEI BENUTZT (3)**'#10#10 +
     '- Klassen: `TKunde`, `TListe<T>`'#10 +
     '- Routinen: `Lauf`'#10#10 +
@@ -277,7 +277,7 @@ begin
     '**ROUTINEN, KONSTANTEN UND VARIABLEN (2)**'#10#10 +
     '- Konstanten: `Grenze`'#10 +
     '- Variablen: `Zaehler`', mContents.ToMarkdown);
-  mContents := TLspHoverUnitContents.Select(Collected(UnitHaupt), THoverUnitMode.Types);
+  mContents := TLspHoverUnitContents.Select(Collected(cUnitHaupt), THoverUnitMode.Types);
   Assert.AreEqual('TYPEN (7)'#10 +
     'Klassen: TAuftrag, TKunde, TListe<T>'#10 +
     'Interfaces: IDienst'#10 +
@@ -298,9 +298,9 @@ begin
   mIndex := TSymbolIndex.Create;
   mIndex.AddUnit(FUnit);
   mResolver := TNameResolver.Create(mIndex);
-  mTree := TPascalParser.Parse(UnitHaupt);
+  mTree := TPascalParser.Parse(cUnitHaupt);
   try
-    mInfo := TLspHover.InfoAt(THoverSource.Create(mResolver, mIndex, nil), mTree, UnitHaupt, 'C:\P\Haupt.pas',
+    mInfo := TLspHover.InfoAt(THoverSource.Create(mResolver, mIndex, nil), mTree, cUnitHaupt, 'C:\P\Haupt.pas',
       TTextPosition.Create(2, 6));
     Assert.AreEqual('unit Werk;', mInfo.Declaration);
     Assert.AreEqual(Ord(THoverUnitMode.All), Ord(mInfo.UnitContents.Mode));
@@ -308,7 +308,7 @@ begin
       Names(mInfo.UnitContents.Entries));
     mAtlas := TLspHover.AtlasJson(mInfo);
     try
-      Assert.AreEqual(WerkFile, mAtlas.GetValue<string>('documentationText'));
+      Assert.AreEqual(cWerkFile, mAtlas.GetValue<string>('documentationText'));
       mSections := mAtlas.GetValue<TJSONArray>('documentation.sections');
       Assert.AreEqual('unitContents', mSections.Items[0].GetValue<string>('kind'));
     finally

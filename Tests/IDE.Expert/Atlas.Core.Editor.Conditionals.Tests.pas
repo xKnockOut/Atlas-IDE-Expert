@@ -39,66 +39,66 @@ end;
 
 procedure TAtlasConditionalsTests.IfdefElseEndif;
 var
-  Conditionals: TAtlasConditionals;
+  mConditionals: TAtlasConditionals;
 begin
-  Conditionals := NewConditionals;
+  mConditionals := NewConditionals;
   try
-    Assert.IsTrue(Conditionals.Active);
-    Assert.IsTrue(Conditionals.Handle('IFDEF FPC'));
-    Assert.IsFalse(Conditionals.Active, 'FPC fehlt');
-    Conditionals.Handle('ELSE');
-    Assert.IsTrue(Conditionals.Active);
-    Conditionals.Handle('ENDIF');
-    Assert.IsTrue(Conditionals.Active);
-    Conditionals.Handle('IFDEF Win32');
-    Assert.IsTrue(Conditionals.Active, 'Groß-/Kleinschreibung egal');
-    Conditionals.Handle('ELSE');
-    Assert.IsFalse(Conditionals.Active);
-    Conditionals.Handle('IFEND');
-    Conditionals.Handle('IFNDEF FPC');
-    Assert.IsTrue(Conditionals.Active);
-    Conditionals.Handle('ENDIF');
+    Assert.IsTrue(mConditionals.Active);
+    Assert.IsTrue(mConditionals.Handle('IFDEF FPC'));
+    Assert.IsFalse(mConditionals.Active, 'FPC fehlt');
+    mConditionals.Handle('ELSE');
+    Assert.IsTrue(mConditionals.Active);
+    mConditionals.Handle('ENDIF');
+    Assert.IsTrue(mConditionals.Active);
+    mConditionals.Handle('IFDEF Win32');
+    Assert.IsTrue(mConditionals.Active, 'Groß-/Kleinschreibung egal');
+    mConditionals.Handle('ELSE');
+    Assert.IsFalse(mConditionals.Active);
+    mConditionals.Handle('IFEND');
+    mConditionals.Handle('IFNDEF FPC');
+    Assert.IsTrue(mConditionals.Active);
+    mConditionals.Handle('ENDIF');
   finally
-    Conditionals.Free;
+    mConditionals.Free;
   end;
 end;
 
 procedure TAtlasConditionalsTests.NestedBranchesInInactiveParent;
 var
-  Conditionals: TAtlasConditionals;
+  mConditionals: TAtlasConditionals;
 begin
-  Conditionals := NewConditionals;
+  mConditionals := NewConditionals;
   try
     // {$IFDEF FPC}{$IFDEF UNIX} … {$ELSE} … {$ENDIF}{$ELSE} … {$ENDIF}
-    Conditionals.Handle('IFDEF FPC');
-    Conditionals.Handle('IFDEF UNIX');
-    Assert.IsFalse(Conditionals.Active);
-    Conditionals.Handle('ELSE');
-    Assert.IsFalse(Conditionals.Active, 'ELSE in einem inaktiven Zweig bleibt inaktiv');
-    Conditionals.Handle('ENDIF');
-    Assert.IsFalse(Conditionals.Active);
-    Conditionals.Handle('ELSE');
-    Assert.IsTrue(Conditionals.Active);
-    Conditionals.Handle('ENDIF');
-    Assert.IsTrue(Conditionals.Active);
+    mConditionals.Handle('IFDEF FPC');
+    mConditionals.Handle('IFDEF UNIX');
+    Assert.IsFalse(mConditionals.Active);
+    mConditionals.Handle('ELSE');
+    Assert.IsFalse(mConditionals.Active, 'ELSE in einem inaktiven Zweig bleibt inaktiv');
+    mConditionals.Handle('ENDIF');
+    Assert.IsFalse(mConditionals.Active);
+    mConditionals.Handle('ELSE');
+    Assert.IsTrue(mConditionals.Active);
+    mConditionals.Handle('ENDIF');
+    Assert.IsTrue(mConditionals.Active);
   finally
-    Conditionals.Free;
+    mConditionals.Free;
   end;
 end;
 
 procedure TAtlasConditionalsTests.IfExpressions;
 var
-  Conditionals: TAtlasConditionals;
+  mConditionals: TAtlasConditionals;
 
   function Holds(const AExpression: string): Boolean;
   begin
-    Conditionals.Handle('IF ' + AExpression);
-    Result := Conditionals.Active;
-    Conditionals.Handle('IFEND');
+    mConditionals.Handle('IF ' + AExpression);
+    Result := mConditionals.Active;
+    mConditionals.Handle('IFEND');
   end;
 
 begin
-  Conditionals := NewConditionals;
+  mConditionals := NewConditionals;
   try
     Assert.IsTrue(Holds('Defined(MSWINDOWS)'));
     Assert.IsFalse(Holds('Defined(FPC)'));
@@ -112,71 +112,71 @@ begin
     Assert.IsTrue(Holds('Declared(TFoo)'));
     Assert.IsTrue(Holds('SizeOf(Pointer) = 8'));
   finally
-    Conditionals.Free;
+    mConditionals.Free;
   end;
 end;
 
 procedure TAtlasConditionalsTests.ElseIfTakesFirstTrueBranch;
 var
-  Conditionals: TAtlasConditionals;
+  mConditionals: TAtlasConditionals;
 begin
-  Conditionals := NewConditionals;
+  mConditionals := NewConditionals;
   try
-    Conditionals.Handle('IF Defined(FPC)');
-    Assert.IsFalse(Conditionals.Active);
-    Conditionals.Handle('ELSEIF Defined(MSWINDOWS)');
-    Assert.IsTrue(Conditionals.Active);
-    Conditionals.Handle('ELSEIF Defined(WIN32)');
-    Assert.IsFalse(Conditionals.Active, 'schon ein Zweig genommen');
-    Conditionals.Handle('ELSE');
-    Assert.IsFalse(Conditionals.Active);
-    Conditionals.Handle('IFEND');
-    Assert.IsTrue(Conditionals.Active);
+    mConditionals.Handle('IF Defined(FPC)');
+    Assert.IsFalse(mConditionals.Active);
+    mConditionals.Handle('ELSEIF Defined(MSWINDOWS)');
+    Assert.IsTrue(mConditionals.Active);
+    mConditionals.Handle('ELSEIF Defined(WIN32)');
+    Assert.IsFalse(mConditionals.Active, 'schon ein Zweig genommen');
+    mConditionals.Handle('ELSE');
+    Assert.IsFalse(mConditionals.Active);
+    mConditionals.Handle('IFEND');
+    Assert.IsTrue(mConditionals.Active);
   finally
-    Conditionals.Free;
+    mConditionals.Free;
   end;
 end;
 
 procedure TAtlasConditionalsTests.DefineAndUndefOnlyInActiveBranches;
 var
-  Conditionals: TAtlasConditionals;
+  mConditionals: TAtlasConditionals;
 begin
-  Conditionals := NewConditionals;
+  mConditionals := NewConditionals;
   try
-    Conditionals.Handle('IFDEF FPC');
-    Conditionals.Handle('DEFINE NURFPC');
-    Conditionals.Handle('UNDEF MSWINDOWS');
-    Conditionals.Handle('ENDIF');
-    Assert.IsFalse(Conditionals.Defined('NURFPC'), 'im inaktiven Zweig ohne Wirkung');
-    Assert.IsTrue(Conditionals.Defined('MSWINDOWS'));
-    Conditionals.Handle('DEFINE Eigen');
-    Assert.IsTrue(Conditionals.Defined('EIGEN'));
-    Conditionals.Handle('UNDEF eigen');
-    Assert.IsFalse(Conditionals.Defined('Eigen'));
+    mConditionals.Handle('IFDEF FPC');
+    mConditionals.Handle('DEFINE NURFPC');
+    mConditionals.Handle('UNDEF MSWINDOWS');
+    mConditionals.Handle('ENDIF');
+    Assert.IsFalse(mConditionals.Defined('NURFPC'), 'im inaktiven Zweig ohne Wirkung');
+    Assert.IsTrue(mConditionals.Defined('MSWINDOWS'));
+    mConditionals.Handle('DEFINE Eigen');
+    Assert.IsTrue(mConditionals.Defined('EIGEN'));
+    mConditionals.Handle('UNDEF eigen');
+    Assert.IsFalse(mConditionals.Defined('Eigen'));
   finally
-    Conditionals.Free;
+    mConditionals.Free;
   end;
 end;
 
 procedure TAtlasConditionalsTests.OtherDirectivesAreNotConditional;
 var
-  Conditionals: TAtlasConditionals;
+  mConditionals: TAtlasConditionals;
 begin
-  Conditionals := NewConditionals;
+  mConditionals := NewConditionals;
   try
-    Assert.IsFalse(Conditionals.Handle('MODE DELPHIUNICODE'));
-    Assert.IsFalse(Conditionals.Handle('R *.dfm'));
+    Assert.IsFalse(mConditionals.Handle('MODE DELPHIUNICODE'));
+    Assert.IsFalse(mConditionals.Handle('R *.dfm'));
     // $IFOPT kennt nur der Compiler: gilt als falsch, der ELSE-Zweig ist aktiv.
-    Assert.IsTrue(Conditionals.Handle('IFOPT R+'));
-    Assert.IsFalse(Conditionals.Active);
-    Conditionals.Handle('ELSE');
-    Assert.IsTrue(Conditionals.Active);
-    Conditionals.Handle('ENDIF');
+    Assert.IsTrue(mConditionals.Handle('IFOPT R+'));
+    Assert.IsFalse(mConditionals.Active);
+    mConditionals.Handle('ELSE');
+    Assert.IsTrue(mConditionals.Active);
+    mConditionals.Handle('ENDIF');
     // Ein ENDIF zu viel bricht nichts.
-    Conditionals.Handle('ENDIF');
-    Assert.IsTrue(Conditionals.Active);
+    mConditionals.Handle('ENDIF');
+    Assert.IsTrue(mConditionals.Active);
   finally
-    Conditionals.Free;
+    mConditionals.Free;
   end;
 end;
 

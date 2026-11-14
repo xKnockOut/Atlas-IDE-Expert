@@ -114,11 +114,11 @@ uses
 
 function THoverLayoutTests.View(const ADeclaration: string): TAtlasHoverView;
 var
-  Data: TAtlasHoverData;
+  mData: TAtlasHoverData;
 begin
-  Data := Default(TAtlasHoverData);
-  Data.Declaration := ADeclaration;
-  Result := TAtlasHoverView.Create(Data);
+  mData := Default(TAtlasHoverData);
+  mData.Declaration := ADeclaration;
+  Result := TAtlasHoverView.Create(mData);
 end;
 
 function THoverLayoutTests.Texts: TAtlasHoverTexts;
@@ -151,12 +151,12 @@ end;
 
 function THoverLayoutTests.CountKind(const ALayout: TAtlasHoverLayout; AKind: TAtlasHoverItemKind): Integer;
 var
-  Item: TAtlasHoverItem;
+  mItem: TAtlasHoverItem;
 begin
   Result := 0;
-  for Item in ALayout.Items do
+  for mItem in ALayout.Items do
   begin
-    if Item.Kind = AKind then
+    if mItem.Kind = AKind then
     begin
       Inc(Result);
     end;
@@ -165,13 +165,13 @@ end;
 
 function THoverLayoutTests.FirstKind(const ALayout: TAtlasHoverLayout; AKind: TAtlasHoverItemKind): Integer;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
-  for Index := 0 to High(ALayout.Items) do
+  for mIndex := 0 to High(ALayout.Items) do
   begin
-    if ALayout.Items[Index].Kind = AKind then
+    if ALayout.Items[mIndex].Kind = AKind then
     begin
-      Exit(Index);
+      Exit(mIndex);
     end;
   end;
   Result := -1;
@@ -179,162 +179,162 @@ end;
 
 procedure THoverLayoutTests.DeclarationOnlyHasOneTextLine;
 var
-  Layout: TAtlasHoverLayout;
+  mLayout: TAtlasHoverLayout;
 begin
-  Layout := Build(View('x: Integer'), 300);
-  Assert.AreEqual(1, Integer(Length(Layout.Items)));
-  Assert.AreEqual(0, Integer(Length(Layout.Hits)));
-  Assert.AreEqual<TAtlasHoverItemKind>(TAtlasHoverItemKind.Styled, Layout.Items[0].Kind);
-  CheckRect(Rect(11, 8, 289, 26), Layout.Items[0].Rect, 'Deklaration');
-  Assert.AreEqual(0, Layout.Items[0].From);
-  Assert.AreEqual(10, Layout.Items[0].Till);
-  Assert.AreEqual(32, Layout.Height);
+  mLayout := Build(View('x: Integer'), 300);
+  Assert.AreEqual(1, Integer(Length(mLayout.Items)));
+  Assert.AreEqual(0, Integer(Length(mLayout.Hits)));
+  Assert.AreEqual<TAtlasHoverItemKind>(TAtlasHoverItemKind.Styled, mLayout.Items[0].Kind);
+  CheckRect(Rect(11, 8, 289, 26), mLayout.Items[0].Rect, 'Deklaration');
+  Assert.AreEqual(0, mLayout.Items[0].From);
+  Assert.AreEqual(10, mLayout.Items[0].Till);
+  Assert.AreEqual(32, mLayout.Height);
 end;
 
 procedure THoverLayoutTests.LongDeclarationWrapsWithIndent;
 var
-  Layout: TAtlasHoverLayout;
+  mLayout: TAtlasHoverLayout;
 begin
-  Layout := Build(View('procedure Foo(A: Integer; B: string)'), 200);
-  Assert.AreEqual(2, CountKind(Layout, TAtlasHoverItemKind.Styled));
-  CheckRect(Rect(11, 8, 189, 26), Layout.Items[0].Rect, 'Zeile 1');
-  Assert.AreEqual(17, Layout.Items[0].Till);
-  CheckRect(Rect(27, 26, 189, 44), Layout.Items[1].Rect, 'Zeile 2 eingerückt');
-  Assert.AreEqual(17, Layout.Items[1].From);
-  Assert.AreEqual(36, Layout.Items[1].Till);
-  Assert.AreEqual(50, Layout.Height);
+  mLayout := Build(View('procedure Foo(A: Integer; B: string)'), 200);
+  Assert.AreEqual(2, CountKind(mLayout, TAtlasHoverItemKind.Styled));
+  CheckRect(Rect(11, 8, 189, 26), mLayout.Items[0].Rect, 'Zeile 1');
+  Assert.AreEqual(17, mLayout.Items[0].Till);
+  CheckRect(Rect(27, 26, 189, 44), mLayout.Items[1].Rect, 'Zeile 2 eingerückt');
+  Assert.AreEqual(17, mLayout.Items[1].From);
+  Assert.AreEqual(36, mLayout.Items[1].Till);
+  Assert.AreEqual(50, mLayout.Height);
 end;
 
 procedure THoverLayoutTests.ProblemsProduceBlockAndBar;
 var
-  HoverView: TAtlasHoverView;
-  Problem: TAtlasProblem;
-  Layout: TAtlasHoverLayout;
-  Bar: Integer;
-  Colors: TAtlasColors;
+  mHoverView: TAtlasHoverView;
+  mProblem: TAtlasProblem;
+  mLayout: TAtlasHoverLayout;
+  mBar: Integer;
+  mColors: TAtlasColors;
 begin
-  HoverView := View('');
-  Problem := Default(TAtlasProblem);
-  Problem.Message := 'x';
-  Problem.Severity := TAtlasProblemSeverity.Error;
-  HoverView.Problems := [Problem];
-  Layout := Build(HoverView, 300);
-  Assert.AreEqual<TAtlasHoverItemKind>(TAtlasHoverItemKind.Block, Layout.Items[0].Kind);
-  CheckRect(Rect(20, 8, 289, 23), Layout.Items[0].Rect, 'Meldung');
-  Assert.AreEqual<TAtlasHoverItemKind>(TAtlasHoverItemKind.Text, Layout.Items[1].Kind);
-  Assert.AreEqual('Atlas', Layout.Items[1].Text);
-  Assert.AreEqual(20, Layout.Items[1].Rect.Left);
-  Assert.AreEqual(25, Layout.Items[1].Rect.Top);
-  Bar := FirstKind(Layout, TAtlasHoverItemKind.RoundFill);
-  Assert.IsTrue(Bar >= 0);
-  CheckRect(Rect(11, 9, 14, 37), Layout.Items[Bar].Rect, 'Farbbalken');
-  Colors := TAtlasColors.Light;
-  Assert.AreEqual(Colors.Error, Layout.Items[Bar].Color);
+  mHoverView := View('');
+  mProblem := Default(TAtlasProblem);
+  mProblem.Message := 'x';
+  mProblem.Severity := TAtlasProblemSeverity.Error;
+  mHoverView.Problems := [mProblem];
+  mLayout := Build(mHoverView, 300);
+  Assert.AreEqual<TAtlasHoverItemKind>(TAtlasHoverItemKind.Block, mLayout.Items[0].Kind);
+  CheckRect(Rect(20, 8, 289, 23), mLayout.Items[0].Rect, 'Meldung');
+  Assert.AreEqual<TAtlasHoverItemKind>(TAtlasHoverItemKind.Text, mLayout.Items[1].Kind);
+  Assert.AreEqual('Atlas', mLayout.Items[1].Text);
+  Assert.AreEqual(20, mLayout.Items[1].Rect.Left);
+  Assert.AreEqual(25, mLayout.Items[1].Rect.Top);
+  mBar := FirstKind(mLayout, TAtlasHoverItemKind.RoundFill);
+  Assert.IsTrue(mBar >= 0);
+  CheckRect(Rect(11, 9, 14, 37), mLayout.Items[mBar].Rect, 'Farbbalken');
+  mColors := TAtlasColors.Light;
+  Assert.AreEqual(mColors.Error, mLayout.Items[mBar].Color);
   // Ohne Deklaration endet der Tooltip nach den Problemen.
-  Assert.AreEqual(46, Layout.Height);
+  Assert.AreEqual(46, mLayout.Height);
 end;
 
 procedure THoverLayoutTests.DebugValueProducesExpressionValueAndBar;
 var
-  HoverView: TAtlasHoverView;
-  Layout: TAtlasHoverLayout;
-  Bar: Integer;
-  Colors: TAtlasColors;
+  mHoverView: TAtlasHoverView;
+  mLayout: TAtlasHoverLayout;
+  mBar: Integer;
+  mColors: TAtlasColors;
 begin
   // #891: Ausdruck in der Editorschrift (halbfett, Akzent), darunter der Wert, links ein Akzentbalken.
-  HoverView := View('');
-  HoverView.DebugValue := TAtlasDebugValue.Evaluated('Count', '3');
-  Layout := Build(HoverView, 300);
-  Colors := TAtlasColors.Light;
-  Assert.AreEqual<TAtlasHoverItemKind>(TAtlasHoverItemKind.Text, Layout.Items[0].Kind);
-  Assert.AreEqual('Count', Layout.Items[0].Text);
-  Assert.AreEqual<TAtlasHoverFont>(TAtlasHoverFont.Mono, Layout.Items[0].Face.Font);
-  Assert.IsTrue(Layout.Items[0].Face.Bold);
-  Assert.AreEqual(Colors.Accent, Layout.Items[0].Color);
-  Assert.AreEqual(20, Layout.Items[0].Rect.Left);
-  Assert.AreEqual(8, Layout.Items[0].Rect.Top);
-  Assert.AreEqual<TAtlasHoverItemKind>(TAtlasHoverItemKind.Block, Layout.Items[1].Kind);
-  Assert.AreEqual('3', Layout.Items[1].Text);
-  Assert.AreEqual(Colors.Text, Layout.Items[1].Color);
-  CheckRect(Rect(20, 27, 289, 42), Layout.Items[1].Rect, 'Wert');
-  Bar := FirstKind(Layout, TAtlasHoverItemKind.RoundFill);
-  Assert.IsTrue(Bar >= 0);
-  CheckRect(Rect(11, 9, 14, 41), Layout.Items[Bar].Rect, 'Akzentbalken');
-  Assert.AreEqual(Colors.Accent, Layout.Items[Bar].Color);
+  mHoverView := View('');
+  mHoverView.DebugValue := TAtlasDebugValue.Evaluated('Count', '3');
+  mLayout := Build(mHoverView, 300);
+  mColors := TAtlasColors.Light;
+  Assert.AreEqual<TAtlasHoverItemKind>(TAtlasHoverItemKind.Text, mLayout.Items[0].Kind);
+  Assert.AreEqual('Count', mLayout.Items[0].Text);
+  Assert.AreEqual<TAtlasHoverFont>(TAtlasHoverFont.Mono, mLayout.Items[0].Face.Font);
+  Assert.IsTrue(mLayout.Items[0].Face.Bold);
+  Assert.AreEqual(mColors.Accent, mLayout.Items[0].Color);
+  Assert.AreEqual(20, mLayout.Items[0].Rect.Left);
+  Assert.AreEqual(8, mLayout.Items[0].Rect.Top);
+  Assert.AreEqual<TAtlasHoverItemKind>(TAtlasHoverItemKind.Block, mLayout.Items[1].Kind);
+  Assert.AreEqual('3', mLayout.Items[1].Text);
+  Assert.AreEqual(mColors.Text, mLayout.Items[1].Color);
+  CheckRect(Rect(20, 27, 289, 42), mLayout.Items[1].Rect, 'Wert');
+  mBar := FirstKind(mLayout, TAtlasHoverItemKind.RoundFill);
+  Assert.IsTrue(mBar >= 0);
+  CheckRect(Rect(11, 9, 14, 41), mLayout.Items[mBar].Rect, 'Akzentbalken');
+  Assert.AreEqual(mColors.Accent, mLayout.Items[mBar].Color);
   // Ohne Deklaration und Probleme endet der Tooltip nach dem Wert.
-  Assert.AreEqual(50, Layout.Height);
+  Assert.AreEqual(50, mLayout.Height);
 end;
 
 procedure THoverLayoutTests.ReassignedLineInDescription;
 var
-  HoverView: TAtlasHoverView;
-  Layout: TAtlasHoverLayout;
-  Index: Integer;
+  mHoverView: TAtlasHoverView;
+  mLayout: TAtlasHoverLayout;
+  mIndex: Integer;
 begin
-  HoverView := View('Summe: Integer');
-  HoverView.Data.ReassignedTarget := 'locals';
-  HoverView.Data.ReassignedWrites := 2;
-  HoverView.Data.ReassignedLines := TArray<Integer>.Create(3, 9);
-  Layout := Build(HoverView, 300);
-  Index := FirstKind(Layout, TAtlasHoverItemKind.Block);
-  Assert.IsTrue(Index >= 0, 'Zeile unter der Linie');
-  Assert.AreEqual('2 mal 4, 10', Layout.Items[Index].Text);
-  Assert.AreEqual(TAtlasColors.Light.Muted, Layout.Items[Index].Color);
+  mHoverView := View('Summe: Integer');
+  mHoverView.Data.ReassignedTarget := 'locals';
+  mHoverView.Data.ReassignedWrites := 2;
+  mHoverView.Data.ReassignedLines := TArray<Integer>.Create(3, 9);
+  mLayout := Build(mHoverView, 300);
+  mIndex := FirstKind(mLayout, TAtlasHoverItemKind.Block);
+  Assert.IsTrue(mIndex >= 0, 'Zeile unter der Linie');
+  Assert.AreEqual('2 mal 4, 10', mLayout.Items[mIndex].Text);
+  Assert.AreEqual(TAtlasColors.Light.Muted, mLayout.Items[mIndex].Color);
   // Ausgeblendet (Art nicht gewaehlt): keine Beschreibung.
-  HoverView.Data.ClearReassigned;
-  Layout := Build(HoverView, 300);
-  Assert.AreEqual(-1, FirstKind(Layout, TAtlasHoverItemKind.Block));
+  mHoverView.Data.ClearReassigned;
+  mLayout := Build(mHoverView, 300);
+  Assert.AreEqual(-1, FirstKind(mLayout, TAtlasHoverItemKind.Block));
 end;
 
 procedure THoverLayoutTests.DebugValuePendingShowsPlaceholder;
 var
-  HoverView: TAtlasHoverView;
-  Layout: TAtlasHoverLayout;
-  Colors: TAtlasColors;
+  mHoverView: TAtlasHoverView;
+  mLayout: TAtlasHoverLayout;
+  mColors: TAtlasColors;
 begin
-  HoverView := View('');
-  HoverView.DebugValue := TAtlasDebugValue.Pending('FList.Count');
-  Layout := Build(HoverView, 300);
-  Colors := TAtlasColors.Light;
-  Assert.AreEqual('FList.Count', Layout.Items[0].Text);
-  Assert.AreEqual<TAtlasHoverItemKind>(TAtlasHoverItemKind.Block, Layout.Items[1].Kind);
-  Assert.AreEqual('eval', Layout.Items[1].Text);
-  Assert.AreEqual(Colors.Muted, Layout.Items[1].Color);
+  mHoverView := View('');
+  mHoverView.DebugValue := TAtlasDebugValue.Pending('FList.Count');
+  mLayout := Build(mHoverView, 300);
+  mColors := TAtlasColors.Light;
+  Assert.AreEqual('FList.Count', mLayout.Items[0].Text);
+  Assert.AreEqual<TAtlasHoverItemKind>(TAtlasHoverItemKind.Block, mLayout.Items[1].Kind);
+  Assert.AreEqual('eval', mLayout.Items[1].Text);
+  Assert.AreEqual(mColors.Muted, mLayout.Items[1].Color);
 end;
 
 procedure THoverLayoutTests.DebugValueAboveDeclaration;
 var
-  HoverView: TAtlasHoverView;
-  Layout: TAtlasHoverLayout;
-  Line, Styled: Integer;
+  mHoverView: TAtlasHoverView;
+  mLayout: TAtlasHoverLayout;
+  mLine, mStyled: Integer;
 begin
-  HoverView := View('var Count: Integer');
-  HoverView.DebugValue := TAtlasDebugValue.Evaluated('Count', '3');
-  Layout := Build(HoverView, 300);
+  mHoverView := View('var Count: Integer');
+  mHoverView.DebugValue := TAtlasDebugValue.Evaluated('Count', '3');
+  mLayout := Build(mHoverView, 300);
   // Trennlinie unter dem Wert, danach die Deklaration.
-  Line := FirstKind(Layout, TAtlasHoverItemKind.Line);
-  Assert.IsTrue(Line >= 0);
-  Assert.AreEqual(48, Layout.Items[Line].Rect.Top);
-  Styled := FirstKind(Layout, TAtlasHoverItemKind.Styled);
-  Assert.IsTrue(Styled > Line);
-  Assert.IsTrue(Layout.Items[Styled].Rect.Top >= 56);
+  mLine := FirstKind(mLayout, TAtlasHoverItemKind.Line);
+  Assert.IsTrue(mLine >= 0);
+  Assert.AreEqual(48, mLayout.Items[mLine].Rect.Top);
+  mStyled := FirstKind(mLayout, TAtlasHoverItemKind.Styled);
+  Assert.IsTrue(mStyled > mLine);
+  Assert.IsTrue(mLayout.Items[mStyled].Rect.Top >= 56);
 end;
 
 procedure THoverLayoutTests.FailedDebugValueIsHidden;
 var
-  HoverView: TAtlasHoverView;
-  Layout: TAtlasHoverLayout;
-  Item: TAtlasHoverItem;
+  mHoverView: TAtlasHoverView;
+  mLayout: TAtlasHoverLayout;
+  mItem: TAtlasHoverItem;
 begin
   // Fehler der Auswertung ohne Erklärung zeigt der Tooltip nicht (#840 erklärt nur „kein Zugriff“).
-  HoverView := View('var Count: Integer');
-  HoverView.DebugValue := TAtlasDebugValue.Failed('Count', 'E2003 Undeclared identifier');
-  Layout := Build(HoverView, 300);
-  for Item in Layout.Items do
+  mHoverView := View('var Count: Integer');
+  mHoverView.DebugValue := TAtlasDebugValue.Failed('Count', 'E2003 Undeclared identifier');
+  mLayout := Build(mHoverView, 300);
+  for mItem in mLayout.Items do
   begin
-    Assert.AreNotEqual('Count', Item.Text, 'kein Abschnitt für den Wert');
+    Assert.AreNotEqual('Count', mItem.Text, 'kein Abschnitt für den Wert');
   end;
-  Assert.AreEqual(Integer(0), CountKind(Layout, TAtlasHoverItemKind.RoundFill));
+  Assert.AreEqual(Integer(0), CountKind(mLayout, TAtlasHoverItemKind.RoundFill));
 end;
 
 function Unavailable(const AReason: string): TAtlasDebugValue;
@@ -346,255 +346,255 @@ end;
 
 procedure THoverLayoutTests.UnavailableValueShowsCauseAndFixes;
 var
-  HoverView: TAtlasHoverView;
-  Layout: TAtlasHoverLayout;
-  Colors: TAtlasColors;
-  Hit: TAtlasHoverHit;
-  Fixes: Integer;
+  mHoverView: TAtlasHoverView;
+  mLayout: TAtlasHoverLayout;
+  mColors: TAtlasColors;
+  mHit: TAtlasHoverHit;
+  mFixes: Integer;
 begin
   // „kein Zugriff“ (#840): Kennzeichen in der Warnfarbe, Ursache, Herkunft, Korrekturen als Klickflächen.
-  HoverView := View('');
-  HoverView.DebugValue := Unavailable('O+');
-  HoverView.DebugValue.Note.Origin := '{$O+} in Kunden.pas, Zeile 12';
-  HoverView.DebugValue.Note.Fixes := [TAtlasDebugValueFix.Create(1, 'Routine'), TAtlasDebugValueFix.Create(2,
+  mHoverView := View('');
+  mHoverView.DebugValue := Unavailable('O+');
+  mHoverView.DebugValue.Note.Origin := '{$O+} in Kunden.pas, Zeile 12';
+  mHoverView.DebugValue.Note.Fixes := [TAtlasDebugValueFix.Create(1, 'Routine'), TAtlasDebugValueFix.Create(2,
     'Unit')];
-  Layout := Build(HoverView, 300);
-  Colors := TAtlasColors.Light;
-  Assert.AreEqual('Summe', Layout.Items[0].Text);
-  Assert.AreEqual('kein Zugriff', Layout.Items[1].Text);
-  Assert.AreEqual(Colors.Warn, Layout.Items[1].Color);
-  Assert.AreEqual('O+', Layout.Items[2].Text);
-  Assert.AreEqual('{$O+} in Kunden.pas, Zeile 12', Layout.Items[3].Text);
-  Assert.AreEqual(Colors.Muted, Layout.Items[3].Color);
-  Fixes := 0;
-  for Hit in Layout.Hits do
+  mLayout := Build(mHoverView, 300);
+  mColors := TAtlasColors.Light;
+  Assert.AreEqual('Summe', mLayout.Items[0].Text);
+  Assert.AreEqual('kein Zugriff', mLayout.Items[1].Text);
+  Assert.AreEqual(mColors.Warn, mLayout.Items[1].Color);
+  Assert.AreEqual('O+', mLayout.Items[2].Text);
+  Assert.AreEqual('{$O+} in Kunden.pas, Zeile 12', mLayout.Items[3].Text);
+  Assert.AreEqual(mColors.Muted, mLayout.Items[3].Color);
+  mFixes := 0;
+  for mHit in mLayout.Hits do
   begin
-    if Hit.Kind = TAtlasHoverHitKind.DebugFix then
+    if mHit.Kind = TAtlasHoverHitKind.DebugFix then
     begin
-      Assert.AreEqual(Fixes, Hit.Index, 'Index in Note.Fixes');
-      Inc(Fixes);
+      Assert.AreEqual(mFixes, mHit.Index, 'Index in Note.Fixes');
+      Inc(mFixes);
     end;
   end;
-  Assert.AreEqual(2, Fixes);
+  Assert.AreEqual(2, mFixes);
 end;
 
 procedure THoverLayoutTests.DebugValueActionsAreLinks;
 var
-  HoverView: TAtlasHoverView;
-  Layout: TAtlasHoverLayout;
-  Hit: TAtlasHoverHit;
-  Actions: Integer;
-  Found: Boolean;
-  Item: TAtlasHoverItem;
+  mHoverView: TAtlasHoverView;
+  mLayout: TAtlasHoverLayout;
+  mHit: TAtlasHoverHit;
+  mActions: Integer;
+  mFound: Boolean;
+  mItem: TAtlasHoverItem;
 begin
-  HoverView := View('');
-  HoverView.DebugValue := TAtlasDebugValue.Evaluated('Summe', '42');
-  HoverView.DebugValue.Actions := [TAtlasDebugValueFix.Create(7, 'Anheften')];
-  Layout := Build(HoverView, 300);
-  Actions := 0;
-  for Hit in Layout.Hits do
+  mHoverView := View('');
+  mHoverView.DebugValue := TAtlasDebugValue.Evaluated('Summe', '42');
+  mHoverView.DebugValue.Actions := [TAtlasDebugValueFix.Create(7, 'Anheften')];
+  mLayout := Build(mHoverView, 300);
+  mActions := 0;
+  for mHit in mLayout.Hits do
   begin
-    if Hit.Kind = TAtlasHoverHitKind.DebugAction then
+    if mHit.Kind = TAtlasHoverHitKind.DebugAction then
     begin
-      Assert.AreEqual(0, Hit.Index, 'Index in DebugValue.Actions');
-      Inc(Actions);
+      Assert.AreEqual(0, mHit.Index, 'Index in DebugValue.Actions');
+      Inc(mActions);
     end;
   end;
-  Assert.AreEqual(1, Actions);
-  Found := False;
-  for Item in Layout.Items do
+  Assert.AreEqual(1, mActions);
+  mFound := False;
+  for mItem in mLayout.Items do
   begin
-    Found := Found or (Item.Text = 'Anheften');
+    mFound := mFound or (mItem.Text = 'Anheften');
   end;
-  Assert.IsTrue(Found, 'Beschriftung der Aktion');
+  Assert.IsTrue(mFound, 'Beschriftung der Aktion');
   // Ohne Aktionen keine Klickfläche.
-  HoverView.DebugValue.Actions := nil;
-  Layout := Build(HoverView, 300);
-  for Hit in Layout.Hits do
+  mHoverView.DebugValue.Actions := nil;
+  mLayout := Build(mHoverView, 300);
+  for mHit in mLayout.Hits do
   begin
-    Assert.AreNotEqual<TAtlasHoverHitKind>(TAtlasHoverHitKind.DebugAction, Hit.Kind);
+    Assert.AreNotEqual<TAtlasHoverHitKind>(TAtlasHoverHitKind.DebugAction, mHit.Kind);
   end;
 end;
 
 procedure THoverLayoutTests.UnavailableValuePendingAndChecked;
 var
-  HoverView: TAtlasHoverView;
-  Layout: TAtlasHoverLayout;
-  Hit: TAtlasHoverHit;
+  mHoverView: TAtlasHoverView;
+  mLayout: TAtlasHoverLayout;
+  mHit: TAtlasHoverHit;
 begin
-  HoverView := View('');
-  HoverView.DebugValue := Unavailable('');
-  HoverView.DebugValue.Note.Pending := True;
-  Layout := Build(HoverView, 300);
-  Assert.AreEqual('kein Zugriff', Layout.Items[1].Text);
-  Assert.AreEqual('sucht', Layout.Items[2].Text, 'solange der Server antwortet');
-  HoverView.DebugValue := Unavailable('unbekannt');
-  HoverView.DebugValue.Note.Checked := ['Start', 'Schalter'];
-  Layout := Build(HoverView, 300);
-  Assert.AreEqual('unbekannt', Layout.Items[2].Text);
-  Assert.AreEqual('geprüft', Layout.Items[3].Text);
-  Assert.AreEqual('• Start', Layout.Items[4].Text);
-  Assert.AreEqual('• Schalter', Layout.Items[5].Text);
-  for Hit in Layout.Hits do
+  mHoverView := View('');
+  mHoverView.DebugValue := Unavailable('');
+  mHoverView.DebugValue.Note.Pending := True;
+  mLayout := Build(mHoverView, 300);
+  Assert.AreEqual('kein Zugriff', mLayout.Items[1].Text);
+  Assert.AreEqual('sucht', mLayout.Items[2].Text, 'solange der Server antwortet');
+  mHoverView.DebugValue := Unavailable('unbekannt');
+  mHoverView.DebugValue.Note.Checked := ['Start', 'Schalter'];
+  mLayout := Build(mHoverView, 300);
+  Assert.AreEqual('unbekannt', mLayout.Items[2].Text);
+  Assert.AreEqual('geprüft', mLayout.Items[3].Text);
+  Assert.AreEqual('• Start', mLayout.Items[4].Text);
+  Assert.AreEqual('• Schalter', mLayout.Items[5].Text);
+  for mHit in mLayout.Hits do
   begin
-    Assert.AreNotEqual<TAtlasHoverHitKind>(TAtlasHoverHitKind.DebugFix, Hit.Kind, 'ohne Korrekturen keine Klickfläche');
+    Assert.AreNotEqual<TAtlasHoverHitKind>(TAtlasHoverHitKind.DebugFix, mHit.Kind, 'ohne Korrekturen keine Klickfläche');
   end;
 end;
 
 procedure THoverLayoutTests.PathChipsProduceHits;
 var
-  HoverView: TAtlasHoverView;
-  First, Second: TAtlasHoverPathItem;
-  Layout: TAtlasHoverLayout;
-  Index: Integer;
-  Found: Boolean;
+  mHoverView: TAtlasHoverView;
+  mFirst, mSecond: TAtlasHoverPathItem;
+  mLayout: TAtlasHoverLayout;
+  mIndex: Integer;
+  mFound: Boolean;
 begin
-  HoverView := View('x');
-  HoverView.Pinned := True;
-  HoverView.CanGoBack := True;
-  First.Index := 0;
-  First.Caption := 'TA';
-  Second.Index := -1;
-  Second.Caption := 'TB';
-  HoverView.Path := [First, Second];
-  Layout := Build(HoverView, 300);
-  Assert.AreEqual(2, Integer(Length(Layout.Hits)));
-  Assert.AreEqual<TAtlasHoverHitKind>(TAtlasHoverHitKind.Back, Layout.Hits[0].Kind);
-  CheckRect(Rect(8, 5, 30, 25), Layout.Hits[0].Rect, 'Zurück');
-  Assert.AreEqual<TAtlasHoverHitKind>(TAtlasHoverHitKind.Path, Layout.Hits[1].Kind);
-  Assert.AreEqual(0, Layout.Hits[1].Index);
-  CheckRect(Rect(36, 7, 52, 23), Layout.Hits[1].Rect, 'Pfad TA');
+  mHoverView := View('x');
+  mHoverView.Pinned := True;
+  mHoverView.CanGoBack := True;
+  mFirst.Index := 0;
+  mFirst.Caption := 'TA';
+  mSecond.Index := -1;
+  mSecond.Caption := 'TB';
+  mHoverView.Path := [mFirst, mSecond];
+  mLayout := Build(mHoverView, 300);
+  Assert.AreEqual(2, Integer(Length(mLayout.Hits)));
+  Assert.AreEqual<TAtlasHoverHitKind>(TAtlasHoverHitKind.Back, mLayout.Hits[0].Kind);
+  CheckRect(Rect(8, 5, 30, 25), mLayout.Hits[0].Rect, 'Zurück');
+  Assert.AreEqual<TAtlasHoverHitKind>(TAtlasHoverHitKind.Path, mLayout.Hits[1].Kind);
+  Assert.AreEqual(0, mLayout.Hits[1].Index);
+  CheckRect(Rect(36, 7, 52, 23), mLayout.Hits[1].Rect, 'Pfad TA');
   // „angeheftet“ rechtsbündig, weil Platz ist.
-  Found := False;
-  for Index := 0 to High(Layout.Items) do
+  mFound := False;
+  for mIndex := 0 to High(mLayout.Items) do
   begin
-    if Layout.Items[Index].Text = 'pinned' then
+    if mLayout.Items[mIndex].Text = 'pinned' then
     begin
-      Found := True;
-      Assert.AreEqual(253, Layout.Items[Index].Rect.Left);
-      Assert.AreEqual(8, Layout.Items[Index].Rect.Top);
+      mFound := True;
+      Assert.AreEqual(253, mLayout.Items[mIndex].Rect.Left);
+      Assert.AreEqual(8, mLayout.Items[mIndex].Rect.Top);
     end;
   end;
-  Assert.IsTrue(Found);
-  Assert.AreEqual(38, Layout.Items[FirstKind(Layout, TAtlasHoverItemKind.Styled)].Rect.Top);
-  Assert.AreEqual(62, Layout.Height);
+  Assert.IsTrue(mFound);
+  Assert.AreEqual(38, mLayout.Items[FirstKind(mLayout, TAtlasHoverItemKind.Styled)].Rect.Top);
+  Assert.AreEqual(62, mLayout.Height);
 end;
 
 procedure THoverLayoutTests.PinnedShowsActions;
 var
-  Layout: TAtlasHoverLayout;
-  Index: Integer;
-  Found: Boolean;
+  mLayout: TAtlasHoverLayout;
+  mIndex: Integer;
+  mFound: Boolean;
 begin
-  Layout := Build(ActionsView, 300);
+  mLayout := Build(ActionsView, 300);
   // Hilfe ohne DocWiki: keine Klickfläche.
-  Assert.AreEqual(3, Integer(Length(Layout.Hits)));
-  for Index := 0 to 2 do
+  Assert.AreEqual(3, Integer(Length(mLayout.Hits)));
+  for mIndex := 0 to 2 do
   begin
-    Assert.AreEqual<TAtlasHoverHitKind>(TAtlasHoverHitKind.Action, Layout.Hits[Index].Kind);
-    Assert.AreEqual(Index, Layout.Hits[Index].Index);
+    Assert.AreEqual<TAtlasHoverHitKind>(TAtlasHoverHitKind.Action, mLayout.Hits[mIndex].Kind);
+    Assert.AreEqual(mIndex, mLayout.Hits[mIndex].Index);
   end;
-  CheckRect(Rect(11, 60, 47, 73), Layout.Hits[0].Rect, 'Gehe zu');
-  CheckRect(Rect(61, 60, 85, 73), Layout.Hits[1].Rect, 'Verwendungen');
-  CheckRect(Rect(99, 60, 123, 73), Layout.Hits[2].Rect, 'Kopieren');
+  CheckRect(Rect(11, 60, 47, 73), mLayout.Hits[0].Rect, 'Gehe zu');
+  CheckRect(Rect(61, 60, 85, 73), mLayout.Hits[1].Rect, 'Verwendungen');
+  CheckRect(Rect(99, 60, 123, 73), mLayout.Hits[2].Rect, 'Kopieren');
   // Fundort rechtsbündig in der Kopfzeile.
-  Found := False;
-  for Index := 0 to High(Layout.Items) do
+  mFound := False;
+  for mIndex := 0 to High(mLayout.Items) do
   begin
-    if Layout.Items[Index].Text = 'U.pas : 5' then
+    if mLayout.Items[mIndex].Text = 'U.pas : 5' then
     begin
-      Found := True;
-      Assert.AreEqual(235, Layout.Items[Index].Rect.Left);
-      Assert.AreEqual(10, Layout.Items[Index].Rect.Top);
+      mFound := True;
+      Assert.AreEqual(235, mLayout.Items[mIndex].Rect.Left);
+      Assert.AreEqual(10, mLayout.Items[mIndex].Rect.Top);
     end;
   end;
-  Assert.IsTrue(Found);
+  Assert.IsTrue(mFound);
   // Randfläche mit Linie oben vor dem Inhalt.
-  Assert.AreEqual(Layout.AnchorItem, FirstKind(Layout, TAtlasHoverItemKind.Fill));
-  CheckRect(Rect(0, 54, 300, 79), Layout.Items[Layout.AnchorItem].Rect, 'Randfläche');
-  Assert.AreEqual(79, Layout.Height);
+  Assert.AreEqual(mLayout.AnchorItem, FirstKind(mLayout, TAtlasHoverItemKind.Fill));
+  CheckRect(Rect(0, 54, 300, 79), mLayout.Items[mLayout.AnchorItem].Rect, 'Randfläche');
+  Assert.AreEqual(79, mLayout.Height);
 end;
 
 procedure THoverLayoutTests.AnchorMovesLastBandDown;
 var
-  Layout: TAtlasHoverLayout;
+  mLayout: TAtlasHoverLayout;
 begin
-  Layout := Build(ActionsView, 300);
-  Layout.Anchor(200);
-  Assert.AreEqual(181, Layout.Hits[0].Rect.Top);
-  Assert.AreEqual(175, Layout.Items[Layout.AnchorItem].Rect.Top);
+  mLayout := Build(ActionsView, 300);
+  mLayout.Anchor(200);
+  Assert.AreEqual(181, mLayout.Hits[0].Rect.Top);
+  Assert.AreEqual(175, mLayout.Items[mLayout.AnchorItem].Rect.Top);
   // Wiederholbar, nie über die eigene Lage nach oben.
-  Layout.Anchor(200);
-  Assert.AreEqual(181, Layout.Hits[0].Rect.Top);
-  Layout.Anchor(50);
-  Assert.AreEqual(60, Layout.Hits[0].Rect.Top);
+  mLayout.Anchor(200);
+  Assert.AreEqual(181, mLayout.Hits[0].Rect.Top);
+  mLayout.Anchor(50);
+  Assert.AreEqual(60, mLayout.Hits[0].Rect.Top);
 end;
 
 procedure THoverLayoutTests.ChainProducesChipsAndHits;
 var
-  HoverView: TAtlasHoverView;
-  First, Second: TAtlasHoverTypeRef;
-  Layout: TAtlasHoverLayout;
+  mHoverView: TAtlasHoverView;
+  mFirst, mSecond: TAtlasHoverTypeRef;
+  mLayout: TAtlasHoverLayout;
 begin
-  HoverView := View('x');
-  First := Default(TAtlasHoverTypeRef);
-  First.Name := 'TA';
-  Second := Default(TAtlasHoverTypeRef);
-  Second.Name := 'TObject';
-  HoverView.Data.Ancestors := [First, Second];
-  Layout := Build(HoverView, 300);
-  Assert.AreEqual(2, Integer(Length(Layout.Hits)));
-  Assert.AreEqual<TAtlasHoverHitKind>(TAtlasHoverHitKind.Ancestor, Layout.Hits[0].Kind);
-  CheckRect(Rect(11, 58, 39, 76), Layout.Hits[0].Rect, 'TA');
-  Assert.AreEqual(1, Layout.Hits[1].Index);
-  CheckRect(Rect(63, 58, 131, 76), Layout.Hits[1].Rect, 'TObject');
-  Assert.AreEqual(2, CountKind(Layout, TAtlasHoverItemKind.Frame));
+  mHoverView := View('x');
+  mFirst := Default(TAtlasHoverTypeRef);
+  mFirst.Name := 'TA';
+  mSecond := Default(TAtlasHoverTypeRef);
+  mSecond.Name := 'TObject';
+  mHoverView.Data.Ancestors := [mFirst, mSecond];
+  mLayout := Build(mHoverView, 300);
+  Assert.AreEqual(2, Integer(Length(mLayout.Hits)));
+  Assert.AreEqual<TAtlasHoverHitKind>(TAtlasHoverHitKind.Ancestor, mLayout.Hits[0].Kind);
+  CheckRect(Rect(11, 58, 39, 76), mLayout.Hits[0].Rect, 'TA');
+  Assert.AreEqual(1, mLayout.Hits[1].Index);
+  CheckRect(Rect(63, 58, 131, 76), mLayout.Hits[1].Rect, 'TObject');
+  Assert.AreEqual(2, CountKind(mLayout, TAtlasHoverItemKind.Frame));
   // Ohne Fundort ist die Kette die letzte Randfläche.
-  Assert.IsTrue(Layout.AnchorItem >= 0);
-  Assert.AreEqual(84, Layout.Height);
+  Assert.IsTrue(mLayout.AnchorItem >= 0);
+  Assert.AreEqual(84, mLayout.Height);
 end;
 
 procedure THoverLayoutTests.HeightGrowsWithDocHeight;
 var
-  HoverInput: TAtlasHoverInput;
-  Layout: TAtlasHoverLayout;
+  mHoverInput: TAtlasHoverInput;
+  mLayout: TAtlasHoverLayout;
 begin
-  HoverInput := Input(View('x'), 300);
-  HoverInput.HasDoc := True;
-  HoverInput.DocHeight := 100;
-  Layout := Build(HoverInput);
-  Assert.AreEqual(11, Layout.DocLeft);
-  Assert.AreEqual(39, Layout.DocTop);
-  Assert.AreEqual(146, Layout.Height);
-  HoverInput.DocHeight := 40;
-  Assert.AreEqual(86, Build(HoverInput).Height);
+  mHoverInput := Input(View('x'), 300);
+  mHoverInput.HasDoc := True;
+  mHoverInput.DocHeight := 100;
+  mLayout := Build(mHoverInput);
+  Assert.AreEqual(11, mLayout.DocLeft);
+  Assert.AreEqual(39, mLayout.DocTop);
+  Assert.AreEqual(146, mLayout.Height);
+  mHoverInput.DocHeight := 40;
+  Assert.AreEqual(86, Build(mHoverInput).Height);
 end;
 
 procedure THoverLayoutTests.HitAtFindsActionRect;
 var
-  Layout: TAtlasHoverLayout;
+  mLayout: TAtlasHoverLayout;
 begin
-  Layout := Build(ActionsView, 300);
-  Assert.AreEqual(0, Layout.HitAt(Point(20, 65)));
-  Assert.AreEqual(2, Layout.HitAt(Point(100, 60)));
-  Assert.AreEqual(-1, Layout.HitAt(Point(5, 5)));
-  Assert.IsTrue(Layout.IsHot(1, TAtlasHoverHitKind.Action, 1));
-  Assert.IsFalse(Layout.IsHot(1, TAtlasHoverHitKind.Action, 0));
-  Assert.IsFalse(Layout.IsHot(-1, TAtlasHoverHitKind.Action, 1));
+  mLayout := Build(ActionsView, 300);
+  Assert.AreEqual(0, mLayout.HitAt(Point(20, 65)));
+  Assert.AreEqual(2, mLayout.HitAt(Point(100, 60)));
+  Assert.AreEqual(-1, mLayout.HitAt(Point(5, 5)));
+  Assert.IsTrue(mLayout.IsHot(1, TAtlasHoverHitKind.Action, 1));
+  Assert.IsFalse(mLayout.IsHot(1, TAtlasHoverHitKind.Action, 0));
+  Assert.IsFalse(mLayout.IsHot(-1, TAtlasHoverHitKind.Action, 1));
 end;
 
 procedure THoverLayoutTests.BuildIsDeterministic;
 var
   A, B: TAtlasHoverLayout;
-  Index: Integer;
+  mIndex: Integer;
 begin
   A := Build(ActionsView, 300);
   B := Build(ActionsView, 300);
   Assert.AreEqual(Integer(Length(A.Items)), Integer(Length(B.Items)));
-  for Index := 0 to High(A.Items) do
+  for mIndex := 0 to High(A.Items) do
   begin
-    CheckRect(A.Items[Index].Rect, B.Items[Index].Rect, 'Baustein');
-    Assert.AreEqual(A.Items[Index].Text, B.Items[Index].Text);
+    CheckRect(A.Items[mIndex].Rect, B.Items[mIndex].Rect, 'Baustein');
+    Assert.AreEqual(A.Items[mIndex].Text, B.Items[mIndex].Text);
   end;
   Assert.AreEqual(A.Height, B.Height);
 end;
@@ -603,53 +603,53 @@ procedure THoverLayoutTests.UsesProblemsOfferActions;
 
   function Codes(const ALayout: TAtlasHoverLayout): string;
   var
-    Hit: TAtlasHoverHit;
-    Problem: Integer;
-    Action: TAtlasHoverProblemAction;
+    mHit: TAtlasHoverHit;
+    mProblem: Integer;
+    mAction: TAtlasHoverProblemAction;
   begin
     Result := '';
-    for Hit in ALayout.Hits do
+    for mHit in ALayout.Hits do
     begin
-      if Hit.Kind = TAtlasHoverHitKind.ProblemAction then
+      if mHit.Kind = TAtlasHoverHitKind.ProblemAction then
       begin
-        TAtlasHoverProblemActionCode.Decode(Hit.Index, Problem, Action);
-        Result := Result + IntToStr(Problem) + ':' + IntToStr(Ord(Action)) + '|';
+        TAtlasHoverProblemActionCode.Decode(mHit.Index, mProblem, mAction);
+        Result := Result + IntToStr(mProblem) + ':' + IntToStr(Ord(mAction)) + '|';
       end;
     end;
   end;
 
 var
-  HoverView: TAtlasHoverView;
-  Plain, Unused, Moved: TAtlasProblem;
-  HoverInput: TAtlasHoverInput;
-  Problem: Integer;
-  Action: TAtlasHoverProblemAction;
+  mHoverView: TAtlasHoverView;
+  mPlain, mUnused, mMoved: TAtlasProblem;
+  mHoverInput: TAtlasHoverInput;
+  mProblem: Integer;
+  mAction: TAtlasHoverProblemAction;
 begin
   TAtlasHoverProblemActionCode.Decode(TAtlasHoverProblemActionCode.Encode(3,
-    TAtlasHoverProblemAction.MoveUses), Problem, Action);
-  Assert.AreEqual(3, Problem);
-  Assert.AreEqual<TAtlasHoverProblemAction>(TAtlasHoverProblemAction.MoveUses, Action);
-  Plain := Default(TAtlasProblem);
-  Plain.Message := 'x';
-  Unused := Plain;
-  Unused.Severity := TAtlasProblemSeverity.Hint;
-  Unused.UsesUnit := 'Vcl.Grids';
-  Unused.UsesState := TAtlasProblem.cUsesUnused;
-  Unused.UsesUnusedCount := 1;
-  Moved := Unused;
-  Moved.UsesState := TAtlasProblem.cUsesImplementation;
-  HoverView := View('');
-  HoverView.Problems := [Plain, Unused, Moved];
-  HoverInput := Input(HoverView, 300);
-  HoverInput.Texts.UsesRemove := 'Entfernen';
-  HoverInput.Texts.UsesRemoveAll := 'Alle entfernen';
-  HoverInput.Texts.UsesMove := 'Verschieben';
+    TAtlasHoverProblemAction.MoveUses), mProblem, mAction);
+  Assert.AreEqual(3, mProblem);
+  Assert.AreEqual<TAtlasHoverProblemAction>(TAtlasHoverProblemAction.MoveUses, mAction);
+  mPlain := Default(TAtlasProblem);
+  mPlain.Message := 'x';
+  mUnused := mPlain;
+  mUnused.Severity := TAtlasProblemSeverity.Hint;
+  mUnused.UsesUnit := 'Vcl.Grids';
+  mUnused.UsesState := TAtlasProblem.cUsesUnused;
+  mUnused.UsesUnusedCount := 1;
+  mMoved := mUnused;
+  mMoved.UsesState := TAtlasProblem.cUsesImplementation;
+  mHoverView := View('');
+  mHoverView.Problems := [mPlain, mUnused, mMoved];
+  mHoverInput := Input(mHoverView, 300);
+  mHoverInput.Texts.UsesRemove := 'Entfernen';
+  mHoverInput.Texts.UsesRemoveAll := 'Alle entfernen';
+  mHoverInput.Texts.UsesMove := 'Verschieben';
   // Ein ungenutzter Eintrag: nur „Entfernen“; der zweite Hinweis bietet „Verschieben“.
-  Assert.AreEqual('1:0|2:2|', Codes(Build(HoverInput)));
-  Unused.UsesUnusedCount := 2;
-  HoverView.Problems := [Plain, Unused, Moved];
-  HoverInput.View := HoverView;
-  Assert.AreEqual('1:0|1:1|2:2|', Codes(Build(HoverInput)));
+  Assert.AreEqual('1:0|2:2|', Codes(Build(mHoverInput)));
+  mUnused.UsesUnusedCount := 2;
+  mHoverView.Problems := [mPlain, mUnused, mMoved];
+  mHoverInput.View := mHoverView;
+  Assert.AreEqual('1:0|1:1|2:2|', Codes(Build(mHoverInput)));
 end;
 
 procedure THoverLayoutTests.CycleUnitsAreLinks;
@@ -664,70 +664,70 @@ procedure THoverLayoutTests.CycleUnitsAreLinks;
 
   function Codes(const ALayout: TAtlasHoverLayout): string;
   var
-    Hit: TAtlasHoverHit;
-    Problem, Item: Integer;
-    Action: TAtlasHoverProblemAction;
+    mHit: TAtlasHoverHit;
+    mProblem, mItem: Integer;
+    mAction: TAtlasHoverProblemAction;
   begin
     Result := '';
-    for Hit in ALayout.Hits do
+    for mHit in ALayout.Hits do
     begin
-      if Hit.Kind = TAtlasHoverHitKind.ProblemAction then
+      if mHit.Kind = TAtlasHoverHitKind.ProblemAction then
       begin
-        TAtlasHoverProblemActionCode.Decode(Hit.Index, Problem, Action, Item);
-        if Action in [TAtlasHoverProblemAction.Related, TAtlasHoverProblemAction.ShowGraph] then
+        TAtlasHoverProblemActionCode.Decode(mHit.Index, mProblem, mAction, mItem);
+        if mAction in [TAtlasHoverProblemAction.Related, TAtlasHoverProblemAction.ShowGraph] then
         begin
-          Result := Result + IntToStr(Problem) + ':' + IntToStr(Ord(Action)) + ':' + IntToStr(Item) + '|';
+          Result := Result + IntToStr(mProblem) + ':' + IntToStr(Ord(mAction)) + ':' + IntToStr(mItem) + '|';
         end;
       end;
     end;
   end;
 
 var
-  HoverView: TAtlasHoverView;
-  Cycle, Plain: TAtlasProblem;
-  HoverInput: TAtlasHoverInput;
-  Layout: TAtlasHoverLayout;
-  Item: TAtlasHoverItem;
-  Texts, Problem, Index: Integer;
-  Action: TAtlasHoverProblemAction;
+  mHoverView: TAtlasHoverView;
+  mCycle, mPlain: TAtlasProblem;
+  mHoverInput: TAtlasHoverInput;
+  mLayout: TAtlasHoverLayout;
+  mItem: TAtlasHoverItem;
+  mTexts, mProblem, mIndex: Integer;
+  mAction: TAtlasHoverProblemAction;
 begin
   TAtlasHoverProblemActionCode.Decode(TAtlasHoverProblemActionCode.Encode(2, TAtlasHoverProblemAction.Related, 3),
-    Problem, Action, Index);
-  Assert.AreEqual(2, Problem);
-  Assert.AreEqual(3, Index);
-  Assert.AreEqual<TAtlasHoverProblemAction>(TAtlasHoverProblemAction.Related, Action);
-  Plain := Default(TAtlasProblem);
-  Plain.Message := 'x';
-  Cycle := Default(TAtlasProblem);
-  Cycle.Severity := TAtlasProblemSeverity.Error;
-  Cycle.Source := 'Atlas';
-  Cycle.Code := TAtlasProblem.cUsesCycleCode;
-  Cycle.Message := 'Zirkuläre Unit-Referenz';
-  Cycle.Related := [Related('uC', 3), Related('uA', 3), Related('uB', 3), Related('uC', 3)];
-  HoverView := View('');
-  HoverView.Problems := [Plain, Cycle];
-  HoverInput := Input(HoverView, 600);
-  HoverInput.Texts.ShowGraph := 'Graph zeigen';
-  Layout := Build(HoverInput);
+    mProblem, mAction, mIndex);
+  Assert.AreEqual(2, mProblem);
+  Assert.AreEqual(3, mIndex);
+  Assert.AreEqual<TAtlasHoverProblemAction>(TAtlasHoverProblemAction.Related, mAction);
+  mPlain := Default(TAtlasProblem);
+  mPlain.Message := 'x';
+  mCycle := Default(TAtlasProblem);
+  mCycle.Severity := TAtlasProblemSeverity.Error;
+  mCycle.Source := 'Atlas';
+  mCycle.Code := TAtlasProblem.cUsesCycleCode;
+  mCycle.Message := 'Zirkuläre Unit-Referenz';
+  mCycle.Related := [Related('uC', 3), Related('uA', 3), Related('uB', 3), Related('uC', 3)];
+  mHoverView := View('');
+  mHoverView.Problems := [mPlain, mCycle];
+  mHoverInput := Input(mHoverView, 600);
+  mHoverInput.Texts.ShowGraph := 'Graph zeigen';
+  mLayout := Build(mHoverInput);
   // Jede Unit des Pfads ist ein Link mit ihrer Stelle, dahinter „Graph zeigen“.
-  Assert.AreEqual('1:6:0|1:6:1|1:6:2|1:6:3|1:7:0|', Codes(Layout));
-  Texts := 0;
-  for Item in Layout.Items do
+  Assert.AreEqual('1:6:0|1:6:1|1:6:2|1:6:3|1:7:0|', Codes(mLayout));
+  mTexts := 0;
+  for mItem in mLayout.Items do
   begin
-    if (Item.Kind = TAtlasHoverItemKind.Text) and (Item.Text = ' → ') then
+    if (mItem.Kind = TAtlasHoverItemKind.Text) and (mItem.Text = ' → ') then
     begin
-      Inc(Texts);
+      Inc(mTexts);
     end;
   end;
-  Assert.AreEqual(3, Texts, 'Pfeile zwischen den Units');
+  Assert.AreEqual(3, mTexts, 'Pfeile zwischen den Units');
   // Ohne Text kein „Graph zeigen“; andere Regeln ohne Stellen haben keine solche Zeile.
-  HoverInput.Texts.ShowGraph := '';
-  Assert.AreEqual('1:6:0|1:6:1|1:6:2|1:6:3|', Codes(Build(HoverInput)));
-  Cycle.Code := 'empty-except';
-  Cycle.Related := nil;
-  HoverView.Problems := [Plain, Cycle];
-  HoverInput.View := HoverView;
-  Assert.AreEqual('', Codes(Build(HoverInput)));
+  mHoverInput.Texts.ShowGraph := '';
+  Assert.AreEqual('1:6:0|1:6:1|1:6:2|1:6:3|', Codes(Build(mHoverInput)));
+  mCycle.Code := 'empty-except';
+  mCycle.Related := nil;
+  mHoverView.Problems := [mPlain, mCycle];
+  mHoverInput.View := mHoverView;
+  Assert.AreEqual('', Codes(Build(mHoverInput)));
 end;
 
 function Finding(ASeverity: TAtlasProblemSeverity; const ASource, ACode, AMessage, AFix: string): TAtlasProblem;
@@ -742,303 +742,303 @@ end;
 
 function ActionCodes(const ALayout: TAtlasHoverLayout): string;
 var
-  Hit: TAtlasHoverHit;
-  Problem: Integer;
-  Action: TAtlasHoverProblemAction;
+  mHit: TAtlasHoverHit;
+  mProblem: Integer;
+  mAction: TAtlasHoverProblemAction;
 begin
   Result := '';
-  for Hit in ALayout.Hits do
+  for mHit in ALayout.Hits do
   begin
-    if Hit.Kind = TAtlasHoverHitKind.ProblemAction then
+    if mHit.Kind = TAtlasHoverHitKind.ProblemAction then
     begin
-      TAtlasHoverProblemActionCode.Decode(Hit.Index, Problem, Action);
-      Result := Result + IntToStr(Problem) + ':' + IntToStr(Ord(Action)) + '|';
+      TAtlasHoverProblemActionCode.Decode(mHit.Index, mProblem, mAction);
+      Result := Result + IntToStr(mProblem) + ':' + IntToStr(Ord(mAction)) + '|';
     end;
   end;
 end;
 
 function TextsOf(const ALayout: TAtlasHoverLayout; AKind: TAtlasHoverItemKind): string;
 var
-  Item: TAtlasHoverItem;
+  mItem: TAtlasHoverItem;
 begin
   Result := '';
-  for Item in ALayout.Items do
+  for mItem in ALayout.Items do
   begin
-    if Item.Kind = AKind then
+    if mItem.Kind = AKind then
     begin
-      Result := Result + Item.Text + '|';
+      Result := Result + mItem.Text + '|';
     end;
   end;
 end;
 
 procedure THoverLayoutTests.FindingsShowPillAndRuleErrorsFirst;
 var
-  HoverView: TAtlasHoverView;
-  HoverInput: TAtlasHoverInput;
-  Layout: TAtlasHoverLayout;
-  Order: TArray<Integer>;
-  Pill: Integer;
-  Colors: TAtlasColors;
+  mHoverView: TAtlasHoverView;
+  mHoverInput: TAtlasHoverInput;
+  mLayout: TAtlasHoverLayout;
+  mOrder: TArray<Integer>;
+  mPill: Integer;
+  mColors: TAtlasColors;
 begin
-  HoverView := View('');
-  HoverView.Problems := [Finding(TAtlasProblemSeverity.Hint, 'Atlas', 'magic-number', 'Zahl', ''),
+  mHoverView := View('');
+  mHoverView.Problems := [Finding(TAtlasProblemSeverity.Hint, 'Atlas', 'magic-number', 'Zahl', ''),
     Finding(TAtlasProblemSeverity.Warning, 'dcc', 'W1036', 'Variable', ''),
     Finding(TAtlasProblemSeverity.Error, 'Atlas', 'use-after-free', 'Freigegeben', '')];
-  Order := HoverView.ProblemOrder;
-  Assert.AreEqual(3, Integer(Length(Order)));
-  Assert.AreEqual(2, Order[0]);
-  Assert.AreEqual(0, Order[1]);
-  Assert.AreEqual(1, Order[2]);
-  HoverInput := Input(HoverView, 300);
-  HoverInput.Texts.KindError := 'Error';
-  HoverInput.Texts.KindWarning := 'Warnung';
-  HoverInput.Texts.KindInfo := 'Info';
-  Layout := Build(HoverInput);
+  mOrder := mHoverView.ProblemOrder;
+  Assert.AreEqual(3, Integer(Length(mOrder)));
+  Assert.AreEqual(2, mOrder[0]);
+  Assert.AreEqual(0, mOrder[1]);
+  Assert.AreEqual(1, mOrder[2]);
+  mHoverInput := Input(mHoverView, 300);
+  mHoverInput.Texts.KindError := 'Error';
+  mHoverInput.Texts.KindWarning := 'Warnung';
+  mHoverInput.Texts.KindInfo := 'Info';
+  mLayout := Build(mHoverInput);
   // Pillen in der Reihenfolge des Hovers; hint zählt als Info.
-  Assert.AreEqual('Error|Info|Warnung|', TextsOf(Layout, TAtlasHoverItemKind.CenterText));
-  Assert.AreEqual('Freigegeben|Zahl|Variable|', TextsOf(Layout, TAtlasHoverItemKind.Block));
+  Assert.AreEqual('Error|Info|Warnung|', TextsOf(mLayout, TAtlasHoverItemKind.CenterText));
+  Assert.AreEqual('Freigegeben|Zahl|Variable|', TextsOf(mLayout, TAtlasHoverItemKind.Block));
   Assert.AreEqual('Atlas · use-after-free|Atlas · magic-number|dcc · W1036|',
-    TextsOf(Layout, TAtlasHoverItemKind.Text));
+    TextsOf(mLayout, TAtlasHoverItemKind.Text));
   // Pille in der Farbe der Art vor der Meldung, die Meldung rückt hinter sie.
-  Colors := TAtlasColors.Light;
-  Pill := FirstKind(Layout, TAtlasHoverItemKind.CenterText);
-  Assert.AreEqual(Colors.Error, Layout.Items[Pill].Color);
-  Assert.AreEqual(20, Layout.Items[Pill].Rect.Left);
+  mColors := TAtlasColors.Light;
+  mPill := FirstKind(mLayout, TAtlasHoverItemKind.CenterText);
+  Assert.AreEqual(mColors.Error, mLayout.Items[mPill].Color);
+  Assert.AreEqual(20, mLayout.Items[mPill].Rect.Left);
   // Gemessen und gezeichnet mit derselben Schrift fester Größe; die Badge-Schrift hängt an der Kästchenhöhe.
-  Assert.AreEqual<TAtlasHoverFont>(TAtlasHoverFont.SmallUi, Layout.Items[Pill].Face.Font, 'Schrift der Pille');
-  Assert.AreEqual(15, Layout.Items[Pill].Rect.Height, 'eine Zeile kleine Schrift plus Rand');
-  Assert.IsTrue(Layout.Items[FirstKind(Layout, TAtlasHoverItemKind.Block)].Rect.Left >=
-    Layout.Items[Pill].Rect.Right + 6);
+  Assert.AreEqual<TAtlasHoverFont>(TAtlasHoverFont.SmallUi, mLayout.Items[mPill].Face.Font, 'Schrift der Pille');
+  Assert.AreEqual(15, mLayout.Items[mPill].Rect.Height, 'eine Zeile kleine Schrift plus Rand');
+  Assert.IsTrue(mLayout.Items[FirstKind(mLayout, TAtlasHoverItemKind.Block)].Rect.Left >=
+    mLayout.Items[mPill].Rect.Right + 6);
   // Ohne Aktionszeile keine Klickflächen.
-  Assert.AreEqual('', ActionCodes(Layout));
-  Assert.AreEqual(-1, Layout.FixProblem);
+  Assert.AreEqual('', ActionCodes(mLayout));
+  Assert.AreEqual(-1, mLayout.FixProblem);
 end;
 
 procedure THoverLayoutTests.ConfirmedFindingShowsBothSources;
 var
-  HoverView: TAtlasHoverView;
-  HoverInput: TAtlasHoverInput;
-  Layout: TAtlasHoverLayout;
-  Problem: TAtlasProblem;
+  mHoverView: TAtlasHoverView;
+  mHoverInput: TAtlasHoverInput;
+  mLayout: TAtlasHoverLayout;
+  mProblem: TAtlasProblem;
 begin
-  Problem := Finding(TAtlasProblemSeverity.Error, 'Atlas', 'argument-count-mismatch',
+  mProblem := Finding(TAtlasProblemSeverity.Error, 'Atlas', 'argument-count-mismatch',
     'Suchen erwartet 1 Argumente (wie E2035).', '');
-  Problem.Confirmed := True;
-  Problem.ConfirmedCode := 'E2035';
-  HoverView := View('');
-  HoverView.Problems := [Problem];
-  HoverInput := Input(HoverView, 460);
-  HoverInput.Texts.Confirmed := 'vom Compiler bestätigt';
-  HoverInput.Texts.ConfirmedCode := 'vom Compiler bestätigt (%s)';
-  Layout := Build(HoverInput);
-  Assert.AreEqual('Suchen erwartet 1 Argumente (wie E2035).|', TextsOf(Layout, TAtlasHoverItemKind.Block));
+  mProblem.Confirmed := True;
+  mProblem.ConfirmedCode := 'E2035';
+  mHoverView := View('');
+  mHoverView.Problems := [mProblem];
+  mHoverInput := Input(mHoverView, 460);
+  mHoverInput.Texts.Confirmed := 'vom Compiler bestätigt';
+  mHoverInput.Texts.ConfirmedCode := 'vom Compiler bestätigt (%s)';
+  mLayout := Build(mHoverInput);
+  Assert.AreEqual('Suchen erwartet 1 Argumente (wie E2035).|', TextsOf(mLayout, TAtlasHoverItemKind.Block));
   Assert.AreEqual('Atlas + dcc · argument-count-mismatch · vom Compiler bestätigt (E2035)|',
-    TextsOf(Layout, TAtlasHoverItemKind.Text));
-  HoverInput.HideCompilerCode := True;
-  Layout := Build(HoverInput);
-  Assert.AreEqual('Suchen erwartet 1 Argumente.|', TextsOf(Layout, TAtlasHoverItemKind.Block));
+    TextsOf(mLayout, TAtlasHoverItemKind.Text));
+  mHoverInput.HideCompilerCode := True;
+  mLayout := Build(mHoverInput);
+  Assert.AreEqual('Suchen erwartet 1 Argumente.|', TextsOf(mLayout, TAtlasHoverItemKind.Block));
   Assert.AreEqual('Atlas + dcc · argument-count-mismatch · vom Compiler bestätigt|',
-    TextsOf(Layout, TAtlasHoverItemKind.Text));
+    TextsOf(mLayout, TAtlasHoverItemKind.Text));
 end;
 
 procedure THoverLayoutTests.RuleFindingsOfferActions;
 var
-  HoverView: TAtlasHoverView;
-  HoverInput: TAtlasHoverInput;
-  Layout: TAtlasHoverLayout;
+  mHoverView: TAtlasHoverView;
+  mHoverInput: TAtlasHoverInput;
+  mLayout: TAtlasHoverLayout;
 begin
-  HoverView := View('');
-  HoverView.Problems := [Finding(TAtlasProblemSeverity.Warning, 'Atlas', 'empty-routine', 'Leer', ''),
+  mHoverView := View('');
+  mHoverView.Problems := [Finding(TAtlasProblemSeverity.Warning, 'Atlas', 'empty-routine', 'Leer', ''),
     Finding(TAtlasProblemSeverity.Error, 'dcc', 'E2003', 'Unbekannt', ''),
     Finding(TAtlasProblemSeverity.Error, 'Atlas', '', 'Syntax', ''),
     Finding(TAtlasProblemSeverity.Error, 'Atlas', 'loop-off-by-one', 'Zu weit', 'Count - 1 verwenden')];
-  HoverInput := Input(HoverView, 460);
-  HoverInput.Texts.Suppress := 'Unterdrücken';
-  HoverInput.Texts.Configure := 'Einstellen';
-  HoverInput.ProblemActions := True;
-  Layout := Build(HoverInput);
+  mHoverInput := Input(mHoverView, 460);
+  mHoverInput.Texts.Suppress := 'Unterdrücken';
+  mHoverInput.Texts.Configure := 'Einstellen';
+  mHoverInput.ProblemActions := True;
+  mLayout := Build(mHoverInput);
   // Fehler zuerst: Problem 3 mit Korrektur (Fix = 3), unterdrücken (4) und einstellen (5); dcc und
   // Syntaxfehler ohne Aktionen; dann die Warnung ohne Korrektur.
-  Assert.AreEqual('3:3|3:4|3:5|0:4|0:5|', ActionCodes(Layout));
-  Assert.AreEqual(3, Layout.FixProblem);
-  Assert.IsTrue(Pos('Alt+Enter: |Count - 1 verwenden|', TextsOf(Layout, TAtlasHoverItemKind.Text)) > 0);
-  HoverInput.ProblemActions := False;
-  Layout := Build(HoverInput);
-  Assert.AreEqual('', ActionCodes(Layout));
-  Assert.AreEqual(-1, Layout.FixProblem);
+  Assert.AreEqual('3:3|3:4|3:5|0:4|0:5|', ActionCodes(mLayout));
+  Assert.AreEqual(3, mLayout.FixProblem);
+  Assert.IsTrue(Pos('Alt+Enter: |Count - 1 verwenden|', TextsOf(mLayout, TAtlasHoverItemKind.Text)) > 0);
+  mHoverInput.ProblemActions := False;
+  mLayout := Build(mHoverInput);
+  Assert.AreEqual('', ActionCodes(mLayout));
+  Assert.AreEqual(-1, mLayout.FixProblem);
   // Zusatz der Regel als eigene Zeile unter Herkunft und Regel (#1102).
-  Assert.AreEqual(0, Pos('Durchsucht', TextsOf(Layout, TAtlasHoverItemKind.Text)));
-  HoverView.Problems[0].Details := 'Durchsucht: 3 Dateien der Projektgruppe';
-  HoverInput.View := HoverView;
-  Layout := Build(HoverInput);
+  Assert.AreEqual(0, Pos('Durchsucht', TextsOf(mLayout, TAtlasHoverItemKind.Text)));
+  mHoverView.Problems[0].Details := 'Durchsucht: 3 Dateien der Projektgruppe';
+  mHoverInput.View := mHoverView;
+  mLayout := Build(mHoverInput);
   Assert.IsTrue(Pos('Atlas · empty-routine|Durchsucht: 3 Dateien der Projektgruppe|',
-    TextsOf(Layout, TAtlasHoverItemKind.Text)) > 0, TextsOf(Layout, TAtlasHoverItemKind.Text));
+    TextsOf(mLayout, TAtlasHoverItemKind.Text)) > 0, TextsOf(mLayout, TAtlasHoverItemKind.Text));
 end;
 
 procedure THoverLayoutTests.ExplainedMessagesShowCauseAndLinks;
 var
-  HoverView: TAtlasHoverView;
-  HoverInput: TAtlasHoverInput;
-  Layout: TAtlasHoverLayout;
-  Explanations: TArray<TAtlasHoverExplanation>;
+  mHoverView: TAtlasHoverView;
+  mHoverInput: TAtlasHoverInput;
+  mLayout: TAtlasHoverLayout;
+  mExplanations: TArray<TAtlasHoverExplanation>;
 begin
-  HoverView := View('');
-  HoverView.Problems := [Finding(TAtlasProblemSeverity.Error, 'dcc', 'E2003', 'Unbekannt', ''),
+  mHoverView := View('');
+  mHoverView.Problems := [Finding(TAtlasProblemSeverity.Error, 'dcc', 'E2003', 'Unbekannt', ''),
     Finding(TAtlasProblemSeverity.Warning, 'Atlas', 'empty-routine', 'Leer', '')];
-  HoverInput := Input(HoverView, 460);
-  HoverInput.Texts.Suppress := 'Unterdrücken';
-  HoverInput.Texts.Configure := 'Einstellen';
-  HoverInput.Texts.Explain := 'Erklären';
-  HoverInput.Texts.DocWiki := 'DocWiki';
-  HoverInput.Texts.Cause := 'Typische Ursache: %s';
-  HoverInput.ProblemActions := True;
+  mHoverInput := Input(mHoverView, 460);
+  mHoverInput.Texts.Suppress := 'Unterdrücken';
+  mHoverInput.Texts.Configure := 'Einstellen';
+  mHoverInput.Texts.Explain := 'Erklären';
+  mHoverInput.Texts.DocWiki := 'DocWiki';
+  mHoverInput.Texts.Cause := 'Typische Ursache: %s';
+  mHoverInput.ProblemActions := True;
   // Ohne Erklärungen (hover.explainMessages aus): keine Ursache, keine Links an der Meldung.
-  Layout := Build(HoverInput);
-  Assert.AreEqual('1:4|1:5|', ActionCodes(Layout));
-  SetLength(Explanations, 2);
-  Explanations[0] := Default(TAtlasHoverExplanation);
-  Explanations[0].Known := True;
-  Explanations[0].Cause := 'Unit fehlt in uses';
-  Explanations[0].DocWiki := 'https://docwiki.embarcadero.com/RADStudio/Athens/e/index.php?search=E2003';
-  Explanations[1] := Default(TAtlasHoverExplanation);
-  Explanations[1].Known := True;
-  HoverView.Explanations := Explanations;
-  HoverInput.View := HoverView;
-  Layout := Build(HoverInput);
+  mLayout := Build(mHoverInput);
+  Assert.AreEqual('1:4|1:5|', ActionCodes(mLayout));
+  SetLength(mExplanations, 2);
+  mExplanations[0] := Default(TAtlasHoverExplanation);
+  mExplanations[0].Known := True;
+  mExplanations[0].Cause := 'Unit fehlt in uses';
+  mExplanations[0].DocWiki := 'https://docwiki.embarcadero.com/RADStudio/Athens/e/index.php?search=E2003';
+  mExplanations[1] := Default(TAtlasHoverExplanation);
+  mExplanations[1].Known := True;
+  mHoverView.Explanations := mExplanations;
+  mHoverInput.View := mHoverView;
+  mLayout := Build(mHoverInput);
   // Meldung: Erklären (8) und DocWiki (9); Regel: unterdrücken, einstellen, erklären.
-  Assert.AreEqual('0:8|0:9|1:4|1:5|1:8|', ActionCodes(Layout));
+  Assert.AreEqual('0:8|0:9|1:4|1:5|1:8|', ActionCodes(mLayout));
   // Die Ursache ist ein umbrochener Absatz (Block), keine einzelne Textzeile.
-  Assert.IsTrue(Pos('Typische Ursache: Unit fehlt in uses|', TextsOf(Layout, TAtlasHoverItemKind.Block)) > 0,
-    TextsOf(Layout, TAtlasHoverItemKind.Block));
+  Assert.IsTrue(Pos('Typische Ursache: Unit fehlt in uses|', TextsOf(mLayout, TAtlasHoverItemKind.Block)) > 0,
+    TextsOf(mLayout, TAtlasHoverItemKind.Block));
 end;
 
 procedure THoverLayoutTests.FailedTestOffersCompare;
 var
-  HoverView: TAtlasHoverView;
-  HoverInput: TAtlasHoverInput;
-  Layout: TAtlasHoverLayout;
-  Explanations: TArray<TAtlasHoverExplanation>;
+  mHoverView: TAtlasHoverView;
+  mHoverInput: TAtlasHoverInput;
+  mLayout: TAtlasHoverLayout;
+  mExplanations: TArray<TAtlasHoverExplanation>;
 begin
-  HoverView := View('');
-  HoverView.Problems := [Finding(TAtlasProblemSeverity.Error, 'DUnitX', '', 'Expected 3 but got 0', '')];
-  HoverInput := Input(HoverView, 460);
-  HoverInput.Texts.Explain := 'Erklären';
-  HoverInput.Texts.Compare := 'Vergleichen';
-  HoverInput.ProblemActions := True;
+  mHoverView := View('');
+  mHoverView.Problems := [Finding(TAtlasProblemSeverity.Error, 'DUnitX', '', 'Expected 3 but got 0', '')];
+  mHoverInput := Input(mHoverView, 460);
+  mHoverInput.Texts.Explain := 'Erklären';
+  mHoverInput.Texts.Compare := 'Vergleichen';
+  mHoverInput.ProblemActions := True;
   // Ohne Werte (kein Modul Tests, tests.compare aus): keine Links.
-  Layout := Build(HoverInput);
-  Assert.AreEqual('', ActionCodes(Layout));
-  HoverView.Comparisons := [True];
-  HoverInput.View := HoverView;
-  Layout := Build(HoverInput);
+  mLayout := Build(mHoverInput);
+  Assert.AreEqual('', ActionCodes(mLayout));
+  mHoverView.Comparisons := [True];
+  mHoverInput.View := mHoverView;
+  mLayout := Build(mHoverInput);
   // Compare ist die Aktion 11.
-  Assert.AreEqual('0:11|', ActionCodes(Layout));
-  Assert.IsTrue(Pos('Vergleichen', TextsOf(Layout, TAtlasHoverItemKind.Text)) > 0,
-    TextsOf(Layout, TAtlasHoverItemKind.Text));
-  SetLength(Explanations, 1);
-  Explanations[0] := Default(TAtlasHoverExplanation);
-  Explanations[0].Known := True;
-  HoverView.Explanations := Explanations;
-  HoverInput.View := HoverView;
-  Layout := Build(HoverInput);
-  Assert.AreEqual('0:11|0:8|', ActionCodes(Layout));
+  Assert.AreEqual('0:11|', ActionCodes(mLayout));
+  Assert.IsTrue(Pos('Vergleichen', TextsOf(mLayout, TAtlasHoverItemKind.Text)) > 0,
+    TextsOf(mLayout, TAtlasHoverItemKind.Text));
+  SetLength(mExplanations, 1);
+  mExplanations[0] := Default(TAtlasHoverExplanation);
+  mExplanations[0].Known := True;
+  mHoverView.Explanations := mExplanations;
+  mHoverInput.View := mHoverView;
+  mLayout := Build(mHoverInput);
+  Assert.AreEqual('0:11|0:8|', ActionCodes(mLayout));
   // Mehr Werte als Probleme oder ein negativer Index zählen nicht.
-  Assert.IsFalse(HoverView.CanCompare(1));
-  Assert.IsFalse(HoverView.CanCompare(-1));
+  Assert.IsFalse(mHoverView.CanCompare(1));
+  Assert.IsFalse(mHoverView.CanCompare(-1));
 end;
 
 procedure THoverLayoutTests.NextProblemHitCycles;
 var
-  HoverView: TAtlasHoverView;
-  HoverInput: TAtlasHoverInput;
-  Layout: TAtlasHoverLayout;
-  First, Second, Last: Integer;
+  mHoverView: TAtlasHoverView;
+  mHoverInput: TAtlasHoverInput;
+  mLayout: TAtlasHoverLayout;
+  mFirst, mSecond, mLast: Integer;
 begin
-  HoverView := View('procedure Foo');
-  HoverView.Problems := [Finding(TAtlasProblemSeverity.Warning, 'Atlas', 'empty-routine', 'Leer', '')];
-  HoverInput := Input(HoverView, 460);
-  HoverInput.Texts.Suppress := 'Unterdrücken';
-  HoverInput.Texts.Configure := 'Einstellen';
-  Layout := Build(HoverInput);
-  Assert.AreEqual(-1, Layout.NextProblemHit(-1, True));
-  HoverInput.ProblemActions := True;
-  Layout := Build(HoverInput);
-  First := Layout.NextProblemHit(-1, True);
-  Assert.IsTrue(First >= 0);
-  Second := Layout.NextProblemHit(First, True);
-  Assert.IsTrue(Second > First);
-  Assert.AreEqual<TAtlasHoverHitKind>(TAtlasHoverHitKind.ProblemAction, Layout.Hits[Second].Kind);
+  mHoverView := View('procedure Foo');
+  mHoverView.Problems := [Finding(TAtlasProblemSeverity.Warning, 'Atlas', 'empty-routine', 'Leer', '')];
+  mHoverInput := Input(mHoverView, 460);
+  mHoverInput.Texts.Suppress := 'Unterdrücken';
+  mHoverInput.Texts.Configure := 'Einstellen';
+  mLayout := Build(mHoverInput);
+  Assert.AreEqual(-1, mLayout.NextProblemHit(-1, True));
+  mHoverInput.ProblemActions := True;
+  mLayout := Build(mHoverInput);
+  mFirst := mLayout.NextProblemHit(-1, True);
+  Assert.IsTrue(mFirst >= 0);
+  mSecond := mLayout.NextProblemHit(mFirst, True);
+  Assert.IsTrue(mSecond > mFirst);
+  Assert.AreEqual<TAtlasHoverHitKind>(TAtlasHoverHitKind.ProblemAction, mLayout.Hits[mSecond].Kind);
   // Reihum: nach der letzten wieder die erste, rückwärts von vorn die letzte.
-  Assert.AreEqual(First, Layout.NextProblemHit(Second, True));
-  Last := Layout.NextProblemHit(-1, False);
-  Assert.AreEqual(Second, Last);
-  Assert.AreEqual(First, Layout.NextProblemHit(Last, False));
+  Assert.AreEqual(mFirst, mLayout.NextProblemHit(mSecond, True));
+  mLast := mLayout.NextProblemHit(-1, False);
+  Assert.AreEqual(mSecond, mLast);
+  Assert.AreEqual(mFirst, mLayout.NextProblemHit(mLast, False));
 end;
 
 function FirstProblemHit(const ALayout: TAtlasHoverLayout): Integer;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
   Result := -1;
-  for Index := 0 to High(ALayout.Hits) do
+  for mIndex := 0 to High(ALayout.Hits) do
   begin
-    if ALayout.Hits[Index].Kind = TAtlasHoverHitKind.ProblemAction then
+    if ALayout.Hits[mIndex].Kind = TAtlasHoverHitKind.ProblemAction then
     begin
-      Exit(Index);
+      Exit(mIndex);
     end;
   end;
 end;
 
 procedure THoverLayoutTests.RuleExampleLinkTogglesExample;
 var
-  HoverView: TAtlasHoverView;
-  HoverInput: TAtlasHoverInput;
-  Closed, Opened: TAtlasHoverLayout;
-  Example: TAtlasRuleExplanation;
-  FillCount: Integer;
+  mHoverView: TAtlasHoverView;
+  mHoverInput: TAtlasHoverInput;
+  mClosed, mOpened: TAtlasHoverLayout;
+  mExample: TAtlasRuleExplanation;
+  mFillCount: Integer;
 begin
-  HoverView := View('');
-  HoverView.Problems := [Finding(TAtlasProblemSeverity.Warning, 'Atlas', 'empty-except', 'Leer', '')];
-  HoverInput := Input(HoverView, 460);
-  HoverInput.Texts.Suppress := 'Unterdrücken';
-  HoverInput.Texts.Configure := 'Einstellen';
-  HoverInput.Texts.ShowExample := 'Zeigen';
-  HoverInput.Texts.HideExample := 'Ausblenden';
-  HoverInput.Texts.ExampleBad := 'Falsch:';
-  HoverInput.Texts.ExampleGood := 'Richtig:';
+  mHoverView := View('');
+  mHoverView.Problems := [Finding(TAtlasProblemSeverity.Warning, 'Atlas', 'empty-except', 'Leer', '')];
+  mHoverInput := Input(mHoverView, 460);
+  mHoverInput.Texts.Suppress := 'Unterdrücken';
+  mHoverInput.Texts.Configure := 'Einstellen';
+  mHoverInput.Texts.ShowExample := 'Zeigen';
+  mHoverInput.Texts.HideExample := 'Ausblenden';
+  mHoverInput.Texts.ExampleBad := 'Falsch:';
+  mHoverInput.Texts.ExampleGood := 'Richtig:';
 
-  HoverInput.ProblemActions := True;
+  mHoverInput.ProblemActions := True;
   // Ohne hover.ruleExamples wie bisher: unterdrücken (4) und einstellen (5).
-  Assert.AreEqual('0:4|0:5|', ActionCodes(Build(HoverInput)));
-  HoverInput.RuleExamples := True;
-  Closed := Build(HoverInput);
-  Assert.AreEqual('0:4|0:5|0:10|', ActionCodes(Closed));
-  Assert.IsTrue(Pos('|Zeigen|', TextsOf(Closed, TAtlasHoverItemKind.Text)) > 0, TextsOf(Closed,
+  Assert.AreEqual('0:4|0:5|', ActionCodes(Build(mHoverInput)));
+  mHoverInput.RuleExamples := True;
+  mClosed := Build(mHoverInput);
+  Assert.AreEqual('0:4|0:5|0:10|', ActionCodes(mClosed));
+  Assert.IsTrue(Pos('|Zeigen|', TextsOf(mClosed, TAtlasHoverItemKind.Text)) > 0, TextsOf(mClosed,
     TAtlasHoverItemKind.Text));
-  Assert.AreEqual(0, Pos('Falsch:', TextsOf(Closed, TAtlasHoverItemKind.Text)));
+  Assert.AreEqual(0, Pos('Falsch:', TextsOf(mClosed, TAtlasHoverItemKind.Text)));
   // Aufgeklappt: Beschreibung, falsch und richtig über der Aktionszeile, der Link heißt „Ausblenden“.
-  Example := Default(TAtlasRuleExplanation);
-  Example.Id := 'empty-except';
-  Example.Description := 'Verschluckt jede Ausnahme.';
-  Example.Bad := 'try' + #10 + '  Save;' + #10 + 'except' + #10 + 'end;' + #10;
-  Example.Good := 'Log(E.Message);';
-  HoverView.Examples := [Example];
-  HoverInput.View := HoverView;
-  Opened := Build(HoverInput);
-  Assert.AreEqual('0:4|0:5|0:10|', ActionCodes(Opened));
+  mExample := Default(TAtlasRuleExplanation);
+  mExample.Id := 'empty-except';
+  mExample.Description := 'Verschluckt jede Ausnahme.';
+  mExample.Bad := 'try' + #10 + '  Save;' + #10 + 'except' + #10 + 'end;' + #10;
+  mExample.Good := 'Log(E.Message);';
+  mHoverView.Examples := [mExample];
+  mHoverInput.View := mHoverView;
+  mOpened := Build(mHoverInput);
+  Assert.AreEqual('0:4|0:5|0:10|', ActionCodes(mOpened));
   Assert.IsTrue(Pos('Falsch:|try|  Save;|except|end;|Richtig:|Log(E.Message);|Unterdrücken|Einstellen|Ausblenden|',
-    TextsOf(Opened, TAtlasHoverItemKind.Text)) > 0, TextsOf(Opened, TAtlasHoverItemKind.Text));
-  Assert.IsTrue(Pos('Verschluckt jede Ausnahme.', TextsOf(Opened, TAtlasHoverItemKind.Block)) > 0);
+    TextsOf(mOpened, TAtlasHoverItemKind.Text)) > 0, TextsOf(mOpened, TAtlasHoverItemKind.Text));
+  Assert.IsTrue(Pos('Verschluckt jede Ausnahme.', TextsOf(mOpened, TAtlasHoverItemKind.Block)) > 0);
   // Je Beispiel eine Fläche und ein Randstrich.
-  FillCount := CountKind(Opened, TAtlasHoverItemKind.Fill) - CountKind(Closed, TAtlasHoverItemKind.Fill);
-  Assert.AreEqual(4, FillCount);
-  Assert.IsTrue(Opened.Height > Closed.Height);
-  Assert.IsTrue(Opened.Hits[FirstProblemHit(Opened)].Rect.Top > Closed.Hits[FirstProblemHit(Closed)].Rect.Top);
+  mFillCount := CountKind(mOpened, TAtlasHoverItemKind.Fill) - CountKind(mClosed, TAtlasHoverItemKind.Fill);
+  Assert.AreEqual(4, mFillCount);
+  Assert.IsTrue(mOpened.Height > mClosed.Height);
+  Assert.IsTrue(mOpened.Hits[FirstProblemHit(mOpened)].Rect.Top > mClosed.Hits[FirstProblemHit(mClosed)].Rect.Top);
   // Tab-Markierung bleibt beim Aufklappen auf derselben Klickfläche.
-  Assert.AreEqual(FirstProblemHit(Closed), FirstProblemHit(Opened));
+  Assert.AreEqual(FirstProblemHit(mClosed), FirstProblemHit(mOpened));
   // Ohne Aktionszeile kein Beispiel.
-  HoverInput.ProblemActions := False;
-  Assert.AreEqual(0, Pos('Verschluckt', TextsOf(Build(HoverInput), TAtlasHoverItemKind.Block)));
+  mHoverInput.ProblemActions := False;
+  Assert.AreEqual(0, Pos('Verschluckt', TextsOf(Build(mHoverInput), TAtlasHoverItemKind.Block)));
 end;
 
 initialization

@@ -49,94 +49,94 @@ end;
 
 procedure TAtlasResultsDataFlowTests.GroupedPlacesBeforeSources;
 var
-  Node: TAtlasDataFlowNode;
-  Children: TArray<TAtlasDataFlowChild>;
+  mNode: TAtlasDataFlowNode;
+  mChildren: TArray<TAtlasDataFlowChild>;
 begin
-  Node := Default(TAtlasDataFlowNode);
-  Node.Places := [Place(3), Place(8), Place(12)];
-  Node.Sources := [Source('Summe', TAtlasDataFlowLeaf.None)];
-  Children := TAtlasDataFlowTree.Children(Node, 1, 6);
-  Assert.AreEqual(4, Integer(Length(Children)));
-  Assert.AreEqual<TAtlasDataFlowChildKind>(TAtlasDataFlowChildKind.Place, Children[0].Kind);
-  Assert.AreEqual(12, Children[2].Place.Line);
-  Assert.AreEqual<TAtlasDataFlowChildKind>(TAtlasDataFlowChildKind.Source, Children[3].Kind);
-  Assert.IsTrue(Children[3].Expandable);
-  Assert.AreEqual(3, TAtlasDataFlowTree.FirstPlace(Node).Line);
+  mNode := Default(TAtlasDataFlowNode);
+  mNode.Places := [Place(3), Place(8), Place(12)];
+  mNode.Sources := [Source('Summe', TAtlasDataFlowLeaf.None)];
+  mChildren := TAtlasDataFlowTree.Children(mNode, 1, 6);
+  Assert.AreEqual(4, Integer(Length(mChildren)));
+  Assert.AreEqual<TAtlasDataFlowChildKind>(TAtlasDataFlowChildKind.Place, mChildren[0].Kind);
+  Assert.AreEqual(12, mChildren[2].Place.Line);
+  Assert.AreEqual<TAtlasDataFlowChildKind>(TAtlasDataFlowChildKind.Source, mChildren[3].Kind);
+  Assert.IsTrue(mChildren[3].Expandable);
+  Assert.AreEqual(3, TAtlasDataFlowTree.FirstPlace(mNode).Line);
 end;
 
 procedure TAtlasResultsDataFlowTests.SinglePlaceHasNoPlaceChildren;
 var
-  Node: TAtlasDataFlowNode;
+  mNode: TAtlasDataFlowNode;
 begin
-  Node := Default(TAtlasDataFlowNode);
-  Node.Places := [Place(3)];
-  Assert.AreEqual(0, Integer(Length(TAtlasDataFlowTree.Children(Node, 1, 6))));
+  mNode := Default(TAtlasDataFlowNode);
+  mNode.Places := [Place(3)];
+  Assert.AreEqual(0, Integer(Length(TAtlasDataFlowTree.Children(mNode, 1, 6))));
   Assert.AreEqual(0, TAtlasDataFlowTree.FirstPlace(Default(TAtlasDataFlowNode)).Line);
 end;
 
 procedure TAtlasResultsDataFlowTests.LeavesAndDepthLimit;
 var
-  Node: TAtlasDataFlowNode;
-  Children: TArray<TAtlasDataFlowChild>;
+  mNode: TAtlasDataFlowNode;
+  mChildren: TArray<TAtlasDataFlowChild>;
 begin
-  Node := Default(TAtlasDataFlowNode);
-  Node.Places := [Place(3)];
-  Node.Sources := [Source('A', TAtlasDataFlowLeaf.None), Source('cMax', TAtlasDataFlowLeaf.Constant),
+  mNode := Default(TAtlasDataFlowNode);
+  mNode.Places := [Place(3)];
+  mNode.Sources := [Source('A', TAtlasDataFlowLeaf.None), Source('cMax', TAtlasDataFlowLeaf.Constant),
     Source('X', TAtlasDataFlowLeaf.Cycle), Source('IntToStr', TAtlasDataFlowLeaf.Outside)];
-  Children := TAtlasDataFlowTree.Children(Node, 5, 6);
-  Assert.IsTrue(Children[0].Expandable);
-  Assert.IsFalse(Children[1].Expandable);
-  Assert.IsFalse(Children[1].DepthReached, 'Konstante ist ein Blatt, keine Grenze');
-  Assert.IsFalse(Children[2].Expandable);
-  Assert.IsFalse(Children[3].Expandable);
+  mChildren := TAtlasDataFlowTree.Children(mNode, 5, 6);
+  Assert.IsTrue(mChildren[0].Expandable);
+  Assert.IsFalse(mChildren[1].Expandable);
+  Assert.IsFalse(mChildren[1].DepthReached, 'Konstante ist ein Blatt, keine Grenze');
+  Assert.IsFalse(mChildren[2].Expandable);
+  Assert.IsFalse(mChildren[3].Expandable);
   // Auf der letzten erlaubten Ebene geht nichts mehr auf.
-  Children := TAtlasDataFlowTree.Children(Node, 6, 6);
-  Assert.IsFalse(Children[0].Expandable);
-  Assert.IsTrue(Children[0].DepthReached);
-  Children := TAtlasDataFlowTree.Children(Node, 1, 1);
-  Assert.IsTrue(Children[0].DepthReached);
+  mChildren := TAtlasDataFlowTree.Children(mNode, 6, 6);
+  Assert.IsFalse(mChildren[0].Expandable);
+  Assert.IsTrue(mChildren[0].DepthReached);
+  mChildren := TAtlasDataFlowTree.Children(mNode, 1, 1);
+  Assert.IsTrue(mChildren[0].DepthReached);
 end;
 
 procedure TAtlasResultsDataFlowTests.OriginOfLeafNodes;
 var
-  Node: TAtlasDataFlowNode;
+  mNode: TAtlasDataFlowNode;
 begin
-  Node := Default(TAtlasDataFlowNode);
-  Node.Places := [Place(3)];
-  Node.Kind := TAtlasDataFlowKind.Assignment;
-  Node.Literal := True;
-  Assert.AreEqual<TAtlasDataFlowOrigin>(TAtlasDataFlowOrigin.Literal, TAtlasDataFlowTree.Origin(Node));
-  Node.Literal := False;
-  Assert.AreEqual<TAtlasDataFlowOrigin>(TAtlasDataFlowOrigin.Open, TAtlasDataFlowTree.Origin(Node));
-  Node.Via := 'IntToStr';
-  Assert.AreEqual<TAtlasDataFlowOrigin>(TAtlasDataFlowOrigin.Outside, TAtlasDataFlowTree.Origin(Node));
-  Node.Kind := TAtlasDataFlowKind.Input;
-  Assert.AreEqual<TAtlasDataFlowOrigin>(TAtlasDataFlowOrigin.Input, TAtlasDataFlowTree.Origin(Node));
-  Node.Kind := TAtlasDataFlowKind.Output;
-  Assert.AreEqual<TAtlasDataFlowOrigin>(TAtlasDataFlowOrigin.Output, TAtlasDataFlowTree.Origin(Node));
-  Node.Kind := TAtlasDataFlowKind.Use;
-  Assert.AreEqual<TAtlasDataFlowOrigin>(TAtlasDataFlowOrigin.Use, TAtlasDataFlowTree.Origin(Node));
-  Node.Kind := TAtlasDataFlowKind.Address;
-  Assert.AreEqual<TAtlasDataFlowOrigin>(TAtlasDataFlowOrigin.Address, TAtlasDataFlowTree.Origin(Node));
-  Node.Kind := TAtlasDataFlowKind.Constant;
-  Assert.AreEqual<TAtlasDataFlowOrigin>(TAtlasDataFlowOrigin.Constant, TAtlasDataFlowTree.Origin(Node));
-  Node.Sources := [Source('A', TAtlasDataFlowLeaf.None)];
-  Assert.AreEqual<TAtlasDataFlowOrigin>(TAtlasDataFlowOrigin.None, TAtlasDataFlowTree.Origin(Node));
+  mNode := Default(TAtlasDataFlowNode);
+  mNode.Places := [Place(3)];
+  mNode.Kind := TAtlasDataFlowKind.Assignment;
+  mNode.Literal := True;
+  Assert.AreEqual<TAtlasDataFlowOrigin>(TAtlasDataFlowOrigin.Literal, TAtlasDataFlowTree.Origin(mNode));
+  mNode.Literal := False;
+  Assert.AreEqual<TAtlasDataFlowOrigin>(TAtlasDataFlowOrigin.Open, TAtlasDataFlowTree.Origin(mNode));
+  mNode.Via := 'IntToStr';
+  Assert.AreEqual<TAtlasDataFlowOrigin>(TAtlasDataFlowOrigin.Outside, TAtlasDataFlowTree.Origin(mNode));
+  mNode.Kind := TAtlasDataFlowKind.Input;
+  Assert.AreEqual<TAtlasDataFlowOrigin>(TAtlasDataFlowOrigin.Input, TAtlasDataFlowTree.Origin(mNode));
+  mNode.Kind := TAtlasDataFlowKind.Output;
+  Assert.AreEqual<TAtlasDataFlowOrigin>(TAtlasDataFlowOrigin.Output, TAtlasDataFlowTree.Origin(mNode));
+  mNode.Kind := TAtlasDataFlowKind.Use;
+  Assert.AreEqual<TAtlasDataFlowOrigin>(TAtlasDataFlowOrigin.Use, TAtlasDataFlowTree.Origin(mNode));
+  mNode.Kind := TAtlasDataFlowKind.Address;
+  Assert.AreEqual<TAtlasDataFlowOrigin>(TAtlasDataFlowOrigin.Address, TAtlasDataFlowTree.Origin(mNode));
+  mNode.Kind := TAtlasDataFlowKind.Constant;
+  Assert.AreEqual<TAtlasDataFlowOrigin>(TAtlasDataFlowOrigin.Constant, TAtlasDataFlowTree.Origin(mNode));
+  mNode.Sources := [Source('A', TAtlasDataFlowLeaf.None)];
+  Assert.AreEqual<TAtlasDataFlowOrigin>(TAtlasDataFlowOrigin.None, TAtlasDataFlowTree.Origin(mNode));
 end;
 
 procedure TAtlasResultsDataFlowTests.PathAndDepthRange;
 var
-  Path: TArray<string>;
+  mPath: TArray<string>;
 begin
-  Path := TAtlasDataFlowTree.ChildPath(nil, 'a');
-  Path := TAtlasDataFlowTree.ChildPath(Path, 'b');
-  Assert.AreEqual(2, Integer(Length(Path)));
-  Assert.AreEqual('a', Path[0]);
-  Assert.AreEqual('b', Path[1]);
+  mPath := TAtlasDataFlowTree.ChildPath(nil, 'a');
+  mPath := TAtlasDataFlowTree.ChildPath(mPath, 'b');
+  Assert.AreEqual(2, Integer(Length(mPath)));
+  Assert.AreEqual('a', mPath[0]);
+  Assert.AreEqual('b', mPath[1]);
   Assert.AreEqual(1, TAtlasDataFlowTree.ClampDepth(0));
   Assert.AreEqual(20, TAtlasDataFlowTree.ClampDepth(99));
   Assert.AreEqual(6, TAtlasDataFlowTree.ClampDepth(6));
-  Path := nil;
+  mPath := nil;
 end;
 
 end.

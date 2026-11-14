@@ -51,7 +51,7 @@ end;
 
 procedure TAssignFieldsTests.WritableMembers;
 var
-  Indexed: TAssignMember;
+  mIndexed: TAssignMember;
 begin
   Assert.IsTrue(TAssignFields.Writable(Member('Count', TIndexSymbolKind.Field, 'Count: Integer', 'Integer',
     TIndexVisibility.Public)));
@@ -64,49 +64,49 @@ begin
   // "Write" im Namen oder Typ ist kein Schreibzugriff.
   Assert.IsFalse(TAssignFields.Writable(Member('Write', TIndexSymbolKind.Property_,
     'property Write: TWriteMode read FWrite', 'TWriteMode', TIndexVisibility.Public)));
-  Indexed := Member('Items', TIndexSymbolKind.Property_, 'property Items[I: Integer]: string read Get write Put',
+  mIndexed := Member('Items', TIndexSymbolKind.Property_, 'property Items[I: Integer]: string read Get write Put',
     'string', TIndexVisibility.Public);
-  Indexed.MaxArgs := 1;
-  Assert.IsFalse(TAssignFields.Writable(Indexed), 'indiziert');
+  mIndexed.MaxArgs := 1;
+  Assert.IsFalse(TAssignFields.Writable(mIndexed), 'indiziert');
   Assert.IsFalse(TAssignFields.Writable(Member('Run', TIndexSymbolKind.Method, 'procedure Run', '',
     TIndexVisibility.Public)), 'Methode');
 end;
 
 procedure TAssignFieldsTests.MergesRedeclaredProperties;
 var
-  Merged: TArray<TAssignMember>;
+  mMerged: TArray<TAssignMember>;
 begin
-  Merged := TAssignFields.Merge([
+  mMerged := TAssignFields.Merge([
     Member('Caption', TIndexSymbolKind.Property_, 'property Caption: string read FCaption write FCaption',
       'string', TIndexVisibility.Protected),
     Member('Tag', TIndexSymbolKind.Field, 'Tag: Integer', 'Integer', TIndexVisibility.Public),
     Member('Caption', TIndexSymbolKind.Property_, 'property Caption', '', TIndexVisibility.Published)]);
-  Assert.AreEqual(2, Integer(Length(Merged)));
-  Assert.AreEqual('Caption', Merged[0].Name, 'an der Stelle der geerbten');
-  Assert.AreEqual<TIndexVisibility>(TIndexVisibility.Published, Merged[0].Visibility);
-  Assert.AreEqual('string', Merged[0].TypeName);
-  Assert.IsTrue(TAssignFields.Writable(Merged[0]));
-  Merged := nil;
+  Assert.AreEqual(2, Integer(Length(mMerged)));
+  Assert.AreEqual('Caption', mMerged[0].Name, 'an der Stelle der geerbten');
+  Assert.AreEqual<TIndexVisibility>(TIndexVisibility.Published, mMerged[0].Visibility);
+  Assert.AreEqual('string', mMerged[0].TypeName);
+  Assert.IsTrue(TAssignFields.Writable(mMerged[0]));
+  mMerged := nil;
 end;
 
 procedure TAssignFieldsTests.DefaultValues;
 var
-  Kind: TAssignValueKind;
+  mKind: TAssignValueKind;
 begin
-  Assert.IsTrue(TAssignFields.KindOfText('Integer', Kind) and (Kind = TAssignValueKind.Number));
-  Assert.IsTrue(TAssignFields.KindOfText('System.Double', Kind) and (Kind = TAssignValueKind.Number));
-  Assert.IsTrue(TAssignFields.KindOfText('TDateTime', Kind) and (Kind = TAssignValueKind.Number));
-  Assert.IsTrue(TAssignFields.KindOfText('string', Kind) and (Kind = TAssignValueKind.Text));
-  Assert.IsTrue(TAssignFields.KindOfText('string[20]', Kind) and (Kind = TAssignValueKind.Text));
-  Assert.IsTrue(TAssignFields.KindOfText('Char', Kind) and (Kind = TAssignValueKind.Character));
-  Assert.IsTrue(TAssignFields.KindOfText('Boolean', Kind) and (Kind = TAssignValueKind.Boolean_));
-  Assert.IsTrue(TAssignFields.KindOfText('TArray<Integer>', Kind) and (Kind = TAssignValueKind.Reference));
-  Assert.IsTrue(TAssignFields.KindOfText('array of Byte', Kind) and (Kind = TAssignValueKind.Reference));
-  Assert.IsTrue(TAssignFields.KindOfText('^TNode', Kind) and (Kind = TAssignValueKind.Reference));
-  Assert.IsTrue(TAssignFields.KindOfText('reference to procedure', Kind) and (Kind = TAssignValueKind.Reference));
-  Assert.IsTrue(TAssignFields.KindOfText('set of TKind', Kind) and (Kind = TAssignValueKind.SetOf));
-  Assert.IsFalse(TAssignFields.KindOfText('TOptions', Kind), 'braucht die Namensauflösung');
-  Assert.IsFalse(TAssignFields.KindOfText('Settings', Kind), 'nicht als set erkannt');
+  Assert.IsTrue(TAssignFields.KindOfText('Integer', mKind) and (mKind = TAssignValueKind.Number));
+  Assert.IsTrue(TAssignFields.KindOfText('System.Double', mKind) and (mKind = TAssignValueKind.Number));
+  Assert.IsTrue(TAssignFields.KindOfText('TDateTime', mKind) and (mKind = TAssignValueKind.Number));
+  Assert.IsTrue(TAssignFields.KindOfText('string', mKind) and (mKind = TAssignValueKind.Text));
+  Assert.IsTrue(TAssignFields.KindOfText('string[20]', mKind) and (mKind = TAssignValueKind.Text));
+  Assert.IsTrue(TAssignFields.KindOfText('Char', mKind) and (mKind = TAssignValueKind.Character));
+  Assert.IsTrue(TAssignFields.KindOfText('Boolean', mKind) and (mKind = TAssignValueKind.Boolean_));
+  Assert.IsTrue(TAssignFields.KindOfText('TArray<Integer>', mKind) and (mKind = TAssignValueKind.Reference));
+  Assert.IsTrue(TAssignFields.KindOfText('array of Byte', mKind) and (mKind = TAssignValueKind.Reference));
+  Assert.IsTrue(TAssignFields.KindOfText('^TNode', mKind) and (mKind = TAssignValueKind.Reference));
+  Assert.IsTrue(TAssignFields.KindOfText('reference to procedure', mKind) and (mKind = TAssignValueKind.Reference));
+  Assert.IsTrue(TAssignFields.KindOfText('set of TKind', mKind) and (mKind = TAssignValueKind.SetOf));
+  Assert.IsFalse(TAssignFields.KindOfText('TOptions', mKind), 'braucht die Namensauflösung');
+  Assert.IsFalse(TAssignFields.KindOfText('Settings', mKind), 'nicht als set erkannt');
   Assert.AreEqual('0', TAssignFields.DefaultValue(TAssignValueKind.Number, 'Integer', ''));
   Assert.AreEqual('''''', TAssignFields.DefaultValue(TAssignValueKind.Text, 'string', ''));
   Assert.AreEqual('#0', TAssignFields.DefaultValue(TAssignValueKind.Character, 'Char', ''));
@@ -119,34 +119,34 @@ end;
 
 procedure TAssignFieldsTests.SkipsAssignedFields;
 var
-  Lines: TArray<string>;
-  Fields: TArray<TAssignField>;
+  mLines: TArray<string>;
+  mFields: TArray<TAssignField>;
 begin
-  Lines := ['  Opts.', '  Opts.Header := ''x'';', '', '  opts . Count:=1;', '  Foo;', '  Opts.Kind := kA;'];
-  Assert.AreEqual('Header|Count', string.Join('|', TAssignFields.AssignedAfter(Lines, 0, 'Opts')));
-  Assert.AreEqual('', string.Join('|', TAssignFields.AssignedAfter(Lines, 4, 'Other')));
+  mLines := ['  Opts.', '  Opts.Header := ''x'';', '', '  opts . Count:=1;', '  Foo;', '  Opts.Kind := kA;'];
+  Assert.AreEqual('Header|Count', string.Join('|', TAssignFields.AssignedAfter(mLines, 0, 'Opts')));
+  Assert.AreEqual('', string.Join('|', TAssignFields.AssignedAfter(mLines, 4, 'Other')));
   Assert.AreEqual('X', string.Join('|', TAssignFields.AssignedAfter(['A.B.', 'A.B.X := 1;'], 0, 'A.B')));
-  Fields := TAssignFields.Without([Field('Header', ''''''), Field('Count', '0'), Field('Kind', 'kA')],
+  mFields := TAssignFields.Without([Field('Header', ''''''), Field('Count', '0'), Field('Kind', 'kA')],
     ['count', 'Header']);
-  Assert.AreEqual(1, Integer(Length(Fields)));
-  Assert.AreEqual('Kind', Fields[0].Name);
-  Lines := nil;
-  Fields := nil;
+  Assert.AreEqual(1, Integer(Length(mFields)));
+  Assert.AreEqual('Kind', mFields[0].Name);
+  mLines := nil;
+  mFields := nil;
 end;
 
 procedure TAssignFieldsTests.BuildsText;
 var
-  Fields: TArray<TAssignField>;
+  mFields: TArray<TAssignField>;
 begin
-  Fields := [Field('Header', ''''''), Field('Count', '0')];
-  Assert.AreEqual('Opts.Header := '''';', TAssignFields.Line('Opts', Fields[0]));
-  Assert.AreEqual('Opts.Header := ${1:''''};'#10'Opts.Count := ${2:0};', TAssignFields.Snippet('Opts', Fields));
+  mFields := [Field('Header', ''''''), Field('Count', '0')];
+  Assert.AreEqual('Opts.Header := '''';', TAssignFields.Line('Opts', mFields[0]));
+  Assert.AreEqual('Opts.Header := ${1:''''};'#10'Opts.Count := ${2:0};', TAssignFields.Snippet('Opts', mFields));
   Assert.AreEqual('Opts.Header := '''';'#13#10'    Opts.Count := 0;',
-    TAssignFields.Plain('Opts', '    ', #13#10, Fields));
+    TAssignFields.Plain('Opts', '    ', #13#10, mFields));
   // Zeichen der Snippet-Syntax im Wert.
   Assert.AreEqual('A.B := ${1:Default(T\}\$)};', TAssignFields.Snippet('A', [Field('B', 'Default(T}$)')]));
   Assert.AreEqual('Alle Felder zuweisen (3)', TAssignFields.Title(3));
-  Fields := nil;
+  mFields := nil;
 end;
 
 initialization

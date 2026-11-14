@@ -66,9 +66,9 @@ uses
   Atlas.Common.Editing.MemberTransfer;
 
 const
-  FileU = 'C:\P\U.pas';
-  FileB = 'C:\P\B.pas';
-  Source =
+  cFileU = 'C:\P\U.pas';
+  cFileB = 'C:\P\B.pas';
+  cSource =
     'unit U;'#10 +                                   // 0
     'interface'#10 +                                 // 1
     'type'#10 +                                      // 2
@@ -97,64 +97,64 @@ const
 
 function Parses(const AText: string): Boolean;
 var
-  Tree: TSyntaxTree;
+  mTree: TSyntaxTree;
 begin
-  Tree := TPascalParser.Parse(AText);
+  mTree := TPascalParser.Parse(AText);
   try
-    Result := Length(Tree.Diagnostics) = 0;
+    Result := Length(mTree.Diagnostics) = 0;
   finally
-    Tree.Free;
+    mTree.Free;
   end;
 end;
 
 /// <summary>Ids der Mitglieder ANames der Klasse AClass in AText.</summary>
 function Ids(const AText, AClass: string; const ANames: array of string): TArray<Integer>;
 var
-  Layout: TClassLayout;
-  Tree: TSyntaxTree;
-  Name: string;
+  mLayout: TClassLayout;
+  mTree: TSyntaxTree;
+  mName: string;
 begin
   Result := nil;
-  Layout := TMemberTransfer.ParseLayout(AText, AClass, Tree);
+  mLayout := TMemberTransfer.ParseLayout(AText, AClass, mTree);
   try
-    for Name in ANames do
+    for mName in ANames do
     begin
-      Result := Result + [Layout.Find(Name)[0]];
+      Result := Result + [mLayout.Find(mName)[0]];
     end;
   finally
-    Layout.Free;
-    Tree.Free;
+    mLayout.Free;
+    mTree.Free;
   end;
 end;
 
 /// <summary>Zeilen der Klasse AClass in AText (Kopf bis end), ohne Einrückung, mit | verbunden.</summary>
 function ClassText(const AText, AClass: string): string;
 var
-  Layout: TClassLayout;
-  Tree: TSyntaxTree;
-  Line: Integer;
+  mLayout: TClassLayout;
+  mTree: TSyntaxTree;
+  mLine: Integer;
 begin
   Result := '';
-  Layout := TMemberTransfer.ParseLayout(AText, AClass, Tree);
-  if Layout = nil then
+  mLayout := TMemberTransfer.ParseLayout(AText, AClass, mTree);
+  if mLayout = nil then
   begin
     Exit('?');
   end;
   try
-    for Line := Layout.HeaderLine to Layout.EndLine do
+    for mLine := mLayout.HeaderLine to mLayout.EndLine do
     begin
-      Result := Result + Trim(Layout.Lines[Line]) + '|';
+      Result := Result + Trim(mLayout.Lines[mLine]) + '|';
     end;
   finally
-    Layout.Free;
-    Tree.Free;
+    mLayout.Free;
+    mTree.Free;
   end;
 end;
 
 procedure TMoveMemberTests.Setup;
 begin
   FFiles := TMemberFiles.Create;
-  FFiles.Add(FileU, Source);
+  FFiles.Add(cFileU, cSource);
 end;
 
 procedure TMoveMemberTests.TearDown;
@@ -167,65 +167,65 @@ end;
 function TMoveMemberTests.Up(const AMembers, AAbstract: array of string; AOverrideSiblings: Boolean;
   out APlan: TMoveMemberPlan): Boolean;
 var
-  Request: TMoveMemberRequest;
+  mRequest: TMoveMemberRequest;
 begin
-  Request := Default(TMoveMemberRequest);
-  Request.Members := Ids(FFiles.Text(FileU), 'TChild', AMembers);
-  Request.Abstract := Ids(FFiles.Text(FileU), 'TChild', AAbstract);
-  Request.Siblings := [TMemberClassRef.Create(FileU, 'TChild'), TMemberClassRef.Create(FileU, 'TOther')];
-  Request.OverrideSiblings := AOverrideSiblings;
-  Request.RaiseVisibility := TClassVisibility.Protected_;
-  Result := TMoveMember.PullUp(FFiles, TMemberClassRef.Create(FileU, 'TChild'),
-    TMemberClassRef.Create(FileU, 'TBase'), Request, APlan, FReason);
-  FText := FFiles.Text(FileU);
+  mRequest := Default(TMoveMemberRequest);
+  mRequest.Members := Ids(FFiles.Text(cFileU), 'TChild', AMembers);
+  mRequest.Abstract := Ids(FFiles.Text(cFileU), 'TChild', AAbstract);
+  mRequest.Siblings := [TMemberClassRef.Create(cFileU, 'TChild'), TMemberClassRef.Create(cFileU, 'TOther')];
+  mRequest.OverrideSiblings := AOverrideSiblings;
+  mRequest.RaiseVisibility := TClassVisibility.Protected_;
+  Result := TMoveMember.PullUp(FFiles, TMemberClassRef.Create(cFileU, 'TChild'),
+    TMemberClassRef.Create(cFileU, 'TBase'), mRequest, APlan, FReason);
+  FText := FFiles.Text(cFileU);
 end;
 
 function TMoveMemberTests.Down(const AMembers: array of string; AKeepAbstract: Boolean;
   const ATargets: array of string; out APlan: TMoveMemberPlan): Boolean;
 var
-  Request: TMoveMemberRequest;
-  Targets: TArray<TMemberClassRef>;
-  Name: string;
+  mRequest: TMoveMemberRequest;
+  mTargets: TArray<TMemberClassRef>;
+  mName: string;
 begin
-  Request := Default(TMoveMemberRequest);
-  Request.Members := Ids(FFiles.Text(FileU), 'TBase', AMembers);
-  Request.KeepAbstract := AKeepAbstract;
-  Request.AllTargets := 2;
-  Request.RaiseVisibility := TClassVisibility.Protected_;
-  Targets := nil;
-  for Name in ATargets do
+  mRequest := Default(TMoveMemberRequest);
+  mRequest.Members := Ids(FFiles.Text(cFileU), 'TBase', AMembers);
+  mRequest.KeepAbstract := AKeepAbstract;
+  mRequest.AllTargets := 2;
+  mRequest.RaiseVisibility := TClassVisibility.Protected_;
+  mTargets := nil;
+  for mName in ATargets do
   begin
-    Targets := Targets + [TMemberClassRef.Create(FileU, Name)];
+    mTargets := mTargets + [TMemberClassRef.Create(cFileU, mName)];
   end;
-  Result := TMoveMember.PushDown(FFiles, TMemberClassRef.Create(FileU, 'TBase'), Targets, Request, APlan,
+  Result := TMoveMember.PushDown(FFiles, TMemberClassRef.Create(cFileU, 'TBase'), mTargets, mRequest, APlan,
     FReason);
-  FText := FFiles.Text(FileU);
+  FText := FFiles.Text(cFileU);
 end;
 
 procedure TMoveMemberTests.PrepareFindsMember;
 var
-  Tree: TSyntaxTree;
-  Info: TMoveMemberInfo;
+  mTree: TSyntaxTree;
+  mInfo: TMoveMemberInfo;
 begin
-  Tree := TPascalParser.Parse(Source);
+  mTree := TPascalParser.Parse(cSource);
   try
-    Assert.IsTrue(TMoveMember.Prepare(Tree, Source, 11, Info, FReason), FReason);
-    Assert.AreEqual('TChild', Info.ClassName);
-    Assert.AreEqual('Step', Info.SelectedName);
-    Assert.AreEqual('TBase', Info.Ancestor);
-    Assert.AreEqual(4, Integer(Length(Info.Candidates)));
-    Assert.IsFalse(TMoveMember.Prepare(Tree, Source, 7, Info, FReason), 'Kopfzeile');
-    Assert.IsFalse(TMoveMember.Prepare(Tree, Source, 21, Info, FReason), 'implementation');
+    Assert.IsTrue(TMoveMember.Prepare(mTree, cSource, 11, mInfo, FReason), FReason);
+    Assert.AreEqual('TChild', mInfo.ClassName);
+    Assert.AreEqual('Step', mInfo.SelectedName);
+    Assert.AreEqual('TBase', mInfo.Ancestor);
+    Assert.AreEqual(4, Integer(Length(mInfo.Candidates)));
+    Assert.IsFalse(TMoveMember.Prepare(mTree, cSource, 7, mInfo, FReason), 'Kopfzeile');
+    Assert.IsFalse(TMoveMember.Prepare(mTree, cSource, 21, mInfo, FReason), 'implementation');
   finally
-    Tree.Free;
+    mTree.Free;
   end;
 end;
 
 procedure TMoveMemberTests.PullsUpFieldAndMethod;
 var
-  Plan: TMoveMemberPlan;
+  mPlan: TMoveMemberPlan;
 begin
-  Assert.IsTrue(Up(['FCount', 'Step'], [], False, Plan), FReason);
+  Assert.IsTrue(Up(['FCount', 'Step'], [], False, mPlan), FReason);
   Assert.IsTrue(Parses(FText), FText);
   // In derselben Unit bleibt private private.
   Assert.AreEqual('TBase = class|private|FCount: Integer;|public|procedure Show;|procedure Step;|end;|',
@@ -234,64 +234,64 @@ begin
     ClassText(FText, 'TChild'));
   Assert.IsTrue(ContainsStr(FText, 'procedure TBase.Step;'#10'begin'#10'  FCount := FCount + 1;'), FText);
   Assert.IsFalse(ContainsStr(FText, 'TChild.Step'), FText);
-  Assert.AreEqual(2, Integer(Length(Plan.Moved)));
+  Assert.AreEqual(2, Integer(Length(mPlan.Moved)));
 end;
 
 procedure TMoveMemberTests.PullUpNeedsDependencies;
 var
-  Plan: TMoveMemberPlan;
+  mPlan: TMoveMemberPlan;
 begin
-  Assert.IsFalse(Up(['Step'], [], False, Plan));
+  Assert.IsFalse(Up(['Step'], [], False, mPlan));
   Assert.IsTrue(ContainsStr(FReason, 'Step braucht FCount'), FReason);
-  Assert.AreEqual(Source, FText);
+  Assert.AreEqual(cSource, FText);
 end;
 
 procedure TMoveMemberTests.PullsUpAbstract;
 var
-  Plan: TMoveMemberPlan;
+  mPlan: TMoveMemberPlan;
 begin
   // Run benutzt Step, wandert aber nur abstrakt.
-  Assert.IsTrue(Up(['Run'], ['Run'], False, Plan), FReason);
+  Assert.IsTrue(Up(['Run'], ['Run'], False, mPlan), FReason);
   Assert.IsTrue(Parses(FText), FText);
   Assert.AreEqual('TBase = class|public|procedure Show;|procedure Run; virtual; abstract;|end;|',
     ClassText(FText, 'TBase'));
   Assert.IsTrue(ContainsStr(ClassText(FText, 'TChild'), '|procedure Run; override;|'), FText);
   Assert.IsTrue(ContainsStr(FText, 'procedure TChild.Run;'), FText);
-  Assert.AreEqual('Run', Plan.Abstracts[0]);
+  Assert.AreEqual('Run', mPlan.Abstracts[0]);
   // TOther.Run passt, wird aber ohne die Wahl nicht override.
-  Assert.AreEqual(1, Integer(Length(Plan.Warnings)));
-  Assert.IsTrue(ContainsStr(Plan.Warnings[0], 'TOther.Run verdeckt'), Plan.Warnings[0]);
+  Assert.AreEqual(1, Integer(Length(mPlan.Warnings)));
+  Assert.IsTrue(ContainsStr(mPlan.Warnings[0], 'TOther.Run verdeckt'), mPlan.Warnings[0]);
 end;
 
 procedure TMoveMemberTests.PullUpRejectsNameInTarget;
 var
-  Plan: TMoveMemberPlan;
+  mPlan: TMoveMemberPlan;
 begin
-  FFiles.Put(FileU, StringReplace(Source, '    procedure Show;', '    procedure Run;', []));
-  Assert.IsFalse(Up(['Run'], ['Run'], False, Plan));
+  FFiles.Put(cFileU, StringReplace(cSource, '    procedure Show;', '    procedure Run;', []));
+  Assert.IsFalse(Up(['Run'], ['Run'], False, mPlan));
   Assert.IsTrue(ContainsStr(FReason, 'TBase hat schon ein Mitglied Run'), FReason);
 end;
 
 procedure TMoveMemberTests.PullUpOverridesSiblings;
 var
-  Plan: TMoveMemberPlan;
+  mPlan: TMoveMemberPlan;
 begin
-  Assert.IsTrue(Up(['FCount', 'Step', 'Run'], [], True, Plan), FReason);
+  Assert.IsTrue(Up(['FCount', 'Step', 'Run'], [], True, mPlan), FReason);
   Assert.IsTrue(Parses(FText), FText);
   Assert.IsTrue(ContainsStr(ClassText(FText, 'TBase'), '|procedure Run; virtual;|'), FText);
   Assert.AreEqual('TOther = class(TBase)|public|procedure Run; override;|end;|', ClassText(FText, 'TOther'));
-  Assert.AreEqual('TOther.Run', Plan.Overridden[0]);
+  Assert.AreEqual('TOther.Run', mPlan.Overridden[0]);
   Assert.IsTrue(ContainsStr(FText, 'procedure TBase.Run;'), FText);
   Assert.IsTrue(ContainsStr(FText, 'procedure TOther.Run;'), FText);
 end;
 
 procedure TMoveMemberTests.PullsUpPropertyWithField;
 var
-  Plan: TMoveMemberPlan;
+  mPlan: TMoveMemberPlan;
 begin
-  Assert.IsFalse(Up(['Count'], [], False, Plan));
+  Assert.IsFalse(Up(['Count'], [], False, mPlan));
   Assert.IsTrue(ContainsStr(FReason, 'Count braucht FCount'), FReason);
-  Assert.IsTrue(Up(['FCount', 'Count'], [], False, Plan), FReason);
+  Assert.IsTrue(Up(['FCount', 'Count'], [], False, mPlan), FReason);
   Assert.IsTrue(Parses(FText), FText);
   Assert.AreEqual('TBase = class|private|FCount: Integer;|public|procedure Show;|' +
     'property Count: Integer read FCount;|end;|', ClassText(FText, 'TBase'));
@@ -299,7 +299,7 @@ end;
 
 procedure TMoveMemberTests.PullUpRaisesPrivateForOtherUnit;
 const
-  UnitB =
+  cUnitB =
     'unit B;'#10'interface'#10'type'#10 +
     '  TBase = class'#10 +
     '  public'#10 +
@@ -308,7 +308,7 @@ const
     'implementation'#10#10 +
     'procedure TBase.Show;'#10'begin'#10'end;'#10#10 +
     'end.'#10;
-  UnitU =
+  cUnitU =
     'unit U;'#10'interface'#10'uses'#10'  B;'#10'type'#10 +
     '  TChild = class(TBase)'#10 +
     '  private'#10 +
@@ -320,26 +320,26 @@ const
     'procedure TChild.Step;'#10'begin'#10'  FCount := FCount + 1;'#10'end;'#10#10 +
     'end.'#10;
 var
-  Request: TMoveMemberRequest;
-  Plan: TMoveMemberPlan;
+  mRequest: TMoveMemberRequest;
+  mPlan: TMoveMemberPlan;
 begin
-  FFiles.Put(FileU, UnitU);
-  FFiles.Add(FileB, UnitB);
-  Request := Default(TMoveMemberRequest);
-  Request.Members := Ids(UnitU, 'TChild', ['FCount']);
-  Request.RaiseVisibility := TClassVisibility.StrictProtected;
-  Assert.IsTrue(TMoveMember.PullUp(FFiles, TMemberClassRef.Create(FileU, 'TChild'),
-    TMemberClassRef.Create(FileB, 'TBase'), Request, Plan, FReason), FReason);
+  FFiles.Put(cFileU, cUnitU);
+  FFiles.Add(cFileB, cUnitB);
+  mRequest := Default(TMoveMemberRequest);
+  mRequest.Members := Ids(cUnitU, 'TChild', ['FCount']);
+  mRequest.RaiseVisibility := TClassVisibility.StrictProtected;
+  Assert.IsTrue(TMoveMember.PullUp(FFiles, TMemberClassRef.Create(cFileU, 'TChild'),
+    TMemberClassRef.Create(cFileB, 'TBase'), mRequest, mPlan, FReason), FReason);
   Assert.AreEqual('TBase = class|strict protected|FCount: Integer;|public|procedure Show;|end;|',
-    ClassText(FFiles.Text(FileB), 'TBase'));
-  Assert.AreEqual('TChild = class(TBase)|public|procedure Step;|end;|', ClassText(FFiles.Text(FileU), 'TChild'));
-  Assert.AreEqual('FCount', Plan.Raised[0]);
-  Assert.IsTrue(Parses(FFiles.Text(FileB)), FFiles.Text(FileB));
+    ClassText(FFiles.Text(cFileB), 'TBase'));
+  Assert.AreEqual('TChild = class(TBase)|public|procedure Step;|end;|', ClassText(FFiles.Text(cFileU), 'TChild'));
+  Assert.AreEqual('FCount', mPlan.Raised[0]);
+  Assert.IsTrue(Parses(FFiles.Text(cFileB)), FFiles.Text(cFileB));
 end;
 
 procedure TMoveMemberTests.PushesDownFieldAndMethod;
 const
-  Base =
+  cBase =
     'unit U;'#10'interface'#10'type'#10 +
     '  TBase = class'#10 +
     '  private'#10 +
@@ -360,10 +360,10 @@ const
     'procedure TChild.Run;'#10'begin'#10'  Load;'#10'end;'#10#10 +
     'end.'#10;
 var
-  Plan: TMoveMemberPlan;
+  mPlan: TMoveMemberPlan;
 begin
-  FFiles.Put(FileU, Base);
-  Assert.IsTrue(Down(['FData', 'Load'], False, ['TChild'], Plan), FReason);
+  FFiles.Put(cFileU, cBase);
+  Assert.IsTrue(Down(['FData', 'Load'], False, ['TChild'], mPlan), FReason);
   Assert.IsTrue(Parses(FText), FText);
   Assert.AreEqual('TBase = class|public|procedure Show;|end;|', ClassText(FText, 'TBase'));
   Assert.AreEqual('TChild = class(TBase)|private|FData: string;|public|procedure Run;|procedure Load;|end;|',
@@ -374,7 +374,7 @@ end;
 
 procedure TMoveMemberTests.PushDownRejectsUseInAncestor;
 const
-  Base =
+  cBase =
     'unit U;'#10'interface'#10'type'#10 +
     '  TBase = class'#10 +
     '  public'#10 +
@@ -388,13 +388,13 @@ const
     'procedure TBase.Show;'#10'begin'#10'  Load;'#10'end;'#10#10 +
     'end.'#10;
 var
-  Plan: TMoveMemberPlan;
+  mPlan: TMoveMemberPlan;
 begin
-  FFiles.Put(FileU, Base);
-  Assert.IsFalse(Down(['Load'], False, ['TChild'], Plan));
+  FFiles.Put(cFileU, cBase);
+  Assert.IsFalse(Down(['Load'], False, ['TChild'], mPlan));
   Assert.IsTrue(ContainsStr(FReason, 'Load wird in TBase weiter benutzt (Show)'), FReason);
   // Abstrakt im Vorfahren lassen: geht.
-  Assert.IsTrue(Down(['Load'], True, ['TChild'], Plan), FReason);
+  Assert.IsTrue(Down(['Load'], True, ['TChild'], mPlan), FReason);
   Assert.IsTrue(Parses(FText), FText);
   Assert.AreEqual('TBase = class|public|procedure Load; virtual; abstract;|procedure Show;|end;|',
     ClassText(FText, 'TBase'));
@@ -406,7 +406,7 @@ end;
 
 procedure TMoveMemberTests.PushDownRejectsForeignUse;
 const
-  Base =
+  cBase =
     'unit U;'#10'interface'#10'type'#10 +
     '  TBase = class'#10 +
     '  public'#10 +
@@ -418,22 +418,22 @@ const
     'procedure TBase.Load;'#10'begin'#10'end;'#10#10 +
     'end.'#10;
 var
-  Request: TMoveMemberRequest;
-  Plan: TMoveMemberPlan;
+  mRequest: TMoveMemberRequest;
+  mPlan: TMoveMemberPlan;
 begin
-  FFiles.Put(FileU, Base);
-  Request := Default(TMoveMemberRequest);
-  Request.Members := Ids(Base, 'TBase', ['Load']);
-  Request.Usages := [TMemberUsage.Create(Request.Members[0], 'Main.pas:12')];
-  Assert.IsFalse(TMoveMember.PushDown(FFiles, TMemberClassRef.Create(FileU, 'TBase'),
-    [TMemberClassRef.Create(FileU, 'TChild')], Request, Plan, FReason));
+  FFiles.Put(cFileU, cBase);
+  mRequest := Default(TMoveMemberRequest);
+  mRequest.Members := Ids(cBase, 'TBase', ['Load']);
+  mRequest.Usages := [TMemberUsage.Create(mRequest.Members[0], 'Main.pas:12')];
+  Assert.IsFalse(TMoveMember.PushDown(FFiles, TMemberClassRef.Create(cFileU, 'TBase'),
+    [TMemberClassRef.Create(cFileU, 'TChild')], mRequest, mPlan, FReason));
   Assert.IsTrue(ContainsStr(FReason, 'außerhalb der Nachfahren über TBase benutzt: Main.pas:12'), FReason);
-  Assert.AreEqual(Base, FFiles.Text(FileU));
+  Assert.AreEqual(cBase, FFiles.Text(cFileU));
 end;
 
 procedure TMoveMemberTests.PushDownKeepsAbstract;
 const
-  Base =
+  cBase =
     'unit U;'#10'interface'#10'type'#10 +
     '  TBase = class'#10 +
     '  public'#10 +
@@ -451,10 +451,10 @@ const
     'procedure TOther.Load;'#10'begin'#10'end;'#10#10 +
     'end.'#10;
 var
-  Plan: TMoveMemberPlan;
+  mPlan: TMoveMemberPlan;
 begin
-  FFiles.Put(FileU, Base);
-  Assert.IsTrue(Down(['Load'], True, ['TChild', 'TOther'], Plan), FReason);
+  FFiles.Put(cFileU, cBase);
+  Assert.IsTrue(Down(['Load'], True, ['TChild', 'TOther'], mPlan), FReason);
   Assert.IsTrue(Parses(FText), FText);
   Assert.AreEqual('TBase = class|public|/// <summary>Laedt.</summary>|procedure Load; overload; virtual; abstract;|' +
     'end;|', ClassText(FText, 'TBase'));
@@ -464,16 +464,16 @@ begin
   Assert.AreEqual('TOther = class(TBase)|public|procedure Load; overload; override;|end;|',
     ClassText(FText, 'TOther'));
   Assert.IsTrue(ContainsStr(FText, 'procedure TChild.Load;'), FText);
-  Assert.AreEqual(0, Integer(Length(Plan.Warnings)));
+  Assert.AreEqual(0, Integer(Length(mPlan.Warnings)));
   // Nur ein Nachfahr von zweien: Hinweis.
-  FFiles.Put(FileU, Base);
-  Assert.IsTrue(Down(['Load'], True, ['TChild'], Plan), FReason);
-  Assert.AreEqual(1, Integer(Length(Plan.Warnings)));
+  FFiles.Put(cFileU, cBase);
+  Assert.IsTrue(Down(['Load'], True, ['TChild'], mPlan), FReason);
+  Assert.AreEqual(1, Integer(Length(mPlan.Warnings)));
 end;
 
 procedure TMoveMemberTests.PushDownRaisesHiddenNeeds;
 const
-  Base =
+  cBase =
     'unit U;'#10'interface'#10'type'#10 +
     '  TBase = class'#10 +
     '  strict private'#10 +
@@ -487,13 +487,13 @@ const
     'procedure TBase.Load;'#10'begin'#10'  FSecret := 1;'#10'end;'#10#10 +
     'end.'#10;
 var
-  Plan: TMoveMemberPlan;
+  mPlan: TMoveMemberPlan;
 begin
-  FFiles.Put(FileU, Base);
-  Assert.IsTrue(Down(['Load'], False, ['TChild'], Plan), FReason);
+  FFiles.Put(cFileU, cBase);
+  Assert.IsTrue(Down(['Load'], False, ['TChild'], mPlan), FReason);
   Assert.IsTrue(Parses(FText), FText);
   Assert.AreEqual('TBase = class|protected|FSecret: Integer;|end;|', ClassText(FText, 'TBase'));
-  Assert.AreEqual('FSecret', Plan.Raised[0]);
+  Assert.AreEqual('FSecret', mPlan.Raised[0]);
 end;
 
 initialization

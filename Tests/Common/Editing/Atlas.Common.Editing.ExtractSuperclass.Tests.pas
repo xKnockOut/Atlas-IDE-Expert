@@ -55,7 +55,7 @@ uses
   Atlas.Common.Editing.ExtractSuperclass;
 
 const
-  Export_ =
+  cExport_ =
     'unit U;'#10 +                                                  // 0
     'interface'#10 +                                                // 1
     'uses Classes;'#10 +                                            // 2
@@ -107,49 +107,49 @@ const
 
 function Parses(const AText: string): Boolean;
 var
-  Tree: TSyntaxTree;
+  mTree: TSyntaxTree;
 begin
-  Tree := TPascalParser.Parse(AText);
+  mTree := TPascalParser.Parse(AText);
   try
-    Result := Length(Tree.Diagnostics) = 0;
+    Result := Length(mTree.Diagnostics) = 0;
   finally
-    Tree.Free;
+    mTree.Free;
   end;
 end;
 
 /// <summary>Index des Mitglieds AName in der Klasse auf Zeile ALine.</summary>
 function IdOf(const AText: string; ALine: Integer; const AName: string): Integer;
 var
-  Tree: TSyntaxTree;
-  Layout: TClassLayout;
+  mTree: TSyntaxTree;
+  mLayout: TClassLayout;
 begin
-  Tree := TPascalParser.Parse(AText);
+  mTree := TPascalParser.Parse(AText);
   try
-    Layout := TClassLayout.Read(Tree, AText, TExtractSuperclass.ClassAt(Tree, ALine));
+    mLayout := TClassLayout.Read(mTree, AText, TExtractSuperclass.ClassAt(mTree, ALine));
     try
-      Result := Layout.Find(AName)[0];
+      Result := mLayout.Find(AName)[0];
     finally
-      Layout.Free;
+      mLayout.Free;
     end;
   finally
-    Tree.Free;
+    mTree.Free;
   end;
 end;
 
 function Request(const AText: string; ALine: Integer; const AName: string; const AMembers,
   AAbstract: array of string; ASameUnit: Boolean): TSuperclassRequest;
 var
-  Name: string;
+  mName: string;
 begin
   Result := Default(TSuperclassRequest);
   Result.Name := AName;
-  for Name in AMembers do
+  for mName in AMembers do
   begin
-    Result.Members := Result.Members + [IdOf(AText, ALine, Name)];
+    Result.Members := Result.Members + [IdOf(AText, ALine, mName)];
   end;
-  for Name in AAbstract do
+  for mName in AAbstract do
   begin
-    Result.Abstract := Result.Abstract + [IdOf(AText, ALine, Name)];
+    Result.Abstract := Result.Abstract + [IdOf(AText, ALine, mName)];
   end;
   Result.SameUnit := ASameUnit;
   Result.RaiseVisibility := TClassVisibility.Protected_;
@@ -158,33 +158,33 @@ end;
 function Run(const AText: string; ALine: Integer; const ARequest: TSuperclassRequest; out APlan: TSuperclassPlan;
   out AReason: string): Boolean;
 var
-  Tree: TSyntaxTree;
+  mTree: TSyntaxTree;
 begin
-  Tree := TPascalParser.Parse(AText);
+  mTree := TPascalParser.Parse(AText);
   try
-    Result := TExtractSuperclass.Plan(TClassSource.Create(Tree, AText, ALine), ARequest, nil, nil, APlan, AReason);
+    Result := TExtractSuperclass.Plan(TClassSource.Create(mTree, AText, ALine), ARequest, nil, nil, APlan, AReason);
   finally
-    Tree.Free;
+    mTree.Free;
   end;
 end;
 
 /// <summary>Text zwischen AFrom und ATo (ohne beide); '' ohne.</summary>
 function Between(const AText, AFrom, ATo: string): string;
 var
-  Start, Stop: Integer;
+  mStart, mStop: Integer;
 begin
-  Start := Pos(AFrom, AText);
-  if Start = 0 then
+  mStart := Pos(AFrom, AText);
+  if mStart = 0 then
   begin
     Exit('');
   end;
-  Start := Start + Length(AFrom);
-  Stop := PosEx(ATo, AText, Start);
-  if Stop = 0 then
+  mStart := mStart + Length(AFrom);
+  mStop := PosEx(ATo, AText, mStart);
+  if mStop = 0 then
   begin
     Exit('');
   end;
-  Result := Copy(AText, Start, Stop - Start);
+  Result := Copy(AText, mStart, mStop - mStart);
 end;
 
 procedure TExtractSuperclassTests.SuggestsName;
@@ -197,97 +197,97 @@ end;
 
 procedure TExtractSuperclassTests.Candidates;
 var
-  Tree: TSyntaxTree;
-  Info: TSuperclassInfo;
-  Reason: string;
-  Item: TTransferCandidate;
-  Names: string;
+  mTree: TSyntaxTree;
+  mInfo: TSuperclassInfo;
+  mReason: string;
+  mItem: TTransferCandidate;
+  mNames: string;
 begin
-  Tree := TPascalParser.Parse(Export_);
+  mTree := TPascalParser.Parse(cExport_);
   try
-    Assert.IsTrue(TExtractSuperclass.Prepare(TClassSource.Create(Tree, Export_, 4), 'Base',
+    Assert.IsTrue(TExtractSuperclass.Prepare(TClassSource.Create(mTree, cExport_, 4), 'Base',
       function(const AName: string): Boolean
       begin
         Result := SameText(AName, 'TExportBase');
-      end, Info, Reason), Reason);
+      end, mInfo, mReason), mReason);
   finally
-    Tree.Free;
+    mTree.Free;
   end;
-  Assert.AreEqual('TPdfExport', Info.ClassName);
+  Assert.AreEqual('TPdfExport', mInfo.ClassName);
   // Vorschlag vergeben: der ganze Name.
-  Assert.AreEqual('TPdfExportBase', Info.SuggestedName);
-  Assert.AreEqual('TComponent', Info.Ancestor);
-  Names := '';
-  for Item in Info.Candidates do
+  Assert.AreEqual('TPdfExportBase', mInfo.SuggestedName);
+  Assert.AreEqual('TComponent', mInfo.Ancestor);
+  mNames := '';
+  for mItem in mInfo.Candidates do
   begin
-    Names := Names + Item.Name + ' ';
+    mNames := mNames + mItem.Name + ' ';
   end;
-  Assert.AreEqual('FTitle FPages FCompressed GetTitle Run WritePage Title ', Names);
-  Assert.IsTrue(Info.Candidates[3].CanAbstract);
+  Assert.AreEqual('FTitle FPages FCompressed GetTitle Run WritePage Title ', mNames);
+  Assert.IsTrue(mInfo.Candidates[3].CanAbstract);
   // Run braucht WritePage und FTitle.
-  Assert.AreEqual(2, Integer(Length(Info.Candidates[4].Needs)));
-  Assert.AreEqual(1, Integer(Length(Info.Notes)));
+  Assert.AreEqual(2, Integer(Length(mInfo.Candidates[4].Needs)));
+  Assert.AreEqual(1, Integer(Length(mInfo.Notes)));
 end;
 
 procedure TExtractSuperclassTests.MovesFieldAndMethod;
 var
-  Plan: TSuperclassPlan;
-  Reason, Base: string;
+  mPlan: TSuperclassPlan;
+  mReason, mBase: string;
 begin
-  Assert.IsTrue(Run(Export_, 4, Request(Export_, 4, 'TExportBase', ['FPages', 'WritePage'], [], True), Plan,
-    Reason), Reason);
-  Assert.IsTrue(Parses(Plan.Text), Plan.Text);
-  Base := Between(Plan.Text, 'TExportBase = class(TComponent)', 'end;');
-  Assert.IsTrue(ContainsStr(Base, '    FPages: TStringList;'), Base);
-  Assert.IsTrue(ContainsStr(Base, '    procedure WritePage(const AText: string);'), Base);
+  Assert.IsTrue(Run(cExport_, 4, Request(cExport_, 4, 'TExportBase', ['FPages', 'WritePage'], [], True), mPlan,
+    mReason), mReason);
+  Assert.IsTrue(Parses(mPlan.Text), mPlan.Text);
+  mBase := Between(mPlan.Text, 'TExportBase = class(TComponent)', 'end;');
+  Assert.IsTrue(ContainsStr(mBase, '    FPages: TStringList;'), mBase);
+  Assert.IsTrue(ContainsStr(mBase, '    procedure WritePage(const AText: string);'), mBase);
   // In derselben Unit sieht die Klasse private Felder der Basisklasse.
-  Assert.IsTrue(ContainsStr(Base, '  private'#10), Base);
-  Assert.IsTrue(ContainsStr(Plan.Text, 'TPdfExport = class(TExportBase)'), Plan.Text);
-  Assert.IsTrue(ContainsStr(Plan.Text, 'procedure TExportBase.WritePage(const AText: string);'), Plan.Text);
-  Assert.IsFalse(ContainsStr(Plan.Text, 'procedure TPdfExport.WritePage'), Plan.Text);
-  Assert.IsFalse(ContainsStr(Between(Plan.Text, 'TPdfExport = class', 'end;'), 'FPages'), Plan.Text);
+  Assert.IsTrue(ContainsStr(mBase, '  private'#10), mBase);
+  Assert.IsTrue(ContainsStr(mPlan.Text, 'TPdfExport = class(TExportBase)'), mPlan.Text);
+  Assert.IsTrue(ContainsStr(mPlan.Text, 'procedure TExportBase.WritePage(const AText: string);'), mPlan.Text);
+  Assert.IsFalse(ContainsStr(mPlan.Text, 'procedure TPdfExport.WritePage'), mPlan.Text);
+  Assert.IsFalse(ContainsStr(Between(mPlan.Text, 'TPdfExport = class', 'end;'), 'FPages'), mPlan.Text);
   // Die Basisklasse steht direkt über der Klasse, ihre Rümpfe vor denen der Klasse.
-  Assert.IsTrue(Pos('TExportBase = class', Plan.Text) < Pos('TPdfExport = class', Plan.Text));
-  Assert.IsTrue(Pos('TExportBase.WritePage', Plan.Text) < Pos('TPdfExport.Create', Plan.Text));
-  Assert.AreEqual(4, Plan.BaseLine);
-  Assert.AreEqual(2, Integer(Length(Plan.Moved)));
+  Assert.IsTrue(Pos('TExportBase = class', mPlan.Text) < Pos('TPdfExport = class', mPlan.Text));
+  Assert.IsTrue(Pos('TExportBase.WritePage', mPlan.Text) < Pos('TPdfExport.Create', mPlan.Text));
+  Assert.AreEqual(4, mPlan.BaseLine);
+  Assert.AreEqual(2, Integer(Length(mPlan.Moved)));
 end;
 
 procedure TExtractSuperclassTests.AbstractMethodStaysBelow;
 var
-  Plan: TSuperclassPlan;
-  Reason: string;
+  mPlan: TSuperclassPlan;
+  mReason: string;
 begin
-  Assert.IsTrue(Run(Export_, 4, Request(Export_, 4, 'TExportBase', ['FTitle', 'Run', 'WritePage'], ['WritePage'],
-    True), Plan, Reason), Reason);
-  Assert.IsTrue(Parses(Plan.Text), Plan.Text);
-  Assert.IsTrue(ContainsStr(Plan.Text, '    procedure WritePage(const AText: string); virtual; abstract;'),
-    Plan.Text);
-  Assert.IsTrue(ContainsStr(Plan.Text, '    procedure WritePage(const AText: string); override;'), Plan.Text);
-  Assert.IsTrue(ContainsStr(Plan.Text, 'procedure TPdfExport.WritePage(const AText: string);'), Plan.Text);
-  Assert.IsTrue(ContainsStr(Plan.Text, 'procedure TExportBase.Run;'), Plan.Text);
-  Assert.AreEqual(1, Integer(Length(Plan.Abstracts)));
+  Assert.IsTrue(Run(cExport_, 4, Request(cExport_, 4, 'TExportBase', ['FTitle', 'Run', 'WritePage'], ['WritePage'],
+    True), mPlan, mReason), mReason);
+  Assert.IsTrue(Parses(mPlan.Text), mPlan.Text);
+  Assert.IsTrue(ContainsStr(mPlan.Text, '    procedure WritePage(const AText: string); virtual; abstract;'),
+    mPlan.Text);
+  Assert.IsTrue(ContainsStr(mPlan.Text, '    procedure WritePage(const AText: string); override;'), mPlan.Text);
+  Assert.IsTrue(ContainsStr(mPlan.Text, 'procedure TPdfExport.WritePage(const AText: string);'), mPlan.Text);
+  Assert.IsTrue(ContainsStr(mPlan.Text, 'procedure TExportBase.Run;'), mPlan.Text);
+  Assert.AreEqual(1, Integer(Length(mPlan.Abstracts)));
 end;
 
 procedure TExtractSuperclassTests.RejectsMissingDependency;
 var
-  Plan: TSuperclassPlan;
-  Reason: string;
+  mPlan: TSuperclassPlan;
+  mReason: string;
 begin
-  Assert.IsFalse(Run(Export_, 4, Request(Export_, 4, 'TExportBase', ['Run'], [], True), Plan, Reason));
-  Assert.IsTrue(ContainsStr(Reason, 'Run braucht FTitle'), Reason);
-  Assert.IsTrue(ContainsStr(Reason, 'Run braucht WritePage'), Reason);
+  Assert.IsFalse(Run(cExport_, 4, Request(cExport_, 4, 'TExportBase', ['Run'], [], True), mPlan, mReason));
+  Assert.IsTrue(ContainsStr(mReason, 'Run braucht FTitle'), mReason);
+  Assert.IsTrue(ContainsStr(mReason, 'Run braucht WritePage'), mReason);
   // Eine Property braucht ihre Zugriffe.
-  Assert.IsFalse(Run(Export_, 4, Request(Export_, 4, 'TExportBase', ['Title', 'FTitle'], [], True), Plan, Reason));
-  Assert.IsTrue(ContainsStr(Reason, 'Title braucht GetTitle'), Reason);
+  Assert.IsFalse(Run(cExport_, 4, Request(cExport_, 4, 'TExportBase', ['Title', 'FTitle'], [], True), mPlan, mReason));
+  Assert.IsTrue(ContainsStr(mReason, 'Title braucht GetTitle'), mReason);
   // Abstrakt deklariert genügt.
-  Assert.IsTrue(Run(Export_, 4, Request(Export_, 4, 'TExportBase', ['Title', 'FTitle', 'GetTitle'], ['GetTitle'],
-    True), Plan, Reason), Reason);
+  Assert.IsTrue(Run(cExport_, 4, Request(cExport_, 4, 'TExportBase', ['Title', 'FTitle', 'GetTitle'], ['GetTitle'],
+    True), mPlan, mReason), mReason);
 end;
 
 procedure TExtractSuperclassTests.RaisesStrictPrivate;
 const
-  Source =
+  cSource =
     'unit U;'#10'interface'#10'type'#10 +
     '  TFoo = class'#10 +                 // 3
     '  strict private'#10 +
@@ -299,62 +299,62 @@ const
     'implementation'#10#10 +
     'procedure TFoo.Inc_;'#10'begin'#10'  FCount := FCount + 1;'#10'end;'#10#10'end.'#10;
 var
-  Plan: TSuperclassPlan;
-  Reason, Base: string;
-  Req: TSuperclassRequest;
+  mPlan: TSuperclassPlan;
+  mReason, mBase: string;
+  mReq: TSuperclassRequest;
 begin
-  Assert.IsTrue(Run(Source, 3, Request(Source, 3, 'TFooBase', ['FCount', 'FName'], [], True), Plan, Reason), Reason);
-  Assert.IsTrue(Parses(Plan.Text), Plan.Text);
-  Base := Between(Plan.Text, 'TFooBase = class', 'end;');
-  Assert.IsTrue(ContainsStr(Base, '  strict private'#10'    FName: string;'), Base);
-  Assert.IsTrue(ContainsStr(Base, '  protected'#10'    FCount: Integer;'), Base);
-  Assert.AreEqual('FCount', string.Join(',', Plan.Raised));
-  Assert.AreEqual(1, Integer(Length(Plan.Warnings)));
-  Req := Request(Source, 3, 'TFooBase', ['FCount'], [], True);
-  Req.RaiseVisibility := TClassVisibility.StrictProtected;
-  Assert.IsTrue(Run(Source, 3, Req, Plan, Reason), Reason);
-  Assert.IsTrue(ContainsStr(Plan.Text, '  strict protected'#10'    FCount: Integer;'), Plan.Text);
+  Assert.IsTrue(Run(cSource, 3, Request(cSource, 3, 'TFooBase', ['FCount', 'FName'], [], True), mPlan, mReason), mReason);
+  Assert.IsTrue(Parses(mPlan.Text), mPlan.Text);
+  mBase := Between(mPlan.Text, 'TFooBase = class', 'end;');
+  Assert.IsTrue(ContainsStr(mBase, '  strict private'#10'    FName: string;'), mBase);
+  Assert.IsTrue(ContainsStr(mBase, '  protected'#10'    FCount: Integer;'), mBase);
+  Assert.AreEqual('FCount', string.Join(',', mPlan.Raised));
+  Assert.AreEqual(1, Integer(Length(mPlan.Warnings)));
+  mReq := Request(cSource, 3, 'TFooBase', ['FCount'], [], True);
+  mReq.RaiseVisibility := TClassVisibility.StrictProtected;
+  Assert.IsTrue(Run(cSource, 3, mReq, mPlan, mReason), mReason);
+  Assert.IsTrue(ContainsStr(mPlan.Text, '  strict protected'#10'    FCount: Integer;'), mPlan.Text);
 end;
 
 procedure TExtractSuperclassTests.RaisesPrivateForOtherUnit;
 var
-  Plan: TSuperclassPlan;
-  Reason, Base: string;
+  mPlan: TSuperclassPlan;
+  mReason, mBase: string;
 begin
-  Assert.IsTrue(Run(Export_, 4, Request(Export_, 4, 'TExportBase', ['FPages', 'WritePage'], [], False), Plan,
-    Reason), Reason);
-  Base := Between(Plan.Text, 'TExportBase = class(TComponent)', 'end;');
+  Assert.IsTrue(Run(cExport_, 4, Request(cExport_, 4, 'TExportBase', ['FPages', 'WritePage'], [], False), mPlan,
+    mReason), mReason);
+  mBase := Between(mPlan.Text, 'TExportBase = class(TComponent)', 'end;');
   // FPages benutzt der bleibende Rumpf nicht mehr (Konstruktor und Destruktor aufgeteilt).
-  Assert.IsTrue(ContainsStr(Base, '  private'#10'    FPages: TStringList;'), Base);
-  Assert.AreEqual(0, Integer(Length(Plan.Raised)));
-  Assert.IsTrue(Run(Export_, 4, Request(Export_, 4, 'TExportBase', ['FTitle'], [], False), Plan, Reason), Reason);
-  Assert.IsTrue(ContainsStr(Plan.Text, '  protected'#10'    FTitle: string;'), Plan.Text);
+  Assert.IsTrue(ContainsStr(mBase, '  private'#10'    FPages: TStringList;'), mBase);
+  Assert.AreEqual(0, Integer(Length(mPlan.Raised)));
+  Assert.IsTrue(Run(cExport_, 4, Request(cExport_, 4, 'TExportBase', ['FTitle'], [], False), mPlan, mReason), mReason);
+  Assert.IsTrue(ContainsStr(mPlan.Text, '  protected'#10'    FTitle: string;'), mPlan.Text);
 end;
 
 procedure TExtractSuperclassTests.SplitsConstructorAndDestructor;
 var
-  Plan: TSuperclassPlan;
-  Reason, Text: string;
+  mPlan: TSuperclassPlan;
+  mReason, mText: string;
 begin
-  Assert.IsTrue(Run(Export_, 4, Request(Export_, 4, 'TExportBase', ['FPages', 'FCompressed'], [], True), Plan,
-    Reason), Reason);
-  Text := Plan.Text;
-  Assert.IsTrue(Parses(Text), Text);
-  Assert.IsTrue(ContainsStr(Text, '    constructor Create(AOwner: TComponent); override;'#10 +
-    '    destructor Destroy; override;'#10'  end;'), Text);
-  Assert.IsTrue(ContainsStr(Text, 'constructor TExportBase.Create(AOwner: TComponent);'#10'begin'#10 +
-    '  inherited Create(AOwner);'#10'  FPages := TStringList.Create;'#10'  FCompressed := True;'#10'end;'), Text);
-  Assert.IsTrue(ContainsStr(Text, 'destructor TExportBase.Destroy;'#10'begin'#10'  FPages.Free;'#10 +
-    '  inherited;'#10'end;'), Text);
-  Assert.IsTrue(ContainsStr(Text, 'constructor TPdfExport.Create(AOwner: TComponent);'#10'begin'#10 +
-    '  inherited;'#10'end;'), Text);
-  Assert.IsTrue(ContainsStr(Text, 'destructor TPdfExport.Destroy;'#10'begin'#10'  inherited;'#10'end;'), Text);
-  Assert.AreEqual('Create,Destroy', string.Join(',', Plan.Split));
+  Assert.IsTrue(Run(cExport_, 4, Request(cExport_, 4, 'TExportBase', ['FPages', 'FCompressed'], [], True), mPlan,
+    mReason), mReason);
+  mText := mPlan.Text;
+  Assert.IsTrue(Parses(mText), mText);
+  Assert.IsTrue(ContainsStr(mText, '    constructor Create(AOwner: TComponent); override;'#10 +
+    '    destructor Destroy; override;'#10'  end;'), mText);
+  Assert.IsTrue(ContainsStr(mText, 'constructor TExportBase.Create(AOwner: TComponent);'#10'begin'#10 +
+    '  inherited Create(AOwner);'#10'  FPages := TStringList.Create;'#10'  FCompressed := True;'#10'end;'), mText);
+  Assert.IsTrue(ContainsStr(mText, 'destructor TExportBase.Destroy;'#10'begin'#10'  FPages.Free;'#10 +
+    '  inherited;'#10'end;'), mText);
+  Assert.IsTrue(ContainsStr(mText, 'constructor TPdfExport.Create(AOwner: TComponent);'#10'begin'#10 +
+    '  inherited;'#10'end;'), mText);
+  Assert.IsTrue(ContainsStr(mText, 'destructor TPdfExport.Destroy;'#10'begin'#10'  inherited;'#10'end;'), mText);
+  Assert.AreEqual('Create,Destroy', string.Join(',', mPlan.Split));
 end;
 
 procedure TExtractSuperclassTests.KeepsInterfacesBelow;
 const
-  Source =
+  cSource =
     'unit U;'#10'interface'#10'type'#10 +
     '  TFoo = class(TInterfacedObject, IFoo, IBar)'#10 +   // 3
     '  public'#10 +
@@ -368,20 +368,20 @@ const
     'procedure TFoo.Run;'#10'begin'#10'end;'#10#10 +
     'procedure TBaz.Run;'#10'begin'#10'end;'#10#10'end.'#10;
 var
-  Plan: TSuperclassPlan;
-  Reason: string;
+  mPlan: TSuperclassPlan;
+  mReason: string;
 begin
-  Assert.IsTrue(Run(Source, 3, Request(Source, 3, 'TFooBase', ['Run'], [], True), Plan, Reason), Reason);
-  Assert.IsTrue(ContainsStr(Plan.Text, 'TFooBase = class(TInterfacedObject)'), Plan.Text);
-  Assert.IsTrue(ContainsStr(Plan.Text, 'TFoo = class(TFooBase, IFoo, IBar)'), Plan.Text);
-  Assert.IsTrue(Run(Source, 7, Request(Source, 7, 'TBazBase', ['Run'], [], True), Plan, Reason), Reason);
-  Assert.IsTrue(ContainsStr(Plan.Text, 'TBazBase = class'#10), Plan.Text);
-  Assert.IsTrue(ContainsStr(Plan.Text, 'TBaz = class(TBazBase, IFoo)'), Plan.Text);
+  Assert.IsTrue(Run(cSource, 3, Request(cSource, 3, 'TFooBase', ['Run'], [], True), mPlan, mReason), mReason);
+  Assert.IsTrue(ContainsStr(mPlan.Text, 'TFooBase = class(TInterfacedObject)'), mPlan.Text);
+  Assert.IsTrue(ContainsStr(mPlan.Text, 'TFoo = class(TFooBase, IFoo, IBar)'), mPlan.Text);
+  Assert.IsTrue(Run(cSource, 7, Request(cSource, 7, 'TBazBase', ['Run'], [], True), mPlan, mReason), mReason);
+  Assert.IsTrue(ContainsStr(mPlan.Text, 'TBazBase = class'#10), mPlan.Text);
+  Assert.IsTrue(ContainsStr(mPlan.Text, 'TBaz = class(TBazBase, IFoo)'), mPlan.Text);
 end;
 
 procedure TExtractSuperclassTests.AddsForwardDeclaration;
 const
-  Source =
+  cSource =
     'unit U;'#10'interface'#10'type'#10 +
     '  TNode = class'#10 +            // 3
     '  public'#10 +
@@ -390,18 +390,18 @@ const
     'implementation'#10#10 +
     'function TNode.Clone: TNode;'#10'begin'#10'  Result := nil;'#10'end;'#10#10'end.'#10;
 var
-  Plan: TSuperclassPlan;
-  Reason: string;
+  mPlan: TSuperclassPlan;
+  mReason: string;
 begin
-  Assert.IsTrue(Run(Source, 3, Request(Source, 3, 'TNodeBase', ['Clone'], [], True), Plan, Reason), Reason);
-  Assert.IsTrue(Parses(Plan.Text), Plan.Text);
-  Assert.IsTrue(ContainsStr(Plan.Text, 'type'#10'  TNode = class;'#10#10'  TNodeBase = class'#10), Plan.Text);
-  Assert.AreEqual(5, Plan.BaseLine);
+  Assert.IsTrue(Run(cSource, 3, Request(cSource, 3, 'TNodeBase', ['Clone'], [], True), mPlan, mReason), mReason);
+  Assert.IsTrue(Parses(mPlan.Text), mPlan.Text);
+  Assert.IsTrue(ContainsStr(mPlan.Text, 'type'#10'  TNode = class;'#10#10'  TNodeBase = class'#10), mPlan.Text);
+  Assert.AreEqual(5, mPlan.BaseLine);
 end;
 
 procedure TExtractSuperclassTests.GenericClass;
 const
-  Source =
+  cSource =
     'unit U;'#10'interface'#10'type'#10 +
     '  TBox<T: class> = class'#10 +    // 3
     '  private'#10 +
@@ -412,19 +412,19 @@ const
     'implementation'#10#10 +
     'function TBox<T>.Get: T;'#10'begin'#10'  Result := FItem;'#10'end;'#10#10'end.'#10;
 var
-  Plan: TSuperclassPlan;
-  Reason: string;
+  mPlan: TSuperclassPlan;
+  mReason: string;
 begin
-  Assert.IsTrue(Run(Source, 3, Request(Source, 3, 'TBoxBase', ['FItem', 'Get'], [], True), Plan, Reason), Reason);
-  Assert.IsTrue(Parses(Plan.Text), Plan.Text);
-  Assert.IsTrue(ContainsStr(Plan.Text, 'TBoxBase<T: class> = class'#10), Plan.Text);
-  Assert.IsTrue(ContainsStr(Plan.Text, 'TBox<T: class> = class(TBoxBase<T>)'), Plan.Text);
-  Assert.IsTrue(ContainsStr(Plan.Text, 'function TBoxBase<T>.Get: T;'), Plan.Text);
+  Assert.IsTrue(Run(cSource, 3, Request(cSource, 3, 'TBoxBase', ['FItem', 'Get'], [], True), mPlan, mReason), mReason);
+  Assert.IsTrue(Parses(mPlan.Text), mPlan.Text);
+  Assert.IsTrue(ContainsStr(mPlan.Text, 'TBoxBase<T: class> = class'#10), mPlan.Text);
+  Assert.IsTrue(ContainsStr(mPlan.Text, 'TBox<T: class> = class(TBoxBase<T>)'), mPlan.Text);
+  Assert.IsTrue(ContainsStr(mPlan.Text, 'function TBoxBase<T>.Get: T;'), mPlan.Text);
 end;
 
 procedure TExtractSuperclassTests.RelocatesRaisedAbstractOverride;
 const
-  Source =
+  cSource =
     'unit U;'#10'interface'#10'type'#10 +
     '  TJob = class'#10 +             // 3
     '  private'#10 +
@@ -436,36 +436,36 @@ const
     'procedure TJob.Step;'#10'begin'#10'end;'#10#10 +
     'procedure TJob.Run;'#10'begin'#10'  Step;'#10'end;'#10#10'end.'#10;
 var
-  Plan: TSuperclassPlan;
-  Reason, Job: string;
+  mPlan: TSuperclassPlan;
+  mReason, mJob: string;
 begin
-  Assert.IsTrue(Run(Source, 3, Request(Source, 3, 'TJobBase', ['Step', 'Run'], ['Step'], False), Plan, Reason),
-    Reason);
-  Assert.IsTrue(Parses(Plan.Text), Plan.Text);
-  Assert.IsTrue(ContainsStr(Plan.Text, '  protected'#10'    procedure Step; virtual; abstract;'), Plan.Text);
-  Job := Between(Plan.Text, 'TJob = class(TJobBase)', 'end;');
+  Assert.IsTrue(Run(cSource, 3, Request(cSource, 3, 'TJobBase', ['Step', 'Run'], ['Step'], False), mPlan, mReason),
+    mReason);
+  Assert.IsTrue(Parses(mPlan.Text), mPlan.Text);
+  Assert.IsTrue(ContainsStr(mPlan.Text, '  protected'#10'    procedure Step; virtual; abstract;'), mPlan.Text);
+  mJob := Between(mPlan.Text, 'TJob = class(TJobBase)', 'end;');
   // Gleiche Sichtbarkeit unten (sonst H2269).
-  Assert.IsTrue(ContainsStr(Job, '  protected'#10'    procedure Step; override;'), Job);
+  Assert.IsTrue(ContainsStr(mJob, '  protected'#10'    procedure Step; override;'), mJob);
   // Der leere private-Abschnitt fällt weg.
-  Assert.IsFalse(ContainsStr(Job, 'private'), Job);
+  Assert.IsFalse(ContainsStr(mJob, 'private'), mJob);
 end;
 
 procedure TExtractSuperclassTests.RejectsBadInput;
 var
-  Plan: TSuperclassPlan;
-  Reason: string;
-  Req: TSuperclassRequest;
+  mPlan: TSuperclassPlan;
+  mReason: string;
+  mReq: TSuperclassRequest;
 begin
-  Assert.IsFalse(Run(Export_, 4, Request(Export_, 4, '1Base', ['FTitle'], [], True), Plan, Reason));
-  Assert.IsFalse(Run(Export_, 4, Request(Export_, 4, 'TPdfExport', ['FTitle'], [], True), Plan, Reason));
-  Assert.IsFalse(Run(Export_, 4, Request(Export_, 4, 'TExportBase', [], [], True), Plan, Reason));
-  Assert.IsFalse(Run(Export_, 4, Request(Export_, 4, 'TExportBase', ['FTitle'], ['FTitle'], True), Plan, Reason));
-  Assert.IsTrue(ContainsStr(Reason, 'abstrakt'), Reason);
-  Req := Request(Export_, 4, 'TExportBase', ['FTitle'], [], True);
-  Req.Members := Req.Members + [IdOf(Export_, 4, 'Create')];
-  Assert.IsFalse(Run(Export_, 4, Req, Plan, Reason));
+  Assert.IsFalse(Run(cExport_, 4, Request(cExport_, 4, '1Base', ['FTitle'], [], True), mPlan, mReason));
+  Assert.IsFalse(Run(cExport_, 4, Request(cExport_, 4, 'TPdfExport', ['FTitle'], [], True), mPlan, mReason));
+  Assert.IsFalse(Run(cExport_, 4, Request(cExport_, 4, 'TExportBase', [], [], True), mPlan, mReason));
+  Assert.IsFalse(Run(cExport_, 4, Request(cExport_, 4, 'TExportBase', ['FTitle'], ['FTitle'], True), mPlan, mReason));
+  Assert.IsTrue(ContainsStr(mReason, 'abstrakt'), mReason);
+  mReq := Request(cExport_, 4, 'TExportBase', ['FTitle'], [], True);
+  mReq.Members := mReq.Members + [IdOf(cExport_, 4, 'Create')];
+  Assert.IsFalse(Run(cExport_, 4, mReq, mPlan, mReason));
   // Nicht auf der Kopfzeile.
-  Assert.IsFalse(Run(Export_, 6, Request(Export_, 4, 'TExportBase', ['FTitle'], [], True), Plan, Reason));
+  Assert.IsFalse(Run(cExport_, 6, Request(cExport_, 4, 'TExportBase', ['FTitle'], [], True), mPlan, mReason));
 end;
 
 initialization

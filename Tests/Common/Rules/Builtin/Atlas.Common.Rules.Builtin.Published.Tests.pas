@@ -55,7 +55,7 @@ uses
 
 const
   /// <summary>Typen für die Tests; Zeilen 4 bis 13 der Unit.</summary>
-  Typen = '  TZahlen = array of Integer;'#10'  TFeld = array[0..3] of Byte;'#10'  PKnoten = ^Integer;'#10 +
+  cTypen = '  TZahlen = array of Integer;'#10'  TFeld = array[0..3] of Byte;'#10'  PKnoten = ^Integer;'#10 +
     '  TRueckruf = procedure(A: Integer);'#10'  TEreignis = procedure(Sender: TObject) of object;'#10 +
     '  TFarbe = (Rot, Gruen, Blau);'#10'  TFarben = set of TFarbe;'#10'  TPunkt = record X, Y: Integer; end;'#10 +
     '  TKnopf = class end;'#10'  IAnzeige = interface end;'#10;
@@ -63,7 +63,7 @@ const
 /// <summary>Unit mit TKarte = class(TComponent): private-Teil APrivate, published-Teil APublished.</summary>
 function Karte(const APrivate, APublished: string): string;
 begin
-  Result := 'unit Karten;'#10'interface'#10'uses'#10'  System.Types, Classes;'#10'type'#10 + Typen +
+  Result := 'unit Karten;'#10'interface'#10'uses'#10'  System.Types, Classes;'#10'type'#10 + cTypen +
     '  TKarte = class(TComponent)'#10'  private'#10 + APrivate + '  published'#10 + APublished + '  end;'#10 +
     'implementation'#10'end.';
 end;
@@ -80,21 +80,21 @@ end;
 
 function OnlyMessage(const ASource: string): string;
 var
-  Found: TArray<TRuleFinding>;
+  mFound: TArray<TRuleFinding>;
 begin
-  Found := Findings(ASource);
-  Assert.AreEqual(1, Integer(Length(Found)), ASource);
-  Result := Found[0].Message;
+  mFound := Findings(ASource);
+  Assert.AreEqual(1, Integer(Length(mFound)), ASource);
+  Result := mFound[0].Message;
 end;
 
 function Join(const AFound: TArray<TRuleFinding>): string;
 var
-  Finding: TRuleFinding;
+  mFinding: TRuleFinding;
 begin
   Result := '';
-  for Finding in AFound do
+  for mFinding in AFound do
   begin
-    Result := Result + ' | ' + Finding.Message;
+    Result := Result + ' | ' + mFinding.Message;
   end;
 end;
 
@@ -106,32 +106,32 @@ end;
 /// <summary>Offset von APosition in AText mit Zeilen aus #10.</summary>
 function OffsetOf(const AText: string; const APosition: TTextPosition): Integer;
 var
-  Line, Index: Integer;
+  mLine, mIndex: Integer;
 begin
-  Line := 0;
-  Index := 1;
-  while (Line < APosition.Line) and (Index <= Length(AText)) do
+  mLine := 0;
+  mIndex := 1;
+  while (mLine < APosition.Line) and (mIndex <= Length(AText)) do
   begin
-    if AText[Index] = #10 then
+    if AText[mIndex] = #10 then
     begin
-      Inc(Line);
+      Inc(mLine);
     end;
-    Inc(Index);
+    Inc(mIndex);
   end;
-  Result := Index + APosition.Character;
+  Result := mIndex + APosition.Character;
 end;
 
 /// <summary>Wendet die Edits einer Korrektur von hinten nach vorn an, auch über Zeilen.</summary>
 function ApplyFix(const AText: string; const AFix: TRuleFix): string;
 var
-  Index, Start, Stop: Integer;
+  mIndex, mStart, mStop: Integer;
 begin
   Result := AText;
-  for Index := High(AFix.Edits) downto 0 do
+  for mIndex := High(AFix.Edits) downto 0 do
   begin
-    Start := OffsetOf(Result, AFix.Edits[Index].Range.StartPos);
-    Stop := OffsetOf(Result, AFix.Edits[Index].Range.EndPos);
-    Result := Copy(Result, 1, Start - 1) + AFix.Edits[Index].NewText + Copy(Result, Stop, MaxInt);
+    mStart := OffsetOf(Result, AFix.Edits[mIndex].Range.StartPos);
+    mStop := OffsetOf(Result, AFix.Edits[mIndex].Range.EndPos);
+    Result := Copy(Result, 1, mStart - 1) + AFix.Edits[mIndex].NewText + Copy(Result, mStop, MaxInt);
   end;
 end;
 
@@ -139,24 +139,24 @@ end;
 
 procedure TPublishedRulesTests.IssueExample;
 var
-  Source, Fixed: string;
-  Found: TArray<TRuleFinding>;
+  mSource, mFixed: string;
+  mFound: TArray<TRuleFinding>;
 begin
-  Source := Karte('    FMitte: Pointer;'#10'    procedure SetMitte(const Value: Pointer);'#10,
+  mSource := Karte('    FMitte: Pointer;'#10'    procedure SetMitte(const Value: Pointer);'#10,
     '    property Mitte: Pointer read FMitte write SetMitte;'#10);
-  Found := Findings(Source);
-  Assert.AreEqual(1, Integer(Length(Found)));
-  Assert.AreEqual('Pointer (Zeiger) kann nicht published sein (wie E2188).', Found[0].Message);
-  Assert.AreEqual(Ord(TRuleConfidence.High), Ord(Found[0].Confidence));
-  Assert.AreEqual(20, Found[0].Range.StartPos.Line);
-  Assert.AreEqual(20, Found[0].Range.StartPos.Character);
-  Assert.AreEqual(27, Found[0].Range.EndPos.Character);
-  Assert.AreEqual(1, Integer(Length(Found[0].Fixes)));
-  Assert.AreEqual('In den public-Abschnitt verschieben', Found[0].Fixes[0].Title);
-  Fixed := ApplyFix(Source, Found[0].Fixes[0]);
+  mFound := Findings(mSource);
+  Assert.AreEqual(1, Integer(Length(mFound)));
+  Assert.AreEqual('Pointer (Zeiger) kann nicht published sein (wie E2188).', mFound[0].Message);
+  Assert.AreEqual(Ord(TRuleConfidence.High), Ord(mFound[0].Confidence));
+  Assert.AreEqual(20, mFound[0].Range.StartPos.Line);
+  Assert.AreEqual(20, mFound[0].Range.StartPos.Character);
+  Assert.AreEqual(27, mFound[0].Range.EndPos.Character);
+  Assert.AreEqual(1, Integer(Length(mFound[0].Fixes)));
+  Assert.AreEqual('In den public-Abschnitt verschieben', mFound[0].Fixes[0].Title);
+  mFixed := ApplyFix(mSource, mFound[0].Fixes[0]);
   Assert.AreEqual(Karte('    FMitte: Pointer;'#10'    procedure SetMitte(const Value: Pointer);'#10'  public'#10 +
-    '    property Mitte: Pointer read FMitte write SetMitte;'#10, ''), Fixed);
-  Silent(Fixed);
+    '    property Mitte: Pointer read FMitte write SetMitte;'#10, ''), mFixed);
+  Silent(mFixed);
 end;
 
 procedure TPublishedRulesTests.CorrectedAndNegativeCases;
@@ -180,76 +180,76 @@ end;
 
 procedure TPublishedRulesTests.ArraysPointersAndProcedures;
 var
-  Found: TArray<TRuleFinding>;
+  mFound: TArray<TRuleFinding>;
 begin
-  Found := Findings(Karte('', '    property Zahlen: TZahlen read FZahlen;'#10 +
+  mFound := Findings(Karte('', '    property Zahlen: TZahlen read FZahlen;'#10 +
     '    property Feld: TFeld read FFeld;'#10'    property Knoten: PKnoten read FKnoten;'#10 +
     '    property Puffer: PChar read FPuffer;'#10'    property Rueckruf: TRueckruf read FRueckruf;'#10 +
     '    property Liste: TArray<Integer> read FListe;'#10'    property Punkt: TPunkt read FPunkt;'#10 +
     '    property Kennung: TGUID read FKennung;'#10));
   // Dynamische Arrays (TZahlen, TArray<Integer>) und Records (TPunkt, TGUID) übersetzt dcc (PU1-PU3, #1328);
   // statische Arrays, Zeiger und Prozedurtypen nicht (PV1, PV2).
-  Assert.AreEqual(4, Integer(Length(Found)), Join(Found));
-  Assert.AreEqual('TFeld (Array) kann nicht published sein (wie E2188).', Found[0].Message);
-  Assert.AreEqual('PKnoten (Zeiger) kann nicht published sein (wie E2188).', Found[1].Message);
-  Assert.AreEqual('PChar (Zeiger) kann nicht published sein (wie E2188).', Found[2].Message);
+  Assert.AreEqual(4, Integer(Length(mFound)), Join(mFound));
+  Assert.AreEqual('TFeld (Array) kann nicht published sein (wie E2188).', mFound[0].Message);
+  Assert.AreEqual('PKnoten (Zeiger) kann nicht published sein (wie E2188).', mFound[1].Message);
+  Assert.AreEqual('PChar (Zeiger) kann nicht published sein (wie E2188).', mFound[2].Message);
   Assert.AreEqual('TRueckruf (Prozedurtyp ohne "of object") kann nicht published sein (wie E2188).',
-    Found[3].Message);
+    mFound[3].Message);
 end;
 
 procedure TPublishedRulesTests.Real48AndLargeSets;
 var
-  Source: string;
+  mSource: string;
 begin
   Assert.AreEqual('Alt ist vom Typ Real48; Real48 kann nicht published sein (wie E2186).',
     OnlyMessage(Karte('', '    property Alt: Real48 read FAlt;'#10)));
-  Source := 'unit Mengen;'#10'interface'#10'type'#10'  TZeichen = (z0, z1, z2, z3, z4, z5, z6, z7, z8, z9, z10, ' +
+  mSource := 'unit Mengen;'#10'interface'#10'type'#10'  TZeichen = (z0, z1, z2, z3, z4, z5, z6, z7, z8, z9, z10, ' +
     'z11, z12, z13, z14, z15, z16, z17, z18, z19, z20, z21, z22, z23, z24, z25, z26, z27, z28, z29, z30, z31, ' +
     'z32);'#10'  TGross = set of TZeichen;'#10'  TBytes_ = set of Byte;'#10'  TKlein = set of 0..31;'#10 +
     '  TBreit = set of 0..32;'#10'  TVerschoben = set of 8..39;'#10'  TMenge = class'#10'  published'#10 +
     '    property Gross: TGross read FGross;'#10'    property Bytes: TBytes_ read FBytes;'#10 +
     '    property Klein: TKlein read FKlein;'#10'    property Breit: TBreit read FBreit;'#10 +
     '    property Verschoben: TVerschoben read FVerschoben;'#10'  end;'#10'implementation'#10'end.';
-  Assert.AreEqual(3, Integer(Length(Findings(Source))));
+  Assert.AreEqual(3, Integer(Length(Findings(mSource))));
   Assert.AreEqual('Die Menge TGross ist größer als 4 Byte und kann nicht published sein (wie E2187).',
-    Findings(Source)[0].Message);
+    Findings(mSource)[0].Message);
   Assert.AreEqual('Die Menge TBytes_ ist größer als 4 Byte und kann nicht published sein (wie E2187).',
-    Findings(Source)[1].Message);
+    Findings(mSource)[1].Message);
   Assert.AreEqual('Die Menge TBreit ist größer als 4 Byte und kann nicht published sein (wie E2187).',
-    Findings(Source)[2].Message);
+    Findings(mSource)[2].Message);
 end;
 
 procedure TPublishedRulesTests.PublishedFields;
 var
-  Source, Fixed: string;
-  Found: TArray<TRuleFinding>;
+  mSource, mFixed: string;
+  mFound: TArray<TRuleFinding>;
 begin
-  Source := Karte('', '    FZahl, FAnzahl: Integer;'#10'    FPunkt: TPunkt;'#10'    FKnopf: TKnopf;'#10 +
+  mSource := Karte('', '    FZahl, FAnzahl: Integer;'#10'    FPunkt: TPunkt;'#10'    FKnopf: TKnopf;'#10 +
     '    FFremd: TFremderTyp;'#10'    FGruppe: array[0..1] of TKnopf;'#10);
-  Found := Findings(Source);
-  Assert.AreEqual(3, Integer(Length(Found)));
+  mFound := Findings(mSource);
+  Assert.AreEqual(3, Integer(Length(mFound)));
   Assert.AreEqual('Das published-Feld FZahl, FAnzahl ist vom Typ Integer; published-Felder müssen Klassen oder ' +
-    'Interfaces sein (wie E2217).', Found[0].Message);
-  Assert.AreEqual(18, Found[0].Range.StartPos.Line);
-  Assert.AreEqual(4, Found[0].Range.StartPos.Character);
+    'Interfaces sein (wie E2217).', mFound[0].Message);
+  Assert.AreEqual(18, mFound[0].Range.StartPos.Line);
+  Assert.AreEqual(4, mFound[0].Range.StartPos.Character);
   Assert.AreEqual('Das published-Feld FPunkt ist vom Typ TPunkt; published-Felder müssen Klassen oder ' +
-    'Interfaces sein (wie E2217).', Found[1].Message);
+    'Interfaces sein (wie E2217).', mFound[1].Message);
   Assert.AreEqual('Das published-Feld FGruppe ist vom Typ array[0..1] of TKnopf; published-Felder müssen ' +
-    'Klassen oder Interfaces sein (wie E2217).', Found[2].Message);
-  Fixed := ApplyFix(Source, Found[1].Fixes[0]);
+    'Klassen oder Interfaces sein (wie E2217).', mFound[2].Message);
+  mFixed := ApplyFix(mSource, mFound[1].Fixes[0]);
   Assert.AreEqual(Karte('  public'#10'    FPunkt: TPunkt;'#10, '    FZahl, FAnzahl: Integer;'#10 +
-    '    FKnopf: TKnopf;'#10'    FFremd: TFremderTyp;'#10'    FGruppe: array[0..1] of TKnopf;'#10), Fixed);
+    '    FKnopf: TKnopf;'#10'    FFremd: TFremderTyp;'#10'    FGruppe: array[0..1] of TKnopf;'#10), mFixed);
 end;
 
 procedure TPublishedRulesTests.OverloadsClassPropertiesAndNames;
 var
-  Found: TArray<TRuleFinding>;
+  mFound: TArray<TRuleFinding>;
 begin
-  Found := Findings(Karte('', '    procedure Laden; overload;'#10'    procedure Laden(const APfad: string); ' +
+  mFound := Findings(Karte('', '    procedure Laden; overload;'#10'    procedure Laden(const APfad: string); ' +
     'overload;'#10'    procedure Speichern;'#10));
-  Assert.AreEqual(1, Integer(Length(Found)));
-  Assert.AreEqual('Nur eine Überladung von Laden darf published sein (wie E2266).', Found[0].Message);
-  Assert.AreEqual(19, Found[0].Range.StartPos.Line);
+  Assert.AreEqual(1, Integer(Length(mFound)));
+  Assert.AreEqual('Nur eine Überladung von Laden darf published sein (wie E2266).', mFound[0].Message);
+  Assert.AreEqual(19, mFound[0].Range.StartPos.Line);
   // Eine Überladung in public zählt nicht, ebenso eine im anderen Zweig.
   Silent(Karte('', '    procedure Laden; overload;'#10'  public'#10'    procedure Laden(const APfad: string); ' +
     'overload;'#10));
@@ -263,23 +263,23 @@ end;
 
 procedure TPublishedRulesTests.FixUsesExistingPublic;
 var
-  Source: string;
-  Found: TArray<TRuleFinding>;
+  mSource: string;
+  mFound: TArray<TRuleFinding>;
 begin
-  Source := 'unit Karten;'#10'interface'#10'type'#10'  TFeld = array[0..1] of Integer;'#10 +
+  mSource := 'unit Karten;'#10'interface'#10'type'#10'  TFeld = array[0..1] of Integer;'#10 +
     '  TKarte = class'#10'  public'#10'    constructor Create;'#10'  published'#10 +
     '    property Name: string read FName;'#10'    property Feld: TFeld read FFeld;'#10'  end;'#10 +
     'implementation'#10'end.';
-  Found := Findings(Source);
-  Assert.AreEqual(1, Integer(Length(Found)));
+  mFound := Findings(mSource);
+  Assert.AreEqual(1, Integer(Length(mFound)));
   Assert.AreEqual('unit Karten;'#10'interface'#10'type'#10'  TFeld = array[0..1] of Integer;'#10 +
     '  TKarte = class'#10'  public'#10'    constructor Create;'#10'    property Feld: TFeld read FFeld;'#10 +
     '  published'#10'    property Name: string read FName;'#10'  end;'#10'implementation'#10'end.',
-    ApplyFix(Source, Found[0].Fixes[0]));
+    ApplyFix(mSource, mFound[0].Fixes[0]));
   // Ein Mitglied, das sich die Zeile mit anderem teilt, verschiebt die Korrektur nicht.
-  Found := Findings(Karte('', '    property Feld: TFeld read FFeld; property Name: string read FName;'#10));
-  Assert.AreEqual(1, Integer(Length(Found)));
-  Assert.AreEqual(0, Integer(Length(Found[0].Fixes)));
+  mFound := Findings(Karte('', '    property Feld: TFeld read FFeld; property Name: string read FName;'#10));
+  Assert.AreEqual(1, Integer(Length(mFound)));
+  Assert.AreEqual(0, Integer(Length(mFound[0].Fixes)));
 end;
 
 procedure TPublishedRulesTests.ConditionalAndGenericAreSilent;
@@ -300,23 +300,23 @@ end;
 
 procedure TPublishedRulesTests.TypesFromIndex;
 var
-  Index: ISymbolIndex;
-  Found: TArray<TRuleFinding>;
+  mIndex: ISymbolIndex;
+  mFound: TArray<TRuleFinding>;
 begin
-  Index := TSymbolIndex.Create;
-  Index.AddUnit(TIndexExtractor.ExtractText('unit Geometrie;'#10'interface'#10'type'#10 +
+  mIndex := TSymbolIndex.Create;
+  mIndex.AddUnit(TIndexExtractor.ExtractText('unit Geometrie;'#10'interface'#10'type'#10 +
     '  TVektor = record X, Y: Double; end;'#10'  TPunkte = TArray<TVektor>;'#10'  TFigur = class end;'#10 +
     '  TEcken = array[0..3] of TVektor;'#10 +
     '  TFlaeche = TVektor;'#10'implementation'#10'end.', 'C:\Projekt\Geometrie.pas', nil));
-  Found := TRuleAssert.IndexFindings(TPublishedTypeInvalidRule.Create, 'unit Karten;'#10'interface'#10'uses'#10 +
+  mFound := TRuleAssert.IndexFindings(TPublishedTypeInvalidRule.Create, 'unit Karten;'#10'interface'#10'uses'#10 +
     '  Geometrie;'#10'type'#10'  TKarte = class'#10'  published'#10'    property Mitte: TVektor read FMitte;'#10 +
     '    property Ecken: TPunkte read FEcken;'#10'    property Figur: TFigur read FFigur;'#10 +
     '    property Flaeche: TFlaeche read FFlaeche;'#10'    property Ecken4: TEcken read FEcken4;'#10 +
     '    FFigur: TFigur;'#10'  end;'#10'implementation'#10 +
-    'end.', Index, '', '');
+    'end.', mIndex, '', '');
   // Record, Alias darauf und TArray<T> sind erlaubt; das statische Array aus dem Index nicht.
-  Assert.AreEqual(1, Integer(Length(Found)), Join(Found));
-  Assert.AreEqual('TEcken (Array) kann nicht published sein (wie E2188).', Found[0].Message);
+  Assert.AreEqual(1, Integer(Length(mFound)), Join(mFound));
+  Assert.AreEqual('TEcken (Array) kann nicht published sein (wie E2188).', mFound[0].Message);
 end;
 
 procedure TPublishedRulesTests.MultilineProcedureTypes;
@@ -359,16 +359,16 @@ end;
 
 procedure TPublishedRulesTests.Options;
 var
-  Source: string;
+  mSource: string;
 begin
-  Source := Karte('', '    property Feld: TFeld read FFeld;'#10);
-  Assert.AreEqual(1, Integer(Length(Findings(Source, '', 'Source/Karten.pas'))));
-  Assert.AreEqual(0, Integer(Length(Findings(Source, '{"rules": {"published-type-invalid": "off"}}',
+  mSource := Karte('', '    property Feld: TFeld read FFeld;'#10);
+  Assert.AreEqual(1, Integer(Length(Findings(mSource, '', 'Source/Karten.pas'))));
+  Assert.AreEqual(0, Integer(Length(Findings(mSource, '{"rules": {"published-type-invalid": "off"}}',
     'Source/Karten.pas'))));
-  Assert.AreEqual(0, Integer(Length(Findings(Source, '{"rules": {"group:compiler": "off"}}', 'Source/Karten.pas'))));
-  Assert.AreEqual(0, Integer(Length(Findings(Source,
+  Assert.AreEqual(0, Integer(Length(Findings(mSource, '{"rules": {"group:compiler": "off"}}', 'Source/Karten.pas'))));
+  Assert.AreEqual(0, Integer(Length(Findings(mSource,
     '{"rules": {"published-type-invalid": {"exclude": ["Source/*.pas"]}}}', 'Source/Karten.pas'))));
-  Assert.AreEqual(1, Integer(Length(Findings(Source,
+  Assert.AreEqual(1, Integer(Length(Findings(mSource,
     '{"rules": {"published-type-invalid": {"exclude": ["Alt/*.pas"]}}}', 'Source/Karten.pas'))));
 end;
 

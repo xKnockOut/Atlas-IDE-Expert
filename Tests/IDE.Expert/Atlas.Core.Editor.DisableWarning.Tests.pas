@@ -31,54 +31,54 @@ uses
 
 procedure TAtlasDisableWarningTests.ParsesRequest;
 var
-  Request: TAtlasDisableWarningRequest;
+  mRequest: TAtlasDisableWarningRequest;
 begin
-  Assert.IsTrue(TAtlasDisableWarningRequest.TryParse('["file:///C:/A.pas",7,"W1000","line",true]', Request));
-  Assert.AreEqual('file:///C:/A.pas', Request.Uri);
-  Assert.AreEqual(7, Request.Line);
-  Assert.AreEqual('W1000', Request.Code);
-  Assert.AreEqual('line', Request.Scope);
-  Assert.IsTrue(Request.AskReason);
-  Assert.IsTrue(TAtlasDisableWarningRequest.TryParse('["file:///C:/A.pas",7,"W1000","unit"]', Request));
-  Assert.IsFalse(Request.AskReason);
+  Assert.IsTrue(TAtlasDisableWarningRequest.TryParse('["file:///C:/A.pas",7,"W1000","line",true]', mRequest));
+  Assert.AreEqual('file:///C:/A.pas', mRequest.Uri);
+  Assert.AreEqual(7, mRequest.Line);
+  Assert.AreEqual('W1000', mRequest.Code);
+  Assert.AreEqual('line', mRequest.Scope);
+  Assert.IsTrue(mRequest.AskReason);
+  Assert.IsTrue(TAtlasDisableWarningRequest.TryParse('["file:///C:/A.pas",7,"W1000","unit"]', mRequest));
+  Assert.IsFalse(mRequest.AskReason);
 end;
 
 procedure TAtlasDisableWarningTests.RejectsIncompleteRequest;
 var
-  Request: TAtlasDisableWarningRequest;
+  mRequest: TAtlasDisableWarningRequest;
 begin
-  Assert.IsFalse(TAtlasDisableWarningRequest.TryParse('["file:///C:/A.pas",7,"W1000"]', Request));
-  Assert.IsFalse(TAtlasDisableWarningRequest.TryParse('["file:///C:/A.pas",-1,"W1000","line"]', Request));
-  Assert.IsFalse(TAtlasDisableWarningRequest.TryParse('{"uri": 1}', Request));
-  Assert.IsFalse(TAtlasDisableWarningRequest.TryParse('kaputt', Request));
+  Assert.IsFalse(TAtlasDisableWarningRequest.TryParse('["file:///C:/A.pas",7,"W1000"]', mRequest));
+  Assert.IsFalse(TAtlasDisableWarningRequest.TryParse('["file:///C:/A.pas",-1,"W1000","line"]', mRequest));
+  Assert.IsFalse(TAtlasDisableWarningRequest.TryParse('{"uri": 1}', mRequest));
+  Assert.IsFalse(TAtlasDisableWarningRequest.TryParse('kaputt', mRequest));
 end;
 
 procedure TAtlasDisableWarningTests.BuildsApplyArguments;
 var
-  Request: TAtlasDisableWarningRequest;
+  mRequest: TAtlasDisableWarningRequest;
 begin
-  Assert.IsTrue(TAtlasDisableWarningRequest.TryParse('["file:///C:/A.pas",7,"W1000","routine",true]', Request));
-  Assert.AreEqual('["file:///C:/A.pas",7,"W1000","routine","Altlast"]', Request.ApplyArguments(' Altlast '));
-  Assert.AreEqual('["file:///C:/A.pas",7,"W1000","routine",""]', Request.ApplyArguments(''));
+  Assert.IsTrue(TAtlasDisableWarningRequest.TryParse('["file:///C:/A.pas",7,"W1000","routine",true]', mRequest));
+  Assert.AreEqual('["file:///C:/A.pas",7,"W1000","routine","Altlast"]', mRequest.ApplyArguments(' Altlast '));
+  Assert.AreEqual('["file:///C:/A.pas",7,"W1000","routine",""]', mRequest.ApplyArguments(''));
 end;
 
 procedure TAtlasDisableWarningTests.ParsesProjectRequest;
 var
-  Request: TAtlasDisableWarningProject;
+  mRequest: TAtlasDisableWarningProject;
 begin
-  Assert.IsTrue(TAtlasDisableWarningProject.TryParse('["file:///C:/A.pas","W1000","symbol_deprecated"]', Request));
-  Assert.AreEqual('W1000', Request.Code);
-  Assert.AreEqual('DCC_SYMBOL_DEPRECATED', Request.OptionName);
+  Assert.IsTrue(TAtlasDisableWarningProject.TryParse('["file:///C:/A.pas","W1000","symbol_deprecated"]', mRequest));
+  Assert.AreEqual('W1000', mRequest.Code);
+  Assert.AreEqual('DCC_SYMBOL_DEPRECATED', mRequest.OptionName);
   Assert.AreEqual('false', cAtlasWarningOptionOff);
 end;
 
 procedure TAtlasDisableWarningTests.RejectsForeignIdentifier;
 var
-  Request: TAtlasDisableWarningProject;
+  mRequest: TAtlasDisableWarningProject;
 begin
-  Assert.IsFalse(TAtlasDisableWarningProject.TryParse('["file:///C:/A.pas","W1000","A>B"]', Request));
-  Assert.IsFalse(TAtlasDisableWarningProject.TryParse('["file:///C:/A.pas","W1000",""]', Request));
-  Assert.IsFalse(TAtlasDisableWarningProject.TryParse('["file:///C:/A.pas","W1000"]', Request));
+  Assert.IsFalse(TAtlasDisableWarningProject.TryParse('["file:///C:/A.pas","W1000","A>B"]', mRequest));
+  Assert.IsFalse(TAtlasDisableWarningProject.TryParse('["file:///C:/A.pas","W1000",""]', mRequest));
+  Assert.IsFalse(TAtlasDisableWarningProject.TryParse('["file:///C:/A.pas","W1000"]', mRequest));
 end;
 
 initialization

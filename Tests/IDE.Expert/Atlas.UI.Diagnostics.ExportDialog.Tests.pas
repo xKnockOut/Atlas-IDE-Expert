@@ -36,7 +36,7 @@ uses
   Atlas.UI.Diagnostics.ExportDialog;
 
 const
-  LongHint = 'Das Paket enthält die Dateien unten: Fehlerbericht, Status, Protokoll der Sitzung und, mit --trace, ' +
+  cLongHint = 'Das Paket enthält die Dateien unten: Fehlerbericht, Status, Protokoll der Sitzung und, mit --trace, ' +
     'den Trace der letzten Minuten. Pfade, Benutzername und Bezeichner sind ersetzt. Zugangsdaten stehen nie darin.';
 
 procedure TAtlasDiagnosticExportDialogTests.WarmUpFirstUse;
@@ -52,7 +52,7 @@ var
   mLine: Integer;
 begin
   mDialog := TAtlasDiagnosticExportDialog.CreateDialog(nil,
-    TAtlasExportDialogTexts.Create('Titel', LongHint, 'Vorschau', 'a.zip', '*.zip', 'zip'));
+    TAtlasExportDialogTexts.Create('Titel', cLongHint, 'Vorschau', 'a.zip', '*.zip', 'zip'));
   try
     mLine := mDialog.Canvas.TextHeight('Ag');
     Assert.IsTrue(mDialog.HintLabel.Height <= 4 * mLine,
@@ -68,7 +68,7 @@ var
   mWide: Integer;
 begin
   mDialog := TAtlasDiagnosticExportDialog.CreateDialog(nil,
-    TAtlasExportDialogTexts.Create('Titel', LongHint, 'Vorschau', 'a.zip', '*.zip', 'zip'));
+    TAtlasExportDialogTexts.Create('Titel', cLongHint, 'Vorschau', 'a.zip', '*.zip', 'zip'));
   try
     mWide := mDialog.HintLabel.Height;
     mDialog.Width := 400;

@@ -45,12 +45,12 @@ uses
   Atlas.Common.Editing.ChangeSignature;
 
 const
-  ProgramFile = 'C:\P\Projekt.dpr';
-  ProjectFile = 'C:\P\Projekt.dproj';
-  NewFile = 'C:\P\Kunden.Schnittstellen.pas';
-  TextProgram =
+  cProgramFile = 'C:\P\Projekt.dpr';
+  cProjectFile = 'C:\P\Projekt.dproj';
+  cNewFile = 'C:\P\Kunden.Schnittstellen.pas';
+  cTextProgram =
     'program Projekt;'#10'uses'#10'  Lager in ''Lager.pas'';'#10'begin'#10'end.'#10;
-  TextProject =
+  cTextProject =
     '<Project>'#10'  <ItemGroup>'#10'    <DelphiCompile Include="Projekt.dpr"/>'#10 +
     '    <DCCReference Include="Lager.pas"/>'#10'  </ItemGroup>'#10'</Project>'#10;
 
@@ -62,8 +62,8 @@ end;
 function Project: TProjectInfo;
 begin
   Result := Default(TProjectInfo);
-  Result.FileName := ProjectFile;
-  Result.MainSource := ProgramFile;
+  Result.FileName := cProjectFile;
+  Result.MainSource := cProgramFile;
 end;
 
 function Reader(const AProjectText: string): TReferenceReadText;
@@ -72,11 +72,11 @@ begin
     function(const AFileName: string; out AText: string): Boolean
     begin
       Result := True;
-      if SameText(AFileName, ProgramFile) then
+      if SameText(AFileName, cProgramFile) then
       begin
-        AText := TextProgram;
+        AText := cTextProgram;
       end
-      else if SameText(AFileName, ProjectFile) then
+      else if SameText(AFileName, cProjectFile) then
       begin
         AText := AProjectText;
       end
@@ -89,166 +89,166 @@ end;
 
 procedure TWorkspaceChangesTests.MergesEditsOfSameFile;
 var
-  Changes: TWorkspaceChanges;
+  mChanges: TWorkspaceChanges;
 begin
-  Changes := TWorkspaceChanges.Create;
+  mChanges := TWorkspaceChanges.Create;
   try
-    Changes.Add('C:\P\A.pas', [Edit(1, 'x')]);
-    Changes.Add('c:\p\a.pas', [Edit(2, 'y'), Edit(3, 'z')]);
-    Changes.Add('C:\P\B.pas', [Edit(0, 'b')]);
-    Changes.CreateFile(NewFile, 'unit Neu;');
-    Assert.AreEqual(2, Integer(Length(Changes.Files)));
-    Assert.AreEqual(3, Integer(Length(Changes.EditsOf('C:\P\A.pas'))));
-    Assert.AreEqual(0, Integer(Length(Changes.EditsOf('C:\P\C.pas'))));
-    Assert.AreEqual(5, Changes.EditCount);
-    Assert.AreEqual(3, Changes.FileCount);
+    mChanges.Add('C:\P\A.pas', [Edit(1, 'x')]);
+    mChanges.Add('c:\p\a.pas', [Edit(2, 'y'), Edit(3, 'z')]);
+    mChanges.Add('C:\P\B.pas', [Edit(0, 'b')]);
+    mChanges.CreateFile(cNewFile, 'unit Neu;');
+    Assert.AreEqual(2, Integer(Length(mChanges.Files)));
+    Assert.AreEqual(3, Integer(Length(mChanges.EditsOf('C:\P\A.pas'))));
+    Assert.AreEqual(0, Integer(Length(mChanges.EditsOf('C:\P\C.pas'))));
+    Assert.AreEqual(5, mChanges.EditCount);
+    Assert.AreEqual(3, mChanges.FileCount);
   finally
-    Changes.Free;
+    mChanges.Free;
   end;
 end;
 
 procedure TWorkspaceChangesTests.IgnoresEmptyEdits;
 var
-  Changes: TWorkspaceChanges;
+  mChanges: TWorkspaceChanges;
 begin
-  Changes := TWorkspaceChanges.Create;
+  mChanges := TWorkspaceChanges.Create;
   try
-    Changes.Add('C:\P\A.pas', nil);
-    Assert.AreEqual(0, Changes.FileCount);
-    Assert.AreEqual(0, Changes.EditCount);
+    mChanges.Add('C:\P\A.pas', nil);
+    Assert.AreEqual(0, mChanges.FileCount);
+    Assert.AreEqual(0, mChanges.EditCount);
   finally
-    Changes.Free;
+    mChanges.Free;
   end;
 end;
 
 procedure TWorkspaceChangesTests.RegisterWithoutProjectWarns;
 var
-  Changes: TWorkspaceChanges;
+  mChanges: TWorkspaceChanges;
 begin
-  Changes := TWorkspaceChanges.Create;
+  mChanges := TWorkspaceChanges.Create;
   try
-    Changes.RegisterUnit(False, Default(TProjectInfo), nil, NewFile, 'Kunden.Schnittstellen');
-    Assert.AreEqual(0, Changes.FileCount);
-    Assert.AreEqual(1, Integer(Length(Changes.Warnings)));
-    Assert.Contains(Changes.Warnings[0], 'Kein Projekt');
+    mChanges.RegisterUnit(False, Default(TProjectInfo), nil, cNewFile, 'Kunden.Schnittstellen');
+    Assert.AreEqual(0, mChanges.FileCount);
+    Assert.AreEqual(1, Integer(Length(mChanges.Warnings)));
+    Assert.Contains(mChanges.Warnings[0], 'Kein Projekt');
   finally
-    Changes.Free;
+    mChanges.Free;
   end;
 end;
 
 procedure TWorkspaceChangesTests.RegisterAddsProgramAndProject;
 var
-  Changes: TWorkspaceChanges;
+  mChanges: TWorkspaceChanges;
 begin
-  Changes := TWorkspaceChanges.Create;
+  mChanges := TWorkspaceChanges.Create;
   try
-    Changes.RegisterUnit(True, Project, Reader(TextProject), NewFile, 'Kunden.Schnittstellen');
-    Assert.AreEqual(0, Integer(Length(Changes.Warnings)));
-    Assert.AreEqual(2, Changes.FileCount);
-    Assert.Contains(TChangeSignature.ApplyEdits(TextProgram, Changes.EditsOf(ProgramFile)),
+    mChanges.RegisterUnit(True, Project, Reader(cTextProject), cNewFile, 'Kunden.Schnittstellen');
+    Assert.AreEqual(0, Integer(Length(mChanges.Warnings)));
+    Assert.AreEqual(2, mChanges.FileCount);
+    Assert.Contains(TChangeSignature.ApplyEdits(cTextProgram, mChanges.EditsOf(cProgramFile)),
       'Kunden.Schnittstellen in ''Kunden.Schnittstellen.pas''');
-    Assert.Contains(TChangeSignature.ApplyEdits(TextProject, Changes.EditsOf(ProjectFile)),
+    Assert.Contains(TChangeSignature.ApplyEdits(cTextProject, mChanges.EditsOf(cProjectFile)),
       '<DCCReference Include="Kunden.Schnittstellen.pas"/>');
   finally
-    Changes.Free;
+    mChanges.Free;
   end;
 end;
 
 procedure TWorkspaceChangesTests.RegisterSkipsKnownReference;
 var
-  Changes: TWorkspaceChanges;
+  mChanges: TWorkspaceChanges;
 begin
-  Changes := TWorkspaceChanges.Create;
+  mChanges := TWorkspaceChanges.Create;
   try
-    Changes.RegisterUnit(True, Project,
-      Reader(StringReplace(TextProject, 'Lager.pas', 'Kunden.Schnittstellen.pas', [])), NewFile,
+    mChanges.RegisterUnit(True, Project,
+      Reader(StringReplace(cTextProject, 'Lager.pas', 'Kunden.Schnittstellen.pas', [])), cNewFile,
       'Kunden.Schnittstellen');
-    Assert.AreEqual(1, Changes.FileCount);
-    Assert.AreEqual(0, Integer(Length(Changes.EditsOf(ProjectFile))));
+    Assert.AreEqual(1, mChanges.FileCount);
+    Assert.AreEqual(0, Integer(Length(mChanges.EditsOf(cProjectFile))));
   finally
-    Changes.Free;
+    mChanges.Free;
   end;
 end;
 
 procedure TWorkspaceChangesTests.JsonCreatesFilesFirstWithAnnotation;
 var
-  Changes: TWorkspaceChanges;
-  Json, First, Annotation: TJSONObject;
-  List: TJSONArray;
+  mChanges: TWorkspaceChanges;
+  mJson, mFirst, mAnnotation: TJSONObject;
+  mList: TJSONArray;
 begin
-  Changes := TWorkspaceChanges.Create;
-  Json := nil;
+  mChanges := TWorkspaceChanges.Create;
+  mJson := nil;
   try
-    Changes.Add('C:\P\A.pas', [Edit(1, 'x')]);
-    Changes.CreateFile(NewFile, 'unit Neu;');
-    Json := Changes.ToJson('probe', 'Probe', 'Beschreibung');
-    List := Json.GetValue('documentChanges') as TJSONArray;
-    Assert.AreEqual(3, Integer(List.Count));
-    First := List.Items[0] as TJSONObject;
-    Assert.AreEqual('create', First.GetValue('kind').Value);
-    Assert.AreEqual('probe', First.GetValue('annotationId').Value);
-    Assert.AreEqual('unit Neu;', (((List.Items[1] as TJSONObject).GetValue('edits') as TJSONArray).Items[0] as
+    mChanges.Add('C:\P\A.pas', [Edit(1, 'x')]);
+    mChanges.CreateFile(cNewFile, 'unit Neu;');
+    mJson := mChanges.ToJson('probe', 'Probe', 'Beschreibung');
+    mList := mJson.GetValue('documentChanges') as TJSONArray;
+    Assert.AreEqual(3, Integer(mList.Count));
+    mFirst := mList.Items[0] as TJSONObject;
+    Assert.AreEqual('create', mFirst.GetValue('kind').Value);
+    Assert.AreEqual('probe', mFirst.GetValue('annotationId').Value);
+    Assert.AreEqual('unit Neu;', (((mList.Items[1] as TJSONObject).GetValue('edits') as TJSONArray).Items[0] as
       TJSONObject).GetValue('newText').Value);
-    Annotation := (Json.GetValue('changeAnnotations') as TJSONObject).GetValue('probe') as TJSONObject;
-    Assert.AreEqual('Probe', Annotation.GetValue('label').Value);
-    Assert.IsTrue((Annotation.GetValue('needsConfirmation') as TJSONBool).AsBoolean);
+    mAnnotation := (mJson.GetValue('changeAnnotations') as TJSONObject).GetValue('probe') as TJSONObject;
+    Assert.AreEqual('Probe', mAnnotation.GetValue('label').Value);
+    Assert.IsTrue((mAnnotation.GetValue('needsConfirmation') as TJSONBool).AsBoolean);
   finally
-    Json.Free;
-    Changes.Free;
+    mJson.Free;
+    mChanges.Free;
   end;
 end;
 
 procedure TWorkspaceChangesTests.JsonWithoutAnnotation;
 var
-  Changes: TWorkspaceChanges;
-  Json, Item: TJSONObject;
-  Warnings: TJSONArray;
+  mChanges: TWorkspaceChanges;
+  mJson, mItem: TJSONObject;
+  mWarnings: TJSONArray;
 begin
-  Changes := TWorkspaceChanges.Create;
-  Json := nil;
-  Warnings := nil;
+  mChanges := TWorkspaceChanges.Create;
+  mJson := nil;
+  mWarnings := nil;
   try
-    Changes.Add('C:\P\A.pas', [Edit(1, 'x')]);
-    Changes.Warn('Hinweis');
-    Json := Changes.ToJson;
-    Assert.IsNull(Json.GetValue('changeAnnotations'));
-    Item := ((((Json.GetValue('documentChanges') as TJSONArray).Items[0] as TJSONObject).GetValue('edits') as
+    mChanges.Add('C:\P\A.pas', [Edit(1, 'x')]);
+    mChanges.Warn('Hinweis');
+    mJson := mChanges.ToJson;
+    Assert.IsNull(mJson.GetValue('changeAnnotations'));
+    mItem := ((((mJson.GetValue('documentChanges') as TJSONArray).Items[0] as TJSONObject).GetValue('edits') as
       TJSONArray).Items[0]) as TJSONObject;
-    Assert.IsNull(Item.GetValue('annotationId'));
-    Warnings := Changes.WarningsJson;
-    Assert.AreEqual(1, Integer(Warnings.Count));
+    Assert.IsNull(mItem.GetValue('annotationId'));
+    mWarnings := mChanges.WarningsJson;
+    Assert.AreEqual(1, Integer(mWarnings.Count));
   finally
-    Warnings.Free;
-    Json.Free;
-    Changes.Free;
+    mWarnings.Free;
+    mJson.Free;
+    mChanges.Free;
   end;
 end;
 
 procedure TWorkspaceChangesTests.JsonDeletesFilesLast;
 var
-  Changes: TWorkspaceChanges;
-  Json, Item: TJSONObject;
-  Items: TJSONArray;
+  mChanges: TWorkspaceChanges;
+  mJson, mItem: TJSONObject;
+  mItems: TJSONArray;
 begin
-  Changes := TWorkspaceChanges.Create;
-  Json := nil;
+  mChanges := TWorkspaceChanges.Create;
+  mJson := nil;
   try
-    Changes.DeleteFile('C:\P\Alt.pas');
-    Changes.Add('C:\P\A.pas', [Edit(1, 'x')]);
-    Assert.AreEqual(2, Changes.FileCount);
-    Assert.AreEqual(2, Changes.EditCount);
-    Assert.AreEqual(1, Integer(Length(Changes.Deleted)));
-    Json := Changes.ToJson('safeDelete', 'Sicher loeschen', '1 Datei');
-    Items := Json.GetValue('documentChanges') as TJSONArray;
-    Assert.AreEqual(2, Integer(Items.Count));
-    Item := Items.Items[1] as TJSONObject;
-    Assert.AreEqual('delete', Item.GetValue('kind').Value);
-    Assert.IsTrue(Item.GetValue('uri').Value.EndsWith('Alt.pas'));
-    Assert.AreEqual('safeDelete', Item.GetValue('annotationId').Value);
-    Assert.IsTrue(((Item.GetValue('options') as TJSONObject).GetValue('ignoreIfNotExists') as TJSONBool).AsBoolean);
+    mChanges.DeleteFile('C:\P\Alt.pas');
+    mChanges.Add('C:\P\A.pas', [Edit(1, 'x')]);
+    Assert.AreEqual(2, mChanges.FileCount);
+    Assert.AreEqual(2, mChanges.EditCount);
+    Assert.AreEqual(1, Integer(Length(mChanges.Deleted)));
+    mJson := mChanges.ToJson('safeDelete', 'Sicher loeschen', '1 Datei');
+    mItems := mJson.GetValue('documentChanges') as TJSONArray;
+    Assert.AreEqual(2, Integer(mItems.Count));
+    mItem := mItems.Items[1] as TJSONObject;
+    Assert.AreEqual('delete', mItem.GetValue('kind').Value);
+    Assert.IsTrue(mItem.GetValue('uri').Value.EndsWith('Alt.pas'));
+    Assert.AreEqual('safeDelete', mItem.GetValue('annotationId').Value);
+    Assert.IsTrue(((mItem.GetValue('options') as TJSONObject).GetValue('ignoreIfNotExists') as TJSONBool).AsBoolean);
   finally
-    Json.Free;
-    Changes.Free;
+    mJson.Free;
+    mChanges.Free;
   end;
 end;
 

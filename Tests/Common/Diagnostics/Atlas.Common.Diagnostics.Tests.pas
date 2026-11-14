@@ -137,16 +137,16 @@ end;
 procedure TRecordingObserver.Finished(const AMethod: string; const AParams, AResult: TJSONValue;
   const AError: Exception; AQueueMs, AElapsedMs: Int64);
 var
-  Notes: TRequestNotes;
+  mNotes: TRequestNotes;
 begin
-  Notes := TRequestDiagnostics.Close;
+  mNotes := TRequestDiagnostics.Close;
   if AError <> nil then
   begin
     Events := Events + ['error ' + AMethod + ' ' + AError.ClassName];
   end
   else
   begin
-    Events := Events + ['done ' + AMethod + ' ' + Notes.Reason];
+    Events := Events + ['done ' + AMethod + ' ' + mNotes.Reason];
   end;
 end;
 
@@ -189,87 +189,87 @@ end;
 
 procedure TDiagnosticLogTests.FilterRejectsPathsDrivesAndExtensions;
 var
-  Filter: TDiagnosticFilter;
+  mFilter: TDiagnosticFilter;
 begin
-  Filter := TDiagnosticFilter.Create(nil);
+  mFilter := TDiagnosticFilter.Create(nil);
   try
-    Assert.IsFalse(Filter.Accept('open C:\Projekte\Kunde'));
-    Assert.IsFalse(Filter.Accept('drive d: only'));
-    Assert.IsFalse(Filter.Accept('share \\server\daten'));
-    Assert.IsFalse(Filter.Accept('unix path src/main'));
-    Assert.IsFalse(Filter.Accept('file Haupt.pas'));
-    Assert.IsFalse(Filter.Accept('file Kunde.DPR'));
-    Assert.IsFalse(Filter.Accept('file Kunde.dproj'));
-    Assert.IsFalse(Filter.Accept('file Kunde.dpk'));
-    Assert.IsFalse(Filter.Accept('include Defs.inc'));
-    Assert.IsFalse(Filter.Accept('form Main.dfm'));
-    Assert.IsFalse(Filter.Accept('mail a@b'));
+    Assert.IsFalse(mFilter.Accept('open C:\Projekte\Kunde'));
+    Assert.IsFalse(mFilter.Accept('drive d: only'));
+    Assert.IsFalse(mFilter.Accept('share \\server\daten'));
+    Assert.IsFalse(mFilter.Accept('unix path src/main'));
+    Assert.IsFalse(mFilter.Accept('file Haupt.pas'));
+    Assert.IsFalse(mFilter.Accept('file Kunde.DPR'));
+    Assert.IsFalse(mFilter.Accept('file Kunde.dproj'));
+    Assert.IsFalse(mFilter.Accept('file Kunde.dpk'));
+    Assert.IsFalse(mFilter.Accept('include Defs.inc'));
+    Assert.IsFalse(mFilter.Accept('form Main.dfm'));
+    Assert.IsFalse(mFilter.Accept('mail a@b'));
   finally
-    Filter.Free;
+    mFilter.Free;
   end;
 end;
 
 procedure TDiagnosticLogTests.FilterRejectsUserAndMachineNames;
 var
-  Filter: TDiagnosticFilter;
+  mFilter: TDiagnosticFilter;
 begin
-  Filter := TDiagnosticFilter.Create(['MaxMuster', 'RECHNER-07', 'ab']);
+  mFilter := TDiagnosticFilter.Create(['MaxMuster', 'RECHNER-07', 'ab']);
   try
-    Assert.IsFalse(Filter.Accept('user maxmuster'));
-    Assert.IsFalse(Filter.Accept('host Rechner-07 up'));
+    Assert.IsFalse(mFilter.Accept('user maxmuster'));
+    Assert.IsFalse(mFilter.Accept('host Rechner-07 up'));
     // Kurze Einträge zählen nicht, sonst fiele fast jede Zeile weg.
-    Assert.IsTrue(Filter.Accept('about ab'));
+    Assert.IsTrue(mFilter.Accept('about ab'));
   finally
-    Filter.Free;
+    mFilter.Free;
   end;
 end;
 
 procedure TDiagnosticLogTests.FilterAllowsMethodNamesAndCodes;
 var
-  Filter: TDiagnosticFilter;
+  mFilter: TDiagnosticFilter;
 begin
-  Filter := TDiagnosticFilter.Create(nil);
+  mFilter := TDiagnosticFilter.Create(nil);
   try
-    Assert.IsTrue(Filter.Accept('12:01:03.120 run start version 1.2.3 mem 40 MB threads 5'));
-    Assert.IsFalse(Filter.Accept('12:01:03.120 textDocument/hover 3 ms ok:1'));
-    Filter.Allowed := ['textDocument/hover'];
-    Assert.IsTrue(Filter.Accept('12:01:03.120 textDocument/hover 3 ms ok:1'));
-    Assert.IsTrue(Filter.Accept(TDiagnosticLog.FormatRequest(SampleRequest).Replace('textDocument/completion',
+    Assert.IsTrue(mFilter.Accept('12:01:03.120 run start version 1.2.3 mem 40 MB threads 5'));
+    Assert.IsFalse(mFilter.Accept('12:01:03.120 textDocument/hover 3 ms ok:1'));
+    mFilter.Allowed := ['textDocument/hover'];
+    Assert.IsTrue(mFilter.Accept('12:01:03.120 textDocument/hover 3 ms ok:1'));
+    Assert.IsTrue(mFilter.Accept(TDiagnosticLog.FormatRequest(SampleRequest).Replace('textDocument/completion',
       'textDocument/hover')));
   finally
-    Filter.Free;
+    mFilter.Free;
   end;
 end;
 
 procedure TDiagnosticLogTests.ShortIdsAreStableWithinRun;
 var
-  Ids: TDiagnosticIds;
+  mIds: TDiagnosticIds;
 begin
-  Ids := TDiagnosticIds.Create;
+  mIds := TDiagnosticIds.Create;
   try
-    Assert.AreEqual('doc#1', Ids.IdOf(TDiagnosticIdKind.Document, 'C:\Kunde\Haupt.pas'));
-    Assert.AreEqual('doc#2', Ids.IdOf(TDiagnosticIdKind.Document, 'C:\Kunde\Werkzeug.pas'));
-    Assert.AreEqual('doc#1', Ids.IdOf(TDiagnosticIdKind.Document, 'c:/kunde/haupt.pas'));
-    Assert.AreEqual('proj#1', Ids.IdOf(TDiagnosticIdKind.Project, 'C:\Kunde\Kunde.dproj'));
-    Assert.AreEqual('unit#1', Ids.IdOf(TDiagnosticIdKind.UnitFile, 'C:\Kunde\Haupt.pas'));
-    Assert.AreEqual<NativeInt>(4, Length(Ids.MapLines));
+    Assert.AreEqual('doc#1', mIds.IdOf(TDiagnosticIdKind.Document, 'C:\Kunde\Haupt.pas'));
+    Assert.AreEqual('doc#2', mIds.IdOf(TDiagnosticIdKind.Document, 'C:\Kunde\Werkzeug.pas'));
+    Assert.AreEqual('doc#1', mIds.IdOf(TDiagnosticIdKind.Document, 'c:/kunde/haupt.pas'));
+    Assert.AreEqual('proj#1', mIds.IdOf(TDiagnosticIdKind.Project, 'C:\Kunde\Kunde.dproj'));
+    Assert.AreEqual('unit#1', mIds.IdOf(TDiagnosticIdKind.UnitFile, 'C:\Kunde\Haupt.pas'));
+    Assert.AreEqual<NativeInt>(4, Length(mIds.MapLines));
   finally
-    Ids.Free;
+    mIds.Free;
   end;
 end;
 
 procedure TDiagnosticLogTests.LibraryUnitsKeepTheirName;
 var
-  Ids: TDiagnosticIds;
+  mIds: TDiagnosticIds;
 begin
-  Ids := TDiagnosticIds.Create;
+  mIds := TDiagnosticIds.Create;
   try
-    Ids.SetLibraryRoots(['C:\Delphi']);
-    Assert.AreEqual('System.SysUtils', Ids.UnitLabel('System.SysUtils', 'C:\Delphi\source\rtl\System.SysUtils.pas'));
+    mIds.SetLibraryRoots(['C:\Delphi']);
+    Assert.AreEqual('System.SysUtils', mIds.UnitLabel('System.SysUtils', 'C:\Delphi\source\rtl\System.SysUtils.pas'));
     // Gleicher Name außerhalb der Installation: nicht am Namen erkannt.
-    Assert.AreEqual('unit#1', Ids.UnitLabel('System.SysUtils', 'C:\Kunde\System.SysUtils.pas'));
+    Assert.AreEqual('unit#1', mIds.UnitLabel('System.SysUtils', 'C:\Kunde\System.SysUtils.pas'));
   finally
-    Ids.Free;
+    mIds.Free;
   end;
 end;
 
@@ -282,7 +282,7 @@ end;
 
 procedure TDiagnosticLogTests.RequestScopeCollectsCodes;
 var
-  Notes: TRequestNotes;
+  mNotes: TRequestNotes;
 begin
   TRequestDiagnostics.Open;
   Assert.IsTrue(TRequestDiagnostics.IsOpen);
@@ -296,30 +296,30 @@ begin
   TRequestDiagnostics.Increment('missingUnits');
   TRequestDiagnostics.Increment('missingUnits');
   TRequestDiagnostics.ResultCount(12);
-  Notes := TRequestDiagnostics.Close;
+  mNotes := TRequestDiagnostics.Close;
   Assert.IsFalse(TRequestDiagnostics.IsOpen);
-  Assert.AreEqual('noTarget', Notes.Reason);
-  Assert.AreEqual('unitNotFound', Notes.Resolve);
-  Assert.AreEqual(12, Integer(Notes.Count));
-  Assert.AreEqual('ctx=memberAccess inString=false missingUnits=2', string.Join(' ', Notes.Notes));
+  Assert.AreEqual('noTarget', mNotes.Reason);
+  Assert.AreEqual('unitNotFound', mNotes.Resolve);
+  Assert.AreEqual(12, Integer(mNotes.Count));
+  Assert.AreEqual('ctx=memberAccess inString=false missingUnits=2', string.Join(' ', mNotes.Notes));
 end;
 
 procedure TDiagnosticLogTests.RequestScopeKeepsSlowest;
 var
-  Notes: TRequestNotes;
+  mNotes: TRequestNotes;
 begin
   TRequestDiagnostics.Open;
   TRequestDiagnostics.Slowest('slowRule', 'erste', 120);
   TRequestDiagnostics.Slowest('slowRule', 'kurz', 80);
   TRequestDiagnostics.Slowest('slowRule', 'lang', 900);
   TRequestDiagnostics.Slowest('slowRule', 'gleich', 900);
-  Notes := TRequestDiagnostics.Close;
-  Assert.AreEqual('slowRule=lang slowRuleMs=900', string.Join(' ', Notes.Notes));
+  mNotes := TRequestDiagnostics.Close;
+  Assert.AreEqual('slowRule=lang slowRuleMs=900', string.Join(' ', mNotes.Notes));
 end;
 
 procedure TDiagnosticLogTests.RequestScopeNamesFailingUnitAndRule;
 var
-  Notes: TRequestNotes;
+  mNotes: TRequestNotes;
 begin
   TRequestDiagnostics.Open;
   TRequestDiagnostics.Subject('unit#4');
@@ -330,31 +330,31 @@ begin
   TRequestDiagnostics.Subject('unit#9');
   TRequestDiagnostics.TreeTooDeep(1200);
   TRequestDiagnostics.CurrentRule('empty-except');
-  Notes := TRequestDiagnostics.Close;
+  mNotes := TRequestDiagnostics.Close;
   Assert.AreEqual('failedRules=1 failRule=hides-virtual failRuleUnit=unit#4 failRuleClass=EStackOverflow ' +
     'failedUnits=1 failUnit=unit#4 failUnitClass=EAccessViolation deepUnits=1 deepUnit=unit#9 deepUnitDepth=1200',
-    string.Join(' ', Notes.Notes));
+    string.Join(' ', mNotes.Notes));
   // Beim Schließen noch offen: so nennt das Diagnoselog bei einem Fehler Unit und Regel.
-  Assert.AreEqual('unit#9', Notes.Subject);
-  Assert.AreEqual('empty-except', Notes.Rule);
+  Assert.AreEqual('unit#9', mNotes.Subject);
+  Assert.AreEqual('empty-except', mNotes.Rule);
   // Ohne offenen Bereich wirkungslos.
   TRequestDiagnostics.Subject('unit#1');
   TRequestDiagnostics.RuleFailed('x', 'Exception');
-  Notes := TRequestDiagnostics.Close;
-  Assert.AreEqual('', Notes.Subject);
-  Assert.AreEqual<NativeInt>(0, Length(Notes.Notes));
+  mNotes := TRequestDiagnostics.Close;
+  Assert.AreEqual('', mNotes.Subject);
+  Assert.AreEqual<NativeInt>(0, Length(mNotes.Notes));
 end;
 
 procedure TDiagnosticLogTests.RequestScopeWithoutOpenDoesNothing;
 var
-  Notes: TRequestNotes;
+  mNotes: TRequestNotes;
 begin
   TRequestDiagnostics.Reason('noTarget');
   TRequestDiagnostics.Note('ctx', 'scope');
-  Notes := TRequestDiagnostics.Close;
-  Assert.AreEqual('', Notes.Reason);
-  Assert.AreEqual(-1, Integer(Notes.Count));
-  Assert.AreEqual<NativeInt>(0, Length(Notes.Notes));
+  mNotes := TRequestDiagnostics.Close;
+  Assert.AreEqual('', mNotes.Reason);
+  Assert.AreEqual(-1, Integer(mNotes.Count));
+  Assert.AreEqual<NativeInt>(0, Length(mNotes.Notes));
 end;
 
 procedure TDiagnosticLogTests.FormatsRequestLine;
@@ -366,224 +366,224 @@ end;
 
 procedure TDiagnosticLogTests.EmptyResultWithoutReasonIsMarked;
 var
-  Request: TDiagnosticRequest;
+  mRequest: TDiagnosticRequest;
 begin
-  Request := SampleRequest;
-  Request.Outcome := TDiagnosticOutcome.Empty;
-  Request.Reason := '';
-  Assert.Contains(TDiagnosticLog.FormatRequest(Request), ' empty:unspecified ');
-  Request.Reason := 'noCandidates';
-  Assert.Contains(TDiagnosticLog.FormatRequest(Request), ' empty:noCandidates ');
+  mRequest := SampleRequest;
+  mRequest.Outcome := TDiagnosticOutcome.Empty;
+  mRequest.Reason := '';
+  Assert.Contains(TDiagnosticLog.FormatRequest(mRequest), ' empty:unspecified ');
+  mRequest.Reason := 'noCandidates';
+  Assert.Contains(TDiagnosticLog.FormatRequest(mRequest), ' empty:noCandidates ');
 end;
 
 procedure TDiagnosticLogTests.BuffersUntilConfigured;
 var
-  Lines: TStringList;
-  Log: IDiagnosticLog;
+  mLines: TStringList;
+  mLog: IDiagnosticLog;
 begin
-  Lines := TStringList.Create;
+  mLines := TStringList.Create;
   try
-    Log := TDiagnosticLog.Create(NewWriter(Lines), TDiagnosticFilter.Create(nil));
-    Log.LogEvent('first');
-    Assert.AreEqual(0, Integer(Lines.Count));
-    Log.Configure(True);
-    Assert.AreEqual(1, Integer(Lines.Count));
-    Log.LogEvent('second');
-    Assert.AreEqual(2, Integer(Lines.Count));
-    Log := nil;
+    mLog := TDiagnosticLog.Create(NewWriter(mLines), TDiagnosticFilter.Create(nil));
+    mLog.LogEvent('first');
+    Assert.AreEqual(0, Integer(mLines.Count));
+    mLog.Configure(True);
+    Assert.AreEqual(1, Integer(mLines.Count));
+    mLog.LogEvent('second');
+    Assert.AreEqual(2, Integer(mLines.Count));
+    mLog := nil;
   finally
-    Lines.Free;
+    mLines.Free;
   end;
 end;
 
 procedure TDiagnosticLogTests.DisabledLogWritesNothing;
 var
-  Lines: TStringList;
-  Log: IDiagnosticLog;
-  Process: TDiagnosticProcess;
+  mLines: TStringList;
+  mLog: IDiagnosticLog;
+  mProcess: TDiagnosticProcess;
 begin
-  Lines := TStringList.Create;
+  mLines := TStringList.Create;
   try
-    Log := TDiagnosticLog.Create(NewWriter(Lines), TDiagnosticFilter.Create(nil));
-    Process := Default(TDiagnosticProcess);
-    Log.LogStart('1.0', Process);
-    Log.Configure(False);
-    Log.LogRequest(SampleRequest);
-    Log.LogEnd(TDiagnosticEndReason.Clean, 0, Process);
-    Assert.AreEqual(0, Integer(Lines.Count));
-    Assert.IsFalse(Log.Enabled);
-    Log := nil;
+    mLog := TDiagnosticLog.Create(NewWriter(mLines), TDiagnosticFilter.Create(nil));
+    mProcess := Default(TDiagnosticProcess);
+    mLog.LogStart('1.0', mProcess);
+    mLog.Configure(False);
+    mLog.LogRequest(SampleRequest);
+    mLog.LogEnd(TDiagnosticEndReason.Clean, 0, mProcess);
+    Assert.AreEqual(0, Integer(mLines.Count));
+    Assert.IsFalse(mLog.Enabled);
+    mLog := nil;
   finally
-    Lines.Free;
+    mLines.Free;
   end;
 end;
 
 procedure TDiagnosticLogTests.EndLineHasReason;
 var
-  Lines: TStringList;
-  Log: TDiagnosticLog;
-  Ref: IDiagnosticLog;
-  Process: TDiagnosticProcess;
+  mLines: TStringList;
+  mLog: TDiagnosticLog;
+  mRef: IDiagnosticLog;
+  mProcess: TDiagnosticProcess;
 begin
-  Lines := TStringList.Create;
+  mLines := TStringList.Create;
   try
-    Log := TDiagnosticLog.Create(NewWriter(Lines), TDiagnosticFilter.Create(nil));
-    Ref := Log;
-    Log.Configure(True);
-    Process.MemoryBytes := 50 * 1024 * 1024;
-    Process.Threads := 7;
-    Log.LogEnd(TDiagnosticEndReason.ParentExited, 0, Process);
-    Log.LogEnd(TDiagnosticEndReason.Exception_, 1, Process, 'EAccessViolation',
+    mLog := TDiagnosticLog.Create(NewWriter(mLines), TDiagnosticFilter.Create(nil));
+    mRef := mLog;
+    mLog.Configure(True);
+    mProcess.MemoryBytes := 50 * 1024 * 1024;
+    mProcess.Threads := 7;
+    mLog.LogEnd(TDiagnosticEndReason.ParentExited, 0, mProcess);
+    mLog.LogEnd(TDiagnosticEndReason.Exception_, 1, mProcess, 'EAccessViolation',
       'AtlasServer.exe+$10 Shell.Composition.TServerComposition.Run (Shell.Composition.pas:9)'#13#10 +
       'C:\Kunde\Fremd.exe+$20');
-    Assert.AreEqual(3, Integer(Lines.Count));
-    Assert.Contains(Lines[0], 'run end reason parentExited exit 0 mem 50 MB threads 7');
-    Assert.Contains(Lines[1], 'run end reason exception exit 1');
-    Assert.Contains(Lines[1], 'exception EAccessViolation');
-    Assert.AreEqual('  at AtlasServer.exe+$10 Shell.Composition.TServerComposition.Run line 9', Lines[2]);
+    Assert.AreEqual(3, Integer(mLines.Count));
+    Assert.Contains(mLines[0], 'run end reason parentExited exit 0 mem 50 MB threads 7');
+    Assert.Contains(mLines[1], 'run end reason exception exit 1');
+    Assert.Contains(mLines[1], 'exception EAccessViolation');
+    Assert.AreEqual('  at AtlasServer.exe+$10 Shell.Composition.TServerComposition.Run line 9', mLines[2]);
     // Der Rahmen mit Pfad wird verworfen, die übrigen bleiben.
-    Assert.AreEqual(1, Log.Dropped);
-    Ref := nil;
+    Assert.AreEqual(1, mLog.Dropped);
+    mRef := nil;
   finally
-    Lines.Free;
+    mLines.Free;
   end;
 end;
 
 procedure TDiagnosticLogTests.DroppedLinesAreCounted;
 var
-  Lines: TStringList;
-  Log: IDiagnosticLog;
-  Process: TDiagnosticProcess;
+  mLines: TStringList;
+  mLog: IDiagnosticLog;
+  mProcess: TDiagnosticProcess;
 begin
-  Lines := TStringList.Create;
+  mLines := TStringList.Create;
   try
-    Log := TDiagnosticLog.Create(NewWriter(Lines), TDiagnosticFilter.Create(nil));
-    Log.Configure(True);
-    Log.LogEvent('opened C:\Kunde\Haupt.pas');
-    Log.LogEvent('opened doc#1');
-    Process := Default(TDiagnosticProcess);
-    Log.LogEnd(TDiagnosticEndReason.Clean, 0, Process);
-    Assert.AreEqual(2, Integer(Lines.Count));
-    Assert.Contains(Lines[1], 'dropped 1');
-    Log := nil;
+    mLog := TDiagnosticLog.Create(NewWriter(mLines), TDiagnosticFilter.Create(nil));
+    mLog.Configure(True);
+    mLog.LogEvent('opened C:\Kunde\Haupt.pas');
+    mLog.LogEvent('opened doc#1');
+    mProcess := Default(TDiagnosticProcess);
+    mLog.LogEnd(TDiagnosticEndReason.Clean, 0, mProcess);
+    Assert.AreEqual(2, Integer(mLines.Count));
+    Assert.Contains(mLines[1], 'dropped 1');
+    mLog := nil;
   finally
-    Lines.Free;
+    mLines.Free;
   end;
 end;
 
 procedure TDiagnosticLogTests.LoggingCostsLessThanOneMillisecond;
 const
-  Rounds = 2000;
+  cRounds = 2000;
 var
-  Lines: TStringList;
-  Log: TDiagnosticLog;
-  Ref: IDiagnosticLog;
-  Watch: TStopwatch;
-  Index: Integer;
+  mLines: TStringList;
+  mLog: TDiagnosticLog;
+  mRef: IDiagnosticLog;
+  mWatch: TStopwatch;
+  mIndex: Integer;
 begin
-  Lines := TStringList.Create;
+  mLines := TStringList.Create;
   try
-    Log := TDiagnosticLog.Create(NewWriter(Lines), TDiagnosticFilter.Create(['MaxMuster', 'RECHNER-07']));
-    Ref := Log;
-    Log.Filter.Allowed := ['textDocument/completion'];
-    Log.Configure(True);
-    Watch := TStopwatch.StartNew;
-    for Index := 1 to Rounds do
+    mLog := TDiagnosticLog.Create(NewWriter(mLines), TDiagnosticFilter.Create(['MaxMuster', 'RECHNER-07']));
+    mRef := mLog;
+    mLog.Filter.Allowed := ['textDocument/completion'];
+    mLog.Configure(True);
+    mWatch := TStopwatch.StartNew;
+    for mIndex := 1 to cRounds do
     begin
       TRequestDiagnostics.Open;
       TRequestDiagnostics.Note('ctx', 'memberAccess');
       TRequestDiagnostics.Close;
-      Log.LogRequest(SampleRequest);
+      mLog.LogRequest(SampleRequest);
     end;
-    Assert.AreEqual(Rounds, Integer(Lines.Count));
-    Assert.IsTrue(Watch.Elapsed.TotalMilliseconds / Rounds < 1,
-      Format('%.3f ms je Anfrage', [Watch.Elapsed.TotalMilliseconds / Rounds]));
-    Ref := nil;
+    Assert.AreEqual(cRounds, Integer(mLines.Count));
+    Assert.IsTrue(mWatch.Elapsed.TotalMilliseconds / cRounds < 1,
+      Format('%.3f ms je Anfrage', [mWatch.Elapsed.TotalMilliseconds / cRounds]));
+    mRef := nil;
   finally
-    Lines.Free;
+    mLines.Free;
   end;
 end;
 
 procedure TDiagnosticLogTests.LogFolderReportsRunsWithoutEnd;
 var
-  Folder: string;
-  First, Second: TDiagnosticLogFolder;
-  FirstRef, SecondRef: IDiagnosticWriter;
-  Files: TArray<string>;
+  mFolder: string;
+  mFirst, mSecond: TDiagnosticLogFolder;
+  mFirstRef, mSecondRef: IDiagnosticWriter;
+  mFiles: TArray<string>;
 begin
-  Folder := NewFolder;
+  mFolder := NewFolder;
   try
     // Marke eines früheren Laufs, der ohne Ende aufhörte (Datei nicht mehr offen).
-    TFile.WriteAllText(TPath.Combine(Folder, 'run-111.open'), '');
-    First := TDiagnosticLogFolder.Create(Folder, '222');
-    FirstRef := First;
-    Assert.AreEqual(1, First.BeginRun);
+    TFile.WriteAllText(TPath.Combine(mFolder, 'run-111.open'), '');
+    mFirst := TDiagnosticLogFolder.Create(mFolder, '222');
+    mFirstRef := mFirst;
+    Assert.AreEqual(1, mFirst.BeginRun);
     // Ein noch laufender Server hält seine Marke offen: Sie zählt nicht als abgebrochen.
-    Second := TDiagnosticLogFolder.Create(Folder, '333');
-    SecondRef := Second;
-    Assert.AreEqual(0, Second.BeginRun);
-    First.WriteLine('line one');
-    Files := TDirectory.GetFiles(Folder, TDiagnosticLogFolder.cFilePattern);
-    Assert.AreEqual<NativeInt>(1, Length(Files));
-    Assert.Contains(ExtractFileName(Files[0]), '-222.log');
-    First.EndRun;
-    Second.EndRun;
-    Assert.AreEqual<NativeInt>(0, Length(TDirectory.GetFiles(Folder, TDiagnosticLogFolder.cMarkerPattern)));
-    FirstRef := nil;
-    SecondRef := nil;
-    Assert.AreEqual('line one', Trim(TFile.ReadAllText(Files[0], TEncoding.UTF8)));
+    mSecond := TDiagnosticLogFolder.Create(mFolder, '333');
+    mSecondRef := mSecond;
+    Assert.AreEqual(0, mSecond.BeginRun);
+    mFirst.WriteLine('line one');
+    mFiles := TDirectory.GetFiles(mFolder, TDiagnosticLogFolder.cFilePattern);
+    Assert.AreEqual<NativeInt>(1, Length(mFiles));
+    Assert.Contains(ExtractFileName(mFiles[0]), '-222.log');
+    mFirst.EndRun;
+    mSecond.EndRun;
+    Assert.AreEqual<NativeInt>(0, Length(TDirectory.GetFiles(mFolder, TDiagnosticLogFolder.cMarkerPattern)));
+    mFirstRef := nil;
+    mSecondRef := nil;
+    Assert.AreEqual('line one', Trim(TFile.ReadAllText(mFiles[0], TEncoding.UTF8)));
   finally
-    TDirectory.Delete(Folder, True);
+    TDirectory.Delete(mFolder, True);
   end;
 end;
 
 procedure TDiagnosticLogTests.LogFolderRemovesOldFiles;
 var
-  Folder, Old, Map, Fresh: string;
-  Writer: TDiagnosticLogFolder;
-  Ref: IDiagnosticWriter;
+  mFolder, mOld, mMap, mFresh: string;
+  mWriter: TDiagnosticLogFolder;
+  mRef: IDiagnosticWriter;
 begin
-  Folder := NewFolder;
+  mFolder := NewFolder;
   try
-    Old := TPath.Combine(Folder, 'diag-20260101-1.log');
-    Map := TPath.Combine(Folder, 'diag-map-20260101-1.txt');
-    Fresh := TPath.Combine(Folder, 'diag-20261014-1.log');
-    TFile.WriteAllText(Old, 'x');
-    TFile.WriteAllText(Map, 'x');
-    TFile.WriteAllText(Fresh, 'x');
-    TFile.SetLastWriteTime(Old, IncDay(Now, -10));
-    TFile.SetLastWriteTime(Map, IncDay(Now, -10));
-    Writer := TDiagnosticLogFolder.Create(Folder, '1');
-    Ref := Writer;
-    Writer.Cleanup(7);
-    Assert.IsFalse(FileExists(Old));
-    Assert.IsFalse(FileExists(Map));
-    Assert.IsTrue(FileExists(Fresh));
-    Ref := nil;
+    mOld := TPath.Combine(mFolder, 'diag-20260101-1.log');
+    mMap := TPath.Combine(mFolder, 'diag-map-20260101-1.txt');
+    mFresh := TPath.Combine(mFolder, 'diag-20261014-1.log');
+    TFile.WriteAllText(mOld, 'x');
+    TFile.WriteAllText(mMap, 'x');
+    TFile.WriteAllText(mFresh, 'x');
+    TFile.SetLastWriteTime(mOld, IncDay(Now, -10));
+    TFile.SetLastWriteTime(mMap, IncDay(Now, -10));
+    mWriter := TDiagnosticLogFolder.Create(mFolder, '1');
+    mRef := mWriter;
+    mWriter.Cleanup(7);
+    Assert.IsFalse(FileExists(mOld));
+    Assert.IsFalse(FileExists(mMap));
+    Assert.IsTrue(FileExists(mFresh));
+    mRef := nil;
   finally
-    TDirectory.Delete(Folder, True);
+    TDirectory.Delete(mFolder, True);
   end;
 end;
 
 procedure TDiagnosticLogTests.DispatcherReportsRequestsToObserver;
 var
-  Dispatcher: TJsonRpcDispatcher;
-  Observer: TRecordingObserver;
-  Ref: IJsonRpcRequestObserver;
-  Message: TJSONObject;
+  mDispatcher: TJsonRpcDispatcher;
+  mObserver: TRecordingObserver;
+  mRef: IJsonRpcRequestObserver;
+  mMessage: TJSONObject;
 begin
-  Observer := TRecordingObserver.Create;
-  Ref := Observer;
-  Dispatcher := TJsonRpcDispatcher.Create;
+  mObserver := TRecordingObserver.Create;
+  mRef := mObserver;
+  mDispatcher := TJsonRpcDispatcher.Create;
   try
-    Dispatcher.Observer := Ref;
-    Dispatcher.RegisterRequest('test/empty',
+    mDispatcher.Observer := mRef;
+    mDispatcher.RegisterRequest('test/empty',
       function(const AParams: TJSONValue): TJSONValue
       begin
         TRequestDiagnostics.Reason('noTarget');
         Result := TJSONNull.Create;
       end);
-    Dispatcher.RegisterRequest('test/fail',
+    mDispatcher.RegisterRequest('test/fail',
       function(const AParams: TJSONValue): TJSONValue
       begin
         if AParams = nil then
@@ -592,62 +592,62 @@ begin
         end;
         Result := TJSONNull.Create;
       end);
-    Message := TJSONObject.ParseJSONValue('{"jsonrpc": "2.0", "id": 1, "method": "test/empty"}') as TJSONObject;
+    mMessage := TJSONObject.ParseJSONValue('{"jsonrpc": "2.0", "id": 1, "method": "test/empty"}') as TJSONObject;
     try
-      Dispatcher.DispatchMessage(Message).Free;
+      mDispatcher.DispatchMessage(mMessage).Free;
     finally
-      Message.Free;
+      mMessage.Free;
     end;
-    Message := TJSONObject.ParseJSONValue('{"jsonrpc": "2.0", "id": 2, "method": "test/fail"}') as TJSONObject;
+    mMessage := TJSONObject.ParseJSONValue('{"jsonrpc": "2.0", "id": 2, "method": "test/fail"}') as TJSONObject;
     try
-      Dispatcher.DispatchMessage(Message).Free;
+      mDispatcher.DispatchMessage(mMessage).Free;
     finally
-      Message.Free;
+      mMessage.Free;
     end;
     Assert.AreEqual('start test/empty|done test/empty noTarget|start test/fail|error test/fail EConvertError',
-      string.Join('|', Observer.Events));
-    Assert.AreEqual<NativeInt>(2, Length(Dispatcher.Methods));
+      string.Join('|', mObserver.Events));
+    Assert.AreEqual<NativeInt>(2, Length(mDispatcher.Methods));
   finally
-    Dispatcher.Free;
+    mDispatcher.Free;
   end;
-  Ref := nil;
+  mRef := nil;
 end;
 
 procedure TDiagnosticLogTests.ServerLogHidesPathsAndNames;
 var
-  Anonymizer: ILogAnonymizer;
-  Line: string;
+  mAnonymizer: ILogAnonymizer;
+  mLine: string;
 begin
   // Server-Log (--log) anonym (#647): Pfade, Projekt-, Unit- und Benutzernamen.
-  Anonymizer := TLogAnonymizer.Create(['mmuster']);
-  Anonymizer.AddNames(['Kundenverwaltung']);
-  Anonymizer.AddUnit('Firma.Kunden', 'C:\Projekte\Firma.Kunden.pas');
-  Line := Anonymizer.Anonymize('Symbolindex für Kundenverwaltung (Debug, Win64): Cache C:\Users\mmuster\AppData\k.idx');
-  Assert.AreEqual('Symbolindex für name#1 (Debug, Win64): Cache datei#1.idx', Line);
-  Assert.AreEqual('name#2.TKunde fehlt', Anonymizer.Anonymize('Firma.Kunden.TKunde fehlt'));
+  mAnonymizer := TLogAnonymizer.Create(['mmuster']);
+  mAnonymizer.AddNames(['Kundenverwaltung']);
+  mAnonymizer.AddUnit('Firma.Kunden', 'C:\Projekte\Firma.Kunden.pas');
+  mLine := mAnonymizer.Anonymize('Symbolindex für Kundenverwaltung (Debug, Win64): Cache C:\Users\mmuster\AppData\k.idx');
+  Assert.AreEqual('Symbolindex für name#1 (Debug, Win64): Cache datei#1.idx', mLine);
+  Assert.AreEqual('name#2.TKunde fehlt', mAnonymizer.Anonymize('Firma.Kunden.TKunde fehlt'));
   // Pfad mit Leerzeichen ohne Anführungszeichen: auch der Rest verschwindet.
-  Line := Anonymizer.Anonymize('Projekt C:\Work Space\Haupt.dproj nicht lesbar');
-  Assert.AreEqual(0, Pos('\', Line), Line);
-  Assert.AreEqual(0, Pos('Haupt', Line), Line);
-  Line := Anonymizer.Anonymize('didOpen file:///c%3A/Projekte/Haupt.pas von mmuster');
-  Assert.AreEqual('didOpen datei#4.pas von benutzer#1', Line);
+  mLine := mAnonymizer.Anonymize('Projekt C:\Work Space\Haupt.dproj nicht lesbar');
+  Assert.AreEqual(0, Pos('\', mLine), mLine);
+  Assert.AreEqual(0, Pos('Haupt', mLine), mLine);
+  mLine := mAnonymizer.Anonymize('didOpen file:///c%3A/Projekte/Haupt.pas von mmuster');
+  Assert.AreEqual('didOpen datei#4.pas von benutzer#1', mLine);
 end;
 
 procedure TDiagnosticLogTests.ServerLogKeepsLibraryUnitsAndNumbers;
 var
-  Anonymizer: ILogAnonymizer;
+  mAnonymizer: ILogAnonymizer;
 begin
-  Anonymizer := TLogAnonymizer.Create(nil);
-  Anonymizer.SetLibraryRoots(['C:\Program Files\Embarcadero\Studio\37.0']);
+  mAnonymizer := TLogAnonymizer.Create(nil);
+  mAnonymizer.SetLibraryRoots(['C:\Program Files\Embarcadero\Studio\37.0']);
   Assert.AreEqual('Unit "Vcl.Forms.pas" geladen',
-    Anonymizer.Anonymize('Unit "C:\Program Files\Embarcadero\Studio\37.0\source\vcl\Vcl.Forms.pas" geladen'));
+    mAnonymizer.Anonymize('Unit "C:\Program Files\Embarcadero\Studio\37.0\source\vcl\Vcl.Forms.pas" geladen'));
   Assert.AreEqual('Stufe "wert#1", Methode "textDocument/hover" nach "1234" ms',
-    Anonymizer.Anonymize('Stufe "verbose", Methode "textDocument/hover" nach "1234" ms'));
+    mAnonymizer.Anonymize('Stufe "verbose", Methode "textDocument/hover" nach "1234" ms'));
 end;
 
 const
-  AnonymizeLine = 'Symbolindex für Kundenverwaltung: "C:\Projekte\Haupt.pas" Firma.Kunden.TKunde nach "12" ms';
-  AnonymizedLine = 'Symbolindex für name#1: "datei#1.pas" name#2.TKunde nach "12" ms';
+  cAnonymizeLine = 'Symbolindex für Kundenverwaltung: "C:\Projekte\Haupt.pas" Firma.Kunden.TKunde nach "12" ms';
+  cAnonymizedLine = 'Symbolindex für name#1: "datei#1.pas" name#2.TKunde nach "12" ms';
 
 function NewAnonymizer: ILogAnonymizer;
 begin
@@ -658,22 +658,22 @@ end;
 
 procedure TDiagnosticLogTests.AnonymizeManyLinesSameLabels;
 const
-  Lines = 2000;
+  cLines = 2000;
 var
-  Anonymizer: ILogAnonymizer;
-  Watch: TStopwatch;
-  Index: Integer;
+  mAnonymizer: ILogAnonymizer;
+  mWatch: TStopwatch;
+  mIndex: Integer;
 begin
-  Anonymizer := NewAnonymizer;
-  Watch := TStopwatch.StartNew;
-  for Index := 1 to Lines do
+  mAnonymizer := NewAnonymizer;
+  mWatch := TStopwatch.StartNew;
+  for mIndex := 1 to cLines do
   begin
-    Assert.AreEqual(AnonymizedLine, Anonymizer.Anonymize(AnonymizeLine));
+    Assert.AreEqual(cAnonymizedLine, mAnonymizer.Anonymize(cAnonymizeLine));
   end;
-  Watch.Stop;
-  Assert.IsTrue(Watch.ElapsedMilliseconds < Lines, Format('%d ms für %d Zeilen', [Watch.ElapsedMilliseconds, Lines]));
+  mWatch.Stop;
+  Assert.IsTrue(mWatch.ElapsedMilliseconds < cLines, Format('%d ms für %d Zeilen', [mWatch.ElapsedMilliseconds, cLines]));
   // Ein langer Text mit vielen Treffern (TStringBuilder statt Anhängen) bleibt vollständig.
-  Assert.AreEqual(DupeString(AnonymizedLine + ' ', 50), Anonymizer.Anonymize(DupeString(AnonymizeLine + ' ', 50)));
+  Assert.AreEqual(DupeString(cAnonymizedLine + ' ', 50), mAnonymizer.Anonymize(DupeString(cAnonymizeLine + ' ', 50)));
 end;
 
 /// <summary>Thread, der ACount Mal AAnonymizer auf AnonymizeLine anwendet und Abweichungen in AFailures^ zählt.
@@ -687,7 +687,7 @@ begin
     begin
       for Index := 1 to ACount do
         try
-          if AAnonymizer.Anonymize(AnonymizeLine) <> AnonymizedLine then
+          if AAnonymizer.Anonymize(cAnonymizeLine) <> cAnonymizedLine then
           begin
             TInterlocked.Increment(AFailures^);
           end;
@@ -700,54 +700,54 @@ end;
 
 procedure TDiagnosticLogTests.AnonymizeConcurrent;
 const
-  ThreadCount = 4;
-  PerThread = 200;
+  cThreadCount = 4;
+  cPerThread = 200;
 var
-  Anonymizer: ILogAnonymizer;
-  Failures: Integer;
-  Threads: array[0..ThreadCount - 1] of TThread;
-  Number: Integer;
+  mAnonymizer: ILogAnonymizer;
+  mFailures: Integer;
+  mThreads: array[0..cThreadCount - 1] of TThread;
+  mNumber: Integer;
 begin
-  Anonymizer := NewAnonymizer;
-  Failures := 0;
-  for Number := 0 to ThreadCount - 1 do
+  mAnonymizer := NewAnonymizer;
+  mFailures := 0;
+  for mNumber := 0 to cThreadCount - 1 do
   begin
-    Threads[Number] := AnonymizeThread(Anonymizer, PerThread, @Failures);
+    mThreads[mNumber] := AnonymizeThread(mAnonymizer, cPerThread, @mFailures);
   end;
   try
-    for Number := 0 to ThreadCount - 1 do
+    for mNumber := 0 to cThreadCount - 1 do
     begin
-      Threads[Number].Start;
+      mThreads[mNumber].Start;
     end;
-    for Number := 0 to ThreadCount - 1 do
+    for mNumber := 0 to cThreadCount - 1 do
     begin
-      Threads[Number].WaitFor;
+      mThreads[mNumber].WaitFor;
     end;
   finally
-    for Number := 0 to ThreadCount - 1 do
+    for mNumber := 0 to cThreadCount - 1 do
     begin
-      Threads[Number].Free;
+      mThreads[mNumber].Free;
     end;
   end;
-  Assert.AreEqual(0, Failures);
-  Assert.AreEqual(AnonymizedLine, Anonymizer.Anonymize(AnonymizeLine));
+  Assert.AreEqual(0, mFailures);
+  Assert.AreEqual(cAnonymizedLine, mAnonymizer.Anonymize(cAnonymizeLine));
 end;
 
 { TShutdownLeaksTests }
 
 procedure TShutdownLeaksTests.CountsAllocatedMemory;
 var
-  Before: Int64;
-  Block: Pointer;
+  mBefore: Int64;
+  mBlock: Pointer;
 begin
-  Before := TShutdownLeaks.AllocatedBytes;
-  GetMem(Block, 100000);
+  mBefore := TShutdownLeaks.AllocatedBytes;
+  GetMem(mBlock, 100000);
   try
-    Assert.IsTrue(TShutdownLeaks.AllocatedBytes - Before >= 100000);
+    Assert.IsTrue(TShutdownLeaks.AllocatedBytes - mBefore >= 100000);
   finally
-    FreeMem(Block);
+    FreeMem(mBlock);
   end;
-  Assert.IsTrue(TShutdownLeaks.AllocatedBytes - Before < 100000);
+  Assert.IsTrue(TShutdownLeaks.AllocatedBytes - mBefore < 100000);
 end;
 
 procedure TShutdownLeaksTests.DescribesWithoutNames;

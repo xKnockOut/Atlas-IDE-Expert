@@ -67,7 +67,7 @@ uses
   Atlas.Common.Editing.MethodWithoutSelf.Texts;
 
 const
-  Kunden =
+  cKunden =
     'unit Kunden;'#10 +                                                  // 0
     'interface'#10 +                                                     // 1
     'uses System.SysUtils;'#10 +                                         // 2
@@ -91,7 +91,7 @@ const
     'end;'#10 +                                                          // 20
     'end.'#10;
 
-  Aufrufer =
+  cAufrufer =
     'unit Aufrufer;'#10 +
     'interface'#10 +
     'implementation'#10 +
@@ -107,31 +107,31 @@ const
 /// (Name direkt hinter function bzw. procedure).</summary>
 function OffsetsOf(ATree: TSyntaxTree; const AName: string): TArray<Integer>;
 var
-  Tokens: TArray<TPascalToken>;
-  Index: Integer;
+  mTokens: TArray<TPascalToken>;
+  mIndex: Integer;
 begin
   Result := nil;
-  Tokens := ATree.Tokens;
-  for Index := 0 to High(Tokens) do
+  mTokens := ATree.Tokens;
+  for mIndex := 0 to High(mTokens) do
   begin
-    if (Tokens[Index].Kind = TPascalTokenKind.Identifier) and SameText(Tokens[Index].Text, AName) and
-      not ((Index > 0) and (Tokens[Index - 1].IsKeyword('function') or Tokens[Index - 1].IsKeyword('procedure'))) then
+    if (mTokens[mIndex].Kind = TPascalTokenKind.Identifier) and SameText(mTokens[mIndex].Text, AName) and
+      not ((mIndex > 0) and (mTokens[mIndex - 1].IsKeyword('function') or mTokens[mIndex - 1].IsKeyword('procedure'))) then
     begin
-      Result := Result + [Tokens[Index].Offset];
+      Result := Result + [mTokens[mIndex].Offset];
     end;
   end;
 end;
 
 function EditsOf(const AResult: TMethodResult; const AFileName: string): TArray<TTextEdit>;
 var
-  Item: TMethodFileEdits;
+  mItem: TMethodFileEdits;
 begin
   Result := nil;
-  for Item in AResult.Files do
+  for mItem in AResult.Files do
   begin
-    if SameText(Item.FileName, AFileName) then
+    if SameText(mItem.FileName, AFileName) then
     begin
-      Exit(Item.Edits);
+      Exit(mItem.Edits);
     end;
   end;
 end;
@@ -167,28 +167,28 @@ end;
 function Convert(const ACase: TConversionCase; out ANewDeclaring, ANewOther: string; out AResult: TMethodResult;
   out AReason: string): Boolean;
 var
-  Tree, OtherTree: TSyntaxTree;
-  Others: TArray<TMethodSource>;
-  Lookup: TMethodLookup;
+  mTree, mOtherTree: TSyntaxTree;
+  mOthers: TArray<TMethodSource>;
+  mLookup: TMethodLookup;
 begin
-  Tree := TPascalParser.Parse(ACase.Declaring);
-  OtherTree := nil;
+  mTree := TPascalParser.Parse(ACase.Declaring);
+  mOtherTree := nil;
   try
-    Lookup := TMethodLookup.FromTree(Tree);
+    mLookup := TMethodLookup.FromTree(mTree);
     if not ACase.HelperLookup then
     begin
-      Lookup.VisibleHelper := nil;
+      mLookup.VisibleHelper := nil;
     end;
-    Others := nil;
+    mOthers := nil;
     if ACase.Other <> '' then
     begin
-      OtherTree := TPascalParser.Parse(ACase.Other);
-      Others := [TMethodSource.Create('C:\P\Aufrufer.pas', ACase.Other, OtherTree, OffsetsOf(OtherTree,
+      mOtherTree := TPascalParser.Parse(ACase.Other);
+      mOthers := [TMethodSource.Create('C:\P\Aufrufer.pas', ACase.Other, mOtherTree, OffsetsOf(mOtherTree,
         'IsValidIban'))];
     end;
-    Result := TMethodWithoutSelf.Execute(TMethodSource.Create('C:\P\Kunden.pas', ACase.Declaring, Tree,
-      OffsetsOf(Tree, 'IsValidIban')), Others, TMethodRequest.Create(TTextPosition.Create(cLine, cCharacter),
-      ACase.Conversion, ACase.Static, Lookup, TFormatStyle.Default), AResult, AReason);
+    Result := TMethodWithoutSelf.Execute(TMethodSource.Create('C:\P\Kunden.pas', ACase.Declaring, mTree,
+      OffsetsOf(mTree, 'IsValidIban')), mOthers, TMethodRequest.Create(TTextPosition.Create(cLine, cCharacter),
+      ACase.Conversion, ACase.Static, mLookup, TFormatStyle.Default), AResult, AReason);
     ANewDeclaring := ACase.Declaring;
     ANewOther := ACase.Other;
     if Result then
@@ -197,8 +197,8 @@ begin
       ANewOther := TChangeSignature.ApplyEdits(ACase.Other, EditsOf(AResult, 'C:\P\Aufrufer.pas'));
     end;
   finally
-    OtherTree.Free;
-    Tree.Free;
+    mOtherTree.Free;
+    mTree.Free;
   end;
 end;
 
@@ -212,36 +212,36 @@ end;
 
 procedure TMethodWithoutSelfTests.DetectsMethodWithoutSelf;
 var
-  Target: TMethodTarget;
-  Reason: string;
-  Tree: TSyntaxTree;
+  mTarget: TMethodTarget;
+  mReason: string;
+  mTree: TSyntaxTree;
 begin
-  Tree := TPascalParser.Parse(Kunden);
+  mTree := TPascalParser.Parse(cKunden);
   try
     // Auf dem Kopf der Implementierung und der Deklaration.
-    Assert.IsTrue(TMethodWithoutSelf.Target(Kunden, Tree, TTextPosition.Create(17, 20),
-      TMethodLookup.FromTree(Tree), Target, Reason), Reason);
-    Assert.AreEqual('TKunde', Target.ClassName);
-    Assert.AreEqual('IsValidIban', Target.Name);
-    Assert.AreEqual(4, Integer(Length(Target.Conversions)), Target.RoutineReason + '|' + Target.HelperReason);
-    Assert.AreEqual('string', Target.HelperType);
-    Assert.AreEqual(17, Target.NamePosition.Line);
-    Assert.AreEqual(16, Target.NamePosition.Character);
-    Assert.IsTrue(TMethodWithoutSelf.Target(Kunden, Tree, TTextPosition.Create(8, 15),
-      TMethodLookup.FromTree(Tree), Target, Reason), Reason);
-    Assert.AreEqual('In Record-Helper für string verschieben', Target.Title(TMethodConversion.Helper));
+    Assert.IsTrue(TMethodWithoutSelf.Target(cKunden, mTree, TTextPosition.Create(17, 20),
+      TMethodLookup.FromTree(mTree), mTarget, mReason), mReason);
+    Assert.AreEqual('TKunde', mTarget.ClassName);
+    Assert.AreEqual('IsValidIban', mTarget.Name);
+    Assert.AreEqual(4, Integer(Length(mTarget.Conversions)), mTarget.RoutineReason + '|' + mTarget.HelperReason);
+    Assert.AreEqual('string', mTarget.HelperType);
+    Assert.AreEqual(17, mTarget.NamePosition.Line);
+    Assert.AreEqual(16, mTarget.NamePosition.Character);
+    Assert.IsTrue(TMethodWithoutSelf.Target(cKunden, mTree, TTextPosition.Create(8, 15),
+      TMethodLookup.FromTree(mTree), mTarget, mReason), mReason);
+    Assert.AreEqual('In Record-Helper für string verschieben', mTarget.Title(TMethodConversion.Helper));
     // Zeige ruft die Instanzmethode IsValidIban auf (und benutzt FName).
-    Assert.IsFalse(TMethodWithoutSelf.Target(Kunden, Tree, TTextPosition.Create(12, 20),
-      TMethodLookup.FromTree(Tree), Target, Reason));
-    Assert.IsTrue(Pos('IsValidIban', Reason) > 0, Reason);
+    Assert.IsFalse(TMethodWithoutSelf.Target(cKunden, mTree, TTextPosition.Create(12, 20),
+      TMethodLookup.FromTree(mTree), mTarget, mReason));
+    Assert.IsTrue(Pos('IsValidIban', mReason) > 0, mReason);
   finally
-    Tree.Free;
+    mTree.Free;
   end;
 end;
 
 procedure TMethodWithoutSelfTests.ImplicitFieldIsNoCandidate;
 const
-  Source =
+  cSource =
     'unit U;'#10 +
     'interface'#10 +
     'type'#10 +
@@ -269,29 +269,29 @@ const
     'end;'#10 +
     'end.'#10;
 var
-  Target: TMethodTarget;
-  Reason: string;
-  Tree: TSyntaxTree;
+  mTarget: TMethodTarget;
+  mReason: string;
+  mTree: TSyntaxTree;
 begin
-  Tree := TPascalParser.Parse(Source);
+  mTree := TPascalParser.Parse(cSource);
   try
-    Assert.IsFalse(TMethodWithoutSelf.Target(Source, Tree, TTextPosition.Create(10, 13),
-      TMethodLookup.FromTree(Tree), Target, Reason));
-    Assert.IsTrue(Pos('FWert', Reason) > 0, Reason);
-    Assert.IsFalse(TMethodWithoutSelf.Target(Source, Tree, TTextPosition.Create(14, 13),
-      TMethodLookup.FromTree(Tree), Target, Reason));
-    Assert.IsTrue(Pos('Self', Reason) > 0, Reason);
+    Assert.IsFalse(TMethodWithoutSelf.Target(cSource, mTree, TTextPosition.Create(10, 13),
+      TMethodLookup.FromTree(mTree), mTarget, mReason));
+    Assert.IsTrue(Pos('FWert', mReason) > 0, mReason);
+    Assert.IsFalse(TMethodWithoutSelf.Target(cSource, mTree, TTextPosition.Create(14, 13),
+      TMethodLookup.FromTree(mTree), mTarget, mReason));
+    Assert.IsTrue(Pos('Self', mReason) > 0, mReason);
     // Die lokale Variable verdeckt das Feld.
-    Assert.IsTrue(TMethodWithoutSelf.Target(Source, Tree, TTextPosition.Create(18, 13),
-      TMethodLookup.FromTree(Tree), Target, Reason), Reason);
+    Assert.IsTrue(TMethodWithoutSelf.Target(cSource, mTree, TTextPosition.Create(18, 13),
+      TMethodLookup.FromTree(mTree), mTarget, mReason), mReason);
   finally
-    Tree.Free;
+    mTree.Free;
   end;
 end;
 
 procedure TMethodWithoutSelfTests.VirtualFormAndInterfaceAreNoCandidates;
 const
-  Source =
+  cSource =
     'unit U;'#10 +
     'interface'#10 +
     'type'#10 +
@@ -317,27 +317,27 @@ const
     'end;'#10 +
     'end.'#10;
 var
-  Target: TMethodTarget;
-  Reason: string;
-  Tree: TSyntaxTree;
-  Lookup: TMethodLookup;
+  mTarget: TMethodTarget;
+  mReason: string;
+  mTree: TSyntaxTree;
+  mLookup: TMethodLookup;
 begin
-  Tree := TPascalParser.Parse(Source);
+  mTree := TPascalParser.Parse(cSource);
   try
-    Lookup := TMethodLookup.FromTree(Tree);
-    Assert.IsFalse(TMethodWithoutSelf.Target(Source, Tree, TTextPosition.Create(12, 13), Lookup, Target, Reason));
-    Assert.IsTrue(Pos('IPruefer', Reason) > 0, Reason);
-    Assert.IsFalse(TMethodWithoutSelf.Target(Source, Tree, TTextPosition.Create(16, 13), Lookup, Target, Reason));
-    Assert.IsTrue(Pos('virtuell', Reason) > 0, Reason);
-    Lookup.InForm :=
+    mLookup := TMethodLookup.FromTree(mTree);
+    Assert.IsFalse(TMethodWithoutSelf.Target(cSource, mTree, TTextPosition.Create(12, 13), mLookup, mTarget, mReason));
+    Assert.IsTrue(Pos('IPruefer', mReason) > 0, mReason);
+    Assert.IsFalse(TMethodWithoutSelf.Target(cSource, mTree, TTextPosition.Create(16, 13), mLookup, mTarget, mReason));
+    Assert.IsTrue(Pos('virtuell', mReason) > 0, mReason);
+    mLookup.InForm :=
       function(const AName: string): Boolean
       begin
         Result := SameText(AName, 'Knopf');
       end;
-    Assert.IsFalse(TMethodWithoutSelf.Target(Source, Tree, TTextPosition.Create(20, 14), Lookup, Target, Reason));
-    Assert.IsTrue(Pos('Formulardatei', Reason) > 0, Reason);
+    Assert.IsFalse(TMethodWithoutSelf.Target(cSource, mTree, TTextPosition.Create(20, 14), mLookup, mTarget, mReason));
+    Assert.IsTrue(Pos('Formulardatei', mReason) > 0, mReason);
   finally
-    Tree.Free;
+    mTree.Free;
   end;
 end;
 
@@ -388,7 +388,7 @@ end;
 
 procedure TMethodWithoutSelfTests.MethodPointerIsNoCandidate;
 const
-  Source =
+  cSource =
     'unit U;'#10 +
     'interface'#10 +
     'type'#10 +
@@ -407,46 +407,47 @@ const
     'end;'#10 +
     'end.'#10;
 var
-  Target: TMethodTarget;
-  Reason: string;
-  Tree: TSyntaxTree;
+  mTarget: TMethodTarget;
+  mReason: string;
+  mTree: TSyntaxTree;
 begin
-  Tree := TPascalParser.Parse(Source);
+  mTree := TPascalParser.Parse(cSource);
   try
-    Assert.IsFalse(TMethodWithoutSelf.Target(Source, Tree, TTextPosition.Create(9, 14),
-      TMethodLookup.FromTree(Tree), Target, Reason));
-    Assert.IsTrue(Pos('Methodenzeiger', Reason) > 0, Reason);
+    Assert.IsFalse(TMethodWithoutSelf.Target(cSource, mTree, TTextPosition.Create(9, 14),
+      TMethodLookup.FromTree(mTree), mTarget, mReason));
+    Assert.IsTrue(Pos('Methodenzeiger', mReason) > 0, mReason);
   finally
-    Tree.Free;
+    mTree.Free;
   end;
 end;
 
 procedure TMethodWithoutSelfTests.ClassMethodWithStatic;
 var
-  Declaring, Other, Reason: string;
-  Converted: TMethodResult;
+  mDeclaring, mOther, mReason: string;
+  mConverted: TMethodResult;
 begin
-  Assert.IsTrue(Convert(Converting(Kunden, Aufrufer, TMethodConversion.ClassMethod, True, True), Declaring, Other,
-    Converted, Reason), Reason);
-  Assert.IsTrue(Pos('    class function IsValidIban(const S: string; N: Integer): Boolean; static;'#10, Declaring) > 0,
-    Declaring);
-  Assert.IsTrue(Pos('class function TKunde.IsValidIban(const S: string; N: Integer): Boolean;', Declaring) > 0,
-    Declaring);
+  Assert.IsTrue(Convert(Converting(cKunden, cAufrufer, TMethodConversion.ClassMethod, True, True), mDeclaring, mOther,
+    mConverted, mReason), mReason);
+  Assert.IsTrue(Pos('    class function IsValidIban(const S: string; N: Integer): Boolean; static;'#10, mDeclaring) > 0,
+    mDeclaring);
+  Assert.IsTrue(Pos('class function TKunde.IsValidIban(const S: string; N: Integer): Boolean;', mDeclaring) > 0,
+    mDeclaring);
   // Aufrufe über Instanzen bleiben.
-  Assert.AreEqual(Aufrufer, Other);
-  Assert.AreEqual(0, Converted.Calls);
-  Assert.IsTrue(Pos('wird class-Methode', Converted.Preview) > 0, Converted.Preview);
+  Assert.AreEqual(cAufrufer, mOther);
+  Assert.AreEqual(0, mConverted.Calls);
+  Assert.IsTrue(Pos('wird class-Methode', mConverted.Preview) > 0, mConverted.Preview);
   // Ohne static.
-  Assert.IsTrue(Convert(Converting(Kunden, '', TMethodConversion.ClassMethod, False, True), Declaring, Other, Converted,
-    Reason), Reason);
-  Assert.IsTrue(Pos('class function IsValidIban(const S: string; N: Integer): Boolean;'#10, Declaring) > 0,
-    Declaring);
-  Assert.IsFalse(Pos('static', Declaring) > 0, Declaring);
+  Assert.IsTrue(Convert(Converting(cKunden, '', TMethodConversion.ClassMethod, False, True), mDeclaring, mOther,
+    mConverted,
+    mReason), mReason);
+  Assert.IsTrue(Pos('class function IsValidIban(const S: string; N: Integer): Boolean;'#10, mDeclaring) > 0,
+    mDeclaring);
+  Assert.IsFalse(Pos('static', mDeclaring) > 0, mDeclaring);
 end;
 
 procedure TMethodWithoutSelfTests.ClassMethodCallsOverClass;
 const
-  Fremd =
+  cFremd =
     'unit Aufrufer;'#10 +
     'interface'#10 +
     'implementation'#10 +
@@ -458,21 +459,21 @@ const
     'end;'#10 +
     'end.'#10;
 var
-  Declaring, Other, Reason: string;
-  Converted: TMethodResult;
+  mDeclaring, mOther, mReason: string;
+  mConverted: TMethodResult;
 begin
-  Assert.IsTrue(Convert(Converting(Kunden, Fremd, TMethodConversion.ClassMethodCalls, True, True), Declaring, Other,
-    Converted, Reason), Reason);
+  Assert.IsTrue(Convert(Converting(cKunden, cFremd, TMethodConversion.ClassMethodCalls, True, True), mDeclaring, mOther,
+    mConverted, mReason), mReason);
   // Neu und Liste[1] sind Variablenketten: beide über die Klasse, Kunden ins uses.
-  Assert.IsTrue(Pos('TKunde.IsValidIban(T, 3) and TKunde.IsValidIban(T, 1)', Other) > 0, Other);
-  Assert.IsTrue(Pos('uses Fabrik, Kunden;', Other) > 0, Other);
-  Assert.AreEqual(2, Converted.Calls);
-  Assert.IsTrue(Pos('Aufrufer.pas, Zeile 7: if Neu.IsValidIban(T, 3)', Converted.Preview) > 0, Converted.Preview);
+  Assert.IsTrue(Pos('TKunde.IsValidIban(T, 3) and TKunde.IsValidIban(T, 1)', mOther) > 0, mOther);
+  Assert.IsTrue(Pos('uses Fabrik, Kunden;', mOther) > 0, mOther);
+  Assert.AreEqual(2, mConverted.Calls);
+  Assert.IsTrue(Pos('Aufrufer.pas, Zeile 7: if Neu.IsValidIban(T, 3)', mConverted.Preview) > 0, mConverted.Preview);
 end;
 
 procedure TMethodWithoutSelfTests.RoutineAcrossUnits;
 const
-  Fremd =
+  cFremd =
     'unit Aufrufer;'#10 +
     'interface'#10 +
     'implementation'#10 +
@@ -488,33 +489,34 @@ const
     'end;'#10 +
     'end.'#10;
 var
-  Declaring, Other, Reason: string;
-  Converted: TMethodResult;
+  mDeclaring, mOther, mReason: string;
+  mConverted: TMethodResult;
 begin
-  Assert.IsTrue(Convert(Converting(Kunden, Fremd, TMethodConversion.Routine, True, True), Declaring, Other, Converted,
-    Reason), Reason);
+  Assert.IsTrue(Convert(Converting(cKunden, cFremd, TMethodConversion.Routine, True, True), mDeclaring, mOther,
+    mConverted,
+    mReason), mReason);
   // Aus der Klasse heraus, ins interface vor implementation, Kopf ohne Klasse.
-  Assert.IsFalse(Pos('    function IsValidIban', Declaring) > 0, Declaring);
+  Assert.IsFalse(Pos('    function IsValidIban', mDeclaring) > 0, mDeclaring);
   Assert.IsTrue(Pos('  end;'#10'function IsValidIban(const S: string; N: Integer): Boolean;'#10#10'implementation',
-    Declaring) > 0, Declaring);
-  Assert.IsTrue(Pos(#10'function IsValidIban(const S: string; N: Integer): Boolean;'#10'begin', Declaring) > 0,
-    Declaring);
+    mDeclaring) > 0, mDeclaring);
+  Assert.IsTrue(Pos(#10'function IsValidIban(const S: string; N: Integer): Boolean;'#10'begin', mDeclaring) > 0,
+    mDeclaring);
   // Der Aufrufer der eigenen Unit bleibt, der fremde qualifiziert (eigene IsValidIban dort).
-  Assert.IsTrue(Pos('if IsValidIban(FName, 2) then', Declaring) > 0, Declaring);
-  Assert.IsTrue(Pos('if Kunden.IsValidIban(T, 3) or Kunden.IsValidIban(T, 4) then', Other) > 0, Other);
-  Assert.AreEqual(1, Integer(Length(Converted.Warnings)), string.Join('|', Converted.Warnings));
-  Assert.IsTrue(Pos('GetKunde() wird nicht mehr ausgewertet', Converted.Warnings[0]) > 0, Converted.Warnings[0]);
-  Assert.AreEqual(2, Converted.Calls);
+  Assert.IsTrue(Pos('if IsValidIban(FName, 2) then', mDeclaring) > 0, mDeclaring);
+  Assert.IsTrue(Pos('if Kunden.IsValidIban(T, 3) or Kunden.IsValidIban(T, 4) then', mOther) > 0, mOther);
+  Assert.AreEqual(1, Integer(Length(mConverted.Warnings)), string.Join('|', mConverted.Warnings));
+  Assert.IsTrue(Pos('GetKunde() wird nicht mehr ausgewertet', mConverted.Warnings[0]) > 0, mConverted.Warnings[0]);
+  Assert.AreEqual(2, mConverted.Calls);
 end;
 
 procedure TMethodWithoutSelfTests.RoutineMovesBeforeFirstCaller;
 var
-  Declaring, Other, Reason: string;
-  Converted: TMethodResult;
+  mDeclaring, mOther, mReason: string;
+  mConverted: TMethodResult;
 begin
   // Ohne fremde Aufrufer: nur implementation, vor TKunde.Zeige.
-  Assert.IsTrue(Convert(Converting(Kunden, '', TMethodConversion.Routine, True, True), Declaring, Other, Converted,
-    Reason), Reason);
+  Assert.IsTrue(Convert(Converting(cKunden, '', TMethodConversion.Routine, True, True), mDeclaring, mOther, mConverted,
+    mReason), mReason);
   Assert.AreEqual(
     'unit Kunden;'#10 +
     'interface'#10 +
@@ -537,12 +539,12 @@ begin
     '  if IsValidIban(FName, 2) then'#10 +
     '    FName := '''';'#10 +
     'end;'#10 +
-    'end.'#10, Declaring);
+    'end.'#10, mDeclaring);
 end;
 
 procedure TMethodWithoutSelfTests.RoutineQualifiesClassMembers;
 const
-  Source =
+  cSource =
     'unit U;'#10 +
     'interface'#10 +
     'type'#10 +
@@ -566,58 +568,58 @@ const
     'end;'#10 +
     'end.'#10;
 var
-  Tree: TSyntaxTree;
-  Lookup: TMethodLookup;
-  Target: TMethodTarget;
-  Converted: TMethodResult;
-  Reason, Text: string;
+  mTree: TSyntaxTree;
+  mLookup: TMethodLookup;
+  mTarget: TMethodTarget;
+  mConverted: TMethodResult;
+  mReason, mText: string;
 begin
-  Tree := TPascalParser.Parse(Source);
+  mTree := TPascalParser.Parse(cSource);
   try
-    Lookup := TMethodLookup.FromTree(Tree);
-    Assert.IsTrue(TMethodWithoutSelf.Execute(TMethodSource.Create('C:\P\U.pas', Source, Tree, nil), nil,
-      TMethodRequest.Create(TTextPosition.Create(13, 13), TMethodConversion.Routine, True, Lookup,
-      TFormatStyle.Default), Converted, Reason), Reason);
-    Text := TChangeSignature.ApplyEdits(Source, Converted.Files[0].Edits);
-    Assert.IsTrue(Pos('  Result := N + TA.Max;', Text) > 0, Text);
-    Assert.IsTrue(Pos(#10'function Grenze(N: Integer): Integer;'#10, Text) > 0, Text);
+    mLookup := TMethodLookup.FromTree(mTree);
+    Assert.IsTrue(TMethodWithoutSelf.Execute(TMethodSource.Create('C:\P\U.pas', cSource, mTree, nil), nil,
+      TMethodRequest.Create(TTextPosition.Create(13, 13), TMethodConversion.Routine, True, mLookup,
+      TFormatStyle.Default), mConverted, mReason), mReason);
+    mText := TChangeSignature.ApplyEdits(cSource, mConverted.Files[0].Edits);
+    Assert.IsTrue(Pos('  Result := N + TA.Max;', mText) > 0, mText);
+    Assert.IsTrue(Pos(#10'function Grenze(N: Integer): Integer;'#10, mText) > 0, mText);
     // strict private: nur class-Methode und Helper.
-    Assert.IsTrue(TMethodWithoutSelf.Target(Source, Tree, TTextPosition.Create(17, 13), Lookup, Target, Reason),
-      Reason);
-    Assert.IsTrue(Pos('FZaehler', Target.RoutineReason) > 0, Target.RoutineReason);
-    Assert.AreEqual(2, Integer(Length(Target.Conversions)));
-    Assert.IsTrue(TMethodWithoutSelf.Execute(TMethodSource.Create('C:\P\U.pas', Source, Tree, nil), nil,
-      TMethodRequest.Create(TTextPosition.Create(17, 13), TMethodConversion.ClassMethod, True, Lookup,
-      TFormatStyle.Default), Converted, Reason), Reason);
-    Text := TChangeSignature.ApplyEdits(Source, Converted.Files[0].Edits);
-    Assert.IsTrue(Pos('    class function Zaehle(N: Integer): Integer; static;', Text) > 0, Text);
+    Assert.IsTrue(TMethodWithoutSelf.Target(cSource, mTree, TTextPosition.Create(17, 13), mLookup, mTarget, mReason),
+      mReason);
+    Assert.IsTrue(Pos('FZaehler', mTarget.RoutineReason) > 0, mTarget.RoutineReason);
+    Assert.AreEqual(2, Integer(Length(mTarget.Conversions)));
+    Assert.IsTrue(TMethodWithoutSelf.Execute(TMethodSource.Create('C:\P\U.pas', cSource, mTree, nil), nil,
+      TMethodRequest.Create(TTextPosition.Create(17, 13), TMethodConversion.ClassMethod, True, mLookup,
+      TFormatStyle.Default), mConverted, mReason), mReason);
+    mText := TChangeSignature.ApplyEdits(cSource, mConverted.Files[0].Edits);
+    Assert.IsTrue(Pos('    class function Zaehle(N: Integer): Integer; static;', mText) > 0, mText);
   finally
-    Tree.Free;
+    mTree.Free;
   end;
 end;
 
 procedure TMethodWithoutSelfTests.HelperAcrossUnits;
 var
-  Declaring, Other, Reason: string;
-  Converted: TMethodResult;
+  mDeclaring, mOther, mReason: string;
+  mConverted: TMethodResult;
 begin
-  Assert.IsTrue(Convert(Converting(Kunden, Aufrufer, TMethodConversion.Helper, True, False), Declaring, Other,
-    Converted, Reason), Reason);
+  Assert.IsTrue(Convert(Converting(cKunden, cAufrufer, TMethodConversion.Helper, True, False), mDeclaring, mOther,
+    mConverted, mReason), mReason);
   Assert.IsTrue(Pos(
     '  end;'#10#10 +
     '  TStringHelper = record helper for string'#10 +
     '    function IsValidIban(N: Integer): Boolean;'#10 +
-    '  end;'#10, Declaring) > 0, Declaring);
+    '  end;'#10, mDeclaring) > 0, mDeclaring);
   Assert.IsTrue(Pos('function TStringHelper.IsValidIban(N: Integer): Boolean;'#10'begin'#10 +
-    '  Result := Length(Self) > N;', Declaring) > 0, Declaring);
-  Assert.IsTrue(Pos('if FName.IsValidIban(2) then', Declaring) > 0, Declaring);
-  Assert.IsTrue(Pos('if (T + ''x'').IsValidIban(3) then', Other) > 0, Other);
-  Assert.AreEqual(0, Integer(Length(Converted.Warnings)), string.Join('|', Converted.Warnings));
+    '  Result := Length(Self) > N;', mDeclaring) > 0, mDeclaring);
+  Assert.IsTrue(Pos('if FName.IsValidIban(2) then', mDeclaring) > 0, mDeclaring);
+  Assert.IsTrue(Pos('if (T + ''x'').IsValidIban(3) then', mOther) > 0, mOther);
+  Assert.AreEqual(0, Integer(Length(mConverted.Warnings)), string.Join('|', mConverted.Warnings));
 end;
 
 procedure TMethodWithoutSelfTests.HelperWarnsAboutVisibleHelper;
 const
-  Source =
+  cSource =
     'unit Haupt;'#10 +
     'interface'#10 +
     'type'#10 +
@@ -637,31 +639,31 @@ const
     'end;'#10 +
     'end.'#10;
 var
-  Tree: TSyntaxTree;
-  Converted: TMethodResult;
-  Reason, Text: string;
+  mTree: TSyntaxTree;
+  mConverted: TMethodResult;
+  mReason, mText: string;
 begin
-  Tree := TPascalParser.Parse(Source);
+  mTree := TPascalParser.Parse(cSource);
   try
-    Assert.IsTrue(TMethodWithoutSelf.Execute(TMethodSource.Create('C:\P\Haupt.pas', Source, Tree, OffsetsOf(Tree,
+    Assert.IsTrue(TMethodWithoutSelf.Execute(TMethodSource.Create('C:\P\Haupt.pas', cSource, mTree, OffsetsOf(mTree,
       'Doppelt')), nil, TMethodRequest.Create(TTextPosition.Create(13, 13), TMethodConversion.Helper, True,
-      TMethodLookup.FromTree(Tree), TFormatStyle.Default), Converted, Reason), Reason);
-    Text := TChangeSignature.ApplyEdits(Source, Converted.Files[0].Edits);
+      TMethodLookup.FromTree(mTree), TFormatStyle.Default), mConverted, mReason), mReason);
+    mText := TChangeSignature.ApplyEdits(cSource, mConverted.Files[0].Edits);
   finally
-    Tree.Free;
+    mTree.Free;
   end;
   // Neuer Helper im implementation-Teil hinter dessen uses, mit dem Namen der Unit.
   Assert.IsTrue(Pos('uses System.SysUtils;'#10#10'type'#10'  THauptStringHelper = record helper for string'#10 +
-    '    function Doppelt: string;'#10'  end;'#10, Text) > 0, Text);
-  Assert.IsTrue(Pos('  (''a'').Doppelt;', Text) > 0, Text);
-  Assert.IsTrue(Pos('Result := Self + Self;', Text) > 0, Text);
-  Assert.AreEqual(1, Integer(Length(Converted.Warnings)));
-  Assert.IsTrue(Pos('TStringHelper', Converted.Warnings[0]) > 0, Converted.Warnings[0]);
+    '    function Doppelt: string;'#10'  end;'#10, mText) > 0, mText);
+  Assert.IsTrue(Pos('  (''a'').Doppelt;', mText) > 0, mText);
+  Assert.IsTrue(Pos('Result := Self + Self;', mText) > 0, mText);
+  Assert.AreEqual(1, Integer(Length(mConverted.Warnings)));
+  Assert.IsTrue(Pos('TStringHelper', mConverted.Warnings[0]) > 0, mConverted.Warnings[0]);
 end;
 
 procedure TMethodWithoutSelfTests.RecordAndExistingHelper;
 const
-  Source =
+  cSource =
     'unit U;'#10 +
     'interface'#10 +
     'type'#10 +
@@ -684,52 +686,52 @@ const
     'end;'#10 +
     'end.'#10;
 var
-  Tree: TSyntaxTree;
-  Converted: TMethodResult;
-  Reason, Text: string;
+  mTree: TSyntaxTree;
+  mConverted: TMethodResult;
+  mReason, mText: string;
 begin
-  Tree := TPascalParser.Parse(Source);
+  mTree := TPascalParser.Parse(cSource);
   try
     // Records: class-Methoden sind immer static.
-    Assert.IsTrue(TMethodWithoutSelf.Execute(TMethodSource.Create('C:\P\U.pas', Source, Tree, nil), nil,
+    Assert.IsTrue(TMethodWithoutSelf.Execute(TMethodSource.Create('C:\P\U.pas', cSource, mTree, nil), nil,
       TMethodRequest.Create(TTextPosition.Create(16, 16), TMethodConversion.ClassMethod, False,
-      TMethodLookup.FromTree(Tree), TFormatStyle.Default), Converted, Reason), Reason);
-    Text := TChangeSignature.ApplyEdits(Source, Converted.Files[0].Edits);
-    Assert.IsTrue(Pos('    class function Doppelt(const A: Integer): Integer; static;', Text) > 0, Text);
+      TMethodLookup.FromTree(mTree), TFormatStyle.Default), mConverted, mReason), mReason);
+    mText := TChangeSignature.ApplyEdits(cSource, mConverted.Files[0].Edits);
+    Assert.IsTrue(Pos('    class function Doppelt(const A: Integer): Integer; static;', mText) > 0, mText);
     // Vorhandener Helper für Integer bekommt die Methode.
-    Assert.IsTrue(TMethodWithoutSelf.Execute(TMethodSource.Create('C:\P\U.pas', Source, Tree, nil), nil,
+    Assert.IsTrue(TMethodWithoutSelf.Execute(TMethodSource.Create('C:\P\U.pas', cSource, mTree, nil), nil,
       TMethodRequest.Create(TTextPosition.Create(16, 16), TMethodConversion.Helper, False,
-      TMethodLookup.FromTree(Tree), TFormatStyle.Default), Converted, Reason), Reason);
-    Text := TChangeSignature.ApplyEdits(Source, Converted.Files[0].Edits);
+      TMethodLookup.FromTree(mTree), TFormatStyle.Default), mConverted, mReason), mReason);
+    mText := TChangeSignature.ApplyEdits(cSource, mConverted.Files[0].Edits);
   finally
-    Tree.Free;
+    mTree.Free;
   end;
-  Assert.IsTrue(Pos('    function Halb: Integer;'#10'    function Doppelt: Integer;'#10'  end;', Text) > 0, Text);
-  Assert.IsTrue(Pos('function TZahlHelper.Doppelt: Integer;'#10'begin'#10'  Result := Self * 2;', Text) > 0, Text);
-  Assert.IsFalse(Pos('TPunkt.Doppelt', Text) > 0, Text);
+  Assert.IsTrue(Pos('    function Halb: Integer;'#10'    function Doppelt: Integer;'#10'  end;', mText) > 0, mText);
+  Assert.IsTrue(Pos('function TZahlHelper.Doppelt: Integer;'#10'begin'#10'  Result := Self * 2;', mText) > 0, mText);
+  Assert.IsFalse(Pos('TPunkt.Doppelt', mText) > 0, mText);
 end;
 
 procedure TMethodWithoutSelfTests.CandidatesAndNames;
 var
-  Tree: TSyntaxTree;
-  Found: TArray<TMethodTarget>;
-  Conversion, Parsed: TMethodConversion;
+  mTree: TSyntaxTree;
+  mFound: TArray<TMethodTarget>;
+  mConversion, mParsed: TMethodConversion;
 begin
-  Tree := TPascalParser.Parse(Kunden);
+  mTree := TPascalParser.Parse(cKunden);
   try
-    Found := TMethodWithoutSelf.Candidates(Kunden, Tree, TMethodLookup.FromTree(Tree));
-    Assert.AreEqual(1, Integer(Length(Found)));
-    Assert.AreEqual('IsValidIban', Found[0].Name);
-    Assert.AreEqual(17, Found[0].HeaderEnd.Line);
+    mFound := TMethodWithoutSelf.Candidates(cKunden, mTree, TMethodLookup.FromTree(mTree));
+    Assert.AreEqual(1, Integer(Length(mFound)));
+    Assert.AreEqual('IsValidIban', mFound[0].Name);
+    Assert.AreEqual(17, mFound[0].HeaderEnd.Line);
   finally
-    Tree.Free;
+    mTree.Free;
   end;
-  for Conversion := Low(TMethodConversion) to High(TMethodConversion) do
+  for mConversion := Low(TMethodConversion) to High(TMethodConversion) do
   begin
-    Assert.IsTrue(TMethodWithoutSelf.ConversionOf(TMethodWithoutSelf.ConversionName(Conversion), Parsed));
-    Assert.AreEqual(Ord(Conversion), Ord(Parsed));
+    Assert.IsTrue(TMethodWithoutSelf.ConversionOf(TMethodWithoutSelf.ConversionName(mConversion), mParsed));
+    Assert.AreEqual(Ord(mConversion), Ord(mParsed));
   end;
-  Assert.IsFalse(TMethodWithoutSelf.ConversionOf('x', Parsed));
+  Assert.IsFalse(TMethodWithoutSelf.ConversionOf('x', mParsed));
   Assert.AreEqual('TDateTimeHelper', TMethodWithoutSelf.HelperNameFor('TDateTime'));
   Assert.AreEqual('TIntegerHelper', TMethodWithoutSelf.HelperNameFor('Integer'));
   Assert.IsTrue(TMethodWithoutSelf.IsSimpleType('Integer'));

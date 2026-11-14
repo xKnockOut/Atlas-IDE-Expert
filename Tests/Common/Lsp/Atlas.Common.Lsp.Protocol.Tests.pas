@@ -30,49 +30,49 @@ uses
 
 procedure TLspProtocolTests.ReplaysAllRecordings;
 var
-  FileName: string;
-  Recording: TJSONValue;
-  Replay: TProtocolReplay;
-  Count: Integer;
+  mFileName: string;
+  mRecording: TJSONValue;
+  mReplay: TProtocolReplay;
+  mCount: Integer;
 begin
-  Count := 0;
-  for FileName in TDirectory.GetFiles(TProtocolReplay.DataDirectory, '*.json') do
+  mCount := 0;
+  for mFileName in TDirectory.GetFiles(TProtocolReplay.DataDirectory, '*.json') do
   begin
-    Recording := TJSONObject.ParseJSONValue(TFile.ReadAllText(FileName, TEncoding.UTF8));
+    mRecording := TJSONObject.ParseJSONValue(TFile.ReadAllText(mFileName, TEncoding.UTF8));
     try
-      Assert.IsTrue(Recording is TJSONObject, 'Kein JSON-Objekt: ' + FileName);
-      Replay := TProtocolReplay.Create;
+      Assert.IsTrue(mRecording is TJSONObject, 'Kein JSON-Objekt: ' + mFileName);
+      mReplay := TProtocolReplay.Create;
       try
         try
-          Replay.Run(TJSONObject(Recording));
+          mReplay.Run(TJSONObject(mRecording));
         except
           on E: EProtocolMismatch do
-            Assert.Fail(ExtractFileName(FileName) + ': ' + E.Message);
+            Assert.Fail(ExtractFileName(mFileName) + ': ' + E.Message);
         end;
       finally
-        Replay.Free;
+        mReplay.Free;
       end;
     finally
-      Recording.Free;
+      mRecording.Free;
     end;
-    Inc(Count);
+    Inc(mCount);
   end;
-  Assert.IsTrue(Count > 0, 'Keine Aufzeichnungen gefunden');
+  Assert.IsTrue(mCount > 0, 'Keine Aufzeichnungen gefunden');
 end;
 
 procedure TLspProtocolTests.MismatchReportsFirstDifference;
 var
-  Expected: TJSONValue;
-  Actual: TJSONValue;
+  mExpected: TJSONValue;
+  mActual: TJSONValue;
 begin
-  Expected := TJSONObject.ParseJSONValue('{"id":1,"result":{"items":[1,2]}}');
-  Actual := TJSONObject.ParseJSONValue('{"jsonrpc":"2.0","id":1,"result":{"items":[1,3],"more":true}}');
+  mExpected := TJSONObject.ParseJSONValue('{"id":1,"result":{"items":[1,2]}}');
+  mActual := TJSONObject.ParseJSONValue('{"jsonrpc":"2.0","id":1,"result":{"items":[1,3],"more":true}}');
   try
-    Assert.AreEqual('$.result.items[1]: 2 erwartet, 3 gefunden', TProtocolReplay.Mismatch(Expected, Actual, '$'));
-    Assert.AreEqual('', TProtocolReplay.Mismatch(Expected, Expected, '$'));
+    Assert.AreEqual('$.result.items[1]: 2 erwartet, 3 gefunden', TProtocolReplay.Mismatch(mExpected, mActual, '$'));
+    Assert.AreEqual('', TProtocolReplay.Mismatch(mExpected, mExpected, '$'));
   finally
-    Actual.Free;
-    Expected.Free;
+    mActual.Free;
+    mExpected.Free;
   end;
 end;
 

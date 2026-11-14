@@ -37,7 +37,7 @@ uses
   Atlas.Core.Settings.ModuleSwitches;
 
 const
-  PluginSchema =
+  cPluginSchema =
     '{"x-areas":{"debug":{"caption":"Debuggen"}},"properties":{' +
     '"PairColors":{"type":"boolean","default":true,"x-key":"highlight.pairColors","x-area":"debug",' +
       '"x-page":"Editor"},' +
@@ -61,7 +61,7 @@ function Switches: TArray<TAtlasModuleSwitch>;
 var
   mCatalog: TAtlasSettingsCatalog;
 begin
-  mCatalog := TAtlasSettingsCatalog.Create(PluginSchema, '{}');
+  mCatalog := TAtlasSettingsCatalog.Create(cPluginSchema, '{}');
   try
     Result := TAtlasModuleSwitches.Read(mCatalog);
   finally

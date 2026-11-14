@@ -59,10 +59,10 @@ uses
   Atlas.Common.Documents.Providers.DocumentStore;
 
 const
-  KundenFile = 'C:\P\Quelle\Kunden.pas';
-  TestsDpr = 'C:\P\Tests\Tests.dpr';
-  TestsDproj = 'C:\P\Tests\Tests.dproj';
-  KundenText =
+  cKundenFile = 'C:\P\Quelle\Kunden.pas';
+  cTestsDpr = 'C:\P\Tests\Tests.dpr';
+  cTestsDproj = 'C:\P\Tests\Tests.dproj';
+  cKundenText =
     'unit Kunden;'#10 +
     'interface'#10 +
     'type'#10 +
@@ -75,20 +75,20 @@ const
     'begin'#10 +
     'end;'#10 +
     'end.';
-  DprText =
+  cDprText =
     'program Tests;'#13#10 +
     'uses'#13#10 +
     '  DUnitX.TestFramework;'#13#10 +
     'begin'#13#10 +
     'end.';
-  DprojText =
+  cDprojText =
     '<Project>'#13#10 +
     '    <ItemGroup>'#13#10 +
     '        <DelphiCompile Include="Tests.dpr"/>'#13#10 +
     '        <DCCReference Include="..\Quelle\Alt.pas"/>'#13#10 +
     '    </ItemGroup>'#13#10 +
     '</Project>';
-  KundenTestsText =
+  cKundenTestsText =
     'unit Kunden.Tests;'#10 +
     'interface'#10 +
     'uses DUnitX.TestFramework, Kunden;'#10 +
@@ -110,11 +110,11 @@ begin
   FStore := TDocumentStore.Create;
   FFiles := TDictionary<string, string>.Create;
   FUnits := TDictionary<string, string>.Create;
-  FFiles.Add(TestsDpr, DprText);
-  FFiles.Add(TestsDproj, DprojText);
-  FUnits.Add('kunden', KundenFile);
-  FTestProgram := TestsDpr;
-  FStore.Open(TDocumentUris.FromPath(KundenFile), 'pascal', 1, KundenText);
+  FFiles.Add(cTestsDpr, cDprText);
+  FFiles.Add(cTestsDproj, cDprojText);
+  FUnits.Add('kunden', cKundenFile);
+  FTestProgram := cTestsDpr;
+  FStore.Open(TDocumentUris.FromPath(cKundenFile), 'pascal', 1, cKundenText);
   FTestUnits := TLspTestUnits.Create(FStore,
     function(const AUri: string; out AContext: TTestUnitContext): Boolean
     begin
@@ -134,10 +134,10 @@ end;
 
 function TLspTestUnitsTests.Context: TTestUnitContext;
 var
-  Files, Units: TDictionary<string, string>;
+  mFiles, mUnits: TDictionary<string, string>;
 begin
-  Files := FFiles;
-  Units := FUnits;
+  mFiles := FFiles;
+  mUnits := FUnits;
   Result := Default(TTestUnitContext);
   Result.Settings := TTestUnitSettings.Default;
   Result.Root := 'C:\P';
@@ -145,7 +145,7 @@ begin
   Result.ReadText :=
     function(const AFileName: string): string
     begin
-      if not Files.TryGetValue(AFileName, Result) then
+      if not mFiles.TryGetValue(AFileName, Result) then
       begin
         Result := '';
       end;
@@ -153,12 +153,12 @@ begin
   Result.Exists :=
     function(const AFileName: string): Boolean
     begin
-      Result := Files.ContainsKey(AFileName);
+      Result := mFiles.ContainsKey(AFileName);
     end;
   Result.FindUnit :=
     function(const AUnitName: string): string
     begin
-      if not Units.TryGetValue(LowerCase(AUnitName), Result) then
+      if not mUnits.TryGetValue(LowerCase(AUnitName), Result) then
       begin
         Result := '';
       end;
@@ -167,33 +167,33 @@ end;
 
 procedure TLspTestUnitsTests.MissingTestUnitCanBeCreated;
 var
-  Target: TTestUnitTarget;
+  mTarget: TTestUnitTarget;
 begin
-  Target := TLspTestUnits.Resolve(KundenFile, KundenText, 3, Context);
-  Assert.AreEqual('Kunden', Target.UnitName);
-  Assert.IsFalse(Target.IsTest);
-  Assert.AreEqual('Kunden.Tests', Target.Counterpart);
-  Assert.AreEqual('', Target.CounterpartFile);
-  Assert.IsTrue(Target.CanCreate, Target.Reason);
-  Assert.AreEqual('C:\P\Tests\Kunden.Tests.pas', Target.NewFile);
-  Assert.AreEqual('TKunde', Target.ClassName);
-  Assert.IsTrue(Target.ClassAtLine);
-  Target := TLspTestUnits.Resolve(KundenFile, KundenText, 1, Context);
-  Assert.AreEqual('TKunde', Target.ClassName, 'ohne Klasse an der Zeile: die erste');
-  Assert.IsFalse(Target.ClassAtLine);
+  mTarget := TLspTestUnits.Resolve(cKundenFile, cKundenText, 3, Context);
+  Assert.AreEqual('Kunden', mTarget.UnitName);
+  Assert.IsFalse(mTarget.IsTest);
+  Assert.AreEqual('Kunden.Tests', mTarget.Counterpart);
+  Assert.AreEqual('', mTarget.CounterpartFile);
+  Assert.IsTrue(mTarget.CanCreate, mTarget.Reason);
+  Assert.AreEqual('C:\P\Tests\Kunden.Tests.pas', mTarget.NewFile);
+  Assert.AreEqual('TKunde', mTarget.ClassName);
+  Assert.IsTrue(mTarget.ClassAtLine);
+  mTarget := TLspTestUnits.Resolve(cKundenFile, cKundenText, 1, Context);
+  Assert.AreEqual('TKunde', mTarget.ClassName, 'ohne Klasse an der Zeile: die erste');
+  Assert.IsFalse(mTarget.ClassAtLine);
 end;
 
 function Find(const AChanges: TJSONArray; const AUri: string): TJSONObject;
 var
-  Item: TJSONValue;
-  Uri: string;
+  mItem: TJSONValue;
+  mUri: string;
 begin
   Result := nil;
-  for Item in AChanges do
+  for mItem in AChanges do
   begin
-    if TJSONObject(Item).TryGetValue<string>('textDocument.uri', Uri) and TDocumentUris.SameFile(Uri, AUri) then
+    if TJSONObject(mItem).TryGetValue<string>('textDocument.uri', mUri) and TDocumentUris.SameFile(mUri, AUri) then
     begin
-      Exit(TJSONObject(Item));
+      Exit(TJSONObject(mItem));
     end;
   end;
 end;
@@ -205,92 +205,92 @@ end;
 
 procedure TLspTestUnitsTests.CreateEditAddsFileProgramAndProject;
 var
-  Edit: TJSONObject;
-  Changes: TJSONArray;
-  NewUri, Kind: string;
-  Change: TJSONObject;
+  mEdit: TJSONObject;
+  mChanges: TJSONArray;
+  mNewUri, mKind: string;
+  mChange: TJSONObject;
 begin
-  Edit := TLspTestUnits.CreateEdit(TLspTestUnits.Resolve(KundenFile, KundenText, 3, Context), Context);
+  mEdit := TLspTestUnits.CreateEdit(TLspTestUnits.Resolve(cKundenFile, cKundenText, 3, Context), Context);
   try
-    Changes := Edit.GetValue<TJSONArray>('documentChanges');
-    Assert.AreEqual(4, Integer(Changes.Count));
-    NewUri := TDocumentUris.FromPath('C:\P\Tests\Kunden.Tests.pas');
-    Assert.IsTrue(TJSONObject(Changes.Items[0]).TryGetValue<string>('kind', Kind));
-    Assert.AreEqual('create', Kind);
-    Assert.IsTrue(TDocumentUris.SameFile(NewUri, TJSONObject(Changes.Items[0]).GetValue<string>('uri')));
-    Change := Find(Changes, NewUri);
-    Assert.IsNotNull(Change);
-    Assert.IsTrue(FirstNewText(Change).StartsWith('unit Kunden.Tests;'#13#10));
-    Assert.IsTrue(Pos('procedure TestSpeichern;', FirstNewText(Change)) > 0);
-    Change := Find(Changes, TDocumentUris.FromPath(TestsDpr));
-    Assert.IsNotNull(Change, '.dpr');
-    Assert.AreEqual(','#13#10'  Kunden.Tests in ''Kunden.Tests.pas''', FirstNewText(Change));
-    Change := Find(Changes, TDocumentUris.FromPath(TestsDproj));
-    Assert.IsNotNull(Change, '.dproj');
-    Assert.AreEqual(#13#10'        <DCCReference Include="Kunden.Tests.pas"/>', FirstNewText(Change));
+    mChanges := mEdit.GetValue<TJSONArray>('documentChanges');
+    Assert.AreEqual(4, Integer(mChanges.Count));
+    mNewUri := TDocumentUris.FromPath('C:\P\Tests\Kunden.Tests.pas');
+    Assert.IsTrue(TJSONObject(mChanges.Items[0]).TryGetValue<string>('kind', mKind));
+    Assert.AreEqual('create', mKind);
+    Assert.IsTrue(TDocumentUris.SameFile(mNewUri, TJSONObject(mChanges.Items[0]).GetValue<string>('uri')));
+    mChange := Find(mChanges, mNewUri);
+    Assert.IsNotNull(mChange);
+    Assert.IsTrue(FirstNewText(mChange).StartsWith('unit Kunden.Tests;'#13#10));
+    Assert.IsTrue(Pos('procedure TestSpeichern;', FirstNewText(mChange)) > 0);
+    mChange := Find(mChanges, TDocumentUris.FromPath(cTestsDpr));
+    Assert.IsNotNull(mChange, '.dpr');
+    Assert.AreEqual(','#13#10'  Kunden.Tests in ''Kunden.Tests.pas''', FirstNewText(mChange));
+    mChange := Find(mChanges, TDocumentUris.FromPath(cTestsDproj));
+    Assert.IsNotNull(mChange, '.dproj');
+    Assert.AreEqual(#13#10'        <DCCReference Include="Kunden.Tests.pas"/>', FirstNewText(mChange));
   finally
-    Edit.Free;
+    mEdit.Free;
   end;
 end;
 
 procedure TLspTestUnitsTests.CodeActionOnClassCreates;
 var
-  Actions: TArray<TJSONObject>;
-  Action: TJSONObject;
+  mActions: TArray<TJSONObject>;
+  mAction: TJSONObject;
 begin
-  Actions := FTestUnits.Actions(TDocumentUris.FromPath(KundenFile), 4);
+  mActions := FTestUnits.Actions(TDocumentUris.FromPath(cKundenFile), 4);
   try
-    Assert.AreEqual(1, Integer(Length(Actions)));
-    Assert.AreEqual('DUnitX-Testunit für TKunde anlegen', Actions[0].GetValue<string>('title'));
-    Assert.IsNotNull(Actions[0].GetValue('edit'));
-    Assert.AreEqual(TLspTestUnits.cOpenFileCommand, Actions[0].GetValue<string>('command.command'));
+    Assert.AreEqual(1, Integer(Length(mActions)));
+    Assert.AreEqual('DUnitX-Testunit für TKunde anlegen', mActions[0].GetValue<string>('title'));
+    Assert.IsNotNull(mActions[0].GetValue('edit'));
+    Assert.AreEqual(TLspTestUnits.cOpenFileCommand, mActions[0].GetValue<string>('command.command'));
   finally
-    for Action in Actions do
+    for mAction in mActions do
     begin
-      Action.Free;
+      mAction.Free;
     end;
   end;
   // Außerhalb der Klasse kein Anlegen (Code-Aktion auf einer Klasse, #274).
-  Actions := FTestUnits.Actions(TDocumentUris.FromPath(KundenFile), 1);
-  Assert.AreEqual(0, Integer(Length(Actions)));
+  mActions := FTestUnits.Actions(TDocumentUris.FromPath(cKundenFile), 1);
+  Assert.AreEqual(0, Integer(Length(mActions)));
 end;
 
 procedure FreeAll(const AActions: TArray<TJSONObject>);
 var
-  Action: TJSONObject;
+  mAction: TJSONObject;
 begin
-  for Action in AActions do
+  for mAction in AActions do
   begin
-    Action.Free;
+    mAction.Free;
   end;
 end;
 
 procedure TLspTestUnitsTests.DraftActionCreatesTestUnitWithDraft;
 var
-  Actions: TArray<TJSONObject>;
-  Changes: TJSONArray;
-  Text: string;
+  mActions: TArray<TJSONObject>;
+  mChanges: TJSONArray;
+  mText: string;
 begin
   // Zeile 9: Rumpf von TKunde.Speichern. Der Entwurf ersetzt Assert.Fail im neuen Gerüst.
-  Actions := FTestUnits.Actions(TDocumentUris.FromPath(KundenFile), 9);
+  mActions := FTestUnits.Actions(TDocumentUris.FromPath(cKundenFile), 9);
   try
-    Assert.AreEqual(2, Integer(Length(Actions)));
-    Assert.AreEqual('Testfall f' + #$FC + 'r TKunde.Speichern anlegen', Actions[0].GetValue<string>('title'));
-    Changes := Actions[0].GetValue<TJSONArray>('edit.documentChanges');
-    Assert.AreEqual(4, Integer(Changes.Count));
-    Text := FirstNewText(Find(Changes, TDocumentUris.FromPath('C:\P\Tests\Kunden.Tests.pas')));
-    Assert.IsTrue(Pos('procedure TKundeTests.TestSpeichern;'#13#10'begin'#13#10, Text) > 0, Text);
-    Assert.IsTrue(Pos('  FSubject.Speichern;', Text) > 0, Text);
-    Assert.IsTrue(Pos('  FSubject := TKunde.Create;', Text) > 0, Text);
-    Assert.AreEqual('DUnitX-Testunit f' + #$FC + 'r TKunde anlegen', Actions[1].GetValue<string>('title'));
+    Assert.AreEqual(2, Integer(Length(mActions)));
+    Assert.AreEqual('Testfall f' + #$FC + 'r TKunde.Speichern anlegen', mActions[0].GetValue<string>('title'));
+    mChanges := mActions[0].GetValue<TJSONArray>('edit.documentChanges');
+    Assert.AreEqual(4, Integer(mChanges.Count));
+    mText := FirstNewText(Find(mChanges, TDocumentUris.FromPath('C:\P\Tests\Kunden.Tests.pas')));
+    Assert.IsTrue(Pos('procedure TKundeTests.TestSpeichern;'#13#10'begin'#13#10, mText) > 0, mText);
+    Assert.IsTrue(Pos('  FSubject.Speichern;', mText) > 0, mText);
+    Assert.IsTrue(Pos('  FSubject := TKunde.Create;', mText) > 0, mText);
+    Assert.AreEqual('DUnitX-Testunit f' + #$FC + 'r TKunde anlegen', mActions[1].GetValue<string>('title'));
   finally
-    FreeAll(Actions);
+    FreeAll(mActions);
   end;
 end;
 
 procedure TLspTestUnitsTests.DraftActionAddsToExistingTestUnit;
 const
-  TestText =
+  cTestText =
     'unit Kunden.Tests;'#13#10 +
     'interface'#13#10 +
     'uses'#13#10 +
@@ -303,100 +303,100 @@ const
     'implementation'#13#10 +
     'end.'#13#10;
 var
-  Actions: TArray<TJSONObject>;
-  Changes: TJSONArray;
-  Edits: TJSONArray;
-  Text: string;
-  Item: TJSONValue;
+  mActions: TArray<TJSONObject>;
+  mChanges: TJSONArray;
+  mEdits: TJSONArray;
+  mText: string;
+  mItem: TJSONValue;
 begin
-  FFiles.Add('C:\P\Tests\Kunden.Tests.pas', TestText);
+  FFiles.Add('C:\P\Tests\Kunden.Tests.pas', cTestText);
   FUnits.Add('kunden.tests', 'C:\P\Tests\Kunden.Tests.pas');
-  Actions := FTestUnits.Actions(TDocumentUris.FromPath(KundenFile), 5);
+  mActions := FTestUnits.Actions(TDocumentUris.FromPath(cKundenFile), 5);
   try
-    Assert.AreEqual(2, Integer(Length(Actions)), 'Entwurf und Wechsel');
-    Changes := Actions[0].GetValue<TJSONArray>('edit.documentChanges');
-    Assert.AreEqual(1, Integer(Changes.Count));
-    Edits := TJSONObject(Changes.Items[0]).GetValue<TJSONArray>('edits');
-    Text := '';
-    for Item in Edits do
+    Assert.AreEqual(2, Integer(Length(mActions)), 'Entwurf und Wechsel');
+    mChanges := mActions[0].GetValue<TJSONArray>('edit.documentChanges');
+    Assert.AreEqual(1, Integer(mChanges.Count));
+    mEdits := TJSONObject(mChanges.Items[0]).GetValue<TJSONArray>('edits');
+    mText := '';
+    for mItem in mEdits do
     begin
-      Text := Text + TJSONObject(Item).GetValue<string>('newText');
+      mText := mText + TJSONObject(mItem).GetValue<string>('newText');
     end;
-    Assert.IsTrue(Pos('procedure TestSpeichern;', Text) > 0, Text);
-    Assert.IsTrue(Pos('    Subject.Speichern;', Text) > 0, Text);
-    Assert.IsTrue(Pos('Kunden', Text) > 0, 'uses: ' + Text);
-    Assert.AreEqual('Zur Testunit Kunden.Tests wechseln', Actions[1].GetValue<string>('title'));
+    Assert.IsTrue(Pos('procedure TestSpeichern;', mText) > 0, mText);
+    Assert.IsTrue(Pos('    Subject.Speichern;', mText) > 0, mText);
+    Assert.IsTrue(Pos('Kunden', mText) > 0, 'uses: ' + mText);
+    Assert.AreEqual('Zur Testunit Kunden.Tests wechseln', mActions[1].GetValue<string>('title'));
   finally
-    FreeAll(Actions);
+    FreeAll(mActions);
   end;
 end;
 
 procedure TLspTestUnitsTests.SwitchesBothWays;
 var
-  Actions: TArray<TJSONObject>;
-  Action: TJSONObject;
-  Arguments: TJSONArray;
-  Target: TTestUnitTarget;
+  mActions: TArray<TJSONObject>;
+  mAction: TJSONObject;
+  mArguments: TJSONArray;
+  mTarget: TTestUnitTarget;
 begin
-  FFiles.Add('C:\P\Tests\Kunden.Tests.pas', KundenTestsText);
-  Actions := FTestUnits.Actions(TDocumentUris.FromPath(KundenFile), 4);
+  FFiles.Add('C:\P\Tests\Kunden.Tests.pas', cKundenTestsText);
+  mActions := FTestUnits.Actions(TDocumentUris.FromPath(cKundenFile), 4);
   try
-    Assert.AreEqual(1, Integer(Length(Actions)));
-    Assert.AreEqual('Zur Testunit Kunden.Tests wechseln', Actions[0].GetValue<string>('title'));
-    Arguments := Actions[0].GetValue<TJSONArray>('command.arguments');
+    Assert.AreEqual(1, Integer(Length(mActions)));
+    Assert.AreEqual('Zur Testunit Kunden.Tests wechseln', mActions[0].GetValue<string>('title'));
+    mArguments := mActions[0].GetValue<TJSONArray>('command.arguments');
     Assert.IsTrue(TDocumentUris.SameFile(TDocumentUris.FromPath('C:\P\Tests\Kunden.Tests.pas'),
-      Arguments.Items[0].Value));
+      mArguments.Items[0].Value));
   finally
-    for Action in Actions do
+    for mAction in mActions do
     begin
-      Action.Free;
+      mAction.Free;
     end;
   end;
-  Target := TLspTestUnits.Resolve('C:\P\Tests\Kunden.Tests.pas', KundenTestsText, 0, Context);
-  Assert.IsTrue(Target.IsTest);
-  Assert.AreEqual('Kunden', Target.Counterpart);
-  Assert.AreEqual(KundenFile, Target.CounterpartFile);
-  Assert.IsFalse(Target.CanCreate);
+  mTarget := TLspTestUnits.Resolve('C:\P\Tests\Kunden.Tests.pas', cKundenTestsText, 0, Context);
+  Assert.IsTrue(mTarget.IsTest);
+  Assert.AreEqual('Kunden', mTarget.Counterpart);
+  Assert.AreEqual(cKundenFile, mTarget.CounterpartFile);
+  Assert.IsFalse(mTarget.CanCreate);
 end;
 
 procedure TLspTestUnitsTests.WithoutTestProjectNoCreate;
 var
-  Target: TTestUnitTarget;
+  mTarget: TTestUnitTarget;
 begin
   FTestProgram := '';
-  Target := TLspTestUnits.Resolve(KundenFile, KundenText, 3, Context);
-  Assert.IsFalse(Target.CanCreate);
-  Assert.IsTrue(Pos('testUnits.project', Target.Reason) > 0, Target.Reason);
-  Assert.AreEqual(0, Integer(Length(FTestUnits.Actions(TDocumentUris.FromPath(KundenFile), 3))));
+  mTarget := TLspTestUnits.Resolve(cKundenFile, cKundenText, 3, Context);
+  Assert.IsFalse(mTarget.CanCreate);
+  Assert.IsTrue(Pos('testUnits.project', mTarget.Reason) > 0, mTarget.Reason);
+  Assert.AreEqual(0, Integer(Length(FTestUnits.Actions(TDocumentUris.FromPath(cKundenFile), 3))));
 end;
 
 procedure TLspTestUnitsTests.ProgramIsNoUnit;
 begin
-  Assert.AreEqual('', TLspTestUnits.Resolve(TestsDpr, DprText, 0, Context).UnitName);
+  Assert.AreEqual('', TLspTestUnits.Resolve(cTestsDpr, cDprText, 0, Context).UnitName);
 end;
 
 procedure TLspTestUnitsTests.CommandAnswers;
 var
-  Arguments: TJSONArray;
-  Answer: TJSONValue;
+  mArguments: TJSONArray;
+  mAnswer: TJSONValue;
 begin
-  Arguments := TJSONArray.Create;
+  mArguments := TJSONArray.Create;
   try
-    Arguments.Add(TDocumentUris.FromPath(KundenFile));
-    Answer := FTestUnits.Execute(Arguments);
+    mArguments.Add(TDocumentUris.FromPath(cKundenFile));
+    mAnswer := FTestUnits.Execute(mArguments);
     try
-      Assert.AreEqual('Kunden', Answer.GetValue<string>('unit'));
-      Assert.AreEqual('Kunden.Tests', Answer.GetValue<string>('counterpart'));
-      Assert.IsTrue(Answer.GetValue<Boolean>('canCreate'));
-      Assert.IsTrue(TJSONObject(Answer).GetValue('uri') is TJSONNull);
-      Assert.IsNotNull(TJSONObject(Answer).GetValue('edit'));
+      Assert.AreEqual('Kunden', mAnswer.GetValue<string>('unit'));
+      Assert.AreEqual('Kunden.Tests', mAnswer.GetValue<string>('counterpart'));
+      Assert.IsTrue(mAnswer.GetValue<Boolean>('canCreate'));
+      Assert.IsTrue(TJSONObject(mAnswer).GetValue('uri') is TJSONNull);
+      Assert.IsNotNull(TJSONObject(mAnswer).GetValue('edit'));
       Assert.IsTrue(TDocumentUris.SameFile(TDocumentUris.FromPath('C:\P\Tests\Kunden.Tests.pas'),
-        Answer.GetValue<string>('newUri')));
+        mAnswer.GetValue<string>('newUri')));
     finally
-      Answer.Free;
+      mAnswer.Free;
     end;
   finally
-    Arguments.Free;
+    mArguments.Free;
   end;
 end;
 

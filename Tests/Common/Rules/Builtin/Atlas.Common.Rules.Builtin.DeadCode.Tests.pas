@@ -98,7 +98,7 @@ uses
   Atlas.Common.Rules.Builtin.DeadCode;
 
 const
-  AppFile = 'C:\P\App.dpr';
+  cAppFile = 'C:\P\App.dpr';
 
 type
   TTestFile = record
@@ -122,32 +122,32 @@ type
 
 procedure TScenario.Put(const AName, AText: string);
 var
-  Index: Integer;
-  Entry: TTestFile;
+  mIndex: Integer;
+  mEntry: TTestFile;
 begin
-  for Index := 0 to High(Files) do
+  for mIndex := 0 to High(Files) do
   begin
-    if SameText(Files[Index].Name, AName) then
+    if SameText(Files[mIndex].Name, AName) then
     begin
-      Files[Index].Text := AText;
+      Files[mIndex].Text := AText;
       Exit;
     end;
   end;
-  Entry.Name := AName;
-  Entry.Text := AText;
-  Files := Files + [Entry];
+  mEntry.Name := AName;
+  mEntry.Text := AText;
+  Files := Files + [mEntry];
 end;
 
 function TScenario.Text(const AName: string): string;
 var
-  Entry: TTestFile;
+  mEntry: TTestFile;
 begin
   Result := '';
-  for Entry in Files do
+  for mEntry in Files do
   begin
-    if SameText(Entry.Name, AName) then
+    if SameText(mEntry.Name, AName) then
     begin
-      Result := Entry.Text;
+      Result := mEntry.Text;
     end;
   end;
 end;
@@ -185,25 +185,25 @@ end;
 /// <summary>Anwendung App mit den Units AUnits (Name, interface-uses, implementation-uses je Eintrag).</summary>
 function Group(const AUnits: TArray<TArray<string>>): TScenario;
 var
-  Item: TArray<string>;
-  Sources: TArray<string>;
-  Names: string;
+  mItem: TArray<string>;
+  mSources: TArray<string>;
+  mNames: string;
 begin
   Result := Default(TScenario);
-  Sources := [AppFile];
-  Names := '';
-  for Item in AUnits do
+  mSources := [cAppFile];
+  mNames := '';
+  for mItem in AUnits do
   begin
-    Result.Put(FileOf(Item[0]), UnitText(Item[0], Item[1], Item[2], ''));
-    Sources := Sources + [FileOf(Item[0])];
-    if Names <> '' then
+    Result.Put(FileOf(mItem[0]), UnitText(mItem[0], mItem[1], mItem[2], ''));
+    mSources := mSources + [FileOf(mItem[0])];
+    if mNames <> '' then
     begin
-      Names := Names + ', ';
+      mNames := mNames + ', ';
     end;
-    Names := Names + Item[0];
+    mNames := mNames + mItem[0];
   end;
-  Result.Put(AppFile, 'program App;'#10'uses'#10'  ' + Names + ';'#10'begin'#10'end.');
-  Result.Projects := [Project('C:\P\App.dproj', TRuleProjectKind.Application, Sources)];
+  Result.Put(cAppFile, 'program App;'#10'uses'#10'  ' + mNames + ';'#10'begin'#10'end.');
+  Result.Projects := [Project('C:\P\App.dproj', TRuleProjectKind.Application, mSources)];
 end;
 
 var
@@ -262,151 +262,151 @@ end;
 
 function Run(const AScenario: TScenario; const ACheck: string): TArray<TRuleFinding>;
 var
-  Watch: TStopwatch;
-  Round: Integer;
-  Texts: TDictionary<string, string>;
-  Index: ISymbolIndex;
-  Settings: TServerSettings;
-  Context: TRuleContext;
-  Tree: TSyntaxTree;
-  Incomplete: Boolean;
+  mWatch: TStopwatch;
+  mRound: Integer;
+  mTexts: TDictionary<string, string>;
+  mIndex: ISymbolIndex;
+  mSettings: TServerSettings;
+  mContext: TRuleContext;
+  mTree: TSyntaxTree;
+  mIncomplete: Boolean;
 begin
   Result := nil;
-  Incomplete := AScenario.Incomplete;
-  Texts := TDictionary<string, string>.Create;
+  mIncomplete := AScenario.Incomplete;
+  mTexts := TDictionary<string, string>.Create;
   try
-    Index := IndexScenario(AScenario, Texts);
-    Settings := ScenarioSettings(AScenario.Config);
-    Tree := TSyntaxTreeCache.Parse(AScenario.Text(ACheck));
+    mIndex := IndexScenario(AScenario, mTexts);
+    mSettings := ScenarioSettings(AScenario.Config);
+    mTree := TSyntaxTreeCache.Parse(AScenario.Text(ACheck));
     try
-      Context := Default(TRuleContext);
-      Context.FileName := ACheck;
-      Context.RelativePath := ExtractFileName(ACheck);
-      Context.UnitName := ChangeFileExt(ExtractFileName(ACheck), '');
-      Context.Text := AScenario.Text(ACheck);
-      Context.Tree := Tree;
-      Context.Index := Index;
-      Context.FormText := AScenario.Text(ChangeFileExt(ACheck, '.dfm'));
-      Context.Live := AScenario.Live;
+      mContext := Default(TRuleContext);
+      mContext.FileName := ACheck;
+      mContext.RelativePath := ExtractFileName(ACheck);
+      mContext.UnitName := ChangeFileExt(ExtractFileName(ACheck), '');
+      mContext.Text := AScenario.Text(ACheck);
+      mContext.Tree := mTree;
+      mContext.Index := mIndex;
+      mContext.FormText := AScenario.Text(ChangeFileExt(ACheck, '.dfm'));
+      mContext.Live := AScenario.Live;
       if not AScenario.NoProjects then
       begin
-        Context.ProjectFiles := ScenarioProjectFiles(AScenario, Index, Texts, Incomplete);
+        mContext.ProjectFiles := ScenarioProjectFiles(AScenario, mIndex, mTexts, mIncomplete);
       end;
-      for Round := 0 to AScenario.Repeats do
+      for mRound := 0 to AScenario.Repeats do
       begin
-        Watch := TStopwatch.StartNew;
+        mWatch := TStopwatch.StartNew;
         Result := TRuleEngine.Run([TUsesCycleRule.Create, TUnusedDeclarationRule.Create, TUnusedUnitRule.Create],
-          Settings, Context);
-        LastCheckMs := Watch.ElapsedMilliseconds;
+          mSettings, mContext);
+        LastCheckMs := mWatch.ElapsedMilliseconds;
       end;
-      Context.ProjectFiles := nil;
+      mContext.ProjectFiles := nil;
     finally
-      Tree.Free;
+      mTree.Free;
     end;
   finally
-    Texts.Free;
+    mTexts.Free;
   end;
 end;
 
 /// <summary>Meldungen der Regel ARule, je Zeile eine.</summary>
 function Messages(const AFindings: TArray<TRuleFinding>; const ARule: string): string;
 var
-  Finding: TRuleFinding;
+  mFinding: TRuleFinding;
 begin
   Result := '';
-  for Finding in AFindings do
+  for mFinding in AFindings do
   begin
-    if SameText(Finding.RuleId, ARule) then
+    if SameText(mFinding.RuleId, ARule) then
     begin
-      Result := Result + Finding.Message + #10;
+      Result := Result + mFinding.Message + #10;
     end;
   end;
 end;
 
 procedure TDeadCodeTests.CycleOverImplementationWithFullPath;
 var
-  Data: TScenario;
-  Found: TArray<TRuleFinding>;
+  mData: TScenario;
+  mFound: TArray<TRuleFinding>;
 begin
   // A -> B (implementation), B -> C (interface), C -> A (implementation).
-  Data := Group([TArray<string>.Create('A', '', 'B'), TArray<string>.Create('B', 'C', ''),
+  mData := Group([TArray<string>.Create('A', '', 'B'), TArray<string>.Create('B', 'C', ''),
     TArray<string>.Create('C', '', 'A')]);
-  Found := Run(Data, FileOf('A'));
+  mFound := Run(mData, FileOf('A'));
   Assert.AreEqual('Zirkuläre Unit-Referenz: A → B → C → A (über implementation-uses)'#10,
-    Messages(Found, cUsesCycleRuleId));
-  Assert.AreEqual<TRuleSeverity>(TRuleSeverity.Warning, Found[0].Severity);
+    Messages(mFound, cUsesCycleRuleId));
+  Assert.AreEqual<TRuleSeverity>(TRuleSeverity.Warning, mFound[0].Severity);
   // Am uses-Eintrag "B" in A (Zeile 4, Spalte 2).
-  Assert.AreEqual(4, Found[0].Range.StartPos.Line);
-  Assert.AreEqual(2, Found[0].Range.StartPos.Character);
+  Assert.AreEqual(4, mFound[0].Range.StartPos.Line);
+  Assert.AreEqual(2, mFound[0].Range.StartPos.Character);
   Assert.AreEqual('Mindestens eine Kante liegt im implementation-Teil: Der Compiler erlaubt den Zyklus.'#13#10 +
     'A → B (implementation)'#13#10'B → C (interface)'#13#10'C → A (implementation)',
-    StringReplace(Found[0].Details, sLineBreak, #13#10, [rfReplaceAll]));
+    StringReplace(mFound[0].Details, sLineBreak, #13#10, [rfReplaceAll]));
   // Jede Unit des Zyklus meldet ihren Teil.
   Assert.AreEqual('Zirkuläre Unit-Referenz: B → C → A → B (über implementation-uses)'#10,
-    Messages(Run(Data, FileOf('B')), cUsesCycleRuleId));
+    Messages(Run(mData, FileOf('B')), cUsesCycleRuleId));
 end;
 
 procedure TDeadCodeTests.InterfaceCycleIsError;
 var
-  Data: TScenario;
-  Found: TArray<TRuleFinding>;
+  mData: TScenario;
+  mFound: TArray<TRuleFinding>;
 begin
-  Data := Group([TArray<string>.Create('A', 'B', ''), TArray<string>.Create('B', 'C', ''),
+  mData := Group([TArray<string>.Create('A', 'B', ''), TArray<string>.Create('B', 'C', ''),
     TArray<string>.Create('C', 'A', '')]);
-  Found := Run(Data, FileOf('C'));
-  Assert.AreEqual('Zirkuläre Unit-Referenz: C → A → B → C (wie F2047)'#10, Messages(Found, cUsesCycleRuleId));
-  Assert.AreEqual<TRuleSeverity>(TRuleSeverity.Error, Found[0].Severity);
-  Assert.IsTrue(StartsText('Alle Kanten liegen im interface-Teil', Found[0].Details), Found[0].Details);
+  mFound := Run(mData, FileOf('C'));
+  Assert.AreEqual('Zirkuläre Unit-Referenz: C → A → B → C (wie F2047)'#10, Messages(mFound, cUsesCycleRuleId));
+  Assert.AreEqual<TRuleSeverity>(TRuleSeverity.Error, mFound[0].Severity);
+  Assert.IsTrue(StartsText('Alle Kanten liegen im interface-Teil', mFound[0].Details), mFound[0].Details);
   // Kürzester Weg: Mit einer zusätzlichen Abkürzung A -> C über implementation bleibt der interface-Zyklus
   // maßgeblich, weil er ein Compilerfehler ist.
-  Data.Put(FileOf('A'), UnitText('A', 'B', 'C', ''));
+  mData.Put(FileOf('A'), UnitText('A', 'B', 'C', ''));
   Assert.AreEqual('Zirkuläre Unit-Referenz: C → A → B → C (wie F2047)'#10,
-    Messages(Run(Data, FileOf('C')), cUsesCycleRuleId));
+    Messages(Run(mData, FileOf('C')), cUsesCycleRuleId));
 end;
 
 procedure TDeadCodeTests.ImplementationOptionOff;
 var
-  Data: TScenario;
+  mData: TScenario;
 begin
-  Data := Group([TArray<string>.Create('A', '', 'B'), TArray<string>.Create('B', '', 'A')]);
+  mData := Group([TArray<string>.Create('A', '', 'B'), TArray<string>.Create('B', '', 'A')]);
   Assert.AreEqual('Zirkuläre Unit-Referenz: A → B → A (über implementation-uses)'#10,
-    Messages(Run(Data, FileOf('A')), cUsesCycleRuleId));
-  Data.Config := '{"rules": {"uses-cycle": {"implementation": false}}}';
-  Assert.AreEqual('', Messages(Run(Data, FileOf('A')), cUsesCycleRuleId));
+    Messages(Run(mData, FileOf('A')), cUsesCycleRuleId));
+  mData.Config := '{"rules": {"uses-cycle": {"implementation": false}}}';
+  Assert.AreEqual('', Messages(Run(mData, FileOf('A')), cUsesCycleRuleId));
   // Ein Zyklus nur über interface bleibt.
-  Data.Put(FileOf('A'), UnitText('A', 'B', '', ''));
-  Data.Put(FileOf('B'), UnitText('B', 'A', '', ''));
+  mData.Put(FileOf('A'), UnitText('A', 'B', '', ''));
+  mData.Put(FileOf('B'), UnitText('B', 'A', '', ''));
   Assert.AreEqual('Zirkuläre Unit-Referenz: A → B → A (wie F2047)'#10,
-    Messages(Run(Data, FileOf('A')), cUsesCycleRuleId));
+    Messages(Run(mData, FileOf('A')), cUsesCycleRuleId));
   // off schaltet die Regel ganz ab.
-  Data.Config := '{"rules": {"uses-cycle": "off"}}';
-  Assert.AreEqual('', Messages(Run(Data, FileOf('A')), cUsesCycleRuleId));
+  mData.Config := '{"rules": {"uses-cycle": "off"}}';
+  Assert.AreEqual('', Messages(Run(mData, FileOf('A')), cUsesCycleRuleId));
 end;
 
 procedure TDeadCodeTests.NoCycleNoFinding;
 var
-  Data: TScenario;
+  mData: TScenario;
 begin
-  Data := Group([TArray<string>.Create('A', 'B', 'C'), TArray<string>.Create('B', 'C', ''),
+  mData := Group([TArray<string>.Create('A', 'B', 'C'), TArray<string>.Create('B', 'C', ''),
     TArray<string>.Create('C', '', '')]);
-  Assert.AreEqual('', Messages(Run(Data, FileOf('A')), cUsesCycleRuleId));
-  Assert.AreEqual('', Messages(Run(Data, FileOf('C')), cUsesCycleRuleId));
+  Assert.AreEqual('', Messages(Run(mData, FileOf('A')), cUsesCycleRuleId));
+  Assert.AreEqual('', Messages(Run(mData, FileOf('C')), cUsesCycleRuleId));
 end;
 
 procedure TDeadCodeTests.CycleSilentWithoutProjectsOrWhileIndexing;
 var
-  Data: TScenario;
+  mData: TScenario;
 begin
-  Data := Group([TArray<string>.Create('A', '', 'B'), TArray<string>.Create('B', '', 'A')]);
-  Data.Incomplete := True;
-  Assert.AreEqual('', Messages(Run(Data, FileOf('A')), cUsesCycleRuleId));
-  Data.Incomplete := False;
-  Data.NoProjects := True;
-  Assert.AreEqual('', Messages(Run(Data, FileOf('A')), cUsesCycleRuleId));
+  mData := Group([TArray<string>.Create('A', '', 'B'), TArray<string>.Create('B', '', 'A')]);
+  mData.Incomplete := True;
+  Assert.AreEqual('', Messages(Run(mData, FileOf('A')), cUsesCycleRuleId));
+  mData.Incomplete := False;
+  mData.NoProjects := True;
+  Assert.AreEqual('', Messages(Run(mData, FileOf('A')), cUsesCycleRuleId));
 end;
 
 const
-  DeclarationsText =
+  cDeclarationsText =
     'unit Werkzeug;'#10 +
     'interface'#10 +
     'procedure Start;'#10 +
@@ -445,35 +445,35 @@ const
 
 procedure TDeadCodeTests.UnusedDeclarations;
 var
-  Data: TScenario;
-  Found: TArray<TRuleFinding>;
+  mData: TScenario;
+  mFound: TArray<TRuleFinding>;
 begin
-  Data := Default(TScenario);
-  Data.Put(FileOf('Werkzeug'), DeclarationsText);
-  Data.NoProjects := True;
-  Found := Run(Data, FileOf('Werkzeug'));
+  mData := Default(TScenario);
+  mData.Put(FileOf('Werkzeug'), cDeclarationsText);
+  mData.NoProjects := True;
+  mFound := Run(mData, FileOf('Werkzeug'));
   Assert.AreEqual(
     'Typ THelfer wird nirgends verwendet.'#10 +
     'Konstante Grenze wird nirgends verwendet.'#10 +
     'Globale Variable Zaehler wird nirgends verwendet.'#10 +
-    'Routine Rekursiv wird nirgends verwendet.'#10, Messages(Found, cUnusedDeclarationRuleId));
-  Assert.AreEqual<TRuleSeverity>(TRuleSeverity.Hint, Found[0].Severity);
-  Assert.AreEqual(5, Found[0].Range.StartPos.Line);
-  Assert.AreEqual(2, Found[0].Range.StartPos.Character);
+    'Routine Rekursiv wird nirgends verwendet.'#10, Messages(mFound, cUnusedDeclarationRuleId));
+  Assert.AreEqual<TRuleSeverity>(TRuleSeverity.Hint, mFound[0].Severity);
+  Assert.AreEqual(5, mFound[0].Range.StartPos.Line);
+  Assert.AreEqual(2, mFound[0].Range.StartPos.Character);
   // Korrektur: als bewusst vorhanden markieren.
-  Assert.AreEqual('  // lsp-ignore: unused-declaration'#10, Found[0].Fixes[0].Edits[0].NewText);
-  Data.Config := '{"rules": {"unused-declaration": "off"}}';
-  Assert.AreEqual('', Messages(Run(Data, FileOf('Werkzeug')), cUnusedDeclarationRuleId));
+  Assert.AreEqual('  // lsp-ignore: unused-declaration'#10, mFound[0].Fixes[0].Edits[0].NewText);
+  mData.Config := '{"rules": {"unused-declaration": "off"}}';
+  Assert.AreEqual('', Messages(Run(mData, FileOf('Werkzeug')), cUnusedDeclarationRuleId));
 end;
 
 procedure TDeadCodeTests.UsedDeclarationsAreSilent;
 var
-  Data: TScenario;
+  mData: TScenario;
 begin
-  Data := Default(TScenario);
-  Data.NoProjects := True;
+  mData := Default(TScenario);
+  mData.NoProjects := True;
   // exports, forward-Deklaration mit Aufruf, Attributklasse in Kurzform, Rumpf einer interface-Routine.
-  Data.Put(FileOf('Werkzeug'),
+  mData.Put(FileOf('Werkzeug'),
     'library Werkzeug;'#10 +
     'type'#10 +
     '  BehaltenAttribute = class(TCustomAttribute)'#10 +
@@ -494,103 +494,103 @@ begin
     '  Exportiert;'#10 +
     'begin'#10 +
     'end.');
-  Assert.AreEqual('', Messages(Run(Data, FileOf('Werkzeug')), cUnusedDeclarationRuleId));
+  Assert.AreEqual('', Messages(Run(mData, FileOf('Werkzeug')), cUnusedDeclarationRuleId));
   // Rümpfe von interface-Routinen gehören zu unused-public-member.
-  Data.Put(FileOf('Werkzeug'), UnitText('Werkzeug', '', '', 'procedure Start;'#10'begin'#10'end;'#10));
-  Data.Put(FileOf('Werkzeug'), StringReplace(Data.Text(FileOf('Werkzeug')), 'implementation',
+  mData.Put(FileOf('Werkzeug'), UnitText('Werkzeug', '', '', 'procedure Start;'#10'begin'#10'end;'#10));
+  mData.Put(FileOf('Werkzeug'), StringReplace(mData.Text(FileOf('Werkzeug')), 'implementation',
     'procedure Start;'#10'implementation', []));
-  Assert.AreEqual('', Messages(Run(Data, FileOf('Werkzeug')), cUnusedDeclarationRuleId));
+  Assert.AreEqual('', Messages(Run(mData, FileOf('Werkzeug')), cUnusedDeclarationRuleId));
 end;
 
 procedure TDeadCodeTests.KeepSettingsAndFormText;
 var
-  Data: TScenario;
-  Text: string;
+  mData: TScenario;
+  mText: string;
 begin
-  Text := UnitText('Werkzeug', '', '', 'procedure KlickHandler;'#10'begin'#10'end;'#10 +
+  mText := UnitText('Werkzeug', '', '', 'procedure KlickHandler;'#10'begin'#10'end;'#10 +
     'procedure Pruefe;'#10'begin'#10'end;'#10);
-  Data := Default(TScenario);
-  Data.NoProjects := True;
-  Data.Put(FileOf('Werkzeug'), Text);
+  mData := Default(TScenario);
+  mData.NoProjects := True;
+  mData.Put(FileOf('Werkzeug'), mText);
   Assert.AreEqual('Routine KlickHandler wird nirgends verwendet.'#10'Routine Pruefe wird nirgends verwendet.'#10,
-    Messages(Run(Data, FileOf('Werkzeug')), cUnusedDeclarationRuleId));
-  Data.Config := '{"deadCode": {"keepPatterns": ["*Handler"]}}';
+    Messages(Run(mData, FileOf('Werkzeug')), cUnusedDeclarationRuleId));
+  mData.Config := '{"deadCode": {"keepPatterns": ["*Handler"]}}';
   Assert.AreEqual('Routine Pruefe wird nirgends verwendet.'#10,
-    Messages(Run(Data, FileOf('Werkzeug')), cUnusedDeclarationRuleId));
+    Messages(Run(mData, FileOf('Werkzeug')), cUnusedDeclarationRuleId));
   // Name in der Formulardatei.
-  Data.Put(ChangeFileExt(FileOf('Werkzeug'), '.dfm'), 'object F: TF'#10'  OnClick = Pruefe'#10'end');
-  Assert.AreEqual('', Messages(Run(Data, FileOf('Werkzeug')), cUnusedDeclarationRuleId));
+  mData.Put(ChangeFileExt(FileOf('Werkzeug'), '.dfm'), 'object F: TF'#10'  OnClick = Pruefe'#10'end');
+  Assert.AreEqual('', Messages(Run(mData, FileOf('Werkzeug')), cUnusedDeclarationRuleId));
 end;
 
 procedure TDeadCodeTests.UnusedUnitOnlyNamedByProgram;
 var
-  Data: TScenario;
-  Found: TArray<TRuleFinding>;
+  mData: TScenario;
+  mFound: TArray<TRuleFinding>;
 begin
-  Data := Group([TArray<string>.Create('Haupt', 'Dienst', ''), TArray<string>.Create('Dienst', '', ''),
+  mData := Group([TArray<string>.Create('Haupt', 'Dienst', ''), TArray<string>.Create('Dienst', '', ''),
     TArray<string>.Create('Waise', '', '')]);
   // Haupt deklariert Start, das Programm ruft es auf.
-  Data.Put(FileOf('Haupt'), 'unit Haupt;'#10'interface'#10'uses'#10'  Dienst;'#10'procedure Start;'#10 +
+  mData.Put(FileOf('Haupt'), 'unit Haupt;'#10'interface'#10'uses'#10'  Dienst;'#10'procedure Start;'#10 +
     'implementation'#10'procedure Start;'#10'begin'#10'end;'#10'end.');
-  Data.Put(AppFile, 'program App;'#10'uses'#10'  Haupt, Dienst, Waise;'#10'begin'#10'  Start;'#10'end.');
-  Found := Run(Data, FileOf('Waise'));
+  mData.Put(cAppFile, 'program App;'#10'uses'#10'  Haupt, Dienst, Waise;'#10'begin'#10'  Start;'#10'end.');
+  mFound := Run(mData, FileOf('Waise'));
   Assert.AreEqual('Unit Waise wird von keiner anderen Unit verwendet; nur App.dpr nennt sie im uses.'#10,
-    Messages(Found, cUnusedUnitRuleId));
-  Assert.AreEqual(0, Found[0].Range.StartPos.Line);
-  Assert.AreEqual(5, Found[0].Range.StartPos.Character);
-  Assert.AreEqual<TRuleConfidence>(TRuleConfidence.Medium, Found[0].Confidence);
-  Assert.AreEqual('', Messages(Run(Data, FileOf('Haupt')), cUnusedUnitRuleId));
-  Assert.AreEqual('', Messages(Run(Data, FileOf('Dienst')), cUnusedUnitRuleId));
+    Messages(mFound, cUnusedUnitRuleId));
+  Assert.AreEqual(0, mFound[0].Range.StartPos.Line);
+  Assert.AreEqual(5, mFound[0].Range.StartPos.Character);
+  Assert.AreEqual<TRuleConfidence>(TRuleConfidence.Medium, mFound[0].Confidence);
+  Assert.AreEqual('', Messages(Run(mData, FileOf('Haupt')), cUnusedUnitRuleId));
+  Assert.AreEqual('', Messages(Run(mData, FileOf('Dienst')), cUnusedUnitRuleId));
   // Ganz ohne uses-Eintrag.
-  Data.Put(AppFile, 'program App;'#10'uses'#10'  Haupt, Dienst;'#10'begin'#10'  Start;'#10'end.');
+  mData.Put(cAppFile, 'program App;'#10'uses'#10'  Haupt, Dienst;'#10'begin'#10'  Start;'#10'end.');
   Assert.AreEqual('Unit Waise wird von keiner Unit und keinem Programm verwendet.'#10,
-    Messages(Run(Data, FileOf('Waise')), cUnusedUnitRuleId));
+    Messages(Run(mData, FileOf('Waise')), cUnusedUnitRuleId));
 end;
 
 procedure TDeadCodeTests.UnusedUnitExceptions;
 var
-  Data: TScenario;
+  mData: TScenario;
 begin
-  Data := Group([TArray<string>.Create('Waise', '', '')]);
-  Assert.AreNotEqual('', Messages(Run(Data, FileOf('Waise')), cUnusedUnitRuleId));
+  mData := Group([TArray<string>.Create('Waise', '', '')]);
+  Assert.AreNotEqual('', Messages(Run(mData, FileOf('Waise')), cUnusedUnitRuleId));
   // initialization-Teil: Registrierung beim Start.
-  Data.Put(FileOf('Waise'), 'unit Waise;'#10'interface'#10'implementation'#10'initialization'#10'end.');
-  Assert.AreEqual('', Messages(Run(Data, FileOf('Waise')), cUnusedUnitRuleId));
+  mData.Put(FileOf('Waise'), 'unit Waise;'#10'interface'#10'implementation'#10'initialization'#10'end.');
+  Assert.AreEqual('', Messages(Run(mData, FileOf('Waise')), cUnusedUnitRuleId));
   // Testklasse ohne Registrierung: DUnitX findet [TestFixture] per RTTI.
-  Data.Put(FileOf('Waise'), 'unit Waise;'#10'interface'#10'type'#10'  [TestFixture]'#10'  TWaiseTests = class'#10 +
+  mData.Put(FileOf('Waise'), 'unit Waise;'#10'interface'#10'type'#10'  [TestFixture]'#10'  TWaiseTests = class'#10 +
     '  public'#10'    [Test]'#10'    procedure Laeuft;'#10'  end;'#10'implementation'#10 +
     'procedure TWaiseTests.Laeuft;'#10'begin'#10'end;'#10'end.');
-  Assert.AreEqual('', Messages(Run(Data, FileOf('Waise')), cUnusedUnitRuleId));
+  Assert.AreEqual('', Messages(Run(mData, FileOf('Waise')), cUnusedUnitRuleId));
   // [Test] allein macht keine Testklasse.
-  Data.Put(FileOf('Waise'), 'unit Waise;'#10'interface'#10'type'#10'  TWaise = class'#10'  public'#10 +
+  mData.Put(FileOf('Waise'), 'unit Waise;'#10'interface'#10'type'#10'  TWaise = class'#10'  public'#10 +
     '    [Test]'#10'    procedure Laeuft;'#10'  end;'#10'implementation'#10 +
     'procedure TWaise.Laeuft;'#10'begin'#10'end;'#10'end.');
-  Assert.AreNotEqual('', Messages(Run(Data, FileOf('Waise')), cUnusedUnitRuleId));
+  Assert.AreNotEqual('', Messages(Run(mData, FileOf('Waise')), cUnusedUnitRuleId));
   // Package: Nutzer außerhalb der Gruppe; mit projectKinds gemeldet.
-  Data := Group([TArray<string>.Create('Waise', '', '')]);
-  Data.Projects[0].Kind := TRuleProjectKind.Package;
-  Assert.AreEqual('', Messages(Run(Data, FileOf('Waise')), cUnusedUnitRuleId));
-  Data.Config := '{"rules": {"unused-unit": {"projectKinds": ["package"]}}}';
-  Assert.AreNotEqual('', Messages(Run(Data, FileOf('Waise')), cUnusedUnitRuleId));
+  mData := Group([TArray<string>.Create('Waise', '', '')]);
+  mData.Projects[0].Kind := TRuleProjectKind.Package;
+  Assert.AreEqual('', Messages(Run(mData, FileOf('Waise')), cUnusedUnitRuleId));
+  mData.Config := '{"rules": {"unused-unit": {"projectKinds": ["package"]}}}';
+  Assert.AreNotEqual('', Messages(Run(mData, FileOf('Waise')), cUnusedUnitRuleId));
   // Index läuft, ohne Projekte.
-  Data := Group([TArray<string>.Create('Waise', '', '')]);
-  Data.Incomplete := True;
-  Assert.AreEqual('', Messages(Run(Data, FileOf('Waise')), cUnusedUnitRuleId));
-  Data.Incomplete := False;
-  Data.NoProjects := True;
-  Assert.AreEqual('', Messages(Run(Data, FileOf('Waise')), cUnusedUnitRuleId));
+  mData := Group([TArray<string>.Create('Waise', '', '')]);
+  mData.Incomplete := True;
+  Assert.AreEqual('', Messages(Run(mData, FileOf('Waise')), cUnusedUnitRuleId));
+  mData.Incomplete := False;
+  mData.NoProjects := True;
+  Assert.AreEqual('', Messages(Run(mData, FileOf('Waise')), cUnusedUnitRuleId));
 end;
 
 /// <summary>Der erste Treffer der Regel uses-cycle; Default ohne.</summary>
 function CycleFinding(const AFindings: TArray<TRuleFinding>): TRuleFinding;
 var
-  Finding: TRuleFinding;
+  mFinding: TRuleFinding;
 begin
-  for Finding in AFindings do
+  for mFinding in AFindings do
   begin
-    if SameText(Finding.RuleId, cUsesCycleRuleId) then
+    if SameText(mFinding.RuleId, cUsesCycleRuleId) then
     begin
-      Exit(Finding);
+      Exit(mFinding);
     end;
   end;
   Result := Default(TRuleFinding);
@@ -599,277 +599,277 @@ end;
 /// <summary>"Unit@Datei:Zeile:Zeichen" je Stelle, durch Leerzeichen getrennt.</summary>
 function PlacesText(const AFinding: TRuleFinding): string;
 var
-  Related: TRuleRelated;
+  mRelated: TRuleRelated;
 begin
   Result := '';
-  for Related in AFinding.Related do
+  for mRelated in AFinding.Related do
   begin
     if Result <> '' then
     begin
       Result := Result + ' ';
     end;
-    Result := Result + Format('%s@%s:%d:%d', [Related.Message, ExtractFileName(Related.FileName),
-      Related.Range.StartPos.Line, Related.Range.StartPos.Character]);
+    Result := Result + Format('%s@%s:%d:%d', [mRelated.Message, ExtractFileName(mRelated.FileName),
+      mRelated.Range.StartPos.Line, mRelated.Range.StartPos.Character]);
   end;
 end;
 
 /// <summary>Titel der Korrekturen, je Zeile einer.</summary>
 function FixTitles(const AFinding: TRuleFinding): string;
 var
-  Fix: TRuleFix;
+  mFix: TRuleFix;
 begin
   Result := '';
-  for Fix in AFinding.Fixes do
+  for mFix in AFinding.Fixes do
   begin
-    Result := Result + Fix.Title + #10;
+    Result := Result + mFix.Title + #10;
   end;
 end;
 
 procedure TDeadCodeTests.LiveInterfaceCycleWithPathAndPlaces;
 var
-  Data: TScenario;
-  Found: TRuleFinding;
+  mData: TScenario;
+  mFound: TRuleFinding;
 begin
   // Wie im Referenzprojekt: uA -> uB -> uC, dann uA im interface-uses von uC ergänzt.
-  Data := Group([TArray<string>.Create('A', 'B', ''), TArray<string>.Create('B', 'C', ''),
+  mData := Group([TArray<string>.Create('A', 'B', ''), TArray<string>.Create('B', 'C', ''),
     TArray<string>.Create('C', 'A', '')]);
-  Data.Live := True;
-  Found := CycleFinding(Run(Data, FileOf('C')));
-  Assert.AreEqual('Zirkuläre Unit-Referenz: C → A → B → C (wie F2047)', Found.Message);
-  Assert.AreEqual<TRuleSeverity>(TRuleSeverity.Error, Found.Severity);
-  Assert.AreEqual(3, Found.Range.StartPos.Line);
-  Assert.AreEqual(2, Found.Range.StartPos.Character);
+  mData.Live := True;
+  mFound := CycleFinding(Run(mData, FileOf('C')));
+  Assert.AreEqual('Zirkuläre Unit-Referenz: C → A → B → C (wie F2047)', mFound.Message);
+  Assert.AreEqual<TRuleSeverity>(TRuleSeverity.Error, mFound.Severity);
+  Assert.AreEqual(3, mFound.Range.StartPos.Line);
+  Assert.AreEqual(2, mFound.Range.StartPos.Character);
   // Jede Unit des Pfads mit ihrem uses-Eintrag: die eigene am Eintrag in B, dann jede Kante.
-  Assert.AreEqual('C@B.pas:3:2 A@C.pas:3:2 B@A.pas:3:2 C@B.pas:3:2', PlacesText(Found));
+  Assert.AreEqual('C@B.pas:3:2 A@C.pas:3:2 B@A.pas:3:2 C@B.pas:3:2', PlacesText(mFound));
   // Ungespeicherter Stand einer anderen offenen Unit: Ohne B -> C gibt es keinen Zyklus mehr.
-  Data.Put(FileOf('B'), UnitText('B', '', '', ''));
-  Assert.AreEqual('', Messages(Run(Data, FileOf('C')), cUsesCycleRuleId));
+  mData.Put(FileOf('B'), UnitText('B', '', '', ''));
+  Assert.AreEqual('', Messages(Run(mData, FileOf('C')), cUsesCycleRuleId));
 end;
 
 procedure TDeadCodeTests.LiveImplementationCycleOnlyWhenEnabled;
 var
-  Data: TScenario;
-  Found: TRuleFinding;
+  mData: TScenario;
+  mFound: TRuleFinding;
 begin
-  Data := Group([TArray<string>.Create('A', '', 'B'), TArray<string>.Create('B', '', 'A')]);
-  Data.Live := True;
-  Assert.AreEqual('', Messages(Run(Data, FileOf('A')), cUsesCycleRuleId), 'im Editor erlaubt und still');
-  Data.Config := '{"diagnostics": {"usesCycleImplementation": true}}';
-  Found := CycleFinding(Run(Data, FileOf('A')));
-  Assert.AreEqual('Zirkuläre Unit-Referenz: A → B → A (über implementation-uses)', Found.Message);
-  Assert.AreEqual<TRuleSeverity>(TRuleSeverity.Hint, Found.Severity);
+  mData := Group([TArray<string>.Create('A', '', 'B'), TArray<string>.Create('B', '', 'A')]);
+  mData.Live := True;
+  Assert.AreEqual('', Messages(Run(mData, FileOf('A')), cUsesCycleRuleId), 'im Editor erlaubt und still');
+  mData.Config := '{"diagnostics": {"usesCycleImplementation": true}}';
+  mFound := CycleFinding(Run(mData, FileOf('A')));
+  Assert.AreEqual('Zirkuläre Unit-Referenz: A → B → A (über implementation-uses)', mFound.Message);
+  Assert.AreEqual<TRuleSeverity>(TRuleSeverity.Hint, mFound.Severity);
   // Ein Eintrag im implementation-uses lässt sich nicht weiter verschieben: nur „Graph zeigen“.
-  Assert.AreEqual('Graph zeigen (Unit-Beziehungen)'#10, FixTitles(Found));
-  Assert.IsTrue(Found.Fixes[0].ShowsUnitRelations);
+  Assert.AreEqual('Graph zeigen (Unit-Beziehungen)'#10, FixTitles(mFound));
+  Assert.IsTrue(mFound.Fixes[0].ShowsUnitRelations);
   // Projektweit (#64) bleibt es eine Warnung.
-  Data.Live := False;
-  Data.Config := '';
-  Assert.AreEqual<TRuleSeverity>(TRuleSeverity.Warning, CycleFinding(Run(Data, FileOf('A'))).Severity);
+  mData.Live := False;
+  mData.Config := '';
+  Assert.AreEqual<TRuleSeverity>(TRuleSeverity.Warning, CycleFinding(Run(mData, FileOf('A'))).Severity);
 end;
 
 procedure TDeadCodeTests.LiveSwitchLeavesProjectCheck;
 var
-  Data: TScenario;
+  mData: TScenario;
 begin
-  Data := Group([TArray<string>.Create('A', 'B', ''), TArray<string>.Create('B', 'A', '')]);
-  Data.Config := '{"diagnostics": {"usesCycleLive": false}}';
-  Data.Live := True;
-  Assert.AreEqual('', Messages(Run(Data, FileOf('A')), cUsesCycleRuleId), 'keine Meldung beim Tippen');
-  Data.Live := False;
+  mData := Group([TArray<string>.Create('A', 'B', ''), TArray<string>.Create('B', 'A', '')]);
+  mData.Config := '{"diagnostics": {"usesCycleLive": false}}';
+  mData.Live := True;
+  Assert.AreEqual('', Messages(Run(mData, FileOf('A')), cUsesCycleRuleId), 'keine Meldung beim Tippen');
+  mData.Live := False;
   Assert.AreEqual('Zirkuläre Unit-Referenz: A → B → A (wie F2047)'#10,
-    Messages(Run(Data, FileOf('A')), cUsesCycleRuleId),
+    Messages(Run(mData, FileOf('A')), cUsesCycleRuleId),
     'die projektweite Prüfung bleibt');
 end;
 
 procedure TDeadCodeTests.SelfReferenceIsError;
 var
-  Data: TScenario;
-  Found: TRuleFinding;
-  Fixed: string;
+  mData: TScenario;
+  mFound: TRuleFinding;
+  mFixed: string;
 begin
-  Data := Group([TArray<string>.Create('A', 'A', '')]);
-  Data.NoProjects := True;
-  Found := CycleFinding(Run(Data, FileOf('A')));
-  Assert.AreEqual('Zirkuläre Unit-Referenz: A → A (wie F2092)', Found.Message);
-  Assert.AreEqual<TRuleSeverity>(TRuleSeverity.Error, Found.Severity);
-  Assert.AreEqual('Eintrag entfernen'#10, FixTitles(Found));
-  Fixed := TChangeSignature.ApplyEdits(Data.Text(FileOf('A')), Found.Fixes[0].Edits);
-  Assert.AreEqual(0, Pos('uses', Fixed), Fixed);
+  mData := Group([TArray<string>.Create('A', 'A', '')]);
+  mData.NoProjects := True;
+  mFound := CycleFinding(Run(mData, FileOf('A')));
+  Assert.AreEqual('Zirkuläre Unit-Referenz: A → A (wie F2092)', mFound.Message);
+  Assert.AreEqual<TRuleSeverity>(TRuleSeverity.Error, mFound.Severity);
+  Assert.AreEqual('Eintrag entfernen'#10, FixTitles(mFound));
+  mFixed := TChangeSignature.ApplyEdits(mData.Text(FileOf('A')), mFound.Fixes[0].Edits);
+  Assert.AreEqual(0, Pos('uses', mFixed), mFixed);
   // Auch mit Projekten nur eine Meldung, nicht noch eine über den Graphen.
-  Data.NoProjects := False;
-  Data.Live := True;
+  mData.NoProjects := False;
+  mData.Live := True;
   Assert.AreEqual('Zirkuläre Unit-Referenz: A → A (wie F2092)'#10,
-    Messages(Run(Data, FileOf('A')), cUsesCycleRuleId));
+    Messages(Run(mData, FileOf('A')), cUsesCycleRuleId));
 end;
 
 procedure TDeadCodeTests.SeveralCyclesAndShortestPath;
 var
-  Data: TScenario;
+  mData: TScenario;
 begin
-  Data := Group([TArray<string>.Create('A', 'B, C', ''), TArray<string>.Create('B', 'A', ''),
+  mData := Group([TArray<string>.Create('A', 'B, C', ''), TArray<string>.Create('B', 'A', ''),
     TArray<string>.Create('C', 'A', '')]);
-  Data.Live := True;
+  mData.Live := True;
   Assert.AreEqual('Zirkuläre Unit-Referenz: A → B → A (wie F2047)'#10 +
     'Zirkuläre Unit-Referenz: A → C → A (wie F2047)'#10,
-    Messages(Run(Data, FileOf('A')), cUsesCycleRuleId));
+    Messages(Run(mData, FileOf('A')), cUsesCycleRuleId));
   // B -> D -> E -> A ist länger als B -> C -> A, obwohl D zuerst im uses steht.
-  Data := Group([TArray<string>.Create('A', 'B', ''), TArray<string>.Create('B', 'D, C', ''),
+  mData := Group([TArray<string>.Create('A', 'B', ''), TArray<string>.Create('B', 'D, C', ''),
     TArray<string>.Create('C', 'A', ''), TArray<string>.Create('D', 'E', ''), TArray<string>.Create('E', 'A', '')]);
-  Data.Live := True;
+  mData.Live := True;
   Assert.AreEqual('Zirkuläre Unit-Referenz: A → B → C → A (wie F2047)'#10,
-    Messages(Run(Data, FileOf('A')), cUsesCycleRuleId));
+    Messages(Run(mData, FileOf('A')), cUsesCycleRuleId));
 end;
 
 procedure TDeadCodeTests.MoveFixOnlyWithoutInterfaceUse;
 var
-  Data: TScenario;
-  Found: TRuleFinding;
-  Fixed: string;
+  mData: TScenario;
+  mFound: TRuleFinding;
+  mFixed: string;
 begin
-  Data := Group([TArray<string>.Create('A', 'B', ''), TArray<string>.Create('B', 'C', ''),
+  mData := Group([TArray<string>.Create('A', 'B', ''), TArray<string>.Create('B', 'C', ''),
     TArray<string>.Create('C', 'A', 'B')]);
-  Data.Live := True;
-  Found := CycleFinding(Run(Data, FileOf('C')));
-  Assert.AreEqual('In implementation-uses verschieben'#10, FixTitles(Found));
-  Fixed := TChangeSignature.ApplyEdits(Data.Text(FileOf('C')), Found.Fixes[0].Edits);
-  Assert.AreEqual('unit C;'#10'interface'#10#10'implementation'#10'uses'#10'  B,'#10'  A;'#10'end.', Fixed);
+  mData.Live := True;
+  mFound := CycleFinding(Run(mData, FileOf('C')));
+  Assert.AreEqual('In implementation-uses verschieben'#10, FixTitles(mFound));
+  mFixed := TChangeSignature.ApplyEdits(mData.Text(FileOf('C')), mFound.Fixes[0].Edits);
+  Assert.AreEqual('unit C;'#10'interface'#10#10'implementation'#10'uses'#10'  B,'#10'  A;'#10'end.', mFixed);
   // Die Korrektur beseitigt die Meldung.
-  Data.Put(FileOf('C'), Fixed);
-  Assert.AreEqual('', Messages(Run(Data, FileOf('C')), cUsesCycleRuleId));
+  mData.Put(FileOf('C'), mFixed);
+  Assert.AreEqual('', Messages(Run(mData, FileOf('C')), cUsesCycleRuleId));
 end;
 
 procedure TDeadCodeTests.MoveFixSortsLikeSortUses;
 var
-  Data: TScenario;
-  Found: TRuleFinding;
+  mData: TScenario;
+  mFound: TRuleFinding;
 begin
-  Data := Group([TArray<string>.Create('A', 'B', ''), TArray<string>.Create('B', 'C', ''),
+  mData := Group([TArray<string>.Create('A', 'B', ''), TArray<string>.Create('B', 'C', ''),
     TArray<string>.Create('C', 'A', 'X'), TArray<string>.Create('X', '', '')]);
-  Data.Live := True;
-  Data.Config := '{"sortUses": true}';
-  Found := CycleFinding(Run(Data, FileOf('C')));
+  mData.Live := True;
+  mData.Config := '{"sortUses": true}';
+  mFound := CycleFinding(Run(mData, FileOf('C')));
   Assert.AreEqual('unit C;'#10'interface'#10#10'implementation'#10'uses'#10'  A,'#10'  X;'#10'end.',
-    TChangeSignature.ApplyEdits(Data.Text(FileOf('C')), Found.Fixes[0].Edits));
-  Assert.AreEqual(1, Integer(Length(Found.Fixes[0].Edits)), 'eine kleinste Ersetzung');
+    TChangeSignature.ApplyEdits(mData.Text(FileOf('C')), mFound.Fixes[0].Edits));
+  Assert.AreEqual(1, Integer(Length(mFound.Fixes[0].Edits)), 'eine kleinste Ersetzung');
 end;
 
 procedure TDeadCodeTests.JumpsAndGraphWhenInterfaceNeedsUnit;
 var
-  Data: TScenario;
-  Found: TRuleFinding;
+  mData: TScenario;
+  mFound: TRuleFinding;
 begin
-  Data := Group([TArray<string>.Create('A', 'B', ''), TArray<string>.Create('B', 'C', '')]);
-  Data.Put(FileOf('A'), 'unit A;'#10'interface'#10'uses'#10'  B;'#10'type'#10'  TA = class end;'#10 +
+  mData := Group([TArray<string>.Create('A', 'B', ''), TArray<string>.Create('B', 'C', '')]);
+  mData.Put(FileOf('A'), 'unit A;'#10'interface'#10'uses'#10'  B;'#10'type'#10'  TA = class end;'#10 +
     'implementation'#10'end.');
-  Data.Put(FileOf('C'), 'unit C;'#10'interface'#10'uses'#10'  A;'#10'type'#10'  TC = class(TA) end;'#10 +
+  mData.Put(FileOf('C'), 'unit C;'#10'interface'#10'uses'#10'  A;'#10'type'#10'  TC = class(TA) end;'#10 +
     'implementation'#10'end.');
-  Data.Projects[0].Sources := Data.Projects[0].Sources + [FileOf('C')];
-  Data.Live := True;
-  Found := CycleFinding(Run(Data, FileOf('C')));
-  Assert.AreEqual('Zirkuläre Unit-Referenz: C → A → B → C (wie F2047)', Found.Message);
+  mData.Projects[0].Sources := mData.Projects[0].Sources + [FileOf('C')];
+  mData.Live := True;
+  mFound := CycleFinding(Run(mData, FileOf('C')));
+  Assert.AreEqual('Zirkuläre Unit-Referenz: C → A → B → C (wie F2047)', mFound.Message);
   Assert.AreEqual('Zu TA springen (Zeile 6, braucht A im interface)'#10'Graph zeigen (Unit-Beziehungen)'#10,
-    FixTitles(Found));
-  Assert.IsTrue(Found.Fixes[0].HasJump);
-  Assert.AreEqual(5, Found.Fixes[0].JumpTo.Line);
-  Assert.AreEqual(13, Found.Fixes[0].JumpTo.Character);
-  Assert.IsTrue(Found.Fixes[1].ShowsUnitRelations);
-  Assert.IsTrue(Pos('Im interface-Teil gebraucht: TA (Zeile 6)', Found.Details) > 0, Found.Details);
+    FixTitles(mFound));
+  Assert.IsTrue(mFound.Fixes[0].HasJump);
+  Assert.AreEqual(5, mFound.Fixes[0].JumpTo.Line);
+  Assert.AreEqual(13, mFound.Fixes[0].JumpTo.Character);
+  Assert.IsTrue(mFound.Fixes[1].ShowsUnitRelations);
+  Assert.IsTrue(Pos('Im interface-Teil gebraucht: TA (Zeile 6)', mFound.Details) > 0, mFound.Details);
 end;
 
 procedure TDeadCodeTests.ParserReadsUsesCycleSettings;
 var
-  Settings: TServerSettings;
-  Issues: TArray<TConfigurationIssue>;
+  mSettings: TServerSettings;
+  mIssues: TArray<TConfigurationIssue>;
 begin
-  Settings := TServerSettings.Default;
-  Assert.IsTrue(Settings.DiagnosticsUsesCycleLive);
-  Assert.IsFalse(Settings.DiagnosticsUsesCycleImplementation);
-  Settings := TConfigurationParser.Parse('{"diagnostics": {"usesCycleLive": false, "usesCycleImplementation": true}}',
-    Issues);
-  Assert.AreEqual(0, Integer(Length(Issues)));
-  Assert.IsFalse(Settings.DiagnosticsUsesCycleLive);
-  Assert.IsTrue(Settings.DiagnosticsUsesCycleImplementation);
-  Settings := TConfigurationParser.Parse('{"diagnostics": {"usesCycleLive": "nein"}}', Issues);
-  Assert.AreEqual(1, Integer(Length(Issues)));
-  Assert.IsTrue(Settings.DiagnosticsUsesCycleLive);
-  Issues := nil;
+  mSettings := TServerSettings.Default;
+  Assert.IsTrue(mSettings.DiagnosticsUsesCycleLive);
+  Assert.IsFalse(mSettings.DiagnosticsUsesCycleImplementation);
+  mSettings := TConfigurationParser.Parse('{"diagnostics": {"usesCycleLive": false, "usesCycleImplementation": true}}',
+    mIssues);
+  Assert.AreEqual(0, Integer(Length(mIssues)));
+  Assert.IsFalse(mSettings.DiagnosticsUsesCycleLive);
+  Assert.IsTrue(mSettings.DiagnosticsUsesCycleImplementation);
+  mSettings := TConfigurationParser.Parse('{"diagnostics": {"usesCycleLive": "nein"}}', mIssues);
+  Assert.AreEqual(1, Integer(Length(mIssues)));
+  Assert.IsTrue(mSettings.DiagnosticsUsesCycleLive);
+  mIssues := nil;
 end;
 
 procedure TDeadCodeTests.LiveCycleCheckOf2000Units;
 const
-  UnitCount = 2000;
+  cUnitCount = 2000;
 var
-  Units: TArray<TArray<string>>;
-  Index: Integer;
-  Data: TScenario;
-  Watch: TStopwatch;
+  mUnits: TArray<TArray<string>>;
+  mIndex: Integer;
+  mData: TScenario;
+  mWatch: TStopwatch;
 begin
   // Projektgruppe wie #501: Kette E1 -> … -> E2000 über interface, E2000 schließt den Kreis; dazu je Unit
   // ein Eintrag im implementation-uses, der keinen Zyklus bildet.
-  Units := nil;
-  for Index := 1 to UnitCount do
+  mUnits := nil;
+  for mIndex := 1 to cUnitCount do
   begin
-    Units := Units + [TArray<string>.Create(Format('E%d', [Index]), Format('E%d', [Index mod UnitCount + 1]),
-      Format('E%d', [(Index + 1) mod UnitCount + 1]))];
+    mUnits := mUnits + [TArray<string>.Create(Format('E%d', [mIndex]), Format('E%d', [mIndex mod cUnitCount + 1]),
+      Format('E%d', [(mIndex + 1) mod cUnitCount + 1]))];
   end;
-  Data := Group(Units);
-  Data.Live := True;
+  mData := Group(mUnits);
+  mData.Live := True;
   // Beim Tippen steht der Graph schon (inkrementell, #268): gemessen wird die zweite Prüfung.
-  Data.Repeats := 1;
-  Watch := TStopwatch.StartNew;
-  Assert.AreEqual(1, Integer(Length(Run(Data, FileOf('E1')))));
-  Watch.Stop;
+  mData.Repeats := 1;
+  mWatch := TStopwatch.StartNew;
+  Assert.AreEqual(1, Integer(Length(Run(mData, FileOf('E1')))));
+  mWatch.Stop;
   System.Writeln(Format('uses-cycle live: Prüfung bei %d Units in %d ms (mit Aufbau von Index und Graph %d ms)',
-    [UnitCount, LastCheckMs, Watch.ElapsedMilliseconds]));
+    [cUnitCount, LastCheckMs, mWatch.ElapsedMilliseconds]));
   Assert.IsTrue(LastCheckMs < 200, 'zu langsam für die Prüfung beim Tippen');
 end;
 
 procedure TDeadCodeTests.ParserReadsDeadCode;
 var
-  Issues: TArray<TConfigurationIssue>;
-  Settings: TServerSettings;
+  mIssues: TArray<TConfigurationIssue>;
+  mSettings: TServerSettings;
 begin
-  Settings := TConfigurationParser.Parse('{"deadCode": {"keepAttributes": ["JsonName"], ' +
-    '"keepPatterns": ["*Handler", "T*Plugin"]}}', Issues);
-  Assert.AreEqual(0, Integer(Length(Issues)));
-  Assert.AreEqual('JsonName', string.Join(',', Settings.DeadCodeKeepAttributes));
-  Assert.AreEqual('*Handler,T*Plugin', string.Join(',', Settings.DeadCodeKeepPatterns));
-  Settings := TServerSettings.Default;
-  Assert.AreEqual(0, Integer(Length(Settings.DeadCodeKeepAttributes)));
-  TConfigurationParser.Parse('{"deadCode": {"keepAttributes": "JsonName", "keepPatterns": [1], "x": 1}}', Issues);
-  Assert.AreEqual(3, Integer(Length(Issues)));
+  mSettings := TConfigurationParser.Parse('{"deadCode": {"keepAttributes": ["JsonName"], ' +
+    '"keepPatterns": ["*Handler", "T*Plugin"]}}', mIssues);
+  Assert.AreEqual(0, Integer(Length(mIssues)));
+  Assert.AreEqual('JsonName', string.Join(',', mSettings.DeadCodeKeepAttributes));
+  Assert.AreEqual('*Handler,T*Plugin', string.Join(',', mSettings.DeadCodeKeepPatterns));
+  mSettings := TServerSettings.Default;
+  Assert.AreEqual(0, Integer(Length(mSettings.DeadCodeKeepAttributes)));
+  TConfigurationParser.Parse('{"deadCode": {"keepAttributes": "JsonName", "keepPatterns": [1], "x": 1}}', mIssues);
+  Assert.AreEqual(3, Integer(Length(mIssues)));
   TConfigurationParser.Parse('{"deadCode": [], "rules": {"uses-cycle": {"implementation": "ja"}, ' +
-    '"unused-unit": {"projectKinds": "package"}}}', Issues);
-  Assert.AreEqual(3, Integer(Length(Issues)));
-  Issues := nil;
+    '"unused-unit": {"projectKinds": "package"}}}', mIssues);
+  Assert.AreEqual(3, Integer(Length(mIssues)));
+  mIssues := nil;
 end;
 
 function ReferenceFolder: string;
 var
-  Directory: string;
+  mDirectory: string;
 begin
-  Directory := ExtractFileDir(ParamStr(0));
-  while Directory <> '' do
+  mDirectory := ExtractFileDir(ParamStr(0));
+  while mDirectory <> '' do
   begin
-    Result := TPath.Combine(Directory, TPath.Combine('Tests', 'Referenzprojekt'));
+    Result := TPath.Combine(mDirectory, TPath.Combine('Tests', 'Referenzprojekt'));
     if TDirectory.Exists(Result) then
     begin
       Exit;
     end;
-    if ExtractFileDir(Directory) = Directory then
+    if ExtractFileDir(mDirectory) = mDirectory then
     begin
       Break;
     end;
-    Directory := ExtractFileDir(Directory);
+    mDirectory := ExtractFileDir(mDirectory);
   end;
   Result := '';
 end;
 
 function ReadSource(const AFileName: string): string;
 var
-  Format: TFileFormat;
+  mFormat: TFileFormat;
 begin
-  Result := TFileEncoding.Decode(TFile.ReadAllBytes(AFileName), Format);
+  Result := TFileEncoding.Decode(TFile.ReadAllBytes(AFileName), mFormat);
 end;
 
 /// <summary>RefApp.dpr und die Units aus ihren in-Klauseln, alle in AData abgelegt.</summary>
@@ -947,61 +947,61 @@ end;
 
 procedure TDeadCodeTests.ReferenceProjectMatchesMarkers;
 const
-  Rules: array[0..1] of string = (cUsesCycleRuleId, cUnusedUnitRuleId);
+  cRules: array[0..1] of string = (cUsesCycleRuleId, cUnusedUnitRuleId);
 var
-  Folder, Source, Expected, Actual, Paths: string;
-  Data: TScenario;
-  Sources: TArray<string>;
+  mFolder, mSource, mExpected, mActual, mPaths: string;
+  mData: TScenario;
+  mSources: TArray<string>;
 begin
-  Folder := ReferenceFolder;
-  if Folder = '' then
+  mFolder := ReferenceFolder;
+  if mFolder = '' then
   begin
     Assert.Pass('Referenzprojekt nicht gefunden; Prüfung übersprungen');
   end;
   // Units von RefApp aus den in-Klauseln der .dpr.
-  Data := Default(TScenario);
-  Sources := RefAppSources(Folder, Data);
-  Data.Projects := [Project(TPath.Combine(Folder, 'RefApp.dproj'), TRuleProjectKind.Application, Sources)];
+  mData := Default(TScenario);
+  mSources := RefAppSources(mFolder, mData);
+  mData.Projects := [Project(TPath.Combine(mFolder, 'RefApp.dproj'), TRuleProjectKind.Application, mSources)];
   // Erwartet: genau die markierten Zeilen je Regel, sonst nichts.
-  Expected := '';
-  Actual := '';
-  Paths := '';
-  for Source in Sources do
+  mExpected := '';
+  mActual := '';
+  mPaths := '';
+  for mSource in mSources do
   begin
-    Expected := Expected + ExpectedMarkers(Source, Data.Text(Source), Rules);
-    if SameText(ExtractFileExt(Source), '.pas') then
+    mExpected := mExpected + ExpectedMarkers(mSource, mData.Text(mSource), cRules);
+    if SameText(ExtractFileExt(mSource), '.pas') then
     begin
-      Actual := Actual + ActualFindings(Data, Source, Rules, Paths);
+      mActual := mActual + ActualFindings(mData, mSource, cRules, mPaths);
     end;
   end;
-  Assert.AreEqual(Expected, Actual);
-  Assert.IsTrue(Pos('uses-cycle', Expected) > 0, 'Kein Zyklus im Referenzprojekt markiert');
+  Assert.AreEqual(mExpected, mActual);
+  Assert.IsTrue(Pos('uses-cycle', mExpected) > 0, 'Kein Zyklus im Referenzprojekt markiert');
   // Vollständiger Pfad über implementation-uses.
   Assert.IsTrue(Pos('Zirkuläre Unit-Referenz: Ref.Formulare.Detail → Ref.Formulare.Haupt → Ref.Formulare.Detail ' +
-    '(über implementation-uses)', Paths) > 0, Paths);
+    '(über implementation-uses)', mPaths) > 0, mPaths);
 end;
 
 procedure TDeadCodeTests.CycleCheckOfLargeGroup;
 const
-  UnitCount = 400;
+  cUnitCount = 400;
 var
-  Units: TArray<TArray<string>>;
-  Index: Integer;
-  Data: TScenario;
-  Watch: TStopwatch;
+  mUnits: TArray<TArray<string>>;
+  mIndex: Integer;
+  mData: TScenario;
+  mWatch: TStopwatch;
 begin
   // Kette E1 -> E2 -> … -> E400 über implementation, E400 schließt den Kreis.
-  Units := nil;
-  for Index := 1 to UnitCount do
+  mUnits := nil;
+  for mIndex := 1 to cUnitCount do
   begin
-    Units := Units + [TArray<string>.Create(Format('E%d', [Index]), '', Format('E%d', [Index mod UnitCount + 1]))];
+    mUnits := mUnits + [TArray<string>.Create(Format('E%d', [mIndex]), '', Format('E%d', [mIndex mod cUnitCount + 1]))];
   end;
-  Data := Group(Units);
-  Watch := TStopwatch.StartNew;
-  Assert.AreEqual(1, Integer(Length(Run(Data, FileOf('E1')))));
-  Watch.Stop;
-  System.Writeln(Format('uses-cycle: Prüfung bei %d Units in %d ms', [UnitCount, Watch.ElapsedMilliseconds]));
-  Assert.IsTrue(Watch.ElapsedMilliseconds < 5000, 'zu langsam');
+  mData := Group(mUnits);
+  mWatch := TStopwatch.StartNew;
+  Assert.AreEqual(1, Integer(Length(Run(mData, FileOf('E1')))));
+  mWatch.Stop;
+  System.Writeln(Format('uses-cycle: Prüfung bei %d Units in %d ms', [cUnitCount, mWatch.ElapsedMilliseconds]));
+  Assert.IsTrue(mWatch.ElapsedMilliseconds < 5000, 'zu langsam');
 end;
 
 initialization

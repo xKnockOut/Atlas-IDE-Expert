@@ -49,16 +49,16 @@ end;
 
 procedure TFormFilesTests.FormFilesFromDirectives;
 var
-  Files: TArray<string>;
+  mFiles: TArray<string>;
 begin
-  Files := TFormFiles.FormFiles('C:\P\Unit1.pas',
+  mFiles := TFormFiles.FormFiles('C:\P\Unit1.pas',
     'implementation'#10'{$R *.fmx}'#10'{$R *.Windows.fmx MSWINDOWS}'#10'{$R ''Extra.fmx''}'#10'{$R+}'#10 +
     '{$R *.res}');
-  Assert.AreEqual(4, Integer(Length(Files)));
-  Assert.AreEqual('C:\P\Unit1.dfm', Files[0]);
-  Assert.AreEqual('C:\P\Unit1.fmx', Files[1]);
-  Assert.AreEqual('C:\P\Unit1.Windows.fmx', Files[2]);
-  Assert.AreEqual('C:\P\Extra.fmx', Files[3]);
+  Assert.AreEqual(4, Integer(Length(mFiles)));
+  Assert.AreEqual('C:\P\Unit1.dfm', mFiles[0]);
+  Assert.AreEqual('C:\P\Unit1.fmx', mFiles[1]);
+  Assert.AreEqual('C:\P\Unit1.Windows.fmx', mFiles[2]);
+  Assert.AreEqual('C:\P\Extra.fmx', mFiles[3]);
   Assert.AreEqual(2, Integer(Length(TFormFiles.FormFiles('C:\P\Unit1.pas', ''))));
 end;
 

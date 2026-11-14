@@ -40,7 +40,7 @@ uses
   Atlas.Common.Rules.Builtin.PaletteIcons;
 
 const
-  RegisterUnit =
+  cRegisterUnit =
     'unit Comps;'#10'interface'#10'procedure Register;'#10'implementation'#10'%s'#10 +
     'procedure Register;'#10'begin'#10'  RegisterComponents(''Eigene'', [TKnopf, Comps.TLeiste]);'#10'end;'#10'end.';
 
@@ -58,100 +58,100 @@ end;
 /// <summary>Ressourcendatei mit leerem Kopfeintrag und je einer Bitmap (2 Byte Daten) je Name.</summary>
 function ResFile(const ANames: array of string): TBytes;
 var
-  Name: string;
-  Header: TBytes;
-  Index: Integer;
+  mName: string;
+  mHeader: TBytes;
+  mIndex: Integer;
 begin
   Result := nil;
   AddCardinal(Result, 0);
   AddCardinal(Result, 32);
-  for Index := 1 to 6 do
+  for mIndex := 1 to 6 do
   begin
-    AddCardinal(Result, $0000FFFF * Ord(Index <= 2));
+    AddCardinal(Result, $0000FFFF * Ord(mIndex <= 2));
   end;
-  for Name in ANames do
+  for mName in ANames do
   begin
-    Header := nil;
-    AddWord(Header, $FFFF);
-    AddWord(Header, 2);
-    for Index := 1 to Length(Name) do
+    mHeader := nil;
+    AddWord(mHeader, $FFFF);
+    AddWord(mHeader, 2);
+    for mIndex := 1 to Length(mName) do
     begin
-      AddWord(Header, Ord(Name[Index]));
+      AddWord(mHeader, Ord(mName[mIndex]));
     end;
-    AddWord(Header, 0);
-    while (Length(Header) + 8) mod 4 <> 0 do
+    AddWord(mHeader, 0);
+    while (Length(mHeader) + 8) mod 4 <> 0 do
     begin
-      AddWord(Header, 0);
+      AddWord(mHeader, 0);
     end;
-    for Index := 1 to 4 do
+    for mIndex := 1 to 4 do
     begin
-      AddCardinal(Header, 0);
+      AddCardinal(mHeader, 0);
     end;
     AddCardinal(Result, 2);
-    AddCardinal(Result, Length(Header) + 8);
-    Result := Result + Header + [1, 2, 0, 0];
+    AddCardinal(Result, Length(mHeader) + 8);
+    Result := Result + mHeader + [1, 2, 0, 0];
   end;
 end;
 
 function Run(const ASource, AVersion: string; const AFiles: array of string): TArray<TRuleFinding>;
 var
-  Context: TRuleContext;
-  Tree: TSyntaxTree;
-  Data: TBytes;
+  mContext: TRuleContext;
+  mTree: TSyntaxTree;
+  mData: TBytes;
 begin
-  Data := ResFile(AFiles);
-  Tree := TPascalParser.Parse(ASource);
+  mData := ResFile(AFiles);
+  mTree := TPascalParser.Parse(ASource);
   try
-    Context := Default(TRuleContext);
-    Context.UnitName := 'Comps';
-    Context.Text := ASource;
-    Context.Tree := Tree;
-    Context.DelphiVersion := AVersion;
-    Context.ReadFile :=
+    mContext := Default(TRuleContext);
+    mContext.UnitName := 'Comps';
+    mContext.Text := ASource;
+    mContext.Tree := mTree;
+    mContext.DelphiVersion := AVersion;
+    mContext.ReadFile :=
       function(const AName: string; out AData: TBytes): Boolean
       begin
         Result := SameText(AName, 'Comps.dcr');
-        AData := Data;
+        AData := mData;
       end;
-    Result := TRuleEngine.Run([TPaletteIconRule.Create], TServerSettings.Default, Context);
+    Result := TRuleEngine.Run([TPaletteIconRule.Create], TServerSettings.Default, mContext);
   finally
-    Tree.Free;
+    mTree.Free;
   end;
 end;
 
 function Source(const ADirective: string): string;
 begin
-  Result := StringReplace(RegisterUnit, '%s', ADirective, []);
+  Result := StringReplace(cRegisterUnit, '%s', ADirective, []);
 end;
 
 procedure TPaletteIconTests.ReadsResourceNames;
 var
-  Names: TArray<string>;
+  mNames: TArray<string>;
 begin
-  Names := TResourceNames.Read(ResFile(['TKnopf', 'tleiste16']));
-  Assert.AreEqual(2, Integer(Length(Names)));
-  Assert.AreEqual('TKNOPF', Names[0]);
-  Assert.AreEqual('TLEISTE16', Names[1]);
+  mNames := TResourceNames.Read(ResFile(['TKnopf', 'tleiste16']));
+  Assert.AreEqual(2, Integer(Length(mNames)));
+  Assert.AreEqual('TKNOPF', mNames[0]);
+  Assert.AreEqual('TLEISTE16', mNames[1]);
 end;
 
 procedure TPaletteIconTests.BrokenDataKeepsReadNames;
 var
-  Data: TBytes;
+  mData: TBytes;
 begin
-  Data := ResFile(['TKNOPF', 'TLEISTE']);
-  SetLength(Data, Length(Data) - 3);
-  Assert.AreEqual(1, Integer(Length(TResourceNames.Read(Data))));
+  mData := ResFile(['TKNOPF', 'TLEISTE']);
+  SetLength(mData, Length(mData) - 3);
+  Assert.AreEqual(1, Integer(Length(TResourceNames.Read(mData))));
   Assert.AreEqual(0, Integer(Length(TResourceNames.Read(TBytes.Create(1, 2, 3)))));
 end;
 
 procedure TPaletteIconTests.MissingIconReported;
 var
-  Findings: TArray<TRuleFinding>;
+  mFindings: TArray<TRuleFinding>;
 begin
-  Findings := Run(Source('{$R *.dcr}'), '', ['TKNOPF']);
-  Assert.AreEqual(1, Integer(Length(Findings)));
-  Assert.IsTrue(Pos('TLEISTE', Findings[0].Message) > 0, Findings[0].Message);
-  Assert.AreEqual(7, Findings[0].Range.StartPos.Line);
+  mFindings := Run(Source('{$R *.dcr}'), '', ['TKNOPF']);
+  Assert.AreEqual(1, Integer(Length(mFindings)));
+  Assert.IsTrue(Pos('TLEISTE', mFindings[0].Message) > 0, mFindings[0].Message);
+  Assert.AreEqual(7, mFindings[0].Range.StartPos.Line);
 end;
 
 procedure TPaletteIconTests.IconPresentSilent;
@@ -169,11 +169,11 @@ end;
 
 procedure TPaletteIconTests.MissingSizesFromDelphi11;
 var
-  Findings: TArray<TRuleFinding>;
+  mFindings: TArray<TRuleFinding>;
 begin
-  Findings := Run(Source('{$R *.dcr}'), '22.0', ['TKNOPF', 'TKNOPF16', 'TKNOPF32', 'TLEISTE']);
-  Assert.AreEqual(1, Integer(Length(Findings)));
-  Assert.IsTrue(Pos('TLEISTE fehlt in 16, 32 px', Findings[0].Message) > 0, Findings[0].Message);
+  mFindings := Run(Source('{$R *.dcr}'), '22.0', ['TKNOPF', 'TKNOPF16', 'TKNOPF32', 'TLEISTE']);
+  Assert.AreEqual(1, Integer(Length(mFindings)));
+  Assert.IsTrue(Pos('TLEISTE fehlt in 16, 32 px', mFindings[0].Message) > 0, mFindings[0].Message);
 end;
 
 procedure TPaletteIconTests.AllSizesSilent;

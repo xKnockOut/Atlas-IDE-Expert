@@ -118,111 +118,111 @@ end;
 
 procedure TAtlasHideUiTests.MenuOfBlockEndLabelLikeMockup;
 var
-  Menu: TAtlasHideMenu;
+  mMenu: TAtlasHideMenu;
 begin
-  Menu := TAtlasHideMenu.Create(nil);
+  mMenu := TAtlasHideMenu.Create(nil);
   try
-    Menu.Build([Target(TAtlasDrawnElement.BlockEndLabels)]);
-    Assert.AreEqual(5, Integer(Menu.Menu.Items.Count));
-    Assert.AreEqual('Nur hier ausblenden', Menu.Menu.Items[0].Caption);
-    Assert.AreEqual('In dieser Datei ausblenden', Menu.Menu.Items[1].Caption);
-    Assert.AreEqual('Blockende-Beschriftungen überall ausblenden', Menu.Menu.Items[2].Caption);
-    Assert.IsTrue(Menu.Menu.Items[3].IsLine, 'Trennlinie');
-    Assert.AreEqual('Einstellungen dazu …', Menu.Menu.Items[4].Caption);
-    Assert.AreEqual(4, Integer(Length(Menu.Choices)));
-    Assert.IsTrue(Menu.Choices[3].Settings);
+    mMenu.Build([Target(TAtlasDrawnElement.BlockEndLabels)]);
+    Assert.AreEqual(5, Integer(mMenu.Menu.Items.Count));
+    Assert.AreEqual('Nur hier ausblenden', mMenu.Menu.Items[0].Caption);
+    Assert.AreEqual('In dieser Datei ausblenden', mMenu.Menu.Items[1].Caption);
+    Assert.AreEqual('Blockende-Beschriftungen überall ausblenden', mMenu.Menu.Items[2].Caption);
+    Assert.IsTrue(mMenu.Menu.Items[3].IsLine, 'Trennlinie');
+    Assert.AreEqual('Einstellungen dazu …', mMenu.Menu.Items[4].Caption);
+    Assert.AreEqual(4, Integer(Length(mMenu.Choices)));
+    Assert.IsTrue(mMenu.Choices[3].Settings);
   finally
-    Menu.Free;
+    mMenu.Free;
   end;
 end;
 
 procedure TAtlasHideUiTests.MenuOnlyOffersScopesOfElement;
 var
-  Menu: TAtlasHideMenu;
+  mMenu: TAtlasHideMenu;
 begin
-  Menu := TAtlasHideMenu.Create(nil);
+  mMenu := TAtlasHideMenu.Create(nil);
   try
     // Klammerfarben gelten je Datei: kein „Nur hier“.
-    Menu.Build([Target(TAtlasDrawnElement.PairColors)]);
-    Assert.AreEqual(4, Integer(Menu.Menu.Items.Count));
-    Assert.AreEqual('In dieser Datei ausblenden', Menu.Menu.Items[0].Caption);
-    Assert.AreEqual('Klammerfarben überall ausblenden', Menu.Menu.Items[1].Caption);
+    mMenu.Build([Target(TAtlasDrawnElement.PairColors)]);
+    Assert.AreEqual(4, Integer(mMenu.Menu.Items.Count));
+    Assert.AreEqual('In dieser Datei ausblenden', mMenu.Menu.Items[0].Caption);
+    Assert.AreEqual('Klammerfarben überall ausblenden', mMenu.Menu.Items[1].Caption);
     // Die Vorschau der Vervollständigung nur überall.
-    Menu.Build([Target(TAtlasDrawnElement.CompletionPreview)]);
-    Assert.AreEqual(3, Integer(Menu.Menu.Items.Count));
-    Assert.AreEqual(2, Integer(Length(Menu.Choices)));
-    Assert.AreEqual<TAtlasHideScope>(TAtlasHideScope.Everywhere, Menu.Choices[0].Scope);
+    mMenu.Build([Target(TAtlasDrawnElement.CompletionPreview)]);
+    Assert.AreEqual(3, Integer(mMenu.Menu.Items.Count));
+    Assert.AreEqual(2, Integer(Length(mMenu.Choices)));
+    Assert.AreEqual<TAtlasHideScope>(TAtlasHideScope.Everywhere, mMenu.Choices[0].Scope);
   finally
-    Menu.Free;
+    mMenu.Free;
   end;
 end;
 
 procedure TAtlasHideUiTests.SeveralElementsGetSubmenus;
 var
-  Menu: TAtlasHideMenu;
+  mMenu: TAtlasHideMenu;
 begin
-  Menu := TAtlasHideMenu.Create(nil);
+  mMenu := TAtlasHideMenu.Create(nil);
   try
-    Menu.Build([TAtlasHideTarget.Finding('C:\Projekt\Kunde.pas', 3, 'unused-variable', '  X := 1;'),
+    mMenu.Build([TAtlasHideTarget.Finding('C:\Projekt\Kunde.pas', 3, 'unused-variable', '  X := 1;'),
       Target(TAtlasDrawnElement.InlayHints), Target(TAtlasDrawnElement.InlayHints)]);
-    Assert.AreEqual(2, Integer(Menu.Menu.Items.Count), 'gleiches Element nur einmal');
-    Assert.AreEqual('Befund-Unterstreichung', Menu.Menu.Items[0].Caption);
-    Assert.AreEqual('Inlay-Hint', Menu.Menu.Items[1].Caption);
-    Assert.AreEqual(5, Integer(Menu.Menu.Items[0].Count));
-    Assert.AreEqual('Befund-Unterstreichungen überall ausblenden', Menu.Menu.Items[0].Items[2].Caption);
-    Assert.AreEqual(8, Integer(Length(Menu.Choices)));
-    Assert.AreEqual('unused-variable', Menu.Choices[0].Target.RuleId);
+    Assert.AreEqual(2, Integer(mMenu.Menu.Items.Count), 'gleiches Element nur einmal');
+    Assert.AreEqual('Befund-Unterstreichung', mMenu.Menu.Items[0].Caption);
+    Assert.AreEqual('Inlay-Hint', mMenu.Menu.Items[1].Caption);
+    Assert.AreEqual(5, Integer(mMenu.Menu.Items[0].Count));
+    Assert.AreEqual('Befund-Unterstreichungen überall ausblenden', mMenu.Menu.Items[0].Items[2].Caption);
+    Assert.AreEqual(8, Integer(Length(mMenu.Choices)));
+    Assert.AreEqual('unused-variable', mMenu.Choices[0].Target.RuleId);
   finally
-    Menu.Free;
+    mMenu.Free;
   end;
 end;
 
 procedure TAtlasHideUiTests.ChoiceReachesOnChoose;
 var
-  Menu: TAtlasHideMenu;
-  Chosen: TAtlasHideChoice;
-  Calls: Integer;
+  mMenu: TAtlasHideMenu;
+  mChosen: TAtlasHideChoice;
+  mCalls: Integer;
 begin
-  Calls := 0;
-  Chosen := Default(TAtlasHideChoice);
-  Menu := TAtlasHideMenu.Create(nil);
+  mCalls := 0;
+  mChosen := Default(TAtlasHideChoice);
+  mMenu := TAtlasHideMenu.Create(nil);
   try
-    Menu.OnChoose :=
+    mMenu.OnChoose :=
       procedure(AChoice: TAtlasHideChoice)
       begin
-        Inc(Calls);
-        Chosen := AChoice;
+        Inc(mCalls);
+        mChosen := AChoice;
       end;
-    Menu.Build([Target(TAtlasDrawnElement.BlockEndLabels)]);
+    mMenu.Build([Target(TAtlasDrawnElement.BlockEndLabels)]);
     // Wie ein Klick auf „Blockende-Beschriftungen überall ausblenden“.
-    Menu.Menu.Items[2].Click;
-    Assert.AreEqual(1, Calls);
-    Assert.AreEqual<TAtlasHideScope>(TAtlasHideScope.Everywhere, Chosen.Scope);
-    Assert.IsFalse(Chosen.Settings);
-    Assert.AreEqual('BlockEndLabels', Chosen.Target.SettingKey);
-    Menu.Menu.Items[4].Click;
-    Assert.AreEqual(2, Calls);
-    Assert.IsTrue(Chosen.Settings, '„Einstellungen dazu …“');
-    Menu.Choose(99);
-    Assert.AreEqual(2, Calls, 'unbekannter Eintrag: nichts');
+    mMenu.Menu.Items[2].Click;
+    Assert.AreEqual(1, mCalls);
+    Assert.AreEqual<TAtlasHideScope>(TAtlasHideScope.Everywhere, mChosen.Scope);
+    Assert.IsFalse(mChosen.Settings);
+    Assert.AreEqual('BlockEndLabels', mChosen.Target.SettingKey);
+    mMenu.Menu.Items[4].Click;
+    Assert.AreEqual(2, mCalls);
+    Assert.IsTrue(mChosen.Settings, '„Einstellungen dazu …“');
+    mMenu.Choose(99);
+    Assert.AreEqual(2, mCalls, 'unbekannter Eintrag: nichts');
   finally
-    Menu.Free;
-    Chosen := Default(TAtlasHideChoice);
+    mMenu.Free;
+    mChosen := Default(TAtlasHideChoice);
   end;
 end;
 
 procedure TAtlasHideUiTests.EveryElementHasNames;
 var
-  Element: TAtlasDrawnElement;
-  Scope: TAtlasHideScope;
+  mElement: TAtlasDrawnElement;
+  mScope: TAtlasHideScope;
 begin
-  for Element := Low(TAtlasDrawnElement) to High(TAtlasDrawnElement) do
+  for mElement := Low(TAtlasDrawnElement) to High(TAtlasDrawnElement) do
   begin
-    Assert.AreNotEqual('', TAtlasHideMenu.ElementName(Element, False), 'Einzahl ' + IntToStr(Ord(Element)));
-    Assert.AreNotEqual('', TAtlasHideMenu.ElementName(Element, True), 'Mehrzahl ' + IntToStr(Ord(Element)));
-    for Scope := Low(TAtlasHideScope) to High(TAtlasHideScope) do
+    Assert.AreNotEqual('', TAtlasHideMenu.ElementName(mElement, False), 'Einzahl ' + IntToStr(Ord(mElement)));
+    Assert.AreNotEqual('', TAtlasHideMenu.ElementName(mElement, True), 'Mehrzahl ' + IntToStr(Ord(mElement)));
+    for mScope := Low(TAtlasHideScope) to High(TAtlasHideScope) do
     begin
-      Assert.AreNotEqual('', TAtlasHideMenu.ScopeCaption(Element, Scope));
+      Assert.AreNotEqual('', TAtlasHideMenu.ScopeCaption(mElement, mScope));
     end;
   end;
   TAtlasStrings.Language := TAtlasLanguage.English;
@@ -232,51 +232,51 @@ end;
 
 procedure TAtlasHideUiTests.NoticeSitsBelowElementInsideWorkArea;
 var
-  Bounds: TRect;
+  mBounds: TRect;
 begin
-  Bounds := TAtlasHideNoticeWindow.PlaceBelow(Point(100, 200), 180, 40, 4, Rect(0, 0, 1000, 800));
-  Assert.AreEqual(100, Bounds.Left);
-  Assert.AreEqual(204, Bounds.Top);
-  Assert.AreEqual(180, Bounds.Width);
+  mBounds := TAtlasHideNoticeWindow.PlaceBelow(Point(100, 200), 180, 40, 4, Rect(0, 0, 1000, 800));
+  Assert.AreEqual(100, mBounds.Left);
+  Assert.AreEqual(204, mBounds.Top);
+  Assert.AreEqual(180, mBounds.Width);
   // Unten kein Platz: darüber; rechts kein Platz: nach links.
-  Bounds := TAtlasHideNoticeWindow.PlaceBelow(Point(950, 790), 180, 40, 4, Rect(0, 0, 1000, 800));
-  Assert.AreEqual(746, Bounds.Top);
-  Assert.AreEqual(820, Bounds.Left);
+  mBounds := TAtlasHideNoticeWindow.PlaceBelow(Point(950, 790), 180, 40, 4, Rect(0, 0, 1000, 800));
+  Assert.AreEqual(746, mBounds.Top);
+  Assert.AreEqual(820, mBounds.Left);
 end;
 
 procedure TAtlasHideUiTests.NoticeUndoRaisesEventAndHides;
 var
-  Window: TAtlasHideNoticeWindow;
-  Counter: TUndoCounter;
+  mWindow: TAtlasHideNoticeWindow;
+  mCounter: TUndoCounter;
 begin
-  Counter := TUndoCounter.Create;
-  Window := TAtlasHideNoticeWindow.Create(nil);
+  mCounter := TUndoCounter.Create;
+  mWindow := TAtlasHideNoticeWindow.Create(nil);
   try
-    Window.Colors := TAtlasColors.Light;
-    Window.SetScaling(96, 1, 'Segoe UI', 9);
-    Window.OnUndo := Counter.UndoClick;
-    Window.ShowNotice(TAtlasEditorStrings.Text(TAtlasEditorTextId.HideNotice),
+    mWindow.Colors := TAtlasColors.Light;
+    mWindow.SetScaling(96, 1, 'Segoe UI', 9);
+    mWindow.OnUndo := mCounter.UndoClick;
+    mWindow.ShowNotice(TAtlasEditorStrings.Text(TAtlasEditorTextId.HideNotice),
       'Einstellung „Blockende-Beschriftungen“ ausgeschaltet.', True, Point(200, 200));
     try
-      Assert.IsTrue(Window.IsShown);
-      Assert.IsTrue(Window.Timer.Enabled, 'verschwindet von selbst');
-      Assert.AreEqual(TAtlasHideNoticeWindow.cVisibleMs, Integer(Window.Timer.Interval));
-      Assert.IsFalse(Window.UndoRect.IsEmpty, '„Rückgängig“ ist da');
-      Assert.AreEqual('Ausgeblendet', Window.Title);
-      Window.ClickUndo;
-      Assert.AreEqual(1, Integer(Counter.Count));
-      Assert.IsFalse(Window.IsShown, 'Klick blendet aus');
+      Assert.IsTrue(mWindow.IsShown);
+      Assert.IsTrue(mWindow.Timer.Enabled, 'verschwindet von selbst');
+      Assert.AreEqual(TAtlasHideNoticeWindow.cVisibleMs, Integer(mWindow.Timer.Interval));
+      Assert.IsFalse(mWindow.UndoRect.IsEmpty, '„Rückgängig“ ist da');
+      Assert.AreEqual('Ausgeblendet', mWindow.Title);
+      mWindow.ClickUndo;
+      Assert.AreEqual(1, Integer(mCounter.Count));
+      Assert.IsFalse(mWindow.IsShown, 'Klick blendet aus');
       // Ohne Rückgängig (etwa ein abgelehnter Bereich): kein Link, Klick ohne Wirkung.
-      Window.ShowNotice('', TAtlasEditorStrings.Text(TAtlasEditorTextId.HideRefusedAlready), False, Point(200, 200));
-      Assert.IsTrue(Window.UndoRect.IsEmpty);
-      Window.ClickUndo;
-      Assert.AreEqual(1, Integer(Counter.Count));
+      mWindow.ShowNotice('', TAtlasEditorStrings.Text(TAtlasEditorTextId.HideRefusedAlready), False, Point(200, 200));
+      Assert.IsTrue(mWindow.UndoRect.IsEmpty);
+      mWindow.ClickUndo;
+      Assert.AreEqual(1, Integer(mCounter.Count));
     finally
-      Window.Dismiss;
+      mWindow.Dismiss;
     end;
   finally
-    Window.Free;
-    Counter.Free;
+    mWindow.Free;
+    mCounter.Free;
   end;
 end;
 
@@ -284,47 +284,47 @@ procedure TAtlasHideUiTests.PageRevealsEverySettingOfElementsAndWelcome;
 var
   mWelcome: IAtlasRegistration;
   mModules: TArray<IAtlasRegistration>;
-  Host: TForm;
-  Page: TAtlasSettingsPage;
-  Element: TAtlasDrawnElement;
-  Section: string;
-  Key: string;
-  Control: TControl;
-  Parent: TWinControl;
+  mHost: TForm;
+  mPage: TAtlasSettingsPage;
+  mElement: TAtlasDrawnElement;
+  mSection: string;
+  mKey: string;
+  mControl: TControl;
+  mParent: TWinControl;
 begin
   mWelcome := ProvideWelcomeSettings;
   // Zeilen der Module (#1456): Code Lens an Testmethoden, Notizen und Lesezeichen.
   mModules := ProvideSections([TAtlasTestsEditorSection, TAtlasBookmarksEditorSection, TAtlasAnalysisEditorSection]);
-  Host := TForm.CreateNew(nil);
+  mHost := TForm.CreateNew(nil);
   try
-    Page := TAtlasSettingsPage.Create(Host);
-    Page.Parent := Host;
-    Page.HandleNeeded;
-    for Element := Low(TAtlasDrawnElement) to High(TAtlasDrawnElement) do
+    mPage := TAtlasSettingsPage.Create(mHost);
+    mPage.Parent := mHost;
+    mPage.HandleNeeded;
+    for mElement := Low(TAtlasDrawnElement) to High(TAtlasDrawnElement) do
     begin
-      Key := TAtlasDrawnElements.SettingKey(Element);
-      Assert.IsNotNull(Page.ControlOf(Key), 'Zeile für ' + Key);
+      mKey := TAtlasDrawnElements.SettingKey(mElement);
+      Assert.IsNotNull(mPage.ControlOf(mKey), 'Zeile für ' + mKey);
     end;
     // Bereiche der Willkommensseite (#767) über ihren Schlüssel.
-    for Section in TAtlasDrawnElements.KnownSections do
+    for mSection in TAtlasDrawnElements.KnownSections do
     begin
-      Assert.IsNotNull(Page.ControlOf(TAtlasDrawnElements.SectionSetting(Section)), 'Zeile für ' + Section);
+      Assert.IsNotNull(mPage.ControlOf(TAtlasDrawnElements.SectionSetting(mSection)), 'Zeile für ' + mSection);
     end;
-    Assert.IsNull(Page.ControlOf('GibtEsNicht'));
-    Assert.IsFalse(Page.Reveal('GibtEsNicht'));
+    Assert.IsNull(mPage.ControlOf('GibtEsNicht'));
+    Assert.IsFalse(mPage.Reveal('GibtEsNicht'));
     // Reveal wählt den Reiter der Zeile und hebt sie hervor.
-    Assert.IsTrue(Page.Reveal('BlockEndLabels'));
-    Control := Page.ControlOf('BlockEndLabels');
-    Parent := Control.Parent;
-    while (Parent <> nil) and not (Parent is TTabSheet) do
+    Assert.IsTrue(mPage.Reveal('BlockEndLabels'));
+    mControl := mPage.ControlOf('BlockEndLabels');
+    mParent := mControl.Parent;
+    while (mParent <> nil) and not (mParent is TTabSheet) do
     begin
-      Parent := Parent.Parent;
+      mParent := mParent.Parent;
     end;
-    Assert.IsNotNull(Parent);
-    Assert.AreSame(Parent, Page.Pages.ActivePage, 'Reiter der Zeile gewählt');
-    Assert.IsTrue(fsBold in TCheckBox(Control).Font.Style, 'Zeile hervorgehoben');
+    Assert.IsNotNull(mParent);
+    Assert.AreSame(mParent, mPage.Pages.ActivePage, 'Reiter der Zeile gewählt');
+    Assert.IsTrue(fsBold in TCheckBox(mControl).Font.Style, 'Zeile hervorgehoben');
   finally
-    Host.Free;
+    mHost.Free;
     mWelcome.Revoke;
     RevokeAll(mModules);
   end;

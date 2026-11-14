@@ -43,113 +43,113 @@ uses
 function Run(const ASource: string; ALine, ACharacter: Integer; const ASettings: THighlightSettings;
   out AFound: Boolean): string;
 var
-  Tree: TSyntaxTree;
-  Position: TTextPosition;
-  Ranges: TArray<TTextRange>;
-  Range: TTextRange;
+  mTree: TSyntaxTree;
+  mPosition: TTextPosition;
+  mRanges: TArray<TTextRange>;
+  mRange: TTextRange;
 begin
   Result := '';
-  Tree := TPascalParser.Parse(ASource);
+  mTree := TPascalParser.Parse(ASource);
   try
-    Position.Line := ALine;
-    Position.Character := ACharacter;
-    AFound := TKeywordHighlights.Find(Tree, Position, ASettings, Ranges);
-    for Range in Ranges do
+    mPosition.Line := ALine;
+    mPosition.Character := ACharacter;
+    AFound := TKeywordHighlights.Find(mTree, mPosition, ASettings, mRanges);
+    for mRange in mRanges do
     begin
       if Result <> '' then
       begin
         Result := Result + ' ';
       end;
-      Result := Result + Format('%d:%d', [Range.StartPos.Line, Range.StartPos.Character]);
+      Result := Result + Format('%d:%d', [mRange.StartPos.Line, mRange.StartPos.Character]);
     end;
   finally
-    Tree.Free;
+    mTree.Free;
   end;
 end;
 
 function Highlight(const ASource: string; ALine, ACharacter: Integer): string;
 var
-  Found: Boolean;
+  mFound: Boolean;
 begin
-  Result := Run(ASource, ALine, ACharacter, THighlightSettings.Default, Found);
-  Assert.IsTrue(Found);
+  Result := Run(ASource, ALine, ACharacter, THighlightSettings.Default, mFound);
+  Assert.IsTrue(mFound);
 end;
 
 const
-  Nested =
+  cNested =
     'unit U;'#10'implementation'#10'procedure P;'#10'begin'#10 +
     '  if A then'#10'  begin'#10'    B;'#10'  end;'#10'end;'#10'end.';
 
 procedure TKeywordHighlightsTests.NestedBeginEndPairsInnermost;
 begin
   // inneres begin (Zeile 5) gehört zum end in Zeile 7
-  Assert.AreEqual('5:2 7:2', Highlight(Nested, 5, 3));
-  Assert.AreEqual('5:2 7:2', Highlight(Nested, 7, 2));
+  Assert.AreEqual('5:2 7:2', Highlight(cNested, 5, 3));
+  Assert.AreEqual('5:2 7:2', Highlight(cNested, 7, 2));
 end;
 
 procedure TKeywordHighlightsTests.TryFinallyEnd;
 const
-  Source =
+  cSource =
     'unit U;'#10'implementation'#10'procedure P;'#10'begin'#10 +
     '  try'#10'    A;'#10'  finally'#10'    B;'#10'  end;'#10'end;'#10'end.';
 begin
-  Assert.AreEqual('4:2 6:2 8:2', Highlight(Source, 6, 4));
+  Assert.AreEqual('4:2 6:2 8:2', Highlight(cSource, 6, 4));
 end;
 
 procedure TKeywordHighlightsTests.RoutineKeywordWithBeginAndEnd;
 begin
-  Assert.AreEqual('2:0 3:0 8:0', Highlight(Nested, 2, 2));
+  Assert.AreEqual('2:0 3:0 8:0', Highlight(cNested, 2, 2));
 end;
 
 procedure TKeywordHighlightsTests.DirectiveElse;
 const
-  Source =
+  cSource =
     'unit U;'#10'implementation'#10'{$IFDEF X}'#10'const A = 1;'#10'{$ELSE}'#10'const A = 2;'#10 +
     '{$ENDIF}'#10'end.';
 begin
-  Assert.AreEqual('2:0 4:0 6:0', Highlight(Source, 4, 3));
+  Assert.AreEqual('2:0 4:0 6:0', Highlight(cSource, 4, 3));
 end;
 
 procedure TKeywordHighlightsTests.ExitPointsSkipNestedRoutines;
 const
-  Source =
+  cSource =
     'unit U;'#10'implementation'#10'procedure P;'#10 +
     '  procedure Q;'#10'  begin'#10'    Exit;'#10'  end;'#10 +
     'begin'#10'  if A then'#10'    Exit;'#10'  raise E.Create;'#10'end;'#10'end.';
 begin
   // Exit in P: eigenes Exit und raise von P, nicht das Exit in Q; das end nicht, weil nach dem raise kein Weg
   // dort herausfällt (#698).
-  Assert.AreEqual('9:4 10:2', Highlight(Source, 9, 5));
+  Assert.AreEqual('9:4 10:2', Highlight(cSource, 9, 5));
   // Routinenname im Kopf zeigt dasselbe
-  Assert.AreEqual('9:4 10:2', Highlight(Source, 2, 10));
+  Assert.AreEqual('9:4 10:2', Highlight(cSource, 2, 10));
 end;
 
 procedure TKeywordHighlightsTests.ExitPointsSwitchedOff;
 const
-  Source = 'unit U;'#10'implementation'#10'procedure P;'#10'begin'#10'  Exit;'#10'end;'#10'end.';
+  cSource = 'unit U;'#10'implementation'#10'procedure P;'#10'begin'#10'  Exit;'#10'end;'#10'end.';
 var
-  Settings: THighlightSettings;
-  Found: Boolean;
+  mSettings: THighlightSettings;
+  mFound: Boolean;
 begin
-  Settings := THighlightSettings.Default;
-  Settings.ExitPoints := False;
-  Assert.AreEqual('', Run(Source, 4, 3, Settings, Found));
-  Assert.IsTrue(Found);
+  mSettings := THighlightSettings.Default;
+  mSettings.ExitPoints := False;
+  Assert.AreEqual('', Run(cSource, 4, 3, mSettings, mFound));
+  Assert.IsTrue(mFound);
 end;
 
 procedure TKeywordHighlightsTests.UnfinishedBlockKeepsKeyword;
 const
-  Source = 'unit U;'#10'implementation'#10'procedure P;'#10'begin'#10'  try'#10'    A;'#10;
+  cSource = 'unit U;'#10'implementation'#10'procedure P;'#10'begin'#10'  try'#10'    A;'#10;
 begin
-  Assert.AreEqual('4:2', Highlight(Source, 4, 3));
+  Assert.AreEqual('4:2', Highlight(cSource, 4, 3));
 end;
 
 procedure TKeywordHighlightsTests.IdentifierIsNotKeyword;
 var
-  Found: Boolean;
+  mFound: Boolean;
 begin
-  Run(Nested, 6, 4, THighlightSettings.Default, Found);
-  Assert.IsFalse(Found);
+  Run(cNested, 6, 4, THighlightSettings.Default, mFound);
+  Assert.IsFalse(mFound);
 end;
 
 initialization

@@ -71,25 +71,25 @@ uses
   Atlas.Core.Localization.Language;
 
 const
-  FileName = 'C:\Repo\App\.atlas';
-  Root = 'C:\Repo';
+  cFileName = 'C:\Repo\App\.atlas';
+  cRoot = 'C:\Repo';
 
 function ExistsIn(const APaths: array of string): TAtlasTeamFileExists;
 var
-  Paths: TArray<string>;
-  Index: Integer;
+  mPaths: TArray<string>;
+  mIndex: Integer;
 begin
-  SetLength(Paths, Length(APaths));
-  for Index := 0 to High(APaths) do
+  SetLength(mPaths, Length(APaths));
+  for mIndex := 0 to High(APaths) do
   begin
-    Paths[Index] := APaths[Index];
+    mPaths[mIndex] := APaths[mIndex];
   end;
   Result :=
     function(const APath: string): Boolean
     var
       Item: string;
     begin
-      for Item in Paths do
+      for Item in mPaths do
       begin
         if SameText(Item, APath) then
         begin
@@ -102,17 +102,17 @@ end;
 
 function TAtlasTeamFileTests.Parsed(const AText: string): TAtlasTeamSettings;
 begin
-  Result := TAtlasTeamFile.Parse(AText, FileName, Root);
+  Result := TAtlasTeamFile.Parse(AText, cFileName, cRoot);
 end;
 
 function TAtlasTeamFileTests.HasIssue(const ATeam: TAtlasTeamSettings; AKind: TAtlasTeamIssueKind;
   const APath: string): Boolean;
 var
-  Issue: TAtlasTeamIssue;
+  mIssue: TAtlasTeamIssue;
 begin
-  for Issue in ATeam.Issues do
+  for mIssue in ATeam.Issues do
   begin
-    if (Issue.Kind = AKind) and (Issue.Path = APath) then
+    if (mIssue.Kind = AKind) and (mIssue.Path = APath) then
     begin
       Exit(True);
     end;
@@ -186,9 +186,9 @@ end;
 
 procedure TAtlasTeamFileTests.ReadsAllSections;
 var
-  Team: TAtlasTeamSettings;
+  mTeam: TAtlasTeamSettings;
 begin
-  Team := Parsed(
+  mTeam := Parsed(
     '{'#13#10 +
     '  // Kommentar'#13#10 +
     '  "version": 1,'#13#10 +
@@ -204,94 +204,94 @@ begin
     '  "tracker": {"provider": "YouTrack", "url": "https://firma.youtrack.cloud", "project": "ATL",'#13#10 +
     '    "templateFields": {"version": "{version}", "steps": "{code}"}},'#13#10 +
     '}');
-  Assert.IsTrue(Team.Valid);
-  Assert.IsTrue(Team.Exists);
-  Assert.AreEqual(0, Integer(Length(Team.Issues)), 'keine Meldung');
-  Assert.AreEqual('C:\Repo\App', Team.Folder);
-  Assert.AreEqual('F', Team.Naming[TAtlasNamingKind.Field]);
-  Assert.AreEqual('A', Team.Naming[TAtlasNamingKind.Parameter]);
-  Assert.IsTrue(Team.HasNaming[TAtlasNamingKind.Local], 'leeres Präfix ist ein Wert');
+  Assert.IsTrue(mTeam.Valid);
+  Assert.IsTrue(mTeam.Exists);
+  Assert.AreEqual(0, Integer(Length(mTeam.Issues)), 'keine Meldung');
+  Assert.AreEqual('C:\Repo\App', mTeam.Folder);
+  Assert.AreEqual('F', mTeam.Naming[TAtlasNamingKind.Field]);
+  Assert.AreEqual('A', mTeam.Naming[TAtlasNamingKind.Parameter]);
+  Assert.IsTrue(mTeam.HasNaming[TAtlasNamingKind.Local], 'leeres Präfix ist ein Wert');
   // Konstanten für die Prüfregel naming-prefix (#1111).
-  Assert.AreEqual('c', Team.Naming[TAtlasNamingKind.Constant]);
-  Assert.AreEqual('Vorlagen\Snippets', Team.Snippets);
-  Assert.AreEqual(2, Integer(Length(Team.FormatFunctions)));
-  Assert.AreEqual('Trace', Team.FormatFunctions[1].Name);
-  Assert.AreEqual(1, Team.FormatFunctions[1].FormatIndex);
-  Assert.AreEqual(1, Integer(Length(Team.SqlTargets)), 'doppelte Einträge einmal');
-  Assert.AreEqual('TDateien.Laden', Team.FileMethods[0]);
-  Assert.AreEqual('TLogger.Write', Team.MainThreadExceptions[0]);
-  Assert.AreEqual(1, Integer(Length(Team.StartProfiles)));
-  Assert.AreEqual('Demo', Team.StartProfiles[0].Name);
-  Assert.AreEqual('-demo /silent', Team.StartProfiles[0].Parameters);
-  Assert.AreEqual('..\Bin', Team.StartProfiles[0].WorkingDir);
-  Assert.AreEqual('$(BDS)\bin\bds.exe', Team.StartProfiles[0].Host);
-  Assert.AreEqual('MODUS', Team.StartProfiles[0].Environment[0].Name);
-  Assert.AreEqual('demo', Team.StartProfiles[0].Environment[0].Value);
-  Assert.IsTrue(Team.Ci.Configured);
-  Assert.IsTrue(Team.Ci.Multibranch);
-  Assert.AreEqual('kasse', Team.Ci.Job);
-  Assert.IsTrue(Team.Tracker.Configured);
-  Assert.AreEqual('youtrack', Team.Tracker.Provider);
-  Assert.AreEqual('ATL', Team.Tracker.Project);
+  Assert.AreEqual('c', mTeam.Naming[TAtlasNamingKind.Constant]);
+  Assert.AreEqual('Vorlagen\Snippets', mTeam.Snippets);
+  Assert.AreEqual(2, Integer(Length(mTeam.FormatFunctions)));
+  Assert.AreEqual('Trace', mTeam.FormatFunctions[1].Name);
+  Assert.AreEqual(1, mTeam.FormatFunctions[1].FormatIndex);
+  Assert.AreEqual(1, Integer(Length(mTeam.SqlTargets)), 'doppelte Einträge einmal');
+  Assert.AreEqual('TDateien.Laden', mTeam.FileMethods[0]);
+  Assert.AreEqual('TLogger.Write', mTeam.MainThreadExceptions[0]);
+  Assert.AreEqual(1, Integer(Length(mTeam.StartProfiles)));
+  Assert.AreEqual('Demo', mTeam.StartProfiles[0].Name);
+  Assert.AreEqual('-demo /silent', mTeam.StartProfiles[0].Parameters);
+  Assert.AreEqual('..\Bin', mTeam.StartProfiles[0].WorkingDir);
+  Assert.AreEqual('$(BDS)\bin\bds.exe', mTeam.StartProfiles[0].Host);
+  Assert.AreEqual('MODUS', mTeam.StartProfiles[0].Environment[0].Name);
+  Assert.AreEqual('demo', mTeam.StartProfiles[0].Environment[0].Value);
+  Assert.IsTrue(mTeam.Ci.Configured);
+  Assert.IsTrue(mTeam.Ci.Multibranch);
+  Assert.AreEqual('kasse', mTeam.Ci.Job);
+  Assert.IsTrue(mTeam.Tracker.Configured);
+  Assert.AreEqual('youtrack', mTeam.Tracker.Provider);
+  Assert.AreEqual('ATL', mTeam.Tracker.Project);
   // Vorbelegung der GitHub-Vorlagen (#2137) wie Umgebungsvariablen: Feld-Id → Text.
-  Assert.AreEqual(2, Integer(Length(Team.Tracker.TemplateFields)));
-  Assert.AreEqual('steps', Team.Tracker.TemplateFields[1].Name);
-  Assert.AreEqual('{code}', Team.Tracker.TemplateFields[1].Value);
+  Assert.AreEqual(2, Integer(Length(mTeam.Tracker.TemplateFields)));
+  Assert.AreEqual('steps', mTeam.Tracker.TemplateFields[1].Name);
+  Assert.AreEqual('{code}', mTeam.Tracker.TemplateFields[1].Value);
 end;
 
 procedure TAtlasTeamFileTests.ReadsVcsSection;
 var
-  Team: TAtlasTeamSettings;
+  mTeam: TAtlasTeamSettings;
 begin
-  Team := Parsed('{"version": 1, "vcs": {"provider": "SVN", "mainBranch": " develop "}}');
-  Assert.AreEqual(0, Integer(Length(Team.Issues)));
-  Assert.IsTrue(Team.Vcs.Configured);
-  Assert.AreEqual('svn', Team.Vcs.Provider);
-  Assert.AreEqual('develop', Team.Vcs.MainBranch);
-  Assert.AreEqual('vcs', TAtlasTeamFile.Values(Team)[0].Key);
-  Assert.AreEqual('svn, develop', TAtlasTeamFile.Values(Team)[0].Value);
-  Team := Parsed('{"version": 1, "vcs": {"mainBranch": "develop"}}');
-  Assert.AreEqual('', Team.Vcs.Provider, 'nicht gesetzt');
-  Assert.IsTrue(Team.Vcs.Configured);
-  Team := Parsed('{"version": 1, "vcs": {"provider": "cvs", "mainBranch": "mein branch", "x": 1}}');
-  Assert.IsFalse(Team.Vcs.Configured);
-  Assert.IsTrue(HasIssue(Team, TAtlasTeamIssueKind.InvalidValue, 'vcs.provider'));
-  Assert.IsTrue(HasIssue(Team, TAtlasTeamIssueKind.InvalidValue, 'vcs.mainBranch'));
-  Assert.IsTrue(HasIssue(Team, TAtlasTeamIssueKind.UnknownKey, 'vcs.x'));
-  Team := Parsed('{"version": 1, "vcs": "git"}');
-  Assert.IsTrue(HasIssue(Team, TAtlasTeamIssueKind.WrongType, 'vcs'));
+  mTeam := Parsed('{"version": 1, "vcs": {"provider": "SVN", "mainBranch": " develop "}}');
+  Assert.AreEqual(0, Integer(Length(mTeam.Issues)));
+  Assert.IsTrue(mTeam.Vcs.Configured);
+  Assert.AreEqual('svn', mTeam.Vcs.Provider);
+  Assert.AreEqual('develop', mTeam.Vcs.MainBranch);
+  Assert.AreEqual('vcs', TAtlasTeamFile.Values(mTeam)[0].Key);
+  Assert.AreEqual('svn, develop', TAtlasTeamFile.Values(mTeam)[0].Value);
+  mTeam := Parsed('{"version": 1, "vcs": {"mainBranch": "develop"}}');
+  Assert.AreEqual('', mTeam.Vcs.Provider, 'nicht gesetzt');
+  Assert.IsTrue(mTeam.Vcs.Configured);
+  mTeam := Parsed('{"version": 1, "vcs": {"provider": "cvs", "mainBranch": "mein branch", "x": 1}}');
+  Assert.IsFalse(mTeam.Vcs.Configured);
+  Assert.IsTrue(HasIssue(mTeam, TAtlasTeamIssueKind.InvalidValue, 'vcs.provider'));
+  Assert.IsTrue(HasIssue(mTeam, TAtlasTeamIssueKind.InvalidValue, 'vcs.mainBranch'));
+  Assert.IsTrue(HasIssue(mTeam, TAtlasTeamIssueKind.UnknownKey, 'vcs.x'));
+  mTeam := Parsed('{"version": 1, "vcs": "git"}');
+  Assert.IsTrue(HasIssue(mTeam, TAtlasTeamIssueKind.WrongType, 'vcs'));
 end;
 
 procedure TAtlasTeamFileTests.TeamPrefixBeatsPersonalSetting;
 var
-  Team: TAtlasTeamSettings;
+  mTeam: TAtlasTeamSettings;
 begin
   // Akzeptanzkriterium: "field": "F" erzwingt das F-Präfix trotz anderer persönlicher Einstellung.
-  Team := Parsed('{"version": 1, "naming": {"field": "F"}}');
-  Assert.AreEqual('F', TAtlasTeamFile.Prefix(Team, TAtlasNamingKind.Field, 'f_'));
-  Assert.AreEqual('A', TAtlasTeamFile.Prefix(Team, TAtlasNamingKind.Parameter, 'A'), 'nicht gesetzt: persönlich');
+  mTeam := Parsed('{"version": 1, "naming": {"field": "F"}}');
+  Assert.AreEqual('F', TAtlasTeamFile.Prefix(mTeam, TAtlasNamingKind.Field, 'f_'));
+  Assert.AreEqual('A', TAtlasTeamFile.Prefix(mTeam, TAtlasNamingKind.Parameter, 'A'), 'nicht gesetzt: persönlich');
   Assert.AreEqual('f_', TAtlasTeamFile.Prefix(TAtlasTeamFile.Empty, TAtlasNamingKind.Field, 'f_'),
     'ohne Projektdatei');
 end;
 
 procedure TAtlasTeamFileTests.BrokenFileIsInvalidWithIssue;
 var
-  Team: TAtlasTeamSettings;
+  mTeam: TAtlasTeamSettings;
 begin
   // Akzeptanzkriterium: Hinweis statt Absturz, es gelten die persönlichen Einstellungen.
-  Team := Parsed('{"version": 1, "naming": {"field": "F"');
-  Assert.IsFalse(Team.Valid);
-  Assert.IsTrue(Team.Exists);
-  Assert.IsTrue(HasIssue(Team, TAtlasTeamIssueKind.Syntax, ''));
-  Assert.AreEqual<Integer>(1, Team.Issues[0].Line, 'Zeile der fehlerhaften Stelle');
-  Assert.AreEqual<Integer>(39, Team.Issues[0].Column, 'Spalte: Ende des Texts');
-  Team := Parsed('{'#13#10'  "version": 1'#13#10'  "tracker": {}'#13#10'}');
-  Assert.IsFalse(Team.Valid, 'fehlendes Komma');
-  Assert.AreEqual<Integer>(3, Team.Issues[0].Line);
-  Assert.AreEqual<Integer>(3, Team.Issues[0].Column);
+  mTeam := Parsed('{"version": 1, "naming": {"field": "F"');
+  Assert.IsFalse(mTeam.Valid);
+  Assert.IsTrue(mTeam.Exists);
+  Assert.IsTrue(HasIssue(mTeam, TAtlasTeamIssueKind.Syntax, ''));
+  Assert.AreEqual<Integer>(1, mTeam.Issues[0].Line, 'Zeile der fehlerhaften Stelle');
+  Assert.AreEqual<Integer>(39, mTeam.Issues[0].Column, 'Spalte: Ende des Texts');
+  mTeam := Parsed('{'#13#10'  "version": 1'#13#10'  "tracker": {}'#13#10'}');
+  Assert.IsFalse(mTeam.Valid, 'fehlendes Komma');
+  Assert.AreEqual<Integer>(3, mTeam.Issues[0].Line);
+  Assert.AreEqual<Integer>(3, mTeam.Issues[0].Column);
   Assert.AreEqual<Integer>(0, Parsed('[1, 2]').Issues[0].Line, 'gültiges JSON, aber kein Objekt: ohne Stelle');
-  Assert.AreEqual('f_', TAtlasTeamFile.Prefix(Team, TAtlasNamingKind.Field, 'f_'));
-  Assert.AreEqual(0, Integer(Length(TAtlasTeamFile.Values(Team))));
+  Assert.AreEqual('f_', TAtlasTeamFile.Prefix(mTeam, TAtlasNamingKind.Field, 'f_'));
+  Assert.AreEqual(0, Integer(Length(TAtlasTeamFile.Values(mTeam))));
   Assert.IsFalse(Parsed('[1, 2]').Valid, 'kein Objekt');
   Assert.IsFalse(Parsed('').Valid, 'leer');
   Assert.IsFalse(Parsed('kein json').Valid);
@@ -299,119 +299,119 @@ end;
 
 procedure TAtlasTeamFileTests.IgnoresCredentials;
 var
-  Team: TAtlasTeamSettings;
+  mTeam: TAtlasTeamSettings;
 begin
-  Team := Parsed('{"version": 1, "token": "abc",'#13#10 +
+  mTeam := Parsed('{"version": 1, "token": "abc",'#13#10 +
     '"ci": {"url": "https://marco:geheim@ci.example.com", "job": "kasse", "apiToken": "x"},'#13#10 +
     '"tracker": {"provider": "github", "url": "https://github.com/firma/kasse", "password": "x"},'#13#10 +
     '"startProfiles": [{"name": "Db", "environment": {"DB_PASSWORD": "geheim"}},'#13#10 +
     '  {"name": "Login", "parameters": "-url=https://ci.example.com/?token=abc"},'#13#10 +
     '  {"name": "Gut", "parameters": "-demo"}],'#13#10 +
     '"extra": {"nested": {"secret": "x"}}}');
-  Assert.IsTrue(Team.Valid);
-  Assert.IsTrue(HasIssue(Team, TAtlasTeamIssueKind.Credential, 'token'));
-  Assert.IsTrue(HasIssue(Team, TAtlasTeamIssueKind.Credential, 'ci.url'));
-  Assert.IsTrue(HasIssue(Team, TAtlasTeamIssueKind.Credential, 'ci.apiToken'));
-  Assert.IsTrue(HasIssue(Team, TAtlasTeamIssueKind.Credential, 'tracker.password'));
-  Assert.IsTrue(HasIssue(Team, TAtlasTeamIssueKind.Credential, 'startProfiles[Db].environment.DB_PASSWORD'));
-  Assert.IsTrue(HasIssue(Team, TAtlasTeamIssueKind.Credential, 'startProfiles[Login].parameters'));
-  Assert.IsTrue(HasIssue(Team, TAtlasTeamIssueKind.Credential, 'extra.nested.secret'));
-  Assert.IsTrue(HasIssue(Team, TAtlasTeamIssueKind.UnknownKey, 'extra'));
-  Assert.AreEqual('', Team.Ci.Url, 'Adresse mit Zugangsdaten ignoriert');
-  Assert.IsFalse(Team.Ci.Configured);
-  Assert.IsTrue(Team.Tracker.Configured, 'der Rest des Trackers gilt');
-  Assert.AreEqual(1, Integer(Length(Team.StartProfiles)), 'Profile mit Zugangsdaten entfallen ganz');
-  Assert.AreEqual('Gut', Team.StartProfiles[0].Name);
+  Assert.IsTrue(mTeam.Valid);
+  Assert.IsTrue(HasIssue(mTeam, TAtlasTeamIssueKind.Credential, 'token'));
+  Assert.IsTrue(HasIssue(mTeam, TAtlasTeamIssueKind.Credential, 'ci.url'));
+  Assert.IsTrue(HasIssue(mTeam, TAtlasTeamIssueKind.Credential, 'ci.apiToken'));
+  Assert.IsTrue(HasIssue(mTeam, TAtlasTeamIssueKind.Credential, 'tracker.password'));
+  Assert.IsTrue(HasIssue(mTeam, TAtlasTeamIssueKind.Credential, 'startProfiles[Db].environment.DB_PASSWORD'));
+  Assert.IsTrue(HasIssue(mTeam, TAtlasTeamIssueKind.Credential, 'startProfiles[Login].parameters'));
+  Assert.IsTrue(HasIssue(mTeam, TAtlasTeamIssueKind.Credential, 'extra.nested.secret'));
+  Assert.IsTrue(HasIssue(mTeam, TAtlasTeamIssueKind.UnknownKey, 'extra'));
+  Assert.AreEqual('', mTeam.Ci.Url, 'Adresse mit Zugangsdaten ignoriert');
+  Assert.IsFalse(mTeam.Ci.Configured);
+  Assert.IsTrue(mTeam.Tracker.Configured, 'der Rest des Trackers gilt');
+  Assert.AreEqual(1, Integer(Length(mTeam.StartProfiles)), 'Profile mit Zugangsdaten entfallen ganz');
+  Assert.AreEqual('Gut', mTeam.StartProfiles[0].Name);
 end;
 
 procedure TAtlasTeamFileTests.IgnoresAbsoluteAndOutsidePaths;
 var
-  Team: TAtlasTeamSettings;
+  mTeam: TAtlasTeamSettings;
 begin
-  Team := Parsed('{"version": 1, "snippets": "C:\\Vorlagen",'#13#10 +
+  mTeam := Parsed('{"version": 1, "snippets": "C:\\Vorlagen",'#13#10 +
     '"startProfiles": [{"name": "Abs", "host": "C:\\Tools\\host.exe"},'#13#10 +
     '  {"name": "Raus", "workingDir": "..\\..\\Anderes"},'#13#10 +
     '  {"name": "Param", "parameters": "-db D:\\Daten\\test.fdb"},'#13#10 +
     '  {"name": "Env", "environment": {"DATEN": "\\\\server\\daten"}},'#13#10 +
     '  {"name": "Innen", "workingDir": "..\\Bin"}]}');
-  Assert.IsTrue(HasIssue(Team, TAtlasTeamIssueKind.AbsolutePath, 'snippets'));
-  Assert.AreEqual('', Team.Snippets);
-  Assert.IsTrue(HasIssue(Team, TAtlasTeamIssueKind.AbsolutePath, 'startProfiles[Abs].host'));
-  Assert.IsTrue(HasIssue(Team, TAtlasTeamIssueKind.OutsidePath, 'startProfiles[Raus].workingDir'));
-  Assert.IsTrue(HasIssue(Team, TAtlasTeamIssueKind.AbsolutePath, 'startProfiles[Param].parameters'));
-  Assert.IsTrue(HasIssue(Team, TAtlasTeamIssueKind.AbsolutePath, 'startProfiles[Env].environment.DATEN'));
-  Assert.AreEqual(1, Integer(Length(Team.StartProfiles)));
-  Assert.AreEqual('Innen', Team.StartProfiles[0].Name, '..\Bin bleibt im Repository');
-  Team := Parsed('{"version": 1, "snippets": "..\\Vorlagen"}');
-  Assert.AreEqual('..\Vorlagen', Team.Snippets);
-  Assert.IsTrue(HasIssue(TAtlasTeamFile.Parse('{"version": 1, "snippets": "..\\Vorlagen"}', FileName, ''),
+  Assert.IsTrue(HasIssue(mTeam, TAtlasTeamIssueKind.AbsolutePath, 'snippets'));
+  Assert.AreEqual('', mTeam.Snippets);
+  Assert.IsTrue(HasIssue(mTeam, TAtlasTeamIssueKind.AbsolutePath, 'startProfiles[Abs].host'));
+  Assert.IsTrue(HasIssue(mTeam, TAtlasTeamIssueKind.OutsidePath, 'startProfiles[Raus].workingDir'));
+  Assert.IsTrue(HasIssue(mTeam, TAtlasTeamIssueKind.AbsolutePath, 'startProfiles[Param].parameters'));
+  Assert.IsTrue(HasIssue(mTeam, TAtlasTeamIssueKind.AbsolutePath, 'startProfiles[Env].environment.DATEN'));
+  Assert.AreEqual(1, Integer(Length(mTeam.StartProfiles)));
+  Assert.AreEqual('Innen', mTeam.StartProfiles[0].Name, '..\Bin bleibt im Repository');
+  mTeam := Parsed('{"version": 1, "snippets": "..\\Vorlagen"}');
+  Assert.AreEqual('..\Vorlagen', mTeam.Snippets);
+  Assert.IsTrue(HasIssue(TAtlasTeamFile.Parse('{"version": 1, "snippets": "..\\Vorlagen"}', cFileName, ''),
     TAtlasTeamIssueKind.OutsidePath, 'snippets'), 'ohne Repository ist der Ordner der Datei die Wurzel');
 end;
 
 procedure TAtlasTeamFileTests.ReportsUnknownKeysWrongTypesAndVersion;
 var
-  Team: TAtlasTeamSettings;
+  mTeam: TAtlasTeamSettings;
 begin
-  Team := Parsed('{"$schema": "x", "naming": {"feld": "F", "field": 3, "local": "L-"},'#13#10 +
+  mTeam := Parsed('{"$schema": "x", "naming": {"feld": "F", "field": 3, "local": "L-"},'#13#10 +
     '"sqlTargets": "TQuery.SQL", "fileMethods": ["A", 2, ""], "formatFunctions": [{"name": "Log"}],'#13#10 +
     '"ci": {"provider": "teamcity", "url": "https://ci"}, "tracker": {"provider": "github", "url": "ci"}}');
-  Assert.IsTrue(Team.Valid, 'Fehler in Werten machen die Datei nicht ungültig');
-  Assert.IsTrue(HasIssue(Team, TAtlasTeamIssueKind.Version, 'version'), 'Version fehlt');
-  Assert.AreEqual(1, Team.Version);
-  Assert.IsTrue(HasIssue(Team, TAtlasTeamIssueKind.UnknownKey, 'naming.feld'));
-  Assert.IsTrue(HasIssue(Team, TAtlasTeamIssueKind.WrongType, 'naming.field'));
-  Assert.IsTrue(HasIssue(Team, TAtlasTeamIssueKind.InvalidValue, 'naming.local'));
-  Assert.IsFalse(Team.HasNaming[TAtlasNamingKind.Field]);
-  Assert.IsTrue(HasIssue(Team, TAtlasTeamIssueKind.WrongType, 'sqlTargets'));
-  Assert.IsTrue(HasIssue(Team, TAtlasTeamIssueKind.WrongType, 'fileMethods[1]'));
-  Assert.IsTrue(HasIssue(Team, TAtlasTeamIssueKind.InvalidValue, 'fileMethods[2]'));
-  Assert.AreEqual(1, Integer(Length(Team.FileMethods)));
-  Assert.IsTrue(HasIssue(Team, TAtlasTeamIssueKind.InvalidValue, 'formatFunctions[0]'));
-  Assert.IsTrue(HasIssue(Team, TAtlasTeamIssueKind.InvalidValue, 'ci.provider'));
-  Assert.IsFalse(Team.Ci.Configured);
-  Assert.IsTrue(HasIssue(Team, TAtlasTeamIssueKind.InvalidValue, 'tracker.url'));
-  Assert.IsFalse(HasIssue(Team, TAtlasTeamIssueKind.UnknownKey, '$schema'));
-  Team := Parsed('{"version": 2, "naming": {"field": "F"}}');
-  Assert.IsTrue(HasIssue(Team, TAtlasTeamIssueKind.Version, 'version'), 'neuer als bekannt');
-  Assert.AreEqual(2, Team.Version);
-  Assert.AreEqual('F', Team.Naming[TAtlasNamingKind.Field], 'Bekanntes gilt weiter');
+  Assert.IsTrue(mTeam.Valid, 'Fehler in Werten machen die Datei nicht ungültig');
+  Assert.IsTrue(HasIssue(mTeam, TAtlasTeamIssueKind.Version, 'version'), 'Version fehlt');
+  Assert.AreEqual(1, mTeam.Version);
+  Assert.IsTrue(HasIssue(mTeam, TAtlasTeamIssueKind.UnknownKey, 'naming.feld'));
+  Assert.IsTrue(HasIssue(mTeam, TAtlasTeamIssueKind.WrongType, 'naming.field'));
+  Assert.IsTrue(HasIssue(mTeam, TAtlasTeamIssueKind.InvalidValue, 'naming.local'));
+  Assert.IsFalse(mTeam.HasNaming[TAtlasNamingKind.Field]);
+  Assert.IsTrue(HasIssue(mTeam, TAtlasTeamIssueKind.WrongType, 'sqlTargets'));
+  Assert.IsTrue(HasIssue(mTeam, TAtlasTeamIssueKind.WrongType, 'fileMethods[1]'));
+  Assert.IsTrue(HasIssue(mTeam, TAtlasTeamIssueKind.InvalidValue, 'fileMethods[2]'));
+  Assert.AreEqual(1, Integer(Length(mTeam.FileMethods)));
+  Assert.IsTrue(HasIssue(mTeam, TAtlasTeamIssueKind.InvalidValue, 'formatFunctions[0]'));
+  Assert.IsTrue(HasIssue(mTeam, TAtlasTeamIssueKind.InvalidValue, 'ci.provider'));
+  Assert.IsFalse(mTeam.Ci.Configured);
+  Assert.IsTrue(HasIssue(mTeam, TAtlasTeamIssueKind.InvalidValue, 'tracker.url'));
+  Assert.IsFalse(HasIssue(mTeam, TAtlasTeamIssueKind.UnknownKey, '$schema'));
+  mTeam := Parsed('{"version": 2, "naming": {"field": "F"}}');
+  Assert.IsTrue(HasIssue(mTeam, TAtlasTeamIssueKind.Version, 'version'), 'neuer als bekannt');
+  Assert.AreEqual(2, mTeam.Version);
+  Assert.AreEqual('F', mTeam.Naming[TAtlasNamingKind.Field], 'Bekanntes gilt weiter');
 end;
 
 procedure TAtlasTeamFileTests.MergeKeepsTeamFirst;
 var
-  Names: TArray<string>;
-  Functions: TArray<TAtlasFormatFunction>;
-  Team, Personal, Merged: TArray<TAtlasStartProfile>;
+  mNames: TArray<string>;
+  mFunctions: TArray<TAtlasFormatFunction>;
+  mTeam, mPersonal, mMerged: TArray<TAtlasStartProfile>;
 begin
-  Names := TAtlasTeamFile.MergeNames(['TQuery.SQL', 'TTeam.Sql'], ['tquery.sql', 'TMein.Sql']);
-  Assert.AreEqual(3, Integer(Length(Names)));
-  Assert.AreEqual('TQuery.SQL', Names[0]);
-  Assert.AreEqual('TMein.Sql', Names[2]);
-  Functions := TAtlasTeamFile.MergeFormatFunctions([TAtlasFormatFunction.Create('Log', 1)],
+  mNames := TAtlasTeamFile.MergeNames(['TQuery.SQL', 'TTeam.Sql'], ['tquery.sql', 'TMein.Sql']);
+  Assert.AreEqual(3, Integer(Length(mNames)));
+  Assert.AreEqual('TQuery.SQL', mNames[0]);
+  Assert.AreEqual('TMein.Sql', mNames[2]);
+  mFunctions := TAtlasTeamFile.MergeFormatFunctions([TAtlasFormatFunction.Create('Log', 1)],
     [TAtlasFormatFunction.Create('log', 0), TAtlasFormatFunction.Create('Trace', 2)]);
-  Assert.AreEqual(2, Integer(Length(Functions)));
-  Assert.AreEqual(1, Functions[0].FormatIndex, 'Index aus der Projektdatei');
-  SetLength(Team, 1);
-  Team[0].Name := 'Demo';
-  Team[0].Parameters := '-team';
-  SetLength(Personal, 2);
-  Personal[0].Name := 'demo';
-  Personal[0].Parameters := '-mein';
-  Personal[1].Name := 'Lokal';
-  Merged := TAtlasTeamFile.MergeStartProfiles(Team, Personal);
-  Assert.AreEqual(2, Integer(Length(Merged)));
-  Assert.AreEqual('-team', Merged[0].Parameters);
-  Assert.AreEqual('Lokal', Merged[1].Name);
+  Assert.AreEqual(2, Integer(Length(mFunctions)));
+  Assert.AreEqual(1, mFunctions[0].FormatIndex, 'Index aus der Projektdatei');
+  SetLength(mTeam, 1);
+  mTeam[0].Name := 'Demo';
+  mTeam[0].Parameters := '-team';
+  SetLength(mPersonal, 2);
+  mPersonal[0].Name := 'demo';
+  mPersonal[0].Parameters := '-mein';
+  mPersonal[1].Name := 'Lokal';
+  mMerged := TAtlasTeamFile.MergeStartProfiles(mTeam, mPersonal);
+  Assert.AreEqual(2, Integer(Length(mMerged)));
+  Assert.AreEqual('-team', mMerged[0].Parameters);
+  Assert.AreEqual('Lokal', mMerged[1].Name);
 end;
 
 procedure TAtlasTeamFileTests.SkeletonIsValidWithoutIssues;
 var
-  Team: TAtlasTeamSettings;
+  mTeam: TAtlasTeamSettings;
 begin
-  Team := Parsed(TAtlasTeamFile.Skeleton);
-  Assert.IsTrue(Team.Valid);
-  Assert.AreEqual(0, Integer(Length(Team.Issues)));
-  Assert.IsFalse(Team.HasValues, 'Beispiele stehen nur als Kommentar');
+  mTeam := Parsed(TAtlasTeamFile.Skeleton);
+  Assert.IsTrue(mTeam.Valid);
+  Assert.AreEqual(0, Integer(Length(mTeam.Issues)));
+  Assert.IsFalse(mTeam.HasValues, 'Beispiele stehen nur als Kommentar');
   Assert.Contains(TAtlasTeamFile.Skeleton, '"version": 1');
 end;
 
@@ -442,28 +442,28 @@ end;
 
 procedure TAtlasTeamFileTests.ValuesNameEverySetEntry;
 var
-  Values: TArray<TAtlasTeamValue>;
+  mValues: TArray<TAtlasTeamValue>;
 begin
-  Values := TAtlasTeamFile.Values(Parsed('{"version": 1, "naming": {"field": "F"}, "sqlTargets": ["A", "B"],' +
+  mValues := TAtlasTeamFile.Values(Parsed('{"version": 1, "naming": {"field": "F"}, "sqlTargets": ["A", "B"],' +
     '"ci": {"url": "https://ci.example.com", "job": "kasse"}}'));
-  Assert.AreEqual(3, Integer(Length(Values)));
-  Assert.AreEqual('naming.field', Values[0].Key);
-  Assert.AreEqual('"F"', Values[0].Value);
-  Assert.AreEqual('A, B', Values[1].Value);
-  Assert.AreEqual('ci', Values[2].Key);
-  Assert.Contains(Values[2].Value, 'jenkins');
+  Assert.AreEqual(3, Integer(Length(mValues)));
+  Assert.AreEqual('naming.field', mValues[0].Key);
+  Assert.AreEqual('"F"', mValues[0].Value);
+  Assert.AreEqual('A, B', mValues[1].Value);
+  Assert.AreEqual('ci', mValues[2].Key);
+  Assert.Contains(mValues[2].Value, 'jenkins');
   Assert.IsFalse(TAtlasTeamFile.Empty.HasValues);
   // tracker.templateFields (#2137) als Zeile mit Feld-Id=Text.
-  Values := TAtlasTeamFile.Values(Parsed('{"version": 1, "tracker": {"templateFields": {"ide": "{ide}"}}}'));
-  Assert.AreEqual('tracker.templateFields', Values[High(Values)].Key);
-  Assert.AreEqual('ide={ide}', Values[High(Values)].Value);
+  mValues := TAtlasTeamFile.Values(Parsed('{"version": 1, "tracker": {"templateFields": {"ide": "{ide}"}}}'));
+  Assert.AreEqual('tracker.templateFields', mValues[High(mValues)].Key);
+  Assert.AreEqual('ide={ide}', mValues[High(mValues)].Value);
 end;
 
 procedure TAtlasTeamFileTests.ReadsDebugDisplayRules;
 var
-  Team: TAtlasTeamSettings;
+  mTeam: TAtlasTeamSettings;
 begin
-  Team := Parsed('{"version": 1, "debugDisplayRules": {' +
+  mTeam := Parsed('{"version": 1, "debugDisplayRules": {' +
     '"FireDAC.Comp.Client.TFDConnection": "{ConnectionName} ({DriverName})",' +
     '"TKunde": {"template": "{Name}", "children": ["Name", "Ort", "name"]},' +
     '"TPunkt": {"children": "X, Y"},' +
@@ -471,18 +471,18 @@ begin
     '"TLeer": {},' +
     '"TZahl": 1,' +
     '"TExtra": {"template": "{A}", "farbe": "rot"}}}');
-  Assert.AreEqual(4, Integer(Length(Team.DisplayRules)));
-  Assert.AreEqual('FireDAC.Comp.Client.TFDConnection', Team.DisplayRules[0].TypeName);
-  Assert.AreEqual('{ConnectionName} ({DriverName})', Team.DisplayRules[0].Template);
-  Assert.AreEqual('Name|Ort', string.Join('|', Team.DisplayRules[1].Children));
-  Assert.AreEqual('', Team.DisplayRules[2].Template);
-  Assert.AreEqual('X|Y', string.Join('|', Team.DisplayRules[2].Children));
-  Assert.AreEqual('TExtra', Team.DisplayRules[3].TypeName);
-  Assert.IsTrue(HasIssue(Team, TAtlasTeamIssueKind.InvalidValue, 'debugDisplayRules.TKaputt'));
-  Assert.IsTrue(HasIssue(Team, TAtlasTeamIssueKind.InvalidValue, 'debugDisplayRules.TLeer'));
-  Assert.IsTrue(HasIssue(Team, TAtlasTeamIssueKind.WrongType, 'debugDisplayRules.TZahl'));
-  Assert.IsTrue(HasIssue(Team, TAtlasTeamIssueKind.UnknownKey, 'debugDisplayRules.TExtra.farbe'));
-  Assert.AreEqual('debugDisplayRules', TAtlasTeamFile.Values(Team)[0].Key);
+  Assert.AreEqual(4, Integer(Length(mTeam.DisplayRules)));
+  Assert.AreEqual('FireDAC.Comp.Client.TFDConnection', mTeam.DisplayRules[0].TypeName);
+  Assert.AreEqual('{ConnectionName} ({DriverName})', mTeam.DisplayRules[0].Template);
+  Assert.AreEqual('Name|Ort', string.Join('|', mTeam.DisplayRules[1].Children));
+  Assert.AreEqual('', mTeam.DisplayRules[2].Template);
+  Assert.AreEqual('X|Y', string.Join('|', mTeam.DisplayRules[2].Children));
+  Assert.AreEqual('TExtra', mTeam.DisplayRules[3].TypeName);
+  Assert.IsTrue(HasIssue(mTeam, TAtlasTeamIssueKind.InvalidValue, 'debugDisplayRules.TKaputt'));
+  Assert.IsTrue(HasIssue(mTeam, TAtlasTeamIssueKind.InvalidValue, 'debugDisplayRules.TLeer'));
+  Assert.IsTrue(HasIssue(mTeam, TAtlasTeamIssueKind.WrongType, 'debugDisplayRules.TZahl'));
+  Assert.IsTrue(HasIssue(mTeam, TAtlasTeamIssueKind.UnknownKey, 'debugDisplayRules.TExtra.farbe'));
+  Assert.AreEqual('debugDisplayRules', TAtlasTeamFile.Values(mTeam)[0].Key);
   Assert.AreEqual<TAtlasTeamIssueKind>(TAtlasTeamIssueKind.WrongType,
     Parsed('{"version": 1, "debugDisplayRules": []}').Issues[0].Kind);
   Assert.Contains(TAtlasTeamFile.Skeleton, '"debugDisplayRules"');
@@ -490,15 +490,15 @@ end;
 
 procedure TAtlasTeamFileTests.KeepsLaunchGroups;
 var
-  Team: TAtlasTeamSettings;
+  mTeam: TAtlasTeamSettings;
 begin
-  Team := Parsed('{"version": 1, "launchGroups": [{"name": "A", "items": [{"project": "S.dproj"}]}]}');
-  Assert.AreEqual(0, Integer(Length(Team.Issues)));
-  Assert.AreEqual('[{"name":"A","items":[{"project":"S.dproj"}]}]', Team.LaunchGroups);
-  Assert.AreEqual('launchGroups', TAtlasTeamFile.Values(Team)[0].Key);
-  Team := Parsed('{"version": 1, "launchGroups": [{"name": "A", "password": "geheim"}]}');
-  Assert.AreEqual('', Team.LaunchGroups, 'mit Zugangsdaten verworfen');
-  Assert.IsTrue(HasIssue(Team, TAtlasTeamIssueKind.Credential, 'launchGroups.password'));
+  mTeam := Parsed('{"version": 1, "launchGroups": [{"name": "A", "items": [{"project": "S.dproj"}]}]}');
+  Assert.AreEqual(0, Integer(Length(mTeam.Issues)));
+  Assert.AreEqual('[{"name":"A","items":[{"project":"S.dproj"}]}]', mTeam.LaunchGroups);
+  Assert.AreEqual('launchGroups', TAtlasTeamFile.Values(mTeam)[0].Key);
+  mTeam := Parsed('{"version": 1, "launchGroups": [{"name": "A", "password": "geheim"}]}');
+  Assert.AreEqual('', mTeam.LaunchGroups, 'mit Zugangsdaten verworfen');
+  Assert.IsTrue(HasIssue(mTeam, TAtlasTeamIssueKind.Credential, 'launchGroups.password'));
   Assert.IsTrue(HasIssue(Parsed('{"version": 1, "launchGroups": {}}'), TAtlasTeamIssueKind.WrongType, 'launchGroups'));
 end;
 

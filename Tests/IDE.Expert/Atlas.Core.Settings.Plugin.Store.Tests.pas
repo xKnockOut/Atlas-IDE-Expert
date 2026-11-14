@@ -111,7 +111,8 @@ begin
   Count(AName);
 end;
 
-/// <summary>Schreibt die Vorgaben der Bereichs-Records Lesezeichen, Build, Code-Aktionen, Vervollständigung, Debuggen, Tippen über AWriter.</summary>
+/// <summary>Schreibt die Vorgaben der Bereichs-Records Lesezeichen, Build, Code-Aktionen, Vervollständigung, Debuggen,
+/// Tippen über AWriter.</summary>
 procedure WriteCodingAreas(const AWriter: TAtlasSettingsExchange);
 var
   mBookmarks: TAtlasPluginBookmarksSettings;
@@ -135,7 +136,8 @@ begin
   mEditorTyping.Exchange(AWriter);
 end;
 
-/// <summary>Schreibt die Vorgaben der Bereichs-Records Hinweise, Navigation, Units suchen, Sticky Scroll, Ansicht, Server über AWriter.</summary>
+/// <summary>Schreibt die Vorgaben der Bereichs-Records Hinweise, Navigation, Units suchen, Sticky Scroll, Ansicht,
+/// Server über AWriter.</summary>
 procedure WriteEditorAreas(const AWriter: TAtlasSettingsExchange);
 var
   mEditorInsight: TAtlasPluginEditorInsightSettings;
@@ -159,7 +161,8 @@ begin
   mGeneralServer.Exchange(AWriter);
 end;
 
-/// <summary>Schreibt die Vorgaben der Bereichs-Records Allgemein, Hervorhebung, Issues, Tastenkürzel zum Bearbeiten, Vorrang über AWriter.</summary>
+/// <summary>Schreibt die Vorgaben der Bereichs-Records Allgemein, Hervorhebung, Issues, Tastenkürzel zum Bearbeiten,
+/// Vorrang über AWriter.</summary>
 procedure WriteGeneralAreas(const AWriter: TAtlasSettingsExchange);
 var
   mGeneral: TAtlasPluginGeneralSettings;
@@ -183,7 +186,8 @@ begin
   mKeyPriorities.Exchange(AWriter);
 end;
 
-/// <summary>Schreibt die Vorgaben der Bereichs-Records Navigationstasten, Prüfregeln, Snippets, Versionsverwaltung, Willkommensseite über AWriter.</summary>
+/// <summary>Schreibt die Vorgaben der Bereichs-Records Navigationstasten, Prüfregeln, Snippets, Versionsverwaltung,
+/// Willkommensseite über AWriter.</summary>
 procedure WriteRemainingAreas(const AWriter: TAtlasSettingsExchange);
 var
   mNavigationKeys: TAtlasPluginNavigationKeysSettings;

@@ -54,15 +54,15 @@ end;
 
 class function TSmallStack.Run(AStackKb: Integer; const AWork: TProc): string;
 var
-  Thread: TSmallStackThread;
+  mThread: TSmallStackThread;
 begin
-  Thread := TSmallStackThread.Create(AStackKb, AWork);
+  mThread := TSmallStackThread.Create(AStackKb, AWork);
   try
-    Thread.Start;
-    Thread.WaitFor;
-    Result := Thread.Failure;
+    mThread.Start;
+    mThread.WaitFor;
+    Result := mThread.Failure;
   finally
-    Thread.Free;
+    mThread.Free;
   end;
 end;
 

@@ -78,117 +78,117 @@ end;
 
 procedure TAtlasProjectSelectionTests.UnitStaysItself;
 var
-  Selection: TAtlasProjectSelection;
+  mSelection: TAtlasProjectSelection;
 begin
-  Selection := TAtlasProjectSelection.Resolve(['C:\Other\Extra.pas'], 'C:\P\App.dproj', ProjectFiles);
-  Assert.IsTrue(Selection.Resolved);
-  Assert.AreEqual(1, Integer(Length(Selection.Units)));
-  Assert.AreEqual('C:\Other\Extra.pas', Selection.Units[0], 'auch außerhalb des Projekts');
+  mSelection := TAtlasProjectSelection.Resolve(['C:\Other\Extra.pas'], 'C:\P\App.dproj', ProjectFiles);
+  Assert.IsTrue(mSelection.Resolved);
+  Assert.AreEqual(1, Integer(Length(mSelection.Units)));
+  Assert.AreEqual('C:\Other\Extra.pas', mSelection.Units[0], 'auch außerhalb des Projekts');
 end;
 
 procedure TAtlasProjectSelectionTests.FormBecomesItsUnit;
 var
-  Selection: TAtlasProjectSelection;
+  mSelection: TAtlasProjectSelection;
 begin
-  Selection := TAtlasProjectSelection.Resolve(['c:\p\main.dfm'], 'C:\P\App.dproj', ProjectFiles);
-  Assert.AreEqual(1, Integer(Length(Selection.Units)));
-  Assert.AreEqual('C:\P\Main.pas', Selection.Units[0], 'Schreibweise des Projekts');
-  Selection := TAtlasProjectSelection.Resolve(['C:\P\Lonely.dfm'], 'C:\P\App.dproj', ProjectFiles);
-  Assert.IsFalse(Selection.HasUnits);
+  mSelection := TAtlasProjectSelection.Resolve(['c:\p\main.dfm'], 'C:\P\App.dproj', ProjectFiles);
+  Assert.AreEqual(1, Integer(Length(mSelection.Units)));
+  Assert.AreEqual('C:\P\Main.pas', mSelection.Units[0], 'Schreibweise des Projekts');
+  mSelection := TAtlasProjectSelection.Resolve(['C:\P\Lonely.dfm'], 'C:\P\App.dproj', ProjectFiles);
+  Assert.IsFalse(mSelection.HasUnits);
 end;
 
 procedure TAtlasProjectSelectionTests.FolderTakesUnitsBelow;
 var
-  Selection: TAtlasProjectSelection;
+  mSelection: TAtlasProjectSelection;
 begin
-  Selection := TAtlasProjectSelection.Resolve(['C:\P\Core'], 'C:\P\App.dproj', ProjectFiles);
-  Assert.AreEqual(2, Integer(Length(Selection.Units)), 'CoreTools gehört nicht dazu');
-  Assert.AreEqual('C:\P\Core\Model.pas', Selection.Units[0]);
-  Assert.AreEqual('C:\P\Core\Store.pas', Selection.Units[1]);
+  mSelection := TAtlasProjectSelection.Resolve(['C:\P\Core'], 'C:\P\App.dproj', ProjectFiles);
+  Assert.AreEqual(2, Integer(Length(mSelection.Units)), 'CoreTools gehört nicht dazu');
+  Assert.AreEqual('C:\P\Core\Model.pas', mSelection.Units[0]);
+  Assert.AreEqual('C:\P\Core\Store.pas', mSelection.Units[1]);
 end;
 
 procedure TAtlasProjectSelectionTests.ProjectTakesAllUnits;
 var
-  Selection: TAtlasProjectSelection;
+  mSelection: TAtlasProjectSelection;
 begin
-  Selection := TAtlasProjectSelection.Resolve(['C:\P\App.dproj'], 'C:\P\App.dproj', ProjectFiles);
-  Assert.AreEqual(4, Integer(Length(Selection.Units)), 'nur .pas, ohne .dpr, .dfm und .res');
-  Assert.IsTrue(TAtlasProjectNodeKind.Project in Selection.Kinds);
+  mSelection := TAtlasProjectSelection.Resolve(['C:\P\App.dproj'], 'C:\P\App.dproj', ProjectFiles);
+  Assert.AreEqual(4, Integer(Length(mSelection.Units)), 'nur .pas, ohne .dpr, .dfm und .res');
+  Assert.IsTrue(TAtlasProjectNodeKind.Project in mSelection.Kinds);
 end;
 
 procedure TAtlasProjectSelectionTests.MultipleWithoutDuplicates;
 var
-  Selection: TAtlasProjectSelection;
+  mSelection: TAtlasProjectSelection;
 begin
-  Selection := TAtlasProjectSelection.Resolve(['C:\P\Core\Store.pas', 'C:\P\Main.dfm', 'c:\p\main.pas',
+  mSelection := TAtlasProjectSelection.Resolve(['C:\P\Core\Store.pas', 'C:\P\Main.dfm', 'c:\p\main.pas',
     'C:\P\Core'], 'C:\P\App.dproj', ProjectFiles);
-  Assert.IsTrue(Selection.Multiple);
-  Assert.AreEqual(3, Integer(Length(Selection.Units)));
-  Assert.AreEqual('C:\P\Core\Store.pas', Selection.Units[0]);
-  Assert.AreEqual('C:\P\Main.pas', Selection.Units[1]);
-  Assert.AreEqual('C:\P\Core\Model.pas', Selection.Units[2]);
+  Assert.IsTrue(mSelection.Multiple);
+  Assert.AreEqual(3, Integer(Length(mSelection.Units)));
+  Assert.AreEqual('C:\P\Core\Store.pas', mSelection.Units[0]);
+  Assert.AreEqual('C:\P\Main.pas', mSelection.Units[1]);
+  Assert.AreEqual('C:\P\Core\Model.pas', mSelection.Units[2]);
 end;
 
 procedure TAtlasProjectSelectionTests.MergeAddsOtherProject;
 var
-  Selection: TAtlasProjectSelection;
+  mSelection: TAtlasProjectSelection;
 begin
-  Selection := TAtlasProjectSelection.Merge(
+  mSelection := TAtlasProjectSelection.Merge(
     TAtlasProjectSelection.Resolve(['C:\P\Main.pas'], 'C:\P\App.dproj', ProjectFiles),
     TAtlasProjectSelection.Resolve(['C:\Q\Tests.dproj'], 'C:\Q\Tests.dproj', ['C:\Q\T.pas', 'C:\P\Main.pas']));
-  Assert.AreEqual('C:\P\App.dproj', Selection.ProjectFile);
-  Assert.IsTrue(Selection.Multiple);
-  Assert.IsTrue(Selection.Resolved);
-  Assert.AreEqual(2, Integer(Length(Selection.Units)));
-  Assert.AreEqual('C:\Q\T.pas', Selection.Units[1]);
+  Assert.AreEqual('C:\P\App.dproj', mSelection.ProjectFile);
+  Assert.IsTrue(mSelection.Multiple);
+  Assert.IsTrue(mSelection.Resolved);
+  Assert.AreEqual(2, Integer(Length(mSelection.Units)));
+  Assert.AreEqual('C:\Q\T.pas', mSelection.Units[1]);
 end;
 
 procedure TAtlasProjectSelectionTests.KindsOnlyIsUnresolved;
 var
-  Selection: TAtlasProjectSelection;
+  mSelection: TAtlasProjectSelection;
 begin
-  Selection := TAtlasProjectSelection.OfKinds([TAtlasProjectNodeKind.SourceFile], False, 'C:\P\App.dproj',
+  mSelection := TAtlasProjectSelection.OfKinds([TAtlasProjectNodeKind.SourceFile], False, 'C:\P\App.dproj',
     ProjectFiles);
-  Assert.IsFalse(Selection.Resolved);
-  Assert.IsTrue(Selection.HasUnits);
-  Selection := TAtlasProjectSelection.OfKinds([TAtlasProjectNodeKind.OtherFile], False, 'C:\P\App.dproj',
+  Assert.IsFalse(mSelection.Resolved);
+  Assert.IsTrue(mSelection.HasUnits);
+  mSelection := TAtlasProjectSelection.OfKinds([TAtlasProjectNodeKind.OtherFile], False, 'C:\P\App.dproj',
     ProjectFiles);
-  Assert.IsFalse(Selection.HasUnits, 'Ressource ohne Unit');
-  Selection := TAtlasProjectSelection.OfKinds([TAtlasProjectNodeKind.Project], False, 'C:\P\App.dproj',
+  Assert.IsFalse(mSelection.HasUnits, 'Ressource ohne Unit');
+  mSelection := TAtlasProjectSelection.OfKinds([TAtlasProjectNodeKind.Project], False, 'C:\P\App.dproj',
     ProjectFiles);
-  Assert.IsTrue(Selection.Resolved, 'einzelnes Projekt: Units bekannt');
-  Assert.AreEqual(4, Integer(Length(Selection.Units)));
+  Assert.IsTrue(mSelection.Resolved, 'einzelnes Projekt: Units bekannt');
+  Assert.AreEqual(4, Integer(Length(mSelection.Units)));
 end;
 
 procedure TAtlasProjectSelectionTests.ProjectWithoutUnitsHasNone;
 var
-  Selection: TAtlasProjectSelection;
+  mSelection: TAtlasProjectSelection;
 begin
-  Selection := TAtlasProjectSelection.OfKinds([TAtlasProjectNodeKind.Project], False, 'C:\Q\Empty.dproj',
+  mSelection := TAtlasProjectSelection.OfKinds([TAtlasProjectNodeKind.Project], False, 'C:\Q\Empty.dproj',
     ['C:\Q\Empty.dpr']);
-  Assert.IsFalse(Selection.HasUnits);
-  Selection := TAtlasProjectSelection.OfKinds([TAtlasProjectNodeKind.Folder], False, 'C:\Q\Empty.dproj',
+  Assert.IsFalse(mSelection.HasUnits);
+  mSelection := TAtlasProjectSelection.OfKinds([TAtlasProjectNodeKind.Folder], False, 'C:\Q\Empty.dproj',
     ['C:\Q\Empty.dpr']);
-  Assert.IsFalse(Selection.HasUnits);
+  Assert.IsFalse(mSelection.HasUnits);
 end;
 
 procedure TAtlasProjectSelectionTests.SingleUnitNeedsOneNode;
 var
-  Selection: TAtlasProjectSelection;
-  FileName: string;
+  mSelection: TAtlasProjectSelection;
+  mFileName: string;
 begin
-  Selection := TAtlasProjectSelection.Resolve(['C:\P\Main.dfm'], 'C:\P\App.dproj', ProjectFiles);
-  Assert.IsTrue(Selection.SingleUnit(FileName));
-  Assert.AreEqual('C:\P\Main.pas', FileName);
-  Selection := TAtlasProjectSelection.Resolve(['C:\P\Core'], 'C:\P\App.dproj', ProjectFiles);
-  Assert.IsFalse(Selection.SingleUnit(FileName));
-  Selection := TAtlasProjectSelection.OfKinds([TAtlasProjectNodeKind.SourceFile], True, 'C:\P\App.dproj',
+  mSelection := TAtlasProjectSelection.Resolve(['C:\P\Main.dfm'], 'C:\P\App.dproj', ProjectFiles);
+  Assert.IsTrue(mSelection.SingleUnit(mFileName));
+  Assert.AreEqual('C:\P\Main.pas', mFileName);
+  mSelection := TAtlasProjectSelection.Resolve(['C:\P\Core'], 'C:\P\App.dproj', ProjectFiles);
+  Assert.IsFalse(mSelection.SingleUnit(mFileName));
+  mSelection := TAtlasProjectSelection.OfKinds([TAtlasProjectNodeKind.SourceFile], True, 'C:\P\App.dproj',
     ProjectFiles);
-  Assert.IsFalse(Selection.SingleUnit(FileName), 'mehrere Units gewählt');
-  Selection := TAtlasProjectSelection.OfKinds([TAtlasProjectNodeKind.SourceFile], False, 'C:\P\App.dproj',
+  Assert.IsFalse(mSelection.SingleUnit(mFileName), 'mehrere Units gewählt');
+  mSelection := TAtlasProjectSelection.OfKinds([TAtlasProjectNodeKind.SourceFile], False, 'C:\P\App.dproj',
     ProjectFiles);
-  Assert.IsTrue(Selection.SingleUnit(FileName));
-  Assert.AreEqual('', FileName, 'Datei erst beim Ausführen bekannt');
+  Assert.IsTrue(mSelection.SingleUnit(mFileName));
+  Assert.AreEqual('', mFileName, 'Datei erst beim Ausführen bekannt');
 end;
 
 procedure TAtlasProjectSelectionTests.ContextOnlyBetweenEnterAndLeave;

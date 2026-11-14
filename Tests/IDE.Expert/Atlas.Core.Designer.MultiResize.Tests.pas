@@ -16,8 +16,11 @@ type
   TAtlasMultiResizeTests = class
   private
     FColumn: TArray<TAtlasResizeItem>;
+    function Run(ADragged: Integer; AEdge: TAtlasResizeEdge; ADX, ADY: Integer): TAtlasResizeResult; overload;
     function Run(ADragged: Integer; AEdge: TAtlasResizeEdge; ADX, ADY: Integer;
-      AMode: TAtlasResizeMode = TAtlasResizeMode.Delta; AGrid: Integer = 0): TAtlasResizeResult;
+      AMode: TAtlasResizeMode): TAtlasResizeResult; overload;
+    function Run(ADragged: Integer; AEdge: TAtlasResizeEdge; ADX, ADY: Integer;
+      AMode: TAtlasResizeMode; AGrid: Integer): TAtlasResizeResult; overload;
   public
     [Setup]
     procedure Setup;
@@ -71,6 +74,17 @@ end;
 procedure TAtlasMultiResizeTests.TearDown;
 begin
   FColumn := nil;
+end;
+
+function TAtlasMultiResizeTests.Run(ADragged: Integer; AEdge: TAtlasResizeEdge; ADX, ADY: Integer): TAtlasResizeResult;
+begin
+  Result := Run(ADragged, AEdge, ADX, ADY, TAtlasResizeMode.Delta, 0);
+end;
+
+function TAtlasMultiResizeTests.Run(ADragged: Integer; AEdge: TAtlasResizeEdge; ADX, ADY: Integer;
+  AMode: TAtlasResizeMode): TAtlasResizeResult;
+begin
+  Result := Run(ADragged, AEdge, ADX, ADY, AMode, 0);
 end;
 
 function TAtlasMultiResizeTests.Run(ADragged: Integer; AEdge: TAtlasResizeEdge; ADX, ADY: Integer;

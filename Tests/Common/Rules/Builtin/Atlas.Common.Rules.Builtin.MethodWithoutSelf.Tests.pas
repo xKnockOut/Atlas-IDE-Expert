@@ -43,8 +43,8 @@ uses
   Atlas.Tests.RuleAssert;
 
 const
-  Enabled = '{ "rules": { "method-without-self": "hint" } }';
-  Source =
+  cEnabled = '{ "rules": { "method-without-self": "hint" } }';
+  cRechnerSource =
     'unit Rechner;'#10 +
     'interface'#10 +
     'type'#10 +
@@ -73,52 +73,52 @@ end;
 
 procedure TMethodWithoutSelfRuleTests.ReportsWithClassMethodFix;
 var
-  Found: TArray<TRuleFinding>;
-  Edit: TTextEdit;
-  Inserted: string;
+  mFound: TArray<TRuleFinding>;
+  mEdit: TTextEdit;
+  mInserted: string;
 begin
-  Found := TRuleAssert.Findings(Rule, Source, Enabled);
-  Assert.AreEqual(1, Integer(Length(Found)));
-  Assert.AreEqual('method-without-self', Found[0].RuleId);
-  Assert.AreEqual(11, Found[0].Range.StartPos.Line);
-  Assert.IsTrue(Pos('TRechner.Doppelt', Found[0].Message) > 0, Found[0].Message);
-  Assert.AreEqual(1, Integer(Length(Found[0].Fixes)));
-  Assert.AreEqual('In class-Methode umwandeln', Found[0].Fixes[0].Title);
-  Assert.IsFalse(Found[0].Fixes[0].Safe);
-  Inserted := '';
-  for Edit in Found[0].Fixes[0].Edits do
+  mFound := TRuleAssert.Findings(Rule, cRechnerSource, cEnabled);
+  Assert.AreEqual(1, Integer(Length(mFound)));
+  Assert.AreEqual('method-without-self', mFound[0].RuleId);
+  Assert.AreEqual(11, mFound[0].Range.StartPos.Line);
+  Assert.IsTrue(Pos('TRechner.Doppelt', mFound[0].Message) > 0, mFound[0].Message);
+  Assert.AreEqual(1, Integer(Length(mFound[0].Fixes)));
+  Assert.AreEqual('In class-Methode umwandeln', mFound[0].Fixes[0].Title);
+  Assert.IsFalse(mFound[0].Fixes[0].Safe);
+  mInserted := '';
+  for mEdit in mFound[0].Fixes[0].Edits do
   begin
-    Inserted := Inserted + Edit.NewText + '|';
+    mInserted := mInserted + mEdit.NewText + '|';
   end;
-  Assert.IsTrue(Pos('class ', Inserted) > 0, Inserted);
-  Assert.IsTrue(Pos('static;', Inserted) > 0, Inserted);
+  Assert.IsTrue(Pos('class ', mInserted) > 0, mInserted);
+  Assert.IsTrue(Pos('static;', mInserted) > 0, mInserted);
 end;
 
 procedure TMethodWithoutSelfRuleTests.MethodWithFieldIsSilent;
 var
-  Found: TArray<TRuleFinding>;
-  Finding: TRuleFinding;
+  mFound: TArray<TRuleFinding>;
+  mFinding: TRuleFinding;
 begin
-  Found := TRuleAssert.Findings(Rule, Source, Enabled);
-  for Finding in Found do
+  mFound := TRuleAssert.Findings(Rule, cRechnerSource, cEnabled);
+  for mFinding in mFound do
   begin
-    Assert.AreEqual(0, Pos('TRechner.Wert', Finding.Message), Finding.Message);
+    Assert.AreEqual(0, Pos('TRechner.Wert', mFinding.Message), mFinding.Message);
   end;
 end;
 
 procedure TMethodWithoutSelfRuleTests.ExperimentalAndSwitchedOff;
 begin
-  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(Rule, Source))));
-  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(Rule, Source,
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(Rule, cRechnerSource))));
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(Rule, cRechnerSource,
     '{ "rules": { "method-without-self": "hint" }, "refactoring": { "methodKind": false } }'))));
 end;
 
 procedure TMethodWithoutSelfRuleTests.FormEventIsSilent;
 begin
-  Assert.AreEqual(0, Integer(Length(TRuleAssert.FormFindings(Rule, Source,
-    'object Rechner: TRechner'#10'  OnClick = Doppelt'#10'end', Enabled))));
-  Assert.AreEqual(1, Integer(Length(TRuleAssert.FormFindings(Rule, Source,
-    'object Rechner: TRechner'#10'end', Enabled))));
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.FormFindings(Rule, cRechnerSource,
+    'object Rechner: TRechner'#10'  OnClick = Doppelt'#10'end', cEnabled))));
+  Assert.AreEqual(1, Integer(Length(TRuleAssert.FormFindings(Rule, cRechnerSource,
+    'object Rechner: TRechner'#10'end', cEnabled))));
 end;
 
 /// <summary>Im Code einem Ereignis zugewiesen (OnClose := FormClose in Atlas.UI.Commands.KeyMap,
@@ -135,7 +135,7 @@ var
   mFound: TArray<TRuleFinding>;
 begin
   mFound := TRuleAssert.Findings(Rule, cHead + 'procedure TRechner.Start;'#10'var'#10'  mWert: Integer;'#10 +
-    'begin'#10'  OnTick := Self.Tick;'#10'  mWert := Zahl;'#10'end;'#10'end.', Enabled);
+    'begin'#10'  OnTick := Self.Tick;'#10'  mWert := Zahl;'#10'end;'#10'end.', cEnabled);
   Assert.AreEqual(1, Integer(Length(mFound)));
   Assert.IsTrue(Pos('TRechner.Zahl', mFound[0].Message) > 0, mFound[0].Message);
 end;
@@ -148,9 +148,9 @@ const
   cBody = 'implementation'#10'procedure TFenster.Schliessen;'#10'begin'#10'  Close;'#10'end;'#10'end.';
 begin
   Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(Rule, 'unit Fenster;'#10'interface'#10'type'#10 +
-    '  TFenster = class(TForm)'#10'    procedure Schliessen;'#10'  end;'#10 + cBody, Enabled))));
+    '  TFenster = class(TForm)'#10'    procedure Schliessen;'#10'  end;'#10 + cBody, cEnabled))));
   Assert.AreEqual(1, Integer(Length(TRuleAssert.Findings(Rule, 'unit Fenster;'#10'interface'#10'type'#10 +
-    '  TFenster = class'#10'    procedure Schliessen;'#10'  end;'#10 + cBody, Enabled))));
+    '  TFenster = class'#10'    procedure Schliessen;'#10'  end;'#10 + cBody, cEnabled))));
 end;
 
 /// <summary>Eine abgeleitete Klasse übergibt das geerbte Ereignis ohne Self (AddButton(…, CloseClick) in
@@ -166,7 +166,7 @@ var
   mFound: TArray<TRuleFinding>;
   mFinding: TRuleFinding;
 begin
-  mFound := TRuleAssert.Findings(Rule, cSource, Enabled);
+  mFound := TRuleAssert.Findings(Rule, cSource, cEnabled);
   for mFinding in mFound do
   begin
     Assert.AreEqual(0, Pos('TBasis.Klick', mFinding.Message), mFinding.Message);
@@ -213,12 +213,12 @@ const
     'end;'#10 +
     'end.';
 var
-  Found: TArray<TRuleFinding>;
+  mFound: TArray<TRuleFinding>;
 begin
   // IOTAWizard und IComparer<T> kennt der Index nicht, Zeige erbt IKind von IBasis: Nur Doppelt bleibt.
-  Found := TRuleAssert.Findings(Rule, cMelder, Enabled);
-  Assert.AreEqual(1, Integer(Length(Found)));
-  Assert.IsTrue(Pos('TZeiger.Doppelt', Found[0].Message) > 0, Found[0].Message);
+  mFound := TRuleAssert.Findings(Rule, cMelder, cEnabled);
+  Assert.AreEqual(1, Integer(Length(mFound)));
+  Assert.IsTrue(Pos('TZeiger.Doppelt', mFound[0].Message) > 0, mFound[0].Message);
 end;
 
 initialization

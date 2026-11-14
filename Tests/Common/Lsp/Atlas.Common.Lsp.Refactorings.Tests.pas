@@ -89,9 +89,9 @@ uses
   Atlas.Common.Lsp.Completion;
 
 const
-  HauptFile = 'C:\P\Haupt.pas';
+  cHauptFile = 'C:\P\Haupt.pas';
 
-  UnitHaupt =
+  cUnitHaupt =
     'unit Haupt;'#10 +                                                               // 0
     'interface'#10 +                                                                 // 1
     'type'#10 +                                                                      // 2
@@ -127,11 +127,11 @@ const
     'end;'#10 +                                                                      // 32
     'end.'#10;
 
-  RechnerFile = 'C:\P\Rechner.pas';
-  KundenFile = 'C:\P\Kunden.pas';
-  BibFile = 'C:\Lib\Bib.pas';
+  cRechnerFile = 'C:\P\Rechner.pas';
+  cKundenFile = 'C:\P\Kunden.pas';
+  cBibFile = 'C:\Lib\Bib.pas';
 
-  UnitRechner =
+  cUnitRechner =
     'unit Rechner;'#10 +                                       // 0
     'interface'#10 +                                           // 1
     'uses Kunden, Bib;'#10 +                                   // 2
@@ -154,7 +154,7 @@ const
     'end;'#10 +                                                // 19
     'end.'#10;
 
-  UnitKunden =
+  cUnitKunden =
     'unit Kunden;'#10 +
     'interface'#10 +
     'type'#10 +
@@ -165,7 +165,7 @@ const
     'implementation'#10 +
     'end.'#10;
 
-  UnitBib =
+  cUnitBib =
     'unit Bib;'#10 +
     'interface'#10 +
     'type'#10 +
@@ -174,10 +174,10 @@ const
     'implementation'#10 +
     'end.'#10;
 
-  LagerFile = 'C:\P\Lager.pas';
-  KasseFile = 'C:\P\Kasse.pas';
+  cLagerFile = 'C:\P\Lager.pas';
+  cKasseFile = 'C:\P\Kasse.pas';
 
-  UnitLager =
+  cUnitLager =
     'unit Lager;'#10 +
     'interface'#10 +
     'type'#10 +
@@ -200,7 +200,7 @@ const
     'end;'#10 +
     'end.'#10;
 
-  UnitKasse =
+  cUnitKasse =
     'unit Kasse;'#10 +                         // 0
     'interface'#10 +                           // 1
     'uses Lager;'#10 +                         // 2
@@ -221,25 +221,25 @@ const
 function ReadFile(const AFileName: string; out AText: string): Boolean;
 begin
   Result := True;
-  if SameText(AFileName, HauptFile) then
+  if SameText(AFileName, cHauptFile) then
   begin
-    AText := UnitHaupt;
+    AText := cUnitHaupt;
   end
-  else if SameText(AFileName, RechnerFile) then
+  else if SameText(AFileName, cRechnerFile) then
   begin
-    AText := UnitRechner;
+    AText := cUnitRechner;
   end
-  else if SameText(AFileName, KundenFile) then
+  else if SameText(AFileName, cKundenFile) then
   begin
-    AText := UnitKunden;
+    AText := cUnitKunden;
   end
-  else if SameText(AFileName, LagerFile) then
+  else if SameText(AFileName, cLagerFile) then
   begin
-    AText := UnitLager;
+    AText := cUnitLager;
   end
-  else if SameText(AFileName, KasseFile) then
+  else if SameText(AFileName, cKasseFile) then
   begin
-    AText := UnitKasse;
+    AText := cUnitKasse;
   end
   else
   begin
@@ -262,7 +262,7 @@ end;
 procedure TLspRefactoringsTests.Setup;
 begin
   FIndex := TSymbolIndex.Create;
-  FIndex.AddUnit(TIndexExtractor.ExtractText(UnitHaupt, HauptFile, nil));
+  FIndex.AddUnit(TIndexExtractor.ExtractText(cUnitHaupt, cHauptFile, nil));
 end;
 
 procedure TLspRefactoringsTests.TearDown;
@@ -274,7 +274,7 @@ function TLspRefactoringsTests.Context: TRefactoringContext;
 begin
   Result := Default(TRefactoringContext);
   Result.Index := FIndex;
-  Result.FileName := HauptFile;
+  Result.FileName := cHauptFile;
   Result.ReadText := ReadFile;
   Result.Settings := TRefactoringSettings.Default;
   Result.InlineVar := True;
@@ -285,160 +285,160 @@ end;
 function TLspRefactoringsTests.Titles(const AText: string; ALine, ACharacter: Integer;
   const AContext: TRefactoringContext): string;
 var
-  Tree: TSyntaxTree;
-  Action: TCodeAction;
+  mTree: TSyntaxTree;
+  mAction: TCodeAction;
 begin
   Result := '';
-  Tree := TPascalParser.Parse(AText);
+  mTree := TPascalParser.Parse(AText);
   try
-    for Action in TLspRefactorings.Actions(Tree, AText, TTextRange.Create(TTextPosition.Create(ALine, ACharacter),
+    for mAction in TLspRefactorings.Actions(mTree, AText, TTextRange.Create(TTextPosition.Create(ALine, ACharacter),
       TTextPosition.Create(ALine, ACharacter)), AContext) do
     begin
-      Result := Result + Action.Title + '|';
+      Result := Result + mAction.Title + '|';
     end;
   finally
-    Tree.Free;
+    mTree.Free;
   end;
 end;
 
 function TLspRefactoringsTests.Applied(const AText, ATitle: string; ALine, ACharacter: Integer): string;
 var
-  Tree: TSyntaxTree;
-  Action: TCodeAction;
+  mTree: TSyntaxTree;
+  mAction: TCodeAction;
 begin
   Result := '-';
-  Tree := TPascalParser.Parse(AText);
+  mTree := TPascalParser.Parse(AText);
   try
-    for Action in TLspRefactorings.Actions(Tree, AText, TTextRange.Create(TTextPosition.Create(ALine, ACharacter),
+    for mAction in TLspRefactorings.Actions(mTree, AText, TTextRange.Create(TTextPosition.Create(ALine, ACharacter),
       TTextPosition.Create(ALine, ACharacter)), Context) do
     begin
-      if Action.Title = ATitle then
+      if mAction.Title = ATitle then
       begin
         // case vervollständigen trägt die Kennung für das Plugin (#697).
         if ATitle.StartsWith('case ') then
         begin
-          Assert.AreEqual(cCaseCompleteTag, Action.Tag);
+          Assert.AreEqual(cCaseCompleteTag, mAction.Tag);
         end;
-        Exit(TChangeSignature.ApplyEdits(AText, Action.Edits));
+        Exit(TChangeSignature.ApplyEdits(AText, mAction.Edits));
       end;
     end;
   finally
-    Tree.Free;
+    mTree.Free;
   end;
 end;
 
 procedure TLspRefactoringsTests.CompletesCaseOfEnumeration;
 var
-  Expected: string;
+  mExpected: string;
 begin
   // Abnahmefall: case über TAlign mit drei vorhandenen Werten ergänzt die vier fehlenden.
-  Expected := StringReplace(UnitHaupt, '    alBottom: ;'#10,
+  mExpected := StringReplace(cUnitHaupt, '    alBottom: ;'#10,
     '    alBottom: ;'#10'    alLeft: ;'#10'    alRight: ;'#10'    alClient: ;'#10'    alCustom: ;'#10, []);
-  Assert.AreEqual(Expected, Applied(UnitHaupt, 'case vervollständigen (4 fehlende Werte)', 17, 4));
+  Assert.AreEqual(mExpected, Applied(cUnitHaupt, 'case vervollständigen (4 fehlende Werte)', 17, 4));
 end;
 
 procedure TLspRefactoringsTests.ResolvesWithOverTheIndex;
 begin
   // Name gehört zu TKunde (K), Ort zu TAdresse (D).
-  Assert.AreEqual(StringReplace(UnitHaupt, '  with K, D do'#10'    Name := Ort;'#10, '  K.Name := D.Ort;'#10, []),
-    Applied(UnitHaupt, 'with auflösen', 25, 3));
+  Assert.AreEqual(StringReplace(cUnitHaupt, '  with K, D do'#10'    Name := Ort;'#10, '  K.Name := D.Ort;'#10, []),
+    Applied(cUnitHaupt, 'with auflösen', 25, 3));
 end;
 
 procedure TLspRefactoringsTests.NoWithActionForUnknownNames;
 begin
   // TFremd ist nirgends deklariert: ob Name dazugehört, ist offen, also rät Atlas nicht.
-  Assert.AreEqual('-', Applied(UnitHaupt, 'with auflösen', 30, 3));
+  Assert.AreEqual('-', Applied(cUnitHaupt, 'with auflösen', 30, 3));
 end;
 
 procedure TLspRefactoringsTests.ProbeFindsTypeAndKind;
 var
-  Probe: TTypeProbe;
-  Probed: TProbedType;
-  Text: string;
+  mProbe: TTypeProbe;
+  mProbed: TProbedType;
+  mText: string;
 begin
-  Probe := TLspRefactorings.Probe(Context);
-  Text := StringReplace(UnitHaupt, '  with K, D do'#10, '  var AtlasProbe := K;'#10'  with K, D do'#10, []);
-  Probed := Probe(Text, TTextPosition.Create(25, 6));
-  Assert.AreEqual('TKunde', Probed.Name);
-  Assert.IsTrue(Probed.IsReference);
-  Assert.AreEqual('', Probed.UnitName);
-  Text := StringReplace(UnitHaupt, '  case A of'#10, '  var AtlasProbe := A;'#10'  case A of'#10, []);
-  Probed := Probe(Text, TTextPosition.Create(17, 6));
-  Assert.AreEqual('TAlign', Probed.Name);
-  Assert.IsTrue(Probed.IsValue);
-  Assert.IsFalse(Probed.IsReference);
+  mProbe := TLspRefactorings.Probe(Context);
+  mText := StringReplace(cUnitHaupt, '  with K, D do'#10, '  var AtlasProbe := K;'#10'  with K, D do'#10, []);
+  mProbed := mProbe(mText, TTextPosition.Create(25, 6));
+  Assert.AreEqual('TKunde', mProbed.Name);
+  Assert.IsTrue(mProbed.IsReference);
+  Assert.AreEqual('', mProbed.UnitName);
+  mText := StringReplace(cUnitHaupt, '  case A of'#10, '  var AtlasProbe := A;'#10'  case A of'#10, []);
+  mProbed := mProbe(mText, TTextPosition.Create(17, 6));
+  Assert.AreEqual('TAlign', mProbed.Name);
+  Assert.IsTrue(mProbed.IsValue);
+  Assert.IsFalse(mProbed.IsReference);
 end;
 
 procedure TLspRefactoringsTests.SettingsSwitchActionsOff;
 var
-  Off: TRefactoringContext;
+  mOff: TRefactoringContext;
 begin
-  Assert.AreEqual('case vervollständigen (4 fehlende Werte)|In if-Kette umwandeln|', Titles(UnitHaupt, 17, 4,
+  Assert.AreEqual('case vervollständigen (4 fehlende Werte)|In if-Kette umwandeln|', Titles(cUnitHaupt, 17, 4,
     Context));
-  Assert.AreEqual('with auflösen|', Titles(UnitHaupt, 25, 3, Context));
-  Off := Context;
-  Off.Settings.CompleteCase := False;
-  Off.Settings.ResolveWith := False;
-  Off.Settings.IfCase := False;
-  Assert.AreEqual('', Titles(UnitHaupt, 17, 4, Off));
-  Assert.AreEqual('', Titles(UnitHaupt, 25, 3, Off));
+  Assert.AreEqual('with auflösen|', Titles(cUnitHaupt, 25, 3, Context));
+  mOff := Context;
+  mOff.Settings.CompleteCase := False;
+  mOff.Settings.ResolveWith := False;
+  mOff.Settings.IfCase := False;
+  Assert.AreEqual('', Titles(cUnitHaupt, 17, 4, mOff));
+  Assert.AreEqual('', Titles(cUnitHaupt, 25, 3, mOff));
 end;
 
 procedure TLspRefactoringsTests.ConvertsCaseAndIfChain;
 var
-  Chain: string;
+  mChain: string;
 begin
-  Chain := StringReplace(UnitHaupt, '  case A of'#10'    alNone: ;'#10'    alTop: ;'#10'    alBottom: ;'#10'  end;'#10,
+  mChain := StringReplace(cUnitHaupt, '  case A of'#10'    alNone: ;'#10'    alTop: ;'#10'    alBottom: ;'#10'  end;'#10,
     '  if A = alNone then'#10'    Exit'#10'  else if A in [alTop, alBottom] then'#10'    Exit;'#10, []);
-  Assert.AreEqual(StringReplace(UnitHaupt, '  case A of'#10'    alNone: ;'#10'    alTop: ;'#10'    alBottom: ;'#10,
-    '  case A of'#10'    alNone: Exit;'#10'    alTop, alBottom: Exit;'#10, []), Applied(Chain, 'In case umwandeln', 17,
+  Assert.AreEqual(StringReplace(cUnitHaupt, '  case A of'#10'    alNone: ;'#10'    alTop: ;'#10'    alBottom: ;'#10,
+    '  case A of'#10'    alNone: Exit;'#10'    alTop, alBottom: Exit;'#10, []), Applied(mChain, 'In case umwandeln', 17,
     4));
-  Assert.AreEqual('-', Applied(Chain, 'In if-Kette umwandeln', 17, 4));
+  Assert.AreEqual('-', Applied(mChain, 'In if-Kette umwandeln', 17, 4));
 end;
 
 procedure TLspRefactoringsTests.RewritesConditions;
 var
-  Chain: string;
-  Off: TRefactoringContext;
+  mChain: string;
+  mOff: TRefactoringContext;
 begin
-  Chain := StringReplace(UnitHaupt, '  case A of'#10'    alNone: ;'#10'    alTop: ;'#10'    alBottom: ;'#10'  end;'#10,
+  mChain := StringReplace(cUnitHaupt, '  case A of'#10'    alNone: ;'#10'    alTop: ;'#10'    alBottom: ;'#10'  end;'#10,
     '  if A = alNone then'#10'    Exit'#10'  else if A in [alTop, alBottom] then'#10'    Exit;'#10, []);
-  Assert.AreEqual(StringReplace(Chain, '  if A = alNone then'#10'    Exit'#10'  else if A in [alTop, alBottom] then'#10 +
+  Assert.AreEqual(StringReplace(mChain, '  if A = alNone then'#10'    Exit'#10'  else if A in [alTop, alBottom] then'#10 +
     '    Exit;'#10, '  if A <> alNone then'#10'  begin'#10'    if A in [alTop, alBottom] then'#10'      Exit;'#10 +
-    '  end'#10'  else'#10'    Exit;'#10, []), Applied(Chain, 'Bedingung umkehren', 17, 4));
-  Assert.IsTrue(Pos('Bedingung umkehren|', Titles(Chain, 17, 4, Context)) > 0);
-  Off := Context;
-  Off.Settings.Conditions := False;
-  Assert.AreEqual(0, Pos('Bedingung umkehren', Titles(Chain, 17, 4, Off)));
+    '  end'#10'  else'#10'    Exit;'#10, []), Applied(mChain, 'Bedingung umkehren', 17, 4));
+  Assert.IsTrue(Pos('Bedingung umkehren|', Titles(mChain, 17, 4, Context)) > 0);
+  mOff := Context;
+  mOff.Settings.Conditions := False;
+  Assert.AreEqual(0, Pos('Bedingung umkehren', Titles(mChain, 17, 4, mOff)));
 end;
 
 procedure TLspRefactoringsTests.ConvertsConditionalExpression;
 const
-  CaseText = '  case A of'#10'    alNone: ;'#10'    alTop: ;'#10'    alBottom: ;'#10'  end;'#10;
+  cCaseText = '  case A of'#10'    alNone: ;'#10'    alTop: ;'#10'    alBottom: ;'#10'  end;'#10;
 var
-  Statement, Expression: string;
-  Old: TRefactoringContext;
+  mStatement, mExpression: string;
+  mOld: TRefactoringContext;
 begin
-  Statement := StringReplace(UnitHaupt, CaseText, '  if A = alNone then'#10'    Zeige(alTop)'#10'  else'#10 +
+  mStatement := StringReplace(cUnitHaupt, cCaseText, '  if A = alNone then'#10'    Zeige(alTop)'#10'  else'#10 +
     '    Zeige(alLeft);'#10, []);
-  Expression := StringReplace(UnitHaupt, CaseText, '  Zeige(if A = alNone then alTop else alLeft);'#10, []);
+  mExpression := StringReplace(cUnitHaupt, cCaseText, '  Zeige(if A = alNone then alTop else alLeft);'#10, []);
   // Die Aufzählungswerte haben über die Namensauflösung denselben Typ.
-  Assert.AreEqual(Expression, Applied(Statement, 'In bedingten Ausdruck umwandeln', 17, 3));
-  Assert.AreEqual(Statement, Applied(Expression, 'In if-Anweisung umwandeln', 17, 9));
+  Assert.AreEqual(mExpression, Applied(mStatement, 'In bedingten Ausdruck umwandeln', 17, 3));
+  Assert.AreEqual(mStatement, Applied(mExpression, 'In if-Anweisung umwandeln', 17, 9));
   // Delphi 12: nur der Rückweg.
-  Old := Context;
-  Old.IfExpression := False;
-  Assert.AreEqual(0, Pos('In bedingten Ausdruck umwandeln', Titles(Statement, 17, 3, Old)));
-  Assert.IsTrue(Pos('In if-Anweisung umwandeln|', Titles(Expression, 17, 9, Old)) > 0);
-  Old := Context;
-  Old.Settings.ConditionalExpression := False;
-  Assert.AreEqual(0, Pos('In bedingten Ausdruck umwandeln', Titles(Statement, 17, 3, Old)));
-  Assert.AreEqual(0, Pos('In if-Anweisung umwandeln', Titles(Expression, 17, 9, Old)));
+  mOld := Context;
+  mOld.IfExpression := False;
+  Assert.AreEqual(0, Pos('In bedingten Ausdruck umwandeln', Titles(mStatement, 17, 3, mOld)));
+  Assert.IsTrue(Pos('In if-Anweisung umwandeln|', Titles(mExpression, 17, 9, mOld)) > 0);
+  mOld := Context;
+  mOld.Settings.ConditionalExpression := False;
+  Assert.AreEqual(0, Pos('In bedingten Ausdruck umwandeln', Titles(mStatement, 17, 3, mOld)));
+  Assert.AreEqual(0, Pos('In if-Anweisung umwandeln', Titles(mExpression, 17, 9, mOld)));
 end;
 
 procedure TLspRefactoringsTests.ExtractsNestedRoutine;
 const
-  Text =
+  cText =
     'unit Haupt;'#10 +                            // 0
     'interface'#10 +                              // 1
     'type'#10 +                                   // 2
@@ -459,73 +459,73 @@ const
     'end;'#10 +                                   // 17
     'end.'#10;
 var
-  Done: string;
-  Off: TRefactoringContext;
+  mDone: string;
+  mOff: TRefactoringContext;
 begin
-  Done := Applied(Text, TNestedRoutines.ToUnitRoutineTitle, 10, 4);
-  Assert.IsTrue(Pos('procedure Lies(var N: Integer; const P: TPunkt);'#10'begin'#10'  N := P.X;', Done) > 0, Done);
-  Assert.IsTrue(Pos('  Lies(N, P);'#10, Done) > 0, Done);
-  Assert.IsTrue(Pos(TNestedRoutines.ToUnitRoutineTitle + '|', Titles(Text, 10, 4, Context)) > 0);
-  Off := Context;
-  Off.Settings.NestedRoutine := False;
-  Assert.AreEqual(0, Pos(TNestedRoutines.ToUnitRoutineTitle, Titles(Text, 10, 4, Off)));
+  mDone := Applied(cText, TNestedRoutines.ToUnitRoutineTitle, 10, 4);
+  Assert.IsTrue(Pos('procedure Lies(var N: Integer; const P: TPunkt);'#10'begin'#10'  N := P.X;', mDone) > 0, mDone);
+  Assert.IsTrue(Pos('  Lies(N, P);'#10, mDone) > 0, mDone);
+  Assert.IsTrue(Pos(TNestedRoutines.ToUnitRoutineTitle + '|', Titles(cText, 10, 4, Context)) > 0);
+  mOff := Context;
+  mOff.Settings.NestedRoutine := False;
+  Assert.AreEqual(0, Pos(TNestedRoutines.ToUnitRoutineTitle, Titles(cText, 10, 4, mOff)));
 end;
 
 procedure TLspRefactoringsTests.CompletionOffersWithItem;
 var
-  Store: IDocumentStore;
-  Completion: TLspCompletion;
-  Dispatcher: TJsonRpcDispatcher;
-  Uri, Answer: string;
-  Asked: Integer;
+  mStore: IDocumentStore;
+  mCompletion: TLspCompletion;
+  mDispatcher: TJsonRpcDispatcher;
+  mUri, mAnswer: string;
+  mAsked: Integer;
 
   function Ask(ACharacter: Integer): string;
   var
-    Request, Response: TJSONObject;
+    mRequest, mResponse: TJSONObject;
   begin
-    Request := TJSONObject.ParseJSONValue('{"jsonrpc":"2.0","id":1,"method":"textDocument/completion",' +
-      '"params":{"textDocument":{"uri":"' + Uri.Replace('\', '\\') + '"},"position":{"line":25,"character":' +
+    mRequest := TJSONObject.ParseJSONValue('{"jsonrpc":"2.0","id":1,"method":"textDocument/completion",' +
+      '"params":{"textDocument":{"uri":"' + mUri.Replace('\', '\\') + '"},"position":{"line":25,"character":' +
       IntToStr(ACharacter) + '}}}') as TJSONObject;
     try
-      Response := Dispatcher.DispatchMessage(Request);
+      mResponse := mDispatcher.DispatchMessage(mRequest);
       try
-        Result := Response.ToJSON;
+        Result := mResponse.ToJSON;
       finally
-        Response.Free;
+        mResponse.Free;
       end;
     finally
-      Request.Free;
+      mRequest.Free;
     end;
   end;
 
 begin
-  Uri := TDocumentUris.FromPath(HauptFile);
-  Store := TDocumentStore.Create;
-  Store.Open(Uri, 'delphi', 1, UnitHaupt);
-  Asked := 0;
-  Completion := TLspCompletion.Create(Store, FIndex);
-  Dispatcher := TJsonRpcDispatcher.Create;
+  mUri := TDocumentUris.FromPath(cHauptFile);
+  mStore := TDocumentStore.Create;
+  mStore.Open(mUri, 'delphi', 1, cUnitHaupt);
+  mAsked := 0;
+  mCompletion := TLspCompletion.Create(mStore, FIndex);
+  mDispatcher := TJsonRpcDispatcher.Create;
   try
-    Completion.Hooks.WithFor :=
+    mCompletion.Hooks.WithFor :=
       function(ARequest: TCompletionRequest; out AEdits: TArray<TTextEdit>): Boolean
       begin
-        Inc(Asked);
+        Inc(mAsked);
         AEdits := [TTextEdit.Create(TTextRange.Create(TTextPosition.Create(25, 2), TTextPosition.Create(26, 15)),
           'K.Name := D.Ort')];
         Result := True;
       end;
-    Completion.Attach(Dispatcher);
+    mCompletion.Attach(mDispatcher);
     // Auf "with" (ö kommt als \u00F6): Haupteintrag entfernt das Wort, der Rest kommt als Zusatzänderung.
-    Answer := Ask(4);
-    Assert.IsTrue(Answer.Contains('"label":"with aufl'), Answer);
-    Assert.IsTrue(Answer.Contains('K.Name := D.Ort'), Answer);
-    Assert.AreEqual(1, Asked);
+    mAnswer := Ask(4);
+    Assert.IsTrue(mAnswer.Contains('"label":"with aufl'), mAnswer);
+    Assert.IsTrue(mAnswer.Contains('K.Name := D.Ort'), mAnswer);
+    Assert.AreEqual(1, mAsked);
     // Hinter dem Wort nicht.
-    Answer := Ask(10);
-    Assert.IsFalse(Answer.Contains('"label":"with aufl'), Answer);
+    mAnswer := Ask(10);
+    Assert.IsFalse(mAnswer.Contains('"label":"with aufl'), mAnswer);
   finally
-    Dispatcher.Free;
-    Completion.Free;
+    mDispatcher.Free;
+    mCompletion.Free;
   end;
 end;
 
@@ -533,214 +533,214 @@ end;
 function RechnerAction(const AContext: TRefactoringContext; ALine, ACharacter: Integer; const ATitle: string;
   out AAction: TCodeAction): Boolean;
 var
-  Tree: TSyntaxTree;
-  Action: TCodeAction;
+  mTree: TSyntaxTree;
+  mAction: TCodeAction;
 begin
   Result := False;
   AAction := Default(TCodeAction);
-  Tree := TPascalParser.Parse(UnitRechner);
+  mTree := TPascalParser.Parse(cUnitRechner);
   try
-    for Action in TLspRefactorings.Actions(Tree, UnitRechner, TTextRange.Create(TTextPosition.Create(ALine,
+    for mAction in TLspRefactorings.Actions(mTree, cUnitRechner, TTextRange.Create(TTextPosition.Create(ALine,
       ACharacter), TTextPosition.Create(ALine, ACharacter)), AContext) do
     begin
-      if Action.Title = ATitle then
+      if mAction.Title = ATitle then
       begin
-        AAction := Action;
+        AAction := mAction;
         Exit(True);
       end;
     end;
   finally
-    Tree.Free;
+    mTree.Free;
   end;
 end;
 
 procedure AddRechnerUnits(const AIndex: ISymbolIndex);
 var
-  Bib: TUnitIndex;
+  mBib: TUnitIndex;
 begin
-  AIndex.AddUnit(TIndexExtractor.ExtractText(UnitRechner, RechnerFile, nil));
-  AIndex.AddUnit(TIndexExtractor.ExtractText(UnitKunden, KundenFile, nil));
-  Bib := TIndexExtractor.ExtractText(UnitBib, BibFile, nil);
-  Bib.Library_ := True;
-  AIndex.AddUnit(Bib);
+  AIndex.AddUnit(TIndexExtractor.ExtractText(cUnitRechner, cRechnerFile, nil));
+  AIndex.AddUnit(TIndexExtractor.ExtractText(cUnitKunden, cKundenFile, nil));
+  mBib := TIndexExtractor.ExtractText(cUnitBib, cBibFile, nil);
+  mBib.Library_ := True;
+  AIndex.AddUnit(mBib);
 end;
 
 procedure TLspRefactoringsTests.CreatesMethodFromCall;
 var
-  Rechner: TRefactoringContext;
-  Action: TCodeAction;
-  Result_: string;
+  mRechner: TRefactoringContext;
+  mAction: TCodeAction;
+  mResult_: string;
 begin
   AddRechnerUnits(FIndex);
-  Rechner := Context;
-  Rechner.FileName := RechnerFile;
+  mRechner := Context;
+  mRechner.FileName := cRechnerFile;
   // Abnahmefall: Total: Currency, Customer: TCustomer, 0.1 ist ein Satz.
-  Assert.IsTrue(RechnerAction(Rechner, 14, 13, 'Methode CalcDiscount anlegen', Action));
-  Result_ := TChangeSignature.ApplyEdits(UnitRechner, Action.Edits);
-  Assert.IsTrue(Result_.Contains('  private'#10'    function CalcDiscount(Customer: TCustomer; Rate: Double): ' +
-    'Currency;'#10'  end;'), Result_);
-  Assert.IsTrue(Result_.Contains(#10'function TRechner.CalcDiscount(Customer: TCustomer; Rate: Double): Currency;' +
-    #10'begin'#10#10'end;'), Result_);
+  Assert.IsTrue(RechnerAction(mRechner, 14, 13, 'Methode CalcDiscount anlegen', mAction));
+  mResult_ := TChangeSignature.ApplyEdits(cUnitRechner, mAction.Edits);
+  Assert.IsTrue(mResult_.Contains('  private'#10'    function CalcDiscount(Customer: TCustomer; Rate: Double): ' +
+    'Currency;'#10'  end;'), mResult_);
+  Assert.IsTrue(mResult_.Contains(#10'function TRechner.CalcDiscount(Customer: TCustomer; Rate: Double): Currency;' +
+    #10'begin'#10#10'end;'), mResult_);
   // Ohne Zuweisung eine Prozedur; string als const.
-  Assert.IsTrue(RechnerAction(Rechner, 15, 4, 'Methode Protokolliere anlegen', Action));
-  Assert.IsTrue(TChangeSignature.ApplyEdits(UnitRechner, Action.Edits).Contains(
-    'procedure Protokolliere(const Name: string);'), TChangeSignature.ApplyEdits(UnitRechner, Action.Edits));
-  Rechner.Settings.ConstParameters := False;
-  Assert.IsTrue(RechnerAction(Rechner, 15, 4, 'Methode Protokolliere anlegen', Action));
-  Assert.IsTrue(TChangeSignature.ApplyEdits(UnitRechner, Action.Edits).Contains(
-    'procedure Protokolliere(Name: string);'), TChangeSignature.ApplyEdits(UnitRechner, Action.Edits));
+  Assert.IsTrue(RechnerAction(mRechner, 15, 4, 'Methode Protokolliere anlegen', mAction));
+  Assert.IsTrue(TChangeSignature.ApplyEdits(cUnitRechner, mAction.Edits).Contains(
+    'procedure Protokolliere(const Name: string);'), TChangeSignature.ApplyEdits(cUnitRechner, mAction.Edits));
+  mRechner.Settings.ConstParameters := False;
+  Assert.IsTrue(RechnerAction(mRechner, 15, 4, 'Methode Protokolliere anlegen', mAction));
+  Assert.IsTrue(TChangeSignature.ApplyEdits(cUnitRechner, mAction.Edits).Contains(
+    'procedure Protokolliere(Name: string);'), TChangeSignature.ApplyEdits(cUnitRechner, mAction.Edits));
   // Klasse aus einer Bibliothek: kein Angebot.
-  Assert.IsFalse(RechnerAction(Rechner, 16, 10, 'Methode Sortiere in TBibListe anlegen', Action));
+  Assert.IsFalse(RechnerAction(mRechner, 16, 10, 'Methode Sortiere in TBibListe anlegen', mAction));
   // Klasse einer anderen Unit des Projekts: dort public, als Änderung der anderen Datei.
-  Assert.IsTrue(RechnerAction(Rechner, 17, 13, 'Methode Pruefe in TCustomer anlegen', Action));
-  Assert.AreEqual(0, Integer(Length(Action.Edits)));
-  Assert.AreEqual(1, Integer(Length(Action.FileEdits)));
-  Assert.AreEqual(KundenFile, Action.FileEdits[0].FileName);
-  Result_ := TChangeSignature.ApplyEdits(UnitKunden, Action.FileEdits[0].Edits);
-  Assert.IsTrue(Result_.Contains('    Name: string;'#10'    procedure Pruefe(Total: Currency);'#10'  end;'), Result_);
-  Assert.IsTrue(Result_.Contains('procedure TCustomer.Pruefe(Total: Currency);'), Result_);
+  Assert.IsTrue(RechnerAction(mRechner, 17, 13, 'Methode Pruefe in TCustomer anlegen', mAction));
+  Assert.AreEqual(0, Integer(Length(mAction.Edits)));
+  Assert.AreEqual(1, Integer(Length(mAction.FileEdits)));
+  Assert.AreEqual(cKundenFile, mAction.FileEdits[0].FileName);
+  mResult_ := TChangeSignature.ApplyEdits(cUnitKunden, mAction.FileEdits[0].Edits);
+  Assert.IsTrue(mResult_.Contains('    Name: string;'#10'    procedure Pruefe(Total: Currency);'#10'  end;'), mResult_);
+  Assert.IsTrue(mResult_.Contains('procedure TCustomer.Pruefe(Total: Currency);'), mResult_);
   // Bekannter Name und abgeschaltet: nichts.
-  Assert.IsFalse(RechnerAction(Rechner, 18, 4, 'Methode Rechne anlegen', Action));
-  Rechner.Settings.CreateMethod := False;
-  Assert.IsFalse(RechnerAction(Rechner, 14, 13, 'Methode CalcDiscount anlegen', Action));
+  Assert.IsFalse(RechnerAction(mRechner, 18, 4, 'Methode Rechne anlegen', mAction));
+  mRechner.Settings.CreateMethod := False;
+  Assert.IsFalse(RechnerAction(mRechner, 14, 13, 'Methode CalcDiscount anlegen', mAction));
 end;
 
 procedure TLspRefactoringsTests.CompletionOffersCreateAfterParen;
 var
-  Store: IDocumentStore;
-  Completion: TLspCompletion;
-  Dispatcher: TJsonRpcDispatcher;
-  Uri, Text, Answer: string;
-  Enabled: Boolean;
+  mStore: IDocumentStore;
+  mCompletion: TLspCompletion;
+  mDispatcher: TJsonRpcDispatcher;
+  mUri, mText, mAnswer: string;
+  mEnabled: Boolean;
 
   function Ask(ALine, ACharacter: Integer; const ATrigger: string): string;
   var
-    Request, Response: TJSONObject;
-    Trigger: string;
+    mRequest, mResponse: TJSONObject;
+    mTrigger: string;
   begin
-    Trigger := '';
+    mTrigger := '';
     if ATrigger <> '' then
     begin
-      Trigger := ',"context":{"triggerKind":2,"triggerCharacter":"' + ATrigger + '"}';
+      mTrigger := ',"context":{"triggerKind":2,"triggerCharacter":"' + ATrigger + '"}';
     end;
-    Request := TJSONObject.ParseJSONValue('{"jsonrpc":"2.0","id":1,"method":"textDocument/completion",' +
-      '"params":{"textDocument":{"uri":"' + Uri.Replace('\', '\\') + '"},"position":{"line":' + IntToStr(ALine) +
-      ',"character":' + IntToStr(ACharacter) + '}' + Trigger + '}}') as TJSONObject;
+    mRequest := TJSONObject.ParseJSONValue('{"jsonrpc":"2.0","id":1,"method":"textDocument/completion",' +
+      '"params":{"textDocument":{"uri":"' + mUri.Replace('\', '\\') + '"},"position":{"line":' + IntToStr(ALine) +
+      ',"character":' + IntToStr(ACharacter) + '}' + mTrigger + '}}') as TJSONObject;
     try
-      Response := Dispatcher.DispatchMessage(Request);
+      mResponse := mDispatcher.DispatchMessage(mRequest);
       try
-        Result := Response.ToJSON;
+        Result := mResponse.ToJSON;
       finally
-        Response.Free;
+        mResponse.Free;
       end;
     finally
-      Request.Free;
+      mRequest.Free;
     end;
   end;
 
 begin
   AddRechnerUnits(FIndex);
   // Zeile 14 gerade getippt: "  Total := CalcDiscount(" ohne Argumente.
-  Text := StringReplace(UnitRechner, '  Total := CalcDiscount(Customer, 0.1);', '  Total := CalcDiscount(', []);
-  Uri := TDocumentUris.FromPath(RechnerFile);
-  Store := TDocumentStore.Create;
-  Store.Open(Uri, 'delphi', 1, Text);
-  Enabled := True;
-  Completion := TLspCompletion.Create(Store, FIndex);
-  Dispatcher := TJsonRpcDispatcher.Create;
+  mText := StringReplace(cUnitRechner, '  Total := CalcDiscount(Customer, 0.1);', '  Total := CalcDiscount(', []);
+  mUri := TDocumentUris.FromPath(cRechnerFile);
+  mStore := TDocumentStore.Create;
+  mStore.Open(mUri, 'delphi', 1, mText);
+  mEnabled := True;
+  mCompletion := TLspCompletion.Create(mStore, FIndex);
+  mDispatcher := TJsonRpcDispatcher.Create;
   try
-    Completion.Hooks.CreateFor :=
+    mCompletion.Hooks.CreateFor :=
       function(ARequest: TCompletionRequest; out ATitle, ADetail: string; out AEdits: TArray<TTextEdit>): Boolean
       var
         Rechner: TRefactoringContext;
         Created: TCreatedMethod;
       begin
         Rechner := Context;
-        Rechner.FileName := RechnerFile;
+        Rechner.FileName := cRechnerFile;
         Rechner.Settings.CreateMethodCaretInBody := True;
         Rechner.CaretMarker := True;
-        Result := Enabled and TLspRefactorings.CreateMethod(ARequest.Resolver, ARequest.Tree, ARequest.Text,
+        Result := mEnabled and TLspRefactorings.CreateMethod(ARequest.Resolver, ARequest.Tree, ARequest.Text,
           ARequest.Position, Rechner, Created);
         ATitle := Created.Title;
         ADetail := Created.Detail;
         AEdits := Created.Edits;
       end;
-    Completion.Attach(Dispatcher);
-    Answer := Ask(14, 24, '(');
-    Assert.IsTrue(Answer.Contains('"label":"Methode CalcDiscount anlegen"'), Answer);
-    Assert.IsTrue(Answer.Contains('function CalcDiscount: Currency'), Answer);
+    mCompletion.Attach(mDispatcher);
+    mAnswer := Ask(14, 24, '(');
+    Assert.IsTrue(mAnswer.Contains('"label":"Methode CalcDiscount anlegen"'), mAnswer);
+    Assert.IsTrue(mAnswer.Contains('function CalcDiscount: Currency'), mAnswer);
     // Cursor danach im Rumpf.
-    Assert.IsTrue(Answer.Contains('begin\n  $0\nend;'), Answer);
-    Assert.IsTrue(Answer.Contains('"action":"create"'), Answer);
+    Assert.IsTrue(mAnswer.Contains('begin\n  $0\nend;'), mAnswer);
+    Assert.IsTrue(mAnswer.Contains('"action":"create"'), mAnswer);
     // Bekannter Name nach "(": leere Liste.
-    Answer := Ask(18, 9, '(');
-    Assert.IsFalse(Answer.Contains('anlegen'), Answer);
-    Enabled := False;
-    Answer := Ask(14, 24, '(');
-    Assert.IsFalse(Answer.Contains('anlegen'), Answer);
+    mAnswer := Ask(18, 9, '(');
+    Assert.IsFalse(mAnswer.Contains('anlegen'), mAnswer);
+    mEnabled := False;
+    mAnswer := Ask(14, 24, '(');
+    Assert.IsFalse(mAnswer.Contains('anlegen'), mAnswer);
   finally
-    Dispatcher.Free;
-    Completion.Free;
+    mDispatcher.Free;
+    mCompletion.Free;
   end;
 end;
 
 procedure TLspRefactoringsTests.InlinesOverTheIndex;
 var
-  Kasse: TRefactoringContext;
-  Tree: TSyntaxTree;
-  Action: TCodeAction;
-  Titles_, Result_: string;
+  mKasse: TRefactoringContext;
+  mTree: TSyntaxTree;
+  mAction: TCodeAction;
+  mTitles_, mResult_: string;
 
   function Run(ALine, ACharacter: Integer; const ATitle: string): string;
   var
-    Item: TCodeAction;
+    mItem: TCodeAction;
   begin
     Result := '-';
-    Titles_ := '';
-    for Item in TLspRefactorings.Actions(Tree, UnitKasse, TTextRange.Create(TTextPosition.Create(ALine, ACharacter),
-      TTextPosition.Create(ALine, ACharacter)), Kasse) do
+    mTitles_ := '';
+    for mItem in TLspRefactorings.Actions(mTree, cUnitKasse, TTextRange.Create(TTextPosition.Create(ALine, ACharacter),
+      TTextPosition.Create(ALine, ACharacter)), mKasse) do
     begin
-      Titles_ := Titles_ + Item.Title + '|';
-      if Item.Title = ATitle then
+      mTitles_ := mTitles_ + mItem.Title + '|';
+      if mItem.Title = ATitle then
       begin
-        Result := TChangeSignature.ApplyEdits(UnitKasse, Item.Edits);
+        Result := TChangeSignature.ApplyEdits(cUnitKasse, mItem.Edits);
       end;
     end;
   end;
 
 begin
-  FIndex.AddUnit(TIndexExtractor.ExtractText(UnitLager, LagerFile, nil));
-  FIndex.AddUnit(TIndexExtractor.ExtractText(UnitKasse, KasseFile, nil));
-  Kasse := Context;
-  Kasse.FileName := KasseFile;
-  Tree := TPascalParser.Parse(UnitKasse);
+  FIndex.AddUnit(TIndexExtractor.ExtractText(cUnitLager, cLagerFile, nil));
+  FIndex.AddUnit(TIndexExtractor.ExtractText(cUnitKasse, cKasseFile, nil));
+  mKasse := Context;
+  mKasse.FileName := cKasseFile;
+  mTree := TPascalParser.Parse(cUnitKasse);
   try
     // Experimentell: ohne Schalter nichts.
     Assert.AreEqual('-', Run(11, 10, 'Methode Doppelt einbetten'));
-    Kasse.Settings.InlineCode := True;
+    mKasse.Settings.InlineCode := True;
     // Öffentliches Feld aus der anderen Unit: mit dem Empfänger eingesetzt.
-    Result_ := Run(11, 10, 'Methode Doppelt einbetten');
-    Assert.AreEqual(StringReplace(UnitKasse, 'X := L.Doppelt + 1;', 'X := (L.Anzahl * 2) + 1;', []), Result_);
+    mResult_ := Run(11, 10, 'Methode Doppelt einbetten');
+    Assert.AreEqual(StringReplace(cUnitKasse, 'X := L.Doppelt + 1;', 'X := (L.Anzahl * 2) + 1;', []), mResult_);
     // Privates Feld einer anderen Unit: kein Angebot.
     Assert.AreEqual('-', Run(13, 5, 'Methode Zugang einbetten'));
     // Die Variable: Der Ausdruck ruft auf, wird aber nur einmal und ohne Lesen davor gebraucht. L.Zugang(X) kennt
     // die Datenflussanalyse nicht; X könnte dort ein var-Argument sein, also kein Angebot.
-    Assert.AreEqual('-', Run(9, 2, 'Variable X einbetten'), Titles_);
-    Result_ := StringReplace(UnitKasse, '  L.Zugang(X);'#10, '', []);
-    Tree.Free;
-    Tree := TPascalParser.Parse(Result_);
-    for Action in TLspRefactorings.Actions(Tree, Result_, TTextRange.Create(TTextPosition.Create(9, 2),
-      TTextPosition.Create(9, 2)), Kasse) do
+    Assert.AreEqual('-', Run(9, 2, 'Variable X einbetten'), mTitles_);
+    mResult_ := StringReplace(cUnitKasse, '  L.Zugang(X);'#10, '', []);
+    mTree.Free;
+    mTree := TPascalParser.Parse(mResult_);
+    for mAction in TLspRefactorings.Actions(mTree, mResult_, TTextRange.Create(TTextPosition.Create(9, 2),
+      TTextPosition.Create(9, 2)), mKasse) do
     begin
-      if Action.Title = 'Variable X einbetten' then
+      if mAction.Title = 'Variable X einbetten' then
       begin
-        Titles_ := TChangeSignature.ApplyEdits(Result_, Action.Edits);
+        mTitles_ := TChangeSignature.ApplyEdits(mResult_, mAction.Edits);
       end;
     end;
-    Assert.AreEqual(StringReplace(StringReplace(Result_, 'var'#10'  X: Integer;'#10, '', []),
-      '  X := L.Doppelt + 1;'#10'  Zeige(X);', '  Zeige(L.Doppelt + 1);', []), Titles_);
+    Assert.AreEqual(StringReplace(StringReplace(mResult_, 'var'#10'  X: Integer;'#10, '', []),
+      '  X := L.Doppelt + 1;'#10'  Zeige(X);', '  Zeige(L.Doppelt + 1);', []), mTitles_);
   finally
-    Tree.Free;
+    mTree.Free;
   end;
 end;
 

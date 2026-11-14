@@ -66,83 +66,83 @@ end;
 
 procedure TAtlasUpdateConsentTests.AsksOnceAndRunsFirstAnswer;
 var
-  Consent: TAtlasUpdateConsent;
-  Yes, No: Integer;
+  mConsent: TAtlasUpdateConsent;
+  mYes, mNo: Integer;
 begin
-  Yes := 0;
-  No := 0;
-  Consent := TAtlasUpdateConsent.CreateConsent(nil);
-  Consent.OnYes :=
+  mYes := 0;
+  mNo := 0;
+  mConsent := TAtlasUpdateConsent.CreateConsent(nil);
+  mConsent.OnYes :=
     procedure
     begin
-      Inc(Yes);
+      Inc(mYes);
     end;
-  Consent.OnNo :=
+  mConsent.OnNo :=
     procedure
     begin
-      Inc(No);
+      Inc(mNo);
     end;
-  Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.UpdatesConsentTitle), Consent.Caption);
-  Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.UpdatesConsentText), Consent.TextLabel.Caption);
-  Assert.Contains(Consent.TextLabel.Caption, 'IDE-Version');
-  Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.UpdatesConsentYes), Consent.YesButton.Caption);
-  Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.UpdatesConsentNo), Consent.NoButton.Caption);
+  Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.UpdatesConsentTitle), mConsent.Caption);
+  Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.UpdatesConsentText), mConsent.TextLabel.Caption);
+  Assert.Contains(mConsent.TextLabel.Caption, 'IDE-Version');
+  Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.UpdatesConsentYes), mConsent.YesButton.Caption);
+  Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.UpdatesConsentNo), mConsent.NoButton.Caption);
   // Nur die erste Antwort zählt; ausgeführt nach dem Schließen (das Fenster gibt sich selbst frei).
-  Consent.YesButton.Click;
-  Consent.NoButton.Click;
+  mConsent.YesButton.Click;
+  mConsent.NoButton.Click;
   Application.ProcessMessages;
   CheckSynchronize;
-  Assert.AreEqual(1, Yes);
-  Assert.AreEqual(0, No);
+  Assert.AreEqual(1, mYes);
+  Assert.AreEqual(0, mNo);
 end;
 
 procedure TAtlasUpdateConsentTests.NoAnswersNo;
 var
-  Consent: TAtlasUpdateConsent;
-  Yes, No: Integer;
+  mConsent: TAtlasUpdateConsent;
+  mYes, mNo: Integer;
 begin
-  Yes := 0;
-  No := 0;
-  Consent := TAtlasUpdateConsent.CreateConsent(nil);
-  Consent.OnYes :=
+  mYes := 0;
+  mNo := 0;
+  mConsent := TAtlasUpdateConsent.CreateConsent(nil);
+  mConsent.OnYes :=
     procedure
     begin
-      Inc(Yes);
+      Inc(mYes);
     end;
-  Consent.OnNo :=
+  mConsent.OnNo :=
     procedure
     begin
-      Inc(No);
+      Inc(mNo);
     end;
-  Consent.NoButton.Click;
+  mConsent.NoButton.Click;
   Application.ProcessMessages;
   CheckSynchronize;
-  Assert.AreEqual(0, Yes);
-  Assert.AreEqual(1, No);
+  Assert.AreEqual(0, mYes);
+  Assert.AreEqual(1, mNo);
 end;
 
 procedure TAtlasUpdateConsentTests.SettingsPageShowsVersionAndSwitch;
 var
-  Page: TAtlasSettingsPage;
-  Settings, Saved: TAtlasPluginSettings;
+  mPage: TAtlasSettingsPage;
+  mSettings, mSaved: TAtlasPluginSettings;
 begin
-  Settings := TAtlasPluginSettings.Defaults;
-  Page := TAtlasSettingsPage.Create(nil);
+  mSettings := TAtlasPluginSettings.Defaults;
+  mPage := TAtlasSettingsPage.Create(nil);
   try
-    Page.LoadFrom(Settings);
-    Assert.IsFalse(CheckOf(Page, 'UpdatesCheck').Checked, 'Vorgabe aus');
+    mPage.LoadFrom(mSettings);
+    Assert.IsFalse(CheckOf(mPage, 'UpdatesCheck').Checked, 'Vorgabe aus');
     Assert.AreEqual(TAtlasSettingsStrings.Fmt(TAtlasSettingsTextId.SettingsVersion, [TAtlasPluginVersion.cVersion,
-      TAtlasUpdates.IdeVersion]), Page.Part<TAtlasSettingsStartupPart>.VersionLabel.Caption);
-    CheckOf(Page, 'UpdatesCheck').Checked := True;
+      TAtlasUpdates.IdeVersion]), mPage.Part<TAtlasSettingsStartupPart>.VersionLabel.Caption);
+    CheckOf(mPage, 'UpdatesCheck').Checked := True;
     // Fehlerbericht (#108): anonymisiert als Vorgabe, abschaltbar.
-    Assert.IsTrue(CheckOf(Page, 'BugReportAnonymize').Checked);
-    CheckOf(Page, 'BugReportAnonymize').Checked := False;
-    Saved := TAtlasPluginSettings.Defaults;
-    Page.SaveTo(Saved);
-    Assert.IsTrue(Saved.UpdatesCheck);
-    Assert.IsFalse(Saved.BugReportAnonymize);
+    Assert.IsTrue(CheckOf(mPage, 'BugReportAnonymize').Checked);
+    CheckOf(mPage, 'BugReportAnonymize').Checked := False;
+    mSaved := TAtlasPluginSettings.Defaults;
+    mPage.SaveTo(mSaved);
+    Assert.IsTrue(mSaved.UpdatesCheck);
+    Assert.IsFalse(mSaved.BugReportAnonymize);
   finally
-    Page.Free;
+    mPage.Free;
   end;
 end;
 

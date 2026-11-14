@@ -56,12 +56,12 @@ end;
 
 procedure TAtlasInlineDiagnosticsTests.ModeNamesRoundTrip;
 var
-  Mode: TAtlasInlineDiagnosticsMode;
+  mMode: TAtlasInlineDiagnosticsMode;
 begin
-  for Mode := Low(TAtlasInlineDiagnosticsMode) to High(TAtlasInlineDiagnosticsMode) do
+  for mMode := Low(TAtlasInlineDiagnosticsMode) to High(TAtlasInlineDiagnosticsMode) do
   begin
-    Assert.AreEqual<TAtlasInlineDiagnosticsMode>(Mode,
-      TAtlasInlineDiagnostics.ModeOf(TAtlasInlineDiagnostics.ModeName(Mode)));
+    Assert.AreEqual<TAtlasInlineDiagnosticsMode>(mMode,
+      TAtlasInlineDiagnostics.ModeOf(TAtlasInlineDiagnostics.ModeName(mMode)));
   end;
   Assert.AreEqual<TAtlasInlineDiagnosticsMode>(TAtlasInlineDiagnosticsMode.ErrorsAndWarnings,
     TAtlasInlineDiagnostics.ModeOf('ERRORSANDWARNINGS'));
@@ -72,107 +72,107 @@ end;
 
 procedure TAtlasInlineDiagnosticsTests.PicksWorstProblemOfLineAndCountsOthers;
 var
-  Problems: TArray<TAtlasProblem>;
-  Inactive, UsesHint: TAtlasProblem;
-  Found: TAtlasInlineDiagnostic;
+  mProblems: TArray<TAtlasProblem>;
+  mInactive, mUsesHint: TAtlasProblem;
+  mFound: TAtlasInlineDiagnostic;
 begin
-  Inactive := Problem(4, 0, TAtlasProblemSeverity.Error, 'inaktiv');
-  Inactive.Unnecessary := True;
-  UsesHint := Problem(4, 0, TAtlasProblemSeverity.Error, 'uses');
-  UsesHint.UsesState := TAtlasProblem.cUsesUnused;
-  Problems := [Problem(4, 9, TAtlasProblemSeverity.Warning, 'Warnung'), Problem(4, 7, TAtlasProblemSeverity.Error,
+  mInactive := Problem(4, 0, TAtlasProblemSeverity.Error, 'inaktiv');
+  mInactive.Unnecessary := True;
+  mUsesHint := Problem(4, 0, TAtlasProblemSeverity.Error, 'uses');
+  mUsesHint.UsesState := TAtlasProblem.cUsesUnused;
+  mProblems := [Problem(4, 9, TAtlasProblemSeverity.Warning, 'Warnung'), Problem(4, 7, TAtlasProblemSeverity.Error,
     'Zweiter Fehler'), Problem(4, 2, TAtlasProblemSeverity.Error, 'Erster Fehler'), Problem(5, 0,
-    TAtlasProblemSeverity.Error, 'andere Zeile'), Inactive, UsesHint];
-  Assert.IsTrue(TAtlasInlineDiagnostics.Pick(Problems, 4, TAtlasInlineDiagnosticsMode.All, Found));
-  Assert.AreEqual('Erster Fehler', Found.Problem.Message, 'schwerster, bei Gleichstand der linke');
-  Assert.AreEqual(2, Found.More, 'zweiter Fehler und Warnung; Abblendungen zählen nicht');
-  Assert.AreEqual('Erster Fehler (+2)', TAtlasInlineDiagnostics.Caption(Found));
-  Assert.IsFalse(TAtlasInlineDiagnostics.Pick(Problems, 3, TAtlasInlineDiagnosticsMode.All, Found));
+    TAtlasProblemSeverity.Error, 'andere Zeile'), mInactive, mUsesHint];
+  Assert.IsTrue(TAtlasInlineDiagnostics.Pick(mProblems, 4, TAtlasInlineDiagnosticsMode.All, mFound));
+  Assert.AreEqual('Erster Fehler', mFound.Problem.Message, 'schwerster, bei Gleichstand der linke');
+  Assert.AreEqual(2, mFound.More, 'zweiter Fehler und Warnung; Abblendungen zählen nicht');
+  Assert.AreEqual('Erster Fehler (+2)', TAtlasInlineDiagnostics.Caption(mFound));
+  Assert.IsFalse(TAtlasInlineDiagnostics.Pick(mProblems, 3, TAtlasInlineDiagnosticsMode.All, mFound));
 end;
 
 procedure TAtlasInlineDiagnosticsTests.ErrorsModeShowsNoWarnings;
 var
-  Problems: TArray<TAtlasProblem>;
-  Found: TAtlasInlineDiagnostic;
+  mProblems: TArray<TAtlasProblem>;
+  mFound: TAtlasInlineDiagnostic;
 begin
-  Problems := [Problem(1, 0, TAtlasProblemSeverity.Warning, 'W'), Problem(2, 0, TAtlasProblemSeverity.Hint, 'H'),
+  mProblems := [Problem(1, 0, TAtlasProblemSeverity.Warning, 'W'), Problem(2, 0, TAtlasProblemSeverity.Hint, 'H'),
     Problem(2, 4, TAtlasProblemSeverity.Error, 'E')];
-  Assert.IsFalse(TAtlasInlineDiagnostics.Pick(Problems, 1, TAtlasInlineDiagnosticsMode.Errors, Found), 'nur Fehler');
-  Assert.IsTrue(TAtlasInlineDiagnostics.Pick(Problems, 1, TAtlasInlineDiagnosticsMode.ErrorsAndWarnings, Found));
-  Assert.IsTrue(TAtlasInlineDiagnostics.Pick(Problems, 2, TAtlasInlineDiagnosticsMode.Errors, Found));
-  Assert.AreEqual(0, Found.More, 'der Hinweis zählt im Modus „nur Fehler“ nicht');
-  Assert.IsFalse(TAtlasInlineDiagnostics.Pick(Problems, 2, TAtlasInlineDiagnosticsMode.Off, Found), 'aus');
+  Assert.IsFalse(TAtlasInlineDiagnostics.Pick(mProblems, 1, TAtlasInlineDiagnosticsMode.Errors, mFound), 'nur Fehler');
+  Assert.IsTrue(TAtlasInlineDiagnostics.Pick(mProblems, 1, TAtlasInlineDiagnosticsMode.ErrorsAndWarnings, mFound));
+  Assert.IsTrue(TAtlasInlineDiagnostics.Pick(mProblems, 2, TAtlasInlineDiagnosticsMode.Errors, mFound));
+  Assert.AreEqual(0, mFound.More, 'der Hinweis zählt im Modus „nur Fehler“ nicht');
+  Assert.IsFalse(TAtlasInlineDiagnostics.Pick(mProblems, 2, TAtlasInlineDiagnosticsMode.Off, mFound), 'aus');
 end;
 
 procedure TAtlasInlineDiagnosticsTests.CaptionTakesFirstLineAndShortens;
 var
-  Found: TAtlasInlineDiagnostic;
-  Text: string;
+  mFound: TAtlasInlineDiagnostic;
+  mText: string;
 begin
-  Found := Default(TAtlasInlineDiagnostic);
-  Found.Problem.Message := 'Erste Zeile'#13#10'Zweite Zeile';
-  Assert.AreEqual('Erste Zeile', TAtlasInlineDiagnostics.Caption(Found));
-  Found.Problem.Message := StringOfChar('x', 200);
-  Text := TAtlasInlineDiagnostics.Caption(Found);
-  Assert.AreEqual(TAtlasInlineDiagnostics.cMaxChars, Integer(Length(Text)));
-  Assert.AreEqual('…', Copy(Text, Length(Text), 1));
+  mFound := Default(TAtlasInlineDiagnostic);
+  mFound.Problem.Message := 'Erste Zeile'#13#10'Zweite Zeile';
+  Assert.AreEqual('Erste Zeile', TAtlasInlineDiagnostics.Caption(mFound));
+  mFound.Problem.Message := StringOfChar('x', 200);
+  mText := TAtlasInlineDiagnostics.Caption(mFound);
+  Assert.AreEqual(TAtlasInlineDiagnostics.cMaxChars, Integer(Length(mText)));
+  Assert.AreEqual('…', Copy(mText, Length(mText), 1));
 end;
 
 procedure TAtlasInlineDiagnosticsTests.CaptionOfTestFailureAtAssertIsShort;
 var
-  Found: TAtlasInlineDiagnostic;
+  mFound: TAtlasInlineDiagnostic;
 begin
   // #1771: Fehlschlag an der Assert-Zeile mit kurzem Text in Details.
-  Found := Default(TAtlasInlineDiagnostic);
-  Found.Problem.Message := 'Test TRechnerTests.Addiert fehlgeschlagen: erwartet 4, erhalten 3';
-  Found.Problem.Source := TAtlasProblemStore.cTestSource;
-  Found.Problem.Details := 'erwartet 4, erhalten 3';
-  Assert.IsTrue(TAtlasInlineDiagnostics.IsShortTest(Found.Problem));
-  Assert.AreEqual('erwartet 4, erhalten 3', TAtlasInlineDiagnostics.Caption(Found));
-  Found.Problem.Details := '';
-  Assert.IsFalse(TAtlasInlineDiagnostics.IsShortTest(Found.Problem), 'ohne kurzen Text die Meldung');
-  Assert.AreEqual(Found.Problem.Message, TAtlasInlineDiagnostics.Caption(Found));
-  Found.Problem.Source := 'Atlas';
-  Found.Problem.Details := 'Durchsucht: 3 Dateien';
-  Assert.IsFalse(TAtlasInlineDiagnostics.IsShortTest(Found.Problem), 'Details anderer Befunde bleiben im Hover');
+  mFound := Default(TAtlasInlineDiagnostic);
+  mFound.Problem.Message := 'Test TRechnerTests.Addiert fehlgeschlagen: erwartet 4, erhalten 3';
+  mFound.Problem.Source := TAtlasProblemStore.cTestSource;
+  mFound.Problem.Details := 'erwartet 4, erhalten 3';
+  Assert.IsTrue(TAtlasInlineDiagnostics.IsShortTest(mFound.Problem));
+  Assert.AreEqual('erwartet 4, erhalten 3', TAtlasInlineDiagnostics.Caption(mFound));
+  mFound.Problem.Details := '';
+  Assert.IsFalse(TAtlasInlineDiagnostics.IsShortTest(mFound.Problem), 'ohne kurzen Text die Meldung');
+  Assert.AreEqual(mFound.Problem.Message, TAtlasInlineDiagnostics.Caption(mFound));
+  mFound.Problem.Source := 'Atlas';
+  mFound.Problem.Details := 'Durchsucht: 3 Dateien';
+  Assert.IsFalse(TAtlasInlineDiagnostics.IsShortTest(mFound.Problem), 'Details anderer Befunde bleiben im Hover');
 end;
 
 procedure TAtlasInlineDiagnosticsTests.CountsMatchTheList;
 var
-  Compiler, Inactive: TAtlasProblem;
-  Counts: TAtlasProblemCounts;
+  mCompiler, mInactive: TAtlasProblem;
+  mCounts: TAtlasProblemCounts;
 begin
-  Compiler := Problem(0, 0, TAtlasProblemSeverity.Error, 'dcc');
-  Compiler.Source := TAtlasProblem.cCompilerSource;
-  Inactive := Problem(0, 0, TAtlasProblemSeverity.Hint, 'inaktiv');
-  Inactive.Unnecessary := True;
-  Counts := TAtlasInlineDiagnostics.Counts([Problem(0, 0, TAtlasProblemSeverity.Error, 'E'), Problem(1, 0,
+  mCompiler := Problem(0, 0, TAtlasProblemSeverity.Error, 'dcc');
+  mCompiler.Source := TAtlasProblem.cCompilerSource;
+  mInactive := Problem(0, 0, TAtlasProblemSeverity.Hint, 'inaktiv');
+  mInactive.Unnecessary := True;
+  mCounts := TAtlasInlineDiagnostics.Counts([Problem(0, 0, TAtlasProblemSeverity.Error, 'E'), Problem(1, 0,
     TAtlasProblemSeverity.Warning, 'W'), Problem(2, 0, TAtlasProblemSeverity.Information, 'I'), Problem(3, 0,
-    TAtlasProblemSeverity.Hint, 'H'), Compiler, Inactive]);
-  Assert.AreEqual(1, Counts.Errors);
-  Assert.AreEqual(1, Counts.Warnings);
-  Assert.AreEqual(2, Counts.Hints, 'Info zählt als Hinweis');
-  Assert.AreEqual(4, Counts.Total, 'Compilermeldungen stehen nicht in der Liste');
+    TAtlasProblemSeverity.Hint, 'H'), mCompiler, mInactive]);
+  Assert.AreEqual(1, mCounts.Errors);
+  Assert.AreEqual(1, mCounts.Warnings);
+  Assert.AreEqual(2, mCounts.Hints, 'Info zählt als Hinweis');
+  Assert.AreEqual(4, mCounts.Total, 'Compilermeldungen stehen nicht in der Liste');
 end;
 
 procedure TAtlasInlineDiagnosticsTests.NextWalksThroughFileAndWraps;
 var
-  Problems: TArray<TAtlasProblem>;
-  Target: TAtlasProblem;
+  mProblems: TArray<TAtlasProblem>;
+  mTarget: TAtlasProblem;
 begin
-  Problems := [Problem(9, 1, TAtlasProblemSeverity.Hint, 'C'), Problem(2, 5, TAtlasProblemSeverity.Error, 'A'),
+  mProblems := [Problem(9, 1, TAtlasProblemSeverity.Hint, 'C'), Problem(2, 5, TAtlasProblemSeverity.Error, 'A'),
     Problem(4, 0, TAtlasProblemSeverity.Warning, 'B')];
-  Assert.IsTrue(TAtlasInlineDiagnostics.Next(Problems, 0, 0, True, Target));
-  Assert.AreEqual('A', Target.Message);
-  Assert.IsTrue(TAtlasInlineDiagnostics.Next(Problems, 2, 5, True, Target), 'ab dem Befund selbst');
-  Assert.AreEqual('B', Target.Message);
-  Assert.IsTrue(TAtlasInlineDiagnostics.Next(Problems, 9, 1, True, Target));
-  Assert.AreEqual('A', Target.Message, 'am Ende von vorn');
-  Assert.IsTrue(TAtlasInlineDiagnostics.Next(Problems, 4, 0, False, Target));
-  Assert.AreEqual('A', Target.Message);
-  Assert.IsTrue(TAtlasInlineDiagnostics.Next(Problems, 1, 0, False, Target));
-  Assert.AreEqual('C', Target.Message, 'am Anfang von hinten');
-  Assert.IsFalse(TAtlasInlineDiagnostics.Next(nil, 0, 0, True, Target));
+  Assert.IsTrue(TAtlasInlineDiagnostics.Next(mProblems, 0, 0, True, mTarget));
+  Assert.AreEqual('A', mTarget.Message);
+  Assert.IsTrue(TAtlasInlineDiagnostics.Next(mProblems, 2, 5, True, mTarget), 'ab dem Befund selbst');
+  Assert.AreEqual('B', mTarget.Message);
+  Assert.IsTrue(TAtlasInlineDiagnostics.Next(mProblems, 9, 1, True, mTarget));
+  Assert.AreEqual('A', mTarget.Message, 'am Ende von vorn');
+  Assert.IsTrue(TAtlasInlineDiagnostics.Next(mProblems, 4, 0, False, mTarget));
+  Assert.AreEqual('A', mTarget.Message);
+  Assert.IsTrue(TAtlasInlineDiagnostics.Next(mProblems, 1, 0, False, mTarget));
+  Assert.AreEqual('C', mTarget.Message, 'am Anfang von hinten');
+  Assert.IsFalse(TAtlasInlineDiagnostics.Next(nil, 0, 0, True, mTarget));
 end;
 
 procedure TAtlasInlineDiagnosticsTests.PauseWaitsOneSecond;
@@ -186,28 +186,28 @@ end;
 
 procedure TAtlasInlineDiagnosticsTests.LineTailPlacesPaintersSideBySide;
 var
-  Hints, Errors: TObject;
-  Key: string;
+  mHints, mErrors: TObject;
+  mKey: string;
 begin
-  Hints := TObject.Create;
-  Errors := TObject.Create;
+  mHints := TObject.Create;
+  mErrors := TObject.Create;
   try
     TAtlasLineTail.Reset;
-    Key := TAtlasLineTail.KeyOf('U.pas', 3, 3, 40);
-    Assert.AreEqual(100, TAtlasLineTail.Start(Hints, Key, 100));
-    TAtlasLineTail.Finish(Hints, Key, 150);
-    Assert.AreEqual(150 + TAtlasLineTail.cGap, TAtlasLineTail.Start(Errors, Key, 100), 'hinter den Hinweisen');
-    TAtlasLineTail.Finish(Errors, Key, 300);
+    mKey := TAtlasLineTail.KeyOf('U.pas', 3, 3, 40);
+    Assert.AreEqual(100, TAtlasLineTail.Start(mHints, mKey, 100));
+    TAtlasLineTail.Finish(mHints, mKey, 150);
+    Assert.AreEqual(150 + TAtlasLineTail.cGap, TAtlasLineTail.Start(mErrors, mKey, 100), 'hinter den Hinweisen');
+    TAtlasLineTail.Finish(mErrors, mKey, 300);
     // Neues Zeichnen derselben Zeile, diesmal zuerst die Fehler.
-    Assert.AreEqual(100, TAtlasLineTail.Start(Errors, Key, 100));
-    TAtlasLineTail.Finish(Errors, Key, 200);
-    Assert.AreEqual(200 + TAtlasLineTail.cGap, TAtlasLineTail.Start(Hints, Key, 100));
+    Assert.AreEqual(100, TAtlasLineTail.Start(mErrors, mKey, 100));
+    TAtlasLineTail.Finish(mErrors, mKey, 200);
+    Assert.AreEqual(200 + TAtlasLineTail.cGap, TAtlasLineTail.Start(mHints, mKey, 100));
     // Andere Zeile beginnt am eigenen Rand.
-    Assert.AreEqual(60, TAtlasLineTail.Start(Hints, TAtlasLineTail.KeyOf('U.pas', 4, 4, 56), 60));
+    Assert.AreEqual(60, TAtlasLineTail.Start(mHints, TAtlasLineTail.KeyOf('U.pas', 4, 4, 56), 60));
   finally
     TAtlasLineTail.Reset;
-    Hints.Free;
-    Errors.Free;
+    mHints.Free;
+    mErrors.Free;
   end;
 end;
 

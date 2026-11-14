@@ -39,8 +39,8 @@ uses
   Atlas.Common.Lsp.DisableWarning;
 
 const
-  Uri = 'file:///C:/Projekt/A.pas';
-  Source =
+  cUri = 'file:///C:/Projekt/A.pas';
+  cSource =
     'unit A;' + #10 +                    // 0
     'interface' + #10 +                  // 1
     'implementation' + #10 +             // 2
@@ -70,13 +70,13 @@ end;
 
 function Summary(const AActions: TArray<TJSONObject>): string;
 var
-  Action: TJSONObject;
+  mAction: TJSONObject;
 begin
   Result := '';
-  for Action in AActions do
+  for mAction in AActions do
   begin
-    Result := Result + Action.GetValue<string>('title', '');
-    if Action.GetValue<Boolean>('isPreferred', False) then
+    Result := Result + mAction.GetValue<string>('title', '');
+    if mAction.GetValue<Boolean>('isPreferred', False) then
     begin
       Result := Result + ' *';
     end;
@@ -86,162 +86,162 @@ end;
 
 procedure FreeAll(const AActions: TArray<TJSONObject>);
 var
-  Action: TJSONObject;
+  mAction: TJSONObject;
 begin
-  for Action in AActions do
+  for mAction in AActions do
   begin
-    Action.Free;
+    mAction.Free;
   end;
 end;
 
 function ActionsFor(const AOptions: TDisableWarningOptions; AFirst, ALast: Integer;
   const AMessages: TArray<TCompilerMessage>): TArray<TJSONObject>;
 var
-  Tree: TSyntaxTree;
+  mTree: TSyntaxTree;
 begin
-  Tree := TPascalParser.Parse(Source);
+  mTree := TPascalParser.Parse(cSource);
   try
-    Result := TLspDisableWarning.Actions(AOptions, Tree, Uri, AFirst, ALast, AMessages);
+    Result := TLspDisableWarning.Actions(AOptions, mTree, cUri, AFirst, ALast, AMessages);
   finally
-    Tree.Free;
+    mTree.Free;
   end;
 end;
 
 procedure TLspDisableWarningTests.OffersScopesForWarning;
 var
-  Actions: TArray<TJSONObject>;
-  Arguments: TJSONArray;
+  mActions: TArray<TJSONObject>;
+  mArguments: TJSONArray;
 begin
-  Actions := ActionsFor(Options, 7, 7, [Msg(7, 'W1000', TCompilerSeverity.Warning)]);
+  mActions := ActionsFor(Options, 7, 7, [Msg(7, 'W1000', TCompilerSeverity.Warning)]);
   try
     Assert.AreEqual('W1000 hier abschalten ({$WARN SYMBOL_DEPRECATED OFF}) *|' +
       'W1000 in Foo abschalten ({$WARN SYMBOL_DEPRECATED OFF})|' +
       'W1000 in der ganzen Unit abschalten ({$WARN SYMBOL_DEPRECATED OFF})|' +
-      'W1000 im ganzen Projekt abschalten (Projektoptionen)|', Summary(Actions));
-    Arguments := Actions[0].GetValue<TJSONObject>('command').GetValue<TJSONArray>('arguments');
-    Assert.AreEqual(TLspDisableWarning.cClientCommand, Actions[0].GetValue<TJSONObject>('command').GetValue<string>(
+      'W1000 im ganzen Projekt abschalten (Projektoptionen)|', Summary(mActions));
+    mArguments := mActions[0].GetValue<TJSONObject>('command').GetValue<TJSONArray>('arguments');
+    Assert.AreEqual(TLspDisableWarning.cClientCommand, mActions[0].GetValue<TJSONObject>('command').GetValue<string>(
       'command', ''));
-    Assert.AreEqual('["file:///C:/Projekt/A.pas",7,"W1000","line",true]', Arguments.ToJSON);
-    Assert.AreEqual(TLspDisableWarning.cProjectCommand, Actions[3].GetValue<TJSONObject>('command').GetValue<string>(
+    Assert.AreEqual('["file:///C:/Projekt/A.pas",7,"W1000","line",true]', mArguments.ToJSON);
+    Assert.AreEqual(TLspDisableWarning.cProjectCommand, mActions[3].GetValue<TJSONObject>('command').GetValue<string>(
       'command', ''));
     Assert.AreEqual('["file:///C:/Projekt/A.pas","W1000","SYMBOL_DEPRECATED"]',
-      Actions[3].GetValue<TJSONObject>('command').GetValue<TJSONArray>('arguments').ToJSON);
-    Assert.AreEqual('quickfix', Actions[0].GetValue<string>('kind', ''));
+      mActions[3].GetValue<TJSONObject>('command').GetValue<TJSONArray>('arguments').ToJSON);
+    Assert.AreEqual('quickfix', mActions[0].GetValue<string>('kind', ''));
   finally
-    FreeAll(Actions);
+    FreeAll(mActions);
   end;
 end;
 
 procedure TLspDisableWarningTests.RoutineWideHintPrefersRoutine;
 var
-  Actions: TArray<TJSONObject>;
+  mActions: TArray<TJSONObject>;
 begin
-  Actions := ActionsFor(Options, 5, 5, [Msg(5, 'H2164', TCompilerSeverity.Hint)]);
+  mActions := ActionsFor(Options, 5, 5, [Msg(5, 'H2164', TCompilerSeverity.Hint)]);
   try
     Assert.AreEqual('H2164 in Foo abschalten ({$HINTS OFF}) *|' +
-      'H2164 in der ganzen Unit abschalten ({$HINTS OFF})|', Summary(Actions));
+      'H2164 in der ganzen Unit abschalten ({$HINTS OFF})|', Summary(mActions));
   finally
-    FreeAll(Actions);
+    FreeAll(mActions);
   end;
 end;
 
 procedure TLspDisableWarningTests.WarningWithoutIdentifierSaysAllWarnings;
 var
-  Actions: TArray<TJSONObject>;
+  mActions: TArray<TJSONObject>;
 begin
-  Actions := ActionsFor(Options, 7, 7, [Msg(7, 'W1999', TCompilerSeverity.Warning)]);
+  mActions := ActionsFor(Options, 7, 7, [Msg(7, 'W1999', TCompilerSeverity.Warning)]);
   try
     Assert.AreEqual('W1999 hier abschalten ({$WARNINGS OFF}: betrifft alle Warnungen) *|' +
       'W1999 in Foo abschalten ({$WARNINGS OFF}: betrifft alle Warnungen)|' +
-      'W1999 in der ganzen Unit abschalten ({$WARNINGS OFF}: betrifft alle Warnungen)|', Summary(Actions));
+      'W1999 in der ganzen Unit abschalten ({$WARNINGS OFF}: betrifft alle Warnungen)|', Summary(mActions));
   finally
-    FreeAll(Actions);
+    FreeAll(mActions);
   end;
 end;
 
 procedure TLspDisableWarningTests.IgnoresErrorsOtherLinesAndDisabled;
 var
-  Actions: TArray<TJSONObject>;
-  Disabled: TDisableWarningOptions;
+  mActions: TArray<TJSONObject>;
+  mDisabled: TDisableWarningOptions;
 begin
-  Actions := ActionsFor(Options, 7, 7, [Msg(7, 'E2003', TCompilerSeverity.Error),
+  mActions := ActionsFor(Options, 7, 7, [Msg(7, 'E2003', TCompilerSeverity.Error),
     Msg(5, 'W1000', TCompilerSeverity.Warning), Msg(-1, 'W1000', TCompilerSeverity.Warning)]);
-  Assert.AreEqual(0, Integer(Length(Actions)));
-  Disabled := Options;
-  Disabled.Enabled := False;
-  Actions := ActionsFor(Disabled, 7, 7, [Msg(7, 'W1000', TCompilerSeverity.Warning)]);
-  Assert.AreEqual(0, Integer(Length(Actions)));
+  Assert.AreEqual(0, Integer(Length(mActions)));
+  mDisabled := Options;
+  mDisabled.Enabled := False;
+  mActions := ActionsFor(mDisabled, 7, 7, [Msg(7, 'W1000', TCompilerSeverity.Warning)]);
+  Assert.AreEqual(0, Integer(Length(mActions)));
   // Dieselbe Meldung zweimal (zwei Plattformen): nur einmal anbieten.
-  Actions := ActionsFor(Options, 7, 7, [Msg(7, 'W1000', TCompilerSeverity.Warning),
+  mActions := ActionsFor(Options, 7, 7, [Msg(7, 'W1000', TCompilerSeverity.Warning),
     Msg(7, 'w1000', TCompilerSeverity.Warning)]);
   try
-    Assert.AreEqual(4, Integer(Length(Actions)));
+    Assert.AreEqual(4, Integer(Length(mActions)));
   finally
-    FreeAll(Actions);
+    FreeAll(mActions);
   end;
 end;
 
 procedure TLspDisableWarningTests.ExecuteReturnsWorkspaceEdit;
 var
-  Tree: TSyntaxTree;
-  Arguments: TJSONArray;
-  Answer: TJSONValue;
+  mTree: TSyntaxTree;
+  mArguments: TJSONArray;
+  mAnswer: TJSONValue;
 begin
-  Tree := TPascalParser.Parse(Source);
+  mTree := TPascalParser.Parse(cSource);
   try
-    Arguments := TJSONObject.ParseJSONValue('["' + Uri + '", 7, "W1000", "line", "bewusst"]') as TJSONArray;
+    mArguments := TJSONObject.ParseJSONValue('["' + cUri + '", 7, "W1000", "line", "bewusst"]') as TJSONArray;
     try
-      Answer := TLspDisableWarning.Execute(Arguments, Source, Tree, '');
+      mAnswer := TLspDisableWarning.Execute(mArguments, cSource, mTree, '');
     finally
-      Arguments.Free;
+      mArguments.Free;
     end;
     try
-      Assert.AreEqual('{"edit":{"documentChanges":[{"textDocument":{"uri":"' + Uri + '","version":null},' +
+      Assert.AreEqual('{"edit":{"documentChanges":[{"textDocument":{"uri":"' + cUri + '","version":null},' +
         '"edits":[{"range":{"start":{"line":7,"character":0},"end":{"line":7,"character":0}},' +
         '"newText":"  {$WARN SYMBOL_DEPRECATED OFF} // bewusst\n"},' +
         '{"range":{"start":{"line":7,"character":6},"end":{"line":7,"character":6}},' +
-        '"newText":"\n  {$WARN SYMBOL_DEPRECATED ON}"}]}]},"allWarnings":false}', Answer.ToJSON);
+        '"newText":"\n  {$WARN SYMBOL_DEPRECATED ON}"}]}]},"allWarnings":false}', mAnswer.ToJSON);
     finally
-      Answer.Free;
+      mAnswer.Free;
     end;
   finally
-    Tree.Free;
+    mTree.Free;
   end;
 end;
 
 procedure TLspDisableWarningTests.ExecuteRefusesBadArguments;
 var
-  Tree: TSyntaxTree;
+  mTree: TSyntaxTree;
 
   procedure Expect(const AJson: string);
   var
-    Arguments: TJSONArray;
-    Raised: Boolean;
+    mArguments: TJSONArray;
+    mRaised: Boolean;
   begin
-    Arguments := TJSONObject.ParseJSONValue(AJson) as TJSONArray;
+    mArguments := TJSONObject.ParseJSONValue(AJson) as TJSONArray;
     try
-      Raised := False;
+      mRaised := False;
       try
-        TLspDisableWarning.Execute(Arguments, Source, Tree, '').Free;
+        TLspDisableWarning.Execute(mArguments, cSource, mTree, '').Free;
       except
         on EJsonRpcError do
-          Raised := True;
+          mRaised := True;
       end;
-      Assert.IsTrue(Raised, AJson);
+      Assert.IsTrue(mRaised, AJson);
     finally
-      Arguments.Free;
+      mArguments.Free;
     end;
   end;
 
 begin
-  Tree := TPascalParser.Parse(Source);
+  mTree := TPascalParser.Parse(cSource);
   try
-    Expect('["' + Uri + '", 7, "W1000"]');
-    Expect('["' + Uri + '", 7, "W1000", "projekt"]');
-    Expect('["' + Uri + '", 7, "E2003", "line"]');
-    Expect('["' + Uri + '", 1, "W1000", "routine"]');
+    Expect('["' + cUri + '", 7, "W1000"]');
+    Expect('["' + cUri + '", 7, "W1000", "projekt"]');
+    Expect('["' + cUri + '", 7, "E2003", "line"]');
+    Expect('["' + cUri + '", 1, "W1000", "routine"]');
   finally
-    Tree.Free;
+    mTree.Free;
   end;
 end;
 

@@ -27,90 +27,90 @@ uses
   Atlas.Core.Build.IdleGate;
 
 const
-  Quiet = TAtlasBuildIdleGate.cQuietMs;
+  cQuiet = TAtlasBuildIdleGate.cQuietMs;
 
 { TAtlasBuildIdleGateTests }
 
 procedure TAtlasBuildIdleGateTests.WaitsQuietTimeAfterCreate;
 var
-  Gate: TAtlasBuildIdleGate;
+  mGate: TAtlasBuildIdleGate;
 begin
   // Nach dem (Neu-)Laden erst Ruhe abwarten: Ein laufender Gruppen-Build meldet sich mit dem nächsten Projekt.
-  Gate := TAtlasBuildIdleGate.Create(1000);
+  mGate := TAtlasBuildIdleGate.Create(1000);
   try
-    Assert.IsFalse(Gate.Idle(1000));
-    Assert.IsFalse(Gate.Idle(1000 + Quiet - 1));
-    Assert.IsTrue(Gate.Idle(1000 + Quiet));
+    Assert.IsFalse(mGate.Idle(1000));
+    Assert.IsFalse(mGate.Idle(1000 + cQuiet - 1));
+    Assert.IsTrue(mGate.Idle(1000 + cQuiet));
   finally
-    Gate.Free;
+    mGate.Free;
   end;
 end;
 
 procedure TAtlasBuildIdleGateTests.BusyWhileProjectCompiles;
 var
-  Gate: TAtlasBuildIdleGate;
+  mGate: TAtlasBuildIdleGate;
 begin
-  Gate := TAtlasBuildIdleGate.Create(0);
+  mGate := TAtlasBuildIdleGate.Create(0);
   try
-    Gate.ProjectStarted(10000);
-    Assert.IsFalse(Gate.Idle(10000 + 10 * Quiet), 'Compile läuft');
-    Gate.ProjectFinished(50000);
-    Assert.IsFalse(Gate.Idle(50000 + Quiet - 1));
-    Assert.IsTrue(Gate.Idle(50000 + Quiet));
+    mGate.ProjectStarted(10000);
+    Assert.IsFalse(mGate.Idle(10000 + 10 * cQuiet), 'Compile läuft');
+    mGate.ProjectFinished(50000);
+    Assert.IsFalse(mGate.Idle(50000 + cQuiet - 1));
+    Assert.IsTrue(mGate.Idle(50000 + cQuiet));
   finally
-    Gate.Free;
+    mGate.Free;
   end;
 end;
 
 procedure TAtlasBuildIdleGateTests.BusyDuringGroupBetweenProjects;
 var
-  Gate: TAtlasBuildIdleGate;
+  mGate: TAtlasBuildIdleGate;
 begin
-  Gate := TAtlasBuildIdleGate.Create(0);
+  mGate := TAtlasBuildIdleGate.Create(0);
   try
-    Gate.GroupStarted(10000);
-    Gate.ProjectStarted(10000);
-    Gate.ProjectFinished(11000);
+    mGate.GroupStarted(10000);
+    mGate.ProjectStarted(10000);
+    mGate.ProjectFinished(11000);
     // Zwischen zwei Projekten der Gruppe: kein Projekt aktiv, die Gruppe aber schon.
-    Assert.IsFalse(Gate.Idle(11000 + 10 * Quiet));
-    Gate.GroupFinished(20000);
-    Assert.IsFalse(Gate.Idle(20000 + Quiet - 1));
-    Assert.IsTrue(Gate.Idle(20000 + Quiet));
+    Assert.IsFalse(mGate.Idle(11000 + 10 * cQuiet));
+    mGate.GroupFinished(20000);
+    Assert.IsFalse(mGate.Idle(20000 + cQuiet - 1));
+    Assert.IsTrue(mGate.Idle(20000 + cQuiet));
   finally
-    Gate.Free;
+    mGate.Free;
   end;
 end;
 
 procedure TAtlasBuildIdleGateTests.FinishWithoutStartAfterReload;
 var
-  Gate: TAtlasBuildIdleGate;
+  mGate: TAtlasBuildIdleGate;
 begin
   // Neu geladen mitten im Compile: Das Ende kommt ohne Anfang und darf nicht unter null zählen.
-  Gate := TAtlasBuildIdleGate.Create(0);
+  mGate := TAtlasBuildIdleGate.Create(0);
   try
-    Gate.ProjectFinished(5000);
-    Gate.ProjectStarted(6000);
-    Assert.IsFalse(Gate.Idle(6000 + Quiet));
-    Gate.ProjectFinished(7000);
-    Assert.IsTrue(Gate.Idle(7000 + Quiet));
+    mGate.ProjectFinished(5000);
+    mGate.ProjectStarted(6000);
+    Assert.IsFalse(mGate.Idle(6000 + cQuiet));
+    mGate.ProjectFinished(7000);
+    Assert.IsTrue(mGate.Idle(7000 + cQuiet));
   finally
-    Gate.Free;
+    mGate.Free;
   end;
 end;
 
 procedure TAtlasBuildIdleGateTests.GroupFinishedClearsOpenProjects;
 var
-  Gate: TAtlasBuildIdleGate;
+  mGate: TAtlasBuildIdleGate;
 begin
   // Abgebrochene Gruppe: Ein Projekt ohne ProjectFinished hält die Sperre nicht fest.
-  Gate := TAtlasBuildIdleGate.Create(0);
+  mGate := TAtlasBuildIdleGate.Create(0);
   try
-    Gate.GroupStarted(1000);
-    Gate.ProjectStarted(1000);
-    Gate.GroupFinished(2000);
-    Assert.IsTrue(Gate.Idle(2000 + Quiet));
+    mGate.GroupStarted(1000);
+    mGate.ProjectStarted(1000);
+    mGate.GroupFinished(2000);
+    Assert.IsTrue(mGate.Idle(2000 + cQuiet));
   finally
-    Gate.Free;
+    mGate.Free;
   end;
 end;
 

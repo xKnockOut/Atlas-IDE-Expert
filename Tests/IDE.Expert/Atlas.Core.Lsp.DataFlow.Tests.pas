@@ -30,7 +30,7 @@ uses
   Atlas.Core.Lsp.DataFlow;
 
 const
-  Answer =
+  cAnswer =
     '{"found":true,"symbol":{"name":"Zaehler","uri":"file:///c%3A/P/Haupt.pas","line":6,"character":25,' +
     '"key":"C:\\P\\HAUPT.PAS|6:25","symbolKind":9},"nodes":[' +
     '{"kind":"assignment","detail":"Summe(Wert)","via":"Summe","places":[' +
@@ -49,81 +49,81 @@ const
 
 procedure TAtlasLspDataFlowTests.ParamsCarryDirectionFiltersAndPath;
 var
-  Request: TAtlasDataFlowRequest;
-  Params: TJSONObject;
+  mRequest: TAtlasDataFlowRequest;
+  mParams: TJSONObject;
 begin
-  Request := TAtlasDataFlowRequest.Create(TAtlasDataFlowDirection.Targets, 'C:\P\Haupt.pas', 4, 7);
-  Request.ExcludeTests := True;
-  Request.Path := TArray<string>.Create('a', 'b');
-  Params := TAtlasDataFlowJson.Params(Request);
+  mRequest := TAtlasDataFlowRequest.Create(TAtlasDataFlowDirection.Targets, 'C:\P\Haupt.pas', 4, 7);
+  mRequest.ExcludeTests := True;
+  mRequest.Path := TArray<string>.Create('a', 'b');
+  mParams := TAtlasDataFlowJson.Params(mRequest);
   try
-    Assert.AreEqual('file:///c%3A/P/Haupt.pas', Params.GetValue<string>('textDocument.uri'));
-    Assert.AreEqual(4, Params.GetValue<Integer>('position.line'));
-    Assert.AreEqual(7, Params.GetValue<Integer>('position.character'));
-    Assert.AreEqual('targets', Params.GetValue<string>('direction'));
-    Assert.IsTrue(Params.GetValue<Boolean>('excludeTests'));
-    Assert.IsFalse(Params.GetValue<Boolean>('onlyProject'));
-    Assert.AreEqual(2, Params.GetValue<TJSONArray>('path').Count);
-    Assert.AreEqual('b', Params.GetValue<TJSONArray>('path').Items[1].Value);
+    Assert.AreEqual('file:///c%3A/P/Haupt.pas', mParams.GetValue<string>('textDocument.uri'));
+    Assert.AreEqual(4, mParams.GetValue<Integer>('position.line'));
+    Assert.AreEqual(7, mParams.GetValue<Integer>('position.character'));
+    Assert.AreEqual('targets', mParams.GetValue<string>('direction'));
+    Assert.IsTrue(mParams.GetValue<Boolean>('excludeTests'));
+    Assert.IsFalse(mParams.GetValue<Boolean>('onlyProject'));
+    Assert.AreEqual(2, mParams.GetValue<TJSONArray>('path').Count);
+    Assert.AreEqual('b', mParams.GetValue<TJSONArray>('path').Items[1].Value);
   finally
-    Params.Free;
+    mParams.Free;
   end;
-  Request.Direction := TAtlasDataFlowDirection.Sources;
-  Params := TAtlasDataFlowJson.Params(Request);
+  mRequest.Direction := TAtlasDataFlowDirection.Sources;
+  mParams := TAtlasDataFlowJson.Params(mRequest);
   try
-    Assert.AreEqual('sources', Params.GetValue<string>('direction'));
+    Assert.AreEqual('sources', mParams.GetValue<string>('direction'));
   finally
-    Params.Free;
+    mParams.Free;
   end;
 end;
 
 procedure TAtlasLspDataFlowTests.ParsesNodesPlacesAndSources;
 var
-  Value: TJSONValue;
-  Flow: TAtlasDataFlowResult;
+  mValue: TJSONValue;
+  mFlow: TAtlasDataFlowResult;
 begin
-  Value := TJSONObject.ParseJSONValue(Answer);
+  mValue := TJSONObject.ParseJSONValue(cAnswer);
   try
-    Flow := TAtlasDataFlowJson.Parse(Value);
+    mFlow := TAtlasDataFlowJson.Parse(mValue);
   finally
-    Value.Free;
+    mValue.Free;
   end;
-  Assert.IsTrue(Flow.Found);
-  Assert.AreEqual('Zaehler', Flow.Symbol.Name);
-  Assert.IsTrue(SameText('C:\P\Haupt.pas', Flow.Symbol.FileName), Flow.Symbol.FileName);
-  Assert.AreEqual(6, Flow.Symbol.Line);
+  Assert.IsTrue(mFlow.Found);
+  Assert.AreEqual('Zaehler', mFlow.Symbol.Name);
+  Assert.IsTrue(SameText('C:\P\Haupt.pas', mFlow.Symbol.FileName), mFlow.Symbol.FileName);
+  Assert.AreEqual(6, mFlow.Symbol.Line);
   // Die Stelle ohne Fundort fällt weg.
-  Assert.AreEqual(2, Integer(Length(Flow.Nodes)));
-  Assert.AreEqual<TAtlasDataFlowKind>(TAtlasDataFlowKind.Assignment, Flow.Nodes[0].Kind);
-  Assert.AreEqual('Summe', Flow.Nodes[0].Via);
-  Assert.AreEqual(2, Integer(Length(Flow.Nodes[0].Places)));
-  Assert.AreEqual(13, Flow.Nodes[0].Places[1].Line);
-  Assert.AreEqual('Zaehler := Summe(Wert);', Flow.Nodes[0].Places[0].LineText);
-  Assert.IsTrue(SameText('C:\P\Daten.pas', Flow.Nodes[0].Sources[0].FileName));
-  Assert.AreEqual<TAtlasDataFlowLeaf>(TAtlasDataFlowLeaf.None, Flow.Nodes[0].Sources[0].Leaf);
-  Assert.IsTrue(Flow.Nodes[1].Literal);
-  Assert.IsTrue(Flow.Nodes[1].Unsafe);
-  Assert.AreEqual('move', Flow.Nodes[1].UnsafeReason);
-  Assert.AreEqual<TAtlasDataFlowLeaf>(TAtlasDataFlowLeaf.Cycle, Flow.Nodes[1].Sources[0].Leaf);
-  Assert.AreEqual<TAtlasDataFlowLeaf>(TAtlasDataFlowLeaf.Constant, Flow.Nodes[1].Sources[1].Leaf);
+  Assert.AreEqual(2, Integer(Length(mFlow.Nodes)));
+  Assert.AreEqual<TAtlasDataFlowKind>(TAtlasDataFlowKind.Assignment, mFlow.Nodes[0].Kind);
+  Assert.AreEqual('Summe', mFlow.Nodes[0].Via);
+  Assert.AreEqual(2, Integer(Length(mFlow.Nodes[0].Places)));
+  Assert.AreEqual(13, mFlow.Nodes[0].Places[1].Line);
+  Assert.AreEqual('Zaehler := Summe(Wert);', mFlow.Nodes[0].Places[0].LineText);
+  Assert.IsTrue(SameText('C:\P\Daten.pas', mFlow.Nodes[0].Sources[0].FileName));
+  Assert.AreEqual<TAtlasDataFlowLeaf>(TAtlasDataFlowLeaf.None, mFlow.Nodes[0].Sources[0].Leaf);
+  Assert.IsTrue(mFlow.Nodes[1].Literal);
+  Assert.IsTrue(mFlow.Nodes[1].Unsafe);
+  Assert.AreEqual('move', mFlow.Nodes[1].UnsafeReason);
+  Assert.AreEqual<TAtlasDataFlowLeaf>(TAtlasDataFlowLeaf.Cycle, mFlow.Nodes[1].Sources[0].Leaf);
+  Assert.AreEqual<TAtlasDataFlowLeaf>(TAtlasDataFlowLeaf.Constant, mFlow.Nodes[1].Sources[1].Leaf);
 end;
 
 procedure TAtlasLspDataFlowTests.NotFoundAndNull;
 var
-  Value: TJSONValue;
+  mValue: TJSONValue;
 begin
   Assert.IsFalse(TAtlasDataFlowJson.Parse(nil).Found);
-  Value := TJSONNull.Create;
+  mValue := TJSONNull.Create;
   try
-    Assert.IsFalse(TAtlasDataFlowJson.Parse(Value).Found);
+    Assert.IsFalse(TAtlasDataFlowJson.Parse(mValue).Found);
   finally
-    Value.Free;
+    mValue.Free;
   end;
-  Value := TJSONObject.ParseJSONValue('{"found":false}');
+  mValue := TJSONObject.ParseJSONValue('{"found":false}');
   try
-    Assert.IsFalse(TAtlasDataFlowJson.Parse(Value).Found);
+    Assert.IsFalse(TAtlasDataFlowJson.Parse(mValue).Found);
   finally
-    Value.Free;
+    mValue.Free;
   end;
 end;
 

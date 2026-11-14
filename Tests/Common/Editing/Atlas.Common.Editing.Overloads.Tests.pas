@@ -51,7 +51,7 @@ uses
   Atlas.Common.Editing.Overloads;
 
 const
-  LogUnit =
+  cLogUnit =
     'unit Log;'#10 +                                                         // 0
     'interface'#10 +                                                         // 1
     'type'#10 +                                                              // 2
@@ -99,23 +99,23 @@ end;
 function Run(const AText: string; ALine, ACharacter: Integer; AKind: TOverloadKind;
   const ADefault: TOverloadDefaultFunc): TOverloadResult;
 var
-  Tree, After: TSyntaxTree;
-  Target: TOverloadTarget;
-  Reason: string;
+  mTree, mAfter: TSyntaxTree;
+  mTarget: TOverloadTarget;
+  mReason: string;
 begin
-  Tree := Parse(AText);
+  mTree := Parse(AText);
   try
-    Assert.IsTrue(TOverloads.Target(AText, Tree, TTextPosition.Create(ALine, ACharacter), Target), 'Ziel');
-    Assert.IsTrue(TOverloads.Build(AText, Tree, Target, TOverloadRequest.Create(AKind, ADefault), Result, Reason),
-      Reason);
+    Assert.IsTrue(TOverloads.Target(AText, mTree, TTextPosition.Create(ALine, ACharacter), mTarget), 'Ziel');
+    Assert.IsTrue(TOverloads.Build(AText, mTree, mTarget, TOverloadRequest.Create(AKind, ADefault), Result, mReason),
+      mReason);
   finally
-    Tree.Free;
+    mTree.Free;
   end;
-  After := Parse(Result.NewText);
+  mAfter := Parse(Result.NewText);
   try
-    Assert.AreEqual(0, Integer(Length(After.Diagnostics)), Result.NewText);
+    Assert.AreEqual(0, Integer(Length(mAfter.Diagnostics)), Result.NewText);
   finally
-    After.Free;
+    mAfter.Free;
   end;
 end;
 
@@ -127,73 +127,73 @@ end;
 /// <summary>Text des Platzhalters AIndex im Ergebnis.</summary>
 function FieldText(const AResult: TOverloadResult; AIndex: Integer): string;
 var
-  Lines: TArray<string>;
-  Range: TTextRange;
+  mLines: TArray<string>;
+  mRange: TTextRange;
 begin
-  Lines := AResult.NewText.Split([#10]);
-  Range := AResult.Placeholders[AIndex].Range;
-  Assert.AreEqual(Range.StartPos.Line, Range.EndPos.Line, 'einzeilig');
-  Result := Copy(Lines[Range.StartPos.Line], Range.StartPos.Character + 1,
-    Range.EndPos.Character - Range.StartPos.Character);
+  mLines := AResult.NewText.Split([#10]);
+  mRange := AResult.Placeholders[AIndex].Range;
+  Assert.AreEqual(mRange.StartPos.Line, mRange.EndPos.Line, 'einzeilig');
+  Result := Copy(mLines[mRange.StartPos.Line], mRange.StartPos.Character + 1,
+    mRange.EndPos.Character - mRange.StartPos.Character);
 end;
 
 function Numbers(const AResult: TOverloadResult): string;
 var
-  Placeholder: TOverloadPlaceholder;
+  mPlaceholder: TOverloadPlaceholder;
 begin
   Result := '';
-  for Placeholder in AResult.Placeholders do
+  for mPlaceholder in AResult.Placeholders do
   begin
-    Result := Result + IntToStr(Placeholder.Number);
+    Result := Result + IntToStr(mPlaceholder.Number);
   end;
 end;
 
 procedure TOverloadsTests.CopyMethod;
 var
-  Outcome: TOverloadResult;
+  mOutcome: TOverloadResult;
 begin
-  Outcome := RunPlain(LogUnit, 16, 18, TOverloadKind.Copy);
-  Assert.IsTrue(Outcome.NewText.Contains(
+  mOutcome := RunPlain(cLogUnit, 16, 18, TOverloadKind.Copy);
+  Assert.IsTrue(mOutcome.NewText.Contains(
     '    procedure Write(const AText: string; ALevel: TLogLevel); overload; override;'#10 +
     '    /// <summary>Schreibt.</summary>'#10 +
     '    /// <param name="AText">Text</param>'#10 +
     '    /// <param name="ALevel">'#10 +
     '    /// Stufe</param>'#10 +
     '    procedure Write(const AText: string; ALevel: TLogLevel); overload;'#10 +
-    '    class function'), Outcome.NewText);
-  Assert.IsTrue(Outcome.NewText.Contains(
+    '    class function'), mOutcome.NewText);
+  Assert.IsTrue(mOutcome.NewText.Contains(
     '  Emit(AText, X);'#10'end;'#10#10 +
     'procedure TLog.Write(const AText: string; ALevel: TLogLevel);'#10 +
     'var'#10'  X: Integer;'#10'begin'#10'  X := 1;'#10'  Emit(AText, X);'#10'end;'#10 +
-    'class function'), Outcome.NewText);
+    'class function'), mOutcome.NewText);
   // Parameterliste in Deklaration und Implementierung verknüpft, dann der Rumpf, dann das Ende.
-  Assert.AreEqual('1120', Numbers(Outcome));
-  Assert.AreEqual('const AText: string; ALevel: TLogLevel', FieldText(Outcome, 0));
-  Assert.AreEqual('const AText: string; ALevel: TLogLevel', FieldText(Outcome, 1));
-  Assert.AreEqual(35, Outcome.Placeholders[3].Range.StartPos.Line);
-  Assert.AreEqual(1, Integer(Length(Outcome.Warnings)));
+  Assert.AreEqual('1120', Numbers(mOutcome));
+  Assert.AreEqual('const AText: string; ALevel: TLogLevel', FieldText(mOutcome, 0));
+  Assert.AreEqual('const AText: string; ALevel: TLogLevel', FieldText(mOutcome, 1));
+  Assert.AreEqual(35, mOutcome.Placeholders[3].Range.StartPos.Line);
+  Assert.AreEqual(1, Integer(Length(mOutcome.Warnings)));
   // overload hinter dem Kopf (vor override), Deklaration, Implementierung.
-  Assert.AreEqual(3, Integer(Length(Outcome.Edits)));
+  Assert.AreEqual(3, Integer(Length(mOutcome.Edits)));
 end;
 
 procedure TOverloadsTests.CopyClassMethodKeepsStatic;
 var
-  Outcome: TOverloadResult;
+  mOutcome: TOverloadResult;
 begin
   // Cursor in der Deklaration in der Klasse.
-  Outcome := RunPlain(LogUnit, 10, 22, TOverloadKind.Copy);
-  Assert.IsTrue(Outcome.NewText.Contains(
+  mOutcome := RunPlain(cLogUnit, 10, 22, TOverloadKind.Copy);
+  Assert.IsTrue(mOutcome.NewText.Contains(
     '    class function Make(A: Integer; const B: string): TLog; overload; static;'#10 +
-    '    class function Make(A: Integer; const B: string): TLog; overload; static;'#10), Outcome.NewText);
-  Assert.IsTrue(Outcome.NewText.Contains(
+    '    class function Make(A: Integer; const B: string): TLog; overload; static;'#10), mOutcome.NewText);
+  Assert.IsTrue(mOutcome.NewText.Contains(
     'end;'#10#10'class function TLog.Make(A: Integer; const B: string): TLog;'#10'begin'#10 +
-    '  Result := nil;'#10'end;'#10'destructor'), Outcome.NewText);
-  Assert.AreEqual(0, Integer(Length(Outcome.Warnings)));
+    '  Result := nil;'#10'end;'#10'destructor'), mOutcome.NewText);
+  Assert.AreEqual(0, Integer(Length(mOutcome.Warnings)));
 end;
 
 procedure TOverloadsTests.CopyRoutineOnlyInImplementation;
 const
-  Source =
+  cSource =
     'unit U;'#10 +
     'interface'#10 +
     'implementation'#10 +
@@ -204,9 +204,9 @@ const
     'end;'#10 +
     'end.'#10;
 var
-  Outcome: TOverloadResult;
+  mOutcome: TOverloadResult;
 begin
-  Outcome := RunPlain(Source, 4, 10, TOverloadKind.Copy);
+  mOutcome := RunPlain(cSource, 4, 10, TOverloadKind.Copy);
   Assert.AreEqual(
     'unit U;'#10 +
     'interface'#10 +
@@ -221,15 +221,15 @@ begin
     'begin'#10 +
     '  Result := A + B;'#10 +
     'end;'#10 +
-    'end.'#10, Outcome.NewText);
-  Assert.AreEqual('120', Numbers(Outcome));
-  Assert.AreEqual('A, B: Integer', FieldText(Outcome, 0));
-  Assert.AreEqual('Result := A + B;', FieldText(Outcome, 1));
+    'end.'#10, mOutcome.NewText);
+  Assert.AreEqual('120', Numbers(mOutcome));
+  Assert.AreEqual('A, B: Integer', FieldText(mOutcome, 0));
+  Assert.AreEqual('Result := A + B;', FieldText(mOutcome, 1));
 end;
 
 procedure TOverloadsTests.CopyRoutineWithInterfaceDeclaration;
 const
-  Source =
+  cSource =
     'unit U;'#10 +
     'interface'#10 +
     'procedure Run(const AName: string);'#10 +
@@ -240,9 +240,9 @@ const
     'end;'#10 +
     'end.'#10;
 var
-  Outcome: TOverloadResult;
+  mOutcome: TOverloadResult;
 begin
-  Outcome := RunPlain(Source, 4, 11, TOverloadKind.Copy);
+  mOutcome := RunPlain(cSource, 4, 11, TOverloadKind.Copy);
   Assert.AreEqual(
     'unit U;'#10 +
     'interface'#10 +
@@ -257,82 +257,82 @@ begin
     'begin'#10 +
     '  Go(AName);'#10 +
     'end;'#10 +
-    'end.'#10, Outcome.NewText);
-  Assert.AreEqual('1120', Numbers(Outcome));
+    'end.'#10, mOutcome.NewText);
+  Assert.AreEqual('1120', Numbers(mOutcome));
 end;
 
 procedure TOverloadsTests.CopyEmptyBody;
 var
-  Outcome: TOverloadResult;
+  mOutcome: TOverloadResult;
 begin
-  Outcome := RunPlain(LogUnit, 12, 16, TOverloadKind.Copy);
-  Assert.IsTrue(Outcome.NewText.Contains(
-    '    procedure Clear; overload;'#10'    procedure Clear(); overload;'#10), Outcome.NewText);
-  Assert.IsTrue(Outcome.NewText.Contains(
+  mOutcome := RunPlain(cLogUnit, 12, 16, TOverloadKind.Copy);
+  Assert.IsTrue(mOutcome.NewText.Contains(
+    '    procedure Clear; overload;'#10'    procedure Clear(); overload;'#10), mOutcome.NewText);
+  Assert.IsTrue(mOutcome.NewText.Contains(
     'procedure TLog.Clear;'#10'begin'#10'end;'#10#10'procedure TLog.Clear();'#10'begin'#10'  '#10'end;'#10),
-    Outcome.NewText);
-  Assert.AreEqual('1120', Numbers(Outcome));
-  Assert.AreEqual('', FieldText(Outcome, 0));
-  Assert.AreEqual('', FieldText(Outcome, 2));
-  Assert.AreEqual(2, Outcome.Placeholders[2].Range.StartPos.Character);
+    mOutcome.NewText);
+  Assert.AreEqual('1120', Numbers(mOutcome));
+  Assert.AreEqual('', FieldText(mOutcome, 0));
+  Assert.AreEqual('', FieldText(mOutcome, 2));
+  Assert.AreEqual(2, mOutcome.Placeholders[2].Range.StartPos.Character);
 end;
 
 procedure TOverloadsTests.ForwardProcedureDropsOverride;
 var
-  Outcome: TOverloadResult;
+  mOutcome: TOverloadResult;
 begin
-  Outcome := RunPlain(LogUnit, 9, 15, TOverloadKind.Forward);
-  Assert.IsTrue(Outcome.NewText.Contains(
+  mOutcome := RunPlain(cLogUnit, 9, 15, TOverloadKind.Forward);
+  Assert.IsTrue(mOutcome.NewText.Contains(
     '    procedure Write(const AText: string; ALevel: TLogLevel); overload; override;'#10 +
     '    /// <summary>Schreibt.</summary>'#10 +
     '    /// <param name="AText">Text</param>'#10 +
-    '    procedure Write(const AText: string); overload;'#10), Outcome.NewText);
-  Assert.IsTrue(Outcome.NewText.Contains(
+    '    procedure Write(const AText: string); overload;'#10), mOutcome.NewText);
+  Assert.IsTrue(mOutcome.NewText.Contains(
     'end;'#10#10'procedure TLog.Write(const AText: string);'#10'begin'#10 +
-    '  Write(AText, Default(TLogLevel));'#10'end;'#10), Outcome.NewText);
-  Assert.AreEqual('1120', Numbers(Outcome));
-  Assert.AreEqual('const AText: string', FieldText(Outcome, 1));
-  Assert.AreEqual('Default(TLogLevel)', FieldText(Outcome, 2));
-  Assert.AreEqual(1, Integer(Length(Outcome.Warnings)));
-  Assert.IsTrue(Outcome.Warnings[0].Contains('nicht virtuell'), Outcome.Warnings[0]);
+    '  Write(AText, Default(TLogLevel));'#10'end;'#10), mOutcome.NewText);
+  Assert.AreEqual('1120', Numbers(mOutcome));
+  Assert.AreEqual('const AText: string', FieldText(mOutcome, 1));
+  Assert.AreEqual('Default(TLogLevel)', FieldText(mOutcome, 2));
+  Assert.AreEqual(1, Integer(Length(mOutcome.Warnings)));
+  Assert.IsTrue(mOutcome.Warnings[0].Contains('nicht virtuell'), mOutcome.Warnings[0]);
 end;
 
 procedure TOverloadsTests.ForwardFunctionUsesResult;
 var
-  Outcome: TOverloadResult;
+  mOutcome: TOverloadResult;
 begin
-  Outcome := RunPlain(LogUnit, 23, 22, TOverloadKind.Forward);
-  Assert.IsTrue(Outcome.NewText.Contains(
-    '    class function Make(A: Integer): TLog; overload; static;'#10), Outcome.NewText);
-  Assert.IsTrue(Outcome.NewText.Contains(
+  mOutcome := RunPlain(cLogUnit, 23, 22, TOverloadKind.Forward);
+  Assert.IsTrue(mOutcome.NewText.Contains(
+    '    class function Make(A: Integer): TLog; overload; static;'#10), mOutcome.NewText);
+  Assert.IsTrue(mOutcome.NewText.Contains(
     'class function TLog.Make(A: Integer): TLog;'#10'begin'#10'  Result := Make(A, '''');'#10'end;'#10),
-    Outcome.NewText);
-  Assert.AreEqual('''''', FieldText(Outcome, 2));
+    mOutcome.NewText);
+  Assert.AreEqual('''''', FieldText(mOutcome, 2));
 end;
 
 procedure TOverloadsTests.ForwardDefaultFromLookup;
 var
-  Outcome: TOverloadResult;
-  Seen: string;
-  SeenOffset: Integer;
+  mOutcome: TOverloadResult;
+  mSeen: string;
+  mSeenOffset: Integer;
 begin
-  Seen := '';
-  SeenOffset := -1;
-  Outcome := Run(LogUnit, 9, 15, TOverloadKind.Forward,
+  mSeen := '';
+  mSeenOffset := -1;
+  mOutcome := Run(cLogUnit, 9, 15, TOverloadKind.Forward,
     function(const ATypeName: string; ATypeOffset: Integer): string
     begin
-      Seen := ATypeName;
-      SeenOffset := ATypeOffset;
+      mSeen := ATypeName;
+      mSeenOffset := ATypeOffset;
       Result := 'llInfo';
     end);
-  Assert.AreEqual('TLogLevel', Seen);
-  Assert.AreEqual(Pos('TLogLevel); override', LogUnit) - 1, SeenOffset);
-  Assert.IsTrue(Outcome.NewText.Contains('  Write(AText, llInfo);'), Outcome.NewText);
+  Assert.AreEqual('TLogLevel', mSeen);
+  Assert.AreEqual(Pos('TLogLevel); override', cLogUnit) - 1, mSeenOffset);
+  Assert.IsTrue(mOutcome.NewText.Contains('  Write(AText, llInfo);'), mOutcome.NewText);
 end;
 
 procedure TOverloadsTests.TargetPicksMatchingOverload;
 const
-  Source =
+  cSource =
     'unit U;'#10 +
     'interface'#10 +
     'type'#10 +
@@ -350,34 +350,34 @@ const
     'end;'#10 +
     'end.'#10;
 var
-  Tree: TSyntaxTree;
-  Target: TOverloadTarget;
-  Outcome: TOverloadResult;
+  mTree: TSyntaxTree;
+  mTarget: TOverloadTarget;
+  mOutcome: TOverloadResult;
 begin
-  Tree := Parse(Source);
+  mTree := Parse(cSource);
   try
-    Assert.IsTrue(TOverloads.Target(Source, Tree, TTextPosition.Create(11, 14), Target));
-    Assert.AreEqual(2, Integer(Length(Target.Decl.Parameters)));
-    Assert.AreEqual('TA', Target.Container);
-    Assert.AreEqual('Put', Target.Name);
+    Assert.IsTrue(TOverloads.Target(cSource, mTree, TTextPosition.Create(11, 14), mTarget));
+    Assert.AreEqual(2, Integer(Length(mTarget.Decl.Parameters)));
+    Assert.AreEqual('TA', mTarget.Container);
+    Assert.AreEqual('Put', mTarget.Name);
     // Die Weiterleitung ergäbe Put(const S: string), die gibt es nicht; von Put(A) aus gäbe es Put() nicht.
-    Assert.AreEqual('', Target.ForwardReason);
+    Assert.AreEqual('', mTarget.ForwardReason);
   finally
-    Tree.Free;
+    mTree.Free;
   end;
-  Outcome := RunPlain(Source, 5, 14, TOverloadKind.Forward);
-  Assert.IsTrue(Outcome.NewText.Contains(
+  mOutcome := RunPlain(cSource, 5, 14, TOverloadKind.Forward);
+  Assert.IsTrue(mOutcome.NewText.Contains(
     '    procedure Put(const S: string; N: Integer); overload;'#10 +
-    '    procedure Put(const S: string); overload;'#10), Outcome.NewText);
-  Assert.IsTrue(Outcome.NewText.Contains('  Put(N);'#10'end;'#10#10'procedure TA.Put(const S: string);'#10 +
-    'begin'#10'  Put(S, 0);'#10'end;'#10), Outcome.NewText);
+    '    procedure Put(const S: string); overload;'#10), mOutcome.NewText);
+  Assert.IsTrue(mOutcome.NewText.Contains('  Put(N);'#10'end;'#10#10'procedure TA.Put(const S: string);'#10 +
+    'begin'#10'  Put(S, 0);'#10'end;'#10), mOutcome.NewText);
   // Das Original hat schon overload: nur Deklaration und Implementierung.
-  Assert.AreEqual(2, Integer(Length(Outcome.Edits)));
+  Assert.AreEqual(2, Integer(Length(mOutcome.Edits)));
 end;
 
 procedure TOverloadsTests.Reasons;
 const
-  Twice =
+  cTwice =
     'unit U;'#10 +
     'interface'#10 +
     'type'#10 +
@@ -394,37 +394,37 @@ const
     'end;'#10 +
     'end.'#10;
 var
-  Tree: TSyntaxTree;
-  Target: TOverloadTarget;
-  Outcome: TOverloadResult;
-  Reason: string;
+  mTree: TSyntaxTree;
+  mTarget: TOverloadTarget;
+  mOutcome: TOverloadResult;
+  mReason: string;
 begin
-  Tree := Parse(LogUnit);
+  mTree := Parse(cLogUnit);
   try
-    Assert.IsTrue(TOverloads.Target(LogUnit, Tree, TTextPosition.Create(11, 16), Target));
-    Assert.AreEqual(TOverloads.DestructorReason, Target.CopyReason);
-    Assert.AreEqual(TOverloads.DestructorReason, Target.ForwardReason);
-    Assert.IsFalse(TOverloads.Build(LogUnit, Tree, Target, TOverloadKind.Copy, Outcome, Reason));
-    Assert.AreEqual(TOverloads.DestructorReason, Reason);
-    Assert.IsTrue(TOverloads.Target(LogUnit, Tree, TTextPosition.Create(12, 16), Target));
-    Assert.AreEqual('', Target.CopyReason);
-    Assert.AreEqual(TOverloads.NoParameterReason, Target.ForwardReason);
-    Assert.IsTrue(TOverloads.Target(LogUnit, Tree, TTextPosition.Create(33, 16), Target));
-    Assert.AreEqual(Format(TOverloads.VarParameterReason, ['ABuffer']), Target.ForwardReason);
+    Assert.IsTrue(TOverloads.Target(cLogUnit, mTree, TTextPosition.Create(11, 16), mTarget));
+    Assert.AreEqual(TOverloads.DestructorReason, mTarget.CopyReason);
+    Assert.AreEqual(TOverloads.DestructorReason, mTarget.ForwardReason);
+    Assert.IsFalse(TOverloads.Build(cLogUnit, mTree, mTarget, TOverloadKind.Copy, mOutcome, mReason));
+    Assert.AreEqual(TOverloads.DestructorReason, mReason);
+    Assert.IsTrue(TOverloads.Target(cLogUnit, mTree, TTextPosition.Create(12, 16), mTarget));
+    Assert.AreEqual('', mTarget.CopyReason);
+    Assert.AreEqual(TOverloads.NoParameterReason, mTarget.ForwardReason);
+    Assert.IsTrue(TOverloads.Target(cLogUnit, mTree, TTextPosition.Create(33, 16), mTarget));
+    Assert.AreEqual(Format(TOverloads.VarParameterReason, ['ABuffer']), mTarget.ForwardReason);
     // Nicht im Kopf: kein Ziel.
-    Assert.IsFalse(TOverloads.Target(LogUnit, Tree, TTextPosition.Create(20, 3), Target));
-    Assert.IsFalse(TOverloads.Target(LogUnit, Tree, TTextPosition.Create(3, 4), Target));
+    Assert.IsFalse(TOverloads.Target(cLogUnit, mTree, TTextPosition.Create(20, 3), mTarget));
+    Assert.IsFalse(TOverloads.Target(cLogUnit, mTree, TTextPosition.Create(3, 4), mTarget));
   finally
-    Tree.Free;
+    mTree.Free;
   end;
-  Tree := Parse(Twice);
+  mTree := Parse(cTwice);
   try
-    Assert.IsTrue(TOverloads.Target(Twice, Tree, TTextPosition.Create(11, 14), Target));
-    Assert.AreEqual(Format(TOverloads.ExistsReason, ['Put', '']), Target.ForwardReason);
-    Assert.AreEqual(TOverloads.ForwardTitle, Target.Title(TOverloadKind.Forward));
-    Assert.AreEqual(TOverloads.CopyTitle, Target.Title(TOverloadKind.Copy));
+    Assert.IsTrue(TOverloads.Target(cTwice, mTree, TTextPosition.Create(11, 14), mTarget));
+    Assert.AreEqual(Format(TOverloads.ExistsReason, ['Put', '']), mTarget.ForwardReason);
+    Assert.AreEqual(TOverloads.ForwardTitle, mTarget.Title(TOverloadKind.Forward));
+    Assert.AreEqual(TOverloads.CopyTitle, mTarget.Title(TOverloadKind.Copy));
   finally
-    Tree.Free;
+    mTree.Free;
   end;
 end;
 

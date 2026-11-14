@@ -73,11 +73,11 @@ uses
   Atlas.Common.Index.Extractor;
 
 const
-  DatenFile = 'C:\P\Daten.pas';
-  HauptFile = 'C:\P\Haupt.pas';
-  PruefFile = 'C:\P\Pruefung.pas';
+  cDatenFile = 'C:\P\Daten.pas';
+  cHauptFile = 'C:\P\Haupt.pas';
+  cPruefFile = 'C:\P\Pruefung.pas';
 
-  UnitDaten =
+  cUnitDaten =
     'unit Daten;'#10 +
     'interface'#10 +
     'type'#10 +
@@ -114,7 +114,7 @@ const
     'end;'#10 +
     'end.';
 
-  UnitHaupt =
+  cUnitHaupt =
     'unit Haupt;'#10 +
     'interface'#10 +
     'implementation'#10 +
@@ -140,7 +140,7 @@ const
     'end;'#10 +
     'end.';
 
-  UnitPruefung =
+  cUnitPruefung =
     'unit Pruefung;'#10 +
     'interface'#10 +
     'uses DUnitX.TestFramework, Daten;'#10 +
@@ -155,40 +155,40 @@ const
 
 function PositionOf(const AText, AMarker: string): TTextPosition;
 var
-  Index, Line, LineStart, Scan: Integer;
+  mIndex, mLine, mLineStart, mScan: Integer;
 begin
-  Index := Pos(AMarker, AText);
-  if Index = 0 then
+  mIndex := Pos(AMarker, AText);
+  if mIndex = 0 then
   begin
     raise Exception.CreateFmt('"%s" nicht gefunden', [AMarker]);
   end;
-  Line := 0;
-  LineStart := 1;
-  for Scan := 1 to Index - 1 do
+  mLine := 0;
+  mLineStart := 1;
+  for mScan := 1 to mIndex - 1 do
   begin
-    if AText[Scan] = #10 then
+    if AText[mScan] = #10 then
     begin
-      Inc(Line);
-      LineStart := Scan + 1;
+      Inc(mLine);
+      mLineStart := mScan + 1;
     end;
   end;
-  Result := TTextPosition.Create(Line, Index - LineStart);
+  Result := TTextPosition.Create(mLine, mIndex - mLineStart);
 end;
 
 function ReadFile(const AFileName: string; out AText: string): Boolean;
 begin
   Result := True;
-  if SameText(AFileName, DatenFile) then
+  if SameText(AFileName, cDatenFile) then
   begin
-    AText := UnitDaten;
+    AText := cUnitDaten;
   end
-  else if SameText(AFileName, HauptFile) then
+  else if SameText(AFileName, cHauptFile) then
   begin
-    AText := UnitHaupt;
+    AText := cUnitHaupt;
   end
-  else if SameText(AFileName, PruefFile) then
+  else if SameText(AFileName, cPruefFile) then
   begin
-    AText := UnitPruefung;
+    AText := cUnitPruefung;
   end
   else
   begin
@@ -201,9 +201,9 @@ end;
 procedure TLspDataFlowTests.Setup;
 begin
   FIndex := TSymbolIndex.Create;
-  FIndex.AddUnit(TIndexExtractor.ExtractText(UnitDaten, DatenFile, nil));
-  FIndex.AddUnit(TIndexExtractor.ExtractText(UnitHaupt, HauptFile, nil));
-  FIndex.AddUnit(TIndexExtractor.ExtractText(UnitPruefung, PruefFile, nil));
+  FIndex.AddUnit(TIndexExtractor.ExtractText(cUnitDaten, cDatenFile, nil));
+  FIndex.AddUnit(TIndexExtractor.ExtractText(cUnitHaupt, cHauptFile, nil));
+  FIndex.AddUnit(TIndexExtractor.ExtractText(cUnitPruefung, cPruefFile, nil));
   FResolver := TNameResolver.Create(FIndex);
 end;
 
@@ -221,20 +221,20 @@ end;
 function TLspDataFlowTests.Flow(const AFileName, AMarker: string; ADirection: TDataFlowDirection;
   const AOptions: TDataFlowOptions): TDataFlowResult;
 var
-  Text: string;
+  mText: string;
   mRequest: TDataFlowRequest;
 begin
-  ReadFile(AFileName, Text);
+  ReadFile(AFileName, mText);
   mRequest := Default(TDataFlowRequest);
   mRequest.Resolver := FResolver;
   mRequest.Index := FIndex;
   mRequest.FileName := AFileName;
-  mRequest.Position := PositionOf(Text, AMarker);
+  mRequest.Position := PositionOf(mText, AMarker);
   mRequest.Direction := ADirection;
   mRequest.Options := AOptions;
-  mRequest.Files := TArray<string>.Create(DatenFile, HauptFile, PruefFile);
+  mRequest.Files := TArray<string>.Create(cDatenFile, cHauptFile, cPruefFile);
   mRequest.ReadText := ReadFile;
-  mRequest.Tree := TSyntaxTreeCache.Parse(Text);
+  mRequest.Tree := TSyntaxTreeCache.Parse(mText);
   try
     Result := TLspDataFlow.Analyze(mRequest);
   finally
@@ -290,174 +290,174 @@ end;
 
 function TLspDataFlowTests.Describe(const AResult: TDataFlowResult): string;
 var
-  Node: TDataFlowNode;
+  mNode: TDataFlowNode;
 begin
   // "kind[detail](via)xN<-Quelle/leaf,…" je Knoten, mit "; " verbunden.
   Result := '';
-  for Node in AResult.Nodes do
+  for mNode in AResult.Nodes do
   begin
     if Result <> '' then
     begin
       Result := Result + '; ';
     end;
-    Result := Result + NodeText(Node);
+    Result := Result + NodeText(mNode);
   end;
 end;
 
 procedure TLspDataFlowTests.LocalAssignmentsAreGrouped;
 var
-  Flowed: TDataFlowResult;
+  mFlowed: TDataFlowResult;
 begin
-  Flowed := Flow(HauptFile, 'Ergebnis :=', TDataFlowDirection.Sources);
-  Assert.IsTrue(Flowed.Found);
-  Assert.AreEqual('Ergebnis', Flowed.Symbol.Name);
+  mFlowed := Flow(cHauptFile, 'Ergebnis :=', TDataFlowDirection.Sources);
+  Assert.IsTrue(mFlowed.Found);
+  Assert.AreEqual('Ergebnis', mFlowed.Symbol.Name);
   Assert.AreEqual('assignment[Summe(Wert, Neben, Ziel)]x2<-Summe; assignment[Summe(2, Neben, Ziel)]<-Summe',
-    Describe(Flowed));
-  Assert.AreEqual(11, Flowed.Nodes[0].Places[0].Position.Line);
-  Assert.AreEqual(13, Flowed.Nodes[0].Places[1].Position.Line);
-  Assert.AreEqual('Ergebnis := Summe(Wert, Neben, Ziel);', Flowed.Nodes[0].Places[0].LineText);
+    Describe(mFlowed));
+  Assert.AreEqual(11, mFlowed.Nodes[0].Places[0].Position.Line);
+  Assert.AreEqual(13, mFlowed.Nodes[0].Places[1].Position.Line);
+  Assert.AreEqual('Ergebnis := Summe(Wert, Neben, Ziel);', mFlowed.Nodes[0].Places[0].LineText);
 end;
 
 procedure TLspDataFlowTests.FunctionResultFromResultAndExit;
 begin
   Assert.AreEqual('return[X]<-X; return[cMax](Exit)<-cMax/constant',
-    Describe(Flow(HauptFile, 'Summe(Wert', TDataFlowDirection.Sources)));
+    Describe(Flow(cHauptFile, 'Summe(Wert', TDataFlowDirection.Sources)));
   // Result steht für die Funktion selbst.
   Assert.AreEqual('return[X]<-X; return[cMax](Exit)<-cMax/constant',
-    Describe(Flow(DatenFile, 'Result := X', TDataFlowDirection.Sources)));
+    Describe(Flow(cDatenFile, 'Result := X', TDataFlowDirection.Sources)));
 end;
 
 procedure TLspDataFlowTests.ParameterFromAllCallers;
 begin
   Assert.AreEqual('callerArgument[Wert](Summe)x2<-Wert; callerArgument[2](Summe)!lit; callerArgument[7](Summe)!lit',
-    Describe(Flow(DatenFile, 'A + B', TDataFlowDirection.Sources)));
+    Describe(Flow(cDatenFile, 'A + B', TDataFlowDirection.Sources)));
 end;
 
 procedure TLspDataFlowTests.VarAndOutArguments;
 begin
   Assert.AreEqual('varArgument[Summe(Wert, Neben, Ziel)](Summe)x2<-B; varArgument[Summe(2, Neben, Ziel)](Summe)<-B',
-    Describe(Flow(HauptFile, 'Neben, Ergebnis', TDataFlowDirection.Sources)));
+    Describe(Flow(cHauptFile, 'Neben, Ergebnis', TDataFlowDirection.Sources)));
   Assert.AreEqual('outArgument[Summe(Wert, Neben, Ziel)](Summe)x2<-C; outArgument[Summe(2, Neben, Ziel)](Summe)<-C',
-    Describe(Flow(HauptFile, 'Ziel, Zaehler', TDataFlowDirection.Sources)));
+    Describe(Flow(cHauptFile, 'Ziel, Zaehler', TDataFlowDirection.Sources)));
   // var-Parameter: Inc im Rumpf und die Argumente der Aufrufer.
   Assert.AreEqual('modify[Inc(B)](Inc)<-B/cycle; callerArgument[Neben](Summe)x3<-Neben; callerArgument[N](Summe)<-N',
-    Describe(Flow(DatenFile, 'B * cMax', TDataFlowDirection.Sources)));
+    Describe(Flow(cDatenFile, 'B * cMax', TDataFlowDirection.Sources)));
 end;
 
 procedure TLspDataFlowTests.OutParameterHasNoCallers;
 begin
-  Assert.AreEqual('assignment[X]<-X', Describe(Flow(DatenFile, 'C := X', TDataFlowDirection.Sources)));
+  Assert.AreEqual('assignment[X]<-X', Describe(Flow(cDatenFile, 'C := X', TDataFlowDirection.Sources)));
 end;
 
 procedure TLspDataFlowTests.ExternalInputAndMoveAndCycle;
 begin
-  Assert.AreEqual('input[ReadLn(AWert)](ReadLn)', Describe(Flow(DatenFile, 'AWert);'#10'end',
+  Assert.AreEqual('input[ReadLn(AWert)](ReadLn)', Describe(Flow(cDatenFile, 'AWert);'#10'end',
     TDataFlowDirection.Sources)));
   Assert.AreEqual('outArgument[Lies(Zaehler)](Lies)<-AWert; assignment[Wert](Move)!move<-Wert; ' +
-    'assignment[Zaehler + 1]!lit<-Zaehler/cycle', Describe(Flow(HauptFile, 'Zaehler :=', TDataFlowDirection.Sources)));
+    'assignment[Zaehler + 1]!lit<-Zaehler/cycle', Describe(Flow(cHauptFile, 'Zaehler :=', TDataFlowDirection.Sources)));
 end;
 
 procedure TLspDataFlowTests.PropertySetterReachesAssignments;
 begin
   // AValue kommt über die Property Name, deren Setter SetName ist.
   Assert.AreEqual('propertyWrite[''Meier''](Name)!lit',
-    Describe(Flow(DatenFile, 'AValue;', TDataFlowDirection.Sources)));
+    Describe(Flow(cDatenFile, 'AValue;', TDataFlowDirection.Sources)));
 end;
 
 procedure TLspDataFlowTests.PropertyAssignmentAndReadField;
 begin
   Assert.AreEqual('assignment[''Meier''](SetName)!lit; propertyRead[read FName]<-FName',
-    Describe(Flow(HauptFile, 'Name :=', TDataFlowDirection.Sources)));
+    Describe(Flow(cHauptFile, 'Name :=', TDataFlowDirection.Sources)));
 end;
 
 procedure TLspDataFlowTests.FieldWrittenBySetter;
 begin
-  Assert.AreEqual('assignment[AValue]<-AValue', Describe(Flow(DatenFile, 'FName := AValue',
+  Assert.AreEqual('assignment[AValue]<-AValue', Describe(Flow(cDatenFile, 'FName := AValue',
     TDataFlowDirection.Sources)));
 end;
 
 procedure TLspDataFlowTests.AddressIsUnsafe;
 var
-  Flowed: TDataFlowResult;
+  mFlowed: TDataFlowResult;
 begin
-  Flowed := Flow(HauptFile, 'Wert :=', TDataFlowDirection.Sources);
-  Assert.AreEqual('assignment[1]!lit; address[@Wert]!address', Describe(Flowed));
-  Assert.IsTrue(Flowed.Nodes[1].Unsafe);
+  mFlowed := Flow(cHauptFile, 'Wert :=', TDataFlowDirection.Sources);
+  Assert.AreEqual('assignment[1]!lit; address[@Wert]!address', Describe(mFlowed));
+  Assert.IsTrue(mFlowed.Nodes[1].Unsafe);
 end;
 
 procedure TLspDataFlowTests.TargetsOfVariable;
 begin
   Assert.AreEqual('argument[Summe(Wert, Neben, Ziel)](Summe)x2<-A; assignment[P := @Wert]!address<-P; ' +
     'assignment[Zaehler](Move)!move<-Zaehler; loop[Wert]<-I',
-    Describe(Flow(HauptFile, 'Wert :=', TDataFlowDirection.Targets)));
+    Describe(Flow(cHauptFile, 'Wert :=', TDataFlowDirection.Targets)));
 end;
 
 procedure TLspDataFlowTests.TargetsOfLocalInFunction;
 begin
   Assert.AreEqual('assignment[C := X]<-C; return[Result := X]<-Summe; use[]',
-    Describe(Flow(DatenFile, 'X := A', TDataFlowDirection.Targets)));
+    Describe(Flow(cDatenFile, 'X := A', TDataFlowDirection.Targets)));
   // Wohin geht das Ergebnis von Summe: in Ergebnis, bzw. verworfen im Test.
   Assert.AreEqual('assignment[Ergebnis := Summe(Wert, Neben, Ziel)]x2<-Ergebnis; ' +
     'assignment[Ergebnis := Summe(2, Neben, Ziel)]<-Ergebnis; use[]',
-    Describe(Flow(DatenFile, 'Result := X', TDataFlowDirection.Targets)));
+    Describe(Flow(cDatenFile, 'Result := X', TDataFlowDirection.Targets)));
 end;
 
 procedure TLspDataFlowTests.TestsCanBeExcluded;
 var
-  Options: TDataFlowOptions;
+  mOptions: TDataFlowOptions;
 begin
-  Options := Default(TDataFlowOptions);
-  Options.ExcludeTests := True;
+  mOptions := Default(TDataFlowOptions);
+  mOptions.ExcludeTests := True;
   Assert.AreEqual('callerArgument[Wert](Summe)x2<-Wert; callerArgument[2](Summe)!lit',
-    Describe(Flow(DatenFile, 'A + B', TDataFlowDirection.Sources, Options)));
-  Options.ExcludeTests := False;
-  Options.OnlyProject := True;
-  Assert.AreEqual(3, Integer(Length(Flow(DatenFile, 'A + B', TDataFlowDirection.Sources, Options).Nodes)));
+    Describe(Flow(cDatenFile, 'A + B', TDataFlowDirection.Sources, mOptions)));
+  mOptions.ExcludeTests := False;
+  mOptions.OnlyProject := True;
+  Assert.AreEqual(3, Integer(Length(Flow(cDatenFile, 'A + B', TDataFlowDirection.Sources, mOptions).Nodes)));
 end;
 
 procedure TLspDataFlowTests.PathMarksCycle;
 var
-  Options: TDataFlowOptions;
-  Flowed: TDataFlowResult;
+  mOptions: TDataFlowOptions;
+  mFlowed: TDataFlowResult;
 begin
-  Flowed := Flow(HauptFile, 'Summe(Wert', TDataFlowDirection.Sources);
-  Options := Default(TDataFlowOptions);
-  Options.Path := TArray<string>.Create(Flowed.Symbol.Key);
+  mFlowed := Flow(cHauptFile, 'Summe(Wert', TDataFlowDirection.Sources);
+  mOptions := Default(TDataFlowOptions);
+  mOptions.Path := TArray<string>.Create(mFlowed.Symbol.Key);
   // Von X aus führt der Weg zurück zu A, B und cMax; Summe steht schon im Pfad.
-  Flowed := Flow(DatenFile, 'X := A', TDataFlowDirection.Targets, Options);
-  Assert.AreEqual('assignment[C := X]<-C; return[Result := X]<-Summe/cycle; use[]', Describe(Flowed));
+  mFlowed := Flow(cDatenFile, 'X := A', TDataFlowDirection.Targets, mOptions);
+  Assert.AreEqual('assignment[C := X]<-C; return[Result := X]<-Summe/cycle; use[]', Describe(mFlowed));
 end;
 
 procedure TLspDataFlowTests.InitializationAndLoop;
 begin
-  Assert.AreEqual('initialization[Ergebnis * 2]!lit<-Ergebnis', Describe(Flow(HauptFile, 'Kopie',
+  Assert.AreEqual('initialization[Ergebnis * 2]!lit<-Ergebnis', Describe(Flow(cHauptFile, 'Kopie',
     TDataFlowDirection.Sources)));
-  Assert.AreEqual('loop[Wert .. Zaehler]<-Wert,Zaehler', Describe(Flow(HauptFile, 'I :=',
+  Assert.AreEqual('loop[Wert .. Zaehler]<-Wert,Zaehler', Describe(Flow(cHauptFile, 'I :=',
     TDataFlowDirection.Sources)));
 end;
 
 procedure TLspDataFlowTests.JsonShape;
 var
-  Json: TJSONObject;
-  Node, Entry: TJSONObject;
+  mJson: TJSONObject;
+  mNode, mEntry: TJSONObject;
 begin
-  Json := TLspDataFlow.ToJson(Flow(HauptFile, 'Zaehler :=', TDataFlowDirection.Sources));
+  mJson := TLspDataFlow.ToJson(Flow(cHauptFile, 'Zaehler :=', TDataFlowDirection.Sources));
   try
-    Assert.IsTrue(Json.GetValue<Boolean>('found'));
-    Assert.AreEqual('Zaehler', Json.GetValue<string>('symbol.name'));
-    Node := Json.GetValue<TJSONArray>('nodes').Items[2] as TJSONObject;
-    Assert.AreEqual('assignment', Node.GetValue<string>('kind'));
-    Assert.AreEqual('Zaehler + 1', Node.GetValue<string>('detail'));
-    Entry := Node.GetValue<TJSONArray>('sources').Items[0] as TJSONObject;
-    Assert.AreEqual('cycle', Entry.GetValue<string>('leaf'));
-    Entry := Node.GetValue<TJSONArray>('places').Items[0] as TJSONObject;
-    Assert.AreEqual(18, Entry.GetValue<Integer>('line'));
-    Assert.AreEqual('Zaehler := Zaehler + 1;', Entry.GetValue<string>('lineText'));
-    Node := Json.GetValue<TJSONArray>('nodes').Items[1] as TJSONObject;
-    Assert.IsTrue(Node.GetValue<Boolean>('unsafe'));
-    Assert.AreEqual('move', Node.GetValue<string>('unsafeReason'));
+    Assert.IsTrue(mJson.GetValue<Boolean>('found'));
+    Assert.AreEqual('Zaehler', mJson.GetValue<string>('symbol.name'));
+    mNode := mJson.GetValue<TJSONArray>('nodes').Items[2] as TJSONObject;
+    Assert.AreEqual('assignment', mNode.GetValue<string>('kind'));
+    Assert.AreEqual('Zaehler + 1', mNode.GetValue<string>('detail'));
+    mEntry := mNode.GetValue<TJSONArray>('sources').Items[0] as TJSONObject;
+    Assert.AreEqual('cycle', mEntry.GetValue<string>('leaf'));
+    mEntry := mNode.GetValue<TJSONArray>('places').Items[0] as TJSONObject;
+    Assert.AreEqual(18, mEntry.GetValue<Integer>('line'));
+    Assert.AreEqual('Zaehler := Zaehler + 1;', mEntry.GetValue<string>('lineText'));
+    mNode := mJson.GetValue<TJSONArray>('nodes').Items[1] as TJSONObject;
+    Assert.IsTrue(mNode.GetValue<Boolean>('unsafe'));
+    Assert.AreEqual('move', mNode.GetValue<string>('unsafeReason'));
   finally
-    Json.Free;
+    mJson.Free;
   end;
 end;
 

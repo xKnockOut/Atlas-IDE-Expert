@@ -40,13 +40,13 @@ uses
   Atlas.Common.Lsp.Metrics;
 
 const
-  MainFile = 'C:\P\Main.pas';
-  HelperFile = 'C:\P\Source\Helper.pas';
-  MainText = 'unit Main;'#10'interface'#10'implementation'#10'procedure Run(A, B: Integer);'#10'begin'#10 +
+  cMainFile = 'C:\P\Main.pas';
+  cHelperFile = 'C:\P\Source\Helper.pas';
+  cMainText = 'unit Main;'#10'interface'#10'implementation'#10'procedure Run(A, B: Integer);'#10'begin'#10 +
     '  if A > B then'#10'    Exit;'#10'end;'#10'end.';
-  HelperText = 'unit Helper;'#10'interface'#10'implementation'#10'procedure Help;'#10'begin'#10'end;'#10'end.';
-  ClassFile = 'C:\P\Klassen.pas';
-  ClassText = 'unit Klassen;'#10'interface'#10'type'#10'  TA = class'#10'  end;'#10'  TB = class(TA)'#10'  end;'#10 +
+  cHelperText = 'unit Helper;'#10'interface'#10'implementation'#10'procedure Help;'#10'begin'#10'end;'#10'end.';
+  cClassFile = 'C:\P\Klassen.pas';
+  cClassText = 'unit Klassen;'#10'interface'#10'type'#10'  TA = class'#10'  end;'#10'  TB = class(TA)'#10'  end;'#10 +
     '  TC = class(TUnbekannt)'#10'  end;'#10'implementation'#10'end.';
 
 function NewMetrics(const AConfig: string): TLspMetrics;
@@ -62,24 +62,24 @@ begin
       ASource.Title := 'Demo';
       if AProject then
       begin
-        ASource.Files := [MainFile, HelperFile, 'C:\P\Main.dfm'];
+        ASource.Files := [cMainFile, cHelperFile, 'C:\P\Main.dfm'];
       end;
       Result := True;
     end,
     function(const AFileName: string; out AText: string): Boolean
     begin
       Result := True;
-      if SameText(AFileName, MainFile) then
+      if SameText(AFileName, cMainFile) then
       begin
-        AText := MainText;
+        AText := cMainText;
       end
-      else if SameText(AFileName, HelperFile) then
+      else if SameText(AFileName, cHelperFile) then
       begin
-        AText := HelperText;
+        AText := cHelperText;
       end
-      else if SameText(AFileName, ClassFile) then
+      else if SameText(AFileName, cClassFile) then
       begin
-        AText := ClassText;
+        AText := cClassText;
       end
       else
       begin
@@ -107,26 +107,26 @@ end;
 
 function Run(AMetrics: TLspMetrics; const AFileName, AMode: string): string;
 var
-  Args: TJSONArray;
-  Answer: TJSONValue;
+  mArgs: TJSONArray;
+  mAnswer: TJSONValue;
 begin
-  Args := Arguments(AFileName, AMode);
+  mArgs := Arguments(AFileName, AMode);
   try
-    Answer := AMetrics.Execute(Args);
+    mAnswer := AMetrics.Execute(mArgs);
     try
-      if Answer is TJSONString then
+      if mAnswer is TJSONString then
       begin
-        Result := Answer.Value;
+        Result := mAnswer.Value;
       end
       else
       begin
-        Result := Answer.ToJSON;
+        Result := mAnswer.ToJSON;
       end;
     finally
-      Answer.Free;
+      mAnswer.Free;
     end;
   finally
-    Args.Free;
+    mArgs.Free;
   end;
 end;
 
@@ -134,75 +134,75 @@ end;
 
 procedure TLspMetricsTests.FileValuesWithLimitsAndSetting;
 var
-  Metrics: TLspMetrics;
-  Text: string;
+  mMetrics: TLspMetrics;
+  mText: string;
 begin
-  Metrics := NewMetrics('{"codeLens": {"metrics": false}, "rules": {"metric-parameter-count": {"max": 1}}}');
+  mMetrics := NewMetrics('{"codeLens": {"metrics": false}, "rules": {"metric-parameter-count": {"max": 1}}}');
   try
-    Text := Run(Metrics, MainFile, '');
-    Assert.Contains(Text, '"enabled":false');
-    Assert.Contains(Text, '"parameters":1,"operands":5,"locals":12,"exits":4}');
-    Assert.Contains(Text, '"operands":1,"locals":0,"exits":1}');
-    Assert.Contains(Text, '"file":"Main.pas"');
-    Assert.Contains(Text, '"name":"Run","line":4,"character":11');
-    Assert.Contains(Text, '"cyclomatic":2');
-    Assert.Contains(Text, '"exceeded":["parameters"]');
+    mText := Run(mMetrics, cMainFile, '');
+    Assert.Contains(mText, '"enabled":false');
+    Assert.Contains(mText, '"parameters":1,"operands":5,"locals":12,"exits":4}');
+    Assert.Contains(mText, '"operands":1,"locals":0,"exits":1}');
+    Assert.Contains(mText, '"file":"Main.pas"');
+    Assert.Contains(mText, '"name":"Run","line":4,"character":11');
+    Assert.Contains(mText, '"cyclomatic":2');
+    Assert.Contains(mText, '"exceeded":["parameters"]');
     // Aufbau (#939) für die Metrik-Linse.
-    Assert.Contains(Text, '"structure":[{"kind":"unitLength","name":"Main","line":1,"character":6,');
-    Assert.Contains(Text, '"limit":2000}');
+    Assert.Contains(mText, '"structure":[{"kind":"unitLength","name":"Main","line":1,"character":6,');
+    Assert.Contains(mText, '"limit":2000}');
   finally
-    Metrics.Free;
+    mMetrics.Free;
   end;
 end;
 
 procedure TLspMetricsTests.SummaryOverProjectFiles;
 var
-  Metrics: TLspMetrics;
-  Text: string;
+  mMetrics: TLspMetrics;
+  mText: string;
 begin
-  Metrics := NewMetrics('{}');
+  mMetrics := NewMetrics('{}');
   try
-    Text := Run(Metrics, 'C:\P\Demo.dproj', 'summary');
-    Assert.Contains(Text, '"format":1');
-    Assert.Contains(Text, '"limits":{"length":60');
-    Assert.Contains(Text, '"summary":{"files":2,"methods":2,"overLimits":0');
-    Assert.IsFalse(Text.Contains('"files":['), 'keine Einzelwerte in der Zusammenfassung');
-    Assert.AreEqual(2, Metrics.Collector.CachedCount);
+    mText := Run(mMetrics, 'C:\P\Demo.dproj', 'summary');
+    Assert.Contains(mText, '"format":1');
+    Assert.Contains(mText, '"limits":{"length":60');
+    Assert.Contains(mText, '"summary":{"files":2,"methods":2,"overLimits":0');
+    Assert.IsFalse(mText.Contains('"files":['), 'keine Einzelwerte in der Zusammenfassung');
+    Assert.AreEqual(2, mMetrics.Collector.CachedCount);
   finally
-    Metrics.Free;
+    mMetrics.Free;
   end;
 end;
 
 procedure TLspMetricsTests.MarkdownAndJson;
 var
-  Metrics: TLspMetrics;
-  Text: string;
+  mMetrics: TLspMetrics;
+  mText: string;
 begin
-  Metrics := NewMetrics('{}');
+  mMetrics := NewMetrics('{}');
   try
-    Text := Run(Metrics, '', 'markdown');
-    Assert.Contains(Text, '# Code-Metriken: Demo');
-    Assert.Contains(Text, '| Source/Helper.pas |');
-    Text := Run(Metrics, '', 'json');
-    Assert.Contains(Text, '"files":[{"file":"Main.pas"');
+    mText := Run(mMetrics, '', 'markdown');
+    Assert.Contains(mText, '# Code-Metriken: Demo');
+    Assert.Contains(mText, '| Source/Helper.pas |');
+    mText := Run(mMetrics, '', 'json');
+    Assert.Contains(mText, '"files":[{"file":"Main.pas"');
   finally
-    Metrics.Free;
+    mMetrics.Free;
   end;
 end;
 
 procedure TLspMetricsTests.UnknownModeIsRejected;
 var
-  Metrics: TLspMetrics;
+  mMetrics: TLspMetrics;
 begin
-  Metrics := NewMetrics('{}');
+  mMetrics := NewMetrics('{}');
   try
     Assert.WillRaise(
       procedure
       begin
-        Run(Metrics, MainFile, 'html');
+        Run(mMetrics, cMainFile, 'html');
       end, EJsonRpcError);
   finally
-    Metrics.Free;
+    mMetrics.Free;
   end;
 end;
 
@@ -217,22 +217,22 @@ end;
 
 procedure TLspMetricsTests.FileValuesWithInheritanceDepth;
 var
-  Metrics: TLspMetrics;
-  Text: string;
+  mMetrics: TLspMetrics;
+  mText: string;
 begin
-  Metrics := NewMetrics('{}');
+  mMetrics := NewMetrics('{}');
   try
     // Ohne Index keine Vererbungstiefe.
-    Text := Run(Metrics, ClassFile, '');
-    Assert.DoesNotContain(Text, 'inheritanceDepth');
-    Metrics.Index := TSymbolIndex.Create;
-    Text := Run(Metrics, ClassFile, '');
-    Assert.Contains(Text, '{"kind":"inheritanceDepth","name":"TB","line":6,"character":3,"value":1,"limit":5}');
+    mText := Run(mMetrics, cClassFile, '');
+    Assert.DoesNotContain(mText, 'inheritanceDepth');
+    mMetrics.Index := TSymbolIndex.Create;
+    mText := Run(mMetrics, cClassFile, '');
+    Assert.Contains(mText, '{"kind":"inheritanceDepth","name":"TB","line":6,"character":3,"value":1,"limit":5}');
     // TA hat keine eigenen Vorfahren, TC nur einen unbekannten: beide fehlen.
-    Assert.DoesNotContain(Text, '"inheritanceDepth","name":"TA"');
-    Assert.DoesNotContain(Text, '"inheritanceDepth","name":"TC"');
+    Assert.DoesNotContain(mText, '"inheritanceDepth","name":"TA"');
+    Assert.DoesNotContain(mText, '"inheritanceDepth","name":"TC"');
   finally
-    Metrics.Free;
+    mMetrics.Free;
   end;
 end;
 

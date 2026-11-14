@@ -44,44 +44,44 @@ end;
 
 procedure TAtlasKeysPageTests.CreatesAndRoundTripsSettings;
 var
-  Page: TAtlasKeysPage;
-  Settings, Saved: TAtlasPluginSettings;
+  mPage: TAtlasKeysPage;
+  mSettings, mSaved: TAtlasPluginSettings;
 begin
-  Settings := TAtlasPluginSettings.Defaults;
-  Settings.CompletionKey := $6048;
-  Settings.CompletionKeyPriority := True;
-  Settings.CheckKeyPriority := True;
-  Page := TAtlasKeysPage.Create(nil);
+  mSettings := TAtlasPluginSettings.Defaults;
+  mSettings.CompletionKey := $6048;
+  mSettings.CompletionKeyPriority := True;
+  mSettings.CheckKeyPriority := True;
+  mPage := TAtlasKeysPage.Create(nil);
   try
-    Page.LoadFrom(Settings);
-    Assert.AreEqual(ShortCutToText($6048), Page.KeyEdit(2).Text);
-    Assert.AreEqual('', Page.KeyEdit(3).Text, 'Parameter-Hint: Taste der IDE');
+    mPage.LoadFrom(mSettings);
+    Assert.AreEqual(ShortCutToText($6048), mPage.KeyEdit(2).Text);
+    Assert.AreEqual('', mPage.KeyEdit(3).Text, 'Parameter-Hint: Taste der IDE');
     // Diagnosemodus (#479) als sechste Zeile mit eigener Vorgabe.
-    Assert.AreEqual(ShortCutToText($E044), Page.KeyEdit(5).Text);
-    Page.KeyEdit(5).Text := ShortCutToText($6044);
+    Assert.AreEqual(ShortCutToText($E044), mPage.KeyEdit(5).Text);
+    mPage.KeyEdit(5).Text := ShortCutToText($6044);
     // Neue Taste für die Befehlspalette eintippen.
-    Page.KeyEdit(0).Text := ShortCutToText($6050);
-    Saved := TAtlasPluginSettings.Defaults;
-    Page.SaveTo(Saved);
+    mPage.KeyEdit(0).Text := ShortCutToText($6050);
+    mSaved := TAtlasPluginSettings.Defaults;
+    mPage.SaveTo(mSaved);
   finally
-    Page.Free;
+    mPage.Free;
   end;
-  Assert.AreEqual($6048, Saved.CompletionKey);
-  Assert.IsTrue(Saved.CompletionKeyPriority);
-  Assert.IsTrue(Saved.CheckKeyPriority);
-  Assert.AreEqual($6050, Saved.PaletteKey);
-  Assert.AreEqual(0, Saved.SignatureKey);
-  Assert.AreEqual($6044, Saved.DiagnosticModeKey);
+  Assert.AreEqual($6048, mSaved.CompletionKey);
+  Assert.IsTrue(mSaved.CompletionKeyPriority);
+  Assert.IsTrue(mSaved.CheckKeyPriority);
+  Assert.AreEqual($6050, mSaved.PaletteKey);
+  Assert.AreEqual(0, mSaved.SignatureKey);
+  Assert.AreEqual($6044, mSaved.DiagnosticModeKey);
 end;
 
 procedure TAtlasKeysPageTests.ShowsOwnerAndChoice;
 var
-  Page: TAtlasKeysPage;
+  mPage: TAtlasKeysPage;
 begin
-  Page := TAtlasKeysPage.Create(nil);
+  mPage := TAtlasKeysPage.Create(nil);
   try
-    Page.LoadFrom(TAtlasPluginSettings.Defaults);
-    Page.OwnerOf :=
+    mPage.LoadFrom(TAtlasPluginSettings.Defaults);
+    mPage.OwnerOf :=
       function(AShortCut: Word): string
       begin
         if AShortCut = TAtlasKeyConflicts.cPaletteDefault then
@@ -94,81 +94,81 @@ begin
         end;
       end;
     Assert.AreEqual(TAtlasSettingsStrings.Fmt(TAtlasSettingsTextId.KeysStatusLeft, ['IDE: Makro']),
-      Page.StatusLabel(0).Caption);
-    Assert.AreEqual(Ord(TAtlasKeyChoice.LeaveOther), Page.ChoiceBox(0).Choice);
-    Assert.IsTrue(Page.ChoiceBox(0).Enabled);
-    Assert.AreEqual(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.KeysStatusFree), Page.StatusLabel(1).Caption);
-    Assert.IsFalse(Page.ChoiceBox(1).Enabled, 'freie Taste: nichts zu entscheiden');
-    Page.ChoiceBox(0).Choice := Ord(TAtlasKeyChoice.UseAtlas);
-    Page.ChoiceBox(0).OnChange(Page.ChoiceBox(0));
+      mPage.StatusLabel(0).Caption);
+    Assert.AreEqual(Ord(TAtlasKeyChoice.LeaveOther), mPage.ChoiceBox(0).Choice);
+    Assert.IsTrue(mPage.ChoiceBox(0).Enabled);
+    Assert.AreEqual(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.KeysStatusFree), mPage.StatusLabel(1).Caption);
+    Assert.IsFalse(mPage.ChoiceBox(1).Enabled, 'freie Taste: nichts zu entscheiden');
+    mPage.ChoiceBox(0).Choice := Ord(TAtlasKeyChoice.UseAtlas);
+    mPage.ChoiceBox(0).OnChange(mPage.ChoiceBox(0));
     Assert.AreEqual(TAtlasSettingsStrings.Fmt(TAtlasSettingsTextId.KeysStatusAtlasWins, ['IDE: Makro']),
-      Page.StatusLabel(0).Caption);
-    Page.KeyEdit(1).Text := 'kein Kürzel';
+      mPage.StatusLabel(0).Caption);
+    mPage.KeyEdit(1).Text := 'kein Kürzel';
     Assert.AreEqual(TAtlasSettingsStrings.Fmt(TAtlasSettingsTextId.KeysInvalid, ['kein Kürzel']),
-      Page.StatusLabel(1).Caption);
+      mPage.StatusLabel(1).Caption);
   finally
-    Page.Free;
+    mPage.Free;
   end;
 end;
 
 procedure TAtlasKeysPageTests.UseAtlasTakesIdeKey;
 var
-  Page: TAtlasKeysPage;
-  Saved: TAtlasPluginSettings;
+  mPage: TAtlasKeysPage;
+  mSaved: TAtlasPluginSettings;
 begin
-  Page := TAtlasKeysPage.Create(nil);
+  mPage := TAtlasKeysPage.Create(nil);
   try
-    Page.LoadFrom(TAtlasPluginSettings.Defaults);
+    mPage.LoadFrom(TAtlasPluginSettings.Defaults);
     Assert.AreEqual(TAtlasSettingsStrings.Fmt(TAtlasSettingsTextId.KeysStatusIdeKey,
-      [ShortCutToText(TAtlasKeyConflicts.cIdeSignatureKey)]), Page.StatusLabel(3).Caption);
-    Page.ChoiceBox(3).Choice := Ord(TAtlasKeyChoice.UseAtlas);
-    Page.ChoiceBox(3).OnChange(Page.ChoiceBox(3));
-    Assert.AreEqual(ShortCutToText(TAtlasKeyConflicts.cIdeSignatureKey), Page.KeyEdit(3).Text);
-    Saved := TAtlasPluginSettings.Defaults;
-    Page.SaveTo(Saved);
+      [ShortCutToText(TAtlasKeyConflicts.cIdeSignatureKey)]), mPage.StatusLabel(3).Caption);
+    mPage.ChoiceBox(3).Choice := Ord(TAtlasKeyChoice.UseAtlas);
+    mPage.ChoiceBox(3).OnChange(mPage.ChoiceBox(3));
+    Assert.AreEqual(ShortCutToText(TAtlasKeyConflicts.cIdeSignatureKey), mPage.KeyEdit(3).Text);
+    mSaved := TAtlasPluginSettings.Defaults;
+    mPage.SaveTo(mSaved);
   finally
-    Page.Free;
+    mPage.Free;
   end;
-  Assert.AreEqual(Integer(TAtlasKeyConflicts.cIdeSignatureKey), Saved.SignatureKey);
-  Assert.IsTrue(Saved.SignatureKeyPriority);
+  Assert.AreEqual(Integer(TAtlasKeyConflicts.cIdeSignatureKey), mSaved.SignatureKey);
+  Assert.IsTrue(mSaved.SignatureKeyPriority);
 end;
 
 procedure TAtlasKeysPageTests.ListsForeignCompletions;
 var
-  Page: TAtlasKeysPage;
+  mPage: TAtlasKeysPage;
 begin
-  Page := TAtlasKeysPage.Create(nil);
+  mPage := TAtlasKeysPage.Create(nil);
   try
-    Page.ShowForeignCompletions(['CnPack']);
-    Assert.AreEqual(TAtlasSettingsStrings.Fmt(TAtlasSettingsTextId.KeysForeign, ['CnPack']), Page.ForeignLabel.Caption);
+    mPage.ShowForeignCompletions(['CnPack']);
+    Assert.AreEqual(TAtlasSettingsStrings.Fmt(TAtlasSettingsTextId.KeysForeign, ['CnPack']), mPage.ForeignLabel.Caption);
   finally
-    Page.Free;
+    mPage.Free;
   end;
 end;
 
 procedure TAtlasKeysPageTests.RoundTripsOverviewSwitches;
 var
-  Page: TAtlasKeysPage;
-  Settings, Saved: TAtlasPluginSettings;
+  mPage: TAtlasKeysPage;
+  mSettings, mSaved: TAtlasPluginSettings;
 begin
-  Page := TAtlasKeysPage.Create(nil);
+  mPage := TAtlasKeysPage.Create(nil);
   try
-    Page.LoadFrom(TAtlasPluginSettings.Defaults);
-    Assert.IsTrue(Page.OverviewBox.Checked, 'Menüeintrag standardmäßig an');
-    Assert.IsTrue(Page.StartupCheckBox.Checked, 'Prüfung beim Start standardmäßig an');
-    Settings := TAtlasPluginSettings.Defaults;
-    Settings.KeyStartupCheck := False;
-    Page.LoadFrom(Settings);
-    Assert.IsFalse(Page.StartupCheckBox.Checked);
-    Page.OverviewBox.Checked := False;
-    Page.StartupCheckBox.Checked := True;
-    Saved := TAtlasPluginSettings.Defaults;
-    Page.SaveTo(Saved);
+    mPage.LoadFrom(TAtlasPluginSettings.Defaults);
+    Assert.IsTrue(mPage.OverviewBox.Checked, 'Menüeintrag standardmäßig an');
+    Assert.IsTrue(mPage.StartupCheckBox.Checked, 'Prüfung beim Start standardmäßig an');
+    mSettings := TAtlasPluginSettings.Defaults;
+    mSettings.KeyStartupCheck := False;
+    mPage.LoadFrom(mSettings);
+    Assert.IsFalse(mPage.StartupCheckBox.Checked);
+    mPage.OverviewBox.Checked := False;
+    mPage.StartupCheckBox.Checked := True;
+    mSaved := TAtlasPluginSettings.Defaults;
+    mPage.SaveTo(mSaved);
   finally
-    Page.Free;
+    mPage.Free;
   end;
-  Assert.IsFalse(Saved.KeyOverview);
-  Assert.IsTrue(Saved.KeyStartupCheck);
+  Assert.IsFalse(mSaved.KeyOverview);
+  Assert.IsTrue(mSaved.KeyStartupCheck);
 end;
 
 initialization

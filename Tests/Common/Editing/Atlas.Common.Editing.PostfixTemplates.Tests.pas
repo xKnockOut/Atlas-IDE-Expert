@@ -55,26 +55,26 @@ end;
 
 procedure TPostfixTemplatesTests.AppliesByType;
 var
-  Traits: TPostfixTraits;
+  mTraits: TPostfixTraits;
 begin
-  Traits := Default(TPostfixTraits);
-  Assert.IsFalse(TPostfixTemplates.Applies('for', Traits, True));
-  Assert.IsFalse(TPostfixTemplates.Applies('ifa', Traits, True));
-  Traits.Enumerable := True;
-  Assert.IsTrue(TPostfixTemplates.Applies('for', Traits, True));
+  mTraits := Default(TPostfixTraits);
+  Assert.IsFalse(TPostfixTemplates.Applies('for', mTraits, True));
+  Assert.IsFalse(TPostfixTemplates.Applies('ifa', mTraits, True));
+  mTraits.Enumerable := True;
+  Assert.IsTrue(TPostfixTemplates.Applies('for', mTraits, True));
   // Klassisch nur mit bekanntem Elementtyp.
-  Assert.IsFalse(TPostfixTemplates.Applies('for', Traits, False));
-  Traits.ElementType := 'Integer';
-  Assert.IsTrue(TPostfixTemplates.Applies('for', Traits, False));
-  Assert.AreEqual('Item: Integer;', TPostfixTemplates.ClassicDeclaration(Traits));
-  Traits := Default(TPostfixTraits);
-  Traits.IsReference := True;
-  Assert.IsTrue(TPostfixTemplates.Applies('ifa', Traits, True));
-  Assert.IsFalse(TPostfixTemplates.Applies('tryf', Traits, True));
-  Traits.IsClass := True;
-  Assert.IsTrue(TPostfixTemplates.Applies('tryf', Traits, True));
-  Assert.IsFalse(TPostfixTemplates.Applies('fmt', Traits, True));
-  Assert.IsFalse(TPostfixTemplates.Applies('unbekannt', Traits, True));
+  Assert.IsFalse(TPostfixTemplates.Applies('for', mTraits, False));
+  mTraits.ElementType := 'Integer';
+  Assert.IsTrue(TPostfixTemplates.Applies('for', mTraits, False));
+  Assert.AreEqual('Item: Integer;', TPostfixTemplates.ClassicDeclaration(mTraits));
+  mTraits := Default(TPostfixTraits);
+  mTraits.IsReference := True;
+  Assert.IsTrue(TPostfixTemplates.Applies('ifa', mTraits, True));
+  Assert.IsFalse(TPostfixTemplates.Applies('tryf', mTraits, True));
+  mTraits.IsClass := True;
+  Assert.IsTrue(TPostfixTemplates.Applies('tryf', mTraits, True));
+  Assert.IsFalse(TPostfixTemplates.Applies('fmt', mTraits, True));
+  Assert.IsFalse(TPostfixTemplates.Applies('unbekannt', mTraits, True));
 end;
 
 procedure TPostfixTemplatesTests.ElementTypes;
@@ -100,110 +100,110 @@ end;
 
 procedure TPostfixTemplatesTests.AppliesNewTemplates;
 var
-  Traits: TPostfixTraits;
+  mTraits: TPostfixTraits;
 begin
-  Traits := Default(TPostfixTraits);
-  Assert.IsFalse(TPostfixTemplates.Applies('not', Traits, True));
-  Assert.IsFalse(TPostfixTemplates.Applies('exit', Traits, True));
-  Assert.IsFalse(TPostfixTemplates.Applies('try', Traits, True));
+  mTraits := Default(TPostfixTraits);
+  Assert.IsFalse(TPostfixTemplates.Applies('not', mTraits, True));
+  Assert.IsFalse(TPostfixTemplates.Applies('exit', mTraits, True));
+  Assert.IsFalse(TPostfixTemplates.Applies('try', mTraits, True));
   // var geht mit Inline-Variable immer, klassisch nur mit bekanntem Typ.
-  Assert.IsTrue(TPostfixTemplates.Applies('var', Traits, True));
-  Assert.IsFalse(TPostfixTemplates.Applies('var', Traits, False));
-  Traits.IsBoolean := True;
-  Assert.IsTrue(TPostfixTemplates.Applies('not', Traits, True));
-  Assert.IsTrue(TPostfixTemplates.Applies('if', Traits, True));
-  Traits := Default(TPostfixTraits);
-  Traits.IsReference := True;
-  Assert.IsTrue(TPostfixTemplates.Applies('notnil', Traits, True));
-  Assert.IsTrue(TPostfixTemplates.Applies('nil', Traits, True));
-  Assert.IsFalse(TPostfixTemplates.Applies('free', Traits, True));
-  Traits.IsClass := True;
-  Assert.IsTrue(TPostfixTemplates.Applies('free', Traits, True));
-  Traits.IsConstructorCall := True;
-  Assert.IsTrue(TPostfixTemplates.Applies('try', Traits, True));
-  Assert.IsFalse(TPostfixTemplates.Applies('try', Traits, False));
-  Traits.TypeName := 'TFoo';
-  Assert.IsTrue(TPostfixTemplates.Applies('try', Traits, False));
-  Traits.InFunction := True;
-  Assert.IsTrue(TPostfixTemplates.Applies('exit', Traits, True));
-  Traits := Default(TPostfixTraits);
-  Traits.Enumerable := True;
-  Assert.IsTrue(TPostfixTemplates.Applies('forin', Traits, True));
+  Assert.IsTrue(TPostfixTemplates.Applies('var', mTraits, True));
+  Assert.IsFalse(TPostfixTemplates.Applies('var', mTraits, False));
+  mTraits.IsBoolean := True;
+  Assert.IsTrue(TPostfixTemplates.Applies('not', mTraits, True));
+  Assert.IsTrue(TPostfixTemplates.Applies('if', mTraits, True));
+  mTraits := Default(TPostfixTraits);
+  mTraits.IsReference := True;
+  Assert.IsTrue(TPostfixTemplates.Applies('notnil', mTraits, True));
+  Assert.IsTrue(TPostfixTemplates.Applies('nil', mTraits, True));
+  Assert.IsFalse(TPostfixTemplates.Applies('free', mTraits, True));
+  mTraits.IsClass := True;
+  Assert.IsTrue(TPostfixTemplates.Applies('free', mTraits, True));
+  mTraits.IsConstructorCall := True;
+  Assert.IsTrue(TPostfixTemplates.Applies('try', mTraits, True));
+  Assert.IsFalse(TPostfixTemplates.Applies('try', mTraits, False));
+  mTraits.TypeName := 'TFoo';
+  Assert.IsTrue(TPostfixTemplates.Applies('try', mTraits, False));
+  mTraits.InFunction := True;
+  Assert.IsTrue(TPostfixTemplates.Applies('exit', mTraits, True));
+  mTraits := Default(TPostfixTraits);
+  mTraits.Enumerable := True;
+  Assert.IsTrue(TPostfixTemplates.Applies('forin', mTraits, True));
 end;
 
 procedure TPostfixTemplatesTests.ExpandsNewTemplates;
 var
-  Traits: TPostfixTraits;
-  Expansion: TPostfixExpansion;
-  Template: TPostfixTemplate;
+  mTraits: TPostfixTraits;
+  mExpansion: TPostfixExpansion;
+  mTemplate: TPostfixTemplate;
 begin
   Assert.AreEqual('if not Assigned(X) then'#10'    ', TPostfixTemplates.Expand('nil', 'X', '  ', #10, True));
   Assert.AreEqual('not B', TPostfixTemplates.Expand('not', 'B', '  ', #10, True));
   Assert.AreEqual('if B then'#10'    ', TPostfixTemplates.Expand('if', 'B', '  ', #10, True));
   Assert.AreEqual('FreeAndNil(Obj);', TPostfixTemplates.Expand('free', 'Obj', '  ', #10, True));
   Assert.AreEqual('Exit(X);', TPostfixTemplates.Expand('exit', 'X', '  ', #10, True));
-  Traits := Default(TPostfixTraits);
-  Traits.TypeName := 'TStringList';
-  Template := Default(TPostfixTemplate);
-  Template.Key := 'try';
-  Expansion := TPostfixTemplates.Expand(Template, 'TStringList.Create', Traits,
+  mTraits := Default(TPostfixTraits);
+  mTraits.TypeName := 'TStringList';
+  mTemplate := Default(TPostfixTemplate);
+  mTemplate.Key := 'try';
+  mExpansion := TPostfixTemplates.Expand(mTemplate, 'TStringList.Create', mTraits,
     TPostfixLayout.Create('  ', #10, True, False));
   Assert.AreEqual('var StringList := TStringList.Create;'#10'  try'#10'    '#10'  finally'#10 +
-    '    StringList.Free;'#10'  end;', Expansion.Text);
-  Assert.AreEqual('', Expansion.Declaration);
-  Expansion := TPostfixTemplates.Expand(Template, 'TStringList.Create', Traits,
+    '    StringList.Free;'#10'  end;', mExpansion.Text);
+  Assert.AreEqual('', mExpansion.Declaration);
+  mExpansion := TPostfixTemplates.Expand(mTemplate, 'TStringList.Create', mTraits,
     TPostfixLayout.Create('  ', #10, False, False));
-  Assert.IsTrue(Expansion.Text.StartsWith('StringList := TStringList.Create;'));
-  Assert.AreEqual('StringList: TStringList;', Expansion.Declaration);
-  Template.Key := 'var';
-  Expansion := TPostfixTemplates.Expand(Template, 'Liste', Traits, TPostfixLayout.Create('  ', #10, False, False));
-  Assert.AreEqual('StringList := Liste;', Expansion.Text);
-  Assert.AreEqual('StringList: TStringList;', Expansion.Declaration);
+  Assert.IsTrue(mExpansion.Text.StartsWith('StringList := TStringList.Create;'));
+  Assert.AreEqual('StringList: TStringList;', mExpansion.Declaration);
+  mTemplate.Key := 'var';
+  mExpansion := TPostfixTemplates.Expand(mTemplate, 'Liste', mTraits, TPostfixLayout.Create('  ', #10, False, False));
+  Assert.AreEqual('StringList := Liste;', mExpansion.Text);
+  Assert.AreEqual('StringList: TStringList;', mExpansion.Declaration);
 end;
 
 procedure TPostfixTemplatesTests.SnippetPlaceholders;
 var
-  Traits: TPostfixTraits;
-  Template: TPostfixTemplate;
+  mTraits: TPostfixTraits;
+  mTemplate: TPostfixTemplate;
 begin
-  Traits := Default(TPostfixTraits);
-  Template := Default(TPostfixTemplate);
-  Template.Key := 'for';
+  mTraits := Default(TPostfixTraits);
+  mTemplate := Default(TPostfixTemplate);
+  mTemplate.Key := 'for';
   Assert.AreEqual('for var ${1:Item} in Liste do'#10'  $0',
-    TPostfixTemplates.Expand(Template, 'Liste', Traits, TPostfixLayout.Create('', #10, True, True)).Text);
+    TPostfixTemplates.Expand(mTemplate, 'Liste', mTraits, TPostfixLayout.Create('', #10, True, True)).Text);
   // Klassisch kein Platzhalter für den Namen, der auch in der Deklaration steht.
   Assert.AreEqual('for Item in Liste do'#10'  $0',
-    TPostfixTemplates.Expand(Template, 'Liste', Traits, TPostfixLayout.Create('', #10, False, True)).Text);
-  Template.Key := 'fmt';
-  Assert.AreEqual('Format(S, [$0])', TPostfixTemplates.Expand(Template, 'S', Traits,
+    TPostfixTemplates.Expand(mTemplate, 'Liste', mTraits, TPostfixLayout.Create('', #10, False, True)).Text);
+  mTemplate.Key := 'fmt';
+  Assert.AreEqual('Format(S, [$0])', TPostfixTemplates.Expand(mTemplate, 'S', mTraits,
     TPostfixLayout.Create('', #10, True, True)).Text);
   // Der Ausdruck wird maskiert.
-  Template.Key := 'notnil';
+  mTemplate.Key := 'notnil';
   Assert.AreEqual('if Assigned(A\\\$B) then'#10'  $0',
-    TPostfixTemplates.Expand(Template, 'A\$B', Traits, TPostfixLayout.Create('', #10, True, True)).Text);
+    TPostfixTemplates.Expand(mTemplate, 'A\$B', mTraits, TPostfixLayout.Create('', #10, True, True)).Text);
   Assert.AreEqual('a\\b\$c\}', TPostfixTemplates.Escape('a\b$c}'));
 end;
 
 procedure TPostfixTemplatesTests.CustomConditions;
 var
-  Traits: TPostfixTraits;
-  Descends: TFunc<string, Boolean>;
+  mTraits: TPostfixTraits;
+  mDescends: TFunc<string, Boolean>;
 begin
-  Traits := Default(TPostfixTraits);
-  Traits.IsClass := True;
-  Traits.TypeName := 'TKunde';
-  Assert.IsTrue(TPostfixTemplates.Applies(TPostfixTemplate.Custom('a', '', 'x', ''), Traits, True, nil));
-  Assert.IsTrue(TPostfixTemplates.Applies(TPostfixTemplate.Custom('a', '', 'x', 'any'), Traits, True, nil));
-  Assert.IsTrue(TPostfixTemplates.Applies(TPostfixTemplate.Custom('a', '', 'x', 'class'), Traits, True, nil));
-  Assert.IsFalse(TPostfixTemplates.Applies(TPostfixTemplate.Custom('a', '', 'x', 'string'), Traits, True, nil));
-  Assert.IsTrue(TPostfixTemplates.Applies(TPostfixTemplate.Custom('a', '', 'x', 'tkunde'), Traits, True, nil));
-  Assert.IsFalse(TPostfixTemplates.Applies(TPostfixTemplate.Custom('a', '', 'x', 'TBasis'), Traits, True, nil));
-  Descends :=
+  mTraits := Default(TPostfixTraits);
+  mTraits.IsClass := True;
+  mTraits.TypeName := 'TKunde';
+  Assert.IsTrue(TPostfixTemplates.Applies(TPostfixTemplate.Custom('a', '', 'x', ''), mTraits, True, nil));
+  Assert.IsTrue(TPostfixTemplates.Applies(TPostfixTemplate.Custom('a', '', 'x', 'any'), mTraits, True, nil));
+  Assert.IsTrue(TPostfixTemplates.Applies(TPostfixTemplate.Custom('a', '', 'x', 'class'), mTraits, True, nil));
+  Assert.IsFalse(TPostfixTemplates.Applies(TPostfixTemplate.Custom('a', '', 'x', 'string'), mTraits, True, nil));
+  Assert.IsTrue(TPostfixTemplates.Applies(TPostfixTemplate.Custom('a', '', 'x', 'tkunde'), mTraits, True, nil));
+  Assert.IsFalse(TPostfixTemplates.Applies(TPostfixTemplate.Custom('a', '', 'x', 'TBasis'), mTraits, True, nil));
+  mDescends :=
     function(AName: string): Boolean
     begin
       Result := SameText(AName, 'TBasis');
     end;
-  Assert.IsTrue(TPostfixTemplates.Applies(TPostfixTemplate.Custom('a', '', 'x', 'TBasis'), Traits, True, Descends));
+  Assert.IsTrue(TPostfixTemplates.Applies(TPostfixTemplate.Custom('a', '', 'x', 'TBasis'), mTraits, True, mDescends));
   Assert.IsTrue(TPostfixTemplates.IsTypeCondition('TBasis'));
   Assert.IsFalse(TPostfixTemplates.IsTypeCondition('enumerable'));
   Assert.IsFalse(TPostfixTemplates.IsTypeCondition(''));
@@ -233,17 +233,17 @@ end;
 
 procedure TPostfixTemplatesTests.ListsThirteenTemplates;
 var
-  Keys: string;
-  Template: TPostfixTemplate;
+  mKeys: string;
+  mTemplate: TPostfixTemplate;
 begin
-  Keys := '';
-  for Template in TPostfixTemplates.Templates do
+  mKeys := '';
+  for mTemplate in TPostfixTemplates.Templates do
   begin
-    Keys := Keys + Template.Key + ' ';
-    Assert.IsFalse(Template.IsCustom);
-    Assert.AreNotEqual('', Template.Description);
+    mKeys := mKeys + mTemplate.Key + ' ';
+    Assert.IsFalse(mTemplate.IsCustom);
+    Assert.AreNotEqual('', mTemplate.Description);
   end;
-  Assert.AreEqual('for forin tryf ifa notnil nil not if fmt free try var exit ', Keys);
+  Assert.AreEqual('for forin tryf ifa notnil nil not if fmt free try var exit ', mKeys);
 end;
 
 initialization

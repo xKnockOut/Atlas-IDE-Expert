@@ -147,17 +147,32 @@ uses
   Atlas.Tests.RuleAssert,
   Atlas.Common.Rules.Profiles;
 
-function Routine(const ABody: string; const AHeader: string = 'procedure P;';
-  const AVars: string = ''): string;
+function Routine(const ABody: string; const AHeader: string;
+  const AVars: string): string; overload;
 begin
   Result := 'unit U;'#10'interface'#10'implementation'#10 + AHeader + #10 + AVars + 'begin'#10 + ABody +
     #10'end;'#10'end.';
 end;
 
-function ClassUnit(const AMembers, AImplementation: string; const AAncestors: string = 'TObject'): string;
+function Routine(const ABody: string): string; overload;
+begin
+  Result := Routine(ABody, 'procedure P;', '');
+end;
+
+function Routine(const ABody: string; const AHeader: string): string; overload;
+begin
+  Result := Routine(ABody, AHeader, '');
+end;
+
+function ClassUnit(const AMembers, AImplementation: string; const AAncestors: string): string; overload;
 begin
   Result := 'unit U;'#10'interface'#10'type'#10'  TFoo = class(' + AAncestors + ')'#10 + AMembers +
     #10'  end;'#10'implementation'#10 + AImplementation + #10'end.';
+end;
+
+function ClassUnit(const AMembers, AImplementation: string): string; overload;
+begin
+  Result := ClassUnit(AMembers, AImplementation, 'TObject');
 end;
 
 function CrLf(const AText: string): string;
@@ -168,75 +183,75 @@ end;
 /// <summary>Wendet die erste Korrektur des ersten Treffers an (Zeilen mit #10 oder #13#10).</summary>
 function ApplyFirstFix(const ASource: string; const AFindings: TArray<TRuleFinding>): string;
 var
-  Lines: TArray<string>;
-  Edit: TRuleEdit;
+  mLines: TArray<string>;
+  mEdit: TRuleEdit;
 
   function OffsetOf(ALine, ACharacter: Integer): Integer;
   var
-    Index: Integer;
+    mIndex: Integer;
   begin
     Result := 0;
-    for Index := 0 to ALine - 1 do
+    for mIndex := 0 to ALine - 1 do
     begin
-      Inc(Result, Length(Lines[Index]) + 1);
+      Inc(Result, Length(mLines[mIndex]) + 1);
     end;
     Inc(Result, ACharacter);
   end;
 
 begin
-  Lines := ASource.Split([#10]);
-  Edit := AFindings[0].Fixes[0].Edits[0];
-  Result := Copy(ASource, 1, OffsetOf(Edit.Range.StartPos.Line, Edit.Range.StartPos.Character)) + Edit.NewText +
-    Copy(ASource, OffsetOf(Edit.Range.EndPos.Line, Edit.Range.EndPos.Character) + 1, MaxInt);
+  mLines := ASource.Split([#10]);
+  mEdit := AFindings[0].Fixes[0].Edits[0];
+  Result := Copy(ASource, 1, OffsetOf(mEdit.Range.StartPos.Line, mEdit.Range.StartPos.Character)) + mEdit.NewText +
+    Copy(ASource, OffsetOf(mEdit.Range.EndPos.Line, mEdit.Range.EndPos.Character) + 1, MaxInt);
 end;
 
 procedure TUnusedRulesTests.UnusedLocalReportsWithFix;
 var
-  Source: string;
-  Findings: TArray<TRuleFinding>;
+  mSource: string;
+  mFindings: TArray<TRuleFinding>;
 begin
-  Source := Routine('  I := 1;'#10'  Foo(I);', 'procedure P;', 'var'#10'  I: Integer;'#10'  J: string;'#10);
-  Findings := TRuleAssert.Findings(TUnusedLocalRule.Create, Source);
-  Assert.AreEqual(1, Integer(Length(Findings)));
-  Assert.AreEqual(Ord(TRuleSeverity.Hint), Ord(Findings[0].Severity));
-  Assert.Contains(Findings[0].Message, '"J"');
-  Assert.AreEqual(Ord(TRuleConfidence.High), Ord(Findings[0].Confidence));
+  mSource := Routine('  I := 1;'#10'  Foo(I);', 'procedure P;', 'var'#10'  I: Integer;'#10'  J: string;'#10);
+  mFindings := TRuleAssert.Findings(TUnusedLocalRule.Create, mSource);
+  Assert.AreEqual(1, Integer(Length(mFindings)));
+  Assert.AreEqual(Ord(TRuleSeverity.Hint), Ord(mFindings[0].Severity));
+  Assert.Contains(mFindings[0].Message, '"J"');
+  Assert.AreEqual(Ord(TRuleConfidence.High), Ord(mFindings[0].Confidence));
   Assert.AreEqual(Routine('  I := 1;'#10'  Foo(I);', 'procedure P;', 'var'#10'  I: Integer;'#10),
-    ApplyFirstFix(Source, Findings));
+    ApplyFirstFix(mSource, mFindings));
 end;
 
 procedure TUnusedRulesTests.FixRemovesEmptyVarSection;
 var
-  Source: string;
+  mSource: string;
 begin
-  Source := Routine('  Foo;', 'procedure P;', 'var'#10'  J: string;'#10);
-  Assert.AreEqual(Routine('  Foo;'), ApplyFirstFix(Source, TRuleAssert.Findings(TUnusedLocalRule.Create, Source)));
+  mSource := Routine('  Foo;', 'procedure P;', 'var'#10'  J: string;'#10);
+  Assert.AreEqual(Routine('  Foo;'), ApplyFirstFix(mSource, TRuleAssert.Findings(TUnusedLocalRule.Create, mSource)));
 end;
 
 procedure TUnusedRulesTests.FixRemovesNameFromList;
 var
-  Source: string;
+  mSource: string;
 begin
-  Source := Routine('  J := 1;'#10'  Foo(J);', 'procedure P;', 'var'#10'  I, J: Integer;'#10);
+  mSource := Routine('  J := 1;'#10'  Foo(J);', 'procedure P;', 'var'#10'  I, J: Integer;'#10);
   Assert.AreEqual(Routine('  J := 1;'#10'  Foo(J);', 'procedure P;', 'var'#10'  J: Integer;'#10),
-    ApplyFirstFix(Source, TRuleAssert.Findings(TUnusedLocalRule.Create, Source)));
-  Source := Routine('  I := 1;'#10'  Foo(I);', 'procedure P;', 'var'#10'  I, J: Integer;'#10);
+    ApplyFirstFix(mSource, TRuleAssert.Findings(TUnusedLocalRule.Create, mSource)));
+  mSource := Routine('  I := 1;'#10'  Foo(I);', 'procedure P;', 'var'#10'  I, J: Integer;'#10);
   Assert.AreEqual(Routine('  I := 1;'#10'  Foo(I);', 'procedure P;', 'var'#10'  I: Integer;'#10),
-    ApplyFirstFix(Source, TRuleAssert.Findings(TUnusedLocalRule.Create, Source)));
+    ApplyFirstFix(mSource, TRuleAssert.Findings(TUnusedLocalRule.Create, mSource)));
 end;
 
 procedure TUnusedRulesTests.RemoveVariableFixInCrLfFile;
 var
-  Source: string;
+  mSource: string;
 begin
-  Source := CrLf(Routine('  I := 1;'#10'  Foo(I);', 'procedure P;', 'var'#10'  I: Integer;'#10'  J: string;'#10));
+  mSource := CrLf(Routine('  I := 1;'#10'  Foo(I);', 'procedure P;', 'var'#10'  I: Integer;'#10'  J: string;'#10));
   Assert.AreEqual(CrLf(Routine('  I := 1;'#10'  Foo(I);', 'procedure P;', 'var'#10'  I: Integer;'#10)),
-    ApplyFirstFix(Source, TRuleAssert.Findings(TUnusedLocalRule.Create, Source)));
-  Source := CrLf(Routine('  Foo;', 'procedure P;', 'var'#10'  J: string;'#10));
-  Assert.AreEqual(CrLf(Routine('  Foo;')), ApplyFirstFix(Source, TRuleAssert.Findings(TUnusedLocalRule.Create, Source)));
-  Source := CrLf(Routine('  J := 1;'#10'  Foo(J);', 'procedure P;', 'var'#10'  I, J: Integer;'#10));
+    ApplyFirstFix(mSource, TRuleAssert.Findings(TUnusedLocalRule.Create, mSource)));
+  mSource := CrLf(Routine('  Foo;', 'procedure P;', 'var'#10'  J: string;'#10));
+  Assert.AreEqual(CrLf(Routine('  Foo;')), ApplyFirstFix(mSource, TRuleAssert.Findings(TUnusedLocalRule.Create, mSource)));
+  mSource := CrLf(Routine('  J := 1;'#10'  Foo(J);', 'procedure P;', 'var'#10'  I, J: Integer;'#10));
   Assert.AreEqual(CrLf(Routine('  J := 1;'#10'  Foo(J);', 'procedure P;', 'var'#10'  J: Integer;'#10)),
-    ApplyFirstFix(Source, TRuleAssert.Findings(TUnusedLocalRule.Create, Source)));
+    ApplyFirstFix(mSource, TRuleAssert.Findings(TUnusedLocalRule.Create, mSource)));
 end;
 
 procedure TUnusedRulesTests.UsedLocalIsSilent;
@@ -254,24 +269,24 @@ end;
 
 procedure TUnusedRulesTests.LocalUsedOnlyInInactiveBranchIsSilent;
 var
-  Findings: TArray<TRuleFinding>;
+  mFindings: TArray<TRuleFinding>;
 begin
   TRuleAssert.Silent(TUnusedLocalRule.Create,
     Routine('  {$IFDEF DEBUG}'#10'  Log(I);'#10'  {$ENDIF}', 'procedure P;', 'var'#10'  I: Integer;'#10));
   // Mit Direktiven, aber nirgends erwähnt: Treffer mit niedriger Konfidenz.
-  Findings := TRuleAssert.Findings(TUnusedLocalRule.Create,
+  mFindings := TRuleAssert.Findings(TUnusedLocalRule.Create,
     Routine('  {$IFDEF DEBUG}'#10'  Log;'#10'  {$ENDIF}', 'procedure P;', 'var'#10'  I: Integer;'#10),
     '{"minConfidence": "low"}');
-  Assert.AreEqual(1, Integer(Length(Findings)));
-  Assert.AreEqual(Ord(TRuleConfidence.Low), Ord(Findings[0].Confidence));
+  Assert.AreEqual(1, Integer(Length(mFindings)));
+  Assert.AreEqual(Ord(TRuleConfidence.Low), Ord(mFindings[0].Confidence));
 end;
 
 procedure TUnusedRulesTests.UnusedInlineVarReports;
 var
-  Source: string;
+  mSource: string;
 begin
-  Source := Routine('  var X := 1;'#10'  Foo;');
-  Assert.AreEqual(Routine('  Foo;'), ApplyFirstFix(Source, TRuleAssert.Findings(TUnusedLocalRule.Create, Source)));
+  mSource := Routine('  var X := 1;'#10'  Foo;');
+  Assert.AreEqual(Routine('  Foo;'), ApplyFirstFix(mSource, TRuleAssert.Findings(TUnusedLocalRule.Create, mSource)));
 end;
 
 procedure TUnusedRulesTests.LoopVariableCountsAsUse;
@@ -288,23 +303,23 @@ end;
 
 procedure TUnusedRulesTests.IgnorePatternSilencesLocal;
 var
-  Findings: TArray<TRuleFinding>;
+  mFindings: TArray<TRuleFinding>;
 begin
-  Findings := TRuleAssert.Findings(TUnusedLocalRule.Create,
+  mFindings := TRuleAssert.Findings(TUnusedLocalRule.Create,
     Routine('  Foo;', 'procedure P;', 'var'#10'  Dummy1: Integer;'#10),
     '{"rules": {"unused-local": {"ignore": ["dummy*"]}}}');
-  Assert.AreEqual(0, Integer(Length(Findings)));
+  Assert.AreEqual(0, Integer(Length(mFindings)));
 end;
 
 procedure TUnusedRulesTests.UnusedParameterReports;
 var
-  Findings: TArray<TRuleFinding>;
+  mFindings: TArray<TRuleFinding>;
 begin
-  Findings := TRuleAssert.Findings(TUnusedParameterRule.Create, Routine('  Foo(A);', 'procedure P(A, B: Integer);'));
-  Assert.AreEqual(1, Integer(Length(Findings)));
-  Assert.Contains(Findings[0].Message, '"B"');
-  Assert.AreEqual(Ord(TRuleConfidence.Medium), Ord(Findings[0].Confidence));
-  Assert.AreEqual(0, Integer(Length(Findings[0].Fixes)));
+  mFindings := TRuleAssert.Findings(TUnusedParameterRule.Create, Routine('  Foo(A);', 'procedure P(A, B: Integer);'));
+  Assert.AreEqual(1, Integer(Length(mFindings)));
+  Assert.Contains(mFindings[0].Message, '"B"');
+  Assert.AreEqual(Ord(TRuleConfidence.Medium), Ord(mFindings[0].Confidence));
+  Assert.AreEqual(0, Integer(Length(mFindings[0].Fixes)));
 end;
 
 procedure TUnusedRulesTests.OutParameterWrittenIsSilent;
@@ -368,17 +383,17 @@ end;
 
 procedure TUnusedRulesTests.FormEventHandlerIsSilent;
 var
-  Source: string;
-  Rule: IRule;
+  mSource: string;
+  mRule: IRule;
 begin
   // Erst in eine Interface-Variable: an den const-Parameter direkt übergeben würde die Regel nie frei.
-  Rule := TUnusedParameterRule.Create;
-  Source := ClassUnit('  public'#10'    procedure DataSet1BeforePost(DataSet: TDataSet);',
+  mRule := TUnusedParameterRule.Create;
+  mSource := ClassUnit('  public'#10'    procedure DataSet1BeforePost(DataSet: TDataSet);',
     'procedure TFoo.DataSet1BeforePost(DataSet: TDataSet);'#10'begin'#10'end;');
-  Assert.AreEqual(0, Integer(Length(TRuleAssert.FormFindings(Rule, Source,
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.FormFindings(mRule, mSource,
     'object Foo: TFoo'#10'  object DataSet1: TClientDataSet'#10'    BeforePost = DataSet1BeforePost'#10 +
     '  end'#10'end'))));
-  Assert.AreEqual(1, Integer(Length(TRuleAssert.FormFindings(Rule, Source,
+  Assert.AreEqual(1, Integer(Length(TRuleAssert.FormFindings(mRule, mSource,
     'object Foo: TFoo'#10'  Caption = ''DataSet1BeforePostX'''#10'end'))));
 end;
 
@@ -416,15 +431,15 @@ end;
 
 procedure TUnusedRulesTests.RoutineCalledFromCallbackReports;
 var
-  Findings: TArray<TRuleFinding>;
+  mFindings: TArray<TRuleFinding>;
 begin
-  Findings := TRuleAssert.Findings(TUnusedParameterRule.Create,
+  mFindings := TRuleAssert.Findings(TUnusedParameterRule.Create,
     'unit U;'#10'interface'#10'implementation'#10'function Bau(AParent: TObject): TObject;'#10'begin'#10 +
     '  Result := nil;'#10'end;'#10'procedure P;'#10'begin'#10'  Register(function(AParent: TObject): TObject'#10 +
     '    begin'#10'      Result := Bau(AParent);'#10'    end);'#10'end;'#10'end.');
-  Assert.AreEqual(1, Integer(Length(Findings)));
-  Assert.Contains(Findings[0].Message, '"AParent"');
-  Assert.AreEqual(3, Findings[0].Range.StartPos.Line);
+  Assert.AreEqual(1, Integer(Length(mFindings)));
+  Assert.Contains(mFindings[0].Message, '"AParent"');
+  Assert.AreEqual(3, mFindings[0].Range.StartPos.Line);
 end;
 
 procedure TUnusedRulesTests.PlainMethodReports;
@@ -503,40 +518,40 @@ end;
 
 procedure TUnusedRulesTests.OverwrittenAssignmentReports;
 var
-  Findings: TArray<TRuleFinding>;
+  mFindings: TArray<TRuleFinding>;
 begin
-  Findings := TRuleAssert.Findings(TUnusedAssignmentRule.Create,
+  mFindings := TRuleAssert.Findings(TUnusedAssignmentRule.Create,
     Routine('  I := 1;'#10'  I := 2;'#10'  J := I;', 'procedure P;', 'var'#10'  I, J: Integer;'#10));
   // I := 1 wird überschrieben; der an J zugewiesene Wert wird nie gelesen.
-  Assert.AreEqual(2, Integer(Length(Findings)));
-  Assert.AreEqual(7, Findings[0].Range.StartPos.Line);
-  Assert.AreEqual(9, Findings[1].Range.StartPos.Line);
+  Assert.AreEqual(2, Integer(Length(mFindings)));
+  Assert.AreEqual(7, mFindings[0].Range.StartPos.Line);
+  Assert.AreEqual(9, mFindings[1].Range.StartPos.Line);
 end;
 
 procedure TUnusedRulesTests.AssignmentCodeOnlyForUnmanagedTypes;
 const
   // Verwaltete Typen: dcc meldet H2077 nicht.
-  ManagedTypes: array[0..4] of string = ('string', 'TArray<Integer>', 'Variant', 'TBytes', 'TMitText');
+  cManagedTypes: array[0..4] of string = ('string', 'TArray<Integer>', 'Variant', 'TBytes', 'TMitText');
 var
-  Findings: TArray<TRuleFinding>;
-  TypeName: string;
+  mFindings: TArray<TRuleFinding>;
+  mTypeName: string;
 begin
-  Findings := TRuleAssert.Findings(TUnusedAssignmentRule.Create,
+  mFindings := TRuleAssert.Findings(TUnusedAssignmentRule.Create,
     Routine('  I := 1;', 'procedure P;', 'var'#10'  I: Integer;'#10));
-  Assert.AreEqual(1, Integer(Length(Findings)));
-  Assert.AreEqual('Der an "I" zugewiesene Wert wird nie gelesen (wie H2077)', Findings[0].Message);
-  for TypeName in ManagedTypes do
+  Assert.AreEqual(1, Integer(Length(mFindings)));
+  Assert.AreEqual('Der an "I" zugewiesene Wert wird nie gelesen (wie H2077)', mFindings[0].Message);
+  for mTypeName in cManagedTypes do
   begin
-    Findings := TRuleAssert.Findings(TUnusedAssignmentRule.Create, 'unit U;'#10'interface'#10'implementation'#10 +
-      'type'#10'  TMitText = record'#10'    Text: string;'#10'  end;'#10'procedure P;'#10'var'#10'  X: ' + TypeName +
-      ';'#10'begin'#10'  X := Default(' + TypeName + ');'#10'end;'#10'end.');
-    Assert.AreEqual(1, Integer(Length(Findings)), TypeName);
-    Assert.AreEqual('Der an "X" zugewiesene Wert wird nie gelesen', Findings[0].Message, TypeName);
+    mFindings := TRuleAssert.Findings(TUnusedAssignmentRule.Create, 'unit U;'#10'interface'#10'implementation'#10 +
+      'type'#10'  TMitText = record'#10'    Text: string;'#10'  end;'#10'procedure P;'#10'var'#10'  X: ' + mTypeName +
+      ';'#10'begin'#10'  X := Default(' + mTypeName + ');'#10'end;'#10'end.');
+    Assert.AreEqual(1, Integer(Length(mFindings)), mTypeName);
+    Assert.AreEqual('Der an "X" zugewiesene Wert wird nie gelesen', mFindings[0].Message, mTypeName);
   end;
   // Inline-Variable ohne Typangabe: Typ unbekannt, also ohne Code.
-  Findings := TRuleAssert.Findings(TUnusedAssignmentRule.Create, Routine('  var I := 1;'#10'  I := 2;'));
-  Assert.AreEqual(2, Integer(Length(Findings)));
-  Assert.AreEqual('Der an "I" zugewiesene Wert wird nie gelesen', Findings[0].Message);
+  mFindings := TRuleAssert.Findings(TUnusedAssignmentRule.Create, Routine('  var I := 1;'#10'  I := 2;'));
+  Assert.AreEqual(2, Integer(Length(mFindings)));
+  Assert.AreEqual('Der an "I" zugewiesene Wert wird nie gelesen', mFindings[0].Message);
 end;
 
 procedure TUnusedRulesTests.AssignmentReadLaterIsSilent;
@@ -555,31 +570,31 @@ end;
 procedure TUnusedRulesTests.ClearingAssignedValueIsSilent;
 const
   // Rechte Seiten, die das Ziel leeren.
-  ClearValues: array[0..4] of string = ('nil', '''''', 'Default(TErgebnis)', 'TErgebnis.Empty', 'Default( TErgebnis )');
+  cClearValues: array[0..4] of string = ('nil', '''''', 'Default(TErgebnis)', 'TErgebnis.Empty', 'Default( TErgebnis )');
 var
-  Value: string;
-  Findings: TArray<TRuleFinding>;
+  mValue: string;
+  mFindings: TArray<TRuleFinding>;
 begin
-  for Value in ClearValues do
+  for mValue in cClearValues do
   begin
     // Started := Default(…) am Testende, Lookup := nil vor Resolver.Free.
     TRuleAssert.Silent(TUnusedAssignmentRule.Create,
-      Routine('  X := Load;'#10'  Result := X.Text;'#10'  X := ' + Value + ';'#10'  Work;', 'function F: string;',
+      Routine('  X := Load;'#10'  Result := X.Text;'#10'  X := ' + mValue + ';'#10'  Work;', 'function F: string;',
         'var'#10'  X: TErgebnis;'#10));
     // Leeren im finally: Der Wert davor stammt aus dem try.
     TRuleAssert.Silent(TUnusedAssignmentRule.Create,
-      Routine('  try'#10'    X := Load;'#10'    Result := X.Text;'#10'  finally'#10'    X := ' + Value + ';'#10'  end;',
+      Routine('  try'#10'    X := Load;'#10'    Result := X.Text;'#10'  finally'#10'    X := ' + mValue + ';'#10'  end;',
         'function F: string;', 'var'#10'  X: TErgebnis;'#10));
     // Ohne vorherigen Wert ist das Leeren überflüssig.
-    Findings := TRuleAssert.Findings(TUnusedAssignmentRule.Create,
-      Routine('  X := ' + Value + ';'#10'  Work;', 'procedure P;', 'var'#10'  X: TErgebnis;'#10));
-    Assert.AreEqual(1, Integer(Length(Findings)), Value);
+    mFindings := TRuleAssert.Findings(TUnusedAssignmentRule.Create,
+      Routine('  X := ' + mValue + ';'#10'  Work;', 'procedure P;', 'var'#10'  X: TErgebnis;'#10));
+    Assert.AreEqual(1, Integer(Length(mFindings)), mValue);
   end;
   // Andere Werte am Ende bleiben Befunde.
-  Findings := TRuleAssert.Findings(TUnusedAssignmentRule.Create,
+  mFindings := TRuleAssert.Findings(TUnusedAssignmentRule.Create,
     Routine('  X := Load;'#10'  Result := X.Text;'#10'  X := Load;', 'function F: string;', 'var'#10'  X: TErgebnis;'#10));
-  Assert.AreEqual(1, Integer(Length(Findings)));
-  Assert.AreEqual(9, Findings[0].Range.StartPos.Line);
+  Assert.AreEqual(1, Integer(Length(mFindings)));
+  Assert.AreEqual(9, mFindings[0].Range.StartPos.Line);
 end;
 
 procedure TUnusedRulesTests.WildcardMatching;
@@ -594,33 +609,43 @@ end;
 { TDuplicateAssignmentTests }
 
 /// <summary>Methode TForm1.Init mit ABody; AVars als var-Abschnitt.</summary>
-function Formular(const ABody: string; const AVars: string = ''): string;
+function Formular(const ABody: string; const AVars: string): string; overload;
 begin
   Result := Routine(ABody, 'procedure TForm1.Init;', AVars);
 end;
 
-function DuplicateCount(const ASource: string; const AConfig: string = ''): Integer;
+function Formular(const ABody: string): string; overload;
+begin
+  Result := Formular(ABody, '');
+end;
+
+function DuplicateCount(const ASource: string; const AConfig: string): Integer; overload;
 begin
   Result := Length(TRuleAssert.Findings(TDuplicateAssignmentRule.Create, ASource, AConfig));
 end;
 
+function DuplicateCount(const ASource: string): Integer; overload;
+begin
+  Result := DuplicateCount(ASource, '');
+end;
+
 procedure TDuplicateAssignmentTests.IssueExampleWithJump;
 var
-  Findings: TArray<TRuleFinding>;
+  mFindings: TArray<TRuleFinding>;
 begin
-  Findings := TRuleAssert.Findings(TDuplicateAssignmentRule.Create,
+  mFindings := TRuleAssert.Findings(TDuplicateAssignmentRule.Create,
     Formular('  Panel.Left := 8;'#10'  Panel.Left := 40;'#10'  Panel.Width := 200;'));
-  Assert.AreEqual(1, Integer(Length(Findings)));
-  Assert.AreEqual('duplicate-assignment', Findings[0].RuleId);
-  Assert.AreEqual('Panel.Left wird in Zeile 6 schon gesetzt; gemeint ist vermutlich Panel.Top.', Findings[0].Message);
-  Assert.AreEqual(Ord(TRuleSeverity.Warning), Ord(Findings[0].Severity));
-  Assert.AreEqual(Ord(TRuleConfidence.High), Ord(Findings[0].Confidence));
-  Assert.AreEqual(6, Findings[0].Range.StartPos.Line);
-  Assert.AreEqual(2, Findings[0].Range.StartPos.Character);
-  Assert.AreEqual(12, Findings[0].Range.EndPos.Character);
-  Assert.AreEqual(1, Integer(Length(Findings[0].Fixes)));
-  Assert.IsTrue(Findings[0].Fixes[0].HasJump);
-  Assert.AreEqual(5, Findings[0].Fixes[0].JumpTo.Line);
+  Assert.AreEqual(1, Integer(Length(mFindings)));
+  Assert.AreEqual('duplicate-assignment', mFindings[0].RuleId);
+  Assert.AreEqual('Panel.Left wird in Zeile 6 schon gesetzt; gemeint ist vermutlich Panel.Top.', mFindings[0].Message);
+  Assert.AreEqual(Ord(TRuleSeverity.Warning), Ord(mFindings[0].Severity));
+  Assert.AreEqual(Ord(TRuleConfidence.High), Ord(mFindings[0].Confidence));
+  Assert.AreEqual(6, mFindings[0].Range.StartPos.Line);
+  Assert.AreEqual(2, mFindings[0].Range.StartPos.Character);
+  Assert.AreEqual(12, mFindings[0].Range.EndPos.Character);
+  Assert.AreEqual(1, Integer(Length(mFindings[0].Fixes)));
+  Assert.IsTrue(mFindings[0].Fixes[0].HasJump);
+  Assert.AreEqual(5, mFindings[0].Fixes[0].JumpTo.Line);
   // Die korrigierte Form ist still.
   TRuleAssert.Silent(TDuplicateAssignmentRule.Create,
     Formular('  Panel.Left := 8;'#10'  Panel.Top := 40;'#10'  Panel.Width := 200;'));
@@ -628,23 +653,23 @@ end;
 
 procedure TDuplicateAssignmentTests.CounterpartOnlyWhenMissing;
 var
-  Findings: TArray<TRuleFinding>;
+  mFindings: TArray<TRuleFinding>;
 begin
   // Top wird schon gesetzt: keine Vermutung, nur der Verlust.
-  Findings := TRuleAssert.Findings(TDuplicateAssignmentRule.Create,
+  mFindings := TRuleAssert.Findings(TDuplicateAssignmentRule.Create,
     Formular('  Panel.Top := 1;'#10'  Panel.Left := 8;'#10'  Panel.Left := 40;'));
-  Assert.AreEqual(1, Integer(Length(Findings)));
+  Assert.AreEqual(1, Integer(Length(mFindings)));
   Assert.AreEqual('Panel.Left wird in Zeile 7 schon gesetzt; der erste Wert geht ungelesen verloren.',
-    Findings[0].Message);
+    mFindings[0].Message);
   // Ohne Gegenstück in der Tabelle.
-  Findings := TRuleAssert.Findings(TDuplicateAssignmentRule.Create,
+  mFindings := TRuleAssert.Findings(TDuplicateAssignmentRule.Create,
     Formular('  Caption := ''A'';'#10'  Caption := ''B'';'));
   Assert.AreEqual('Caption wird in Zeile 6 schon gesetzt; der erste Wert geht ungelesen verloren.',
-    Findings[0].Message);
-  Findings := TRuleAssert.Findings(TDuplicateAssignmentRule.Create,
+    mFindings[0].Message);
+  mFindings := TRuleAssert.Findings(TDuplicateAssignmentRule.Create,
     Formular('  Bild.Height := 8;'#10'  Bild.height := 40;'));
   Assert.AreEqual('Bild.height wird in Zeile 6 schon gesetzt; gemeint ist vermutlich Bild.Width.',
-    Findings[0].Message);
+    mFindings[0].Message);
   Assert.AreEqual('Top', TDuplicateAssignmentRule.Counterpart('left'));
   Assert.AreEqual('Width', TDuplicateAssignmentRule.Counterpart('Height'));
   Assert.AreEqual('', TDuplicateAssignmentRule.Counterpart('Caption'));
@@ -727,7 +752,7 @@ end;
 
 procedure TDuplicateAssignmentTests.AllowPropertiesOption;
 var
-  Issues: TArray<TConfigurationIssue>;
+  mIssues: TArray<TConfigurationIssue>;
 begin
   // Standard: Visible und Enabled dürfen doppelt gesetzt werden.
   TRuleAssert.Silent(TDuplicateAssignmentRule.Create,
@@ -736,21 +761,21 @@ begin
     '{"rules": {"duplicate-assignment": {"allowProperties": ["Cap*"]}}}'));
   Assert.AreEqual(0, DuplicateCount(Formular('  Panel.Caption := ''A'';'#10'  Panel.Caption := ''B'';'),
     '{"rules": {"duplicate-assignment": {"allowProperties": ["cap*"]}}}'));
-  TConfigurationParser.Parse('{"rules": {"duplicate-assignment": {"allowProperties": [1]}}}', Issues);
-  Assert.AreEqual(1, Integer(Length(Issues)));
-  Assert.AreEqual('"allowProperties" muss eine Liste von Texten sein', Issues[0].Message);
-  TConfigurationParser.Parse('{"rules": {"duplicate-assignment": {"allowProperties": ["Visible"]}}}', Issues);
-  Assert.AreEqual(0, Integer(Length(Issues)));
+  TConfigurationParser.Parse('{"rules": {"duplicate-assignment": {"allowProperties": [1]}}}', mIssues);
+  Assert.AreEqual(1, Integer(Length(mIssues)));
+  Assert.AreEqual('"allowProperties" muss eine Liste von Texten sein', mIssues[0].Message);
+  TConfigurationParser.Parse('{"rules": {"duplicate-assignment": {"allowProperties": ["Visible"]}}}', mIssues);
+  Assert.AreEqual(0, Integer(Length(mIssues)));
 end;
 
 procedure TDuplicateAssignmentTests.OffAndExclude;
 var
-  Source: string;
+  mSource: string;
 begin
-  Source := Formular('  Panel.Left := 8;'#10'  Panel.Left := 40;');
-  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TDuplicateAssignmentRule.Create, Source,
+  mSource := Formular('  Panel.Left := 8;'#10'  Panel.Left := 40;');
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TDuplicateAssignmentRule.Create, mSource,
     '{"rules": {"duplicate-assignment": "off"}}', 'Source/U.pas'))));
-  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TDuplicateAssignmentRule.Create, Source,
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TDuplicateAssignmentRule.Create, mSource,
     '{"rules": {"duplicate-assignment": {"exclude": ["Source/*.pas"]}}}', 'Source/U.pas'))));
 end;
 
@@ -764,86 +789,86 @@ end;
 /// <summary>Wendet die Korrektur mit dem Titel ATitle an; das Ergebnis muss fehlerfrei parsen.</summary>
 function EmptyFixed(const ASource, ATitle: string): string;
 var
-  Findings: TArray<TRuleFinding>;
-  Fix: TRuleFix;
-  Tree: TSyntaxTree;
+  mFindings: TArray<TRuleFinding>;
+  mFix: TRuleFix;
+  mTree: TSyntaxTree;
 begin
-  Findings := TRuleAssert.Findings(TEmptyRoutineRule.Create, ASource);
-  Assert.AreEqual(1, Integer(Length(Findings)));
+  mFindings := TRuleAssert.Findings(TEmptyRoutineRule.Create, ASource);
+  Assert.AreEqual(1, Integer(Length(mFindings)));
   Result := '';
-  for Fix in Findings[0].Fixes do
+  for mFix in mFindings[0].Fixes do
   begin
-    if Fix.Title = ATitle then
+    if mFix.Title = ATitle then
     begin
-      Result := TChangeSignature.ApplyEdits(ASource, Fix.Edits);
+      Result := TChangeSignature.ApplyEdits(ASource, mFix.Edits);
     end;
   end;
   Assert.AreNotEqual('', Result, ATitle);
-  Tree := TPascalParser.Parse(Result);
+  mTree := TPascalParser.Parse(Result);
   try
-    Assert.AreEqual(0, Integer(Length(Tree.Diagnostics)), Result);
+    Assert.AreEqual(0, Integer(Length(mTree.Diagnostics)), Result);
   finally
-    Tree.Free;
+    mTree.Free;
   end;
 end;
 
 procedure TUnusedRulesTests.EmptyRoutineReported;
 var
-  Findings: TArray<TRuleFinding>;
+  mFindings: TArray<TRuleFinding>;
 begin
   Assert.IsFalse(TRuleProfiles.IsExperimental((TEmptyRoutineRule.Create as IRule).Descriptor.Id), 'Standard an');
-  Findings := TRuleAssert.Findings(TEmptyRoutineRule.Create, ImportUnit('  public'#10'    procedure Pruefen;',
+  mFindings := TRuleAssert.Findings(TEmptyRoutineRule.Create, ImportUnit('  public'#10'    procedure Pruefen;',
     'procedure TImport.Pruefen;'#10'begin'#10'end;'));
-  Assert.AreEqual(1, Integer(Length(Findings)));
-  Assert.AreEqual('Pruefen ist leer; entweder fehlt der Inhalt oder die Methode kann weg.', Findings[0].Message);
-  Assert.AreEqual(8, Findings[0].Range.StartPos.Line);
+  Assert.AreEqual(1, Integer(Length(mFindings)));
+  Assert.AreEqual('Pruefen ist leer; entweder fehlt der Inhalt oder die Methode kann weg.', mFindings[0].Message);
+  Assert.AreEqual(8, mFindings[0].Range.StartPos.Line);
   // Öffentlich: nur der Kommentar, nicht das Entfernen.
-  Assert.AreEqual(1, Integer(Length(Findings[0].Fixes)));
+  Assert.AreEqual(1, Integer(Length(mFindings[0].Fixes)));
   // Routinen, auch lokale und mit leerer Anweisung.
-  Findings := TRuleAssert.Findings(TEmptyRoutineRule.Create, 'unit U;'#10'interface'#10'implementation'#10 +
+  mFindings := TRuleAssert.Findings(TEmptyRoutineRule.Create, 'unit U;'#10'interface'#10'implementation'#10 +
     'procedure Aussen;'#10'  procedure Innen;'#10'  begin'#10'  end;'#10'begin'#10'  Innen;'#10'end;'#10 +
     'procedure Leer;'#10'begin'#10'  ;'#10'end;'#10'end.');
-  Assert.AreEqual(2, Integer(Length(Findings)));
-  Assert.AreEqual('Innen ist leer; entweder fehlt der Inhalt oder die Routine kann weg.', Findings[0].Message);
+  Assert.AreEqual(2, Integer(Length(mFindings)));
+  Assert.AreEqual('Innen ist leer; entweder fehlt der Inhalt oder die Routine kann weg.', mFindings[0].Message);
 end;
 
 procedure TUnusedRulesTests.EmptyRoutineCommentFix;
 var
-  Source: string;
+  mSource: string;
 begin
-  Source := ImportUnit('  public'#10'    procedure Pruefen;', 'procedure TImport.Pruefen;'#10'begin'#10'end;');
+  mSource := ImportUnit('  public'#10'    procedure Pruefen;', 'procedure TImport.Pruefen;'#10'begin'#10'end;');
   Assert.AreEqual(ImportUnit('  public'#10'    procedure Pruefen;', 'procedure TImport.Pruefen;'#10'begin'#10 +
-    '  // Absichtlich leer.'#10'end;'), EmptyFixed(Source, 'Kommentar einfügen'));
+    '  // Absichtlich leer.'#10'end;'), EmptyFixed(mSource, 'Kommentar einfügen'));
   // Die korrigierte Form wird nicht mehr gemeldet.
-  TRuleAssert.Silent(TEmptyRoutineRule.Create, EmptyFixed(Source, 'Kommentar einfügen'));
+  TRuleAssert.Silent(TEmptyRoutineRule.Create, EmptyFixed(mSource, 'Kommentar einfügen'));
 end;
 
 procedure TUnusedRulesTests.EmptyRoutineRemoveFix;
 var
-  Source: string;
+  mSource: string;
 begin
   // Private Methode ohne Verweis: Deklaration samt XML-Doku und Rumpf verschwinden.
-  Source := ImportUnit('  private'#10'    /// <summary>Prüft.</summary>'#10'    procedure Pruefen;'#10 +
+  mSource := ImportUnit('  private'#10'    /// <summary>Prüft.</summary>'#10'    procedure Pruefen;'#10 +
     '  public'#10'    procedure Laden;', 'procedure TImport.Laden;'#10'begin'#10'  Writeln;'#10'end;'#10#10 +
     'procedure TImport.Pruefen;'#10'begin'#10'end;');
   Assert.AreEqual(ImportUnit('  private'#10'  public'#10'    procedure Laden;', 'procedure TImport.Laden;'#10 +
-    'begin'#10'  Writeln;'#10'end;'), EmptyFixed(Source, 'Methode entfernen'));
+    'begin'#10'  Writeln;'#10'end;'), EmptyFixed(mSource, 'Methode entfernen'));
   // Routine nur im implementation-Teil, mit forward.
-  Source := 'unit U;'#10'interface'#10'implementation'#10'procedure Leer; forward;'#10#10'procedure Leer;'#10 +
+  mSource := 'unit U;'#10'interface'#10'implementation'#10'procedure Leer; forward;'#10#10'procedure Leer;'#10 +
     'begin'#10'end;'#10'end.';
-  Assert.AreEqual('unit U;'#10'interface'#10'implementation'#10'end.', EmptyFixed(Source, 'Routine entfernen'));
+  Assert.AreEqual('unit U;'#10'interface'#10'implementation'#10'end.', EmptyFixed(mSource, 'Routine entfernen'));
   // Mit Verweis oder im interface: nur der Kommentar.
-  Source := ImportUnit('  private'#10'    procedure Pruefen;'#10'  public'#10'    procedure Laden;',
+  mSource := ImportUnit('  private'#10'    procedure Pruefen;'#10'  public'#10'    procedure Laden;',
     'procedure TImport.Laden;'#10'begin'#10'  Pruefen;'#10'end;'#10'procedure TImport.Pruefen;'#10'begin'#10'end;');
-  Assert.AreEqual(1, Integer(Length(TRuleAssert.Findings(TEmptyRoutineRule.Create, Source)[0].Fixes)));
-  Source := 'unit U;'#10'interface'#10'procedure Leer;'#10'implementation'#10'procedure Leer;'#10'begin'#10'end;'#10 +
+  Assert.AreEqual(1, Integer(Length(TRuleAssert.Findings(TEmptyRoutineRule.Create, mSource)[0].Fixes)));
+  mSource := 'unit U;'#10'interface'#10'procedure Leer;'#10'implementation'#10'procedure Leer;'#10'begin'#10'end;'#10 +
     'end.';
-  Assert.AreEqual(1, Integer(Length(TRuleAssert.Findings(TEmptyRoutineRule.Create, Source)[0].Fixes)));
+  Assert.AreEqual(1, Integer(Length(TRuleAssert.Findings(TEmptyRoutineRule.Create, mSource)[0].Fixes)));
 end;
 
 procedure TUnusedRulesTests.EmptyRoutineSilentCases;
 const
-  Cases: array[0..4] of string = (
+  cCases: array[0..4] of string = (
     '  public'#10'    procedure Pruefen;|procedure TImport.Pruefen;'#10'begin'#10'  // Nichts zu tun.'#10'end;',
     '  public'#10'    procedure Pruefen;|procedure TImport.Pruefen;'#10'begin'#10'  Writeln;'#10'end;',
     '  protected'#10'    procedure Pruefen; virtual;|procedure TImport.Pruefen;'#10'begin'#10'end;',
@@ -851,14 +876,14 @@ const
       #10'begin'#10'end;',
     '  public'#10'    procedure Pruefen;|procedure TImport.Pruefen;'#10'asm'#10'end;');
 var
-  Item: string;
-  Parts: TArray<string>;
+  mItem: string;
+  mParts: TArray<string>;
 begin
-  for Item in Cases do
+  for mItem in cCases do
   begin
-    Parts := Item.Split(['|']);
-    Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TEmptyRoutineRule.Create, ImportUnit(Parts[0],
-      Parts[1])))), Item);
+    mParts := mItem.Split(['|']);
+    Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TEmptyRoutineRule.Create, ImportUnit(mParts[0],
+      mParts[1])))), mItem);
   end;
   // Klasse mit Interface: der Compiler verlangt jede Methode des Interfaces.
   TRuleAssert.Silent(TEmptyRoutineRule.Create, 'unit U;'#10'interface'#10'type'#10 +
@@ -873,14 +898,14 @@ end;
 
 procedure TUnusedRulesTests.EmptyRoutineSwitchedOff;
 var
-  Source: string;
+  mSource: string;
 begin
-  Source := ImportUnit('  public'#10'    procedure Pruefen;', 'procedure TImport.Pruefen;'#10'begin'#10'end;');
-  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TEmptyRoutineRule.Create, Source,
+  mSource := ImportUnit('  public'#10'    procedure Pruefen;', 'procedure TImport.Pruefen;'#10'begin'#10'end;');
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TEmptyRoutineRule.Create, mSource,
     '{"rules": {"empty-routine": "off"}}'))));
-  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TEmptyRoutineRule.Create, Source,
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TEmptyRoutineRule.Create, mSource,
     '{"rules": {"empty-routine": {"exclude": ["Alt/**"]}}}', 'Alt/U.pas'))));
-  Assert.AreEqual(1, Integer(Length(TRuleAssert.Findings(TEmptyRoutineRule.Create, Source,
+  Assert.AreEqual(1, Integer(Length(TRuleAssert.Findings(TEmptyRoutineRule.Create, mSource,
     '{"rules": {"empty-routine": {"exclude": ["Alt/**"]}}}', 'Neu/U.pas'))));
 end;
 

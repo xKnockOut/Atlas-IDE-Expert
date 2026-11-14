@@ -36,31 +36,31 @@ uses
 
 function Overview: TArchitectureOverview;
 var
-  Units: TArray<TUnitIndex>;
-  Graph: TUsesGraph;
-  Group, Item: Integer;
+  mUnits: TArray<TUnitIndex>;
+  mGraph: TUsesGraph;
+  mGroup, mItem: Integer;
 begin
   // Fünf Namensräume zu je acht Units, jede verwendet die erste ihres Namensraums.
-  Units := nil;
-  for Group := 0 to 4 do
+  mUnits := nil;
+  for mGroup := 0 to 4 do
   begin
-    for Item := 0 to 7 do
+    for mItem := 0 to 7 do
     begin
-      if Item = 0 then
+      if mItem = 0 then
       begin
-        Units := Units + [UsesUnit(Format('N%d.U0', [Group]), nil, [Format('N%d.U0', [(Group + 1) mod 5])])];
+        mUnits := mUnits + [UsesUnit(Format('N%d.U0', [mGroup]), nil, [Format('N%d.U0', [(mGroup + 1) mod 5])])];
       end
       else
       begin
-        Units := Units + [UsesUnit(Format('N%d.U%d', [Group, Item]), [Format('N%d.U0', [Group])], nil)];
+        mUnits := mUnits + [UsesUnit(Format('N%d.U%d', [mGroup, mItem]), [Format('N%d.U0', [mGroup])], nil)];
       end;
     end;
   end;
-  Graph := TUsesGraph.Create(Units, TUsesGraphOptions.Default);
+  mGraph := TUsesGraph.Create(mUnits, TUsesGraphOptions.Default);
   try
-    Result := TArchitectureAnalyzer.Analyze(Graph, nil, 10);
+    Result := TArchitectureAnalyzer.Analyze(mGraph, nil, 10);
   finally
-    Graph.Free;
+    mGraph.Free;
   end;
 end;
 
@@ -68,40 +68,40 @@ end;
 
 procedure TLayoutTests.CentralUnitSitsInTheMiddle;
 var
-  Data: TArchitectureOverview;
-  Layout: TArchitectureLayout;
-  Index: Integer;
-  Center: TLayoutPoint;
+  mData: TArchitectureOverview;
+  mLayout: TArchitectureLayout;
+  mIndex: Integer;
+  mCenter: TLayoutPoint;
 begin
-  Data := Overview;
-  Layout := TArchitectureLayouter.Compute(Data);
-  Assert.AreEqual(5, Integer(Length(Layout.Subsystems)));
-  for Index := 0 to High(Data.Subsystems) do
+  mData := Overview;
+  mLayout := TArchitectureLayouter.Compute(mData);
+  Assert.AreEqual(5, Integer(Length(mLayout.Subsystems)));
+  for mIndex := 0 to High(mData.Subsystems) do
   begin
-    Center := Layout.Units[Data.Subsystems[Index].Central];
-    Assert.AreEqual(Layout.Subsystems[Index].X, Center.X, 1E-6);
-    Assert.AreEqual(Layout.Subsystems[Index].Y, Center.Y, 1E-6);
-    Assert.IsTrue(Layout.Subsystems[Index].Radius > TArchitectureLayouter.cSpacing);
+    mCenter := mLayout.Units[mData.Subsystems[mIndex].Central];
+    Assert.AreEqual(mLayout.Subsystems[mIndex].X, mCenter.X, 1E-6);
+    Assert.AreEqual(mLayout.Subsystems[mIndex].Y, mCenter.Y, 1E-6);
+    Assert.IsTrue(mLayout.Subsystems[mIndex].Radius > TArchitectureLayouter.cSpacing);
   end;
 end;
 
 procedure TLayoutTests.SubsystemsDoNotOverlap;
 var
-  Layout: TArchitectureLayout;
+  mLayout: TArchitectureLayout;
   A, B: Integer;
 begin
-  Layout := TArchitectureLayouter.Compute(Overview);
-  for A := 0 to High(Layout.Subsystems) do
+  mLayout := TArchitectureLayouter.Compute(Overview);
+  for A := 0 to High(mLayout.Subsystems) do
   begin
-    for B := A + 1 to High(Layout.Subsystems) do
+    for B := A + 1 to High(mLayout.Subsystems) do
     begin
-      Assert.IsTrue(Sqrt(Sqr(Layout.Subsystems[A].X - Layout.Subsystems[B].X) +
-        Sqr(Layout.Subsystems[A].Y - Layout.Subsystems[B].Y)) >= Layout.Subsystems[A].Radius +
-        Layout.Subsystems[B].Radius - 1E-6, Format('%d/%d', [A, B]));
+      Assert.IsTrue(Sqrt(Sqr(mLayout.Subsystems[A].X - mLayout.Subsystems[B].X) +
+        Sqr(mLayout.Subsystems[A].Y - mLayout.Subsystems[B].Y)) >= mLayout.Subsystems[A].Radius +
+        mLayout.Subsystems[B].Radius - 1E-6, Format('%d/%d', [A, B]));
     end;
   end;
-  Assert.IsTrue(Layout.Right > Layout.Left);
-  Assert.IsTrue(Layout.Bottom > Layout.Top);
+  Assert.IsTrue(mLayout.Right > mLayout.Left);
+  Assert.IsTrue(mLayout.Bottom > mLayout.Top);
 end;
 
 procedure TLayoutTests.PartsOfSplitSubsystemSitSideBySide;
@@ -123,24 +123,24 @@ end;
 
 procedure TLayoutTests.EmptyOverviewGivesEmptyLayout;
 var
-  Layout: TArchitectureLayout;
+  mLayout: TArchitectureLayout;
 begin
-  Layout := TArchitectureLayouter.Compute(Default(TArchitectureOverview));
-  Assert.AreEqual(0, Integer(Length(Layout.Units)));
-  Assert.AreEqual(0, Integer(Length(Layout.Subsystems)));
+  mLayout := TArchitectureLayouter.Compute(Default(TArchitectureOverview));
+  Assert.AreEqual(0, Integer(Length(mLayout.Units)));
+  Assert.AreEqual(0, Integer(Length(mLayout.Subsystems)));
 end;
 
 procedure TLayoutTests.SameInputSameLayout;
 var
-  First, Second: TArchitectureLayout;
-  Index: Integer;
+  mFirst, mSecond: TArchitectureLayout;
+  mIndex: Integer;
 begin
-  First := TArchitectureLayouter.Compute(Overview);
-  Second := TArchitectureLayouter.Compute(Overview);
-  for Index := 0 to High(First.Units) do
+  mFirst := TArchitectureLayouter.Compute(Overview);
+  mSecond := TArchitectureLayouter.Compute(Overview);
+  for mIndex := 0 to High(mFirst.Units) do
   begin
-    Assert.AreEqual(First.Units[Index].X, Second.Units[Index].X, 0);
-    Assert.AreEqual(First.Units[Index].Y, Second.Units[Index].Y, 0);
+    Assert.AreEqual(mFirst.Units[mIndex].X, mSecond.Units[mIndex].X, 0);
+    Assert.AreEqual(mFirst.Units[mIndex].Y, mSecond.Units[mIndex].Y, 0);
   end;
 end;
 

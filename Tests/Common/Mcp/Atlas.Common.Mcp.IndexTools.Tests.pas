@@ -49,7 +49,7 @@ uses
   Atlas.Common.Mcp.IndexTools;
 
 const
-  BaseUnit =
+  cBaseUnit =
     'unit Basis;'#10 +
     'interface'#10 +
     'type'#10 +
@@ -60,7 +60,7 @@ const
     'implementation'#10 +
     'procedure TTier.Laut; begin end;'#10 +
     'end.';
-  ZooUnit =
+  cZooUnit =
     'unit Zoo;'#10 +
     'interface'#10 +
     'uses Basis;'#10 +
@@ -77,8 +77,8 @@ const
     'end.';
 
 const
-  KnopfFile = 'C:\P\Knopf.pas';
-  KnopfUnit =
+  cKnopfFile = 'C:\P\Knopf.pas';
+  cKnopfUnit =
     'unit Knopf;'#10 +
     'interface'#10 +
     'type'#10 +
@@ -101,8 +101,8 @@ const
     'end.';
 
 const
-  KasseFile = 'C:\P\Kasse.pas';
-  KasseUnit =
+  cKasseFile = 'C:\P\Kasse.pas';
+  cKasseUnit =
     'unit Kasse;'#10 +
     '// NOTE: Siehe ADR-0007.'#10 +
     'interface'#10 +
@@ -121,131 +121,131 @@ const
 
 function KasseTools: TMcpIndexTools;
 var
-  Index: ISymbolIndex;
+  mIndex: ISymbolIndex;
 begin
-  Index := TSymbolIndex.Create;
-  Index.AddUnit(TIndexExtractor.ExtractText(KasseUnit, KasseFile, nil));
-  Result := TMcpIndexTools.Create(Index,
+  mIndex := TSymbolIndex.Create;
+  mIndex.AddUnit(TIndexExtractor.ExtractText(cKasseUnit, cKasseFile, nil));
+  Result := TMcpIndexTools.Create(mIndex,
     function(const AFileName: string; out AText: string): Boolean
     begin
-      AText := KasseUnit;
-      Result := SameText(AFileName, KasseFile);
+      AText := cKasseUnit;
+      Result := SameText(AFileName, cKasseFile);
     end);
 end;
 
 function NewTools: TMcpIndexTools;
 var
-  Index: ISymbolIndex;
+  mIndex: ISymbolIndex;
 begin
-  Index := TSymbolIndex.Create;
-  Index.AddUnit(TIndexExtractor.ExtractText(BaseUnit, 'C:\P\Basis.pas', nil));
-  Index.AddUnit(TIndexExtractor.ExtractText(ZooUnit, 'C:\P\Zoo.pas', nil));
-  Result := TMcpIndexTools.Create(Index, nil);
+  mIndex := TSymbolIndex.Create;
+  mIndex.AddUnit(TIndexExtractor.ExtractText(cBaseUnit, 'C:\P\Basis.pas', nil));
+  mIndex.AddUnit(TIndexExtractor.ExtractText(cZooUnit, 'C:\P\Zoo.pas', nil));
+  Result := TMcpIndexTools.Create(mIndex, nil);
 end;
 
 procedure TMcpIndexToolsTests.FindsSymbolWithLocation;
 var
-  Tools: TMcpIndexTools;
-  Text: string;
+  mTools: TMcpIndexTools;
+  mText: string;
 begin
-  Tools := NewTools;
+  mTools := NewTools;
   try
-    Text := Tools.FindSymbol('THund');
-    Assert.Contains(Text, 'THund (Klasse');
-    Assert.Contains(Text, 'Unit Zoo, C:\P\Zoo.pas:5');
+    mText := mTools.FindSymbol('THund');
+    Assert.Contains(mText, 'THund (Klasse');
+    Assert.Contains(mText, 'Unit Zoo, C:\P\Zoo.pas:5');
   finally
-    Tools.Free;
+    mTools.Free;
   end;
 end;
 
 procedure TMcpIndexToolsTests.FindsQualifiedMember;
 var
-  Tools: TMcpIndexTools;
-  Text: string;
+  mTools: TMcpIndexTools;
+  mText: string;
 begin
-  Tools := NewTools;
+  mTools := NewTools;
   try
-    Text := Tools.FindSymbol('THund.Laut');
-    Assert.Contains(Text, 'THund.Laut (Methode');
-    Assert.DoesNotContain(Text, 'TTier.Laut');
+    mText := mTools.FindSymbol('THund.Laut');
+    Assert.Contains(mText, 'THund.Laut (Methode');
+    Assert.DoesNotContain(mText, 'TTier.Laut');
   finally
-    Tools.Free;
+    mTools.Free;
   end;
 end;
 
 procedure TMcpIndexToolsTests.FallsBackToSubstring;
 var
-  Tools: TMcpIndexTools;
-  Text: string;
+  mTools: TMcpIndexTools;
+  mText: string;
 begin
-  Tools := NewTools;
+  mTools := NewTools;
   try
-    Text := Tools.FindSymbol('hunde');
-    Assert.Contains(Text, 'ähnliche Namen');
-    Assert.Contains(Text, 'MaxHunde (Konstante');
+    mText := mTools.FindSymbol('hunde');
+    Assert.Contains(mText, 'ähnliche Namen');
+    Assert.Contains(mText, 'MaxHunde (Konstante');
   finally
-    Tools.Free;
+    mTools.Free;
   end;
 end;
 
 procedure TMcpIndexToolsTests.ReportsMissingSymbol;
 var
-  Tools: TMcpIndexTools;
+  mTools: TMcpIndexTools;
 begin
-  Tools := NewTools;
+  mTools := NewTools;
   try
-    Assert.Contains(Tools.FindSymbol('TKatze'), 'Kein Symbol "TKatze"');
-    Assert.Contains(Tools.TypeHierarchy('TKatze'), 'Kein Typ "TKatze"');
-    Assert.Contains(Tools.UnitOutline('Garten'), 'nicht im Index');
+    Assert.Contains(mTools.FindSymbol('TKatze'), 'Kein Symbol "TKatze"');
+    Assert.Contains(mTools.TypeHierarchy('TKatze'), 'Kein Typ "TKatze"');
+    Assert.Contains(mTools.UnitOutline('Garten'), 'nicht im Index');
   finally
-    Tools.Free;
+    mTools.Free;
   end;
 end;
 
 procedure TMcpIndexToolsTests.ShowsAncestorsAndDescendants;
 var
-  Tools: TMcpIndexTools;
-  Text, Ancestors, Descendants: string;
+  mTools: TMcpIndexTools;
+  mText, mAncestors, mDescendants: string;
 begin
-  Tools := NewTools;
+  mTools := NewTools;
   try
-    Text := Tools.TypeHierarchy('THund');
-    Ancestors := Copy(Text, Pos('Vorfahren:', Text), Pos('Nachfahren:', Text) - Pos('Vorfahren:', Text));
-    Descendants := Copy(Text, Pos('Nachfahren:', Text), MaxInt);
-    Assert.Contains(Ancestors, 'TTier (Klasse');
-    Assert.Contains(Descendants, 'TDackel (Klasse');
-    Text := Tools.TypeHierarchy('TTier');
-    Descendants := Copy(Text, Pos('Nachfahren:', Text), MaxInt);
-    Assert.Contains(Descendants, '  - THund');
-    Assert.Contains(Descendants, '    - TDackel', 'Enkel eingerückt');
+    mText := mTools.TypeHierarchy('THund');
+    mAncestors := Copy(mText, Pos('Vorfahren:', mText), Pos('Nachfahren:', mText) - Pos('Vorfahren:', mText));
+    mDescendants := Copy(mText, Pos('Nachfahren:', mText), MaxInt);
+    Assert.Contains(mAncestors, 'TTier (Klasse');
+    Assert.Contains(mDescendants, 'TDackel (Klasse');
+    mText := mTools.TypeHierarchy('TTier');
+    mDescendants := Copy(mText, Pos('Nachfahren:', mText), MaxInt);
+    Assert.Contains(mDescendants, '  - THund');
+    Assert.Contains(mDescendants, '    - TDackel', 'Enkel eingerückt');
   finally
-    Tools.Free;
+    mTools.Free;
   end;
 end;
 
 procedure TMcpIndexToolsTests.OutlinesUnit;
 var
-  Tools: TMcpIndexTools;
-  Text: string;
+  mTools: TMcpIndexTools;
+  mText: string;
 begin
-  Tools := NewTools;
+  mTools := NewTools;
   try
-    Text := Tools.UnitOutline('Zoo');
-    Assert.Contains(Text, 'unit Zoo – C:\P\Zoo.pas');
-    Assert.Contains(Text, 'uses (interface): Basis');
-    Assert.Contains(Text, 'Klasse THund(TTier) – Zeile 5');
-    Assert.Contains(Text, 'Methode THund.Laut');
-    Assert.Contains(Tools.UnitOutline('C:\P\Basis.pas'), 'unit Basis');
+    mText := mTools.UnitOutline('Zoo');
+    Assert.Contains(mText, 'unit Zoo – C:\P\Zoo.pas');
+    Assert.Contains(mText, 'uses (interface): Basis');
+    Assert.Contains(mText, 'Klasse THund(TTier) – Zeile 5');
+    Assert.Contains(mText, 'Methode THund.Laut');
+    Assert.Contains(mTools.UnitOutline('C:\P\Basis.pas'), 'unit Basis');
   finally
-    Tools.Free;
+    mTools.Free;
   end;
 end;
 
 procedure TMcpIndexToolsTests.DescribesForm;
 var
-  Text: string;
+  mText: string;
 begin
-  Text := TMcpIndexTools.DfmInfo(
+  mText := TMcpIndexTools.DfmInfo(
     'object Form1: TForm1'#13#10 +
     '  Caption = ''Haupt'''#13#10 +
     '  OnCreate = FormCreate'#13#10 +
@@ -253,32 +253,32 @@ begin
     '    OnClick = Button1Click'#13#10 +
     '  end'#13#10 +
     'end'#13#10);
-  Assert.Contains(Text, '- Form1: TForm1');
-  Assert.Contains(Text, 'Caption = ''Haupt''');
-  Assert.Contains(Text, 'Ereignisse: OnCreate → FormCreate');
-  Assert.Contains(Text, '  - Button1: TButton');
-  Assert.Contains(Text, 'OnClick → Button1Click');
+  Assert.Contains(mText, '- Form1: TForm1');
+  Assert.Contains(mText, 'Caption = ''Haupt''');
+  Assert.Contains(mText, 'Ereignisse: OnCreate → FormCreate');
+  Assert.Contains(mText, '  - Button1: TButton');
+  Assert.Contains(mText, 'OnClick → Button1Click');
 end;
 
 procedure TMcpIndexToolsTests.DescribesComponent;
 var
-  Index: ISymbolIndex;
-  Tools: TMcpIndexTools;
-  Text: string;
+  mIndex: ISymbolIndex;
+  mTools: TMcpIndexTools;
+  mText: string;
 begin
-  Index := TSymbolIndex.Create;
-  Index.AddUnit(TIndexExtractor.ExtractText(KnopfUnit, KnopfFile, nil));
-  Tools := TMcpIndexTools.Create(Index,
+  mIndex := TSymbolIndex.Create;
+  mIndex.AddUnit(TIndexExtractor.ExtractText(cKnopfUnit, cKnopfFile, nil));
+  mTools := TMcpIndexTools.Create(mIndex,
     function(const AFileName: string; out AText: string): Boolean
     begin
-      Result := SameText(AFileName, KnopfFile);
+      Result := SameText(AFileName, cKnopfFile);
       if Result then
       begin
-        AText := KnopfUnit;
+        AText := cKnopfUnit;
       end;
     end);
   try
-    Tools.PackageOf :=
+    mTools.PackageOf :=
       function(const AUnitName: string): string
       begin
         if SameText(AUnitName, 'Knopf') then
@@ -290,98 +290,98 @@ begin
           Result := '';
         end;
       end;
-    Text := Tools.ComponentInfo('TKnopf');
-    Assert.Contains(Text, 'Vorfahren: TKnopf → TBasisKnopf → TObject');
-    Assert.Contains(Text, 'Registrierung (Palettenseite): Beispiele');
-    Assert.Contains(Text, 'Package: BeispielPaket');
-    Assert.Contains(Text, '  Caption: string');
-    Assert.Contains(Text, '  Tag: Integer default 0 (aus TBasisKnopf)');
-    Assert.Contains(Text, '  OnClick: TNotifyEvent – Signatur (Sender: TObject)');
+    mText := mTools.ComponentInfo('TKnopf');
+    Assert.Contains(mText, 'Vorfahren: TKnopf → TBasisKnopf → TObject');
+    Assert.Contains(mText, 'Registrierung (Palettenseite): Beispiele');
+    Assert.Contains(mText, 'Package: BeispielPaket');
+    Assert.Contains(mText, '  Caption: string');
+    Assert.Contains(mText, '  Tag: Integer default 0 (aus TBasisKnopf)');
+    Assert.Contains(mText, '  OnClick: TNotifyEvent – Signatur (Sender: TObject)');
   finally
-    Tools.Free;
+    mTools.Free;
   end;
 end;
 
 procedure TMcpIndexToolsTests.ReportsComponentWithoutSources;
 var
-  Tools: TMcpIndexTools;
+  mTools: TMcpIndexTools;
 begin
-  Tools := NewTools;
+  mTools := NewTools;
   try
-    Assert.Contains(Tools.ComponentInfo('TButton'), 'Keine Quellen');
+    Assert.Contains(mTools.ComponentInfo('TButton'), 'Keine Quellen');
   finally
-    Tools.Free;
+    mTools.Free;
   end;
 end;
 
 procedure TMcpIndexToolsTests.ReadsRegistrations;
 var
-  Items: TArray<TComponentRegistration>;
+  mItems: TArray<TComponentRegistration>;
 begin
-  Items := TMcpIndexTools.Registrations(
+  mItems := TMcpIndexTools.Registrations(
     'RegisterComponents(''Standard'', [TA, TB]);'#10'registercomponents(''Extra'', [TC]);');
-  Assert.AreEqual(3, Integer(Length(Items)));
-  Assert.AreEqual('Standard', Items[1].Page);
-  Assert.AreEqual('TB', Items[1].ClassName);
-  Assert.AreEqual('Extra', Items[2].Page);
+  Assert.AreEqual(3, Integer(Length(mItems)));
+  Assert.AreEqual('Standard', mItems[1].Page);
+  Assert.AreEqual('TB', mItems[1].ClassName);
+  Assert.AreEqual('Extra', mItems[2].Page);
 end;
 
 procedure TMcpIndexToolsTests.FindsUnitInPackage;
 const
-  Dpk = 'package Paket;'#10'requires rtl;'#10'contains'#10 +
+  cDpk = 'package Paket;'#10'requires rtl;'#10'contains'#10 +
     '  Knopf in ''Source\Knopf.pas'','#10'  Leiste;'#10'end.';
 begin
-  Assert.IsTrue(TMcpIndexTools.PackageContains(Dpk, 'Knopf'));
-  Assert.IsTrue(TMcpIndexTools.PackageContains(Dpk, 'leiste'));
-  Assert.IsFalse(TMcpIndexTools.PackageContains(Dpk, 'Paket'));
+  Assert.IsTrue(TMcpIndexTools.PackageContains(cDpk, 'Knopf'));
+  Assert.IsTrue(TMcpIndexTools.PackageContains(cDpk, 'leiste'));
+  Assert.IsFalse(TMcpIndexTools.PackageContains(cDpk, 'Paket'));
 end;
 
 procedure TMcpIndexToolsTests.DeclarationListsRationale;
 var
-  Tools: TMcpIndexTools;
-  Text: string;
+  mTools: TMcpIndexTools;
+  mText: string;
 begin
-  Tools := KasseTools;
+  mTools := KasseTools;
   try
-    Text := Tools.Declaration('TKasse.Buche');
-    Assert.Contains(Text, 'Begründungen:');
-    Assert.Contains(Text, '- WHY (Zeile 6): Rundet kaufmaennisch, siehe #312.');
-    Assert.Contains(Text, '- HACK (Zeile 12): Umgeht einen Fehler der RTL.');
-    Assert.DoesNotContain(Text, '- TODO');
+    mText := mTools.Declaration('TKasse.Buche');
+    Assert.Contains(mText, 'Begründungen:');
+    Assert.Contains(mText, '- WHY (Zeile 6): Rundet kaufmaennisch, siehe #312.');
+    Assert.Contains(mText, '- HACK (Zeile 12): Umgeht einen Fehler der RTL.');
+    Assert.DoesNotContain(mText, '- TODO');
     // hints.rationale aus: kein Abschnitt.
-    Tools.RationaleOptionsFunc :=
+    mTools.RationaleOptionsFunc :=
       function: TRationaleOptions
       begin
         Result := TRationaleOptions.Default;
         Result.Enabled := False;
       end;
-    Assert.DoesNotContain(Tools.Declaration('TKasse.Buche'), 'Begründungen');
+    Assert.DoesNotContain(mTools.Declaration('TKasse.Buche'), 'Begründungen');
   finally
-    Tools.Free;
+    mTools.Free;
   end;
 end;
 
 procedure TMcpIndexToolsTests.ListsRationaleOfUnitAndSymbol;
 var
-  Tools: TMcpIndexTools;
-  Text: string;
+  mTools: TMcpIndexTools;
+  mText: string;
 begin
-  Tools := KasseTools;
+  mTools := KasseTools;
   try
-    Text := Tools.Rationale('Kasse', '');
-    Assert.Contains(Text, 'unit Kasse');
-    Assert.Contains(Text, '- NOTE (Zeile 2): Siehe ADR-0007.');
-    Assert.Contains(Text, 'C:\P\Kasse.pas:7');
-    Assert.Contains(Text, '- HACK (Zeile 12)');
-    Assert.DoesNotContain(Text, 'TODO');
-    Text := Tools.Rationale('', 'TKasse.Buche');
-    Assert.Contains(Text, '- WHY (Zeile 6)');
-    Assert.Contains(Text, '- HACK (Zeile 12)');
-    Assert.AreEqual('Keine Begründungen zu "TKasse".', Tools.Rationale('', 'TKasse'));
-    Assert.AreEqual('Genau eins von "unit" und "name" angeben.', Tools.Rationale('Kasse', 'TKasse'));
-    Assert.AreEqual('Unit "Fehlt" nicht im Index.', Tools.Rationale('Fehlt', ''));
+    mText := mTools.Rationale('Kasse', '');
+    Assert.Contains(mText, 'unit Kasse');
+    Assert.Contains(mText, '- NOTE (Zeile 2): Siehe ADR-0007.');
+    Assert.Contains(mText, 'C:\P\Kasse.pas:7');
+    Assert.Contains(mText, '- HACK (Zeile 12)');
+    Assert.DoesNotContain(mText, 'TODO');
+    mText := mTools.Rationale('', 'TKasse.Buche');
+    Assert.Contains(mText, '- WHY (Zeile 6)');
+    Assert.Contains(mText, '- HACK (Zeile 12)');
+    Assert.AreEqual('Keine Begründungen zu "TKasse".', mTools.Rationale('', 'TKasse'));
+    Assert.AreEqual('Genau eins von "unit" und "name" angeben.', mTools.Rationale('Kasse', 'TKasse'));
+    Assert.AreEqual('Unit "Fehlt" nicht im Index.', mTools.Rationale('Fehlt', ''));
   finally
-    Tools.Free;
+    mTools.Free;
   end;
 end;
 

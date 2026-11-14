@@ -52,19 +52,19 @@ uses
 /// <summary>Eine Plugin-Einstellung als JSON; AExtra hängt weitere Angaben an (mit führendem Komma).</summary>
 function Prop(const AName, AKey, AType, AExtra: string): string;
 var
-  Value: string;
+  mValue: string;
 begin
-  Value := '0';
+  mValue := '0';
   if AType = 'boolean' then
   begin
-    Value := 'true';
+    mValue := 'true';
   end;
   if AType = 'string' then
   begin
-    Value := '""';
+    mValue := '""';
   end;
   Result := Format('"%s":{"type":"%s","default":%s,"x-key":"%s","x-area":"general","x-page":"Allgemein"%s}',
-    [AName, AType, Value, AKey, AExtra]);
+    [AName, AType, mValue, AKey, AExtra]);
 end;
 
 function Schema(const AProps: array of string): string;
@@ -76,13 +76,13 @@ end;
 
 function Groups(const AProps: array of string): TAtlasSettingsGroups;
 var
-  Catalog: TAtlasSettingsCatalog;
+  mCatalog: TAtlasSettingsCatalog;
 begin
-  Catalog := TAtlasSettingsCatalog.Create(Schema(AProps), '{}');
+  mCatalog := TAtlasSettingsCatalog.Create(Schema(AProps), '{}');
   try
-    Result := TAtlasSettingsGroups.Create(Catalog);
+    Result := TAtlasSettingsGroups.Create(mCatalog);
   finally
-    Catalog.Free;
+    mCatalog.Free;
   end;
 end;
 
@@ -93,308 +93,308 @@ end;
 
 procedure TAtlasSettingsGroupsTests.PrefixRuleFindsSwitchOrEnabled;
 var
-  Subject: TAtlasSettingsGroups;
+  mSubject: TAtlasSettingsGroups;
 begin
-  Subject := Groups([Prop('A', 'a.enabled', 'boolean', ''), Prop('B', 'a.b', 'boolean', ''),
+  mSubject := Groups([Prop('A', 'a.enabled', 'boolean', ''), Prop('B', 'a.b', 'boolean', ''),
     Prop('C', 'a.b.c', 'integer', ''), Prop('X', 'a.x', 'integer', ''), Prop('Z', 'z', 'integer', ''),
     Prop('BC', 'a.bc', 'integer', '')]);
   try
-    Assert.AreEqual('B', Subject.ParentOf('C'), 'längstes Präfix mit Schalter');
-    Assert.AreEqual('A', Subject.ParentOf('B'), 'Präfix + .enabled');
-    Assert.AreEqual('A', Subject.ParentOf('X'));
-    Assert.AreEqual('', Subject.ParentOf('A'), 'nie die Einstellung selbst');
-    Assert.AreEqual('', Subject.ParentOf('Z'));
-    Assert.AreEqual('A', Subject.ParentOf('BC'), 'nur ganze Glieder: a.bc gehört nicht zu a.b');
-    Assert.AreEqual('B,A', Joined(Subject.AncestorsOf('C')));
-    Assert.AreEqual('B,X,BC', Joined(Subject.ChildrenOf('A')));
-    Assert.AreEqual(0, Integer(Length(Subject.Issues)));
+    Assert.AreEqual('B', mSubject.ParentOf('C'), 'längstes Präfix mit Schalter');
+    Assert.AreEqual('A', mSubject.ParentOf('B'), 'Präfix + .enabled');
+    Assert.AreEqual('A', mSubject.ParentOf('X'));
+    Assert.AreEqual('', mSubject.ParentOf('A'), 'nie die Einstellung selbst');
+    Assert.AreEqual('', mSubject.ParentOf('Z'));
+    Assert.AreEqual('A', mSubject.ParentOf('BC'), 'nur ganze Glieder: a.bc gehört nicht zu a.b');
+    Assert.AreEqual('B,A', Joined(mSubject.AncestorsOf('C')));
+    Assert.AreEqual('B,X,BC', Joined(mSubject.ChildrenOf('A')));
+    Assert.AreEqual(0, Integer(Length(mSubject.Issues)));
   finally
-    Subject.Free;
+    mSubject.Free;
   end;
 end;
 
 procedure TAtlasSettingsGroupsTests.PrefixRuleSkipsNonBoolean;
 var
-  Subject: TAtlasSettingsGroups;
+  mSubject: TAtlasSettingsGroups;
 begin
-  Subject := Groups([Prop('A', 'a.enabled', 'boolean', ''), Prop('Mode', 'a.mode', 'string', ''),
+  mSubject := Groups([Prop('A', 'a.enabled', 'boolean', ''), Prop('Mode', 'a.mode', 'string', ''),
     Prop('Scope', 'a.mode.scope', 'string', '')]);
   try
-    Assert.AreEqual('A', Subject.ParentOf('Scope'), 'a.mode ist kein Schalter');
-    Assert.AreEqual('A', Subject.ParentOf('Mode'));
+    Assert.AreEqual('A', mSubject.ParentOf('Scope'), 'a.mode ist kein Schalter');
+    Assert.AreEqual('A', mSubject.ParentOf('Mode'));
   finally
-    Subject.Free;
+    mSubject.Free;
   end;
 end;
 
 procedure TAtlasSettingsGroupsTests.ExplicitParentWins;
 var
-  Subject: TAtlasSettingsGroups;
+  mSubject: TAtlasSettingsGroups;
 begin
-  Subject := Groups([Prop('A', 'a.enabled', 'boolean', ''), Prop('Other', 'other', 'boolean', ''),
+  mSubject := Groups([Prop('A', 'a.enabled', 'boolean', ''), Prop('Other', 'other', 'boolean', ''),
     Prop('X', 'a.x', 'integer', ',"x-parent":"other"'), Prop('Y', 'a.y', 'integer', ',"x-parent":""'),
     Prop('Key', 'keys.a', 'integer', ',"x-parent":"a.enabled"')]);
   try
-    Assert.AreEqual('Other', Subject.ParentOf('X'));
-    Assert.AreEqual('', Subject.ParentOf('Y'), '"" hebt die Präfixregel auf');
-    Assert.AreEqual('A', Subject.ParentOf('Key'));
-    Assert.AreEqual(0, Integer(Length(Subject.Issues)));
+    Assert.AreEqual('Other', mSubject.ParentOf('X'));
+    Assert.AreEqual('', mSubject.ParentOf('Y'), '"" hebt die Präfixregel auf');
+    Assert.AreEqual('A', mSubject.ParentOf('Key'));
+    Assert.AreEqual(0, Integer(Length(mSubject.Issues)));
   finally
-    Subject.Free;
+    mSubject.Free;
   end;
 end;
 
 procedure TAtlasSettingsGroupsTests.NodeExplicitAndInherited;
 var
-  Subject: TAtlasSettingsGroups;
+  mSubject: TAtlasSettingsGroups;
 begin
-  Subject := Groups([Prop('A', 'a.enabled', 'boolean', ''),
+  mSubject := Groups([Prop('A', 'a.enabled', 'boolean', ''),
     Prop('B', 'a.b', 'boolean', ',"x-node":"n1"'), Prop('C', 'a.b.c', 'integer', ''),
     Prop('D', 'a.b.d', 'integer', ',"x-node":""'), Prop('E', 'a.b.e', 'integer', ',"x-node":"n2"'),
     Prop('F', 'a.f', 'integer', '')]);
   try
-    Assert.AreEqual('', Subject.NodeOf('A'), 'ohne x-node: Hauptknoten');
-    Assert.AreEqual('n1', Subject.NodeOf('B'));
-    Assert.AreEqual('n1', Subject.NodeOf('C'), 'erbt vom Hauptschalter');
-    Assert.AreEqual('', Subject.NodeOf('D'), '"" = ausdrücklich Hauptknoten');
-    Assert.AreEqual('n2', Subject.NodeOf('E'));
-    Assert.AreEqual('', Subject.NodeOf('F'));
-    Assert.AreEqual('B,C', Joined(Subject.NamesOfNode('n1')));
-    Assert.AreEqual('A,D,F', Joined(Subject.NamesOfNode('')));
-    Assert.AreEqual('Eins', Subject.NodeCaption('n1', False));
-    Assert.AreEqual('One', Subject.NodeCaption('n1', True));
-    Assert.AreEqual('Zwei', Subject.NodeCaption('n2', True), 'ohne captionEn die deutsche');
-    Assert.AreEqual(2, Integer(Length(Subject.Nodes)));
-    Assert.IsTrue(Subject.HasNode('N1'));
-    Assert.IsFalse(Subject.HasNode('n3'));
+    Assert.AreEqual('', mSubject.NodeOf('A'), 'ohne x-node: Hauptknoten');
+    Assert.AreEqual('n1', mSubject.NodeOf('B'));
+    Assert.AreEqual('n1', mSubject.NodeOf('C'), 'erbt vom Hauptschalter');
+    Assert.AreEqual('', mSubject.NodeOf('D'), '"" = ausdrücklich Hauptknoten');
+    Assert.AreEqual('n2', mSubject.NodeOf('E'));
+    Assert.AreEqual('', mSubject.NodeOf('F'));
+    Assert.AreEqual('B,C', Joined(mSubject.NamesOfNode('n1')));
+    Assert.AreEqual('A,D,F', Joined(mSubject.NamesOfNode('')));
+    Assert.AreEqual('Eins', mSubject.NodeCaption('n1', False));
+    Assert.AreEqual('One', mSubject.NodeCaption('n1', True));
+    Assert.AreEqual('Zwei', mSubject.NodeCaption('n2', True), 'ohne captionEn die deutsche');
+    Assert.AreEqual(2, Integer(Length(mSubject.Nodes)));
+    Assert.IsTrue(mSubject.HasNode('N1'));
+    Assert.IsFalse(mSubject.HasNode('n3'));
   finally
-    Subject.Free;
+    mSubject.Free;
   end;
 end;
 
 procedure TAtlasSettingsGroupsTests.ReportsUnknownAndNonBooleanParent;
 var
-  Subject: TAtlasSettingsGroups;
+  mSubject: TAtlasSettingsGroups;
 begin
-  Subject := Groups([Prop('A', 'a.enabled', 'boolean', ''), Prop('N', 'n', 'integer', ''),
+  mSubject := Groups([Prop('A', 'a.enabled', 'boolean', ''), Prop('N', 'n', 'integer', ''),
     Prop('X', 'a.x', 'integer', ',"x-parent":"gibt.es.nicht"'), Prop('Y', 'a.y', 'integer', ',"x-parent":"n"')]);
   try
-    Assert.AreEqual(2, Integer(Length(Subject.Issues)));
-    Assert.IsTrue(Subject.Issues[0].Contains('a.x') and Subject.Issues[0].Contains('unbekannt'), Subject.Issues[0]);
-    Assert.IsTrue(Subject.Issues[1].Contains('a.y') and Subject.Issues[1].Contains('nicht boolesch'),
-      Subject.Issues[1]);
-    Assert.AreEqual('', Subject.ParentOf('X'), 'fehlerhafte Angabe gilt als kein Hauptschalter');
-    Assert.AreEqual('', Subject.ParentOf('Y'));
+    Assert.AreEqual(2, Integer(Length(mSubject.Issues)));
+    Assert.IsTrue(mSubject.Issues[0].Contains('a.x') and mSubject.Issues[0].Contains('unbekannt'), mSubject.Issues[0]);
+    Assert.IsTrue(mSubject.Issues[1].Contains('a.y') and mSubject.Issues[1].Contains('nicht boolesch'),
+      mSubject.Issues[1]);
+    Assert.AreEqual('', mSubject.ParentOf('X'), 'fehlerhafte Angabe gilt als kein Hauptschalter');
+    Assert.AreEqual('', mSubject.ParentOf('Y'));
   finally
-    Subject.Free;
+    mSubject.Free;
   end;
 end;
 
 procedure TAtlasSettingsGroupsTests.ReportsUnknownNode;
 var
-  Subject: TAtlasSettingsGroups;
+  mSubject: TAtlasSettingsGroups;
 begin
-  Subject := Groups([Prop('A', 'a', 'boolean', ',"x-node":"n9"')]);
+  mSubject := Groups([Prop('A', 'a', 'boolean', ',"x-node":"n9"')]);
   try
-    Assert.AreEqual(1, Integer(Length(Subject.Issues)));
-    Assert.IsTrue(Subject.Issues[0].Contains('n9'), Subject.Issues[0]);
+    Assert.AreEqual(1, Integer(Length(mSubject.Issues)));
+    Assert.IsTrue(mSubject.Issues[0].Contains('n9'), mSubject.Issues[0]);
   finally
-    Subject.Free;
+    mSubject.Free;
   end;
 end;
 
 procedure TAtlasSettingsGroupsTests.ReportsAndCutsCycle;
 var
-  Subject: TAtlasSettingsGroups;
+  mSubject: TAtlasSettingsGroups;
 begin
-  Subject := Groups([Prop('A', 'a', 'boolean', ',"x-parent":"b"'), Prop('B', 'b', 'boolean', ',"x-parent":"a"'),
+  mSubject := Groups([Prop('A', 'a', 'boolean', ',"x-parent":"b"'), Prop('B', 'b', 'boolean', ',"x-parent":"a"'),
     Prop('C', 'c', 'boolean', ',"x-parent":"c"')]);
   try
-    Assert.AreEqual(2, Integer(Length(Subject.Issues)), string.Join(' | ', Subject.Issues));
-    Assert.IsTrue(Subject.Issues[0].Contains('Zyklus') and Subject.Issues[0].Contains('a → b → a'),
-      Subject.Issues[0]);
-    Assert.IsTrue(Subject.Issues[1].Contains('c → c'), Subject.Issues[1]);
+    Assert.AreEqual(2, Integer(Length(mSubject.Issues)), string.Join(' | ', mSubject.Issues));
+    Assert.IsTrue(mSubject.Issues[0].Contains('Zyklus') and mSubject.Issues[0].Contains('a → b → a'),
+      mSubject.Issues[0]);
+    Assert.IsTrue(mSubject.Issues[1].Contains('c → c'), mSubject.Issues[1]);
     // Nach dem Kappen endet jede Kette.
-    Assert.AreEqual('', Subject.ParentOf('A'));
-    Assert.AreEqual('A', Subject.ParentOf('B'));
-    Assert.AreEqual('', Subject.ParentOf('C'));
+    Assert.AreEqual('', mSubject.ParentOf('A'));
+    Assert.AreEqual('A', mSubject.ParentOf('B'));
+    Assert.AreEqual('', mSubject.ParentOf('C'));
   finally
-    Subject.Free;
+    mSubject.Free;
   end;
 end;
 
 procedure TAtlasSettingsGroupsTests.MastersHaveFrames;
 var
-  Subject: TAtlasSettingsGroups;
+  mSubject: TAtlasSettingsGroups;
 begin
-  Subject := Groups([Prop('A', 'a.enabled', 'boolean', ''), Prop('X', 'a.x', 'integer', ''),
+  mSubject := Groups([Prop('A', 'a.enabled', 'boolean', ''), Prop('X', 'a.x', 'integer', ''),
     Prop('Head', 'head', 'boolean', ',"x-node":"n1"'), Prop('Exp', 'exp', 'boolean', ',"x-experimental":true'),
     Prop('Plain', 'plain', 'boolean', ''), Prop('Choice', 'choice', 'string', ',"x-node":"n2"')]);
   try
-    Assert.IsTrue(Subject.IsMaster('A'), 'mit Unteroptionen');
-    Assert.IsTrue(Subject.IsMaster('Head'), 'Kopf eines Unterpunkts, auch ohne Unteroptionen');
-    Assert.IsTrue(Subject.IsMaster('Exp'), 'experimentell: Rahmen mit Grund');
-    Assert.IsFalse(Subject.IsMaster('Plain'));
-    Assert.IsFalse(Subject.IsMaster('X'));
-    Assert.IsFalse(Subject.IsMaster('Choice'), 'nur boolesche Einstellungen');
-    Assert.IsFalse(Subject.IsMaster('GibtEsNicht'));
+    Assert.IsTrue(mSubject.IsMaster('A'), 'mit Unteroptionen');
+    Assert.IsTrue(mSubject.IsMaster('Head'), 'Kopf eines Unterpunkts, auch ohne Unteroptionen');
+    Assert.IsTrue(mSubject.IsMaster('Exp'), 'experimentell: Rahmen mit Grund');
+    Assert.IsFalse(mSubject.IsMaster('Plain'));
+    Assert.IsFalse(mSubject.IsMaster('X'));
+    Assert.IsFalse(mSubject.IsMaster('Choice'), 'nur boolesche Einstellungen');
+    Assert.IsFalse(mSubject.IsMaster('GibtEsNicht'));
   finally
-    Subject.Free;
+    mSubject.Free;
   end;
 end;
 
 procedure TAtlasSettingsGroupsTests.LockFollowsOutermostOffMaster;
 var
-  Subject: TAtlasSettingsGroups;
-  Off: TList<string>;
-  IsOn: TAtlasSettingIsOn;
-  Lock: TAtlasSettingsLock;
+  mSubject: TAtlasSettingsGroups;
+  mOff: TList<string>;
+  mIsOn: TAtlasSettingIsOn;
+  mLock: TAtlasSettingsLock;
 begin
-  Subject := Groups([Prop('A', 'a.enabled', 'boolean', ''), Prop('B', 'a.b', 'boolean', ''),
+  mSubject := Groups([Prop('A', 'a.enabled', 'boolean', ''), Prop('B', 'a.b', 'boolean', ''),
     Prop('C', 'a.b.c', 'integer', '')]);
-  Off := TList<string>.Create;
+  mOff := TList<string>.Create;
   try
-    IsOn :=
+    mIsOn :=
       function(const AName: string): Boolean
       begin
-        Result := not Off.Contains(AName);
+        Result := not mOff.Contains(AName);
       end;
-    Assert.IsFalse(Subject.LockOf('C', IsOn, True).Locked, 'alles an');
-    Off.Add('B');
-    Lock := Subject.LockOf('C', IsOn, True);
-    Assert.AreEqual<TAtlasLockReason>(lrMasterOff, Lock.Reason);
-    Assert.AreEqual('B', Lock.Master);
-    Assert.IsFalse(Subject.LockOf('B', IsOn, True).Locked, 'der Hauptschalter selbst bleibt bedienbar');
-    Off.Add('A');
-    Lock := Subject.LockOf('C', IsOn, True);
-    Assert.AreEqual('A', Lock.Master, 'der äußerste ausgeschaltete Hauptschalter');
-    Assert.AreEqual('A', Subject.LockOf('B', IsOn, True).Master, 'verschachtelte Gruppe mit gesperrt');
-    Off.Remove('B');
-    Assert.AreEqual('A', Subject.LockOf('C', IsOn, True).Master);
-    Assert.IsFalse(Subject.LockOf('GibtEsNicht', IsOn, True).Locked);
+    Assert.IsFalse(mSubject.LockOf('C', mIsOn, True).Locked, 'alles an');
+    mOff.Add('B');
+    mLock := mSubject.LockOf('C', mIsOn, True);
+    Assert.AreEqual<TAtlasLockReason>(lrMasterOff, mLock.Reason);
+    Assert.AreEqual('B', mLock.Master);
+    Assert.IsFalse(mSubject.LockOf('B', mIsOn, True).Locked, 'der Hauptschalter selbst bleibt bedienbar');
+    mOff.Add('A');
+    mLock := mSubject.LockOf('C', mIsOn, True);
+    Assert.AreEqual('A', mLock.Master, 'der äußerste ausgeschaltete Hauptschalter');
+    Assert.AreEqual('A', mSubject.LockOf('B', mIsOn, True).Master, 'verschachtelte Gruppe mit gesperrt');
+    mOff.Remove('B');
+    Assert.AreEqual('A', mSubject.LockOf('C', mIsOn, True).Master);
+    Assert.IsFalse(mSubject.LockOf('GibtEsNicht', mIsOn, True).Locked);
   finally
-    Off.Free;
-    Subject.Free;
+    mOff.Free;
+    mSubject.Free;
   end;
 end;
 
 procedure TAtlasSettingsGroupsTests.LockForExperimental;
 var
-  Subject: TAtlasSettingsGroups;
-  IsOn: TAtlasSettingIsOn;
-  Lock: TAtlasSettingsLock;
+  mSubject: TAtlasSettingsGroups;
+  mIsOn: TAtlasSettingIsOn;
+  mLock: TAtlasSettingsLock;
 begin
-  Subject := Groups([Prop('ExperimentalEnabled', 'experimental.enabled', 'boolean', ''),
+  mSubject := Groups([Prop('ExperimentalEnabled', 'experimental.enabled', 'boolean', ''),
     Prop('Exp', 'exp', 'boolean', ',"x-experimental":true'), Prop('ExpWidth', 'exp.width', 'integer', ''),
     Prop('Plain', 'plain', 'boolean', '')]);
   try
-    IsOn :=
+    mIsOn :=
       function(const AName: string): Boolean
       begin
         Result := True;
       end;
-    Lock := Subject.LockOf('Exp', IsOn, False);
-    Assert.AreEqual<TAtlasLockReason>(lrExperimental, Lock.Reason, 'auch der Hauptschalter der Funktion');
-    Assert.AreEqual(TAtlasExperimental.cMasterName, Lock.Master);
+    mLock := mSubject.LockOf('Exp', mIsOn, False);
+    Assert.AreEqual<TAtlasLockReason>(lrExperimental, mLock.Reason, 'auch der Hauptschalter der Funktion');
+    Assert.AreEqual(TAtlasExperimental.cMasterName, mLock.Master);
     Assert.AreEqual<TAtlasLockReason>(lrExperimental,
-      Subject.LockOf('ExpWidth', IsOn, False).Reason, 'Unteroption mit gesperrt');
-    Assert.IsTrue(Subject.IsExperimental('ExpWidth'));
-    Assert.IsFalse(Subject.LockOf('Plain', IsOn, False).Locked);
-    Assert.IsFalse(Subject.LockOf('ExperimentalEnabled', IsOn, False).Locked, 'der Hauptschalter nie');
-    Assert.IsFalse(Subject.LockOf('Exp', IsOn, True).Locked, 'mit experimental.enabled frei');
-    IsOn :=
+      mSubject.LockOf('ExpWidth', mIsOn, False).Reason, 'Unteroption mit gesperrt');
+    Assert.IsTrue(mSubject.IsExperimental('ExpWidth'));
+    Assert.IsFalse(mSubject.LockOf('Plain', mIsOn, False).Locked);
+    Assert.IsFalse(mSubject.LockOf('ExperimentalEnabled', mIsOn, False).Locked, 'der Hauptschalter nie');
+    Assert.IsFalse(mSubject.LockOf('Exp', mIsOn, True).Locked, 'mit experimental.enabled frei');
+    mIsOn :=
       function(const AName: string): Boolean
       begin
         Result := AName <> 'Exp';
       end;
     Assert.AreEqual<TAtlasLockReason>(lrExperimental,
-      Subject.LockOf('ExpWidth', IsOn, False).Reason, 'experimentell geht vor');
-    Assert.AreEqual<TAtlasLockReason>(lrMasterOff, Subject.LockOf('ExpWidth', IsOn, True).Reason);
+      mSubject.LockOf('ExpWidth', mIsOn, False).Reason, 'experimentell geht vor');
+    Assert.AreEqual<TAtlasLockReason>(lrMasterOff, mSubject.LockOf('ExpWidth', mIsOn, True).Reason);
   finally
-    Subject.Free;
+    mSubject.Free;
   end;
 end;
 
 procedure TAtlasSettingsGroupsTests.RealCatalogMapsEveryKey;
 var
-  Catalog: TAtlasSettingsCatalog;
-  Subject: TAtlasSettingsGroups;
-  Name, Parent, Node: string;
-  Index, Found: Integer;
-  Used: TDictionary<string, Integer>;
-  Entry: TAtlasCatalogEntry;
+  mCatalog: TAtlasSettingsCatalog;
+  mSubject: TAtlasSettingsGroups;
+  mName, mParent, mNode: string;
+  mIndex, mFound: Integer;
+  mUsed: TDictionary<string, Integer>;
+  mEntry: TAtlasCatalogEntry;
 begin
   // Wächter (#890): jede Plugin-Einstellung genau ein Unterpunkt und höchstens ein boolescher Hauptschalter.
-  Catalog := TAtlasSettingsCatalog.CreateDefault;
-  Subject := TAtlasSettingsGroups.Create(Catalog);
-  Used := TDictionary<string, Integer>.Create;
+  mCatalog := TAtlasSettingsCatalog.CreateDefault;
+  mSubject := TAtlasSettingsGroups.Create(mCatalog);
+  mUsed := TDictionary<string, Integer>.Create;
   try
-    Assert.AreEqual('', string.Join(' | ', Subject.Issues), 'Schema ohne Fehler');
-    for Name in Subject.Names do
+    Assert.AreEqual('', string.Join(' | ', mSubject.Issues), 'Schema ohne Fehler');
+    for mName in mSubject.Names do
     begin
-      Node := Subject.NodeOf(Name);
-      Assert.IsTrue((Node = '') or Subject.HasNode(Node), Name + ': ' + Node);
-      Used.AddOrSetValue(LowerCase(Node), 0);
-      Found := 0;
-      for Index := 0 to High(Subject.Nodes) do
+      mNode := mSubject.NodeOf(mName);
+      Assert.IsTrue((mNode = '') or mSubject.HasNode(mNode), mName + ': ' + mNode);
+      mUsed.AddOrSetValue(LowerCase(mNode), 0);
+      mFound := 0;
+      for mIndex := 0 to High(mSubject.Nodes) do
       begin
-        if SameText(Subject.NodeOf(Name), Subject.Nodes[Index].Id) then
+        if SameText(mSubject.NodeOf(mName), mSubject.Nodes[mIndex].Id) then
         begin
-          Inc(Found);
+          Inc(mFound);
         end;
       end;
-      if Node <> '' then
+      if mNode <> '' then
       begin
-        Assert.AreEqual(1, Found, Name);
+        Assert.AreEqual(1, mFound, mName);
       end;
-      Parent := Subject.ParentOf(Name);
-      if Parent <> '' then
+      mParent := mSubject.ParentOf(mName);
+      if mParent <> '' then
       begin
-        Index := Catalog.IndexOfName(Parent);
-        Assert.IsTrue(Index >= 0, Name + ' → ' + Parent);
-        Entry := Catalog[Index];
-        Assert.AreEqual<TAtlasSettingKind>(akBoolean, Entry.Kind, Name + ' → ' + Parent);
+        mIndex := mCatalog.IndexOfName(mParent);
+        Assert.IsTrue(mIndex >= 0, mName + ' → ' + mParent);
+        mEntry := mCatalog[mIndex];
+        Assert.AreEqual<TAtlasSettingKind>(akBoolean, mEntry.Kind, mName + ' → ' + mParent);
       end;
     end;
-    for Index := 0 to High(Subject.Nodes) do
+    for mIndex := 0 to High(mSubject.Nodes) do
     begin
-      Assert.IsTrue(Used.ContainsKey(LowerCase(Subject.Nodes[Index].Id)), 'Unterpunkt ohne Einstellung: ' +
-        Subject.Nodes[Index].Id);
+      Assert.IsTrue(mUsed.ContainsKey(LowerCase(mSubject.Nodes[mIndex].Id)), 'Unterpunkt ohne Einstellung: ' +
+        mSubject.Nodes[mIndex].Id);
     end;
   finally
-    Used.Free;
-    Subject.Free;
-    Catalog.Free;
+    mUsed.Free;
+    mSubject.Free;
+    mCatalog.Free;
   end;
 end;
 
 procedure TAtlasSettingsGroupsTests.RealCatalogKnownGroups;
 var
-  Catalog: TAtlasSettingsCatalog;
-  Subject: TAtlasSettingsGroups;
+  mCatalog: TAtlasSettingsCatalog;
+  mSubject: TAtlasSettingsGroups;
 begin
-  Catalog := TAtlasSettingsCatalog.CreateDefault;
-  Subject := TAtlasSettingsGroups.Create(Catalog);
+  mCatalog := TAtlasSettingsCatalog.CreateDefault;
+  mSubject := TAtlasSettingsGroups.Create(mCatalog);
   try
     // Präfixregel.
-    Assert.AreEqual('Minimap', Subject.ParentOf('MinimapWidth'));
-    Assert.AreEqual('WelcomePageSearch', Subject.ParentOf('WelcomePageSearchKey'));
-    Assert.AreEqual('WelcomePage', Subject.ParentOf('WelcomePageSearch'));
+    Assert.AreEqual('Minimap', mSubject.ParentOf('MinimapWidth'));
+    Assert.AreEqual('WelcomePageSearch', mSubject.ParentOf('WelcomePageSearchKey'));
+    Assert.AreEqual('WelcomePage', mSubject.ParentOf('WelcomePageSearch'));
     // x-parent: Abhängigkeit vom Atlas-Hauptschalter und Tasten unter ihrer Funktion.
-    Assert.AreEqual('Enabled', Subject.ParentOf('HoverTooltip'));
-    Assert.AreEqual('Enabled', Subject.ParentOf('PairColors'));
-    Assert.AreEqual('PairColors', Subject.ParentOf('PairGuides'));
-    Assert.AreEqual('MultiCursor', Subject.ParentOf('MultiCursorNextKey'));
-    Assert.AreEqual('', Subject.ParentOf('MetricsReport'), 'Metrikbericht hängt nicht an den Kennzahlen');
+    Assert.AreEqual('Enabled', mSubject.ParentOf('HoverTooltip'));
+    Assert.AreEqual('Enabled', mSubject.ParentOf('PairColors'));
+    Assert.AreEqual('PairColors', mSubject.ParentOf('PairGuides'));
+    Assert.AreEqual('MultiCursor', mSubject.ParentOf('MultiCursorNextKey'));
+    Assert.AreEqual('', mSubject.ParentOf('MetricsReport'), 'Metrikbericht hängt nicht an den Kennzahlen');
     // Unterpunkte.
-    Assert.AreEqual('editor.minimap', Subject.NodeOf('Minimap'));
-    Assert.AreEqual('editor.minimap', Subject.NodeOf('MinimapWidth'));
-    Assert.AreEqual('', Subject.NodeOf('PairColorsLight'), 'Reiter Farben: Hauptknoten');
-    Assert.IsTrue(Subject.IsMaster('Minimap'));
-    Assert.IsTrue(Subject.IsExperimental('MinimapWidth'));
+    Assert.AreEqual('editor.minimap', mSubject.NodeOf('Minimap'));
+    Assert.AreEqual('editor.minimap', mSubject.NodeOf('MinimapWidth'));
+    Assert.AreEqual('', mSubject.NodeOf('PairColorsLight'), 'Reiter Farben: Hauptknoten');
+    Assert.IsTrue(mSubject.IsMaster('Minimap'));
+    Assert.IsTrue(mSubject.IsExperimental('MinimapWidth'));
   finally
-    Subject.Free;
-    Catalog.Free;
+    mSubject.Free;
+    mCatalog.Free;
   end;
 end;
 

@@ -91,29 +91,29 @@ end;
 
 procedure TMarkerRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
 var
-  Token: TPascalToken;
+  mToken: TPascalToken;
 begin
-  for Token in AContext.Tree.Tokens do
+  for mToken in AContext.Tree.Tokens do
   begin
-    if (Token.Kind = TPascalTokenKind.Identifier) and SameText(Token.Text, 'Marker') then
+    if (mToken.Kind = TPascalTokenKind.Identifier) and SameText(mToken.Text, 'Marker') then
     begin
-      AReport.Add(TTextRange.Create(Token.StartPos, Token.EndPos), 'Marker gefunden');
+      AReport.Add(TTextRange.Create(mToken.StartPos, mToken.EndPos), 'Marker gefunden');
     end;
   end;
 end;
 
 const
-  LB = #13#10;
-  Body =
-    'procedure P;' + LB +
-    'var' + LB +
-    '  L: TStringList;' + LB +
-    'begin' + LB +
-    '  L := TStringList.Create;' + LB +
-    '  L.Add(''x'');' + LB +
+  cLB = #13#10;
+  cBody =
+    'procedure P;' + cLB +
+    'var' + cLB +
+    '  L: TStringList;' + cLB +
+    'begin' + cLB +
+    '  L := TStringList.Create;' + cLB +
+    '  L.Add(''x'');' + cLB +
     'end;';
 
-  TryFinallyBefore =
+  cTryFinallyBefore =
     'unit Atlas.Common.Editing.CodeActions.TryFinallyGolden;'#13#10 +
     #13#10 +
     '// Golden-Datei für "try/finally ergänzen" (#42): genau das, was die Aktion'#13#10 +
@@ -202,8 +202,8 @@ const
 
 function Apply(const AText: string; const AEdit: TRuleEdit): string;
 var
-  Lines: TArray<string>;
-  I, Offset: Integer;
+  mLines: TArray<string>;
+  I, mOffset: Integer;
   function OffsetOf(const APos: TTextPosition): Integer;
   var
     L: Integer;
@@ -211,52 +211,52 @@ var
     Result := 0;
     for L := 0 to APos.Line - 1 do
     begin
-      Inc(Result, Length(Lines[L]) + 1);
+      Inc(Result, Length(mLines[L]) + 1);
     end;
     Inc(Result, APos.Character);
   end;
 begin
-  Lines := AText.Split([#10]);
-  Offset := OffsetOf(AEdit.Range.StartPos);
+  mLines := AText.Split([#10]);
+  mOffset := OffsetOf(AEdit.Range.StartPos);
   I := OffsetOf(AEdit.Range.EndPos);
-  Result := Copy(AText, 1, Offset) + AEdit.NewText + Copy(AText, I + 1, MaxInt);
+  Result := Copy(AText, 1, mOffset) + AEdit.NewText + Copy(AText, I + 1, MaxInt);
 end;
 
 /// <summary>Anzahl der Syntaxfehler in AText.</summary>
 function SyntaxErrors(const AText: string): Integer;
 var
-  Tree: TSyntaxTree;
+  mTree: TSyntaxTree;
 begin
-  Tree := TPascalParser.Parse(AText);
+  mTree := TPascalParser.Parse(AText);
   try
-    Result := Length(Tree.Diagnostics);
+    Result := Length(mTree.Diagnostics);
   finally
-    Tree.Free;
+    mTree.Free;
   end;
 end;
 
 /// <summary>Datei unter Tests/ ab dem Programmordner bzw. dem aktuellen Ordner aufwärts; '' ohne.</summary>
 function TestsFile(const ARelative: string): string;
 var
-  Starts: TArray<string>;
-  Start, Directory: string;
+  mStarts: TArray<string>;
+  mStart, mDirectory: string;
 begin
-  Starts := [ExtractFileDir(ParamStr(0)), GetCurrentDir];
-  for Start in Starts do
+  mStarts := [ExtractFileDir(ParamStr(0)), GetCurrentDir];
+  for mStart in mStarts do
   begin
-    Directory := Start;
-    while Directory <> '' do
+    mDirectory := mStart;
+    while mDirectory <> '' do
     begin
-      Result := TPath.Combine(Directory, TPath.Combine('Tests', ARelative));
+      Result := TPath.Combine(mDirectory, TPath.Combine('Tests', ARelative));
       if TFile.Exists(Result) then
       begin
         Exit;
       end;
-      if ExtractFileDir(Directory) = Directory then
+      if ExtractFileDir(mDirectory) = mDirectory then
       begin
         Break;
       end;
-      Directory := ExtractFileDir(Directory);
+      mDirectory := ExtractFileDir(mDirectory);
     end;
   end;
   Result := '';
@@ -266,19 +266,19 @@ end;
 function TryWith(const AText: string; const ARange: TTextRange; const AStyle: TFormatStyle;
   out ANewText: string): Boolean;
 var
-  Tree: TSyntaxTree;
-  Action: TCodeAction;
+  mTree: TSyntaxTree;
+  mAction: TCodeAction;
 begin
   ANewText := AText;
-  Tree := TPascalParser.Parse(AText);
+  mTree := TPascalParser.Parse(AText);
   try
-    Result := TCodeActions.TryFinally(AText, Tree, ARange, AStyle, Action);
+    Result := TCodeActions.TryFinally(AText, mTree, ARange, AStyle, mAction);
   finally
-    Tree.Free;
+    mTree.Free;
   end;
   if Result then
   begin
-    ANewText := Apply(AText, Action.Edits[0]);
+    ANewText := Apply(AText, mAction.Edits[0]);
   end;
 end;
 
@@ -286,57 +286,57 @@ end;
 
 procedure TCodeActionTests.TryFinallyAfterCreate;
 var
-  Action: TCodeAction;
+  mAction: TCodeAction;
 begin
-  Assert.IsTrue(TCodeActions.TryFinally(Body, 4, Action));
-  Assert.AreEqual(cRewriteKind, Action.Kind);
-  Assert.AreEqual(1, Integer(Length(Action.Edits)));
-  Assert.AreEqual(4, Action.Edits[0].Range.StartPos.Line);
-  Assert.AreEqual(Integer(Length('  L := TStringList.Create;')), Action.Edits[0].Range.StartPos.Character);
+  Assert.IsTrue(TCodeActions.TryFinally(cBody, 4, mAction));
+  Assert.AreEqual(cRewriteKind, mAction.Kind);
+  Assert.AreEqual(1, Integer(Length(mAction.Edits)));
+  Assert.AreEqual(4, mAction.Edits[0].Range.StartPos.Line);
+  Assert.AreEqual(Integer(Length('  L := TStringList.Create;')), mAction.Edits[0].Range.StartPos.Character);
 end;
 
 procedure TCodeActionTests.TryFinallyResultCompilesStructurally;
 var
-  Action: TCodeAction;
-  NewText: string;
+  mAction: TCodeAction;
+  mNewText: string;
 begin
-  Assert.IsTrue(TCodeActions.TryFinally(Body, 4, Action));
-  NewText := Apply(Body, Action.Edits[0]);
+  Assert.IsTrue(TCodeActions.TryFinally(cBody, 4, mAction));
+  mNewText := Apply(cBody, mAction.Edits[0]);
   // Die folgenden Anweisungen stehen im try, der Block bleibt nicht leer.
   Assert.AreEqual(
-    'procedure P;' + LB + 'var' + LB + '  L: TStringList;' + LB + 'begin' + LB +
-    '  L := TStringList.Create;' + LB + '  try' + LB + '    L.Add(''x'');' + LB + '  finally' + LB + '    L.Free;' + LB +
-    '  end;' + LB + 'end;', NewText);
-  Assert.AreEqual(0, SyntaxErrors(NewText));
+    'procedure P;' + cLB + 'var' + cLB + '  L: TStringList;' + cLB + 'begin' + cLB +
+    '  L := TStringList.Create;' + cLB + '  try' + cLB + '    L.Add(''x'');' + cLB + '  finally' + cLB + '    L.Free;' + cLB +
+    '  end;' + cLB + 'end;', mNewText);
+  Assert.AreEqual(0, SyntaxErrors(mNewText));
 end;
 
 procedure TCodeActionTests.ResultGetsTryExceptInsteadOfFree;
 var
-  Action: TCodeAction;
-  Text, NewText: string;
+  mAction: TCodeAction;
+  mText, mNewText: string;
 begin
   // Ein Rückgabewert darf nicht im finally freigegeben werden, nur im Fehlerfall.
-  Text := 'function F: TList;' + LB + 'begin' + LB + '  Result := TList.Create;' + LB + '  Result.Add(nil);' + LB +
+  mText := 'function F: TList;' + cLB + 'begin' + cLB + '  Result := TList.Create;' + cLB + '  Result.Add(nil);' + cLB +
     'end;';
-  Assert.IsTrue(TCodeActions.TryFinally(Text, 2, Action));
-  NewText := Apply(Text, Action.Edits[0]);
-  Assert.AreEqual('function F: TList;' + LB + 'begin' + LB + '  Result := TList.Create;' + LB + '  try' + LB +
-    '    Result.Add(nil);' + LB + '  except' + LB + '    Result.Free;' + LB + '    raise;' + LB + '  end;' + LB + 'end;',
-    NewText);
-  Assert.AreEqual(0, Pos('finally', NewText));
-  Assert.AreEqual(0, SyntaxErrors(NewText));
+  Assert.IsTrue(TCodeActions.TryFinally(mText, 2, mAction));
+  mNewText := Apply(mText, mAction.Edits[0]);
+  Assert.AreEqual('function F: TList;' + cLB + 'begin' + cLB + '  Result := TList.Create;' + cLB + '  try' + cLB +
+    '    Result.Add(nil);' + cLB + '  except' + cLB + '    Result.Free;' + cLB + '    raise;' + cLB + '  end;' + cLB + 'end;',
+    mNewText);
+  Assert.AreEqual(0, Pos('finally', mNewText));
+  Assert.AreEqual(0, SyntaxErrors(mNewText));
 end;
 
 procedure TCodeActionTests.OrganizeImportsAsSourceAction;
 var
-  Action: TCodeAction;
+  mAction: TCodeAction;
 begin
-  Assert.IsTrue(TCodeActions.OrganizeImports('unit A;' + LB + 'interface' + LB + 'uses B, B;' + LB +
-    'implementation' + LB + 'end.', False, Action));
-  Assert.AreEqual(cOrganizeImportsKind, Action.Kind);
-  Assert.AreEqual('B', Action.Edits[0].NewText);
-  Assert.IsFalse(TCodeActions.OrganizeImports('unit A;' + LB + 'interface' + LB + 'uses B, C;' + LB +
-    'implementation' + LB + 'end.', True, Action));
+  Assert.IsTrue(TCodeActions.OrganizeImports('unit A;' + cLB + 'interface' + cLB + 'uses B, B;' + cLB +
+    'implementation' + cLB + 'end.', False, mAction));
+  Assert.AreEqual(cOrganizeImportsKind, mAction.Kind);
+  Assert.AreEqual('B', mAction.Edits[0].NewText);
+  Assert.IsFalse(TCodeActions.OrganizeImports('unit A;' + cLB + 'interface' + cLB + 'uses B, C;' + cLB +
+    'implementation' + cLB + 'end.', True, mAction));
 end;
 
 procedure TCodeActionTests.MatchesRequestedKinds;
@@ -351,226 +351,227 @@ end;
 
 procedure TCodeActionTests.NoTryFinallyWhenAlreadyProtected;
 var
-  Action: TCodeAction;
+  mAction: TCodeAction;
 begin
-  Assert.IsFalse(TCodeActions.TryFinally('procedure P;' + LB + 'var' + LB + '  L: T;' + LB + 'begin' + LB +
-    '  L := T.Create;' + LB + LB + '  try' + LB + '    L.Run;' + LB + '  finally' + LB + '    L.Free;' + LB + '  end;' + LB +
-    'end;', 4, Action));
+  Assert.IsFalse(TCodeActions.TryFinally('procedure P;' + cLB + 'var' + cLB + '  L: T;' + cLB + 'begin' + cLB +
+    '  L := T.Create;' + cLB + cLB + '  try' + cLB + '    L.Run;' + cLB + '  finally' + cLB + '    L.Free;' + cLB + '  end;' + cLB +
+    'end;', 4, mAction));
 end;
 
 procedure TCodeActionTests.NoTryFinallyWithoutCreate;
 var
-  Action: TCodeAction;
+  mAction: TCodeAction;
 begin
-  Assert.IsFalse(TCodeActions.TryFinally(Body, 5, Action));
-  Assert.IsFalse(TCodeActions.TryFinally(Body, 2, Action));
+  Assert.IsFalse(TCodeActions.TryFinally(cBody, 5, mAction));
+  Assert.IsFalse(TCodeActions.TryFinally(cBody, 2, mAction));
 end;
 
 procedure TCodeActionTests.NoTryFinallyForFields;
 var
-  Action: TCodeAction;
+  mAction: TCodeAction;
 begin
-  Assert.IsFalse(TCodeActions.TryFinally('procedure TA.P;' + LB + 'begin' + LB + '  FList := TList.Create;' + LB +
-    '  FList.Add(nil);' + LB + 'end;', 2, Action));
-  Assert.IsFalse(TCodeActions.TryFinally('procedure TA.P;' + LB + 'begin' + LB + '  Self.FList := TList.Create;' + LB +
-    '  FList.Add(nil);' + LB + 'end;', 2, Action));
+  Assert.IsFalse(TCodeActions.TryFinally('procedure TA.P;' + cLB + 'begin' + cLB + '  FList := TList.Create;' + cLB +
+    '  FList.Add(nil);' + cLB + 'end;', 2, mAction));
+  Assert.IsFalse(TCodeActions.TryFinally('procedure TA.P;' + cLB + 'begin' + cLB + '  Self.FList := TList.Create;' + cLB +
+    '  FList.Add(nil);' + cLB + 'end;', 2, mAction));
   // Gleicher Name wie ein Feld, aber lokal deklariert: Aktion.
-  Assert.IsTrue(TCodeActions.TryFinally('procedure TA.P;' + LB + 'var' + LB + '  FList: TList;' + LB + 'begin' + LB +
-    '  FList := TList.Create;' + LB + '  FList.Add(nil);' + LB + 'end;', 4, Action));
+  Assert.IsTrue(TCodeActions.TryFinally('procedure TA.P;' + cLB + 'var' + cLB + '  FList: TList;' + cLB + 'begin' + cLB +
+    '  FList := TList.Create;' + cLB + '  FList.Add(nil);' + cLB + 'end;', 4, mAction));
 end;
 
 procedure TCodeActionTests.NoTryFinallyWhenNothingFollows;
 var
-  Action: TCodeAction;
+  mAction: TCodeAction;
 begin
-  Assert.IsFalse(TCodeActions.TryFinally('procedure P;' + LB + 'var' + LB + '  L: TList;' + LB + 'begin' + LB +
-    '  L := TList.Create;' + LB + 'end;', 4, Action));
+  Assert.IsFalse(TCodeActions.TryFinally('procedure P;' + cLB + 'var' + cLB + '  L: TList;' + cLB + 'begin' + cLB +
+    '  L := TList.Create;' + cLB + 'end;', 4, mAction));
   // Nur die Freigabe folgt: Der try-Block bliebe leer.
-  Assert.IsFalse(TCodeActions.TryFinally('procedure P;' + LB + 'var' + LB + '  L: TList;' + LB + 'begin' + LB +
-    '  L := TList.Create;' + LB + '  L.Free;' + LB + 'end;', 4, Action));
+  Assert.IsFalse(TCodeActions.TryFinally('procedure P;' + cLB + 'var' + cLB + '  L: TList;' + cLB + 'begin' + cLB +
+    '  L := TList.Create;' + cLB + '  L.Free;' + cLB + 'end;', 4, mAction));
   // Einzelne Anweisung hinter then: kein Platz für try.
-  Assert.IsFalse(TCodeActions.TryFinally('procedure P(B: Boolean);' + LB + 'var' + LB + '  L: TList;' + LB + 'begin' +
-    LB + '  if B then' + LB + '    L := TList.Create;' + LB + '  L.Add(nil);' + LB + 'end;', 5, Action));
+  Assert.IsFalse(TCodeActions.TryFinally('procedure P(B: Boolean);' + cLB + 'var' + cLB + '  L: TList;' + cLB + 'begin' +
+    cLB + '  if B then' + cLB + '    L := TList.Create;' + cLB + '  L.Add(nil);' + cLB + 'end;', 5, mAction));
 end;
 
 procedure TCodeActionTests.NoTryFinallyWhenObjectEscapes;
 const
-  Head = 'procedure P(AOwner: TComponent; AItems: TList);' + LB + 'var' + LB + '  L: TList;' + LB + '  I: IInterface;' +
-    LB + 'begin' + LB;
+  cHead = 'procedure P(AOwner: TComponent; AItems: TList);' + cLB + 'var' + cLB + '  L: TList;' + cLB + '  I: IInterface;' +
+    cLB + 'begin' + cLB;
 var
-  Action: TCodeAction;
+  mAction: TCodeAction;
 begin
-  Assert.IsTrue(TCodeActions.TryFinally(Head + '  L := TList.Create;' + LB + '  L.Add(nil);' + LB + 'end;', 5, Action));
-  Assert.IsFalse(TCodeActions.TryFinally(Head + '  L := TList.Create;' + LB + '  AItems.Add(L);' + LB + 'end;', 5,
-    Action));
-  Assert.IsFalse(TCodeActions.TryFinally(Head + '  L := TList.Create;' + LB + '  FKeep := L;' + LB + 'end;', 5, Action));
-  Assert.IsFalse(TCodeActions.TryFinally(Head + '  L := TList.Create;' + LB + '  L.Free;' + LB + '  L.Add(nil);' + LB +
-    'end;', 5, Action));
-  Assert.IsFalse(TCodeActions.TryFinally(Head + '  L := TList.Create(AOwner);' + LB + '  L.Add(nil);' + LB + 'end;', 5,
-    Action));
-  Assert.IsFalse(TCodeActions.TryFinally(Head + '  I := TInterfacedObject.Create;' + LB + '  I._AddRef;' + LB +
-    'end;', 5, Action));
+  Assert.IsTrue(TCodeActions.TryFinally(cHead + '  L := TList.Create;' + cLB + '  L.Add(nil);' + cLB + 'end;', 5, mAction));
+  Assert.IsFalse(TCodeActions.TryFinally(cHead + '  L := TList.Create;' + cLB + '  AItems.Add(L);' + cLB + 'end;', 5,
+    mAction));
+  Assert.IsFalse(TCodeActions.TryFinally(cHead + '  L := TList.Create;' + cLB + '  FKeep := L;' + cLB + 'end;', 5, mAction));
+  Assert.IsFalse(TCodeActions.TryFinally(cHead + '  L := TList.Create;' + cLB + '  L.Free;' + cLB + '  L.Add(nil);' + cLB +
+    'end;', 5, mAction));
+  Assert.IsFalse(TCodeActions.TryFinally(cHead + '  L := TList.Create(AOwner);' + cLB + '  L.Add(nil);' + cLB + 'end;', 5,
+    mAction));
+  Assert.IsFalse(TCodeActions.TryFinally(cHead + '  I := TInterfacedObject.Create;' + cLB + '  I._AddRef;' + cLB +
+    'end;', 5, mAction));
 end;
 
 procedure TCodeActionTests.TryFinallyEnclosesSelectionOnly;
 const
-  Text = 'procedure P;' + LB + 'var' + LB + '  L: TList;' + LB + 'begin' + LB + '  L := TList.Create;' + LB +
-    '  L.Add(nil);' + LB + '  L.Add(nil);' + LB + '  Done;' + LB + 'end;';
+  cText = 'procedure P;' + cLB + 'var' + cLB + '  L: TList;' + cLB + 'begin' + cLB + '  L := TList.Create;' + cLB +
+    '  L.Add(nil);' + cLB + '  L.Add(nil);' + cLB + '  Done;' + cLB + 'end;';
 var
-  NewText: string;
+  mNewText: string;
 begin
   // Auswahl von der Create-Zeile bis in die zweite Add-Zeile: Done bleibt hinter dem try.
-  Assert.IsTrue(TryWith(Text, TTextRange.Create(4, 2, 6, 5), TFormatStyle.Default, NewText));
-  Assert.AreEqual('procedure P;' + LB + 'var' + LB + '  L: TList;' + LB + 'begin' + LB + '  L := TList.Create;' + LB +
-    '  try' + LB + '    L.Add(nil);' + LB + '    L.Add(nil);' + LB + '  finally' + LB + '    L.Free;' + LB + '  end;' +
-    LB + '  Done;' + LB + 'end;', NewText);
+  Assert.IsTrue(TryWith(cText, TTextRange.Create(4, 2, 6, 5), TFormatStyle.Default, mNewText));
+  Assert.AreEqual('procedure P;' + cLB + 'var' + cLB + '  L: TList;' + cLB + 'begin' + cLB + '  L := TList.Create;' + cLB +
+    '  try' + cLB + '    L.Add(nil);' + cLB + '    L.Add(nil);' + cLB + '  finally' + cLB + '    L.Free;' + cLB + '  end;' +
+    cLB + '  Done;' + cLB + 'end;', mNewText);
   // Auswahl bis zum Anfang der Zeile von Done: Die Zeile zählt nicht mit.
-  Assert.IsTrue(TryWith(Text, TTextRange.Create(4, 0, 7, 0), TFormatStyle.Default, NewText));
-  Assert.IsTrue(Pos('  end;' + LB + '  Done;', NewText) > 0, NewText);
+  Assert.IsTrue(TryWith(cText, TTextRange.Create(4, 0, 7, 0), TFormatStyle.Default, mNewText));
+  Assert.IsTrue(Pos('  end;' + cLB + '  Done;', mNewText) > 0, mNewText);
 end;
 
 procedure TCodeActionTests.TryFinallyEndsWithInnerBlock;
 const
-  Text = 'procedure P(B: Boolean);' + LB + 'var' + LB + '  L: TList;' + LB + 'begin' + LB + '  if B then' + LB +
-    '  begin' + LB + '    L := TList.Create;' + LB + '    L.Add(nil);' + LB + '  end;' + LB + '  Done;' + LB + 'end;';
+  cText = 'procedure P(B: Boolean);' + cLB + 'var' + cLB + '  L: TList;' + cLB + 'begin' + cLB + '  if B then' + cLB +
+    '  begin' + cLB + '    L := TList.Create;' + cLB + '    L.Add(nil);' + cLB + '  end;' + cLB + '  Done;' + cLB + 'end;';
 var
-  NewText: string;
+  mNewText: string;
 begin
-  Assert.IsTrue(TryWith(Text, TTextRange.Create(6, 0, 6, 0), TFormatStyle.Default, NewText));
-  Assert.AreEqual('procedure P(B: Boolean);' + LB + 'var' + LB + '  L: TList;' + LB + 'begin' + LB + '  if B then' + LB +
-    '  begin' + LB + '    L := TList.Create;' + LB + '    try' + LB + '      L.Add(nil);' + LB + '    finally' + LB +
-    '      L.Free;' + LB + '    end;' + LB + '  end;' + LB + '  Done;' + LB + 'end;', NewText);
-  Assert.AreEqual(0, SyntaxErrors(NewText));
+  Assert.IsTrue(TryWith(cText, TTextRange.Create(6, 0, 6, 0), TFormatStyle.Default, mNewText));
+  Assert.AreEqual('procedure P(B: Boolean);' + cLB + 'var' + cLB + '  L: TList;' + cLB + 'begin' + cLB + '  if B then' + cLB +
+    '  begin' + cLB + '    L := TList.Create;' + cLB + '    try' + cLB + '      L.Add(nil);' + cLB + '    finally' + cLB +
+    '      L.Free;' + cLB + '    end;' + cLB + '  end;' + cLB + '  Done;' + cLB + 'end;', mNewText);
+  Assert.AreEqual(0, SyntaxErrors(mNewText));
 end;
 
 procedure TCodeActionTests.TryFinallyFollowsFormatStyle;
 const
-  Text = 'procedure P;' + LB + 'var' + LB + '    L: TList;' + LB + 'begin' + LB + '    L := TList.Create;' + LB +
-    '    L.Add(nil);' + LB + 'end;';
+  cText = 'procedure P;' + cLB + 'var' + cLB + '    L: TList;' + cLB + 'begin' + cLB + '    L := TList.Create;' + cLB +
+    '    L.Add(nil);' + cLB + 'end;';
 var
-  Style: TFormatStyle;
-  NewText: string;
+  mStyle: TFormatStyle;
+  mNewText: string;
 begin
-  Style := TFormatStyle.Default;
-  Style.IndentSize := 4;
-  Assert.IsTrue(TryWith(Text, TTextRange.Create(4, 0, 4, 0), Style, NewText));
-  Assert.IsTrue(Pos('    try' + LB + '        L.Add(nil);' + LB + '    finally' + LB + '        L.Free;' + LB +
-    '    end;', NewText) > 0, NewText);
-  Style.UseTabs := True;
-  Assert.IsTrue(TryWith(Text, TTextRange.Create(4, 0, 4, 0), Style, NewText));
-  Assert.IsTrue(Pos('    try' + LB + #9'    L.Add(nil);' + LB + '    finally' + LB + '    '#9'L.Free;', NewText) > 0,
-    NewText);
+  mStyle := TFormatStyle.Default;
+  mStyle.IndentSize := 4;
+  Assert.IsTrue(TryWith(cText, TTextRange.Create(4, 0, 4, 0), mStyle, mNewText));
+  Assert.IsTrue(Pos('    try' + cLB + '        L.Add(nil);' + cLB + '    finally' + cLB + '        L.Free;' + cLB +
+    '    end;', mNewText) > 0, mNewText);
+  mStyle.UseTabs := True;
+  Assert.IsTrue(TryWith(cText, TTextRange.Create(4, 0, 4, 0), mStyle, mNewText));
+  Assert.IsTrue(Pos('    try' + cLB + #9'    L.Add(nil);' + cLB + '    finally' + cLB + '    '#9'L.Free;', mNewText) > 0,
+    mNewText);
 end;
 
 procedure TCodeActionTests.TryFinallyMatchesGoldenFile;
 const
   // Zeilen mit Create, von unten nach oben, damit die Zeilennummern darüber gelten.
-  Lines: array[0..6] of Integer = (80, 73, 64, 55, 47, 39, 33);
-  Expected: array[0..6] of Boolean = (True, True, True, True, True, False, False);
+  cLines: array[0..6] of Integer = (80, 73, 64, 55, 47, 39, 33);
+  cExpected: array[0..6] of Boolean = (True, True, True, True, True, False, False);
 var
-  FileName, Golden, Text: string;
-  Index: Integer;
-  Action: TCodeAction;
+  mFileName, mGolden, mText: string;
+  mIndex: Integer;
+  mAction: TCodeAction;
 begin
-  FileName := TestsFile(TPath.Combine('Common', TPath.Combine('Editing',
+  mFileName := TestsFile(TPath.Combine('Common', TPath.Combine('Editing',
     'Atlas.Common.Editing.CodeActions.TryFinallyGolden.pas')));
-  Assert.AreNotEqual('', FileName, 'Golden-Datei nicht gefunden');
-  Golden := TFile.ReadAllText(FileName, TEncoding.UTF8);
-  if (Golden <> '') and (Golden[1] = #$FEFF) then
+  Assert.AreNotEqual('', mFileName, 'Golden-Datei nicht gefunden');
+  mGolden := TFile.ReadAllText(mFileName, TEncoding.UTF8);
+  if (mGolden <> '') and (mGolden[1] = #$FEFF) then
   begin
-    Delete(Golden, 1, 1);
+    Delete(mGolden, 1, 1);
   end;
-  Text := TryFinallyBefore;
-  for Index := 0 to High(Lines) do
+  mText := cTryFinallyBefore;
+  for mIndex := 0 to High(cLines) do
   begin
-    Assert.AreEqual(Expected[Index], TCodeActions.TryFinally(Text, Lines[Index], Action), IntToStr(Lines[Index]));
-    if Expected[Index] then
+    Assert.AreEqual(cExpected[mIndex], TCodeActions.TryFinally(mText, cLines[mIndex], mAction),
+      IntToStr(cLines[mIndex]));
+    if cExpected[mIndex] then
     begin
-      Text := Apply(Text, Action.Edits[0]);
+      mText := Apply(mText, mAction.Edits[0]);
     end;
   end;
-  Assert.AreEqual(Golden, Text);
-  Assert.AreEqual(0, SyntaxErrors(Text));
+  Assert.AreEqual(mGolden, mText);
+  Assert.AreEqual(0, SyntaxErrors(mText));
 end;
 
 procedure TCodeActionTests.SuppressLineInsertsCommentAbove;
 var
-  Edit: TRuleEdit;
+  mEdit: TRuleEdit;
 begin
-  Edit := TCodeActions.SuppressLine(Body, 5, 'marker');
-  Assert.AreEqual(5, Edit.Range.StartPos.Line);
-  Assert.AreEqual(0, Edit.Range.StartPos.Character);
-  Assert.AreEqual('  // lsp-ignore: marker' + LB, Edit.NewText);
+  mEdit := TCodeActions.SuppressLine(cBody, 5, 'marker');
+  Assert.AreEqual(5, mEdit.Range.StartPos.Line);
+  Assert.AreEqual(0, mEdit.Range.StartPos.Character);
+  Assert.AreEqual('  // lsp-ignore: marker' + cLB, mEdit.NewText);
 end;
 
 procedure TCodeActionTests.SuppressLineExtendsExistingComment;
 var
-  Edit: TRuleEdit;
+  mEdit: TRuleEdit;
 begin
-  Edit := TCodeActions.SuppressLine('begin' + LB + '  // lsp-ignore: a' + LB + '  X;' + LB + 'end;', 2, 'b');
-  Assert.AreEqual(1, Edit.Range.StartPos.Line);
-  Assert.AreEqual(Integer(Length('  // lsp-ignore: a')), Edit.Range.StartPos.Character);
-  Assert.AreEqual(', b', Edit.NewText);
+  mEdit := TCodeActions.SuppressLine('begin' + cLB + '  // lsp-ignore: a' + cLB + '  X;' + cLB + 'end;', 2, 'b');
+  Assert.AreEqual(1, mEdit.Range.StartPos.Line);
+  Assert.AreEqual(Integer(Length('  // lsp-ignore: a')), mEdit.Range.StartPos.Character);
+  Assert.AreEqual(', b', mEdit.NewText);
 end;
 
 procedure TCodeActionTests.SuppressLineInCrOnlyText;
 var
-  Edit: TRuleEdit;
+  mEdit: TRuleEdit;
 begin
-  Edit := TCodeActions.SuppressLine('begin'#13'  // lsp-ignore: a'#13'  X;'#13'end;', 2, 'b');
-  Assert.AreEqual(1, Edit.Range.StartPos.Line);
-  Assert.AreEqual(Integer(Length('  // lsp-ignore: a')), Edit.Range.StartPos.Character);
-  Assert.AreEqual(', b', Edit.NewText);
+  mEdit := TCodeActions.SuppressLine('begin'#13'  // lsp-ignore: a'#13'  X;'#13'end;', 2, 'b');
+  Assert.AreEqual(1, mEdit.Range.StartPos.Line);
+  Assert.AreEqual(Integer(Length('  // lsp-ignore: a')), mEdit.Range.StartPos.Character);
+  Assert.AreEqual(', b', mEdit.NewText);
 end;
 
 procedure TCodeActionTests.SuppressFileAtTop;
 var
-  Edit: TRuleEdit;
+  mEdit: TRuleEdit;
 begin
-  Edit := TCodeActions.SuppressFile('unit U;' + #10, 'marker');
-  Assert.AreEqual(0, Edit.Range.StartPos.Line);
-  Assert.AreEqual('// lsp-ignore-file: marker' + #10, Edit.NewText);
+  mEdit := TCodeActions.SuppressFile('unit U;' + #10, 'marker');
+  Assert.AreEqual(0, mEdit.Range.StartPos.Line);
+  Assert.AreEqual('// lsp-ignore-file: marker' + #10, mEdit.NewText);
 end;
 
 procedure TCodeActionTests.UnusedSuppressionReportedWithRemoval;
 var
-  Findings: TArray<TRuleFinding>;
+  mFindings: TArray<TRuleFinding>;
 begin
-  Findings := TRuleAssert.Findings(TMarkerRule.Create,
-    'unit U; interface implementation' + LB + '  // lsp-ignore: marker' + LB + 'var X: Integer;' + LB + 'end.');
-  Assert.AreEqual(1, Integer(Length(Findings)));
-  Assert.AreEqual(cUnusedSuppressionRuleId, Findings[0].RuleId);
-  Assert.AreEqual(Ord(TRuleSeverity.Hint), Ord(Findings[0].Severity));
-  Assert.AreEqual(1, Integer(Length(Findings[0].Fixes)));
+  mFindings := TRuleAssert.Findings(TMarkerRule.Create,
+    'unit U; interface implementation' + cLB + '  // lsp-ignore: marker' + cLB + 'var X: Integer;' + cLB + 'end.');
+  Assert.AreEqual(1, Integer(Length(mFindings)));
+  Assert.AreEqual(cUnusedSuppressionRuleId, mFindings[0].RuleId);
+  Assert.AreEqual(Ord(TRuleSeverity.Hint), Ord(mFindings[0].Severity));
+  Assert.AreEqual(1, Integer(Length(mFindings[0].Fixes)));
   // Eigene Zeile: Die ganze Zeile entfällt.
-  Assert.AreEqual(1, Findings[0].Fixes[0].Edits[0].Range.StartPos.Line);
-  Assert.AreEqual(0, Findings[0].Fixes[0].Edits[0].Range.StartPos.Character);
-  Assert.AreEqual(2, Findings[0].Fixes[0].Edits[0].Range.EndPos.Line);
+  Assert.AreEqual(1, mFindings[0].Fixes[0].Edits[0].Range.StartPos.Line);
+  Assert.AreEqual(0, mFindings[0].Fixes[0].Edits[0].Range.StartPos.Character);
+  Assert.AreEqual(2, mFindings[0].Fixes[0].Edits[0].Range.EndPos.Line);
   // Ungenutzte Unterdrückungen zu entfernen ist sicher und läuft über source.fixAll (#182).
-  Assert.IsTrue(Findings[0].Fixes[0].Safe);
+  Assert.IsTrue(mFindings[0].Fixes[0].Safe);
 end;
 
 procedure TCodeActionTests.UsedSuppressionNotReported;
 begin
   TRuleAssert.Silent(TMarkerRule.Create,
-    'unit U; interface implementation' + LB + '  // lsp-ignore: marker' + LB + 'var Marker: Integer;' + LB + 'end.');
+    'unit U; interface implementation' + cLB + '  // lsp-ignore: marker' + cLB + 'var Marker: Integer;' + cLB + 'end.');
 end;
 
 procedure TCodeActionTests.SuppressionForUnknownRuleNotReported;
 begin
   // Kennung einer Regel, die hier nicht lief: keine unused-suppression (unbekannte Kennungen siehe #41).
   TRuleAssert.Silent(TMarkerRule.Create,
-    'unit U; interface implementation' + LB + 'var X: Integer; // lsp-ignore: empty-except' + LB + 'end.');
+    'unit U; interface implementation' + cLB + 'var X: Integer; // lsp-ignore: empty-except' + cLB + 'end.');
 end;
 
 procedure TCodeActionTests.SwapAssignmentsIsRewrite;
 var
-  Action: TCodeAction;
+  mAction: TCodeAction;
 begin
-  Assert.IsTrue(TCodeActions.SwapAssignments('  A := B;', TTextRange.Create(0, 0, 0, 0), nil, Action));
-  Assert.AreEqual(cRewriteKind, Action.Kind);
-  Assert.AreEqual('  B := A;', Action.Edits[0].NewText);
-  Assert.IsFalse(TCodeActions.SwapAssignments('  A := F(B);', TTextRange.Create(0, 0, 0, 0), nil, Action));
+  Assert.IsTrue(TCodeActions.SwapAssignments('  A := B;', TTextRange.Create(0, 0, 0, 0), nil, mAction));
+  Assert.AreEqual(cRewriteKind, mAction.Kind);
+  Assert.AreEqual('  B := A;', mAction.Edits[0].NewText);
+  Assert.IsFalse(TCodeActions.SwapAssignments('  A := F(B);', TTextRange.Create(0, 0, 0, 0), nil, mAction));
 end;
 
 initialization

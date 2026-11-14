@@ -38,68 +38,68 @@ end;
 
 procedure TLspNamespacesTests.ReadReturnsWrittenValue;
 var
-  Field, Value: TArray<string>;
+  mField, mValue: TArray<string>;
 begin
-  Field := nil;
-  TLspNamespaces.Write(Field, ['System', 'Vcl']);
-  Value := TLspNamespaces.Read(Field);
-  Assert.AreEqual(2, Integer(Length(Value)));
-  Assert.AreEqual('System', Value[0]);
-  Assert.AreEqual('Vcl', Value[1]);
+  mField := nil;
+  TLspNamespaces.Write(mField, ['System', 'Vcl']);
+  mValue := TLspNamespaces.Read(mField);
+  Assert.AreEqual(2, Integer(Length(mValue)));
+  Assert.AreEqual('System', mValue[0]);
+  Assert.AreEqual('Vcl', mValue[1]);
 end;
 
 procedure TLspNamespacesTests.ParallelReadAndWriteKeepArraysIntact;
 const
-  Rounds = 200000;
+  cRounds = 200000;
 var
-  Field, Value: TArray<string>;
-  Writer: TThread;
-  Done: Boolean;
-  Bad: Integer;
+  mField, mValue: TArray<string>;
+  mWriter: TThread;
+  mDone: Boolean;
+  mBad: Integer;
 begin
-  Field := ['A', 'B'];
-  Done := False;
-  Bad := 0;
-  Writer := TThread.CreateAnonymousThread(
+  mField := ['A', 'B'];
+  mDone := False;
+  mBad := 0;
+  mWriter := TThread.CreateAnonymousThread(
     procedure
     var
       Index: Integer;
     begin
-      for Index := 1 to Rounds do
+      for Index := 1 to cRounds do
       begin
         if Odd(Index) then
         begin
-          TLspNamespaces.Write(Field, ['C']);
+          TLspNamespaces.Write(mField, ['C']);
         end
         else
         begin
-          TLspNamespaces.Write(Field, ['A', 'B']);
+          TLspNamespaces.Write(mField, ['A', 'B']);
         end;
       end;
-      Done := True;
+      mDone := True;
     end);
-  Writer.FreeOnTerminate := False;
+  mWriter.FreeOnTerminate := False;
   try
-    Writer.Start;
+    mWriter.Start;
     repeat
-      Value := TLspNamespaces.Read(Field);
-      if Length(Value) = 1 then
+      mValue := TLspNamespaces.Read(mField);
+      if Length(mValue) = 1 then
       begin
-        if Value[0] <> 'C' then
+        if mValue[0] <> 'C' then
         begin
-          Inc(Bad);
+          Inc(mBad);
         end;
       end
-      else if (Length(Value) <> 2) or (Value[0] <> 'A') or (Value[1] <> 'B') then
+      else if (Length(mValue) <> 2) or (mValue[0] <> 'A') or (mValue[1] <> 'B') then
       begin
-        Inc(Bad);
+        Inc(mBad);
       end;
-    until Done;
+    until mDone;
   finally
-    Writer.WaitFor;
-    Writer.Free;
+    mWriter.WaitFor;
+    mWriter.Free;
   end;
-  Assert.AreEqual(0, Bad);
+  Assert.AreEqual(0, mBad);
 end;
 
 initialization

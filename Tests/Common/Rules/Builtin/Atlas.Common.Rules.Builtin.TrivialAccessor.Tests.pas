@@ -34,7 +34,7 @@ uses
   Atlas.Tests.RuleAssert;
 
 const
-  Text =
+  cText =
     'unit U;'#10 +
     'interface'#10 +
     'type'#10 +
@@ -57,43 +57,43 @@ const
     '    FSize := Value;'#10'end;'#10 +
     'procedure TFoo.SetColor(const Value: Integer);'#10'begin'#10'  FColor := Value;'#10'  Invalidate;'#10'end;'#10 +
     'end.';
-  Enabled = '{"refactoring": {"inlineAccessorDiagnostic": true}}';
+  cEnabled = '{"refactoring": {"inlineAccessorDiagnostic": true}}';
 
 procedure TTrivialAccessorRuleTests.SilentByDefault;
 begin
-  TRuleAssert.Silent(TTrivialAccessorRule.Create, Text);
+  TRuleAssert.Silent(TTrivialAccessorRule.Create, cText);
 end;
 
 procedure TTrivialAccessorRuleTests.ReportsTrivialAccessors;
 var
-  Findings: TArray<TRuleFinding>;
+  mFindings: TArray<TRuleFinding>;
 begin
-  Findings := TRuleAssert.Findings(TTrivialAccessorRule.Create, Text, Enabled);
-  Assert.AreEqual(2, Integer(Length(Findings)));
-  Assert.AreEqual(Ord(TRuleSeverity.Hint), Ord(Findings[0].Severity));
-  Assert.AreEqual(Ord(TRuleConfidence.Medium), Ord(Findings[0].Confidence));
+  mFindings := TRuleAssert.Findings(TTrivialAccessorRule.Create, cText, cEnabled);
+  Assert.AreEqual(2, Integer(Length(mFindings)));
+  Assert.AreEqual(Ord(TRuleSeverity.Hint), Ord(mFindings[0].Severity));
+  Assert.AreEqual(Ord(TRuleConfidence.Medium), Ord(mFindings[0].Confidence));
   Assert.AreEqual('GetName liefert nur FName: Die Property kann direkt auf das Feld zeigen (Glühbirne ' +
-    '„Zugriffsmethode durch Feld ersetzen“).', Findings[0].Message);
-  Assert.AreEqual(8, Findings[0].Range.StartPos.Line);
-  Assert.AreEqual(13, Findings[0].Range.StartPos.Character);
-  Assert.AreEqual(0, Integer(Length(Findings[0].Fixes)));
-  Assert.AreEqual(9, Findings[1].Range.StartPos.Line);
-  Assert.IsTrue(Findings[1].Message.StartsWith('SetSize setzt nur FSize'), Findings[1].Message);
+    '„Zugriffsmethode durch Feld ersetzen“).', mFindings[0].Message);
+  Assert.AreEqual(8, mFindings[0].Range.StartPos.Line);
+  Assert.AreEqual(13, mFindings[0].Range.StartPos.Character);
+  Assert.AreEqual(0, Integer(Length(mFindings[0].Fixes)));
+  Assert.AreEqual(9, mFindings[1].Range.StartPos.Line);
+  Assert.IsTrue(mFindings[1].Message.StartsWith('SetSize setzt nur FSize'), mFindings[1].Message);
 end;
 
 procedure TTrivialAccessorRuleTests.EqualityCheckFollowsSetting;
 var
-  Findings: TArray<TRuleFinding>;
+  mFindings: TArray<TRuleFinding>;
 begin
-  Findings := TRuleAssert.Findings(TTrivialAccessorRule.Create, Text,
+  mFindings := TRuleAssert.Findings(TTrivialAccessorRule.Create, cText,
     '{"refactoring": {"inlineAccessorDiagnostic": true, "inlineAccessorEqualityCheck": false}}');
-  Assert.AreEqual(1, Integer(Length(Findings)));
-  Assert.AreEqual(8, Findings[0].Range.StartPos.Line);
+  Assert.AreEqual(1, Integer(Length(mFindings)));
+  Assert.AreEqual(8, mFindings[0].Range.StartPos.Line);
 end;
 
 procedure TTrivialAccessorRuleTests.SwitchedOffWithAction;
 begin
-  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TTrivialAccessorRule.Create, Text,
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TTrivialAccessorRule.Create, cText,
     '{"refactoring": {"inlineAccessorDiagnostic": true, "inlineAccessor": false}}'))));
 end;
 

@@ -54,22 +54,22 @@ uses
   Atlas.Common.Pascal.Lexer;
 
 const
-  KindNames: array[TPascalTokenKind] of string = (
+  cKindNames: array[TPascalTokenKind] of string = (
     'Identifier', 'Keyword', 'Number', 'String', 'Char', 'Comment', 'Directive', 'Symbol', 'Unknown');
 
 // Kurzform aller Token, z. B. "Keyword:begin|Identifier:x".
 function Describe(const AText: string): string;
 var
-  Token: TPascalToken;
+  mToken: TPascalToken;
 begin
   Result := '';
-  for Token in TPascalLexer.Tokenize(AText) do
+  for mToken in TPascalLexer.Tokenize(AText) do
   begin
     if Result <> '' then
     begin
       Result := Result + '|';
     end;
-    Result := Result + KindNames[Token.Kind] + ':' + Token.Text;
+    Result := Result + cKindNames[mToken.Kind] + ':' + mToken.Text;
   end;
 end;
 
@@ -83,12 +83,12 @@ end;
 
 procedure TPascalLexerTests.RecognizesKeywordsCaseInsensitive;
 var
-  Tokens: TArray<TPascalToken>;
+  mTokens: TArray<TPascalToken>;
 begin
   Assert.AreEqual('Keyword:BEGIN|Keyword:End|Symbol:;', Describe('BEGIN End;'));
-  Tokens := TPascalLexer.Tokenize('Begin');
-  Assert.IsTrue(Tokens[0].IsKeyword('begin'));
-  Assert.IsFalse(Tokens[0].IsKeyword('end'));
+  mTokens := TPascalLexer.Tokenize('Begin');
+  Assert.IsTrue(mTokens[0].IsKeyword('begin'));
+  Assert.IsFalse(mTokens[0].IsKeyword('end'));
 end;
 
 procedure TPascalLexerTests.TreatsDirectivesAsIdentifiers;
@@ -138,17 +138,17 @@ end;
 
 procedure TPascalLexerTests.ReadsMultilineString;
 var
-  Tokens: TArray<TPascalToken>;
+  mTokens: TArray<TPascalToken>;
 begin
-  Tokens := TPascalLexer.Tokenize('S := '''''''#13#10'  zeile ''eins'''#13#10'  zwei'#13#10'  '''''';');
-  Assert.AreEqual<NativeInt>(4, Length(Tokens));
-  Assert.AreEqual<TPascalTokenKind>(TPascalTokenKind.StringLiteral, Tokens[2].Kind);
-  Assert.IsTrue(Tokens[2].Terminated);
-  Assert.AreEqual(0, Tokens[2].StartPos.Line);
-  Assert.AreEqual(5, Tokens[2].StartPos.Character);
-  Assert.AreEqual(3, Tokens[2].EndPos.Line);
-  Assert.AreEqual(5, Tokens[2].EndPos.Character);
-  Assert.IsTrue(Tokens[3].IsSymbol(';'));
+  mTokens := TPascalLexer.Tokenize('S := '''''''#13#10'  zeile ''eins'''#13#10'  zwei'#13#10'  '''''';');
+  Assert.AreEqual<NativeInt>(4, Length(mTokens));
+  Assert.AreEqual<TPascalTokenKind>(TPascalTokenKind.StringLiteral, mTokens[2].Kind);
+  Assert.IsTrue(mTokens[2].Terminated);
+  Assert.AreEqual(0, mTokens[2].StartPos.Line);
+  Assert.AreEqual(5, mTokens[2].StartPos.Character);
+  Assert.AreEqual(3, mTokens[2].EndPos.Line);
+  Assert.AreEqual(5, mTokens[2].EndPos.Character);
+  Assert.IsTrue(mTokens[3].IsSymbol(';'));
 end;
 
 procedure TPascalLexerTests.ReadsCommentsAndDirectives;
@@ -170,51 +170,51 @@ end;
 
 procedure TPascalLexerTests.ReportsPositionsInUtf16;
 var
-  Tokens: TArray<TPascalToken>;
+  mTokens: TArray<TPascalToken>;
 begin
   // U+1F600 belegt zwei UTF-16-Codeeinheiten.
-  Tokens := TPascalLexer.Tokenize('''a'#$D83D#$DE00''' x');
-  Assert.AreEqual<NativeInt>(2, Length(Tokens));
-  Assert.AreEqual(0, Tokens[0].StartPos.Line);
-  Assert.AreEqual(0, Tokens[0].StartPos.Character);
-  Assert.AreEqual(0, Tokens[0].EndPos.Line);
-  Assert.AreEqual(5, Tokens[0].EndPos.Character);
-  Assert.AreEqual(0, Tokens[1].StartPos.Line);
-  Assert.AreEqual(6, Tokens[1].StartPos.Character);
-  Assert.AreEqual(6, Tokens[1].Offset);
+  mTokens := TPascalLexer.Tokenize('''a'#$D83D#$DE00''' x');
+  Assert.AreEqual<NativeInt>(2, Length(mTokens));
+  Assert.AreEqual(0, mTokens[0].StartPos.Line);
+  Assert.AreEqual(0, mTokens[0].StartPos.Character);
+  Assert.AreEqual(0, mTokens[0].EndPos.Line);
+  Assert.AreEqual(5, mTokens[0].EndPos.Character);
+  Assert.AreEqual(0, mTokens[1].StartPos.Line);
+  Assert.AreEqual(6, mTokens[1].StartPos.Character);
+  Assert.AreEqual(6, mTokens[1].Offset);
 end;
 
 procedure TPascalLexerTests.ReportsPositionsAcrossCrLf;
 var
-  Tokens: TArray<TPascalToken>;
+  mTokens: TArray<TPascalToken>;
 begin
-  Tokens := TPascalLexer.Tokenize('unit A;'#13#10#13#10'  end.'#10'x'#13'y');
-  Assert.AreEqual<NativeInt>(7, Length(Tokens));
-  Assert.AreEqual(2, Tokens[3].StartPos.Line);
-  Assert.AreEqual(2, Tokens[3].StartPos.Character);
-  Assert.AreEqual(2, Tokens[3].EndPos.Line);
-  Assert.AreEqual(5, Tokens[3].EndPos.Character);
-  Assert.AreEqual(3, Tokens[5].StartPos.Line);
-  Assert.AreEqual(0, Tokens[5].StartPos.Character);
-  Assert.AreEqual(4, Tokens[6].StartPos.Line);
-  Assert.AreEqual(0, Tokens[6].StartPos.Character);
+  mTokens := TPascalLexer.Tokenize('unit A;'#13#10#13#10'  end.'#10'x'#13'y');
+  Assert.AreEqual<NativeInt>(7, Length(mTokens));
+  Assert.AreEqual(2, mTokens[3].StartPos.Line);
+  Assert.AreEqual(2, mTokens[3].StartPos.Character);
+  Assert.AreEqual(2, mTokens[3].EndPos.Line);
+  Assert.AreEqual(5, mTokens[3].EndPos.Character);
+  Assert.AreEqual(3, mTokens[5].StartPos.Line);
+  Assert.AreEqual(0, mTokens[5].StartPos.Character);
+  Assert.AreEqual(4, mTokens[6].StartPos.Line);
+  Assert.AreEqual(0, mTokens[6].StartPos.Character);
 end;
 
 procedure TPascalLexerTests.MarksUnterminatedTokens;
 var
-  Tokens: TArray<TPascalToken>;
+  mTokens: TArray<TPascalToken>;
 begin
-  Tokens := TPascalLexer.Tokenize('''offen'#10'x { ohne Ende');
-  Assert.AreEqual<NativeInt>(3, Length(Tokens));
-  Assert.AreEqual('''offen', Tokens[0].Text);
-  Assert.IsFalse(Tokens[0].Terminated);
-  Assert.AreEqual('x', Tokens[1].Text);
-  Assert.AreEqual<TPascalTokenKind>(TPascalTokenKind.Comment, Tokens[2].Kind);
-  Assert.IsFalse(Tokens[2].Terminated);
+  mTokens := TPascalLexer.Tokenize('''offen'#10'x { ohne Ende');
+  Assert.AreEqual<NativeInt>(3, Length(mTokens));
+  Assert.AreEqual('''offen', mTokens[0].Text);
+  Assert.IsFalse(mTokens[0].Terminated);
+  Assert.AreEqual('x', mTokens[1].Text);
+  Assert.AreEqual<TPascalTokenKind>(TPascalTokenKind.Comment, mTokens[2].Kind);
+  Assert.IsFalse(mTokens[2].Terminated);
 
-  Tokens := TPascalLexer.Tokenize('''''''' + #10'nie geschlossen');
-  Assert.AreEqual<NativeInt>(1, Length(Tokens));
-  Assert.IsFalse(Tokens[0].Terminated);
+  mTokens := TPascalLexer.Tokenize('''''''' + #10'nie geschlossen');
+  Assert.AreEqual<NativeInt>(1, Length(mTokens));
+  Assert.IsFalse(mTokens[0].Terminated);
 end;
 
 procedure TPascalLexerTests.ReportsUnknownCharacters;

@@ -35,7 +35,7 @@ uses
 
 const
   // Zeile 4: im Rumpf von TInnen, Zeile 6: "end;" von TInnen, Zeile 8: "end;" von TAussen.
-  UnitText =
+  cUnitText =
     'unit Haupt;'#13#10 +
     'interface'#13#10 +
     'type'#13#10 +
@@ -59,76 +59,76 @@ const
 
 function UnitOf: TUnitIndex;
 begin
-  Result := TIndexExtractor.ExtractText(UnitText, 'C:\P\Haupt.pas', nil);
+  Result := TIndexExtractor.ExtractText(cUnitText, 'C:\P\Haupt.pas', nil);
 end;
 
 procedure TCompletionSourceTests.EnclosingTypeFindsInnermost;
 var
-  Symbol: TIndexSymbol;
+  mSymbol: TIndexSymbol;
 begin
-  Assert.IsTrue(EnclosingTypeAt(UnitOf, 5, [TIndexSymbolKind.ClassType], 0, True, Symbol));
-  Assert.AreEqual('TInnen', Symbol.Name);
-  Assert.AreEqual('TAussen.TInnen', QualifiedTypeName(Symbol));
-  Assert.IsTrue(EnclosingTypeAt(UnitOf, 7, [TIndexSymbolKind.ClassType], 0, True, Symbol));
-  Assert.AreEqual('TAussen', QualifiedTypeName(Symbol));
+  Assert.IsTrue(EnclosingTypeAt(UnitOf, 5, [TIndexSymbolKind.ClassType], 0, True, mSymbol));
+  Assert.AreEqual('TInnen', mSymbol.Name);
+  Assert.AreEqual('TAussen.TInnen', QualifiedTypeName(mSymbol));
+  Assert.IsTrue(EnclosingTypeAt(UnitOf, 7, [TIndexSymbolKind.ClassType], 0, True, mSymbol));
+  Assert.AreEqual('TAussen', QualifiedTypeName(mSymbol));
   // Andere Art: kein Treffer.
-  Assert.IsFalse(EnclosingTypeAt(UnitOf, 5, [TIndexSymbolKind.RecordType], 0, True, Symbol));
+  Assert.IsFalse(EnclosingTypeAt(UnitOf, 5, [TIndexSymbolKind.RecordType], 0, True, mSymbol));
 end;
 
 procedure TCompletionSourceTests.EnclosingTypeHonoursEnd;
 var
-  Symbol: TIndexSymbol;
+  mSymbol: TIndexSymbol;
 begin
   // Zeile 17 ist das "end;" von TImpl: mit AInclusiveEnd noch drin, sonst nicht.
-  Assert.IsTrue(EnclosingTypeAt(UnitOf, 17, [TIndexSymbolKind.ClassType], 0, True, Symbol));
-  Assert.AreEqual('TImpl', Symbol.Name);
-  Assert.IsFalse(EnclosingTypeAt(UnitOf, 17, [TIndexSymbolKind.ClassType], 0, False, Symbol));
-  Assert.IsTrue(EnclosingTypeAt(UnitOf, 16, [TIndexSymbolKind.ClassType], 0, False, Symbol));
+  Assert.IsTrue(EnclosingTypeAt(UnitOf, 17, [TIndexSymbolKind.ClassType], 0, True, mSymbol));
+  Assert.AreEqual('TImpl', mSymbol.Name);
+  Assert.IsFalse(EnclosingTypeAt(UnitOf, 17, [TIndexSymbolKind.ClassType], 0, False, mSymbol));
+  Assert.IsTrue(EnclosingTypeAt(UnitOf, 16, [TIndexSymbolKind.ClassType], 0, False, mSymbol));
   // Kopfzeile zählt nicht.
-  Assert.IsFalse(EnclosingTypeAt(UnitOf, 15, [TIndexSymbolKind.ClassType], 0, True, Symbol));
+  Assert.IsFalse(EnclosingTypeAt(UnitOf, 15, [TIndexSymbolKind.ClassType], 0, True, mSymbol));
 end;
 
 procedure TCompletionSourceTests.EnclosingTypeNeedsAncestors;
 var
-  Symbol: TIndexSymbol;
+  mSymbol: TIndexSymbol;
 begin
   // TImpl hat Vorfahr und Interface, TAussen keinen Vorfahren in der Liste.
-  Assert.IsTrue(EnclosingTypeAt(UnitOf, 16, [TIndexSymbolKind.ClassType], 2, False, Symbol));
-  Assert.AreEqual('TImpl', Symbol.Name);
-  Assert.IsFalse(EnclosingTypeAt(UnitOf, 7, [TIndexSymbolKind.ClassType], 2, False, Symbol));
+  Assert.IsTrue(EnclosingTypeAt(UnitOf, 16, [TIndexSymbolKind.ClassType], 2, False, mSymbol));
+  Assert.AreEqual('TImpl', mSymbol.Name);
+  Assert.IsFalse(EnclosingTypeAt(UnitOf, 7, [TIndexSymbolKind.ClassType], 2, False, mSymbol));
 end;
 
 procedure TCompletionSourceTests.TypeChainFollowsAncestors;
 var
-  Index: ISymbolIndex;
-  Resolver: TNameResolver;
-  Chain: TArray<string>;
+  mIndex: ISymbolIndex;
+  mResolver: TNameResolver;
+  mChain: TArray<string>;
 begin
-  Index := TSymbolIndex.Create;
-  Index.AddUnit(UnitOf);
-  Resolver := TNameResolver.Create(Index);
+  mIndex := TSymbolIndex.Create;
+  mIndex.AddUnit(UnitOf);
+  mResolver := TNameResolver.Create(mIndex);
   try
-    Chain := TypeChain(Resolver, UnitOf, 'TImpl');
-    Assert.IsTrue(Length(Chain) >= 3, string.Join(',', Chain));
-    Assert.AreEqual('TImpl,TMitte,TBasis', string.Join(',', Copy(Chain, 0, 3)));
+    mChain := TypeChain(mResolver, UnitOf, 'TImpl');
+    Assert.IsTrue(Length(mChain) >= 3, string.Join(',', mChain));
+    Assert.AreEqual('TImpl,TMitte,TBasis', string.Join(',', Copy(mChain, 0, 3)));
   finally
-    Resolver.Free;
+    mResolver.Free;
   end;
 end;
 
 procedure TCompletionSourceTests.TypeChainStopsAtUnknown;
 var
-  Index: ISymbolIndex;
-  Resolver: TNameResolver;
-  Chain: TArray<string>;
+  mIndex: ISymbolIndex;
+  mResolver: TNameResolver;
+  mChain: TArray<string>;
 begin
-  Index := TSymbolIndex.Create;
-  Resolver := TNameResolver.Create(Index);
+  mIndex := TSymbolIndex.Create;
+  mResolver := TNameResolver.Create(mIndex);
   try
-    Chain := TypeChain(Resolver, UnitOf, 'TUnbekannt');
-    Assert.AreEqual('TUnbekannt', string.Join(',', Chain));
+    mChain := TypeChain(mResolver, UnitOf, 'TUnbekannt');
+    Assert.AreEqual('TUnbekannt', string.Join(',', mChain));
   finally
-    Resolver.Free;
+    mResolver.Free;
   end;
 end;
 

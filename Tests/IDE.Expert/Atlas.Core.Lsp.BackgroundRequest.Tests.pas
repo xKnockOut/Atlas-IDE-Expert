@@ -35,8 +35,8 @@ uses
   Atlas.Core.Lsp.Client,
   Atlas.Core.Lsp.BackgroundRequest;
 
-/// <summary>Arbeitet eingereihte Aufrufe ab, bis ACondition gilt oder die Zeit um ist.</summary>
-function WaitUntil(const ACondition: TFunc<Boolean>; ATimeoutMs: Cardinal = 3000): Boolean;
+/// <summary>Arbeitet eingereihte Aufrufe ab, bis ACondition gilt oder ATimeoutMs um sind.</summary>
+function WaitWithin(const ACondition: TFunc<Boolean>; ATimeoutMs: Cardinal): Boolean;
 var
   mStart: UInt64;
 begin
@@ -49,6 +49,14 @@ begin
     end;
   until TThread.GetTickCount64 - mStart > ATimeoutMs;
   Result := False;
+end;
+
+/// <summary>Wie WaitWithin mit der üblichen Wartezeit von drei Sekunden.</summary>
+function WaitUntil(const ACondition: TFunc<Boolean>): Boolean;
+const
+  cTimeoutMs = 3000;
+begin
+  Result := WaitWithin(ACondition, cTimeoutMs);
 end;
 
 /// <summary>Arbeit, die bis zum Signal wartet.</summary>
@@ -185,7 +193,7 @@ begin
     mRequest.Start(mWork, mProbe.Done());
     // Freigabe wartet die Arbeit ab; der eingereihte Abschluss darf danach nichts mehr tun.
     mRequest.Free;
-    WaitUntil(Reached(mProbe, 1), 200);
+    WaitWithin(Reached(mProbe, 1), 200);
     Assert.AreEqual(0, mProbe.Count);
   finally
     mProbe.Free;

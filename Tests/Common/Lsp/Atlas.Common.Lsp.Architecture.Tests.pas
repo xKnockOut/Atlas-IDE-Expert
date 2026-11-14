@@ -105,25 +105,25 @@ end;
 /// <summary>Pfad als JSON-Zeichenkette.</summary>
 function JsonPath(const APath: string): string;
 var
-  Value: TJSONString;
+  mValue: TJSONString;
 begin
-  Value := TJSONString.Create(APath);
+  mValue := TJSONString.Create(APath);
   try
-    Result := Value.ToJSON;
+    Result := mValue.ToJSON;
   finally
-    Value.Free;
+    mValue.Free;
   end;
 end;
 
 function Ask(ALsp: TLspArchitecture; const AParams: string): TJSONObject;
 var
-  Params: TJSONValue;
+  mParams: TJSONValue;
 begin
-  Params := TJSONObject.ParseJSONValue(AParams);
+  mParams := TJSONObject.ParseJSONValue(AParams);
   try
-    Result := ALsp.Request(Params) as TJSONObject;
+    Result := ALsp.Request(mParams) as TJSONObject;
   finally
-    Params.Free;
+    mParams.Free;
   end;
 end;
 
@@ -144,191 +144,191 @@ end;
 
 procedure TLspArchitectureTests.JsonAnswerHasDataAndLayout;
 var
-  Service: TArchitectureService;
-  Lsp: TLspArchitecture;
-  Answer: TJSONObject;
-  Data: TJSONObject;
+  mService: TArchitectureService;
+  mLsp: TLspArchitecture;
+  mAnswer: TJSONObject;
+  mData: TJSONObject;
 begin
   Enabled := True;
-  Service := NewService(NewIndex);
-  Lsp := NewLsp(Service);
-  Answer := Ask(Lsp, '{"scope": "project"}');
+  mService := NewService(NewIndex);
+  mLsp := NewLsp(mService);
+  mAnswer := Ask(mLsp, '{"scope": "project"}');
   try
-    Assert.IsTrue(Answer.GetValue<Boolean>('enabled'));
-    Assert.AreEqual('json', Answer.GetValue<string>('format'));
+    Assert.IsTrue(mAnswer.GetValue<Boolean>('enabled'));
+    Assert.AreEqual('json', mAnswer.GetValue<string>('format'));
     Assert.AreEqual('project', LastScope);
-    Data := Answer.GetValue<TJSONObject>('data');
-    Assert.AreEqual('Beispiel', Data.GetValue<string>('title'));
-    Assert.AreEqual(2, Integer(Data.GetValue<TJSONArray>('units').Count));
-    Assert.IsNotNull((Data.GetValue<TJSONArray>('units').Items[0] as TJSONObject).GetValue('x'));
+    mData := mAnswer.GetValue<TJSONObject>('data');
+    Assert.AreEqual('Beispiel', mData.GetValue<string>('title'));
+    Assert.AreEqual(2, Integer(mData.GetValue<TJSONArray>('units').Count));
+    Assert.IsNotNull((mData.GetValue<TJSONArray>('units').Items[0] as TJSONObject).GetValue('x'));
   finally
-    Answer.Free;
-    Lsp.Free;
-    Service.Free;
+    mAnswer.Free;
+    mLsp.Free;
+    mService.Free;
   end;
 end;
 
 procedure TLspArchitectureTests.TextSectionAndUnit;
 var
-  Service: TArchitectureService;
-  Lsp: TLspArchitecture;
-  Answer: TJSONObject;
+  mService: TArchitectureService;
+  mLsp: TLspArchitecture;
+  mAnswer: TJSONObject;
 begin
   Enabled := True;
-  Service := NewService(NewIndex);
-  Lsp := NewLsp(Service);
+  mService := NewService(NewIndex);
+  mLsp := NewLsp(mService);
   try
-    Answer := Ask(Lsp, '{"format": "text", "section": "central"}');
+    mAnswer := Ask(mLsp, '{"format": "text", "section": "central"}');
     try
-      Assert.Contains(Answer.GetValue<string>('text'), 'App.Data | ');
+      Assert.Contains(mAnswer.GetValue<string>('text'), 'App.Data | ');
     finally
-      Answer.Free;
+      mAnswer.Free;
     end;
-    Answer := Ask(Lsp, '{"format": "text", "unit": "App.Main"}');
+    mAnswer := Ask(mLsp, '{"format": "text", "unit": "App.Main"}');
     try
-      Assert.StartsWith('App.Main (', Answer.GetValue<string>('text'));
+      Assert.StartsWith('App.Main (', mAnswer.GetValue<string>('text'));
     finally
-      Answer.Free;
+      mAnswer.Free;
     end;
-    Answer := Ask(Lsp, '{"format": "markdown"}');
+    mAnswer := Ask(mLsp, '{"format": "markdown"}');
     try
-      Assert.StartsWith('# Architektur: Beispiel', Answer.GetValue<string>('text'));
+      Assert.StartsWith('# Architektur: Beispiel', mAnswer.GetValue<string>('text'));
     finally
-      Answer.Free;
+      mAnswer.Free;
     end;
-    Assert.AreEqual(1, Service.Computations, 'alle Abfragen aus demselben Ergebnis');
+    Assert.AreEqual(1, mService.Computations, 'alle Abfragen aus demselben Ergebnis');
   finally
-    Lsp.Free;
-    Service.Free;
+    mLsp.Free;
+    mService.Free;
   end;
 end;
 
 procedure TLspArchitectureTests.DisabledAnswersEnabledFalse;
 var
-  Service: TArchitectureService;
-  Lsp: TLspArchitecture;
-  Answer: TJSONObject;
+  mService: TArchitectureService;
+  mLsp: TLspArchitecture;
+  mAnswer: TJSONObject;
 begin
   Enabled := False;
-  Service := NewService(NewIndex);
-  Lsp := NewLsp(Service);
-  Answer := Ask(Lsp, '{}');
+  mService := NewService(NewIndex);
+  mLsp := NewLsp(mService);
+  mAnswer := Ask(mLsp, '{}');
   try
-    Assert.IsFalse(Answer.GetValue<Boolean>('enabled'));
-    Assert.IsNull(Answer.GetValue('data'));
-    Assert.AreEqual(0, Service.Computations);
+    Assert.IsFalse(mAnswer.GetValue<Boolean>('enabled'));
+    Assert.IsNull(mAnswer.GetValue('data'));
+    Assert.AreEqual(0, mService.Computations);
   finally
-    Answer.Free;
-    Lsp.Free;
-    Service.Free;
+    mAnswer.Free;
+    mLsp.Free;
+    mService.Free;
   end;
   Enabled := True;
 end;
 
 procedure TLspArchitectureTests.RejectsUnknownFormatAndScope;
 var
-  Service: TArchitectureService;
-  Lsp: TLspArchitecture;
+  mService: TArchitectureService;
+  mLsp: TLspArchitecture;
 begin
   Enabled := True;
-  Service := NewService(NewIndex);
-  Lsp := NewLsp(Service);
+  mService := NewService(NewIndex);
+  mLsp := NewLsp(mService);
   try
     Assert.WillRaise(
       procedure
       begin
-        Ask(Lsp, '{"format": "pdf"}').Free;
+        Ask(mLsp, '{"format": "pdf"}').Free;
       end, EJsonRpcError);
     Assert.WillRaise(
       procedure
       begin
-        Ask(Lsp, '{"scope": "alles"}').Free;
+        Ask(mLsp, '{"scope": "alles"}').Free;
       end, EJsonRpcError);
     Assert.WillRaise(
       procedure
       begin
-        Ask(Lsp, '{"format": "text", "section": "nichts"}').Free;
+        Ask(mLsp, '{"format": "text", "section": "nichts"}').Free;
       end, EJsonRpcError);
   finally
-    Lsp.Free;
-    Service.Free;
+    mLsp.Free;
+    mService.Free;
   end;
 end;
 
 procedure TLspArchitectureTests.SavesMarkdownAndHtml;
 var
-  Service: TArchitectureService;
-  Lsp: TLspArchitecture;
-  Folder, Target: string;
-  Arguments: TJSONArray;
-  Answer: TJSONValue;
+  mService: TArchitectureService;
+  mLsp: TLspArchitecture;
+  mFolder, mTarget: string;
+  mArguments: TJSONArray;
+  mAnswer: TJSONValue;
 begin
   Enabled := True;
-  Service := NewService(NewIndex);
-  Lsp := NewLsp(Service);
-  Folder := TPath.Combine(TPath.GetTempPath, 'atlas-architektur-' + IntToStr(Random(1000000)));
+  mService := NewService(NewIndex);
+  mLsp := NewLsp(mService);
+  mFolder := TPath.Combine(TPath.GetTempPath, 'atlas-architektur-' + IntToStr(Random(1000000)));
   try
-    Target := TPath.Combine(Folder, 'bericht.md');
-    Arguments := TJSONArray.Create;
+    mTarget := TPath.Combine(mFolder, 'bericht.md');
+    mArguments := TJSONArray.Create;
     try
-      Arguments.Add('');
-      Arguments.Add(Target);
-      Answer := Lsp.SaveReport(Arguments);
+      mArguments.Add('');
+      mArguments.Add(mTarget);
+      mAnswer := mLsp.SaveReport(mArguments);
       try
-        Assert.AreEqual(2, (Answer as TJSONObject).GetValue<Integer>('units'));
+        Assert.AreEqual(2, (mAnswer as TJSONObject).GetValue<Integer>('units'));
       finally
-        Answer.Free;
+        mAnswer.Free;
       end;
     finally
-      Arguments.Free;
+      mArguments.Free;
     end;
-    Assert.StartsWith('# Architektur: Beispiel', TFile.ReadAllText(Target, TEncoding.UTF8));
-    Target := TPath.Combine(Folder, 'bericht.html');
-    Arguments := TJSONArray.Create;
+    Assert.StartsWith('# Architektur: Beispiel', TFile.ReadAllText(mTarget, TEncoding.UTF8));
+    mTarget := TPath.Combine(mFolder, 'bericht.html');
+    mArguments := TJSONArray.Create;
     try
-      Arguments.Add('');
-      Arguments.Add(Target);
-      Lsp.SaveReport(Arguments).Free;
+      mArguments.Add('');
+      mArguments.Add(mTarget);
+      mLsp.SaveReport(mArguments).Free;
     finally
-      Arguments.Free;
+      mArguments.Free;
     end;
-    Assert.Contains(TFile.ReadAllText(Target, TEncoding.UTF8), '<!doctype html>');
+    Assert.Contains(TFile.ReadAllText(mTarget, TEncoding.UTF8), '<!doctype html>');
   finally
-    if TDirectory.Exists(Folder) then
+    if TDirectory.Exists(mFolder) then
     begin
-      TDirectory.Delete(Folder, True);
+      TDirectory.Delete(mFolder, True);
     end;
-    Lsp.Free;
-    Service.Free;
+    mLsp.Free;
+    mService.Free;
   end;
 end;
 
 procedure TLspArchitectureTests.CommandAnswersLikeRequest;
 var
-  Service: TArchitectureService;
-  Lsp: TLspArchitecture;
-  Arguments: TJSONArray;
-  Answer: TJSONObject;
+  mService: TArchitectureService;
+  mLsp: TLspArchitecture;
+  mArguments: TJSONArray;
+  mAnswer: TJSONObject;
 begin
   Enabled := True;
-  Service := NewService(NewIndex);
-  Lsp := NewLsp(Service);
-  Arguments := TJSONObject.ParseJSONValue('["file:///C:/Projekt/App.dpr", {"scope": "project", "format": "text", ' +
+  mService := NewService(NewIndex);
+  mLsp := NewLsp(mService);
+  mArguments := TJSONObject.ParseJSONValue('["file:///C:/Projekt/App.dpr", {"scope": "project", "format": "text", ' +
     '"unit": "App.Data"}]') as TJSONArray;
   try
-    Answer := Lsp.Execute(Arguments) as TJSONObject;
+    mAnswer := mLsp.Execute(mArguments) as TJSONObject;
     try
       Assert.AreEqual('project', LastScope);
-      Assert.AreEqual('text', Answer.GetValue<string>('format'));
-      Assert.AreEqual('C:\Projekt', Answer.GetValue<string>('root'), 'root nur in der Antwort');
-      Assert.IsTrue(Pos('App.Data', Answer.GetValue<string>('text')) > 0);
+      Assert.AreEqual('text', mAnswer.GetValue<string>('format'));
+      Assert.AreEqual('C:\Projekt', mAnswer.GetValue<string>('root'), 'root nur in der Antwort');
+      Assert.IsTrue(Pos('App.Data', mAnswer.GetValue<string>('text')) > 0);
     finally
-      Answer.Free;
+      mAnswer.Free;
     end;
   finally
-    Arguments.Free;
-    Lsp.Free;
-    Service.Free;
+    mArguments.Free;
+    mLsp.Free;
+    mService.Free;
   end;
 end;
 
@@ -388,58 +388,58 @@ end;
 
 procedure TLspArchitectureTests.SavesStateAndCompares;
 var
-  Service, Later: TArchitectureService;
-  Lsp, LaterLsp: TLspArchitecture;
-  Folder, Target: string;
-  Answer: TJSONObject;
-  Index: ISymbolIndex;
+  mService, mLater: TArchitectureService;
+  mLsp, mLaterLsp: TLspArchitecture;
+  mFolder, mTarget: string;
+  mAnswer: TJSONObject;
+  mIndex: ISymbolIndex;
 begin
   Enabled := True;
-  Service := NewService(NewIndex);
-  Lsp := NewLsp(Service);
+  mService := NewService(NewIndex);
+  mLsp := NewLsp(mService);
   // Später: App.Data braucht App.Main, ein neuer Zyklus.
-  Index := TSymbolIndex.Create;
-  Index.AddUnit(UsesUnit('App.Main', ['App.Data'], nil));
-  Index.AddUnit(UsesUnit('App.Data', nil, ['App.Main']));
-  Later := NewService(Index);
-  LaterLsp := NewLsp(Later);
-  Folder := TPath.Combine(TPath.GetTempPath, 'atlas-vergleich-' + IntToStr(Random(1000000)));
+  mIndex := TSymbolIndex.Create;
+  mIndex.AddUnit(UsesUnit('App.Main', ['App.Data'], nil));
+  mIndex.AddUnit(UsesUnit('App.Data', nil, ['App.Main']));
+  mLater := NewService(mIndex);
+  mLaterLsp := NewLsp(mLater);
+  mFolder := TPath.Combine(TPath.GetTempPath, 'atlas-vergleich-' + IntToStr(Random(1000000)));
   try
-    Target := TPath.Combine(Folder, 'stand.json');
-    SaveReportTo(Lsp, Target);
-    Assert.Contains(TFile.ReadAllText(Target, TEncoding.UTF8), '"format": 2');
-    Answer := Ask(LaterLsp, '{"compareWith": ' + JsonPath(Target) + '}');
+    mTarget := TPath.Combine(mFolder, 'stand.json');
+    SaveReportTo(mLsp, mTarget);
+    Assert.Contains(TFile.ReadAllText(mTarget, TEncoding.UTF8), '"format": 2');
+    mAnswer := Ask(mLaterLsp, '{"compareWith": ' + JsonPath(mTarget) + '}');
     try
-      Assert.AreEqual(Target, Answer.GetValue<string>('baseline'));
-      Assert.AreEqual(1, Answer.GetValue<TJSONObject>('comparison').GetValue<TJSONArray>('newCycles').Count);
-      Assert.AreEqual('newCycle', Answer.GetValue<TJSONObject>('comparison').GetValue<TJSONArray>('failed')
+      Assert.AreEqual(mTarget, mAnswer.GetValue<string>('baseline'));
+      Assert.AreEqual(1, mAnswer.GetValue<TJSONObject>('comparison').GetValue<TJSONArray>('newCycles').Count);
+      Assert.AreEqual('newCycle', mAnswer.GetValue<TJSONObject>('comparison').GetValue<TJSONArray>('failed')
         .Items[0].Value);
-      Assert.IsNotNull(Answer.GetValue('data'));
+      Assert.IsNotNull(mAnswer.GetValue('data'));
     finally
-      Answer.Free;
+      mAnswer.Free;
     end;
-    Answer := Ask(LaterLsp, '{"format": "text", "compareWith": ' + JsonPath(Target) + '}');
+    mAnswer := Ask(mLaterLsp, '{"format": "text", "compareWith": ' + JsonPath(mTarget) + '}');
     try
-      Assert.Contains(Answer.GetValue<string>('text'), 'Neue Zyklen: 1');
+      Assert.Contains(mAnswer.GetValue<string>('text'), 'Neue Zyklen: 1');
     finally
-      Answer.Free;
+      mAnswer.Free;
     end;
-    AssertBaselineSettingAndCompareOff(LaterLsp, Folder);
-    Target := TPath.Combine(Folder, 'bericht.md');
-    SaveReportTo(LaterLsp, Target);
-    Assert.Contains(TFile.ReadAllText(Target, TEncoding.UTF8), '### Neue Zyklen (1)');
-    AssertMissingBaselineReported(LaterLsp);
+    AssertBaselineSettingAndCompareOff(mLaterLsp, mFolder);
+    mTarget := TPath.Combine(mFolder, 'bericht.md');
+    SaveReportTo(mLaterLsp, mTarget);
+    Assert.Contains(TFile.ReadAllText(mTarget, TEncoding.UTF8), '### Neue Zyklen (1)');
+    AssertMissingBaselineReported(mLaterLsp);
   finally
     BaselineSetting := '';
     ProjectRoot := 'C:\Projekt';
-    if TDirectory.Exists(Folder) then
+    if TDirectory.Exists(mFolder) then
     begin
-      TDirectory.Delete(Folder, True);
+      TDirectory.Delete(mFolder, True);
     end;
-    LaterLsp.Free;
-    Later.Free;
-    Lsp.Free;
-    Service.Free;
+    mLaterLsp.Free;
+    mLater.Free;
+    mLsp.Free;
+    mService.Free;
   end;
 end;
 

@@ -115,55 +115,55 @@ uses
 
 const
   /// <summary>Höchstens so lange wartet der Monitor auf Freigaben anderer Threads.</summary>
-  SettleTimeoutMs: UInt64 = 250;
-  SettleStepMs = 2;
+  cSettleTimeoutMs: UInt64 = 250;
+  cSettleStepMs = 2;
   /// <summary>So viele gleiche Messungen hintereinander gelten als ruhig.</summary>
-  StableSamples = 3;
+  cStableSamples = 3;
   /// <summary>Mindestzahl gleichzeitig wartender Threads beim Vorwärmen.</summary>
-  MinPrewarmWaiters = 64;
+  cMinPrewarmWaiters = 64;
 
 function AllocatedBytes: Int64;
 var
-  State: TMemoryManagerState;
+  mState: TMemoryManagerState;
   I: Integer;
 begin
   {$WARN SYMBOL_PLATFORM OFF}
-  GetMemoryManagerState(State);
+  GetMemoryManagerState(mState);
   {$WARN SYMBOL_PLATFORM DEFAULT}
-  Result := Int64(State.TotalAllocatedMediumBlockSize) + Int64(State.TotalAllocatedLargeBlockSize);
-  for I := Low(State.SmallBlockTypeStates) to High(State.SmallBlockTypeStates) do
+  Result := Int64(mState.TotalAllocatedMediumBlockSize) + Int64(mState.TotalAllocatedLargeBlockSize);
+  for I := Low(mState.SmallBlockTypeStates) to High(mState.SmallBlockTypeStates) do
   begin
-    Inc(Result, Int64(State.SmallBlockTypeStates[I].AllocatedBlockCount) *
-      State.SmallBlockTypeStates[I].UseableBlockSize);
+    Inc(Result, Int64(mState.SmallBlockTypeStates[I].AllocatedBlockCount) *
+      mState.SmallBlockTypeStates[I].UseableBlockSize);
   end;
 end;
 
 function ProcessThreadCount: Integer;
 var
-  Snapshot: THandle;
-  Entry: TThreadEntry32;
-  ProcessId: DWORD;
+  mSnapshot: THandle;
+  mEntry: TThreadEntry32;
+  mProcessId: DWORD;
 begin
   Result := 0;
-  Snapshot := CreateToolhelp32Snapshot(TH32CS_SNAPTHREAD, 0);
-  if Snapshot = INVALID_HANDLE_VALUE then
+  mSnapshot := CreateToolhelp32Snapshot(TH32CS_SNAPTHREAD, 0);
+  if mSnapshot = INVALID_HANDLE_VALUE then
   begin
     Exit;
   end;
   try
-    ProcessId := GetCurrentProcessId;
-    FillChar(Entry, SizeOf(Entry), 0);
-    Entry.dwSize := SizeOf(Entry);
-    if Thread32First(Snapshot, Entry) then
+    mProcessId := GetCurrentProcessId;
+    FillChar(mEntry, SizeOf(mEntry), 0);
+    mEntry.dwSize := SizeOf(mEntry);
+    if Thread32First(mSnapshot, mEntry) then
       repeat
-        if Entry.th32OwnerProcessID = ProcessId then
+        if mEntry.th32OwnerProcessID = mProcessId then
         begin
           Inc(Result);
         end;
-        Entry.dwSize := SizeOf(Entry);
-      until not Thread32Next(Snapshot, Entry);
+        mEntry.dwSize := SizeOf(mEntry);
+      until not Thread32Next(mSnapshot, mEntry);
   finally
-    CloseHandle(Snapshot);
+    CloseHandle(mSnapshot);
   end;
 end;
 
@@ -211,45 +211,45 @@ end;
 
 procedure PrewarmWaitObjects;
 var
-  Gate: TWaitGate;
-  Waiters: TArray<TThread>;
-  Index: Integer;
-  Deadline: UInt64;
+  mGate: TWaitGate;
+  mWaiters: TArray<TThread>;
+  mIndex: Integer;
+  mDeadline: UInt64;
 begin
   // Jeder Thread in TMonitor.Wait hält ein Warteobjekt der RTL; beim Freigeben
   // legt die RTL für jedes über den bisherigen Höchststand hinaus einen
   // Verwaltungsknoten an, der bis Programmende bleibt. Einmal viele Threads
   // gleichzeitig warten lassen, dann wächst der Zwischenspeicher in den Tests nicht mehr.
-  Gate := TWaitGate.Create;
+  mGate := TWaitGate.Create;
   try
-    SetLength(Waiters, 4 * TThread.ProcessorCount);
-    if Length(Waiters) < MinPrewarmWaiters then
+    SetLength(mWaiters, 4 * TThread.ProcessorCount);
+    if Length(mWaiters) < cMinPrewarmWaiters then
     begin
-      SetLength(Waiters, MinPrewarmWaiters);
+      SetLength(mWaiters, cMinPrewarmWaiters);
     end;
-    for Index := 0 to High(Waiters) do
+    for mIndex := 0 to High(mWaiters) do
     begin
-      Waiters[Index] := StartWaiter(Gate);
+      mWaiters[mIndex] := StartWaiter(mGate);
     end;
     // Inc steht unter der Sperre vor Wait; wer gezählt ist, wartet also schon.
-    Deadline := TThread.GetTickCount64 + 5000;
-    while (Gate.Waiting < Length(Waiters)) and (TThread.GetTickCount64 < Deadline) do
+    mDeadline := TThread.GetTickCount64 + 5000;
+    while (mGate.Waiting < Length(mWaiters)) and (TThread.GetTickCount64 < mDeadline) do
     begin
       TThread.Sleep(1);
     end;
-    TMonitor.Enter(Gate);
+    TMonitor.Enter(mGate);
     try
-      TMonitor.PulseAll(Gate);
+      TMonitor.PulseAll(mGate);
     finally
-      TMonitor.Exit(Gate);
+      TMonitor.Exit(mGate);
     end;
-    for Index := 0 to High(Waiters) do
+    for mIndex := 0 to High(mWaiters) do
     begin
-      Waiters[Index].WaitFor;
-      Waiters[Index].Free;
+      mWaiters[mIndex].WaitFor;
+      mWaiters[mIndex].Free;
     end;
   finally
-    Gate.Free;
+    mGate.Free;
   end;
 end;
 
@@ -257,65 +257,66 @@ end;
 /// Gebrauch bleibt, träfe sonst je nach Reihenfolge einen anderen Test als Leck.</summary>
 procedure PrewarmSettingsTransfer;
 var
-  Catalog: TAtlasSettingsCatalog;
-  State: TAtlasSettingsState;
-  Exported: TAtlasExportResult;
-  Environment: TAtlasSettingsEnvironment;
-  Index: Integer;
+  mCatalog: TAtlasSettingsCatalog;
+  mState: TAtlasSettingsState;
+  mExported: TAtlasExportResult;
+  mEnvironment: TAtlasSettingsEnvironment;
+  mIndex: Integer;
 begin
-  Environment :=
+  mEnvironment :=
     function(const AName: string): string
     begin
       Result := '';
     end;
-  Catalog := TAtlasSettingsCatalog.CreateDefault;
+  mCatalog := TAtlasSettingsCatalog.CreateDefault;
   try
-    State := TAtlasSettingsState.Create(TAtlasPluginSettings.Defaults, '');
+    mState := TAtlasSettingsState.Create(TAtlasPluginSettings.Defaults, '');
     // Gemeinsamer Speicher mit allen Standardwerten (DefaultValues): entsteht beim ersten DefaultJson.
-    for Index := 0 to Catalog.Count - 1 do
+    for mIndex := 0 to mCatalog.Count - 1 do
     begin
-      TAtlasSettingsTransfer.DefaultJson(Catalog, Index);
+      TAtlasSettingsTransfer.DefaultJson(mCatalog, mIndex);
     end;
-    Exported := TAtlasSettingsTransfer.ExportSettings(Catalog, State, TAtlasExportOptions.ForBackup, Environment);
-    TAtlasSettingsTransfer.Apply(Catalog, State, TAtlasSettingsTransfer.Preview(Catalog, State,
-      TAtlasSettingsTransfer.ParseFile(Exported.Text), TAtlasImportOptions.Create(imMerge, nil, Environment)));
+    mExported := TAtlasSettingsTransfer.ExportSettings(mCatalog, mState, TAtlasExportOptions.ForBackup, mEnvironment);
+    TAtlasSettingsTransfer.Apply(mCatalog, mState, TAtlasSettingsTransfer.Preview(mCatalog, mState,
+      TAtlasSettingsTransfer.ParseFile(mExported.Text), TAtlasImportOptions.Create(imMerge, nil, mEnvironment)));
   finally
-    Catalog.Free;
+    mCatalog.Free;
   end;
 end;
 
-/// <summary>Dateifehler einmal auslösen: Die RTL lädt dabei Ressourcen-Strings (EFOpenError, EFCreateError, EInOutError) und
+/// <summary>Dateifehler einmal auslösen: Die RTL lädt dabei Ressourcen-Strings (EFOpenError, EFCreateError,
+/// EInOutError) und
 /// behält sie bis Programmende; das träfe sonst den ersten Test mit einer gesperrten oder fehlenden Datei.</summary>
 procedure PrewarmFileErrors;
 var
-  Missing: string;
-  Held: TFileStream;
+  mMissing: string;
+  mHeld: TFileStream;
 begin
-  Missing := TPath.Combine(TPath.GetTempPath, 'atlas-leckmonitor-fehlt-' + IntToStr(GetCurrentProcessId) + '.bin');
+  mMissing := TPath.Combine(TPath.GetTempPath, 'atlas-leckmonitor-fehlt-' + IntToStr(GetCurrentProcessId) + '.bin');
   try
-    TFile.ReadAllBytes(Missing);
+    TFile.ReadAllBytes(mMissing);
   except
     on Exception do
       ;
   end;
   try
-    TFileStream.Create(Missing, fmOpenRead or fmShareDenyNone).Free;
+    TFileStream.Create(mMissing, fmOpenRead or fmShareDenyNone).Free;
   except
     on Exception do
       ;
   end;
   // Gesperrte Datei neu anlegen (EFCreateError), wie die Sperre des Index-Caches.
-  Held := TFileStream.Create(Missing, fmCreate or fmShareExclusive);
+  mHeld := TFileStream.Create(mMissing, fmCreate or fmShareExclusive);
   try
     try
-      TFileStream.Create(Missing, fmCreate or fmShareExclusive).Free;
+      TFileStream.Create(mMissing, fmCreate or fmShareExclusive).Free;
     except
       on Exception do
         ;
     end;
   finally
-    Held.Free;
-    System.SysUtils.DeleteFile(Missing);
+    mHeld.Free;
+    System.SysUtils.DeleteFile(mMissing);
   end;
 end;
 
@@ -323,37 +324,37 @@ end;
 /// Melde- und Fehlerpfade beim ersten Mal anlegen, träfe sonst den ersten Test mit einer gesperrten Datei.</summary>
 procedure PrewarmDataFiles;
 var
-  FileName: string;
-  Lock: TFileStream;
+  mFileName: string;
+  mLock: TFileStream;
 begin
-  FileName := TPath.Combine(TPath.GetTempPath, 'atlas-leckmonitor-daten-' + IntToStr(GetCurrentProcessId) + '.json');
+  mFileName := TPath.Combine(TPath.GetTempPath, 'atlas-leckmonitor-daten-' + IntToStr(GetCurrentProcessId) + '.json');
   try
-    TFile.WriteAllText(FileName, '[1, 2]');
-    TAtlasDataFile.Load(FileName, 'Leckmonitor',
+    TFile.WriteAllText(mFileName, '[1, 2]');
+    TAtlasDataFile.Load(mFileName, 'Leckmonitor',
       function(const AText: string): Boolean
       begin
         Result := False;
       end);
-    TAtlasDataFile.Write(FileName, '{}');
-    Lock := TFileStream.Create(FileName, fmOpenRead or fmShareExclusive);
+    TAtlasDataFile.Write(mFileName, '{}');
+    mLock := TFileStream.Create(mFileName, fmOpenRead or fmShareExclusive);
     try
-      TAtlasDataFile.Load(FileName, 'Leckmonitor',
+      TAtlasDataFile.Load(mFileName, 'Leckmonitor',
         function(const AText: string): Boolean
         begin
           Result := True;
         end);
       try
-        TAtlasDataFile.Write(FileName, '{}');
+        TAtlasDataFile.Write(mFileName, '{}');
       except
         on E: Exception do
           TAtlasDataFile.ReportNotWritten('Leckmonitor', E);
       end;
     finally
-      Lock.Free;
+      mLock.Free;
     end;
   finally
-    System.SysUtils.DeleteFile(FileName);
-    System.SysUtils.DeleteFile(FileName + TAtlasDataFile.cDefectExtension);
+    System.SysUtils.DeleteFile(mFileName);
+    System.SysUtils.DeleteFile(mFileName + TAtlasDataFile.cDefectExtension);
     TAtlasDataFile.ForgetReports;
   end;
 end;
@@ -378,23 +379,23 @@ end;
 
 procedure PrewarmRuntime;
 var
-  Task: ITask;
-  Current: TThread;
-  Json: TJSONValue;
+  mTask: ITask;
+  mCurrent: TThread;
+  mJson: TJSONValue;
 begin
   PrewarmWaitObjects;
   PrewarmSlashCommands;
   // Ebenso der gemeinsame Regelkatalog mit Gruppen und Optionen (#909).
   TRuleCatalog.Shared;
   // Legt den Standard-Thread-Pool und seinen Überwachungs-Thread an (bleiben bis Programmende).
-  Task := TTask.Run(
+  mTask := TTask.Run(
     procedure
     begin
     end);
-  Task.Wait;
+  mTask.Wait;
   // Hauptthread: TExternalThread für TThread.CurrentThread (bleibt bis Programmende).
-  Current := TThread.CurrentThread;
-  if Current = nil then
+  mCurrent := TThread.CurrentThread;
+  if mCurrent = nil then
   begin
     raise EInvalidOperation.Create('Kein aktueller Thread');
   end;
@@ -404,14 +405,14 @@ begin
   begin
     raise EInvalidOperation.Create('Keine Zeitzone');
   end;
-  Json := TJSONObject.ParseJSONValue('{"a":{"b":true}}');
+  mJson := TJSONObject.ParseJSONValue('{"a":{"b":true}}');
   try
-    if not Json.GetValue<Boolean>('a.b') then
+    if not mJson.GetValue<Boolean>('a.b') then
     begin
       raise EInvalidOperation.Create('JSON-Pfad');
     end;
   finally
-    Json.Free;
+    mJson.Free;
   end;
   PrewarmSettingsTransfer;
   PrewarmFileErrors;
@@ -470,34 +471,34 @@ end;
 
 procedure TLeakMonitor.Settle(ABefore: Int64; var AAllocated: Int64; AOthers: Int64);
 var
-  Started: UInt64;
-  Last: Int64;
-  Stable: Integer;
+  mStarted: UInt64;
+  mLast: Int64;
+  mStable: Integer;
 begin
   // AOthers: Saldo der übrigen Abschnitte; gewartet wird, solange die Summe positiv ist.
-  Started := TThread.GetTickCount64;
-  Last := AAllocated;
-  Stable := 0;
-  while (AOthers + AAllocated > 0) and (TThread.GetTickCount64 - Started < SettleTimeoutMs) do
+  mStarted := TThread.GetTickCount64;
+  mLast := AAllocated;
+  mStable := 0;
+  while (AOthers + AAllocated > 0) and (TThread.GetTickCount64 - mStarted < cSettleTimeoutMs) do
   begin
-    TThread.Sleep(SettleStepMs);
+    TThread.Sleep(cSettleStepMs);
     AAllocated := AllocatedBytes - ABefore;
-    if AAllocated = Last then
+    if AAllocated = mLast then
     begin
-      Inc(Stable);
+      Inc(mStable);
     end
     else
     begin
-      Stable := 0;
-      Last := AAllocated;
+      mStable := 0;
+      mLast := AAllocated;
     end;
     // Ruhig und keine zusätzlichen Threads mehr: weiteres Warten bringt nichts.
-    if (Stable >= StableSamples) and (ProcessThreadCount <= FThreadsAtStart) then
+    if (mStable >= cStableSamples) and (ProcessThreadCount <= FThreadsAtStart) then
     begin
       Break;
     end;
   end;
-  Inc(FWaitedMs, TThread.GetTickCount64 - Started);
+  Inc(FWaitedMs, TThread.GetTickCount64 - mStarted);
   FThreadsAtEnd := ProcessThreadCount;
 end;
 
@@ -516,16 +517,16 @@ end;
 
 procedure TLeakMonitor.PreTest;
 var
-  Gap: Int64;
+  mGap: Int64;
 begin
   Start;
   if FSetUpEnd <> 0 then
   begin
-    Gap := AllocatedBytes - FSetUpEnd;
+    mGap := AllocatedBytes - FSetUpEnd;
     FSetUpEnd := 0;
-    if Gap < 0 then
+    if mGap < 0 then
     begin
-      Inc(FSetUpAllocated, Gap);
+      Inc(FSetUpAllocated, mGap);
     end;
   end;
   // Arbeiter früherer Tests vor der Messung beenden, damit ihre Freigabe in PostTest kein Leck verdeckt.

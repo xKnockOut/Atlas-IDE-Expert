@@ -109,11 +109,11 @@ end;
 
 procedure Fill(var ALines: TArray<string>; const AIndent: string; ACount: Integer);
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
-  for Index := 1 to ACount do
+  for mIndex := 1 to ACount do
   begin
-    Add(ALines, AIndent + 'X := ' + IntToStr(Index) + ';');
+    Add(ALines, AIndent + 'X := ' + IntToStr(mIndex) + ';');
   end;
 end;
 
@@ -174,181 +174,181 @@ end;
 
 function Build: TSource;
 var
-  Lines: TArray<string>;
-  Code: string;
-  Tree: TSyntaxTree;
-  Symbols: TJSONArray;
+  mLines: TArray<string>;
+  mCode: string;
+  mTree: TSyntaxTree;
+  mSymbols: TJSONArray;
 begin
-  Lines := nil;
-  Add(Lines, 'unit uForm;');
-  Add(Lines, 'interface');
-  Add(Lines, 'type');
-  Result.Marks.FormClass := Length(Lines);
-  Add(Lines, '  TForm1 = class(TObject)');
-  Add(Lines, '    procedure Laden;');
-  Add(Lines, '    procedure Tief;');
-  Add(Lines, '    procedure Lang;');
-  Add(Lines, '    procedure Vier;');
-  Add(Lines, '    procedure Fuenf;');
-  Add(Lines, '  end;');
-  Add(Lines, 'implementation');
-  AddLaden(Lines, Result.Marks);
-  AddTief(Lines, Result.Marks);
+  mLines := nil;
+  Add(mLines, 'unit uForm;');
+  Add(mLines, 'interface');
+  Add(mLines, 'type');
+  Result.Marks.FormClass := Length(mLines);
+  Add(mLines, '  TForm1 = class(TObject)');
+  Add(mLines, '    procedure Laden;');
+  Add(mLines, '    procedure Tief;');
+  Add(mLines, '    procedure Lang;');
+  Add(mLines, '    procedure Vier;');
+  Add(mLines, '    procedure Fuenf;');
+  Add(mLines, '  end;');
+  Add(mLines, 'implementation');
+  AddLaden(mLines, Result.Marks);
+  AddTief(mLines, Result.Marks);
   // Eine Methode mit 300 Zeilen.
-  Result.Marks.Lang := Length(Lines);
-  Add(Lines, 'procedure TForm1.Lang;');
-  Add(Lines, 'var X: Integer;');
-  Add(Lines, 'begin');
-  Result.Marks.LangBody := Length(Lines);
-  Fill(Lines, '  ', 300);
-  Add(Lines, 'end;');
-  Add(Lines, 'procedure TForm1.Vier; begin end;');
-  Add(Lines, 'procedure TForm1.Fuenf; begin end;');
-  Add(Lines, 'end.');
-  Result.Lines := Lines;
-  Code := string.Join(#13#10, Lines);
-  Tree := TPascalParser.Parse(Code);
+  Result.Marks.Lang := Length(mLines);
+  Add(mLines, 'procedure TForm1.Lang;');
+  Add(mLines, 'var X: Integer;');
+  Add(mLines, 'begin');
+  Result.Marks.LangBody := Length(mLines);
+  Fill(mLines, '  ', 300);
+  Add(mLines, 'end;');
+  Add(mLines, 'procedure TForm1.Vier; begin end;');
+  Add(mLines, 'procedure TForm1.Fuenf; begin end;');
+  Add(mLines, 'end.');
+  Result.Lines := mLines;
+  mCode := string.Join(#13#10, mLines);
+  mTree := TPascalParser.Parse(mCode);
   try
-    Symbols := TLspDocumentSymbols.BuildSymbols(Tree, Code);
+    mSymbols := TLspDocumentSymbols.BuildSymbols(mTree, mCode);
   finally
-    Tree.Free;
+    mTree.Free;
   end;
   try
-    Result.Nodes := TAtlasOutline.FromJson(Symbols);
+    Result.Nodes := TAtlasOutline.FromJson(mSymbols);
   finally
-    Symbols.Free;
+    mSymbols.Free;
   end;
 end;
 
 function Texts(const ARows: TAtlasStickyRows): string;
 var
-  Row: TAtlasStickyRow;
+  mRow: TAtlasStickyRow;
 begin
   Result := '';
-  for Row in ARows do
+  for mRow in ARows do
   begin
     if Result <> '' then
     begin
       Result := Result + ' | ';
     end;
-    Result := Result + Row.Text;
+    Result := Result + mRow.Text;
   end;
 end;
 
 procedure TAtlasStickyScrollTests.HeaderOfLongMethodStaysOnTop;
 var
-  Source: TSource;
+  mSource: TSource;
 begin
-  Source := Build;
-  Assert.AreEqual('procedure TForm1.Lang;', Texts(TAtlasStickyScroll.Rows(Source.Nodes, Source.Lines,
-    Source.Marks.Lang + 200, 3)));
-  Assert.AreEqual('procedure TForm1.Lang;', Texts(TAtlasStickyScroll.Rows(Source.Nodes, Source.Lines,
-    Source.Marks.LangBody + 298, 3)), 'kurz vor dem Ende');
+  mSource := Build;
+  Assert.AreEqual('procedure TForm1.Lang;', Texts(TAtlasStickyScroll.Rows(mSource.Nodes, mSource.Lines,
+    mSource.Marks.Lang + 200, 3)));
+  Assert.AreEqual('procedure TForm1.Lang;', Texts(TAtlasStickyScroll.Rows(mSource.Nodes, mSource.Lines,
+    mSource.Marks.LangBody + 298, 3)), 'kurz vor dem Ende');
 end;
 
 procedure TAtlasStickyScrollTests.InnerFunctionStacksBelowOuter;
 var
-  Source: TSource;
+  mSource: TSource;
 begin
-  Source := Build;
-  Assert.AreEqual('procedure TForm1.Laden; | function Eins: Integer;', Texts(TAtlasStickyScroll.Rows(Source.Nodes,
-    Source.Lines, Source.Marks.EinsBody + 5, 3)));
+  mSource := Build;
+  Assert.AreEqual('procedure TForm1.Laden; | function Eins: Integer;', Texts(TAtlasStickyScroll.Rows(mSource.Nodes,
+    mSource.Lines, mSource.Marks.EinsBody + 5, 3)));
 end;
 
 procedure TAtlasStickyScrollTests.OuterBodyAfterInnerRoutinesShowsOnlyOuter;
 var
-  Source: TSource;
+  mSource: TSource;
 begin
-  Source := Build;
-  Assert.AreEqual('procedure TForm1.Laden;', Texts(TAtlasStickyScroll.Rows(Source.Nodes, Source.Lines,
-    Source.Marks.LadenBody + 5, 3)));
+  mSource := Build;
+  Assert.AreEqual('procedure TForm1.Laden;', Texts(TAtlasStickyScroll.Rows(mSource.Nodes, mSource.Lines,
+    mSource.Marks.LadenBody + 5, 3)));
 end;
 
 procedure TAtlasStickyScrollTests.FourLevelsShowAtMostThreeRows;
 var
-  Source: TSource;
-  Rows: TAtlasStickyRows;
+  mSource: TSource;
+  mRows: TAtlasStickyRows;
 begin
-  Source := Build;
-  Rows := TAtlasStickyScroll.Rows(Source.Nodes, Source.Lines, Source.Marks.InnenBody + 3, 3);
-  Assert.AreEqual(3, Integer(Length(Rows)));
-  Assert.AreEqual('TForm1.Tief › Lokal | function Pruefe(…): Boolean; | procedure Innen;', Texts(Rows));
-  Assert.IsTrue(Rows[0].Summary);
-  Assert.IsFalse(Rows[2].Summary);
+  mSource := Build;
+  mRows := TAtlasStickyScroll.Rows(mSource.Nodes, mSource.Lines, mSource.Marks.InnenBody + 3, 3);
+  Assert.AreEqual(3, Integer(Length(mRows)));
+  Assert.AreEqual('TForm1.Tief › Lokal | function Pruefe(…): Boolean; | procedure Innen;', Texts(mRows));
+  Assert.IsTrue(mRows[0].Summary);
+  Assert.IsFalse(mRows[2].Summary);
   // Mit vier Zeilen jede Ebene für sich.
-  Assert.AreEqual(4, Integer(Length(TAtlasStickyScroll.Rows(Source.Nodes, Source.Lines,
-    Source.Marks.InnenBody + 3, 4))));
+  Assert.AreEqual(4, Integer(Length(TAtlasStickyScroll.Rows(mSource.Nodes, mSource.Lines,
+    mSource.Marks.InnenBody + 3, 4))));
 end;
 
 procedure TAtlasStickyScrollTests.OneRowSummarizesAllLevels;
 var
-  Source: TSource;
-  Rows: TAtlasStickyRows;
+  mSource: TSource;
+  mRows: TAtlasStickyRows;
 begin
-  Source := Build;
-  Rows := TAtlasStickyScroll.Rows(Source.Nodes, Source.Lines, Source.Marks.InnenBody + 3, 1);
-  Assert.AreEqual(1, Integer(Length(Rows)));
-  Assert.AreEqual('TForm1.Tief › Lokal › Pruefe › Innen', Rows[0].Text);
-  Assert.AreEqual(Source.Marks.Innen, Rows[0].Line, 'springt zur innersten Ebene');
+  mSource := Build;
+  mRows := TAtlasStickyScroll.Rows(mSource.Nodes, mSource.Lines, mSource.Marks.InnenBody + 3, 1);
+  Assert.AreEqual(1, Integer(Length(mRows)));
+  Assert.AreEqual('TForm1.Tief › Lokal › Pruefe › Innen', mRows[0].Text);
+  Assert.AreEqual(mSource.Marks.Innen, mRows[0].Line, 'springt zur innersten Ebene');
   // Untergrenze: 0 Zeilen gilt als eine.
-  Assert.AreEqual(1, Integer(Length(TAtlasStickyScroll.Rows(Source.Nodes, Source.Lines,
-    Source.Marks.InnenBody + 3, 0))));
+  Assert.AreEqual(1, Integer(Length(TAtlasStickyScroll.Rows(mSource.Nodes, mSource.Lines,
+    mSource.Marks.InnenBody + 3, 0))));
 end;
 
 procedure TAtlasStickyScrollTests.MultiLineHeaderIsShortened;
 var
-  Source: TSource;
-  Node: TAtlasOutlineNode;
+  mSource: TSource;
+  mNode: TAtlasOutlineNode;
 begin
-  Source := Build;
-  for Node in Source.Nodes do
+  mSource := Build;
+  for mNode in mSource.Nodes do
   begin
-    if Node.Name = 'Pruefe' then
+    if mNode.Name = 'Pruefe' then
     begin
-      Assert.AreEqual('function Pruefe(…): Boolean;', TAtlasStickyScroll.Header(Source.Lines, Node));
+      Assert.AreEqual('function Pruefe(…): Boolean;', TAtlasStickyScroll.Header(mSource.Lines, mNode));
     end;
   end;
-  Node := Default(TAtlasOutlineNode);
-  Node.NameLine := 0;
-  Node.EndLine := 0;
-  Assert.AreEqual('procedure A(…)', TAtlasStickyScroll.Header(['  procedure A(B: Integer'], Node),
+  mNode := Default(TAtlasOutlineNode);
+  mNode.NameLine := 0;
+  mNode.EndLine := 0;
+  Assert.AreEqual('procedure A(…)', TAtlasStickyScroll.Header(['  procedure A(B: Integer'], mNode),
     'ohne schließende Klammer');
   Assert.AreEqual('procedure A(const S: string = ''('');', TAtlasStickyScroll.Header(
-    ['procedure A(const S: string = ''('');'], Node), 'Klammer in der Zeichenkette');
+    ['procedure A(const S: string = ''('');'], mNode), 'Klammer in der Zeichenkette');
 end;
 
 procedure TAtlasStickyScrollTests.ClassInInterfaceIsABlock;
 var
-  Source: TSource;
+  mSource: TSource;
 begin
-  Source := Build;
-  Assert.AreEqual('TForm1 = class(TObject)', Texts(TAtlasStickyScroll.Rows(Source.Nodes, Source.Lines,
-    Source.Marks.FormClass + 2, 3)));
+  mSource := Build;
+  Assert.AreEqual('TForm1 = class(TObject)', Texts(TAtlasStickyScroll.Rows(mSource.Nodes, mSource.Lines,
+    mSource.Marks.FormClass + 2, 3)));
 end;
 
 procedure TAtlasStickyScrollTests.NothingWhileTheHeaderIsVisible;
 var
-  Source: TSource;
+  mSource: TSource;
 begin
-  Source := Build;
-  Assert.AreEqual('', Texts(TAtlasStickyScroll.Rows(Source.Nodes, Source.Lines, Source.Marks.Lang, 3)));
-  Assert.AreEqual('', Texts(TAtlasStickyScroll.Rows(Source.Nodes, Source.Lines, 0, 3)));
+  mSource := Build;
+  Assert.AreEqual('', Texts(TAtlasStickyScroll.Rows(mSource.Nodes, mSource.Lines, mSource.Marks.Lang, 3)));
+  Assert.AreEqual('', Texts(TAtlasStickyScroll.Rows(mSource.Nodes, mSource.Lines, 0, 3)));
   // Letzte Zeile der Methode unter dem Kopf: der Block ist zu Ende, kein Kopf mehr.
-  Assert.AreEqual('', Texts(TAtlasStickyScroll.Rows(Source.Nodes, Source.Lines, Source.Marks.LangBody + 300, 3)));
+  Assert.AreEqual('', Texts(TAtlasStickyScroll.Rows(mSource.Nodes, mSource.Lines, mSource.Marks.LangBody + 300, 3)));
 end;
 
 procedure TAtlasStickyScrollTests.RowsJumpToTheName;
 var
-  Source: TSource;
-  Rows: TAtlasStickyRows;
+  mSource: TSource;
+  mRows: TAtlasStickyRows;
 begin
-  Source := Build;
-  Rows := TAtlasStickyScroll.Rows(Source.Nodes, Source.Lines, Source.Marks.EinsBody + 5, 3);
-  Assert.AreEqual(Source.Marks.Laden, Rows[0].Line);
-  Assert.AreEqual(Source.Marks.Eins, Rows[1].Line);
-  Assert.AreEqual(11, Rows[1].Character, 'Name hinter „function “');
-  Assert.AreEqual(2, Rows[1].Indent);
-  Assert.AreEqual(0, Rows[0].Indent);
+  mSource := Build;
+  mRows := TAtlasStickyScroll.Rows(mSource.Nodes, mSource.Lines, mSource.Marks.EinsBody + 5, 3);
+  Assert.AreEqual(mSource.Marks.Laden, mRows[0].Line);
+  Assert.AreEqual(mSource.Marks.Eins, mRows[1].Line);
+  Assert.AreEqual(11, mRows[1].Character, 'Name hinter „function “');
+  Assert.AreEqual(2, mRows[1].Indent);
+  Assert.AreEqual(0, mRows[0].Indent);
 end;
 
 procedure TAtlasStickyScrollTests.IndentCountsTabs;
@@ -361,14 +361,14 @@ end;
 
 function TokensOfLine(const ATokens: TArray<TAtlasPairToken>; ALine: Integer): TArray<TAtlasPairToken>;
 var
-  Token: TAtlasPairToken;
+  mToken: TAtlasPairToken;
 begin
   Result := nil;
-  for Token in ATokens do
+  for mToken in ATokens do
   begin
-    if Token.Line = ALine then
+    if mToken.Line = ALine then
     begin
-      Result := Result + [Token];
+      Result := Result + [mToken];
     end;
   end;
 end;
@@ -376,16 +376,16 @@ end;
 /// <summary>„Art:Text“ je Stück ohne Lücken, durch | getrennt.</summary>
 function Described(const AText: string): string;
 const
-  Names: array[TAtlasStickySyntax] of string = ('_', 'R', 'I', 'N', 'S', 'C', 'K', 'Y', 'P');
+  cNames: array[TAtlasStickySyntax] of string = ('_', 'R', 'I', 'N', 'S', 'C', 'K', 'Y', 'P');
 var
-  Token: TAtlasStickyToken;
+  mToken: TAtlasStickyToken;
 begin
   Result := '';
-  for Token in TAtlasStickyScroll.Syntax(AText) do
+  for mToken in TAtlasStickyScroll.Syntax(AText) do
   begin
-    if Token.Kind <> TAtlasStickySyntax.Plain then
+    if mToken.Kind <> TAtlasStickySyntax.Plain then
     begin
-      Result := Result + Names[Token.Kind] + ':' + Copy(AText, Token.Start, Token.Length) + '|';
+      Result := Result + cNames[mToken.Kind] + ':' + Copy(AText, mToken.Start, mToken.Length) + '|';
     end;
   end;
 end;
@@ -406,60 +406,60 @@ end;
 
 procedure TAtlasStickyScrollTests.BranchBlocksJoinTheHeader;
 var
-  Lines: TArray<string>;
-  Index: Integer;
-  Blocks: TArray<TAtlasStickyBlock>;
-  Rows: TAtlasStickyRows;
+  mLines: TArray<string>;
+  mIndex: Integer;
+  mBlocks: TArray<TAtlasStickyBlock>;
+  mRows: TAtlasStickyRows;
 begin
-  SetLength(Lines, 60);
-  for Index := 0 to High(Lines) do
+  SetLength(mLines, 60);
+  for mIndex := 0 to High(mLines) do
   begin
-    Lines[Index] := '      Tue;';
+    mLines[mIndex] := '      Tue;';
   end;
-  Lines[2] := '  if Gueltig then';
-  Lines[3] := '  begin';
-  Lines[10] := '    else if Leer then';
-  Lines[11] := '    begin';
-  Lines[40] := '    end;';
-  Lines[50] := '  end;';
-  Blocks := TArray<TAtlasStickyBlock>.Create(TAtlasStickyBlock.Create(10, 4, 40), TAtlasStickyBlock.Create(2, 2, 50));
+  mLines[2] := '  if Gueltig then';
+  mLines[3] := '  begin';
+  mLines[10] := '    else if Leer then';
+  mLines[11] := '    begin';
+  mLines[40] := '    end;';
+  mLines[50] := '  end;';
+  mBlocks := TArray<TAtlasStickyBlock>.Create(TAtlasStickyBlock.Create(10, 4, 40), TAtlasStickyBlock.Create(2, 2, 50));
   // Mitten im inneren Block: beide, der äußere zuerst, ohne Einrückung im Text.
-  Rows := TAtlasStickyScroll.Rows(nil, Lines, Blocks, 20, 3, 8);
-  Assert.AreEqual(2, Integer(Length(Rows)));
-  Assert.AreEqual('if Gueltig then', Rows[0].Text);
-  Assert.AreEqual(2, Rows[0].Indent);
-  Assert.AreEqual('else if Leer then', Rows[1].Text);
-  Assert.AreEqual(10, Rows[1].Line, 'Sprung zum else');
+  mRows := TAtlasStickyScroll.Rows(nil, mLines, mBlocks, 20, 3, 8);
+  Assert.AreEqual(2, Integer(Length(mRows)));
+  Assert.AreEqual('if Gueltig then', mRows[0].Text);
+  Assert.AreEqual(2, mRows[0].Indent);
+  Assert.AreEqual('else if Leer then', mRows[1].Text);
+  Assert.AreEqual(10, mRows[1].Line, 'Sprung zum else');
   // Nach dem inneren Block nur noch der äußere; nach dem äußeren keiner.
-  Assert.AreEqual(1, Integer(Length(TAtlasStickyScroll.Rows(nil, Lines, Blocks, 44, 3, 8))));
-  Assert.AreEqual(0, Integer(Length(TAtlasStickyScroll.Rows(nil, Lines, Blocks, 55, 3, 8))));
+  Assert.AreEqual(1, Integer(Length(TAtlasStickyScroll.Rows(nil, mLines, mBlocks, 44, 3, 8))));
+  Assert.AreEqual(0, Integer(Length(TAtlasStickyScroll.Rows(nil, mLines, mBlocks, 55, 3, 8))));
   // Eine Zeile: Zusammenfassung mit gekürzten Köpfen.
-  Rows := TAtlasStickyScroll.Rows(nil, Lines, Blocks, 20, 1, 8);
-  Assert.AreEqual(1, Integer(Length(Rows)));
-  Assert.AreEqual('if Gueltig then › else if Leer then', Rows[0].Text);
+  mRows := TAtlasStickyScroll.Rows(nil, mLines, mBlocks, 20, 1, 8);
+  Assert.AreEqual(1, Integer(Length(mRows)));
+  Assert.AreEqual('if Gueltig then › else if Leer then', mRows[0].Text);
 end;
 
 procedure TAtlasStickyScrollTests.HeaderKeywordsTakeTheirDepthColor;
 const
-  Lines: array[0..5] of string = ('procedure Aussen;', '  procedure Innen(A,', '    B: Integer);', '  begin',
+  cLines: array[0..5] of string = ('procedure Aussen;', '  procedure Innen(A,', '    B: Integer);', '  begin',
     '  end;', 'begin');
 var
-  Tokens, Line1: TArray<TAtlasPairToken>;
-  Spans: TArray<TAtlasPairSpan>;
+  mTokens, mLine1: TArray<TAtlasPairToken>;
+  mSpans: TArray<TAtlasPairSpan>;
 begin
-  Tokens := TAtlasPairs.Analyze(string.Join(#10, Lines) + #10'end;');
-  Line1 := TokensOfLine(Tokens, 1);
+  mTokens := TAtlasPairs.Analyze(string.Join(#10, cLines) + #10'end;');
+  mLine1 := TokensOfLine(mTokens, 1);
   // Kopf der inneren Routine ohne Einrückung, Parameterliste gekürzt: procedure in der Farbe ihres begin.
-  Spans := TAtlasPairs.Spans('procedure Innen(…): Boolean;', Lines[1], Line1, True);
-  Assert.IsTrue(Length(Spans) >= 1, 'procedure gefärbt');
-  Assert.AreEqual(1, Spans[0].Start);
-  Assert.AreEqual(9, Spans[0].Length);
-  Assert.AreEqual(TokensOfLine(Tokens, 3)[0].Depth, Spans[0].Depth, 'Tiefe des eigenen begin');
-  Assert.AreEqual('(', Copy('procedure Innen(…): Boolean;', Spans[High(Spans)].Start, 1), 'Klammer vor „…“');
+  mSpans := TAtlasPairs.Spans('procedure Innen(…): Boolean;', cLines[1], mLine1, True);
+  Assert.IsTrue(Length(mSpans) >= 1, 'procedure gefärbt');
+  Assert.AreEqual(1, mSpans[0].Start);
+  Assert.AreEqual(9, mSpans[0].Length);
+  Assert.AreEqual(TokensOfLine(mTokens, 3)[0].Depth, mSpans[0].Depth, 'Tiefe des eigenen begin');
+  Assert.AreEqual('(', Copy('procedure Innen(…): Boolean;', mSpans[High(mSpans)].Start, 1), 'Klammer vor „…“');
   // Ohne Besitzer (PairOwners aus) bleibt procedure ungefärbt wie im Editor.
-  for var Span in TAtlasPairs.Spans('procedure Innen(…): Boolean;', Lines[1], Line1, False) do
+  for var mSpan in TAtlasPairs.Spans('procedure Innen(…): Boolean;', cLines[1], mLine1, False) do
   begin
-    Assert.AreNotEqual(1, Span.Start);
+    Assert.AreNotEqual(1, mSpan.Start);
   end;
 end;
 
@@ -473,41 +473,41 @@ end;
 
 procedure TAtlasStickyScrollTests.GuideStartsAtItsRowOrFadesIn;
 var
-  Rows: TAtlasStickyRows;
-  Start: TAtlasStickyGuideStart;
+  mRows: TAtlasStickyRows;
+  mStart: TAtlasStickyGuideStart;
 begin
   // Zusammenfassung mit Sprungziel 3, procedure in 10, if in 14.
-  Rows := [Row(3, True), Row(10, False), Row(14, False)];
-  Start := TAtlasStickyScroll.GuideStart(Rows, 10);
-  Assert.AreEqual(1, Start.Row);
-  Assert.IsFalse(Start.FadeIn);
-  Start := TAtlasStickyScroll.GuideStart(Rows, 14);
-  Assert.AreEqual(2, Start.Row);
-  Assert.IsFalse(Start.FadeIn);
+  mRows := [Row(3, True), Row(10, False), Row(14, False)];
+  mStart := TAtlasStickyScroll.GuideStart(mRows, 10);
+  Assert.AreEqual(1, mStart.Row);
+  Assert.IsFalse(mStart.FadeIn);
+  mStart := TAtlasStickyScroll.GuideStart(mRows, 14);
+  Assert.AreEqual(2, mStart.Row);
+  Assert.IsFalse(mStart.FadeIn);
   // for in 12 ohne Kopfzeile: in der letzten Zeile eingeblendet.
-  Start := TAtlasStickyScroll.GuideStart(Rows, 12);
-  Assert.AreEqual(2, Start.Row);
-  Assert.IsTrue(Start.FadeIn);
+  mStart := TAtlasStickyScroll.GuideStart(mRows, 12);
+  Assert.AreEqual(2, mStart.Row);
+  Assert.IsTrue(mStart.FadeIn);
   // Die Zusammenfassung ist nicht das Element der Linie.
-  Start := TAtlasStickyScroll.GuideStart(Rows, 3);
-  Assert.AreEqual(2, Start.Row);
-  Assert.IsTrue(Start.FadeIn);
+  mStart := TAtlasStickyScroll.GuideStart(mRows, 3);
+  Assert.AreEqual(2, mStart.Row);
+  Assert.IsTrue(mStart.FadeIn);
   // Ohne Kopf keine Linie im Kopf.
-  Rows := nil;
-  Start := TAtlasStickyScroll.GuideStart(Rows, 12);
-  Assert.AreEqual(-1, Start.Row);
-  Assert.IsFalse(Start.FadeIn);
+  mRows := nil;
+  mStart := TAtlasStickyScroll.GuideStart(mRows, 12);
+  Assert.AreEqual(-1, mStart.Row);
+  Assert.IsFalse(mStart.FadeIn);
 end;
 
 procedure TAtlasStickyScrollTests.FadeRisesToTheBottom;
 var
-  Offset: Integer;
+  mOffset: Integer;
 begin
   Assert.AreEqual(1.0, TAtlasStickyScroll.FadeWeight(19, 20), 1e-9, 'unterste Pixelzeile voll');
   Assert.IsTrue(TAtlasStickyScroll.FadeWeight(0, 20) < 0.01, 'oben fast unsichtbar');
-  for Offset := 1 to 19 do
+  for mOffset := 1 to 19 do
   begin
-    Assert.IsTrue(TAtlasStickyScroll.FadeWeight(Offset, 20) > TAtlasStickyScroll.FadeWeight(Offset - 1, 20));
+    Assert.IsTrue(TAtlasStickyScroll.FadeWeight(mOffset, 20) > TAtlasStickyScroll.FadeWeight(mOffset - 1, 20));
   end;
   // Weich: in der Mitte noch unter der Hälfte.
   Assert.IsTrue(TAtlasStickyScroll.FadeWeight(9, 20) < 0.5);
@@ -516,20 +516,20 @@ end;
 
 procedure TAtlasStickyScrollTests.OwnerWordsHaveTheirKind;
 var
-  Kind: TAtlasStickyKind;
+  mKind: TAtlasStickyKind;
 begin
-  Assert.IsTrue(TAtlasStickyScroll.OwnerKind('if', Kind) and (Kind = TAtlasStickyKind.Branches));
-  Assert.IsTrue(TAtlasStickyScroll.OwnerKind('else', Kind) and (Kind = TAtlasStickyKind.Branches));
-  Assert.IsTrue(TAtlasStickyScroll.OwnerKind('for', Kind) and (Kind = TAtlasStickyKind.Loops));
-  Assert.IsTrue(TAtlasStickyScroll.OwnerKind('while', Kind) and (Kind = TAtlasStickyKind.Loops));
-  Assert.IsTrue(TAtlasStickyScroll.OwnerKind('repeat', Kind) and (Kind = TAtlasStickyKind.Loops));
-  Assert.IsTrue(TAtlasStickyScroll.OwnerKind('try', Kind) and (Kind = TAtlasStickyKind.TryBlocks));
-  Assert.IsTrue(TAtlasStickyScroll.OwnerKind('case', Kind) and (Kind = TAtlasStickyKind.CaseBlocks));
-  Assert.IsTrue(TAtlasStickyScroll.OwnerKind('with', Kind) and (Kind = TAtlasStickyKind.WithBlocks));
+  Assert.IsTrue(TAtlasStickyScroll.OwnerKind('if', mKind) and (mKind = TAtlasStickyKind.Branches));
+  Assert.IsTrue(TAtlasStickyScroll.OwnerKind('else', mKind) and (mKind = TAtlasStickyKind.Branches));
+  Assert.IsTrue(TAtlasStickyScroll.OwnerKind('for', mKind) and (mKind = TAtlasStickyKind.Loops));
+  Assert.IsTrue(TAtlasStickyScroll.OwnerKind('while', mKind) and (mKind = TAtlasStickyKind.Loops));
+  Assert.IsTrue(TAtlasStickyScroll.OwnerKind('repeat', mKind) and (mKind = TAtlasStickyKind.Loops));
+  Assert.IsTrue(TAtlasStickyScroll.OwnerKind('try', mKind) and (mKind = TAtlasStickyKind.TryBlocks));
+  Assert.IsTrue(TAtlasStickyScroll.OwnerKind('case', mKind) and (mKind = TAtlasStickyKind.CaseBlocks));
+  Assert.IsTrue(TAtlasStickyScroll.OwnerKind('with', mKind) and (mKind = TAtlasStickyKind.WithBlocks));
   // Ohne Anweisung davor (begin, asm) und Ausnahmezweige (on) bekommen keine eigene Zeile.
-  Assert.IsFalse(TAtlasStickyScroll.OwnerKind('begin', Kind));
-  Assert.IsFalse(TAtlasStickyScroll.OwnerKind('asm', Kind));
-  Assert.IsFalse(TAtlasStickyScroll.OwnerKind('on', Kind));
+  Assert.IsFalse(TAtlasStickyScroll.OwnerKind('begin', mKind));
+  Assert.IsFalse(TAtlasStickyScroll.OwnerKind('asm', mKind));
+  Assert.IsFalse(TAtlasStickyScroll.OwnerKind('on', mKind));
 end;
 
 /// <summary>Kopf über ATopLine mit den Gliederungsarten AKinds (3 Zeilen, Tabulator 8).</summary>
@@ -541,20 +541,20 @@ end;
 
 procedure TAtlasStickyScrollTests.OutlineKindsCanBeSwitchedOff;
 var
-  Source: TSource;
+  mSource: TSource;
 begin
-  Source := Build;
+  mSource := Build;
   // Klasse: nur mit Types.
-  Assert.AreEqual('TForm1 = class(TObject)', Texts(KindRows(Source.Nodes, Source.Lines, [TAtlasStickyKind.Types],
-    Source.Marks.FormClass + 2)));
-  Assert.AreEqual('', Texts(KindRows(Source.Nodes, Source.Lines, [TAtlasStickyKind.Routines],
-    Source.Marks.FormClass + 2)));
+  Assert.AreEqual('TForm1 = class(TObject)', Texts(KindRows(mSource.Nodes, mSource.Lines, [TAtlasStickyKind.Types],
+    mSource.Marks.FormClass + 2)));
+  Assert.AreEqual('', Texts(KindRows(mSource.Nodes, mSource.Lines, [TAtlasStickyKind.Routines],
+    mSource.Marks.FormClass + 2)));
   // Routinen: nur mit Routines; ohne beide bleibt der Kopf leer.
-  Assert.AreEqual('procedure TForm1.Laden; | function Eins: Integer;', Texts(KindRows(Source.Nodes, Source.Lines,
-    [TAtlasStickyKind.Routines], Source.Marks.EinsBody + 5)));
-  Assert.AreEqual('', Texts(KindRows(Source.Nodes, Source.Lines, [TAtlasStickyKind.Types],
-    Source.Marks.EinsBody + 5)));
-  Assert.AreEqual('', Texts(KindRows(Source.Nodes, Source.Lines, [], Source.Marks.EinsBody + 5)));
+  Assert.AreEqual('procedure TForm1.Laden; | function Eins: Integer;', Texts(KindRows(mSource.Nodes, mSource.Lines,
+    [TAtlasStickyKind.Routines], mSource.Marks.EinsBody + 5)));
+  Assert.AreEqual('', Texts(KindRows(mSource.Nodes, mSource.Lines, [TAtlasStickyKind.Types],
+    mSource.Marks.EinsBody + 5)));
+  Assert.AreEqual('', Texts(KindRows(mSource.Nodes, mSource.Lines, [], mSource.Marks.EinsBody + 5)));
 end;
 
 procedure TAtlasStickyScrollTests.HeaderCharactersMapToTheSource;

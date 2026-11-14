@@ -38,19 +38,19 @@ uses
 
 function Queries: TArray<TAtlasQueryTiming>;
 var
-  Timings: TAtlasQueryTimings;
-  Id: Integer;
+  mTimings: TAtlasQueryTimings;
+  mId: Integer;
 begin
-  Timings := TAtlasQueryTimings.Create;
+  mTimings := TAtlasQueryTimings.Create;
   try
-    Id := Timings.BeginQuery(0, 'Member, automatisch', 'Unit1.pas');
-    Timings.ProviderDone(Id, 'Server', 500, 40);
-    Timings.ProviderDone(Id, 'Code-Vorlagen', 1, 2);
-    Timings.FilterSorted(2, 42, 7);
-    Timings.Drawn(3);
-    Result := Timings.Snapshot;
+    mId := mTimings.BeginQuery(0, 'Member, automatisch', 'Unit1.pas');
+    mTimings.ProviderDone(mId, 'Server', 500, 40);
+    mTimings.ProviderDone(mId, 'Code-Vorlagen', 1, 2);
+    mTimings.FilterSorted(2, 42, 7);
+    mTimings.Drawn(3);
+    Result := mTimings.Snapshot;
   finally
-    Timings.Free;
+    mTimings.Free;
   end;
 end;
 
@@ -63,84 +63,84 @@ end;
 
 procedure TAtlasTimingFrameTests.EmptyShowsHint;
 var
-  Frame: TAtlasTimingFrame;
+  mFrame: TAtlasTimingFrame;
 begin
-  Frame := TAtlasTimingFrame.Create(nil);
+  mFrame := TAtlasTimingFrame.Create(nil);
   try
-    Assert.AreEqual(TAtlasDiagnosticsStrings.Text(TAtlasDiagnosticsTextId.DiagnosticNoQuery), Frame.Title.Caption);
-    Assert.AreEqual(5, Integer(Length(Frame.Rows)), 'Schritte ohne Quellen');
-    Assert.IsFalse(Frame.FileNames.Checked, 'Dateinamen nur auf Wunsch');
-    Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.DiagnosticCopy), Frame.CopyButton.Caption);
+    Assert.AreEqual(TAtlasDiagnosticsStrings.Text(TAtlasDiagnosticsTextId.DiagnosticNoQuery), mFrame.Title.Caption);
+    Assert.AreEqual(5, Integer(Length(mFrame.Rows)), 'Schritte ohne Quellen');
+    Assert.IsFalse(mFrame.FileNames.Checked, 'Dateinamen nur auf Wunsch');
+    Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.DiagnosticCopy), mFrame.CopyButton.Caption);
   finally
-    Frame.Free;
+    mFrame.Free;
   end;
 end;
 
 procedure TAtlasTimingFrameTests.RowsWithProviderNamesAndWarnings;
 var
-  Form: TForm;
-  Frame: TAtlasTimingFrame;
-  Row: TAtlasTimingRow;
-  Seen: Boolean;
+  mForm: TForm;
+  mFrame: TAtlasTimingFrame;
+  mRow: TAtlasTimingRow;
+  mSeen: Boolean;
 begin
-  Form := TForm.CreateNew(nil);
+  mForm := TForm.CreateNew(nil);
   try
-    Form.Width := 600;
-    Form.Height := 400;
-    Frame := TAtlasTimingFrame.Create(Form);
-    Frame.Parent := Form;
-    Frame.Align := alClient;
-    Frame.SetColors(TAtlasColors.Dark);
-    Frame.SetQueries(Queries);
-    Assert.Contains(Frame.Title.Caption, 'Member, automatisch');
-    Assert.AreEqual(7, Integer(Length(Frame.Rows)));
-    Seen := False;
-    for Row in Frame.Rows do
+    mForm.Width := 600;
+    mForm.Height := 400;
+    mFrame := TAtlasTimingFrame.Create(mForm);
+    mFrame.Parent := mForm;
+    mFrame.Align := alClient;
+    mFrame.SetColors(TAtlasColors.Dark);
+    mFrame.SetQueries(Queries);
+    Assert.Contains(mFrame.Title.Caption, 'Member, automatisch');
+    Assert.AreEqual(7, Integer(Length(mFrame.Rows)));
+    mSeen := False;
+    for mRow in mFrame.Rows do
     begin
-      if (Row.Kind = TAtlasTimingRowKind.Provider) and (Row.Name = 'Server') then
+      if (mRow.Kind = TAtlasTimingRowKind.Provider) and (mRow.Name = 'Server') then
       begin
-        Seen := True;
-        Assert.IsTrue(Row.LastWarn, 'verzögerte Quelle in Warnfarbe');
+        mSeen := True;
+        Assert.IsTrue(mRow.LastWarn, 'verzögerte Quelle in Warnfarbe');
         Assert.AreEqual(TAtlasDiagnosticsStrings.Fmt(TAtlasDiagnosticsTextId.DiagnosticRowProvider, ['Server']),
-          TAtlasTimingFrame.Caption(Row));
+          TAtlasTimingFrame.Caption(mRow));
       end;
     end;
-    Assert.IsTrue(Seen);
+    Assert.IsTrue(mSeen);
     // Zeichnen mit Warnfläche darf nicht scheitern.
-    Form.Show;
-    Frame.Grid.Repaint;
+    mForm.Show;
+    mFrame.Grid.Repaint;
     Application.ProcessMessages;
   finally
-    Form.Free;
+    mForm.Free;
   end;
 end;
 
 procedure TAtlasTimingFrameTests.CopyPassesFileNameChoice;
 var
-  Frame: TAtlasTimingFrame;
-  Calls: Integer;
-  WithNames: Boolean;
+  mFrame: TAtlasTimingFrame;
+  mCalls: Integer;
+  mWithNames: Boolean;
 begin
-  Calls := 0;
-  WithNames := True;
-  Frame := TAtlasTimingFrame.Create(nil);
+  mCalls := 0;
+  mWithNames := True;
+  mFrame := TAtlasTimingFrame.Create(nil);
   try
-    Frame.OnCopy :=
+    mFrame.OnCopy :=
       procedure(AFileNames: Boolean)
       begin
-        Inc(Calls);
-        WithNames := AFileNames;
+        Inc(mCalls);
+        mWithNames := AFileNames;
       end;
-    Frame.CopyButton.Click;
-    Assert.AreEqual(1, Calls);
-    Assert.IsFalse(WithNames, 'Vorgabe ohne Dateinamen');
-    Frame.FileNames.Checked := True;
-    Frame.CopyButton.Click;
-    Assert.IsTrue(WithNames);
-    Frame.ShowNote(TAtlasDiagnosticsStrings.Text(TAtlasDiagnosticsTextId.DiagnosticCopied));
-    Assert.AreEqual(TAtlasDiagnosticsStrings.Text(TAtlasDiagnosticsTextId.DiagnosticCopied), Frame.Note.Caption);
+    mFrame.CopyButton.Click;
+    Assert.AreEqual(1, mCalls);
+    Assert.IsFalse(mWithNames, 'Vorgabe ohne Dateinamen');
+    mFrame.FileNames.Checked := True;
+    mFrame.CopyButton.Click;
+    Assert.IsTrue(mWithNames);
+    mFrame.ShowNote(TAtlasDiagnosticsStrings.Text(TAtlasDiagnosticsTextId.DiagnosticCopied));
+    Assert.AreEqual(TAtlasDiagnosticsStrings.Text(TAtlasDiagnosticsTextId.DiagnosticCopied), mFrame.Note.Caption);
   finally
-    Frame.Free;
+    mFrame.Free;
   end;
 end;
 

@@ -55,7 +55,8 @@ type
     /// <summary>#2142: Token und laufender Aufbau je Arbeitsbereich, Prozent live über das Token.</summary>
     [Test]
     procedure StatusParsesIndexingPerWorkspace;
-    /// <summary>#2142: Prozent, Stufe und Warten je Projekt; ein neuer Aufbau macht ein fertiges Projekt gelb.</summary>
+    /// <summary>#2142: Prozent, Stufe und Warten je Projekt; ein neuer Aufbau macht ein fertiges Projekt
+    /// gelb.</summary>
     [Test]
     procedure IndexShowsStagePerProject;
     [Test]
@@ -87,7 +88,7 @@ uses
 /// <summary>Alles in Ordnung: Server 0.1.0 läuft, Delphi 13 Win64, zwei Projekte fertig indiziert.</summary>
 function GoodInput: TAtlasSetupInput;
 var
-  Workspace: TAtlasSetupWorkspace;
+  mWorkspace: TAtlasSetupWorkspace;
 begin
   Result := Default(TAtlasSetupInput);
   Result.ServerFound := True;
@@ -100,14 +101,14 @@ begin
   Result.IndexPercent := -1;
   Result.Status.Known := True;
   Result.Status.Units := 1569;
-  Workspace := Default(TAtlasSetupWorkspace);
-  Workspace.Name := 'Kunden';
-  Workspace.Done := True;
-  Workspace.LibraryCacheBytes := 5 * 1024 * 1024;
-  Result.Status.Workspaces := [Workspace];
-  Workspace.Name := 'Export';
-  Workspace.LibraryCacheBytes := 0;
-  Result.Status.Workspaces := Result.Status.Workspaces + [Workspace];
+  mWorkspace := Default(TAtlasSetupWorkspace);
+  mWorkspace.Name := 'Kunden';
+  mWorkspace.Done := True;
+  mWorkspace.LibraryCacheBytes := 5 * 1024 * 1024;
+  Result.Status.Workspaces := [mWorkspace];
+  mWorkspace.Name := 'Export';
+  mWorkspace.LibraryCacheBytes := 0;
+  Result.Status.Workspaces := Result.Status.Workspaces + [mWorkspace];
   Result.ErrorInsight := False;
   Result.AtlasProblems := True;
   Result.Keys := [TAtlasSetupKey.Create(TAtlasKeyEntry.Create(TAtlasKeyFunction.Palette, $6050, False),
@@ -126,77 +127,77 @@ end;
 
 procedure TAtlasSetupChecklistTests.ServerMissingIsRedWithChoosePath;
 var
-  Input: TAtlasSetupInput;
-  Check: TAtlasSetupResult;
+  mInput: TAtlasSetupInput;
+  mCheck: TAtlasSetupResult;
 begin
-  Input := GoodInput;
-  Input.ServerFound := False;
-  Input.Server := Default(TAtlasServerInfo);
-  Check := TAtlasSetupChecklist.CheckServer(Input);
-  Assert.AreEqual(Ord(TAtlasSetupFinding.ServerMissing), Ord(Check.Finding));
-  Assert.AreEqual(Ord(TAtlasStatusState.Red), Ord(Check.State));
-  Assert.AreEqual(Ord(TAtlasSetupFix.ChooseServerPath), Ord(Check.Fix), 'Knopf „Server-Pfad wählen …“');
-  Assert.IsFalse(Check.Pending, 'Fehlender Server ist ein fester Befund');
+  mInput := GoodInput;
+  mInput.ServerFound := False;
+  mInput.Server := Default(TAtlasServerInfo);
+  mCheck := TAtlasSetupChecklist.CheckServer(mInput);
+  Assert.AreEqual(Ord(TAtlasSetupFinding.ServerMissing), Ord(mCheck.Finding));
+  Assert.AreEqual(Ord(TAtlasStatusState.Red), Ord(mCheck.State));
+  Assert.AreEqual(Ord(TAtlasSetupFix.ChooseServerPath), Ord(mCheck.Fix), 'Knopf „Server-Pfad wählen …“');
+  Assert.IsFalse(mCheck.Pending, 'Fehlender Server ist ein fester Befund');
 end;
 
 procedure TAtlasSetupChecklistTests.ServerVersionMismatchIsRed;
 var
-  Input: TAtlasSetupInput;
-  Check: TAtlasSetupResult;
+  mInput: TAtlasSetupInput;
+  mCheck: TAtlasSetupResult;
 begin
-  Input := GoodInput;
-  Input.Server.Version := '0.0.9';
-  Check := TAtlasSetupChecklist.CheckServer(Input);
-  Assert.AreEqual(Ord(TAtlasSetupFinding.ServerVersionMismatch), Ord(Check.Finding));
-  Assert.AreEqual(Ord(TAtlasStatusState.Red), Ord(Check.State));
-  Assert.AreEqual(Ord(TAtlasSetupFix.ChooseServerPath), Ord(Check.Fix));
-  Assert.AreEqual(2, Integer(Length(Check.Args)));
-  Assert.AreEqual('0.0.9', Check.Args[0]);
-  Assert.AreEqual('0.1.0', Check.Args[1]);
+  mInput := GoodInput;
+  mInput.Server.Version := '0.0.9';
+  mCheck := TAtlasSetupChecklist.CheckServer(mInput);
+  Assert.AreEqual(Ord(TAtlasSetupFinding.ServerVersionMismatch), Ord(mCheck.Finding));
+  Assert.AreEqual(Ord(TAtlasStatusState.Red), Ord(mCheck.State));
+  Assert.AreEqual(Ord(TAtlasSetupFix.ChooseServerPath), Ord(mCheck.Fix));
+  Assert.AreEqual(2, Integer(Length(mCheck.Args)));
+  Assert.AreEqual('0.0.9', mCheck.Args[0]);
+  Assert.AreEqual('0.1.0', mCheck.Args[1]);
 end;
 
 procedure TAtlasSetupChecklistTests.ServerReadyWithMatchingVersion;
 var
-  Check: TAtlasSetupResult;
+  mCheck: TAtlasSetupResult;
 begin
-  Check := TAtlasSetupChecklist.CheckServer(GoodInput);
-  Assert.AreEqual(Ord(TAtlasSetupFinding.ServerReady), Ord(Check.Finding));
-  Assert.AreEqual(Ord(TAtlasStatusState.Green), Ord(Check.State));
-  Assert.AreEqual(Ord(TAtlasSetupFix.None), Ord(Check.Fix));
-  Assert.AreEqual('0.1.0', Check.Args[0]);
+  mCheck := TAtlasSetupChecklist.CheckServer(GoodInput);
+  Assert.AreEqual(Ord(TAtlasSetupFinding.ServerReady), Ord(mCheck.Finding));
+  Assert.AreEqual(Ord(TAtlasStatusState.Green), Ord(mCheck.State));
+  Assert.AreEqual(Ord(TAtlasSetupFix.None), Ord(mCheck.Fix));
+  Assert.AreEqual('0.1.0', mCheck.Args[0]);
 end;
 
 procedure TAtlasSetupChecklistTests.ServerPhases;
 var
-  Input: TAtlasSetupInput;
-  Check: TAtlasSetupResult;
+  mInput: TAtlasSetupInput;
+  mCheck: TAtlasSetupResult;
 begin
-  Input := GoodInput;
-  Input.Server.Phase := TAtlasServerPhase.NotStarted;
-  Check := TAtlasSetupChecklist.CheckServer(Input);
-  Assert.AreEqual(Ord(TAtlasSetupFinding.ServerNotStarted), Ord(Check.Finding));
-  Assert.AreEqual(Ord(TAtlasStatusState.Yellow), Ord(Check.State));
-  Assert.AreEqual(Ord(TAtlasSetupFix.StartServer), Ord(Check.Fix));
-  Assert.IsTrue(Check.Pending, 'Der Server startet beim ersten Bedarf');
-  Input.Server.Phase := TAtlasServerPhase.Starting;
-  Check := TAtlasSetupChecklist.CheckServer(Input);
-  Assert.AreEqual(Ord(TAtlasSetupFinding.ServerStarting), Ord(Check.Finding));
-  Assert.IsTrue(Check.Pending);
-  Input.Server.Phase := TAtlasServerPhase.Stopped;
-  Check := TAtlasSetupChecklist.CheckServer(Input);
-  Assert.AreEqual(Ord(TAtlasSetupFinding.ServerStopped), Ord(Check.Finding));
-  Assert.AreEqual(Ord(TAtlasStatusState.Red), Ord(Check.State));
-  Assert.AreEqual(Ord(TAtlasSetupFix.RestartServer), Ord(Check.Fix));
-  Input.Server.Phase := TAtlasServerPhase.Failed;
-  Input.Server.Error := 'Zeitlimit';
-  Check := TAtlasSetupChecklist.CheckServer(Input);
-  Assert.AreEqual(Ord(TAtlasSetupFinding.ServerFailed), Ord(Check.Finding));
-  Assert.AreEqual('Zeitlimit', Check.Args[0]);
-  Input.Server.Phase := TAtlasServerPhase.Running;
-  Input.Server.Version := '';
-  Check := TAtlasSetupChecklist.CheckServer(Input);
-  Assert.AreEqual(Ord(TAtlasSetupFinding.ServerVersionUnknown), Ord(Check.Finding));
-  Assert.IsTrue(Check.Pending, 'Version kommt mit der Antwort auf initialize');
+  mInput := GoodInput;
+  mInput.Server.Phase := TAtlasServerPhase.NotStarted;
+  mCheck := TAtlasSetupChecklist.CheckServer(mInput);
+  Assert.AreEqual(Ord(TAtlasSetupFinding.ServerNotStarted), Ord(mCheck.Finding));
+  Assert.AreEqual(Ord(TAtlasStatusState.Yellow), Ord(mCheck.State));
+  Assert.AreEqual(Ord(TAtlasSetupFix.StartServer), Ord(mCheck.Fix));
+  Assert.IsTrue(mCheck.Pending, 'Der Server startet beim ersten Bedarf');
+  mInput.Server.Phase := TAtlasServerPhase.Starting;
+  mCheck := TAtlasSetupChecklist.CheckServer(mInput);
+  Assert.AreEqual(Ord(TAtlasSetupFinding.ServerStarting), Ord(mCheck.Finding));
+  Assert.IsTrue(mCheck.Pending);
+  mInput.Server.Phase := TAtlasServerPhase.Stopped;
+  mCheck := TAtlasSetupChecklist.CheckServer(mInput);
+  Assert.AreEqual(Ord(TAtlasSetupFinding.ServerStopped), Ord(mCheck.Finding));
+  Assert.AreEqual(Ord(TAtlasStatusState.Red), Ord(mCheck.State));
+  Assert.AreEqual(Ord(TAtlasSetupFix.RestartServer), Ord(mCheck.Fix));
+  mInput.Server.Phase := TAtlasServerPhase.Failed;
+  mInput.Server.Error := 'Zeitlimit';
+  mCheck := TAtlasSetupChecklist.CheckServer(mInput);
+  Assert.AreEqual(Ord(TAtlasSetupFinding.ServerFailed), Ord(mCheck.Finding));
+  Assert.AreEqual('Zeitlimit', mCheck.Args[0]);
+  mInput.Server.Phase := TAtlasServerPhase.Running;
+  mInput.Server.Version := '';
+  mCheck := TAtlasSetupChecklist.CheckServer(mInput);
+  Assert.AreEqual(Ord(TAtlasSetupFinding.ServerVersionUnknown), Ord(mCheck.Finding));
+  Assert.IsTrue(mCheck.Pending, 'Version kommt mit der Antwort auf initialize');
 end;
 
 procedure TAtlasSetupChecklistTests.VersionsMatchIgnoresBuildAndPrefix;
@@ -210,222 +211,222 @@ end;
 
 procedure TAtlasSetupChecklistTests.DelphiVersionAndPlatform;
 var
-  Input: TAtlasSetupInput;
-  Check: TAtlasSetupResult;
+  mInput: TAtlasSetupInput;
+  mCheck: TAtlasSetupResult;
 begin
-  Check := TAtlasSetupChecklist.CheckDelphi(GoodInput);
-  Assert.AreEqual(Ord(TAtlasSetupFinding.DelphiReady), Ord(Check.Finding));
-  Assert.AreEqual(Ord(TAtlasStatusState.Green), Ord(Check.State));
-  Assert.AreEqual('Delphi 13 (37.0)', Check.Args[0]);
-  Assert.AreEqual('Win64', Check.Args[1]);
-  Input := GoodInput;
-  Input.Platform := '';
-  Check := TAtlasSetupChecklist.CheckDelphi(Input);
-  Assert.AreEqual(Ord(TAtlasSetupFinding.DelphiNoProject), Ord(Check.Finding));
-  Assert.AreEqual(Ord(TAtlasStatusState.Yellow), Ord(Check.State));
-  Assert.IsTrue(Check.Pending, 'Ohne Projekt keine Plattform; das ist kein Fehler');
-  Input.BdsVersion := '';
-  Check := TAtlasSetupChecklist.CheckDelphi(Input);
-  Assert.AreEqual(Ord(TAtlasSetupFinding.DelphiUnknown), Ord(Check.Finding));
-  Assert.AreEqual(Ord(TAtlasStatusState.Red), Ord(Check.State));
+  mCheck := TAtlasSetupChecklist.CheckDelphi(GoodInput);
+  Assert.AreEqual(Ord(TAtlasSetupFinding.DelphiReady), Ord(mCheck.Finding));
+  Assert.AreEqual(Ord(TAtlasStatusState.Green), Ord(mCheck.State));
+  Assert.AreEqual('Delphi 13 (37.0)', mCheck.Args[0]);
+  Assert.AreEqual('Win64', mCheck.Args[1]);
+  mInput := GoodInput;
+  mInput.Platform := '';
+  mCheck := TAtlasSetupChecklist.CheckDelphi(mInput);
+  Assert.AreEqual(Ord(TAtlasSetupFinding.DelphiNoProject), Ord(mCheck.Finding));
+  Assert.AreEqual(Ord(TAtlasStatusState.Yellow), Ord(mCheck.State));
+  Assert.IsTrue(mCheck.Pending, 'Ohne Projekt keine Plattform; das ist kein Fehler');
+  mInput.BdsVersion := '';
+  mCheck := TAtlasSetupChecklist.CheckDelphi(mInput);
+  Assert.AreEqual(Ord(TAtlasSetupFinding.DelphiUnknown), Ord(mCheck.Finding));
+  Assert.AreEqual(Ord(TAtlasStatusState.Red), Ord(mCheck.State));
 end;
 
 procedure TAtlasSetupChecklistTests.IndexIncompleteNamesMissingProjects;
 var
-  Input: TAtlasSetupInput;
-  Check: TAtlasSetupResult;
+  mInput: TAtlasSetupInput;
+  mCheck: TAtlasSetupResult;
 begin
-  Input := GoodInput;
-  Input.Projects := ['Kunden', 'Export', 'Rechnung'];
-  Check := TAtlasSetupChecklist.CheckIndex(Input);
-  Assert.AreEqual(Ord(TAtlasSetupFinding.IndexIncomplete), Ord(Check.Finding));
-  Assert.AreEqual(Ord(TAtlasStatusState.Yellow), Ord(Check.State));
-  Assert.AreEqual(Ord(TAtlasSetupFix.RebuildIndex), Ord(Check.Fix), 'Knopf „Index neu aufbauen“');
-  Assert.IsFalse(Check.Pending);
-  Assert.AreEqual('1', Check.Args[0]);
-  Assert.AreEqual('3', Check.Args[1]);
-  Assert.AreEqual('Rechnung', Check.Args[2]);
-  Assert.AreEqual(3, Integer(Length(Check.Projects)));
-  Assert.AreEqual(Ord(TAtlasSetupProjectState.Missing), Ord(Check.Projects[2].State));
+  mInput := GoodInput;
+  mInput.Projects := ['Kunden', 'Export', 'Rechnung'];
+  mCheck := TAtlasSetupChecklist.CheckIndex(mInput);
+  Assert.AreEqual(Ord(TAtlasSetupFinding.IndexIncomplete), Ord(mCheck.Finding));
+  Assert.AreEqual(Ord(TAtlasStatusState.Yellow), Ord(mCheck.State));
+  Assert.AreEqual(Ord(TAtlasSetupFix.RebuildIndex), Ord(mCheck.Fix), 'Knopf „Index neu aufbauen“');
+  Assert.IsFalse(mCheck.Pending);
+  Assert.AreEqual('1', mCheck.Args[0]);
+  Assert.AreEqual('3', mCheck.Args[1]);
+  Assert.AreEqual('Rechnung', mCheck.Args[2]);
+  Assert.AreEqual(3, Integer(Length(mCheck.Projects)));
+  Assert.AreEqual(Ord(TAtlasSetupProjectState.Missing), Ord(mCheck.Projects[2].State));
 end;
 
 procedure TAtlasSetupChecklistTests.IndexBuildingShowsProgressPerProject;
 var
-  Input: TAtlasSetupInput;
-  Check: TAtlasSetupResult;
+  mInput: TAtlasSetupInput;
+  mCheck: TAtlasSetupResult;
 begin
-  Input := GoodInput;
-  Input.Status.Workspaces := [Workspace('kunden', True, 0), Workspace('Export', False, 0)];
-  Input.Indexing := True;
-  Input.IndexPercent := 45;
-  Check := TAtlasSetupChecklist.CheckIndex(Input);
-  Assert.AreEqual(Ord(TAtlasSetupFinding.IndexBuilding), Ord(Check.Finding));
-  Assert.IsTrue(Check.Pending);
-  Assert.AreEqual('1', Check.Args[0], 'fertig');
-  Assert.AreEqual('2', Check.Args[1], 'gesamt');
-  Assert.AreEqual('45', Check.Args[2], 'Prozent');
-  Assert.AreEqual(Ord(TAtlasSetupProjectState.Done), Ord(Check.Projects[0].State), 'Name ohne Groß-/Kleinschreibung');
-  Assert.AreEqual(Ord(TAtlasSetupProjectState.Building), Ord(Check.Projects[1].State));
+  mInput := GoodInput;
+  mInput.Status.Workspaces := [Workspace('kunden', True, 0), Workspace('Export', False, 0)];
+  mInput.Indexing := True;
+  mInput.IndexPercent := 45;
+  mCheck := TAtlasSetupChecklist.CheckIndex(mInput);
+  Assert.AreEqual(Ord(TAtlasSetupFinding.IndexBuilding), Ord(mCheck.Finding));
+  Assert.IsTrue(mCheck.Pending);
+  Assert.AreEqual('1', mCheck.Args[0], 'fertig');
+  Assert.AreEqual('2', mCheck.Args[1], 'gesamt');
+  Assert.AreEqual('45', mCheck.Args[2], 'Prozent');
+  Assert.AreEqual(Ord(TAtlasSetupProjectState.Done), Ord(mCheck.Projects[0].State), 'Name ohne Groß-/Kleinschreibung');
+  Assert.AreEqual(Ord(TAtlasSetupProjectState.Building), Ord(mCheck.Projects[1].State));
   // Vor der ersten Antwort von atlas.server.status: alles „wird aufgebaut“.
-  Input := GoodInput;
-  Input.Status := Default(TAtlasSetupServerStatus);
-  Check := TAtlasSetupChecklist.CheckIndex(Input);
-  Assert.AreEqual(Ord(TAtlasSetupFinding.IndexBuilding), Ord(Check.Finding));
-  Assert.AreEqual('', Check.Args[2], 'Prozent unbekannt');
+  mInput := GoodInput;
+  mInput.Status := Default(TAtlasSetupServerStatus);
+  mCheck := TAtlasSetupChecklist.CheckIndex(mInput);
+  Assert.AreEqual(Ord(TAtlasSetupFinding.IndexBuilding), Ord(mCheck.Finding));
+  Assert.AreEqual('', mCheck.Args[2], 'Prozent unbekannt');
 end;
 
 procedure TAtlasSetupChecklistTests.IndexReadyForWholeGroup;
 var
-  Check: TAtlasSetupResult;
-  Input: TAtlasSetupInput;
+  mCheck: TAtlasSetupResult;
+  mInput: TAtlasSetupInput;
 begin
-  Check := TAtlasSetupChecklist.CheckIndex(GoodInput);
-  Assert.AreEqual(Ord(TAtlasSetupFinding.IndexReady), Ord(Check.Finding));
-  Assert.AreEqual(Ord(TAtlasStatusState.Green), Ord(Check.State));
-  Assert.AreEqual('2', Check.Args[0]);
-  Assert.AreEqual('1569', Check.Args[1]);
+  mCheck := TAtlasSetupChecklist.CheckIndex(GoodInput);
+  Assert.AreEqual(Ord(TAtlasSetupFinding.IndexReady), Ord(mCheck.Finding));
+  Assert.AreEqual(Ord(TAtlasStatusState.Green), Ord(mCheck.State));
+  Assert.AreEqual('2', mCheck.Args[0]);
+  Assert.AreEqual('1569', mCheck.Args[1]);
   // Ohne Projektgruppe zählen die Arbeitsbereiche des Servers.
-  Input := GoodInput;
-  Input.Projects := nil;
-  Check := TAtlasSetupChecklist.CheckIndex(Input);
-  Assert.AreEqual(Ord(TAtlasSetupFinding.IndexReady), Ord(Check.Finding));
-  Assert.AreEqual(2, Integer(Length(Check.Projects)));
+  mInput := GoodInput;
+  mInput.Projects := nil;
+  mCheck := TAtlasSetupChecklist.CheckIndex(mInput);
+  Assert.AreEqual(Ord(TAtlasSetupFinding.IndexReady), Ord(mCheck.Finding));
+  Assert.AreEqual(2, Integer(Length(mCheck.Projects)));
 end;
 
 procedure TAtlasSetupChecklistTests.IndexWithoutServerOrProjects;
 var
-  Input: TAtlasSetupInput;
-  Check: TAtlasSetupResult;
+  mInput: TAtlasSetupInput;
+  mCheck: TAtlasSetupResult;
 begin
-  Input := GoodInput;
-  Input.Server.Phase := TAtlasServerPhase.NotStarted;
-  Check := TAtlasSetupChecklist.CheckIndex(Input);
-  Assert.AreEqual(Ord(TAtlasSetupFinding.IndexNoServer), Ord(Check.Finding));
-  Assert.AreEqual(Ord(TAtlasSetupFix.StartServer), Ord(Check.Fix));
-  Assert.IsTrue(Check.Pending);
-  Input := GoodInput;
-  Input.Projects := nil;
-  Input.Status.Workspaces := nil;
-  Check := TAtlasSetupChecklist.CheckIndex(Input);
-  Assert.AreEqual(Ord(TAtlasSetupFinding.IndexNoProjects), Ord(Check.Finding));
-  Assert.IsTrue(Check.Pending);
+  mInput := GoodInput;
+  mInput.Server.Phase := TAtlasServerPhase.NotStarted;
+  mCheck := TAtlasSetupChecklist.CheckIndex(mInput);
+  Assert.AreEqual(Ord(TAtlasSetupFinding.IndexNoServer), Ord(mCheck.Finding));
+  Assert.AreEqual(Ord(TAtlasSetupFix.StartServer), Ord(mCheck.Fix));
+  Assert.IsTrue(mCheck.Pending);
+  mInput := GoodInput;
+  mInput.Projects := nil;
+  mInput.Status.Workspaces := nil;
+  mCheck := TAtlasSetupChecklist.CheckIndex(mInput);
+  Assert.AreEqual(Ord(TAtlasSetupFinding.IndexNoProjects), Ord(mCheck.Finding));
+  Assert.IsTrue(mCheck.Pending);
 end;
 
 procedure TAtlasSetupChecklistTests.LibraryCache;
 var
-  Input: TAtlasSetupInput;
-  Check: TAtlasSetupResult;
+  mInput: TAtlasSetupInput;
+  mCheck: TAtlasSetupResult;
 begin
-  Check := TAtlasSetupChecklist.CheckLibraryCache(GoodInput);
-  Assert.AreEqual(Ord(TAtlasSetupFinding.LibraryReady), Ord(Check.Finding));
-  Assert.AreEqual(IntToStr(5 * 1024 * 1024), Check.Args[0]);
-  Input := GoodInput;
-  Input.Status.Workspaces := [Workspace('Kunden', True, 0), Workspace('Export', True, 0)];
-  Check := TAtlasSetupChecklist.CheckLibraryCache(Input);
-  Assert.AreEqual(Ord(TAtlasSetupFinding.LibraryMissing), Ord(Check.Finding));
-  Assert.AreEqual(Ord(TAtlasStatusState.Yellow), Ord(Check.State));
-  Assert.AreEqual(Ord(TAtlasSetupFix.BuildLibraryCache), Ord(Check.Fix), 'Knopf „Jetzt aufbauen“');
-  Input.Status.Workspaces := [Workspace('Kunden', False, 0)];
-  Check := TAtlasSetupChecklist.CheckLibraryCache(Input);
-  Assert.AreEqual(Ord(TAtlasSetupFinding.LibraryPending), Ord(Check.Finding));
-  Assert.IsTrue(Check.Pending);
-  Input.Server.Phase := TAtlasServerPhase.Stopped;
-  Check := TAtlasSetupChecklist.CheckLibraryCache(Input);
-  Assert.AreEqual(Ord(TAtlasSetupFinding.LibraryUnknown), Ord(Check.Finding));
+  mCheck := TAtlasSetupChecklist.CheckLibraryCache(GoodInput);
+  Assert.AreEqual(Ord(TAtlasSetupFinding.LibraryReady), Ord(mCheck.Finding));
+  Assert.AreEqual(IntToStr(5 * 1024 * 1024), mCheck.Args[0]);
+  mInput := GoodInput;
+  mInput.Status.Workspaces := [Workspace('Kunden', True, 0), Workspace('Export', True, 0)];
+  mCheck := TAtlasSetupChecklist.CheckLibraryCache(mInput);
+  Assert.AreEqual(Ord(TAtlasSetupFinding.LibraryMissing), Ord(mCheck.Finding));
+  Assert.AreEqual(Ord(TAtlasStatusState.Yellow), Ord(mCheck.State));
+  Assert.AreEqual(Ord(TAtlasSetupFix.BuildLibraryCache), Ord(mCheck.Fix), 'Knopf „Jetzt aufbauen“');
+  mInput.Status.Workspaces := [Workspace('Kunden', False, 0)];
+  mCheck := TAtlasSetupChecklist.CheckLibraryCache(mInput);
+  Assert.AreEqual(Ord(TAtlasSetupFinding.LibraryPending), Ord(mCheck.Finding));
+  Assert.IsTrue(mCheck.Pending);
+  mInput.Server.Phase := TAtlasServerPhase.Stopped;
+  mCheck := TAtlasSetupChecklist.CheckLibraryCache(mInput);
+  Assert.AreEqual(Ord(TAtlasSetupFinding.LibraryUnknown), Ord(mCheck.Finding));
 end;
 
 procedure TAtlasSetupChecklistTests.ErrorInsightDuplicateMessages;
 var
-  Input: TAtlasSetupInput;
-  Check: TAtlasSetupResult;
+  mInput: TAtlasSetupInput;
+  mCheck: TAtlasSetupResult;
 begin
-  Input := GoodInput;
-  Input.ErrorInsight := True;
-  Input.AtlasProblems := True;
-  Check := TAtlasSetupChecklist.CheckErrorInsight(Input);
-  Assert.AreEqual(Ord(TAtlasSetupFinding.ErrorInsightDuplicate), Ord(Check.Finding));
-  Assert.AreEqual(Ord(TAtlasStatusState.Yellow), Ord(Check.State));
-  Assert.AreEqual(Ord(TAtlasSetupFix.DisableErrorInsight), Ord(Check.Fix), 'Knopf „Error Insight abschalten“');
-  Input.AtlasProblems := False;
-  Check := TAtlasSetupChecklist.CheckErrorInsight(Input);
-  Assert.AreEqual(Ord(TAtlasSetupFinding.ErrorInsightIde), Ord(Check.Finding));
-  Assert.AreEqual(Ord(TAtlasStatusState.Green), Ord(Check.State));
-  Input.ErrorInsight := False;
-  Check := TAtlasSetupChecklist.CheckErrorInsight(Input);
-  Assert.AreEqual(Ord(TAtlasSetupFinding.ErrorInsightNone), Ord(Check.Finding));
-  Assert.AreEqual(Ord(TAtlasSetupFix.EnableErrorInsight), Ord(Check.Fix));
-  Input.AtlasProblems := True;
-  Check := TAtlasSetupChecklist.CheckErrorInsight(Input);
-  Assert.AreEqual(Ord(TAtlasSetupFinding.ErrorInsightAtlas), Ord(Check.Finding));
-  Input.ErrorInsightRestart := True;
-  Check := TAtlasSetupChecklist.CheckErrorInsight(Input);
-  Assert.AreEqual(Ord(TAtlasSetupFinding.ErrorInsightRestart), Ord(Check.Finding), 'Wirkt erst nach dem Neustart');
-  Assert.AreEqual(Ord(TAtlasStatusState.Yellow), Ord(Check.State));
+  mInput := GoodInput;
+  mInput.ErrorInsight := True;
+  mInput.AtlasProblems := True;
+  mCheck := TAtlasSetupChecklist.CheckErrorInsight(mInput);
+  Assert.AreEqual(Ord(TAtlasSetupFinding.ErrorInsightDuplicate), Ord(mCheck.Finding));
+  Assert.AreEqual(Ord(TAtlasStatusState.Yellow), Ord(mCheck.State));
+  Assert.AreEqual(Ord(TAtlasSetupFix.DisableErrorInsight), Ord(mCheck.Fix), 'Knopf „Error Insight abschalten“');
+  mInput.AtlasProblems := False;
+  mCheck := TAtlasSetupChecklist.CheckErrorInsight(mInput);
+  Assert.AreEqual(Ord(TAtlasSetupFinding.ErrorInsightIde), Ord(mCheck.Finding));
+  Assert.AreEqual(Ord(TAtlasStatusState.Green), Ord(mCheck.State));
+  mInput.ErrorInsight := False;
+  mCheck := TAtlasSetupChecklist.CheckErrorInsight(mInput);
+  Assert.AreEqual(Ord(TAtlasSetupFinding.ErrorInsightNone), Ord(mCheck.Finding));
+  Assert.AreEqual(Ord(TAtlasSetupFix.EnableErrorInsight), Ord(mCheck.Fix));
+  mInput.AtlasProblems := True;
+  mCheck := TAtlasSetupChecklist.CheckErrorInsight(mInput);
+  Assert.AreEqual(Ord(TAtlasSetupFinding.ErrorInsightAtlas), Ord(mCheck.Finding));
+  mInput.ErrorInsightRestart := True;
+  mCheck := TAtlasSetupChecklist.CheckErrorInsight(mInput);
+  Assert.AreEqual(Ord(TAtlasSetupFinding.ErrorInsightRestart), Ord(mCheck.Finding), 'Wirkt erst nach dem Neustart');
+  Assert.AreEqual(Ord(TAtlasStatusState.Yellow), Ord(mCheck.State));
 end;
 
 procedure TAtlasSetupChecklistTests.KeysConflictOnlyWhenLeftToOther;
 var
-  Input: TAtlasSetupInput;
-  Check: TAtlasSetupResult;
+  mInput: TAtlasSetupInput;
+  mCheck: TAtlasSetupResult;
 begin
-  Check := TAtlasSetupChecklist.CheckKeys(GoodInput);
-  Assert.AreEqual(Ord(TAtlasSetupFinding.KeysReady), Ord(Check.Finding));
-  Input := GoodInput;
+  mCheck := TAtlasSetupChecklist.CheckKeys(GoodInput);
+  Assert.AreEqual(Ord(TAtlasSetupFinding.KeysReady), Ord(mCheck.Finding));
+  mInput := GoodInput;
   // Belegt, Atlas mit Vorrang: bewusst entschieden, kein offener Konflikt.
-  Input.Keys := [TAtlasSetupKey.Create(TAtlasKeyEntry.Create(TAtlasKeyFunction.Palette, $6050, True),
+  mInput.Keys := [TAtlasSetupKey.Create(TAtlasKeyEntry.Create(TAtlasKeyFunction.Palette, $6050, True),
     'Strg+Umschalt+P', 'IDE: Tastaturmakro abspielen')];
-  Check := TAtlasSetupChecklist.CheckKeys(Input);
-  Assert.AreEqual(Ord(TAtlasSetupFinding.KeysReady), Ord(Check.Finding));
-  Assert.AreEqual('1', Check.Args[0]);
-  Input.Keys := Input.Keys + [TAtlasSetupKey.Create(TAtlasKeyEntry.Create(TAtlasKeyFunction.Check, $C078, False),
+  mCheck := TAtlasSetupChecklist.CheckKeys(mInput);
+  Assert.AreEqual(Ord(TAtlasSetupFinding.KeysReady), Ord(mCheck.Finding));
+  Assert.AreEqual('1', mCheck.Args[0]);
+  mInput.Keys := mInput.Keys + [TAtlasSetupKey.Create(TAtlasKeyEntry.Create(TAtlasKeyFunction.Check, $C078, False),
     'Strg+Alt+F9', 'Andere Erweiterung')];
-  Check := TAtlasSetupChecklist.CheckKeys(Input);
-  Assert.AreEqual(Ord(TAtlasSetupFinding.KeysConflict), Ord(Check.Finding));
-  Assert.AreEqual(Ord(TAtlasSetupFix.OpenKeyConflicts), Ord(Check.Fix));
-  Assert.AreEqual('1', Check.Args[0]);
-  Assert.AreEqual('Strg+Alt+F9', Check.Args[1]);
-  Assert.AreEqual('Andere Erweiterung', Check.Args[2]);
+  mCheck := TAtlasSetupChecklist.CheckKeys(mInput);
+  Assert.AreEqual(Ord(TAtlasSetupFinding.KeysConflict), Ord(mCheck.Finding));
+  Assert.AreEqual(Ord(TAtlasSetupFix.OpenKeyConflicts), Ord(mCheck.Fix));
+  Assert.AreEqual('1', mCheck.Args[0]);
+  Assert.AreEqual('Strg+Alt+F9', mCheck.Args[1]);
+  Assert.AreEqual('Andere Erweiterung', mCheck.Args[2]);
 end;
 
 procedure TAtlasSetupChecklistTests.KeysCoverEditorCommands;
 var
-  Input: TAtlasSetupInput;
-  Check: TAtlasSetupResult;
+  mInput: TAtlasSetupInput;
+  mCheck: TAtlasSetupResult;
 begin
   // Gemeinsame Quelle mit der Tastenkürzel-Übersicht (#520): auch die Tasten der Editorbefehle zählen.
-  Input := GoodInput;
-  Input.Keys := [TAtlasSetupKey.Create(TAtlasKeyEntry.Create(TAtlasKeyFunction.ExpandSelection, $4057, False),
+  mInput := GoodInput;
+  mInput.Keys := [TAtlasSetupKey.Create(TAtlasKeyEntry.Create(TAtlasKeyFunction.ExpandSelection, $4057, False),
     'Strg+W', 'Tastaturbelegung des Editors (CnWizards_D120)'),
     TAtlasSetupKey.Create(TAtlasKeyEntry.Create(TAtlasKeyFunction.WelcomeSearch, $4045, True), 'Strg+E',
     'Inkrementelle Suche (IDE)')];
-  Check := TAtlasSetupChecklist.CheckKeys(Input);
-  Assert.AreEqual(Ord(TAtlasSetupFinding.KeysConflict), Ord(Check.Finding));
-  Assert.AreEqual('1', Check.Args[0], 'das Suchfeld der Willkommensseite gewinnt dort immer');
-  Assert.AreEqual('Strg+W', Check.Args[1]);
+  mCheck := TAtlasSetupChecklist.CheckKeys(mInput);
+  Assert.AreEqual(Ord(TAtlasSetupFinding.KeysConflict), Ord(mCheck.Finding));
+  Assert.AreEqual('1', mCheck.Args[0], 'das Suchfeld der Willkommensseite gewinnt dort immer');
+  Assert.AreEqual('Strg+W', mCheck.Args[1]);
 end;
 
 procedure TAtlasSetupChecklistTests.EveryNonGreenPointHasAButton;
 var
-  Input: TAtlasSetupInput;
-  Item: TAtlasSetupResult;
-  Phase: TAtlasServerPhase;
+  mInput: TAtlasSetupInput;
+  mItem: TAtlasSetupResult;
+  mPhase: TAtlasServerPhase;
 begin
-  for Phase := Low(TAtlasServerPhase) to High(TAtlasServerPhase) do
+  for mPhase := Low(TAtlasServerPhase) to High(TAtlasServerPhase) do
   begin
-    Input := GoodInput;
-    Input.Server.Phase := Phase;
-    Input.ServerFound := Phase <> TAtlasServerPhase.Failed;
-    Input.ErrorInsight := Phase = TAtlasServerPhase.Running;
-    Input.Platform := '';
-    for Item in TAtlasSetupChecklist.Evaluate(Input) do
+    mInput := GoodInput;
+    mInput.Server.Phase := mPhase;
+    mInput.ServerFound := mPhase <> TAtlasServerPhase.Failed;
+    mInput.ErrorInsight := mPhase = TAtlasServerPhase.Running;
+    mInput.Platform := '';
+    for mItem in TAtlasSetupChecklist.Evaluate(mInput) do
     begin
-      if Item.State <> TAtlasStatusState.Green then
+      if mItem.State <> TAtlasStatusState.Green then
       begin
-        Assert.AreNotEqual(Ord(TAtlasSetupFix.None), Ord(Item.Fix), 'Punkt ohne Knopf: ' + IntToStr(Ord(Item.Finding)));
+        Assert.AreNotEqual(Ord(TAtlasSetupFix.None), Ord(mItem.Fix), 'Punkt ohne Knopf: ' + IntToStr(Ord(mItem.Finding)));
       end
       else
       begin
-        Assert.AreEqual(Ord(TAtlasSetupFix.None), Ord(Item.Fix));
+        Assert.AreEqual(Ord(TAtlasSetupFix.None), Ord(mItem.Fix));
       end;
     end;
   end;
@@ -433,67 +434,67 @@ end;
 
 procedure TAtlasSetupChecklistTests.ProgressCountsGreenPoints;
 var
-  Input: TAtlasSetupInput;
-  Done, Total: Integer;
-  Results: TArray<TAtlasSetupResult>;
+  mInput: TAtlasSetupInput;
+  mDone, mTotal: Integer;
+  mResults: TArray<TAtlasSetupResult>;
 begin
-  Results := TAtlasSetupChecklist.Evaluate(GoodInput);
-  TAtlasSetupChecklist.Progress(Results, Done, Total);
-  Assert.AreEqual(6, Total);
-  Assert.AreEqual(6, Done);
-  Assert.IsTrue(TAtlasSetupChecklist.Complete(Results));
-  Input := GoodInput;
-  Input.ErrorInsight := True;
-  Results := TAtlasSetupChecklist.Evaluate(Input);
-  TAtlasSetupChecklist.Progress(Results, Done, Total);
-  Assert.AreEqual(5, Done, '„Einrichtung: 5 von 6 erledigt“ (#754)');
-  Assert.IsFalse(TAtlasSetupChecklist.Complete(Results));
+  mResults := TAtlasSetupChecklist.Evaluate(GoodInput);
+  TAtlasSetupChecklist.Progress(mResults, mDone, mTotal);
+  Assert.AreEqual(6, mTotal);
+  Assert.AreEqual(6, mDone);
+  Assert.IsTrue(TAtlasSetupChecklist.Complete(mResults));
+  mInput := GoodInput;
+  mInput.ErrorInsight := True;
+  mResults := TAtlasSetupChecklist.Evaluate(mInput);
+  TAtlasSetupChecklist.Progress(mResults, mDone, mTotal);
+  Assert.AreEqual(5, mDone, '„Einrichtung: 5 von 6 erledigt“ (#754)');
+  Assert.IsFalse(TAtlasSetupChecklist.Complete(mResults));
   Assert.IsFalse(TAtlasSetupChecklist.Complete(nil));
 end;
 
 procedure TAtlasSetupChecklistTests.StartOpensOnlyWhileNotGreen;
 var
-  Input: TAtlasSetupInput;
-  Good, Duplicate, Starting: TArray<TAtlasSetupResult>;
+  mInput: TAtlasSetupInput;
+  mGood, mDuplicate, mStarting: TArray<TAtlasSetupResult>;
 begin
-  Good := TAtlasSetupChecklist.Evaluate(GoodInput);
-  Input := GoodInput;
-  Input.ErrorInsight := True;
-  Duplicate := TAtlasSetupChecklist.Evaluate(Input);
-  Input := GoodInput;
-  Input.Server.Phase := TAtlasServerPhase.Starting;
-  Starting := TAtlasSetupChecklist.Evaluate(Input);
+  mGood := TAtlasSetupChecklist.Evaluate(GoodInput);
+  mInput := GoodInput;
+  mInput.ErrorInsight := True;
+  mDuplicate := TAtlasSetupChecklist.Evaluate(mInput);
+  mInput := GoodInput;
+  mInput.Server.Phase := TAtlasServerPhase.Starting;
+  mStarting := TAtlasSetupChecklist.Evaluate(mInput);
   // ui.setupChecklist aus: nur auf Abruf.
   Assert.AreEqual(Ord(TAtlasSetupStartAction.Skip),
-    Ord(TAtlasSetupChecklist.StartAction(False, True, Duplicate, 0, 1000)));
+    Ord(TAtlasSetupChecklist.StartAction(False, True, mDuplicate, 0, 1000)));
   // Erster Start: immer.
-  Assert.AreEqual(Ord(TAtlasSetupStartAction.Open), Ord(TAtlasSetupChecklist.StartAction(True, True, Good, 0, 1000)));
+  Assert.AreEqual(Ord(TAtlasSetupStartAction.Open), Ord(TAtlasSetupChecklist.StartAction(True, True, mGood, 0, 1000)));
   // Alles grün: nicht mehr von selbst.
-  Assert.AreEqual(Ord(TAtlasSetupStartAction.Skip), Ord(TAtlasSetupChecklist.StartAction(True, False, Good, 0, 1000)));
+  Assert.AreEqual(Ord(TAtlasSetupStartAction.Skip), Ord(TAtlasSetupChecklist.StartAction(True, False, mGood, 0, 1000)));
   // Fest gelb: sofort.
   Assert.AreEqual(Ord(TAtlasSetupStartAction.Open),
-    Ord(TAtlasSetupChecklist.StartAction(True, False, Duplicate, 0, 1000)));
+    Ord(TAtlasSetupChecklist.StartAction(True, False, mDuplicate, 0, 1000)));
   // Nur im Gange: warten, nach der Wartezeit nicht öffnen.
   Assert.AreEqual(Ord(TAtlasSetupStartAction.Wait),
-    Ord(TAtlasSetupChecklist.StartAction(True, False, Starting, 500, 1000)));
+    Ord(TAtlasSetupChecklist.StartAction(True, False, mStarting, 500, 1000)));
   Assert.AreEqual(Ord(TAtlasSetupStartAction.Skip),
-    Ord(TAtlasSetupChecklist.StartAction(True, False, Starting, 1000, 1000)));
+    Ord(TAtlasSetupChecklist.StartAction(True, False, mStarting, 1000, 1000)));
   Assert.AreEqual(Ord(TAtlasSetupStartAction.Wait), Ord(TAtlasSetupChecklist.StartAction(True, False, nil, 0, 1000)));
 end;
 
 procedure TAtlasSetupChecklistTests.StatusParsesWorkspaces;
 var
-  Status: TAtlasSetupServerStatus;
+  mStatus: TAtlasSetupServerStatus;
 begin
-  Status := TAtlasSetupServerStatus.Parse('{"units":42,"workspaces":[{"name":"Kunden","lastIndexMs":120,' +
+  mStatus := TAtlasSetupServerStatus.Parse('{"units":42,"workspaces":[{"name":"Kunden","lastIndexMs":120,' +
     '"libraryCacheBytes":2048},{"name":"Export","lastIndexMs":-1,"libraryCacheBytes":0}],"requests":[]}');
-  Assert.IsTrue(Status.Known);
-  Assert.AreEqual(42, Status.Units);
-  Assert.AreEqual(2, Integer(Length(Status.Workspaces)));
-  Assert.AreEqual('Kunden', Status.Workspaces[0].Name);
-  Assert.IsTrue(Status.Workspaces[0].Done);
-  Assert.AreEqual(Int64(2048), Status.Workspaces[0].LibraryCacheBytes);
-  Assert.IsFalse(Status.Workspaces[1].Done);
+  Assert.IsTrue(mStatus.Known);
+  Assert.AreEqual(42, mStatus.Units);
+  Assert.AreEqual(2, Integer(Length(mStatus.Workspaces)));
+  Assert.AreEqual('Kunden', mStatus.Workspaces[0].Name);
+  Assert.IsTrue(mStatus.Workspaces[0].Done);
+  Assert.AreEqual(Int64(2048), mStatus.Workspaces[0].LibraryCacheBytes);
+  Assert.IsFalse(mStatus.Workspaces[1].Done);
   Assert.IsFalse(TAtlasSetupServerStatus.Parse('').Known);
   Assert.IsFalse(TAtlasSetupServerStatus.Parse('kein json').Known);
   Assert.AreEqual(-1, TAtlasSetupServerStatus.Parse('[]').Units);
@@ -502,22 +503,22 @@ end;
 
 procedure TAtlasSetupChecklistTests.StatusParsesIndexingPerWorkspace;
 var
-  Status, Live: TAtlasSetupServerStatus;
-  IndexingOf: TAtlasSetupTokenIndexingFunc;
+  mStatus, mLive: TAtlasSetupServerStatus;
+  mIndexingOf: TAtlasSetupTokenIndexingFunc;
 begin
-  Status := TAtlasSetupServerStatus.Parse('{"workspaces":[{"name":"Kunden","lastIndexMs":120,' +
+  mStatus := TAtlasSetupServerStatus.Parse('{"workspaces":[{"name":"Kunden","lastIndexMs":120,' +
     '"progressToken":"atlas-index-1"},{"name":"Lager","lastIndexMs":-1,"progressToken":"atlas-index-1-1",' +
     '"indexing":{"percent":40,"stage":"searchPaths","waiting":true}},{"name":"Alt","lastIndexMs":-1}]}');
-  Assert.AreEqual('atlas-index-1', Status.Workspaces[0].ProgressToken);
-  Assert.IsFalse(Status.Workspaces[0].Indexing.Active);
-  Assert.IsTrue(Status.Workspaces[1].Indexing.Active);
-  Assert.AreEqual(40, Status.Workspaces[1].Indexing.Percent);
-  Assert.AreEqual(Ord(TAtlasSetupIndexStage.SearchPaths), Ord(Status.Workspaces[1].Indexing.Stage));
-  Assert.IsTrue(Status.Workspaces[1].Indexing.Waiting);
-  Assert.AreEqual('', Status.Workspaces[2].ProgressToken, 'älterer Server');
-  Assert.AreEqual(-1, Status.Workspaces[2].Indexing.Percent);
+  Assert.AreEqual('atlas-index-1', mStatus.Workspaces[0].ProgressToken);
+  Assert.IsFalse(mStatus.Workspaces[0].Indexing.Active);
+  Assert.IsTrue(mStatus.Workspaces[1].Indexing.Active);
+  Assert.AreEqual(40, mStatus.Workspaces[1].Indexing.Percent);
+  Assert.AreEqual(Ord(TAtlasSetupIndexStage.SearchPaths), Ord(mStatus.Workspaces[1].Indexing.Stage));
+  Assert.IsTrue(mStatus.Workspaces[1].Indexing.Waiting);
+  Assert.AreEqual('', mStatus.Workspaces[2].ProgressToken, 'älterer Server');
+  Assert.AreEqual(-1, mStatus.Workspaces[2].Indexing.Percent);
   // Live: Lager meldet 62 %, Kunden baut neu auf (10 %); ohne Token bleibt der Status.
-  IndexingOf :=
+  mIndexingOf :=
     function(const AToken: string; out APercent: Integer): Boolean
     begin
       APercent := -1;
@@ -531,89 +532,89 @@ begin
         APercent := 10;
       end;
     end;
-  Live := Status.WithLiveProgress(IndexingOf);
-  Assert.AreEqual(62, Live.Workspaces[1].Indexing.Percent);
-  Assert.AreEqual(Ord(TAtlasSetupIndexStage.SearchPaths), Ord(Live.Workspaces[1].Indexing.Stage), 'Stufe bleibt');
-  Assert.IsTrue(Live.Workspaces[0].Indexing.Active);
-  Assert.AreEqual(10, Live.Workspaces[0].Indexing.Percent);
-  Assert.AreEqual(40, Status.Workspaces[1].Indexing.Percent, 'Original unverändert');
+  mLive := mStatus.WithLiveProgress(mIndexingOf);
+  Assert.AreEqual(62, mLive.Workspaces[1].Indexing.Percent);
+  Assert.AreEqual(Ord(TAtlasSetupIndexStage.SearchPaths), Ord(mLive.Workspaces[1].Indexing.Stage), 'Stufe bleibt');
+  Assert.IsTrue(mLive.Workspaces[0].Indexing.Active);
+  Assert.AreEqual(10, mLive.Workspaces[0].Indexing.Percent);
+  Assert.AreEqual(40, mStatus.Workspaces[1].Indexing.Percent, 'Original unverändert');
   // Läuft das Token nicht mehr, ist der Aufbau vorbei, auch wenn der Status noch älter ist.
-  IndexingOf :=
+  mIndexingOf :=
     function(const AToken: string; out APercent: Integer): Boolean
     begin
       APercent := -1;
       Result := False;
     end;
-  Live := Status.WithLiveProgress(IndexingOf);
-  Assert.IsFalse(Live.Workspaces[1].Indexing.Active);
-  Live := Status.WithLiveProgress(nil);
-  Assert.IsTrue(Live.Workspaces[1].Indexing.Active, 'ohne Meldungen gilt der Status');
+  mLive := mStatus.WithLiveProgress(mIndexingOf);
+  Assert.IsFalse(mLive.Workspaces[1].Indexing.Active);
+  mLive := mStatus.WithLiveProgress(nil);
+  Assert.IsTrue(mLive.Workspaces[1].Indexing.Active, 'ohne Meldungen gilt der Status');
 end;
 
 procedure TAtlasSetupChecklistTests.IndexShowsStagePerProject;
 var
-  Input: TAtlasSetupInput;
-  Check: TAtlasSetupResult;
-  Building: TAtlasSetupWorkspace;
+  mInput: TAtlasSetupInput;
+  mCheck: TAtlasSetupResult;
+  mBuilding: TAtlasSetupWorkspace;
 begin
-  Input := GoodInput;
-  Building := Workspace('Export', False, 0);
-  Building.Indexing.Active := True;
-  Building.Indexing.Percent := 18;
-  Building.Indexing.Stage := TAtlasSetupIndexStage.Library_;
-  Building.Indexing.Waiting := True;
-  Input.Status.Workspaces := [Workspace('Kunden', True, 0), Building];
-  Input.Indexing := True;
-  Check := TAtlasSetupChecklist.CheckIndex(Input);
-  Assert.AreEqual(Ord(TAtlasSetupProjectState.Done), Ord(Check.Projects[0].State));
-  Assert.IsFalse(Check.Projects[0].Indexing.Active);
-  Assert.AreEqual(Ord(TAtlasSetupProjectState.Building), Ord(Check.Projects[1].State));
-  Assert.AreEqual(18, Check.Projects[1].Indexing.Percent);
-  Assert.IsTrue(Check.Projects[1].Indexing.Waiting);
-  Assert.AreEqual(Ord(TAtlasSetupIndexStage.Library_), Ord(Check.Projects[1].Indexing.Stage));
+  mInput := GoodInput;
+  mBuilding := Workspace('Export', False, 0);
+  mBuilding.Indexing.Active := True;
+  mBuilding.Indexing.Percent := 18;
+  mBuilding.Indexing.Stage := TAtlasSetupIndexStage.Library_;
+  mBuilding.Indexing.Waiting := True;
+  mInput.Status.Workspaces := [Workspace('Kunden', True, 0), mBuilding];
+  mInput.Indexing := True;
+  mCheck := TAtlasSetupChecklist.CheckIndex(mInput);
+  Assert.AreEqual(Ord(TAtlasSetupProjectState.Done), Ord(mCheck.Projects[0].State));
+  Assert.IsFalse(mCheck.Projects[0].Indexing.Active);
+  Assert.AreEqual(Ord(TAtlasSetupProjectState.Building), Ord(mCheck.Projects[1].State));
+  Assert.AreEqual(18, mCheck.Projects[1].Indexing.Percent);
+  Assert.IsTrue(mCheck.Projects[1].Indexing.Waiting);
+  Assert.AreEqual(Ord(TAtlasSetupIndexStage.Library_), Ord(mCheck.Projects[1].Indexing.Stage));
   // Neuer Aufbau eines schon fertigen Projekts (Index neu aufbauen): wieder gelb.
-  Building.Done := True;
-  Input.Status.Workspaces := [Workspace('Kunden', True, 0), Building];
-  Check := TAtlasSetupChecklist.CheckIndex(Input);
-  Assert.AreEqual(Ord(TAtlasSetupProjectState.Building), Ord(Check.Projects[1].State));
+  mBuilding.Done := True;
+  mInput.Status.Workspaces := [Workspace('Kunden', True, 0), mBuilding];
+  mCheck := TAtlasSetupChecklist.CheckIndex(mInput);
+  Assert.AreEqual(Ord(TAtlasSetupProjectState.Building), Ord(mCheck.Projects[1].State));
   // Anderer Fortschritt: andere Zeile für die Anzeige.
-  Building.Indexing.Percent := 19;
-  Input.Status.Workspaces := [Workspace('Kunden', True, 0), Building];
-  Assert.AreNotEqual(Check.Key, TAtlasSetupChecklist.CheckIndex(Input).Key);
+  mBuilding.Indexing.Percent := 19;
+  mInput.Status.Workspaces := [Workspace('Kunden', True, 0), mBuilding];
+  Assert.AreNotEqual(mCheck.Key, TAtlasSetupChecklist.CheckIndex(mInput).Key);
   // Projekt ohne Arbeitsbereich: fehlt, ohne Prozent.
-  Input.Projects := ['Kunden', 'Export', 'Neu'];
-  Check := TAtlasSetupChecklist.CheckIndex(Input);
-  Assert.AreEqual(Ord(TAtlasSetupProjectState.Missing), Ord(Check.Projects[2].State));
-  Assert.AreEqual(-1, Check.Projects[2].Indexing.Percent);
+  mInput.Projects := ['Kunden', 'Export', 'Neu'];
+  mCheck := TAtlasSetupChecklist.CheckIndex(mInput);
+  Assert.AreEqual(Ord(TAtlasSetupProjectState.Missing), Ord(mCheck.Projects[2].State));
+  Assert.AreEqual(-1, mCheck.Projects[2].Indexing.Percent);
 end;
 
 procedure TAtlasSetupChecklistTests.ReportHasLinesAndNoIdentity;
 var
-  Input: TAtlasSetupReportInput;
-  Report: string;
+  mInput: TAtlasSetupReportInput;
+  mReport: string;
 begin
-  Input := Default(TAtlasSetupReportInput);
-  Input.Title := 'Atlas-Einrichtung';
-  Input.Summary := '5 von 6 erledigt';
-  Input.AtlasVersion := '0.1.0';
-  Input.IdeVersion := '37.0';
-  Input.Platform := 'Win64';
-  Input.Created := EncodeDate(2026, 10, 15) + EncodeTime(14, 30, 0, 0);
-  Input.Identity := ['marco', 'WS-MARCO'];
-  Input.Lines := [TAtlasSetupReportLine.Create(TAtlasStatusState.Green, 'Server gefunden, Version 0.1.0', False),
+  mInput := Default(TAtlasSetupReportInput);
+  mInput.Title := 'Atlas-Einrichtung';
+  mInput.Summary := '5 von 6 erledigt';
+  mInput.AtlasVersion := '0.1.0';
+  mInput.IdeVersion := '37.0';
+  mInput.Platform := 'Win64';
+  mInput.Created := EncodeDate(2026, 10, 15) + EncodeTime(14, 30, 0, 0);
+  mInput.Identity := ['marco', 'WS-MARCO'];
+  mInput.Lines := [TAtlasSetupReportLine.Create(TAtlasStatusState.Green, 'Server gefunden, Version 0.1.0', False),
     TAtlasSetupReportLine.Create(TAtlasStatusState.Yellow, 'Projektgruppe von marco wird indiziert', False),
     TAtlasSetupReportLine.Create(TAtlasStatusState.Yellow, 'Export: wird aufgebaut', True),
     TAtlasSetupReportLine.Create(TAtlasStatusState.Red, 'Server WS-MARCO fehlt', False)];
-  Report := TAtlasSetupChecklist.Report(Input);
-  Assert.Contains(Report, 'Atlas-Einrichtung');
-  Assert.Contains(Report, 'Atlas 0.1.0, IDE 37.0, Win64');
-  Assert.Contains(Report, '2026-10-15 14:30');
-  Assert.Contains(Report, '5 von 6 erledigt');
-  Assert.Contains(Report, '[ok] Server gefunden, Version 0.1.0');
-  Assert.Contains(Report, '[!]  Projektgruppe von <benutzer> wird indiziert');
-  Assert.Contains(Report, '       - Export: wird aufgebaut');
-  Assert.Contains(Report, '[x]  Server <benutzer> fehlt');
-  Assert.IsFalse(Report.ToLower.Contains('marco'), 'Benutzer- und Rechnername ersetzt');
+  mReport := TAtlasSetupChecklist.Report(mInput);
+  Assert.Contains(mReport, 'Atlas-Einrichtung');
+  Assert.Contains(mReport, 'Atlas 0.1.0, IDE 37.0, Win64');
+  Assert.Contains(mReport, '2026-10-15 14:30');
+  Assert.Contains(mReport, '5 von 6 erledigt');
+  Assert.Contains(mReport, '[ok] Server gefunden, Version 0.1.0');
+  Assert.Contains(mReport, '[!]  Projektgruppe von <benutzer> wird indiziert');
+  Assert.Contains(mReport, '       - Export: wird aufgebaut');
+  Assert.Contains(mReport, '[x]  Server <benutzer> fehlt');
+  Assert.IsFalse(mReport.ToLower.Contains('marco'), 'Benutzer- und Rechnername ersetzt');
 end;
 
 type
@@ -697,108 +698,108 @@ end;
 
 procedure TAtlasSetupControllerTests.ChooseServerPathSavesPathAndTurnsGreen;
 var
-  Fake: TFakeEnvironment;
-  Environment: IAtlasSetupEnvironment;
-  Controller: TAtlasSetupController;
+  mFake: TFakeEnvironment;
+  mEnvironment: IAtlasSetupEnvironment;
+  mController: TAtlasSetupController;
 begin
-  Fake := TFakeEnvironment.Create;
-  Environment := Fake;
-  Fake.Choose := True;
-  Fake.Chosen := ' C:\Atlas\AtlasServer.exe ';
-  Controller := TAtlasSetupController.Create(Environment);
+  mFake := TFakeEnvironment.Create;
+  mEnvironment := mFake;
+  mFake.Choose := True;
+  mFake.Chosen := ' C:\Atlas\AtlasServer.exe ';
+  mController := TAtlasSetupController.Create(mEnvironment);
   try
-    Controller.Refresh;
-    Assert.AreEqual(Ord(TAtlasSetupFinding.ServerMissing), Ord(Controller.Results[0].Finding));
-    Assert.IsTrue(Controller.Apply(Controller.Results[0].Fix));
-    Assert.AreEqual('C:\Atlas\AtlasServer.exe', Fake.Path, 'Pfad gespeichert');
-    Assert.AreEqual(1, Fake.Restarts, 'Mit dem neuen Pfad neu gestartet');
-    Assert.AreEqual(Ord(TAtlasSetupFinding.ServerReady), Ord(Controller.Results[0].Finding));
-    Assert.AreEqual(Ord(TAtlasStatusState.Green), Ord(Controller.Results[0].State), 'Prüfung danach grün');
-    Assert.IsTrue(Controller.Complete);
+    mController.Refresh;
+    Assert.AreEqual(Ord(TAtlasSetupFinding.ServerMissing), Ord(mController.Results[0].Finding));
+    Assert.IsTrue(mController.Apply(mController.Results[0].Fix));
+    Assert.AreEqual('C:\Atlas\AtlasServer.exe', mFake.Path, 'Pfad gespeichert');
+    Assert.AreEqual(1, mFake.Restarts, 'Mit dem neuen Pfad neu gestartet');
+    Assert.AreEqual(Ord(TAtlasSetupFinding.ServerReady), Ord(mController.Results[0].Finding));
+    Assert.AreEqual(Ord(TAtlasStatusState.Green), Ord(mController.Results[0].State), 'Prüfung danach grün');
+    Assert.IsTrue(mController.Complete);
   finally
-    Controller.Free;
+    mController.Free;
   end;
 end;
 
 procedure TAtlasSetupControllerTests.CancelledChoiceChangesNothing;
 var
-  Fake: TFakeEnvironment;
-  Environment: IAtlasSetupEnvironment;
-  Controller: TAtlasSetupController;
+  mFake: TFakeEnvironment;
+  mEnvironment: IAtlasSetupEnvironment;
+  mController: TAtlasSetupController;
 begin
-  Fake := TFakeEnvironment.Create;
-  Environment := Fake;
-  Fake.Choose := False;
-  Fake.Chosen := 'C:\Atlas\AtlasServer.exe';
-  Controller := TAtlasSetupController.Create(Environment);
+  mFake := TFakeEnvironment.Create;
+  mEnvironment := mFake;
+  mFake.Choose := False;
+  mFake.Chosen := 'C:\Atlas\AtlasServer.exe';
+  mController := TAtlasSetupController.Create(mEnvironment);
   try
-    Controller.Refresh;
-    Assert.IsFalse(Controller.Apply(TAtlasSetupFix.ChooseServerPath));
-    Assert.AreEqual('', Fake.Path);
-    Assert.AreEqual(0, Fake.Restarts);
-    Assert.AreEqual(Ord(TAtlasStatusState.Red), Ord(Controller.Results[0].State));
-    Assert.IsFalse(Controller.Apply(TAtlasSetupFix.Explain), 'Erklären tut nichts in der Umgebung');
+    mController.Refresh;
+    Assert.IsFalse(mController.Apply(TAtlasSetupFix.ChooseServerPath));
+    Assert.AreEqual('', mFake.Path);
+    Assert.AreEqual(0, mFake.Restarts);
+    Assert.AreEqual(Ord(TAtlasStatusState.Red), Ord(mController.Results[0].State));
+    Assert.IsFalse(mController.Apply(TAtlasSetupFix.Explain), 'Erklären tut nichts in der Umgebung');
   finally
-    Controller.Free;
+    mController.Free;
   end;
 end;
 
 procedure TAtlasSetupControllerTests.FixesCallTheEnvironment;
 var
-  Fake: TFakeEnvironment;
-  Environment: IAtlasSetupEnvironment;
-  Controller: TAtlasSetupController;
-  Done, Total: Integer;
+  mFake: TFakeEnvironment;
+  mEnvironment: IAtlasSetupEnvironment;
+  mController: TAtlasSetupController;
+  mDone, mTotal: Integer;
 begin
-  Fake := TFakeEnvironment.Create;
-  Environment := Fake;
-  Fake.Path := 'C:\Atlas\AtlasServer.exe';
-  Fake.ErrorInsight := True;
-  Controller := TAtlasSetupController.Create(Environment);
+  mFake := TFakeEnvironment.Create;
+  mEnvironment := mFake;
+  mFake.Path := 'C:\Atlas\AtlasServer.exe';
+  mFake.ErrorInsight := True;
+  mController := TAtlasSetupController.Create(mEnvironment);
   try
-    Controller.Refresh;
-    Controller.Progress(Done, Total);
-    Assert.AreEqual(2, Done, 'Server nicht gestartet, Index und Cache unbekannt, Error Insight doppelt');
-    Assert.IsTrue(Controller.Apply(TAtlasSetupFix.StartServer));
-    Assert.AreEqual(1, Fake.Starts);
-    Assert.IsTrue(Controller.Apply(TAtlasSetupFix.DisableErrorInsight));
-    Assert.IsFalse(Fake.ErrorInsight);
-    Assert.IsTrue(Controller.Complete);
-    Controller.Apply(TAtlasSetupFix.RebuildIndex);
-    Controller.Apply(TAtlasSetupFix.BuildLibraryCache);
-    Assert.AreEqual(2, Fake.Rebuilds);
-    Controller.Apply(TAtlasSetupFix.OpenKeyConflicts);
-    Assert.AreEqual(1, Fake.KeysOpened);
-    Controller.Apply(TAtlasSetupFix.RestartServer);
-    Assert.AreEqual(1, Fake.Restarts);
-    Controller.Apply(TAtlasSetupFix.EnableErrorInsight);
-    Assert.IsTrue(Fake.ErrorInsight);
+    mController.Refresh;
+    mController.Progress(mDone, mTotal);
+    Assert.AreEqual(2, mDone, 'Server nicht gestartet, Index und Cache unbekannt, Error Insight doppelt');
+    Assert.IsTrue(mController.Apply(TAtlasSetupFix.StartServer));
+    Assert.AreEqual(1, mFake.Starts);
+    Assert.IsTrue(mController.Apply(TAtlasSetupFix.DisableErrorInsight));
+    Assert.IsFalse(mFake.ErrorInsight);
+    Assert.IsTrue(mController.Complete);
+    mController.Apply(TAtlasSetupFix.RebuildIndex);
+    mController.Apply(TAtlasSetupFix.BuildLibraryCache);
+    Assert.AreEqual(2, mFake.Rebuilds);
+    mController.Apply(TAtlasSetupFix.OpenKeyConflicts);
+    Assert.AreEqual(1, mFake.KeysOpened);
+    mController.Apply(TAtlasSetupFix.RestartServer);
+    Assert.AreEqual(1, mFake.Restarts);
+    mController.Apply(TAtlasSetupFix.EnableErrorInsight);
+    Assert.IsTrue(mFake.ErrorInsight);
   finally
-    Controller.Free;
+    mController.Free;
   end;
 end;
 
 procedure TAtlasSetupControllerTests.VersionOnlyOnChange;
 var
-  Fake: TFakeEnvironment;
-  Environment: IAtlasSetupEnvironment;
-  Controller: TAtlasSetupController;
-  Version: Integer;
+  mFake: TFakeEnvironment;
+  mEnvironment: IAtlasSetupEnvironment;
+  mController: TAtlasSetupController;
+  mVersion: Integer;
 begin
-  Fake := TFakeEnvironment.Create;
-  Environment := Fake;
-  Fake.Path := 'C:\Atlas\AtlasServer.exe';
-  Controller := TAtlasSetupController.Create(Environment);
+  mFake := TFakeEnvironment.Create;
+  mEnvironment := mFake;
+  mFake.Path := 'C:\Atlas\AtlasServer.exe';
+  mController := TAtlasSetupController.Create(mEnvironment);
   try
-    Controller.Refresh;
-    Version := Controller.Version;
-    Controller.Refresh;
-    Assert.AreEqual(Version, Controller.Version, 'Gleicher Stand: keine neue Version');
-    Fake.ErrorInsight := True;
-    Controller.Refresh;
-    Assert.AreEqual(Version + 1, Controller.Version);
+    mController.Refresh;
+    mVersion := mController.Version;
+    mController.Refresh;
+    Assert.AreEqual(mVersion, mController.Version, 'Gleicher Stand: keine neue Version');
+    mFake.ErrorInsight := True;
+    mController.Refresh;
+    Assert.AreEqual(mVersion + 1, mController.Version);
   finally
-    Controller.Free;
+    mController.Free;
   end;
 end;
 

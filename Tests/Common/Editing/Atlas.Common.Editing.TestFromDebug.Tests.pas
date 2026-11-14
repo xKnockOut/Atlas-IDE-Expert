@@ -49,7 +49,7 @@ uses
   Atlas.Common.Editing.TestFromDebug;
 
 const
-  GewichtText =
+  cGewichtText =
     'unit Gewichte;'#13#10 +                                                         // 0
     'interface'#13#10 +                                                              // 1
     'uses Classes;'#13#10 +                                                          // 2
@@ -74,12 +74,12 @@ const
 
 function GewichtIndex: TUnitIndex;
 begin
-  Result := TIndexExtractor.ExtractText(GewichtText, 'Gewichte.pas', nil);
+  Result := TIndexExtractor.ExtractText(cGewichtText, 'Gewichte.pas', nil);
 end;
 
 function DraftAt(ALine: Integer; out ADraft: TTestDraft): Boolean;
 begin
-  Result := TTestDrafts.DraftAt(GewichtText, TPascalLexer.Tokenize(GewichtText), GewichtIndex, ALine, ADraft);
+  Result := TTestDrafts.DraftAt(cGewichtText, TPascalLexer.Tokenize(cGewichtText), GewichtIndex, ALine, ADraft);
   ADraft.Fixture := 'TGewichtTests';
   ADraft.UnitName := 'Gewichte';
   ADraft.Subject := 'FSubject';
@@ -88,13 +88,13 @@ end;
 /// <summary>Der Rumpf AMethod in einer Testunit parst ohne Fehler.</summary>
 function Parses(const AMethod: string): Boolean;
 var
-  Tree: TSyntaxTree;
+  mTree: TSyntaxTree;
 begin
-  Tree := TSyntaxTreeCache.Parse('unit T;'#13#10'interface'#13#10'implementation'#13#10 + AMethod + #13#10'end.');
+  mTree := TSyntaxTreeCache.Parse('unit T;'#13#10'interface'#13#10'implementation'#13#10 + AMethod + #13#10'end.');
   try
-    Result := Length(Tree.Diagnostics) = 0;
+    Result := Length(mTree.Diagnostics) = 0;
   finally
-    Tree.Free;
+    mTree.Free;
   end;
 end;
 
@@ -147,115 +147,115 @@ end;
 
 procedure TTestFromDebugTests.ArraysUpToTheLimit;
 var
-  Text: string;
+  mText: string;
 begin
   Assert.AreEqual('[1, 2, 3]', Literal('(1, 2, 3)', 'TArray<Integer>'));
   Assert.AreEqual('[''a'', ''b, c'']', Literal('(''a'', ''b, c'')', 'TArray<string>'));
   Assert.AreEqual('[]', Literal('()', 'TIntegerDynArray'));
-  Assert.IsFalse(TTestFromDebug.Literal('(1, 2, 3)', 'TArray<Integer>', 2, Text), 'ueber der Grenze');
-  Assert.IsFalse(TTestFromDebug.Literal('(1, 2)', 'TArray<Integer>', 0, Text), 'Grenze 0');
+  Assert.IsFalse(TTestFromDebug.Literal('(1, 2, 3)', 'TArray<Integer>', 2, mText), 'ueber der Grenze');
+  Assert.IsFalse(TTestFromDebug.Literal('(1, 2)', 'TArray<Integer>', 0, mText), 'Grenze 0');
 end;
 
 procedure TTestFromDebugTests.NameFromMethodAndMainArgument;
 var
-  Name: string;
+  mName: string;
 begin
-  Name := TTestFromDebug.SuggestName('Parse', [TDebugStopValue.Create('AZahl', '3'),
+  mName := TTestFromDebug.SuggestName('Parse', [TDebugStopValue.Create('AZahl', '3'),
     TDebugStopValue.Create('AText', '''12,5 kg''')], TTestDraftKind.Works, '');
-  Assert.IsTrue(StartsStr('Parse', Name), Name);
-  Assert.IsTrue(EndsStr('12_5Kg', Name), Name);
-  Name := TTestFromDebug.SuggestName('Parse', [TDebugStopValue.Create('AText', '''12,5 kg''')],
+  Assert.IsTrue(StartsStr('Parse', mName), mName);
+  Assert.IsTrue(EndsStr('12_5Kg', mName), mName);
+  mName := TTestFromDebug.SuggestName('Parse', [TDebugStopValue.Create('AText', '''12,5 kg''')],
     TTestDraftKind.Raises, 'EConvertError');
-  Assert.IsTrue(EndsStr('ConvertError', Name), Name);
-  Assert.IsFalse(ContainsStr(Name, 'EConvert'), Name);
+  Assert.IsTrue(EndsStr('ConvertError', mName), mName);
+  Assert.IsFalse(ContainsStr(mName, 'EConvert'), mName);
   Assert.AreEqual('Leer', TTestFromDebug.SuggestName('Leer', nil, TTestDraftKind.Works, ''));
-  Name := TTestFromDebug.SuggestName('Parse', [TDebugStopValue.Create('AText',
+  mName := TTestFromDebug.SuggestName('Parse', [TDebugStopValue.Create('AText',
     '''eins zwei drei vier fuenf''')], TTestDraftKind.Works, '');
-  Assert.IsTrue(EndsStr('EinsZweiDrei', Name), 'hoechstens drei Woerter: ' + Name);
+  Assert.IsTrue(EndsStr('EinsZweiDrei', mName), 'hoechstens drei Woerter: ' + mName);
 end;
 
 procedure TTestFromDebugTests.FieldsOfTheClass;
 var
-  Fields: TArray<TTestDraftValue>;
+  mFields: TArray<TTestDraftValue>;
 begin
-  Fields := TTestFromDebug.FieldsOf(GewichtIndex, 'TGewicht');
-  Assert.AreEqual(2, Integer(Length(Fields)));
-  Assert.AreEqual('FEinheit', Fields[0].Name);
-  Assert.AreEqual('string', Fields[0].TypeName);
-  Assert.IsFalse(Fields[0].Accessible, 'privat');
-  Assert.AreEqual('Genau', Fields[1].Name);
-  Assert.IsTrue(Fields[1].Accessible, 'oeffentlich');
+  mFields := TTestFromDebug.FieldsOf(GewichtIndex, 'TGewicht');
+  Assert.AreEqual(2, Integer(Length(mFields)));
+  Assert.AreEqual('FEinheit', mFields[0].Name);
+  Assert.AreEqual('string', mFields[0].TypeName);
+  Assert.IsFalse(mFields[0].Accessible, 'privat');
+  Assert.AreEqual('Genau', mFields[1].Name);
+  Assert.IsTrue(mFields[1].Accessible, 'oeffentlich');
 end;
 
 procedure TTestFromDebugTests.RaisesBuildsWillRaiseWithValues;
 var
-  Draft: TTestDraft;
-  Request: TDebugStopRequest;
-  Text: string;
+  mDraft: TTestDraft;
+  mRequest: TDebugStopRequest;
+  mText: string;
 begin
-  Assert.IsTrue(DraftAt(15, Draft));
-  Request := TDebugStopRequest.Empty;
-  Request.Parameters := [TDebugStopValue.Create('AText', '''12,5 kg''')];
-  Request.Fields := [TDebugStopValue.Create('FEinheit', '''kg'''), TDebugStopValue.Create('Genau', 'True')];
-  Request.Kind := TTestDraftKind.Raises;
-  Request.ExceptionClass := 'EConvertError';
-  Request.StoppedAt := '2026-11-13 14:05';
-  TTestFromDebug.Apply(Request, TTestFromDebug.FieldsOf(GewichtIndex, 'TGewicht'), Draft);
-  Assert.IsFalse(Draft.Draft, 'WillRaise ist vollständig');
-  Text := TTestDrafts.MethodText(Draft, #13#10);
-  Assert.IsTrue(ContainsStr(Text, '''12,5 kg'''), Text);
-  Assert.IsTrue(ContainsStr(Text, 'Assert.WillRaise('), Text);
-  Assert.IsTrue(ContainsStr(Text, 'EConvertError);'), Text);
-  Assert.IsTrue(ContainsStr(Text, '2026-11-13 14:05, EConvertError'), 'Kommentar: ' + Text);
-  Assert.IsTrue(ContainsStr(Text, 'FSubject.Genau := True;'), 'oeffentliches Feld: ' + Text);
-  Assert.IsTrue(ContainsStr(Text, '// FEinheit = ''kg'''), 'privates Feld als Kommentar: ' + Text);
-  Assert.IsFalse(ContainsStr(Text, 'Assert.Fail'), Text);
-  Assert.IsTrue(ContainsStr(Text, 'ConvertError;'), 'Name: ' + Text);
-  Assert.IsTrue(Parses(Text), Text);
+  Assert.IsTrue(DraftAt(15, mDraft));
+  mRequest := TDebugStopRequest.Empty;
+  mRequest.Parameters := [TDebugStopValue.Create('AText', '''12,5 kg''')];
+  mRequest.Fields := [TDebugStopValue.Create('FEinheit', '''kg'''), TDebugStopValue.Create('Genau', 'True')];
+  mRequest.Kind := TTestDraftKind.Raises;
+  mRequest.ExceptionClass := 'EConvertError';
+  mRequest.StoppedAt := '2026-11-13 14:05';
+  TTestFromDebug.Apply(mRequest, TTestFromDebug.FieldsOf(GewichtIndex, 'TGewicht'), mDraft);
+  Assert.IsFalse(mDraft.Draft, 'WillRaise ist vollständig');
+  mText := TTestDrafts.MethodText(mDraft, #13#10);
+  Assert.IsTrue(ContainsStr(mText, '''12,5 kg'''), mText);
+  Assert.IsTrue(ContainsStr(mText, 'Assert.WillRaise('), mText);
+  Assert.IsTrue(ContainsStr(mText, 'EConvertError);'), mText);
+  Assert.IsTrue(ContainsStr(mText, '2026-11-13 14:05, EConvertError'), 'Kommentar: ' + mText);
+  Assert.IsTrue(ContainsStr(mText, 'FSubject.Genau := True;'), 'oeffentliches Feld: ' + mText);
+  Assert.IsTrue(ContainsStr(mText, '// FEinheit = ''kg'''), 'privates Feld als Kommentar: ' + mText);
+  Assert.IsFalse(ContainsStr(mText, 'Assert.Fail'), mText);
+  Assert.IsTrue(ContainsStr(mText, 'ConvertError;'), 'Name: ' + mText);
+  Assert.IsTrue(Parses(mText), mText);
 end;
 
 procedure TTestFromDebugTests.WorksWithExpectedUsesTolerance;
 var
-  Draft: TTestDraft;
-  Request: TDebugStopRequest;
-  Text: string;
+  mDraft: TTestDraft;
+  mRequest: TDebugStopRequest;
+  mText: string;
 begin
-  Assert.IsTrue(DraftAt(9, Draft));
-  Request := TDebugStopRequest.Empty;
-  Request.Parameters := [TDebugStopValue.Create('AText', '''12.5''')];
-  Request.Expected := '12,5';
-  Request.TestName := 'ParseMitPunkt';
-  TTestFromDebug.Apply(Request, nil, Draft);
-  Assert.IsFalse(Draft.Draft);
-  Text := TTestDrafts.MethodText(Draft, #13#10);
-  Assert.IsTrue(ContainsStr(Text, 'procedure TGewichtTests.ParseMitPunkt;'), Text);
-  Assert.IsTrue(ContainsStr(Text, 'Assert.AreEqual(12.5, Actual, ' + TTestDrafts.cFloatTolerance + ');'), Text);
-  Assert.IsFalse(ContainsStr(Text, 'Assert.Fail'), Text);
-  Assert.IsTrue(Parses(Text), Text);
+  Assert.IsTrue(DraftAt(9, mDraft));
+  mRequest := TDebugStopRequest.Empty;
+  mRequest.Parameters := [TDebugStopValue.Create('AText', '''12.5''')];
+  mRequest.Expected := '12,5';
+  mRequest.TestName := 'ParseMitPunkt';
+  TTestFromDebug.Apply(mRequest, nil, mDraft);
+  Assert.IsFalse(mDraft.Draft);
+  mText := TTestDrafts.MethodText(mDraft, #13#10);
+  Assert.IsTrue(ContainsStr(mText, 'procedure TGewichtTests.ParseMitPunkt;'), mText);
+  Assert.IsTrue(ContainsStr(mText, 'Assert.AreEqual(12.5, Actual, ' + TTestDrafts.cFloatTolerance + ');'), mText);
+  Assert.IsFalse(ContainsStr(mText, 'Assert.Fail'), mText);
+  Assert.IsTrue(Parses(mText), mText);
   // Ohne erwarteten Wert bleibt der Entwurf rot.
-  Assert.IsTrue(DraftAt(9, Draft));
-  Request.Expected := '';
-  TTestFromDebug.Apply(Request, nil, Draft);
-  Assert.IsTrue(Draft.Draft);
+  Assert.IsTrue(DraftAt(9, mDraft));
+  mRequest.Expected := '';
+  TTestFromDebug.Apply(mRequest, nil, mDraft);
+  Assert.IsTrue(mDraft.Draft);
 end;
 
 procedure TTestFromDebugTests.ObjectArgumentGetsTodoAndStillDeclares;
 var
-  Draft: TTestDraft;
-  Request: TDebugStopRequest;
-  Text: string;
+  mDraft: TTestDraft;
+  mRequest: TDebugStopRequest;
+  mText: string;
 begin
-  Assert.IsTrue(DraftAt(18, Draft));
-  Request := TDebugStopRequest.Empty;
-  Request.Parameters := [TDebugStopValue.Create('AListe', '$02A3F2C0'), TDebugStopValue.Create('AZahl', '7')];
-  TTestFromDebug.Apply(Request, nil, Draft);
-  Assert.IsTrue(Draft.Parameters[0].Todo);
-  Assert.AreEqual('7', Draft.Parameters[1].Value);
-  Text := TTestDrafts.MethodText(Draft, #13#10);
-  Assert.IsTrue(ContainsStr(Text, 'Liste := Default(TStringList); // TODO'), Text);
-  Assert.IsTrue(ContainsStr(Text, 'procedure TGewichtTests.LadeMit7;'), 'Name ohne Adresse: ' + Text);
-  Assert.IsTrue(ContainsStr(Text, ':= 7;'), Text);
-  Assert.IsTrue(Parses(Text), Text);
+  Assert.IsTrue(DraftAt(18, mDraft));
+  mRequest := TDebugStopRequest.Empty;
+  mRequest.Parameters := [TDebugStopValue.Create('AListe', '$02A3F2C0'), TDebugStopValue.Create('AZahl', '7')];
+  TTestFromDebug.Apply(mRequest, nil, mDraft);
+  Assert.IsTrue(mDraft.Parameters[0].Todo);
+  Assert.AreEqual('7', mDraft.Parameters[1].Value);
+  mText := TTestDrafts.MethodText(mDraft, #13#10);
+  Assert.IsTrue(ContainsStr(mText, 'Liste := Default(TStringList); // TODO'), mText);
+  Assert.IsTrue(ContainsStr(mText, 'procedure TGewichtTests.LadeMit7;'), 'Name ohne Adresse: ' + mText);
+  Assert.IsTrue(ContainsStr(mText, ':= 7;'), mText);
+  Assert.IsTrue(Parses(mText), mText);
 end;
 
 initialization

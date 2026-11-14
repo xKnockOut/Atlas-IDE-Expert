@@ -64,13 +64,13 @@ end;
 
 procedure TLibraryUnitsTests.IndexFlagMarksLibrary;
 var
-  Index: ISymbolIndex;
+  mIndex: ISymbolIndex;
 begin
-  Index := SampleIndex;
-  Assert.IsTrue(TLibraryUnits.IsLibrary(Index, 'cxGrid'));
-  Assert.IsFalse(TLibraryUnits.IsLibrary(Index, 'Kunde'));
-  Assert.IsTrue(TLibraryUnits.IsLibrary(Index, 'Vcl.Forms'));
-  Assert.IsFalse(TLibraryUnits.IsLibrary(Index, 'Unbekannt'));
+  mIndex := SampleIndex;
+  Assert.IsTrue(TLibraryUnits.IsLibrary(mIndex, 'cxGrid'));
+  Assert.IsFalse(TLibraryUnits.IsLibrary(mIndex, 'Kunde'));
+  Assert.IsTrue(TLibraryUnits.IsLibrary(mIndex, 'Vcl.Forms'));
+  Assert.IsFalse(TLibraryUnits.IsLibrary(mIndex, 'Unbekannt'));
 end;
 
 procedure TLibraryUnitsTests.WithoutIndexOnlyNames;

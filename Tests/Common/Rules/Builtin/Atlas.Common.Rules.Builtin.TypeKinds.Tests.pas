@@ -257,7 +257,8 @@ begin
     'end;', 'end.'])))));
 end;
 
-/// <summary>TBasis mit Machen, class procedure Klasse und Konstruktor; ARest nach der Klassendeklaration (ab Zeile 9, nullbasiert).
+/// <summary>TBasis mit Machen, class procedure Klasse und Konstruktor; ARest nach der Klassendeklaration (ab Zeile 9,
+/// nullbasiert).
 /// </summary>
 function Basis(const ARest: string): string;
 begin
@@ -290,7 +291,8 @@ begin
     '  mBasis := TBasis.Create;', '  mBasis.Machen;', '  mZeiger := @TBasis.Machen;', 'end;', 'end.'])))));
 end;
 
-/// <summary>Routinen mit offenem Array, Integer und array of const; AStatements im Rumpf von Fall (ab Zeile 35, nullbasiert).
+/// <summary>Routinen mit offenem Array, Integer und array of const; AStatements im Rumpf von Fall (ab Zeile 35,
+/// nullbasiert).
 /// </summary>
 function Felder(const AUses, AStatements: string): string;
 begin

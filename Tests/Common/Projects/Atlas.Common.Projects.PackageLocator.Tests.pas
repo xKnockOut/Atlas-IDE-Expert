@@ -57,7 +57,7 @@ uses
   Atlas.Common.Projects.PackageLocator;
 
 const
-  BasisDpk =
+  cBasisDpk =
     'package Basis;'#10 +
     'requires rtl;'#10 +
     'contains'#10 +
@@ -67,9 +67,9 @@ const
 
 function Files(const AFiles: TArray<TPair<string, TBytes>>; const AReads: TList<string>): TPackageReadFile;
 var
-  Map: TArray<TPair<string, TBytes>>;
+  mMap: TArray<TPair<string, TBytes>>;
 begin
-  Map := AFiles;
+  mMap := AFiles;
   Result :=
     function(const AFileName: string; out AData: TBytes): Boolean
     var
@@ -79,7 +79,7 @@ begin
       begin
         AReads.Add(AFileName);
       end;
-      for Item in Map do
+      for Item in mMap do
       begin
         if SameText(Item.Key, AFileName) then
         begin
@@ -99,13 +99,13 @@ end;
 
 function Dcp(const ANames: array of string): string;
 var
-  Name: string;
+  mName: string;
 begin
   // Wie im .dcp: Namen als ShortString mit Längenbyte zwischen Binärdaten.
   Result := 'PKX0'#0#1;
-  for Name in ANames do
+  for mName in ANames do
   begin
-    Result := Result + Chr(Length(Name)) + Name + #0#2;
+    Result := Result + Chr(Length(mName)) + mName + #0#2;
   end;
 end;
 
@@ -113,202 +113,202 @@ end;
 
 procedure TPackageLocatorTests.SourceAnswersFromContains;
 var
-  Locator: TPackageLocator;
-  Contains: Boolean;
-  FileName: string;
-  Source: TPackageSource;
+  mLocator: TPackageLocator;
+  mContains: Boolean;
+  mFileName: string;
+  mSource: TPackageSource;
 begin
-  Locator := TPackageLocator.Create(['A', 'B'], Files([Entry(TPath.Combine('B', 'Basis.dpk'), BasisDpk)], nil));
+  mLocator := TPackageLocator.Create(['A', 'B'], Files([Entry(TPath.Combine('B', 'Basis.dpk'), cBasisDpk)], nil));
   try
-    Assert.IsTrue(Locator.Provides('Basis', 'UBASIS', Contains));
-    Assert.IsTrue(Contains);
-    Assert.IsTrue(Locator.Provides('basis', 'uHilfe', Contains));
-    Assert.IsTrue(Contains);
-    Assert.IsTrue(Locator.Provides('Basis', 'uFremd', Contains));
-    Assert.IsFalse(Contains);
-    Assert.IsTrue(Locator.FindSource('Basis', FileName, Source));
-    Assert.AreEqual(TPath.Combine('B', 'Basis.dpk'), FileName);
-    Assert.AreEqual(2, Integer(Length(Source.Contains)));
+    Assert.IsTrue(mLocator.Provides('Basis', 'UBASIS', mContains));
+    Assert.IsTrue(mContains);
+    Assert.IsTrue(mLocator.Provides('basis', 'uHilfe', mContains));
+    Assert.IsTrue(mContains);
+    Assert.IsTrue(mLocator.Provides('Basis', 'uFremd', mContains));
+    Assert.IsFalse(mContains);
+    Assert.IsTrue(mLocator.FindSource('Basis', mFileName, mSource));
+    Assert.AreEqual(TPath.Combine('B', 'Basis.dpk'), mFileName);
+    Assert.AreEqual(2, Integer(Length(mSource.Contains)));
   finally
-    Locator.Free;
+    mLocator.Free;
   end;
 end;
 
 procedure TPackageLocatorTests.CompiledPackageIsScanned;
 var
-  Locator: TPackageLocator;
-  Contains: Boolean;
-  FileName: string;
-  Source: TPackageSource;
+  mLocator: TPackageLocator;
+  mContains: Boolean;
+  mFileName: string;
+  mSource: TPackageSource;
 begin
-  Locator := TPackageLocator.Create(['Lib'],
+  mLocator := TPackageLocator.Create(['Lib'],
     Files([Entry(TPath.Combine('Lib', 'rtl.dcp'), Dcp(['System.Classes', 'System.SysUtils']))], nil));
   try
-    Assert.IsTrue(Locator.Provides('rtl', 'system.classes', Contains));
-    Assert.IsTrue(Contains);
-    Assert.IsTrue(Locator.Provides('rtl', 'Vcl.Forms', Contains));
-    Assert.IsFalse(Contains);
+    Assert.IsTrue(mLocator.Provides('rtl', 'system.classes', mContains));
+    Assert.IsTrue(mContains);
+    Assert.IsTrue(mLocator.Provides('rtl', 'Vcl.Forms', mContains));
+    Assert.IsFalse(mContains);
     // Nur übersetzt: keine Quelle.
-    Assert.IsFalse(Locator.FindSource('rtl', FileName, Source));
+    Assert.IsFalse(mLocator.FindSource('rtl', mFileName, mSource));
   finally
-    Locator.Free;
+    mLocator.Free;
   end;
 end;
 
 procedure TPackageLocatorTests.SourceWinsOverCompiled;
 var
-  Locator: TPackageLocator;
-  Contains: Boolean;
+  mLocator: TPackageLocator;
+  mContains: Boolean;
 begin
-  Locator := TPackageLocator.Create(['A', 'B'], Files([Entry(TPath.Combine('A', 'Basis.dcp'), Dcp(['uAlt'])),
-    Entry(TPath.Combine('B', 'Basis.dpk'), BasisDpk)], nil));
+  mLocator := TPackageLocator.Create(['A', 'B'], Files([Entry(TPath.Combine('A', 'Basis.dcp'), Dcp(['uAlt'])),
+    Entry(TPath.Combine('B', 'Basis.dpk'), cBasisDpk)], nil));
   try
-    Assert.IsTrue(Locator.Provides('Basis', 'uAlt', Contains));
-    Assert.IsFalse(Contains);
+    Assert.IsTrue(mLocator.Provides('Basis', 'uAlt', mContains));
+    Assert.IsFalse(mContains);
   finally
-    Locator.Free;
+    mLocator.Free;
   end;
 end;
 
 procedure TPackageLocatorTests.UnknownPackage;
 var
-  Locator: TPackageLocator;
-  Contains: Boolean;
+  mLocator: TPackageLocator;
+  mContains: Boolean;
 begin
-  Locator := TPackageLocator.Create(['A'], Files([Entry(TPath.Combine('A', 'Kaputt.dpk'), 'unit Kaputt;')], nil));
+  mLocator := TPackageLocator.Create(['A'], Files([Entry(TPath.Combine('A', 'Kaputt.dpk'), 'unit Kaputt;')], nil));
   try
-    Assert.IsFalse(Locator.Provides('Fehlt', 'uBasis', Contains));
-    Assert.IsFalse(Contains);
+    Assert.IsFalse(mLocator.Provides('Fehlt', 'uBasis', mContains));
+    Assert.IsFalse(mContains);
     // Eine .dpk, die kein Package ist, zählt nicht.
-    Assert.IsFalse(Locator.Provides('Kaputt', 'Kaputt', Contains));
+    Assert.IsFalse(mLocator.Provides('Kaputt', 'Kaputt', mContains));
   finally
-    Locator.Free;
+    mLocator.Free;
   end;
 end;
 
 procedure TPackageLocatorTests.CompiledNamesAreWholeWords;
 var
-  Data: TBytes;
+  mData: TBytes;
 begin
-  Data := TEncoding.ASCII.GetBytes(Dcp(['System.Classes', 'uBasisX']));
-  Assert.IsTrue(TPackageLocator.CompiledContains(Data, 'System.Classes'));
-  Assert.IsFalse(TPackageLocator.CompiledContains(Data, 'Classes'));
-  Assert.IsFalse(TPackageLocator.CompiledContains(Data, 'uBasis'));
-  Assert.IsTrue(TPackageLocator.CompiledContains(Data, 'UBASISX'));
-  Assert.IsFalse(TPackageLocator.CompiledContains(Data, ''));
+  mData := TEncoding.ASCII.GetBytes(Dcp(['System.Classes', 'uBasisX']));
+  Assert.IsTrue(TPackageLocator.CompiledContains(mData, 'System.Classes'));
+  Assert.IsFalse(TPackageLocator.CompiledContains(mData, 'Classes'));
+  Assert.IsFalse(TPackageLocator.CompiledContains(mData, 'uBasis'));
+  Assert.IsTrue(TPackageLocator.CompiledContains(mData, 'UBASISX'));
+  Assert.IsFalse(TPackageLocator.CompiledContains(mData, ''));
 end;
 
 procedure TPackageLocatorTests.ResultsAreCached;
 var
-  Locator: TPackageLocator;
-  Reads: TList<string>;
-  Contains: Boolean;
-  Count: Integer;
+  mLocator: TPackageLocator;
+  mReads: TList<string>;
+  mContains: Boolean;
+  mCount: Integer;
 begin
-  Reads := TList<string>.Create;
-  Locator := TPackageLocator.Create(['A'], Files([Entry(TPath.Combine('A', 'Basis.dpk'), BasisDpk)], Reads));
+  mReads := TList<string>.Create;
+  mLocator := TPackageLocator.Create(['A'], Files([Entry(TPath.Combine('A', 'Basis.dpk'), cBasisDpk)], mReads));
   try
-    Locator.Provides('Basis', 'uBasis', Contains);
-    Count := Reads.Count;
-    Locator.Provides('BASIS', 'uHilfe', Contains);
-    Locator.Provides('Fehlt', 'uHilfe', Contains);
-    Assert.AreEqual(Count + 2, Integer(Reads.Count));
-    Locator.Provides('Fehlt', 'uBasis', Contains);
-    Assert.AreEqual(Count + 2, Integer(Reads.Count));
+    mLocator.Provides('Basis', 'uBasis', mContains);
+    mCount := mReads.Count;
+    mLocator.Provides('BASIS', 'uHilfe', mContains);
+    mLocator.Provides('Fehlt', 'uHilfe', mContains);
+    Assert.AreEqual(mCount + 2, Integer(mReads.Count));
+    mLocator.Provides('Fehlt', 'uBasis', mContains);
+    Assert.AreEqual(mCount + 2, Integer(mReads.Count));
   finally
-    Locator.Free;
-    Reads.Free;
+    mLocator.Free;
+    mReads.Free;
   end;
 end;
 
 procedure TPackageLocatorTests.CompiledAnswersAreCached;
 const
   // Wie rtl.dcp: mehrere MB, die gesuchten Namen am Ende.
-  Size = 4 * 1024 * 1024;
-  Calls = 500;
+  cSize = 4 * 1024 * 1024;
+  cCalls = 500;
 var
-  Locator: TPackageLocator;
-  Data: TBytes;
-  Tail: TBytes;
-  Contains: Boolean;
-  Index: Integer;
-  Watch: TStopwatch;
+  mLocator: TPackageLocator;
+  mData: TBytes;
+  mTail: TBytes;
+  mContains: Boolean;
+  mIndex: Integer;
+  mWatch: TStopwatch;
 begin
-  Tail := TEncoding.ASCII.GetBytes(Dcp(['System.Classes']));
-  SetLength(Data, Size);
-  FillChar(Data[0], Size, 1);
-  Move(Tail[0], Data[Size - Length(Tail)], Length(Tail));
-  Locator := TPackageLocator.Create(['Lib'], Files([TPair<string, TBytes>.Create(TPath.Combine('Lib', 'rtl.dcp'),
-    Data)], nil));
+  mTail := TEncoding.ASCII.GetBytes(Dcp(['System.Classes']));
+  SetLength(mData, cSize);
+  FillChar(mData[0], cSize, 1);
+  Move(mTail[0], mData[cSize - Length(mTail)], Length(mTail));
+  mLocator := TPackageLocator.Create(['Lib'], Files([TPair<string, TBytes>.Create(TPath.Combine('Lib', 'rtl.dcp'),
+    mData)], nil));
   try
-    Watch := TStopwatch.StartNew;
-    for Index := 1 to Calls do
+    mWatch := TStopwatch.StartNew;
+    for mIndex := 1 to cCalls do
     begin
-      Assert.IsTrue(Locator.Provides('rtl', 'System.Classes', Contains));
-      Assert.IsTrue(Contains);
-      Assert.IsTrue(Locator.Provides('RTL', 'vcl.forms', Contains));
-      Assert.IsFalse(Contains);
+      Assert.IsTrue(mLocator.Provides('rtl', 'System.Classes', mContains));
+      Assert.IsTrue(mContains);
+      Assert.IsTrue(mLocator.Provides('RTL', 'vcl.forms', mContains));
+      Assert.IsFalse(mContains);
     end;
     // Ohne Cache 2 × 500 Läufe über 4 MB (4 GB), mehrere Sekunden; mit Cache zwei Läufe.
-    Assert.IsTrue(Watch.ElapsedMilliseconds < 1000, Format('%d ms', [Watch.ElapsedMilliseconds]));
+    Assert.IsTrue(mWatch.ElapsedMilliseconds < 1000, Format('%d ms', [mWatch.ElapsedMilliseconds]));
   finally
-    Locator.Free;
+    mLocator.Free;
   end;
 end;
 
 procedure TPackageLocatorTests.ContainedFilesAreAbsolute;
 var
-  Found: TArray<string>;
-  Folder: string;
+  mFound: TArray<string>;
+  mFolder: string;
 begin
-  Folder := TPath.Combine(TPath.GetTempPath, 'Basis');
-  Found := TPackageLocator.ContainedFiles(TPath.Combine(Folder, 'Basis.dpk'), TPackageReader.Read(BasisDpk));
+  mFolder := TPath.Combine(TPath.GetTempPath, 'Basis');
+  mFound := TPackageLocator.ContainedFiles(TPath.Combine(mFolder, 'Basis.dpk'), TPackageReader.Read(cBasisDpk));
   // uHilfe ohne in '…' findet der Compiler über die Suchpfade.
-  Assert.AreEqual(1, Integer(Length(Found)));
-  Assert.AreEqual(ExpandFileName(TPath.Combine(Folder, 'uBasis.pas')), Found[0]);
+  Assert.AreEqual(1, Integer(Length(mFound)));
+  Assert.AreEqual(ExpandFileName(TPath.Combine(mFolder, 'uBasis.pas')), mFound[0]);
 end;
 
 procedure TPackageLocatorTests.RequiredFilesFollowRequires;
 const
-  KernDpk = 'package Kern;'#10'contains'#10'  uKern in ''uKern.pas'';'#10'end.';
-  AppDpk = 'package App;'#10'requires Basis, rtl;'#10'contains'#10'  uApp in ''uApp.pas'';'#10'end.';
-  BasisMitKern = 'package Basis;'#10'requires Kern, App;'#10'contains'#10'  uBasis in ''uBasis.pas'';'#10'end.';
+  cKernDpk = 'package Kern;'#10'contains'#10'  uKern in ''uKern.pas'';'#10'end.';
+  cAppDpk = 'package App;'#10'requires Basis, rtl;'#10'contains'#10'  uApp in ''uApp.pas'';'#10'end.';
+  cBasisMitKern = 'package Basis;'#10'requires Kern, App;'#10'contains'#10'  uBasis in ''uBasis.pas'';'#10'end.';
 var
-  Locator: TPackageLocator;
-  Found: TArray<string>;
-  Folder: string;
+  mLocator: TPackageLocator;
+  mFound: TArray<string>;
+  mFolder: string;
 begin
-  Folder := TPath.GetTempPath;
-  Locator := TPackageLocator.Create([Folder], Files([Entry(TPath.Combine(Folder, 'Basis.dpk'), BasisMitKern),
-    Entry(TPath.Combine(Folder, 'Kern.dpk'), KernDpk)], nil));
+  mFolder := TPath.GetTempPath;
+  mLocator := TPackageLocator.Create([mFolder], Files([Entry(TPath.Combine(mFolder, 'Basis.dpk'), cBasisMitKern),
+    Entry(TPath.Combine(mFolder, 'Kern.dpk'), cKernDpk)], nil));
   try
     // App selbst zählt nicht mit, auch wenn Basis es wieder verlangt; rtl hat keine Quelle.
-    Found := Locator.RequiredFiles(TPackageReader.Read(AppDpk));
-    Assert.AreEqual(2, Integer(Length(Found)), String.Join(';', Found));
-    Assert.AreEqual(ExpandFileName(TPath.Combine(Folder, 'uBasis.pas')), Found[0]);
-    Assert.AreEqual(ExpandFileName(TPath.Combine(Folder, 'uKern.pas')), Found[1]);
+    mFound := mLocator.RequiredFiles(TPackageReader.Read(cAppDpk));
+    Assert.AreEqual(2, Integer(Length(mFound)), String.Join(';', mFound));
+    Assert.AreEqual(ExpandFileName(TPath.Combine(mFolder, 'uBasis.pas')), mFound[0]);
+    Assert.AreEqual(ExpandFileName(TPath.Combine(mFolder, 'uKern.pas')), mFound[1]);
   finally
-    Locator.Free;
+    mLocator.Free;
   end;
 end;
 
 procedure TPackageLocatorTests.RequiresComeFromSource;
 const
-  MitRequires = 'package Basis;'#10'requires rtl, Kern;'#10'contains'#10'  uBasis in ''uBasis.pas'';'#10'end.';
+  cMitRequires = 'package Basis;'#10'requires rtl, Kern;'#10'contains'#10'  uBasis in ''uBasis.pas'';'#10'end.';
 var
-  Locator: TPackageLocator;
-  Found: TArray<string>;
+  mLocator: TPackageLocator;
+  mFound: TArray<string>;
 begin
-  Locator := TPackageLocator.Create(['A'], Files([Entry(TPath.Combine('A', 'Basis.dpk'), MitRequires),
+  mLocator := TPackageLocator.Create(['A'], Files([Entry(TPath.Combine('A', 'Basis.dpk'), cMitRequires),
     Entry(TPath.Combine('A', 'Kern.dcp'), Dcp(['uKern']))], nil));
   try
-    Found := Locator.Requires('basis');
-    Assert.AreEqual('rtl;Kern', String.Join(';', Found));
+    mFound := mLocator.Requires('basis');
+    Assert.AreEqual('rtl;Kern', String.Join(';', mFound));
     // Ein .dcp nennt seine requires nicht, ein unbekanntes Package hat keine.
-    Assert.AreEqual(0, Integer(Length(Locator.Requires('Kern'))));
-    Assert.AreEqual(0, Integer(Length(Locator.Requires('Fehlt'))));
+    Assert.AreEqual(0, Integer(Length(mLocator.Requires('Kern'))));
+    Assert.AreEqual(0, Integer(Length(mLocator.Requires('Fehlt'))));
   finally
-    Locator.Free;
+    mLocator.Free;
   end;
 end;
 

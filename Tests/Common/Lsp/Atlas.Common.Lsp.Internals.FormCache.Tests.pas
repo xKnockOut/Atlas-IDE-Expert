@@ -32,7 +32,7 @@ uses
   Atlas.Common.Lsp.Internals.FormCache;
 
 const
-  Form =
+  cForm =
     'object frmMain: TfrmMain'#13#10 +
     '  OnCreate = FormCreate'#13#10 +
     '  object pnlOben: TPanel'#13#10 +
@@ -59,108 +59,108 @@ end;
 
 procedure TFormSnapshotCacheTests.PutThenGetSameStamp;
 var
-  Cache: TFormSnapshotCache;
-  Found: TFormSnapshot;
+  mCache: TFormSnapshotCache;
+  mFound: TFormSnapshot;
 begin
-  Cache := TFormSnapshotCache.Create;
+  mCache := TFormSnapshotCache.Create;
   try
-    Assert.IsFalse(Cache.TryGet('C:\P\Haupt.dfm', 't1', Found));
-    Cache.Put('C:\P\Haupt.dfm', 't1', Snapshot('C:\P\Haupt.dfm', 'frmMain'));
+    Assert.IsFalse(mCache.TryGet('C:\P\Haupt.dfm', 't1', mFound));
+    mCache.Put('C:\P\Haupt.dfm', 't1', Snapshot('C:\P\Haupt.dfm', 'frmMain'));
     // Dateinamen ohne Groß-/Kleinschreibung.
-    Assert.IsTrue(Cache.TryGet('c:\p\haupt.DFM', 't1', Found));
-    Assert.AreEqual('frmMain', Found.RootName);
-    Assert.AreEqual(1, Integer(Cache.Count));
+    Assert.IsTrue(mCache.TryGet('c:\p\haupt.DFM', 't1', mFound));
+    Assert.AreEqual('frmMain', mFound.RootName);
+    Assert.AreEqual(1, Integer(mCache.Count));
   finally
-    Cache.Free;
+    mCache.Free;
   end;
 end;
 
 procedure TFormSnapshotCacheTests.OtherStampMisses;
 var
-  Cache: TFormSnapshotCache;
-  Found: TFormSnapshot;
+  mCache: TFormSnapshotCache;
+  mFound: TFormSnapshot;
 begin
-  Cache := TFormSnapshotCache.Create;
+  mCache := TFormSnapshotCache.Create;
   try
-    Cache.Put('C:\P\Haupt.dfm', 't1', Snapshot('C:\P\Haupt.dfm', 'frmAlt'));
-    Assert.IsFalse(Cache.TryGet('C:\P\Haupt.dfm', 't2', Found));
-    Assert.AreEqual('', Found.RootName);
+    mCache.Put('C:\P\Haupt.dfm', 't1', Snapshot('C:\P\Haupt.dfm', 'frmAlt'));
+    Assert.IsFalse(mCache.TryGet('C:\P\Haupt.dfm', 't2', mFound));
+    Assert.AreEqual('', mFound.RootName);
     // Neuer Stand ersetzt den alten.
-    Cache.Put('C:\P\Haupt.dfm', 't2', Snapshot('C:\P\Haupt.dfm', 'frmNeu'));
-    Assert.IsTrue(Cache.TryGet('C:\P\Haupt.dfm', 't2', Found));
-    Assert.AreEqual('frmNeu', Found.RootName);
-    Assert.IsFalse(Cache.TryGet('C:\P\Haupt.dfm', 't1', Found));
-    Assert.AreEqual(1, Integer(Cache.Count));
+    mCache.Put('C:\P\Haupt.dfm', 't2', Snapshot('C:\P\Haupt.dfm', 'frmNeu'));
+    Assert.IsTrue(mCache.TryGet('C:\P\Haupt.dfm', 't2', mFound));
+    Assert.AreEqual('frmNeu', mFound.RootName);
+    Assert.IsFalse(mCache.TryGet('C:\P\Haupt.dfm', 't1', mFound));
+    Assert.AreEqual(1, Integer(mCache.Count));
   finally
-    Cache.Free;
+    mCache.Free;
   end;
 end;
 
 procedure TFormSnapshotCacheTests.EvictsLeastRecentlyUsedAboveLimit;
 var
-  Cache: TFormSnapshotCache;
-  Found: TFormSnapshot;
-  Index: Integer;
+  mCache: TFormSnapshotCache;
+  mFound: TFormSnapshot;
+  mIndex: Integer;
 begin
-  Cache := TFormSnapshotCache.Create;
+  mCache := TFormSnapshotCache.Create;
   try
-    for Index := 1 to TFormSnapshotCache.cMaxEntries do
+    for mIndex := 1 to TFormSnapshotCache.cMaxEntries do
     begin
-      Cache.Put(Format('C:\P\F%d.dfm', [Index]), 's', Snapshot('', IntToStr(Index)));
+      mCache.Put(Format('C:\P\F%d.dfm', [mIndex]), 's', Snapshot('', IntToStr(mIndex)));
     end;
     // F1 zuletzt benutzt: Beim nächsten Eintrag fällt F2 heraus, nicht F1.
-    Assert.IsTrue(Cache.TryGet('C:\P\F1.dfm', 's', Found));
-    Cache.Put('C:\P\Neu.dfm', 's', Snapshot('', 'Neu'));
-    Assert.AreEqual(TFormSnapshotCache.cMaxEntries, Integer(Cache.Count));
-    Assert.IsTrue(Cache.TryGet('C:\P\F1.dfm', 's', Found));
-    Assert.IsFalse(Cache.TryGet('C:\P\F2.dfm', 's', Found));
-    Assert.IsTrue(Cache.TryGet('C:\P\F3.dfm', 's', Found));
-    Assert.IsTrue(Cache.TryGet('C:\P\Neu.dfm', 's', Found));
+    Assert.IsTrue(mCache.TryGet('C:\P\F1.dfm', 's', mFound));
+    mCache.Put('C:\P\Neu.dfm', 's', Snapshot('', 'Neu'));
+    Assert.AreEqual(TFormSnapshotCache.cMaxEntries, Integer(mCache.Count));
+    Assert.IsTrue(mCache.TryGet('C:\P\F1.dfm', 's', mFound));
+    Assert.IsFalse(mCache.TryGet('C:\P\F2.dfm', 's', mFound));
+    Assert.IsTrue(mCache.TryGet('C:\P\F3.dfm', 's', mFound));
+    Assert.IsTrue(mCache.TryGet('C:\P\Neu.dfm', 's', mFound));
   finally
-    Cache.Free;
+    mCache.Free;
   end;
 end;
 
 procedure TFormSnapshotCacheTests.FromDocumentCollectsComponentsAndHandlers;
 var
-  Document: TDfmDocument;
-  Found: TFormSnapshot;
+  mDocument: TDfmDocument;
+  mFound: TFormSnapshot;
 begin
-  Document := TDfmParser.Parse(Form);
+  mDocument := TDfmParser.Parse(cForm);
   try
-    Found := TFormSnapshotCache.FromDocument('C:\P\Haupt.dfm', Document);
+    mFound := TFormSnapshotCache.FromDocument('C:\P\Haupt.dfm', mDocument);
   finally
-    Document.Free;
+    mDocument.Free;
   end;
-  Assert.AreEqual('C:\P\Haupt.dfm', Found.FormFile);
-  Assert.AreEqual('frmMain', Found.RootName);
-  Assert.AreEqual('TfrmMain', Found.RootType);
+  Assert.AreEqual('C:\P\Haupt.dfm', mFound.FormFile);
+  Assert.AreEqual('frmMain', mFound.RootName);
+  Assert.AreEqual('TfrmMain', mFound.RootType);
   // Komponenten wie Felder des Formulars: im Frame nur der Frame selbst.
-  Assert.AreEqual(3, Integer(Length(Found.Components)));
-  Assert.AreEqual('pnlOben', Found.Components[0].Name);
-  Assert.AreEqual('btnSave', Found.Components[1].Name);
-  Assert.AreEqual('TButton', Found.Components[1].TypeName);
-  Assert.AreEqual('fraLeiste', Found.Components[2].Name);
+  Assert.AreEqual(3, Integer(Length(mFound.Components)));
+  Assert.AreEqual('pnlOben', mFound.Components[0].Name);
+  Assert.AreEqual('btnSave', mFound.Components[1].Name);
+  Assert.AreEqual('TButton', mFound.Components[1].TypeName);
+  Assert.AreEqual('fraLeiste', mFound.Components[2].Name);
   // Ereignisse aller Objekte, auch im Frame, mit fortlaufender Objektnummer.
-  Assert.AreEqual(3, Integer(Length(Found.Handlers)));
-  Assert.AreEqual('frmMain', Found.Handlers[0].ObjectName);
-  Assert.AreEqual('FormCreate', Found.Handlers[0].MethodName);
-  Assert.AreEqual(0, Found.Handlers[0].ObjectIndex);
-  Assert.AreEqual('btnSave', Found.Handlers[1].ObjectName);
-  Assert.AreEqual('TButton', Found.Handlers[1].TypeName);
-  Assert.AreEqual('btnAnyClick', Found.Handlers[1].MethodName);
-  Assert.AreEqual('btnIntern', Found.Handlers[2].ObjectName);
-  Assert.IsTrue(Found.Handlers[2].ObjectIndex > Found.Handlers[1].ObjectIndex);
+  Assert.AreEqual(3, Integer(Length(mFound.Handlers)));
+  Assert.AreEqual('frmMain', mFound.Handlers[0].ObjectName);
+  Assert.AreEqual('FormCreate', mFound.Handlers[0].MethodName);
+  Assert.AreEqual(0, mFound.Handlers[0].ObjectIndex);
+  Assert.AreEqual('btnSave', mFound.Handlers[1].ObjectName);
+  Assert.AreEqual('TButton', mFound.Handlers[1].TypeName);
+  Assert.AreEqual('btnAnyClick', mFound.Handlers[1].MethodName);
+  Assert.AreEqual('btnIntern', mFound.Handlers[2].ObjectName);
+  Assert.IsTrue(mFound.Handlers[2].ObjectIndex > mFound.Handlers[1].ObjectIndex);
 end;
 
 procedure TFormSnapshotCacheTests.FromDocumentWithoutRootIsEmpty;
 var
-  Found: TFormSnapshot;
+  mFound: TFormSnapshot;
 begin
-  Found := TFormSnapshotCache.FromDocument('C:\P\Leer.dfm', nil);
-  Assert.AreEqual('C:\P\Leer.dfm', Found.FormFile);
-  Assert.AreEqual(0, Integer(Length(Found.Components)));
-  Assert.AreEqual(0, Integer(Length(Found.Handlers)));
+  mFound := TFormSnapshotCache.FromDocument('C:\P\Leer.dfm', nil);
+  Assert.AreEqual('C:\P\Leer.dfm', mFound.FormFile);
+  Assert.AreEqual(0, Integer(Length(mFound.Components)));
+  Assert.AreEqual(0, Integer(Length(mFound.Handlers)));
 end;
 
 initialization

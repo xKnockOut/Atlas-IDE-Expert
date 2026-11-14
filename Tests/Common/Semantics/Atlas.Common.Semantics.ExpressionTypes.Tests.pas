@@ -67,128 +67,128 @@ uses
   Atlas.Common.Semantics.NameResolver;
 
 const
-  LB = #13#10;
-  MainFile = 'C:\P\Haupt.pas';
-  TypesFile = 'C:\P\Typen.pas';
+  cLB = #13#10;
+  cMainFile = 'C:\P\Haupt.pas';
+  cTypesFile = 'C:\P\Typen.pas';
 
-  UnitTypes =
-    'unit Typen;' + LB +
-    'interface' + LB +
-    'type' + LB +
-    '  TFarbe = (Rot, Gruen, Blau);' + LB +
-    '  TFarben = set of TFarbe;' + LB +
-    '  TKunde = class' + LB +
-    '    Name: string;' + LB +
-    '  end;' + LB +
-    '  PKunde = ^TKunde;' + LB +
-    '  TListe<T> = class' + LB +
-    '  private' + LB +
-    '    function GetItem(I: Integer): T;' + LB +
-    '  public' + LB +
-    '    function First: T;' + LB +
-    '    property Items[I: Integer]: T read GetItem; default;' + LB +
-    '  end;' + LB +
-    'implementation' + LB +
-    'function TListe<T>.GetItem(I: Integer): T;' + LB +
-    'begin' + LB +
-    'end;' + LB +
-    'function TListe<T>.First: T;' + LB +
-    'begin' + LB +
-    'end;' + LB +
+  cUnitTypes =
+    'unit Typen;' + cLB +
+    'interface' + cLB +
+    'type' + cLB +
+    '  TFarbe = (Rot, Gruen, Blau);' + cLB +
+    '  TFarben = set of TFarbe;' + cLB +
+    '  TKunde = class' + cLB +
+    '    Name: string;' + cLB +
+    '  end;' + cLB +
+    '  PKunde = ^TKunde;' + cLB +
+    '  TListe<T> = class' + cLB +
+    '  private' + cLB +
+    '    function GetItem(I: Integer): T;' + cLB +
+    '  public' + cLB +
+    '    function First: T;' + cLB +
+    '    property Items[I: Integer]: T read GetItem; default;' + cLB +
+    '  end;' + cLB +
+    'implementation' + cLB +
+    'function TListe<T>.GetItem(I: Integer): T;' + cLB +
+    'begin' + cLB +
+    'end;' + cLB +
+    'function TListe<T>.First: T;' + cLB +
+    'begin' + cLB +
+    'end;' + cLB +
     'end.';
 
-  UnitMain =
-    'unit Haupt;' + LB +
-    'interface' + LB +
-    'uses Typen;' + LB +
-    'type' + LB +
-    '  TRec = record' + LB +
-    '    A: Integer;' + LB +
-    '    B: Byte;' + LB +
-    '    C: Int64;' + LB +
-    '  end;' + LB +
-    '  TPacked = packed record' + LB +
-    '    A: Byte;' + LB +
-    '    B: Integer;' + LB +
-    '  end;' + LB +
-    '  TZahl = Integer;' + LB +
-    '  TGruppen = TListe<TKunde>;' + LB +
-    'implementation' + LB +
-    'function Max(A, B: Integer): Integer; overload;' + LB +
-    'begin' + LB +
-    '  Result := A;' + LB +
-    'end;' + LB +
-    'function Max(A, B: Double): Double; overload;' + LB +
-    'begin' + LB +
-    '  Result := A;' + LB +
-    'end;' + LB +
-    'procedure Leer;' + LB +
-    'begin' + LB +
-    'end;' + LB +
-    'procedure Run;' + LB +
-    'const' + LB +
-    '  Faktor = 3;' + LB +
-    'var' + LB +
-    '  Price, Shipping: Currency;' + LB +
-    '  Count: Integer;' + LB +
-    '  Big: Int64;' + LB +
-    '  Card: Cardinal;' + LB +
-    '  B: Byte;' + LB +
-    '  D: Double;' + LB +
-    '  S: string;' + LB +
-    '  C: Char;' + LB +
-    '  V: Variant;' + LB +
-    '  L: TListe<TKunde>;' + LB +
-    '  G: TGruppen;' + LB +
-    '  K: TKunde;' + LB +
-    '  Z: TZahl;' + LB +
-    '  Arr: array of TKunde;' + LB +
-    '  Farben: TFarben;' + LB +
-    '  P: PKunde;' + LB +
-    '  F: TProc;' + LB +
-    'begin' + LB +
-    '  Price := Price * Count + Shipping;' + LB +
-    '  Big := Count + Big;' + LB +
-    '  Big := Card + Count;' + LB +
-    '  Card := Card + Card;' + LB +
-    '  Count := B + B;' + LB +
-    '  D := D * Count;' + LB +
-    '  D := Count / 2;' + LB +
-    '  Count := Count div 2;' + LB +
-    '  S := S + C;' + LB +
-    '  S := V;' + LB +
-    '  K := L.First;' + LB +
-    '  K := L[0];' + LB +
-    '  K := G.First;' + LB +
-    '  G := G;' + LB +
-    '  D := Z + D;' + LB +
-    '  Count := Max(Count, Count);' + LB +
-    '  D := Max(D, Count);' + LB +
-    '  Count := SizeOf(TRec) * 2;' + LB +
-    '  Count := SizeOf(TPacked);' + LB +
-    '  Count := Faktor * 4;' + LB +
-    '  Count := Count + S;' + LB +
-    '  Count := Unbekannt + 1;' + LB +
-    '  Leer;' + LB +
-    '  Farben := Farben + [Blau];' + LB +
-    '  Farben := [Rot, Gruen];' + LB +
-    '  S := K.Name;' + LB +
-    '  K := Arr[0];' + LB +
-    '  K := P^;' + LB +
-    '  S := P^.Name;' + LB +
-    '  if not (Count > 0) then' + LB +
-    '    K := TKunde(K);' + LB +
-    '  K := TKunde.Create;' + LB +
-    '  F := procedure(A: Integer) begin end;' + LB +
-    '  Count := Length(S) + Ord(C);' + LB +
-    'end;' + LB +
+  cUnitMain =
+    'unit Haupt;' + cLB +
+    'interface' + cLB +
+    'uses Typen;' + cLB +
+    'type' + cLB +
+    '  TRec = record' + cLB +
+    '    A: Integer;' + cLB +
+    '    B: Byte;' + cLB +
+    '    C: Int64;' + cLB +
+    '  end;' + cLB +
+    '  TPacked = packed record' + cLB +
+    '    A: Byte;' + cLB +
+    '    B: Integer;' + cLB +
+    '  end;' + cLB +
+    '  TZahl = Integer;' + cLB +
+    '  TGruppen = TListe<TKunde>;' + cLB +
+    'implementation' + cLB +
+    'function Max(A, B: Integer): Integer; overload;' + cLB +
+    'begin' + cLB +
+    '  Result := A;' + cLB +
+    'end;' + cLB +
+    'function Max(A, B: Double): Double; overload;' + cLB +
+    'begin' + cLB +
+    '  Result := A;' + cLB +
+    'end;' + cLB +
+    'procedure Leer;' + cLB +
+    'begin' + cLB +
+    'end;' + cLB +
+    'procedure Run;' + cLB +
+    'const' + cLB +
+    '  Faktor = 3;' + cLB +
+    'var' + cLB +
+    '  Price, Shipping: Currency;' + cLB +
+    '  Count: Integer;' + cLB +
+    '  Big: Int64;' + cLB +
+    '  Card: Cardinal;' + cLB +
+    '  B: Byte;' + cLB +
+    '  D: Double;' + cLB +
+    '  S: string;' + cLB +
+    '  C: Char;' + cLB +
+    '  V: Variant;' + cLB +
+    '  L: TListe<TKunde>;' + cLB +
+    '  G: TGruppen;' + cLB +
+    '  K: TKunde;' + cLB +
+    '  Z: TZahl;' + cLB +
+    '  Arr: array of TKunde;' + cLB +
+    '  Farben: TFarben;' + cLB +
+    '  P: PKunde;' + cLB +
+    '  F: TProc;' + cLB +
+    'begin' + cLB +
+    '  Price := Price * Count + Shipping;' + cLB +
+    '  Big := Count + Big;' + cLB +
+    '  Big := Card + Count;' + cLB +
+    '  Card := Card + Card;' + cLB +
+    '  Count := B + B;' + cLB +
+    '  D := D * Count;' + cLB +
+    '  D := Count / 2;' + cLB +
+    '  Count := Count div 2;' + cLB +
+    '  S := S + C;' + cLB +
+    '  S := V;' + cLB +
+    '  K := L.First;' + cLB +
+    '  K := L[0];' + cLB +
+    '  K := G.First;' + cLB +
+    '  G := G;' + cLB +
+    '  D := Z + D;' + cLB +
+    '  Count := Max(Count, Count);' + cLB +
+    '  D := Max(D, Count);' + cLB +
+    '  Count := SizeOf(TRec) * 2;' + cLB +
+    '  Count := SizeOf(TPacked);' + cLB +
+    '  Count := Faktor * 4;' + cLB +
+    '  Count := Count + S;' + cLB +
+    '  Count := Unbekannt + 1;' + cLB +
+    '  Leer;' + cLB +
+    '  Farben := Farben + [Blau];' + cLB +
+    '  Farben := [Rot, Gruen];' + cLB +
+    '  S := K.Name;' + cLB +
+    '  K := Arr[0];' + cLB +
+    '  K := P^;' + cLB +
+    '  S := P^.Name;' + cLB +
+    '  if not (Count > 0) then' + cLB +
+    '    K := TKunde(K);' + cLB +
+    '  K := TKunde.Create;' + cLB +
+    '  F := procedure(A: Integer) begin end;' + cLB +
+    '  Count := Length(S) + Ord(C);' + cLB +
+    'end;' + cLB +
     'end.';
 
 procedure TExpressionTypesTests.Setup;
 begin
   FIndex := TSymbolIndex.Create;
-  FIndex.AddUnit(TIndexExtractor.ExtractText(UnitTypes, TypesFile, nil));
-  FIndex.AddUnit(TIndexExtractor.ExtractText(UnitMain, MainFile, nil));
+  FIndex.AddUnit(TIndexExtractor.ExtractText(cUnitTypes, cTypesFile, nil));
+  FIndex.AddUnit(TIndexExtractor.ExtractText(cUnitMain, cMainFile, nil));
 end;
 
 procedure TExpressionTypesTests.TearDown;
@@ -199,51 +199,51 @@ end;
 function Describe(const AIndex: ISymbolIndex; AStart, AEnd: Integer;
   const AOptions: TExpressionTypeOptions): TExpressionTypeInfo;
 var
-  Tree: TSyntaxTree;
-  Resolver: TNameResolver;
-  Types: TExpressionTypes;
+  mTree: TSyntaxTree;
+  mResolver: TNameResolver;
+  mTypes: TExpressionTypes;
 begin
-  Tree := TPascalParser.Parse(UnitMain);
-  Resolver := TNameResolver.Create(AIndex, nil);
+  mTree := TPascalParser.Parse(cUnitMain);
+  mResolver := TNameResolver.Create(AIndex, nil);
   try
-    Resolver.PinTree(Tree, MainFile);
-    Types := TExpressionTypes.Create(Resolver, Tree, MainFile, UnitMain, AIndex, AOptions);
+    mResolver.PinTree(mTree, cMainFile);
+    mTypes := TExpressionTypes.Create(mResolver, mTree, cMainFile, cUnitMain, AIndex, AOptions);
     try
-      Result := Types.DescribeAt(AStart, AEnd, False);
+      Result := mTypes.DescribeAt(AStart, AEnd, False);
     finally
-      Types.Free;
-      Resolver.UnpinTree;
+      mTypes.Free;
+      mResolver.UnpinTree;
     end;
   finally
-    Resolver.Free;
-    Tree.Free;
+    mResolver.Free;
+    mTree.Free;
   end;
 end;
 
 /// <summary>Anfang (0-basiert) von AText im Rumpf von Run.</summary>
 function BodyPos(const AText: string): Integer;
 begin
-  Result := Pos(AText, UnitMain, Pos('begin' + LB + '  Price', UnitMain)) - 1;
+  Result := Pos(AText, cUnitMain, Pos('begin' + cLB + '  Price', cUnitMain)) - 1;
 end;
 
 function TExpressionTypesTests.TypeIn(const AContext, AInner: string): TExpressionTypeInfo;
 var
-  Start: Integer;
+  mStart: Integer;
 begin
-  Start := BodyPos(AContext);
-  Assert.IsTrue(Start >= 0, AContext);
-  Start := Start + Pos(AInner, AContext) - 1;
-  Result := Describe(FIndex, Start, Start + Length(AInner), TExpressionTypeOptions.Default);
+  mStart := BodyPos(AContext);
+  Assert.IsTrue(mStart >= 0, AContext);
+  mStart := mStart + Pos(AInner, AContext) - 1;
+  Result := Describe(FIndex, mStart, mStart + Length(AInner), TExpressionTypeOptions.Default);
 end;
 
 function TExpressionTypesTests.TypeOf(const AExpression: string;
   const AOptions: TExpressionTypeOptions): TExpressionTypeInfo;
 var
-  Start: Integer;
+  mStart: Integer;
 begin
-  Start := BodyPos(AExpression);
-  Assert.IsTrue(Start >= 0, AExpression);
-  Result := Describe(FIndex, Start, Start + Length(AExpression), AOptions);
+  mStart := BodyPos(AExpression);
+  Assert.IsTrue(mStart >= 0, AExpression);
+  Result := Describe(FIndex, mStart, mStart + Length(AExpression), AOptions);
 end;
 
 function TExpressionTypesTests.TypeOf(const AExpression: string): TExpressionTypeInfo;
@@ -253,44 +253,44 @@ end;
 
 function TExpressionTypesTests.Expanded(const AContext, AInner: string; ASteps: Integer): string;
 var
-  Tree: TSyntaxTree;
-  Node: TSyntaxNode;
-  Start, Step: Integer;
+  mTree: TSyntaxTree;
+  mNode: TSyntaxNode;
+  mStart, mStep: Integer;
 begin
-  Start := BodyPos(AContext) + Pos(AInner, AContext) - 1;
-  Tree := TPascalParser.Parse(UnitMain);
+  mStart := BodyPos(AContext) + Pos(AInner, AContext) - 1;
+  mTree := TPascalParser.Parse(cUnitMain);
   try
-    Node := TExpressionTypes.FindExpression(Tree, Start, Start + Length(AInner), False);
-    for Step := 1 to ASteps do
+    mNode := TExpressionTypes.FindExpression(mTree, mStart, mStart + Length(AInner), False);
+    for mStep := 1 to ASteps do
     begin
-      if Node <> nil then
+      if mNode <> nil then
       begin
-        Node := TExpressionTypes.FindExpression(Tree, Node.StartOffset, Node.EndOffset, True);
+        mNode := TExpressionTypes.FindExpression(mTree, mNode.StartOffset, mNode.EndOffset, True);
       end;
     end;
     Result := '';
-    if Node <> nil then
+    if mNode <> nil then
     begin
-      Result := Copy(UnitMain, Node.StartOffset + 1, Node.EndOffset - Node.StartOffset);
+      Result := Copy(cUnitMain, mNode.StartOffset + 1, mNode.EndOffset - mNode.StartOffset);
     end;
   finally
-    Tree.Free;
+    mTree.Free;
   end;
 end;
 
 function TExpressionTypesTests.ConversionsText(const AInfo: TExpressionTypeInfo): string;
 var
-  Conversion: TExpressionConversion;
+  mConversion: TExpressionConversion;
 begin
   Result := '';
-  for Conversion in AInfo.Conversions do
+  for mConversion in AInfo.Conversions do
   begin
     if Result <> '' then
     begin
       Result := Result + ' ';
     end;
-    Result := Result + Conversion.Expression + ':' + Conversion.FromType + '>' + Conversion.ToType;
-    if Conversion.Kind = TExpressionConversionKind.Convert then
+    Result := Result + mConversion.Expression + ':' + mConversion.FromType + '>' + mConversion.ToType;
+    if mConversion.Kind = TExpressionConversionKind.Convert then
     begin
       Result := Result + '!';
     end;
@@ -299,12 +299,12 @@ end;
 
 procedure TExpressionTypesTests.MixedArithmetic;
 var
-  Info: TExpressionTypeInfo;
+  mInfo: TExpressionTypeInfo;
 begin
-  Info := TypeOf('Price * Count + Shipping');
-  Assert.AreEqual('Currency', Info.TypeName);
-  Assert.AreEqual('Count:Integer>Currency', ConversionsText(Info));
-  Assert.AreEqual('Price * Count + Shipping', Info.Expression);
+  mInfo := TypeOf('Price * Count + Shipping');
+  Assert.AreEqual('Currency', mInfo.TypeName);
+  Assert.AreEqual('Count:Integer>Currency', ConversionsText(mInfo));
+  Assert.AreEqual('Price * Count + Shipping', mInfo.Expression);
   Assert.AreEqual('Double', TypeOf('D * Count').TypeName);
   Assert.AreEqual('Extended', TypeOf('Count / 2').TypeName);
   Assert.AreEqual('Integer', TypeOf('Count div 2').TypeName);
@@ -321,82 +321,82 @@ end;
 
 procedure TExpressionTypesTests.StringsVariantsAndConversions;
 var
-  Info: TExpressionTypeInfo;
+  mInfo: TExpressionTypeInfo;
 begin
-  Info := TypeOf('S + C');
-  Assert.AreEqual('string', Info.TypeName);
-  Assert.AreEqual('C:Char>string!', ConversionsText(Info));
-  Info := TypeIn('S := V;', 'V');
-  Assert.AreEqual('Variant', Info.TypeName);
-  Assert.AreEqual('V:Variant>string!', ConversionsText(Info), 'Zuweisung wandelt um');
+  mInfo := TypeOf('S + C');
+  Assert.AreEqual('string', mInfo.TypeName);
+  Assert.AreEqual('C:Char>string!', ConversionsText(mInfo));
+  mInfo := TypeIn('S := V;', 'V');
+  Assert.AreEqual('Variant', mInfo.TypeName);
+  Assert.AreEqual('V:Variant>string!', ConversionsText(mInfo), 'Zuweisung wandelt um');
 end;
 
 procedure TExpressionTypesTests.GenericsAndAliases;
 var
-  Info: TExpressionTypeInfo;
+  mInfo: TExpressionTypeInfo;
 begin
-  Info := TypeOf('L.First');
-  Assert.AreEqual('TKunde', Info.TypeName, 'T eingesetzt');
-  Assert.AreEqual(TypesFile, Info.TypeFile);
-  Assert.AreEqual(5, Info.TypeLine, 'Zeile von TKunde');
+  mInfo := TypeOf('L.First');
+  Assert.AreEqual('TKunde', mInfo.TypeName, 'T eingesetzt');
+  Assert.AreEqual(cTypesFile, mInfo.TypeFile);
+  Assert.AreEqual(5, mInfo.TypeLine, 'Zeile von TKunde');
   Assert.AreEqual('TKunde', TypeOf('L[0]').TypeName, 'Standard-Property');
   Assert.AreEqual('TKunde', TypeOf('G.First').TypeName, 'ueber den Alias');
-  Info := TypeIn('G := G;', 'G');
-  Assert.AreEqual('TGruppen', Info.TypeName);
-  Assert.AreEqual('TListe<TKunde>', Info.BaseName, 'Grundtyp des Alias');
-  Assert.AreEqual(MainFile, Info.TypeFile, 'Sprung zum Alias');
-  Info := TypeOf('G := G');
-  Assert.AreEqual<TExpressionErrorKind>(TExpressionErrorKind.NoExpression, Info.Error, 'Zuweisung ist kein Ausdruck');
-  Info := TypeOf('Z + D');
-  Assert.AreEqual('Double', Info.TypeName, 'Alias auf Integer rechnet wie Integer');
+  mInfo := TypeIn('G := G;', 'G');
+  Assert.AreEqual('TGruppen', mInfo.TypeName);
+  Assert.AreEqual('TListe<TKunde>', mInfo.BaseName, 'Grundtyp des Alias');
+  Assert.AreEqual(cMainFile, mInfo.TypeFile, 'Sprung zum Alias');
+  mInfo := TypeOf('G := G');
+  Assert.AreEqual<TExpressionErrorKind>(TExpressionErrorKind.NoExpression, mInfo.Error, 'Zuweisung ist kein Ausdruck');
+  mInfo := TypeOf('Z + D');
+  Assert.AreEqual('Double', mInfo.TypeName, 'Alias auf Integer rechnet wie Integer');
 end;
 
 procedure TExpressionTypesTests.OverloadsAndArguments;
 var
-  Info: TExpressionTypeInfo;
+  mInfo: TExpressionTypeInfo;
 begin
-  Info := TypeOf('Max(Count, Count)');
-  Assert.AreEqual('Integer', Info.TypeName);
-  Assert.IsTrue(Pos('Integer', Info.Overload) > 0, Info.Overload);
-  Info := TypeOf('Max(D, Count)');
-  Assert.AreEqual('Double', Info.TypeName);
-  Assert.IsTrue(Pos('Double', Info.Overload) > 0, Info.Overload);
-  Assert.AreEqual('Count:Integer>Double', ConversionsText(Info));
+  mInfo := TypeOf('Max(Count, Count)');
+  Assert.AreEqual('Integer', mInfo.TypeName);
+  Assert.IsTrue(Pos('Integer', mInfo.Overload) > 0, mInfo.Overload);
+  mInfo := TypeOf('Max(D, Count)');
+  Assert.AreEqual('Double', mInfo.TypeName);
+  Assert.IsTrue(Pos('Double', mInfo.Overload) > 0, mInfo.Overload);
+  Assert.AreEqual('Count:Integer>Double', ConversionsText(mInfo));
 end;
 
 procedure TExpressionTypesTests.ConstantValues;
 var
-  Info: TExpressionTypeInfo;
+  mInfo: TExpressionTypeInfo;
 begin
-  Info := TypeOf('SizeOf(TRec) * 2');
-  Assert.AreEqual('Integer', Info.TypeName);
-  Assert.IsTrue(Info.HasValue);
-  Assert.AreEqual(Int64(32), Info.Value, '4 + 1 + 3 Fuellbytes + 8 = 16');
-  Info := TypeOf('SizeOf(TPacked)');
-  Assert.IsTrue(Info.HasValue);
-  Assert.AreEqual(Int64(5), Info.Value, 'packed');
-  Info := TypeOf('Faktor * 4');
-  Assert.IsTrue(Info.HasValue);
-  Assert.AreEqual(Int64(12), Info.Value);
+  mInfo := TypeOf('SizeOf(TRec) * 2');
+  Assert.AreEqual('Integer', mInfo.TypeName);
+  Assert.IsTrue(mInfo.HasValue);
+  Assert.AreEqual(Int64(32), mInfo.Value, '4 + 1 + 3 Fuellbytes + 8 = 16');
+  mInfo := TypeOf('SizeOf(TPacked)');
+  Assert.IsTrue(mInfo.HasValue);
+  Assert.AreEqual(Int64(5), mInfo.Value, 'packed');
+  mInfo := TypeOf('Faktor * 4');
+  Assert.IsTrue(mInfo.HasValue);
+  Assert.AreEqual(Int64(12), mInfo.Value);
   Assert.IsFalse(TypeOf('Count + Big').HasValue, 'Variablen haben keinen Wert');
 end;
 
 procedure TExpressionTypesTests.Errors;
 var
-  Info: TExpressionTypeInfo;
+  mInfo: TExpressionTypeInfo;
 begin
-  Info := TypeIn('Count := Count + S;', 'Count + S');
-  Assert.IsFalse(Info.Found, Info.TypeName + ' ' + Info.Expression);
-  Assert.AreEqual<TExpressionErrorKind>(TExpressionErrorKind.OperatorMismatch, Info.Error);
-  Assert.AreEqual('+|Integer|string', Info.ErrorDetail);
-  Info := TypeOf('Unbekannt + 1');
-  Assert.AreEqual<TExpressionErrorKind>(TExpressionErrorKind.UnknownName, Info.Error);
-  Assert.AreEqual('Unbekannt', Info.ErrorDetail);
-  Info := TypeOf('Leer');
-  Assert.AreEqual<TExpressionErrorKind>(TExpressionErrorKind.NoResult, Info.Error);
-  Info := TypeIn('Price := Price *', 'ric');
-  Assert.AreEqual('Currency', Info.TypeName, 'kleinster umfassender Ausdruck: Price ganz');
-  Assert.AreEqual('Price', Info.Expression);
+  mInfo := TypeIn('Count := Count + S;', 'Count + S');
+  Assert.IsFalse(mInfo.Found, mInfo.TypeName + ' ' + mInfo.Expression);
+  Assert.AreEqual<TExpressionErrorKind>(TExpressionErrorKind.OperatorMismatch, mInfo.Error);
+  Assert.AreEqual('+|Integer|string', mInfo.ErrorDetail);
+  mInfo := TypeOf('Unbekannt + 1');
+  Assert.AreEqual<TExpressionErrorKind>(TExpressionErrorKind.UnknownName, mInfo.Error);
+  Assert.AreEqual('Unbekannt', mInfo.ErrorDetail);
+  mInfo := TypeOf('Leer');
+  Assert.AreEqual<TExpressionErrorKind>(TExpressionErrorKind.NoResult, mInfo.Error);
+  mInfo := TypeIn('Price := Price *', 'ric');
+  Assert.AreEqual('Currency', mInfo.TypeName, 'kleinster umfassender Ausdruck: Price ganz');
+  Assert.AreEqual('Price', mInfo.Expression);
 end;
 
 procedure TExpressionTypesTests.SetsPointersAndCasts;
@@ -431,17 +431,17 @@ end;
 
 procedure TExpressionTypesTests.OptionsSwitchOffExtras;
 var
-  Options: TExpressionTypeOptions;
-  Info: TExpressionTypeInfo;
+  mOptions: TExpressionTypeOptions;
+  mInfo: TExpressionTypeInfo;
 begin
-  Options := TExpressionTypeOptions.Default;
-  Options.Conversions := False;
-  Options.ConstValue := False;
-  Info := TypeOf('Price * Count + Shipping', Options);
-  Assert.AreEqual(0, Integer(Length(Info.Conversions)));
-  Info := TypeOf('Faktor * 4', Options);
-  Assert.IsFalse(Info.HasValue);
-  Assert.AreEqual('Integer', Info.TypeName);
+  mOptions := TExpressionTypeOptions.Default;
+  mOptions.Conversions := False;
+  mOptions.ConstValue := False;
+  mInfo := TypeOf('Price * Count + Shipping', mOptions);
+  Assert.AreEqual(0, Integer(Length(mInfo.Conversions)));
+  mInfo := TypeOf('Faktor * 4', mOptions);
+  Assert.IsFalse(mInfo.HasValue);
+  Assert.AreEqual('Integer', mInfo.TypeName);
 end;
 
 initialization

@@ -41,26 +41,26 @@ end;
 
 procedure TIndexFilesTests.UnitOfFindsOwnFile;
 var
-  Found: TUnitIndex;
+  mFound: TUnitIndex;
 begin
-  Assert.IsTrue(TIndexFiles.UnitOf(SampleIndex, 'C:\x\Kunde.pas', Found));
-  Assert.AreEqual('Kunde', Found.UnitName);
+  Assert.IsTrue(TIndexFiles.UnitOf(SampleIndex, 'C:\x\Kunde.pas', mFound));
+  Assert.AreEqual('Kunde', mFound.UnitName);
 end;
 
 procedure TIndexFilesTests.UnitOfFindsIncludingUnit;
 var
-  Found: TUnitIndex;
+  mFound: TUnitIndex;
 begin
-  Assert.IsTrue(TIndexFiles.UnitOf(SampleIndex, 'C:\X\INC.inc', Found));
-  Assert.AreEqual('Kunde', Found.UnitName);
-  Assert.IsFalse(TIndexFiles.UnitOf(SampleIndex, 'C:\x\andere.inc', Found));
+  Assert.IsTrue(TIndexFiles.UnitOf(SampleIndex, 'C:\X\INC.inc', mFound));
+  Assert.AreEqual('Kunde', mFound.UnitName);
+  Assert.IsFalse(TIndexFiles.UnitOf(SampleIndex, 'C:\x\andere.inc', mFound));
 end;
 
 procedure TIndexFilesTests.UnitOfWithoutIndexIsFalse;
 var
-  Found: TUnitIndex;
+  mFound: TUnitIndex;
 begin
-  Assert.IsFalse(TIndexFiles.UnitOf(nil, 'C:\x\Kunde.pas', Found));
+  Assert.IsFalse(TIndexFiles.UnitOf(nil, 'C:\x\Kunde.pas', mFound));
 end;
 
 initialization

@@ -49,65 +49,65 @@ end;
 
 procedure TAtlasFileTemplatesTests.BuiltInCoversEveryKind;
 var
-  Kind: TAtlasNewFileKind;
-  Snippet: TAtlasSnippet;
+  mKind: TAtlasNewFileKind;
+  mSnippet: TAtlasSnippet;
 begin
-  for Kind := Low(TAtlasNewFileKind) to High(TAtlasNewFileKind) do
+  for mKind := Low(TAtlasNewFileKind) to High(TAtlasNewFileKind) do
   begin
-    Assert.IsTrue(Length(TAtlasFileTemplates.OfKind(nil, Kind)) > 0, TAtlasFileTemplates.KindWord(Kind));
+    Assert.IsTrue(Length(TAtlasFileTemplates.OfKind(nil, mKind)) > 0, TAtlasFileTemplates.KindWord(mKind));
   end;
   Assert.AreEqual(2, Integer(Length(TAtlasFileTemplates.OfKind(nil, TAtlasNewFileKind.UnitFile))));
-  for Snippet in TAtlasFileTemplates.BuiltIn do
+  for mSnippet in TAtlasFileTemplates.BuiltIn do
   begin
-    Assert.AreNotEqual('', Snippet.FileKind, Snippet.Prefix);
-    Assert.AreEqual<TAtlasSnippetOrigin>(TAtlasSnippetOrigin.BuiltIn, Snippet.Origin, Snippet.Prefix);
-    Assert.Contains(Snippet.Body, 'unit %Unit%;', Snippet.Prefix);
+    Assert.AreNotEqual('', mSnippet.FileKind, mSnippet.Prefix);
+    Assert.AreEqual<TAtlasSnippetOrigin>(TAtlasSnippetOrigin.BuiltIn, mSnippet.Origin, mSnippet.Prefix);
+    Assert.Contains(mSnippet.Body, 'unit %Unit%;', mSnippet.Prefix);
   end;
   Assert.AreEqual('test', TAtlasFileTemplates.KindWord(TAtlasNewFileKind.TestFile));
 end;
 
 procedure TAtlasFileTemplatesTests.UserTemplatesReplaceAndAdd;
 var
-  List: TAtlasSnippetList;
+  mList: TAtlasSnippetList;
 begin
   // Eigene Vorlage mit gleichem Kürzel ersetzt die mitgelieferte; Code-Vorlagen zählen nicht.
-  List := TAtlasFileTemplates.OfKind([Own('newtest', 'test', 'unit %Unit%; // eigen'), Own('dao', 'test', 'x'),
+  mList := TAtlasFileTemplates.OfKind([Own('newtest', 'test', 'unit %Unit%; // eigen'), Own('dao', 'test', 'x'),
     Own('tryf', '', 'try'), Own('frm2', 'form', 'f')], TAtlasNewFileKind.TestFile);
-  Assert.AreEqual(2, Integer(Length(List)));
-  Assert.AreEqual('newtest', List[0].Prefix);
-  Assert.Contains(List[0].Body, '// eigen');
-  Assert.AreEqual('dao', List[1].Prefix);
+  Assert.AreEqual(2, Integer(Length(mList)));
+  Assert.AreEqual('newtest', mList[0].Prefix);
+  Assert.Contains(mList[0].Body, '// eigen');
+  Assert.AreEqual('dao', mList[1].Prefix);
   Assert.AreEqual(2, Integer(Length(TAtlasFileTemplates.OfKind([Own('frm2', 'form', 'f')],
     TAtlasNewFileKind.FormFile))));
 end;
 
 procedure TAtlasFileTemplatesTests.EntriesForGenerateMenu;
 var
-  Entries: TArray<TAtlasGenerateEntry>;
-  List: TAtlasSnippetList;
+  mEntries: TArray<TAtlasGenerateEntry>;
+  mList: TAtlasSnippetList;
 begin
-  List := TAtlasFileTemplates.OfKind([Own('svc', 'unit', 'x')], TAtlasNewFileKind.UnitFile);
-  Entries := TAtlasFileTemplates.Entries(List);
-  Assert.AreEqual(3, Integer(Length(Entries)));
-  Assert.AreEqual('snippet:newunit', Entries[0].Id);
-  Assert.AreEqual('Leere Unit', Entries[0].Caption);
-  Assert.AreEqual(0, Entries[0].Source);
-  Assert.AreEqual<TAtlasGenerateGroup>(TAtlasGenerateGroup.Templates, Entries[2].Group);
-  Assert.AreEqual<TAtlasGenerateKind>(TAtlasGenerateKind.Snippet, Entries[2].Kind);
-  Assert.AreEqual(2, Entries[2].Source);
-  Assert.IsFalse(Entries[2].NeedsStep, 'Dateivorlagen brauchen kein Argument');
+  mList := TAtlasFileTemplates.OfKind([Own('svc', 'unit', 'x')], TAtlasNewFileKind.UnitFile);
+  mEntries := TAtlasFileTemplates.Entries(mList);
+  Assert.AreEqual(3, Integer(Length(mEntries)));
+  Assert.AreEqual('snippet:newunit', mEntries[0].Id);
+  Assert.AreEqual('Leere Unit', mEntries[0].Caption);
+  Assert.AreEqual(0, mEntries[0].Source);
+  Assert.AreEqual<TAtlasGenerateGroup>(TAtlasGenerateGroup.Templates, mEntries[2].Group);
+  Assert.AreEqual<TAtlasGenerateKind>(TAtlasGenerateKind.Snippet, mEntries[2].Kind);
+  Assert.AreEqual(2, mEntries[2].Source);
+  Assert.IsFalse(mEntries[2].NeedsStep, 'Dateivorlagen brauchen kein Argument');
 end;
 
 procedure TAtlasFileTemplatesTests.RendersUnit;
 var
-  Text: string;
+  mText: string;
 begin
-  Text := TAtlasFileTemplates.Render(TAtlasFileTemplates.BuiltIn[1].Body, 'App.Kunden', '', '', #13#10);
-  Assert.Contains(Text, 'unit App.Kunden;'#13#10#13#10'interface');
-  Assert.Contains(Text, '  TKunden = class');
-  Assert.Contains(Text, 'constructor TKunden.Create;');
-  Assert.IsTrue(Text.EndsWith('end.'#13#10), Text);
-  Assert.AreEqual(0, Pos('%', Text), Text);
+  mText := TAtlasFileTemplates.Render(TAtlasFileTemplates.BuiltIn[1].Body, 'App.Kunden', '', '', #13#10);
+  Assert.Contains(mText, 'unit App.Kunden;'#13#10#13#10'interface');
+  Assert.Contains(mText, '  TKunden = class');
+  Assert.Contains(mText, 'constructor TKunden.Create;');
+  Assert.IsTrue(mText.EndsWith('end.'#13#10), mText);
+  Assert.AreEqual(0, Pos('%', mText), mText);
   // Platzhalter und $$ wie bei Code-Vorlagen.
   Assert.AreEqual('unit U;'#10'const C = ''Name'';'#10'// $1'#10,
     TAtlasFileTemplates.Render('unit %unit%;'#10'const C = ''${1:Name}'';'#10'// $$1'#10#10, 'U', '', '', #10));
@@ -115,21 +115,21 @@ end;
 
 procedure TAtlasFileTemplatesTests.RendersFormAndTest;
 var
-  Text: string;
+  mText: string;
 begin
-  Text := TAtlasFileTemplates.Render(TAtlasFileTemplates.OfKind(nil, TAtlasNewFileKind.FormFile)[0].Body, 'Unit3',
+  mText := TAtlasFileTemplates.Render(TAtlasFileTemplates.OfKind(nil, TAtlasNewFileKind.FormFile)[0].Body, 'Unit3',
     'Form3', 'Form', #10);
-  Assert.Contains(Text, '  TForm3 = class(TForm)');
-  Assert.Contains(Text, '  Form3: TForm3;');
-  Assert.Contains(Text, '{$R *.dfm}');
-  Text := TAtlasFileTemplates.Render(TAtlasFileTemplates.OfKind(nil, TAtlasNewFileKind.FormFile)[0].Body, 'Unit3',
+  Assert.Contains(mText, '  TForm3 = class(TForm)');
+  Assert.Contains(mText, '  Form3: TForm3;');
+  Assert.Contains(mText, '{$R *.dfm}');
+  mText := TAtlasFileTemplates.Render(TAtlasFileTemplates.OfKind(nil, TAtlasNewFileKind.FormFile)[0].Body, 'Unit3',
     '', '', #10);
-  Assert.Contains(Text, '  TUnit3 = class(TForm)', 'ohne Angaben: Name der Unit und TForm');
-  Text := TAtlasFileTemplates.Render(TAtlasFileTemplates.OfKind(nil, TAtlasNewFileKind.TestFile)[0].Body,
+  Assert.Contains(mText, '  TUnit3 = class(TForm)', 'ohne Angaben: Name der Unit und TForm');
+  mText := TAtlasFileTemplates.Render(TAtlasFileTemplates.OfKind(nil, TAtlasNewFileKind.TestFile)[0].Body,
     'Tests.Kunden', '', '', #10);
-  Assert.Contains(Text, 'uses'#10'  DUnitX.TestFramework;');
-  Assert.Contains(Text, '  [TestFixture]'#10'  TKundenTests = class');
-  Assert.Contains(Text, '  TDUnitX.RegisterTestFixture(TKundenTests);');
+  Assert.Contains(mText, 'uses'#10'  DUnitX.TestFramework;');
+  Assert.Contains(mText, '  [TestFixture]'#10'  TKundenTests = class');
+  Assert.Contains(mText, '  TDUnitX.RegisterTestFixture(TKundenTests);');
 end;
 
 procedure TAtlasFileTemplatesTests.ShortNameDropsNamespace;

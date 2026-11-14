@@ -141,7 +141,8 @@ begin
   Calls := Calls + [AProject + '|' + AKey];
 end;
 
-function RowOf(const AKey, ATitle, ABranch: string; AStatus: TAtlasIssueStateKind; AAtUtc: TDateTime): TAtlasIssueWorkRow;
+function RowOf(const AKey, ATitle, ABranch: string; AStatus: TAtlasIssueStateKind;
+  AAtUtc: TDateTime): TAtlasIssueWorkRow;
 var
   mState: TAtlasWorkState;
 begin

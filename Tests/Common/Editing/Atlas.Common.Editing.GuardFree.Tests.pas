@@ -48,38 +48,43 @@ end;
 
 function Check(const AText: string; ALine: Integer; AKind: TGuardTypeKind; out AOffer: TGuardOffer): Boolean;
 var
-  Tree: TSyntaxTree;
+  mTree: TSyntaxTree;
 begin
-  Tree := TPascalParser.Parse(AText);
+  mTree := TPascalParser.Parse(AText);
   try
-    Result := TGuardFree.Check(Tree, AText, ALine,
+    Result := TGuardFree.Check(mTree, AText, ALine,
       function(const ATypeName: string): TGuardTypeKind
       begin
         Result := AKind;
       end, AOffer);
   finally
-    Tree.Free;
+    mTree.Free;
   end;
 end;
 
-function Offered(const AVar, AStatement, ARest: string; AKind: TGuardTypeKind = TGuardTypeKind.Class_): Boolean;
+function Offered(const AVar, AStatement, ARest: string; AKind: TGuardTypeKind): Boolean; overload;
 var
-  Offer: TGuardOffer;
+  mOffer: TGuardOffer;
 begin
-  Result := Check(Source(AVar, AStatement, ARest), 4, AKind, Offer);
+  Result := Check(Source(AVar, AStatement, ARest), 4, AKind, mOffer);
+end;
+
+function Offered(const AVar, AStatement, ARest: string): Boolean; overload;
+begin
+  Result := Offered(AVar, AStatement, ARest, TGuardTypeKind.Class_);
 end;
 
 procedure TGuardFreeTests.OffersForLocalObject;
 var
-  Offer: TGuardOffer;
+  mOffer: TGuardOffer;
 begin
   Assert.IsTrue(Check(Source('List: TStringList;', 'List := TStringList.Create;', ''), 4, TGuardTypeKind.Class_,
-    Offer));
-  Assert.AreEqual('List', Offer.Variable);
-  Assert.AreEqual('TStringList', Offer.TypeName);
-  Assert.AreEqual('  ', Offer.Indent);
-  Assert.AreEqual(5, Offer.EndLine);
-  Assert.IsFalse(Offer.CanEnclose);
+    mOffer));
+  Assert.AreEqual('List', mOffer.Variable);
+  Assert.AreEqual('TStringList', mOffer.TypeName);
+  Assert.AreEqual('  ', mOffer.Indent);
+  Assert.AreEqual(5, mOffer.EndLine);
+  Assert.IsFalse(mOffer.CanEnclose);
   // Generisch, mit Argumenten, unbekannter Typ, Inline-Variable.
   Assert.IsTrue(Offered('Map: TDictionary<string, Integer>;', 'Map := TDictionary<string, Integer>.Create(16);', ''));
   Assert.IsTrue(Offered('Stream: TStream;', 'Stream := TFileStream.Create(Name, fmOpenRead);', '',
@@ -111,83 +116,83 @@ end;
 
 procedure TGuardFreeTests.WrapsNewLineOrRestOfRoutine;
 var
-  Text: string;
-  Offer: TGuardOffer;
-  Edit: TRuleEdit;
+  mText: string;
+  mOffer: TGuardOffer;
+  mEdit: TRuleEdit;
 begin
-  Text := Source('List: TStringList;', 'List := TStringList.Create;', '  List.Add(''a'');'#13#10#13#10 +
+  mText := Source('List: TStringList;', 'List := TStringList.Create;', '  List.Add(''a'');'#13#10#13#10 +
     '  Show(List.Text);'#13#10);
-  Assert.IsTrue(Check(Text, 4, TGuardTypeKind.Class_, Offer));
-  Assert.IsTrue(Offer.CanEnclose);
-  Assert.AreEqual(8, Offer.EndLine);
-  Edit := TGuardFree.Edit(Text, Offer, TGuardScope.NewLine, TCompletionFreeStyle.Free);
-  Assert.AreEqual(4, Edit.Range.StartPos.Line);
-  Assert.AreEqual(29, Edit.Range.StartPos.Character);
-  Assert.AreEqual(29, Edit.Range.EndPos.Character);
-  Assert.AreEqual(#13#10'  try'#13#10'    $0'#13#10'  finally'#13#10'    List.Free;'#13#10'  end;', Edit.NewText);
-  Edit := TGuardFree.Edit(Text, Offer, TGuardScope.ToRoutineEnd, TCompletionFreeStyle.Free);
-  Assert.AreEqual(8, Edit.Range.EndPos.Line);
-  Assert.AreEqual(0, Edit.Range.EndPos.Character);
+  Assert.IsTrue(Check(mText, 4, TGuardTypeKind.Class_, mOffer));
+  Assert.IsTrue(mOffer.CanEnclose);
+  Assert.AreEqual(8, mOffer.EndLine);
+  mEdit := TGuardFree.Edit(mText, mOffer, TGuardScope.NewLine, TCompletionFreeStyle.Free);
+  Assert.AreEqual(4, mEdit.Range.StartPos.Line);
+  Assert.AreEqual(29, mEdit.Range.StartPos.Character);
+  Assert.AreEqual(29, mEdit.Range.EndPos.Character);
+  Assert.AreEqual(#13#10'  try'#13#10'    $0'#13#10'  finally'#13#10'    List.Free;'#13#10'  end;', mEdit.NewText);
+  mEdit := TGuardFree.Edit(mText, mOffer, TGuardScope.ToRoutineEnd, TCompletionFreeStyle.Free);
+  Assert.AreEqual(8, mEdit.Range.EndPos.Line);
+  Assert.AreEqual(0, mEdit.Range.EndPos.Character);
   Assert.AreEqual(#13#10'  try'#13#10'    List.Add(''a'');'#13#10#13#10'    Show(List.Text);$0'#13#10 +
-    '  finally'#13#10'    List.Free;'#13#10'  end;'#13#10, Edit.NewText);
+    '  finally'#13#10'    List.Free;'#13#10'  end;'#13#10, mEdit.NewText);
   // In einem if-Zweig nur die neue Zeile.
-  Text := 'procedure Laden;'#13#10'var'#13#10'  List: TStringList;'#13#10'begin'#13#10'  if A then'#13#10 +
+  mText := 'procedure Laden;'#13#10'var'#13#10'  List: TStringList;'#13#10'begin'#13#10'  if A then'#13#10 +
     '  begin'#13#10'    List := TStringList.Create;'#13#10'    List.Add(''a'');'#13#10'  end;'#13#10'end;'#13#10;
-  Assert.IsTrue(Check(Text, 6, TGuardTypeKind.Class_, Offer));
-  Assert.IsFalse(Offer.CanEnclose);
-  Assert.AreEqual('    ', Offer.Indent);
+  Assert.IsTrue(Check(mText, 6, TGuardTypeKind.Class_, mOffer));
+  Assert.IsFalse(mOffer.CanEnclose);
+  Assert.AreEqual('    ', mOffer.Indent);
 end;
 
 procedure TGuardFreeTests.UsesFreeAndNil;
 var
-  Text: string;
-  Offer: TGuardOffer;
+  mText: string;
+  mOffer: TGuardOffer;
 begin
-  Text := Source('List: TStringList;', 'List := TStringList.Create;', '');
-  Assert.IsTrue(Check(Text, 4, TGuardTypeKind.Class_, Offer));
-  Assert.IsTrue(TGuardFree.Edit(Text, Offer, TGuardScope.NewLine, TCompletionFreeStyle.FreeAndNil).NewText.Contains(
+  mText := Source('List: TStringList;', 'List := TStringList.Create;', '');
+  Assert.IsTrue(Check(mText, 4, TGuardTypeKind.Class_, mOffer));
+  Assert.IsTrue(TGuardFree.Edit(mText, mOffer, TGuardScope.NewLine, TCompletionFreeStyle.FreeAndNil).NewText.Contains(
     'FreeAndNil(List);'));
 end;
 
 procedure TGuardFreeTests.AddsMissingSemicolonAfterEnter;
 var
-  Text: string;
-  Offer: TGuardOffer;
-  Edit: TRuleEdit;
+  mText: string;
+  mOffer: TGuardOffer;
+  mEdit: TRuleEdit;
 begin
   // Übernahme mit Enter am Zeilenende, dann Enter: Zeile 5 ist leer (eingerückt), das ";" fehlt.
-  Text := Source('List: TStringList;', 'List := TStringList.Create', '  '#13#10);
-  Assert.IsTrue(Check(Text, 4, TGuardTypeKind.Class_, Offer));
-  Assert.IsTrue(Offer.AddSemicolon);
-  Assert.AreEqual(28, Offer.StatementEnd);
-  Offer.BlankLine := 5;
-  Edit := TGuardFree.Edit(Text, Offer, TGuardScope.NewLine, TCompletionFreeStyle.Free);
-  Assert.AreEqual(4, Edit.Range.StartPos.Line);
-  Assert.AreEqual(28, Edit.Range.StartPos.Character);
-  Assert.AreEqual(5, Edit.Range.EndPos.Line);
-  Assert.AreEqual(2, Edit.Range.EndPos.Character);
-  Assert.AreEqual(';'#13#10'  try'#13#10'    $0'#13#10'  finally'#13#10'    List.Free;'#13#10'  end;', Edit.NewText);
+  mText := Source('List: TStringList;', 'List := TStringList.Create', '  '#13#10);
+  Assert.IsTrue(Check(mText, 4, TGuardTypeKind.Class_, mOffer));
+  Assert.IsTrue(mOffer.AddSemicolon);
+  Assert.AreEqual(28, mOffer.StatementEnd);
+  mOffer.BlankLine := 5;
+  mEdit := TGuardFree.Edit(mText, mOffer, TGuardScope.NewLine, TCompletionFreeStyle.Free);
+  Assert.AreEqual(4, mEdit.Range.StartPos.Line);
+  Assert.AreEqual(28, mEdit.Range.StartPos.Character);
+  Assert.AreEqual(5, mEdit.Range.EndPos.Line);
+  Assert.AreEqual(2, mEdit.Range.EndPos.Character);
+  Assert.AreEqual(';'#13#10'  try'#13#10'    $0'#13#10'  finally'#13#10'    List.Free;'#13#10'  end;', mEdit.NewText);
   // Argumente und Kommentar: das ";" kommt hinter die Klammer, der Kommentar bleibt.
-  Text := Source('S: TFileStream;', 'S := TFileStream.Create(Name, fmOpenRead) // lesen', '');
-  Assert.IsTrue(Check(Text, 4, TGuardTypeKind.Class_, Offer));
-  Assert.IsTrue(Offer.AddSemicolon);
-  Edit := TGuardFree.Edit(Text, Offer, TGuardScope.NewLine, TCompletionFreeStyle.Free);
-  Assert.IsTrue(Edit.NewText.StartsWith('; // lesen'#13#10'  try'), Edit.NewText);
+  mText := Source('S: TFileStream;', 'S := TFileStream.Create(Name, fmOpenRead) // lesen', '');
+  Assert.IsTrue(Check(mText, 4, TGuardTypeKind.Class_, mOffer));
+  Assert.IsTrue(mOffer.AddSemicolon);
+  mEdit := TGuardFree.Edit(mText, mOffer, TGuardScope.NewLine, TCompletionFreeStyle.Free);
+  Assert.IsTrue(mEdit.NewText.StartsWith('; // lesen'#13#10'  try'), mEdit.NewText);
   // Bis zum Routinenende: die leere Zeile entfällt.
-  Text := Source('List: TStringList;', 'List := TStringList.Create', '  '#13#10'  List.Add(''a'');'#13#10);
-  Assert.IsTrue(Check(Text, 4, TGuardTypeKind.Class_, Offer));
-  Assert.IsTrue(Offer.CanEnclose);
-  Offer.BlankLine := 5;
-  Edit := TGuardFree.Edit(Text, Offer, TGuardScope.ToRoutineEnd, TCompletionFreeStyle.Free);
+  mText := Source('List: TStringList;', 'List := TStringList.Create', '  '#13#10'  List.Add(''a'');'#13#10);
+  Assert.IsTrue(Check(mText, 4, TGuardTypeKind.Class_, mOffer));
+  Assert.IsTrue(mOffer.CanEnclose);
+  mOffer.BlankLine := 5;
+  mEdit := TGuardFree.Edit(mText, mOffer, TGuardScope.ToRoutineEnd, TCompletionFreeStyle.Free);
   Assert.AreEqual(';'#13#10'  try'#13#10'    List.Add(''a'');$0'#13#10'  finally'#13#10'    List.Free;'#13#10 +
-    '  end;'#13#10, Edit.NewText);
+    '  end;'#13#10, mEdit.NewText);
   // Die nächste Zeile setzt den Ausdruck fort: kein Angebot.
   Assert.IsFalse(Offered('List: TStringList;', 'List := TStringList.Create', '    .Add(''a'');'#13#10));
   Assert.IsFalse(Offered('X: TFoo;', 'X := TFoo.Create', '    (1, 2);'#13#10));
   // Mit ";" bleibt alles wie bisher.
   Assert.IsTrue(Check(Source('List: TStringList;', 'List := TStringList.Create; // a;b', ''), 4,
-    TGuardTypeKind.Class_, Offer));
-  Assert.IsFalse(Offer.AddSemicolon);
+    TGuardTypeKind.Class_, mOffer));
+  Assert.IsFalse(mOffer.AddSemicolon);
 end;
 
 initialization

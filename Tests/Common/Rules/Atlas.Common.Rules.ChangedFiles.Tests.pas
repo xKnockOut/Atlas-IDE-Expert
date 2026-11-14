@@ -48,63 +48,63 @@ end;
 
 procedure TChangedFilesTests.NameStatusRenamedAndDeleted;
 var
-  Paths: TArray<string>;
+  mPaths: TArray<string>;
 begin
-  Paths := TChangedFiles.ParseNameStatus(['M'#9'Src/Kunden.pas', 'R087'#9'Src/Alt.pas'#9'Src/Neu.pas',
+  mPaths := TChangedFiles.ParseNameStatus(['M'#9'Src/Kunden.pas', 'R087'#9'Src/Alt.pas'#9'Src/Neu.pas',
     'D'#9'Src/Weg.pas', 'A'#9'Src/Form1.dfm', 'warning: irgendwas']);
-  Assert.AreEqual(3, Integer(Length(Paths)));
-  Assert.AreEqual('Src/Kunden.pas', Paths[0]);
-  Assert.AreEqual('Src/Neu.pas', Paths[1]);
-  Assert.AreEqual('Src/Form1.dfm', Paths[2]);
+  Assert.AreEqual(3, Integer(Length(mPaths)));
+  Assert.AreEqual('Src/Kunden.pas', mPaths[0]);
+  Assert.AreEqual('Src/Neu.pas', mPaths[1]);
+  Assert.AreEqual('Src/Form1.dfm', mPaths[2]);
 end;
 
 procedure TChangedFilesTests.HunksToLines;
 var
-  Changes: TArray<TChangedLines>;
+  mChanges: TArray<TChangedLines>;
 begin
-  Changes := TChangedFiles.ParseHunks(['diff --git a/A.pas b/A.pas', '--- a/A.pas', '+++ b/A.pas',
+  mChanges := TChangedFiles.ParseHunks(['diff --git a/A.pas b/A.pas', '--- a/A.pas', '+++ b/A.pas',
     '@@ -3,0 +4,2 @@ procedure X;', '+  Neu;', '+  Neu2;', '@@ -10 +12 @@', '-alt', '+neu', '@@ -20,3 +21,0 @@',
     'diff --git a/B.pas b/B.pas', '--- a/B.pas', '+++ /dev/null', '@@ -1,5 +0,0 @@']);
-  Assert.AreEqual(1, Integer(Length(Changes)));
-  Assert.AreEqual('A.pas', Changes[0].Path);
-  Assert.AreEqual(2, Integer(Length(Changes[0].Spans)));
+  Assert.AreEqual(1, Integer(Length(mChanges)));
+  Assert.AreEqual('A.pas', mChanges[0].Path);
+  Assert.AreEqual(2, Integer(Length(mChanges[0].Spans)));
   // Zeilen 4-5 und 12 (1-basiert) sind 3, 4 und 11 (0-basiert).
-  Assert.IsFalse(Changes[0].Contains(2));
-  Assert.IsTrue(Changes[0].Contains(3));
-  Assert.IsTrue(Changes[0].Contains(4));
-  Assert.IsFalse(Changes[0].Contains(5));
-  Assert.IsTrue(Changes[0].Contains(11));
-  Assert.IsFalse(Changes[0].Contains(20));
+  Assert.IsFalse(mChanges[0].Contains(2));
+  Assert.IsTrue(mChanges[0].Contains(3));
+  Assert.IsTrue(mChanges[0].Contains(4));
+  Assert.IsFalse(mChanges[0].Contains(5));
+  Assert.IsTrue(mChanges[0].Contains(11));
+  Assert.IsFalse(mChanges[0].Contains(20));
 end;
 
 procedure TChangedFilesTests.IncludeNamesWithoutSwitches;
 var
-  Names: TArray<string>;
+  mNames: TArray<string>;
 begin
-  Names := TChangedFiles.IncludeNames('{$I Defines.inc}'#10'{$I+}'#10'{$IFDEF X}{$ENDIF}'#10 +
+  mNames := TChangedFiles.IncludeNames('{$I Defines.inc}'#10'{$I+}'#10'{$IFDEF X}{$ENDIF}'#10 +
     '{$INCLUDE ''Pfad mit Leer\Opt.inc''}'#10'(*$I Alt*)'#10'{$I-}');
-  Assert.AreEqual(3, Integer(Length(Names)));
-  Assert.AreEqual('Defines.inc', Names[0]);
-  Assert.AreEqual('Pfad mit Leer\Opt.inc', Names[1]);
-  Assert.AreEqual('Alt', Names[2]);
+  Assert.AreEqual(3, Integer(Length(mNames)));
+  Assert.AreEqual('Defines.inc', mNames[0]);
+  Assert.AreEqual('Pfad mit Leer\Opt.inc', mNames[1]);
+  Assert.AreEqual('Alt', mNames[2]);
 end;
 
 procedure TChangedFilesTests.SelectUnitsAndForms;
 var
-  Selected: TArray<string>;
+  mSelected: TArray<string>;
 begin
-  Selected := TChangedFiles.Select([P('Src/Kunden.pas'), P('Src/Haupt.dfm'), P('README.md')],
+  mSelected := TChangedFiles.Select([P('Src/Kunden.pas'), P('Src/Haupt.dfm'), P('README.md')],
     [P('Src/Kunden.pas'), P('Src/Haupt.pas'), P('Src/Rest.pas')], nil);
-  Assert.AreEqual(2, Integer(Length(Selected)));
-  Assert.AreEqual(P('Src/Kunden.pas'), Selected[0]);
-  Assert.AreEqual(P('Src/Haupt.pas'), Selected[1]);
+  Assert.AreEqual(2, Integer(Length(mSelected)));
+  Assert.AreEqual(P('Src/Kunden.pas'), mSelected[0]);
+  Assert.AreEqual(P('Src/Haupt.pas'), mSelected[1]);
 end;
 
 procedure TChangedFilesTests.SelectByInclude;
 var
-  Selected: TArray<string>;
+  mSelected: TArray<string>;
 begin
-  Selected := TChangedFiles.Select([P('Inc/Defines.inc')], [P('Src/A.pas'), P('Src/B.pas'), P('Src/C.pas')],
+  mSelected := TChangedFiles.Select([P('Inc/Defines.inc')], [P('Src/A.pas'), P('Src/B.pas'), P('Src/C.pas')],
     function(const AFileName: string): TArray<string>
     begin
       if SameText(ExtractFileName(AFileName), 'A.pas') then
@@ -120,8 +120,8 @@ begin
         Result := ['Andere.inc'];
       end;
     end);
-  Assert.AreEqual(2, Integer(Length(Selected)));
-  Assert.AreEqual(P('Src/B.pas'), Selected[1]);
+  Assert.AreEqual(2, Integer(Length(mSelected)));
+  Assert.AreEqual(P('Src/B.pas'), mSelected[1]);
 end;
 
 procedure TChangedFilesTests.ProjectFileSelectsAll;
@@ -133,13 +133,13 @@ end;
 
 procedure TChangedFilesTests.LinesOfFullPath;
 var
-  Lines: TChangedLines;
-  Changes: TArray<TChangedLines>;
+  mLines: TChangedLines;
+  mChanges: TArray<TChangedLines>;
 begin
-  Changes := TChangedFiles.ParseHunks(['+++ b/Src/A.pas', '@@ -1 +1 @@']);
-  Assert.IsTrue(TChangedFiles.LinesOf(Changes, 'C:\Repo', P('src/a.pas'), Lines));
-  Assert.IsTrue(Lines.Contains(0));
-  Assert.IsFalse(TChangedFiles.LinesOf(Changes, 'C:\Repo', P('Src/B.pas'), Lines));
+  mChanges := TChangedFiles.ParseHunks(['+++ b/Src/A.pas', '@@ -1 +1 @@']);
+  Assert.IsTrue(TChangedFiles.LinesOf(mChanges, 'C:\Repo', P('src/a.pas'), mLines));
+  Assert.IsTrue(mLines.Contains(0));
+  Assert.IsFalse(TChangedFiles.LinesOf(mChanges, 'C:\Repo', P('Src/B.pas'), mLines));
 end;
 
 procedure TChangedFilesTests.QuotedPaths;
@@ -154,40 +154,40 @@ end;
 
 procedure TChangedFilesTests.SvnStatusAndSummarize;
 var
-  Paths: TArray<string>;
+  mPaths: TArray<string>;
 begin
-  Paths := TChangedFiles.ParseSvnStatus(['M       Src\Kunde.pas', 'A  +    Src\Neu.pas', 'D       Src\Weg.pas',
+  mPaths := TChangedFiles.ParseSvnStatus(['M       Src\Kunde.pas', 'A  +    Src\Neu.pas', 'D       Src\Weg.pas',
     '?       Src\Entwurf.pas', ' M      Src', 'R       Src\Ersetzt.pas'], False);
-  Assert.AreEqual(3, Integer(Length(Paths)));
-  Assert.AreEqual('Src\Kunde.pas', Paths[0]);
-  Assert.AreEqual('Src\Neu.pas', Paths[1]);
-  Assert.AreEqual('Src\Ersetzt.pas', Paths[2]);
+  Assert.AreEqual(3, Integer(Length(mPaths)));
+  Assert.AreEqual('Src\Kunde.pas', mPaths[0]);
+  Assert.AreEqual('Src\Neu.pas', mPaths[1]);
+  Assert.AreEqual('Src\Ersetzt.pas', mPaths[2]);
   Assert.AreEqual(4, Integer(Length(TChangedFiles.ParseSvnStatus(['M       A.pas', '?       B.pas',
     'A       C.dfm', 'D       D.pas', '?       E.pas'], True))));
-  Paths := TChangedFiles.ParseSvnSummarize(['M       Src/Kunde.pas', 'D       Src/Weg.pas', ' M      Src/Prop.pas',
+  mPaths := TChangedFiles.ParseSvnSummarize(['M       Src/Kunde.pas', 'D       Src/Weg.pas', ' M      Src/Prop.pas',
     'A       Src/Form1.dfm']);
-  Assert.AreEqual(2, Integer(Length(Paths)));
-  Assert.AreEqual('Src/Form1.dfm', Paths[1]);
+  Assert.AreEqual(2, Integer(Length(mPaths)));
+  Assert.AreEqual('Src/Form1.dfm', mPaths[1]);
 end;
 
 procedure TChangedFilesTests.SvnDiffCountsOnlyAddedLines;
 var
-  Changes: TArray<TChangedLines>;
+  mChanges: TArray<TChangedLines>;
 begin
-  Changes := TChangedFiles.ParseSvnDiff(['Index: Src/A.pas', StringOfChar('=', 67),
+  mChanges := TChangedFiles.ParseSvnDiff(['Index: Src/A.pas', StringOfChar('=', 67),
     '--- Src/A.pas'#9'(revision 12)', '+++ Src/A.pas'#9'(working copy)', '@@ -3,5 +3,6 @@', ' kontext',
     '-alt', '+neu', '+neu2', ' kontext', ' kontext', '@@ -20,2 +21,2 @@', ' kontext', '+neu3', '-alt',
     'Index: Src/B.pas']);
-  Assert.AreEqual(1, Integer(Length(Changes)));
-  Assert.AreEqual('Src/A.pas', Changes[0].Path);
+  Assert.AreEqual(1, Integer(Length(mChanges)));
+  Assert.AreEqual('Src/A.pas', mChanges[0].Path);
   // Zeile 3 (1-basiert) ist Kontext, 4 und 5 neu, 22 neu.
-  Assert.IsFalse(Changes[0].Contains(2));
-  Assert.IsTrue(Changes[0].Contains(3));
-  Assert.IsTrue(Changes[0].Contains(4));
-  Assert.IsFalse(Changes[0].Contains(5));
-  Assert.IsFalse(Changes[0].Contains(20));
-  Assert.IsTrue(Changes[0].Contains(21));
-  Assert.AreEqual(2, Integer(Length(Changes[0].Spans)));
+  Assert.IsFalse(mChanges[0].Contains(2));
+  Assert.IsTrue(mChanges[0].Contains(3));
+  Assert.IsTrue(mChanges[0].Contains(4));
+  Assert.IsFalse(mChanges[0].Contains(5));
+  Assert.IsFalse(mChanges[0].Contains(20));
+  Assert.IsTrue(mChanges[0].Contains(21));
+  Assert.AreEqual(2, Integer(Length(mChanges[0].Spans)));
 end;
 
 procedure TChangedFilesTests.GitAndSvnAgreeOnGaps;

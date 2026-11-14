@@ -70,7 +70,7 @@ uses
   Atlas.Common.JsonRpc.Dispatcher;
 
 const
-  UnitText =
+  cUnitText =
     'unit Muster;'#10 +                            // 0
     'interface'#10 +                               // 1
     'type'#10 +                                    // 2
@@ -96,7 +96,7 @@ const
     'end;'#10 +                                    // 22
     'end.';
 
-  LocalText =
+  cLocalText =
     'unit Lokal;'#10 +                             // 0
     'interface'#10 +                               // 1
     'type'#10 +                                    // 2
@@ -131,7 +131,7 @@ const
     'end;'#10 +                                    // 31
     'end.';
 
-  LocalFile = 'C:\P\Lokal.pas';
+  cLocalFile = 'C:\P\Lokal.pas';
 
 { TLspLinkedEditingTests }
 
@@ -158,91 +158,91 @@ end;
 
 function TLspLinkedEditingTests.LocalsAt(ALine, ACharacter: Integer): string;
 var
-  Tree: TSyntaxTree;
-  Resolver: TNameResolver;
-  Range: TTextRange;
+  mTree: TSyntaxTree;
+  mResolver: TNameResolver;
+  mRange: TTextRange;
 begin
   Result := '';
-  Tree := TPascalParser.Parse(LocalText);
-  Resolver := TNameResolver.Create(FIndex);
+  mTree := TPascalParser.Parse(cLocalText);
+  mResolver := TNameResolver.Create(FIndex);
   try
-    for Range in TLspLinkedEditing.LocalRanges(Resolver, FIndex, Tree, LocalFile,
+    for mRange in TLspLinkedEditing.LocalRanges(mResolver, FIndex, mTree, cLocalFile,
       TTextPosition.Create(ALine, ACharacter), FConflicts) do
     begin
       if Result <> '' then
       begin
         Result := Result + ' ';
       end;
-      Result := Result + Format('%d:%d', [Range.StartPos.Line, Range.StartPos.Character]);
+      Result := Result + Format('%d:%d', [mRange.StartPos.Line, mRange.StartPos.Character]);
     end;
   finally
-    Resolver.Free;
-    Tree.Free;
+    mResolver.Free;
+    mTree.Free;
   end;
 end;
 
 function TLspLinkedEditingTests.Answer(ALine, ACharacter: Integer; ALocalsOnly: Boolean): string;
 var
-  Store: IDocumentStore;
-  Linked: TLspLinkedEditing;
-  Dispatcher: TJsonRpcDispatcher;
-  Request, Response: TJSONObject;
-  Uri, Flag: string;
+  mStore: IDocumentStore;
+  mLinked: TLspLinkedEditing;
+  mDispatcher: TJsonRpcDispatcher;
+  mRequest, mResponse: TJSONObject;
+  mUri, mFlag: string;
 begin
-  Store := TDocumentStore.Create;
-  Uri := TDocumentUris.FromPath(LocalFile);
-  Store.Open(Uri, 'delphi', 1, LocalText);
-  Linked := TLspLinkedEditing.Create(Store, FIndex, nil);
-  Dispatcher := TJsonRpcDispatcher.Create;
+  mStore := TDocumentStore.Create;
+  mUri := TDocumentUris.FromPath(cLocalFile);
+  mStore.Open(mUri, 'delphi', 1, cLocalText);
+  mLinked := TLspLinkedEditing.Create(mStore, FIndex, nil);
+  mDispatcher := TJsonRpcDispatcher.Create;
   try
-    Linked.Attach(Dispatcher);
-    Flag := '';
+    mLinked.Attach(mDispatcher);
+    mFlag := '';
     if ALocalsOnly then
     begin
-      Flag := ',"atlasLocals":true';
+      mFlag := ',"atlasLocals":true';
     end;
-    Request := TJSONObject.ParseJSONValue('{"jsonrpc":"2.0","id":1,"method":"' + TLspLinkedEditing.cMethod +
-      '","params":{"textDocument":{"uri":"' + Uri.Replace('\', '\\') + '"},"position":{"line":' +
-      IntToStr(ALine) + ',"character":' + IntToStr(ACharacter) + '}' + Flag + '}}') as TJSONObject;
+    mRequest := TJSONObject.ParseJSONValue('{"jsonrpc":"2.0","id":1,"method":"' + TLspLinkedEditing.cMethod +
+      '","params":{"textDocument":{"uri":"' + mUri.Replace('\', '\\') + '"},"position":{"line":' +
+      IntToStr(ALine) + ',"character":' + IntToStr(ACharacter) + '}' + mFlag + '}}') as TJSONObject;
     try
-      Response := Dispatcher.DispatchMessage(Request);
+      mResponse := mDispatcher.DispatchMessage(mRequest);
     finally
-      Request.Free;
+      mRequest.Free;
     end;
     try
-      Result := Response.GetValue('result').ToJSON;
+      Result := mResponse.GetValue('result').ToJSON;
     finally
-      Response.Free;
+      mResponse.Free;
     end;
   finally
-    Dispatcher.Free;
-    Linked.Free;
+    mDispatcher.Free;
+    mLinked.Free;
   end;
 end;
 
 function TLspLinkedEditingTests.RangesAt(ALine, ACharacter: Integer): TArray<TTextRange>;
 var
-  Tree: TSyntaxTree;
+  mTree: TSyntaxTree;
 begin
-  Tree := TPascalParser.Parse(UnitText);
+  mTree := TPascalParser.Parse(cUnitText);
   try
-    Result := TLspLinkedEditing.Ranges(Tree, 'C:\P\Muster.pas', TTextPosition.Create(ALine, ACharacter));
+    Result := TLspLinkedEditing.Ranges(mTree, 'C:\P\Muster.pas', TTextPosition.Create(ALine, ACharacter));
   finally
-    Tree.Free;
+    mTree.Free;
   end;
 end;
 
 procedure TLspLinkedEditingTests.LinksMethodDeclarationAndImplementation;
 var
-  Ranges: TArray<TTextRange>;
+  mRanges: TArray<TTextRange>;
 begin
-  Ranges := RangesAt(4, 16);
-  Assert.AreEqual(2, Integer(Length(Ranges)));
-  Assert.AreEqual(4, Ranges[0].StartPos.Line);
-  Assert.AreEqual(14, Ranges[0].StartPos.Character);
-  Assert.AreEqual(18, Ranges[0].EndPos.Character);
-  Assert.AreEqual(10, Ranges[1].StartPos.Line);
-  Assert.AreEqual(15, Ranges[1].StartPos.Character);
+  mRanges := RangesAt(4, 16);
+  Assert.AreEqual(2, Integer(Length(mRanges)));
+  Assert.AreEqual(4, mRanges[0].StartPos.Line);
+  Assert.AreEqual(14, mRanges[0].StartPos.Character);
+  Assert.AreEqual(18, mRanges[0].EndPos.Character);
+  Assert.AreEqual(10, mRanges[1].StartPos.Line);
+  Assert.AreEqual(15, mRanges[1].StartPos.Character);
 end;
 
 procedure TLspLinkedEditingTests.LinksFromImplementation;
@@ -252,12 +252,12 @@ end;
 
 procedure TLspLinkedEditingTests.LinksForwardRoutines;
 var
-  Ranges: TArray<TTextRange>;
+  mRanges: TArray<TTextRange>;
 begin
-  Ranges := RangesAt(19, 10);
-  Assert.AreEqual(2, Integer(Length(Ranges)));
-  Assert.AreEqual(8, Ranges[0].StartPos.Line);
-  Assert.AreEqual(19, Ranges[1].StartPos.Line);
+  mRanges := RangesAt(19, 10);
+  Assert.AreEqual(2, Integer(Length(mRanges)));
+  Assert.AreEqual(8, mRanges[0].StartPos.Line);
+  Assert.AreEqual(19, mRanges[1].StartPos.Line);
 end;
 
 procedure TLspLinkedEditingTests.NothingForOverloads;
@@ -274,20 +274,20 @@ end;
 
 procedure TLspLinkedEditingTests.WritesJson;
 var
-  Json: TJSONValue;
+  mJson: TJSONValue;
 begin
-  Json := TLspLinkedEditing.ToJson(RangesAt(4, 16));
+  mJson := TLspLinkedEditing.ToJson(RangesAt(4, 16));
   try
-    Assert.AreEqual(2, (Json as TJSONObject).GetValue<TJSONArray>('ranges').Count);
-    Assert.AreEqual(TLspLinkedEditing.cWordPattern, (Json as TJSONObject).GetValue<string>('wordPattern'));
+    Assert.AreEqual(2, (mJson as TJSONObject).GetValue<TJSONArray>('ranges').Count);
+    Assert.AreEqual(TLspLinkedEditing.cWordPattern, (mJson as TJSONObject).GetValue<string>('wordPattern'));
   finally
-    Json.Free;
+    mJson.Free;
   end;
-  Json := TLspLinkedEditing.ToJson(nil);
+  mJson := TLspLinkedEditing.ToJson(nil);
   try
-    Assert.IsTrue(Json is TJSONNull);
+    Assert.IsTrue(mJson is TJSONNull);
   finally
-    Json.Free;
+    mJson.Free;
   end;
 end;
 
@@ -325,54 +325,54 @@ end;
 
 procedure TLspLinkedEditingTests.ReportsVisibleNamesAsConflicts;
 var
-  Conflict: TLinkedConflict;
-  Names: string;
-  RowCount: string;
+  mConflict: TLinkedConflict;
+  mNames: string;
+  mRowCount: string;
 begin
   LocalsAt(16, 3);
-  Names := '';
-  RowCount := '';
-  for Conflict in FConflicts do
+  mNames := '';
+  mRowCount := '';
+  for mConflict in FConflicts do
   begin
-    Names := Names + '|' + Conflict.Name;
-    if Conflict.Name = 'RowCount' then
+    mNames := mNames + '|' + mConflict.Name;
+    if mConflict.Name = 'RowCount' then
     begin
-      RowCount := Conflict.Detail;
+      mRowCount := mConflict.Detail;
     end;
   end;
-  Names := Names + '|';
-  Assert.IsTrue(Pos('|Anzahl|', Names) > 0, Names);
-  Assert.IsTrue(Pos('|Rand|', Names) > 0, Names);
-  Assert.IsTrue(Pos('|Grid|', Names) > 0, Names);
-  Assert.IsTrue(Pos('|Global|', Names) > 0, Names);
-  Assert.IsTrue(Pos('|RowCount|', Names) > 0, Names);
-  Assert.IsFalse(Pos('|Zeilen|', Names) > 0, Names);
-  Assert.AreEqual('Feld TGrid.RowCount', RowCount);
+  mNames := mNames + '|';
+  Assert.IsTrue(Pos('|Anzahl|', mNames) > 0, mNames);
+  Assert.IsTrue(Pos('|Rand|', mNames) > 0, mNames);
+  Assert.IsTrue(Pos('|Grid|', mNames) > 0, mNames);
+  Assert.IsTrue(Pos('|Global|', mNames) > 0, mNames);
+  Assert.IsTrue(Pos('|RowCount|', mNames) > 0, mNames);
+  Assert.IsFalse(Pos('|Zeilen|', mNames) > 0, mNames);
+  Assert.AreEqual('Feld TGrid.RowCount', mRowCount);
 end;
 
 procedure TLspLinkedEditingTests.WritesConflictsAsJson;
 var
-  Conflict: TLinkedConflict;
-  Json: TJSONValue;
-  Items: TJSONArray;
+  mConflict: TLinkedConflict;
+  mJson: TJSONValue;
+  mItems: TJSONArray;
 begin
-  Conflict.Name := 'Rand';
-  Conflict.Detail := 'lokale Variable Rand';
-  Json := TLspLinkedEditing.ToJson([TTextRange.Create(TTextPosition.Create(1, 2), TTextPosition.Create(1, 4))],
-    [Conflict]);
+  mConflict.Name := 'Rand';
+  mConflict.Detail := 'lokale Variable Rand';
+  mJson := TLspLinkedEditing.ToJson([TTextRange.Create(TTextPosition.Create(1, 2), TTextPosition.Create(1, 4))],
+    [mConflict]);
   try
-    Items := (Json as TJSONObject).GetValue<TJSONArray>('atlasConflicts');
-    Assert.AreEqual(1, Integer(Items.Count));
-    Assert.AreEqual('Rand', (Items.Items[0] as TJSONObject).GetValue<string>('name'));
-    Assert.AreEqual('lokale Variable Rand', (Items.Items[0] as TJSONObject).GetValue<string>('detail'));
+    mItems := (mJson as TJSONObject).GetValue<TJSONArray>('atlasConflicts');
+    Assert.AreEqual(1, Integer(mItems.Count));
+    Assert.AreEqual('Rand', (mItems.Items[0] as TJSONObject).GetValue<string>('name'));
+    Assert.AreEqual('lokale Variable Rand', (mItems.Items[0] as TJSONObject).GetValue<string>('detail'));
   finally
-    Json.Free;
+    mJson.Free;
   end;
-  Json := TLspLinkedEditing.ToJson(nil, [Conflict]);
+  mJson := TLspLinkedEditing.ToJson(nil, [mConflict]);
   try
-    Assert.IsTrue(Json is TJSONNull);
+    Assert.IsTrue(mJson is TJSONNull);
   finally
-    Json.Free;
+    mJson.Free;
   end;
 end;
 

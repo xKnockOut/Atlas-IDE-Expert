@@ -93,158 +93,158 @@ end;
 
 procedure TAtlasUpdatesTests.ParsesVersionFile;
 var
-  Release: TAtlasRelease;
+  mRelease: TAtlasRelease;
 begin
-  Assert.IsTrue(TAtlasUpdates.TryParse('{"version":"1.2.0","changes":"https://example.org/v1.2.0"}', Release));
-  Assert.AreEqual('1.2.0', Release.Version);
-  Assert.AreEqual('https://example.org/v1.2.0', Release.ChangesUrl);
+  Assert.IsTrue(TAtlasUpdates.TryParse('{"version":"1.2.0","changes":"https://example.org/v1.2.0"}', mRelease));
+  Assert.AreEqual('1.2.0', mRelease.Version);
+  Assert.AreEqual('https://example.org/v1.2.0', mRelease.ChangesUrl);
   // Ohne oder mit unsicherer Adresse: die Release-Seite.
-  Assert.IsTrue(TAtlasUpdates.TryParse('{"version":"1.2.0","changes":"http://example.org"}', Release));
-  Assert.AreEqual(TAtlasUpdates.cReleasesUrl + '/tag/v1.2.0', Release.ChangesUrl);
-  Assert.IsTrue(TAtlasUpdates.TryParse('{"version":"1.2.0"}', Release));
-  Assert.AreEqual(TAtlasUpdates.cReleasesUrl + '/tag/v1.2.0', Release.ChangesUrl);
-  Assert.IsFalse(TAtlasUpdates.TryParse('{"version":"neu"}', Release));
-  Assert.IsFalse(TAtlasUpdates.TryParse('<html>', Release));
-  Assert.IsFalse(TAtlasUpdates.TryParse('', Release));
-  Assert.AreEqual('', Release.Version);
+  Assert.IsTrue(TAtlasUpdates.TryParse('{"version":"1.2.0","changes":"http://example.org"}', mRelease));
+  Assert.AreEqual(TAtlasUpdates.cReleasesUrl + '/tag/v1.2.0', mRelease.ChangesUrl);
+  Assert.IsTrue(TAtlasUpdates.TryParse('{"version":"1.2.0"}', mRelease));
+  Assert.AreEqual(TAtlasUpdates.cReleasesUrl + '/tag/v1.2.0', mRelease.ChangesUrl);
+  Assert.IsFalse(TAtlasUpdates.TryParse('{"version":"neu"}', mRelease));
+  Assert.IsFalse(TAtlasUpdates.TryParse('<html>', mRelease));
+  Assert.IsFalse(TAtlasUpdates.TryParse('', mRelease));
+  Assert.AreEqual('', mRelease.Version);
 end;
 
 procedure TAtlasUpdatesTests.DueAtMostOncePerDay;
 var
-  Last: TDateTime;
+  mLast: TDateTime;
 begin
-  Last := EncodeDateTime(2026, 10, 14, 9, 0, 0, 0);
-  Assert.IsTrue(TAtlasUpdates.IsDue(0, Last), 'noch nie');
-  Assert.IsFalse(TAtlasUpdates.IsDue(Last, IncHour(Last, 23)));
-  Assert.IsTrue(TAtlasUpdates.IsDue(Last, IncHour(Last, 24)));
-  Assert.IsTrue(TAtlasUpdates.IsDue(Last, IncHour(Last, -2)), 'Uhr zurückgestellt');
+  mLast := EncodeDateTime(2026, 10, 14, 9, 0, 0, 0);
+  Assert.IsTrue(TAtlasUpdates.IsDue(0, mLast), 'noch nie');
+  Assert.IsFalse(TAtlasUpdates.IsDue(mLast, IncHour(mLast, 23)));
+  Assert.IsTrue(TAtlasUpdates.IsDue(mLast, IncHour(mLast, 24)));
+  Assert.IsTrue(TAtlasUpdates.IsDue(mLast, IncHour(mLast, -2)), 'Uhr zurückgestellt');
 end;
 
 procedure TAtlasUpdatesTests.RequestCarriesOnlyAtlasAndIdeVersion;
 var
-  Url, Query: string;
+  mUrl, mQuery: string;
 begin
-  Url := TAtlasUpdates.RequestUrl(TAtlasUpdates.cVersionUrl, '1.0.0-beta.1', '37.0');
-  Assert.IsTrue(Url.StartsWith(TAtlasUpdates.cVersionUrl + '?'));
-  Query := Copy(Url, Length(TAtlasUpdates.cVersionUrl) + 2, MaxInt);
-  Assert.AreEqual('atlas=1.0.0-beta.1&ide=37.0', Query);
+  mUrl := TAtlasUpdates.RequestUrl(TAtlasUpdates.cVersionUrl, '1.0.0-beta.1', '37.0');
+  Assert.IsTrue(mUrl.StartsWith(TAtlasUpdates.cVersionUrl + '?'));
+  mQuery := Copy(mUrl, Length(TAtlasUpdates.cVersionUrl) + 2, MaxInt);
+  Assert.AreEqual('atlas=1.0.0-beta.1&ide=37.0', mQuery);
   Assert.IsTrue(TAtlasUpdates.cVersionUrl.StartsWith('https://'));
   Assert.AreEqual(FormatFloat('0.0', CompilerVersion, TFormatSettings.Invariant), TAtlasUpdates.IdeVersion);
 end;
 
 procedure TAtlasUpdatesTests.DisabledOrNotDueMakesNoRequest;
 var
-  Source: TFakeSource;
-  Keep: IAtlasVersionSource;
-  State: TAtlasUpdateState;
-  Outcome: TAtlasUpdateResult;
-  Today: TDateTime;
+  mSource: TFakeSource;
+  mKeep: IAtlasVersionSource;
+  mState: TAtlasUpdateState;
+  mOutcome: TAtlasUpdateResult;
+  mToday: TDateTime;
 begin
-  Source := TFakeSource.Create;
-  Keep := Source;
-  Source.Answer := '{"version":"9.0.0"}';
-  Today := EncodeDateTime(2026, 10, 14, 12, 0, 0, 0);
-  State := Default(TAtlasUpdateState);
+  mSource := TFakeSource.Create;
+  mKeep := mSource;
+  mSource.Answer := '{"version":"9.0.0"}';
+  mToday := EncodeDateTime(2026, 10, 14, 12, 0, 0, 0);
+  mState := Default(TAtlasUpdateState);
   // Ohne Zustimmung keine Netzwerkabfrage.
-  Outcome := TAtlasUpdates.Run(Keep, Query('1.0.0'), State, False, Today);
-  Assert.AreEqual<TAtlasUpdateOutcome>(TAtlasUpdateOutcome.Disabled, Outcome.Outcome);
-  Assert.AreEqual(0, Source.Calls);
-  Assert.AreEqual(Double(0), Double(State.LastCheck), 1 / SecsPerDay);
-  State.LastCheck := IncHour(Today, -3);
-  Outcome := TAtlasUpdates.Run(Keep, Query('1.0.0'), State, True, Today);
-  Assert.AreEqual<TAtlasUpdateOutcome>(TAtlasUpdateOutcome.NotDue, Outcome.Outcome);
-  Assert.AreEqual(0, Source.Calls);
+  mOutcome := TAtlasUpdates.Run(mKeep, Query('1.0.0'), mState, False, mToday);
+  Assert.AreEqual<TAtlasUpdateOutcome>(TAtlasUpdateOutcome.Disabled, mOutcome.Outcome);
+  Assert.AreEqual(0, mSource.Calls);
+  Assert.AreEqual(Double(0), Double(mState.LastCheck), 1 / SecsPerDay);
+  mState.LastCheck := IncHour(mToday, -3);
+  mOutcome := TAtlasUpdates.Run(mKeep, Query('1.0.0'), mState, True, mToday);
+  Assert.AreEqual<TAtlasUpdateOutcome>(TAtlasUpdateOutcome.NotDue, mOutcome.Outcome);
+  Assert.AreEqual(0, mSource.Calls);
 end;
 
 procedure TAtlasUpdatesTests.ReportsNewCurrentAndFailed;
 var
-  Source: TFakeSource;
-  Keep: IAtlasVersionSource;
-  State: TAtlasUpdateState;
-  Outcome: TAtlasUpdateResult;
-  Today: TDateTime;
+  mSource: TFakeSource;
+  mKeep: IAtlasVersionSource;
+  mState: TAtlasUpdateState;
+  mOutcome: TAtlasUpdateResult;
+  mToday: TDateTime;
 begin
-  Source := TFakeSource.Create;
-  Keep := Source;
-  Today := EncodeDateTime(2026, 10, 14, 12, 0, 0, 0);
-  State := Default(TAtlasUpdateState);
-  Source.Answer := '{"version":"1.1.0","changes":"https://example.org/1.1.0"}';
-  Outcome := TAtlasUpdates.Run(Keep, Query('1.0.0'), State, True, Today);
-  Assert.AreEqual<TAtlasUpdateOutcome>(TAtlasUpdateOutcome.NewVersion, Outcome.Outcome);
-  Assert.AreEqual('1.1.0', Outcome.Release.Version);
-  Assert.AreEqual('https://example.org/1.1.0', Outcome.Release.ChangesUrl);
-  Assert.AreEqual(1, Source.Calls);
-  Assert.AreEqual(TAtlasUpdates.RequestUrl(TAtlasUpdates.cVersionUrl, '1.0.0', '37.0'), Source.LastUrl);
-  Assert.AreEqual(Double(Today), Double(State.LastCheck), 1 / SecsPerDay);
+  mSource := TFakeSource.Create;
+  mKeep := mSource;
+  mToday := EncodeDateTime(2026, 10, 14, 12, 0, 0, 0);
+  mState := Default(TAtlasUpdateState);
+  mSource.Answer := '{"version":"1.1.0","changes":"https://example.org/1.1.0"}';
+  mOutcome := TAtlasUpdates.Run(mKeep, Query('1.0.0'), mState, True, mToday);
+  Assert.AreEqual<TAtlasUpdateOutcome>(TAtlasUpdateOutcome.NewVersion, mOutcome.Outcome);
+  Assert.AreEqual('1.1.0', mOutcome.Release.Version);
+  Assert.AreEqual('https://example.org/1.1.0', mOutcome.Release.ChangesUrl);
+  Assert.AreEqual(1, mSource.Calls);
+  Assert.AreEqual(TAtlasUpdates.RequestUrl(TAtlasUpdates.cVersionUrl, '1.0.0', '37.0'), mSource.LastUrl);
+  Assert.AreEqual(Double(mToday), Double(mState.LastCheck), 1 / SecsPerDay);
   // Am selben Tag nicht noch einmal.
-  Outcome := TAtlasUpdates.Run(Keep, Query('1.0.0'), State, True, IncHour(Today, 5));
-  Assert.AreEqual<TAtlasUpdateOutcome>(TAtlasUpdateOutcome.NotDue, Outcome.Outcome);
-  Assert.AreEqual(1, Source.Calls);
+  mOutcome := TAtlasUpdates.Run(mKeep, Query('1.0.0'), mState, True, IncHour(mToday, 5));
+  Assert.AreEqual<TAtlasUpdateOutcome>(TAtlasUpdateOutcome.NotDue, mOutcome.Outcome);
+  Assert.AreEqual(1, mSource.Calls);
   // Gleich oder älter: aktuell.
-  Outcome := TAtlasUpdates.Run(Keep, Query('1.1.0'), State, True, IncDay(Today, 1));
-  Assert.AreEqual<TAtlasUpdateOutcome>(TAtlasUpdateOutcome.Current, Outcome.Outcome);
-  Outcome := TAtlasUpdates.Run(Keep, Query('1.2.0-beta.1'), State, True, IncDay(Today, 2));
-  Assert.AreEqual<TAtlasUpdateOutcome>(TAtlasUpdateOutcome.Current, Outcome.Outcome);
+  mOutcome := TAtlasUpdates.Run(mKeep, Query('1.1.0'), mState, True, IncDay(mToday, 1));
+  Assert.AreEqual<TAtlasUpdateOutcome>(TAtlasUpdateOutcome.Current, mOutcome.Outcome);
+  mOutcome := TAtlasUpdates.Run(mKeep, Query('1.2.0-beta.1'), mState, True, IncDay(mToday, 2));
+  Assert.AreEqual<TAtlasUpdateOutcome>(TAtlasUpdateOutcome.Current, mOutcome.Outcome);
   // Fehler zählen als Prüfung: höchstens einmal am Tag.
-  Source.Fails := True;
-  Outcome := TAtlasUpdates.Run(Keep, Query('1.0.0'), State, True, IncDay(Today, 3));
-  Assert.AreEqual<TAtlasUpdateOutcome>(TAtlasUpdateOutcome.Failed, Outcome.Outcome);
-  Assert.AreEqual('HTTP 404', Outcome.Error);
-  Assert.AreEqual(Double(IncDay(Today, 3)), Double(State.LastCheck), 1 / SecsPerDay);
-  Source.Fails := False;
-  Source.Answer := 'kaputt';
-  Outcome := TAtlasUpdates.Run(Keep, Query('1.0.0'), State, True, IncDay(Today, 4));
-  Assert.AreEqual<TAtlasUpdateOutcome>(TAtlasUpdateOutcome.Failed, Outcome.Outcome);
+  mSource.Fails := True;
+  mOutcome := TAtlasUpdates.Run(mKeep, Query('1.0.0'), mState, True, IncDay(mToday, 3));
+  Assert.AreEqual<TAtlasUpdateOutcome>(TAtlasUpdateOutcome.Failed, mOutcome.Outcome);
+  Assert.AreEqual('HTTP 404', mOutcome.Error);
+  Assert.AreEqual(Double(IncDay(mToday, 3)), Double(mState.LastCheck), 1 / SecsPerDay);
+  mSource.Fails := False;
+  mSource.Answer := 'kaputt';
+  mOutcome := TAtlasUpdates.Run(mKeep, Query('1.0.0'), mState, True, IncDay(mToday, 4));
+  Assert.AreEqual<TAtlasUpdateOutcome>(TAtlasUpdateOutcome.Failed, mOutcome.Outcome);
 end;
 
 procedure TAtlasUpdatesTests.StateRoundTrip;
 var
-  State, Loaded: TAtlasUpdateState;
+  mState, mLoaded: TAtlasUpdateState;
 begin
-  State.Asked := True;
-  State.LastCheck := EncodeDateTime(2026, 10, 14, 9, 30, 15, 0);
-  Loaded := TAtlasUpdateState.FromJson(State.ToJson);
-  Assert.IsTrue(Loaded.Asked);
-  Assert.AreEqual(Double(State.LastCheck), Double(Loaded.LastCheck), 1 / SecsPerDay);
-  Loaded := TAtlasUpdateState.FromJson('kein json');
-  Assert.IsFalse(Loaded.Asked);
-  Assert.AreEqual(Double(0), Double(Loaded.LastCheck), 1 / SecsPerDay);
-  Loaded := TAtlasUpdateState.FromJson('{"asked":true,"lastCheck":"gestern"}');
-  Assert.IsTrue(Loaded.Asked);
-  Assert.AreEqual(Double(0), Double(Loaded.LastCheck), 1 / SecsPerDay);
+  mState.Asked := True;
+  mState.LastCheck := EncodeDateTime(2026, 10, 14, 9, 30, 15, 0);
+  mLoaded := TAtlasUpdateState.FromJson(mState.ToJson);
+  Assert.IsTrue(mLoaded.Asked);
+  Assert.AreEqual(Double(mState.LastCheck), Double(mLoaded.LastCheck), 1 / SecsPerDay);
+  mLoaded := TAtlasUpdateState.FromJson('kein json');
+  Assert.IsFalse(mLoaded.Asked);
+  Assert.AreEqual(Double(0), Double(mLoaded.LastCheck), 1 / SecsPerDay);
+  mLoaded := TAtlasUpdateState.FromJson('{"asked":true,"lastCheck":"gestern"}');
+  Assert.IsTrue(mLoaded.Asked);
+  Assert.AreEqual(Double(0), Double(mLoaded.LastCheck), 1 / SecsPerDay);
   Assert.IsTrue(TAtlasUpdates.StateFile.EndsWith(TPath.Combine('Atlas', 'updates.json')));
 end;
 
 procedure TAtlasUpdatesTests.DiagnosticExportCarriesVersions;
 var
-  Folder, LogFile, Target, Info, Preview: string;
-  Zip: TZipFile;
-  Bytes: TBytes;
+  mFolder, mLogFile, mTarget, mInfo, mPreview: string;
+  mZip: TZipFile;
+  mBytes: TBytes;
 begin
-  Folder := TPath.Combine(TPath.GetTempPath, 'atlas-export-' + IntToStr(Random(1000000)));
-  ForceDirectories(Folder);
+  mFolder := TPath.Combine(TPath.GetTempPath, 'atlas-export-' + IntToStr(Random(1000000)));
+  ForceDirectories(mFolder);
   try
-    LogFile := TPath.Combine(Folder, 'diag-1.log');
-    TFile.WriteAllText(LogFile, 'hover ok'#10, TEncoding.UTF8);
-    Info := TAtlasDiagnosticExport.Info('1.0.0', '37.0', 'Win32');
-    Assert.AreEqual('Atlas 1.0.0' + sLineBreak + 'IDE 37.0' + sLineBreak + 'Plattform Win32' + sLineBreak, Info);
-    Preview := TAtlasDiagnosticExport.Preview([LogFile], Info);
-    Assert.IsTrue(Preview.StartsWith('== atlas-info.txt ==' + sLineBreak + 'Atlas 1.0.0'));
-    Assert.Contains(Preview, 'hover ok');
-    Target := TPath.Combine(Folder, 'export.zip');
-    TAtlasDiagnosticExport.WriteZip([LogFile], Target, Info);
-    Zip := TZipFile.Create;
+    mLogFile := TPath.Combine(mFolder, 'diag-1.log');
+    TFile.WriteAllText(mLogFile, 'hover ok'#10, TEncoding.UTF8);
+    mInfo := TAtlasDiagnosticExport.Info('1.0.0', '37.0', 'Win32');
+    Assert.AreEqual('Atlas 1.0.0' + sLineBreak + 'IDE 37.0' + sLineBreak + 'Plattform Win32' + sLineBreak, mInfo);
+    mPreview := TAtlasDiagnosticExport.Preview([mLogFile], mInfo);
+    Assert.IsTrue(mPreview.StartsWith('== atlas-info.txt ==' + sLineBreak + 'Atlas 1.0.0'));
+    Assert.Contains(mPreview, 'hover ok');
+    mTarget := TPath.Combine(mFolder, 'export.zip');
+    TAtlasDiagnosticExport.WriteZip([mLogFile], mTarget, mInfo);
+    mZip := TZipFile.Create;
     try
-      Zip.Open(Target, TZipMode.zmRead);
-      Assert.AreEqual(2, Zip.FileCount);
-      Assert.AreEqual('atlas-info.txt', Zip.FileNames[0]);
-      Zip.Read(0, Bytes);
-      Assert.AreEqual(Info, TEncoding.UTF8.GetString(Bytes));
+      mZip.Open(mTarget, TZipMode.zmRead);
+      Assert.AreEqual(2, mZip.FileCount);
+      Assert.AreEqual('atlas-info.txt', mZip.FileNames[0]);
+      mZip.Read(0, mBytes);
+      Assert.AreEqual(mInfo, TEncoding.UTF8.GetString(mBytes));
     finally
-      Zip.Free;
+      mZip.Free;
     end;
   finally
-    TDirectory.Delete(Folder, True);
+    TDirectory.Delete(mFolder, True);
   end;
 end;
 

@@ -42,11 +42,11 @@ uses
   Atlas.Common.Index.Extractor;
 
 const
-  BasisFile = 'C:\P\Basis.pas';
-  HauptFile = 'C:\P\Haupt.pas';
-  EnkelFile = 'C:\P\Enkel.pas';
+  cBasisFile = 'C:\P\Basis.pas';
+  cHauptFile = 'C:\P\Haupt.pas';
+  cEnkelFile = 'C:\P\Enkel.pas';
 
-  UnitBasis =
+  cUnitBasis =
     'unit Basis;'#10 +                         // 0
     'interface'#10 +                           // 1
     'type'#10 +                                // 2
@@ -67,7 +67,7 @@ const
     'end;'#10 +                                // 17
     'end.';
 
-  UnitHaupt =
+  cUnitHaupt =
     'unit Haupt;'#10 +                         // 0
     'interface'#10 +                           // 1
     'uses Basis;'#10 +                         // 2
@@ -85,7 +85,7 @@ const
     'end;'#10 +                                // 14
     'end.';
 
-  UnitEnkel =
+  cUnitEnkel =
     'unit Enkel;'#10 +                         // 0
     'interface'#10 +                           // 1
     'uses Haupt;'#10 +                         // 2
@@ -108,9 +108,9 @@ const
 procedure TLspOverrideMarksTests.Setup;
 begin
   FIndex := TSymbolIndex.Create;
-  FIndex.AddUnit(TIndexExtractor.ExtractText(UnitBasis, BasisFile, nil));
-  FIndex.AddUnit(TIndexExtractor.ExtractText(UnitHaupt, HauptFile, nil));
-  FIndex.AddUnit(TIndexExtractor.ExtractText(UnitEnkel, EnkelFile, nil));
+  FIndex.AddUnit(TIndexExtractor.ExtractText(cUnitBasis, cBasisFile, nil));
+  FIndex.AddUnit(TIndexExtractor.ExtractText(cUnitHaupt, cHauptFile, nil));
+  FIndex.AddUnit(TIndexExtractor.ExtractText(cUnitEnkel, cEnkelFile, nil));
   FResolver := TNameResolver.Create(FIndex);
 end;
 
@@ -122,22 +122,22 @@ end;
 
 function TLspOverrideMarksTests.Describe(const AMarks: TArray<TOverrideMark>): string;
 var
-  Mark: TOverrideMark;
-  Target: TOverrideMarkTarget;
+  mMark: TOverrideMark;
+  mTarget: TOverrideMarkTarget;
 begin
   Result := '';
-  for Mark in AMarks do
+  for mMark in AMarks do
   begin
-    Result := Result + IntToStr(Mark.Line);
-    for Target in Mark.Overrides do
+    Result := Result + IntToStr(mMark.Line);
+    for mTarget in mMark.Overrides do
     begin
-      Result := Result + Format(' ↑%s@%s:%d', [Target.Name, ExtractFileName(Target.FileName),
-        Target.Range.StartPos.Line]);
+      Result := Result + Format(' ↑%s@%s:%d', [mTarget.Name, ExtractFileName(mTarget.FileName),
+        mTarget.Range.StartPos.Line]);
     end;
-    for Target in Mark.Overridden do
+    for mTarget in mMark.Overridden do
     begin
-      Result := Result + Format(' ↓%s@%s:%d', [Target.Name, ExtractFileName(Target.FileName),
-        Target.Range.StartPos.Line]);
+      Result := Result + Format(' ↓%s@%s:%d', [mTarget.Name, ExtractFileName(mTarget.FileName),
+        mTarget.Range.StartPos.Line]);
     end;
     Result := Result + '|';
   end;
@@ -145,77 +145,77 @@ end;
 
 procedure TLspOverrideMarksTests.MarksOverridesOnDeclarationAndBody;
 var
-  Tree: TSyntaxTree;
+  mTree: TSyntaxTree;
 begin
-  Tree := TPascalParser.Parse(UnitHaupt);
+  mTree := TPascalParser.Parse(cUnitHaupt);
   try
     // TFoo.Zeichne überschreibt TBasis.Zeichne und wird in TEnkel überschrieben (Ziel: Rumpf in Zeile 12).
     Assert.AreEqual('5 ↑TBasis.Zeichne@Basis.pas:4 ↓TEnkel.Zeichne@Enkel.pas:12|' +
       '9 ↑TBasis.Zeichne@Basis.pas:4 ↓TEnkel.Zeichne@Enkel.pas:12|',
-      Describe(TLspOverrideMarks.Marks(FResolver, FIndex, Tree, HauptFile)));
+      Describe(TLspOverrideMarks.Marks(FResolver, FIndex, mTree, cHauptFile)));
   finally
-    Tree.Free;
+    mTree.Free;
   end;
 end;
 
 procedure TLspOverrideMarksTests.MarksOverriddenOverAllLevels;
 var
-  Tree: TSyntaxTree;
+  mTree: TSyntaxTree;
 begin
-  Tree := TPascalParser.Parse(UnitBasis);
+  mTree := TPascalParser.Parse(cUnitBasis);
   try
     // Messe überschreibt erst der Enkel, Zeichne beide Stufen; Lies ist nicht virtuell.
     Assert.AreEqual('4 ↓TFoo.Zeichne@Haupt.pas:9 ↓TEnkel.Zeichne@Enkel.pas:12|' +
       '5 ↓TEnkel.Messe@Enkel.pas:9|' +
       '9 ↓TFoo.Zeichne@Haupt.pas:9 ↓TEnkel.Zeichne@Enkel.pas:12|' +
       '12 ↓TEnkel.Messe@Enkel.pas:9|',
-      Describe(TLspOverrideMarks.Marks(FResolver, FIndex, Tree, BasisFile)));
+      Describe(TLspOverrideMarks.Marks(FResolver, FIndex, mTree, cBasisFile)));
   finally
-    Tree.Free;
+    mTree.Free;
   end;
 end;
 
 procedure TLspOverrideMarksTests.IgnoresMethodsWithoutOverride;
 var
-  Tree: TSyntaxTree;
-  Mark: TOverrideMark;
+  mTree: TSyntaxTree;
+  mMark: TOverrideMark;
 begin
   // TFoo.Lies verdeckt TBasis.Lies ohne override: kein Pfeil, obwohl der Vorfahr den Namen kennt.
-  Tree := TPascalParser.Parse(UnitHaupt);
+  mTree := TPascalParser.Parse(cUnitHaupt);
   try
-    for Mark in TLspOverrideMarks.Marks(FResolver, FIndex, Tree, HauptFile) do
+    for mMark in TLspOverrideMarks.Marks(FResolver, FIndex, mTree, cHauptFile) do
     begin
-      Assert.IsTrue((Mark.Line <> 6) and (Mark.Line <> 12), 'Lies ohne Marke: ' + IntToStr(Mark.Line));
+      Assert.IsTrue((mMark.Line <> 6) and (mMark.Line <> 12), 'Lies ohne Marke: ' + IntToStr(mMark.Line));
     end;
   finally
-    Tree.Free;
+    mTree.Free;
   end;
-  Assert.AreEqual(0, Integer(Length(TLspOverrideMarks.Marks(FResolver, FIndex, nil, HauptFile))));
+  Assert.AreEqual(0, Integer(Length(TLspOverrideMarks.Marks(FResolver, FIndex, nil, cHauptFile))));
 end;
 
 procedure TLspOverrideMarksTests.WritesJson;
 var
-  Tree: TSyntaxTree;
-  Json: TJSONObject;
-  Line, Target: TJSONObject;
+  mTree: TSyntaxTree;
+  mJson: TJSONObject;
+  mLine, mTarget: TJSONObject;
 begin
-  Tree := TPascalParser.Parse(UnitEnkel);
+  mTree := TPascalParser.Parse(cUnitEnkel);
   try
-    Json := TLspOverrideMarks.Json(TLspOverrideMarks.Marks(FResolver, FIndex, Tree, EnkelFile));
+    mJson := TLspOverrideMarks.Json(TLspOverrideMarks.Marks(FResolver, FIndex, mTree, cEnkelFile));
     try
-      Assert.AreEqual(4, TJSONObject(Json).GetValue<TJSONArray>('lines').Count);
-      Line := TJSONObject(TJSONObject(Json).GetValue<TJSONArray>('lines').Items[0]);
-      Assert.AreEqual(5, Line.GetValue<Integer>('line'));
-      Target := TJSONObject(Line.GetValue<TJSONArray>('overrides').Items[0]);
-      Assert.AreEqual('TBasis.Messe', Target.GetValue<string>('name'));
-      Assert.AreEqual(5, Target.GetValue<Integer>('line'));
-      Assert.IsTrue(Target.GetValue<string>('uri').StartsWith('file:'), 'URI');
-      Assert.AreEqual(0, Line.GetValue<TJSONArray>('overridden').Count);
+      Assert.AreEqual(4, TJSONObject(mJson).GetValue<TJSONArray>('lines').Count);
+      mLine := TJSONObject(TJSONObject(mJson).GetValue<TJSONArray>('lines').Items[0]);
+      Assert.AreEqual(5, mLine.GetValue<Integer>('line'));
+      mTarget := TJSONObject(mLine.GetValue<TJSONArray>('overrides').Items[0]);
+      Assert.AreEqual('TBasis.Messe', mTarget.GetValue<string>('name'));
+      Assert.AreEqual(5, mTarget.GetValue<Integer>('line'));
+      Assert.IsTrue(mTarget.GetValue<string>('uri').StartsWith('file:'), 'URI');
+      Assert.AreEqual(0, mLine.GetValue<TJSONArray>('overridden').Count);
     finally
-      Json.Free;
+      mJson.Free;
     end;
   finally
-    Tree.Free;
+    mTree.Free;
   end;
 end;
 

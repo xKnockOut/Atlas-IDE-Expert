@@ -39,62 +39,62 @@ end;
 
 procedure TStackGuardTests.OverflowCallsRestore;
 var
-  Calls, Before: Integer;
-  Error: Exception;
+  mCalls, mBefore: Integer;
+  mError: Exception;
 begin
-  Calls := 0;
+  mCalls := 0;
   TStackGuard.Restore :=
     procedure
     begin
-      Inc(Calls);
+      Inc(mCalls);
     end;
-  Before := TStackGuard.Restored;
-  Error := EStackOverflow.Create('Stapel');
+  mBefore := TStackGuard.Restored;
+  mError := EStackOverflow.Create('Stapel');
   try
-    Assert.IsTrue(TStackGuard.IsOverflow(Error));
-    TStackGuard.AfterError(Error);
+    Assert.IsTrue(TStackGuard.IsOverflow(mError));
+    TStackGuard.AfterError(mError);
   finally
-    Error.Free;
+    mError.Free;
   end;
-  Assert.AreEqual(1, Calls);
-  Assert.AreEqual(Before + 1, TStackGuard.Restored);
+  Assert.AreEqual(1, mCalls);
+  Assert.AreEqual(mBefore + 1, TStackGuard.Restored);
 end;
 
 procedure TStackGuardTests.OtherErrorsLeaveGuardAlone;
 var
-  Calls: Integer;
-  Error: Exception;
+  mCalls: Integer;
+  mError: Exception;
 begin
-  Calls := 0;
+  mCalls := 0;
   TStackGuard.Restore :=
     procedure
     begin
-      Inc(Calls);
+      Inc(mCalls);
     end;
-  Error := EArgumentException.Create('anders');
+  mError := EArgumentException.Create('anders');
   try
-    Assert.IsFalse(TStackGuard.IsOverflow(Error));
-    TStackGuard.AfterError(Error);
+    Assert.IsFalse(TStackGuard.IsOverflow(mError));
+    TStackGuard.AfterError(mError);
   finally
-    Error.Free;
+    mError.Free;
   end;
   TStackGuard.AfterError(nil);
-  Assert.AreEqual(0, Calls);
+  Assert.AreEqual(0, mCalls);
 end;
 
 procedure TStackGuardTests.WithoutRestoreNothingHappens;
 var
-  Before: Integer;
-  Error: Exception;
+  mBefore: Integer;
+  mError: Exception;
 begin
-  Before := TStackGuard.Restored;
-  Error := EStackOverflow.Create('Stapel');
+  mBefore := TStackGuard.Restored;
+  mError := EStackOverflow.Create('Stapel');
   try
-    TStackGuard.AfterError(Error);
+    TStackGuard.AfterError(mError);
   finally
-    Error.Free;
+    mError.Free;
   end;
-  Assert.AreEqual(Before, TStackGuard.Restored);
+  Assert.AreEqual(mBefore, TStackGuard.Restored);
 end;
 
 initialization

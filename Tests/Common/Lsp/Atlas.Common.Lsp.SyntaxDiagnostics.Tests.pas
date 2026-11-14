@@ -132,9 +132,9 @@ begin
 end;
 
 const
-  Uri = 'file:///c%3A/Projekt/A.pas';
-  ValidCode = 'program P;'#13#10'begin'#13#10'  A := 1;'#13#10'end.';
-  BrokenCode = 'program P;'#13#10'begin'#13#10'  A := 1'#13#10'  B := 2;'#13#10'end.';
+  cUri = 'file:///c%3A/Projekt/A.pas';
+  cValidCode = 'program P;'#13#10'begin'#13#10'  A := 1;'#13#10'end.';
+  cBrokenCode = 'program P;'#13#10'begin'#13#10'  A := 1'#13#10'  B := 2;'#13#10'end.';
 
 { TCapturingTransport }
 
@@ -180,16 +180,16 @@ end;
 
 function TCapturingTransport.WaitForCount(ACount: Integer; ATimeoutMs: Cardinal): Boolean;
 var
-  Watch: TStopwatch;
+  mWatch: TStopwatch;
 begin
-  Watch := TStopwatch.StartNew;
+  mWatch := TStopwatch.StartNew;
   while Count < ACount do
   begin
-    if Watch.ElapsedMilliseconds >= ATimeoutMs then
+    if mWatch.ElapsedMilliseconds >= ATimeoutMs then
     begin
       Exit(False);
     end;
-    FWritten.WaitFor(ATimeoutMs - Cardinal(Watch.ElapsedMilliseconds));
+    FWritten.WaitFor(ATimeoutMs - Cardinal(mWatch.ElapsedMilliseconds));
   end;
   Result := True;
 end;
@@ -222,184 +222,184 @@ end;
 
 procedure TLspSyntaxDiagnosticsTests.PublishesSyntaxErrorsOnOpen;
 var
-  Diagnostics: TLspSyntaxDiagnostics;
-  Message: TJSONObject;
-  Item: TJSONValue;
+  mDiagnostics: TLspSyntaxDiagnostics;
+  mMessage: TJSONObject;
+  mItem: TJSONValue;
 begin
-  Diagnostics := TLspSyntaxDiagnostics.Create(FStore, FTransport, Default(TSyntaxDiagnosticsProviders), 0);
+  mDiagnostics := TLspSyntaxDiagnostics.Create(FStore, FTransport, Default(TSyntaxDiagnosticsProviders), 0);
   try
-    Diagnostics.Attach;
-    FStore.Open(Uri, 'objectpascal', 3, BrokenCode);
+    mDiagnostics.Attach;
+    FStore.Open(cUri, 'objectpascal', 3, cBrokenCode);
     Assert.AreEqual(1, Integer(FCapture.Count));
-    Message := FCapture.MessageAt(0);
+    mMessage := FCapture.MessageAt(0);
     try
-      Assert.AreEqual('textDocument/publishDiagnostics', Message.GetValue<string>('method'));
-      Assert.AreEqual(Uri, Message.GetValue<string>('params.uri'));
-      Assert.AreEqual(3, Message.GetValue<Integer>('params.version'));
-      Assert.AreEqual(1, Message.GetValue<TJSONArray>('params.diagnostics').Count);
-      Item := Message.GetValue<TJSONArray>('params.diagnostics').Items[0];
-      Assert.AreEqual(2, Item.GetValue<Integer>('range.start.line'));
-      Assert.AreEqual(8, Item.GetValue<Integer>('range.start.character'));
-      Assert.AreEqual(2, Item.GetValue<Integer>('range.end.line'));
-      Assert.AreEqual(8, Item.GetValue<Integer>('range.end.character'));
-      Assert.AreEqual(1, Item.GetValue<Integer>('severity'));
-      Assert.AreEqual('Atlas', Item.GetValue<string>('source'));
-      Assert.AreEqual(''';'' fehlt (wie E2066).', Item.GetValue<string>('message'));
+      Assert.AreEqual('textDocument/publishDiagnostics', mMessage.GetValue<string>('method'));
+      Assert.AreEqual(cUri, mMessage.GetValue<string>('params.uri'));
+      Assert.AreEqual(3, mMessage.GetValue<Integer>('params.version'));
+      Assert.AreEqual(1, mMessage.GetValue<TJSONArray>('params.diagnostics').Count);
+      mItem := mMessage.GetValue<TJSONArray>('params.diagnostics').Items[0];
+      Assert.AreEqual(2, mItem.GetValue<Integer>('range.start.line'));
+      Assert.AreEqual(8, mItem.GetValue<Integer>('range.start.character'));
+      Assert.AreEqual(2, mItem.GetValue<Integer>('range.end.line'));
+      Assert.AreEqual(8, mItem.GetValue<Integer>('range.end.character'));
+      Assert.AreEqual(1, mItem.GetValue<Integer>('severity'));
+      Assert.AreEqual('Atlas', mItem.GetValue<string>('source'));
+      Assert.AreEqual(''';'' fehlt (wie E2066).', mItem.GetValue<string>('message'));
     finally
-      Message.Free;
+      mMessage.Free;
     end;
   finally
-    Diagnostics.Free;
+    mDiagnostics.Free;
   end;
 end;
 
 procedure TLspSyntaxDiagnosticsTests.PublishesEmptyListForValidCode;
 var
-  Diagnostics: TLspSyntaxDiagnostics;
-  Message: TJSONObject;
+  mDiagnostics: TLspSyntaxDiagnostics;
+  mMessage: TJSONObject;
 begin
-  Diagnostics := TLspSyntaxDiagnostics.Create(FStore, FTransport, Default(TSyntaxDiagnosticsProviders), 0);
+  mDiagnostics := TLspSyntaxDiagnostics.Create(FStore, FTransport, Default(TSyntaxDiagnosticsProviders), 0);
   try
-    Diagnostics.Attach;
-    FStore.Open(Uri, 'objectpascal', 1, ValidCode);
-    Message := FCapture.MessageAt(0);
+    mDiagnostics.Attach;
+    FStore.Open(cUri, 'objectpascal', 1, cValidCode);
+    mMessage := FCapture.MessageAt(0);
     try
-      Assert.AreEqual(0, Message.GetValue<TJSONArray>('params.diagnostics').Count);
+      Assert.AreEqual(0, mMessage.GetValue<TJSONArray>('params.diagnostics').Count);
     finally
-      Message.Free;
+      mMessage.Free;
     end;
   finally
-    Diagnostics.Free;
+    mDiagnostics.Free;
   end;
 end;
 
 procedure TLspSyntaxDiagnosticsTests.RepublishesAfterChange;
 var
-  Diagnostics: TLspSyntaxDiagnostics;
-  Message: TJSONObject;
+  mDiagnostics: TLspSyntaxDiagnostics;
+  mMessage: TJSONObject;
 begin
-  Diagnostics := TLspSyntaxDiagnostics.Create(FStore, FTransport, Default(TSyntaxDiagnosticsProviders), 0);
+  mDiagnostics := TLspSyntaxDiagnostics.Create(FStore, FTransport, Default(TSyntaxDiagnosticsProviders), 0);
   try
-    Diagnostics.Attach;
-    FStore.Open(Uri, 'objectpascal', 1, BrokenCode);
-    FStore.Change(Uri, 2, [TTextChange.Full(ValidCode)]);
+    mDiagnostics.Attach;
+    FStore.Open(cUri, 'objectpascal', 1, cBrokenCode);
+    FStore.Change(cUri, 2, [TTextChange.Full(cValidCode)]);
     Assert.AreEqual(2, Integer(FCapture.Count));
-    Message := FCapture.MessageAt(1);
+    mMessage := FCapture.MessageAt(1);
     try
-      Assert.AreEqual(2, Message.GetValue<Integer>('params.version'));
-      Assert.AreEqual(0, Message.GetValue<TJSONArray>('params.diagnostics').Count);
+      Assert.AreEqual(2, mMessage.GetValue<Integer>('params.version'));
+      Assert.AreEqual(0, mMessage.GetValue<TJSONArray>('params.diagnostics').Count);
     finally
-      Message.Free;
+      mMessage.Free;
     end;
   finally
-    Diagnostics.Free;
+    mDiagnostics.Free;
   end;
 end;
 
 procedure TLspSyntaxDiagnosticsTests.ClearsDiagnosticsOnClose;
 var
-  Diagnostics: TLspSyntaxDiagnostics;
-  Message: TJSONObject;
+  mDiagnostics: TLspSyntaxDiagnostics;
+  mMessage: TJSONObject;
 begin
-  Diagnostics := TLspSyntaxDiagnostics.Create(FStore, FTransport, Default(TSyntaxDiagnosticsProviders), 0);
+  mDiagnostics := TLspSyntaxDiagnostics.Create(FStore, FTransport, Default(TSyntaxDiagnosticsProviders), 0);
   try
-    Diagnostics.Attach;
-    FStore.Open(Uri, 'objectpascal', 1, BrokenCode);
-    FStore.Close(Uri);
+    mDiagnostics.Attach;
+    FStore.Open(cUri, 'objectpascal', 1, cBrokenCode);
+    FStore.Close(cUri);
     Assert.AreEqual(2, Integer(FCapture.Count));
-    Message := FCapture.MessageAt(1);
+    mMessage := FCapture.MessageAt(1);
     try
-      Assert.AreEqual(Uri, Message.GetValue<string>('params.uri'));
-      Assert.IsNull(Message.GetValue<TJSONObject>('params').GetValue('version'));
-      Assert.AreEqual(0, Message.GetValue<TJSONArray>('params.diagnostics').Count);
+      Assert.AreEqual(cUri, mMessage.GetValue<string>('params.uri'));
+      Assert.IsNull(mMessage.GetValue<TJSONObject>('params').GetValue('version'));
+      Assert.AreEqual(0, mMessage.GetValue<TJSONArray>('params.diagnostics').Count);
     finally
-      Message.Free;
+      mMessage.Free;
     end;
   finally
-    Diagnostics.Free;
+    mDiagnostics.Free;
   end;
 end;
 
 procedure TLspSyntaxDiagnosticsTests.RefreshLaterBundlesCalls;
 var
-  Diagnostics: TLspSyntaxDiagnostics;
-  Calls: Integer;
-  Index: Integer;
+  mDiagnostics: TLspSyntaxDiagnostics;
+  mCalls: Integer;
+  mIndex: Integer;
 begin
   // Jedes Projekt einer Gruppe meldet seine Indexstufen; neu geprüft wird einmal (#647).
-  Calls := 0;
-  Diagnostics := TLspSyntaxDiagnostics.Create(FStore, FTransport, Default(TSyntaxDiagnosticsProviders));
+  mCalls := 0;
+  mDiagnostics := TLspSyntaxDiagnostics.Create(FStore, FTransport, Default(TSyntaxDiagnosticsProviders));
   try
-    Diagnostics.PullMode := True;
-    Diagnostics.OnPullChanged :=
+    mDiagnostics.PullMode := True;
+    mDiagnostics.OnPullChanged :=
       procedure
       begin
-        TInterlocked.Increment(Calls);
+        TInterlocked.Increment(mCalls);
       end;
-    for Index := 1 to 5 do
+    for mIndex := 1 to 5 do
     begin
-      Diagnostics.RefreshLater;
+      mDiagnostics.RefreshLater;
     end;
-    Assert.AreEqual(0, TInterlocked.CompareExchange(Calls, 0, 0), 'erst nach der Pause');
+    Assert.AreEqual(0, TInterlocked.CompareExchange(mCalls, 0, 0), 'erst nach der Pause');
     Sleep(TLspSyntaxDiagnostics.cRefreshDelayMs + 500);
-    Assert.AreEqual(1, TInterlocked.CompareExchange(Calls, 0, 0));
+    Assert.AreEqual(1, TInterlocked.CompareExchange(mCalls, 0, 0));
   finally
-    Diagnostics.Free;
+    mDiagnostics.Free;
   end;
 end;
 
 procedure TLspSyntaxDiagnosticsTests.PublishesWithin200MsAfterLastChange;
 var
-  Diagnostics: TLspSyntaxDiagnostics;
-  Watch: TStopwatch;
-  Version: Integer;
-  Message: TJSONObject;
+  mDiagnostics: TLspSyntaxDiagnostics;
+  mWatch: TStopwatch;
+  mVersion: Integer;
+  mMessage: TJSONObject;
 begin
-  Diagnostics := TLspSyntaxDiagnostics.Create(FStore, FTransport, Default(TSyntaxDiagnosticsProviders));
+  mDiagnostics := TLspSyntaxDiagnostics.Create(FStore, FTransport, Default(TSyntaxDiagnosticsProviders));
   try
-    Diagnostics.Attach;
-    FStore.Open(Uri, 'objectpascal', 1, ValidCode);
+    mDiagnostics.Attach;
+    FStore.Open(cUri, 'objectpascal', 1, cValidCode);
     // Schnelles Tippen: Jede Änderung verschiebt die Auswertung.
-    for Version := 2 to 6 do
+    for mVersion := 2 to 6 do
     begin
-      FStore.Change(Uri, Version, [TTextChange.Full(BrokenCode)]);
+      FStore.Change(cUri, mVersion, [TTextChange.Full(cBrokenCode)]);
       Sleep(20);
     end;
-    Watch := TStopwatch.StartNew;
+    mWatch := TStopwatch.StartNew;
     Assert.IsTrue(FCapture.WaitForCount(1, 1000), 'Keine Diagnose gemeldet');
-    Assert.IsTrue(Watch.ElapsedMilliseconds < 200,
-      Format('Diagnose nach %d ms', [Watch.ElapsedMilliseconds]));
+    Assert.IsTrue(mWatch.ElapsedMilliseconds < 200,
+      Format('Diagnose nach %d ms', [mWatch.ElapsedMilliseconds]));
     Sleep(TLspSyntaxDiagnostics.cDefaultDelayMs * 2);
     Assert.AreEqual(1, Integer(FCapture.Count), 'Nur der letzte Stand wird ausgewertet');
-    Message := FCapture.MessageAt(0);
+    mMessage := FCapture.MessageAt(0);
     try
-      Assert.AreEqual(6, Message.GetValue<Integer>('params.version'));
+      Assert.AreEqual(6, mMessage.GetValue<Integer>('params.version'));
     finally
-      Message.Free;
+      mMessage.Free;
     end;
   finally
-    Diagnostics.Free;
+    mDiagnostics.Free;
   end;
 end;
 
 procedure TLspSyntaxDiagnosticsTests.BuildsParamsForSnapshot;
 var
-  Params: TJSONObject;
-  Document: ITextDocument;
+  mParams: TJSONObject;
+  mDocument: ITextDocument;
 begin
-  Document := FStore.Open(Uri, 'objectpascal', 1, BrokenCode);
-  Params := TLspSyntaxDiagnostics.BuildParams(Document);
+  mDocument := FStore.Open(cUri, 'objectpascal', 1, cBrokenCode);
+  mParams := TLspSyntaxDiagnostics.BuildParams(mDocument);
   try
-    Assert.AreEqual(1, Params.GetValue<Integer>('version'));
-    Assert.AreEqual(1, Params.GetValue<TJSONArray>('diagnostics').Count);
+    Assert.AreEqual(1, mParams.GetValue<Integer>('version'));
+    Assert.AreEqual(1, mParams.GetValue<TJSONArray>('diagnostics').Count);
   finally
-    Params.Free;
+    mParams.Free;
   end;
 end;
 
 function RulesWith(const AConfigJson: string): TRuleCheckContext;
 var
-  Issues: TArray<TConfigurationIssue>;
+  mIssues: TArray<TConfigurationIssue>;
 begin
   Result := Default(TRuleCheckContext);
   Result.Rules := BuiltinRules;
@@ -409,225 +409,225 @@ begin
   end
   else
   begin
-    Result.Settings := TConfigurationParser.Parse(AConfigJson, Issues);
+    Result.Settings := TConfigurationParser.Parse(AConfigJson, mIssues);
   end;
   Result.RelativePath := 'A.pas';
 end;
 
 procedure TLspSyntaxDiagnosticsTests.AddsRuleFindingsWithCode;
 var
-  Params: TJSONObject;
-  Document: ITextDocument;
-  Item: TJSONObject;
+  mParams: TJSONObject;
+  mDocument: ITextDocument;
+  mItem: TJSONObject;
 begin
-  Document := FStore.Open(Uri, 'objectpascal', 1, ValidCode + ' // ' + Char($202E));
-  Params := TLspSyntaxDiagnostics.BuildParams(Document, nil, '', RulesWith(''));
+  mDocument := FStore.Open(cUri, 'objectpascal', 1, cValidCode + ' // ' + Char($202E));
+  mParams := TLspSyntaxDiagnostics.BuildParams(mDocument, nil, '', RulesWith(''));
   try
-    Assert.AreEqual(1, Params.GetValue<TJSONArray>('diagnostics').Count);
-    Item := Params.GetValue<TJSONArray>('diagnostics').Items[0] as TJSONObject;
-    Assert.AreEqual('bidi-control', Item.GetValue<string>('code'));
-    Assert.AreEqual(1, Item.GetValue<Integer>('severity'));
+    Assert.AreEqual(1, mParams.GetValue<TJSONArray>('diagnostics').Count);
+    mItem := mParams.GetValue<TJSONArray>('diagnostics').Items[0] as TJSONObject;
+    Assert.AreEqual('bidi-control', mItem.GetValue<string>('code'));
+    Assert.AreEqual(1, mItem.GetValue<Integer>('severity'));
   finally
-    Params.Free;
+    mParams.Free;
   end;
 end;
 
 procedure TLspSyntaxDiagnosticsTests.RuleOffInSettingsAddsNothing;
 var
-  Params: TJSONObject;
-  Document: ITextDocument;
+  mParams: TJSONObject;
+  mDocument: ITextDocument;
 begin
-  Document := FStore.Open(Uri, 'objectpascal', 1, ValidCode + ' // ' + Char($202E));
-  Params := TLspSyntaxDiagnostics.BuildParams(Document, nil, '', RulesWith('{ "rules": { "bidi-control": "off" } }'));
+  mDocument := FStore.Open(cUri, 'objectpascal', 1, cValidCode + ' // ' + Char($202E));
+  mParams := TLspSyntaxDiagnostics.BuildParams(mDocument, nil, '', RulesWith('{ "rules": { "bidi-control": "off" } }'));
   try
-    Assert.AreEqual(0, Params.GetValue<TJSONArray>('diagnostics').Count);
+    Assert.AreEqual(0, mParams.GetValue<TJSONArray>('diagnostics').Count);
   finally
-    Params.Free;
+    mParams.Free;
   end;
 end;
 
 procedure TLspSyntaxDiagnosticsTests.BaselineHidesKnownRuleFindings;
 var
-  Params: TJSONObject;
-  Document: ITextDocument;
-  Rules: TRuleCheckContext;
-  Source: TBaselineSource;
+  mParams: TJSONObject;
+  mDocument: ITextDocument;
+  mRules: TRuleCheckContext;
+  mSource: TBaselineSource;
 begin
-  Document := FStore.Open(Uri, 'objectpascal', 1, ValidCode + ' // ' + Char($202E));
-  Rules := RulesWith('');
-  Source.Path := Rules.RelativePath;
-  Source.Text := Document.Text;
-  Source.Findings := TFileChecker.CheckText(Rules.Rules, Rules.Settings, Rules.RelativePath, Document.Text);
-  Rules.Baseline := TRuleBaseline.FromJson(TRuleBaseline.Build([Source]));
-  Params := TLspSyntaxDiagnostics.BuildParams(Document, nil, '', Rules);
+  mDocument := FStore.Open(cUri, 'objectpascal', 1, cValidCode + ' // ' + Char($202E));
+  mRules := RulesWith('');
+  mSource.Path := mRules.RelativePath;
+  mSource.Text := mDocument.Text;
+  mSource.Findings := TFileChecker.CheckText(mRules.Rules, mRules.Settings, mRules.RelativePath, mDocument.Text);
+  mRules.Baseline := TRuleBaseline.FromJson(TRuleBaseline.Build([mSource]));
+  mParams := TLspSyntaxDiagnostics.BuildParams(mDocument, nil, '', mRules);
   try
-    Assert.AreEqual(0, Params.GetValue<TJSONArray>('diagnostics').Count);
+    Assert.AreEqual(0, mParams.GetValue<TJSONArray>('diagnostics').Count);
   finally
-    Params.Free;
+    mParams.Free;
   end;
 end;
 
 procedure TLspSyntaxDiagnosticsTests.MapsRuleSeverityAndConfidence;
 var
-  Finding: TRuleFinding;
-  Item: TJSONObject;
+  mFinding: TRuleFinding;
+  mItem: TJSONObject;
 begin
-  Finding := Default(TRuleFinding);
-  Finding.RuleId := 'x';
-  Finding.Message := 'Meldung';
-  Finding.Severity := TRuleSeverity.Information;
-  Finding.Confidence := TRuleConfidence.Medium;
-  Item := TLspDiagnosticItems.FindingToJson(Finding);
+  mFinding := Default(TRuleFinding);
+  mFinding.RuleId := 'x';
+  mFinding.Message := 'Meldung';
+  mFinding.Severity := TRuleSeverity.Information;
+  mFinding.Confidence := TRuleConfidence.Medium;
+  mItem := TLspDiagnosticItems.FindingToJson(mFinding);
   try
-    Assert.AreEqual(3, Item.GetValue<Integer>('severity'));
+    Assert.AreEqual(3, mItem.GetValue<Integer>('severity'));
     // Konfidenz als eigenes Feld, nicht im Meldungstext (#144).
-    Assert.AreEqual('Meldung', Item.GetValue<string>('message'));
-    Assert.AreEqual('medium', Item.GetValue<string>('data.confidence'));
-    Assert.AreEqual(cRuleDocumentationBaseUri + Finding.RuleId, Item.GetValue<string>('codeDescription.href'));
+    Assert.AreEqual('Meldung', mItem.GetValue<string>('message'));
+    Assert.AreEqual('medium', mItem.GetValue<string>('data.confidence'));
+    Assert.AreEqual(cRuleDocumentationBaseUri + mFinding.RuleId, mItem.GetValue<string>('codeDescription.href'));
   finally
-    Item.Free;
+    mItem.Free;
   end;
 end;
 
 procedure TLspSyntaxDiagnosticsTests.RelatedPlacesBecomeRelatedInformation;
 var
-  Finding: TRuleFinding;
-  Related: TRuleRelated;
-  Item: TJSONObject;
-  Items: TJSONArray;
+  mFinding: TRuleFinding;
+  mRelated: TRuleRelated;
+  mItem: TJSONObject;
+  mItems: TJSONArray;
 begin
   // Unit-Zyklus (#896): jede Unit des Pfads mit ihrem uses-Eintrag als relatedInformation.
-  Finding := Default(TRuleFinding);
-  Finding.RuleId := 'uses-cycle';
-  Finding.Message := 'Zirkuläre Unit-Referenz: C → A → C';
-  Related.FileName := 'C:\P\A.pas';
-  Related.Range := TTextRange.Create(3, 2, 3, 3);
-  Related.Message := 'C';
-  Finding.Related := [Related];
-  Item := TLspDiagnosticItems.FindingToJson(Finding);
+  mFinding := Default(TRuleFinding);
+  mFinding.RuleId := 'uses-cycle';
+  mFinding.Message := 'Zirkuläre Unit-Referenz: C → A → C';
+  mRelated.FileName := 'C:\P\A.pas';
+  mRelated.Range := TTextRange.Create(3, 2, 3, 3);
+  mRelated.Message := 'C';
+  mFinding.Related := [mRelated];
+  mItem := TLspDiagnosticItems.FindingToJson(mFinding);
   try
-    Items := Item.GetValue('relatedInformation') as TJSONArray;
-    Assert.AreEqual(1, Items.Count);
-    Assert.AreEqual('C', (Items.Items[0] as TJSONObject).GetValue('message').Value);
-    Assert.AreEqual(3, (Items.Items[0] as TJSONObject).GetValue<Integer>('location.range.start.line'));
-    Assert.AreEqual(2, (Items.Items[0] as TJSONObject).GetValue<Integer>('location.range.start.character'));
-    Assert.IsTrue(EndsText('A.pas', (Items.Items[0] as TJSONObject).GetValue<string>('location.uri')));
+    mItems := mItem.GetValue('relatedInformation') as TJSONArray;
+    Assert.AreEqual(1, mItems.Count);
+    Assert.AreEqual('C', (mItems.Items[0] as TJSONObject).GetValue('message').Value);
+    Assert.AreEqual(3, (mItems.Items[0] as TJSONObject).GetValue<Integer>('location.range.start.line'));
+    Assert.AreEqual(2, (mItems.Items[0] as TJSONObject).GetValue<Integer>('location.range.start.character'));
+    Assert.IsTrue(EndsText('A.pas', (mItems.Items[0] as TJSONObject).GetValue<string>('location.uri')));
   finally
-    Item.Free;
+    mItem.Free;
   end;
   // Ohne weitere Stellen kein Feld.
-  Finding.Related := nil;
-  Item := TLspDiagnosticItems.FindingToJson(Finding);
+  mFinding.Related := nil;
+  mItem := TLspDiagnosticItems.FindingToJson(mFinding);
   try
-    Assert.IsNull(Item.FindValue('relatedInformation'));
+    Assert.IsNull(mItem.FindValue('relatedInformation'));
   finally
-    Item.Free;
+    mItem.Free;
   end;
 end;
 
 procedure TLspSyntaxDiagnosticsTests.DataCarriesGroupCategoryAndFixTitle;
 var
-  Finding: TRuleFinding;
-  Item: TJSONObject;
+  mFinding: TRuleFinding;
+  mItem: TJSONObject;
 begin
   // Fenster „Atlas-Prüfung“ und Befund-Hover (#909) brauchen Gruppe, Kategorie und Korrekturtitel.
-  Finding := Default(TRuleFinding);
-  Finding.RuleId := 'empty-except';
-  Finding.Message := 'Leerer except-Block';
-  Finding.Severity := TRuleSeverity.Warning;
-  Finding.Fixes := [TRuleFix.Create('Ausnahme protokollieren', nil)];
-  Item := TLspDiagnosticItems.FindingToJson(Finding);
+  mFinding := Default(TRuleFinding);
+  mFinding.RuleId := 'empty-except';
+  mFinding.Message := 'Leerer except-Block';
+  mFinding.Severity := TRuleSeverity.Warning;
+  mFinding.Fixes := [TRuleFix.Create('Ausnahme protokollieren', nil)];
+  mItem := TLspDiagnosticItems.FindingToJson(mFinding);
   try
-    Assert.AreEqual('exceptions', Item.GetValue<string>('data.group'));
-    Assert.AreEqual('code-smell', Item.GetValue<string>('data.category'));
-    Assert.AreEqual('Ausnahme protokollieren', Item.GetValue<string>('data.fix'));
+    Assert.AreEqual('exceptions', mItem.GetValue<string>('data.group'));
+    Assert.AreEqual('code-smell', mItem.GetValue<string>('data.category'));
+    Assert.AreEqual('Ausnahme protokollieren', mItem.GetValue<string>('data.fix'));
     // Ohne Compilercodes kein Feld.
-    Assert.IsNull((Item.GetValue('data') as TJSONObject).FindValue('compilerCodes'));
+    Assert.IsNull((mItem.GetValue('data') as TJSONObject).FindValue('compilerCodes'));
   finally
-    Item.Free;
+    mItem.Free;
   end;
   // Gruppe „Compiler vorab“ (#1024): Codes für den Abgleich mit dcc im Plugin.
-  Finding.RuleId := 'argument-count-mismatch';
-  Finding.Fixes := nil;
-  Item := TLspDiagnosticItems.FindingToJson(Finding);
+  mFinding.RuleId := 'argument-count-mismatch';
+  mFinding.Fixes := nil;
+  mItem := TLspDiagnosticItems.FindingToJson(mFinding);
   try
-    Assert.AreEqual('compiler', Item.GetValue<string>('data.group'));
-    Assert.AreEqual('["E2034","E2035"]', (Item.GetValue('data') as TJSONObject).GetValue('compilerCodes').ToJSON);
+    Assert.AreEqual('compiler', mItem.GetValue<string>('data.group'));
+    Assert.AreEqual('["E2034","E2035"]', (mItem.GetValue('data') as TJSONObject).GetValue('compilerCodes').ToJSON);
     // Ohne Zusatz kein data.details.
-    Assert.IsNull(Item.FindValue('data.details'));
+    Assert.IsNull(mItem.FindValue('data.details'));
   finally
-    Item.Free;
+    mItem.Free;
   end;
   // Zusatz für den Befund-Hover (#1102).
-  Finding.Details := 'Durchsucht: 3 Dateien der Projektgruppe';
-  Item := TLspDiagnosticItems.FindingToJson(Finding);
+  mFinding.Details := 'Durchsucht: 3 Dateien der Projektgruppe';
+  mItem := TLspDiagnosticItems.FindingToJson(mFinding);
   try
-    Assert.AreEqual('Durchsucht: 3 Dateien der Projektgruppe', Item.GetValue<string>('data.details'));
+    Assert.AreEqual('Durchsucht: 3 Dateien der Projektgruppe', mItem.GetValue<string>('data.details'));
   finally
-    Item.Free;
+    mItem.Free;
   end;
 end;
 
 procedure TLspSyntaxDiagnosticsTests.DataSkipsAlternativeFixesAndUnknownRules;
 var
-  Finding: TRuleFinding;
-  First, Second: TRuleFix;
-  Item: TJSONObject;
-  Data: TJSONObject;
+  mFinding: TRuleFinding;
+  mFirst, mSecond: TRuleFix;
+  mItem: TJSONObject;
+  mData: TJSONObject;
 begin
-  Finding := Default(TRuleFinding);
-  Finding.RuleId := 'gibt-es-nicht';
-  Finding.Message := 'Meldung';
-  First := TRuleFix.Create('Variante A', nil);
-  First.Alternative := True;
-  Second := TRuleFix.Create('Bevorzugt', nil);
-  Finding.Fixes := [Second, First];
-  Item := TLspDiagnosticItems.FindingToJson(Finding);
+  mFinding := Default(TRuleFinding);
+  mFinding.RuleId := 'gibt-es-nicht';
+  mFinding.Message := 'Meldung';
+  mFirst := TRuleFix.Create('Variante A', nil);
+  mFirst.Alternative := True;
+  mSecond := TRuleFix.Create('Bevorzugt', nil);
+  mFinding.Fixes := [mSecond, mFirst];
+  mItem := TLspDiagnosticItems.FindingToJson(mFinding);
   try
-    Data := Item.GetValue('data') as TJSONObject;
-    Assert.IsNull(Data.FindValue('group'));
-    Assert.IsNull(Data.FindValue('category'));
-    Assert.AreEqual('Bevorzugt', Data.GetValue<string>('fix'));
+    mData := mItem.GetValue('data') as TJSONObject;
+    Assert.IsNull(mData.FindValue('group'));
+    Assert.IsNull(mData.FindValue('category'));
+    Assert.AreEqual('Bevorzugt', mData.GetValue<string>('fix'));
   finally
-    Item.Free;
+    mItem.Free;
   end;
   // Steht eine Alternative vorn, gibt es wie bei den Code-Aktionen keine bevorzugte Korrektur.
-  Finding.Fixes := [First, Second];
-  Item := TLspDiagnosticItems.FindingToJson(Finding);
+  mFinding.Fixes := [mFirst, mSecond];
+  mItem := TLspDiagnosticItems.FindingToJson(mFinding);
   try
-    Data := Item.GetValue('data') as TJSONObject;
-    Assert.IsNull(Data.FindValue('fix'));
+    mData := mItem.GetValue('data') as TJSONObject;
+    Assert.IsNull(mData.FindValue('fix'));
   finally
-    Item.Free;
+    mItem.Free;
   end;
 end;
 
 procedure TLspSyntaxDiagnosticsTests.AddsInactiveRangesAsUnnecessaryHints;
 var
-  Params: TJSONObject;
-  Document: ITextDocument;
-  Item: TJSONValue;
-  Input: TSyntaxDiagnosticsInput;
+  mParams: TJSONObject;
+  mDocument: ITextDocument;
+  mItem: TJSONValue;
+  mInput: TSyntaxDiagnosticsInput;
 begin
-  Document := FStore.Open(Uri, 'objectpascal', 1, ValidCode);
-  Input := Default(TSyntaxDiagnosticsInput);
-  Input.Inactive := TLspInactiveRegions.FromRanges(
+  mDocument := FStore.Open(cUri, 'objectpascal', 1, cValidCode);
+  mInput := Default(TSyntaxDiagnosticsInput);
+  mInput.Inactive := TLspInactiveRegions.FromRanges(
     [TTextRange.Create(TTextPosition.Create(1, 0), TTextPosition.Create(2, 0))]);
-  Params := TLspSyntaxDiagnostics.BuildParams(Document, Input);
+  mParams := TLspSyntaxDiagnostics.BuildParams(mDocument, mInput);
   try
-    Assert.AreEqual(1, Params.GetValue<TJSONArray>('diagnostics').Count);
-    Item := Params.GetValue<TJSONArray>('diagnostics').Items[0];
-    Assert.AreEqual(4, Item.GetValue<Integer>('severity'));
-    Assert.AreEqual(1, Item.GetValue<Integer>('tags[0]'));
-    Assert.AreEqual(1, Item.GetValue<Integer>('range.start.line'));
+    Assert.AreEqual(1, mParams.GetValue<TJSONArray>('diagnostics').Count);
+    mItem := mParams.GetValue<TJSONArray>('diagnostics').Items[0];
+    Assert.AreEqual(4, mItem.GetValue<Integer>('severity'));
+    Assert.AreEqual(1, mItem.GetValue<Integer>('tags[0]'));
+    Assert.AreEqual(1, mItem.GetValue<Integer>('range.start.line'));
   finally
-    Params.Free;
+    mParams.Free;
   end;
 end;
 
 procedure TLspSyntaxDiagnosticsTests.FindsInactiveRanges;
 const
-  Code =
+  cCode =
     'unit U;'#10 +
     'interface'#10 +
     '{$IFDEF WIN64}'#10 +
@@ -639,20 +639,20 @@ const
     'implementation'#10 +
     'end.';
 var
-  Ranges: TArray<TTextRange>;
+  mRanges: TArray<TTextRange>;
 begin
-  Ranges := TLspInactiveRegions.Ranges(Code, ['WIN64']);
-  Assert.AreEqual(1, Integer(Length(Ranges)));
-  Assert.AreEqual(4, Ranges[0].StartPos.Line);
-  Assert.AreEqual(6, Ranges[0].EndPos.Line);
-  Ranges := TLspInactiveRegions.Ranges(Code, nil);
-  Assert.AreEqual(1, Integer(Length(Ranges)));
-  Assert.AreEqual(2, Ranges[0].StartPos.Line);
+  mRanges := TLspInactiveRegions.Ranges(cCode, ['WIN64']);
+  Assert.AreEqual(1, Integer(Length(mRanges)));
+  Assert.AreEqual(4, mRanges[0].StartPos.Line);
+  Assert.AreEqual(6, mRanges[0].EndPos.Line);
+  mRanges := TLspInactiveRegions.Ranges(cCode, nil);
+  Assert.AreEqual(1, Integer(Length(mRanges)));
+  Assert.AreEqual(2, mRanges[0].StartPos.Line);
 end;
 
 procedure TLspSyntaxDiagnosticsTests.InactiveRegionsNameTheirCondition;
 const
-  Code =
+  cCode =
     'unit U;'#10 +
     '{$IFDEF WIN64}'#10 +
     'const A = 1;'#10 +
@@ -662,82 +662,82 @@ const
     '{$IFDEF DEBUG}{$IFDEF WIN64} const B = 1; {$ENDIF}{$ENDIF}'#10 +
     'end.';
 var
-  Regions: TArray<TLspInactiveRegion>;
+  mRegions: TArray<TLspInactiveRegion>;
 begin
-  Regions := TLspInactiveRegions.Regions(Code, ['WIN64']);
-  Assert.AreEqual(2, Integer(Length(Regions)));
-  Assert.AreEqual('not WIN64', Regions[0].Condition);
-  Assert.AreEqual('DEBUG', Regions[1].Condition);
-  Regions := TLspInactiveRegions.Regions(Code, ['DEBUG']);
-  Assert.AreEqual(2, Integer(Length(Regions)));
-  Assert.AreEqual('WIN64', Regions[0].Condition);
+  mRegions := TLspInactiveRegions.Regions(cCode, ['WIN64']);
+  Assert.AreEqual(2, Integer(Length(mRegions)));
+  Assert.AreEqual('not WIN64', mRegions[0].Condition);
+  Assert.AreEqual('DEBUG', mRegions[1].Condition);
+  mRegions := TLspInactiveRegions.Regions(cCode, ['DEBUG']);
+  Assert.AreEqual(2, Integer(Length(mRegions)));
+  Assert.AreEqual('WIN64', mRegions[0].Condition);
   // Zweig innerhalb einer Zeile, verschachtelt (#615).
-  Assert.AreEqual('DEBUG und WIN64', Regions[1].Condition);
-  Assert.AreEqual(6, Regions[1].Range.StartPos.Line);
-  Assert.AreEqual(6, Regions[1].Range.EndPos.Line);
-  Assert.AreEqual(28, Regions[1].Range.StartPos.Character);
+  Assert.AreEqual('DEBUG und WIN64', mRegions[1].Condition);
+  Assert.AreEqual(6, mRegions[1].Range.StartPos.Line);
+  Assert.AreEqual(6, mRegions[1].Range.EndPos.Line);
+  Assert.AreEqual(28, mRegions[1].Range.StartPos.Character);
 end;
 
 procedure TLspSyntaxDiagnosticsTests.InactiveHintNamesConditionAndTarget;
 const
-  Code = 'unit U;'#10'interface'#10'{$IFDEF WIN64}'#10'const A = 1;'#10'{$ENDIF}'#10'implementation'#10'end.';
+  cCode = 'unit U;'#10'interface'#10'{$IFDEF WIN64}'#10'const A = 1;'#10'{$ENDIF}'#10'implementation'#10'end.';
 var
-  Diagnostics: TLspSyntaxDiagnostics;
-  Providers: TSyntaxDiagnosticsProviders;
-  Document: ITextDocument;
-  Params: TJSONObject;
-  Item: TJSONValue;
+  mDiagnostics: TLspSyntaxDiagnostics;
+  mProviders: TSyntaxDiagnosticsProviders;
+  mDocument: ITextDocument;
+  mParams: TJSONObject;
+  mItem: TJSONValue;
 begin
   Assert.AreEqual(TLspDiagnosticItems.InactiveMessage, TLspDiagnosticItems.InactiveMessageOf('', 'Win32', 'Debug'));
   Assert.AreEqual('Inaktiv: Bedingung DEBUG nicht erfüllt', TLspDiagnosticItems.InactiveMessageOf('DEBUG', '', ''));
   Assert.AreEqual('Inaktiv: Bedingung DEBUG nicht erfüllt (Zielplattform Win64 · ?)',
     TLspDiagnosticItems.InactiveMessageOf('DEBUG', 'Win64', ''));
-  Providers := Default(TSyntaxDiagnosticsProviders);
-  Providers.Defines :=
+  mProviders := Default(TSyntaxDiagnosticsProviders);
+  mProviders.Defines :=
     function(const AUri: string; out ADefines: TArray<string>): Boolean
     begin
       ADefines := ['WIN32'];
       Result := True;
     end;
-  Providers.BuildTarget :=
+  mProviders.BuildTarget :=
     function(const AUri: string; out APlatform, AConfig: string): Boolean
     begin
       APlatform := 'Win32';
       AConfig := 'Debug';
       Result := True;
     end;
-  Diagnostics := TLspSyntaxDiagnostics.Create(FStore, FTransport, Providers, 0);
+  mDiagnostics := TLspSyntaxDiagnostics.Create(FStore, FTransport, mProviders, 0);
   try
-    Document := FStore.Open(Uri, 'objectpascal', 1, Code);
-    Params := Diagnostics.Compute(Document);
+    mDocument := FStore.Open(cUri, 'objectpascal', 1, cCode);
+    mParams := mDiagnostics.Compute(mDocument);
     try
-      Assert.AreEqual(1, Params.GetValue<TJSONArray>('diagnostics').Count);
-      Item := Params.GetValue<TJSONArray>('diagnostics').Items[0];
-      Assert.AreEqual(1, Item.GetValue<TJSONArray>('tags').Count);
+      Assert.AreEqual(1, mParams.GetValue<TJSONArray>('diagnostics').Count);
+      mItem := mParams.GetValue<TJSONArray>('diagnostics').Items[0];
+      Assert.AreEqual(1, mItem.GetValue<TJSONArray>('tags').Count);
       Assert.AreEqual('Inaktiv: Bedingung WIN64 nicht erfüllt (Zielplattform Win32 · Debug)',
-        Item.GetValue<string>('message'));
-      Assert.AreEqual('WIN64', Item.GetValue<string>('data.inactive.condition'));
-      Assert.AreEqual('Win32', Item.GetValue<string>('data.inactive.platform'));
-      Assert.AreEqual('Debug', Item.GetValue<string>('data.inactive.config'));
+        mItem.GetValue<string>('message'));
+      Assert.AreEqual('WIN64', mItem.GetValue<string>('data.inactive.condition'));
+      Assert.AreEqual('Win32', mItem.GetValue<string>('data.inactive.platform'));
+      Assert.AreEqual('Debug', mItem.GetValue<string>('data.inactive.config'));
     finally
-      Params.Free;
+      mParams.Free;
     end;
   finally
-    Diagnostics.Free;
+    mDiagnostics.Free;
   end;
 end;
 
 procedure TLspSyntaxDiagnosticsTests.ComputeReadsIncludeDefines;
 const
-  Code = 'unit U;'#10'interface'#10'{$I defs.inc}'#10'{$IFDEF FOO} uses A; {$ENDIF}'#10 +
+  cCode = 'unit U;'#10'interface'#10'{$I defs.inc}'#10'{$IFDEF FOO} uses A; {$ENDIF}'#10 +
     '{$IFNDEF FOO} uses B; uses C; {$ENDIF}'#10'{$I fehlt.inc}'#10'implementation'#10'end.';
 var
-  Diagnostics: TLspSyntaxDiagnostics;
-  Providers: TSyntaxDiagnosticsProviders;
-  Document: ITextDocument;
-  Params: TJSONObject;
-  Item: TJSONValue;
-  Messages: string;
+  mDiagnostics: TLspSyntaxDiagnostics;
+  mProviders: TSyntaxDiagnosticsProviders;
+  mDocument: ITextDocument;
+  mParams: TJSONObject;
+  mItem: TJSONValue;
+  mMessages: string;
 begin
   TSyntaxTreeCache.SetIncludeProvider(
     function(const AUri: string): TIncludeResolver
@@ -750,122 +750,122 @@ begin
           AText := '{$DEFINE FOO}';
         end;
     end);
-  Providers := Default(TSyntaxDiagnosticsProviders);
-  Providers.Defines :=
+  mProviders := Default(TSyntaxDiagnosticsProviders);
+  mProviders.Defines :=
     function(const AUri: string; out ADefines: TArray<string>): Boolean
     begin
       ADefines := ['WIN32'];
       Result := True;
     end;
-  Diagnostics := TLspSyntaxDiagnostics.Create(FStore, FTransport, Providers, 0);
+  mDiagnostics := TLspSyntaxDiagnostics.Create(FStore, FTransport, mProviders, 0);
   try
-    Document := FStore.Open(Uri, 'objectpascal', 1, Code);
-    Params := Diagnostics.Compute(Document);
+    mDocument := FStore.Open(cUri, 'objectpascal', 1, cCode);
+    mParams := mDiagnostics.Compute(mDocument);
     try
-      Messages := '';
-      for Item in Params.GetValue<TJSONArray>('diagnostics') do
+      mMessages := '';
+      for mItem in mParams.GetValue<TJSONArray>('diagnostics') do
       begin
-        Messages := Messages + Item.GetValue<string>('message') + '|';
+        mMessages := mMessages + mItem.GetValue<string>('message') + '|';
       end;
       // Kein Syntaxfehler: Der {$IFNDEF FOO}-Zweig ist abgeblendet, fehlt.inc ein Hinweis.
       Assert.AreEqual('Inaktiv: Bedingung not FOO nicht erfüllt|Include-Datei "fehlt.inc" nicht gefunden|',
-        Messages);
+        mMessages);
     finally
-      Params.Free;
+      mParams.Free;
     end;
   finally
-    Diagnostics.Free;
+    mDiagnostics.Free;
     TSyntaxTreeCache.SetIncludeProvider(nil);
   end;
 end;
 
 procedure TLspSyntaxDiagnosticsTests.AddsCompilerMessagesToOpenDocuments;
 var
-  Diagnostics: TLspSyntaxDiagnostics;
-  Providers: TSyntaxDiagnosticsProviders;
-  Message: TJSONObject;
-  Items: TJSONArray;
+  mDiagnostics: TLspSyntaxDiagnostics;
+  mProviders: TSyntaxDiagnosticsProviders;
+  mMessage: TJSONObject;
+  mItems: TJSONArray;
 begin
-  Providers := Default(TSyntaxDiagnosticsProviders);
-  Providers.CompilerMessages :=
+  mProviders := Default(TSyntaxDiagnosticsProviders);
+  mProviders.CompilerMessages :=
     function(const AFileName: string): TArray<TCompilerMessage>
     begin
       Result := [CompilerMessage(2, 2, TCompilerSeverity.Error), CompilerMessage(1, -1, TCompilerSeverity.Hint)];
     end;
-  Diagnostics := TLspSyntaxDiagnostics.Create(FStore, FTransport, Providers, 0);
+  mDiagnostics := TLspSyntaxDiagnostics.Create(FStore, FTransport, mProviders, 0);
   try
-    Diagnostics.Attach;
-    FStore.Open(Uri, 'objectpascal', 1, ValidCode);
-    Message := FCapture.MessageAt(0);
+    mDiagnostics.Attach;
+    FStore.Open(cUri, 'objectpascal', 1, cValidCode);
+    mMessage := FCapture.MessageAt(0);
     try
-      Items := Message.GetValue<TJSONArray>('params.diagnostics');
-      Assert.AreEqual(2, Integer(Items.Count));
+      mItems := mMessage.GetValue<TJSONArray>('params.diagnostics');
+      Assert.AreEqual(2, Integer(mItems.Count));
       // Spalte 2 in "  A := 1;": der Bezeichner A.
-      Assert.AreEqual(2, Items.Items[0].GetValue<Integer>('range.start.line'));
-      Assert.AreEqual(2, Items.Items[0].GetValue<Integer>('range.start.character'));
-      Assert.AreEqual(3, Items.Items[0].GetValue<Integer>('range.end.character'));
-      Assert.AreEqual('E2003', Items.Items[0].GetValue<string>('code'));
-      Assert.AreEqual('dcc', Items.Items[0].GetValue<string>('source'));
-      Assert.AreEqual(1, Items.Items[0].GetValue<Integer>('severity'));
+      Assert.AreEqual(2, mItems.Items[0].GetValue<Integer>('range.start.line'));
+      Assert.AreEqual(2, mItems.Items[0].GetValue<Integer>('range.start.character'));
+      Assert.AreEqual(3, mItems.Items[0].GetValue<Integer>('range.end.character'));
+      Assert.AreEqual('E2003', mItems.Items[0].GetValue<string>('code'));
+      Assert.AreEqual('dcc', mItems.Items[0].GetValue<string>('source'));
+      Assert.AreEqual(1, mItems.Items[0].GetValue<Integer>('severity'));
       // Ohne Spalte die ganze Zeile "begin".
-      Assert.AreEqual(0, Items.Items[1].GetValue<Integer>('range.start.character'));
-      Assert.AreEqual(5, Items.Items[1].GetValue<Integer>('range.end.character'));
-      Assert.AreEqual(4, Items.Items[1].GetValue<Integer>('severity'));
+      Assert.AreEqual(0, mItems.Items[1].GetValue<Integer>('range.start.character'));
+      Assert.AreEqual(5, mItems.Items[1].GetValue<Integer>('range.end.character'));
+      Assert.AreEqual(4, mItems.Items[1].GetValue<Integer>('severity'));
     finally
-      Message.Free;
+      mMessage.Free;
     end;
   finally
-    Diagnostics.Free;
+    mDiagnostics.Free;
   end;
 end;
 
 procedure TLspSyntaxDiagnosticsTests.PublishesCompilerMessagesForClosedFiles;
 var
-  Diagnostics: TLspSyntaxDiagnostics;
-  Providers: TSyntaxDiagnosticsProviders;
-  Message: TJSONObject;
-  Items: TJSONArray;
+  mDiagnostics: TLspSyntaxDiagnostics;
+  mProviders: TSyntaxDiagnosticsProviders;
+  mMessage: TJSONObject;
+  mItems: TJSONArray;
 begin
-  Providers := Default(TSyntaxDiagnosticsProviders);
-  Providers.CompilerMessages :=
+  mProviders := Default(TSyntaxDiagnosticsProviders);
+  mProviders.CompilerMessages :=
     function(const AFileName: string): TArray<TCompilerMessage>
     begin
       Result := [CompilerMessage(4, -1, TCompilerSeverity.Warning)];
     end;
-  Diagnostics := TLspSyntaxDiagnostics.Create(FStore, FTransport, Providers, 0);
+  mDiagnostics := TLspSyntaxDiagnostics.Create(FStore, FTransport, mProviders, 0);
   try
-    Diagnostics.Attach;
-    Diagnostics.RefreshFiles(['C:\Projekt\B.pas']);
+    mDiagnostics.Attach;
+    mDiagnostics.RefreshFiles(['C:\Projekt\B.pas']);
     Assert.AreEqual(1, Integer(FCapture.Count));
-    Message := FCapture.MessageAt(0);
+    mMessage := FCapture.MessageAt(0);
     try
-      Assert.IsTrue(SameText('C:\Projekt\B.pas', TDocumentUris.ToPath(Message.GetValue<string>('params.uri'))));
-      Items := Message.GetValue<TJSONArray>('params.diagnostics');
-      Assert.AreEqual(1, Integer(Items.Count));
+      Assert.IsTrue(SameText('C:\Projekt\B.pas', TDocumentUris.ToPath(mMessage.GetValue<string>('params.uri'))));
+      mItems := mMessage.GetValue<TJSONArray>('params.diagnostics');
+      Assert.AreEqual(1, Integer(mItems.Count));
       // Ohne Zeilentext: die ganze Zeile bis zum Anfang der nächsten.
-      Assert.AreEqual(4, Items.Items[0].GetValue<Integer>('range.start.line'));
-      Assert.AreEqual(5, Items.Items[0].GetValue<Integer>('range.end.line'));
-      Assert.AreEqual(2, Items.Items[0].GetValue<Integer>('severity'));
+      Assert.AreEqual(4, mItems.Items[0].GetValue<Integer>('range.start.line'));
+      Assert.AreEqual(5, mItems.Items[0].GetValue<Integer>('range.end.line'));
+      Assert.AreEqual(2, mItems.Items[0].GetValue<Integer>('severity'));
     finally
-      Message.Free;
+      mMessage.Free;
     end;
   finally
-    Diagnostics.Free;
+    mDiagnostics.Free;
   end;
 end;
 
 procedure TLspSyntaxDiagnosticsTests.ReportsUnusedUsesUnlessSyntaxErrors;
 const
-  Code = 'unit U;'#10'interface'#10'uses'#10'  Vcl.Grids, Units.Reg;'#10'implementation'#10'end.';
+  cCode = 'unit U;'#10'interface'#10'uses'#10'  Vcl.Grids, Units.Reg;'#10'implementation'#10'end.';
 var
-  Diagnostics: TLspSyntaxDiagnostics;
-  Providers: TSyntaxDiagnosticsProviders;
-  Document: ITextDocument;
-  Params: TJSONObject;
-  Items: TJSONArray;
+  mDiagnostics: TLspSyntaxDiagnostics;
+  mProviders: TSyntaxDiagnosticsProviders;
+  mDocument: ITextDocument;
+  mParams: TJSONObject;
+  mItems: TJSONArray;
 begin
-  Providers := Default(TSyntaxDiagnosticsProviders);
-  Providers.UsesContext :=
+  mProviders := Default(TSyntaxDiagnosticsProviders);
+  mProviders.UsesContext :=
     function(const AUri: string; out AContext: TUsesContext): Boolean
     begin
       AContext := Default(TUsesContext);
@@ -879,40 +879,40 @@ begin
         end;
       Result := True;
     end;
-  Diagnostics := TLspSyntaxDiagnostics.Create(FStore, FTransport, Providers, 0);
+  mDiagnostics := TLspSyntaxDiagnostics.Create(FStore, FTransport, mProviders, 0);
   try
-    Document := FStore.Open(Uri, 'objectpascal', 1, Code);
-    Params := Diagnostics.Compute(Document);
+    mDocument := FStore.Open(cUri, 'objectpascal', 1, cCode);
+    mParams := mDiagnostics.Compute(mDocument);
     try
-      Items := Params.GetValue<TJSONArray>('diagnostics');
-      Assert.AreEqual(2, Integer(Items.Count));
-      Assert.AreEqual('Aus Vcl.Grids wird nichts verwendet', Items.Items[0].GetValue<string>('message'));
-      Assert.AreEqual(1, Items.Items[0].GetValue<TJSONArray>('tags').Count);
-      Assert.AreEqual(4, Items.Items[0].GetValue<Integer>('severity'));
-      Assert.AreEqual('Vcl.Grids', Items.Items[0].GetValue<string>('data.uses.unit'));
-      Assert.AreEqual('unused', Items.Items[0].GetValue<string>('data.uses.state'));
-      Assert.AreEqual(3, Items.Items[0].GetValue<Integer>('range.start.line'));
-      Assert.AreEqual(2, Items.Items[0].GetValue<Integer>('range.start.character'));
-      Assert.AreEqual(11, Items.Items[0].GetValue<Integer>('range.end.character'));
+      mItems := mParams.GetValue<TJSONArray>('diagnostics');
+      Assert.AreEqual(2, Integer(mItems.Count));
+      Assert.AreEqual('Aus Vcl.Grids wird nichts verwendet', mItems.Items[0].GetValue<string>('message'));
+      Assert.AreEqual(1, mItems.Items[0].GetValue<TJSONArray>('tags').Count);
+      Assert.AreEqual(4, mItems.Items[0].GetValue<Integer>('severity'));
+      Assert.AreEqual('Vcl.Grids', mItems.Items[0].GetValue<string>('data.uses.unit'));
+      Assert.AreEqual('unused', mItems.Items[0].GetValue<string>('data.uses.state'));
+      Assert.AreEqual(3, mItems.Items[0].GetValue<Integer>('range.start.line'));
+      Assert.AreEqual(2, mItems.Items[0].GetValue<Integer>('range.start.character'));
+      Assert.AreEqual(11, mItems.Items[0].GetValue<Integer>('range.end.character'));
       Assert.AreEqual('Units.Reg wird wegen initialization nicht als ungenutzt gezeigt',
-        Items.Items[1].GetValue<string>('message'));
-      Assert.IsNull(TJSONObject(Items.Items[1]).GetValue('tags'));
-      Assert.AreEqual('initialization', Items.Items[1].GetValue<string>('data.uses.state'));
+        mItems.Items[1].GetValue<string>('message'));
+      Assert.IsNull(TJSONObject(mItems.Items[1]).GetValue('tags'));
+      Assert.AreEqual('initialization', mItems.Items[1].GetValue<string>('data.uses.state'));
     finally
-      Params.Free;
+      mParams.Free;
     end;
     // Syntaxfehler: keine uses-Hinweise, nur der Fehler.
-    Document := FStore.Change(Uri, 2, [TTextChange.Full(Code.Replace('implementation', 'implementation'#10'procedure'))]);
-    Params := Diagnostics.Compute(Document);
+    mDocument := FStore.Change(cUri, 2, [TTextChange.Full(cCode.Replace('implementation', 'implementation'#10'procedure'))]);
+    mParams := mDiagnostics.Compute(mDocument);
     try
-      Items := Params.GetValue<TJSONArray>('diagnostics');
-      Assert.IsTrue(Items.Count > 0);
-      Assert.AreEqual(0, Pos('uses', Params.ToJSON), Params.ToJSON);
+      mItems := mParams.GetValue<TJSONArray>('diagnostics');
+      Assert.IsTrue(mItems.Count > 0);
+      Assert.AreEqual(0, Pos('uses', mParams.ToJSON), mParams.ToJSON);
     finally
-      Params.Free;
+      mParams.Free;
     end;
   finally
-    Diagnostics.Free;
+    mDiagnostics.Free;
   end;
 end;
 
@@ -968,7 +968,7 @@ begin
   mProviders.Rules := EditorRules(AConfig);
   mDiagnostics := TLspSyntaxDiagnostics.Create(AStore, ATransport, mProviders, 0);
   try
-    mParams := mDiagnostics.Compute(AStore.Open(Uri, 'objectpascal', 1, ACode));
+    mParams := mDiagnostics.Compute(AStore.Open(cUri, 'objectpascal', 1, ACode));
     try
       for mItem in mParams.GetValue('diagnostics') as TJSONArray do
       begin
@@ -981,7 +981,7 @@ begin
     finally
       mParams.Free;
     end;
-    AStore.Close(Uri);
+    AStore.Close(cUri);
   finally
     mDiagnostics.Free;
   end;
@@ -989,37 +989,37 @@ end;
 
 procedure TLspSyntaxDiagnosticsTests.UnusedUsesFollowRule;
 const
-  Code = 'unit A;'#10'interface'#10'uses'#10'  Vcl.Grids;'#10'implementation'#10'end.';
-  Ignored = 'unit A;'#10'interface'#10'uses'#10'  // lsp-ignore: unused-uses'#10'  Vcl.Grids;'#10 +
+  cCode = 'unit A;'#10'interface'#10'uses'#10'  Vcl.Grids;'#10'implementation'#10'end.';
+  cIgnored = 'unit A;'#10'interface'#10'uses'#10'  // lsp-ignore: unused-uses'#10'  Vcl.Grids;'#10 +
     'implementation'#10'end.';
 begin
-  Assert.AreEqual('Aus Vcl.Grids wird nichts verwendet|', UsesDiagnostics(FStore, FTransport, Code, '{}'));
-  Assert.AreEqual('', UsesDiagnostics(FStore, FTransport, Code, '{"rules": {"unused-uses": "off"}}'));
-  Assert.AreEqual('', UsesDiagnostics(FStore, FTransport, Code, '{"rules": {"group:style": "off"}}'));
-  Assert.AreEqual('', UsesDiagnostics(FStore, FTransport, Code,
+  Assert.AreEqual('Aus Vcl.Grids wird nichts verwendet|', UsesDiagnostics(FStore, FTransport, cCode, '{}'));
+  Assert.AreEqual('', UsesDiagnostics(FStore, FTransport, cCode, '{"rules": {"unused-uses": "off"}}'));
+  Assert.AreEqual('', UsesDiagnostics(FStore, FTransport, cCode, '{"rules": {"group:style": "off"}}'));
+  Assert.AreEqual('', UsesDiagnostics(FStore, FTransport, cCode,
     '{"rules": {"unused-uses": {"severity": "hint", "exclude": ["A"]}}}'));
-  Assert.AreEqual('', UsesDiagnostics(FStore, FTransport, Code, '{"exclude": ["A.pas"]}'));
-  Assert.AreEqual('', UsesDiagnostics(FStore, FTransport, Ignored, '{}'));
+  Assert.AreEqual('', UsesDiagnostics(FStore, FTransport, cCode, '{"exclude": ["A.pas"]}'));
+  Assert.AreEqual('', UsesDiagnostics(FStore, FTransport, cIgnored, '{}'));
 end;
 
 procedure TLspSyntaxDiagnosticsTests.OnlyImplementationFollowsRule;
 const
-  Code = 'unit A;'#10'interface'#10'uses'#10'  Vcl.Grids;'#10'implementation'#10'var'#10'  G: TStringGrid;'#10'end.';
-  Ignored = 'unit A;'#10'interface'#10'uses'#10'  // lsp-ignore: uses-only-in-implementation'#10'  Vcl.Grids;'#10 +
+  cCode = 'unit A;'#10'interface'#10'uses'#10'  Vcl.Grids;'#10'implementation'#10'var'#10'  G: TStringGrid;'#10'end.';
+  cIgnored = 'unit A;'#10'interface'#10'uses'#10'  // lsp-ignore: uses-only-in-implementation'#10'  Vcl.Grids;'#10 +
     'implementation'#10'var'#10'  G: TStringGrid;'#10'end.';
 begin
   // Der Hinweis ist die Darstellung von uses-only-in-implementation (#1136), unabhängig von unused-uses.
-  Assert.AreEqual('Vcl.Grids wird nur in der implementation gebraucht|', UsesDiagnostics(FStore, FTransport, Code,
+  Assert.AreEqual('Vcl.Grids wird nur in der implementation gebraucht|', UsesDiagnostics(FStore, FTransport, cCode,
     '{}'));
-  Assert.AreEqual('Vcl.Grids wird nur in der implementation gebraucht|', UsesDiagnostics(FStore, FTransport, Code,
+  Assert.AreEqual('Vcl.Grids wird nur in der implementation gebraucht|', UsesDiagnostics(FStore, FTransport, cCode,
     '{"rules": {"unused-uses": "off"}}'));
-  Assert.AreEqual('', UsesDiagnostics(FStore, FTransport, Code, '{"rules": {"uses-only-in-implementation": "off"}}'));
-  Assert.AreEqual('', UsesDiagnostics(FStore, FTransport, Code,
+  Assert.AreEqual('', UsesDiagnostics(FStore, FTransport, cCode, '{"rules": {"uses-only-in-implementation": "off"}}'));
+  Assert.AreEqual('', UsesDiagnostics(FStore, FTransport, cCode,
     '{"rules": {"uses-only-in-implementation": {"severity": "hint", "exclude": ["A"]}}}'));
-  Assert.AreEqual('', UsesDiagnostics(FStore, FTransport, Ignored, '{}'));
+  Assert.AreEqual('', UsesDiagnostics(FStore, FTransport, cIgnored, '{}'));
   // Das lsp-ignore der einen Regel verbirgt nicht den Hinweis der anderen.
   Assert.AreEqual('Vcl.Grids wird nur in der implementation gebraucht|', UsesDiagnostics(FStore, FTransport,
-    Ignored.Replace('uses-only-in-implementation', 'unused-uses'), '{}'));
+    cIgnored.Replace('uses-only-in-implementation', 'unused-uses'), '{}'));
 end;
 
 initialization

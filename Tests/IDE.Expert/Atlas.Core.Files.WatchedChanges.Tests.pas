@@ -29,60 +29,60 @@ uses
 
 function Text(const AChanges: TArray<TAtlasFileChange>): string;
 const
-  Names: array[TAtlasFileChangeKind] of string = ('neu', 'geändert', 'gelöscht');
+  cNames: array[TAtlasFileChangeKind] of string = ('neu', 'geändert', 'gelöscht');
 var
-  Change: TAtlasFileChange;
+  mChange: TAtlasFileChange;
 begin
   Result := '';
-  for Change in AChanges do
+  for mChange in AChanges do
   begin
-    Result := Result + ExtractFileName(Change.FileName) + '=' + Names[Change.Kind] + ' ';
+    Result := Result + ExtractFileName(mChange.FileName) + '=' + cNames[mChange.Kind] + ' ';
   end;
 end;
 
 procedure TAtlasWatchedChangesTests.WaitsUntilQuiet;
 var
-  Changes: TAtlasWatchedChanges;
+  mChanges: TAtlasWatchedChanges;
 begin
-  Changes := TAtlasWatchedChanges.Create;
+  mChanges := TAtlasWatchedChanges.Create;
   try
-    Assert.AreEqual('', Text(Changes.Take(1000)));
-    Changes.Add('C:\P\A.pas', TAtlasWatchedChanges.cActionModified, 1000);
-    Changes.Add('C:\P\B.pas', TAtlasWatchedChanges.cActionModified, 1200);
+    Assert.AreEqual('', Text(mChanges.Take(1000)));
+    mChanges.Add('C:\P\A.pas', TAtlasWatchedChanges.cActionModified, 1000);
+    mChanges.Add('C:\P\B.pas', TAtlasWatchedChanges.cActionModified, 1200);
     // Zeit seit dem letzten Ereignis zählt, nicht seit dem ersten.
-    Assert.AreEqual('', Text(Changes.Take(1200 + TAtlasWatchedChanges.cQuietMs - 1)));
-    Assert.AreEqual('A.pas=geändert B.pas=geändert ', Text(Changes.Take(1200 + TAtlasWatchedChanges.cQuietMs)));
-    Assert.AreEqual('', Text(Changes.Take(5000)), 'nur einmal');
+    Assert.AreEqual('', Text(mChanges.Take(1200 + TAtlasWatchedChanges.cQuietMs - 1)));
+    Assert.AreEqual('A.pas=geändert B.pas=geändert ', Text(mChanges.Take(1200 + TAtlasWatchedChanges.cQuietMs)));
+    Assert.AreEqual('', Text(mChanges.Take(5000)), 'nur einmal');
   finally
-    Changes.Free;
+    mChanges.Free;
   end;
 end;
 
 procedure TAtlasWatchedChangesTests.MergesEventsPerFile;
 var
-  Changes: TAtlasWatchedChanges;
+  mChanges: TAtlasWatchedChanges;
 begin
-  Changes := TAtlasWatchedChanges.Create;
+  mChanges := TAtlasWatchedChanges.Create;
   try
-    Changes.Add('C:\P\Twice.pas', TAtlasWatchedChanges.cActionModified, 0);
-    Changes.Add('c:\p\twice.pas', TAtlasWatchedChanges.cActionModified, 0);
+    mChanges.Add('C:\P\Twice.pas', TAtlasWatchedChanges.cActionModified, 0);
+    mChanges.Add('c:\p\twice.pas', TAtlasWatchedChanges.cActionModified, 0);
     // Kurz angelegt und wieder gelöscht (Sicherung eines Editors): nichts.
-    Changes.Add('C:\P\Temp.pas', TAtlasWatchedChanges.cActionAdded, 0);
-    Changes.Add('C:\P\Temp.pas', TAtlasWatchedChanges.cActionRemoved, 0);
-    Changes.Add('C:\P\New.pas', TAtlasWatchedChanges.cActionAdded, 0);
-    Changes.Add('C:\P\New.pas', TAtlasWatchedChanges.cActionModified, 0);
-    Changes.Add('C:\P\Gone.pas', TAtlasWatchedChanges.cActionModified, 0);
-    Changes.Add('C:\P\Gone.pas', TAtlasWatchedChanges.cActionRemoved, 0);
+    mChanges.Add('C:\P\Temp.pas', TAtlasWatchedChanges.cActionAdded, 0);
+    mChanges.Add('C:\P\Temp.pas', TAtlasWatchedChanges.cActionRemoved, 0);
+    mChanges.Add('C:\P\New.pas', TAtlasWatchedChanges.cActionAdded, 0);
+    mChanges.Add('C:\P\New.pas', TAtlasWatchedChanges.cActionModified, 0);
+    mChanges.Add('C:\P\Gone.pas', TAtlasWatchedChanges.cActionModified, 0);
+    mChanges.Add('C:\P\Gone.pas', TAtlasWatchedChanges.cActionRemoved, 0);
     // Speichern über Löschen und Neuanlegen (git checkout, manche Editoren).
-    Changes.Add('C:\P\Replaced.pas', TAtlasWatchedChanges.cActionRemoved, 0);
-    Changes.Add('C:\P\Replaced.pas', TAtlasWatchedChanges.cActionAdded, 0);
+    mChanges.Add('C:\P\Replaced.pas', TAtlasWatchedChanges.cActionRemoved, 0);
+    mChanges.Add('C:\P\Replaced.pas', TAtlasWatchedChanges.cActionAdded, 0);
     // Umbenennen: alter Name gelöscht, neuer angelegt.
-    Changes.Add('C:\P\Old.pas', TAtlasWatchedChanges.cActionRenamedOld, 0);
-    Changes.Add('C:\P\Renamed.pas', TAtlasWatchedChanges.cActionRenamedNew, 0);
+    mChanges.Add('C:\P\Old.pas', TAtlasWatchedChanges.cActionRenamedOld, 0);
+    mChanges.Add('C:\P\Renamed.pas', TAtlasWatchedChanges.cActionRenamedNew, 0);
     Assert.AreEqual('Twice.pas=geändert New.pas=neu Gone.pas=gelöscht Replaced.pas=geändert ' +
-      'Old.pas=gelöscht Renamed.pas=neu ', Text(Changes.Take(TAtlasWatchedChanges.cQuietMs)));
+      'Old.pas=gelöscht Renamed.pas=neu ', Text(mChanges.Take(TAtlasWatchedChanges.cQuietMs)));
   finally
-    Changes.Free;
+    mChanges.Free;
   end;
 end;
 
@@ -102,19 +102,19 @@ end;
 
 procedure TAtlasWatchedChangesTests.RootsPreferGitWorkingTree;
 var
-  Roots: TArray<string>;
+  mRoots: TArray<string>;
 begin
-  Roots := TAtlasWatchedChanges.Roots(
+  mRoots := TAtlasWatchedChanges.Roots(
     ['C:\Repo\App\App.dproj', 'C:\Repo\Lib\Lib.dproj', 'C:\Other\Sub\X\X.dproj', 'C:\Solo\S.dproj',
     'C:\Solo\Inner\T.dproj', 'c:\solo\s2.dproj'],
     function(const APath: string): Boolean
     begin
       Result := SameText(APath, 'C:\Repo\.git') or SameText(APath, 'C:\Other\Sub\.git');
     end);
-  Assert.AreEqual(3, Integer(Length(Roots)));
-  Assert.AreEqual('C:\Repo', Roots[0]);
-  Assert.AreEqual('C:\Other\Sub', Roots[1]);
-  Assert.AreEqual('C:\Solo', Roots[2]);
+  Assert.AreEqual(3, Integer(Length(mRoots)));
+  Assert.AreEqual('C:\Repo', mRoots[0]);
+  Assert.AreEqual('C:\Other\Sub', mRoots[1]);
+  Assert.AreEqual('C:\Solo', mRoots[2]);
 end;
 
 initialization

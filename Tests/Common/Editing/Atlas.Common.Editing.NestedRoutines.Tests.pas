@@ -61,17 +61,17 @@ uses
   Atlas.Text.Lines;
 
 const
-  LF = #10;
+  cLF = #10;
 
 /// <summary>Zeilen mit LF verbunden, mit LF am Ende.</summary>
 function Lines(const ALines: array of string): string;
 var
-  Line: string;
+  mLine: string;
 begin
   Result := '';
-  for Line in ALines do
+  for mLine in ALines do
   begin
-    Result := Result + Line + LF;
+    Result := Result + mLine + cLF;
   end;
 end;
 
@@ -110,15 +110,15 @@ type
 
 function Mode(AEmbed, APassThrough: Boolean; const AConstTypes: array of string): TNestedMode;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
   Result := Default(TNestedMode);
   Result.Embed := AEmbed;
   Result.PassThrough := APassThrough;
   SetLength(Result.ConstTypes, Length(AConstTypes));
-  for Index := 0 to High(AConstTypes) do
+  for mIndex := 0 to High(AConstTypes) do
   begin
-    Result.ConstTypes[Index] := AConstTypes[Index];
+    Result.ConstTypes[mIndex] := AConstTypes[mIndex];
   end;
 end;
 
@@ -127,87 +127,87 @@ end;
 function Run(const AText, AMarker: string; const AMode: TNestedMode; out AAction: TCodeAction;
   out AReason, AResult: string): Boolean;
 var
-  Tree, Check: TSyntaxTree;
-  Lookup: TNestedRoutineLookup;
-  ConstTypes: TArray<string>;
+  mTree, mCheck: TSyntaxTree;
+  mLookup: TNestedRoutineLookup;
+  mConstTypes: TArray<string>;
 begin
   AResult := '';
-  ConstTypes := AMode.ConstTypes;
-  Tree := TPascalParser.Parse(AText);
+  mConstTypes := AMode.ConstTypes;
+  mTree := TPascalParser.Parse(AText);
   try
-    Assert.AreEqual(0, Integer(Length(Tree.Diagnostics)), 'Quelle parst nicht: ' + AText);
-    Lookup := NoLookup(Tree);
-    if ConstTypes <> nil then
+    Assert.AreEqual(0, Integer(Length(mTree.Diagnostics)), 'Quelle parst nicht: ' + AText);
+    mLookup := NoLookup(mTree);
+    if mConstTypes <> nil then
     begin
-      Lookup.ConstType :=
+      mLookup.ConstType :=
         function(const ATypeName: string; AOffset: Integer): Boolean
         begin
-          Result := IndexText(ATypeName, ConstTypes) >= 0;
+          Result := IndexText(ATypeName, mConstTypes) >= 0;
         end;
     end;
     if AMode.Embed then
     begin
-      Result := TNestedRoutines.Embed(TNestedRoutineRequest.Create(AText, Tree, PositionOf(AText, AMarker), Lookup,
+      Result := TNestedRoutines.Embed(TNestedRoutineRequest.Create(AText, mTree, PositionOf(AText, AMarker), mLookup,
         TFormatStyle.Default), AMode.PassThrough, AAction, AReason);
     end
     else
     begin
-      Result := TNestedRoutines.Extract(TNestedRoutineRequest.Create(AText, Tree, PositionOf(AText, AMarker), Lookup,
+      Result := TNestedRoutines.Extract(TNestedRoutineRequest.Create(AText, mTree, PositionOf(AText, AMarker), mLookup,
         TFormatStyle.Default), AAction, AReason);
     end;
     if Result and (AAction.Disabled = '') then
     begin
       AResult := TChangeSignature.ApplyEdits(AText, AAction.Edits);
-      Check := TPascalParser.Parse(AResult);
+      mCheck := TPascalParser.Parse(AResult);
       try
-        Assert.AreEqual(0, Integer(Length(Check.Diagnostics)), 'Ergebnis parst nicht: ' + AResult);
+        Assert.AreEqual(0, Integer(Length(mCheck.Diagnostics)), 'Ergebnis parst nicht: ' + AResult);
       finally
-        Check.Free;
+        mCheck.Free;
       end;
     end;
   finally
-    Tree.Free;
+    mTree.Free;
   end;
 end;
 
 function Extracted(const AText, AMarker: string; out AAction: TCodeAction): string;
 var
-  Reason: string;
+  mReason: string;
 begin
-  Assert.IsTrue(Run(AText, AMarker, Mode(False, False, []), AAction, Reason, Result),
-    'Aktion fehlt (' + Reason + '): ' + AText);
+  Assert.IsTrue(Run(AText, AMarker, Mode(False, False, []), AAction, mReason, Result),
+    'Aktion fehlt (' + mReason + '): ' + AText);
 end;
 
 function ExtractReason(const AText, AMarker: string): string;
 var
-  Action: TCodeAction;
-  Text: string;
+  mAction: TCodeAction;
+  mText: string;
 begin
-  Assert.IsFalse(Run(AText, AMarker, Mode(False, False, []), Action, Result, Text), 'Aktion unerwartet: ' + Text);
+  Assert.IsFalse(Run(AText, AMarker, Mode(False, False, []), mAction, Result, mText), 'Aktion unerwartet: ' + mText);
 end;
 
 function Embedded(const AText, AMarker: string; APassThrough: Boolean; out AAction: TCodeAction): string;
 var
-  Reason: string;
+  mReason: string;
 begin
-  Assert.IsTrue(Run(AText, AMarker, Mode(True, APassThrough, []), AAction, Reason, Result),
-    'Aktion fehlt (' + Reason + '): ' + AText);
+  Assert.IsTrue(Run(AText, AMarker, Mode(True, APassThrough, []), AAction, mReason, Result),
+    'Aktion fehlt (' + mReason + '): ' + AText);
 end;
 
 function EmbedReason(const AText, AMarker: string; APassThrough: Boolean): string;
 var
-  Action: TCodeAction;
-  Text: string;
+  mAction: TCodeAction;
+  mText: string;
 begin
-  Assert.IsFalse(Run(AText, AMarker, Mode(True, APassThrough, []), Action, Result, Text), 'Aktion unerwartet: ' + Text);
+  Assert.IsFalse(Run(AText, AMarker, Mode(True, APassThrough, []), mAction, Result, mText), 'Aktion unerwartet: ' + mText);
 end;
 
 procedure TNestedRoutinesTests.ExtractCapturesReadAndWritten;
 var
-  Text, Done: string;
-  Action: TCodeAction;
+  mText, mDone: string;
+  mAction: TCodeAction;
 begin
-  Text := ClassUnit(Lines(['  public', '    procedure Run(const AName: string);']), Lines([
+  mText := ClassUnit(Lines(['  public', '    procedure Run(const AName: string);']), Lines([
     'procedure TFoo.Run(const AName: string);',
     'var',
     '  Total: Integer;',
@@ -225,8 +225,8 @@ begin
     '  Add(1);',
     '  Add(2);',
     'end;']));
-  Done := Extracted(Text, 'procedure Add', Action);
-  Assert.AreEqual(TNestedRoutines.ToMethodTitle, Action.Title);
+  mDone := Extracted(mText, 'procedure Add', mAction);
+  Assert.AreEqual(TNestedRoutines.ToMethodTitle, mAction.Title);
   Assert.AreEqual(ClassUnit(Lines([
     '    procedure Add(AValue: Integer; var Total: Integer; var Text: string; const AName: string);',
     '  public',
@@ -246,19 +246,19 @@ begin
     'begin',
     '  Total := Total + AValue + FCount;',
     '  Text := AName;',
-    'end;'])), Done);
-  Assert.IsTrue(ContainsStr(Action.Preview,
+    'end;'])), mDone);
+  Assert.IsTrue(ContainsStr(mAction.Preview,
     'procedure TFoo.Add(AValue: Integer; var Total: Integer; var Text: string; const AName: string);'),
-    Action.Preview);
-  Assert.IsTrue(ContainsStr(Action.Preview, 'Aufrufe: 2'), Action.Preview);
+    mAction.Preview);
+  Assert.IsTrue(ContainsStr(mAction.Preview, 'Aufrufe: 2'), mAction.Preview);
 end;
 
 procedure TNestedRoutinesTests.ExtractFreeRoutineWithConstant;
 var
-  Text, Done: string;
-  Action: TCodeAction;
+  mText, mDone: string;
+  mAction: TCodeAction;
 begin
-  Text := PlainUnit(Lines([
+  mText := PlainUnit(Lines([
     'procedure Outer(ACount: Integer);',
     'const',
     '  Limit = 10;',
@@ -273,8 +273,8 @@ begin
     'begin',
     '  Sum := Twice(1) + Twice(Sum);',
     'end;']));
-  Done := Extracted(Text, 'function Twice', Action);
-  Assert.AreEqual(TNestedRoutines.ToUnitRoutineTitle, Action.Title);
+  mDone := Extracted(mText, 'function Twice', mAction);
+  Assert.AreEqual(TNestedRoutines.ToUnitRoutineTitle, mAction.Title);
   Assert.AreEqual(PlainUnit(Lines([
     'function Twice(AValue: Integer; ACount: Integer): Integer;',
     'const',
@@ -290,15 +290,15 @@ begin
     '  Sum: Integer;',
     'begin',
     '  Sum := Twice(1, ACount) + Twice(Sum, ACount);',
-    'end;'])), Done);
+    'end;'])), mDone);
 end;
 
 procedure TNestedRoutinesTests.ExtractRecursionAndStaticClassMethod;
 var
-  Text, Done: string;
-  Action: TCodeAction;
+  mText, mDone: string;
+  mAction: TCodeAction;
 begin
-  Text := ClassUnit(Lines(['  public', '    class procedure Run; static;']), Lines([
+  mText := ClassUnit(Lines(['  public', '    class procedure Run; static;']), Lines([
     'class procedure TFoo.Run;',
     'var',
     '  Depth: Integer;',
@@ -314,20 +314,20 @@ begin
     '  Depth := 0;',
     '  Walk;',
     'end;']));
-  Done := Extracted(Text, 'procedure Walk', Action);
-  Assert.IsTrue(ContainsStr(Done, '    class procedure Walk(var Depth: Integer); static;' + LF), Done);
-  Assert.IsTrue(ContainsStr(Done, 'class procedure TFoo.Walk(var Depth: Integer);' + LF), Done);
-  Assert.IsTrue(ContainsStr(Done, '  if Depth < 3 then' + LF + '    Walk(Depth);' + LF), Done);
-  Assert.IsTrue(ContainsStr(Done, '  Depth: Integer;' + LF + 'begin' + LF), Done);
-  Assert.IsTrue(ContainsStr(Done, '  Depth := 0;' + LF + '  Walk(Depth);' + LF), Done);
+  mDone := Extracted(mText, 'procedure Walk', mAction);
+  Assert.IsTrue(ContainsStr(mDone, '    class procedure Walk(var Depth: Integer); static;' + cLF), mDone);
+  Assert.IsTrue(ContainsStr(mDone, 'class procedure TFoo.Walk(var Depth: Integer);' + cLF), mDone);
+  Assert.IsTrue(ContainsStr(mDone, '  if Depth < 3 then' + cLF + '    Walk(Depth);' + cLF), mDone);
+  Assert.IsTrue(ContainsStr(mDone, '  Depth: Integer;' + cLF + 'begin' + cLF), mDone);
+  Assert.IsTrue(ContainsStr(mDone, '  Depth := 0;' + cLF + '  Walk(Depth);' + cLF), mDone);
 end;
 
 procedure TNestedRoutinesTests.ExtractNameConflictGetsNumber;
 var
-  Text, Done: string;
-  Action: TCodeAction;
+  mText, mDone: string;
+  mAction: TCodeAction;
 begin
-  Text := ClassUnit(Lines(['    procedure Show;', '  public', '    procedure Run;']), Lines([
+  mText := ClassUnit(Lines(['    procedure Show;', '  public', '    procedure Run;']), Lines([
     'procedure TFoo.Show;',
     'begin',
     'end;',
@@ -342,12 +342,12 @@ begin
     'begin',
     '  Show;',
     'end;']));
-  Done := Extracted(Text, 'procedure Show;' + LF + '  begin', Action);
-  Assert.IsTrue(ContainsStr(Done, '    procedure Show2;' + LF), Done);
-  Assert.IsTrue(ContainsStr(Done, 'procedure TFoo.Show2;' + LF), Done);
-  Assert.IsTrue(ContainsStr(Done, 'begin' + LF + '  Show2;' + LF + 'end;'), Done);
+  mDone := Extracted(mText, 'procedure Show;' + cLF + '  begin', mAction);
+  Assert.IsTrue(ContainsStr(mDone, '    procedure Show2;' + cLF), mDone);
+  Assert.IsTrue(ContainsStr(mDone, 'procedure TFoo.Show2;' + cLF), mDone);
+  Assert.IsTrue(ContainsStr(mDone, 'begin' + cLF + '  Show2;' + cLF + 'end;'), mDone);
   // Freie Routine: Name auf Unit-Ebene vergeben.
-  Text := PlainUnit(Lines([
+  mText := PlainUnit(Lines([
     'procedure Log;',
     'begin',
     'end;',
@@ -361,17 +361,17 @@ begin
     'begin',
     '  Log;',
     'end;']));
-  Done := Extracted(Text, 'procedure Log;' + LF + '  begin', Action);
-  Assert.IsTrue(ContainsStr(Done, 'procedure Log2;' + LF + 'begin'), Done);
-  Assert.IsTrue(ContainsStr(Done, '  Log2;' + LF + 'end;'), Done);
+  mDone := Extracted(mText, 'procedure Log;' + cLF + '  begin', mAction);
+  Assert.IsTrue(ContainsStr(mDone, 'procedure Log2;' + cLF + 'begin'), mDone);
+  Assert.IsTrue(ContainsStr(mDone, '  Log2;' + cLF + 'end;'), mDone);
 end;
 
 procedure TNestedRoutinesTests.ExtractTwoLevelsGivesHint;
 var
-  Text, Reason, Done: string;
-  Action: TCodeAction;
+  mText, mReason, mDone: string;
+  mAction: TCodeAction;
 begin
-  Text := PlainUnit(Lines([
+  mText := PlainUnit(Lines([
     'procedure Outer;',
     '',
     '  procedure Middle;',
@@ -387,14 +387,14 @@ begin
     'begin',
     '  Middle;',
     'end;']));
-  Assert.IsTrue(Run(Text, 'procedure Deep', Mode(False, False, []), Action, Reason, Done));
-  Assert.IsTrue(ContainsStr(Action.Disabled, 'Middle'), Action.Disabled);
-  Assert.AreEqual(0, Integer(Length(Action.Edits)));
+  Assert.IsTrue(Run(mText, 'procedure Deep', Mode(False, False, []), mAction, mReason, mDone));
+  Assert.IsTrue(ContainsStr(mAction.Disabled, 'Middle'), mAction.Disabled);
+  Assert.AreEqual(0, Integer(Length(mAction.Edits)));
   // Die mittlere geht.
-  Done := Extracted(Text, 'procedure Middle', Action);
-  Assert.AreEqual('', Action.Disabled);
+  mDone := Extracted(mText, 'procedure Middle', mAction);
+  Assert.AreEqual('', mAction.Disabled);
   // Außerhalb einer lokalen Routine: nichts.
-  Assert.AreNotEqual('', ExtractReason(Text, 'procedure Outer'));
+  Assert.AreNotEqual('', ExtractReason(mText, 'procedure Outer'));
 end;
 
 /// <summary>Result der äußeren Funktion, andere lokale Routine, lokaler Typ.</summary>
@@ -499,10 +499,10 @@ end;
 
 procedure TNestedRoutinesTests.ExtractUsesConstLookup;
 var
-  Text, Reason, Done: string;
-  Action: TCodeAction;
+  mText, mReason, mDone: string;
+  mAction: TCodeAction;
 begin
-  Text := PlainUnit(Lines([
+  mText := PlainUnit(Lines([
     'procedure Outer;',
     'var',
     '  Point: TPoint;',
@@ -516,18 +516,18 @@ begin
     'begin',
     '  Show;',
     'end;']));
-  Assert.IsTrue(Run(Text, 'procedure Show', Mode(False, False, ['TPoint']), Action, Reason, Done), Reason);
-  Assert.IsTrue(ContainsStr(Done, 'procedure Show(var Count: Integer; const Point: TPoint);'), Done);
-  Done := Extracted(Text, 'procedure Show', Action);
-  Assert.IsTrue(ContainsStr(Done, 'procedure Show(var Count: Integer; Point: TPoint);'), Done);
+  Assert.IsTrue(Run(mText, 'procedure Show', Mode(False, False, ['TPoint']), mAction, mReason, mDone), mReason);
+  Assert.IsTrue(ContainsStr(mDone, 'procedure Show(var Count: Integer; const Point: TPoint);'), mDone);
+  mDone := Extracted(mText, 'procedure Show', mAction);
+  Assert.IsTrue(ContainsStr(mDone, 'procedure Show(var Count: Integer; Point: TPoint);'), mDone);
 end;
 
 procedure TNestedRoutinesTests.EmbedPrivateMethod;
 var
-  Text, Done: string;
-  Action: TCodeAction;
+  mText, mDone: string;
+  mAction: TCodeAction;
 begin
-  Text := ClassUnit(Lines(['    procedure Helper(AValue: Integer);', '  public', '    procedure Run;']), Lines([
+  mText := ClassUnit(Lines(['    procedure Helper(AValue: Integer);', '  public', '    procedure Run;']), Lines([
     'procedure TFoo.Helper(AValue: Integer);',
     'begin',
     '  FCount := AValue;',
@@ -540,8 +540,8 @@ begin
     '  I := 1;',
     '  Self.Helper(I);',
     'end;']));
-  Done := Embedded(Text, 'procedure Helper', False, Action);
-  Assert.AreEqual(TNestedRoutines.EmbedMethodTitle, Action.Title);
+  mDone := Embedded(mText, 'procedure Helper', False, mAction);
+  Assert.AreEqual(TNestedRoutines.EmbedMethodTitle, mAction.Title);
   Assert.AreEqual(ClassUnit(Lines(['  public', '    procedure Run;']), Lines([
     'procedure TFoo.Run;',
     'var',
@@ -555,18 +555,18 @@ begin
     'begin',
     '  I := 1;',
     '  Helper(I);',
-    'end;'])), Done);
-  Assert.IsTrue(ContainsStr(Action.Preview, 'TFoo.Run'), Action.Preview);
+    'end;'])), mDone);
+  Assert.IsTrue(ContainsStr(mAction.Preview, 'TFoo.Run'), mAction.Preview);
   // Auch vom Kopf der Implementierung aus.
-  Assert.AreEqual(Done, Embedded(Text, 'procedure TFoo.Helper', False, Action));
+  Assert.AreEqual(mDone, Embedded(mText, 'procedure TFoo.Helper', False, mAction));
 end;
 
 procedure TNestedRoutinesTests.EmbedFreeRoutine;
 var
-  Text, Done: string;
-  Action: TCodeAction;
+  mText, mDone: string;
+  mAction: TCodeAction;
 begin
-  Text := PlainUnit(Lines([
+  mText := PlainUnit(Lines([
     'procedure Run;',
     'begin',
     '  Log(''a'');',
@@ -583,8 +583,8 @@ begin
     'begin',
     '  N := Twice(3);',
     'end;']));
-  Done := Embedded(Text, 'function Twice', False, Action);
-  Assert.AreEqual(TNestedRoutines.EmbedRoutineTitle, Action.Title);
+  mDone := Embedded(mText, 'function Twice', False, mAction);
+  Assert.AreEqual(TNestedRoutines.EmbedRoutineTitle, mAction.Title);
   Assert.AreEqual(PlainUnit(Lines([
     'procedure Run;',
     'begin',
@@ -602,14 +602,14 @@ begin
     '',
     'begin',
     '  N := Twice(3);',
-    'end;'])), Done);
+    'end;'])), mDone);
 end;
 
 procedure TNestedRoutinesTests.EmbedRefusals;
 var
-  Implementation_: string;
+  mImplementation_: string;
 begin
-  Implementation_ := Lines([
+  mImplementation_ := Lines([
     'procedure TFoo.Helper;',
     'begin',
     'end;',
@@ -620,14 +620,14 @@ begin
     'end;']);
   // Öffentlich, virtuell, überschrieben.
   Assert.AreNotEqual('', EmbedReason(ClassUnit(Lines(['  public', '    procedure Helper;', '    procedure Run;']),
-    Implementation_), 'procedure TFoo.Helper', False));
+    mImplementation_), 'procedure TFoo.Helper', False));
   Assert.AreNotEqual('', EmbedReason(ClassUnit(Lines(['    procedure Helper; virtual;', '  public',
-    '    procedure Run;']), Implementation_), 'procedure TFoo.Helper', False));
+    '    procedure Run;']), mImplementation_), 'procedure TFoo.Helper', False));
   Assert.AreNotEqual('', EmbedReason(ClassUnit(Lines(['    procedure Helper; override;', '  public',
-    '    procedure Run;']), Implementation_), 'procedure TFoo.Helper', False));
+    '    procedure Run;']), mImplementation_), 'procedure TFoo.Helper', False));
   // Zwei Aufrufer bzw. zwei Aufrufe.
   Assert.AreNotEqual('', EmbedReason(ClassUnit(Lines(['    procedure Helper;', '  public', '    procedure Run;',
-    '    procedure Other;']), Implementation_ + Lines(['', 'procedure TFoo.Other;', 'begin', '  Helper;', 'end;'])),
+    '    procedure Other;']), mImplementation_ + Lines(['', 'procedure TFoo.Other;', 'begin', '  Helper;', 'end;'])),
     'procedure TFoo.Helper', False));
   Assert.AreNotEqual('', EmbedReason(ClassUnit(Lines(['    procedure Helper;', '  public', '    procedure Run;']),
     Lines(['procedure TFoo.Helper;', 'begin', 'end;', '', 'procedure TFoo.Run;', 'begin', '  Helper;', '  Helper;',
@@ -647,7 +647,7 @@ begin
   // Freie Routine im interface.
   Assert.AreNotEqual('', EmbedReason(Lines(['unit U;', '', 'interface', '', 'procedure Twice;', '',
     'implementation', '', 'procedure Twice;', 'begin', 'end;', '', 'procedure Outer;', 'begin', '  Twice;', 'end;', '',
-    'end.']), 'procedure Twice;' + LF + 'begin', False));
+    'end.']), 'procedure Twice;' + cLF + 'begin', False));
   // Aufruf aus einer lokalen Routine: dort ist kein Platz.
   Assert.AreNotEqual('', EmbedReason(PlainUnit(Lines(['procedure Twice;', 'begin', 'end;', '', 'procedure Outer;',
     '', '  procedure Inner;', '  begin', '    Twice;', '  end;', '', 'begin', '  Inner;', 'end;'])),
@@ -656,10 +656,10 @@ end;
 
 procedure TNestedRoutinesTests.EmbedRemovesPassThrough;
 var
-  Text, Done: string;
-  Action: TCodeAction;
+  mText, mDone: string;
+  mAction: TCodeAction;
 begin
-  Text := PlainUnit(Lines([
+  mText := PlainUnit(Lines([
     'procedure Log(const AText: string; AValue: Integer);',
     'begin',
     'end;',
@@ -676,8 +676,8 @@ begin
     'begin',
     '  Show(AName, Count, Step);',
     'end;']));
-  Done := Embedded(Text, 'procedure Show', True, Action);
-  Assert.AreEqual(TNestedRoutines.EmbedRoutineTitle + TNestedRoutines.PassThroughSuffix, Action.Title);
+  mDone := Embedded(mText, 'procedure Show', True, mAction);
+  Assert.AreEqual(TNestedRoutines.EmbedRoutineTitle + TNestedRoutines.PassThroughSuffix, mAction.Title);
   // AStep wird geschrieben und bleibt; ACount heißt jetzt wie die Variable des Aufrufers.
   Assert.AreEqual(PlainUnit(Lines([
     'procedure Log(const AText: string; AValue: Integer);',
@@ -696,7 +696,7 @@ begin
     '',
     'begin',
     '  Show(Step);',
-    'end;'])), Done);
+    'end;'])), mDone);
   // Ohne durchgereichte Parameter keine zweite Aktion.
   Assert.AreNotEqual('', EmbedReason(PlainUnit(Lines(['procedure Show(AValue: Integer);', 'begin', 'end;', '',
     'procedure Outer;', 'begin', '  Show(1);', 'end;'])), 'procedure Show', True));
@@ -742,11 +742,11 @@ end;
 
 procedure TNestedRoutinesTests.ActionsAtPosition;
 var
-  Text: string;
-  Tree: TSyntaxTree;
-  Actions: TArray<TCodeAction>;
+  mText: string;
+  mTree: TSyntaxTree;
+  mActions: TArray<TCodeAction>;
 begin
-  Text := PlainUnit(Lines([
+  mText := PlainUnit(Lines([
     'procedure Show(ACount: Integer);',
     'begin',
     'end;',
@@ -757,29 +757,29 @@ begin
     'begin',
     '  Show(Count);',
     'end;']));
-  Tree := TPascalParser.Parse(Text);
+  mTree := TPascalParser.Parse(mText);
   try
-    Actions := TNestedRoutines.Actions(Text, Tree, PositionOf(Text, 'procedure Show'), NoLookup(Tree),
+    mActions := TNestedRoutines.Actions(mText, mTree, PositionOf(mText, 'procedure Show'), NoLookup(mTree),
       TFormatStyle.Default);
-    Assert.AreEqual(2, Integer(Length(Actions)));
-    Assert.AreEqual(TNestedRoutines.EmbedRoutineTitle, Actions[0].Title);
-    Assert.AreEqual(TNestedRoutines.EmbedRoutineTitle + TNestedRoutines.PassThroughSuffix, Actions[1].Title);
-    Assert.AreEqual(cRewriteKind, Actions[0].Kind);
+    Assert.AreEqual(2, Integer(Length(mActions)));
+    Assert.AreEqual(TNestedRoutines.EmbedRoutineTitle, mActions[0].Title);
+    Assert.AreEqual(TNestedRoutines.EmbedRoutineTitle + TNestedRoutines.PassThroughSuffix, mActions[1].Title);
+    Assert.AreEqual(cRewriteKind, mActions[0].Kind);
     // Im Rumpf: keine Aktion.
-    Actions := TNestedRoutines.Actions(Text, Tree, PositionOf(Text, 'Show(Count)'), NoLookup(Tree),
+    mActions := TNestedRoutines.Actions(mText, mTree, PositionOf(mText, 'Show(Count)'), NoLookup(mTree),
       TFormatStyle.Default);
-    Assert.AreEqual(0, Integer(Length(Actions)));
+    Assert.AreEqual(0, Integer(Length(mActions)));
   finally
-    Tree.Free;
+    mTree.Free;
   end;
 end;
 
 procedure TNestedRoutinesTests.RoundTrip;
 var
-  Text, Done, Back: string;
-  Action: TCodeAction;
+  mText, mDone, mBack: string;
+  mAction: TCodeAction;
 begin
-  Text := PlainUnit(Lines([
+  mText := PlainUnit(Lines([
     'procedure Outer;',
     'var',
     '  Total: Integer;',
@@ -793,9 +793,9 @@ begin
     '  Total := 0;',
     '  Add(1);',
     'end;']));
-  Done := Extracted(Text, 'procedure Add', Action);
-  Back := Embedded(Done, 'procedure Add', True, Action);
-  Assert.AreEqual(Text, Back);
+  mDone := Extracted(mText, 'procedure Add', mAction);
+  mBack := Embedded(mDone, 'procedure Add', True, mAction);
+  Assert.AreEqual(mText, mBack);
 end;
 
 initialization

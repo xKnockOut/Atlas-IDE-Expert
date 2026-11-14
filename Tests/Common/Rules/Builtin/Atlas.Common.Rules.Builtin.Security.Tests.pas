@@ -58,7 +58,7 @@ uses
   Atlas.Tests.RuleAssert;
 
 const
-  LowConfidence = '{"minConfidence": "low"}';
+  cLowConfidence = '{"minConfidence": "low"}';
 
 function Body(const AStatements: string): string;
 begin
@@ -68,12 +68,12 @@ end;
 
 procedure TSecurityRulesTests.ComposedShellCommandReports;
 var
-  Findings: TArray<TRuleFinding>;
+  mFindings: TArray<TRuleFinding>;
 begin
-  Findings := TRuleAssert.Findings(TSecurityCommandInjectionRule.Create,
+  mFindings := TRuleAssert.Findings(TSecurityCommandInjectionRule.Create,
     Body('  ShellExecute(0, ''open'', PChar(''cmd /c '' + Edit1.Text), nil, nil, SW_SHOW);'));
-  Assert.AreEqual(1, Integer(Length(Findings)));
-  Assert.AreEqual(Ord(TRuleConfidence.Medium), Ord(Findings[0].Confidence));
+  Assert.AreEqual(1, Integer(Length(mFindings)));
+  Assert.AreEqual(Ord(TRuleConfidence.Medium), Ord(mFindings[0].Confidence));
   TRuleAssert.Reports(TSecurityCommandInjectionRule.Create,
     Body('  WinExec(PAnsiChar(AnsiString(Format(''tool.exe %s'', [Datei]))), SW_HIDE);'));
 end;
@@ -105,43 +105,43 @@ end;
 
 procedure TSecurityRulesTests.CheckedOrConstantPathIsSilent;
 const
-  Enabled = '{"rules": {"security-path-traversal": "warning"}}';
+  cEnabled = '{"rules": {"security-path-traversal": "warning"}}';
 begin
   Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TSecurityPathTraversalRule.Create,
     Body('  Liste.LoadFromFile(TPath.GetFullPath(Edit1.Text));'#10'  Liste.LoadFromFile(''config.ini'');'),
-    Enabled))));
+    cEnabled))));
   // Eingabedaten als Inhalt, nicht als Pfad (Atlas.Common.Diagnostics.CrashCase, Shell.Replay).
   Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TSecurityPathTraversalRule.Create,
-    Body('  TFile.WriteAllText(TPath.Combine(Ordner, ''a.pas''), Fall.Text, TEncoding.UTF8);'), Enabled))));
+    Body('  TFile.WriteAllText(TPath.Combine(Ordner, ''a.pas''), Fall.Text, TEncoding.UTF8);'), cEnabled))));
   // Variable namens Request aus TDirectory.GetFiles ist keine Webanfrage (Selbstlauf, Mcp.IdeBuilds.Tests).
   Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TSecurityPathTraversalRule.Create,
-    Body('  for Request in TDirectory.GetFiles(Ordner) do'#10'    S := TFile.ReadAllText(Request);'), Enabled))));
+    Body('  for Request in TDirectory.GetFiles(Ordner) do'#10'    S := TFile.ReadAllText(Request);'), cEnabled))));
   Assert.AreEqual(1, Integer(Length(TRuleAssert.Findings(TSecurityPathTraversalRule.Create,
-    Body('  S := TFile.ReadAllText(Request.PathInfo);'), Enabled))));
+    Body('  S := TFile.ReadAllText(Request.PathInfo);'), cEnabled))));
   Assert.AreEqual(1, Integer(Length(TRuleAssert.Findings(TSecurityPathTraversalRule.Create,
-    Body('  TFile.WriteAllText(Edit1.Text, Inhalt);'), Enabled))));
+    Body('  TFile.WriteAllText(Edit1.Text, Inhalt);'), cEnabled))));
 end;
 
 procedure TSecurityRulesTests.ChecksumMd5IsLowConfidence;
 var
-  Findings: TArray<TRuleFinding>;
+  mFindings: TArray<TRuleFinding>;
 begin
   // Unter der Vorgabe minConfidence medium bleibt die Prüfsumme still.
   TRuleAssert.Silent(TSecurityWeakCryptoRule.Create, Body('  Summe := THashMD5.GetHashString(Dateiinhalt);'));
-  Findings := TRuleAssert.Findings(TSecurityWeakCryptoRule.Create,
-    Body('  Summe := THashMD5.GetHashString(Dateiinhalt);'), LowConfidence);
-  Assert.AreEqual(1, Integer(Length(Findings)));
-  Assert.AreEqual(Ord(TRuleConfidence.Low), Ord(Findings[0].Confidence));
+  mFindings := TRuleAssert.Findings(TSecurityWeakCryptoRule.Create,
+    Body('  Summe := THashMD5.GetHashString(Dateiinhalt);'), cLowConfidence);
+  Assert.AreEqual(1, Integer(Length(mFindings)));
+  Assert.AreEqual(Ord(TRuleConfidence.Low), Ord(mFindings[0].Confidence));
 end;
 
 procedure TSecurityRulesTests.PasswordHashWithSha1IsMedium;
 var
-  Findings: TArray<TRuleFinding>;
+  mFindings: TArray<TRuleFinding>;
 begin
-  Findings := TRuleAssert.Findings(TSecurityWeakCryptoRule.Create,
+  mFindings := TRuleAssert.Findings(TSecurityWeakCryptoRule.Create,
     Body('  Gespeichert := THashSHA1.GetHashString(PasswordText);'));
-  Assert.AreEqual(1, Integer(Length(Findings)));
-  Assert.AreEqual(Ord(TRuleConfidence.Medium), Ord(Findings[0].Confidence));
+  Assert.AreEqual(1, Integer(Length(mFindings)));
+  Assert.AreEqual(Ord(TRuleConfidence.Medium), Ord(mFindings[0].Confidence));
 end;
 
 procedure TSecurityRulesTests.IndyVerifyModeReports;
@@ -174,15 +174,15 @@ end;
 
 procedure TSecurityRulesTests.HttpUrlReportsWithFix;
 var
-  Findings: TArray<TRuleFinding>;
+  mFindings: TArray<TRuleFinding>;
 begin
-  Findings := TRuleAssert.Findings(TSecurityInsecureHttpRule.Create,
+  mFindings := TRuleAssert.Findings(TSecurityInsecureHttpRule.Create,
     Body('  Client.Get(''http://api.example.com/daten'');'));
-  Assert.AreEqual(1, Integer(Length(Findings)));
-  Assert.AreEqual(5, Findings[0].Range.StartPos.Line);
-  Assert.AreEqual(14, Findings[0].Range.StartPos.Character);
-  Assert.AreEqual(21, Findings[0].Range.EndPos.Character);
-  Assert.AreEqual('https://', Findings[0].Fixes[0].Edits[0].NewText);
+  Assert.AreEqual(1, Integer(Length(mFindings)));
+  Assert.AreEqual(5, mFindings[0].Range.StartPos.Line);
+  Assert.AreEqual(14, mFindings[0].Range.StartPos.Character);
+  Assert.AreEqual(21, mFindings[0].Range.EndPos.Character);
+  Assert.AreEqual('https://', mFindings[0].Fixes[0].Edits[0].NewText);
 end;
 
 procedure TSecurityRulesTests.LocalAndSchemaUrlsAreSilent;
@@ -215,25 +215,25 @@ end;
 
 procedure TSecurityRulesTests.SqlFromEditIsHighConfidence;
 var
-  Findings: TArray<TRuleFinding>;
+  mFindings: TArray<TRuleFinding>;
 begin
-  Findings := TRuleAssert.Findings(TSecuritySqlInjectionRule.Create,
+  mFindings := TRuleAssert.Findings(TSecuritySqlInjectionRule.Create,
     Body('  Q.SQL.Text := ''select * from K where N = '''''' + Edit1.Text + '''''''';'));
-  Assert.AreEqual(1, Integer(Length(Findings)));
-  Assert.AreEqual(Ord(TRuleConfidence.High), Ord(Findings[0].Confidence));
-  Assert.AreEqual(5, Findings[0].Range.StartPos.Line);
+  Assert.AreEqual(1, Integer(Length(mFindings)));
+  Assert.AreEqual(Ord(TRuleConfidence.High), Ord(mFindings[0].Confidence));
+  Assert.AreEqual(5, mFindings[0].Range.StartPos.Line);
 end;
 
 procedure TSecurityRulesTests.SqlFromVariableIsMedium;
 var
-  Findings: TArray<TRuleFinding>;
+  mFindings: TArray<TRuleFinding>;
 begin
-  Findings := TRuleAssert.Findings(TSecuritySqlInjectionRule.Create,
+  mFindings := TRuleAssert.Findings(TSecuritySqlInjectionRule.Create,
     Body('  Q.SQL.Add(''where Name = '' + Name);'#10 +
     '  Q.Open(Format(''select * from %s'', [Tabelle]));'#10 +
     '  Cmd.CommandText := ''delete from K where Id = '' + Wert;'));
-  Assert.AreEqual(3, Integer(Length(Findings)));
-  Assert.AreEqual(Ord(TRuleConfidence.Medium), Ord(Findings[0].Confidence));
+  Assert.AreEqual(3, Integer(Length(mFindings)));
+  Assert.AreEqual(Ord(TRuleConfidence.Medium), Ord(mFindings[0].Confidence));
 end;
 
 procedure TSecurityRulesTests.ParameterizedOrConstantSqlIsSilent;
@@ -258,10 +258,10 @@ end;
 
 procedure TSecurityRulesTests.SecurityRulesFindSameWithSharedTokens;
 var
-  Source: string;
-  Count: Integer;
+  mSource: string;
+  mCount: Integer;
 begin
-  Source := Body(
+  mSource := Body(
     '  // http://kommentar.example.com bleibt unbeachtet'#10 +
     '  ShellExecute(0, ''open'', PChar(''cmd /c '' + Edit1.Text), nil, nil, SW_SHOW);'#10 +
     '  Liste.LoadFromFile(''C:\Daten\'' + Edit1.Text);'#10 +
@@ -270,11 +270,11 @@ begin
     '  Client.Get(''http://api.example.com/daten'');'#10 +
     '  Token := IntToStr(Random(MaxInt));'#10 +
     '  Q.SQL.Text := ''select * from K where N =  + Edit1.Text + '';');
-  Count := TRuleAssert.SameAsSeparateRuns([TSecurityCommandInjectionRule.Create,
+  mCount := TRuleAssert.SameAsSeparateRuns([TSecurityCommandInjectionRule.Create,
     TSecurityPathTraversalRule.Create, TSecurityWeakCryptoRule.Create, TSecurityTlsVerificationDisabledRule.Create,
     TSecurityInsecureHttpRule.Create, TSecurityInsecureRandomRule.Create, TSecuritySqlInjectionRule.Create],
-    Source, LowConfidence);
-  Assert.IsTrue(Count >= 5, 'Treffer mehrerer Regeln: ' + IntToStr(Count));
+    mSource, cLowConfidence);
+  Assert.IsTrue(mCount >= 5, 'Treffer mehrerer Regeln: ' + IntToStr(mCount));
 end;
 
 initialization

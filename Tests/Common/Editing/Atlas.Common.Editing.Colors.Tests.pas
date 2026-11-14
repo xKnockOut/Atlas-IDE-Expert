@@ -44,9 +44,9 @@ uses
   Atlas.Common.Editing.Colors,
   Atlas.Common.Lsp.Colors;
 
-function Rgb(R, G, B: Byte): TRgbColor;
+function Rgb(AR, AG, AB: Byte): TRgbColor;
 begin
-  Result := TRgbColor.Create(R, G, B);
+  Result := TRgbColor.Create(AR, AG, AB);
 end;
 
 // "R,G,B" für Assert.AreEqual: Records vergleicht AreEqual binär, die Meldung zeigte nur "(record)".
@@ -68,15 +68,15 @@ end;
 
 procedure TSourceColorsTests.FindsHexInBgrOrder;
 var
-  Found: TArray<TColorMatch>;
+  mFound: TArray<TColorMatch>;
 begin
-  Found := TSourceColors.Find('Color := $00FF8000;');
-  Assert.AreEqual<NativeInt>(1, Length(Found));
-  Assert.AreEqual('0,128,255', RgbText(Found[0].Color));
-  Assert.AreEqual(Ord(TColorFormat.Hex), Ord(Found[0].Format));
-  Assert.AreEqual(9, Found[0].Range.StartPos.Character);
-  Assert.AreEqual(18, Found[0].Range.EndPos.Character);
-  Assert.AreEqual('$00FF8000', Found[0].Text);
+  mFound := TSourceColors.Find('Color := $00FF8000;');
+  Assert.AreEqual<NativeInt>(1, Length(mFound));
+  Assert.AreEqual('0,128,255', RgbText(mFound[0].Color));
+  Assert.AreEqual(Ord(TColorFormat.Hex), Ord(mFound[0].Format));
+  Assert.AreEqual(9, mFound[0].Range.StartPos.Character);
+  Assert.AreEqual(18, mFound[0].Range.EndPos.Character);
+  Assert.AreEqual('$00FF8000', mFound[0].Text);
 end;
 
 procedure TSourceColorsTests.IgnoresShortHexAndMasks;
@@ -86,15 +86,15 @@ end;
 
 procedure TSourceColorsTests.FindsRgbCall;
 var
-  Found: TArray<TColorMatch>;
+  mFound: TArray<TColorMatch>;
 begin
-  Found := TSourceColors.Find('C := RGB(255, { rot } 128, 0);');
-  Assert.AreEqual<NativeInt>(1, Length(Found));
-  Assert.AreEqual('255,128,0', RgbText(Found[0].Color));
-  Assert.AreEqual(Ord(TColorFormat.Rgb), Ord(Found[0].Format));
-  Assert.AreEqual(5, Found[0].Range.StartPos.Character);
-  Assert.AreEqual(29, Found[0].Range.EndPos.Character);
-  Assert.AreEqual('RGB(255, { rot } 128, 0)', Found[0].Text);
+  mFound := TSourceColors.Find('C := RGB(255, { rot } 128, 0);');
+  Assert.AreEqual<NativeInt>(1, Length(mFound));
+  Assert.AreEqual('255,128,0', RgbText(mFound[0].Color));
+  Assert.AreEqual(Ord(TColorFormat.Rgb), Ord(mFound[0].Format));
+  Assert.AreEqual(5, mFound[0].Range.StartPos.Character);
+  Assert.AreEqual(29, mFound[0].Range.EndPos.Character);
+  Assert.AreEqual('RGB(255, { rot } 128, 0)', mFound[0].Text);
 end;
 
 procedure TSourceColorsTests.IgnoresIncompleteRgbCall;
@@ -104,35 +104,35 @@ end;
 
 procedure TSourceColorsTests.FindsNamedColorsCaseInsensitive;
 var
-  Found: TArray<TColorMatch>;
+  mFound: TArray<TColorMatch>;
 begin
-  Found := TSourceColors.Find('A := clRed; B := CLNAVY; C := clUnbekannt;');
-  Assert.AreEqual<NativeInt>(2, Length(Found));
-  Assert.AreEqual('255,0,0', RgbText(Found[0].Color));
-  Assert.AreEqual('0,0,128', RgbText(Found[1].Color));
-  Assert.AreEqual(Ord(TColorFormat.Named), Ord(Found[1].Format));
+  mFound := TSourceColors.Find('A := clRed; B := CLNAVY; C := clUnbekannt;');
+  Assert.AreEqual<NativeInt>(2, Length(mFound));
+  Assert.AreEqual('255,0,0', RgbText(mFound[0].Color));
+  Assert.AreEqual('0,0,128', RgbText(mFound[1].Color));
+  Assert.AreEqual(Ord(TColorFormat.Named), Ord(mFound[1].Format));
 end;
 
 procedure TSourceColorsTests.SystemColorUsesProviderOrDefault;
 var
-  Found: TArray<TColorMatch>;
+  mFound: TArray<TColorMatch>;
 begin
-  Found := TSourceColors.Find('A := clBtnFace; B := clWindow;', GreenForBtnFace);
-  Assert.AreEqual<NativeInt>(2, Length(Found));
-  Assert.AreEqual(Ord(TColorFormat.SystemColor), Ord(Found[0].Format));
-  Assert.AreEqual('0,255,0', RgbText(Found[0].Color));
+  mFound := TSourceColors.Find('A := clBtnFace; B := clWindow;', GreenForBtnFace);
+  Assert.AreEqual<NativeInt>(2, Length(mFound));
+  Assert.AreEqual(Ord(TColorFormat.SystemColor), Ord(mFound[0].Format));
+  Assert.AreEqual('0,255,0', RgbText(mFound[0].Color));
   // Ohne Wert vom Provider: Standardwert von Windows 10.
-  Assert.AreEqual('255,255,255', RgbText(Found[1].Color));
+  Assert.AreEqual('255,255,255', RgbText(mFound[1].Color));
 end;
 
 procedure TSourceColorsTests.PresentationKeepsHexFormat;
 var
-  Presentations: TArray<TColorPresentation>;
+  mPresentations: TArray<TColorPresentation>;
 begin
-  Presentations := TSourceColors.Presentations(Rgb($12, $34, $56), TColorFormat.Hex);
-  Assert.AreEqual<NativeInt>(2, Length(Presentations));
-  Assert.AreEqual('$00563412', Presentations[0].Text);
-  Assert.AreEqual('RGB(18, 52, 86)', Presentations[1].Text);
+  mPresentations := TSourceColors.Presentations(Rgb($12, $34, $56), TColorFormat.Hex);
+  Assert.AreEqual<NativeInt>(2, Length(mPresentations));
+  Assert.AreEqual('$00563412', mPresentations[0].Text);
+  Assert.AreEqual('RGB(18, 52, 86)', mPresentations[1].Text);
 end;
 
 procedure TSourceColorsTests.PresentationKeepsRgbFormat;
@@ -142,11 +142,11 @@ end;
 
 procedure TSourceColorsTests.PresentationKeepsNameWhenItMatches;
 var
-  Presentations: TArray<TColorPresentation>;
+  mPresentations: TArray<TColorPresentation>;
 begin
-  Presentations := TSourceColors.Presentations(Rgb(255, 0, 0), TColorFormat.Named);
-  Assert.AreEqual('clRed', Presentations[0].Text);
-  Assert.AreEqual('$000000FF', Presentations[1].Text);
+  mPresentations := TSourceColors.Presentations(Rgb(255, 0, 0), TColorFormat.Named);
+  Assert.AreEqual('clRed', mPresentations[0].Text);
+  Assert.AreEqual('$000000FF', mPresentations[1].Text);
   // Kein Name für diese Farbe: Hex zuerst.
   Assert.AreEqual('$00030201', TSourceColors.Presentations(Rgb(1, 2, 3), TColorFormat.Named)[0].Text);
   // Hex mit passendem Namen bietet den Namen zusätzlich an.
@@ -160,15 +160,15 @@ end;
 
 procedure TSourceColorsTests.LspColorRoundTrip;
 var
-  Json: TJSONObject;
-  Color: TRgbColor;
+  mJson: TJSONObject;
+  mColor: TRgbColor;
 begin
-  Json := TLspColors.ColorToJson(Rgb(255, 128, 0));
+  mJson := TLspColors.ColorToJson(Rgb(255, 128, 0));
   try
-    Assert.IsTrue(TLspColors.TryReadColor(Json, Color));
-    Assert.AreEqual('255,128,0', RgbText(Color));
+    Assert.IsTrue(TLspColors.TryReadColor(mJson, mColor));
+    Assert.AreEqual('255,128,0', RgbText(mColor));
   finally
-    Json.Free;
+    mJson.Free;
   end;
 end;
 

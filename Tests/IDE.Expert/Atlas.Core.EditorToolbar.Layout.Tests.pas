@@ -35,13 +35,13 @@ uses
   Atlas.Core.EditorToolbar.Layout;
 
 const
-  Button = 24;
-  Line = 9;
-  More = 24;
+  cButton = 24;
+  cLine = 9;
+  cMore = 24;
 
 function B(APinned: Boolean): TAtlasToolbarSlot; overload;
 begin
-  Result := TAtlasToolbarSlot.Create(Button, False, APinned);
+  Result := TAtlasToolbarSlot.Create(cButton, False, APinned);
 end;
 
 function B: TAtlasToolbarSlot; overload;
@@ -51,107 +51,107 @@ end;
 
 function S: TAtlasToolbarSlot;
 begin
-  Result := TAtlasToolbarSlot.Create(Line, True, False);
+  Result := TAtlasToolbarSlot.Create(cLine, True, False);
 end;
 
 function Shown(const AFit: TAtlasToolbarFit): string;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
   Result := '';
-  for Index := 0 to High(AFit.Visible) do
+  for mIndex := 0 to High(AFit.Visible) do
   begin
-    if AFit.Visible[Index] then
+    if AFit.Visible[mIndex] then
     begin
-      Result := Result + IntToStr(Index);
+      Result := Result + IntToStr(mIndex);
     end;
   end;
 end;
 
 function Menu(const AFit: TAtlasToolbarFit): string;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
   Result := '';
-  for Index in AFit.Overflow do
+  for mIndex in AFit.Overflow do
   begin
-    Result := Result + IntToStr(Index);
+    Result := Result + IntToStr(mIndex);
   end;
 end;
 
 procedure TAtlasToolbarLayoutTests.EverythingFits;
 var
-  Fit: TAtlasToolbarFit;
+  mFit: TAtlasToolbarFit;
 begin
   // 0 1 | 3 4
-  Fit := TAtlasToolbarLayout.Fit([B(True), B(True), S, B, B], 4 * Button + Line, More);
-  Assert.IsFalse(Fit.More);
-  Assert.AreEqual('01234', Shown(Fit));
-  Assert.AreEqual(0, Integer(Length(Fit.Overflow)));
-  Assert.AreEqual(4 * Button + Line, Fit.Used);
-  Assert.AreEqual(4 * Button + Line, TAtlasToolbarLayout.FullWidth([B(True), B(True), S, B, B]));
+  mFit := TAtlasToolbarLayout.Fit([B(True), B(True), S, B, B], 4 * cButton + cLine, cMore);
+  Assert.IsFalse(mFit.More);
+  Assert.AreEqual('01234', Shown(mFit));
+  Assert.AreEqual(0, Integer(Length(mFit.Overflow)));
+  Assert.AreEqual(4 * cButton + cLine, mFit.Used);
+  Assert.AreEqual(4 * cButton + cLine, TAtlasToolbarLayout.FullWidth([B(True), B(True), S, B, B]));
 end;
 
 procedure TAtlasToolbarLayoutTests.TailGoesToOverflow;
 var
-  Fit: TAtlasToolbarFit;
+  mFit: TAtlasToolbarFit;
 begin
   // Platz für vier Knöpfe: zwei angeheftete, ein weiterer, dann ».
-  Fit := TAtlasToolbarLayout.Fit([B(True), B(True), B, B, B, B], 4 * Button, More);
-  Assert.IsTrue(Fit.More);
-  Assert.AreEqual('012', Shown(Fit));
-  Assert.AreEqual('345', Menu(Fit));
-  Assert.AreEqual(3 * Button, Fit.Used);
+  mFit := TAtlasToolbarLayout.Fit([B(True), B(True), B, B, B, B], 4 * cButton, cMore);
+  Assert.IsTrue(mFit.More);
+  Assert.AreEqual('012', Shown(mFit));
+  Assert.AreEqual('345', Menu(mFit));
+  Assert.AreEqual(3 * cButton, mFit.Used);
 end;
 
 procedure TAtlasToolbarLayoutTests.PinnedStayEvenWhenNarrow;
 var
-  Fit: TAtlasToolbarFit;
+  mFit: TAtlasToolbarFit;
 begin
-  Fit := TAtlasToolbarLayout.Fit([B(True), B(True), B(True), B, B], Button, More);
-  Assert.AreEqual('012', Shown(Fit), 'Abschnittssymbole und Rücksprung bleiben vorn');
-  Assert.AreEqual('34', Menu(Fit));
-  Assert.IsTrue(Fit.More);
+  mFit := TAtlasToolbarLayout.Fit([B(True), B(True), B(True), B, B], cButton, cMore);
+  Assert.AreEqual('012', Shown(mFit), 'Abschnittssymbole und Rücksprung bleiben vorn');
+  Assert.AreEqual('34', Menu(mFit));
+  Assert.IsTrue(mFit.More);
 end;
 
 procedure TAtlasToolbarLayoutTests.KeepsOrderInOverflow;
 var
-  Fit: TAtlasToolbarFit;
-  Slots: TArray<TAtlasToolbarSlot>;
+  mFit: TAtlasToolbarFit;
+  mSlots: TArray<TAtlasToolbarSlot>;
 begin
   // Ein breiter Knopf (mit Text) passt nicht mehr; der schmale dahinter rückt nicht nach.
-  Slots := [B, TAtlasToolbarSlot.Create(80, False, False), B];
-  Fit := TAtlasToolbarLayout.Fit(Slots, Button + 60 + More, More);
-  Assert.AreEqual('0', Shown(Fit));
-  Assert.AreEqual('12', Menu(Fit));
+  mSlots := [B, TAtlasToolbarSlot.Create(80, False, False), B];
+  mFit := TAtlasToolbarLayout.Fit(mSlots, cButton + 60 + cMore, cMore);
+  Assert.AreEqual('0', Shown(mFit));
+  Assert.AreEqual('12', Menu(mFit));
 end;
 
 procedure TAtlasToolbarLayoutTests.SeparatorsOnlyBetweenButtons;
 var
-  Fit: TAtlasToolbarFit;
+  mFit: TAtlasToolbarFit;
 begin
   // | 1 | | 4 |  →  in der Leiste nur der mittlere Trennstrich.
-  Fit := TAtlasToolbarLayout.Fit([S, B, S, S, B, S], 1000, More);
-  Assert.AreEqual('124', Shown(Fit));
-  Assert.AreEqual(2 * Button + Line, TAtlasToolbarLayout.FullWidth([S, B, S, S, B, S]));
+  mFit := TAtlasToolbarLayout.Fit([S, B, S, S, B, S], 1000, cMore);
+  Assert.AreEqual('124', Shown(mFit));
+  Assert.AreEqual(2 * cButton + cLine, TAtlasToolbarLayout.FullWidth([S, B, S, S, B, S]));
   // 0 | 2 | 4 | 6 mit Platz für zwei Knöpfe und »: Der Trennstrich vor dem Überlauf entfällt, im Menü stehen
   // die Trennstriche nur zwischen Einträgen.
-  Fit := TAtlasToolbarLayout.Fit([B, S, B, S, B, S, B], 2 * Button + Line + More, More);
-  Assert.AreEqual('012', Shown(Fit));
-  Assert.AreEqual('456', Menu(Fit));
+  mFit := TAtlasToolbarLayout.Fit([B, S, B, S, B, S, B], 2 * cButton + cLine + cMore, cMore);
+  Assert.AreEqual('012', Shown(mFit));
+  Assert.AreEqual('456', Menu(mFit));
 end;
 
 procedure TAtlasToolbarLayoutTests.EmptyToolbar;
 var
-  Fit: TAtlasToolbarFit;
+  mFit: TAtlasToolbarFit;
 begin
-  Fit := TAtlasToolbarLayout.Fit(nil, 100, More);
-  Assert.IsFalse(Fit.More);
-  Assert.AreEqual(0, Fit.Used);
+  mFit := TAtlasToolbarLayout.Fit(nil, 100, cMore);
+  Assert.IsFalse(mFit.More);
+  Assert.AreEqual(0, mFit.Used);
   // Nur Trennstriche: nichts zu zeigen, kein ».
-  Fit := TAtlasToolbarLayout.Fit([S, S], 0, More);
-  Assert.IsFalse(Fit.More);
-  Assert.AreEqual('', Shown(Fit));
+  mFit := TAtlasToolbarLayout.Fit([S, S], 0, cMore);
+  Assert.IsFalse(mFit.More);
+  Assert.AreEqual('', Shown(mFit));
 end;
 
 initialization

@@ -57,9 +57,9 @@ uses
   Atlas.Common.Index.SymbolIndex;
 
 const
-  HauptFile = 'C:\P\Haupt.pas';
+  cHauptFile = 'C:\P\Haupt.pas';
 
-  UnitHaupt =
+  cUnitHaupt =
     'unit Haupt;'#10 +
     'interface'#10 +
     'type'#10 +
@@ -95,23 +95,23 @@ const
 /// <summary>Text ohne "|" und die Position des "|".</summary>
 function Split(const AMarked: string; out APosition: TTextPosition): string;
 var
-  Index, Line, Character: Integer;
+  mIndex, mLine, mCharacter: Integer;
 begin
-  Line := 0;
-  Character := 0;
-  for Index := 1 to Pos('|', AMarked) - 1 do
+  mLine := 0;
+  mCharacter := 0;
+  for mIndex := 1 to Pos('|', AMarked) - 1 do
   begin
-    if AMarked[Index] = #10 then
+    if AMarked[mIndex] = #10 then
     begin
-      Inc(Line);
-      Character := 0;
+      Inc(mLine);
+      mCharacter := 0;
     end
     else
     begin
-      Inc(Character);
+      Inc(mCharacter);
     end;
   end;
-  APosition := TTextPosition.Create(Line, Character);
+  APosition := TTextPosition.Create(mLine, mCharacter);
   Result := StringReplace(AMarked, '|', '', []);
 end;
 
@@ -131,24 +131,24 @@ end;
 
 function TCompletionWithTests.ItemsAt(const AMarked: string; const ASettings: TCompletionSettings): TCompletionItems;
 var
-  Text: string;
-  Position: TTextPosition;
-  Tree: TSyntaxTree;
-  Request: TCompletionRequest;
+  mText: string;
+  mPosition: TTextPosition;
+  mTree: TSyntaxTree;
+  mRequest: TCompletionRequest;
 begin
-  Text := Split(StringReplace(UnitHaupt, '{ Code }', AMarked, []), Position);
-  Tree := TPascalParser.Parse(Text);
-  Request := TCompletionRequest.Create(Text, HauptFile, Position);
+  mText := Split(StringReplace(cUnitHaupt, '{ Code }', AMarked, []), mPosition);
+  mTree := TPascalParser.Parse(mText);
+  mRequest := TCompletionRequest.Create(mText, cHauptFile, mPosition);
   try
-    Request.Tree := Tree;
-    Request.Resolver := FResolver;
-    Request.Index := FIndex;
-    Request.Matching := TCompletionMatching.Prefix;
-    Request.Settings := ASettings;
-    Result := TCompletionLists.Collect(Request, Default(TPostfixOptions), nil);
+    mRequest.Tree := mTree;
+    mRequest.Resolver := FResolver;
+    mRequest.Index := FIndex;
+    mRequest.Matching := TCompletionMatching.Prefix;
+    mRequest.Settings := ASettings;
+    Result := TCompletionLists.Collect(mRequest, Default(TPostfixOptions), nil);
   finally
-    Request.Free;
-    Tree.Free;
+    mRequest.Free;
+    mTree.Free;
   end;
 end;
 
@@ -160,13 +160,13 @@ end;
 function TCompletionWithTests.Find(const AItems: TCompletionItems; const AName: string;
   out AItem: TCompletionItem): Boolean;
 var
-  Item: TCompletionItem;
+  mItem: TCompletionItem;
 begin
-  for Item in AItems.Items do
+  for mItem in AItems.Items do
   begin
-    if Item.Name = AName then
+    if mItem.Name = AName then
     begin
-      AItem := Item;
+      AItem := mItem;
       Exit(True);
     end;
   end;
@@ -176,12 +176,12 @@ end;
 
 function TCompletionWithTests.Count(const AItems: TCompletionItems; const AName: string): Integer;
 var
-  Item: TCompletionItem;
+  mItem: TCompletionItem;
 begin
   Result := 0;
-  for Item in AItems.Items do
+  for mItem in AItems.Items do
   begin
-    if SameText(Item.Name, AName) then
+    if SameText(mItem.Name, AName) then
     begin
       Inc(Result);
     end;
@@ -190,109 +190,109 @@ end;
 
 procedure TCompletionWithTests.MembersCarryOrigin;
 var
-  Items: TCompletionItems;
-  Item: TCompletionItem;
+  mItems: TCompletionItems;
+  mItem: TCompletionItem;
 begin
-  Items := ItemsAt('with qryOrders do'#10'    Op|');
-  Assert.IsTrue(Find(Items, 'Open', Item), 'Mitglied des with-Objekts fehlt');
-  Assert.AreEqual(6, Item.Scope);
-  Assert.AreEqual('qryOrders', Item.WithOrigin);
-  Assert.AreEqual(0, Integer(Length(Item.WithShadows)), 'verdeckt nichts');
+  mItems := ItemsAt('with qryOrders do'#10'    Op|');
+  Assert.IsTrue(Find(mItems, 'Open', mItem), 'Mitglied des with-Objekts fehlt');
+  Assert.AreEqual(6, mItem.Scope);
+  Assert.AreEqual('qryOrders', mItem.WithOrigin);
+  Assert.AreEqual(0, Integer(Length(mItem.WithShadows)), 'verdeckt nichts');
 end;
 
 procedure TCompletionWithTests.WarnsAboutSelfAndLocals;
 var
-  Items: TCompletionItems;
-  Item: TCompletionItem;
+  mItems: TCompletionItems;
+  mItem: TCompletionItem;
 begin
   // Akzeptanz: Name aus qryOrders verdeckt Self.Name.
-  Items := ItemsAt('with qryOrders do'#10'    Na|');
-  Assert.AreEqual(1, Count(Items, 'Name'), 'nur die Bedeutung, die gilt');
-  Assert.IsTrue(Find(Items, 'Name', Item));
-  Assert.AreEqual('qryOrders', Item.WithOrigin);
-  Assert.AreEqual('Self.Name', string.Join('|', Item.WithShadows));
-  Assert.AreEqual('Feld TForm1.Name', string.Join('|', Item.Hides));
+  mItems := ItemsAt('with qryOrders do'#10'    Na|');
+  Assert.AreEqual(1, Count(mItems, 'Name'), 'nur die Bedeutung, die gilt');
+  Assert.IsTrue(Find(mItems, 'Name', mItem));
+  Assert.AreEqual('qryOrders', mItem.WithOrigin);
+  Assert.AreEqual('Self.Name', string.Join('|', mItem.WithShadows));
+  Assert.AreEqual('Feld TForm1.Name', string.Join('|', mItem.Hides));
   // Lokale Variable.
-  Items := ItemsAt('with qryOrders do'#10'    Act|');
-  Assert.IsTrue(Find(Items, 'Active', Item));
-  Assert.AreEqual('lokale Variable Active', string.Join('|', Item.WithShadows));
+  mItems := ItemsAt('with qryOrders do'#10'    Act|');
+  Assert.IsTrue(Find(mItems, 'Active', mItem));
+  Assert.AreEqual('lokale Variable Active', string.Join('|', mItem.WithShadows));
   // Self-Mitglied ohne Gegenstueck im with-Objekt bleibt Mitglied von Self.
-  Items := ItemsAt('with qryOrders do'#10'    Cap|');
-  Assert.IsTrue(Find(Items, 'Caption', Item));
-  Assert.AreEqual(3, Item.Scope);
-  Assert.AreEqual('', Item.WithOrigin);
+  mItems := ItemsAt('with qryOrders do'#10'    Cap|');
+  Assert.IsTrue(Find(mItems, 'Caption', mItem));
+  Assert.AreEqual(3, mItem.Scope);
+  Assert.AreEqual('', mItem.WithOrigin);
 end;
 
 procedure TCompletionWithTests.InnermostWithWins;
 var
-  Item: TCompletionItem;
+  mItem: TCompletionItem;
 begin
-  Assert.IsTrue(Find(ItemsAt('with qryOrders do'#10'    with qryOther do'#10'      Na|'), 'Name', Item));
-  Assert.AreEqual('qryOther', Item.WithOrigin);
+  Assert.IsTrue(Find(ItemsAt('with qryOrders do'#10'    with qryOther do'#10'      Na|'), 'Name', mItem));
+  Assert.AreEqual('qryOther', mItem.WithOrigin);
   // with A, B: B zuerst.
-  Assert.IsTrue(Find(ItemsAt('with qryOrders, qryOther do'#10'    Na|'), 'Name', Item));
-  Assert.AreEqual('qryOther', Item.WithOrigin);
-  Assert.AreEqual('Self.Name', string.Join('|', Item.WithShadows));
+  Assert.IsTrue(Find(ItemsAt('with qryOrders, qryOther do'#10'    Na|'), 'Name', mItem));
+  Assert.AreEqual('qryOther', mItem.WithOrigin);
+  Assert.AreEqual('Self.Name', string.Join('|', mItem.WithShadows));
 end;
 
 procedure TCompletionWithTests.HiddenMembersDoNotHideLocals;
 var
-  Item: TCompletionItem;
+  mItem: TCompletionItem;
 begin
   // FSecret von TQuery ist strict private: die lokale Variable gilt.
-  Assert.IsTrue(Find(ItemsAt('with qryOrders do'#10'    FSec|'), 'FSecret', Item));
-  Assert.AreEqual(1, Item.Scope);
-  Assert.AreEqual('', Item.WithOrigin);
+  Assert.IsTrue(Find(ItemsAt('with qryOrders do'#10'    FSec|'), 'FSecret', mItem));
+  Assert.AreEqual(1, mItem.Scope);
+  Assert.AreEqual('', mItem.WithOrigin);
 end;
 
 procedure TCompletionWithTests.OutsideWithAsBefore;
 var
-  Items: TCompletionItems;
-  Item: TCompletionItem;
+  mItems: TCompletionItems;
+  mItem: TCompletionItem;
 begin
-  Items := ItemsAt('with qryOrders do'#10'    Open;'#10'  Na|');
-  Assert.IsTrue(Find(Items, 'Name', Item));
-  Assert.AreEqual(3, Item.Scope);
-  Assert.AreEqual('', Item.WithOrigin);
-  Assert.IsFalse(Find(Items, 'Open', Item));
+  mItems := ItemsAt('with qryOrders do'#10'    Open;'#10'  Na|');
+  Assert.IsTrue(Find(mItems, 'Name', mItem));
+  Assert.AreEqual(3, mItem.Scope);
+  Assert.AreEqual('', mItem.WithOrigin);
+  Assert.IsFalse(Find(mItems, 'Open', mItem));
 end;
 
 procedure TCompletionWithTests.OriginIsSourceText;
 var
-  Item: TCompletionItem;
+  mItem: TCompletionItem;
 begin
-  Assert.IsTrue(Find(ItemsAt('with Self.FQuery { Abfrage } do'#10'    Op|'), 'Open', Item));
-  Assert.AreEqual('Self.FQuery', Item.WithOrigin);
+  Assert.IsTrue(Find(ItemsAt('with Self.FQuery { Abfrage } do'#10'    Op|'), 'Open', mItem));
+  Assert.AreEqual('Self.FQuery', mItem.WithOrigin);
 end;
 
 procedure TCompletionWithTests.WritesJson;
 var
-  Json: TJSONObject;
-  Text: string;
+  mJson: TJSONObject;
+  mText: string;
 begin
-  Json := TLspCompletion.ToJson(ItemsAt('with qryOrders do'#10'    Na|'));
+  mJson := TLspCompletion.ToJson(ItemsAt('with qryOrders do'#10'    Na|'));
   try
-    Text := Json.ToJSON;
+    mText := mJson.ToJSON;
   finally
-    Json.Free;
+    mJson.Free;
   end;
-  Assert.IsTrue(Text.Contains('"withOrigin":"qryOrders"'), Text);
-  Assert.IsTrue(Text.Contains('"withShadows":["Self.Name"]'), Text);
-  Assert.IsTrue(Text.Contains('"scope":6'), Text);
+  Assert.IsTrue(mText.Contains('"withOrigin":"qryOrders"'), mText);
+  Assert.IsTrue(mText.Contains('"withShadows":["Self.Name"]'), mText);
+  Assert.IsTrue(mText.Contains('"scope":6'), mText);
 end;
 
 procedure TCompletionWithTests.SwitchOff;
 var
-  Settings: TCompletionSettings;
-  Item: TCompletionItem;
+  mSettings: TCompletionSettings;
+  mItem: TCompletionItem;
 begin
-  Settings := TCompletionSettings.Default;
-  Settings.WithOrigin := False;
+  mSettings := TCompletionSettings.Default;
+  mSettings.WithOrigin := False;
   // Das Mitglied gilt weiter (Compiler-Regel), nur ohne Herkunft.
-  Assert.IsTrue(Find(ItemsAt('with qryOrders do'#10'    Na|', Settings), 'Name', Item));
-  Assert.AreEqual(0, Item.Scope);
-  Assert.AreEqual('', Item.WithOrigin);
-  Assert.AreEqual(0, Integer(Length(Item.WithShadows)));
+  Assert.IsTrue(Find(ItemsAt('with qryOrders do'#10'    Na|', mSettings), 'Name', mItem));
+  Assert.AreEqual(0, mItem.Scope);
+  Assert.AreEqual('', mItem.WithOrigin);
+  Assert.AreEqual(0, Integer(Length(mItem.WithShadows)));
 end;
 
 end.

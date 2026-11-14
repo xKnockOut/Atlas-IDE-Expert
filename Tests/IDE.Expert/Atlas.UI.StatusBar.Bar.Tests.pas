@@ -102,13 +102,13 @@ end;
 
 procedure TAtlasEditorStatusBarTests.KeepsHeightAndOrder;
 var
-  Height_: Integer;
+  mHeight_: Integer;
 begin
-  Height_ := FBar.Height;
-  Assert.AreEqual(TAtlasEditorStatusBar.BarHeight(FBar.CurrentPPI), Height_);
+  mHeight_ := FBar.Height;
+  Assert.AreEqual(TAtlasEditorStatusBar.BarHeight(FBar.CurrentPPI), mHeight_);
   FBar.SetView(Sample);
-  FBar.Height := Height_ * 2;
-  Assert.AreEqual(Height_, FBar.Height, 'eine Zeile, nie höher');
+  FBar.Height := mHeight_ * 2;
+  Assert.AreEqual(mHeight_, FBar.Height, 'eine Zeile, nie höher');
   Assert.IsFalse(FBar.PartRect(TAtlasStatusBarPart.Status).IsEmpty, 'Status');
   Assert.IsTrue(FBar.PartRect(TAtlasStatusBarPart.Status).Right <= FBar.PartRect(TAtlasStatusBarPart.Findings).Left);
   Assert.IsTrue(FBar.PartRect(TAtlasStatusBarPart.Findings).Right <=
@@ -123,24 +123,24 @@ end;
 
 procedure TAtlasEditorStatusBarTests.NarrowBarDropsInsteadOfWrapping;
 var
-  View: TAtlasStatusBarView;
-  Wide, Narrow: Integer;
+  mView: TAtlasStatusBarView;
+  mWide, mNarrow: Integer;
 begin
-  View := Sample;
-  FBar.SetView(View);
-  Wide := FBar.PartRect(TAtlasStatusBarPart.Method).Width;
+  mView := Sample;
+  FBar.SetView(mView);
+  mWide := FBar.PartRect(TAtlasStatusBarPart.Method).Width;
   FForm.Width := 520;
-  Narrow := FBar.PartRect(TAtlasStatusBarPart.Method).Width;
-  Assert.IsTrue(Narrow < Wide, 'Methode kürzt sich zuerst');
+  mNarrow := FBar.PartRect(TAtlasStatusBarPart.Method).Width;
+  Assert.IsTrue(mNarrow < mWide, 'Methode kürzt sich zuerst');
   Assert.IsFalse(FBar.PartRect(TAtlasStatusBarPart.Findings).IsEmpty, 'Zähler bleiben');
   FForm.Width := 120;
   Assert.IsTrue(FBar.PartRect(TAtlasStatusBarPart.Method).IsEmpty, 'Methode fällt weg');
   Assert.AreEqual(TAtlasEditorStatusBar.BarHeight(FBar.CurrentPPI), FBar.Height, 'bricht nicht um');
   // Ohne Probleme fällt das Element weg; ohne Element in der Einstellung ebenso.
   FForm.Width := 1000;
-  View.FindingsShown := False;
-  View.Items := TArray<string>.Create(TAtlasStatusBarItems.cStatus, TAtlasStatusBarItems.cFindings);
-  FBar.SetView(View);
+  mView.FindingsShown := False;
+  mView.Items := TArray<string>.Create(TAtlasStatusBarItems.cStatus, TAtlasStatusBarItems.cFindings);
+  FBar.SetView(mView);
   Assert.IsTrue(FBar.PartRect(TAtlasStatusBarPart.Findings).IsEmpty, 'Probleme aus');
   Assert.IsTrue(FBar.PartRect(TAtlasStatusBarPart.LiveCheck).IsEmpty, 'nicht gewählt');
   Assert.IsFalse(FBar.PartRect(TAtlasStatusBarPart.Status).IsEmpty);
@@ -262,84 +262,84 @@ end;
 
 procedure TAtlasEditorStatusBarTests.HintsAndMenu;
 var
-  View: TAtlasStatusBarView;
+  mView: TAtlasStatusBarView;
   P: TPoint;
-  Toggled: string;
-  Hidden: Boolean;
-  Menu: TPopupMenu;
+  mToggled: string;
+  mHidden: Boolean;
+  mMenu: TPopupMenu;
 begin
-  Toggled := '';
-  Hidden := False;
+  mToggled := '';
+  mHidden := False;
   FBar.OnToggleItem :=
     procedure(const AId: string)
     begin
-      Toggled := AId;
+      mToggled := AId;
     end;
   FBar.OnHide :=
     procedure
     begin
-      Hidden := True;
+      mHidden := True;
     end;
-  View := Sample;
-  View.Items := TArray<string>.Create(TAtlasStatusBarItems.cStatus, TAtlasStatusBarItems.cMethod);
-  FBar.SetView(View);
+  mView := Sample;
+  mView.Items := TArray<string>.Create(TAtlasStatusBarItems.cStatus, TAtlasStatusBarItems.cMethod);
+  FBar.SetView(mView);
   P := Middle(FBar.PartRect(TAtlasStatusBarPart.Method));
   Assert.AreEqual('Zum Methodenkopf', FBar.HintAt(P.X, P.Y));
   P := Middle(FBar.PartRect(TAtlasStatusBarPart.Gear));
   Assert.AreEqual('Leiste anpassen …', FBar.HintAt(P.X, P.Y));
   // Vier Elemente, Trennstrich, Ausblenden; das Menü gehört der Leiste.
-  Menu := FBar.BuildMenu;
-  Assert.AreEqual(6, Menu.Items.Count);
-  Assert.IsTrue(Menu.Items[0].Checked, 'status');
-  Assert.IsFalse(Menu.Items[1].Checked, 'findings');
-  Assert.IsFalse(Menu.Items[2].Checked, 'liveCheck');
-  Assert.IsTrue(Menu.Items[3].Checked, 'method');
-  Assert.AreEqual('Live-Prüfung', Menu.Items[2].Caption);
-  Menu.Items[1].Click;
-  Assert.AreEqual(TAtlasStatusBarItems.cFindings, Toggled);
-  Menu.Items[5].Click;
-  Assert.IsTrue(Hidden, 'ausblenden');
+  mMenu := FBar.BuildMenu;
+  Assert.AreEqual(6, mMenu.Items.Count);
+  Assert.IsTrue(mMenu.Items[0].Checked, 'status');
+  Assert.IsFalse(mMenu.Items[1].Checked, 'findings');
+  Assert.IsFalse(mMenu.Items[2].Checked, 'liveCheck');
+  Assert.IsTrue(mMenu.Items[3].Checked, 'method');
+  Assert.AreEqual('Live-Prüfung', mMenu.Items[2].Caption);
+  mMenu.Items[1].Click;
+  Assert.AreEqual(TAtlasStatusBarItems.cFindings, mToggled);
+  mMenu.Items[5].Click;
+  Assert.IsTrue(mHidden, 'ausblenden');
 end;
 
 procedure TAtlasEditorStatusBarTests.BadgeFollowsTheStatus;
 var
-  View: TAtlasStatusBarView;
-  Clicked: TPoint;
+  mView: TAtlasStatusBarView;
+  mClicked: TPoint;
   P: TPoint;
 begin
-  Clicked := Point(-1, -1);
+  mClicked := Point(-1, -1);
   FBar.OnBadge :=
     procedure(APoint: TPoint)
     begin
-      Clicked := APoint;
+      mClicked := APoint;
     end;
-  View := Sample;
-  FBar.SetView(View);
+  mView := Sample;
+  FBar.SetView(mView);
   Assert.IsTrue(FBar.PartRect(TAtlasStatusBarPart.Badge).IsEmpty, 'Benachrichtigungen aus: keine Plakette');
   // Benachrichtigungen an: Plakette immer, auch ohne Ungelesene; ein Klick öffnet die Liste.
-  View.BadgeShown := True;
-  View.BadgeHint := '0 ungelesene Benachrichtigungen';
-  FBar.SetView(View);
+  mView.BadgeShown := True;
+  mView.BadgeHint := '0 ungelesene Benachrichtigungen';
+  FBar.SetView(mView);
   Assert.IsFalse(FBar.PartRect(TAtlasStatusBarPart.Badge).IsEmpty, 'Plakette auch mit 0');
-  Assert.AreEqual('0', View.BadgeText);
+  Assert.AreEqual('0', mView.BadgeText);
   P := Middle(FBar.PartRect(TAtlasStatusBarPart.Badge));
   Assert.AreEqual('0 ungelesene Benachrichtigungen', FBar.HintAt(P.X, P.Y));
   FBar.ClickAt(P.X, P.Y);
-  Assert.AreEqual(FBar.ClientToScreen(FBar.PartRect(TAtlasStatusBarPart.Badge).TopLeft).X, Clicked.X);
-  Clicked := Point(-1, -1);
-  View.BadgeCount := 3;
-  View.BadgeHint := '3 ungelesene Benachrichtigungen';
-  FBar.SetView(View);
+  Assert.AreEqual(FBar.ClientToScreen(FBar.PartRect(TAtlasStatusBarPart.Badge).TopLeft).X, mClicked.X);
+  mClicked := Point(-1, -1);
+  mView.BadgeCount := 3;
+  mView.BadgeHint := '3 ungelesene Benachrichtigungen';
+  FBar.SetView(mView);
   Assert.IsFalse(FBar.PartRect(TAtlasStatusBarPart.Badge).IsEmpty);
   Assert.IsTrue(FBar.PartRect(TAtlasStatusBarPart.Status).Right <= FBar.PartRect(TAtlasStatusBarPart.Badge).Left);
   Assert.IsTrue(FBar.PartRect(TAtlasStatusBarPart.Badge).Right <= FBar.PartRect(TAtlasStatusBarPart.Findings).Left);
   P := Middle(FBar.PartRect(TAtlasStatusBarPart.Badge));
   Assert.AreEqual('3 ungelesene Benachrichtigungen', FBar.HintAt(P.X, P.Y));
   FBar.ClickAt(P.X, P.Y);
-  Assert.AreEqual(FBar.ClientToScreen(FBar.PartRect(TAtlasStatusBarPart.Badge).TopLeft).X, Clicked.X);
+  Assert.AreEqual(FBar.ClientToScreen(FBar.PartRect(TAtlasStatusBarPart.Badge).TopLeft).X, mClicked.X);
   // Ohne Element status auch keine Plakette (dann steht sie im Atlas-Feld der Statuszeile).
-  View.Items := TArray<string>.Create(TAtlasStatusBarItems.cMethod);
-  FBar.SetView(View);
+  mView.Items := TArray<string>.Create(TAtlasStatusBarItems.cMethod);
+  FBar.SetView(mView);
   Assert.IsTrue(FBar.PartRect(TAtlasStatusBarPart.Badge).IsEmpty);
 end;
 

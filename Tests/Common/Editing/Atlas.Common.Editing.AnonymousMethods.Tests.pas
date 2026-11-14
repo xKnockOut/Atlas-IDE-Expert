@@ -62,17 +62,17 @@ uses
   Atlas.Text.Lines;
 
 const
-  LF = #10;
+  cLF = #10;
 
 /// <summary>Zeilen mit LF verbunden, mit LF am Ende.</summary>
 function Lines(const ALines: array of string): string;
 var
-  Line: string;
+  mLine: string;
 begin
   Result := '';
-  for Line in ALines do
+  for mLine in ALines do
   begin
-    Result := Result + Line + LF;
+    Result := Result + mLine + cLF;
   end;
 end;
 
@@ -98,26 +98,26 @@ end;
 /// <summary>Ohne Namensauflösung; Zieltypen beim Einbetten: AKind.</summary>
 function LookupFor(ATree: TSyntaxTree; AKind: TProcTypeKind): TAnonymousLookup;
 var
-  Kind: TProcTypeKind;
+  mKind: TProcTypeKind;
 begin
   Result := TAnonymousLookup.FromTree(ATree);
-  Kind := AKind;
+  mKind := AKind;
   Result.TargetType :=
     function(AValue: TSyntaxNode): TProcTypeKind
     begin
-      Result := Kind;
+      Result := mKind;
     end;
 end;
 
 procedure AssertParses(const AText: string);
 var
-  Check: TSyntaxTree;
+  mCheck: TSyntaxTree;
 begin
-  Check := TPascalParser.Parse(AText);
+  mCheck := TPascalParser.Parse(AText);
   try
-    Assert.AreEqual(0, Integer(Length(Check.Diagnostics)), 'Ergebnis parst nicht: ' + AText);
+    Assert.AreEqual(0, Integer(Length(mCheck.Diagnostics)), 'Ergebnis parst nicht: ' + AText);
   finally
-    Check.Free;
+    mCheck.Free;
   end;
 end;
 
@@ -125,17 +125,17 @@ end;
 function TargetAt(const AText, AMarker: string; ACapture: TDeferredCapture; out ATarget: TAnonymousTarget;
   out AReason: string): Boolean;
 var
-  Tree: TSyntaxTree;
-  Input: TAnonymousInput;
+  mTree: TSyntaxTree;
+  mInput: TAnonymousInput;
 begin
-  Tree := TPascalParser.Parse(AText);
+  mTree := TPascalParser.Parse(AText);
   try
-    Assert.AreEqual(0, Integer(Length(Tree.Diagnostics)), 'Quelle parst nicht: ' + AText);
-    Input := TAnonymousInput.Create(AText, Tree, PositionOf(AText, AMarker), LookupFor(Tree, TProcTypeKind.Unknown));
-    Input.Capture := ACapture;
-    Result := TAnonymousMethods.Target(Input, ATarget, AReason);
+    Assert.AreEqual(0, Integer(Length(mTree.Diagnostics)), 'Quelle parst nicht: ' + AText);
+    mInput := TAnonymousInput.Create(AText, mTree, PositionOf(AText, AMarker), LookupFor(mTree, TProcTypeKind.Unknown));
+    mInput.Capture := ACapture;
+    Result := TAnonymousMethods.Target(mInput, ATarget, AReason);
   finally
-    Tree.Free;
+    mTree.Free;
   end;
 end;
 
@@ -159,24 +159,24 @@ end;
 function ConvertAt(const AText: string; const ARequest: TConvertRequest; out AConverted: TAnonymousResult;
   out AReason, AResult: string): Boolean;
 var
-  Tree: TSyntaxTree;
-  Input: TAnonymousInput;
+  mTree: TSyntaxTree;
+  mInput: TAnonymousInput;
 begin
   AResult := '';
-  Tree := TPascalParser.Parse(AText);
+  mTree := TPascalParser.Parse(AText);
   try
-    Assert.AreEqual(0, Integer(Length(Tree.Diagnostics)), 'Quelle parst nicht: ' + AText);
-    Input := TAnonymousInput.Create(AText, Tree, PositionOf(AText, ARequest.Marker), LookupFor(Tree,
+    Assert.AreEqual(0, Integer(Length(mTree.Diagnostics)), 'Quelle parst nicht: ' + AText);
+    mInput := TAnonymousInput.Create(AText, mTree, PositionOf(AText, ARequest.Marker), LookupFor(mTree,
       TProcTypeKind.Unknown));
-    Input.Capture := ARequest.Capture;
-    Result := TAnonymousMethods.Execute(Input, ARequest.Name, AConverted, AReason);
+    mInput.Capture := ARequest.Capture;
+    Result := TAnonymousMethods.Execute(mInput, ARequest.Name, AConverted, AReason);
     if Result then
     begin
       AResult := TChangeSignature.ApplyEdits(AText, AConverted.Edits);
       AssertParses(AResult);
     end;
   finally
-    Tree.Free;
+    mTree.Free;
   end;
 end;
 
@@ -184,13 +184,13 @@ end;
 function EmbedAt(const AText, AMarker: string; AKind: TProcTypeKind; out AAction: TCodeAction;
   out AReason, AResult: string): Boolean;
 var
-  Tree: TSyntaxTree;
+  mTree: TSyntaxTree;
 begin
   AResult := '';
-  Tree := TPascalParser.Parse(AText);
+  mTree := TPascalParser.Parse(AText);
   try
-    Assert.AreEqual(0, Integer(Length(Tree.Diagnostics)), 'Quelle parst nicht: ' + AText);
-    Result := TAnonymousMethods.Embed(TAnonymousInput.Create(AText, Tree, PositionOf(AText, AMarker), LookupFor(Tree,
+    Assert.AreEqual(0, Integer(Length(mTree.Diagnostics)), 'Quelle parst nicht: ' + AText);
+    Result := TAnonymousMethods.Embed(TAnonymousInput.Create(AText, mTree, PositionOf(AText, AMarker), LookupFor(mTree,
       AKind)), AAction, AReason);
     if Result then
     begin
@@ -198,45 +198,45 @@ begin
       AssertParses(AResult);
     end;
   finally
-    Tree.Free;
+    mTree.Free;
   end;
 end;
 
 procedure TAnonymousMethodsTests.WithoutCaptureUsesMethodName;
 var
-  Text, Reason, Done: string;
-  Target: TAnonymousTarget;
-  Converted: TAnonymousResult;
+  mText, mReason, mDone: string;
+  mTarget: TAnonymousTarget;
+  mConverted: TAnonymousResult;
 begin
-  Text := ClassUnit(Lines(['    procedure Run;']), Lines([
+  mText := ClassUnit(Lines(['    procedure Run;']), Lines([
     'procedure TFoo.Run;',
     'begin',
     '  Button.OnClick := procedure(Sender: TObject) begin FCount := 1; end;',
     'end;']));
-  Assert.IsTrue(TargetAt(Text, 'procedure(Sender', TDeferredCapture.Forward, Target, Reason), Reason);
-  Assert.IsTrue(Target.IsMethod);
-  Assert.AreEqual('HandleClick', Target.Suggested);
-  Assert.AreEqual(Ord(TAnonymousForm.Direct), Ord(Target.Form));
-  Assert.AreEqual('In Methode umwandeln (HandleClick)', Target.Title);
-  Assert.IsTrue(ConvertAt(Text, Request('procedure(Sender', 'HandleClick', TDeferredCapture.Forward), Converted, Reason,
-    Done), Reason);
-  Assert.IsTrue(Pos('  Button.OnClick := HandleClick;', Done) > 0, Done);
-  Assert.IsTrue(Pos(Lines(['    procedure Run;', '    procedure HandleClick(Sender: TObject);', '  end;']), Done) > 0,
-    Done);
+  Assert.IsTrue(TargetAt(mText, 'procedure(Sender', TDeferredCapture.Forward, mTarget, mReason), mReason);
+  Assert.IsTrue(mTarget.IsMethod);
+  Assert.AreEqual('HandleClick', mTarget.Suggested);
+  Assert.AreEqual(Ord(TAnonymousForm.Direct), Ord(mTarget.Form));
+  Assert.AreEqual('In Methode umwandeln (HandleClick)', mTarget.Title);
+  Assert.IsTrue(ConvertAt(mText, Request('procedure(Sender', 'HandleClick', TDeferredCapture.Forward), mConverted, mReason,
+    mDone), mReason);
+  Assert.IsTrue(Pos('  Button.OnClick := HandleClick;', mDone) > 0, mDone);
+  Assert.IsTrue(Pos(Lines(['    procedure Run;', '    procedure HandleClick(Sender: TObject);', '  end;']), mDone) > 0,
+    mDone);
   Assert.IsTrue(Pos(Lines(['end;', '', 'procedure TFoo.HandleClick(Sender: TObject);', 'begin', '  FCount := 1;',
-    'end;']), Done) > 0, Done);
-  Assert.IsTrue(StartsStr('Neue Methode: procedure TFoo.HandleClick(Sender: TObject);', Converted.Preview),
-    Converted.Preview);
-  Assert.AreEqual(0, Integer(Length(Converted.Warnings)));
+    'end;']), mDone) > 0, mDone);
+  Assert.IsTrue(StartsStr('Neue Methode: procedure TFoo.HandleClick(Sender: TObject);', mConverted.Preview),
+    mConverted.Preview);
+  Assert.AreEqual(0, Integer(Length(mConverted.Warnings)));
 end;
 
 procedure TAnonymousMethodsTests.SynchronousCapturesBecomeParameters;
 var
-  Text, Reason, Done: string;
-  Target: TAnonymousTarget;
-  Converted: TAnonymousResult;
+  mText, mReason, mDone: string;
+  mTarget: TAnonymousTarget;
+  mConverted: TAnonymousResult;
 begin
-  Text := ClassUnit(Lines(['    procedure Run(AFactor: Integer);']), Lines([
+  mText := ClassUnit(Lines(['    procedure Run(AFactor: Integer);']), Lines([
     'procedure TFoo.Run(AFactor: Integer);',
     'var',
     '  LSum: Integer;',
@@ -249,35 +249,35 @@ begin
     '      Log(LName);',
     '    end);',
     'end;']));
-  Assert.IsTrue(TargetAt(Text, 'procedure(const AItem', TDeferredCapture.Fields, Target, Reason), Reason);
-  Assert.AreEqual('ProcessItem', Target.Suggested);
+  Assert.IsTrue(TargetAt(mText, 'procedure(const AItem', TDeferredCapture.Fields, mTarget, mReason), mReason);
+  Assert.AreEqual('ProcessItem', mTarget.Suggested);
   // Synchron: auch mit fields bleibt es bei Parametern.
-  Assert.AreEqual(Ord(TAnonymousForm.Forwarding), Ord(Target.Form));
-  Assert.IsTrue(ConvertAt(Text, Request('procedure(const AItem', 'ProcessItem', TDeferredCapture.Fields), Converted,
-    Reason, Done), Reason);
+  Assert.AreEqual(Ord(TAnonymousForm.Forwarding), Ord(mTarget.Form));
+  Assert.IsTrue(ConvertAt(mText, Request('procedure(const AItem', 'ProcessItem', TDeferredCapture.Fields), mConverted,
+    mReason, mDone), mReason);
   Assert.IsTrue(Pos(Lines([
     '  FList.ForEach(procedure(const AItem: Integer)',
     '    begin',
     '      ProcessItem(AItem, LSum, AFactor, LName);',
-    '    end);']), Done) > 0, Done);
+    '    end);']), mDone) > 0, mDone);
   // Log ist unbekannt: LName könnte ein var-Argument sein.
   Assert.IsTrue(Pos('procedure TFoo.ProcessItem(const AItem: Integer; var LSum: Integer; AFactor: Integer; ' +
-    'var LName: string);', Done) > 0, Done);
+    'var LName: string);', mDone) > 0, mDone);
   Assert.IsTrue(Pos(Lines([
     'begin',
     '  LSum := LSum + AItem * AFactor;',
     '  Log(LName);',
-    'end;']), Done) > 0, Done);
-  Assert.IsTrue(Pos('ForEach', Converted.Preview) > 0, Converted.Preview);
+    'end;']), mDone) > 0, mDone);
+  Assert.IsTrue(Pos('ForEach', mConverted.Preview) > 0, mConverted.Preview);
 end;
 
 procedure TAnonymousMethodsTests.DeferredKeepsForwarding;
 var
-  Text, Reason, Done: string;
-  Target: TAnonymousTarget;
-  Converted: TAnonymousResult;
+  mText, mReason, mDone: string;
+  mTarget: TAnonymousTarget;
+  mConverted: TAnonymousResult;
 begin
-  Text := ClassUnit(Lines(['    procedure Run;', '    procedure Log(const AText: string);']), Lines([
+  mText := ClassUnit(Lines(['    procedure Run;', '    procedure Log(const AText: string);']), Lines([
     'procedure TFoo.Run;',
     'var',
     '  LText: string;',
@@ -289,28 +289,28 @@ begin
     '      Log(LText);',
     '    end);',
     'end;']));
-  Assert.IsTrue(TargetAt(Text, 'procedure' + LF + '    begin', TDeferredCapture.Forward, Target, Reason), Reason);
-  Assert.AreEqual('UpdateInMainThread', Target.Suggested);
-  Assert.AreEqual(Ord(TAnonymousForm.Forwarding), Ord(Target.Form));
-  Assert.IsTrue(ConvertAt(Text, Request('procedure' + LF + '    begin', 'ZeigeFertig', TDeferredCapture.Forward),
-    Converted, Reason, Done), Reason);
+  Assert.IsTrue(TargetAt(mText, 'procedure' + cLF + '    begin', TDeferredCapture.Forward, mTarget, mReason), mReason);
+  Assert.AreEqual('UpdateInMainThread', mTarget.Suggested);
+  Assert.AreEqual(Ord(TAnonymousForm.Forwarding), Ord(mTarget.Form));
+  Assert.IsTrue(ConvertAt(mText, Request('procedure' + cLF + '    begin', 'ZeigeFertig', TDeferredCapture.Forward),
+    mConverted, mReason, mDone), mReason);
   Assert.IsTrue(Pos(Lines([
     '  TThread.Queue(nil,',
     '    procedure',
     '    begin',
     '      ZeigeFertig(LText);',
-    '    end);']), Done) > 0, Done);
+    '    end);']), mDone) > 0, mDone);
   // Log hat eine Signatur in der Datei: LText wird nur gelesen.
-  Assert.IsTrue(Pos('    procedure ZeigeFertig(const LText: string);', Done) > 0, Done);
-  Assert.IsTrue(Pos('Weiterleitung', Converted.Preview) > 0, Converted.Preview);
+  Assert.IsTrue(Pos('    procedure ZeigeFertig(const LText: string);', mDone) > 0, mDone);
+  Assert.IsTrue(Pos('Weiterleitung', mConverted.Preview) > 0, mConverted.Preview);
 end;
 
 procedure TAnonymousMethodsTests.DeferredFieldsCopyValues;
 var
-  Text, Reason, Done: string;
-  Converted: TAnonymousResult;
+  mText, mReason, mDone: string;
+  mConverted: TAnonymousResult;
 begin
-  Text := ClassUnit(Lines(['    procedure Run;', '    procedure Log(const AText: string);']), Lines([
+  mText := ClassUnit(Lines(['    procedure Run;', '    procedure Log(const AText: string);']), Lines([
     'procedure TFoo.Run;',
     'var',
     '  LText: string;',
@@ -322,22 +322,22 @@ begin
     '      Log(LText);',
     '    end);',
     'end;']));
-  Assert.IsTrue(ConvertAt(Text, Request('procedure' + LF + '    begin', 'ZeigeFertig', TDeferredCapture.Fields),
-    Converted, Reason, Done), Reason);
-  Assert.AreEqual(Ord(TAnonymousForm.Fields), Ord(Converted.Form));
-  Assert.IsTrue(Pos(Lines(['  FText := LText;', '  TThread.Queue(nil,', '    ZeigeFertig);']), Done) > 0, Done);
-  Assert.IsTrue(Pos(Lines(['    FCount: Integer;', '    FText: string;']), Done) > 0, Done);
-  Assert.IsTrue(Pos('    procedure ZeigeFertig;', Done) > 0, Done);
-  Assert.IsTrue(Pos(Lines(['procedure TFoo.ZeigeFertig;', 'begin', '  Log(FText);', 'end;']), Done) > 0, Done);
-  Assert.AreEqual(1, Integer(Length(Converted.Warnings)));
+  Assert.IsTrue(ConvertAt(mText, Request('procedure' + cLF + '    begin', 'ZeigeFertig', TDeferredCapture.Fields),
+    mConverted, mReason, mDone), mReason);
+  Assert.AreEqual(Ord(TAnonymousForm.Fields), Ord(mConverted.Form));
+  Assert.IsTrue(Pos(Lines(['  FText := LText;', '  TThread.Queue(nil,', '    ZeigeFertig);']), mDone) > 0, mDone);
+  Assert.IsTrue(Pos(Lines(['    FCount: Integer;', '    FText: string;']), mDone) > 0, mDone);
+  Assert.IsTrue(Pos('    procedure ZeigeFertig;', mDone) > 0, mDone);
+  Assert.IsTrue(Pos(Lines(['procedure TFoo.ZeigeFertig;', 'begin', '  Log(FText);', 'end;']), mDone) > 0, mDone);
+  Assert.AreEqual(1, Integer(Length(mConverted.Warnings)));
 end;
 
 procedure TAnonymousMethodsTests.FieldsFallBackWhenWritten;
 var
-  Text, Reason, Done: string;
-  Converted: TAnonymousResult;
+  mText, mReason, mDone: string;
+  mConverted: TAnonymousResult;
 begin
-  Text := ClassUnit(Lines(['    procedure Run;']), Lines([
+  mText := ClassUnit(Lines(['    procedure Run;']), Lines([
     'procedure TFoo.Run;',
     'var',
     '  LDone: Boolean;',
@@ -345,21 +345,21 @@ begin
     '  LDone := False;',
     '  FTask := TTask.Run(procedure begin LDone := True; end);',
     'end;']));
-  Assert.IsTrue(ConvertAt(Text, Request('procedure begin', 'Arbeite', TDeferredCapture.Fields), Converted, Reason,
-    Done), Reason);
-  Assert.AreEqual(Ord(TAnonymousForm.Forwarding), Ord(Converted.Form));
-  Assert.IsTrue(Pos('  FTask := TTask.Run(procedure begin Arbeite(LDone); end);', Done) > 0, Done);
-  Assert.IsTrue(Pos('    procedure Arbeite(var LDone: Boolean);', Done) > 0, Done);
-  Assert.IsTrue(Pos('schreibt', Converted.Preview) > 0, Converted.Preview);
+  Assert.IsTrue(ConvertAt(mText, Request('procedure begin', 'Arbeite', TDeferredCapture.Fields), mConverted, mReason,
+    mDone), mReason);
+  Assert.AreEqual(Ord(TAnonymousForm.Forwarding), Ord(mConverted.Form));
+  Assert.IsTrue(Pos('  FTask := TTask.Run(procedure begin Arbeite(LDone); end);', mDone) > 0, mDone);
+  Assert.IsTrue(Pos('    procedure Arbeite(var LDone: Boolean);', mDone) > 0, mDone);
+  Assert.IsTrue(Pos('schreibt', mConverted.Preview) > 0, mConverted.Preview);
 end;
 
 procedure TAnonymousMethodsTests.ComparerSuggestsCompareBy;
 var
-  Text, Reason, Done: string;
-  Target: TAnonymousTarget;
-  Converted: TAnonymousResult;
+  mText, mReason, mDone: string;
+  mTarget: TAnonymousTarget;
+  mConverted: TAnonymousResult;
 begin
-  Text := ClassUnit(Lines(['    procedure Run;']), Lines([
+  mText := ClassUnit(Lines(['    procedure Run;']), Lines([
     'procedure TFoo.Run;',
     'begin',
     '  FList.Sort(TComparer<TKunde>.Construct(',
@@ -368,24 +368,24 @@ begin
     '      Result := CompareText(A.Name, B.Name);',
     '    end));',
     'end;']));
-  Assert.IsTrue(TargetAt(Text, 'function(const A', TDeferredCapture.Forward, Target, Reason), Reason);
-  Assert.AreEqual('CompareByName', Target.Suggested);
-  Assert.AreEqual(Ord(TAnonymousForm.Direct), Ord(Target.Form));
-  Assert.IsTrue(ConvertAt(Text, Request('function(const A', 'CompareByName', TDeferredCapture.Forward), Converted,
-    Reason, Done), Reason);
-  Assert.IsTrue(Pos(Lines(['  FList.Sort(TComparer<TKunde>.Construct(', '    CompareByName));']), Done) > 0, Done);
-  Assert.IsTrue(Pos('    function CompareByName(const A: TKunde; const B: TKunde): Integer;', Done) > 0, Done);
+  Assert.IsTrue(TargetAt(mText, 'function(const A', TDeferredCapture.Forward, mTarget, mReason), mReason);
+  Assert.AreEqual('CompareByName', mTarget.Suggested);
+  Assert.AreEqual(Ord(TAnonymousForm.Direct), Ord(mTarget.Form));
+  Assert.IsTrue(ConvertAt(mText, Request('function(const A', 'CompareByName', TDeferredCapture.Forward), mConverted,
+    mReason, mDone), mReason);
+  Assert.IsTrue(Pos(Lines(['  FList.Sort(TComparer<TKunde>.Construct(', '    CompareByName));']), mDone) > 0, mDone);
+  Assert.IsTrue(Pos('    function CompareByName(const A: TKunde; const B: TKunde): Integer;', mDone) > 0, mDone);
   Assert.IsTrue(Pos(Lines(['function TFoo.CompareByName(const A: TKunde; const B: TKunde): Integer;', 'begin',
-    '  Result := CompareText(A.Name, B.Name);', 'end;']), Done) > 0, Done);
+    '  Result := CompareText(A.Name, B.Name);', 'end;']), mDone) > 0, mDone);
 end;
 
 procedure TAnonymousMethodsTests.FreeRoutineBecomesUnitRoutine;
 var
-  Text, Reason, Done: string;
-  Target: TAnonymousTarget;
-  Converted: TAnonymousResult;
+  mText, mReason, mDone: string;
+  mTarget: TAnonymousTarget;
+  mConverted: TAnonymousResult;
 begin
-  Text := PlainUnit(Lines([
+  mText := PlainUnit(Lines([
     'procedure Zaehle(const AWerte: TArray<Integer>);',
     'const',
     '  Grenze = 10;',
@@ -399,12 +399,12 @@ begin
     '        TInterlocked.Increment(LAnzahl);',
     '    end);',
     'end;']));
-  Assert.IsTrue(TargetAt(Text, 'procedure(I', TDeferredCapture.Forward, Target, Reason), Reason);
-  Assert.IsFalse(Target.IsMethod);
-  Assert.AreEqual('ProcessIndex', Target.Suggested);
-  Assert.AreEqual('In Routine umwandeln (ProcessIndex)', Target.Title);
-  Assert.IsTrue(ConvertAt(Text, Request('procedure(I', 'ProcessIndex', TDeferredCapture.Forward), Converted, Reason,
-    Done), Reason);
+  Assert.IsTrue(TargetAt(mText, 'procedure(I', TDeferredCapture.Forward, mTarget, mReason), mReason);
+  Assert.IsFalse(mTarget.IsMethod);
+  Assert.AreEqual('ProcessIndex', mTarget.Suggested);
+  Assert.AreEqual('In Routine umwandeln (ProcessIndex)', mTarget.Title);
+  Assert.IsTrue(ConvertAt(mText, Request('procedure(I', 'ProcessIndex', TDeferredCapture.Forward), mConverted, mReason,
+    mDone), mReason);
   Assert.IsTrue(Pos(Lines([
     'procedure ProcessIndex(I: Integer; const AWerte: TArray<Integer>; var LAnzahl: Integer);',
     'const',
@@ -414,43 +414,43 @@ begin
     '    TInterlocked.Increment(LAnzahl);',
     'end;',
     '',
-    'procedure Zaehle(const AWerte: TArray<Integer>);']), Done) > 0, Done);
-  Assert.IsTrue(Pos('      ProcessIndex(I, AWerte, LAnzahl);', Done) > 0, Done);
-  Assert.IsTrue(StartsStr('Neue Routine: ', Converted.Preview), Converted.Preview);
+    'procedure Zaehle(const AWerte: TArray<Integer>);']), mDone) > 0, mDone);
+  Assert.IsTrue(Pos('      ProcessIndex(I, AWerte, LAnzahl);', mDone) > 0, mDone);
+  Assert.IsTrue(StartsStr('Neue Routine: ', mConverted.Preview), mConverted.Preview);
 end;
 
 procedure TAnonymousMethodsTests.ClassMethodStaysClassMethod;
 var
-  Text, Reason, Done: string;
-  Converted: TAnonymousResult;
+  mText, mReason, mDone: string;
+  mConverted: TAnonymousResult;
 begin
-  Text := ClassUnit(Lines(['    class procedure Run; static;']), Lines([
+  mText := ClassUnit(Lines(['    class procedure Run; static;']), Lines([
     'class procedure TFoo.Run;',
     'begin',
     '  TThread.Synchronize(nil, procedure begin Beep; end);',
     'end;']));
-  Assert.IsTrue(ConvertAt(Text, Request('procedure begin', 'Piepe', TDeferredCapture.Fields), Converted, Reason, Done),
-    Reason);
-  Assert.IsTrue(Pos('  TThread.Synchronize(nil, Piepe);', Done) > 0, Done);
-  Assert.IsTrue(Pos('    class procedure Piepe; static;', Done) > 0, Done);
-  Assert.IsTrue(Pos('class procedure TFoo.Piepe;', Done) > 0, Done);
+  Assert.IsTrue(ConvertAt(mText, Request('procedure begin', 'Piepe', TDeferredCapture.Fields), mConverted, mReason, mDone),
+    mReason);
+  Assert.IsTrue(Pos('  TThread.Synchronize(nil, Piepe);', mDone) > 0, mDone);
+  Assert.IsTrue(Pos('    class procedure Piepe; static;', mDone) > 0, mDone);
+  Assert.IsTrue(Pos('class procedure TFoo.Piepe;', mDone) > 0, mDone);
 end;
 
 procedure TAnonymousMethodsTests.RefusesChangedMeaning;
 var
-  Text, Reason: string;
-  Target: TAnonymousTarget;
+  mText, mReason: string;
+  mTarget: TAnonymousTarget;
 begin
   // Result der äußeren Funktion.
-  Text := ClassUnit(Lines(['    function Run: Integer;']), Lines([
+  mText := ClassUnit(Lines(['    function Run: Integer;']), Lines([
     'function TFoo.Run: Integer;',
     'begin',
     '  FList.ForEach(procedure(const AItem: Integer) begin Result := AItem; end);',
     'end;']));
-  Assert.IsFalse(TargetAt(Text, 'procedure(const', TDeferredCapture.Forward, Target, Reason));
-  Assert.IsTrue(Pos('Result', Reason) > 0, Reason);
+  Assert.IsFalse(TargetAt(mText, 'procedure(const', TDeferredCapture.Forward, mTarget, mReason));
+  Assert.IsTrue(Pos('Result', mReason) > 0, mReason);
   // Lokale Routine der äußeren.
-  Text := ClassUnit(Lines(['    procedure Run;']), Lines([
+  mText := ClassUnit(Lines(['    procedure Run;']), Lines([
     'procedure TFoo.Run;',
     '  procedure Hilfe;',
     '  begin',
@@ -458,10 +458,10 @@ begin
     'begin',
     '  FList.ForEach(procedure(const AItem: Integer) begin Hilfe; end);',
     'end;']));
-  Assert.IsFalse(TargetAt(Text, 'procedure(const', TDeferredCapture.Forward, Target, Reason));
-  Assert.IsTrue(Pos('Hilfe', Reason) > 0, Reason);
+  Assert.IsFalse(TargetAt(mText, 'procedure(const', TDeferredCapture.Forward, mTarget, mReason));
+  Assert.IsTrue(Pos('Hilfe', mReason) > 0, mReason);
   // In einer lokalen Routine.
-  Text := ClassUnit(Lines(['    procedure Run;']), Lines([
+  mText := ClassUnit(Lines(['    procedure Run;']), Lines([
     'procedure TFoo.Run;',
     '  procedure Hilfe;',
     '  begin',
@@ -470,9 +470,9 @@ begin
     'begin',
     '  Hilfe;',
     'end;']));
-  Assert.IsFalse(TargetAt(Text, 'procedure(const', TDeferredCapture.Forward, Target, Reason));
+  Assert.IsFalse(TargetAt(mText, 'procedure(const', TDeferredCapture.Forward, mTarget, mReason));
   // Verschachtelte anonyme Methode schreibt eine Variable, die var-Parameter würde.
-  Text := ClassUnit(Lines(['    procedure Run;']), Lines([
+  mText := ClassUnit(Lines(['    procedure Run;']), Lines([
     'procedure TFoo.Run;',
     'var',
     '  LSum: Integer;',
@@ -482,19 +482,19 @@ begin
     '      FOther.ForEach(procedure(const AInner: Integer) begin LSum := AInner; end);',
     '    end);',
     'end;']));
-  Assert.IsFalse(TargetAt(Text, 'procedure(const AItem', TDeferredCapture.Forward, Target, Reason));
-  Assert.IsTrue(Pos('LSum', Reason) > 0, Reason);
+  Assert.IsFalse(TargetAt(mText, 'procedure(const AItem', TDeferredCapture.Forward, mTarget, mReason));
+  Assert.IsTrue(Pos('LSum', mReason) > 0, mReason);
   // Auf dem Rumpf statt auf dem Kopf: nichts.
-  Assert.IsFalse(TargetAt(Text, 'begin' + LF + '      FOther', TDeferredCapture.Forward, Target, Reason));
+  Assert.IsFalse(TargetAt(mText, 'begin' + cLF + '      FOther', TDeferredCapture.Forward, mTarget, mReason));
 end;
 
 procedure TAnonymousMethodsTests.NameIsChecked;
 var
-  Text, Reason, Done: string;
-  Target: TAnonymousTarget;
-  Converted: TAnonymousResult;
+  mText, mReason, mDone: string;
+  mTarget: TAnonymousTarget;
+  mConverted: TAnonymousResult;
 begin
-  Text := ClassUnit(Lines(['    procedure Run;', '    procedure HandleClick;']), Lines([
+  mText := ClassUnit(Lines(['    procedure Run;', '    procedure HandleClick;']), Lines([
     'procedure TFoo.Run;',
     'begin',
     '  Button.OnClick := procedure(Sender: TObject) begin FCount := 1; end;',
@@ -504,23 +504,23 @@ begin
     'begin',
     'end;']));
   // Vergeben: Vorschlag mit Nummer, Ausführen mit dem Namen ein Fehler.
-  Assert.IsTrue(TargetAt(Text, 'procedure(Sender', TDeferredCapture.Forward, Target, Reason), Reason);
-  Assert.AreEqual('HandleClick2', Target.Suggested);
-  Assert.IsFalse(ConvertAt(Text, Request('procedure(Sender', 'HandleClick', TDeferredCapture.Forward), Converted,
-    Reason, Done));
-  Assert.IsTrue(Pos('vergeben', Reason) > 0, Reason);
-  Assert.IsFalse(ConvertAt(Text, Request('procedure(Sender', 'begin', TDeferredCapture.Forward), Converted, Reason,
-    Done));
-  Assert.IsFalse(ConvertAt(Text, Request('procedure(Sender', 'Sender', TDeferredCapture.Forward), Converted, Reason,
-    Done));
+  Assert.IsTrue(TargetAt(mText, 'procedure(Sender', TDeferredCapture.Forward, mTarget, mReason), mReason);
+  Assert.AreEqual('HandleClick2', mTarget.Suggested);
+  Assert.IsFalse(ConvertAt(mText, Request('procedure(Sender', 'HandleClick', TDeferredCapture.Forward), mConverted,
+    mReason, mDone));
+  Assert.IsTrue(Pos('vergeben', mReason) > 0, mReason);
+  Assert.IsFalse(ConvertAt(mText, Request('procedure(Sender', 'begin', TDeferredCapture.Forward), mConverted, mReason,
+    mDone));
+  Assert.IsFalse(ConvertAt(mText, Request('procedure(Sender', 'Sender', TDeferredCapture.Forward), mConverted, mReason,
+    mDone));
 end;
 
 procedure TAnonymousMethodsTests.EmbedSingleValueUse;
 var
-  Text, Reason, Done: string;
-  Action: TCodeAction;
+  mText, mReason, mDone: string;
+  mAction: TCodeAction;
 begin
-  Text := ClassUnit(Lines(['    procedure Run;', '    procedure ProcessItem(const AItem: Integer);']), Lines([
+  mText := ClassUnit(Lines(['    procedure Run;', '    procedure ProcessItem(const AItem: Integer);']), Lines([
     'procedure TFoo.Run;',
     'begin',
     '  FList.ForEach(ProcessItem);',
@@ -534,9 +534,9 @@ begin
     '  LDoppelt := AItem * 2;',
     '  FCount := FCount + LDoppelt;',
     'end;']));
-  Assert.IsTrue(EmbedAt(Text, 'ProcessItem(const AItem: Integer);' + LF + 'var', TProcTypeKind.Reference, Action,
-    Reason, Done), Reason);
-  Assert.AreEqual(TAnonymousMethods.EmbedTitle, Action.Title);
+  Assert.IsTrue(EmbedAt(mText, 'ProcessItem(const AItem: Integer);' + cLF + 'var', TProcTypeKind.Reference, mAction,
+    mReason, mDone), mReason);
+  Assert.AreEqual(TAnonymousMethods.EmbedTitle, mAction.Title);
   Assert.IsTrue(Pos(Lines([
     '  FList.ForEach(procedure(const AItem: Integer)',
     '    var',
@@ -545,14 +545,14 @@ begin
     '      LDoppelt := AItem * 2;',
     '      FCount := FCount + LDoppelt;',
     '    end);',
-    'end;']), Done) > 0, Done);
-  Assert.IsFalse(ContainsStr(Done, 'TFoo.ProcessItem'), Done);
-  Assert.IsFalse(ContainsStr(Done, 'Zaehlt mit'), Done);
-  Assert.IsFalse(ContainsStr(Done, '    procedure ProcessItem'), Done);
-  Assert.AreNotEqual('', Action.Preview);
+    'end;']), mDone) > 0, mDone);
+  Assert.IsFalse(ContainsStr(mDone, 'TFoo.ProcessItem'), mDone);
+  Assert.IsFalse(ContainsStr(mDone, 'Zaehlt mit'), mDone);
+  Assert.IsFalse(ContainsStr(mDone, '    procedure ProcessItem'), mDone);
+  Assert.AreNotEqual('', mAction.Preview);
   // Auch von der Deklaration in der Klasse aus.
-  Assert.IsTrue(EmbedAt(Text, 'ProcessItem(const AItem: Integer);' + LF + '  end;', TProcTypeKind.Reference, Action,
-    Reason, Done), Reason);
+  Assert.IsTrue(EmbedAt(mText, 'ProcessItem(const AItem: Integer);' + cLF + '  end;', TProcTypeKind.Reference, mAction,
+    mReason, mDone), mReason);
 end;
 
 /// <summary>Einbetten lehnt direkte, doppelte, öffentliche und verdeckte Aufrufer ab.</summary>
@@ -616,12 +616,12 @@ end;
 
 procedure TAnonymousMethodsTests.EmbedRefusals;
 var
-  Text, Reason, Done: string;
-  Action: TCodeAction;
-  Tree: TSyntaxTree;
-  Lookup: TAnonymousLookup;
+  mText, mReason, mDone: string;
+  mAction: TCodeAction;
+  mTree: TSyntaxTree;
+  mLookup: TAnonymousLookup;
 begin
-  Text := ClassUnit(Lines(['    procedure Run;', '    procedure Tick(Sender: TObject);']), Lines([
+  mText := ClassUnit(Lines(['    procedure Run;', '    procedure Tick(Sender: TObject);']), Lines([
     'procedure TFoo.Run;',
     'begin',
     '  Timer.OnTimer := Tick;',
@@ -632,23 +632,23 @@ begin
     '  Inc(FCount);',
     'end;']));
   // Methodenzeiger und unbekannter Zieltyp.
-  Assert.IsFalse(EmbedAt(Text, 'TFoo.Tick', TProcTypeKind.MethodPointer, Action, Reason, Done));
-  Assert.IsTrue(Pos('of object', Reason) > 0, Reason);
-  Assert.IsFalse(EmbedAt(Text, 'TFoo.Tick', TProcTypeKind.Unknown, Action, Reason, Done));
+  Assert.IsFalse(EmbedAt(mText, 'TFoo.Tick', TProcTypeKind.MethodPointer, mAction, mReason, mDone));
+  Assert.IsTrue(Pos('of object', mReason) > 0, mReason);
+  Assert.IsFalse(EmbedAt(mText, 'TFoo.Tick', TProcTypeKind.Unknown, mAction, mReason, mDone));
   // In der Formulardatei.
-  Tree := TPascalParser.Parse(Text);
+  mTree := TPascalParser.Parse(mText);
   try
-    Lookup := LookupFor(Tree, TProcTypeKind.Reference);
-    Lookup.InForm :=
+    mLookup := LookupFor(mTree, TProcTypeKind.Reference);
+    mLookup.InForm :=
       function(const AName: string): Boolean
       begin
         Result := SameText(AName, 'Tick');
       end;
-    Assert.IsFalse(TAnonymousMethods.Embed(TAnonymousInput.Create(Text, Tree, PositionOf(Text, 'TFoo.Tick'), Lookup),
-      Action, Reason));
-    Assert.IsTrue(Pos('Formulardatei', Reason) > 0, Reason);
+    Assert.IsFalse(TAnonymousMethods.Embed(TAnonymousInput.Create(mText, mTree, PositionOf(mText, 'TFoo.Tick'), mLookup),
+      mAction, mReason));
+    Assert.IsTrue(Pos('Formulardatei', mReason) > 0, mReason);
   finally
-    Tree.Free;
+    mTree.Free;
   end;
   AssertEmbedRefusesCallers;
 end;
@@ -668,11 +668,11 @@ end;
 
 procedure TAnonymousMethodsTests.RoundTrip;
 var
-  Text, Reason, Done, Back: string;
-  Converted: TAnonymousResult;
-  Action: TCodeAction;
+  mText, mReason, mDone, mBack: string;
+  mConverted: TAnonymousResult;
+  mAction: TCodeAction;
 begin
-  Text := ClassUnit(Lines(['    procedure Run;']), Lines([
+  mText := ClassUnit(Lines(['    procedure Run;']), Lines([
     'procedure TFoo.Run;',
     'begin',
     '  FList.ForEach(procedure(const AItem: Integer)',
@@ -680,10 +680,10 @@ begin
     '      FCount := FCount + AItem;',
     '    end);',
     'end;']));
-  Assert.IsTrue(ConvertAt(Text, Request('procedure(const', 'ProcessItem', TDeferredCapture.Forward), Converted, Reason,
-    Done), Reason);
-  Assert.IsTrue(EmbedAt(Done, 'TFoo.ProcessItem', TProcTypeKind.Reference, Action, Reason, Back), Reason);
-  Assert.AreEqual(Text, Back);
+  Assert.IsTrue(ConvertAt(mText, Request('procedure(const', 'ProcessItem', TDeferredCapture.Forward), mConverted, mReason,
+    mDone), mReason);
+  Assert.IsTrue(EmbedAt(mDone, 'TFoo.ProcessItem', TProcTypeKind.Reference, mAction, mReason, mBack), mReason);
+  Assert.AreEqual(mText, mBack);
 end;
 
 initialization

@@ -52,32 +52,32 @@ end;
 
 procedure TRuleOptionsTests.StringsReadsListOrDefault;
 var
-  Items: TArray<string>;
+  mItems: TArray<string>;
 begin
-  Items := TRuleOptions.Strings('{"ignore": ["0", 1, "2"]}', 'ignore', ['x']);
-  Assert.AreEqual(2, Integer(Length(Items)));
-  Assert.AreEqual('0', Items[0]);
-  Assert.AreEqual('2', Items[1]);
-  Items := TRuleOptions.Strings('{"ignore": []}', 'ignore', ['x']);
-  Assert.AreEqual(0, Integer(Length(Items)), 'leere Liste ersetzt die Vorgabe');
-  Items := TRuleOptions.Strings('{}', 'ignore', ['x']);
-  Assert.AreEqual(1, Integer(Length(Items)));
-  Assert.AreEqual('x', Items[0]);
+  mItems := TRuleOptions.Strings('{"ignore": ["0", 1, "2"]}', 'ignore', ['x']);
+  Assert.AreEqual(2, Integer(Length(mItems)));
+  Assert.AreEqual('0', mItems[0]);
+  Assert.AreEqual('2', mItems[1]);
+  mItems := TRuleOptions.Strings('{"ignore": []}', 'ignore', ['x']);
+  Assert.AreEqual(0, Integer(Length(mItems)), 'leere Liste ersetzt die Vorgabe');
+  mItems := TRuleOptions.Strings('{}', 'ignore', ['x']);
+  Assert.AreEqual(1, Integer(Length(mItems)));
+  Assert.AreEqual('x', mItems[0]);
 end;
 
 procedure TRuleOptionsTests.NumbersReadsListOrDefault;
 var
-  Items: TArray<Double>;
+  mItems: TArray<Double>;
 begin
-  Items := TRuleOptions.Numbers('{"allowed": [0, -1, 2.5, "3"]}', 'allowed', [7]);
-  Assert.AreEqual(3, Integer(Length(Items)));
-  Assert.AreEqual(Double(-1), Items[1]);
-  Assert.AreEqual(Double(2.5), Items[2]);
-  Items := TRuleOptions.Numbers('{"allowed": []}', 'allowed', [7]);
-  Assert.AreEqual(0, Integer(Length(Items)), 'leere Liste ersetzt die Vorgabe');
-  Items := TRuleOptions.Numbers('{"allowed": "1"}', 'allowed', [7]);
-  Assert.AreEqual(1, Integer(Length(Items)), 'falscher Typ');
-  Assert.AreEqual(Double(7), Items[0]);
+  mItems := TRuleOptions.Numbers('{"allowed": [0, -1, 2.5, "3"]}', 'allowed', [7]);
+  Assert.AreEqual(3, Integer(Length(mItems)));
+  Assert.AreEqual(Double(-1), mItems[1]);
+  Assert.AreEqual(Double(2.5), mItems[2]);
+  mItems := TRuleOptions.Numbers('{"allowed": []}', 'allowed', [7]);
+  Assert.AreEqual(0, Integer(Length(mItems)), 'leere Liste ersetzt die Vorgabe');
+  mItems := TRuleOptions.Numbers('{"allowed": "1"}', 'allowed', [7]);
+  Assert.AreEqual(1, Integer(Length(mItems)), 'falscher Typ');
+  Assert.AreEqual(Double(7), mItems[0]);
 end;
 
 procedure TRuleOptionsTests.TextReadsValueOrDefault;

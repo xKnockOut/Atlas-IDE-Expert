@@ -70,29 +70,29 @@ end;
 
 function Sample: TArray<TAtlasToolbarButton>;
 var
-  Button: TAtlasToolbarButton;
+  mButton: TAtlasToolbarButton;
 begin
   Result := nil;
-  Button := TAtlasToolbarButton.Create(TAtlasToolbarItems.cGotoInterface, 'Zum interface-Teil', 'Zum interface-Teil',
+  mButton := TAtlasToolbarButton.Create(TAtlasToolbarItems.cGotoInterface, 'Zum interface-Teil', 'Zum interface-Teil',
     TAtlasToolbarIcon.InterfacePart);
-  Button.Pinned := True;
-  Result := Result + [Button];
-  Button := TAtlasToolbarButton.Create(TAtlasToolbarItems.cGotoImplementation, 'Zum implementation-Teil', '',
+  mButton.Pinned := True;
+  Result := Result + [mButton];
+  mButton := TAtlasToolbarButton.Create(TAtlasToolbarItems.cGotoImplementation, 'Zum implementation-Teil', '',
     TAtlasToolbarIcon.ImplementationPart);
-  Button.Pinned := True;
-  Button.Pressed := True;
-  Result := Result + [Button];
+  mButton.Pinned := True;
+  mButton.Pressed := True;
+  Result := Result + [mButton];
   Result := Result + [TAtlasToolbarButton.Separator];
   Result := Result + [TAtlasToolbarButton.Create('Atlas.NavBack', 'Zurück', 'Zurück (Alt+Links)',
     TAtlasToolbarIcon.Back)];
-  Button := TAtlasToolbarButton.Create('Atlas.NavForward', 'Vor', 'Vor', TAtlasToolbarIcon.Forward);
-  Button.Enabled := False;
-  Result := Result + [Button];
+  mButton := TAtlasToolbarButton.Create('Atlas.NavForward', 'Vor', 'Vor', TAtlasToolbarIcon.Forward);
+  mButton.Enabled := False;
+  Result := Result + [mButton];
   Result := Result + [TAtlasToolbarButton.Separator];
-  Button := TAtlasToolbarButton.Create('Atlas.ProblemsWindow', 'Probleme', 'Probleme · 3 Befunde',
+  mButton := TAtlasToolbarButton.Create('Atlas.ProblemsWindow', 'Probleme', 'Probleme · 3 Befunde',
     TAtlasToolbarIcon.Problems);
-  Button.Dot := True;
-  Result := Result + [Button];
+  mButton.Dot := True;
+  Result := Result + [mButton];
   Result := Result + [TAtlasToolbarButton.Create('Atlas.Custom', 'Eigener Befehl', '', TAtlasToolbarIcon.Letter)];
 end;
 
@@ -134,13 +134,13 @@ end;
 
 procedure TAtlasEditorToolbarTests.KeepsHeightAndOrder;
 var
-  Height_: Integer;
+  mHeight_: Integer;
 begin
-  Height_ := FBar.Height;
-  Assert.AreEqual(TAtlasEditorToolbar.BarHeight(FBar.CurrentPPI), Height_);
+  mHeight_ := FBar.Height;
+  Assert.AreEqual(TAtlasEditorToolbar.BarHeight(FBar.CurrentPPI), mHeight_);
   FBar.SetButtons(Sample);
-  FBar.Height := Height_ * 2;
-  Assert.AreEqual(Height_, FBar.Height, 'eine Zeile, nie höher');
+  FBar.Height := mHeight_ * 2;
+  Assert.AreEqual(mHeight_, FBar.Height, 'eine Zeile, nie höher');
   Assert.IsTrue(FBar.Places.ButtonRect(TAtlasToolbarItems.cGotoInterface).Right <=
     FBar.Places.ButtonRect(TAtlasToolbarItems.cGotoImplementation).Left, 'Reihenfolge von links');
   Assert.IsTrue(FBar.Places.ButtonRect('Atlas.NavBack').Left > FBar.Places.ButtonRect(TAtlasToolbarItems.cGotoImplementation).Right,
@@ -170,62 +170,62 @@ end;
 
 procedure TAtlasEditorToolbarTests.NarrowBarOverflows;
 var
-  Overflow: TArray<string>;
+  mOverflow: TArray<string>;
 begin
   FBar.SetButtons(Sample);
   FBar.SetReturn(True, '214', '');
   // alTop: Die Leiste ist so breit wie das Formular.
   FForm.ClientWidth := 204;
   Assert.IsFalse(FBar.Places.More.IsEmpty, '» erscheint');
-  Overflow := FBar.Places.OverflowIds;
-  Assert.IsTrue(Length(Overflow) > 0);
-  Assert.AreEqual('Atlas.Custom', Overflow[High(Overflow)], 'Reihenfolge bleibt');
+  mOverflow := FBar.Places.OverflowIds;
+  Assert.IsTrue(Length(mOverflow) > 0);
+  Assert.AreEqual('Atlas.Custom', mOverflow[High(mOverflow)], 'Reihenfolge bleibt');
   Assert.IsFalse(FBar.Places.ButtonRect(TAtlasToolbarItems.cGotoInterface).IsEmpty, 'angeheftet');
   Assert.IsFalse(FBar.Places.ButtonRect(TAtlasToolbarItems.cGotoImplementation).IsEmpty, 'angeheftet');
   Assert.IsFalse(FBar.Places.Return.IsEmpty, 'Rücksprung bleibt sichtbar');
-  Assert.AreNotEqual(TAtlasToolbarItems.cSeparator, Overflow[0], 'kein Trennstrich vorn im Menü');
+  Assert.AreNotEqual(TAtlasToolbarItems.cSeparator, mOverflow[0], 'kein Trennstrich vorn im Menü');
   FBar.Repaint;
 end;
 
 procedure TAtlasEditorToolbarTests.ClicksAndDisabledButtons;
 var
-  Fired: string;
-  Returned, Customized: Boolean;
-  Area: TRect;
+  mFired: string;
+  mReturned, mCustomized: Boolean;
+  mArea: TRect;
 begin
-  Fired := '';
-  Returned := False;
-  Customized := False;
+  mFired := '';
+  mReturned := False;
+  mCustomized := False;
   FBar.OnCommand :=
     procedure(const AId: string)
     begin
-      Fired := AId;
+      mFired := AId;
     end;
   FBar.OnReturn :=
     procedure
     begin
-      Returned := True;
+      mReturned := True;
     end;
   FBar.OnCustomize :=
     procedure
     begin
-      Customized := True;
+      mCustomized := True;
     end;
   FBar.SetButtons(Sample);
   FBar.SetReturn(True, '214', '');
-  Area := FBar.Places.ButtonRect('Atlas.NavBack');
-  FBar.ClickAt(Area.CenterPoint.X, Area.CenterPoint.Y);
-  Assert.AreEqual('Atlas.NavBack', Fired);
-  Fired := '';
-  Area := FBar.Places.ButtonRect('Atlas.NavForward');
-  FBar.ClickAt(Area.CenterPoint.X, Area.CenterPoint.Y);
-  Assert.AreEqual('', Fired, 'gesperrt');
-  Area := FBar.Places.Return;
-  FBar.ClickAt(Area.CenterPoint.X, Area.CenterPoint.Y);
-  Assert.IsTrue(Returned);
-  Area := FBar.Places.Gear;
-  FBar.ClickAt(Area.CenterPoint.X, Area.CenterPoint.Y);
-  Assert.IsTrue(Customized);
+  mArea := FBar.Places.ButtonRect('Atlas.NavBack');
+  FBar.ClickAt(mArea.CenterPoint.X, mArea.CenterPoint.Y);
+  Assert.AreEqual('Atlas.NavBack', mFired);
+  mFired := '';
+  mArea := FBar.Places.ButtonRect('Atlas.NavForward');
+  FBar.ClickAt(mArea.CenterPoint.X, mArea.CenterPoint.Y);
+  Assert.AreEqual('', mFired, 'gesperrt');
+  mArea := FBar.Places.Return;
+  FBar.ClickAt(mArea.CenterPoint.X, mArea.CenterPoint.Y);
+  Assert.IsTrue(mReturned);
+  mArea := FBar.Places.Gear;
+  FBar.ClickAt(mArea.CenterPoint.X, mArea.CenterPoint.Y);
+  Assert.IsTrue(mCustomized);
   FBar.OnCommand := nil;
   FBar.OnReturn := nil;
   FBar.OnCustomize := nil;
@@ -235,125 +235,125 @@ end;
 /// Loslassen kommt dort CM_MOUSELEAVE, und das löschte den gedrückten Knopf.</summary>
 procedure TAtlasEditorToolbarTests.MouseClickSurvivesMouseLeave;
 var
-  Fired: string;
-  Customized: Boolean;
-  Back, Problems, Gear: LPARAM;
+  mFired: string;
+  mCustomized: Boolean;
+  mBack, mProblems, mGear: LPARAM;
 begin
-  Fired := '';
-  Customized := False;
+  mFired := '';
+  mCustomized := False;
   FBar.OnCommand :=
     procedure(const AId: string)
     begin
-      Fired := AId;
+      mFired := AId;
     end;
   FBar.OnCustomize :=
     procedure
     begin
-      Customized := True;
+      mCustomized := True;
     end;
   FBar.SetButtons(Sample);
   // Mauspunkte als lParam der Fensternachrichten.
-  Back := MousePoint(FBar.Places.ButtonRect('Atlas.NavBack').CenterPoint);
-  Problems := MousePoint(FBar.Places.ButtonRect('Atlas.ProblemsWindow').CenterPoint);
-  Gear := MousePoint(FBar.Places.Gear.CenterPoint);
+  mBack := MousePoint(FBar.Places.ButtonRect('Atlas.NavBack').CenterPoint);
+  mProblems := MousePoint(FBar.Places.ButtonRect('Atlas.ProblemsWindow').CenterPoint);
+  mGear := MousePoint(FBar.Places.Gear.CenterPoint);
   // Drücken, Mausverlassen (Mausfang, Fokus in den Editor), Loslassen auf demselben Knopf.
-  FBar.Perform(WM_LBUTTONDOWN, MK_LBUTTON, Back);
+  FBar.Perform(WM_LBUTTONDOWN, MK_LBUTTON, mBack);
   FBar.Perform(CM_MOUSELEAVE, 0, 0);
-  FBar.Perform(WM_LBUTTONUP, 0, Back);
-  Assert.AreEqual('Atlas.NavBack', Fired, 'Klick trotz Mausverlassen');
-  Fired := '';
-  FBar.Perform(WM_LBUTTONDOWN, MK_LBUTTON, Gear);
+  FBar.Perform(WM_LBUTTONUP, 0, mBack);
+  Assert.AreEqual('Atlas.NavBack', mFired, 'Klick trotz Mausverlassen');
+  mFired := '';
+  FBar.Perform(WM_LBUTTONDOWN, MK_LBUTTON, mGear);
   FBar.Perform(CM_MOUSELEAVE, 0, 0);
-  FBar.Perform(WM_LBUTTONUP, 0, Gear);
-  Assert.IsTrue(Customized, 'Zahnrad trotz Mausverlassen');
+  FBar.Perform(WM_LBUTTONUP, 0, mGear);
+  Assert.IsTrue(mCustomized, 'Zahnrad trotz Mausverlassen');
   // Ohne gesehenes Drücken zählt das Loslassen über dem Knopf.
-  FBar.Perform(WM_LBUTTONUP, 0, Problems);
-  Assert.AreEqual('Atlas.ProblemsWindow', Fired, 'Loslassen ohne Drücken');
-  Fired := '';
+  FBar.Perform(WM_LBUTTONUP, 0, mProblems);
+  Assert.AreEqual('Atlas.ProblemsWindow', mFired, 'Loslassen ohne Drücken');
+  mFired := '';
   // Auf einem Knopf gedrückt, auf einem anderen losgelassen: kein Befehl.
-  FBar.Perform(WM_LBUTTONDOWN, MK_LBUTTON, Back);
-  FBar.Perform(WM_LBUTTONUP, 0, Problems);
-  Assert.AreEqual('', Fired, 'auf anderem Knopf losgelassen');
+  FBar.Perform(WM_LBUTTONDOWN, MK_LBUTTON, mBack);
+  FBar.Perform(WM_LBUTTONUP, 0, mProblems);
+  Assert.AreEqual('', mFired, 'auf anderem Knopf losgelassen');
   // Danach ist nichts mehr gedrückt: Der nächste Klick gilt wieder.
-  FBar.Perform(WM_LBUTTONDOWN, MK_LBUTTON, Problems);
-  FBar.Perform(WM_LBUTTONUP, 0, Problems);
-  Assert.AreEqual('Atlas.ProblemsWindow', Fired, 'nächster Klick');
-  Fired := '';
+  FBar.Perform(WM_LBUTTONDOWN, MK_LBUTTON, mProblems);
+  FBar.Perform(WM_LBUTTONUP, 0, mProblems);
+  Assert.AreEqual('Atlas.ProblemsWindow', mFired, 'nächster Klick');
+  mFired := '';
   FBar.OnCommand := nil;
   FBar.OnCustomize := nil;
 end;
 
 procedure TAtlasEditorToolbarTests.ReportsDisablingBeforeItHappens;
 var
-  Calls: Integer;
-  EnabledAtCall: Boolean;
+  mCalls: Integer;
+  mEnabledAtCall: Boolean;
 begin
-  Calls := 0;
-  EnabledAtCall := False;
+  mCalls := 0;
+  mEnabledAtCall := False;
   FBar.OnDisabled :=
     procedure(Sender: TObject)
     begin
-      Inc(Calls);
-      EnabledAtCall := TAtlasEditorToolbar(Sender).Enabled;
+      Inc(mCalls);
+      mEnabledAtCall := TAtlasEditorToolbar(Sender).Enabled;
     end;
   FBar.Enabled := False;
-  Assert.AreEqual(1, Calls);
-  Assert.IsTrue(EnabledAtCall, 'gemeldet, bevor gesperrt');
+  Assert.AreEqual(1, mCalls);
+  Assert.IsTrue(mEnabledAtCall, 'gemeldet, bevor gesperrt');
   Assert.IsFalse(FBar.Enabled);
   // Schon gesperrt oder wieder frei: keine Meldung.
   FBar.Enabled := False;
   FBar.Enabled := True;
-  Assert.AreEqual(1, Calls);
+  Assert.AreEqual(1, mCalls);
   FBar.OnDisabled := nil;
 end;
 
 procedure TAtlasEditorToolbarTests.HintsNameCommandAndReason;
 var
-  Area: TRect;
+  mArea: TRect;
 begin
   FBar.SetButtons(Sample);
-  Area := FBar.Places.ButtonRect('Atlas.NavBack');
-  Assert.AreEqual('Zurück (Alt+Links)', FBar.HintAt(Area.CenterPoint.X, Area.CenterPoint.Y));
-  Area := FBar.Places.ButtonRect(TAtlasToolbarItems.cGotoImplementation);
-  Assert.AreEqual('Zum implementation-Teil', FBar.HintAt(Area.CenterPoint.X, Area.CenterPoint.Y),
+  mArea := FBar.Places.ButtonRect('Atlas.NavBack');
+  Assert.AreEqual('Zurück (Alt+Links)', FBar.HintAt(mArea.CenterPoint.X, mArea.CenterPoint.Y));
+  mArea := FBar.Places.ButtonRect(TAtlasToolbarItems.cGotoImplementation);
+  Assert.AreEqual('Zum implementation-Teil', FBar.HintAt(mArea.CenterPoint.X, mArea.CenterPoint.Y),
     'ohne Tooltip die Beschriftung');
-  Area := FBar.Places.ButtonRect('Atlas.ProblemsWindow');
-  Assert.AreEqual('Probleme · 3 Befunde', FBar.HintAt(Area.CenterPoint.X, Area.CenterPoint.Y));
+  mArea := FBar.Places.ButtonRect('Atlas.ProblemsWindow');
+  Assert.AreEqual('Probleme · 3 Befunde', FBar.HintAt(mArea.CenterPoint.X, mArea.CenterPoint.Y));
   // Mit Text neben den Symbolen werden die Knöpfe breiter.
-  Area := FBar.Places.ButtonRect('Atlas.NavBack');
+  mArea := FBar.Places.ButtonRect('Atlas.NavBack');
   FBar.Labels := True;
-  Assert.IsTrue(FBar.Places.ButtonRect('Atlas.NavBack').Width > Area.Width);
+  Assert.IsTrue(FBar.Places.ButtonRect('Atlas.NavBack').Width > mArea.Width);
   FBar.Repaint;
 end;
 
 procedure TAtlasEditorToolbarTests.InlineLeavesCrumbsTheLeftSide;
 var
-  Crumbs: TAtlasBreadcrumbBar;
-  Path: TAtlasCrumbs;
-  Crumb: TAtlasCrumb;
+  mCrumbs: TAtlasBreadcrumbBar;
+  mPath: TAtlasCrumbs;
+  mCrumb: TAtlasCrumb;
 begin
-  Crumbs := TAtlasBreadcrumbBar.Create(FForm);
-  Crumbs.Parent := FForm;
-  Crumbs.Align := alTop;
-  Crumbs.HandleNeeded;
-  Path := nil;
-  Crumb := Default(TAtlasCrumb);
-  Crumb.Text := 'uKundeForm';
-  Crumb.Node := -1;
-  Path := Path + [Crumb];
-  Crumb.Text := 'TfrmKunde.btnSpeichernClickMitEinemSehrLangenNamen';
-  Crumb.Node := 0;
-  Path := Path + [Crumb];
-  Crumbs.SetCrumbs(Path);
+  mCrumbs := TAtlasBreadcrumbBar.Create(FForm);
+  mCrumbs.Parent := FForm;
+  mCrumbs.Align := alTop;
+  mCrumbs.HandleNeeded;
+  mPath := nil;
+  mCrumb := Default(TAtlasCrumb);
+  mCrumb.Text := 'uKundeForm';
+  mCrumb.Node := -1;
+  mPath := mPath + [mCrumb];
+  mCrumb.Text := 'TfrmKunde.btnSpeichernClickMitEinemSehrLangenNamen';
+  mCrumb.Node := 0;
+  mPath := mPath + [mCrumb];
+  mCrumbs.SetCrumbs(mPath);
   FBar.Parent := nil;
   FBar.InlineMode := True;
   FBar.Align := alRight;
-  FBar.Parent := Crumbs;
+  FBar.Parent := mCrumbs;
   FBar.SetButtons(Sample);
   FBar.Width := 300;
-  Assert.AreEqual(Crumbs.ClientWidth - 300, Crumbs.ContentRight);
-  Assert.IsTrue(Crumbs.CrumbRect(1).Right <= Crumbs.ContentRight, 'Glieder links der Leiste');
-  Crumbs.Repaint;
+  Assert.AreEqual(mCrumbs.ClientWidth - 300, mCrumbs.ContentRight);
+  Assert.IsTrue(mCrumbs.CrumbRect(1).Right <= mCrumbs.ContentRight, 'Glieder links der Leiste');
+  mCrumbs.Repaint;
   FBar.Repaint;
 end;
 

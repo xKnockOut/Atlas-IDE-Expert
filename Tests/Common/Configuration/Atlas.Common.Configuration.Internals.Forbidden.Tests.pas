@@ -43,109 +43,109 @@ uses
 
 function Stripped(const AText: string): string; overload;
 var
-  Issues: TArray<TConfigurationIssue>;
+  mIssues: TArray<TConfigurationIssue>;
 begin
-  Result := TForbiddenEntries.Strip(AText, Issues);
+  Result := TForbiddenEntries.Strip(AText, mIssues);
 end;
 
 function Stripped(const AText: string; out ACount: Integer): string; overload;
 var
-  Issues: TArray<TConfigurationIssue>;
+  mIssues: TArray<TConfigurationIssue>;
 begin
-  Result := TForbiddenEntries.Strip(AText, Issues);
-  ACount := Length(Issues);
+  Result := TForbiddenEntries.Strip(AText, mIssues);
+  ACount := Length(mIssues);
 end;
 
 { TForbiddenEntriesTests }
 
 procedure TForbiddenEntriesTests.KeepsTextWithoutFindings;
 const
-  Text = '{'#10'  "project": "Haupt.dproj",'#10'  "lsp": { "trace": "off" }'#10'}';
+  cText = '{'#10'  "project": "Haupt.dproj",'#10'  "lsp": { "trace": "off" }'#10'}';
 var
-  Count: Integer;
+  mCount: Integer;
 begin
-  Assert.AreEqual(Text, Stripped(Text, Count), 'Unverändert bis aufs Zeichen');
-  Assert.AreEqual(0, Count);
+  Assert.AreEqual(cText, Stripped(cText, mCount), 'Unverändert bis aufs Zeichen');
+  Assert.AreEqual(0, mCount);
 end;
 
 procedure TForbiddenEntriesTests.RemovesCredentialKeysOnEveryLevel;
 var
-  Count: Integer;
+  mCount: Integer;
 begin
-  Assert.AreEqual('{"a": 1}', Stripped('{"a": 1, "token": "geheim"}', Count));
-  Assert.AreEqual(1, Count);
+  Assert.AreEqual('{"a": 1}', Stripped('{"a": 1, "token": "geheim"}', mCount));
+  Assert.AreEqual(1, mCount);
   Assert.AreEqual('{"ci": {"url": "https://ci.example"}}',
-    Stripped('{"ci": {"url": "https://ci.example", "password": "x"}}', Count));
-  Assert.AreEqual(1, Count);
+    Stripped('{"ci": {"url": "https://ci.example", "password": "x"}}', mCount));
+  Assert.AreEqual(1, mCount);
 end;
 
 procedure TForbiddenEntriesTests.RemovesUrlWithCredentials;
 var
-  Count: Integer;
+  mCount: Integer;
 begin
-  Assert.AreEqual('{"n": 2}', Stripped('{"url": "https://user:pw@ci.example/job", "n": 2}', Count));
-  Assert.AreEqual(1, Count);
+  Assert.AreEqual('{"n": 2}', Stripped('{"url": "https://user:pw@ci.example/job", "n": 2}', mCount));
+  Assert.AreEqual(1, mCount);
   Assert.AreEqual('{"ci": {"hooks": ["https://ci.example/a"]}}',
-    Stripped('{"ci": {"hooks": ["https://ci.example/a", "https://x:y@ci.example/b"]}}', Count));
-  Assert.AreEqual(1, Count);
+    Stripped('{"ci": {"hooks": ["https://ci.example/a", "https://x:y@ci.example/b"]}}', mCount));
+  Assert.AreEqual(1, mCount);
 end;
 
 procedure TForbiddenEntriesTests.RemovesAbsolutePathsInPathSettings;
 var
-  Count: Integer;
+  mCount: Integer;
 begin
-  Assert.AreEqual('{}', Stripped('{"project": "C:\\Projekte\\Haupt.dproj"}', Count));
-  Assert.AreEqual(1, Count);
+  Assert.AreEqual('{}', Stripped('{"project": "C:\\Projekte\\Haupt.dproj"}', mCount));
+  Assert.AreEqual(1, mCount);
   Assert.AreEqual('{"exclude": ["Generated\\**"]}', Stripped('{"exclude": ["Generated\\**", "D:\\Fremd\\**"]}',
-    Count));
-  Assert.AreEqual(1, Count);
-  Assert.AreEqual('{"testUnits": {}}', Stripped('{"testUnits": {"folder": "\\\\server\\share\\Tests"}}', Count));
-  Assert.AreEqual(1, Count);
-  Assert.AreEqual('{"overrides": [{"files": []}]}', Stripped('{"overrides": [{"files": ["C:\\a.pas"]}]}', Count));
-  Assert.AreEqual(1, Count);
+    mCount));
+  Assert.AreEqual(1, mCount);
+  Assert.AreEqual('{"testUnits": {}}', Stripped('{"testUnits": {"folder": "\\\\server\\share\\Tests"}}', mCount));
+  Assert.AreEqual(1, mCount);
+  Assert.AreEqual('{"overrides": [{"files": []}]}', Stripped('{"overrides": [{"files": ["C:\\a.pas"]}]}', mCount));
+  Assert.AreEqual(1, mCount);
 end;
 
 procedure TForbiddenEntriesTests.KeepsRelativePathsAndGlobs;
 const
-  Text = '{"project": "..\\Haupt.dproj", "exclude": ["/Generated/**"], "index": {"exclude": ["Lib\\*"]}}';
+  cText = '{"project": "..\\Haupt.dproj", "exclude": ["/Generated/**"], "index": {"exclude": ["Lib\\*"]}}';
 var
-  Count: Integer;
+  mCount: Integer;
 begin
-  Assert.AreEqual(Text, Stripped(Text, Count));
-  Assert.AreEqual(0, Count);
+  Assert.AreEqual(cText, Stripped(cText, mCount));
+  Assert.AreEqual(0, mCount);
 end;
 
 procedure TForbiddenEntriesTests.AbsolutePathOutsidePathSettingStays;
 const
-  Text = '{"compiler": {"dcc": "C:\\Delphi\\bin\\dcc64.exe"}}';
+  cText = '{"compiler": {"dcc": "C:\\Delphi\\bin\\dcc64.exe"}}';
 begin
-  Assert.AreEqual(Text, Stripped(Text));
+  Assert.AreEqual(cText, Stripped(cText));
 end;
 
 procedure TForbiddenEntriesTests.ReportsWarningWithPosition;
 var
-  Issues: TArray<TConfigurationIssue>;
+  mIssues: TArray<TConfigurationIssue>;
 begin
-  TForbiddenEntries.Strip('{'#10'  "n": 1,'#10'  "token": "x"'#10'}', Issues);
-  Assert.AreEqual(1, Integer(Length(Issues)));
-  Assert.IsFalse(Issues[0].IsError, 'Warnung, kein Fehler');
-  Assert.AreEqual(2, Issues[0].Range.StartPos.Line);
-  Assert.AreEqual(2, Issues[0].Range.StartPos.Character);
-  Assert.AreEqual(9, Issues[0].Range.EndPos.Character, 'Ganzer Schlüssel samt Anführungszeichen');
-  Assert.IsTrue(Pos('"token"', Issues[0].Message) > 0, Issues[0].Message);
-  Issues := nil;
+  TForbiddenEntries.Strip('{'#10'  "n": 1,'#10'  "token": "x"'#10'}', mIssues);
+  Assert.AreEqual(1, Integer(Length(mIssues)));
+  Assert.IsFalse(mIssues[0].IsError, 'Warnung, kein Fehler');
+  Assert.AreEqual(2, mIssues[0].Range.StartPos.Line);
+  Assert.AreEqual(2, mIssues[0].Range.StartPos.Character);
+  Assert.AreEqual(9, mIssues[0].Range.EndPos.Character, 'Ganzer Schlüssel samt Anführungszeichen');
+  Assert.IsTrue(Pos('"token"', mIssues[0].Message) > 0, mIssues[0].Message);
+  mIssues := nil;
 end;
 
 procedure TForbiddenEntriesTests.InvalidOrEmptyTextStays;
 var
-  Count: Integer;
+  mCount: Integer;
 begin
-  Assert.AreEqual('', Stripped('', Count));
-  Assert.AreEqual(0, Count);
-  Assert.AreEqual('{"token": ', Stripped('{"token": ', Count), 'Syntaxfehler meldet der Parser');
-  Assert.AreEqual(0, Count);
-  Assert.AreEqual('["C:\\x"]', Stripped('["C:\\x"]', Count), 'Nur Objekte werden gefiltert');
-  Assert.AreEqual(0, Count);
+  Assert.AreEqual('', Stripped('', mCount));
+  Assert.AreEqual(0, mCount);
+  Assert.AreEqual('{"token": ', Stripped('{"token": ', mCount), 'Syntaxfehler meldet der Parser');
+  Assert.AreEqual(0, mCount);
+  Assert.AreEqual('["C:\\x"]', Stripped('["C:\\x"]', mCount), 'Nur Objekte werden gefiltert');
+  Assert.AreEqual(0, mCount);
 end;
 
 procedure TForbiddenEntriesTests.KnowsPathSettings;
