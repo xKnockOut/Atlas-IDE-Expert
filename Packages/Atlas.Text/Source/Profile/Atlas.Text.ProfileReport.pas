@@ -70,30 +70,44 @@ uses
 type
   /// <summary>Zwischenstand je Methode beim Zählen: Proben je Zeile.</summary>
   TMethodTally = class
+  private
+    FMethod: TAtlasProfileMethod;
+    FLineCounts: TDictionary<Integer, Integer>;
   public
-    Method: TAtlasProfileMethod;
-    LineCounts: TDictionary<Integer, Integer>;
     constructor Create(const AFrame: TAtlasProfileFrame);
     destructor Destroy; override;
+    procedure CountSelf(ACount: Integer);
+    procedure CountTotal(ACount: Integer);
     procedure CountLine(ALine, ACount: Integer);
     procedure PickHotLine;
+    property Method: TAtlasProfileMethod read FMethod;
   end;
 
 constructor TMethodTally.Create(const AFrame: TAtlasProfileFrame);
 begin
   inherited Create;
-  Method := Default(TAtlasProfileMethod);
-  Method.Routine := AFrame.Routine;
-  Method.UnitName := AFrame.UnitName;
-  Method.FileName := AFrame.FileName;
-  Method.IsLibrary := AFrame.IsLibrary;
-  LineCounts := TDictionary<Integer, Integer>.Create;
+  FMethod := Default(TAtlasProfileMethod);
+  FMethod.Routine := AFrame.Routine;
+  FMethod.UnitName := AFrame.UnitName;
+  FMethod.FileName := AFrame.FileName;
+  FMethod.IsLibrary := AFrame.IsLibrary;
+  FLineCounts := TDictionary<Integer, Integer>.Create;
 end;
 
 destructor TMethodTally.Destroy;
 begin
-  LineCounts.Free;
+  FLineCounts.Free;
   inherited;
+end;
+
+procedure TMethodTally.CountSelf(ACount: Integer);
+begin
+  Inc(FMethod.SelfCount, ACount);
+end;
+
+procedure TMethodTally.CountTotal(ACount: Integer);
+begin
+  Inc(FMethod.TotalCount, ACount);
 end;
 
 procedure TMethodTally.CountLine(ALine, ACount: Integer);
@@ -104,25 +118,25 @@ begin
   begin
     Exit;
   end;
-  if not LineCounts.TryGetValue(ALine, mCount) then
+  if not FLineCounts.TryGetValue(ALine, mCount) then
   begin
     mCount := 0;
   end;
-  LineCounts.AddOrSetValue(ALine, mCount + ACount);
+  FLineCounts.AddOrSetValue(ALine, mCount + ACount);
 end;
 
 procedure TMethodTally.PickHotLine;
 var
   mPair: TPair<Integer, Integer>;
 begin
-  for mPair in LineCounts do
+  for mPair in FLineCounts do
   begin
     // Bei Gleichstand die kleinere Zeile, damit das Ergebnis nicht von der Reihenfolge abhängt.
-    if (mPair.Value > Method.HotLineCount) or
-      ((mPair.Value = Method.HotLineCount) and (mPair.Key < Method.HotLine)) then
+    if (mPair.Value > FMethod.HotLineCount) or
+      ((mPair.Value = FMethod.HotLineCount) and (mPair.Key < FMethod.HotLine)) then
     begin
-      Method.HotLine := mPair.Key;
-      Method.HotLineCount := mPair.Value;
+      FMethod.HotLine := mPair.Key;
+      FMethod.HotLineCount := mPair.Value;
     end;
   end;
 end;
@@ -194,12 +208,12 @@ begin
       mTally := TallyOf(ATallies, mFrame);
       if mPosition = 0 then
       begin
-        Inc(mTally.Method.SelfCount, ACount);
+        mTally.CountSelf(ACount);
       end;
       if not mSeen.Contains(mFrame.Routine) then
       begin
         mSeen.Add(mFrame.Routine);
-        Inc(mTally.Method.TotalCount, ACount);
+        mTally.CountTotal(ACount);
         mTally.CountLine(mFrame.Line, ACount);
       end;
     end;

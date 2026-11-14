@@ -86,7 +86,6 @@ uses
   Atlas.IDE.Debug.Composition.Breakpoints,
   Atlas.IDE.Debug.Composition.Run,
   Atlas.IDE.Debug.Composition.Session,
-  Atlas.IDE.Debug.Composition.Profiler,
   Atlas.UI.Debug.Strings,
   Atlas.UI.Debug.VariablesStrings;
 
@@ -353,8 +352,6 @@ begin
   Result := Result + DebugThreadCommands;
   // Werkzeuge rund um den Lauf: Ereignisprotokoll (#580).
   Result := Result + RunCommands(CurrentScope);
-  // Profiler (#2057); nur sichtbar, solange debug.profiler an ist.
-  Result := Result + ProfilerCommands;
   // Anhalten und Haltepunkte (#856, #577) aus Atlas.IDE.Debug.Composition.Breakpoints, unter der Sicherung.
   for mCommand in BreakpointCommands do
   begin
@@ -412,8 +409,6 @@ begin
     ContextEntry('Atlas.DebugThreadsThawAll')];
   // Ereignisprotokoll, Logpunkte, Neu starten und Laufzeitberichte (#580, #583, #872, #74).
   Result := Result + RunMenuEntries;
-  // Profiler (#2057).
-  Result := Result + ProfilerMenuEntries;
   Result := Result + BreakpointMenuEntries;
   // Werte ändern (#868).
   Result := Result + ValueMenuEntries;
@@ -466,8 +461,6 @@ begin
   TAtlasIdeDisplayRules.ApplySettings;
   // debug.eventLog* (#580).
   ApplyRunSettings;
-  // debug.profiler (#2057): ausgeschaltet verschwindet das Fenster.
-  ApplyProfilerSettings;
 end;
 
 procedure TAtlasDebugModule.ThemeChanged;
@@ -478,8 +471,6 @@ begin
   ValueThemeChanged;
   TAtlasIdeDebugStepFilter.ThemeChanged;
   RunThemeChanged;
-  // Fenster „Atlas: Profil“ (#2057).
-  ProfilerThemeChanged;
   DebugThreadsThemeChanged;
   BreakpointsThemeChanged;
 end;
@@ -555,7 +546,7 @@ function Parts: TArray<IAtlasFeaturePart>;
 begin
   Result := LeadingParts + DebugExceptionParts + DebugValueParts(ExpressionProvider, GScope);
   Result := Result + [StepFilterPart] + DebugThreadParts(GScope) + DebugLeakParts(GScope) +
-    BreakpointParts + RunParts + DebugMemoryParts + ProfilerParts(CurrentScope);
+    BreakpointParts + RunParts(CurrentScope) + DebugMemoryParts;
 end;
 
 class function TAtlasDebugModule.RegisterModule: Boolean;

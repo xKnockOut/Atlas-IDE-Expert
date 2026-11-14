@@ -101,27 +101,8 @@ implementation
 uses
   System.JSON,
   System.Generics.Collections,
+  Atlas.Text.Json,
   Atlas.Text.ProfileReport;
-
-function ParseObject(const AJson: string): TJSONObject;
-var
-  mValue: TJSONValue;
-begin
-  Result := nil;
-  if AJson = '' then
-  begin
-    Exit;
-  end;
-  mValue := TJSONObject.ParseJSONValue(AJson);
-  if mValue is TJSONObject then
-  begin
-    Result := TJSONObject(mValue);
-  end
-  else
-  begin
-    mValue.Free;
-  end;
-end;
 
 { TAtlasProfilerProtocol }
 
@@ -156,7 +137,7 @@ var
   mRoot: TJSONObject;
 begin
   AAnswer := Default(TAtlasProfilerStartAnswer);
-  mRoot := ParseObject(AJson);
+  mRoot := TJsonRead.ParseObject(AJson);
   Result := mRoot <> nil;
   if not Result then
   begin
@@ -178,7 +159,7 @@ var
   mRoot: TJSONObject;
 begin
   AAnswer := Default(TAtlasProfilerStatusAnswer);
-  mRoot := ParseObject(AJson);
+  mRoot := TJsonRead.ParseObject(AJson);
   Result := mRoot <> nil;
   if not Result then
   begin
@@ -200,7 +181,7 @@ var
   mRoot: TJSONObject;
 begin
   AAnswer := Default(TAtlasProfilerStopAnswer);
-  mRoot := ParseObject(AJson);
+  mRoot := TJsonRead.ParseObject(AJson);
   Result := mRoot <> nil;
   if not Result then
   begin
@@ -342,21 +323,32 @@ begin
 end;
 
 class function TAtlasProfileTable.RunTitle(const AFileName: string): string;
+const
+  // Zeitstempel JJJJMMTT-HHNNSS nach dem Präfix: Lage und Länge der Teile.
+  cStampLength = 15;
+  cYear = 0;
+  cYearLength = 4;
+  cMonth = 4;
+  cDay = 6;
+  cHour = 9;
+  cMinute = 11;
+  cSecond = 13;
+  cPartLength = 2;
 var
   mName, mStamp: string;
 begin
   mName := ExtractFileName(AFileName.Replace('/', PathDelim));
   Result := mName;
-  // profile-JJJJMMTT-HHNNSS.json
   mStamp := ChangeFileExt(mName, '');
-  if (Length(mStamp) <> Length(TAtlasProfileStore.cPrefix) + 15) or
+  if (Length(mStamp) <> Length(TAtlasProfileStore.cPrefix) + cStampLength) or
     not mStamp.StartsWith(TAtlasProfileStore.cPrefix, True) then
   begin
     Exit;
   end;
   mStamp := mStamp.Substring(Length(TAtlasProfileStore.cPrefix));
-  Result := mStamp.Substring(6, 2) + '.' + mStamp.Substring(4, 2) + '.' + mStamp.Substring(0, 4) + ' ' +
-    mStamp.Substring(9, 2) + ':' + mStamp.Substring(11, 2) + ':' + mStamp.Substring(13, 2);
+  Result := mStamp.Substring(cDay, cPartLength) + '.' + mStamp.Substring(cMonth, cPartLength) + '.' +
+    mStamp.Substring(cYear, cYearLength) + ' ' + mStamp.Substring(cHour, cPartLength) + ':' +
+    mStamp.Substring(cMinute, cPartLength) + ':' + mStamp.Substring(cSecond, cPartLength);
 end;
 
 end.

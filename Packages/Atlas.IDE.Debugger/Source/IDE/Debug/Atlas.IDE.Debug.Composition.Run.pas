@@ -5,8 +5,9 @@
 // Umschalt+F5 und Schicht in der Rinne), das Fenster „Kein Quelltext“
 // (#869), „Neu starten“ (#872, Strg+Umschalt+F2), „Erneut anhängen“ (#2171,
 // Menü Start, Taste debug.reattach.key), Leck- und Absturzberichte aus der
-// Zwischenablage (#74) und die Startverbünde (#867, F9 und Strg+F2 mit
-// aktivem Verbund). Liefert Teile der
+// Zwischenablage (#74), die Startverbünde (#867, F9 und Strg+F2 mit
+// aktivem Verbund) und den Profiler (#2057, aus
+// Atlas.IDE.Debug.Composition.Profiler). Liefert Teile der
 // Feature-Tabelle, Befehle, Menüeinträge, Tasten und das Weiterreichen von
 // Einstellungen und Thema; Atlas.IDE.Debug.Composition stellt sie über den
 // Scope des Moduls bereit, die Schicht der Rinne stellt ProvideRun bereit.
@@ -17,8 +18,9 @@ uses
   System.SysUtils,
   Atlas.Core.Modules.Contract;
 
-/// <summary>Teile in ihrer Startreihenfolge.</summary>
-function RunParts: TArray<IAtlasFeaturePart>;
+/// <summary>Teile in ihrer Startreihenfolge; AScope liefert den Scope des Moduls für Antworten des Servers.
+/// </summary>
+function RunParts(const AScope: TFunc<IAtlasModuleScope>): TArray<IAtlasFeaturePart>;
 /// <summary>AScope liefert den Scope des Moduls für Antworten des Servers.</summary>
 function RunCommands(const AScope: TFunc<IAtlasModuleScope>): TArray<TAtlasModuleCommand>;
 function RunMenuEntries: TArray<TAtlasMenuEntry>;
@@ -49,6 +51,7 @@ uses
   Atlas.IDE.Debug.Reattach,
   Atlas.IDE.Debug.RuntimeReport,
   Atlas.IDE.Debug.LaunchGroups,
+  Atlas.IDE.Debug.Composition.Profiler,
   Atlas.UI.Debug.Strings;
 
 const
@@ -178,7 +181,7 @@ begin
   Result.Visible := AVisible;
 end;
 
-function RunParts: TArray<IAtlasFeaturePart>;
+function RunParts(const AScope: TFunc<IAtlasModuleScope>): TArray<IAtlasFeaturePart>;
 begin
   Result := [
     // Ereignisprotokoll (#580): Zuhörer der Debug-Sitzung, Mitlesen erst mit einer Sitzung.
@@ -241,6 +244,8 @@ begin
       begin
         Result := TAtlasIdeLaunchGroups.Started;
       end, StartLaunchGroups, TAtlasIdeLaunchGroups.Release)];
+  // Profiler (#2057): nur mit debug.profiler.
+  Result := Result + ProfilerParts(AScope);
 end;
 
 /// <summary>Leck- oder Absturzbericht aus der Zwischenablage (#74).</summary>
@@ -292,6 +297,8 @@ begin
       TAtlasIdeLaunchGroups.RunActive, LaunchGroupsVisible),
     RunCommand(cLaunchStopCommand, TAtlasDebugStrings.Text(TAtlasDebugTextId.LaunchCommandStop),
       TAtlasIdeLaunchGroups.StopAll, LaunchGroupsVisible)];
+  // Profiler (#2057); nur sichtbar, solange debug.profiler an ist.
+  Result := Result + ProfilerCommands;
 end;
 
 function MenuEntry(const ACommandId: string; APlace: TAtlasMenuPlace): TAtlasMenuEntry;
@@ -309,6 +316,7 @@ begin
     MenuEntry(cRestartCommand, TAtlasMenuPlace.AtlasMenu),
     MenuEntry(cRuntimeReportCommand, TAtlasMenuPlace.AtlasMenu),
     MenuEntry(cLaunchGroupsCommand, TAtlasMenuPlace.AtlasMenu)];
+  Result := Result + ProfilerMenuEntries;
 end;
 
 /// <summary>Umschalt+F5 setzt einen Logpunkt, solange debug.logpoints an ist; sonst geht die Taste an die IDE.
@@ -406,6 +414,8 @@ procedure ApplyRunSettings;
 begin
   // debug.eventLog aus: Fenster zu; debug.eventLogColors: neu zeichnen.
   TAtlasIdeDebugEventLog.ApplySettings;
+  // debug.profiler aus: Fenster „Atlas: Profil“ zu (#2057).
+  ApplyProfilerSettings;
 end;
 
 procedure RunThemeChanged;
@@ -414,6 +424,7 @@ begin
   TAtlasIdeDebugNoSource.ThemeChanged;
   TAtlasIdeDebugRestart.ThemeChanged;
   TAtlasIdeLaunchGroups.ThemeChanged;
+  ProfilerThemeChanged;
 end;
 
 end.

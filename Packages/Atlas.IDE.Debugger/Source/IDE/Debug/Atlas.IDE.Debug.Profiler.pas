@@ -64,7 +64,7 @@ type
     class procedure Say(const AText: string); static;
     class function Request(const ACommand, AArguments: string; const ADone: TProc<string>): Boolean; static;
     class procedure StartFor(const ATarget: TAtlasProfilerTarget); static;
-    class procedure Started(const AJson: string; AProcessId: Cardinal); static;
+    class procedure StartAnswered(const AJson: string; AProcessId: Cardinal); static;
     class procedure Stop; static;
     class procedure Stopped(const AJson: string); static;
     class procedure PollStatus; static;
@@ -72,6 +72,8 @@ type
     class procedure Finished(const AFile: string); static;
     class procedure SetRunning(ARunning: Boolean); static;
     class function TargetOfActiveProject(out ATarget: TAtlasProfilerTarget): Boolean; static;
+    /// <summary>Aktives Projekt bei Bedarf übersetzen und ohne Debugger starten; False mit Meldung.</summary>
+    class function LaunchActiveProject(out ATarget: TAtlasProfilerTarget): Boolean; static;
     class function Load(const APath: string; var ALoaded: TLoaded): Boolean; static;
     class procedure WireFrame(AFrame: TAtlasDebugProfileFrame); static;
     class procedure ShowRun; static;
@@ -263,15 +265,24 @@ end;
 class procedure TAtlasIdeDebugProfiler.RunWithProfile;
 var
   mTarget: TAtlasProfilerTarget;
-  mProject: IOTAProject;
-  mOptions: TAtlasStartOptions;
 begin
   if FRun.Running or FRun.Busy then
   begin
     Toggle;
-    Exit;
+  end
+  else if LaunchActiveProject(mTarget) then
+  begin
+    StartFor(mTarget);
   end;
-  if not TargetOfActiveProject(mTarget) then
+end;
+
+class function TAtlasIdeDebugProfiler.LaunchActiveProject(out ATarget: TAtlasProfilerTarget): Boolean;
+var
+  mProject: IOTAProject;
+  mOptions: TAtlasStartOptions;
+begin
+  Result := False;
+  if not TargetOfActiveProject(ATarget) then
   begin
     Say(TAtlasProfileStrings.Text(TAtlasProfileTextId.ProfileNoProject));
     Exit;
@@ -280,12 +291,12 @@ begin
   if (mProject.ProjectBuilder <> nil) and mProject.ProjectBuilder.ShouldBuild and
     not mProject.ProjectBuilder.BuildProject(cmOTAMake, True, True) then
   begin
-    Say(TAtlasProfileStrings.Fmt(TAtlasProfileTextId.ProfileBuildFailed, [ExtractFileName(mTarget.Project)]));
+    Say(TAtlasProfileStrings.Fmt(TAtlasProfileTextId.ProfileBuildFailed, [ExtractFileName(ATarget.Project)]));
     Exit;
   end;
-  if not FileExists(mTarget.ProgramName) then
+  if not FileExists(ATarget.ProgramName) then
   begin
-    Say(TAtlasProfileStrings.Fmt(TAtlasProfileTextId.ProfileNoExe, [mTarget.ProgramName]));
+    Say(TAtlasProfileStrings.Fmt(TAtlasProfileTextId.ProfileNoExe, [ATarget.ProgramName]));
     Exit;
   end;
   // Ohne Konfiguration startet das Programm ohne Parameter im Ordner der EXE.
@@ -293,14 +304,13 @@ begin
   begin
     mOptions := Default(TAtlasStartOptions);
   end;
-  mTarget.ProcessId := TAtlasIdeLaunchProcesses.Start(mTarget.ProgramName, mOptions.Parameters, mOptions.WorkingDir,
+  ATarget.ProcessId := TAtlasIdeLaunchProcesses.Start(ATarget.ProgramName, mOptions.Parameters, mOptions.WorkingDir,
     TAtlasStartProfiles.DecodeEnvironment(mOptions.Environment));
-  if mTarget.ProcessId = 0 then
+  Result := ATarget.ProcessId <> 0;
+  if not Result then
   begin
-    Say(TAtlasProfileStrings.Fmt(TAtlasProfileTextId.ProfileStartFailed, [ExtractFileName(mTarget.ProgramName)]));
-    Exit;
+    Say(TAtlasProfileStrings.Fmt(TAtlasProfileTextId.ProfileStartFailed, [ExtractFileName(ATarget.ProgramName)]));
   end;
-  StartFor(mTarget);
 end;
 
 class procedure TAtlasIdeDebugProfiler.Toggle;
@@ -346,7 +356,7 @@ begin
   FRun.Busy := Request(TAtlasProfilerProtocol.cStartCommand, TAtlasProfilerProtocol.StartArguments(ATarget),
     procedure(AJson: string)
     begin
-      Started(AJson, mPid);
+      StartAnswered(AJson, mPid);
     end);
   if not FRun.Busy then
   begin
@@ -354,7 +364,7 @@ begin
   end;
 end;
 
-class procedure TAtlasIdeDebugProfiler.Started(const AJson: string; AProcessId: Cardinal);
+class procedure TAtlasIdeDebugProfiler.StartAnswered(const AJson: string; AProcessId: Cardinal);
 var
   mAnswer: TAtlasProfilerStartAnswer;
 begin
@@ -439,7 +449,7 @@ begin
     if mFrame <> nil then
     begin
       mFrame.SetSummary(TAtlasProfileStrings.Fmt(TAtlasProfileTextId.ProfileRunning, [mAnswer.ProcessId,
-        FormatFloat('0.0', mAnswer.ElapsedMs / 1000), mAnswer.Samples]));
+        FormatFloat('0.0', mAnswer.ElapsedMs / 1000, FormatSettings), mAnswer.Samples]));
     end;
     Exit;
   end;
@@ -537,7 +547,7 @@ end;
 function SummaryOf(const AProfile: TAtlasProfile): string;
 begin
   Result := TAtlasProfileStrings.Fmt(TAtlasProfileTextId.ProfileSummary, [ExtractFileName(AProfile.ProgramName),
-    AProfile.Samples, FormatFloat('0.0', AProfile.DurationMs / 1000), AProfile.IntervalMs]);
+    AProfile.Samples, FormatFloat('0.0', AProfile.DurationMs / 1000, FormatSettings), AProfile.IntervalMs]);
 end;
 
 class procedure TAtlasIdeDebugProfiler.ShowRun;
