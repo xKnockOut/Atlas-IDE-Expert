@@ -21,7 +21,7 @@ uses
   Atlas.Text.MapFile,
   Atlas.Common.Lsp.Commands,
   Atlas.Common.Profiling.Contract,
-  Atlas.Common.Profiling.Profile;
+  Atlas.Text.Profile;
 
 type
   TLspProfiler = class

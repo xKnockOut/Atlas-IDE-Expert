@@ -38,7 +38,7 @@ uses
   System.DateUtils,
   Atlas.Common.Localization.Texts,
   Atlas.Common.Mcp.Server,
-  Atlas.Common.Profiling.Profile,
+  Atlas.Text.Profile,
   Atlas.Common.Mcp.ProfileTools;
 
 function Frame(const AUnit, ARoutine: string; ALine: Integer): TAtlasProfileFrame;

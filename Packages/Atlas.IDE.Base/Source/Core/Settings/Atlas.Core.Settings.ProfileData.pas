@@ -16,7 +16,7 @@ uses
   System.SysUtils;
 
 const
-  cProfile0: array[0..75] of string = (
+  cProfile0: array[0..76] of string = (
     '{',
     '  "format": "atlas-settings",',
     '  "formatVersion": 1,',
@@ -77,6 +77,7 @@ const
     '    "designer.undo": true,',
     '    "debug.threadFreeze": true,',
     '    "debug.asyncOrigin": true,',
+    '    "debug.profiler": true,',
     '    "debug.memoryTimeline.objectCount": true,',
     '    "debug.enabled": true,',
     '    "issues.enabled": true,',

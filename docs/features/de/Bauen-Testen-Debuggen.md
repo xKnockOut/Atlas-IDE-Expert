@@ -386,6 +386,19 @@ Aufruf: Atlas-Menü › Speicherverlauf bzw. Befehl `Atlas.DebugMemory`.
 
 Einstellungen: `debug.memoryTimeline`, `debug.memoryTimeline.intervalMs`, `debug.memoryTimeline.objectCount`
 
+<a id="window-atlasprofiler"></a>
+#### Profiler
+
+Experimentell. Aufruf: Atlas-Menü › Mit Profil ausführen, Profil starten/beenden bzw. Profil (Befehle `Atlas.DebugProfileRun`, `Atlas.DebugProfileToggle`, `Atlas.DebugProfile`).
+
+- „Mit Profil ausführen“ übersetzt das aktive Projekt bei Bedarf, startet es ohne Debugger mit seinen Startoptionen und misst es.
+- „Profil starten/beenden“ misst das gerade debuggte Programm bzw. beendet einen laufenden Lauf.
+- Gemessen wird im Atlas-Server: In festem Abstand (Vorgabe 10 ms) nimmt er die Aufrufstapel aller Threads, ohne das Programm anzuhalten, und löst sie über die Map-Datei auf. Dafür in den Projektoptionen › Linker „Map-Datei = Detailliert“ einstellen, sonst zeigt das Profil nur Module.
+- Endet das Programm, endet auch die Messung. Atlas behält die letzten fünf Läufe.
+- Das Fenster „Atlas: Profil“ zeigt die Methoden nach Eigenanteil (Programm stand genau dort) mit Gesamtanteil (irgendwo im Aufrufstapel) und der heißesten Zeile. „Nur eigener Code“ fasst Bibliotheksrahmen zur aufgerufenen RTL- oder VCL-Routine zusammen, „Mit vorigem Lauf vergleichen“ zeigt die Änderung je Methode. Doppelklick oder Enter öffnet die Zeile.
+
+Einstellungen: `debug.profiler`, `debug.profiler.intervalMs`
+
 <a id="window-atlasbreakpoints"></a>
 #### Haltepunktfenster
 

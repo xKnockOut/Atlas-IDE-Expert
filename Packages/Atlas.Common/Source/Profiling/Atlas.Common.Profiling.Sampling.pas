@@ -4,7 +4,7 @@
 // - TAtlasRawStacks fasst gleiche Stapel roher Adressen während des Laufs zusammen (der Prober nimmt alle 10 ms
 //   je rechnendem Thread eine Probe; gleiche Stapel sind die Regel).
 // - TAtlasProfileResolver löst nach dem Lauf jede Adresse einmal auf: im Hauptmodul über die Map-Datei (Routine,
-//   Unit, Datei, Zeile), sonst als „[modul.dll]“, und baut daraus den Lauf (Atlas.Common.Profiling.Profile).
+//   Unit, Datei, Zeile), sonst als „[modul.dll]“, und baut daraus den Lauf (Atlas.Text.Profile).
 // Ohne Windows, damit beides unter FPC getestet wird; der Prober selbst liegt in Atlas.Windows.
 
 interface
@@ -14,7 +14,7 @@ uses
   System.Generics.Collections,
   Atlas.Text.MapFile,
   Atlas.Common.Profiling.Contract,
-  Atlas.Common.Profiling.Profile;
+  Atlas.Text.Profile;
 
 type
   /// <summary>Gleiche Stapel zusammengefasst; nicht threadsicher (gehört dem Thread des Probers).</summary>

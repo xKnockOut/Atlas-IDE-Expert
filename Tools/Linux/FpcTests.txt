@@ -228,8 +228,8 @@ Atlas.Common.Diagnostics.RuntimeReport.Tests
 Atlas.Common.Metrics.Calculator.Tests
 Atlas.Common.Metrics.Report.Tests
 Atlas.Common.Monitor.Servers.Tests
-Atlas.Common.Profiling.Profile.Tests
-Atlas.Common.Profiling.Report.Tests
+Atlas.Text.Profile.Tests
+Atlas.Text.ProfileReport.Tests
 Atlas.Common.Profiling.Sampling.Tests
 Atlas.Common.Lsp.Profiler.Tests
 Atlas.Common.Monitor.Settings.Tests
@@ -388,6 +388,7 @@ Atlas.Core.Debug.HoverTree.Tests
 Atlas.Core.Debug.Pins.Tests
 Atlas.Core.Style.Listeners.Tests
 Atlas.Core.Debug.MemoryTimeline.Tests
+Atlas.Core.Debug.Profiler.Tests
 Atlas.Core.Debug.ObjectCount.Tests
 Atlas.Core.Designer.Structure.Tests
 Atlas.Core.Designer.DataBindings.Tests
@@ -435,6 +436,7 @@ Atlas.UI.Commands.Strings.Tests
 Atlas.UI.Completion.Strings.Tests
 Atlas.UI.Debug.Strings.Tests
 Atlas.UI.Debug.Memory.Strings.Tests
+Atlas.UI.Debug.Profile.Strings.Tests
 Atlas.UI.Debug.VariablesStrings.Tests
 Atlas.UI.Designer.Strings.Tests
 Atlas.UI.Diagnostics.Strings.Tests
