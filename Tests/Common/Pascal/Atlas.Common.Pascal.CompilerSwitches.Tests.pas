@@ -316,7 +316,7 @@ begin
   Assert.AreEqual(2, Find(State, 'L').Origin.Line);
   State := StateAt(Lines(['unit Main;', 'implementation', 'end.']), 1, TArray<string>.Create('$D-'), NoProperties);
   Assert.AreEqual('-', Find(State, 'D').Value, 'aus dem Projekt');
-  Assert.IsTrue(Find(State, 'D').Origin.Kind = TSwitchOriginKind.Project);
+  Assert.AreEqual<TSwitchOriginKind>(TSwitchOriginKind.Project, Find(State, 'D').Origin.Kind);
 end;
 
 end.

@@ -105,14 +105,14 @@ begin
   Assert.AreEqual(3, Integer(Length(mTable.Columns)));
   Assert.AreEqual('B', mTable.Columns[1].Name);
   Assert.AreEqual('Integer', mTable.Columns[1].TypeName);
-  Assert.IsTrue(mTable.Columns[1].Kind = TDUnitXValueKind.Integer_);
-  Assert.IsTrue(mTable.Columns[2].Kind = TDUnitXValueKind.Enum);
+  Assert.AreEqual<TDUnitXValueKind>(TDUnitXValueKind.Integer_, mTable.Columns[1].Kind);
+  Assert.AreEqual<TDUnitXValueKind>(TDUnitXValueKind.Enum, mTable.Columns[2].Kind);
   Assert.AreEqual('Rot,Gruen', mTable.Columns[2].EnumNames);
   Assert.AreEqual(2, mTable.Count);
   Assert.AreEqual('Zwei', mTable.Rows[1].Name);
   Assert.AreEqual('3|x|Gruen', Joined(mTable.Rows[1].Values));
   Assert.AreEqual(12, mTable.Rows[1].Line);
-  Assert.IsTrue(mTable.Rows[0].Form = TTestCaseForm.Classic);
+  Assert.AreEqual<TTestCaseForm>(TTestCaseForm.Classic, mTable.Rows[0].Form);
   Assert.AreEqual('TestCase', mTable.Rows[0].AttributeName);
   Assert.IsTrue(mTable.Editable, mTable.Reason);
   Assert.AreEqual('    ', mTable.Indent);
@@ -287,8 +287,8 @@ var
 begin
   mTable := TableOf(TestUnit('    [TestCase(''1,2'')]'#10'    [NamedTestCase(''N'', ''3;4'', '';'')]'#10,
     '(A, B: Integer)'));
-  Assert.IsTrue(mTable.Rows[0].Form = TTestCaseForm.ValuesOnly);
-  Assert.IsTrue(mTable.Rows[1].Form = TTestCaseForm.Named);
+  Assert.AreEqual<TTestCaseForm>(TTestCaseForm.ValuesOnly, mTable.Rows[0].Form);
+  Assert.AreEqual<TTestCaseForm>(TTestCaseForm.Named, mTable.Rows[1].Form);
   Assert.AreEqual('[TestCase(''1,2'')]', TTestCaseTables.AttributeText(mTable.Rows[0]));
   Assert.AreEqual('[NamedTestCase(''N'', ''3;4'', '';'')]', TTestCaseTables.AttributeText(mTable.Rows[1]));
 end;

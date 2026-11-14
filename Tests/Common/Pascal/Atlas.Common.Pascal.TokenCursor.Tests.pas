@@ -76,10 +76,10 @@ var
 begin
   mCursor := CursorOf('a := b;');
   Assert.AreEqual('a', mCursor.At(0).Text);
-  Assert.IsTrue(mCursor.At(-1).Kind = TPascalTokenKind.Unknown);
+  Assert.AreEqual<TPascalTokenKind>(TPascalTokenKind.Unknown, mCursor.At(-1).Kind);
   Assert.AreEqual('', mCursor.At(-1).Text);
   Assert.AreEqual(-1, mCursor.At(-1).Offset);
-  Assert.IsTrue(mCursor.At(mCursor.Count).Kind = TPascalTokenKind.Unknown);
+  Assert.AreEqual<TPascalTokenKind>(TPascalTokenKind.Unknown, mCursor.At(mCursor.Count).Kind);
   Assert.AreEqual('', mCursor.At(mCursor.Count).Text);
   Assert.IsFalse(mCursor.InRange(-1));
   Assert.IsFalse(mCursor.InRange(mCursor.Count));

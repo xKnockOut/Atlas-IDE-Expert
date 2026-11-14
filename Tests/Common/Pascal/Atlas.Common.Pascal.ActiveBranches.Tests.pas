@@ -232,7 +232,7 @@ begin
   Before := TSyntaxTreeCache.ParseCount;
   Win32 := TSyntaxTreeCache.Get(Document);
   Again := TSyntaxTreeCache.Get(Document);
-  Assert.IsTrue(Win32.Tree = Again.Tree);
+  Assert.AreSame(Again.Tree, Win32.Tree);
   UseDefines(TPascalPreprocessor.PredefinedSymbols('Win64', 37.0));
   Win64 := TSyntaxTreeCache.Get(Document);
   Assert.IsFalse(Win32.Tree = Win64.Tree);
@@ -254,7 +254,7 @@ begin
   First := TSyntaxTreeCache.Get(Document);
   UseDefines(['WIN64']);
   Second := TSyntaxTreeCache.Get(Document);
-  Assert.IsTrue(First.Tree = Second.Tree);
+  Assert.AreSame(Second.Tree, First.Tree);
   Assert.AreEqual(0, Integer(Length(First.Conditionals)));
 end;
 
@@ -268,7 +268,7 @@ begin
   All := TSyntaxTreeCache.GetAll(Document);
   Assert.AreEqual('Winapi.Windows Posix.Unistd System.SysUtils TA', Outline(All.Tree));
   Assert.IsFalse(All.Tree = TSyntaxTreeCache.Get(Document).Tree);
-  Assert.IsTrue(All.Tree = TSyntaxTreeCache.GetAll(Document).Tree);
+  Assert.AreSame(TSyntaxTreeCache.GetAll(Document).Tree, All.Tree);
 end;
 
 procedure TActiveBranchesTests.ConditionalsOfTheFile;

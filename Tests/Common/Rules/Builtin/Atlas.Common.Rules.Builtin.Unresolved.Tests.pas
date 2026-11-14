@@ -452,8 +452,8 @@ begin
   Entries := TUsesUnitNotFoundRule.Entries(TPascalLexer.Tokenize('package P;'#10'requires rtl;'#10 +
     'contains A in ''a.pas'';'#10'end.'));
   Assert.AreEqual(2, Integer(Length(Entries)));
-  Assert.IsTrue(Entries[0].Kind = TUsesListKind.RequiredPackage);
-  Assert.IsTrue(Entries[1].Kind = TUsesListKind.ContainedUnit);
+  Assert.AreEqual<TUsesListKind>(TUsesListKind.RequiredPackage, Entries[0].Kind);
+  Assert.AreEqual<TUsesListKind>(TUsesListKind.ContainedUnit, Entries[1].Kind);
   Edit := TUsesUnitNotFoundRule.DiffEdit('a'#10'xyz'#10'b', 'a'#10'xQyz'#10'b');
   Assert.AreEqual(1, Edit.Range.StartPos.Line);
   Assert.AreEqual(1, Edit.Range.StartPos.Character);

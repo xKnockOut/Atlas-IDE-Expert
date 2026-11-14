@@ -241,11 +241,11 @@ begin
     Assert.AreEqual('', Codes(mTree));
     mParams := First(mTree.Root, TSyntaxKind.Parameters);
     Assert.AreEqual(4, mParams.ChildCount);
-    Assert.IsTrue(mParams[0].Modifier = TParameterModifier.ConstParam);
+    Assert.AreEqual<TParameterModifier>(TParameterModifier.ConstParam, mParams[0].Modifier);
     Assert.AreEqual('out', mParams[1].Name);
-    Assert.IsTrue(mParams[1].Modifier = TParameterModifier.None);
-    Assert.IsTrue(mParams[2].Modifier = TParameterModifier.ConstRefParam);
-    Assert.IsTrue(mParams[3].Modifier = TParameterModifier.VarParam);
+    Assert.AreEqual<TParameterModifier>(TParameterModifier.None, mParams[1].Modifier);
+    Assert.AreEqual<TParameterModifier>(TParameterModifier.ConstRefParam, mParams[2].Modifier);
+    Assert.AreEqual<TParameterModifier>(TParameterModifier.VarParam, mParams[3].Modifier);
   finally
     mTree.Free;
   end;

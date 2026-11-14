@@ -210,8 +210,10 @@ begin
   Assert.AreEqual(1, Integer(Length(Found)));
   Assert.AreEqual('E2153', Found[0].Code);
   Assert.AreEqual(''';'' vor ''else'' ist nicht erlaubt (wie E2153).', Found[0].Message);
-  Assert.IsTrue(TTextPosition.Create(6, 10) = Found[0].StartPos);
-  Assert.IsTrue(TTextPosition.Create(6, 11) = Found[0].EndPos);
+  Assert.AreEqual(6, Found[0].StartPos.Line);
+  Assert.AreEqual(10, Found[0].StartPos.Character);
+  Assert.AreEqual(6, Found[0].EndPos.Line);
+  Assert.AreEqual(11, Found[0].EndPos.Character);
   Assert.AreEqual(''';'' entfernen', Found[0].FixTitle);
   Assert.IsTrue(Found[0].FixSafe);
 end;
@@ -455,7 +457,8 @@ begin
   Found := Diagnostics(InUnit([], ['procedure Rechne;', 'var', '  I: Integer = 0;', 'begin', 'end;']));
   Assert.AreEqual(1, Integer(Length(Found)));
   Assert.AreEqual('E2195', Found[0].Code);
-  Assert.IsTrue(TTextPosition.Create(9, 13) = Found[0].StartPos);
+  Assert.AreEqual(9, Found[0].StartPos.Line);
+  Assert.AreEqual(13, Found[0].StartPos.Character);
 end;
 
 procedure TSyntaxChecksTests.GlobalVariableInitIsSilent;
@@ -514,7 +517,8 @@ begin
   Assert.AreEqual(1, Integer(Length(Found)));
   Assert.AreEqual('E2031', Found[0].Code);
   Assert.AreEqual('Marke erwartet: Ende ist nicht als label deklariert (wie E2031).', Found[0].Message);
-  Assert.IsTrue(TTextPosition.Create(9, 7) = Found[0].StartPos);
+  Assert.AreEqual(9, Found[0].StartPos.Line);
+  Assert.AreEqual(7, Found[0].StartPos.Character);
   // Prüfung am fertigen Baum: Regeln wie label-misuse dürfen dem Baum dort trauen.
   Assert.IsTrue(Found[0].TreeIntact);
 end;
@@ -545,7 +549,7 @@ begin
     Default(TServerSettings));
   Assert.AreEqual(1, Integer(Length(Findings)));
   Assert.AreEqual(cSyntaxRuleId, Findings[0].RuleId);
-  Assert.IsTrue(Findings[0].Severity = TRuleSeverity.Error);
+  Assert.AreEqual<TRuleSeverity>(TRuleSeverity.Error, Findings[0].Severity);
   Assert.AreEqual(1, Integer(Length(Findings[0].Fixes)));
   Assert.AreEqual(''';'' entfernen', Findings[0].Fixes[0].Title);
   Assert.IsTrue(Findings[0].Fixes[0].Safe);

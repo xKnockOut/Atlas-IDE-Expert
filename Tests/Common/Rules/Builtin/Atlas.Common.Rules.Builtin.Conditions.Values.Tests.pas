@@ -104,14 +104,14 @@ var
   mValue: TConstantValue;
 begin
   mValue := Evaluated('X or True');
-  Assert.IsTrue(mValue.Kind = TConstantKind.Bool);
+  Assert.AreEqual<TConstantKind>(TConstantKind.Bool, mValue.Kind);
   Assert.IsTrue(mValue.Bool);
   Assert.AreEqual('… or True', mValue.Shown);
   mValue := Evaluated('False and X');
-  Assert.IsTrue(mValue.Kind = TConstantKind.Bool);
+  Assert.AreEqual<TConstantKind>(TConstantKind.Bool, mValue.Kind);
   Assert.IsFalse(mValue.Bool);
   Assert.AreEqual('False and …', mValue.Shown);
-  Assert.IsTrue(Evaluated('X and True').Kind = TConstantKind.Unknown);
+  Assert.AreEqual<TConstantKind>(TConstantKind.Unknown, Evaluated('X and True').Kind);
 end;
 
 procedure TConditionValuesTests.ArithmeticAndComparison;
@@ -119,7 +119,7 @@ var
   mValue: TConstantValue;
 begin
   mValue := Evaluated('2 * 3 - 1 >= 5');
-  Assert.IsTrue(mValue.Kind = TConstantKind.Bool);
+  Assert.AreEqual<TConstantKind>(TConstantKind.Bool, mValue.Kind);
   Assert.IsTrue(mValue.Bool);
   Assert.AreEqual('2 * 3 - 1 >= 5', mValue.Shown);
   Assert.IsFalse(Evaluated('7 div 2 <> 3').Bool);
@@ -129,7 +129,7 @@ end;
 
 procedure TConditionValuesTests.DivisionByZeroStaysUnknown;
 begin
-  Assert.IsTrue(Evaluated('1 div 0 = 1').Kind = TConstantKind.Unknown);
+  Assert.AreEqual<TConstantKind>(TConstantKind.Unknown, Evaluated('1 div 0 = 1').Kind);
 end;
 
 procedure TConditionValuesTests.NotAndXor;
@@ -148,7 +148,7 @@ var
   mValue: TConstantValue;
 begin
   mValue := Evaluated('AN');
-  Assert.IsTrue(mValue.Kind = TConstantKind.Bool);
+  Assert.AreEqual<TConstantKind>(TConstantKind.Bool, mValue.Kind);
   Assert.AreEqual('AN = True', mValue.Shown);
 end;
 

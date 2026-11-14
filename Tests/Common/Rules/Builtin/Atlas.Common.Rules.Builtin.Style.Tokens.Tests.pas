@@ -70,8 +70,10 @@ var
 begin
   mTokens := TPascalLexer.Tokenize('A := B;');
   mRange := RangeOf(mTokens, 0, 2);
-  Assert.IsTrue(mRange.StartPos = mTokens[0].StartPos);
-  Assert.IsTrue(mRange.EndPos = mTokens[2].EndPos);
+  Assert.AreEqual(mTokens[0].StartPos.Line, mRange.StartPos.Line);
+  Assert.AreEqual(mTokens[0].StartPos.Character, mRange.StartPos.Character);
+  Assert.AreEqual(mTokens[2].EndPos.Line, mRange.EndPos.Line);
+  Assert.AreEqual(mTokens[2].EndPos.Character, mRange.EndPos.Character);
 end;
 
 initialization

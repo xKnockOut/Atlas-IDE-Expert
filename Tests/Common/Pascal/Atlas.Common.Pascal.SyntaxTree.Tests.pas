@@ -105,10 +105,10 @@ begin
       end);
     Assert.IsTrue(Expected.Count > 10, 'Baum zu klein');
     Assert.AreEqual(Expected.Count, Visited.Count, 'Anzahl Knoten');
-    Assert.IsTrue(Visited[0] = Tree.Root, 'erster Knoten ist die Wurzel');
+    Assert.AreSame(Tree.Root, Visited[0], 'erster Knoten ist die Wurzel');
     for Index := 0 to Expected.Count - 1 do
     begin
-      Assert.IsTrue(Expected[Index] = Visited[Index], 'Reihenfolge an Stelle ' + IntToStr(Index));
+      Assert.AreSame(Expected[Index], Visited[Index], 'Reihenfolge an Stelle ' + IntToStr(Index));
     end;
   finally
     Visited.Free;
@@ -229,7 +229,7 @@ begin
         Expected := All[Index];
       end;
     end;
-    Assert.IsTrue(Expected <> nil, 'Zuweisung vorhanden');
+    Assert.IsNotNull(Expected, 'Zuweisung vorhanden');
     Visits := 0;
     Found := Tree.Root.Search(
       function(ANode: TSyntaxNode): TSyntaxSearchStep
@@ -241,14 +241,14 @@ begin
         end;
         Result := TSyntaxSearchStep.Descend;
       end);
-    Assert.IsTrue(Found = Expected, 'erste Zuweisung in Baumreihenfolge');
+    Assert.AreSame(Expected, Found, 'erste Zuweisung in Baumreihenfolge');
     // Bis zum Treffer jeder Knoten genau einmal, danach keiner mehr.
     Assert.AreEqual(Integer(All.IndexOf(Expected)) + 1, Visits);
-    Assert.IsTrue(Tree.Root.Search(
+    Assert.IsNull(Tree.Root.Search(
       function(ANode: TSyntaxNode): TSyntaxSearchStep
       begin
         Result := TSyntaxSearchStep.Descend;
-      end) = nil, 'ohne Treffer nil');
+      end), 'ohne Treffer nil');
   finally
     All.Free;
     Tree.Free;
@@ -275,13 +275,13 @@ begin
         end;
         Result := TSyntaxSearchStep.Descend;
       end);
-    Assert.IsTrue(Found = nil, 'alle Blöcke liegen in übersprungenen Routinen');
+    Assert.IsNull(Found, 'alle Blöcke liegen in übersprungenen Routinen');
     // Auch die Wurzel selbst kann übersprungen werden.
-    Assert.IsTrue(Tree.Root.Search(
+    Assert.IsNull(Tree.Root.Search(
       function(ANode: TSyntaxNode): TSyntaxSearchStep
       begin
         Result := TSyntaxSearchStep.Skip;
-      end) = nil);
+      end));
   finally
     Tree.Free;
   end;
@@ -336,7 +336,7 @@ begin
       end);
     Assert.AreEqual('', Failure);
     Assert.AreEqual(100001, Count);
-    Assert.IsTrue(Found <> nil, 'erstes Glied gefunden');
+    Assert.IsNotNull(Found, 'erstes Glied gefunden');
   finally
     Tree.Free;
   end;
@@ -374,8 +374,8 @@ begin
         Expected := Node;
       end;
     end;
-    Assert.IsTrue(Expected <> nil, 'Knoten in größter Tiefe');
-    Assert.IsTrue(Tree.Deepest = Expected, 'erster in Baumreihenfolge');
+    Assert.IsNotNull(Expected, 'Knoten in größter Tiefe');
+    Assert.AreSame(Expected, Tree.Deepest, 'erster in Baumreihenfolge');
   finally
     All.Free;
     Tree.Free;

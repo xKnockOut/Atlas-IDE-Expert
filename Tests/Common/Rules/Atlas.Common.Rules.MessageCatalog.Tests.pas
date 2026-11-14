@@ -120,7 +120,7 @@ begin
       begin
         mFound := True;
         Assert.AreEqual('Undeklarierter Bezeichner', mItem.GetValue<string>('name'));
-        Assert.IsTrue(mItem.GetValue<string>('cause') <> '');
+        Assert.AreNotEqual('', mItem.GetValue<string>('cause'));
         Assert.AreEqual('https://docwiki.embarcadero.com/RADStudio/Athens/e/index.php?search=E2003',
           mItem.GetValue<string>('docWiki'));
       end;

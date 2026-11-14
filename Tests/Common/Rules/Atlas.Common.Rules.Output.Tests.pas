@@ -237,7 +237,7 @@ var
 begin
   Output := TFindingsOutput.Render([MakeFile('Src\U.pas', [MakeFinding('syntax', TRuleSeverity.Error, 4)]),
     MakeFile('Src\V.pas', nil)], TFindingsFormat.Text, nil);
-  Assert.IsTrue(Pos('Src\U.pas(5,3): error syntax [Konfidenz hoch]: Meldung', Output) = 1, Output);
+  Assert.AreEqual(1, Pos('Src\U.pas(5,3): error syntax [Konfidenz hoch]: Meldung', Output), Output);
   Assert.IsTrue(Pos('1 Treffer in 1 von 2 Dateien', Output) > 0, Output);
 end;
 
@@ -449,10 +449,10 @@ begin
   CheckedFile.Marks := [MakeMark(CheckedFile.Findings[0], TBaselineState.None, 'P')];
   Output := TFindingsOutput.Render([CheckedFile], TFindingsFormat.Sarif, nil);
   Assert.IsTrue(Pos('"partialFingerprints"', Output) > 0, Output);
-  Assert.IsTrue(Pos('baselineState', Output) = 0, Output);
-  Assert.IsTrue(Pos('suppressions', Output) = 0, Output);
+  Assert.AreEqual(0, Pos('baselineState', Output), Output);
+  Assert.AreEqual(0, Pos('suppressions', Output), Output);
   // Text und JSON bleiben unverändert.
-  Assert.IsTrue(Pos('partialFingerprints', TFindingsOutput.Render([CheckedFile], TFindingsFormat.Json, nil)) = 0);
+  Assert.AreEqual(0, Pos('partialFingerprints', TFindingsOutput.Render([CheckedFile], TFindingsFormat.Json, nil)));
 end;
 
 procedure TLinterOutputTests.CheckerReturnsScopes;

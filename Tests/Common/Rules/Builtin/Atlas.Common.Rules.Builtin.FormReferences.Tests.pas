@@ -132,8 +132,8 @@ begin
   Assert.AreEqual(cDfmReferenceUnitMissingRuleId, mFindings[0].RuleId);
   Assert.IsTrue(mFindings[0].Message.StartsWith('Connection = Form1.Connection: Form1 stammt aus Unit1, ' +
     'die Unit steht nicht in den uses.'), mFindings[0].Message);
-  Assert.IsTrue(mFindings[0].Severity = TRuleSeverity.Warning);
-  Assert.IsTrue(mFindings[0].Confidence = TRuleConfidence.High);
+  Assert.AreEqual<TRuleSeverity>(TRuleSeverity.Warning, mFindings[0].Severity);
+  Assert.AreEqual<TRuleConfidence>(TRuleConfidence.High, mFindings[0].Confidence);
   // Am Feld der Komponente, die den Verweis hält.
   Assert.AreEqual(5, mFindings[0].Range.StartPos.Line);
   Assert.AreEqual(4, mFindings[0].Range.StartPos.Character);
@@ -214,7 +214,7 @@ begin
   mContext.Index := Unit1Index;
   mFindings := Findings(mContext);
   Assert.AreEqual(1, Integer(Length(mFindings)));
-  Assert.IsTrue(mFindings[0].Confidence = TRuleConfidence.Medium);
+  Assert.AreEqual<TRuleConfidence>(TRuleConfidence.Medium, mFindings[0].Confidence);
   Assert.AreEqual('uses Unit1 ergänzen', mFindings[0].Fixes[0].Title);
   mContext.Text := Unit2(', Unit1', '');
   Assert.AreEqual(0, Integer(Length(Findings(mContext))));

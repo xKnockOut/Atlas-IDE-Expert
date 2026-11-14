@@ -185,15 +185,15 @@ begin
     Part := FindNode(Tree.Root, TSyntaxKind.VariantPart);
     Assert.IsNotNull(Part);
     // case Integer of: Selektortyp, dann je Zweig ein CaseItem mit den Marken als Namen.
-    Assert.IsTrue(Part[0].Kind = TSyntaxKind.TypeReference);
+    Assert.AreEqual<TSyntaxKind>(TSyntaxKind.TypeReference, Part[0].Kind);
     Assert.AreEqual(3, Part.ChildCount);
     Assert.AreEqual('0', Part[1].Name);
     Assert.AreEqual('WParam,LParam,Result', Part[1][0].Name);
     Item := Part[2];
     Assert.AreEqual('1', Item.Name);
     // Zweig 1 enthält zwei Felder und einen verschachtelten varianten Teil.
-    Assert.IsTrue(Item[0].Kind = TSyntaxKind.Field);
-    Assert.IsTrue(Item[1].Kind = TSyntaxKind.VariantPart);
+    Assert.AreEqual<TSyntaxKind>(TSyntaxKind.Field, Item[0].Kind);
+    Assert.AreEqual<TSyntaxKind>(TSyntaxKind.VariantPart, Item[1].Kind);
   finally
     Tree.Free;
   end;

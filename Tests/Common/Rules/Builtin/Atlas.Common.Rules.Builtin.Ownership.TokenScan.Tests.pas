@@ -123,7 +123,7 @@ begin
     Assert.AreSame(mBlock[1], mStatement, 'zweite Anweisung');
     Assert.IsNull(TProbeScan.TopStatement(mBlock, 0));
     Assert.IsTrue(TProbeScan.InBlock(TProbeScan.NodeAt(mTree.Root, mOffset), mOffset));
-    Assert.IsTrue(TProbeScan.NodeAt(mTree.Root, mOffset).ChildCount = 0, 'tiefster Knoten');
+    Assert.AreEqual(0, TProbeScan.NodeAt(mTree.Root, mOffset).ChildCount, 'tiefster Knoten');
   finally
     mTree.Free;
   end;

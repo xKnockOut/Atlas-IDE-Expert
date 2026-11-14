@@ -78,7 +78,7 @@ begin
   First := TSyntaxTreeCache.Get(Document);
   Second := TSyntaxTreeCache.Get(Document);
   Assert.AreEqual(1, TSyntaxTreeCache.ParseCount - Before);
-  Assert.IsTrue(First.Tree = Second.Tree);
+  Assert.AreSame(First.Tree, Second.Tree);
   Assert.AreEqual('A', First.Tree.Root.Name);
 end;
 
@@ -168,7 +168,7 @@ begin
   try
     for Index := 0 to Features - 1 do
     begin
-      Assert.IsTrue(SharedTrees[Index] = Shared.Tree);
+      Assert.AreSame(Shared.Tree, SharedTrees[Index]);
     end;
   finally
     // Unit-Variable: sonst bleibt das Array über den Test hinaus liegen (Leck-Monitor).

@@ -413,7 +413,7 @@ begin
       mActual := mActual + ExtractFileName(mFiles[mFile]) + ':' + IntToStr(mFinding.Range.StartPos.Line + 1) + #10;
     end;
   end;
-  Assert.IsTrue(mExpected <> '', 'Keine Markierungen im Referenzprojekt');
+  Assert.AreNotEqual('', mExpected, 'Keine Markierungen im Referenzprojekt');
   Assert.AreEqual(mExpected, mActual);
   mFiles := nil;
   mTexts := nil;

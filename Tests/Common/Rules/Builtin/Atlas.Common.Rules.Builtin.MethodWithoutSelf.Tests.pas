@@ -102,7 +102,7 @@ begin
   Found := TRuleAssert.Findings(Rule, Source, Enabled);
   for Finding in Found do
   begin
-    Assert.IsTrue(Pos('TRechner.Wert', Finding.Message) = 0, Finding.Message);
+    Assert.AreEqual(0, Pos('TRechner.Wert', Finding.Message), Finding.Message);
   end;
 end;
 
@@ -169,7 +169,7 @@ begin
   mFound := TRuleAssert.Findings(Rule, cSource, Enabled);
   for mFinding in mFound do
   begin
-    Assert.IsTrue(Pos('TBasis.Klick', mFinding.Message) = 0, mFinding.Message);
+    Assert.AreEqual(0, Pos('TBasis.Klick', mFinding.Message), mFinding.Message);
   end;
 end;
 
