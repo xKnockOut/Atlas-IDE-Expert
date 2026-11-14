@@ -30,7 +30,7 @@ uses
   System.SysUtils,
   Atlas.Common.Index.Adapters.CacheDirectory,
   Atlas.Common.Profiling.Contract,
-  Atlas.Common.Profiling.Profile,
+  Atlas.Text.Profile,
   Shell.Platform;
 
 constructor TShellProfiler.Create(const AServices: TShellRefactoringServices);

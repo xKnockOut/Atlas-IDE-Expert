@@ -1,4 +1,4 @@
-﻿unit Atlas.Common.Profiling.Report.Tests;
+﻿unit Atlas.Text.ProfileReport.Tests;
 
 // Tests für die Auswertung eines Profils (#2057): Eigen- und Gesamtanteil, heißeste Zeile, „Nur eigener Code“
 // (Bibliotheksrahmen zusammengefasst), Zeilen für das Wärmeband und Vergleich zweier Läufe.
@@ -32,8 +32,8 @@ implementation
 
 uses
   System.SysUtils,
-  Atlas.Common.Profiling.Profile,
-  Atlas.Common.Profiling.Report;
+  Atlas.Text.Profile,
+  Atlas.Text.ProfileReport;
 
 function Frame(const ARoutine: string; ALine: Integer): TAtlasProfileFrame;
 begin

@@ -26,7 +26,7 @@ uses
   System.SysUtils,
   Atlas.Text.MapFile,
   Atlas.Common.Profiling.Contract,
-  Atlas.Common.Profiling.Profile,
+  Atlas.Text.Profile,
   Atlas.Common.Profiling.Sampling;
 
 const

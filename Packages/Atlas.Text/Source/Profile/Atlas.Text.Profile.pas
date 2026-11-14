@@ -1,4 +1,4 @@
-﻿unit Atlas.Common.Profiling.Profile;
+﻿unit Atlas.Text.Profile;
 
 // Stichproben-Profiler (#2057), Fachlogik: ein Lauf als Datei. Wer die Proben nimmt (Prober im Plugin bzw. Server),
 // gibt je Probe den aufgelösten Aufrufstapel an TAtlasProfileBuilder; daraus entsteht ein TAtlasProfile mit
@@ -7,7 +7,7 @@
 //   {"version":1, "program":…, "project":…, "platform":…, "startedAt":ISO 8601, "durationMs":…, "intervalMs":…,
 //    "samples":…, "frames":[{"routine","unit","file","line","library"}],
 //    "stacks":[{"frames":[0,4,7], "count":12}]}            Index 0 eines Stapels = innerster Rahmen.
-// Auswertung (Methoden, Zeilen, Vergleich) in Atlas.Common.Profiling.Report.
+// Auswertung (Methoden, Zeilen, Vergleich) in Atlas.Text.ProfileReport.
 
 interface
 
@@ -60,7 +60,9 @@ type
     constructor Create;
     destructor Destroy; override;
     /// <summary>Eine Probe; AFrames[0] ist der innerste Rahmen. Leere Stapel zählen nicht.</summary>
-    procedure AddSample(const AFrames: TArray<TAtlasProfileFrame>);
+    procedure AddSample(const AFrames: TArray<TAtlasProfileFrame>); overload;
+    /// <summary>ACount gleiche Proben auf einmal; ACount kleiner 1 zählt nicht.</summary>
+    procedure AddSample(const AFrames: TArray<TAtlasProfileFrame>; ACount: Integer); overload;
     /// <summary>Rahmen, Stapel und Probenzahl in AProfile übernehmen; die übrigen Felder bleiben.</summary>
     procedure FillProfile(var AProfile: TAtlasProfile);
     property Samples: Integer read FSamples;
@@ -143,33 +145,40 @@ begin
 end;
 
 procedure TAtlasProfileBuilder.AddSample(const AFrames: TArray<TAtlasProfileFrame>);
+begin
+  AddSample(AFrames, 1);
+end;
+
+procedure TAtlasProfileBuilder.AddSample(const AFrames: TArray<TAtlasProfileFrame>; ACount: Integer);
 var
   mIndexes: TArray<Integer>;
+  mParts: TArray<string>;
   mKey: string;
   mPosition: Integer;
   mStack: TAtlasProfileStack;
 begin
-  if Length(AFrames) = 0 then
+  if (Length(AFrames) = 0) or (ACount < 1) then
   begin
     Exit;
   end;
   SetLength(mIndexes, Length(AFrames));
-  mKey := '';
+  SetLength(mParts, Length(AFrames));
   for mPosition := 0 to High(AFrames) do
   begin
     mIndexes[mPosition] := FrameIndexOf(AFrames[mPosition]);
-    mKey := mKey + IntToStr(mIndexes[mPosition]) + ',';
+    mParts[mPosition] := IntToStr(mIndexes[mPosition]);
   end;
-  Inc(FSamples);
+  mKey := string.Join(',', mParts);
+  Inc(FSamples, ACount);
   if FStackIndex.TryGetValue(mKey, mPosition) then
   begin
     mStack := FStacks[mPosition];
-    Inc(mStack.Count);
+    Inc(mStack.Count, ACount);
     FStacks[mPosition] := mStack;
     Exit;
   end;
   mStack.Frames := mIndexes;
-  mStack.Count := 1;
+  mStack.Count := ACount;
   FStackIndex.Add(mKey, FStacks.Add(mStack));
 end;
 

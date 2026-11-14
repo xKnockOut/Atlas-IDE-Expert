@@ -115,6 +115,7 @@
         <DCCReference Include="Source\Core\Debug\Atlas.Core.Debug.AsyncOrigin.pas"/>
         <DCCReference Include="Source\Core\Debug\Atlas.Core.Debug.Exceptions.pas"/>
         <DCCReference Include="Source\Core\Debug\Atlas.Core.Debug.MemoryTimeline.pas"/>
+        <DCCReference Include="Source\Core\Debug\Atlas.Core.Debug.Profiler.pas"/>
         <DCCReference Include="Source\Core\Debug\Atlas.Core.Debug.ObjectCount.pas"/>
         <DCCReference Include="Source\Core\Debug\Atlas.Core.Debug.IgnoreList.pas"/>
         <DCCReference Include="Source\Core\Debug\Atlas.Core.Debug.InlineValues.pas"/>
@@ -186,6 +187,9 @@
         <DCCReference Include="Source\IDE\Debug\Atlas.IDE.Debug.MemoryCounters.pas"/>
         <DCCReference Include="Source\IDE\Debug\Atlas.IDE.Debug.MemoryTimeline.pas"/>
         <DCCReference Include="Source\IDE\Debug\Atlas.IDE.Debug.MemoryWindow.pas"/>
+        <DCCReference Include="Source\IDE\Debug\Atlas.IDE.Debug.ProfileWindow.pas"/>
+        <DCCReference Include="Source\IDE\Debug\Atlas.IDE.Debug.Profiler.pas"/>
+        <DCCReference Include="Source\IDE\Debug\Atlas.IDE.Debug.Composition.Profiler.pas"/>
         <DCCReference Include="Source\IDE\Debug\Atlas.IDE.Debug.ObjectCount.pas"/>
         <DCCReference Include="Source\IDE\Debug\Atlas.IDE.Debug.ObjectCountReader.pas"/>
         <DCCReference Include="Source\IDE\Debug\Atlas.IDE.Debug.StepFilter.pas"/>
@@ -257,6 +261,11 @@
             <FormType>dfm</FormType>
             <DesignClass>TFrame</DesignClass>
         </DCCReference>
+        <DCCReference Include="Source\UI\Debug\Atlas.UI.Debug.ProfileFrame.pas">
+            <Form>AtlasDebugProfileFrame</Form>
+            <FormType>dfm</FormType>
+            <DesignClass>TFrame</DesignClass>
+        </DCCReference>
         <DCCReference Include="Source\UI\Debug\Atlas.UI.Debug.StepFilterFrame.pas">
             <Form>AtlasDebugStepFilterFrame</Form>
             <FormType>dfm</FormType>
@@ -270,6 +279,7 @@
         <DCCReference Include="Source\UI\Debug\Atlas.UI.Debug.InlineValuePainter.pas"/>
         <DCCReference Include="Source\UI\Debug\Atlas.UI.Debug.Strings.pas"/>
         <DCCReference Include="Source\UI\Debug\Atlas.UI.Debug.Memory.Strings.pas"/>
+        <DCCReference Include="Source\UI\Debug\Atlas.UI.Debug.Profile.Strings.pas"/>
         <DCCReference Include="Source\UI\Debug\Atlas.UI.Debug.Viewer.pas"/>
         <DCCReference Include="Source\UI\Debug\Atlas.UI.Debug.SettingsSection.pas"/>
         <DCCReference Include="Source\Core\Debug\Atlas.Core.Debug.EventLog.pas"/>
