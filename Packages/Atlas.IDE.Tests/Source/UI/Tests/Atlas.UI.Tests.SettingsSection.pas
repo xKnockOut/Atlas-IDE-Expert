@@ -84,6 +84,7 @@ begin
   Switch('tests.leakSetup', TAtlasTestsStrings.Text(TAtlasTestsTextId.SettingsLeakSetup));
   Number('tests.repeat.count', TAtlasTestsStrings.Text(TAtlasTestsTextId.SettingsTestsRepeatCount));
   Switch('tests.mutation', TAtlasTestsStrings.Text(TAtlasTestsTextId.SettingsTestsMutation));
+  Switch('tests.mutation.marks', TAtlasTestsStrings.Text(TAtlasTestsTextId.SettingsTestsMutationMarks));
   Number('tests.mutation.timeoutSec', TAtlasTestsStrings.Text(TAtlasTestsTextId.SettingsTestsMutationTimeout));
   Line('tests.mutation.operators', TAtlasTestsStrings.Text(TAtlasTestsTextId.SettingsTestsMutationOperators));
 end;

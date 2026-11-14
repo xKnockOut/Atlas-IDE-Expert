@@ -148,6 +148,7 @@ begin
   Assert.IsTrue(ASettings.TestsFlaky, 'wackelnde Tests standardmäßig an (#1773)');
   Assert.AreEqual(10, ASettings.TestsFlakyRuns, 'zehn Läufe je Test (#1773)');
   Assert.IsFalse(ASettings.TestsMutation, 'Mutationslauf standardmäßig aus, experimentell (#1460)');
+  Assert.IsTrue(ASettings.TestsMutationMarks, 'Symbole des Mutationslaufs standardmäßig an (#1460)');
   Assert.AreEqual(60, ASettings.TestsMutationTimeoutSec, '60 s je Mutant (#1460)');
   Assert.AreEqual('', ASettings.TestsMutationOperators, 'alle Operatoren (#1460)');
 end;
@@ -366,6 +367,7 @@ begin
   ASettings.TestsFlaky := False;
   ASettings.TestsFlakyRuns := 20;
   ASettings.TestsMutation := True;
+  ASettings.TestsMutationMarks := False;
   ASettings.TestsMutationTimeoutSec := 30;
   ASettings.TestsMutationOperators := 'boundary, not';
 end;
@@ -565,6 +567,7 @@ begin
   Assert.IsFalse(ALoaded.TestsFlaky, 'tests.flaky (#1773)');
   Assert.AreEqual(20, ALoaded.TestsFlakyRuns, 'tests.flaky.runs (#1773)');
   Assert.IsTrue(ALoaded.TestsMutation, 'tests.mutation (#1460)');
+  Assert.IsFalse(ALoaded.TestsMutationMarks, 'tests.mutation.marks (#1460)');
   Assert.AreEqual(30, ALoaded.TestsMutationTimeoutSec, 'tests.mutation.timeoutSec (#1460)');
   Assert.AreEqual('boundary, not', ALoaded.TestsMutationOperators, 'tests.mutation.operators (#1460)');
 end;

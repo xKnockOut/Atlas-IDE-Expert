@@ -55,7 +55,7 @@ type
     [Test]
     procedure InaccessibleNamedThenRevealed;
     [Test]
-    procedure InaccessibleOnlyShowsEmptyStateWithNotice;
+    procedure InaccessibleOnlyShowsTyposWithNotice;
     /// <summary>#2108: Enter auf einem nicht sichtbaren Mitglied mit Befehl schließt die Liste und meldet es
     /// über OnInaccessible statt OnCommit.</summary>
     [Test]
@@ -907,7 +907,7 @@ begin
   end;
 end;
 
-procedure TAtlasCompletionControllerTests.InaccessibleOnlyShowsEmptyStateWithNotice;
+procedure TAtlasCompletionControllerTests.InaccessibleOnlyShowsTyposWithNotice;
 var
   mView: TFakeHiddenView;
   mViewRef: IAtlasCompletionView;
@@ -924,11 +924,18 @@ begin
       begin
         Result := not mController.Loading;
       end));
-    Assert.IsTrue(mView.Empty);
+    // Entscheidung: Tippfehler-Vorschläge (#485) haben Vorrang, der Hinweis auf das nicht sichtbare Mitglied
+    // (#2108) steht zusätzlich in der Fußzeile. „FEi“ passt regulär nur auf das private FEintraege; FEnde kommt
+    // als „Meintest du“ (# = Überschrift), kein leerer Zustand.
+    Assert.IsFalse(mView.Empty);
+    Assert.IsTrue(mView.Names.StartsWith('#,FEnde'), mView.Names);
     Assert.AreEqual('FEintraege', mView.HiddenNames);
     Assert.IsTrue(mController.RevealInaccessible);
     Assert.IsTrue(mView.Shown);
-    Assert.AreEqual('#,FEintraege', mView.Names);
+    // Aufgedeckt: die ausgeblendete Gruppe steht vor „Meintest du“, beide bleiben.
+    Assert.IsTrue(mView.Names.Contains('#,FEintraege'), mView.Names);
+    Assert.IsTrue(mView.Names.Contains('#,FEnde'), mView.Names);
+    Assert.AreEqual('', mView.HiddenNames);
     // Ohne Präfix nennt die Fußzeile nichts.
     mController.UpdatePrefix('');
     Assert.AreEqual('', mView.HiddenNames);

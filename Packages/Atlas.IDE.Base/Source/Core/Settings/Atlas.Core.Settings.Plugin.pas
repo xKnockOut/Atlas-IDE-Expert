@@ -452,6 +452,7 @@ type
     property TestsFlaky: Boolean read FBuild.TestsFlaky write FBuild.TestsFlaky;
     property TestsFlakyRuns: Integer read FBuild.TestsFlakyRuns write FBuild.TestsFlakyRuns;
     property TestsMutation: Boolean read FBuild.TestsMutation write FBuild.TestsMutation;
+    property TestsMutationMarks: Boolean read FBuild.TestsMutationMarks write FBuild.TestsMutationMarks;
     property TestsMutationTimeoutSec: Integer read FBuild.TestsMutationTimeoutSec
       write FBuild.TestsMutationTimeoutSec;
     property TestsMutationOperators: string read FBuild.TestsMutationOperators write FBuild.TestsMutationOperators;

@@ -61,6 +61,9 @@ Server und Claude-Code-Plugin tragen immer dieselbe Version.
 - Grenzfälle als Testfälle (#2173, Teil 1): Das MCP-Werkzeug `suggest_test_cases` (`file`, `routine` oder `line`, `maxCases`, `format`) und der Serverbefehl `atlas.server.boundaryCases` lesen aus den Bedingungen einer Routine über ihre Parameter Grenzwerte ab: Vergleiche mit einer Konstanten (Wert davor, darauf, dahinter; `>= 100` gibt 99, 100, 101), `case`-Marken samt eines nicht genannten Werts für `else`, `in [...]`, `SameText`/`StartsText`/`EndsText`/`ContainsText`/`Pos` (Treffer, andere Schreibung, knapp daneben, leer), `Length`, `nil` und Boolean, auch über lokale Kopien des Parameters. Je Fall weicht ein Parameter ab, die übrigen stehen auf einem neutralen Wert; Werte in der Schreibweise von `[TestCase]`. Felder und Funktionsaufrufe als Grenze liefern nichts. Über `mcp.disabledTools` abschaltbar.
 - Debug-Werte anheften (#526, `debug.pinnedValues`, Vorgabe an): „Anheften“ unter dem Wert im Debug-Hover; der Ausdruck steht danach bei jedem Halt als gerahmtes Feld `Ausdruck = Wert ✕` am Ende seiner Zeile, geänderte Werte in der Warnfarbe, ✕ löst ihn. Gespeichert je Projekt in `%LOCALAPPDATA%\Atlas\debug-pinned-values.json`, höchstens 100 je Projekt, ausgewertet ohne Nebenwirkungen. Der Hover-Satz ist dafür aufgeteilt (`Atlas.Core.Hover.Painter`, `Atlas.Core.Hover.PublishedPainter`); Aktionen unter dem Wert (`TAtlasDebugValue.Actions`, `TAtlasEditorHover.OnDebugActions`/`OnDebugAction`) stehen auch weiteren Debug-Funktionen offen. Neue Units `Atlas.Core.Debug.Pins`, `Atlas.IDE.Debug.Pins`.
 
+### Geändert
+- Symbole des Mutationslaufs eigens abschaltbar (#1460, `tests.mutation.marks`, Vorgabe an): Das Editor-Element „MutationResults“ hängt jetzt an dieser Einstellung statt an `tests.mutation`. „Überall ausblenden“ blendet damit nur die Symbole in der Rinne aus; der Mutationslauf bleibt verfügbar.
+
 ## [2.1.0] - 2026-11-13
 
 ### Neu

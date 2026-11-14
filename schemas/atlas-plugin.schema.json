@@ -1802,9 +1802,21 @@
       "x-page": "Compiler",
       "x-experimental": true,
       "x-parent": "tests.run",
-      "x-drawing": true,
       "x-caption": "Mutationslauf: prüfen, ob die Tests Fehler im Code bemerken",
       "x-captionEn": "Mutation testing: check whether tests notice faults in the code",
+      "x-issue": "#1460"
+    },
+    "TestsMutationMarks": {
+      "description": "Symbole des Mutationslaufs im Editor anzeigen (grün: jede Veränderung bemerkt, rot: eine überlebt). Schaltet nur die Anzeige in der Rinne; der Mutationslauf selbst hängt an tests.mutation.",
+      "type": "boolean",
+      "default": true,
+      "x-key": "tests.mutation.marks",
+      "x-area": "build",
+      "x-page": "Compiler",
+      "x-parent": "tests.mutation",
+      "x-drawing": true,
+      "x-caption": "Symbole des Mutationslaufs im Editor anzeigen",
+      "x-captionEn": "Show mutation testing marks in the editor",
       "x-issue": "#1460"
     },
     "TestsMutationTimeoutSec": {

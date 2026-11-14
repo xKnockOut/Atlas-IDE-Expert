@@ -199,6 +199,9 @@ type
     /// Methoden prüfen“ bauen je Mutant ein Schattenprojekt und führen die Tests aus; Ergebnis als Symbole in der
     /// Rinne.</summary>
     TestsMutation: Boolean;
+    /// <summary>Symbole des Mutationslaufs im Editor anzeigen (#1460, tests.mutation.marks); nur die Anzeige,
+    /// der Lauf hängt an TestsMutation.</summary>
+    TestsMutationMarks: Boolean;
     /// <summary>Zeitlimit je Mutant für die Tests in Sekunden (#1460, tests.mutation.timeoutSec),
     /// cMinTestsMutationTimeoutSec bis cMaxTestsMutationTimeoutSec; überschritten zählt als erkannt.</summary>
     TestsMutationTimeoutSec: Integer;
@@ -470,6 +473,7 @@ begin
   TestsFlaky := True;
   TestsFlakyRuns := cDefaultTestsFlakyRuns;
   TestsMutation := False;
+  TestsMutationMarks := True;
   TestsMutationTimeoutSec := cDefaultTestsMutationTimeoutSec;
   TestsMutationOperators := '';
 end;
@@ -510,6 +514,7 @@ begin
   AIo.Flag('TestsFlaky', TestsFlaky);
   AIo.Number('TestsFlakyRuns', TestsFlakyRuns);
   AIo.Flag('TestsMutation', TestsMutation);
+  AIo.Flag('TestsMutationMarks', TestsMutationMarks);
   AIo.Number('TestsMutationTimeoutSec', TestsMutationTimeoutSec);
   AIo.Text('TestsMutationOperators', TestsMutationOperators);
 end;

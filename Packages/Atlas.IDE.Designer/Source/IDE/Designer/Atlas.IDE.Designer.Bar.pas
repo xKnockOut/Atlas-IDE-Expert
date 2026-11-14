@@ -106,9 +106,29 @@ type
     procedure HandleKey(AKey: Word; AShift: TShiftState); override;
   end;
 
+  TDesignerBarState = class;
+
+  /// <summary>Meldet geöffnete und geschlossene Formular-Designer: Die Leiste taktet nur, solange einer offen ist
+  /// (vorher alle 200 ms auch auf der Willkommensseite ohne Projekt).</summary>
+  TDesignerWatch = class(TInterfacedObject, IDesignNotification)
+  private
+    FOwner: TDesignerBarState;
+  public
+    procedure ItemDeleted(const ADesigner: IDesigner; AItem: TPersistent);
+    procedure ItemInserted(const ADesigner: IDesigner; AItem: TPersistent);
+    procedure ItemsModified(const ADesigner: IDesigner);
+    procedure SelectionChanged(const ADesigner: IDesigner; const ASelection: IDesignerSelections);
+    procedure DesignerOpened(const ADesigner: IDesigner; AResurrecting: Boolean);
+    procedure DesignerClosed(const ADesigner: IDesigner; AGoingDormant: Boolean);
+  end;
+
   TDesignerBarState = class
   private
     FTimer: TTimer;
+    FWatch: TDesignerWatch;
+    FWatchRef: IDesignNotification;
+    /// <summary>Zahl der offenen Formular-Designer; 0 = Takt aus.</summary>
+    FOpenDesigners: Integer;
     FHost: TAtlasEditorBarHost;
     FKeyClient: TSearchKeyClient;
     FSearch: TAtlasComponentSearchWindow;
@@ -120,6 +140,8 @@ type
     FLastAlign: TAtlasAlignKind;
     FActionIndex: Integer;
     FActionLogged: Boolean;
+    procedure DesignerOpened;
+    procedure DesignerClosed;
     procedure Tick(Sender: TObject);
     function CreateBar: TAtlasDesignerBar;
     function Buttons: TArray<TAtlasDesignerButton>;
@@ -386,6 +408,32 @@ end;
 
 { TDesignerBarState }
 
+/// <summary>Offene Module mit Formular-Editor (beim Start schon geladene Formulare).</summary>
+function OpenFormCount: Integer;
+var
+  mServices: IOTAModuleServices;
+  mModule: IOTAModule;
+  mFormEditor: IOTAFormEditor;
+  mModuleIndex, mFileIndex: Integer;
+begin
+  Result := 0;
+  if not Supports(BorlandIDEServices, IOTAModuleServices, mServices) then
+  begin
+    Exit;
+  end;
+  for mModuleIndex := 0 to mServices.ModuleCount - 1 do
+  begin
+    mModule := mServices.Modules[mModuleIndex];
+    for mFileIndex := 0 to mModule.ModuleFileCount - 1 do
+    begin
+      if Supports(mModule.ModuleFileEditors[mFileIndex], IOTAFormEditor, mFormEditor) then
+      begin
+        Inc(Result);
+      end;
+    end;
+  end;
+end;
+
 constructor TDesignerBarState.Create;
 begin
   inherited Create;
@@ -419,11 +467,81 @@ begin
   FTimer := TTimer.Create(nil);
   FTimer.Interval := cTickMs;
   FTimer.OnTimer := Tick;
+  // Schon offene Formulare (Plugin nach dem Projekt geladen) zählen; ohne Formular bleibt der Takt aus.
+  FOpenDesigners := OpenFormCount;
+  FTimer.Enabled := FOpenDesigners > 0;
+  FWatch := TDesignerWatch.Create;
+  FWatch.FOwner := Self;
+  FWatchRef := FWatch;
+  RegisterDesignNotification(FWatchRef);
+end;
+
+procedure TDesignerBarState.DesignerOpened;
+begin
+  Inc(FOpenDesigners);
   FTimer.Enabled := True;
+end;
+
+procedure TDesignerBarState.DesignerClosed;
+begin
+  if FOpenDesigners > 0 then
+  begin
+    Dec(FOpenDesigners);
+  end;
+  if FOpenDesigners = 0 then
+  begin
+    // Ein letzter Takt räumt Leisten, Tab-Marken und Tasten ab, danach ruht der Takt.
+    Tick(nil);
+    FTimer.Enabled := False;
+  end;
+end;
+
+{ TDesignerWatch }
+
+procedure TDesignerWatch.ItemDeleted(const ADesigner: IDesigner; AItem: TPersistent);
+begin
+end;
+
+procedure TDesignerWatch.ItemInserted(const ADesigner: IDesigner; AItem: TPersistent);
+begin
+end;
+
+procedure TDesignerWatch.ItemsModified(const ADesigner: IDesigner);
+begin
+end;
+
+procedure TDesignerWatch.SelectionChanged(const ADesigner: IDesigner; const ASelection: IDesignerSelections);
+begin
+end;
+
+procedure TDesignerWatch.DesignerOpened(const ADesigner: IDesigner; AResurrecting: Boolean);
+begin
+  if FOwner <> nil then
+  begin
+    FOwner.DesignerOpened;
+  end;
+end;
+
+procedure TDesignerWatch.DesignerClosed(const ADesigner: IDesigner; AGoingDormant: Boolean);
+var
+  mOwner: TDesignerBarState;
+begin
+  mOwner := FOwner;
+  if mOwner <> nil then
+  begin
+    TAtlasGuard.Run(TAtlasFeature.DesignerBar,
+      procedure
+      begin
+        mOwner.DesignerClosed;
+      end);
+  end;
 end;
 
 destructor TDesignerBarState.Destroy;
 begin
+  FWatch.FOwner := nil;
+  UnregisterDesignNotification(FWatchRef);
+  FWatchRef := nil;
   FTimer.Free;
   TAtlasKeyHook.Remove(FKeyClient);
   FKeyClient.Free;

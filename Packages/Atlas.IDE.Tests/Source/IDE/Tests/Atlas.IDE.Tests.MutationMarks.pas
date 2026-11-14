@@ -11,7 +11,7 @@
 //   (TAtlasMutationResults.MarksOf); wer eine Routine ändert, sieht ihre
 //   Punkte nicht mehr, bis sie neu geprüft ist.
 // Die Ergebnisse hält TAtlasIdeMutationRun.Current; abschaltbar über
-// tests.mutation und am Element (#628); gesichert über TAtlasFeature.Build.
+// tests.mutation (Lauf), tests.mutation.marks (Anzeige) und am Element (#628); gesichert über TAtlasFeature.Build.
 // Nur im Hauptthread.
 
 interface
@@ -86,7 +86,8 @@ end;
 
 function TAtlasIdeMutationMarks.Wanted: Boolean;
 begin
-  Result := TAtlasIdeSettings.Current.TestsMutation and (TAtlasIdeMutationRun.Current <> nil);
+  Result := TAtlasIdeSettings.Current.TestsMutation and TAtlasIdeSettings.Current.TestsMutationMarks and
+    (TAtlasIdeMutationRun.Current <> nil);
 end;
 
 procedure TAtlasIdeMutationMarks.Track(const AFileName, AText: string; AOpened: Boolean);
