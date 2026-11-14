@@ -132,6 +132,8 @@ begin
   Result.Match := AMatch;
 end;
 
+{ TMcpReportToolsTests }
+
 procedure TMcpReportToolsTests.Setup;
 begin
   TAtlasLocale.Use(TTextLanguage.German);

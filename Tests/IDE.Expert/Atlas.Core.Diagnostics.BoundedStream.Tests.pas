@@ -26,6 +26,8 @@ uses
   System.SysUtils,
   Atlas.Core.Diagnostics.BoundedStream;
 
+{ TAtlasBoundedStreamTests }
+
 procedure TAtlasBoundedStreamTests.WritesUpToLimit;
 var
   mStream: TAtlasBoundedStream;

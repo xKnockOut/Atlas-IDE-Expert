@@ -58,6 +58,8 @@ begin
   Result := ExtractFilePath(Root) + AName;
 end;
 
+{ TAtlasSvnLayoutTests }
+
 procedure TAtlasSvnLayoutTests.ProjectRootFromRelativeUrl;
 var
   mRoot: string;

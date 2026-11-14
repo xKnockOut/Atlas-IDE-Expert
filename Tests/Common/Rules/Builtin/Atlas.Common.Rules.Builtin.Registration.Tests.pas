@@ -103,6 +103,8 @@ begin
   end;
 end;
 
+{ TBuiltinRegistrationTests }
+
 procedure TBuiltinRegistrationTests.EveryGroupRegistersRules;
 begin
   Assert.IsTrue(Length(DeclarationsGroup) > 0, 'Declarations');

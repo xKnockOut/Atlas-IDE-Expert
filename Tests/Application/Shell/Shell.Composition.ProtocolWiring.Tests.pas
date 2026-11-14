@@ -44,6 +44,8 @@ begin
   Result.Channel.Transport := TJsonRpcStreamTransport.Create(TMemoryStream.Create, TMemoryStream.Create, True);
 end;
 
+{ TShellProtocolWiringTests }
+
 procedure TShellProtocolWiringTests.Setup;
 begin
   FParts := NewParts;

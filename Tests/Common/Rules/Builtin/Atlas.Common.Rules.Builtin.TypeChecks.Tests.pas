@@ -179,6 +179,8 @@ begin
     '  Liste: array of Integer;'#10'  Punkt: PPunkt;'#10'begin'#10 + AStatements + 'end;'#10'end.';
 end;
 
+{ TDynamicArrayMisuseTests }
+
 procedure TDynamicArrayMisuseTests.IssueExampleDisposeWithFix;
 var
   mSource, mFixed: string;
@@ -332,6 +334,8 @@ begin
     'end;'#10'end.';
 end;
 
+{ THresultIntegerMixTests }
+
 procedure THresultIntegerMixTests.IssueExampleWithFix;
 var
   mSource, mFixed: string;
@@ -443,6 +447,8 @@ end;
 
 const
   cVergleich = '  function Vergleich(A, B: Pointer): Integer;'#10'  begin'#10'    Result := 0;'#10'  end;'#10;
+
+{ TLocalRoutineAsCallbackTests }
 
 procedure TLocalRoutineAsCallbackTests.IssueExampleWithMoveFix;
 var
@@ -561,6 +567,8 @@ begin
     'procedure Bearbeiten(const Fest: Integer; Zeile: TZeile);'#10'var'#10'  S: string;'#10'  Zahl: Integer;'#10 +
     '  Feld: array[0..3] of Integer;'#10'begin'#10 + AStatements + 'end;'#10'end.';
 end;
+
+{ TInvalidVarArgumentTests }
 
 procedure TInvalidVarArgumentTests.IssueExampleWithFix;
 var
@@ -730,6 +738,8 @@ begin
     'D: Double);'#10'begin'#10 + AStatements + 'end;'#10'end.';
 end;
 
+{ TConditionNotBooleanTests }
+
 procedure TConditionNotBooleanTests.IssueExampleWithFix;
 var
   mSource, mFixed: string;
@@ -866,6 +876,8 @@ begin
     'Fremd: TFremd; N: Integer; S: string; A: array of Integer);'#10'var'#10'  O: TObject;'#10'  I: Integer;'#10 +
     '  C: Char;'#10'begin'#10 + AStatements + 'end;'#10'end.';
 end;
+
+{ TForInNotEnumerableTests }
 
 procedure TForInNotEnumerableTests.IssueExample;
 var

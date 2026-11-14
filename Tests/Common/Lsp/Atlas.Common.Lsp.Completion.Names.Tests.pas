@@ -63,6 +63,8 @@ const
     'implementation'#10 +
     'end.';
 
+{ TCompletionNamesTests }
+
 /// <summary>Namen der Vorschläge an Zeile ALine, Spalte ACharacter, durch Leerzeichen getrennt; '-' ohne.
 /// </summary>
 function TCompletionNamesTests.NamesAt(ALine, ACharacter: Integer; const ANamingFor: TCompletionNamingFunc;

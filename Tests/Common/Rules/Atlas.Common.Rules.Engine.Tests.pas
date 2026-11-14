@@ -133,6 +133,8 @@ type
     procedure Check(const AContext: TRuleContext; const AReport: IRuleReport);
   end;
 
+{ TMarkerRule }
+
 constructor TMarkerRule.Create(const AId: string; AWithFix: Boolean);
 begin
   inherited Create;
@@ -177,6 +179,8 @@ type
     function Decides(const AContext: TRuleContext; ALine: Integer): Boolean;
   end;
 
+{ TUncertainMarkerRule }
+
 constructor TUncertainMarkerRule.Create(AUndecided: Integer);
 begin
   inherited Create('marker', False);
@@ -211,6 +215,8 @@ type
     procedure Check(const AContext: TRuleContext; const AReport: IRuleReport);
   end;
 
+{ TProbe }
+
 constructor TProbe.Create;
 begin
   inherited Create;
@@ -222,6 +228,8 @@ begin
   Inc(ProbeFreed);
   inherited Destroy;
 end;
+
+{ TProbeRule }
 
 constructor TProbeRule.Create(const AId: string);
 begin
@@ -259,6 +267,8 @@ type
     function Descriptor: TRuleDescriptor;
     procedure Check(const AContext: TRuleContext; const AReport: IRuleReport);
   end;
+
+{ TFailingRule }
 
 constructor TFailingRule.Create(const AId: string; AError: ExceptClass);
 begin
@@ -506,6 +516,14 @@ begin
     SourceWith('  Marker := 1;'#13#10'  Marker := 2;'#13#10));
 end;
 
+procedure TRuleEngineTests.SuppressionReasonIsNoId;
+begin
+  // Nach "--" steht eine Begründung; das "*" darin gilt nicht als Kennung (#297).
+  TRuleAssert.Reports(TMarkerRule.Create('marker', False),
+    SourceWith('  Marker := 1; // lsp-ignore: empty-except -- gilt nicht für *'#13#10), 1);
+  TRuleAssert.Silent(TMarkerRule.Create('marker', False), SourceWith('  Marker := 1; // lsp-ignore: marker -- Absicht'#13#10));
+end;
+
 procedure TRuleEngineTests.UndecidedLineKeepsSuppression;
 var
   mFindings: TArray<TRuleFinding>;
@@ -518,14 +536,6 @@ begin
   mFindings := TRuleAssert.Findings(TUncertainMarkerRule.Create(7), SourceWith('  X := 1; // lsp-ignore: marker'#13#10));
   Assert.AreEqual(1, Integer(Length(mFindings)));
   Assert.AreEqual(cUnusedSuppressionRuleId, mFindings[0].RuleId);
-end;
-
-procedure TRuleEngineTests.SuppressionReasonIsNoId;
-begin
-  // Nach "--" steht eine Begründung; das "*" darin gilt nicht als Kennung (#297).
-  TRuleAssert.Reports(TMarkerRule.Create('marker', False),
-    SourceWith('  Marker := 1; // lsp-ignore: empty-except -- gilt nicht für *'#13#10), 1);
-  TRuleAssert.Silent(TMarkerRule.Create('marker', False), SourceWith('  Marker := 1; // lsp-ignore: marker -- Absicht'#13#10));
 end;
 
 procedure TRuleEngineTests.UnknownRuleIdWithSuggestion;

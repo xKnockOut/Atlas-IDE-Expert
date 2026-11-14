@@ -107,6 +107,8 @@ begin
   Result := nil;
 end;
 
+{ TAtlasSettingsPageVcsTests }
+
 procedure TAtlasSettingsPageVcsTests.WarmUp;
 begin
   WarmUpSettingsPage;

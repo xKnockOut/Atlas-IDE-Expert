@@ -187,6 +187,13 @@ end;
 
 { TMessageMethodInvalidTests }
 
+procedure TMessageMethodInvalidTests.DescriptionFromTextUnit;
+begin
+  // Die Texte stehen in einer eigenen Unit (metric-unit-length); die Beschreibung kommt weiter aus ihr.
+  Assert.AreEqual(cTexts[TTypeDeclarationsText.MessageTitle].Text,
+    (TMessageMethodInvalidRule.Create as IRule).Descriptor.Description);
+end;
+
 procedure TMessageMethodInvalidTests.IssueExampleDuplicateNumber;
 var
   mFound: TArray<TRuleFinding>;
@@ -290,13 +297,6 @@ begin
   Assert.AreEqual('Die Nachrichtennummer WM_NULL von C muss mindestens 1 sein (wie E2139).', mFound[2].Message);
 end;
 
-procedure TMessageMethodInvalidTests.DescriptionFromTextUnit;
-begin
-  // Die Texte stehen in einer eigenen Unit (metric-unit-length); die Beschreibung kommt weiter aus ihr.
-  Assert.AreEqual(cTexts[TTypeDeclarationsText.MessageTitle].Text,
-    (TMessageMethodInvalidRule.Create as IRule).Descriptor.Description);
-end;
-
 procedure TMessageMethodInvalidTests.OffAndExclude;
 var
   mSource: string;
@@ -343,6 +343,8 @@ function Kunden(const ATypes: string): string;
 begin
   Result := 'unit Kunden;'#10'interface'#10'uses'#10'  Basis;'#10'type'#10 + ATypes + 'implementation'#10'end.';
 end;
+
+{ TInterfaceDeclarationInvalidTests }
 
 procedure TInterfaceDeclarationInvalidTests.IssueExampleField;
 var
@@ -508,6 +510,8 @@ begin
     '  ID = interface'#10'  end;'#10'  TDienst = class(TInterfacedObject, ' + AList + ')'#10 + AMembers + '  end;'#10);
 end;
 
+{ TImplementsClauseInvalidTests }
+
 procedure TImplementsClauseInvalidTests.IssueExampleWithoutRead;
 var
   mFound: TArray<TRuleFinding>;
@@ -626,6 +630,8 @@ function Druck(const AInterface, AImplementation: string): string;
 begin
   Result := 'unit Druck;'#10'interface'#10 + AInterface + 'implementation'#10 + AImplementation + 'end.';
 end;
+
+{ TCallingConventionRequiredTests }
 
 procedure TCallingConventionRequiredTests.IssueExampleVarargsWithFix;
 var
@@ -767,6 +773,8 @@ begin
     '    function GetWert: Integer; dispid 1;'#10'    procedure SetWert(AWert: Integer); dispid 2;'#10 +
     '    property Wert: Integer read GetWert write SetWert;'#10'  end;'#10);
 end;
+
+{ TDispinterfaceInvalidTests }
 
 procedure TDispinterfaceInvalidTests.IssueCasesWithPositions;
 var

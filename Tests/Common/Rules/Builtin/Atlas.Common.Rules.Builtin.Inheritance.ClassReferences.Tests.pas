@@ -28,6 +28,8 @@ uses
   Atlas.Common.Rules.Builtin.Inheritance.ClassReferences,
   Atlas.Tests.RuleAssert;
 
+{ TInheritanceClassReferencesTests }
+
 procedure TInheritanceClassReferencesTests.ClassRefTargets;
 begin
   Assert.AreEqual('TPlugin',

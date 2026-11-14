@@ -392,6 +392,8 @@ begin
     end);
 end;
 
+{ TAtlasWelcomeFlowTests }
+
 procedure TAtlasWelcomeFlowTests.WideSectionStartsBelowBothColumns;
 var
   mItems: TArray<TAtlasWelcomePlaced>;

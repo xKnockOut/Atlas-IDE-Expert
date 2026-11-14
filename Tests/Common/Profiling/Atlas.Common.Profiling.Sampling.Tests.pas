@@ -111,6 +111,8 @@ begin
   Result := Default(TAtlasProfileFrame);
 end;
 
+{ TAtlasProfileSamplingTests }
+
 procedure TAtlasProfileSamplingTests.RawStacksMergeEqualStacks;
 var
   mStacks: TAtlasRawStacks;

@@ -91,6 +91,8 @@ begin
   end;
 end;
 
+{ TAtlasCoveredByTests }
+
 procedure TAtlasCoveredByTests.ParamsCarryTextDepthAndPrivate;
 var
   mValue: TJSONValue;

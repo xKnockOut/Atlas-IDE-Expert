@@ -136,6 +136,8 @@ begin
   end;
 end;
 
+{ TFlowSignaturesTests }
+
 procedure TFlowSignaturesTests.BuiltinRoutinesKnowTheirModes;
 begin
   Assert.AreEqual('ref', ModeOf('SetLength', 0));

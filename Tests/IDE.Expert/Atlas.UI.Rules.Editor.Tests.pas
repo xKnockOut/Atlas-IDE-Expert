@@ -86,6 +86,11 @@ end;
 
 { TAtlasRulesEditorTests }
 
+procedure TAtlasRulesEditorTests.EditorChanged(Sender: TObject);
+begin
+  Inc(FChanges);
+end;
+
 procedure TAtlasRulesEditorTests.WarmUpFirstUse;
 begin
   Setup;
@@ -105,11 +110,6 @@ end;
 procedure TAtlasRulesEditorTests.TearDown;
 begin
   TAtlasStrings.Language := FLanguage;
-end;
-
-procedure TAtlasRulesEditorTests.EditorChanged(Sender: TObject);
-begin
-  Inc(FChanges);
 end;
 
 procedure TAtlasRulesEditorTests.GroupMasterLocksTable;
@@ -137,71 +137,6 @@ begin
     Assert.AreEqual('', mEditor.RulesJson);
     Assert.IsTrue(mEditor.List.Enabled);
   finally
-    mHost.Free;
-    mCatalog.Free;
-  end;
-end;
-
-procedure TAtlasRulesEditorTests.KeepsRequestedWidth;
-var
-  mHost: TForm;
-  mCatalog: TJSONValue;
-  mEditor: TAtlasRulesEditor;
-begin
-  mCatalog := TJSONObject.ParseJSONValue(cCatalogText);
-  mHost := TForm.CreateNew(nil);
-  try
-    mHost.ClientWidth := 900;
-    mEditor := TAtlasRulesEditor.Create(mHost);
-    mEditor.Parent := mHost;
-    mEditor.SetBounds(10, 10, 700, 400);
-    Assert.AreEqual(700, mEditor.Width, 'ohne Fenster');
-    mEditor.Anchors := [akLeft, akTop, akRight];
-    mEditor.SetRules(mCatalog, '', '');
-    mEditor.HandleNeeded;
-    Assert.AreEqual(700, mEditor.Width, 'mit Fenster');
-    Assert.IsTrue(mEditor.Height > 100, 'Höhe aus dem Inhalt');
-    mHost.ClientWidth := 1000;
-    Assert.AreEqual(800, mEditor.Width, 'folgt dem Anker');
-  finally
-    mHost.Free;
-    mCatalog.Free;
-  end;
-end;
-
-procedure TAtlasRulesEditorTests.DetailsKeepOrderWhenShown;
-var
-  mHost: TForm;
-  mCatalog: TJSONValue;
-  mEditor: TAtlasRulesEditor;
-  mOrder: TArray<TControl>;
-  mIndex: Integer;
-begin
-  mCatalog := TJSONObject.ParseJSONValue(cCatalogText);
-  mHost := TForm.CreateNew(nil);
-  try
-    // Ohne Auswahl sind Marke, Optionen und Beispiele ausgeblendet; die übrigen Teile sind schon ausgerichtet.
-    mEditor := NewEditor(mHost, 'style', mCatalog, '', '');
-    Assert.IsFalse(mEditor.BadMemo.Visible);
-    Assert.IsTrue(mEditor.SelectRule('magic-number'));
-    Assert.IsTrue(mEditor.MarkLabel.Visible);
-    Assert.IsTrue(mEditor.OptionsTitleLabel.Visible);
-    Assert.IsTrue(mEditor.GoodMemo.Visible);
-    mOrder := TArray<TControl>.Create(mEditor.TitleLabel, mEditor.MarkLabel, mEditor.DescriptionLabel,
-      mEditor.SeverityChoice.Parent, mEditor.ExcludeEdit, mEditor.OptionsTitleLabel, mEditor.OptionsBox,
-      mEditor.BadLabel, mEditor.BadMemo, mEditor.GoodLabel, mEditor.GoodMemo);
-    for mIndex := 1 to High(mOrder) do
-    begin
-      Assert.IsTrue(mOrder[mIndex - 1].Top + mOrder[mIndex - 1].Height <= mOrder[mIndex].Top,
-        Format('%d (%s) vor %d (%s)', [mIndex - 1, mOrder[mIndex - 1].ClassName, mIndex, mOrder[mIndex].ClassName]));
-    end;
-    // Ungültige Zahl: Die Meldung steht unter den Optionen, nicht unter den Beispielen.
-    (mEditor.OptionControls[1] as TEdit).Text := 'x';
-    Assert.IsTrue(mEditor.InvalidLabel.Visible);
-    Assert.IsTrue(mEditor.InvalidLabel.Top >= mEditor.OptionsBox.Top + mEditor.OptionsBox.Height);
-    Assert.IsTrue(mEditor.InvalidLabel.Top + mEditor.InvalidLabel.Height <= mEditor.BadLabel.Top);
-  finally
-    mOrder := nil;
     mHost.Free;
     mCatalog.Free;
   end;
@@ -369,6 +304,71 @@ begin
     Assert.IsTrue(mEditor.Status.Visible);
     Assert.AreEqual(1, mEditor.List.Items.Count);
   finally
+    mHost.Free;
+    mCatalog.Free;
+  end;
+end;
+
+procedure TAtlasRulesEditorTests.KeepsRequestedWidth;
+var
+  mHost: TForm;
+  mCatalog: TJSONValue;
+  mEditor: TAtlasRulesEditor;
+begin
+  mCatalog := TJSONObject.ParseJSONValue(cCatalogText);
+  mHost := TForm.CreateNew(nil);
+  try
+    mHost.ClientWidth := 900;
+    mEditor := TAtlasRulesEditor.Create(mHost);
+    mEditor.Parent := mHost;
+    mEditor.SetBounds(10, 10, 700, 400);
+    Assert.AreEqual(700, mEditor.Width, 'ohne Fenster');
+    mEditor.Anchors := [akLeft, akTop, akRight];
+    mEditor.SetRules(mCatalog, '', '');
+    mEditor.HandleNeeded;
+    Assert.AreEqual(700, mEditor.Width, 'mit Fenster');
+    Assert.IsTrue(mEditor.Height > 100, 'Höhe aus dem Inhalt');
+    mHost.ClientWidth := 1000;
+    Assert.AreEqual(800, mEditor.Width, 'folgt dem Anker');
+  finally
+    mHost.Free;
+    mCatalog.Free;
+  end;
+end;
+
+procedure TAtlasRulesEditorTests.DetailsKeepOrderWhenShown;
+var
+  mHost: TForm;
+  mCatalog: TJSONValue;
+  mEditor: TAtlasRulesEditor;
+  mOrder: TArray<TControl>;
+  mIndex: Integer;
+begin
+  mCatalog := TJSONObject.ParseJSONValue(cCatalogText);
+  mHost := TForm.CreateNew(nil);
+  try
+    // Ohne Auswahl sind Marke, Optionen und Beispiele ausgeblendet; die übrigen Teile sind schon ausgerichtet.
+    mEditor := NewEditor(mHost, 'style', mCatalog, '', '');
+    Assert.IsFalse(mEditor.BadMemo.Visible);
+    Assert.IsTrue(mEditor.SelectRule('magic-number'));
+    Assert.IsTrue(mEditor.MarkLabel.Visible);
+    Assert.IsTrue(mEditor.OptionsTitleLabel.Visible);
+    Assert.IsTrue(mEditor.GoodMemo.Visible);
+    mOrder := TArray<TControl>.Create(mEditor.TitleLabel, mEditor.MarkLabel, mEditor.DescriptionLabel,
+      mEditor.SeverityChoice.Parent, mEditor.ExcludeEdit, mEditor.OptionsTitleLabel, mEditor.OptionsBox,
+      mEditor.BadLabel, mEditor.BadMemo, mEditor.GoodLabel, mEditor.GoodMemo);
+    for mIndex := 1 to High(mOrder) do
+    begin
+      Assert.IsTrue(mOrder[mIndex - 1].Top + mOrder[mIndex - 1].Height <= mOrder[mIndex].Top,
+        Format('%d (%s) vor %d (%s)', [mIndex - 1, mOrder[mIndex - 1].ClassName, mIndex, mOrder[mIndex].ClassName]));
+    end;
+    // Ungültige Zahl: Die Meldung steht unter den Optionen, nicht unter den Beispielen.
+    (mEditor.OptionControls[1] as TEdit).Text := 'x';
+    Assert.IsTrue(mEditor.InvalidLabel.Visible);
+    Assert.IsTrue(mEditor.InvalidLabel.Top >= mEditor.OptionsBox.Top + mEditor.OptionsBox.Height);
+    Assert.IsTrue(mEditor.InvalidLabel.Top + mEditor.InvalidLabel.Height <= mEditor.BadLabel.Top);
+  finally
+    mOrder := nil;
     mHost.Free;
     mCatalog.Free;
   end;

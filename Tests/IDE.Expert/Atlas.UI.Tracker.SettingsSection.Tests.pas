@@ -84,6 +84,8 @@ type
     function CreateSection: IAtlasSettingsSection;
   end;
 
+{ TFixedProvider }
+
 constructor TFixedProvider.Create(const ASection: IAtlasSettingsSection);
 begin
   inherited Create;
@@ -135,6 +137,8 @@ begin
     end;
   end;
 end;
+
+{ TTrackerSettingsSectionTests }
 
 procedure TTrackerSettingsSectionTests.WarmUpFirstUse;
 begin

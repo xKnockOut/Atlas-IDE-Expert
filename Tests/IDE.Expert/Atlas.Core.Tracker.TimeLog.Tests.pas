@@ -147,13 +147,7 @@ type
       Boolean;
   end;
 
-procedure TFakeTimeTransport.Answer(const AMethod, APrefix: string; AStatus: Integer; const AText: string);
-begin
-  FMethods := FMethods + [AMethod];
-  FPrefixes := FPrefixes + [APrefix];
-  FStatus := FStatus + [AStatus];
-  FTexts := FTexts + [AText];
-end;
+{ TFakeTimeTransport }
 
 function TFakeTimeTransport.Reply(const AMethod, AUrl: string; out AStatus: Integer; out AText: string): Boolean;
 var
@@ -172,6 +166,14 @@ begin
       Exit;
     end;
   end;
+end;
+
+procedure TFakeTimeTransport.Answer(const AMethod, APrefix: string; AStatus: Integer; const AText: string);
+begin
+  FMethods := FMethods + [AMethod];
+  FPrefixes := FPrefixes + [APrefix];
+  FStatus := FStatus + [AStatus];
+  FTexts := FTexts + [AText];
 end;
 
 function TFakeTimeTransport.Get(const AUrl: string; ATimeoutMs: Integer; out AStatus: Integer; out AText: string;
@@ -206,21 +208,6 @@ end;
 
 { TAtlasTimeClockTests }
 
-procedure TAtlasTimeClockTests.Setup;
-begin
-  FNow := At(10, 0);
-  FClock := TAtlasTimeClock.Create(
-    function: TDateTime
-    begin
-      Result := FNow;
-    end, 10);
-end;
-
-procedure TAtlasTimeClockTests.TearDown;
-begin
-  FreeAndNil(FClock);
-end;
-
 function TAtlasTimeClockTests.Issue(const AKey: string): TAtlasTimeIssue;
 begin
   Result := YouTrackIssue(AKey);
@@ -235,6 +222,21 @@ begin
   begin
     Inc(Result, mSpan.Seconds);
   end;
+end;
+
+procedure TAtlasTimeClockTests.Setup;
+begin
+  FNow := At(10, 0);
+  FClock := TAtlasTimeClock.Create(
+    function: TDateTime
+    begin
+      Result := FNow;
+    end, 10);
+end;
+
+procedure TAtlasTimeClockTests.TearDown;
+begin
+  FreeAndNil(FClock);
 end;
 
 procedure TAtlasTimeClockTests.IdleStopsAndIsNotCounted;

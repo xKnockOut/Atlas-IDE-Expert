@@ -52,6 +52,8 @@ uses
   Atlas.Common.Configuration.Scopes,
   Atlas.Common.Configuration.Internals.ScopeData;
 
+{ TConfigurationScopesTests }
+
 procedure TConfigurationScopesTests.KnowsPlaceOfEachKey;
 begin
   Assert.AreEqual<TConfigurationScope>(TConfigurationScope.Global, TConfigurationScopes.ScopeOf('index.projectGroup'));

@@ -67,6 +67,8 @@ begin
   Result := nil;
 end;
 
+{ TRationaleScannerTests }
+
 procedure TRationaleScannerTests.ParsesMarkers;
 var
   mMarker, mText: string;

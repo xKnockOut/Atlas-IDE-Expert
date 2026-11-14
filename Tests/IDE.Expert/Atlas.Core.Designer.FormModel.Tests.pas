@@ -63,6 +63,8 @@ const
     '  end' + #13#10 +
     'end' + #13#10;
 
+{ TAtlasFormModelTests }
+
 procedure TAtlasFormModelTests.ObjectsWithOwnerAndDepth;
 var
   mObjects: TArray<TAtlasFormObject>;

@@ -42,6 +42,8 @@ implementation
 const
   cDesignPpi = 96;
 
+{ TAtlasMagnifierTests }
+
 procedure TAtlasMagnifierTests.DesignAt100;
 begin
   Assert.AreEqual(120, TAtlasMagnifier.ToDesign(120, 96, cDesignPpi));

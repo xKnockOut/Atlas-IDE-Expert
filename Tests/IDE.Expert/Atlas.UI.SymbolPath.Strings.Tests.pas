@@ -24,6 +24,8 @@ uses
   Atlas.UI.Strings.Tests,
   Atlas.UI.SymbolPath.Strings;
 
+{ TAtlasSymbolPathStringsTests }
+
 procedure TAtlasSymbolPathStringsTests.EveryTextExistsInBothLanguages;
 var
   mId: TAtlasSymbolPathTextId;

@@ -24,6 +24,8 @@ uses
   Atlas.UI.Strings.Tests,
   Atlas.UI.EditorToolbar.Strings;
 
+{ TAtlasEditorToolbarStringsTests }
+
 procedure TAtlasEditorToolbarStringsTests.EveryTextExistsInBothLanguages;
 var
   mId: TAtlasEditorToolbarTextId;

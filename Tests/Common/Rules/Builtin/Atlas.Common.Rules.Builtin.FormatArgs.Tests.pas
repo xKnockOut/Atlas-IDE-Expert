@@ -76,6 +76,8 @@ begin
   Result := TRuleAssert.Findings(TFormatArgsRule.Create, ASource, AConfig, APath);
 end;
 
+{ TFormatArgsTests }
+
 procedure TFormatArgsTests.IssueExample;
 var
   mFound: TArray<TRuleFinding>;

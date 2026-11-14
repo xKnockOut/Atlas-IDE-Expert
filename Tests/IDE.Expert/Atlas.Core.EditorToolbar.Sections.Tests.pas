@@ -92,6 +92,8 @@ begin
   Assert.AreEqual(ACharacter, AMark.Character, AWhat + ' Spalte');
 end;
 
+{ TAtlasSectionScannerTests }
+
 procedure TAtlasSectionScannerTests.FindsUnitSections;
 var
   mSections: TAtlasUnitSections;

@@ -129,17 +129,17 @@ end;
 
 { TLspArchitectureTests }
 
-procedure TLspArchitectureTests.TearDown;
-begin
-  LastScope := '';
-end;
-
 procedure TLspArchitectureTests.WarmUpFirstUse;
 begin
   JsonAnswerHasDataAndLayout;
   CommandAnswersLikeRequest;
   SavesStateAndCompares;
   TearDown;
+end;
+
+procedure TLspArchitectureTests.TearDown;
+begin
+  LastScope := '';
 end;
 
 procedure TLspArchitectureTests.JsonAnswerHasDataAndLayout;

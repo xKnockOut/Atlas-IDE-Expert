@@ -37,6 +37,8 @@ uses
   System.JSON,
   Atlas.Core.Assistants.EditInbox;
 
+{ TAtlasEditInboxTests }
+
 procedure TAtlasEditInboxTests.Setup;
 begin
   FFolder := TAtlasEditInbox.Folder(TPath.Combine(TPath.GetTempPath, 'Atlas-EditInbox-' + IntToStr(Random(MaxInt))), 7);

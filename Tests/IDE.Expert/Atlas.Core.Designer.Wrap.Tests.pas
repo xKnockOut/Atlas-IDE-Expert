@@ -38,6 +38,8 @@ uses
   Atlas.Core.Designer.Wrap,
   Atlas.Tests.RecordText;
 
+{ TAtlasContainerWrapTests }
+
 procedure TAtlasContainerWrapTests.ContainerRect;
 var
   mRect: TRect;

@@ -34,6 +34,8 @@ begin
   Result.LastRun := ALastRun;
 end;
 
+{ TAtlasTestListFileTests }
+
 procedure TAtlasTestListFileTests.RoundTrip;
 var
   mEntry: TAtlasTestListProject;

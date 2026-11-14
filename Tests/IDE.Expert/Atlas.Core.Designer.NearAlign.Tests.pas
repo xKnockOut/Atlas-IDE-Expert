@@ -92,6 +92,8 @@ begin
     Item('edtMail', ALeft3, 70, 200, 21)];
 end;
 
+{ TAtlasNearAlignTests }
+
 procedure TAtlasNearAlignTests.LeftMajorityWins;
 var
   mFindings: TArray<TAtlasNearFinding>;

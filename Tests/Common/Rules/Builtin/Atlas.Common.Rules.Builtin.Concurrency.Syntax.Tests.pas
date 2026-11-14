@@ -41,6 +41,8 @@ begin
     'procedure TFoo.Run;'#10'begin'#10 + ABody + 'end;'#10'end.';
 end;
 
+{ TConcurrencySyntaxTests }
+
 procedure TConcurrencySyntaxTests.ListsAndNames;
 begin
   Assert.IsTrue(InList(cVclGlobals, 'application'));

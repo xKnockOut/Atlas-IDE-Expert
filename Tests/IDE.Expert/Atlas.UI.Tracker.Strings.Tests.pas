@@ -128,6 +128,8 @@ begin
     end);
 end;
 
+{ TAtlasTrackerStringsTests }
+
 procedure TAtlasTrackerStringsTests.EveryTextExistsInBothLanguages;
 var
   mTable: TTable;

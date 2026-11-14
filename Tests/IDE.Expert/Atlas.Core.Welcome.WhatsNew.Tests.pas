@@ -94,26 +94,14 @@ begin
   end;
 end;
 
-{ TAtlasWhatsNewTests }
-
-procedure TAtlasWhatsNewTests.ExperimentalItemsComeLast;
-var
-  mParsed: TAtlasWhatsNewVersions;
-  mItems: TArray<TAtlasWhatsNewItem>;
+function Item(const ATitle: string): TAtlasWhatsNewItem;
 begin
-  // #834: experimental als Wahrheitswert oder Text; ohne Feld nicht experimentell.
-  mParsed := TAtlasWhatsNew.Parse('{"versions": [{"version": "1.1.0", "items": [' +
-    '{"title": "Mehrfachcursor", "experimental": true}, {"title": "Suche"},' +
-    '{"title": "Live-Umbenennen", "experimental": "true"}, {"title": "Karte", "experimental": false}]}]}');
-  Assert.AreEqual(4, Integer(Length(mParsed[0].Items)));
-  Assert.IsTrue(mParsed[0].Items[0].Experimental);
-  Assert.IsFalse(mParsed[0].Items[1].Experimental);
-  Assert.IsTrue(mParsed[0].Items[2].Experimental);
-  Assert.IsFalse(mParsed[0].Items[3].Experimental);
-  mItems := TAtlasWhatsNew.Ordered(mParsed[0].Items);
-  Assert.AreEqual('Suche,Karte,Mehrfachcursor,Live-Umbenennen', Titles(mItems));
-  Assert.AreEqual('', Titles(TAtlasWhatsNew.Ordered(nil)));
+  Result := Default(TAtlasWhatsNewItem);
+  Result.Title := ATitle;
+  Result.Text := ATitle + ' – Text';
 end;
+
+{ TAtlasWhatsNewTests }
 
 procedure TAtlasWhatsNewTests.ParsesAllFields;
 var
@@ -274,13 +262,6 @@ begin
   Assert.AreEqual<TAtlasWhatsNewMode>(TAtlasWhatsNewMode.AfterUpdate, TAtlasWhatsNew.ModeOf('irgendwas'));
 end;
 
-function Item(const ATitle: string): TAtlasWhatsNewItem;
-begin
-  Result := Default(TAtlasWhatsNewItem);
-  Result.Title := ATitle;
-  Result.Text := ATitle + ' – Text';
-end;
-
 procedure TAtlasWhatsNewTests.AnnouncedItemsJoinTheirVersion;
 var
   mKnown, mJoined: TAtlasWhatsNewVersions;
@@ -305,6 +286,25 @@ begin
   // Nichts Neues: keine leere Version.
   mJoined := TAtlasWhatsNew.WithItems(mKnown, '1.2.0', [Item('')]);
   Assert.AreEqual(2, Integer(Length(mJoined)));
+end;
+
+procedure TAtlasWhatsNewTests.ExperimentalItemsComeLast;
+var
+  mParsed: TAtlasWhatsNewVersions;
+  mItems: TArray<TAtlasWhatsNewItem>;
+begin
+  // #834: experimental als Wahrheitswert oder Text; ohne Feld nicht experimentell.
+  mParsed := TAtlasWhatsNew.Parse('{"versions": [{"version": "1.1.0", "items": [' +
+    '{"title": "Mehrfachcursor", "experimental": true}, {"title": "Suche"},' +
+    '{"title": "Live-Umbenennen", "experimental": "true"}, {"title": "Karte", "experimental": false}]}]}');
+  Assert.AreEqual(4, Integer(Length(mParsed[0].Items)));
+  Assert.IsTrue(mParsed[0].Items[0].Experimental);
+  Assert.IsFalse(mParsed[0].Items[1].Experimental);
+  Assert.IsTrue(mParsed[0].Items[2].Experimental);
+  Assert.IsFalse(mParsed[0].Items[3].Experimental);
+  mItems := TAtlasWhatsNew.Ordered(mParsed[0].Items);
+  Assert.AreEqual('Suche,Karte,Mehrfachcursor,Live-Umbenennen', Titles(mItems));
+  Assert.AreEqual('', Titles(TAtlasWhatsNew.Ordered(nil)));
 end;
 
 initialization

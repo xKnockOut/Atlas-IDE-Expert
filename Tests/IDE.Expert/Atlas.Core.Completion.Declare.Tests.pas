@@ -50,6 +50,8 @@ type
     procedure ShowChips(const ACounts: TAtlasChipCounts; AActive: TAtlasChip; AVisible: Boolean);
   end;
 
+{ TDeclareView }
+
 procedure TDeclareView.ShowList(const AItems: TAtlasCompletionItems; const AOrder: TArray<Integer>;
   ASelected: Integer; const APattern: string);
 begin
@@ -187,44 +189,6 @@ begin
   Assert.AreEqual('TotalCount$0', mItem.TextEdit.NewText);
 end;
 
-procedure TAtlasCompletionDeclareTests.ReadsLinkedEditsAndCommand;
-var
-  mItem: TAtlasCompletionItem;
-begin
-  mItem := ResourceFromLsp(cResourceItem);
-  Assert.IsTrue(mItem.IsAction);
-  Assert.IsTrue(mItem.LinkedEdits);
-  Assert.AreEqual(TAtlasSnippets.FromLsp('${1:SFrage}'), mItem.Snippet);
-  Assert.AreEqual(1, Integer(Length(mItem.AdditionalEdits)));
-  Assert.AreEqual(TAtlasSnippets.FromLsp('  ${1:SFrage} = ''Frage?'';'#10), mItem.AdditionalEdits[0].NewText);
-  Assert.AreEqual('atlas.server.addResourceString', mItem.Command);
-  Assert.AreEqual('["C:\\P\\Texte.pas","SFrage","''Frage?''"]', mItem.CommandArguments);
-  // Ohne Vorlage keine verknüpften Änderungen, ohne Argumente eine leere Liste.
-  mItem := ResourceFromLsp(StringReplace(StringReplace(cResourceItem, '"insertTextFormat":2,', '', []),
-    ',"arguments":["C:\\P\\Texte.pas","SFrage","''Frage?''"]', '', []));
-  Assert.IsFalse(mItem.LinkedEdits);
-  Assert.AreEqual('  ${1:SFrage} = ''Frage?'';'#10, mItem.AdditionalEdits[0].NewText);
-  Assert.AreEqual('[]', mItem.CommandArguments);
-end;
-
-procedure TAtlasCompletionDeclareTests.PlainDropsPlaceholdersForActions;
-var
-  mItems: TAtlasCompletionItems;
-  mSnippet: TAtlasCompletionItem;
-begin
-  mSnippet := Default(TAtlasCompletionItem);
-  mSnippet.Name := 'forin';
-  mSnippet.Snippet := TAtlasSnippets.FromLsp('for ${1:Item} in ${2:List} do');
-  mItems := TAtlasServerCompletionProvider.WithoutSnippets([ResourceFromLsp(cResourceItem), mSnippet]);
-  // Die Vorlage fällt weg, der Eintrag, der Code erzeugt, bleibt mit dem Text der Vorgaben.
-  Assert.AreEqual(1, Integer(Length(mItems)));
-  Assert.AreEqual('', mItems[0].Snippet);
-  Assert.IsFalse(mItems[0].LinkedEdits);
-  Assert.AreEqual('SFrage', mItems[0].TextEdit.NewText);
-  Assert.AreEqual('  SFrage = ''Frage?'';'#10, mItems[0].AdditionalEdits[0].NewText);
-  Assert.AreEqual('atlas.server.addResourceString', mItems[0].Command);
-end;
-
 procedure TAtlasCompletionDeclareTests.EnterPassesThroughWithoutSelection;
 var
   mView: TDeclareView;
@@ -274,6 +238,44 @@ begin
   finally
     mController.Free;
   end;
+end;
+
+procedure TAtlasCompletionDeclareTests.ReadsLinkedEditsAndCommand;
+var
+  mItem: TAtlasCompletionItem;
+begin
+  mItem := ResourceFromLsp(cResourceItem);
+  Assert.IsTrue(mItem.IsAction);
+  Assert.IsTrue(mItem.LinkedEdits);
+  Assert.AreEqual(TAtlasSnippets.FromLsp('${1:SFrage}'), mItem.Snippet);
+  Assert.AreEqual(1, Integer(Length(mItem.AdditionalEdits)));
+  Assert.AreEqual(TAtlasSnippets.FromLsp('  ${1:SFrage} = ''Frage?'';'#10), mItem.AdditionalEdits[0].NewText);
+  Assert.AreEqual('atlas.server.addResourceString', mItem.Command);
+  Assert.AreEqual('["C:\\P\\Texte.pas","SFrage","''Frage?''"]', mItem.CommandArguments);
+  // Ohne Vorlage keine verknüpften Änderungen, ohne Argumente eine leere Liste.
+  mItem := ResourceFromLsp(StringReplace(StringReplace(cResourceItem, '"insertTextFormat":2,', '', []),
+    ',"arguments":["C:\\P\\Texte.pas","SFrage","''Frage?''"]', '', []));
+  Assert.IsFalse(mItem.LinkedEdits);
+  Assert.AreEqual('  ${1:SFrage} = ''Frage?'';'#10, mItem.AdditionalEdits[0].NewText);
+  Assert.AreEqual('[]', mItem.CommandArguments);
+end;
+
+procedure TAtlasCompletionDeclareTests.PlainDropsPlaceholdersForActions;
+var
+  mItems: TAtlasCompletionItems;
+  mSnippet: TAtlasCompletionItem;
+begin
+  mSnippet := Default(TAtlasCompletionItem);
+  mSnippet.Name := 'forin';
+  mSnippet.Snippet := TAtlasSnippets.FromLsp('for ${1:Item} in ${2:List} do');
+  mItems := TAtlasServerCompletionProvider.WithoutSnippets([ResourceFromLsp(cResourceItem), mSnippet]);
+  // Die Vorlage fällt weg, der Eintrag, der Code erzeugt, bleibt mit dem Text der Vorgaben.
+  Assert.AreEqual(1, Integer(Length(mItems)));
+  Assert.AreEqual('', mItems[0].Snippet);
+  Assert.IsFalse(mItems[0].LinkedEdits);
+  Assert.AreEqual('SFrage', mItems[0].TextEdit.NewText);
+  Assert.AreEqual('  SFrage = ''Frage?'';'#10, mItems[0].AdditionalEdits[0].NewText);
+  Assert.AreEqual('atlas.server.addResourceString', mItems[0].Command);
 end;
 
 initialization

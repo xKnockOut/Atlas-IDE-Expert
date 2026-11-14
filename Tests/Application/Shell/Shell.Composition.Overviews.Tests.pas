@@ -52,9 +52,12 @@ uses
 const
   cRecursiveUnit = 'unit U;'#10'interface'#10'implementation'#10'procedure P;'#10'begin'#10'  P;'#10'end;'#10'end.'#10;
 
-procedure TShellOverviewsTests.Setup;
+{ TShellOverviewsTests }
+
+function TShellOverviewsTests.NewServices: TShellOverviewServices;
 begin
-  FReads := 0;
+  Result := Default(TShellOverviewServices);
+  Result.ReadText := CountRead;
 end;
 
 function TShellOverviewsTests.CountRead(const AFileName: string; out AText: string): Boolean;
@@ -64,10 +67,9 @@ begin
   Result := True;
 end;
 
-function TShellOverviewsTests.NewServices: TShellOverviewServices;
+procedure TShellOverviewsTests.Setup;
 begin
-  Result := Default(TShellOverviewServices);
-  Result.ReadText := CountRead;
+  FReads := 0;
 end;
 
 procedure TShellOverviewsTests.RegistersAllCommands;

@@ -27,6 +27,8 @@ uses
   Atlas.UI.Settings.Contract,
   Atlas.UI.Tracker.SettingsBranches;
 
+{ TAtlasTrackerBranchSectionTests }
+
 procedure TAtlasTrackerBranchSectionTests.TearDown;
 begin
   TAtlasTrackerBranchSection.Available := nil;

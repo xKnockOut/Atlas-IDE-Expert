@@ -92,20 +92,6 @@ const
 
 { TLspDebugVariablesTests }
 
-procedure TLspDebugVariablesTests.Setup;
-begin
-  FTree := TSyntaxTreeCache.Parse(cSource);
-  FCalls := nil;
-  FNoValue := '';
-end;
-
-procedure TLspDebugVariablesTests.TearDown;
-begin
-  FreeAndNil(FTree);
-  FCalls := nil;
-  FNoValue := '';
-end;
-
 function TLspDebugVariablesTests.NewVariables: TLspDebugVariables;
 var
   mLines: TArray<string>;
@@ -154,6 +140,20 @@ function TLspDebugVariablesTests.PositionOf(ALine: Integer; const AText: string)
 begin
   Result.Line := ALine;
   Result.Character := Pos(AText, cSource.Split([#10])[ALine]) - 1;
+end;
+
+procedure TLspDebugVariablesTests.Setup;
+begin
+  FTree := TSyntaxTreeCache.Parse(cSource);
+  FCalls := nil;
+  FNoValue := '';
+end;
+
+procedure TLspDebugVariablesTests.TearDown;
+begin
+  FreeAndNil(FTree);
+  FCalls := nil;
+  FNoValue := '';
 end;
 
 procedure TLspDebugVariablesTests.AssignmentWithCallShowsVariablesOnly;

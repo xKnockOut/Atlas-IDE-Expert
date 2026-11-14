@@ -41,6 +41,8 @@ implementation
 uses
   Atlas.Text.Encoding;
 
+{ TTextEncodingProbeTests }
+
 procedure TTextEncodingProbeTests.Utf8RejectsOverlong2Byte;
 begin
   Assert.IsFalse(TTextEncodingProbe.IsValidUtf8(TBytes.Create($C0, $AF), 0));

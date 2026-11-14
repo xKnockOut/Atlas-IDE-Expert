@@ -52,6 +52,8 @@ begin
   Result := Point((ARect.Left + ARect.Right) div 2, (ARect.Top + ARect.Bottom) div 2);
 end;
 
+{ TAtlasDesignerBarTests }
+
 procedure TAtlasDesignerBarTests.WarmUpFirstUse;
 begin
   SetUp;
@@ -94,23 +96,6 @@ begin
   FForm.Free;
   FForm := nil;
   FBar := nil;
-end;
-
-procedure TAtlasDesignerBarTests.ButtonsBeforeParent;
-var
-  mBar: TAtlasDesignerBar;
-begin
-  mBar := TAtlasDesignerBar.Create(nil);
-  try
-    mBar.SetButtons(TArray<TAtlasDesignerButton>.Create(TAtlasDesignerButton.Create('search',
-      TAtlasToolbarIcon.ComponentSearch, 'Suchen')));
-    Assert.IsFalse(mBar.HandleAllocated, 'ohne Fenster gesetzt');
-    mBar.Parent := FForm;
-    mBar.Align := alTop;
-    Assert.IsFalse(mBar.ButtonRect('search').IsEmpty);
-  finally
-    mBar.Free;
-  end;
 end;
 
 procedure TAtlasDesignerBarTests.ButtonsInOrder;
@@ -182,6 +167,23 @@ begin
   Assert.AreEqual('align', mMenuId);
   Assert.AreEqual(FBar.ClientToScreen(Point(FBar.ButtonRect('align').Left, 0)).X, mMenuAt.X, 'Menü unter dem Knopf');
   Assert.AreEqual('search;align;', mCommands, 'Pfeil führt nichts aus');
+end;
+
+procedure TAtlasDesignerBarTests.ButtonsBeforeParent;
+var
+  mBar: TAtlasDesignerBar;
+begin
+  mBar := TAtlasDesignerBar.Create(nil);
+  try
+    mBar.SetButtons(TArray<TAtlasDesignerButton>.Create(TAtlasDesignerButton.Create('search',
+      TAtlasToolbarIcon.ComponentSearch, 'Suchen')));
+    Assert.IsFalse(mBar.HandleAllocated, 'ohne Fenster gesetzt');
+    mBar.Parent := FForm;
+    mBar.Align := alTop;
+    Assert.IsFalse(mBar.ButtonRect('search').IsEmpty);
+  finally
+    mBar.Free;
+  end;
 end;
 
 initialization

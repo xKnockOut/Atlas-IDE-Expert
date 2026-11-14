@@ -54,6 +54,8 @@ type
 var
   Language: TAtlasLanguage;
 
+{ TLinkCounter }
+
 procedure TLinkCounter.NeverClick(Sender: TObject);
 begin
   Inc(Never);
@@ -70,6 +72,8 @@ begin
   Result.Colors := TAtlasColors.Light;
   Result.SetScaling(96, 1, 'Segoe UI', 9);
 end;
+
+{ TAtlasShortcutTipWindowTests }
 
 procedure TAtlasShortcutTipWindowTests.WarmUpFirstUse;
 begin

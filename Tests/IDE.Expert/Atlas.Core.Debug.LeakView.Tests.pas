@@ -55,6 +55,8 @@ begin
   Result := TAtlasLeakCaptures.Compare(TLeakReports.Parse(cBox), mHistory);
 end;
 
+{ TAtlasLeakViewTests }
+
 procedure TAtlasLeakViewTests.ArgumentsCarryProjectAndReport;
 var
   mJson: string;

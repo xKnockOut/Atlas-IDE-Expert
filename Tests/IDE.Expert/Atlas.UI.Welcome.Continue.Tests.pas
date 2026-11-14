@@ -284,49 +284,6 @@ begin
     mHost.Free;
   end;
 end;
-procedure TAtlasWelcomeContinueFrameTests.QuickActionsInRecent;
-var
-  mHost: TForm;
-  mFake: TFakeContinue;
-  mSource: IAtlasContinueSource;
-  mQuick: TAtlasFakeQuickActions;
-  mQuickSource: IAtlasQuickActionsSource;
-  mFrame: TAtlasWelcomeContinueFrame;
-begin
-  mFake := TFakeContinue.Create;
-  mSource := mFake;
-  mQuick := TAtlasFakeQuickActions.Create;
-  mQuickSource := mQuick;
-  mFake.FEntries := [ContinueEntry('C:\Repo\Atlas.dproj', 7, Now), ContinueEntry('C:\Alt\Alt.groupproj', 2, Now)];
-  mHost := TForm.CreateNew(nil);
-  try
-    mFrame := TAtlasWelcomeContinueFrame.Create(mHost);
-    mFrame.Parent := mHost;
-    mFrame.Width := 600;
-    mFrame.Source := mSource;
-    Assert.AreEqual(0, Integer(Length(mFrame.Recent.Quick.ButtonsOf(0))), 'ohne Quelle keine Knöpfe');
-    mFrame.QuickActions := mQuickSource;
-    Assert.AreEqual(7, Integer(Length(mFrame.Recent.Quick.ButtonsOf(1))), 'Vorgabe mit Aufgaben (#900)');
-    Assert.IsTrue(mFrame.Recent.Quick.Sink.Visible, 'Tastatur auf „Zuletzt“');
-    mFake.Calls := nil;
-    // Ohne Maus: Pfeil ab, Strg+B baut die Gruppe, Pos1 und Enter setzen fort.
-    Assert.IsTrue(mFrame.Recent.Quick.HandleKey(VK_DOWN, []));
-    Assert.IsTrue(mFrame.Recent.Quick.HandleKey(Ord('B'), [ssCtrl]));
-    Assert.IsTrue(mFrame.Recent.Quick.HandleKey(VK_HOME, []));
-    Assert.IsTrue(mFrame.Recent.Quick.HandleKey(VK_RETURN, []));
-    CheckSynchronize;
-    Assert.AreEqual(1, Integer(Length(mQuick.Calls)));
-    Assert.AreEqual('build C:\Alt\Alt.groupproj', mQuick.Calls[0]);
-    Assert.AreEqual(1, Integer(Length(mFake.Calls)));
-    Assert.AreEqual('resume C:\Alt\Alt.groupproj', mFake.Calls[0]);
-    // Ausgeschaltet: keine Knöpfe mehr.
-    mQuick.IsOn := False;
-    mFrame.UpdateContent;
-    Assert.AreEqual(0, Integer(Length(mFrame.Recent.Quick.ButtonsOf(1))));
-  finally
-    mHost.Free;
-  end;
-end;
 procedure TAtlasWelcomeContinueFrameTests.IncomingSectionOnlyWithData;
 var
   mHost: TForm;
@@ -455,6 +412,49 @@ begin
     Assert.AreEqual(TAtlasWelcomeContinueFrame.cPageRecent, mFrame.Page);
     Assert.IsTrue(mFrame.Recent.Visible);
     Assert.AreEqual(1, Integer(Length(mFake.Calls)), 'nichts gelesen außer Shown');
+  finally
+    mHost.Free;
+  end;
+end;
+procedure TAtlasWelcomeContinueFrameTests.QuickActionsInRecent;
+var
+  mHost: TForm;
+  mFake: TFakeContinue;
+  mSource: IAtlasContinueSource;
+  mQuick: TAtlasFakeQuickActions;
+  mQuickSource: IAtlasQuickActionsSource;
+  mFrame: TAtlasWelcomeContinueFrame;
+begin
+  mFake := TFakeContinue.Create;
+  mSource := mFake;
+  mQuick := TAtlasFakeQuickActions.Create;
+  mQuickSource := mQuick;
+  mFake.FEntries := [ContinueEntry('C:\Repo\Atlas.dproj', 7, Now), ContinueEntry('C:\Alt\Alt.groupproj', 2, Now)];
+  mHost := TForm.CreateNew(nil);
+  try
+    mFrame := TAtlasWelcomeContinueFrame.Create(mHost);
+    mFrame.Parent := mHost;
+    mFrame.Width := 600;
+    mFrame.Source := mSource;
+    Assert.AreEqual(0, Integer(Length(mFrame.Recent.Quick.ButtonsOf(0))), 'ohne Quelle keine Knöpfe');
+    mFrame.QuickActions := mQuickSource;
+    Assert.AreEqual(7, Integer(Length(mFrame.Recent.Quick.ButtonsOf(1))), 'Vorgabe mit Aufgaben (#900)');
+    Assert.IsTrue(mFrame.Recent.Quick.Sink.Visible, 'Tastatur auf „Zuletzt“');
+    mFake.Calls := nil;
+    // Ohne Maus: Pfeil ab, Strg+B baut die Gruppe, Pos1 und Enter setzen fort.
+    Assert.IsTrue(mFrame.Recent.Quick.HandleKey(VK_DOWN, []));
+    Assert.IsTrue(mFrame.Recent.Quick.HandleKey(Ord('B'), [ssCtrl]));
+    Assert.IsTrue(mFrame.Recent.Quick.HandleKey(VK_HOME, []));
+    Assert.IsTrue(mFrame.Recent.Quick.HandleKey(VK_RETURN, []));
+    CheckSynchronize;
+    Assert.AreEqual(1, Integer(Length(mQuick.Calls)));
+    Assert.AreEqual('build C:\Alt\Alt.groupproj', mQuick.Calls[0]);
+    Assert.AreEqual(1, Integer(Length(mFake.Calls)));
+    Assert.AreEqual('resume C:\Alt\Alt.groupproj', mFake.Calls[0]);
+    // Ausgeschaltet: keine Knöpfe mehr.
+    mQuick.IsOn := False;
+    mFrame.UpdateContent;
+    Assert.AreEqual(0, Integer(Length(mFrame.Recent.Quick.ButtonsOf(1))));
   finally
     mHost.Free;
   end;

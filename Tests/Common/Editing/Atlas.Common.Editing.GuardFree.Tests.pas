@@ -74,6 +74,8 @@ begin
   Result := Offered(AVar, AStatement, ARest, TGuardTypeKind.Class_);
 end;
 
+{ TGuardFreeTests }
+
 procedure TGuardFreeTests.OffersForLocalObject;
 var
   mOffer: TGuardOffer;

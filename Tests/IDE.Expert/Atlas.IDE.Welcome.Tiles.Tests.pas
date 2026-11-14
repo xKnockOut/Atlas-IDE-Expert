@@ -65,6 +65,8 @@ type
 const
   cTileId = 'test.tile';
 
+{ TFakeView }
+
 constructor TFakeView.Create(AOwner: TComponent);
 begin
   inherited Create;
@@ -85,6 +87,8 @@ procedure TFakeView.UpdateContent;
 begin
   Inc(Updates);
 end;
+
+{ TFakeTile }
 
 function TFakeTile.Info: TAtlasWelcomeTileInfo;
 begin
@@ -129,6 +133,8 @@ begin
     Result := mAll[0];
   end;
 end;
+
+{ TAtlasIdeWelcomeTilesTests }
 
 procedure TAtlasIdeWelcomeTilesTests.WarmUpFirstUse;
 begin

@@ -107,6 +107,8 @@ begin
   end;
 end;
 
+{ TLspDisableWarningTests }
+
 procedure TLspDisableWarningTests.OffersScopesForWarning;
 var
   mActions: TArray<TJSONObject>;

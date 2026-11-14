@@ -103,6 +103,8 @@ type
       out AError: TAtlasCiFetchError): Boolean;
   end;
 
+{ TUsersTransport }
+
 constructor TUsersTransport.Create(AStatus: Integer; const AText: string);
 begin
   inherited Create;

@@ -95,19 +95,6 @@ end;
 
 { TAtlasAvTextsTests }
 
-procedure TAtlasAvTextsTests.Setup;
-begin
-  FLanguage := TAtlasStrings.Language;
-  TAtlasStrings.Language := TAtlasLanguage.German;
-  FAnswers := TDictionary<string, string>.Create;
-end;
-
-procedure TAtlasAvTextsTests.TearDown;
-begin
-  TAtlasStrings.Language := FLanguage;
-  FreeAndNil(FAnswers);
-end;
-
 function TAtlasAvTextsTests.Analyse(const AChains: TAtlasAvChains; AAddress: UInt64;
   AAllowCalls: Boolean): TAtlasAvAnalysis;
 var
@@ -131,6 +118,19 @@ begin
       Result.Answer(False, '');
     end;
   end;
+end;
+
+procedure TAtlasAvTextsTests.Setup;
+begin
+  FLanguage := TAtlasStrings.Language;
+  TAtlasStrings.Language := TAtlasLanguage.German;
+  FAnswers := TDictionary<string, string>.Create;
+end;
+
+procedure TAtlasAvTextsTests.TearDown;
+begin
+  TAtlasStrings.Language := FLanguage;
+  FreeAndNil(FAnswers);
 end;
 
 procedure TAtlasAvTextsTests.NilLinkNamesFieldAndOffset;

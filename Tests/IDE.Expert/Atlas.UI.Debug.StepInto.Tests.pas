@@ -64,6 +64,8 @@ begin
   Result.SetScaling(96, 1, 'Segoe UI', 9);
 end;
 
+{ TAtlasStepIntoWindowTests }
+
 procedure TAtlasStepIntoWindowTests.WarmUpFirstUse;
 begin
   CaptionsKindsAndReasons;

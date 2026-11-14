@@ -249,19 +249,10 @@ end;
 
 { TCoveredByTests }
 
-procedure TCoveredByTests.Setup;
+function TCoveredByTests.Determine(const AFileName, AText: string; ADepth: Integer;
+  AIncludePrivate: Boolean): TCoveredResult;
 begin
-  FIndex := TSymbolIndex.Create;
-  FIndex.AddUnit(TIndexExtractor.ExtractText(cUnitBasis, cBasisFile, nil, nil, True));
-  FIndex.AddUnit(TIndexExtractor.ExtractText(cUnitAndere, cAndereFile, nil, nil, True));
-  FIndex.AddUnit(TIndexExtractor.ExtractText(cUnitBasisTests, cBasisTestFile, nil, nil, True));
-  FResolver := TNameResolver.Create(FIndex);
-end;
-
-procedure TCoveredByTests.TearDown;
-begin
-  FResolver.Free;
-  FIndex := nil;
+  Result := TCoveredBy.Determine(FResolver, FIndex, AFileName, AText, RequestOf(ADepth, AIncludePrivate), nil);
 end;
 
 function TCoveredByTests.RequestOf(ADepth: Integer; AIncludePrivate: Boolean): TCoveredRequest;
@@ -279,15 +270,24 @@ begin
   Result.IncludePrivate := AIncludePrivate;
 end;
 
-function TCoveredByTests.Determine(const AFileName, AText: string; ADepth: Integer;
-  AIncludePrivate: Boolean): TCoveredResult;
-begin
-  Result := TCoveredBy.Determine(FResolver, FIndex, AFileName, AText, RequestOf(ADepth, AIncludePrivate), nil);
-end;
-
 function TCoveredByTests.Project(ABudgetMs: Integer): TUntestedResult;
 begin
   Result := TCoveredBy.Project(FResolver, FIndex, RequestOf(1, False), nil, ABudgetMs);
+end;
+
+procedure TCoveredByTests.Setup;
+begin
+  FIndex := TSymbolIndex.Create;
+  FIndex.AddUnit(TIndexExtractor.ExtractText(cUnitBasis, cBasisFile, nil, nil, True));
+  FIndex.AddUnit(TIndexExtractor.ExtractText(cUnitAndere, cAndereFile, nil, nil, True));
+  FIndex.AddUnit(TIndexExtractor.ExtractText(cUnitBasisTests, cBasisTestFile, nil, nil, True));
+  FResolver := TNameResolver.Create(FIndex);
+end;
+
+procedure TCoveredByTests.TearDown;
+begin
+  FResolver.Free;
+  FIndex := nil;
 end;
 
 procedure TCoveredByTests.PublicMethodsAndInterfaceRoutines;

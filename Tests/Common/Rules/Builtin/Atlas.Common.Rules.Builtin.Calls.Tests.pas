@@ -281,6 +281,34 @@ begin
   Assert.AreEqual('Trennen erwartet 1 Argument, übergeben ist keins; AMelden fehlt (wie E2035).', mFound[0].Message);
 end;
 
+procedure TCallRulesTests.UnknownAncestorMayHideName;
+var
+  mFound: TArray<TRuleFinding>;
+begin
+  mFound := TRuleAssert.Findings(TArgumentCountMismatchRule.Create, 'unit Tags;'#10'interface'#10'uses'#10 +
+    '  System.Classes;'#10'type'#10'  TTagStrom = class(TMemoryStream)'#10'  end;'#10'  TRahmen = class'#10 +
+    '  public'#10'    procedure Read;'#10'    procedure Lesen(AStrom: TTagStrom);'#10'  end;'#10 +
+    '  TListe = class(TStrings)'#10'  public'#10'    procedure Holen(AIndex: Integer);'#10'  end;'#10 +
+    'procedure Error(const AText: string);'#10'implementation'#10'procedure Error(const AText: string);'#10 +
+    'begin'#10'end;'#10'procedure TRahmen.Read;'#10'begin'#10'end;'#10 +
+    'procedure TRahmen.Lesen(AStrom: TTagStrom);'#10'var'#10'  mWert: Byte;'#10'begin'#10'  with AStrom do'#10 +
+    '    Read(mWert, 1);'#10'end;'#10'procedure TListe.Holen(AIndex: Integer);'#10'begin'#10 +
+    '  Error(''Index'', AIndex);'#10'end;'#10'end.');
+  Assert.AreEqual(0, Integer(Length(mFound)));
+  // Gegenprobe: Ohne unbekannten Vorfahren meinen beide Namen die Routinen der Unit.
+  mFound := TRuleAssert.Findings(TArgumentCountMismatchRule.Create, 'unit Tags;'#10'interface'#10'type'#10 +
+    '  TTagStrom = class'#10'  end;'#10'  TRahmen = class'#10'  public'#10'    procedure Read;'#10 +
+    '    procedure Lesen(AStrom: TTagStrom);'#10'  end;'#10'  TListe = class'#10'  public'#10 +
+    '    procedure Holen(AIndex: Integer);'#10'  end;'#10'procedure Error(const AText: string);'#10 +
+    'implementation'#10'procedure Error(const AText: string);'#10'begin'#10'end;'#10 +
+    'procedure TRahmen.Read;'#10'begin'#10'end;'#10'procedure TRahmen.Lesen(AStrom: TTagStrom);'#10'var'#10 +
+    '  mWert: Byte;'#10'begin'#10'  with AStrom do'#10'    Read(mWert, 1);'#10'end;'#10 +
+    'procedure TListe.Holen(AIndex: Integer);'#10'begin'#10'  Error(''Index'', AIndex);'#10'end;'#10'end.');
+  Assert.AreEqual(2, Integer(Length(mFound)));
+  Assert.AreEqual('Read erwartet keine Argumente, übergeben sind 2 (wie E2034).', mFound[0].Message);
+  Assert.AreEqual('Error erwartet 1 Argument, übergeben sind 2 (wie E2034).', mFound[1].Message);
+end;
+
 procedure TCallRulesTests.ClassReferenceConstructor;
 var
   mIndex: ISymbolIndex;
@@ -311,34 +339,6 @@ begin
     'constructor TFehler.Create(const AText: string);'#10'begin'#10'end;'#10 +
     'procedure Test(AKlasse: TFehlerKlasse);'#10'begin'#10'  AKlasse.Create(''x'').Free;'#10 +
     '  TFehler.Create(''y'');'#10'end;'#10'end.');
-end;
-
-procedure TCallRulesTests.UnknownAncestorMayHideName;
-var
-  mFound: TArray<TRuleFinding>;
-begin
-  mFound := TRuleAssert.Findings(TArgumentCountMismatchRule.Create, 'unit Tags;'#10'interface'#10'uses'#10 +
-    '  System.Classes;'#10'type'#10'  TTagStrom = class(TMemoryStream)'#10'  end;'#10'  TRahmen = class'#10 +
-    '  public'#10'    procedure Read;'#10'    procedure Lesen(AStrom: TTagStrom);'#10'  end;'#10 +
-    '  TListe = class(TStrings)'#10'  public'#10'    procedure Holen(AIndex: Integer);'#10'  end;'#10 +
-    'procedure Error(const AText: string);'#10'implementation'#10'procedure Error(const AText: string);'#10 +
-    'begin'#10'end;'#10'procedure TRahmen.Read;'#10'begin'#10'end;'#10 +
-    'procedure TRahmen.Lesen(AStrom: TTagStrom);'#10'var'#10'  mWert: Byte;'#10'begin'#10'  with AStrom do'#10 +
-    '    Read(mWert, 1);'#10'end;'#10'procedure TListe.Holen(AIndex: Integer);'#10'begin'#10 +
-    '  Error(''Index'', AIndex);'#10'end;'#10'end.');
-  Assert.AreEqual(0, Integer(Length(mFound)));
-  // Gegenprobe: Ohne unbekannten Vorfahren meinen beide Namen die Routinen der Unit.
-  mFound := TRuleAssert.Findings(TArgumentCountMismatchRule.Create, 'unit Tags;'#10'interface'#10'type'#10 +
-    '  TTagStrom = class'#10'  end;'#10'  TRahmen = class'#10'  public'#10'    procedure Read;'#10 +
-    '    procedure Lesen(AStrom: TTagStrom);'#10'  end;'#10'  TListe = class'#10'  public'#10 +
-    '    procedure Holen(AIndex: Integer);'#10'  end;'#10'procedure Error(const AText: string);'#10 +
-    'implementation'#10'procedure Error(const AText: string);'#10'begin'#10'end;'#10 +
-    'procedure TRahmen.Read;'#10'begin'#10'end;'#10'procedure TRahmen.Lesen(AStrom: TTagStrom);'#10'var'#10 +
-    '  mWert: Byte;'#10'begin'#10'  with AStrom do'#10'    Read(mWert, 1);'#10'end;'#10 +
-    'procedure TListe.Holen(AIndex: Integer);'#10'begin'#10'  Error(''Index'', AIndex);'#10'end;'#10'end.');
-  Assert.AreEqual(2, Integer(Length(mFound)));
-  Assert.AreEqual('Read erwartet keine Argumente, übergeben sind 2 (wie E2034).', mFound[0].Message);
-  Assert.AreEqual('Error erwartet 1 Argument, übergeben sind 2 (wie E2034).', mFound[1].Message);
 end;
 
 procedure TCallRulesTests.SilentCases;
@@ -484,6 +484,8 @@ procedure OverloadSilent(const ASource: string; const AIndex: ISymbolIndex); ove
 begin
   Assert.AreEqual(0, Integer(Length(OverloadFindings(ASource, AIndex))), ASource);
 end;
+
+{ TOverloadResolutionTests }
 
 procedure TOverloadResolutionTests.NoOverloadFits;
 var

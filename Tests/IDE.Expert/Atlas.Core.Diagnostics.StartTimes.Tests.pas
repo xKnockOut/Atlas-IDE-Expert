@@ -46,6 +46,8 @@ begin
     end;
 end;
 
+{ TAtlasStartTimesTests }
+
 procedure TAtlasStartTimesTests.AddsUpPartsByName;
 var
   mTimes: TAtlasStartTimes;

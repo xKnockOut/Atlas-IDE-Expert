@@ -53,6 +53,8 @@ begin
   AParams.Free;
 end;
 
+{ TShellProtocolTests }
+
 procedure TShellProtocolTests.Setup;
 var
   mServices: TShellProtocolServices;

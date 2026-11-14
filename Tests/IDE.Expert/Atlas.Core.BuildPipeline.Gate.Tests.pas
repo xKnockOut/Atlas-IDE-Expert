@@ -113,6 +113,8 @@ type
     function Make: TAtlasCompileEvents;
   end;
 
+{ TGateRun }
+
 constructor TGateRun.Create;
 begin
   inherited Create;
@@ -184,6 +186,8 @@ begin
       Result := Clock;
     end));
 end;
+
+{ TAtlasBuildGateTests }
 
 procedure TAtlasBuildGateTests.AppliesOnlyToUserMakeAndBuild;
 var

@@ -70,6 +70,8 @@ type
     function Changed: TProc;
   end;
 
+{ TAccountProbe }
+
 function TAccountProbe.Lookup: TFunc<string>;
 begin
   Result :=

@@ -29,6 +29,8 @@ uses
   System.SysUtils,
   Atlas.Core.Files.ProcessLeftovers;
 
+{ TAtlasProcessLeftoversTests }
+
 procedure TAtlasProcessLeftoversTests.ReadsPidFromDirtyFile;
 var
   mPid: Cardinal;

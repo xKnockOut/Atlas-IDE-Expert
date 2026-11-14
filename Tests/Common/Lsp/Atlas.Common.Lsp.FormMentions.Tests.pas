@@ -25,6 +25,8 @@ uses
   Atlas.Common.Lsp.References,
   Atlas.Common.Lsp.FormMentions;
 
+{ TLspFormMentionsTests }
+
 procedure TLspFormMentionsTests.MentionsWholeWords;
 begin
   Assert.IsTrue(TLspFormMentions.MentionsWord('object FLabel: TLabel', 'flabel'));

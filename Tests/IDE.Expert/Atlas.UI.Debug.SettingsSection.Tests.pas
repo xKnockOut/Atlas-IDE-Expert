@@ -62,6 +62,8 @@ uses
   Atlas.UI.Settings.Page,
   Atlas.UI.Settings.Page.TestSupport;
 
+{ TDebugSettingsSectionTests }
+
 procedure TDebugSettingsSectionTests.WarmUp;
 begin
   WarmUpSettingsPage;

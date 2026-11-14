@@ -33,10 +33,7 @@ implementation
 uses
   Atlas.Common.Editing.Contract;
 
-procedure TShellCodeActionsTests.TearDown;
-begin
-  FAskedUri := '';
-end;
+{ TShellCodeActionsTests }
 
 function TShellCodeActionsTests.WorkspaceOf(const AUri: string): TShellCodeActionWorkspace;
 begin
@@ -54,6 +51,11 @@ function TShellCodeActionsTests.NewServices: TShellCodeActionServices;
 begin
   Result := Default(TShellCodeActionServices);
   Result.WorkspaceOf := WorkspaceOf;
+end;
+
+procedure TShellCodeActionsTests.TearDown;
+begin
+  FAskedUri := '';
 end;
 
 procedure TShellCodeActionsTests.UsesContextFromWorkspace;

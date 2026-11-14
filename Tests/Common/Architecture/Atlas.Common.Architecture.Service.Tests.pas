@@ -253,6 +253,59 @@ begin
   Assert.IsFalse(FileExists(APrevious));
 end;
 
+procedure TArchitectureServiceTests.SkipsPackagesKeepsPrograms;
+var
+  mIndex: ISymbolIndex;
+  mService: TArchitectureService;
+  mOverview: TArchitectureOverview;
+  mPackage, mProgram_: TUnitIndex;
+begin
+  mIndex := TSymbolIndex.Create;
+  mIndex.AddUnit(UsesUnit('App.Data', nil, nil));
+  mProgram_ := UsesUnit('App', ['App.Data'], nil);
+  mProgram_.FileName := ChangeFileExt(mProgram_.FileName, '.dpr');
+  mIndex.AddUnit(mProgram_);
+  mPackage := UsesUnit('AppPackage', nil, nil);
+  mPackage.FileName := ChangeFileExt(mPackage.FileName, '.dpk');
+  mIndex.AddUnit(mPackage);
+  mService := NewService(mIndex);
+  try
+    mOverview := mService.Overview(Default(TArchitectureRequest));
+    Assert.AreEqual(-1, mOverview.IndexOf('AppPackage'), 'Package ohne uses');
+    Assert.IsTrue(mOverview.IndexOf('App') >= 0, 'Programm mit uses');
+    Assert.AreEqual(2, Integer(Length(mOverview.Units)));
+  finally
+    mService.Free;
+  end;
+end;
+
+procedure TArchitectureServiceTests.ExplainAssignmentWithoutRecompute;
+var
+  mIndex: ISymbolIndex;
+  mService: TArchitectureService;
+  mRequest: TArchitectureRequest;
+  mOverview: TArchitectureOverview;
+begin
+  mIndex := TSymbolIndex.Create;
+  mIndex.AddUnit(UsesUnit('App.Data', nil, nil));
+  mIndex.AddUnit(UsesUnit('App.Main', ['App.Data'], nil));
+  mService := NewService(mIndex);
+  try
+    mRequest := Default(TArchitectureRequest);
+    mRequest.ExplainAssignment := True;
+    mOverview := mService.Overview(mRequest);
+    Assert.IsTrue(mOverview.ShowsAssignment);
+    mRequest.ExplainAssignment := False;
+    mOverview := mService.Overview(mRequest);
+    Assert.IsFalse(mOverview.ShowsAssignment);
+    // Die Daten bleiben (Ausreißer lesen sie), nur die Ausgabe fällt weg.
+    Assert.AreEqual(2, Integer(Length(mOverview.Assignments)));
+    Assert.AreEqual(1, mService.Computations);
+  finally
+    mService.Free;
+  end;
+end;
+
 procedure TArchitectureServiceTests.KeepsPreviousState;
 var
   mIndex: ISymbolIndex;
@@ -304,59 +357,6 @@ begin
     begin
       TDirectory.Delete(mFolder, True);
     end;
-  end;
-end;
-
-procedure TArchitectureServiceTests.ExplainAssignmentWithoutRecompute;
-var
-  mIndex: ISymbolIndex;
-  mService: TArchitectureService;
-  mRequest: TArchitectureRequest;
-  mOverview: TArchitectureOverview;
-begin
-  mIndex := TSymbolIndex.Create;
-  mIndex.AddUnit(UsesUnit('App.Data', nil, nil));
-  mIndex.AddUnit(UsesUnit('App.Main', ['App.Data'], nil));
-  mService := NewService(mIndex);
-  try
-    mRequest := Default(TArchitectureRequest);
-    mRequest.ExplainAssignment := True;
-    mOverview := mService.Overview(mRequest);
-    Assert.IsTrue(mOverview.ShowsAssignment);
-    mRequest.ExplainAssignment := False;
-    mOverview := mService.Overview(mRequest);
-    Assert.IsFalse(mOverview.ShowsAssignment);
-    // Die Daten bleiben (Ausreißer lesen sie), nur die Ausgabe fällt weg.
-    Assert.AreEqual(2, Integer(Length(mOverview.Assignments)));
-    Assert.AreEqual(1, mService.Computations);
-  finally
-    mService.Free;
-  end;
-end;
-
-procedure TArchitectureServiceTests.SkipsPackagesKeepsPrograms;
-var
-  mIndex: ISymbolIndex;
-  mService: TArchitectureService;
-  mOverview: TArchitectureOverview;
-  mPackage, mProgram_: TUnitIndex;
-begin
-  mIndex := TSymbolIndex.Create;
-  mIndex.AddUnit(UsesUnit('App.Data', nil, nil));
-  mProgram_ := UsesUnit('App', ['App.Data'], nil);
-  mProgram_.FileName := ChangeFileExt(mProgram_.FileName, '.dpr');
-  mIndex.AddUnit(mProgram_);
-  mPackage := UsesUnit('AppPackage', nil, nil);
-  mPackage.FileName := ChangeFileExt(mPackage.FileName, '.dpk');
-  mIndex.AddUnit(mPackage);
-  mService := NewService(mIndex);
-  try
-    mOverview := mService.Overview(Default(TArchitectureRequest));
-    Assert.AreEqual(-1, mOverview.IndexOf('AppPackage'), 'Package ohne uses');
-    Assert.IsTrue(mOverview.IndexOf('App') >= 0, 'Programm mit uses');
-    Assert.AreEqual(2, Integer(Length(mOverview.Units)));
-  finally
-    mService.Free;
   end;
 end;
 

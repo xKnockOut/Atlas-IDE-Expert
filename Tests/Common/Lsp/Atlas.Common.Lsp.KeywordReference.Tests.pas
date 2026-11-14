@@ -62,6 +62,8 @@ begin
   Result := HoverAt(AText, AMarker, '37.0');
 end;
 
+{ TKeywordReferenceTests }
+
 procedure TKeywordReferenceTests.EveryReservedWordCovered;
 var
   mWord: string;

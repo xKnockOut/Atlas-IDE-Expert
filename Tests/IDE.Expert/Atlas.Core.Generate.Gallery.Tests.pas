@@ -44,6 +44,8 @@ begin
   Result.Caption := ACaption;
 end;
 
+{ TAtlasGalleryTests }
+
 procedure TAtlasGalleryTests.ItemsOnlyFromGalleryEntriesWithCommand;
 var
   mItems: TArray<TAtlasGalleryItem>;

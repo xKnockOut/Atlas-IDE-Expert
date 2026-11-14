@@ -79,6 +79,8 @@ type
     destructor Destroy; override;
   end;
 
+{ TCounted }
+
 destructor TCounted.Destroy;
 begin
   Inc(CountedFreed);
@@ -91,6 +93,8 @@ begin
   Result.Text := AText;
   Result.Tree := ATree;
 end;
+
+{ TRuleDerivedTests }
 
 procedure TRuleDerivedTests.UnitIndexIsExtractedOncePerCache;
 var

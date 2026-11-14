@@ -145,6 +145,8 @@ type
     procedure Execute;
   end;
 
+{ TPlainItem }
+
 constructor TPlainItem.Create(const AId, AText: string; AState: TAtlasStatusState);
 begin
   inherited Create;
@@ -839,6 +841,51 @@ begin
   Assert.AreEqual('', mState.ChangesUrl);
 end;
 
+procedure TAtlasStateUpdateTests.PendingOnlyWhenNewerThanInstalled;
+var
+  mState: TAtlasUpdateState;
+  mRelease: TAtlasRelease;
+begin
+  mState := Default(TAtlasUpdateState);
+  Assert.IsFalse(TAtlasUpdates.Pending(mState, '1.0.0', mRelease));
+  mState.Available := '1.0.1';
+  mState.ChangesUrl := 'https://example.org/changes';
+  Assert.IsTrue(TAtlasUpdates.Pending(mState, '1.0.0', mRelease));
+  Assert.AreEqual('1.0.1', mRelease.Version);
+  Assert.AreEqual('https://example.org/changes', mRelease.ChangesUrl);
+  // Nach der Installation gilt das Update nicht mehr.
+  Assert.IsFalse(TAtlasUpdates.Pending(mState, '1.0.1', mRelease));
+  Assert.AreEqual('', mRelease.Version);
+  Assert.IsFalse(TAtlasUpdates.Pending(mState, '1.1.0', mRelease));
+  // Keine https-Adresse: Release-Seite der Version.
+  mState.ChangesUrl := 'file:///C:/x';
+  Assert.IsTrue(TAtlasUpdates.Pending(mState, '1.0.0', mRelease));
+  Assert.AreEqual(TAtlasUpdates.cReleasesUrl + '/tag/v1.0.1', mRelease.ChangesUrl);
+end;
+
+procedure TAtlasStateUpdateTests.StateKeepsAvailableVersion;
+var
+  mState, mBack: TAtlasUpdateState;
+begin
+  mState := Default(TAtlasUpdateState);
+  mState.Asked := True;
+  mState.Available := '1.0.1';
+  mState.ChangesUrl := 'https://example.org/changes';
+  mBack := TAtlasUpdateState.FromJson(mState.ToJson);
+  Assert.IsTrue(mBack.Asked);
+  Assert.AreEqual('1.0.1', mBack.Available);
+  Assert.AreEqual('https://example.org/changes', mBack.ChangesUrl);
+  // Ungültige Version gilt nicht; fremde Adresse wird zur Release-Seite.
+  mBack := TAtlasUpdateState.FromJson('{"asked": true, "available": "neu", "changes": "https://x"}');
+  Assert.AreEqual('', mBack.Available);
+  mBack := TAtlasUpdateState.FromJson('{"available": "1.2.0", "changes": "http://x"}');
+  Assert.AreEqual('1.2.0', mBack.Available);
+  Assert.AreEqual(TAtlasUpdates.cReleasesUrl + '/tag/v1.2.0', mBack.ChangesUrl);
+  // Ohne gefundene Version kein Feld in der Datei.
+  mState.Available := '';
+  Assert.IsFalse(mState.ToJson.Contains('available'));
+end;
+
 procedure TAtlasStateUpdateTests.RememberKeepsFailureUntilACheckSucceeds;
 var
   mState: TAtlasUpdateState;
@@ -904,51 +951,6 @@ begin
   Assert.IsFalse(TAtlasUpdates.IsStateDue(mState, IncMinute(mLast, 59)));
   Assert.IsTrue(TAtlasUpdates.IsStateDue(mState, IncHour(mLast, 1)));
   Assert.IsTrue(TAtlasUpdates.IsStateDue(mState, IncHour(mLast, -2)), 'Uhr zurückgestellt');
-end;
-
-procedure TAtlasStateUpdateTests.PendingOnlyWhenNewerThanInstalled;
-var
-  mState: TAtlasUpdateState;
-  mRelease: TAtlasRelease;
-begin
-  mState := Default(TAtlasUpdateState);
-  Assert.IsFalse(TAtlasUpdates.Pending(mState, '1.0.0', mRelease));
-  mState.Available := '1.0.1';
-  mState.ChangesUrl := 'https://example.org/changes';
-  Assert.IsTrue(TAtlasUpdates.Pending(mState, '1.0.0', mRelease));
-  Assert.AreEqual('1.0.1', mRelease.Version);
-  Assert.AreEqual('https://example.org/changes', mRelease.ChangesUrl);
-  // Nach der Installation gilt das Update nicht mehr.
-  Assert.IsFalse(TAtlasUpdates.Pending(mState, '1.0.1', mRelease));
-  Assert.AreEqual('', mRelease.Version);
-  Assert.IsFalse(TAtlasUpdates.Pending(mState, '1.1.0', mRelease));
-  // Keine https-Adresse: Release-Seite der Version.
-  mState.ChangesUrl := 'file:///C:/x';
-  Assert.IsTrue(TAtlasUpdates.Pending(mState, '1.0.0', mRelease));
-  Assert.AreEqual(TAtlasUpdates.cReleasesUrl + '/tag/v1.0.1', mRelease.ChangesUrl);
-end;
-
-procedure TAtlasStateUpdateTests.StateKeepsAvailableVersion;
-var
-  mState, mBack: TAtlasUpdateState;
-begin
-  mState := Default(TAtlasUpdateState);
-  mState.Asked := True;
-  mState.Available := '1.0.1';
-  mState.ChangesUrl := 'https://example.org/changes';
-  mBack := TAtlasUpdateState.FromJson(mState.ToJson);
-  Assert.IsTrue(mBack.Asked);
-  Assert.AreEqual('1.0.1', mBack.Available);
-  Assert.AreEqual('https://example.org/changes', mBack.ChangesUrl);
-  // Ungültige Version gilt nicht; fremde Adresse wird zur Release-Seite.
-  mBack := TAtlasUpdateState.FromJson('{"asked": true, "available": "neu", "changes": "https://x"}');
-  Assert.AreEqual('', mBack.Available);
-  mBack := TAtlasUpdateState.FromJson('{"available": "1.2.0", "changes": "http://x"}');
-  Assert.AreEqual('1.2.0', mBack.Available);
-  Assert.AreEqual(TAtlasUpdates.cReleasesUrl + '/tag/v1.2.0', mBack.ChangesUrl);
-  // Ohne gefundene Version kein Feld in der Datei.
-  mState.Available := '';
-  Assert.IsFalse(mState.ToJson.Contains('available'));
 end;
 
 initialization

@@ -67,6 +67,8 @@ begin
   end;
 end;
 
+{ TAtlasUnwrapTests }
+
 procedure TAtlasUnwrapTests.ArgumentsCarryPositionAndIndent;
 begin
   Assert.AreEqual('["file:///C:/a.pas",{"line":4,"character":7},2]',

@@ -140,6 +140,8 @@ begin
   Result := Rewrite(AText, AMarker, AKind, mText, mTitle);
 end;
 
+{ TConditionsTests }
+
 procedure TConditionsTests.InvertSwapsBranches;
 var
   mText: string;

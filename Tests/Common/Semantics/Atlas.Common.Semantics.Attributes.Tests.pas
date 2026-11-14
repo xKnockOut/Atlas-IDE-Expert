@@ -114,18 +114,7 @@ begin
   Result := TTextPosition.Create(mLine, mIndex - mLineStart);
 end;
 
-procedure TAttributesTests.Setup;
-begin
-  FIndex := TSymbolIndex.Create;
-  FIndex.AddUnit(TIndexExtractor.ExtractText(cUnitAttribute, 'C:\P\DUnitX.Attributes.pas', nil));
-  FResolver := TNameResolver.Create(FIndex);
-end;
-
-procedure TAttributesTests.TearDown;
-begin
-  FResolver.Free;
-  FIndex := nil;
-end;
+{ TAttributesTests }
 
 function TAttributesTests.ResolvedAt(const AMarker: string): TResolvedSymbol;
 var
@@ -137,6 +126,19 @@ begin
   finally
     mTree.Free;
   end;
+end;
+
+procedure TAttributesTests.Setup;
+begin
+  FIndex := TSymbolIndex.Create;
+  FIndex.AddUnit(TIndexExtractor.ExtractText(cUnitAttribute, 'C:\P\DUnitX.Attributes.pas', nil));
+  FResolver := TNameResolver.Create(FIndex);
+end;
+
+procedure TAttributesTests.TearDown;
+begin
+  FResolver.Free;
+  FIndex := nil;
 end;
 
 procedure TAttributesTests.UseAtPosition;

@@ -155,6 +155,19 @@ end;
 
 { TLspHoverTypesTests }
 
+function TLspHoverTypesTests.InfoAt(const AMarker: string): THoverInfo;
+var
+  mTree: TSyntaxTree;
+begin
+  mTree := TSyntaxTreeCache.Parse(cUnitHaupt);
+  try
+    Result := TLspHover.InfoAt(THoverSource.Create(FResolver, FIndex, ReadText), mTree, cUnitHaupt, cHauptFile,
+      PositionOf(cUnitHaupt, AMarker));
+  finally
+    mTree.Free;
+  end;
+end;
+
 procedure TLspHoverTypesTests.WarmUp;
 begin
   Setup;
@@ -184,19 +197,6 @@ procedure TLspHoverTypesTests.TearDown;
 begin
   FResolver.Free;
   FIndex := nil;
-end;
-
-function TLspHoverTypesTests.InfoAt(const AMarker: string): THoverInfo;
-var
-  mTree: TSyntaxTree;
-begin
-  mTree := TSyntaxTreeCache.Parse(cUnitHaupt);
-  try
-    Result := TLspHover.InfoAt(THoverSource.Create(FResolver, FIndex, ReadText), mTree, cUnitHaupt, cHauptFile,
-      PositionOf(cUnitHaupt, AMarker));
-  finally
-    mTree.Free;
-  end;
 end;
 
 procedure TLspHoverTypesTests.ClassShowsKindLocationAndChain;

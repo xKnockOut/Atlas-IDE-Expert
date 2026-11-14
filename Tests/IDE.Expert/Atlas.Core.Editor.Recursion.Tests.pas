@@ -58,6 +58,8 @@ begin
   end;
 end;
 
+{ TAtlasRecursionMarksTests }
+
 procedure TAtlasRecursionMarksTests.ReadsServerAnswer;
 var
   mMarks: TAtlasFileRecursion;

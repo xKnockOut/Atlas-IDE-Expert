@@ -92,6 +92,8 @@ type
     function CreateSection: IAtlasSettingsSection;
   end;
 
+{ TTestSection }
+
 function TTestSection.OwnerId: string;
 begin
   Result := 'test.section';
@@ -144,6 +146,8 @@ begin
     ShownArgument := AArgument;
   end;
 end;
+
+{ TTestProvider }
 
 function TTestProvider.CreateSection: IAtlasSettingsSection;
 var
@@ -200,6 +204,8 @@ begin
   mProvider.Sections := TArray<IAtlasSettingsSection>.Create(ASection);
   Result := AtlasModuleRegistry.Provide(IAtlasSettingsSectionProvider, mProvider as IAtlasSettingsSectionProvider);
 end;
+
+{ TSettingsPageSectionsTests }
 
 procedure TSettingsPageSectionsTests.WarmUpFirstUse;
 begin

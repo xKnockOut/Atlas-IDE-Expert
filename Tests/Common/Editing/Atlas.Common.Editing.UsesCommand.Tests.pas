@@ -44,6 +44,8 @@ const
     'end;'#10 +
     'end.';
 
+{ TUsesCommandTests }
+
 procedure TUsesCommandTests.ParsesCommandLines;
 var
   mUnits: TArray<string>;

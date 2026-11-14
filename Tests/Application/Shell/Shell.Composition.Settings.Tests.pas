@@ -57,6 +57,14 @@ begin
   Result := '';
 end;
 
+{ TShellSettingsTests }
+
+function TShellSettingsTests.LanguageLevel(const AUri: string): string;
+begin
+  FAskedUri := AUri;
+  Result := '';
+end;
+
 procedure TShellSettingsTests.Setup;
 var
   mServices: TShellWorkspaceRegistryServices;
@@ -78,12 +86,6 @@ begin
   FRegistry.Free;
   FRegistry := nil;
   FAskedUri := '';
-end;
-
-function TShellSettingsTests.LanguageLevel(const AUri: string): string;
-begin
-  FAskedUri := AUri;
-  Result := '';
 end;
 
 procedure TShellSettingsTests.LooseSettingsFromGlobalAndEditor;

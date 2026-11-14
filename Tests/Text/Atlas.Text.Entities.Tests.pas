@@ -26,6 +26,8 @@ implementation
 uses
   Atlas.Text.Entities;
 
+{ TTextEntitiesTests }
+
 procedure TTextEntitiesTests.DecodesNamed;
 begin
   Assert.AreEqual('<a> & "b" ''c''', TTextEntities.Decode('&lt;a&gt; &amp; &quot;b&quot; &apos;c&apos;'));

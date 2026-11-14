@@ -67,6 +67,8 @@ type
       out AError: TAtlasCiFetchError): Boolean;
   end;
 
+{ TFakeTransport }
+
 constructor TFakeTransport.Create(AStatus: Integer; const AText: string; AFail: TAtlasCiFetchError);
 begin
   inherited Create;

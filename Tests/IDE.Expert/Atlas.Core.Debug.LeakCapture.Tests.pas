@@ -49,6 +49,8 @@ const
     'The block is currently used for an object of class: TStringList' + cNl + cNl +
     'The allocation number is: 1234' + cNl;
 
+{ TAtlasLeakCaptureTests }
+
 procedure TAtlasLeakCaptureTests.LogFileNextToExe;
 begin
   Assert.AreEqual('C:\P\Win32\Debug\App_MemoryManager_EventLog.txt',

@@ -57,6 +57,8 @@ begin
   end;
 end;
 
+{ TFlowSharedTests }
+
 procedure TFlowSharedTests.OpaqueUses;
 begin
   Assert.IsTrue(Opaque('  Q := @X;', 'X'));

@@ -107,6 +107,8 @@ begin
   Result := TAtlasPeekPlace.Create('U.pas', ALine, ACharacter);
 end;
 
+{ TAtlasPeekTests }
+
 procedure TAtlasPeekTests.RoutineDeclarationEndsAtSemicolonAndDirectives;
 begin
   Assert.AreEqual(10, TAtlasPeek.DeclarationEnd(Lines, 10));

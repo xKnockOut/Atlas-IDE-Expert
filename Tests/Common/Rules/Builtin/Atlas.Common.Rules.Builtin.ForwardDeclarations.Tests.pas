@@ -49,6 +49,8 @@ const
   cTree = 'unit U;'#10'interface'#10'type'#10'  TTree = class'#10'    FRoot: TNode;'#10'  end;'#10 +
     '  TNode = class'#10'  end;'#10'implementation'#10'end.';
 
+{ TForwardDeclarationRulesTests }
+
 procedure TForwardDeclarationRulesTests.UsedBeforeIsErrorWithFix;
 var
   mFindings: TArray<TRuleFinding>;

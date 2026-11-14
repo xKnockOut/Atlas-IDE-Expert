@@ -48,6 +48,8 @@ uses
   Atlas.Common.Lsp.Completion,
   Atlas.Common.Lsp.CompletionCollector;
 
+{ TCompletionCollectorTests }
+
 function TCompletionCollectorTests.ScopeContext(const APrefix: string): TCompletionContext;
 begin
   Result := Default(TCompletionContext);

@@ -29,6 +29,8 @@ begin
   Result := Ord(TAtlasMouseButtons.DirectionOf(AMessage, AWParam, ALParam));
 end;
 
+{ TAtlasMouseButtonsTests }
+
 procedure TAtlasMouseButtonsTests.XButtonsMapToDirections;
 begin
   Assert.AreEqual(Ord(TAtlasNavDirection.Back), Dir($020C, $00010000, 0));

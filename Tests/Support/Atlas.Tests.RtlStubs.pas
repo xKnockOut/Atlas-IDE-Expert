@@ -23,6 +23,8 @@ implementation
 uses
   Atlas.Common.Index.Extractor;
 
+{ TRtlStubs }
+
 class procedure TRtlStubs.AddTo(const AIndex: ISymbolIndex);
 begin
   AIndex.AddUnit(TIndexExtractor.ExtractText('unit System;'#10'interface'#10'type'#10'  TObject = class'#10 +

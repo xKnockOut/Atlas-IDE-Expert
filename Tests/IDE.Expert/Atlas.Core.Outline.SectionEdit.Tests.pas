@@ -129,6 +129,8 @@ begin
   end;
 end;
 
+{ TAtlasSectionEditTests }
+
 procedure TAtlasSectionEditTests.AppendBehindLastMember;
 var
   mEdit: TAtlasSectionEdit;

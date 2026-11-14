@@ -29,6 +29,8 @@ uses
   System.SysUtils,
   Atlas.Common.Projects.PackageReader;
 
+{ TPackageReaderTests }
+
 procedure TPackageReaderTests.ReadsRequiresAndContains;
 var
   mSource: TPackageSource;

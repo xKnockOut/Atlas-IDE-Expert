@@ -46,6 +46,8 @@ uses
   Atlas.Common.Projects.Contract,
   Atlas.Common.Projects.DelphiVersions;
 
+{ TDelphiVersionsTests }
+
 procedure TDelphiVersionsTests.ReadsProjectVersion;
 begin
   Assert.AreEqual('19.5', TDelphiVersions.ProjectVersionOf(

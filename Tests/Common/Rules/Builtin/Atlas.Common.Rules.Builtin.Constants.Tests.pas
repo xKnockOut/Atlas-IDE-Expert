@@ -627,6 +627,8 @@ begin
   Result := mFound[0].Message;
 end;
 
+{ TDefaultParameterInvalidTests }
+
 procedure TDefaultParameterInvalidTests.IssueExampleWithFix;
 var
   mSource, mFixed: string;
@@ -745,6 +747,8 @@ begin
   Assert.AreEqual(1, Integer(Length(mFound)), ASource);
   Result := mFound[0].Message;
 end;
+
+{ TSignedUnsignedMixTests }
 
 procedure TSignedUnsignedMixTests.IssueExample;
 begin
@@ -871,6 +875,8 @@ begin
   Result := mFound[0].Message;
 end;
 
+{ TNarrowingAssignmentTests }
+
 procedure TNarrowingAssignmentTests.IssueExample;
 begin
   Assert.AreEqual('Strom.Size ist Int64; die Zuweisung an Integer kann Daten verlieren.',
@@ -992,6 +998,8 @@ begin
     Result := Result + mFinding.Message + #10;
   end;
 end;
+
+{ TTypedConstantModifiedTests }
 
 procedure TTypedConstantModifiedTests.IssueExampleWithFix;
 var
@@ -1220,6 +1228,8 @@ begin
   Result := 'unit Kennungen;'#10'interface'#10 + ADeclarations + 'implementation'#10'procedure Setze;'#10'var'#10 +
     AVariables + 'begin'#10 + AStatements + 'end;'#10'end.';
 end;
+
+{ TStringLengthLimitTests }
 
 procedure TStringLengthLimitTests.IssueExampleWithFix;
 var

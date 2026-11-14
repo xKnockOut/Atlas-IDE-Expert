@@ -45,6 +45,8 @@ begin
     end;
 end;
 
+{ TIndexNameFactsTests }
+
 procedure TIndexNameFactsTests.ComputesOncePerGeneration;
 var
   mFacts: IIndexNameFacts;

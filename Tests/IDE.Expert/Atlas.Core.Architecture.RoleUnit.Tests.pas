@@ -46,6 +46,8 @@ begin
   Assert.AreEqual(Ord(AExpected), Ord(AActual));
 end;
 
+{ TAtlasRoleUnitTests }
+
 procedure TAtlasRoleUnitTests.NameWithAndWithoutRole;
 begin
   Assert.AreEqual('Atlas.Common.Rules.Providers.Json',

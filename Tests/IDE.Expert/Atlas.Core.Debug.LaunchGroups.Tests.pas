@@ -51,6 +51,8 @@ begin
   Result.Waiting := 'wartet';
 end;
 
+{ TAtlasLaunchGroupsTests }
+
 procedure TAtlasLaunchGroupsTests.ReadsGroups;
 var
   mGroups: TAtlasLaunchGroupList;

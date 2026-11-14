@@ -157,6 +157,8 @@ begin
     end;
 end;
 
+{ TLspMissingUnitTests }
+
 procedure TLspMissingUnitTests.Setup;
 begin
   Files.Clear;

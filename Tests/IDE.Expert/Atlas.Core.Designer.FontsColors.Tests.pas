@@ -93,6 +93,8 @@ begin
   Result := Result + [Use('lblA', cForm, Segoe, True), Use('lblB', cForm, Segoe, True)];
 end;
 
+{ TAtlasFontsColorsTests }
+
 procedure TAtlasFontsColorsTests.Grouping;
 var
   mRows: TArray<TAtlasFontRow>;

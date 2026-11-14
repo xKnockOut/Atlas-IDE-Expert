@@ -285,22 +285,6 @@ end;
 
 { TImpactAnalysisTests }
 
-procedure TImpactAnalysisTests.Setup;
-begin
-  FIndex := TSymbolIndex.Create;
-  FIndex.AddUnit(TIndexExtractor.ExtractText(cUnitWerkzeug, cWerkzeugFile, nil, nil, True));
-  FIndex.AddUnit(TIndexExtractor.ExtractText(cUnitHaupt, cHauptFile, nil, nil, True));
-  FIndex.AddUnit(TIndexExtractor.ExtractText(cUnitTests, cTestFile, nil, nil, True));
-  FIndex.AddUnit(TIndexExtractor.ExtractText(cUnitAbseits, cAbseitsFile, nil, nil, True));
-  FResolver := TNameResolver.Create(FIndex);
-end;
-
-procedure TImpactAnalysisTests.TearDown;
-begin
-  FResolver.Free;
-  FIndex := nil;
-end;
-
 function TImpactAnalysisTests.ItemAt(const AFileName, AMarker, AName: string): THierarchyItem;
 var
   mTree: TSyntaxTree;
@@ -340,6 +324,22 @@ begin
     end;
   end;
   Result := -1;
+end;
+
+procedure TImpactAnalysisTests.Setup;
+begin
+  FIndex := TSymbolIndex.Create;
+  FIndex.AddUnit(TIndexExtractor.ExtractText(cUnitWerkzeug, cWerkzeugFile, nil, nil, True));
+  FIndex.AddUnit(TIndexExtractor.ExtractText(cUnitHaupt, cHauptFile, nil, nil, True));
+  FIndex.AddUnit(TIndexExtractor.ExtractText(cUnitTests, cTestFile, nil, nil, True));
+  FIndex.AddUnit(TIndexExtractor.ExtractText(cUnitAbseits, cAbseitsFile, nil, nil, True));
+  FResolver := TNameResolver.Create(FIndex);
+end;
+
+procedure TImpactAnalysisTests.TearDown;
+begin
+  FResolver.Free;
+  FIndex := nil;
 end;
 
 procedure TImpactAnalysisTests.DirectCallerOnLevelOne;

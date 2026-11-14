@@ -23,6 +23,8 @@ uses
   System.SysUtils,
   Atlas.Common.Lsp.Completion.TypeConversions;
 
+{ TTypeConversionsTests }
+
 procedure TTypeConversionsTests.TypeFitsFamiliesAndDescent;
 var
   mCheckDescent: Boolean;

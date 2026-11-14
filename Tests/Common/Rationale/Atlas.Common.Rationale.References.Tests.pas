@@ -25,6 +25,8 @@ uses
   Atlas.Common.Rationale.Contract,
   Atlas.Common.Rationale.References;
 
+{ TRationaleReferencesTests }
+
 procedure TRationaleReferencesTests.Links;
 var
   mLinks: TArray<TRationaleLink>;

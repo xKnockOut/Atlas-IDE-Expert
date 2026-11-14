@@ -90,6 +90,8 @@ begin
   Result := string.Join(#10, ALines);
 end;
 
+{ TAtlasArchitectureFrameTests }
+
 procedure TAtlasArchitectureFrameTests.WarmUpFirstUse;
 begin
   Setup;

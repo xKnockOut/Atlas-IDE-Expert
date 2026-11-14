@@ -52,6 +52,8 @@ type
     procedure ThrowIfCancellationRequested;
   end;
 
+{ TCancelledToken }
+
 function TCancelledToken.IsCancellationRequested: Boolean;
 begin
   Result := True;
@@ -81,17 +83,7 @@ begin
   Result.Start;
 end;
 
-procedure TPullReportCacheTests.Setup;
-begin
-  FComputed := 0;
-  FCache := TPullReportCache.Create;
-end;
-
-procedure TPullReportCacheTests.TearDown;
-begin
-  FCache.Free;
-  FCache := nil;
-end;
+{ TPullReportCacheTests }
 
 function TPullReportCacheTests.Compute: TPullCompute;
 var
@@ -118,6 +110,18 @@ begin
   finally
     mItems.Free;
   end;
+end;
+
+procedure TPullReportCacheTests.Setup;
+begin
+  FComputed := 0;
+  FCache := TPullReportCache.Create;
+end;
+
+procedure TPullReportCacheTests.TearDown;
+begin
+  FCache.Free;
+  FCache := nil;
 end;
 
 procedure TPullReportCacheTests.WithoutResultIdAlwaysComputes;

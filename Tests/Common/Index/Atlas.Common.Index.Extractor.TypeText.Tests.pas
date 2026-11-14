@@ -49,6 +49,8 @@ begin
     end);
 end;
 
+{ TIndexTypeTextTests }
+
 procedure TIndexTypeTextTests.TypeTextKeepsNestedTypeArgs;
 var
   mTree: TSyntaxTree;

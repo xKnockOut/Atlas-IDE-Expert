@@ -113,6 +113,8 @@ begin
   end;
 end;
 
+{ TCaptureRuleTests }
+
 procedure TCaptureRuleTests.ForInVariableInQueueReports;
 var
   mFindings: TArray<TRuleFinding>;
@@ -243,6 +245,8 @@ function Laden(const AHead, ABody: string): string;
 begin
   Result := 'unit Lader;'#10'interface'#10'implementation'#10 + AHead + #10'begin'#10 + ABody + 'end;'#10'end.';
 end;
+
+{ TAnonymousCaptureInvalidTests }
 
 procedure TAnonymousCaptureInvalidTests.IssueExampleWithFix;
 var

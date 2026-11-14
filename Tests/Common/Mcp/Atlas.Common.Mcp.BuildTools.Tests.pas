@@ -66,6 +66,8 @@ begin
     Message('C:\Lib\Fremd.pas', 0, TCompilerSeverity.Warning, 'W1000')];
 end;
 
+{ TMcpBuildToolsTests }
+
 procedure TMcpBuildToolsTests.WarmUp;
 var
   mBuild: TIdeBuild;

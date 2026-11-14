@@ -106,45 +106,6 @@ end;
 
 { TCompletionUsesTests }
 
-procedure TCompletionUsesTests.AddUnit(const AText, AFileName: string; ALibrary: Boolean);
-var
-  mUnitInfo: TUnitIndex;
-begin
-  mUnitInfo := TIndexExtractor.ExtractText(AText, AFileName, nil);
-  mUnitInfo.Library_ := ALibrary;
-  FIndex.AddUnit(mUnitInfo);
-end;
-
-procedure TCompletionUsesTests.Setup;
-begin
-  FIndex := TSymbolIndex.Create;
-  AddUnit('unit uGeneratorBeleg;'#10'interface'#10'uses Haupt;'#10'implementation'#10'end.',
-    'C:\P\uGeneratorBeleg.pas', False);
-  AddUnit('unit uMitte;'#10'interface'#10'uses uZwei;'#10'implementation'#10'end.', 'C:\P\uMitte.pas', False);
-  AddUnit('unit uZwei;'#10'interface'#10'uses Haupt;'#10'implementation'#10'end.', 'C:\P\uZwei.pas', False);
-  AddUnit('unit System.SysUtils;'#10'interface'#10'type'#10'  Exception = class end;'#10'implementation'#10'end.',
-    cBds + 'sys\System.SysUtils.pas', True);
-  AddUnit('unit System.Classes;'#10'interface'#10'type'#10'  TStrings = class end;'#10'implementation'#10'end.',
-    cBds + 'common\System.Classes.pas', True);
-  AddUnit('unit System.Generics.Collections;'#10'interface'#10'type'#10 +
-    '  TList<T> = class end;'#10'  TObjectList<T: class> = class end;'#10'  TDictionary<K, V> = class end;'#10 +
-    '  TQueue<T> = class end;'#10'  TStack<T> = class end;'#10'  TPair<K, V> = record end;'#10 +
-    '  TObjectStack<T> = class end;'#10'const'#10'  Groesse = 4;'#10'implementation'#10'end.',
-    cBds + 'common\System.Generics.Collections.pas', True);
-  AddUnit('unit System.Generics.Defaults;'#10'interface'#10'type'#10'  IComparer<T> = interface end;'#10 +
-    'implementation'#10'end.', cBds + 'common\System.Generics.Defaults.pas', True);
-  AddUnit('unit Spring.Collections.Generic;'#10'interface'#10'implementation'#10'end.',
-    'C:\Libs\Spring\Source\Spring.Collections.Generic.pas', True);
-  FResolver := TNameResolver.Create(FIndex);
-  FResolver.Namespaces := ['System', 'Vcl'];
-end;
-
-procedure TCompletionUsesTests.TearDown;
-begin
-  FResolver.Free;
-  FIndex := nil;
-end;
-
 function TCompletionUsesTests.ItemsAt(const AText, AMarker: string): TCompletionItems;
 begin
   Result := ItemsAt(AText, AMarker, True);
@@ -199,6 +160,45 @@ begin
   end;
   AItem := Default(TCompletionItem);
   Result := False;
+end;
+
+procedure TCompletionUsesTests.AddUnit(const AText, AFileName: string; ALibrary: Boolean);
+var
+  mUnitInfo: TUnitIndex;
+begin
+  mUnitInfo := TIndexExtractor.ExtractText(AText, AFileName, nil);
+  mUnitInfo.Library_ := ALibrary;
+  FIndex.AddUnit(mUnitInfo);
+end;
+
+procedure TCompletionUsesTests.Setup;
+begin
+  FIndex := TSymbolIndex.Create;
+  AddUnit('unit uGeneratorBeleg;'#10'interface'#10'uses Haupt;'#10'implementation'#10'end.',
+    'C:\P\uGeneratorBeleg.pas', False);
+  AddUnit('unit uMitte;'#10'interface'#10'uses uZwei;'#10'implementation'#10'end.', 'C:\P\uMitte.pas', False);
+  AddUnit('unit uZwei;'#10'interface'#10'uses Haupt;'#10'implementation'#10'end.', 'C:\P\uZwei.pas', False);
+  AddUnit('unit System.SysUtils;'#10'interface'#10'type'#10'  Exception = class end;'#10'implementation'#10'end.',
+    cBds + 'sys\System.SysUtils.pas', True);
+  AddUnit('unit System.Classes;'#10'interface'#10'type'#10'  TStrings = class end;'#10'implementation'#10'end.',
+    cBds + 'common\System.Classes.pas', True);
+  AddUnit('unit System.Generics.Collections;'#10'interface'#10'type'#10 +
+    '  TList<T> = class end;'#10'  TObjectList<T: class> = class end;'#10'  TDictionary<K, V> = class end;'#10 +
+    '  TQueue<T> = class end;'#10'  TStack<T> = class end;'#10'  TPair<K, V> = record end;'#10 +
+    '  TObjectStack<T> = class end;'#10'const'#10'  Groesse = 4;'#10'implementation'#10'end.',
+    cBds + 'common\System.Generics.Collections.pas', True);
+  AddUnit('unit System.Generics.Defaults;'#10'interface'#10'type'#10'  IComparer<T> = interface end;'#10 +
+    'implementation'#10'end.', cBds + 'common\System.Generics.Defaults.pas', True);
+  AddUnit('unit Spring.Collections.Generic;'#10'interface'#10'implementation'#10'end.',
+    'C:\Libs\Spring\Source\Spring.Collections.Generic.pas', True);
+  FResolver := TNameResolver.Create(FIndex);
+  FResolver.Namespaces := ['System', 'Vcl'];
+end;
+
+procedure TCompletionUsesTests.TearDown;
+begin
+  FResolver.Free;
+  FIndex := nil;
 end;
 
 procedure TCompletionUsesTests.GenerShowsGenericsUnitsGroupedAndSkipsUsedUnit;

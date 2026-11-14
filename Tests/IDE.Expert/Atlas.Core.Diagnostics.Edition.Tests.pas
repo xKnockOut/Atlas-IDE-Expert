@@ -67,6 +67,8 @@ begin
     end;
 end;
 
+{ TAtlasEditionTests }
+
 procedure TAtlasEditionTests.FindsBothCompilers;
 var
   mTools: TAtlasCompilerTools;

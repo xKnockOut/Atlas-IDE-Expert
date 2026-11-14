@@ -63,6 +63,8 @@ type
     procedure AccessibleSelect(APosition: Integer);
   end;
 
+{ TFakeItems }
+
 function TFakeItems.AccessibleCount: Integer;
 begin
   Result := Length(Ids);
@@ -130,6 +132,8 @@ function Prop(const AElement: IAtlasRawElementFragment; AProperty: Integer): Ole
 begin
   Assert.AreEqual(S_OK, (AElement as IAtlasRawElementProvider).GetPropertyValue(AProperty, Result));
 end;
+
+{ TAtlasAccessibilityTests }
 
 procedure TAtlasAccessibilityTests.NavigateTargetCoversChildrenAndSiblings;
 begin

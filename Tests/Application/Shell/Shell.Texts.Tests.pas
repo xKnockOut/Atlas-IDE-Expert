@@ -34,6 +34,8 @@ implementation
 uses
   Shell.Texts;
 
+{ TShellTextsTests }
+
 procedure TShellTextsTests.Setup;
 begin
   FSaved := TAtlasLocale.Language;

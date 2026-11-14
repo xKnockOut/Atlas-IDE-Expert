@@ -26,6 +26,8 @@ implementation
 uses
   Atlas.Common.Lsp.DocWiki;
 
+{ TDocWikiTests }
+
 procedure TDocWikiTests.MapsVersionsToReleases;
 begin
   Assert.AreEqual('Athens', TDocWiki.ReleaseName('23.0'));

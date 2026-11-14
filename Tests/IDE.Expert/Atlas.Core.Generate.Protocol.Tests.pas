@@ -51,6 +51,8 @@ begin
   Result := TJSONObject.ParseJSONValue(AText);
 end;
 
+{ TAtlasGenerateProtocolTests }
+
 procedure TAtlasGenerateProtocolTests.ArgumentsAsJsonArray;
 var
   mValue: TJSONValue;

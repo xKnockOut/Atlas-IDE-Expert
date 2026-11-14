@@ -89,6 +89,8 @@ begin
   end;
 end;
 
+{ TLspPromoteVariableTests }
+
 procedure TLspPromoteVariableTests.Setup;
 begin
   FIndex := TSymbolIndex.Create;

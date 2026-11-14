@@ -61,6 +61,8 @@ uses
   Atlas.UI.Strings,
   Atlas.UI.Strings.Tests;
 
+{ TAtlasTextLanguageTests }
+
 procedure TAtlasTextLanguageTests.EveryTableIsCompleteInBothLanguages;
 var
   mTable: TAtlasTextTableEntry;

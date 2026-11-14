@@ -100,6 +100,8 @@ begin
   Result := TAtlasPropertySearch.Search(TAtlasPropertyQuery.Parse(AQuery), Chain(ATexts));
 end;
 
+{ TAtlasPropertySearchTests }
+
 procedure TAtlasPropertySearchTests.ParsesConditions;
 var
   mQuery: TAtlasPropertyQuery;

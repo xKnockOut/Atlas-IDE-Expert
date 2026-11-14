@@ -461,6 +461,8 @@ begin
   end;
 end;
 
+{ TDocScannerTests }
+
 procedure TDocScannerTests.ElementsWithAttributes;
 var
   mScanner: TDocScanner;

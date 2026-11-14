@@ -100,6 +100,8 @@ type
     function Logged: string;
   end;
 
+{ TFixture }
+
 constructor TFixture.Create;
 var
   mSelf: TFixture;
@@ -246,6 +248,8 @@ function UriOf(AReport: TJSONValue): string;
 begin
   Result := AReport.GetValue<string>('uri');
 end;
+
+{ TLspWorkspaceCheckTests }
 
 procedure TLspWorkspaceCheckTests.RunHasBeginAndEnd;
 var

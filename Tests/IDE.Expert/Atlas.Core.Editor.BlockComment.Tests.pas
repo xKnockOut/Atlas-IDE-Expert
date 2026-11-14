@@ -58,6 +58,8 @@ uses
   Atlas.Core.Lsp.TextChanges,
   System.SysUtils;
 
+{ TAtlasBlockCommentTests }
+
 function TAtlasBlockCommentTests.Toggle(ALine, AStart, AEndLine, AEnd: Integer): TAtlasBlockCommentResult;
 begin
   Result := Toggle(ALine, AStart, AEndLine, AEnd, TAtlasBlockCommentOptions.Defaults);

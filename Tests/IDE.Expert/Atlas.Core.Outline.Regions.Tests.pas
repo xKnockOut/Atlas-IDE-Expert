@@ -102,6 +102,8 @@ begin
     TAtlasCrumbRequest.Create(ALine, ACharacter, 'uKunden', True, AParts)));
 end;
 
+{ TAtlasRegionsTests }
+
 procedure TAtlasRegionsTests.RegionsWithDepth;
 var
   mPlace: TAtlasRegionPlace;

@@ -65,16 +65,6 @@ const
 
 { TLspRoutineParametersTests }
 
-procedure TLspRoutineParametersTests.Setup;
-begin
-  FTree := TSyntaxTreeCache.Parse(cSource);
-end;
-
-procedure TLspRoutineParametersTests.TearDown;
-begin
-  FreeAndNil(FTree);
-end;
-
 function TLspRoutineParametersTests.LineOf(const AMarker: string): Integer;
 var
   mLines: TArray<string>;
@@ -109,6 +99,16 @@ begin
   begin
     Result := Result + ' ' + Trim(mItem.Modifier + ' ' + mItem.Name) + ': ' + mItem.TypeName + ';';
   end;
+end;
+
+procedure TLspRoutineParametersTests.Setup;
+begin
+  FTree := TSyntaxTreeCache.Parse(cSource);
+end;
+
+procedure TLspRoutineParametersTests.TearDown;
+begin
+  FreeAndNil(FTree);
 end;
 
 procedure TLspRoutineParametersTests.MethodWithGroupedAndModifiedParameters;

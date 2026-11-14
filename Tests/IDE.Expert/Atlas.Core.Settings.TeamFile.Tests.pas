@@ -100,6 +100,8 @@ begin
     end;
 end;
 
+{ TAtlasTeamFileTests }
+
 function TAtlasTeamFileTests.Parsed(const AText: string): TAtlasTeamSettings;
 begin
   Result := TAtlasTeamFile.Parse(AText, cFileName, cRoot);
@@ -239,6 +241,18 @@ begin
   Assert.AreEqual('{code}', mTeam.Tracker.TemplateFields[1].Value);
 end;
 
+procedure TAtlasTeamFileTests.TeamPrefixBeatsPersonalSetting;
+var
+  mTeam: TAtlasTeamSettings;
+begin
+  // Akzeptanzkriterium: "field": "F" erzwingt das F-Präfix trotz anderer persönlicher Einstellung.
+  mTeam := Parsed('{"version": 1, "naming": {"field": "F"}}');
+  Assert.AreEqual('F', TAtlasTeamFile.Prefix(mTeam, TAtlasNamingKind.Field, 'f_'));
+  Assert.AreEqual('A', TAtlasTeamFile.Prefix(mTeam, TAtlasNamingKind.Parameter, 'A'), 'nicht gesetzt: persönlich');
+  Assert.AreEqual('f_', TAtlasTeamFile.Prefix(TAtlasTeamFile.Empty, TAtlasNamingKind.Field, 'f_'),
+    'ohne Projektdatei');
+end;
+
 procedure TAtlasTeamFileTests.ReadsVcsSection;
 var
   mTeam: TAtlasTeamSettings;
@@ -260,18 +274,6 @@ begin
   Assert.IsTrue(HasIssue(mTeam, TAtlasTeamIssueKind.UnknownKey, 'vcs.x'));
   mTeam := Parsed('{"version": 1, "vcs": "git"}');
   Assert.IsTrue(HasIssue(mTeam, TAtlasTeamIssueKind.WrongType, 'vcs'));
-end;
-
-procedure TAtlasTeamFileTests.TeamPrefixBeatsPersonalSetting;
-var
-  mTeam: TAtlasTeamSettings;
-begin
-  // Akzeptanzkriterium: "field": "F" erzwingt das F-Präfix trotz anderer persönlicher Einstellung.
-  mTeam := Parsed('{"version": 1, "naming": {"field": "F"}}');
-  Assert.AreEqual('F', TAtlasTeamFile.Prefix(mTeam, TAtlasNamingKind.Field, 'f_'));
-  Assert.AreEqual('A', TAtlasTeamFile.Prefix(mTeam, TAtlasNamingKind.Parameter, 'A'), 'nicht gesetzt: persönlich');
-  Assert.AreEqual('f_', TAtlasTeamFile.Prefix(TAtlasTeamFile.Empty, TAtlasNamingKind.Field, 'f_'),
-    'ohne Projektdatei');
 end;
 
 procedure TAtlasTeamFileTests.BrokenFileIsInvalidWithIssue;

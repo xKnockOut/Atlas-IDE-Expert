@@ -43,6 +43,8 @@ type
     procedure BlameHooksChanged;
   end;
 
+{ TFakeMarks }
+
 function TFakeMarks.Enabled: Boolean;
 begin
   Result := True;
@@ -80,6 +82,8 @@ procedure TFakeMarks.BlameHooksChanged;
 begin
   Inc(HookCalls);
 end;
+
+{ TAtlasLineChangeMarksTests }
 
 procedure TAtlasLineChangeMarksTests.TearDown;
 begin

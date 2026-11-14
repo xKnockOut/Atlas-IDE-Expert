@@ -202,6 +202,8 @@ begin
   end;
 end;
 
+{ TAnonymousMethodsTests }
+
 procedure TAnonymousMethodsTests.WithoutCaptureUsesMethodName;
 var
   mText, mReason, mDone: string;

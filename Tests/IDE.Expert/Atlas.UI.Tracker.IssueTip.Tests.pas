@@ -70,6 +70,8 @@ begin
   Result.Updated := cNow - 3.5 / 24;
 end;
 
+{ TAtlasIssueTipTests }
+
 procedure TAtlasIssueTipTests.Setup;
 begin
   FLanguage := TAtlasStrings.Language;

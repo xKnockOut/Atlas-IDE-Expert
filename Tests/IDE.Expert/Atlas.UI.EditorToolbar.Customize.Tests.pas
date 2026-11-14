@@ -48,6 +48,8 @@ begin
   Result.Position := 'inbreadcrumbs';
 end;
 
+{ TAtlasToolbarCustomizeDialogTests }
+
 procedure TAtlasToolbarCustomizeDialogTests.WarmUpFirstUse;
 begin
   AvailableListsTheRest;

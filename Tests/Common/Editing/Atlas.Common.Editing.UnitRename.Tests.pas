@@ -51,6 +51,8 @@ begin
   end;
 end;
 
+{ TUnitRenameTests }
+
 procedure TUnitRenameTests.UnitNameFromFile;
 begin
   Assert.AreEqual('KundenDaten', TUnitRename.UnitNameOf('C:\P\KundenDaten.pas'));

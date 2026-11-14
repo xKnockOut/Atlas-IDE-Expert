@@ -373,6 +373,8 @@ begin
     Section(TAtlasWelcomeIds.cSetup, 70, TAtlasWelcomeColumn.Right)];
 end;
 
+{ TAtlasWelcomeLayoutTests }
+
 procedure TAtlasWelcomeLayoutTests.AtlasLayoutMatchesMockup;
 var
   mColumns: TArray<TArray<string>>;
@@ -877,6 +879,8 @@ begin
   end;
 end;
 
+{ TAtlasIdePageStepsTests }
+
 procedure TAtlasIdePageStepsTests.FirstSyncDoesNothing;
 begin
   // Beim Start gilt, was die IDE aus der Registry liest; aufgeräumt hat schon der Konstruktor.
@@ -1033,6 +1037,8 @@ type
     procedure WriteString(const AName, AValue: string);
   end;
 
+{ TMemoryStore }
+
 constructor TMemoryStore.Create;
 begin
   inherited Create;
@@ -1073,6 +1079,8 @@ procedure TMemoryStore.WriteString(const AName, AValue: string);
 begin
   FValues.AddOrSetValue(AName, AValue);
 end;
+
+{ TAtlasWelcomeSettingsTests }
 
 procedure TAtlasWelcomeSettingsTests.DefaultsOpenWindowOnlyOnRequest;
 var

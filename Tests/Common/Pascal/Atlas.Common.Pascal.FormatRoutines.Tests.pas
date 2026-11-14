@@ -24,6 +24,8 @@ implementation
 uses
   Atlas.Common.Pascal.FormatRoutines;
 
+{ TFormatRoutinesTests }
+
 procedure TFormatRoutinesTests.DefaultsKnowTheirFormatIndex;
 var
   mRoutine: TFormatRoutine;

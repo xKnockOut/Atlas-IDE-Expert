@@ -62,6 +62,8 @@ begin
   end;
 end;
 
+{ TRoutinePartsTests }
+
 procedure TRoutinePartsTests.ParametersAndHeads;
 var
   mTree: TSyntaxTree;

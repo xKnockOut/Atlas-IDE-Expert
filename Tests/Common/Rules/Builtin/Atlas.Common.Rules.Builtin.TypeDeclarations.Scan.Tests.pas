@@ -68,6 +68,8 @@ begin
   Result := nil;
 end;
 
+{ TDeclarationScanTests }
+
 procedure TDeclarationScanTests.UniqueHeaderIgnoresOverloads;
 var
   mTree: TSyntaxTree;

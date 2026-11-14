@@ -40,6 +40,8 @@ begin
   Result := TJSONObject.ParseJSONValue(AJson);
 end;
 
+{ TAtlasYouTrackJsonTests }
+
 procedure TAtlasYouTrackJsonTests.ValuesOnlyWithMatchingType;
 var
   mObject: TJSONObject;

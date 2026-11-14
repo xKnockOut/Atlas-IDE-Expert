@@ -50,6 +50,8 @@ begin
   Result := TLspRange.Create(4, 2, 4, 2);
 end;
 
+{ TAtlasFormatLogTests }
+
 procedure TAtlasFormatLogTests.RequestWithoutSelectionNamesWholeFile;
 begin
   Assert.AreEqual('Format: block valid=no size=0, no selection -> formatting (whole file)',

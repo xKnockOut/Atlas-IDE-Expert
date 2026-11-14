@@ -74,6 +74,8 @@ type
       ATimeoutMs: Cardinal): TAtlasVcsRunResult;
   end;
 
+{ TScriptedRunner }
+
 procedure TScriptedRunner.Answer(const AKey, AOutput: string; AExitCode: Integer; const AError: string;
   AOutcome: TAtlasVcsOutcome);
 begin

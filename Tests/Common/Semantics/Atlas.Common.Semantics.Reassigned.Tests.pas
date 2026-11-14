@@ -111,6 +111,8 @@ type
     function IsCancelled: Boolean;
   end;
 
+{ TAlwaysCancelled }
+
 function TAlwaysCancelled.IsCancelled: Boolean;
 begin
   Result := True;
@@ -142,6 +144,8 @@ function Wrap(const ABody: string): string;
 begin
   Result := 'unit U;' + cLB + 'interface' + cLB + 'implementation' + cLB + ABody + cLB + 'end.';
 end;
+
+{ TReassignedTests }
 
 class function TReassignedTests.Counts(const ASource: string): string;
 begin

@@ -107,6 +107,8 @@ const
     'end;'#10 +                                // 10
     'end.';
 
+{ TWinApiCommandsTests }
+
 procedure TWinApiCommandsTests.ExternalDeclaration;
 begin
   Assert.AreEqual('unit U;'#10'interface'#10'procedure MeineFunktion(); cdecl; external ''meine.dll'' delayed;'#10 +

@@ -38,6 +38,8 @@ begin
   Assert.IsTrue(ParseProperty(AText, mTokens, 0, Result), AText);
 end;
 
+{ TPropertyShapesTests }
+
 procedure TPropertyShapesTests.ReadsAccessorsAndType;
 var
   mShape: TPropertyShape;

@@ -51,6 +51,15 @@ const
     '"file":"C:\\P\\UI.Auftrag.pas","uri":"file:///C:/P/UI.Auftrag.pas","line":811,' +
     '"exception":{"class":"EStackOverflow","message":"Stack overflow"},"atlasVersion":"1.2.0"}';
 
+{ TAtlasCrashCasesTests }
+
+function TAtlasCrashCasesTests.WriteCase(const AName, ARequest: string): string;
+begin
+  Result := TPath.Combine(FRoot, AName);
+  TDirectory.CreateDirectory(Result);
+  TFile.WriteAllText(TPath.Combine(Result, TAtlasCrashCases.cRequestName), ARequest, TEncoding.UTF8);
+end;
+
 procedure TAtlasCrashCasesTests.Setup;
 begin
   FRoot := TPath.Combine(TPath.GetTempPath, 'AtlasCrashNotices_' + TGUID.NewGuid.ToString);
@@ -64,13 +73,6 @@ begin
     TDirectory.Delete(FRoot, True);
   end;
   FRoot := '';
-end;
-
-function TAtlasCrashCasesTests.WriteCase(const AName, ARequest: string): string;
-begin
-  Result := TPath.Combine(FRoot, AName);
-  TDirectory.CreateDirectory(Result);
-  TFile.WriteAllText(TPath.Combine(Result, TAtlasCrashCases.cRequestName), ARequest, TEncoding.UTF8);
 end;
 
 procedure TAtlasCrashCasesTests.ParsesCaseNotification;

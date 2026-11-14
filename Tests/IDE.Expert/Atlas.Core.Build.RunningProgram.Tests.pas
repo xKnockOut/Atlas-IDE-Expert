@@ -74,6 +74,8 @@ begin
     TAtlasRunningProcess.Create(200, 'C:\Windows\explorer.exe', 'explorer.exe')];
 end;
 
+{ TAtlasRunningProgramTests }
+
 procedure TAtlasRunningProgramTests.ModesMatchSettings;
 var
   mMode: TAtlasStopRunningMode;

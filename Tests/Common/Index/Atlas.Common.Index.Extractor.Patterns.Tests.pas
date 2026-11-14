@@ -88,6 +88,8 @@ end;
 const
   cTryFree = 'try'#10'>$|'#10'finally'#10'>$S.Free;'#10'end;';
 
+{ TIndexFollowPatternsTests }
+
 procedure TIndexFollowPatternsTests.ConstructorWithTryFinally;
 var
   mPatterns: TArray<TIndexFollowPattern>;

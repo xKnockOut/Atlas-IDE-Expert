@@ -178,6 +178,53 @@ const
     '{"changes":{"file:///c%3A/p/a.pas":[{"range":{"start":{"line":0,"character":0},' +
     '"end":{"line":0,"character":1}},"newText":"b"}]}}}}';
 
+/// <summary>Anfrage in einem eigenen Thread; endet mit dem Schließen des Clients.</summary>
+function RequestInThread(AClient: TLspClient; const AMethod: string): TThread;
+var
+  mClient: TLspClient;
+  mMethod: string;
+begin
+  mClient := AClient;
+  mMethod := AMethod;
+  Result := TThread.CreateAnonymousThread(
+    procedure
+    begin
+      try
+        mClient.Request(mMethod, nil, 10000).Free;
+      except
+        // Erwartet: Die Verbindung wird geschlossen, während die Anfrage wartet.
+        on ELspClientError do
+          ;
+      end;
+    end);
+  Result.FreeOnTerminate := False;
+  Result.Start;
+end;
+/// <summary>Client, der nie antwortet und das Senden von definition und diagnostic meldet.</summary>
+function CreateSilentClient(const ADefinitionSent, ADiagnosticSent: TEvent): TLspClient;
+begin
+  Result := TLspClient.Create(
+    procedure(const ABytes: TBytes)
+    var
+      Message: TJSONObject;
+    begin
+      // Nie antworten: Beide Anfragen sind beim Ende noch offen.
+      Message := Unframe(ABytes);
+      try
+        if Message.GetValue<string>('method', '') = 'textDocument/definition' then
+        begin
+          ADefinitionSent.SetEvent;
+        end
+        else if Message.GetValue<string>('method', '') = 'workspace/diagnostic' then
+        begin
+          ADiagnosticSent.SetEvent;
+        end;
+      finally
+        Message.Free;
+      end;
+    end);
+end;
+
 { TLspClientTests }
 
 procedure TLspClientTests.WarmUpFirstUse;
@@ -224,47 +271,6 @@ begin
     mClient.Free;
   end;
 end;
-procedure TLspClientTests.TimingNamesExecutedCommand;
-var
-  mClient: TLspClient;
-  mTiming: TAtlasRequestTiming;
-  mNames: string;
-begin
-  mClient := nil;
-  mClient := TLspClient.Create(
-    procedure(const ABytes: TBytes)
-    var
-      mRequest: TJSONObject;
-      mId: Integer;
-      mReply: TBytes;
-    begin
-      mRequest := Unframe(ABytes);
-      try
-        mId := mRequest.GetValue<Integer>('id');
-      finally
-        mRequest.Free;
-      end;
-      mReply := TLspClient.Frame(Format('{"jsonrpc":"2.0","id":%d,"result":null}', [mId]));
-      mClient.Receive(mReply, Length(mReply));
-    end);
-  TAtlasPluginTimings.Shared.Reset;
-  TAtlasPluginTimings.Enabled := True;
-  try
-    mClient.Request('workspace/executeCommand',
-      TJSONObject.ParseJSONValue('{"command":"atlas.server.status","arguments":[]}'), 1000).Free;
-    mNames := '';
-    for mTiming in TAtlasPluginTimings.Shared.Snapshot.Requests do
-    begin
-      mNames := mNames + mTiming.Method + '|';
-    end;
-    Assert.AreEqual('workspace/executeCommand atlas.server.status|', mNames);
-  finally
-    TAtlasPluginTimings.Enabled := False;
-    TAtlasPluginTimings.Shared.Reset;
-    mClient.Free;
-  end;
-end;
-
 procedure TLspClientTests.RaisesOnErrorResponse;
 var
   mClient: TLspClient;
@@ -296,6 +302,7 @@ begin
     mClient.Free;
   end;
 end;
+
 procedure TLspClientTests.AnswersServerRequestWithNull;
 var
   mClient: TLspClient;
@@ -324,6 +331,113 @@ begin
   finally
     mClient.Free;
     mSent.Free;
+  end;
+end;
+procedure TLspClientTests.RejectsRequestsAfterClose;
+var
+  mClient: TLspClient;
+begin
+  mClient := TLspClient.Create(
+    procedure(const ABytes: TBytes)
+    begin
+    end);
+  try
+    mClient.Close;
+    Assert.WillRaise(
+      procedure
+      begin
+        mClient.Request('test', nil, 1000).Free;
+      end, ELspClientError);
+  finally
+    mClient.Free;
+  end;
+end;
+procedure TLspClientTests.CancellableRequestSendsCancel;
+var
+  mClient: TLspClient;
+  mSent: TList<string>;
+  mWatch: TStopwatch;
+  mCalls: Integer;
+begin
+  mSent := TList<string>.Create;
+  mClient := nil;
+  try
+    mClient := TLspClient.Create(
+      procedure(const ABytes: TBytes)
+      var
+        Request: TJSONObject;
+      begin
+        Request := Unframe(ABytes);
+        try
+          mSent.Add(Request.GetValue<string>('method'));
+        finally
+          Request.Free;
+        end;
+      end);
+    mCalls := 0;
+    mWatch := TStopwatch.StartNew;
+    Assert.WillRaise(
+      procedure
+      begin
+        mClient.RequestCancellable('atlas/query', nil, 10000,
+          function: Boolean
+          begin
+            Inc(mCalls);
+            Result := mCalls >= 2;
+          end).Free;
+      end, ELspCancelledError);
+    Assert.IsTrue(mWatch.ElapsedMilliseconds < 5000, 'wartet bis zum Zeitlimit');
+    Assert.AreEqual('atlas/query,$/cancelRequest', string.Join(',', mSent.ToArray));
+  finally
+    mClient.Free;
+    mSent.Free;
+  end;
+end;
+procedure TLspClientTests.CloseInfoNamesLastAndOpenRequests;
+var
+  mClient: TLspClient;
+  mDefinitionSent, mDiagnosticSent: TEvent;
+  mDefinition, mDiagnostic: TThread;
+  mEnded, mInfo: TLspCloseInfo;
+begin
+  mDefinitionSent := TEvent.Create(nil, True, False, '');
+  mDiagnosticSent := TEvent.Create(nil, True, False, '');
+  mClient := CreateSilentClient(mDefinitionSent, mDiagnosticSent);
+  mDefinition := nil;
+  mDiagnostic := nil;
+  try
+    mInfo := mClient.CloseInfo;
+    Assert.AreEqual('', mInfo.LastMethod, 'offen: noch nichts');
+    mDefinition := RequestInThread(mClient, 'textDocument/definition');
+    Assert.AreEqual(Ord(wrSignaled), Ord(mDefinitionSent.WaitFor(5000)));
+    // Long-Polling zählt weder als letzte noch als offene Anfrage.
+    mDiagnostic := RequestInThread(mClient, 'workspace/diagnostic');
+    Assert.AreEqual(Ord(wrSignaled), Ord(mDiagnosticSent.WaitFor(5000)));
+    mEnded := Default(TLspCloseInfo);
+    mEnded.ExitKnown := True;
+    mEnded.ExitCode := $C00000FD;
+    mEnded.RuntimeMs := 1234;
+    mEnded.ErrorLines := 3;
+    mClient.CloseWith(mEnded);
+    mDefinition.WaitFor;
+    mDiagnostic.WaitFor;
+    mInfo := mClient.CloseInfo;
+    Assert.IsTrue(mInfo.ExitKnown);
+    Assert.AreEqual(Int64($C00000FD), Int64(mInfo.ExitCode));
+    Assert.AreEqual(Int64(1234), mInfo.RuntimeMs);
+    Assert.AreEqual(3, mInfo.ErrorLines);
+    Assert.AreEqual('textDocument/definition', mInfo.LastMethod);
+    Assert.AreEqual(1, Integer(Length(mInfo.OpenMethods)));
+    Assert.AreEqual('textDocument/definition', mInfo.OpenMethods[0]);
+    // Nur das erste Schließen zählt.
+    mClient.Close;
+    Assert.AreEqual(Int64($C00000FD), Int64(mClient.CloseInfo.ExitCode));
+  finally
+    mDefinition.Free;
+    mDiagnostic.Free;
+    mClient.Free;
+    mDefinitionSent.Free;
+    mDiagnosticSent.Free;
   end;
 end;
 procedure TLspClientTests.ForwardsServerMessagesToHandler;
@@ -426,159 +540,114 @@ begin
     mPartials.Free;
   end;
 end;
-procedure TLspClientTests.CancellableRequestSendsCancel;
+procedure TLspClientTests.RejectsOversizedContentLength;
 var
   mClient: TLspClient;
-  mSent: TList<string>;
-  mWatch: TStopwatch;
-  mCalls: Integer;
-begin
-  mSent := TList<string>.Create;
-  mClient := nil;
-  try
-    mClient := TLspClient.Create(
-      procedure(const ABytes: TBytes)
-      var
-        Request: TJSONObject;
-      begin
-        Request := Unframe(ABytes);
-        try
-          mSent.Add(Request.GetValue<string>('method'));
-        finally
-          Request.Free;
-        end;
-      end);
-    mCalls := 0;
-    mWatch := TStopwatch.StartNew;
-    Assert.WillRaise(
-      procedure
-      begin
-        mClient.RequestCancellable('atlas/query', nil, 10000,
-          function: Boolean
-          begin
-            Inc(mCalls);
-            Result := mCalls >= 2;
-          end).Free;
-      end, ELspCancelledError);
-    Assert.IsTrue(mWatch.ElapsedMilliseconds < 5000, 'wartet bis zum Zeitlimit');
-    Assert.AreEqual('atlas/query,$/cancelRequest', string.Join(',', mSent.ToArray));
-  finally
-    mClient.Free;
-    mSent.Free;
-  end;
-end;
-procedure TLspClientTests.RejectsRequestsAfterClose;
-var
-  mClient: TLspClient;
+  mIncoming: TBytes;
 begin
   mClient := TLspClient.Create(
     procedure(const ABytes: TBytes)
     begin
     end);
   try
-    mClient.Close;
+    mIncoming := TEncoding.UTF8.GetBytes('Content-Length: 300000000'#13#10#13#10'{');
     Assert.WillRaise(
       procedure
       begin
-        mClient.Request('test', nil, 1000).Free;
+        mClient.Receive(mIncoming, Length(mIncoming));
       end, ELspClientError);
   finally
     mClient.Free;
   end;
 end;
-/// <summary>Anfrage in einem eigenen Thread; endet mit dem Schließen des Clients.</summary>
-function RequestInThread(AClient: TLspClient; const AMethod: string): TThread;
-var
-  mClient: TLspClient;
-  mMethod: string;
-begin
-  mClient := AClient;
-  mMethod := AMethod;
-  Result := TThread.CreateAnonymousThread(
-    procedure
-    begin
-      try
-        mClient.Request(mMethod, nil, 10000).Free;
-      except
-        // Erwartet: Die Verbindung wird geschlossen, während die Anfrage wartet.
-        on ELspClientError do
-          ;
-      end;
-    end);
-  Result.FreeOnTerminate := False;
-  Result.Start;
-end;
-/// <summary>Client, der nie antwortet und das Senden von definition und diagnostic meldet.</summary>
-function CreateSilentClient(const ADefinitionSent, ADiagnosticSent: TEvent): TLspClient;
+type
+  /// <summary>Hält fest, was Client und Sitzung beim applyEdit-Test senden und empfangen.</summary>
+  TApplyEditProbe = class
+  public
+    FClient: TLspClient;
+    FSent: TList<string>;
+    FAnnounced: Boolean;
+    FReceived: TLspWorkspaceEdit;
+    FReply: TLspApplyEditReply;
+  end;
+
+/// <summary>Client, der initialize beantwortet und Antworten des Plugins in der Probe sammelt.</summary>
+function CreateApplyEditClient(const AProbe: TApplyEditProbe): TLspClient;
 begin
   Result := TLspClient.Create(
     procedure(const ABytes: TBytes)
     var
-      Message: TJSONObject;
+      mMessage: TJSONObject;
+      mAnswer: TBytes;
     begin
-      // Nie antworten: Beide Anfragen sind beim Ende noch offen.
+      mMessage := Unframe(ABytes);
+      try
+        if mMessage.GetValue<string>('method', '') = 'initialize' then
+        begin
+          AProbe.FAnnounced := mMessage.GetValue<Boolean>('params.capabilities.workspace.applyEdit', False);
+          mAnswer := TLspClient.Frame(Format('{"jsonrpc":"2.0","id":%d,"result":{"capabilities":{}}}',
+            [mMessage.GetValue<Integer>('id')]));
+          AProbe.FClient.Receive(mAnswer, Length(mAnswer));
+        end
+        else if mMessage.GetValue('method') = nil then
+        begin
+          AProbe.FSent.Add(mMessage.ToJSON);
+        end;
+      finally
+        mMessage.Free;
+      end;
+    end);
+end;
+/// <summary>Hängt den applyEdit-Empfang der Sitzung an die Probe.</summary>
+procedure WireApplyEdit(const ASession: TLspSession; const AProbe: TApplyEditProbe);
+begin
+  ASession.OnApplyEdit :=
+    procedure(const AEdit: TLspWorkspaceEdit; const AReply: TLspApplyEditReply)
+    begin
+      AProbe.FReceived := AEdit;
+      AProbe.FReply := AReply;
+    end;
+end;
+/// <summary>Projektkontext C:\P\A.dproj, Debug/Win32 mit DEBUG.</summary>
+function DebugWin32Context: TAtlasProjectContext;
+begin
+  Result := Default(TAtlasProjectContext);
+  Result.Project := 'C:\P\A.dproj';
+  Result.Configuration := 'Debug';
+  Result.Platform := 'Win32';
+  Result.Defines := ['DEBUG'];
+end;
+/// <summary>Client, der je Methode mit AReplies[Methode] antwortet und die Parameter in ASeen sammelt.</summary>
+function CannedClient(const AReplies: TDictionary<string, string>; ASeen: TStrings): TLspClient;
+var
+  mClient: TLspClient;
+begin
+  mClient := nil;
+  mClient := TLspClient.Create(
+    procedure(const ABytes: TBytes)
+    var
+      Message: TJSONObject;
+      Reply: TBytes;
+      Method, Answer: string;
+    begin
       Message := Unframe(ABytes);
       try
-        if Message.GetValue<string>('method', '') = 'textDocument/definition' then
+        Method := Message.GetValue<string>('method', '');
+        if not AReplies.TryGetValue(Method, Answer) or (Message.GetValue('id') = nil) then
         begin
-          ADefinitionSent.SetEvent;
-        end
-        else if Message.GetValue<string>('method', '') = 'workspace/diagnostic' then
-        begin
-          ADiagnosticSent.SetEvent;
+          Exit;
         end;
+        ASeen.Add(Method + ' ' + Message.GetValue('params').ToJSON);
+        Reply := TLspClient.Frame(Format('{"jsonrpc":"2.0","id":%d,"result":%s}',
+          [Message.GetValue<Integer>('id'), Answer]));
+        mClient.Receive(Reply, Length(Reply));
       finally
         Message.Free;
       end;
     end);
+  Result := mClient;
 end;
-procedure TLspClientTests.CloseInfoNamesLastAndOpenRequests;
-var
-  mClient: TLspClient;
-  mDefinitionSent, mDiagnosticSent: TEvent;
-  mDefinition, mDiagnostic: TThread;
-  mEnded, mInfo: TLspCloseInfo;
-begin
-  mDefinitionSent := TEvent.Create(nil, True, False, '');
-  mDiagnosticSent := TEvent.Create(nil, True, False, '');
-  mClient := CreateSilentClient(mDefinitionSent, mDiagnosticSent);
-  mDefinition := nil;
-  mDiagnostic := nil;
-  try
-    mInfo := mClient.CloseInfo;
-    Assert.AreEqual('', mInfo.LastMethod, 'offen: noch nichts');
-    mDefinition := RequestInThread(mClient, 'textDocument/definition');
-    Assert.AreEqual(Ord(wrSignaled), Ord(mDefinitionSent.WaitFor(5000)));
-    // Long-Polling zählt weder als letzte noch als offene Anfrage.
-    mDiagnostic := RequestInThread(mClient, 'workspace/diagnostic');
-    Assert.AreEqual(Ord(wrSignaled), Ord(mDiagnosticSent.WaitFor(5000)));
-    mEnded := Default(TLspCloseInfo);
-    mEnded.ExitKnown := True;
-    mEnded.ExitCode := $C00000FD;
-    mEnded.RuntimeMs := 1234;
-    mEnded.ErrorLines := 3;
-    mClient.CloseWith(mEnded);
-    mDefinition.WaitFor;
-    mDiagnostic.WaitFor;
-    mInfo := mClient.CloseInfo;
-    Assert.IsTrue(mInfo.ExitKnown);
-    Assert.AreEqual(Int64($C00000FD), Int64(mInfo.ExitCode));
-    Assert.AreEqual(Int64(1234), mInfo.RuntimeMs);
-    Assert.AreEqual(3, mInfo.ErrorLines);
-    Assert.AreEqual('textDocument/definition', mInfo.LastMethod);
-    Assert.AreEqual(1, Integer(Length(mInfo.OpenMethods)));
-    Assert.AreEqual('textDocument/definition', mInfo.OpenMethods[0]);
-    // Nur das erste Schließen zählt.
-    mClient.Close;
-    Assert.AreEqual(Int64($C00000FD), Int64(mClient.CloseInfo.ExitCode));
-  finally
-    mDefinition.Free;
-    mDiagnostic.Free;
-    mClient.Free;
-    mDefinitionSent.Free;
-    mDiagnosticSent.Free;
-  end;
-end;
+
 { TLspSessionTests }
 
 procedure TLspSessionTests.WarmUpFirstUse;
@@ -739,6 +808,98 @@ begin
     mMethods.Free;
   end;
 end;
+procedure TLspSessionTests.InitializeAnnouncesPullDiagnosticsAndCountsRefresh;
+var
+  mClient: TLspClient;
+  mSession: TLspSession;
+  mCapabilities: string;
+begin
+  mClient := TLspClient.Create(
+    procedure(const ABytes: TBytes)
+    var
+      Message: TJSONObject;
+      Reply: TBytes;
+    begin
+      Message := Unframe(ABytes);
+      try
+        if Message.GetValue<string>('method', '') = 'initialize' then
+        begin
+          mCapabilities := Message.GetValue<TJSONObject>('params.capabilities').ToJSON;
+          Reply := TLspClient.Frame(Format('{"jsonrpc":"2.0","id":%d,"result":{"capabilities":{}}}',
+            [Message.GetValue<Integer>('id')]));
+          mClient.Receive(Reply, Length(Reply));
+        end;
+      finally
+        Message.Free;
+      end;
+    end);
+  mSession := TLspSession.Create(mClient);
+  try
+    mSession.Initialize;
+    Assert.Contains(mCapabilities, '"diagnostic":{"dynamicRegistration":false');
+    // Seit #648 meldet der Client unter "workspace" auch workspaceFolders; geprüft wird nur refreshSupport.
+    Assert.Contains(mCapabilities, '"diagnostics":{"refreshSupport":true}');
+    Assert.AreEqual(0, mSession.RefreshCount);
+    mClient.Receive(TLspClient.Frame('{"jsonrpc":"2.0","id":"r1","method":"workspace/diagnostic/refresh"}'),
+      Length(TLspClient.Frame('{"jsonrpc":"2.0","id":"r1","method":"workspace/diagnostic/refresh"}')));
+    Assert.AreEqual(1, mSession.RefreshCount);
+  finally
+    mSession.Free;
+    mClient.Free;
+  end;
+end;
+procedure TLspSessionTests.ReadsWorkspaceRun;
+var
+  mResponse: TJSONValue;
+  mRun: TLspWorkspaceRun;
+begin
+  mResponse := TJSONObject.ParseJSONValue('{"items":[],"atlas":{"run":{"serial":3,"active":true,"done":40,' +
+    '"total":90,"skipped":1,"paused":"compile","elapsedMs":1500}}}');
+  try
+    mRun := TLspWorkspaceRun.FromJson(mResponse);
+  finally
+    mResponse.Free;
+  end;
+  Assert.IsTrue(mRun.Known);
+  Assert.AreEqual(3, mRun.Serial);
+  Assert.IsTrue(mRun.Active);
+  Assert.AreEqual(40, mRun.Done);
+  Assert.AreEqual(90, mRun.Total);
+  Assert.AreEqual(1, mRun.Skipped);
+  Assert.AreEqual('compile', mRun.Paused);
+  Assert.AreEqual(Int64(1500), mRun.ElapsedMs);
+  // Ältere Server ohne Laufstand.
+  mResponse := TJSONObject.ParseJSONValue('{"items":[]}');
+  try
+    Assert.IsFalse(TLspWorkspaceRun.FromJson(mResponse).Known);
+  finally
+    mResponse.Free;
+  end;
+  mRun := Default(TLspWorkspaceRun);
+end;
+procedure TLspSessionTests.ReportsProjectGroupChanges;
+var
+  mFolders: TJSONArray;
+  mAdded, mRemoved: TArray<string>;
+begin
+  mFolders := TLspSession.ProjectFolders(['C:\Gruppe\App\App.dproj']);
+  try
+    Assert.AreEqual(1, Integer(mFolders.Count));
+    Assert.AreEqual(TLspSession.PathToUri('C:\Gruppe\App\App.dproj'), mFolders.Items[0].GetValue<string>('uri'));
+    Assert.AreEqual('App', mFolders.Items[0].GetValue<string>('name'));
+  finally
+    mFolders.Free;
+  end;
+  // Groß- und Kleinschreibung zählt nicht; Doppelte nur einmal.
+  TLspSession.ProjectChanges(['C:\G\A.dproj', 'C:\G\B.dproj'], ['c:\g\a.dproj', 'C:\G\C.dproj', 'C:\G\C.dproj'],
+    mAdded, mRemoved);
+  Assert.AreEqual<NativeInt>(1, Length(mAdded));
+  Assert.AreEqual('C:\G\C.dproj', mAdded[0]);
+  Assert.AreEqual<NativeInt>(1, Length(mRemoved));
+  Assert.AreEqual('C:\G\B.dproj', mRemoved[0]);
+  TLspSession.ProjectChanges(['C:\G\A.dproj'], ['C:\G\A.dproj'], mAdded, mRemoved);
+  Assert.AreEqual<NativeInt>(0, Length(mAdded) + Length(mRemoved));
+end;
 procedure TLspSessionTests.ReopensDocumentsOfPreviousSession;
 var
   mClient: TLspClient;
@@ -824,6 +985,7 @@ begin
     mChanges.Free;
   end;
 end;
+
 procedure TLspSessionTests.ReportsWatchedFilesExceptSyncedChanges;
 var
   mClient: TLspClient;
@@ -932,161 +1094,6 @@ begin
     mClient.Free;
   end;
 end;
-procedure TLspSessionTests.ReadsParameterInlayHints;
-var
-  mClient: TLspClient;
-  mSession: TLspSession;
-  mRange: string;
-  mHints: TArray<TAtlasInlayHint>;
-begin
-  mClient := TLspClient.Create(
-    procedure(const ABytes: TBytes)
-    var
-      Message: TJSONObject;
-      Reply: TBytes;
-    begin
-      Message := Unframe(ABytes);
-      try
-        if Message.GetValue<string>('method', '') = 'textDocument/inlayHint' then
-        begin
-          mRange := Message.GetValue<Integer>('params.range.start.line').ToString + '-' +
-            Message.GetValue<Integer>('params.range.end.line').ToString;
-          Reply := TLspClient.Frame(Format('{"jsonrpc":"2.0","id":%d,"result":[' +
-            '{"position":{"line":3,"character":9},"label":"AWert:","kind":2,"paddingRight":true},' +
-            '{"position":{"line":4,"character":2},"label":": Integer","kind":1},' +
-            '{"position":{"line":5,"character":7},"label":[{"value":"AName"},{"value":":"}],"kind":2},' +
-            '{"position":{"line":8,"character":6},"label":"// TKunde.Speichern","paddingLeft":true},' +
-            '{"position":{"line":9,"character":1},"label":"ohne Art"}]}',
-            [Message.GetValue<Integer>('id')]));
-          mClient.Receive(Reply, Length(Reply));
-        end;
-      finally
-        Message.Free;
-      end;
-    end);
-  mSession := TLspSession.Create(mClient);
-  try
-    mHints := mSession.InlayHints('C:\P\A.pas', 2, 9, 1000);
-    // Bis zum Anfang der Zeile nach der letzten, damit sie ganz dabei ist.
-    Assert.AreEqual('2-10', mRange);
-    Assert.AreEqual(4, Integer(Length(mHints)), 'Parameternamen, Typmarke (#453) und Endmarke (#620)');
-    Assert.AreEqual(3, mHints[0].Line);
-    Assert.AreEqual(9, mHints[0].Character);
-    Assert.AreEqual('AWert', mHints[0].Name);
-    Assert.IsFalse(mHints[0].EndLabel);
-    Assert.IsFalse(mHints[0].TypeHint);
-    // Typmarke ohne Doppelpunkt (#453).
-    Assert.IsTrue(mHints[1].TypeHint);
-    Assert.AreEqual('Integer', mHints[1].Name);
-    Assert.AreEqual(4, mHints[1].Line);
-    Assert.AreEqual('AName', mHints[2].Name);
-    Assert.IsFalse(mHints[2].EndLabel);
-    Assert.IsTrue(mHints[3].EndLabel);
-    Assert.AreEqual('TKunde.Speichern', mHints[3].Name);
-    Assert.AreEqual(8, mHints[3].Line);
-  finally
-    mSession.Free;
-    mClient.Free;
-  end;
-end;
-
-type
-  /// <summary>Hält fest, was Client und Sitzung beim applyEdit-Test senden und empfangen.</summary>
-  TApplyEditProbe = class
-  public
-    FClient: TLspClient;
-    FSent: TList<string>;
-    FAnnounced: Boolean;
-    FReceived: TLspWorkspaceEdit;
-    FReply: TLspApplyEditReply;
-  end;
-
-/// <summary>Client, der initialize beantwortet und Antworten des Plugins in der Probe sammelt.</summary>
-function CreateApplyEditClient(const AProbe: TApplyEditProbe): TLspClient;
-begin
-  Result := TLspClient.Create(
-    procedure(const ABytes: TBytes)
-    var
-      mMessage: TJSONObject;
-      mAnswer: TBytes;
-    begin
-      mMessage := Unframe(ABytes);
-      try
-        if mMessage.GetValue<string>('method', '') = 'initialize' then
-        begin
-          AProbe.FAnnounced := mMessage.GetValue<Boolean>('params.capabilities.workspace.applyEdit', False);
-          mAnswer := TLspClient.Frame(Format('{"jsonrpc":"2.0","id":%d,"result":{"capabilities":{}}}',
-            [mMessage.GetValue<Integer>('id')]));
-          AProbe.FClient.Receive(mAnswer, Length(mAnswer));
-        end
-        else if mMessage.GetValue('method') = nil then
-        begin
-          AProbe.FSent.Add(mMessage.ToJSON);
-        end;
-      finally
-        mMessage.Free;
-      end;
-    end);
-end;
-/// <summary>Hängt den applyEdit-Empfang der Sitzung an die Probe.</summary>
-procedure WireApplyEdit(const ASession: TLspSession; const AProbe: TApplyEditProbe);
-begin
-  ASession.OnApplyEdit :=
-    procedure(const AEdit: TLspWorkspaceEdit; const AReply: TLspApplyEditReply)
-    begin
-      AProbe.FReceived := AEdit;
-      AProbe.FReply := AReply;
-    end;
-end;
-procedure TLspSessionTests.AcceptsApplyEditAndRepliesLater;
-var
-  mProbe: TApplyEditProbe;
-  mSession: TLspSession;
-  mIncoming: TBytes;
-begin
-  mProbe := TApplyEditProbe.Create;
-  mProbe.FSent := TList<string>.Create;
-  mProbe.FClient := CreateApplyEditClient(mProbe);
-  mSession := TLspSession.Create(mProbe.FClient);
-  try
-    WireApplyEdit(mSession, mProbe);
-    mSession.Initialize;
-    Assert.IsTrue(mProbe.FAnnounced, 'applyEdit angekündigt');
-    mIncoming := TLspClient.Frame('{"jsonrpc":"2.0","id":7,"method":"workspace/applyEdit","params":{"edit":' +
-      '{"changes":{"file:///c%3A/p/a.pas":[{"range":{"start":{"line":0,"character":0},' +
-      '"end":{"line":0,"character":1}},"newText":"b"}]}}}}');
-    mProbe.FClient.Receive(mIncoming, Length(mIncoming));
-    // Noch keine Antwort: Die kommt erst, wenn die Änderung im Hauptthread übernommen ist.
-    Assert.AreEqual(0, Integer(mProbe.FSent.Count));
-    Assert.AreEqual(1, mProbe.FReceived.EditCount);
-    mProbe.FReply(False, 'gesperrt');
-    Assert.AreEqual(1, Integer(mProbe.FSent.Count));
-    Assert.AreEqual('{"jsonrpc":"2.0","id":7,"result":{"applied":false,"failureReason":"gesperrt"}}',
-      mProbe.FSent[0]);
-    // Andere Anfragen weiter mit null.
-    mIncoming := TLspClient.Frame('{"jsonrpc":"2.0","id":8,"method":"window/workDoneProgress/create","params":{}}');
-    mProbe.FClient.Receive(mIncoming, Length(mIncoming));
-    Assert.AreEqual('{"jsonrpc":"2.0","id":8,"result":null}', mProbe.FSent[1]);
-  finally
-    // Probe lösen: FReply hält die Antwort-Prozedur der Sitzung, die sonst im Zyklus bliebe.
-    mProbe.FReply := nil;
-    mProbe.FReceived := Default(TLspWorkspaceEdit);
-    mSession.OnApplyEdit := nil;
-    mSession.Free;
-    mProbe.FClient.Free;
-    mProbe.FSent.Free;
-    mProbe.Free;
-  end;
-end;
-/// <summary>Projektkontext C:\P\A.dproj, Debug/Win32 mit DEBUG.</summary>
-function DebugWin32Context: TAtlasProjectContext;
-begin
-  Result := Default(TAtlasProjectContext);
-  Result.Project := 'C:\P\A.dproj';
-  Result.Configuration := 'Debug';
-  Result.Platform := 'Win32';
-  Result.Defines := ['DEBUG'];
-end;
 procedure TLspSessionTests.SendsProjectContextsInInitializeAndOnChange;
 var
   mClient: TLspClient;
@@ -1145,138 +1152,45 @@ begin
     mSent.Free;
   end;
 end;
-procedure TLspSessionTests.ReadsWorkspaceRun;
+procedure TLspSessionTests.AcceptsApplyEditAndRepliesLater;
 var
-  mResponse: TJSONValue;
-  mRun: TLspWorkspaceRun;
-begin
-  mResponse := TJSONObject.ParseJSONValue('{"items":[],"atlas":{"run":{"serial":3,"active":true,"done":40,' +
-    '"total":90,"skipped":1,"paused":"compile","elapsedMs":1500}}}');
-  try
-    mRun := TLspWorkspaceRun.FromJson(mResponse);
-  finally
-    mResponse.Free;
-  end;
-  Assert.IsTrue(mRun.Known);
-  Assert.AreEqual(3, mRun.Serial);
-  Assert.IsTrue(mRun.Active);
-  Assert.AreEqual(40, mRun.Done);
-  Assert.AreEqual(90, mRun.Total);
-  Assert.AreEqual(1, mRun.Skipped);
-  Assert.AreEqual('compile', mRun.Paused);
-  Assert.AreEqual(Int64(1500), mRun.ElapsedMs);
-  // Ältere Server ohne Laufstand.
-  mResponse := TJSONObject.ParseJSONValue('{"items":[]}');
-  try
-    Assert.IsFalse(TLspWorkspaceRun.FromJson(mResponse).Known);
-  finally
-    mResponse.Free;
-  end;
-  mRun := Default(TLspWorkspaceRun);
-end;
-procedure TLspSessionTests.InitializeAnnouncesPullDiagnosticsAndCountsRefresh;
-var
-  mClient: TLspClient;
+  mProbe: TApplyEditProbe;
   mSession: TLspSession;
-  mCapabilities: string;
+  mIncoming: TBytes;
 begin
-  mClient := TLspClient.Create(
-    procedure(const ABytes: TBytes)
-    var
-      Message: TJSONObject;
-      Reply: TBytes;
-    begin
-      Message := Unframe(ABytes);
-      try
-        if Message.GetValue<string>('method', '') = 'initialize' then
-        begin
-          mCapabilities := Message.GetValue<TJSONObject>('params.capabilities').ToJSON;
-          Reply := TLspClient.Frame(Format('{"jsonrpc":"2.0","id":%d,"result":{"capabilities":{}}}',
-            [Message.GetValue<Integer>('id')]));
-          mClient.Receive(Reply, Length(Reply));
-        end;
-      finally
-        Message.Free;
-      end;
-    end);
-  mSession := TLspSession.Create(mClient);
+  mProbe := TApplyEditProbe.Create;
+  mProbe.FSent := TList<string>.Create;
+  mProbe.FClient := CreateApplyEditClient(mProbe);
+  mSession := TLspSession.Create(mProbe.FClient);
   try
+    WireApplyEdit(mSession, mProbe);
     mSession.Initialize;
-    Assert.Contains(mCapabilities, '"diagnostic":{"dynamicRegistration":false');
-    // Seit #648 meldet der Client unter "workspace" auch workspaceFolders; geprüft wird nur refreshSupport.
-    Assert.Contains(mCapabilities, '"diagnostics":{"refreshSupport":true}');
-    Assert.AreEqual(0, mSession.RefreshCount);
-    mClient.Receive(TLspClient.Frame('{"jsonrpc":"2.0","id":"r1","method":"workspace/diagnostic/refresh"}'),
-      Length(TLspClient.Frame('{"jsonrpc":"2.0","id":"r1","method":"workspace/diagnostic/refresh"}')));
-    Assert.AreEqual(1, mSession.RefreshCount);
+    Assert.IsTrue(mProbe.FAnnounced, 'applyEdit angekündigt');
+    mIncoming := TLspClient.Frame('{"jsonrpc":"2.0","id":7,"method":"workspace/applyEdit","params":{"edit":' +
+      '{"changes":{"file:///c%3A/p/a.pas":[{"range":{"start":{"line":0,"character":0},' +
+      '"end":{"line":0,"character":1}},"newText":"b"}]}}}}');
+    mProbe.FClient.Receive(mIncoming, Length(mIncoming));
+    // Noch keine Antwort: Die kommt erst, wenn die Änderung im Hauptthread übernommen ist.
+    Assert.AreEqual(0, Integer(mProbe.FSent.Count));
+    Assert.AreEqual(1, mProbe.FReceived.EditCount);
+    mProbe.FReply(False, 'gesperrt');
+    Assert.AreEqual(1, Integer(mProbe.FSent.Count));
+    Assert.AreEqual('{"jsonrpc":"2.0","id":7,"result":{"applied":false,"failureReason":"gesperrt"}}',
+      mProbe.FSent[0]);
+    // Andere Anfragen weiter mit null.
+    mIncoming := TLspClient.Frame('{"jsonrpc":"2.0","id":8,"method":"window/workDoneProgress/create","params":{}}');
+    mProbe.FClient.Receive(mIncoming, Length(mIncoming));
+    Assert.AreEqual('{"jsonrpc":"2.0","id":8,"result":null}', mProbe.FSent[1]);
   finally
+    // Probe lösen: FReply hält die Antwort-Prozedur der Sitzung, die sonst im Zyklus bliebe.
+    mProbe.FReply := nil;
+    mProbe.FReceived := Default(TLspWorkspaceEdit);
+    mSession.OnApplyEdit := nil;
     mSession.Free;
-    mClient.Free;
+    mProbe.FClient.Free;
+    mProbe.FSent.Free;
+    mProbe.Free;
   end;
-end;
-procedure TLspSessionTests.WrapsServerSettings;
-var
-  mParams: TJSONObject;
-begin
-  // Wie didChangeConfiguration aus VS Code: settings.atlas (#652).
-  mParams := TLspSession.SettingsParams('{"index":{"libraryPaths":true}}');
-  try
-    Assert.IsTrue(mParams.GetValue<Boolean>('settings.atlas.index.libraryPaths'));
-  finally
-    mParams.Free;
-  end;
-  mParams := TLspSession.SettingsParams('kein JSON');
-  try
-    Assert.AreEqual('{"settings":{"atlas":{}}}', mParams.ToJSON);
-  finally
-    mParams.Free;
-  end;
-end;
-procedure TLspSessionTests.ReadsShowMessageParams;
-var
-  mParams: TJSONValue;
-  mMessageType: Integer;
-  mText: string;
-begin
-  // Hinweis auf gemischte Kodierungen kommt als window/showMessage (#121).
-  mParams := TJSONObject.ParseJSONValue('{"type": 2, "message": "Gemischte Kodierungen"}');
-  try
-    Assert.IsTrue(TLspSession.ShowMessageParams(mParams, mMessageType, mText));
-    Assert.AreEqual(2, mMessageType);
-    Assert.AreEqual('Gemischte Kodierungen', mText);
-  finally
-    mParams.Free;
-  end;
-  mParams := TJSONObject.ParseJSONValue('{"type": 1}');
-  try
-    Assert.IsFalse(TLspSession.ShowMessageParams(mParams, mMessageType, mText));
-  finally
-    mParams.Free;
-  end;
-  Assert.IsFalse(TLspSession.ShowMessageParams(nil, mMessageType, mText));
-end;
-procedure TLspSessionTests.ReportsProjectGroupChanges;
-var
-  mFolders: TJSONArray;
-  mAdded, mRemoved: TArray<string>;
-begin
-  mFolders := TLspSession.ProjectFolders(['C:\Gruppe\App\App.dproj']);
-  try
-    Assert.AreEqual(1, Integer(mFolders.Count));
-    Assert.AreEqual(TLspSession.PathToUri('C:\Gruppe\App\App.dproj'), mFolders.Items[0].GetValue<string>('uri'));
-    Assert.AreEqual('App', mFolders.Items[0].GetValue<string>('name'));
-  finally
-    mFolders.Free;
-  end;
-  // Groß- und Kleinschreibung zählt nicht; Doppelte nur einmal.
-  TLspSession.ProjectChanges(['C:\G\A.dproj', 'C:\G\B.dproj'], ['c:\g\a.dproj', 'C:\G\C.dproj', 'C:\G\C.dproj'],
-    mAdded, mRemoved);
-  Assert.AreEqual<NativeInt>(1, Length(mAdded));
-  Assert.AreEqual('C:\G\C.dproj', mAdded[0]);
-  Assert.AreEqual<NativeInt>(1, Length(mRemoved));
-  Assert.AreEqual('C:\G\B.dproj', mRemoved[0]);
-  TLspSession.ProjectChanges(['C:\G\A.dproj'], ['C:\G\A.dproj'], mAdded, mRemoved);
-  Assert.AreEqual<NativeInt>(0, Length(mAdded) + Length(mRemoved));
 end;
 procedure TLspSessionTests.FreesApplyEditIdWithoutReply;
 var
@@ -1342,110 +1256,62 @@ begin
     mSent.Free;
   end;
 end;
-{ TLspClientTests (Obergrenzen) }
-
-procedure TLspClientTests.RejectsOversizedContentLength;
+procedure TLspSessionTests.ReadsParameterInlayHints;
 var
   mClient: TLspClient;
-  mIncoming: TBytes;
+  mSession: TLspSession;
+  mRange: string;
+  mHints: TArray<TAtlasInlayHint>;
 begin
-  mClient := TLspClient.Create(
-    procedure(const ABytes: TBytes)
-    begin
-    end);
-  try
-    mIncoming := TEncoding.UTF8.GetBytes('Content-Length: 300000000'#13#10#13#10'{');
-    Assert.WillRaise(
-      procedure
-      begin
-        mClient.Receive(mIncoming, Length(mIncoming));
-      end, ELspClientError);
-  finally
-    mClient.Free;
-  end;
-end;
-procedure TLspClientTests.RejectsHeaderWithoutEnd;
-var
-  mClient: TLspClient;
-  mIncoming: TBytes;
-begin
-  mClient := TLspClient.Create(
-    procedure(const ABytes: TBytes)
-    begin
-    end);
-  try
-    mIncoming := TEncoding.UTF8.GetBytes(StringOfChar('x', 9000));
-    Assert.WillRaise(
-      procedure
-      begin
-        mClient.Receive(mIncoming, Length(mIncoming));
-      end, ELspClientError);
-  finally
-    mClient.Free;
-  end;
-end;
-procedure TLspClientTests.AcceptsMessageAtHeaderLimit;
-const
-  cBody = '{"jsonrpc":"2.0","method":"window/logMessage","params":{"type":3}}';
-var
-  mClient: TLspClient;
-  mSeen: TList<string>;
-  mHeader: string;
-  mIncoming: TBytes;
-begin
-  mSeen := TList<string>.Create;
-  mClient := TLspClient.Create(
-    procedure(const ABytes: TBytes)
-    begin
-    end);
-  try
-    mClient.OnServerMessage :=
-      procedure(const AMethod: string; const AParams: TJSONValue)
-      begin
-        mSeen.Add(AMethod);
-      end;
-    // Kopf knapp unter der Grenze: ein langes Füllfeld vor Content-Length.
-    mHeader := 'X-Fill: ' + StringOfChar('a', TLspClient.cMaxHeaderLength - 40) + #13#10 +
-      'Content-Length: ' + IntToStr(Length(cBody)) + #13#10#13#10;
-    Assert.IsTrue(Length(mHeader) - 4 <= TLspClient.cMaxHeaderLength, 'Kopf innerhalb der Grenze');
-    mIncoming := TEncoding.UTF8.GetBytes(mHeader + cBody);
-    mClient.Receive(mIncoming, Length(mIncoming));
-    Assert.AreEqual(1, Integer(mSeen.Count));
-    Assert.AreEqual('window/logMessage', mSeen[0]);
-  finally
-    mClient.Free;
-    mSeen.Free;
-  end;
-end;
-/// <summary>Client, der je Methode mit AReplies[Methode] antwortet und die Parameter in ASeen sammelt.</summary>
-function CannedClient(const AReplies: TDictionary<string, string>; ASeen: TStrings): TLspClient;
-var
-  mClient: TLspClient;
-begin
-  mClient := nil;
   mClient := TLspClient.Create(
     procedure(const ABytes: TBytes)
     var
       Message: TJSONObject;
       Reply: TBytes;
-      Method, Answer: string;
     begin
       Message := Unframe(ABytes);
       try
-        Method := Message.GetValue<string>('method', '');
-        if not AReplies.TryGetValue(Method, Answer) or (Message.GetValue('id') = nil) then
+        if Message.GetValue<string>('method', '') = 'textDocument/inlayHint' then
         begin
-          Exit;
+          mRange := Message.GetValue<Integer>('params.range.start.line').ToString + '-' +
+            Message.GetValue<Integer>('params.range.end.line').ToString;
+          Reply := TLspClient.Frame(Format('{"jsonrpc":"2.0","id":%d,"result":[' +
+            '{"position":{"line":3,"character":9},"label":"AWert:","kind":2,"paddingRight":true},' +
+            '{"position":{"line":4,"character":2},"label":": Integer","kind":1},' +
+            '{"position":{"line":5,"character":7},"label":[{"value":"AName"},{"value":":"}],"kind":2},' +
+            '{"position":{"line":8,"character":6},"label":"// TKunde.Speichern","paddingLeft":true},' +
+            '{"position":{"line":9,"character":1},"label":"ohne Art"}]}',
+            [Message.GetValue<Integer>('id')]));
+          mClient.Receive(Reply, Length(Reply));
         end;
-        ASeen.Add(Method + ' ' + Message.GetValue('params').ToJSON);
-        Reply := TLspClient.Frame(Format('{"jsonrpc":"2.0","id":%d,"result":%s}',
-          [Message.GetValue<Integer>('id'), Answer]));
-        mClient.Receive(Reply, Length(Reply));
       finally
         Message.Free;
       end;
     end);
-  Result := mClient;
+  mSession := TLspSession.Create(mClient);
+  try
+    mHints := mSession.InlayHints('C:\P\A.pas', 2, 9, 1000);
+    // Bis zum Anfang der Zeile nach der letzten, damit sie ganz dabei ist.
+    Assert.AreEqual('2-10', mRange);
+    Assert.AreEqual(4, Integer(Length(mHints)), 'Parameternamen, Typmarke (#453) und Endmarke (#620)');
+    Assert.AreEqual(3, mHints[0].Line);
+    Assert.AreEqual(9, mHints[0].Character);
+    Assert.AreEqual('AWert', mHints[0].Name);
+    Assert.IsFalse(mHints[0].EndLabel);
+    Assert.IsFalse(mHints[0].TypeHint);
+    // Typmarke ohne Doppelpunkt (#453).
+    Assert.IsTrue(mHints[1].TypeHint);
+    Assert.AreEqual('Integer', mHints[1].Name);
+    Assert.AreEqual(4, mHints[1].Line);
+    Assert.AreEqual('AName', mHints[2].Name);
+    Assert.IsFalse(mHints[2].EndLabel);
+    Assert.IsTrue(mHints[3].EndLabel);
+    Assert.AreEqual('TKunde.Speichern', mHints[3].Name);
+    Assert.AreEqual(8, mHints[3].Line);
+  finally
+    mSession.Free;
+    mClient.Free;
+  end;
 end;
 procedure TLspSessionTests.ReadsImplementationsAndSymbols;
 var
@@ -1550,6 +1416,101 @@ begin
     mClient.Free;
     mSeen.Free;
     mReplies.Free;
+  end;
+end;
+{ TLspClientTests (Obergrenzen) }
+
+procedure TLspClientTests.RejectsHeaderWithoutEnd;
+var
+  mClient: TLspClient;
+  mIncoming: TBytes;
+begin
+  mClient := TLspClient.Create(
+    procedure(const ABytes: TBytes)
+    begin
+    end);
+  try
+    mIncoming := TEncoding.UTF8.GetBytes(StringOfChar('x', 9000));
+    Assert.WillRaise(
+      procedure
+      begin
+        mClient.Receive(mIncoming, Length(mIncoming));
+      end, ELspClientError);
+  finally
+    mClient.Free;
+  end;
+end;
+procedure TLspClientTests.AcceptsMessageAtHeaderLimit;
+const
+  cBody = '{"jsonrpc":"2.0","method":"window/logMessage","params":{"type":3}}';
+var
+  mClient: TLspClient;
+  mSeen: TList<string>;
+  mHeader: string;
+  mIncoming: TBytes;
+begin
+  mSeen := TList<string>.Create;
+  mClient := TLspClient.Create(
+    procedure(const ABytes: TBytes)
+    begin
+    end);
+  try
+    mClient.OnServerMessage :=
+      procedure(const AMethod: string; const AParams: TJSONValue)
+      begin
+        mSeen.Add(AMethod);
+      end;
+    // Kopf knapp unter der Grenze: ein langes Füllfeld vor Content-Length.
+    mHeader := 'X-Fill: ' + StringOfChar('a', TLspClient.cMaxHeaderLength - 40) + #13#10 +
+      'Content-Length: ' + IntToStr(Length(cBody)) + #13#10#13#10;
+    Assert.IsTrue(Length(mHeader) - 4 <= TLspClient.cMaxHeaderLength, 'Kopf innerhalb der Grenze');
+    mIncoming := TEncoding.UTF8.GetBytes(mHeader + cBody);
+    mClient.Receive(mIncoming, Length(mIncoming));
+    Assert.AreEqual(1, Integer(mSeen.Count));
+    Assert.AreEqual('window/logMessage', mSeen[0]);
+  finally
+    mClient.Free;
+    mSeen.Free;
+  end;
+end;
+procedure TLspClientTests.TimingNamesExecutedCommand;
+var
+  mClient: TLspClient;
+  mTiming: TAtlasRequestTiming;
+  mNames: string;
+begin
+  mClient := nil;
+  mClient := TLspClient.Create(
+    procedure(const ABytes: TBytes)
+    var
+      mRequest: TJSONObject;
+      mId: Integer;
+      mReply: TBytes;
+    begin
+      mRequest := Unframe(ABytes);
+      try
+        mId := mRequest.GetValue<Integer>('id');
+      finally
+        mRequest.Free;
+      end;
+      mReply := TLspClient.Frame(Format('{"jsonrpc":"2.0","id":%d,"result":null}', [mId]));
+      mClient.Receive(mReply, Length(mReply));
+    end);
+  TAtlasPluginTimings.Shared.Reset;
+  TAtlasPluginTimings.Enabled := True;
+  try
+    mClient.Request('workspace/executeCommand',
+      TJSONObject.ParseJSONValue('{"command":"atlas.server.status","arguments":[]}'), 1000).Free;
+    mNames := '';
+    for mTiming in TAtlasPluginTimings.Shared.Snapshot.Requests do
+    begin
+      mNames := mNames + mTiming.Method + '|';
+    end;
+    Assert.AreEqual('workspace/executeCommand atlas.server.status|', mNames);
+  finally
+    TAtlasPluginTimings.Enabled := False;
+    TAtlasPluginTimings.Shared.Reset;
+    mClient.Free;
   end;
 end;
 procedure TLspSessionTests.ReadsCodeActionsAndRunsCommands;
@@ -1763,6 +1724,47 @@ begin
   begin
     Assert.AreEqual(mIndex, TLspSession.ColumnToIndex(mLine, TLspSession.IndexToColumn(mLine, mIndex, 4), 4));
   end;
+end;
+procedure TLspSessionTests.WrapsServerSettings;
+var
+  mParams: TJSONObject;
+begin
+  // Wie didChangeConfiguration aus VS Code: settings.atlas (#652).
+  mParams := TLspSession.SettingsParams('{"index":{"libraryPaths":true}}');
+  try
+    Assert.IsTrue(mParams.GetValue<Boolean>('settings.atlas.index.libraryPaths'));
+  finally
+    mParams.Free;
+  end;
+  mParams := TLspSession.SettingsParams('kein JSON');
+  try
+    Assert.AreEqual('{"settings":{"atlas":{}}}', mParams.ToJSON);
+  finally
+    mParams.Free;
+  end;
+end;
+procedure TLspSessionTests.ReadsShowMessageParams;
+var
+  mParams: TJSONValue;
+  mMessageType: Integer;
+  mText: string;
+begin
+  // Hinweis auf gemischte Kodierungen kommt als window/showMessage (#121).
+  mParams := TJSONObject.ParseJSONValue('{"type": 2, "message": "Gemischte Kodierungen"}');
+  try
+    Assert.IsTrue(TLspSession.ShowMessageParams(mParams, mMessageType, mText));
+    Assert.AreEqual(2, mMessageType);
+    Assert.AreEqual('Gemischte Kodierungen', mText);
+  finally
+    mParams.Free;
+  end;
+  mParams := TJSONObject.ParseJSONValue('{"type": 1}');
+  try
+    Assert.IsFalse(TLspSession.ShowMessageParams(mParams, mMessageType, mText));
+  finally
+    mParams.Free;
+  end;
+  Assert.IsFalse(TLspSession.ShowMessageParams(nil, mMessageType, mText));
 end;
 initialization
   TDUnitX.RegisterTestFixture(TLspClientTests);

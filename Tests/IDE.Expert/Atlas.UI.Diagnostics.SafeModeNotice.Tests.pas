@@ -37,6 +37,8 @@ uses
   Atlas.UI.Diagnostics.Strings,
   Atlas.UI.Diagnostics.SafeModeNotice;
 
+{ TAtlasSafeModeNoticeTests }
+
 procedure TAtlasSafeModeNoticeTests.WarmUpFirstUse;
 begin
   AskOffersSafeNormalDetails;

@@ -184,18 +184,6 @@ const
     'end;' + cLB +
     'end.';
 
-procedure TExpressionTypesTests.Setup;
-begin
-  FIndex := TSymbolIndex.Create;
-  FIndex.AddUnit(TIndexExtractor.ExtractText(cUnitTypes, cTypesFile, nil));
-  FIndex.AddUnit(TIndexExtractor.ExtractText(cUnitMain, cMainFile, nil));
-end;
-
-procedure TExpressionTypesTests.TearDown;
-begin
-  FIndex := nil;
-end;
-
 function Describe(const AIndex: ISymbolIndex; AStart, AEnd: Integer;
   const AOptions: TExpressionTypeOptions): TExpressionTypeInfo;
 var
@@ -226,14 +214,11 @@ begin
   Result := Pos(AText, cUnitMain, Pos('begin' + cLB + '  Price', cUnitMain)) - 1;
 end;
 
-function TExpressionTypesTests.TypeIn(const AContext, AInner: string): TExpressionTypeInfo;
-var
-  mStart: Integer;
+{ TExpressionTypesTests }
+
+function TExpressionTypesTests.TypeOf(const AExpression: string): TExpressionTypeInfo;
 begin
-  mStart := BodyPos(AContext);
-  Assert.IsTrue(mStart >= 0, AContext);
-  mStart := mStart + Pos(AInner, AContext) - 1;
-  Result := Describe(FIndex, mStart, mStart + Length(AInner), TExpressionTypeOptions.Default);
+  Result := TypeOf(AExpression, TExpressionTypeOptions.Default);
 end;
 
 function TExpressionTypesTests.TypeOf(const AExpression: string;
@@ -246,9 +231,14 @@ begin
   Result := Describe(FIndex, mStart, mStart + Length(AExpression), AOptions);
 end;
 
-function TExpressionTypesTests.TypeOf(const AExpression: string): TExpressionTypeInfo;
+function TExpressionTypesTests.TypeIn(const AContext, AInner: string): TExpressionTypeInfo;
+var
+  mStart: Integer;
 begin
-  Result := TypeOf(AExpression, TExpressionTypeOptions.Default);
+  mStart := BodyPos(AContext);
+  Assert.IsTrue(mStart >= 0, AContext);
+  mStart := mStart + Pos(AInner, AContext) - 1;
+  Result := Describe(FIndex, mStart, mStart + Length(AInner), TExpressionTypeOptions.Default);
 end;
 
 function TExpressionTypesTests.Expanded(const AContext, AInner: string; ASteps: Integer): string;
@@ -295,6 +285,18 @@ begin
       Result := Result + '!';
     end;
   end;
+end;
+
+procedure TExpressionTypesTests.Setup;
+begin
+  FIndex := TSymbolIndex.Create;
+  FIndex.AddUnit(TIndexExtractor.ExtractText(cUnitTypes, cTypesFile, nil));
+  FIndex.AddUnit(TIndexExtractor.ExtractText(cUnitMain, cMainFile, nil));
+end;
+
+procedure TExpressionTypesTests.TearDown;
+begin
+  FIndex := nil;
 end;
 
 procedure TExpressionTypesTests.MixedArithmetic;

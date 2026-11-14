@@ -34,6 +34,8 @@ begin
   Result := TJSONObject.ParseJSONValue(AJson) as TJSONObject;
 end;
 
+{ TLspApplyEditTests }
+
 procedure TLspApplyEditTests.ChecksClientCapability;
 var
   mParams: TJSONObject;
@@ -84,6 +86,33 @@ begin
   end;
 end;
 
+procedure TLspApplyEditTests.ReadsClientAnswer;
+
+  function Read(const AJson: string; out AReason: string): Boolean;
+  var
+    mResponse: TJSONObject;
+  begin
+    mResponse := Parse(AJson);
+    try
+      Result := TLspApplyEdit.ReadResult(mResponse, AReason);
+    finally
+      mResponse.Free;
+    end;
+  end;
+
+var
+  mReason: string;
+begin
+  Assert.IsTrue(Read('{"jsonrpc":"2.0","id":"a","result":{"applied":true}}', mReason));
+  Assert.AreEqual('', mReason);
+  Assert.IsFalse(Read('{"jsonrpc":"2.0","id":"a","result":{"applied":false,"failureReason":"schreibgeschützt"}}',
+    mReason));
+  Assert.AreEqual('schreibgeschützt', mReason);
+  Assert.IsFalse(Read('{"jsonrpc":"2.0","id":"a","error":{"code":-32601,"message":"unbekannt"}}', mReason));
+  Assert.AreEqual('unbekannt', mReason);
+  Assert.IsFalse(TLspApplyEdit.ReadResult(nil, mReason));
+end;
+
 procedure TLspApplyEditTests.CreatesAndReplacesFiles;
 var
   mEdit, mItem: TJSONObject;
@@ -110,33 +139,6 @@ begin
   finally
     mEdit.Free;
   end;
-end;
-
-procedure TLspApplyEditTests.ReadsClientAnswer;
-
-  function Read(const AJson: string; out AReason: string): Boolean;
-  var
-    mResponse: TJSONObject;
-  begin
-    mResponse := Parse(AJson);
-    try
-      Result := TLspApplyEdit.ReadResult(mResponse, AReason);
-    finally
-      mResponse.Free;
-    end;
-  end;
-
-var
-  mReason: string;
-begin
-  Assert.IsTrue(Read('{"jsonrpc":"2.0","id":"a","result":{"applied":true}}', mReason));
-  Assert.AreEqual('', mReason);
-  Assert.IsFalse(Read('{"jsonrpc":"2.0","id":"a","result":{"applied":false,"failureReason":"schreibgeschützt"}}',
-    mReason));
-  Assert.AreEqual('schreibgeschützt', mReason);
-  Assert.IsFalse(Read('{"jsonrpc":"2.0","id":"a","error":{"code":-32601,"message":"unbekannt"}}', mReason));
-  Assert.AreEqual('unbekannt', mReason);
-  Assert.IsFalse(TLspApplyEdit.ReadResult(nil, mReason));
 end;
 
 initialization

@@ -43,6 +43,8 @@ uses
   Shell.Composition.ProtocolWiring;
 
 
+{ TShellPartsTests }
+
 procedure TShellPartsTests.Setup;
 begin
   FParts := TShellParts.Create;

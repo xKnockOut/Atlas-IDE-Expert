@@ -599,30 +599,11 @@ end;
 
 // FNV-1a läuft gewollt über (#1980: Tests prüfen Überläufe).
 {$IFOPT Q+}{$DEFINE ATLAS_HASH_UEBERLAUF}{$Q-}{$ENDIF}
-class function TFakeTrust.HashOf(const AText: string): string;
-var
-  mHash: Cardinal;
-  mChar: Char;
-  mIndex: Integer;
-begin
-  mHash := 2166136261;
-  for mChar in AText do
-  begin
-    // Cardinal(...): FPC rechnet das Produkt in Int64; ohne Umwandlung meldet die Bereichsprüfung (-Cr) den Überlauf.
-    mHash := Cardinal((mHash xor Ord(mChar)) * 16777619);
-  end;
-  Result := '';
-  for mIndex := 1 to 8 do
-  begin
-    Result := Result + LowerCase(IntToHex(mHash xor Cardinal(mIndex), 8));
-  end;
-end;
-{$IFDEF ATLAS_HASH_UEBERLAUF}{$Q+}{$UNDEF ATLAS_HASH_UEBERLAUF}{$ENDIF}
-
 function TFakeTrust.Sha256(const AFileName: string): string;
 begin
   Result := HashOf(FFiles.ReadText(AFileName));
 end;
+{$IFDEF ATLAS_HASH_UEBERLAUF}{$Q+}{$UNDEF ATLAS_HASH_UEBERLAUF}{$ENDIF}
 
 function TFakeTrust.Signature(const AFileName: string): TUpdateSignature;
 begin
@@ -642,6 +623,25 @@ begin
   for mFile in FFiles.FilesIn(ADirectory) do
   begin
     Sign(ADirectory + '\' + mFile, ASubject);
+  end;
+end;
+
+class function TFakeTrust.HashOf(const AText: string): string;
+var
+  mHash: Cardinal;
+  mChar: Char;
+  mIndex: Integer;
+begin
+  mHash := 2166136261;
+  for mChar in AText do
+  begin
+    // Cardinal(...): FPC rechnet das Produkt in Int64; ohne Umwandlung meldet die Bereichsprüfung (-Cr) den Überlauf.
+    mHash := Cardinal((mHash xor Ord(mChar)) * 16777619);
+  end;
+  Result := '';
+  for mIndex := 1 to 8 do
+  begin
+    Result := Result + LowerCase(IntToHex(mHash xor Cardinal(mIndex), 8));
   end;
 end;
 

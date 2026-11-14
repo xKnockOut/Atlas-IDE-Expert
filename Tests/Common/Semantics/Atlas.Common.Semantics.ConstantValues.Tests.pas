@@ -58,6 +58,8 @@ type
     function Status(const AName: string; out AValue: Int64): TOrdinalStatus;
   end;
 
+{ TFixture }
+
 constructor TFixture.Create(const ASource: string; const AIndex: ISymbolIndex);
 begin
   inherited Create;

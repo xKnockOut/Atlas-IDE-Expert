@@ -105,6 +105,8 @@ begin
     end;
 end;
 
+{ TAtlasGuardTests }
+
 procedure TAtlasGuardTests.WarmUpFirstUse;
 begin
   Setup;

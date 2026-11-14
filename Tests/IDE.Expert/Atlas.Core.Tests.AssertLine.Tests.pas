@@ -102,6 +102,8 @@ begin
   Result.StackTrace := AStackTrace;
 end;
 
+{ TAtlasAssertLineTests }
+
 procedure TAtlasAssertLineTests.Setup;
 begin
   FLines := Source;

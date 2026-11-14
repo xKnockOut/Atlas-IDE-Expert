@@ -147,6 +147,8 @@ begin
   Assert.IsFalse(Convert(AText, AMarker, True, mOutput), mOutput);
 end;
 
+{ TIfCaseTests }
+
 procedure TIfCaseTests.SimpleChainToCase;
 var
   mText: string;

@@ -50,6 +50,8 @@ const
   cMain = 'C:\P\App.dpr';
   cText = 'program App;' + cBreak + 'uses' + cBreak + '  SysUtils;' + cBreak + 'begin' + cBreak + 'end.';
 
+{ TLspLeakSetupTests }
+
 procedure TLspLeakSetupTests.Setup;
 begin
   FLoaded := True;

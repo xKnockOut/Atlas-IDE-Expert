@@ -29,6 +29,8 @@ uses
   System.SysUtils,
   Atlas.UI.Settings.Overview;
 
+{ TAtlasSettingsOverviewTests }
+
 procedure TAtlasSettingsOverviewTests.WarmUp;
 var
   mPage: TAtlasSettingsOverview;

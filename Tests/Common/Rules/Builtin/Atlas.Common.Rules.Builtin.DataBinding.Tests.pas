@@ -75,6 +75,8 @@ const
     '  object dsA: TDataSource'#10'    DataSet = tblA'#10'  end'#10 +
     '  object dsB: TDataSource'#10'    DataSet = tblB'#10'  end'#10;
 
+{ TDataBindingRulesTests }
+
 procedure TDataBindingRulesTests.CircularDataSourceReports;
 var
   mFindings: TArray<TRuleFinding>;

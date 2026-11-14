@@ -24,6 +24,8 @@ uses
   System.Generics.Collections,
   Atlas.Common.Pascal.PureRoutines;
 
+{ TPureRoutinesTests }
+
 procedure TPureRoutinesTests.KnowsPureRoutines;
 begin
   Assert.IsTrue(TPureRoutines.IsPure('Format'));

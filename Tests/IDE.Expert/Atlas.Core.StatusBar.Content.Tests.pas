@@ -151,6 +151,8 @@ begin
   Result.Methods := Result.Methods + [mMethod];
 end;
 
+{ TAtlasStatusBarContentTests }
+
 procedure TAtlasStatusBarContentTests.CountsLikeProblemsWindow;
 var
   mCounts: TAtlasStatusCounts;

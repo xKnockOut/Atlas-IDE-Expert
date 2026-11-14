@@ -74,6 +74,8 @@ type
     property Calls: string read FLog;
   end;
 
+{ TAtlasPreviewShell }
+
 function TAtlasPreviewShell.Open(const ATarget: string): Boolean;
 begin
   FLog := FLog + 'open:' + ATarget + ';';

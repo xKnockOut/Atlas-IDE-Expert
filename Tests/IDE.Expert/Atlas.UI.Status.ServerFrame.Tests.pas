@@ -76,6 +76,8 @@ begin
   Result.Requests := [mRequest, mRequest];
 end;
 
+{ TAtlasServerFrameTests }
+
 procedure TAtlasServerFrameTests.Setup;
 begin
   FLanguage := TAtlasStrings.Language;

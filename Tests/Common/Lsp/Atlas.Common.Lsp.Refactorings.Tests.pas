@@ -249,27 +249,6 @@ end;
 
 { TLspRefactoringsTests }
 
-procedure TLspRefactoringsTests.WarmUpFirstUse;
-begin
-  Setup;
-  try
-    CompletionOffersWithItem;
-  finally
-    TearDown;
-  end;
-end;
-
-procedure TLspRefactoringsTests.Setup;
-begin
-  FIndex := TSymbolIndex.Create;
-  FIndex.AddUnit(TIndexExtractor.ExtractText(cUnitHaupt, cHauptFile, nil));
-end;
-
-procedure TLspRefactoringsTests.TearDown;
-begin
-  FIndex := nil;
-end;
-
 function TLspRefactoringsTests.Context: TRefactoringContext;
 begin
   Result := Default(TRefactoringContext);
@@ -325,6 +304,27 @@ begin
   finally
     mTree.Free;
   end;
+end;
+
+procedure TLspRefactoringsTests.WarmUpFirstUse;
+begin
+  Setup;
+  try
+    CompletionOffersWithItem;
+  finally
+    TearDown;
+  end;
+end;
+
+procedure TLspRefactoringsTests.Setup;
+begin
+  FIndex := TSymbolIndex.Create;
+  FIndex.AddUnit(TIndexExtractor.ExtractText(cUnitHaupt, cHauptFile, nil));
+end;
+
+procedure TLspRefactoringsTests.TearDown;
+begin
+  FIndex := nil;
 end;
 
 procedure TLspRefactoringsTests.CompletesCaseOfEnumeration;

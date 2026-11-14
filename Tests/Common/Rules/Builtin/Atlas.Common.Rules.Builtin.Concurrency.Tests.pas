@@ -167,6 +167,8 @@ begin
   Result := 'unit U;'#10'interface'#10 + cThreadTypes + 'implementation'#10 + AImplementation + #10'end.';
 end;
 
+{ TConcurrencyRulesTests }
+
 procedure TConcurrencyRulesTests.VclAccessInExecuteReports;
 var
   mFindings: TArray<TRuleFinding>;
@@ -267,6 +269,18 @@ begin
   TRuleAssert.Reports(TLockWithoutFinallyRule.Create, Routine('  EnterCriticalSection(FCS);'#10'  DoWork;'));
 end;
 
+procedure TConcurrencyRulesTests.OwnLockPairFromOptions;
+const
+  cConfig = '{ "rules": { "lock-without-finally": { "lockPairs": [["Grab", "Drop"]] } } }';
+begin
+  Assert.AreEqual(1, Integer(Length(TRuleAssert.Findings(TLockWithoutFinallyRule.Create,
+    Routine('  FPool.Grab;'#10'  DoWork;'#10'  FPool.Drop;'), cConfig))));
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TLockWithoutFinallyRule.Create,
+    Routine('  FPool.Grab;'#10'  try'#10'    DoWork;'#10'  finally'#10'    FPool.Drop;'#10'  end;'), cConfig))));
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TLockWithoutFinallyRule.Create,
+    Routine('  FPool.Grab;'#10'  DoWork;')))), 'ohne Option keine Sperre');
+end;
+
 procedure TConcurrencyRulesTests.LockLookalikesAndWrappersAreSilent;
 begin
   // Lokale Routine Enter ist keine Sperre (Rahmenstapel wie in DeclaredTypes).
@@ -289,18 +303,6 @@ begin
     '  end;'));
   // Ein fremdes Programm-Enter ohne Empfänger bleibt eine Sperre.
   TRuleAssert.Reports(TLockWithoutFinallyRule.Create, Routine('  EnterCriticalSection(FCS);'#10'  DoWork;'));
-end;
-
-procedure TConcurrencyRulesTests.OwnLockPairFromOptions;
-const
-  cConfig = '{ "rules": { "lock-without-finally": { "lockPairs": [["Grab", "Drop"]] } } }';
-begin
-  Assert.AreEqual(1, Integer(Length(TRuleAssert.Findings(TLockWithoutFinallyRule.Create,
-    Routine('  FPool.Grab;'#10'  DoWork;'#10'  FPool.Drop;'), cConfig))));
-  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TLockWithoutFinallyRule.Create,
-    Routine('  FPool.Grab;'#10'  try'#10'    DoWork;'#10'  finally'#10'    FPool.Drop;'#10'  end;'), cConfig))));
-  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TLockWithoutFinallyRule.Create,
-    Routine('  FPool.Grab;'#10'  DoWork;')))), 'ohne Option keine Sperre');
 end;
 
 procedure TConcurrencyRulesTests.UseAfterFreeOnTerminateReports;
@@ -409,6 +411,8 @@ begin
   Result := 'unit U;'#10'interface'#10'implementation'#10'procedure Laden(Tabelle: TDataSet);'#10'var'#10 +
     '  SR: TSearchRec;'#10'  F: TextFile;'#10'begin'#10 + ABody + #10'end;'#10'end.';
 end;
+
+{ TConcurrencyPatternRulesTests }
 
 procedure TConcurrencyPatternRulesTests.PairWithoutFinallyIssueExample;
 var

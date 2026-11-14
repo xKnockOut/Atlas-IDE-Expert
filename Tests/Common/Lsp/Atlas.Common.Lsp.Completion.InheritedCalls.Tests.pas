@@ -119,16 +119,7 @@ begin
   end;
 end;
 
-procedure TCompletionInheritedCallsTests.Setup;
-begin
-  FIndex := TSymbolIndex.Create;
-  FIndex.AddUnit(TIndexExtractor.ExtractText(cUnitBasis, cBasisFile, nil));
-end;
-
-procedure TCompletionInheritedCallsTests.TearDown;
-begin
-  FIndex := nil;
-end;
+{ TCompletionInheritedCallsTests }
 
 function TCompletionInheritedCallsTests.CallsAt(const AFind, AReplace: string;
   out ACandidates: TArray<TResolvedSymbol>): TArray<TCompletionItem>;
@@ -164,6 +155,17 @@ begin
     mResolver.Free;
     mTree.Free;
   end;
+end;
+
+procedure TCompletionInheritedCallsTests.Setup;
+begin
+  FIndex := TSymbolIndex.Create;
+  FIndex.AddUnit(TIndexExtractor.ExtractText(cUnitBasis, cBasisFile, nil));
+end;
+
+procedure TCompletionInheritedCallsTests.TearDown;
+begin
+  FIndex := nil;
 end;
 
 procedure TCompletionInheritedCallsTests.ConstructorCallsComeFirst;

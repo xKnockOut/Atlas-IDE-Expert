@@ -89,6 +89,8 @@ begin
   Result := Disabled(AText, ALine, ACode, AScope, '', '');
 end;
 
+{ TDisableWarningTests }
+
 procedure TDisableWarningTests.WarningAroundLine;
 begin
   Assert.AreEqual(StringReplace(cSource, '  Alt;' + #10, '  {$WARN SYMBOL_DEPRECATED OFF}' + #10 + '  Alt;' + #10 +

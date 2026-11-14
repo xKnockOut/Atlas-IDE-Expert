@@ -60,10 +60,14 @@ type
     ThemeCount: Integer;
   end;
 
+{ TProbeDialog }
+
 procedure TProbeDialog.ThemeChanged;
 begin
   Inc(ThemeCount);
 end;
+
+{ TAtlasDialogTests }
 
 procedure TAtlasDialogTests.WarmUpFirstUse;
 var

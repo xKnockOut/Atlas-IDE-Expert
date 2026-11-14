@@ -69,23 +69,6 @@ const
 
 { TAtlasWhyHereTests }
 
-procedure TAtlasWhyHereTests.Setup;
-begin
-  FWhy := TAtlasWhyHere.Create;
-  FTexts := Default(TAtlasWhyHereTexts);
-  FTexts.NotNeeded := 'nicht nötig';
-  FTexts.NotEvaluated := '‹Aufruf›';
-  FTexts.Failed := '?';
-  FTexts.ElseBranch := 'else-Zweig';
-  FTexts.Of_ := 'von';
-end;
-
-procedure TAtlasWhyHereTests.TearDown;
-begin
-  FreeAndNil(FWhy);
-  FTexts := Default(TAtlasWhyHereTexts);
-end;
-
 procedure TAtlasWhyHereTests.Load(const AJson: string);
 var
   mJson: TJSONValue;
@@ -129,6 +112,23 @@ begin
     end;
   end;
   Result := string.Join(',', mOrder);
+end;
+
+procedure TAtlasWhyHereTests.Setup;
+begin
+  FWhy := TAtlasWhyHere.Create;
+  FTexts := Default(TAtlasWhyHereTexts);
+  FTexts.NotNeeded := 'nicht nötig';
+  FTexts.NotEvaluated := '‹Aufruf›';
+  FTexts.Failed := '?';
+  FTexts.ElseBranch := 'else-Zweig';
+  FTexts.Of_ := 'von';
+end;
+
+procedure TAtlasWhyHereTests.TearDown;
+begin
+  FreeAndNil(FWhy);
+  FTexts := Default(TAtlasWhyHereTexts);
 end;
 
 procedure TAtlasWhyHereTests.ReadsAnswerAndArguments;

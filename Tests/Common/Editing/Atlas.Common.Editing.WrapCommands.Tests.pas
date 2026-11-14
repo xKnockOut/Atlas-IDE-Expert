@@ -175,6 +175,8 @@ begin
   end;
 end;
 
+{ TWrapCommandsTests }
+
 procedure TWrapCommandsTests.TryFreesLastCreatedLocal;
 var
   mText: string;

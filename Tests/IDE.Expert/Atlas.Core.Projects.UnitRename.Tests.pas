@@ -34,6 +34,8 @@ uses
   Atlas.Core.Lsp.Session,
   Atlas.Core.Projects.UnitRename;
 
+{ TAtlasUnitRenameTests }
+
 procedure TAtlasUnitRenameTests.RecognizesOnlyUnitRenames;
 begin
   Assert.IsTrue(TAtlasUnitRename.IsUnitRename('C:\P\Kunden.pas', 'C:\P\KundenDaten.pas'));

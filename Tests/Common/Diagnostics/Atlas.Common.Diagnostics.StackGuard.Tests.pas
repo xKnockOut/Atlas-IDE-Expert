@@ -32,6 +32,8 @@ type
   /// <summary>Gleichnamig zur veralteten RTL-Klasse (W1000): IsOverflow erkennt den Überlauf am Namen.</summary>
   EStackOverflow = class(Exception);
 
+{ TStackGuardTests }
+
 procedure TStackGuardTests.RestoreNothing;
 begin
   TStackGuard.Restore := nil;

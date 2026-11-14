@@ -58,10 +58,7 @@ const
     '{"name":"Create","container":"TKunde","kind":"constructor","receiverSimple":false,' +
     '"targets":[{"container":"TKunde","name":"Create","file":"C:\\RAD\\source\\rtl\\Kunden.pas","line":5}]}]}';
 
-procedure TCoreDebugStepIntoTests.TearDown;
-begin
-  FAnswer := Default(TAtlasStepAnswer);
-end;
+{ TCoreDebugStepIntoTests }
 
 procedure TCoreDebugStepIntoTests.Load(const AJson: string);
 var
@@ -73,6 +70,11 @@ begin
   finally
     mJson.Free;
   end;
+end;
+
+procedure TCoreDebugStepIntoTests.TearDown;
+begin
+  FAnswer := Default(TAtlasStepAnswer);
 end;
 
 procedure TCoreDebugStepIntoTests.ReadsAnswer;

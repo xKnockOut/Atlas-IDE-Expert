@@ -136,6 +136,8 @@ begin
   end;
 end;
 
+{ TVarBlockTests }
+
 procedure TVarBlockTests.SectionVariableBecomesInitializedInline;
 var
   mTitle, mChanged: string;

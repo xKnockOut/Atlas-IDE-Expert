@@ -50,6 +50,8 @@ type
   /// <summary>Wie die IDE-Klasse benannt: gefunden am Klassennamen.</summary>
   TEditorNavigationToolbarLike = class(TPanel);
 
+{ TAtlasNavigationToolbarTests }
+
 procedure TAtlasNavigationToolbarTests.WarmUpFirstUse;
 begin
   SetUp;

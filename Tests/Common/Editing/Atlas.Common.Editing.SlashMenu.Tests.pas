@@ -188,6 +188,8 @@ begin
   Result := APlace in APlaces;
 end;
 
+{ TSlashMenuTests }
+
 procedure TSlashMenuTests.PlacesInClassDeclaration;
 var
   mPlaces: TSlashPlaces;

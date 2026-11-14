@@ -260,74 +260,6 @@ end;
 
 { TAtlasArchitectureModelTests }
 
-procedure TAtlasArchitectureModelTests.ParsesAssignment;
-var
-  mModel: TAtlasArchitectureModel;
-  mEnabled: Boolean;
-  mMid: Integer;
-  mUnit: TAtlasArchUnit;
-begin
-  Assert.IsTrue(TAtlasArchitectureModel.Parse(SampleAssignmentAnswer, mModel, mEnabled));
-  Assert.IsTrue(mModel.HasAssignment);
-  Assert.StartsWith('Atlas bildet die Teilsysteme', mModel.Explanation);
-  Assert.AreEqual(Double(0.25), mModel.MaxShare, 1E-9);
-  Assert.AreEqual(Double(0.3), mModel.MinCohesion, 1E-9);
-  Assert.AreEqual('separate', mModel.Foundations);
-  mMid := mModel.IndexOf('Z.Own.Mid');
-  mUnit := mModel.Units[mMid];
-  Assert.AreEqual(2, Integer(Length(mUnit.Assignment)));
-  Assert.AreEqual(0, mModel.OwnRow(mMid));
-  Assert.AreEqual(1, mModel.RivalRow(mMid));
-  Assert.AreEqual(mUnit.Subsystem, mUnit.Assignment[0].Subsystem);
-  Assert.AreEqual(3, mUnit.Assignment[0].Interfaces);
-  Assert.AreEqual(2, mUnit.Assignment[0].Implementations);
-  Assert.AreEqual(8, mUnit.Assignment[0].Sum);
-  Assert.AreEqual('Oth', mModel.SubsystemName(mUnit.Assignment[1].Subsystem));
-  Assert.AreEqual(6, mUnit.Assignment[1].Sum);
-  Assert.IsTrue(mUnit.Assignment[1].Counts);
-  Assert.IsTrue(mUnit.Close);
-  Assert.AreEqual(3, mUnit.Missing);
-  Assert.IsFalse(mModel.Units[mModel.IndexOf('Z.Own.U1')].Close);
-  Assert.AreEqual(-1, mModel.RivalRow(mModel.IndexOf('Z.Own.U1')));
-  Assert.AreEqual(-1, mModel.OwnRow(-1));
-  // Ohne explainAssignment (wie SampleAnswer aus einer Anfrage ohne den Schalter): nichts.
-  Assert.IsTrue(TAtlasArchitectureModel.Parse(SampleAnswer, mModel, mEnabled));
-  Assert.IsFalse(mModel.HasAssignment);
-  Assert.AreEqual('', mModel.Explanation);
-end;
-
-procedure TAtlasArchitectureModelTests.AssignmentWithFoundationAndBrokenRows;
-var
-  mModel: TAtlasArchitectureModel;
-  mEnabled: Boolean;
-  mU2: Integer;
-  mRow: TAtlasArchAssignmentRow;
-  mFound: Boolean;
-begin
-  Assert.IsTrue(TAtlasArchitectureModel.Parse(SampleAssignmentFoundationAnswer, mModel, mEnabled));
-  Assert.AreEqual(Double(0), mModel.MaxShare, 1E-9);
-  Assert.AreEqual(Double(0), mModel.MinCohesion, 1E-9);
-  mU2 := mModel.IndexOf('App.Ui.U2');
-  mFound := False;
-  for mRow in mModel.Units[mU2].Assignment do
-  begin
-    if mModel.Subsystems[mRow.Subsystem].Foundation then
-    begin
-      mFound := True;
-      Assert.IsFalse(mRow.Counts);
-    end;
-  end;
-  Assert.IsTrue(mFound);
-  Assert.AreEqual(-1, mModel.RivalRow(mU2));
-  // Teilsystem außerhalb und falscher Aufbau: Antwort ungültig.
-  Assert.IsFalse(TAtlasArchitectureModel.Parse(StringReplace(SampleAssignmentAnswer, '"assignment":[[',
-    '"assignment":[[99,0,0],[', []), mModel, mEnabled));
-  Assert.IsFalse(TAtlasArchitectureModel.Parse(StringReplace(SampleAssignmentAnswer, '"assignment":[[',
-    '"assignment":[["a",0,0],[', []), mModel, mEnabled));
-  Assert.IsFalse(TAtlasArchitectureModel.Parse(StringReplace(SampleAssignmentAnswer, '"assignment":[[',
-    '"assignment":[[0,0],[', []), mModel, mEnabled));
-end;
-
 procedure TAtlasArchitectureModelTests.ParsesServerAnswer;
 var
   mModel: TAtlasArchitectureModel;
@@ -755,6 +687,45 @@ begin
   Assert.IsFalse(mModel.Comparison.ResolutionDiffers);
 end;
 
+procedure TAtlasArchitectureModelTests.CommandArgumentsWithResolution;
+var
+  mValue: TJSONValue;
+  mOptions: TAtlasArchitectureOptions;
+  mItem: TJSONObject;
+  mNumber: Double;
+begin
+  mOptions := TAtlasArchitectureOptions.Create('project', True);
+  mValue := TJSONObject.ParseJSONValue(TAtlasArchitectureCommands.Arguments('file:///C:/P/App.dproj', mOptions));
+  try
+    mItem := (mValue as TJSONArray).Items[1] as TJSONObject;
+    Assert.IsNull(mItem.GetValue('resolution'));
+    Assert.AreEqual('json', mItem.GetValue<string>('format'));
+  finally
+    mValue.Free;
+  end;
+  mOptions.Resolution := 1.5;
+  mOptions.CompareWith := 'C:\P\stand.json';
+  mValue := TJSONObject.ParseJSONValue(TAtlasArchitectureCommands.Arguments('file:///C:/P/App.dproj', mOptions));
+  try
+    mItem := (mValue as TJSONArray).Items[1] as TJSONObject;
+    mNumber := mItem.GetValue<Double>('resolution');
+    Assert.AreEqual(Double(1.5), mNumber, 1E-9);
+    Assert.AreEqual('C:\P\stand.json', mItem.GetValue<string>('compareWith'));
+  finally
+    mValue.Free;
+  end;
+  mValue := TJSONObject.ParseJSONValue(TAtlasArchitectureCommands.SaveArguments('file:///C:/P/App.dproj',
+    'C:\P\bericht.html', mOptions));
+  try
+    mItem := (mValue as TJSONArray).Items[2] as TJSONObject;
+    mNumber := mItem.GetValue<Double>('resolution');
+    Assert.AreEqual(Double(1.5), mNumber, 1E-9);
+    Assert.IsNull(mItem.GetValue('format'));
+  finally
+    mValue.Free;
+  end;
+end;
+
 procedure TAtlasArchitectureModelTests.ParsesSplitSubsystems;
 var
   mModel: TAtlasArchitectureModel;
@@ -839,6 +810,42 @@ begin
   Assert.IsTrue(mInside and mOutside);
 end;
 
+procedure TAtlasArchitectureModelTests.ParsesAssignment;
+var
+  mModel: TAtlasArchitectureModel;
+  mEnabled: Boolean;
+  mMid: Integer;
+  mUnit: TAtlasArchUnit;
+begin
+  Assert.IsTrue(TAtlasArchitectureModel.Parse(SampleAssignmentAnswer, mModel, mEnabled));
+  Assert.IsTrue(mModel.HasAssignment);
+  Assert.StartsWith('Atlas bildet die Teilsysteme', mModel.Explanation);
+  Assert.AreEqual(Double(0.25), mModel.MaxShare, 1E-9);
+  Assert.AreEqual(Double(0.3), mModel.MinCohesion, 1E-9);
+  Assert.AreEqual('separate', mModel.Foundations);
+  mMid := mModel.IndexOf('Z.Own.Mid');
+  mUnit := mModel.Units[mMid];
+  Assert.AreEqual(2, Integer(Length(mUnit.Assignment)));
+  Assert.AreEqual(0, mModel.OwnRow(mMid));
+  Assert.AreEqual(1, mModel.RivalRow(mMid));
+  Assert.AreEqual(mUnit.Subsystem, mUnit.Assignment[0].Subsystem);
+  Assert.AreEqual(3, mUnit.Assignment[0].Interfaces);
+  Assert.AreEqual(2, mUnit.Assignment[0].Implementations);
+  Assert.AreEqual(8, mUnit.Assignment[0].Sum);
+  Assert.AreEqual('Oth', mModel.SubsystemName(mUnit.Assignment[1].Subsystem));
+  Assert.AreEqual(6, mUnit.Assignment[1].Sum);
+  Assert.IsTrue(mUnit.Assignment[1].Counts);
+  Assert.IsTrue(mUnit.Close);
+  Assert.AreEqual(3, mUnit.Missing);
+  Assert.IsFalse(mModel.Units[mModel.IndexOf('Z.Own.U1')].Close);
+  Assert.AreEqual(-1, mModel.RivalRow(mModel.IndexOf('Z.Own.U1')));
+  Assert.AreEqual(-1, mModel.OwnRow(-1));
+  // Ohne explainAssignment (wie SampleAnswer aus einer Anfrage ohne den Schalter): nichts.
+  Assert.IsTrue(TAtlasArchitectureModel.Parse(SampleAnswer, mModel, mEnabled));
+  Assert.IsFalse(mModel.HasAssignment);
+  Assert.AreEqual('', mModel.Explanation);
+end;
+
 function SampleAlignedAnswer: string;
 var
   mOverview: TArchitectureOverview;
@@ -847,6 +854,38 @@ begin
   TArchitectureAlignment.Align(mOverview, TArchitectureSnapshots.FromOverview(AlignmentOverview(False)),
     TArchitectureAnalyzer.cAlignedBaseline, EncodeDate(2026, 10, 29) + EncodeTime(14, 23, 0, 0));
   Result := AnswerOf(mOverview, '');
+end;
+
+procedure TAtlasArchitectureModelTests.AssignmentWithFoundationAndBrokenRows;
+var
+  mModel: TAtlasArchitectureModel;
+  mEnabled: Boolean;
+  mU2: Integer;
+  mRow: TAtlasArchAssignmentRow;
+  mFound: Boolean;
+begin
+  Assert.IsTrue(TAtlasArchitectureModel.Parse(SampleAssignmentFoundationAnswer, mModel, mEnabled));
+  Assert.AreEqual(Double(0), mModel.MaxShare, 1E-9);
+  Assert.AreEqual(Double(0), mModel.MinCohesion, 1E-9);
+  mU2 := mModel.IndexOf('App.Ui.U2');
+  mFound := False;
+  for mRow in mModel.Units[mU2].Assignment do
+  begin
+    if mModel.Subsystems[mRow.Subsystem].Foundation then
+    begin
+      mFound := True;
+      Assert.IsFalse(mRow.Counts);
+    end;
+  end;
+  Assert.IsTrue(mFound);
+  Assert.AreEqual(-1, mModel.RivalRow(mU2));
+  // Teilsystem außerhalb und falscher Aufbau: Antwort ungültig.
+  Assert.IsFalse(TAtlasArchitectureModel.Parse(StringReplace(SampleAssignmentAnswer, '"assignment":[[',
+    '"assignment":[[99,0,0],[', []), mModel, mEnabled));
+  Assert.IsFalse(TAtlasArchitectureModel.Parse(StringReplace(SampleAssignmentAnswer, '"assignment":[[',
+    '"assignment":[["a",0,0],[', []), mModel, mEnabled));
+  Assert.IsFalse(TAtlasArchitectureModel.Parse(StringReplace(SampleAssignmentAnswer, '"assignment":[[',
+    '"assignment":[[0,0],[', []), mModel, mEnabled));
 end;
 
 procedure TAtlasArchitectureModelTests.ParsesAlignmentAndSendsRename;
@@ -882,45 +921,6 @@ begin
   try
     mItem := (mValue as TJSONArray).Items[1] as TJSONObject;
     Assert.IsTrue(mItem.GetValue<Boolean>('renameSubsystems'));
-  finally
-    mValue.Free;
-  end;
-end;
-
-procedure TAtlasArchitectureModelTests.CommandArgumentsWithResolution;
-var
-  mValue: TJSONValue;
-  mOptions: TAtlasArchitectureOptions;
-  mItem: TJSONObject;
-  mNumber: Double;
-begin
-  mOptions := TAtlasArchitectureOptions.Create('project', True);
-  mValue := TJSONObject.ParseJSONValue(TAtlasArchitectureCommands.Arguments('file:///C:/P/App.dproj', mOptions));
-  try
-    mItem := (mValue as TJSONArray).Items[1] as TJSONObject;
-    Assert.IsNull(mItem.GetValue('resolution'));
-    Assert.AreEqual('json', mItem.GetValue<string>('format'));
-  finally
-    mValue.Free;
-  end;
-  mOptions.Resolution := 1.5;
-  mOptions.CompareWith := 'C:\P\stand.json';
-  mValue := TJSONObject.ParseJSONValue(TAtlasArchitectureCommands.Arguments('file:///C:/P/App.dproj', mOptions));
-  try
-    mItem := (mValue as TJSONArray).Items[1] as TJSONObject;
-    mNumber := mItem.GetValue<Double>('resolution');
-    Assert.AreEqual(Double(1.5), mNumber, 1E-9);
-    Assert.AreEqual('C:\P\stand.json', mItem.GetValue<string>('compareWith'));
-  finally
-    mValue.Free;
-  end;
-  mValue := TJSONObject.ParseJSONValue(TAtlasArchitectureCommands.SaveArguments('file:///C:/P/App.dproj',
-    'C:\P\bericht.html', mOptions));
-  try
-    mItem := (mValue as TJSONArray).Items[2] as TJSONObject;
-    mNumber := mItem.GetValue<Double>('resolution');
-    Assert.AreEqual(Double(1.5), mNumber, 1E-9);
-    Assert.IsNull(mItem.GetValue('format'));
   finally
     mValue.Free;
   end;

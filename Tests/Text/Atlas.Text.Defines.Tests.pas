@@ -46,6 +46,8 @@ begin
   Result := False;
 end;
 
+{ TTextDefinesTests }
+
 procedure TTextDefinesTests.PredefinedForWin32AndVersion;
 var
   mSymbols: TArray<string>;

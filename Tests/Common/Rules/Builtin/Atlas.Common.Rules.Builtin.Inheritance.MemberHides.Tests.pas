@@ -26,6 +26,8 @@ uses
   Atlas.Common.Rules.Builtin.Inheritance.MemberHides,
   Atlas.Tests.RuleAssert;
 
+{ TInheritanceMemberHidesTests }
+
 procedure TInheritanceMemberHidesTests.FieldHidesFieldIsReported;
 var
   mFindings: TArray<TRuleFinding>;

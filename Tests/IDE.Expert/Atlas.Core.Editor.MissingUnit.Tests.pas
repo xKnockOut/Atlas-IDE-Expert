@@ -36,6 +36,8 @@ uses
   System.SysUtils,
   Atlas.Core.Editor.MissingUnit;
 
+{ TAtlasMissingUnitTests }
+
 procedure TAtlasMissingUnitTests.ParsesSearchPath;
 var
   mRequest: TAtlasSearchPathRequest;

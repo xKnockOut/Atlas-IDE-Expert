@@ -32,6 +32,8 @@ begin
   Result := Cardinal(ABlue) or (Cardinal(AGreen) shl 8) or (Cardinal(ARed) shl 16);
 end;
 
+{ TAtlasIconAlphaTests }
+
 procedure TAtlasIconAlphaTests.OpaquePixelKeepsColor;
 var
   mResult: TArray<Cardinal>;

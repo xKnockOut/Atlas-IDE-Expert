@@ -80,6 +80,8 @@ begin
   end;
 end;
 
+{ TAtlasUnitRelationsModelTests }
+
 procedure TAtlasUnitRelationsModelTests.ParsesServerAnswer;
 var
   mRelations: TAtlasUnitRelations;

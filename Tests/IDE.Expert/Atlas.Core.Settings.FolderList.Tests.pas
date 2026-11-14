@@ -22,6 +22,8 @@ implementation
 uses
   Atlas.Core.Settings.FolderList;
 
+{ TAtlasFolderListTests }
+
 procedure TAtlasFolderListTests.ParseCleansList;
 var
   mFolders: TArray<string>;

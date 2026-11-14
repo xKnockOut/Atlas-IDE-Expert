@@ -206,6 +206,8 @@ begin
   end;
 end;
 
+{ TComponentRulesTests }
+
 procedure TComponentRulesTests.LoadedWithoutInheritedIsHigh;
 var
   mSource: string;
@@ -470,6 +472,17 @@ begin
     'procedure TFoo.Resize;'#10'begin'#10'  inherited;'#10'  Width := 300;'#10'end;'#10'end.';
 end;
 
+procedure TComponentRulesTests.HexColorReportsSystemColorSilent;
+begin
+  TRuleAssert.Reports(TComponentHardcodedColorRule.Create, PaintUnit('  Canvas.Brush.Color := $00FF8000;'));
+  TRuleAssert.Reports(TComponentHardcodedColorRule.Create, PaintUnit('  Canvas.Pen.Color := RGB(255, 128, 0);'));
+  TRuleAssert.Silent(TComponentHardcodedColorRule.Create, PaintUnit('  Canvas.Brush.Color := clBtnFace;'));
+  TRuleAssert.Reports(TComponentHardcodedColorRule.Create, PaintUnit('  Canvas.Pen.Color := TColor($00FF8000);'));
+  // Farben des Themas, nur in TColor umgewandelt bzw. gemischt (#1109).
+  TRuleAssert.Silent(TComponentHardcodedColorRule.Create, PaintUnit('  Canvas.Brush.Color := TColor(FColors.Surface);'#10 +
+    '  Canvas.Pen.Color := RGB(R, G, B);'));
+end;
+
 procedure TComponentRulesTests.FixedBoundsReportWithFix;
 var
   mSource: string;
@@ -517,17 +530,6 @@ begin
     '  mEdit.Top := AddRow(30);'));
   // Ohne VCL keine Steuerelemente.
   TRuleAssert.Silent(TControlFixedBoundsRule.Create, BoundsUnit('System.Types', '  mEdit.Width := 240;'));
-end;
-
-procedure TComponentRulesTests.HexColorReportsSystemColorSilent;
-begin
-  TRuleAssert.Reports(TComponentHardcodedColorRule.Create, PaintUnit('  Canvas.Brush.Color := $00FF8000;'));
-  TRuleAssert.Reports(TComponentHardcodedColorRule.Create, PaintUnit('  Canvas.Pen.Color := RGB(255, 128, 0);'));
-  TRuleAssert.Silent(TComponentHardcodedColorRule.Create, PaintUnit('  Canvas.Brush.Color := clBtnFace;'));
-  TRuleAssert.Reports(TComponentHardcodedColorRule.Create, PaintUnit('  Canvas.Pen.Color := TColor($00FF8000);'));
-  // Farben des Themas, nur in TColor umgewandelt bzw. gemischt (#1109).
-  TRuleAssert.Silent(TComponentHardcodedColorRule.Create, PaintUnit('  Canvas.Brush.Color := TColor(FColors.Surface);'#10 +
-    '  Canvas.Pen.Color := RGB(R, G, B);'));
 end;
 
 procedure TComponentRulesTests.AllComponentRulesShareModelInOneRun;
@@ -796,6 +798,8 @@ begin
     'destructor TExport.Destroy;'#10'begin'#10 + ADtor + 'end;'#10'end.';
 end;
 
+{ TInheritedOrderTests }
+
 procedure TInheritedOrderTests.DestructorIssueExampleWithFix;
 var
   mSource, mFixed: string;
@@ -895,6 +899,8 @@ begin
     'procedure TKundenForm.Speichern;'#10'begin'#10 + ABody + 'end;'#10 +
     'procedure TKundenForm.Laden;'#10'begin'#10'  inherited;'#10'end;'#10 + AMore + 'end.';
 end;
+
+{ TInheritedWrongMethodTests }
 
 procedure TInheritedWrongMethodTests.IssueExampleWithFix;
 var
@@ -1004,6 +1010,8 @@ function GetterFindings(const ASource: string): TArray<TRuleFinding>; overload;
 begin
   Result := GetterFindings(ASource, '');
 end;
+
+{ TGetterSideEffectTests }
 
 procedure TGetterSideEffectTests.IssueExample;
 var
@@ -1147,6 +1155,8 @@ function HashFindings(const ASource: string; const AConfig: string): TArray<TRul
 begin
   Result := HashFindings(ASource, AConfig, '');
 end;
+
+{ TEqualsWithoutGetHashCodeTests }
 
 procedure TEqualsWithoutGetHashCodeTests.IssueExampleWithFix;
 var

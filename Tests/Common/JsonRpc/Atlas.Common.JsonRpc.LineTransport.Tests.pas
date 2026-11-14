@@ -52,6 +52,8 @@ begin
   end;
 end;
 
+{ TJsonRpcLineTransportTests }
+
 procedure TJsonRpcLineTransportTests.ReadsOneMessagePerLine;
 var
   mTransport: IJsonRpcTransport;

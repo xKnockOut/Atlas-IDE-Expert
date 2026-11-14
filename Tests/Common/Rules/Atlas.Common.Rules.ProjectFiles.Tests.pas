@@ -74,6 +74,8 @@ begin
     end);
 end;
 
+{ TRuleProjectFilesTests }
+
 procedure TRuleProjectFilesTests.ProjectsOfPutsOwnProjectsFirst;
 var
   mFound: TArray<TRuleProject>;
@@ -129,31 +131,6 @@ begin
   end;
 end;
 
-procedure TRuleProjectFilesTests.NameInReadsEachFileOnce;
-var
-  mReads: Integer;
-  mRead: TRuleProjectReadText;
-  mProvider: IRuleProjectFiles;
-begin
-  // Ohne Verwendungen im Index (ausgelagert): Früher las und parste NameIn die Datei für jeden Namen neu;
-  // unused-public-member fragt je Mitglied alle Dateien der Gruppe (Prüflauf staute sich in 2.0-stable).
-  mReads := 0;
-  mRead :=
-    function(const AFileName: string; out AText: string): Boolean
-    begin
-      Inc(mReads);
-      AText := cUnitA;
-      Result := True;
-    end;
-  mProvider := TRuleProjectFiles.Create([Project('C:\P\App.dproj', ['C:\P\A.pas'])], nil, mRead, nil);
-  Assert.AreEqual<TRuleNameAnswer>(TRuleNameAnswer.Present, mProvider.NameIn('C:\P\A.pas', 'Speichern'));
-  Assert.AreEqual<TRuleNameAnswer>(TRuleNameAnswer.Present, mProvider.NameIn('c:\p\a.pas', 'LADEN'));
-  Assert.AreEqual<TRuleNameAnswer>(TRuleNameAnswer.Absent, mProvider.NameIn('C:\P\A.pas', 'Vergessen'));
-  Assert.AreEqual(1, mReads);
-  mProvider := nil;
-  mRead := nil;
-end;
-
 procedure TRuleProjectFilesTests.NameInReadsIncludes;
 var
   mIndex: ISymbolIndex;
@@ -177,6 +154,31 @@ begin
   finally
     mTexts.Free;
   end;
+end;
+
+procedure TRuleProjectFilesTests.NameInReadsEachFileOnce;
+var
+  mReads: Integer;
+  mRead: TRuleProjectReadText;
+  mProvider: IRuleProjectFiles;
+begin
+  // Ohne Verwendungen im Index (ausgelagert): Früher las und parste NameIn die Datei für jeden Namen neu;
+  // unused-public-member fragt je Mitglied alle Dateien der Gruppe (Prüflauf staute sich in 2.0-stable).
+  mReads := 0;
+  mRead :=
+    function(const AFileName: string; out AText: string): Boolean
+    begin
+      Inc(mReads);
+      AText := cUnitA;
+      Result := True;
+    end;
+  mProvider := TRuleProjectFiles.Create([Project('C:\P\App.dproj', ['C:\P\A.pas'])], nil, mRead, nil);
+  Assert.AreEqual<TRuleNameAnswer>(TRuleNameAnswer.Present, mProvider.NameIn('C:\P\A.pas', 'Speichern'));
+  Assert.AreEqual<TRuleNameAnswer>(TRuleNameAnswer.Present, mProvider.NameIn('c:\p\a.pas', 'LADEN'));
+  Assert.AreEqual<TRuleNameAnswer>(TRuleNameAnswer.Absent, mProvider.NameIn('C:\P\A.pas', 'Vergessen'));
+  Assert.AreEqual(1, mReads);
+  mProvider := nil;
+  mRead := nil;
 end;
 
 procedure TRuleProjectFilesTests.CompleteAsksHost;

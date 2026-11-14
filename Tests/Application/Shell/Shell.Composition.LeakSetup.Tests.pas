@@ -62,6 +62,8 @@ begin
   Result := StringReplace(APath, '\', PathDelim, [rfReplaceAll]);
 end;
 
+{ TShellLeakSetupTests }
+
 procedure TShellLeakSetupTests.Setup;
 var
   mRegistry: TShellWorkspaceRegistryServices;

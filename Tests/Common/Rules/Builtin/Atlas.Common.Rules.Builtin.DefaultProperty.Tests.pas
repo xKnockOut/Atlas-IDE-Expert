@@ -180,21 +180,6 @@ begin
   Assert.AreEqual('TSack hat keine default-Property; S[…] braucht eine (wie E2149).', mFound[0].Message);
 end;
 
-procedure TDefaultPropertyRulesTests.Options;
-var
-  mSource: string;
-begin
-  mSource := Listen('    property Name: string read FName; default;'#10, '');
-  Assert.AreEqual(1, Integer(Length(Findings(mSource, '', 'Source/Listen.pas'))));
-  Assert.AreEqual(0, Integer(Length(Findings(mSource, '{"rules": {"default-property-invalid": "off"}}',
-    'Source/Listen.pas'))));
-  Assert.AreEqual(0, Integer(Length(Findings(mSource, '{"rules": {"group:compiler": "off"}}', 'Source/Listen.pas'))));
-  Assert.AreEqual(0, Integer(Length(Findings(mSource,
-    '{"rules": {"default-property-invalid": {"exclude": ["Source/*.pas"]}}}', 'Source/Listen.pas'))));
-  Assert.AreEqual(1, Integer(Length(Findings(mSource,
-    '{"rules": {"default-property-invalid": {"exclude": ["Alt/*.pas"]}}}', 'Source/Listen.pas'))));
-end;
-
 procedure TDefaultPropertyRulesTests.ConstArrayOfClassReferences;
 var
   mFindings: TArray<TRuleFinding>;
@@ -209,6 +194,21 @@ begin
   // Gemeldet bleibt nur der Index auf die Instanz ohne default-Property.
   Assert.AreEqual(1, Integer(Length(mFindings)));
   Assert.AreEqual('THash hat keine default-Property; mHash[…] braucht eine (wie E2149).', mFindings[0].Message);
+end;
+
+procedure TDefaultPropertyRulesTests.Options;
+var
+  mSource: string;
+begin
+  mSource := Listen('    property Name: string read FName; default;'#10, '');
+  Assert.AreEqual(1, Integer(Length(Findings(mSource, '', 'Source/Listen.pas'))));
+  Assert.AreEqual(0, Integer(Length(Findings(mSource, '{"rules": {"default-property-invalid": "off"}}',
+    'Source/Listen.pas'))));
+  Assert.AreEqual(0, Integer(Length(Findings(mSource, '{"rules": {"group:compiler": "off"}}', 'Source/Listen.pas'))));
+  Assert.AreEqual(0, Integer(Length(Findings(mSource,
+    '{"rules": {"default-property-invalid": {"exclude": ["Source/*.pas"]}}}', 'Source/Listen.pas'))));
+  Assert.AreEqual(1, Integer(Length(Findings(mSource,
+    '{"rules": {"default-property-invalid": {"exclude": ["Alt/*.pas"]}}}', 'Source/Listen.pas'))));
 end;
 
 initialization

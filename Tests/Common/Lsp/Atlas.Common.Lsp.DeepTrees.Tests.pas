@@ -58,6 +58,8 @@ begin
   end;
 end;
 
+{ TLspDeepTreeTests }
+
 procedure TLspDeepTreeTests.WalkersHandleDeepTrees;
 var
   mText, mFailure, mRunning, mLocalType: string;

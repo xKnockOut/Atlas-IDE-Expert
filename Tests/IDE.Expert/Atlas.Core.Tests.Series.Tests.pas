@@ -89,6 +89,8 @@ begin
   Result := TAtlasTestSeriesSubject.Make('Demo.Tests', 'TDemo', 'Test1', '');
 end;
 
+{ TAtlasTestSeriesTests }
+
 procedure TAtlasTestSeriesTests.ShuffleSameSeedSameOrder;
 begin
   Assert.AreEqual(Joined(TAtlasTestShuffle.Shuffled(Names(12), 48213)),

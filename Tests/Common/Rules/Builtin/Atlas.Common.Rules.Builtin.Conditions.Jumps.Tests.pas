@@ -67,6 +67,8 @@ begin
     'procedure P(X: Boolean);'#10'begin'#10 + ABody + 'end;'#10'end.';
 end;
 
+{ TConditionJumpsTests }
+
 procedure TConditionJumpsTests.Names;
 var
   mTree: TSyntaxTree;

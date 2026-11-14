@@ -30,6 +30,8 @@ uses
   Atlas.Text.DUnitX,
   Atlas.Core.Tests.UnitMatch;
 
+{ TAtlasTestUnitMatchTests }
+
 procedure TAtlasTestUnitMatchTests.FindsUsualNames;
 var
   mFound: TArray<string>;

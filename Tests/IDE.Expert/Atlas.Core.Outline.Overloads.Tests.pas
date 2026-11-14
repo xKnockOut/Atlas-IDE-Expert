@@ -121,6 +121,8 @@ begin
   Result := mCrumbs[High(mCrumbs)];
 end;
 
+{ TAtlasOverloadsTests }
+
 procedure TAtlasOverloadsTests.FindsOverloadsOfTheSameOwner;
 var
   mLaden, mSumme: TArray<Integer>;

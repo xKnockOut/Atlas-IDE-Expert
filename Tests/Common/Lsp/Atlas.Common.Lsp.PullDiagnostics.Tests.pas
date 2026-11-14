@@ -117,6 +117,8 @@ type
     procedure Done;
   end;
 
+{ TFixture }
+
 procedure TFixture.Init;
 begin
   Init(nil);
@@ -160,6 +162,8 @@ function Token: IJsonRpcCancellationToken;
 begin
   Result := TJsonRpcCancellation.Create;
 end;
+
+{ TLspPullDiagnosticsTests }
 
 procedure TLspPullDiagnosticsTests.WarmUpFirstUse;
 begin

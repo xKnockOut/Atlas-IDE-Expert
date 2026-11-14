@@ -93,6 +93,8 @@ type
     procedure Write(const AEntry: TLogEntry);
   end;
 
+{ TCaptureSink }
+
 procedure TCaptureSink.Write(const AEntry: TLogEntry);
 begin
   Text := Text + AEntry.ToText + sLineBreak;
@@ -158,42 +160,6 @@ begin
   Result.AddPair('params', mParams);
 end;
 
-{ TShellDiagnosticsTests }
-
-procedure TShellDiagnosticsTests.WarmUpFirstUse;
-begin
-  Setup;
-  try
-    NoMarkerReachesLogOrExport;
-  finally
-    TearDown;
-  end;
-  Setup;
-  try
-    AddLogFile_BadPath_LogsError;
-  finally
-    TearDown;
-  end;
-end;
-
-procedure TShellDiagnosticsTests.Setup;
-begin
-  FRoot := TPath.Combine(TPath.GetTempPath, 'atlas-' + TGUID.NewGuid.ToString.Substring(1, 8));
-  FLogFolder := TPath.Combine(FRoot, 'Diagnose');
-  ForceDirectories(FLogFolder);
-end;
-
-procedure TShellDiagnosticsTests.TearDown;
-begin
-  if TDirectory.Exists(FRoot) then
-  begin
-    TDirectory.Delete(FRoot, True);
-  end;
-  // Strings aus Setup freigeben, sonst zählt der Lecktest sie mit.
-  FRoot := '';
-  FLogFolder := '';
-end;
-
 /// <summary>Schickt alle Anfragen aus Queries für AUri an ADispatcher.</summary>
 procedure SendQueries(ADispatcher: TJsonRpcDispatcher; const AUri: string);
 var
@@ -210,6 +176,8 @@ begin
     end;
   end;
 end;
+
+{ TShellDiagnosticsTests }
 
 procedure TShellDiagnosticsTests.RunSession(AEnabled: Boolean);
 var
@@ -279,6 +247,40 @@ begin
   begin
     Result := Result + ExtractFileName(mFileName) + #13#10 + TFile.ReadAllText(mFileName, TEncoding.UTF8);
   end;
+end;
+
+procedure TShellDiagnosticsTests.WarmUpFirstUse;
+begin
+  Setup;
+  try
+    NoMarkerReachesLogOrExport;
+  finally
+    TearDown;
+  end;
+  Setup;
+  try
+    AddLogFile_BadPath_LogsError;
+  finally
+    TearDown;
+  end;
+end;
+
+procedure TShellDiagnosticsTests.Setup;
+begin
+  FRoot := TPath.Combine(TPath.GetTempPath, 'atlas-' + TGUID.NewGuid.ToString.Substring(1, 8));
+  FLogFolder := TPath.Combine(FRoot, 'Diagnose');
+  ForceDirectories(FLogFolder);
+end;
+
+procedure TShellDiagnosticsTests.TearDown;
+begin
+  if TDirectory.Exists(FRoot) then
+  begin
+    TDirectory.Delete(FRoot, True);
+  end;
+  // Strings aus Setup freigeben, sonst zählt der Lecktest sie mit.
+  FRoot := '';
+  FLogFolder := '';
 end;
 
 procedure TShellDiagnosticsTests.NoMarkerReachesLogOrExport;

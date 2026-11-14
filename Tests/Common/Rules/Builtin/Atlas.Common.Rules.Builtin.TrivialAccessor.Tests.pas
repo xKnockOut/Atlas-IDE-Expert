@@ -59,6 +59,8 @@ const
     'end.';
   cEnabled = '{"refactoring": {"inlineAccessorDiagnostic": true}}';
 
+{ TTrivialAccessorRuleTests }
+
 procedure TTrivialAccessorRuleTests.SilentByDefault;
 begin
   TRuleAssert.Silent(TTrivialAccessorRule.Create, cText);

@@ -32,6 +32,8 @@ type
 
 implementation
 
+{ TSnapshotPolicyTests }
+
 function TSnapshotPolicyTests.Clean: TAtlasSnapshotState;
 begin
   Result := Default(TAtlasSnapshotState);

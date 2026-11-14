@@ -50,6 +50,8 @@ begin
   end;
 end;
 
+{ TAtlasTestUnitTests }
+
 procedure TAtlasTestUnitTests.ReadsExistingCounterpart;
 var
   mInfo: TAtlasTestUnitInfo;

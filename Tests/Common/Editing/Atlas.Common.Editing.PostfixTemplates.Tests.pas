@@ -41,6 +41,8 @@ uses
   System.SysUtils,
   Atlas.Common.Editing.PostfixTemplates;
 
+{ TPostfixTemplatesTests }
+
 procedure TPostfixTemplatesTests.ExpandsAllTemplates;
 begin
   // Nach einem Kopf steht der Cursor eingerückt in der Folgezeile.

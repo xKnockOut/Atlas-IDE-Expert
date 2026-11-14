@@ -50,6 +50,8 @@ uses
   System.SysUtils,
   Atlas.Core.Debug.Logpoint;
 
+{ TAtlasLogpointTests }
+
 procedure TAtlasLogpointTests.ParsesPlaceholders;
 var
   mTemplate: TAtlasLogpointTemplate;

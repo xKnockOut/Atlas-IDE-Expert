@@ -36,6 +36,8 @@ uses
   Atlas.UI.Strings,
   Atlas.UI.Tracker.StateDialog;
 
+{ TAtlasTrackerStateDialogTests }
+
 procedure TAtlasTrackerStateDialogTests.Setup;
 begin
   FSaved := Ord(TAtlasStrings.Language);

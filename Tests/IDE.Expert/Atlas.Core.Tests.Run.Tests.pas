@@ -147,6 +147,71 @@ begin
   Result.TestsAfterBuild := True;
 end;
 
+/// <summary>Fixture mit vier Tests (einer mit zwei Fällen, einer mit [Ignore]) wie im Bild von Marco.</summary>
+function WelcomeSource: TDUnitXUnit;
+begin
+  Result := TDUnitXSource.Scan(TArray<string>.Create(
+    'unit Welcome.Tests;',
+    'interface',
+    'uses DUnitX.TestFramework;',
+    'type',
+    '  [TestFixture]',
+    '  TNameTests = class',
+    '  public',
+    '    [Test]',
+    '    procedure IsReported;',
+    '    [TestCase(''Kurz'', ''a'')]',
+    '    [TestCase(''Lang'', ''abc'')]',
+    '    procedure Lookup(const A: string);',
+    '    [Test]',
+    '    [Ignore(''später'')]',
+    '    procedure Spaeter;',
+    '    [Test]',
+    '    procedure NothingAfterFree;',
+    '  end;',
+    'implementation',
+    'end.'));
+end;
+
+/// <summary>Bericht mit den Ergebnissen AResults (Name=Success|Failure|Ignored) der Fixture TNameTests.</summary>
+function WelcomeCases(const AResults: array of string): TArray<TTestCaseResult>;
+var
+  mXml: string;
+  mResult: string;
+  mParts: TArray<string>;
+begin
+  mXml := '<test-results><test-suite type="Assembly" name="W.exe"><results>' +
+    '<test-suite type="TestFixture" name="TNameTests"><results>';
+  for mResult in AResults do
+  begin
+    mParts := mResult.Split(['=']);
+    mXml := mXml + '<test-case name="Welcome.Tests.TNameTests.' + mParts[0] + '" executed="True" result="' +
+      mParts[1] + '" time="0.01"/>';
+  end;
+  mXml := mXml + '</results></test-suite></results></test-suite></test-results>';
+  Result := TTestResults.Parse(mXml).Cases;
+end;
+
+/// <summary>Stand der Marke Fixture/Test/Fall von WelcomeSource nach den Ergebnissen AResults.</summary>
+function WelcomeTally(const AResults: array of string; ATest, ACase: Integer): TAtlasTestTally;
+begin
+  Result := TAtlasTestRun.TallyOf(WelcomeCases(AResults), 'Welcome.Tests', 'TNameTests',
+    TAtlasTestRun.Expected(WelcomeSource, 0, ATest, ACase));
+end;
+
+/// <summary>Veraltet ist das Ergebnis des Tests AMethod.</summary>
+function StaleOnly(const AMethod: string): TAtlasTestStaleFunc;
+var
+  mMethod: string;
+begin
+  mMethod := AMethod;
+  Result :=
+    function(const AName: string): Boolean
+    begin
+      Result := SameText(AName, mMethod);
+    end;
+end;
+
 { TAtlasTestRunTests }
 
 procedure TAtlasTestRunTests.RecognizesTestProgramAndPlatforms;
@@ -271,36 +336,6 @@ begin
   Assert.AreEqual(2, Integer(Length(mTests.FailedTests)));
 end;
 
-procedure TAtlasTestRunTests.SummaryKeepsSlowestTests;
-var
-  mRun: TTestRunResult;
-  mSlow: TArray<TAtlasTestFailure>;
-  mTests: TAtlasProjectTests;
-begin
-  mRun := TTestResults.Parse(cReport);
-  mSlow := TAtlasTestRun.Locate(TTestResults.Slowest(mRun.Cases, 10),
-    function(const AUnitName: string): string
-    begin
-      Result := cUnitFile;
-    end,
-    function(const AFileName: string; out ALines: TArray<string>): Boolean
-    begin
-      ALines := Source;
-      Result := True;
-    end);
-  Assert.AreEqual(3, Integer(Length(mSlow)));
-  Assert.AreEqual('Rechner.Tests.TRechnerTests.Summe.Gross', mSlow[0].Test.FullName, 'langsamster zuerst');
-  Assert.AreEqual(cUnitFile, mSlow[0].FileName);
-  Assert.AreEqual(18, mSlow[0].Line, 'Methodenkopf, 0-basiert');
-  mTests := TAtlasTestRun.SummaryOf(Default(TAtlasTestTarget), mRun, nil, mSlow, EncodeDate(2026, 11, 13));
-  Assert.AreEqual(3, Integer(Length(mTests.Slowest)));
-  Assert.AreEqual('Rechner.Tests.TRechnerTests.Summe.Gross', mTests.Slowest[0].Test);
-  Assert.AreEqual(20, mTests.Slowest[0].DurationMs);
-  Assert.AreEqual(19, mTests.Slowest[0].Line, '1-basiert');
-  Assert.AreEqual(0, Integer(Length(TAtlasTestRun.SummaryOf(Default(TAtlasTestTarget), mRun, nil, 0).Slowest)),
-    'ohne Liste keine langsamsten');
-end;
-
 procedure TAtlasTestRunTests.StatusForLens;
 var
   mCases: TArray<TTestCaseResult>;
@@ -324,58 +359,6 @@ begin
     TAtlasTestRun.StatusOf(mCases, 'Rechner.Tests', 'TRechnerTests', 'Summe', 'Gross'));
   Assert.AreEqual<TAtlasTestStatus>(TAtlasTestStatus.Unknown,
     TAtlasTestRun.StatusOf(mCases, 'Rechner.Tests', 'TRechnerTests', 'Summe', 'Mittel'), 'Fall nicht im Bericht');
-end;
-
-/// <summary>Fixture mit vier Tests (einer mit zwei Fällen, einer mit [Ignore]) wie im Bild von Marco.</summary>
-function WelcomeSource: TDUnitXUnit;
-begin
-  Result := TDUnitXSource.Scan(TArray<string>.Create(
-    'unit Welcome.Tests;',
-    'interface',
-    'uses DUnitX.TestFramework;',
-    'type',
-    '  [TestFixture]',
-    '  TNameTests = class',
-    '  public',
-    '    [Test]',
-    '    procedure IsReported;',
-    '    [TestCase(''Kurz'', ''a'')]',
-    '    [TestCase(''Lang'', ''abc'')]',
-    '    procedure Lookup(const A: string);',
-    '    [Test]',
-    '    [Ignore(''später'')]',
-    '    procedure Spaeter;',
-    '    [Test]',
-    '    procedure NothingAfterFree;',
-    '  end;',
-    'implementation',
-    'end.'));
-end;
-
-/// <summary>Bericht mit den Ergebnissen AResults (Name=Success|Failure|Ignored) der Fixture TNameTests.</summary>
-function WelcomeCases(const AResults: array of string): TArray<TTestCaseResult>;
-var
-  mXml: string;
-  mResult: string;
-  mParts: TArray<string>;
-begin
-  mXml := '<test-results><test-suite type="Assembly" name="W.exe"><results>' +
-    '<test-suite type="TestFixture" name="TNameTests"><results>';
-  for mResult in AResults do
-  begin
-    mParts := mResult.Split(['=']);
-    mXml := mXml + '<test-case name="Welcome.Tests.TNameTests.' + mParts[0] + '" executed="True" result="' +
-      mParts[1] + '" time="0.01"/>';
-  end;
-  mXml := mXml + '</results></test-suite></results></test-suite></test-results>';
-  Result := TTestResults.Parse(mXml).Cases;
-end;
-
-/// <summary>Stand der Marke Fixture/Test/Fall von WelcomeSource nach den Ergebnissen AResults.</summary>
-function WelcomeTally(const AResults: array of string; ATest, ACase: Integer): TAtlasTestTally;
-begin
-  Result := TAtlasTestRun.TallyOf(WelcomeCases(AResults), 'Welcome.Tests', 'TNameTests',
-    TAtlasTestRun.Expected(WelcomeSource, 0, ATest, ACase));
 end;
 
 procedure TAtlasTestRunTests.ExpectedTestsOfMarks;
@@ -454,69 +437,47 @@ begin
   Assert.AreEqual<TAtlasTestStatus>(TAtlasTestStatus.Failed, mTally.Status);
 end;
 
-procedure TAtlasTestRunTests.TallySumsDurations;
+procedure TAtlasTestRunTests.StaleResultsAreNotCountedAsPassed;
 var
   mCases: TArray<TTestCaseResult>;
   mTally: TAtlasTestTally;
-  mKey, mOther: TAtlasTestKey;
 begin
-  mCases := TTestResults.Parse(cReport).Cases;
-  mKey := Default(TAtlasTestKey);
-  mKey.Method := 'Addiert';
-  mTally := TAtlasTestRun.TallyOf(mCases, 'Rechner.Tests', 'TRechnerTests', [mKey]);
-  Assert.AreEqual(Int64(10), mTally.DurationMs);
-  Assert.AreEqual(Int64(10), mTally.SlowestMs);
-  // Klassenmarke: Summe; der langsamste Test ist die Methode mit Fällen (Summe ihrer Fälle).
-  mOther := mKey;
-  mOther.Method := 'Summe';
-  mTally := TAtlasTestRun.TallyOf(mCases, 'Rechner.Tests', 'TRechnerTests', [mKey, mOther]);
-  Assert.AreEqual(Int64(30), mTally.DurationMs);
-  Assert.AreEqual(Int64(20), mTally.SlowestMs);
-end;
-
-procedure TAtlasTestRunTests.TallyAndProblemsOfLeaks;
-var
-  mCases: TArray<TTestCaseResult>;
-  mTally: TAtlasTestTally;
-  mKey: TAtlasTestKey;
-  mLeak: TAtlasTestFailure;
-  mItems: TArray<TPair<string, TAtlasProblem>>;
-begin
-  // Bestanden mit Leck (#1774): zählt als bestanden, Leaked und LeakBytes tragen das Leck.
-  mCases := TTestResults.Parse(cReport).Cases;
-  mCases[0].LeakBytes := 40;
-  mKey := Default(TAtlasTestKey);
-  mKey.Method := 'Addiert';
-  mTally := TAtlasTestRun.TallyOf(mCases, 'Rechner.Tests', 'TRechnerTests', [mKey]);
-  Assert.AreEqual<TAtlasTestStatus>(TAtlasTestStatus.Passed, mTally.Status);
-  Assert.AreEqual(1, mTally.Leaked);
-  Assert.AreEqual(Int64(40), mTally.LeakBytes);
-  mLeak := Default(TAtlasTestFailure);
-  mLeak.Test := mCases[0];
-  mLeak.FileName := cUnitFile;
-  mLeak.Line := 15;
-  mItems := TAtlasTestRun.LeakProblems([mLeak], 'Leck in %s: %d Bytes');
-  Assert.AreEqual(1, Integer(Length(mItems)));
-  Assert.AreEqual('Leck in TRechnerTests.Addiert: 40 Bytes', mItems[0].Value.Message);
-  Assert.AreEqual<TAtlasProblemSeverity>(TAtlasProblemSeverity.Warning, mItems[0].Value.Severity);
-  Assert.AreEqual(TAtlasProblemStore.cTestSource, mItems[0].Value.Source);
-  Assert.AreEqual(15, mItems[0].Value.StartLine);
-  // Ohne Fundstelle keine Warnung.
-  mLeak.Line := -1;
-  Assert.AreEqual(0, Integer(Length(TAtlasTestRun.LeakProblems([mLeak], '%s %d'))));
-end;
-
-/// <summary>Veraltet ist das Ergebnis des Tests AMethod.</summary>
-function StaleOnly(const AMethod: string): TAtlasTestStaleFunc;
-var
-  mMethod: string;
-begin
-  mMethod := AMethod;
-  Result :=
-    function(const AName: string): Boolean
-    begin
-      Result := SameText(AName, mMethod);
-    end;
+  mCases := WelcomeCases(['IsReported=Success', 'Lookup.Kurz=Success', 'Lookup.Lang=Success',
+    'NothingAfterFree=Success']);
+  // Fixture: vier bestanden, einer davon seit dem Lauf geändert (#1770).
+  mTally := TAtlasTestRun.TallyOf(mCases, 'Welcome.Tests', 'TNameTests',
+    TAtlasTestRun.Expected(WelcomeSource, 0, -1, -1), StaleOnly('IsReported'));
+  Assert.IsTrue(mTally.IsStale);
+  Assert.AreEqual(1, mTally.Stale);
+  Assert.AreEqual(4, mTally.Passed, 'Stand des Laufs');
+  Assert.AreEqual(3, mTally.FreshPassed, 'die Zählung nimmt den veralteten nicht als bestanden');
+  Assert.AreEqual<TAtlasTestStatus>(TAtlasTestStatus.Passed, mTally.Status, 'alter Stand');
+  Assert.AreEqual<TAtlasTestStatus>(TAtlasTestStatus.Partial, mTally.Shown, 'die Marke zeigt 3/4');
+  // Der veraltete Test selbst: alter Stand „bestanden“ mit Zusatz.
+  mTally := TAtlasTestRun.TallyOf(mCases, 'Welcome.Tests', 'TNameTests',
+    TAtlasTestRun.Expected(WelcomeSource, 0, 0, -1), StaleOnly('IsReported'));
+  Assert.IsTrue(mTally.IsStale);
+  Assert.AreEqual<TAtlasTestStatus>(TAtlasTestStatus.Passed, mTally.Shown);
+  // Ein anderer Test ist nicht betroffen.
+  mTally := TAtlasTestRun.TallyOf(mCases, 'Welcome.Tests', 'TNameTests',
+    TAtlasTestRun.Expected(WelcomeSource, 0, 3, -1), StaleOnly('IsReported'));
+  Assert.IsFalse(mTally.IsStale);
+  // Veralteter Fehlschlag bleibt Fehlschlag (alter Stand), ist aber veraltet.
+  mCases := WelcomeCases(['IsReported=Failure']);
+  mTally := TAtlasTestRun.TallyOf(mCases, 'Welcome.Tests', 'TNameTests',
+    TAtlasTestRun.Expected(WelcomeSource, 0, 0, -1), StaleOnly('IsReported'));
+  Assert.AreEqual<TAtlasTestStatus>(TAtlasTestStatus.Failed, mTally.Shown);
+  Assert.IsTrue(mTally.IsStale);
+  // Schlüssel aus TAtlasTestStamps.StaleIn als Abfrage für die Marke.
+  mTally := TAtlasTestRun.TallyOf(mCases, 'Welcome.Tests', 'TNameTests',
+    TAtlasTestRun.Expected(WelcomeSource, 0, 0, -1), TAtlasTestRun.StaleOf(['welcome.tests.tnametests.isreported'],
+    'Welcome.Tests', 'TNameTests'));
+  Assert.IsTrue(mTally.IsStale, 'StaleOf');
+  Assert.IsFalse(Assigned(TAtlasTestRun.StaleOf(nil, 'Welcome.Tests', 'TNameTests')), 'ohne veraltete Tests nil');
+  // Ohne Angabe (tests.stale aus): wie bisher.
+  mTally := TAtlasTestRun.TallyOf(mCases, 'Welcome.Tests', 'TNameTests',
+    TAtlasTestRun.Expected(WelcomeSource, 0, 0, -1), nil);
+  Assert.IsFalse(mTally.IsStale);
 end;
 
 procedure TAtlasTestRunTests.FailureAtAssertWithShortText;
@@ -574,47 +535,86 @@ begin
   mLines := nil;
 end;
 
-procedure TAtlasTestRunTests.StaleResultsAreNotCountedAsPassed;
+procedure TAtlasTestRunTests.SummaryKeepsSlowestTests;
+var
+  mRun: TTestRunResult;
+  mSlow: TArray<TAtlasTestFailure>;
+  mTests: TAtlasProjectTests;
+begin
+  mRun := TTestResults.Parse(cReport);
+  mSlow := TAtlasTestRun.Locate(TTestResults.Slowest(mRun.Cases, 10),
+    function(const AUnitName: string): string
+    begin
+      Result := cUnitFile;
+    end,
+    function(const AFileName: string; out ALines: TArray<string>): Boolean
+    begin
+      ALines := Source;
+      Result := True;
+    end);
+  Assert.AreEqual(3, Integer(Length(mSlow)));
+  Assert.AreEqual('Rechner.Tests.TRechnerTests.Summe.Gross', mSlow[0].Test.FullName, 'langsamster zuerst');
+  Assert.AreEqual(cUnitFile, mSlow[0].FileName);
+  Assert.AreEqual(18, mSlow[0].Line, 'Methodenkopf, 0-basiert');
+  mTests := TAtlasTestRun.SummaryOf(Default(TAtlasTestTarget), mRun, nil, mSlow, EncodeDate(2026, 11, 13));
+  Assert.AreEqual(3, Integer(Length(mTests.Slowest)));
+  Assert.AreEqual('Rechner.Tests.TRechnerTests.Summe.Gross', mTests.Slowest[0].Test);
+  Assert.AreEqual(20, mTests.Slowest[0].DurationMs);
+  Assert.AreEqual(19, mTests.Slowest[0].Line, '1-basiert');
+  Assert.AreEqual(0, Integer(Length(TAtlasTestRun.SummaryOf(Default(TAtlasTestTarget), mRun, nil, 0).Slowest)),
+    'ohne Liste keine langsamsten');
+end;
+
+procedure TAtlasTestRunTests.TallySumsDurations;
 var
   mCases: TArray<TTestCaseResult>;
   mTally: TAtlasTestTally;
+  mKey, mOther: TAtlasTestKey;
 begin
-  mCases := WelcomeCases(['IsReported=Success', 'Lookup.Kurz=Success', 'Lookup.Lang=Success',
-    'NothingAfterFree=Success']);
-  // Fixture: vier bestanden, einer davon seit dem Lauf geändert (#1770).
-  mTally := TAtlasTestRun.TallyOf(mCases, 'Welcome.Tests', 'TNameTests',
-    TAtlasTestRun.Expected(WelcomeSource, 0, -1, -1), StaleOnly('IsReported'));
-  Assert.IsTrue(mTally.IsStale);
-  Assert.AreEqual(1, mTally.Stale);
-  Assert.AreEqual(4, mTally.Passed, 'Stand des Laufs');
-  Assert.AreEqual(3, mTally.FreshPassed, 'die Zählung nimmt den veralteten nicht als bestanden');
-  Assert.AreEqual<TAtlasTestStatus>(TAtlasTestStatus.Passed, mTally.Status, 'alter Stand');
-  Assert.AreEqual<TAtlasTestStatus>(TAtlasTestStatus.Partial, mTally.Shown, 'die Marke zeigt 3/4');
-  // Der veraltete Test selbst: alter Stand „bestanden“ mit Zusatz.
-  mTally := TAtlasTestRun.TallyOf(mCases, 'Welcome.Tests', 'TNameTests',
-    TAtlasTestRun.Expected(WelcomeSource, 0, 0, -1), StaleOnly('IsReported'));
-  Assert.IsTrue(mTally.IsStale);
-  Assert.AreEqual<TAtlasTestStatus>(TAtlasTestStatus.Passed, mTally.Shown);
-  // Ein anderer Test ist nicht betroffen.
-  mTally := TAtlasTestRun.TallyOf(mCases, 'Welcome.Tests', 'TNameTests',
-    TAtlasTestRun.Expected(WelcomeSource, 0, 3, -1), StaleOnly('IsReported'));
-  Assert.IsFalse(mTally.IsStale);
-  // Veralteter Fehlschlag bleibt Fehlschlag (alter Stand), ist aber veraltet.
-  mCases := WelcomeCases(['IsReported=Failure']);
-  mTally := TAtlasTestRun.TallyOf(mCases, 'Welcome.Tests', 'TNameTests',
-    TAtlasTestRun.Expected(WelcomeSource, 0, 0, -1), StaleOnly('IsReported'));
-  Assert.AreEqual<TAtlasTestStatus>(TAtlasTestStatus.Failed, mTally.Shown);
-  Assert.IsTrue(mTally.IsStale);
-  // Schlüssel aus TAtlasTestStamps.StaleIn als Abfrage für die Marke.
-  mTally := TAtlasTestRun.TallyOf(mCases, 'Welcome.Tests', 'TNameTests',
-    TAtlasTestRun.Expected(WelcomeSource, 0, 0, -1), TAtlasTestRun.StaleOf(['welcome.tests.tnametests.isreported'],
-    'Welcome.Tests', 'TNameTests'));
-  Assert.IsTrue(mTally.IsStale, 'StaleOf');
-  Assert.IsFalse(Assigned(TAtlasTestRun.StaleOf(nil, 'Welcome.Tests', 'TNameTests')), 'ohne veraltete Tests nil');
-  // Ohne Angabe (tests.stale aus): wie bisher.
-  mTally := TAtlasTestRun.TallyOf(mCases, 'Welcome.Tests', 'TNameTests',
-    TAtlasTestRun.Expected(WelcomeSource, 0, 0, -1), nil);
-  Assert.IsFalse(mTally.IsStale);
+  mCases := TTestResults.Parse(cReport).Cases;
+  mKey := Default(TAtlasTestKey);
+  mKey.Method := 'Addiert';
+  mTally := TAtlasTestRun.TallyOf(mCases, 'Rechner.Tests', 'TRechnerTests', [mKey]);
+  Assert.AreEqual(Int64(10), mTally.DurationMs);
+  Assert.AreEqual(Int64(10), mTally.SlowestMs);
+  // Klassenmarke: Summe; der langsamste Test ist die Methode mit Fällen (Summe ihrer Fälle).
+  mOther := mKey;
+  mOther.Method := 'Summe';
+  mTally := TAtlasTestRun.TallyOf(mCases, 'Rechner.Tests', 'TRechnerTests', [mKey, mOther]);
+  Assert.AreEqual(Int64(30), mTally.DurationMs);
+  Assert.AreEqual(Int64(20), mTally.SlowestMs);
+end;
+
+procedure TAtlasTestRunTests.TallyAndProblemsOfLeaks;
+var
+  mCases: TArray<TTestCaseResult>;
+  mTally: TAtlasTestTally;
+  mKey: TAtlasTestKey;
+  mLeak: TAtlasTestFailure;
+  mItems: TArray<TPair<string, TAtlasProblem>>;
+begin
+  // Bestanden mit Leck (#1774): zählt als bestanden, Leaked und LeakBytes tragen das Leck.
+  mCases := TTestResults.Parse(cReport).Cases;
+  mCases[0].LeakBytes := 40;
+  mKey := Default(TAtlasTestKey);
+  mKey.Method := 'Addiert';
+  mTally := TAtlasTestRun.TallyOf(mCases, 'Rechner.Tests', 'TRechnerTests', [mKey]);
+  Assert.AreEqual<TAtlasTestStatus>(TAtlasTestStatus.Passed, mTally.Status);
+  Assert.AreEqual(1, mTally.Leaked);
+  Assert.AreEqual(Int64(40), mTally.LeakBytes);
+  mLeak := Default(TAtlasTestFailure);
+  mLeak.Test := mCases[0];
+  mLeak.FileName := cUnitFile;
+  mLeak.Line := 15;
+  mItems := TAtlasTestRun.LeakProblems([mLeak], 'Leck in %s: %d Bytes');
+  Assert.AreEqual(1, Integer(Length(mItems)));
+  Assert.AreEqual('Leck in TRechnerTests.Addiert: 40 Bytes', mItems[0].Value.Message);
+  Assert.AreEqual<TAtlasProblemSeverity>(TAtlasProblemSeverity.Warning, mItems[0].Value.Severity);
+  Assert.AreEqual(TAtlasProblemStore.cTestSource, mItems[0].Value.Source);
+  Assert.AreEqual(15, mItems[0].Value.StartLine);
+  // Ohne Fundstelle keine Warnung.
+  mLeak.Line := -1;
+  Assert.AreEqual(0, Integer(Length(TAtlasTestRun.LeakProblems([mLeak], '%s %d'))));
 end;
 
 initialization

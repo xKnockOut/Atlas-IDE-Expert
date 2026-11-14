@@ -53,6 +53,8 @@ begin
   Result := TArray<string>.Create('Offen', 'In Bearbeitung', 'Zur Prüfung', 'Erledigt');
 end;
 
+{ TAtlasIssueStatusTests }
+
 procedure TAtlasIssueStatusTests.FieldTextLeavesOutEmptyParts;
 begin
   Assert.AreEqual('ATL-2052 · In Bearbeitung · 1:25', TAtlasIssueStatus.Text('ATL-2052', 'In Bearbeitung', '1:25'));

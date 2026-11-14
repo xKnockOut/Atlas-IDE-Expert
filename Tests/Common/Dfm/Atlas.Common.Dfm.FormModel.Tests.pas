@@ -83,6 +83,8 @@ const
     '  end'#10 +
     'end';
 
+{ TFormModelTests }
+
 procedure TFormModelTests.LinksComponentsToFields;
 var
   mModel: TFormModel;
@@ -168,38 +170,6 @@ begin
   end;
 end;
 
-procedure TFormModelTests.ForeignModulesSkipOwnNames;
-const
-  cForm =
-    'object Form2: TForm2'#10 +
-    '  ActiveControl = Form2.Edit1'#10 +
-    '  inline Frame11: TFrame1'#10 +
-    '  end'#10 +
-    '  object Grid: TDBGrid'#10 +
-    '    DataSource = Frame11.DataSource1'#10 +
-    '  end'#10 +
-    '  object Query: TFDQuery'#10 +
-    '    Connection = Form1.Connection'#10 +
-    '    UpdateObject = Form1.Update1'#10 +
-    '    DataSource = DM.dsKunden'#10 +
-    '  end'#10 +
-    'end'#10;
-var
-  mModel: TFormModel;
-begin
-  mModel := TFormModel.Create(cForm);
-  try
-    Assert.IsTrue(mModel.IsOwnName('form2'));
-    Assert.IsTrue(mModel.IsOwnName('Frame11'));
-    Assert.IsFalse(mModel.IsOwnName('Form1'));
-    Assert.AreEqual('Form1,DM', string.Join(',', mModel.ForeignModules));
-  finally
-    mModel.Free;
-  end;
-  Assert.AreEqual('Form1,DM', string.Join(',', TFormModel.ForeignModulesOf(cForm)));
-  Assert.AreEqual(0, Integer(Length(TFormModel.ForeignModulesOf(''))));
-end;
-
 procedure TFormModelTests.BinaryFormIsReported;
 var
   mModel: TFormModel;
@@ -243,6 +213,38 @@ begin
   finally
     mModel.Free;
   end;
+end;
+
+procedure TFormModelTests.ForeignModulesSkipOwnNames;
+const
+  cForm =
+    'object Form2: TForm2'#10 +
+    '  ActiveControl = Form2.Edit1'#10 +
+    '  inline Frame11: TFrame1'#10 +
+    '  end'#10 +
+    '  object Grid: TDBGrid'#10 +
+    '    DataSource = Frame11.DataSource1'#10 +
+    '  end'#10 +
+    '  object Query: TFDQuery'#10 +
+    '    Connection = Form1.Connection'#10 +
+    '    UpdateObject = Form1.Update1'#10 +
+    '    DataSource = DM.dsKunden'#10 +
+    '  end'#10 +
+    'end'#10;
+var
+  mModel: TFormModel;
+begin
+  mModel := TFormModel.Create(cForm);
+  try
+    Assert.IsTrue(mModel.IsOwnName('form2'));
+    Assert.IsTrue(mModel.IsOwnName('Frame11'));
+    Assert.IsFalse(mModel.IsOwnName('Form1'));
+    Assert.AreEqual('Form1,DM', string.Join(',', mModel.ForeignModules));
+  finally
+    mModel.Free;
+  end;
+  Assert.AreEqual('Form1,DM', string.Join(',', TFormModel.ForeignModulesOf(cForm)));
+  Assert.AreEqual(0, Integer(Length(TFormModel.ForeignModulesOf(''))));
 end;
 
 initialization

@@ -58,6 +58,20 @@ uses
   Atlas.Core.Diagnostics.UnloadSafety,
   Atlas.Core.Diagnostics.WorkerSlot;
 
+{ TAtlasWorkerSlotTests }
+
+function TAtlasWorkerSlotTests.NewWorker: TThread;
+var
+  mRelease: TEvent;
+begin
+  mRelease := FRelease;
+  Result := TThread.CreateAnonymousThread(
+    procedure
+    begin
+      mRelease.WaitFor(5000);
+    end);
+end;
+
 procedure TAtlasWorkerSlotTests.Setup;
 begin
   FRelease := TEvent.Create(nil, True, False, '');
@@ -76,18 +90,6 @@ begin
   TAtlasUnloadSafety.ResetForTests(nil);
   FreeAndNil(FRelease);
   FPinned := nil;
-end;
-
-function TAtlasWorkerSlotTests.NewWorker: TThread;
-var
-  mRelease: TEvent;
-begin
-  mRelease := FRelease;
-  Result := TThread.CreateAnonymousThread(
-    procedure
-    begin
-      mRelease.WaitFor(5000);
-    end);
 end;
 
 procedure TAtlasWorkerSlotTests.FinishedWorkersAreFreed;

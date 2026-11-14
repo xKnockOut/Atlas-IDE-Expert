@@ -128,16 +128,24 @@ begin
   end;
 end;
 
-procedure TMcpPromptsTests.AddTool(const AName: string; AKind: TMcpToolKind);
+{ TMcpPromptsTests }
+
+function TMcpPromptsTests.Get(const AName, AArguments: string): string;
 var
-  mName: string;
+  mParams: TJSONValue;
+  mResult: TJSONObject;
 begin
-  mName := AName;
-  FServer.AddTool(AName, AName, '{"type":"object"}',
-    function(const AArguments: TJSONObject): string
-    begin
-      Result := 'Ergebnis ' + mName + ' ' + Joined(AArguments);
-    end, AKind);
+  mParams := TJSONObject.ParseJSONValue('{"name":"' + AName + '","arguments":' + AArguments + '}');
+  try
+    mResult := FServer.GetPrompt(mParams);
+    try
+      Result := mResult.GetValue<TJSONArray>('messages').Items[0].GetValue<string>('content.text');
+    finally
+      mResult.Free;
+    end;
+  finally
+    mParams.Free;
+  end;
 end;
 
 /// <summary>Formular- und Unittext der Prompts nach Dateiendung.</summary>
@@ -156,6 +164,54 @@ begin
   begin
     Result := False;
   end;
+end;
+
+function TMcpPromptsTests.Read(const AUri: string): string;
+var
+  mParams: TJSONObject;
+  mResult: TJSONObject;
+begin
+  mParams := TJSONObject.Create;
+  try
+    mParams.AddPair('uri', AUri);
+    mResult := FServer.ReadResource(mParams);
+    try
+      Result := mResult.GetValue<TJSONArray>('contents').Items[0].GetValue<string>('text');
+    finally
+      mResult.Free;
+    end;
+  finally
+    mParams.Free;
+  end;
+end;
+
+function TMcpPromptsTests.ListedNames: string;
+var
+  mResult: TJSONObject;
+  mItem: TJSONValue;
+begin
+  Result := '';
+  mResult := FServer.ListPrompts;
+  try
+    for mItem in mResult.GetValue<TJSONArray>('prompts') do
+    begin
+      Result := Result + mItem.GetValue<string>('name') + ',';
+    end;
+  finally
+    mResult.Free;
+  end;
+end;
+
+procedure TMcpPromptsTests.AddTool(const AName: string; AKind: TMcpToolKind);
+var
+  mName: string;
+begin
+  mName := AName;
+  FServer.AddTool(AName, AName, '{"type":"object"}',
+    function(const AArguments: TJSONObject): string
+    begin
+      Result := 'Ergebnis ' + mName + ' ' + Joined(AArguments);
+    end, AKind);
 end;
 
 procedure TMcpPromptsTests.Setup;
@@ -224,60 +280,6 @@ begin
   FSettings := Default(TServerSettings);
   FResolved := '';
   FChanges := Default(TMcpChangeSet);
-end;
-
-function TMcpPromptsTests.Get(const AName, AArguments: string): string;
-var
-  mParams: TJSONValue;
-  mResult: TJSONObject;
-begin
-  mParams := TJSONObject.ParseJSONValue('{"name":"' + AName + '","arguments":' + AArguments + '}');
-  try
-    mResult := FServer.GetPrompt(mParams);
-    try
-      Result := mResult.GetValue<TJSONArray>('messages').Items[0].GetValue<string>('content.text');
-    finally
-      mResult.Free;
-    end;
-  finally
-    mParams.Free;
-  end;
-end;
-
-function TMcpPromptsTests.Read(const AUri: string): string;
-var
-  mParams: TJSONObject;
-  mResult: TJSONObject;
-begin
-  mParams := TJSONObject.Create;
-  try
-    mParams.AddPair('uri', AUri);
-    mResult := FServer.ReadResource(mParams);
-    try
-      Result := mResult.GetValue<TJSONArray>('contents').Items[0].GetValue<string>('text');
-    finally
-      mResult.Free;
-    end;
-  finally
-    mParams.Free;
-  end;
-end;
-
-function TMcpPromptsTests.ListedNames: string;
-var
-  mResult: TJSONObject;
-  mItem: TJSONValue;
-begin
-  Result := '';
-  mResult := FServer.ListPrompts;
-  try
-    for mItem in mResult.GetValue<TJSONArray>('prompts') do
-    begin
-      Result := Result + mItem.GetValue<string>('name') + ',';
-    end;
-  finally
-    mResult.Free;
-  end;
 end;
 
 procedure TMcpPromptsTests.ListsFiveBuiltinPromptsWithArguments;

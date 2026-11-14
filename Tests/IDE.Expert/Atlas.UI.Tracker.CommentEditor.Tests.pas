@@ -95,6 +95,8 @@ type
     procedure DeleteDraft;
   end;
 
+{ TFakeAssist }
+
 function TFakeAssist.Target: TAtlasTrackerTarget;
 begin
   Result := TAtlasTrackerTarget.Create('youtrack', 'https://yt.firma.de', 'ATL', '');
@@ -161,6 +163,8 @@ type
     procedure Send(Sender: TObject);
     procedure CancelClick(Sender: TObject);
   end;
+
+{ TSendCounter }
 
 procedure TSendCounter.Send(Sender: TObject);
 begin

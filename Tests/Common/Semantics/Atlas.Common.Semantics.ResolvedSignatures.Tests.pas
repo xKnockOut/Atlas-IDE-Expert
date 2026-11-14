@@ -97,17 +97,7 @@ const
     'end;' + cLB +
     'end.';
 
-procedure TResolvedSignaturesTests.Setup;
-begin
-  FIndex := TSymbolIndex.Create;
-  FIndex.AddUnit(TIndexExtractor.ExtractText(cUnitOther, cOtherFile, nil));
-  FIndex.AddUnit(TIndexExtractor.ExtractText(cUnitMain, cMainFile, nil));
-end;
-
-procedure TResolvedSignaturesTests.TearDown;
-begin
-  FIndex := nil;
-end;
+{ TResolvedSignaturesTests }
 
 function TResolvedSignaturesTests.Modes(AWithResolver: Boolean): string;
 var
@@ -161,6 +151,18 @@ begin
     mTree.Free;
     mCalls.Free;
   end;
+end;
+
+procedure TResolvedSignaturesTests.Setup;
+begin
+  FIndex := TSymbolIndex.Create;
+  FIndex.AddUnit(TIndexExtractor.ExtractText(cUnitOther, cOtherFile, nil));
+  FIndex.AddUnit(TIndexExtractor.ExtractText(cUnitMain, cMainFile, nil));
+end;
+
+procedure TResolvedSignaturesTests.TearDown;
+begin
+  FIndex := nil;
 end;
 
 procedure TResolvedSignaturesTests.ModesFromSignature;

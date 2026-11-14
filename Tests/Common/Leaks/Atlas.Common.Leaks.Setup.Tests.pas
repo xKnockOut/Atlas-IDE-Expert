@@ -122,6 +122,8 @@ begin
   Result := StringReplace(APath, '\', PathDelim, [rfReplaceAll]);
 end;
 
+{ TFakeFiles }
+
 constructor TFakeFiles.Create;
 begin
   inherited Create;
@@ -151,24 +153,6 @@ end;
 
 { TLeakSetupTests }
 
-procedure TLeakSetupTests.Setup;
-var
-  mFiles: TFakeFiles;
-begin
-  mFiles := TFakeFiles.Create;
-  FFiles := mFiles;
-  mFiles.Add(N(cLib + '\FastMM4.pas'), 'unit FastMM4;' + cBreak + 'const' + cBreak + '  FastMMVersion = ''4.993'';');
-  mFiles.Add(N(cLib + '\FastMM4Options.inc'), '{$define EnableMemoryLeakReporting}');
-  mFiles.Add(N(cLib + '\FullDebugMode DLL\Precompiled\FastMM_FullDebugMode.dll'), '');
-  mFiles.Add(N(cLib + '\FullDebugMode DLL\Precompiled\FastMM_FullDebugMode64.dll'), '');
-  mFiles.Add(N(cLib5 + '\FastMM5.pas'), '{' + cBreak + 'FastMM 5.04' + cBreak + '}' + cBreak + 'unit FastMM5;');
-end;
-
-procedure TLeakSetupTests.TearDown;
-begin
-  FFiles := nil;
-end;
-
 function TLeakSetupTests.Input(const AText: string): TLeakSetupInput;
 begin
   Result := Default(TLeakSetupInput);
@@ -193,6 +177,24 @@ begin
     mLines[mEdit.Line] := Copy(mLine, 1, mEdit.Character) + mEdit.Text + Copy(mLine, mEdit.Character + 1, MaxInt);
   end;
   Result := string.Join(#10, mLines);
+end;
+
+procedure TLeakSetupTests.Setup;
+var
+  mFiles: TFakeFiles;
+begin
+  mFiles := TFakeFiles.Create;
+  FFiles := mFiles;
+  mFiles.Add(N(cLib + '\FastMM4.pas'), 'unit FastMM4;' + cBreak + 'const' + cBreak + '  FastMMVersion = ''4.993'';');
+  mFiles.Add(N(cLib + '\FastMM4Options.inc'), '{$define EnableMemoryLeakReporting}');
+  mFiles.Add(N(cLib + '\FullDebugMode DLL\Precompiled\FastMM_FullDebugMode.dll'), '');
+  mFiles.Add(N(cLib + '\FullDebugMode DLL\Precompiled\FastMM_FullDebugMode64.dll'), '');
+  mFiles.Add(N(cLib5 + '\FastMM5.pas'), '{' + cBreak + 'FastMM 5.04' + cBreak + '}' + cBreak + 'unit FastMM5;');
+end;
+
+procedure TLeakSetupTests.TearDown;
+begin
+  FFiles := nil;
 end;
 
 procedure TLeakSetupTests.DllNameFollowsPlatform;

@@ -33,6 +33,8 @@ begin
     end;
 end;
 
+{ TFeaturePartTests }
+
 procedure TFeaturePartTests.AtLevelFollowsMinLevel;
 var
   mPart: IAtlasFeaturePart;

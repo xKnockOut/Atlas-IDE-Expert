@@ -95,6 +95,8 @@ type
 const
   cGitPrefix = '-c core.quotepath=on ';
 
+{ TFakeProcess }
+
 constructor TFakeProcess.Create;
 begin
   inherited Create;

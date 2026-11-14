@@ -101,6 +101,8 @@ begin
   Result := ALookup.MemberLevel(mNode, AVisibility);
 end;
 
+{ TMethodLookupTests }
+
 procedure TMethodLookupTests.MemberLevelFromClassInFile;
 var
   mTree: TSyntaxTree;

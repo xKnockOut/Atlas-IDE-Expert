@@ -117,6 +117,8 @@ type
       AQueueMs, AElapsedMs: Int64);
   end;
 
+{ TMemoryWriter }
+
 constructor TMemoryWriter.Create(ALines: TStrings);
 begin
   inherited Create;
@@ -127,6 +129,8 @@ procedure TMemoryWriter.WriteLine(const ALine: string);
 begin
   FLines.Add(ALine);
 end;
+
+{ TRecordingObserver }
 
 procedure TRecordingObserver.Started(const AMethod: string);
 begin
@@ -304,6 +308,18 @@ begin
   Assert.AreEqual('ctx=memberAccess inString=false missingUnits=2', string.Join(' ', mNotes.Notes));
 end;
 
+procedure TDiagnosticLogTests.RequestScopeWithoutOpenDoesNothing;
+var
+  mNotes: TRequestNotes;
+begin
+  TRequestDiagnostics.Reason('noTarget');
+  TRequestDiagnostics.Note('ctx', 'scope');
+  mNotes := TRequestDiagnostics.Close;
+  Assert.AreEqual('', mNotes.Reason);
+  Assert.AreEqual(-1, Integer(mNotes.Count));
+  Assert.AreEqual<NativeInt>(0, Length(mNotes.Notes));
+end;
+
 procedure TDiagnosticLogTests.RequestScopeKeepsSlowest;
 var
   mNotes: TRequestNotes;
@@ -342,18 +358,6 @@ begin
   TRequestDiagnostics.RuleFailed('x', 'Exception');
   mNotes := TRequestDiagnostics.Close;
   Assert.AreEqual('', mNotes.Subject);
-  Assert.AreEqual<NativeInt>(0, Length(mNotes.Notes));
-end;
-
-procedure TDiagnosticLogTests.RequestScopeWithoutOpenDoesNothing;
-var
-  mNotes: TRequestNotes;
-begin
-  TRequestDiagnostics.Reason('noTarget');
-  TRequestDiagnostics.Note('ctx', 'scope');
-  mNotes := TRequestDiagnostics.Close;
-  Assert.AreEqual('', mNotes.Reason);
-  Assert.AreEqual(-1, Integer(mNotes.Count));
   Assert.AreEqual<NativeInt>(0, Length(mNotes.Notes));
 end;
 

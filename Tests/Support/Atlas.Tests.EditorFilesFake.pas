@@ -37,6 +37,8 @@ type
 
 implementation
 
+{ TAtlasEditorFilesFake }
+
 constructor TAtlasEditorFilesFake.Create;
 begin
   inherited Create;
@@ -81,6 +83,8 @@ begin
     FFiles.AddOrSetValue(AFileName, mFile);
   end;
 end;
+
+{ TAtlasActiveEditorFake }
 
 constructor TAtlasActiveEditorFake.Create(const ACaret: TAtlasActiveEditorPos);
 begin

@@ -37,6 +37,8 @@ uses
   Atlas.Core.Localization.Language,
   Atlas.Core.Lsp.Crashes;
 
+{ TAtlasServerCrashesTests }
+
 procedure TAtlasServerCrashesTests.DescribesKnownExitCodes;
 begin
   Assert.AreEqual('Stapelüberlauf (0xC00000FD)', TAtlasServerExits.Describe($C00000FD));

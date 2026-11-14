@@ -50,10 +50,7 @@ uses
   Atlas.Core.Lsp.TextChanges,
   System.SysUtils;
 
-procedure TAtlasWrapSelectionTests.TearDown;
-begin
-  FResult := Default(TAtlasWrapResult);
-end;
+{ TAtlasWrapSelectionTests }
 
 function TAtlasWrapSelectionTests.Wrap(const ALines: TArray<string>; ALine, AStart, AStop: Integer;
   AOpen: Char): Boolean;
@@ -74,6 +71,11 @@ begin
   mRange := FResult.Selections[AIndex];
   Result := Format('%d:%d-%d:%d', [mRange.StartPos.Line, mRange.StartPos.Character, mRange.EndPos.Line,
     mRange.EndPos.Character]);
+end;
+
+procedure TAtlasWrapSelectionTests.TearDown;
+begin
+  FResult := Default(TAtlasWrapResult);
 end;
 
 procedure TAtlasWrapSelectionTests.WrapsWithBracketsAndKeepsSelection;

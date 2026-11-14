@@ -385,6 +385,17 @@ begin
   end;
 end;
 
+procedure TBlockIndenterTests.IsSwitchable;
+var
+  mSettings: TFormatStyle;
+  mText: string;
+begin
+  mSettings := TFormatStyle.Default;
+  mSettings.Reindent := False;
+  mText := 'procedure P;' + cLF + 'begin' + cLF + '      A;' + cLF + 'end;';
+  Assert.AreEqual(mText, Formatted(mText, mSettings));
+end;
+
 procedure TBlockIndenterTests.ReportsLineInfo;
 var
   mInfo: TArray<TIndentLineInfo>;
@@ -414,17 +425,6 @@ begin
   Assert.AreEqual('      ', TBlockIndenter.IndentText(6, 4, False));
   Assert.AreEqual(#9'  ', TBlockIndenter.IndentText(6, 4, True));
   Assert.AreEqual('', TBlockIndenter.IndentText(-2, 2, True));
-end;
-
-procedure TBlockIndenterTests.IsSwitchable;
-var
-  mSettings: TFormatStyle;
-  mText: string;
-begin
-  mSettings := TFormatStyle.Default;
-  mSettings.Reindent := False;
-  mText := 'procedure P;' + cLF + 'begin' + cLF + '      A;' + cLF + 'end;';
-  Assert.AreEqual(mText, Formatted(mText, mSettings));
 end;
 
 initialization

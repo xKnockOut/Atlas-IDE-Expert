@@ -145,6 +145,32 @@ begin
   Assert.AreEqual('FKundenName', mFindings[0].Fixes[0].Edits[0].NewText);
 end;
 
+procedure TRecursionRulesTests.GetterUsesFieldOfDeclaration;
+var
+  mFindings: TArray<TRuleFinding>;
+begin
+  mFindings := TRuleAssert.Findings(TSetterRecursionRule.Create, cHeader +
+    'function TFoo.GetName: string;'#10'begin'#10'  Result := Name;'#10'end;'#10'end.');
+  Assert.AreEqual(1, Integer(Length(mFindings)));
+  Assert.AreEqual('Lesen der Property Name im eigenen Getter: Endlosrekursion.', mFindings[0].Message);
+  Assert.AreEqual(15, mFindings[0].Range.StartPos.Line);
+  Assert.AreEqual(12, mFindings[0].Range.StartPos.Character);
+  // Ohne Feld in der Deklaration: F<Name> der Klasse.
+  Assert.AreEqual('Feld FName verwenden', mFindings[0].Fixes[0].Title);
+  Assert.AreEqual('FName', mFindings[0].Fixes[0].Edits[0].NewText);
+end;
+
+procedure TRecursionRulesTests.SetterWithoutFieldHasNoFix;
+var
+  mFindings: TArray<TRuleFinding>;
+begin
+  mFindings := TRuleAssert.Findings(TSetterRecursionRule.Create, cHeader +
+    'procedure TFoo.SetTitle(const AValue: string);'#10'begin'#10'  Self.Title := AValue;'#10'end;'#10'end.');
+  Assert.AreEqual(1, Integer(Length(mFindings)));
+  Assert.AreEqual('Zuweisung an die Property Title im eigenen Setter: Endlosrekursion.', mFindings[0].Message);
+  Assert.AreEqual(0, Integer(Length(mFindings[0].Fixes)), 'kein Feld FTitle');
+end;
+
 procedure TRecursionRulesTests.ClampedSetterHasLowConfidence;
 const
   cSource =
@@ -176,32 +202,6 @@ begin
   Assert.AreEqual(Ord(TRuleConfidence.Low), Ord(mFindings[0].Confidence));
   Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TSetterRecursionRule.Create, cSource))));
   mFindings := nil;
-end;
-
-procedure TRecursionRulesTests.GetterUsesFieldOfDeclaration;
-var
-  mFindings: TArray<TRuleFinding>;
-begin
-  mFindings := TRuleAssert.Findings(TSetterRecursionRule.Create, cHeader +
-    'function TFoo.GetName: string;'#10'begin'#10'  Result := Name;'#10'end;'#10'end.');
-  Assert.AreEqual(1, Integer(Length(mFindings)));
-  Assert.AreEqual('Lesen der Property Name im eigenen Getter: Endlosrekursion.', mFindings[0].Message);
-  Assert.AreEqual(15, mFindings[0].Range.StartPos.Line);
-  Assert.AreEqual(12, mFindings[0].Range.StartPos.Character);
-  // Ohne Feld in der Deklaration: F<Name> der Klasse.
-  Assert.AreEqual('Feld FName verwenden', mFindings[0].Fixes[0].Title);
-  Assert.AreEqual('FName', mFindings[0].Fixes[0].Edits[0].NewText);
-end;
-
-procedure TRecursionRulesTests.SetterWithoutFieldHasNoFix;
-var
-  mFindings: TArray<TRuleFinding>;
-begin
-  mFindings := TRuleAssert.Findings(TSetterRecursionRule.Create, cHeader +
-    'procedure TFoo.SetTitle(const AValue: string);'#10'begin'#10'  Self.Title := AValue;'#10'end;'#10'end.');
-  Assert.AreEqual(1, Integer(Length(mFindings)));
-  Assert.AreEqual('Zuweisung an die Property Title im eigenen Setter: Endlosrekursion.', mFindings[0].Message);
-  Assert.AreEqual(0, Integer(Length(mFindings[0].Fixes)), 'kein Feld FTitle');
 end;
 
 procedure TRecursionRulesTests.FieldAccessIsSilent;
@@ -307,6 +307,8 @@ function Routine(const AHeader, ABody: string): string;
 begin
   Result := 'unit Hilfen;'#10'interface'#10'implementation'#10 + AHeader + #10'begin'#10 + ABody + 'end;'#10'end.';
 end;
+
+{ TUnconditionalRecursionTests }
 
 procedure TUnconditionalRecursionTests.IssueExample;
 var

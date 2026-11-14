@@ -53,6 +53,8 @@ begin
     end);
 end;
 
+{ TIndexTokenReaderTests }
+
 procedure TIndexTokenReaderTests.DirectivesOfReadsDeprecatedReason;
 var
   mTree: TSyntaxTree;

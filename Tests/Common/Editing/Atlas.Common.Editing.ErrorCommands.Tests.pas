@@ -134,6 +134,8 @@ begin
   Result := Format(cRoutineUnit, [ACommand]);
 end;
 
+{ TErrorCommandsTests }
+
 procedure TErrorCommandsTests.ParametersFromSignature;
 var
   mParameters: TArray<TGuardParameter>;

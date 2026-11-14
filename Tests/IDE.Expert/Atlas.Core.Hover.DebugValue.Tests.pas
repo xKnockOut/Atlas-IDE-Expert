@@ -49,6 +49,8 @@ implementation
 uses
   System.SysUtils;
 
+{ TDebugValueTests }
+
 function TDebugValueTests.ExpressionAt(const ALine, AWord: string): string;
 var
   mStart: Integer;

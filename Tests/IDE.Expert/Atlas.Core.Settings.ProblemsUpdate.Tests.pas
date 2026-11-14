@@ -27,6 +27,8 @@ implementation
 uses
   Atlas.Core.Settings.ProblemsUpdate;
 
+{ TAtlasProblemsUpdateSettingTests }
+
 procedure TAtlasProblemsUpdateSettingTests.NamesRoundTrip;
 var
   mMode: TAtlasProblemsUpdate;

@@ -74,10 +74,7 @@ const
   cTryFree = '  X := TFoo.Create;'#10'  try'#10'    X.Add(1);'#10'  finally'#10'    X.Free;'#10'  end;'#10;
   cNoTry = '  X := TFoo.Create;'#10'  X.Add(1);'#10;
 
-procedure TLearnedSuggestionsTests.TearDown;
-begin
-  FUnits := nil;
-end;
+{ TLearnedSuggestionsTests }
 
 procedure TLearnedSuggestionsTests.AddUnits(ACount: Integer; const ABody: string);
 var
@@ -89,6 +86,11 @@ begin
     FUnits := FUnits + [TIndexExtractor.ExtractText(UnitWith('U' + IntToStr(mNumber), ABody),
       'C:\P\U' + IntToStr(mNumber) + '.pas', nil, nil, False, True)];
   end;
+end;
+
+procedure TLearnedSuggestionsTests.TearDown;
+begin
+  FUnits := nil;
 end;
 
 /// <summary>Bekannt sind nur die Namen in ANames.</summary>

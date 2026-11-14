@@ -50,6 +50,8 @@ begin
   end;
 end;
 
+{ TLspUnitRenameTests }
+
 procedure TLspUnitRenameTests.AdjustsUsingUnits;
 var
   mAnswer: TJSONObject;

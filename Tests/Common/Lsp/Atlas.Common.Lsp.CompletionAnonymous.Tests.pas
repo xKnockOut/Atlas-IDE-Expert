@@ -171,29 +171,6 @@ end;
 
 { TCompletionAnonymousTests }
 
-procedure TCompletionAnonymousTests.WarmUpFirstUse;
-begin
-  Setup;
-  try
-    AloneAfterParenthesis;
-  finally
-    TearDown;
-  end;
-end;
-
-procedure TCompletionAnonymousTests.Setup;
-begin
-  FIndex := TSymbolIndex.Create;
-  FIndex.AddUnit(TIndexExtractor.ExtractText(cUnitTasks, cTasksFile, nil));
-  FResolver := TNameResolver.Create(FIndex);
-end;
-
-procedure TCompletionAnonymousTests.TearDown;
-begin
-  FResolver.Free;
-  FIndex := nil;
-end;
-
 function TCompletionAnonymousTests.ItemAt(const AMarked: string; ASnippets: Boolean;
   const ASettings: TCompletionSettings; const ANamingFor: TCompletionNamingFunc; out AItem: TCompletionItem): Boolean;
 var
@@ -231,6 +208,29 @@ begin
   begin
     Result := mItem.Name;
   end;
+end;
+
+procedure TCompletionAnonymousTests.WarmUpFirstUse;
+begin
+  Setup;
+  try
+    AloneAfterParenthesis;
+  finally
+    TearDown;
+  end;
+end;
+
+procedure TCompletionAnonymousTests.Setup;
+begin
+  FIndex := TSymbolIndex.Create;
+  FIndex.AddUnit(TIndexExtractor.ExtractText(cUnitTasks, cTasksFile, nil));
+  FResolver := TNameResolver.Create(FIndex);
+end;
+
+procedure TCompletionAnonymousTests.TearDown;
+begin
+  FResolver.Free;
+  FIndex := nil;
 end;
 
 procedure TCompletionAnonymousTests.ParsesDeclarations;

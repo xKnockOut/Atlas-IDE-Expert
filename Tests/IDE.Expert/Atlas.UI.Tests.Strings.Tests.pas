@@ -25,6 +25,8 @@ uses
   Atlas.UI.Strings.Tests,
   Atlas.UI.Tests.Strings;
 
+{ TAtlasTestsStringsTests }
+
 procedure TAtlasTestsStringsTests.EveryTextExistsInBothLanguages;
 var
   mId: TAtlasTestsTextId;

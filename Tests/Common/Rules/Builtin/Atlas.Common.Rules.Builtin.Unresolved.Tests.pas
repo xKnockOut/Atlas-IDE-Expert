@@ -225,6 +225,8 @@ begin
     'Src/Haupt.pas');
 end;
 
+{ TUsesUnitNotFoundTests }
+
 procedure TUsesUnitNotFoundTests.IssueExampleWithSuggestion;
 var
   mFound: TArray<TRuleFinding>;
@@ -526,6 +528,8 @@ begin
   Result := string.Join(#10, mLines);
 end;
 
+{ TUnresolvedAttributeTests }
+
 procedure TUnresolvedAttributeTests.IssueExampleWithFix;
 var
   mFound: TArray<TRuleFinding>;
@@ -667,6 +671,8 @@ begin
   Assert.AreEqual('Attribut GibtEsNicht nicht gefunden und wird ignoriert (wie W1074).', mFound[0].Message);
   Assert.AreEqual('Attribut GibtEsAuchNicht nicht gefunden und wird ignoriert (wie W1074).', mFound[1].Message);
 end;
+
+{ TUnresolvedTypeTests }
 
 procedure TUnresolvedTypeTests.IssueExampleWithFix;
 var

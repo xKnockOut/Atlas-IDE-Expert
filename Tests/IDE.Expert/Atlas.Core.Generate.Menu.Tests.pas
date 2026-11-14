@@ -98,6 +98,8 @@ begin
   end;
 end;
 
+{ TAtlasGenerateMenuTests }
+
 procedure TAtlasGenerateMenuTests.GroupsInConfiguredOrder;
 var
   mEntries: TArray<TAtlasGenerateEntry>;

@@ -55,6 +55,8 @@ begin
   Result.Name := AName;
 end;
 
+{ TAtlasInlayHintStoreTests }
+
 procedure TAtlasInlayHintStoreTests.RecognizesLiterals;
 const
   cLine = 'F(''a'', 12, -3, $FF, #13, True, nil, X, TrueValue, False)';
@@ -181,6 +183,53 @@ begin
   end;
 end;
 
+procedure TAtlasInlayHintStoreTests.KeepsEndLabelsApart;
+var
+  mStore: TAtlasInlayHintStore;
+  mText, mAnchor, mCaption: string;
+  mEnds: TArray<TAtlasInlayHint>;
+  mHint: TAtlasInlayHint;
+begin
+  mText := 'begin' + sLineBreak +
+    'end;' + sLineBreak +
+    'end; // schon kommentiert' + sLineBreak +
+    'end;' + sLineBreak +
+    'end;';
+  mEnds := [H(1, 4, 'TKunde.Speichern'), H(2, 4, 'TKunde.Laden'), H(3, 4, StringOfChar('x', 50)),
+    H(4, 4, ''), H(1, 4, 'doppelt')];
+  mEnds[0].EndLabel := True;
+  mEnds[1].EndLabel := True;
+  mEnds[2].EndLabel := True;
+  mEnds[3].EndLabel := True;
+  mEnds[4].EndLabel := True;
+  mEnds[0].BlockLine := 0;
+  mEnds[0].BlockCharacter := 2;
+  mEnds[0].HasBlock := True;
+  mStore := TAtlasInlayHintStore.Create;
+  try
+    mStore.SetText('A.pas', mText);
+    mStore.Put('A.pas', mText, 0, 4, mEnds);
+    Assert.IsTrue(mStore.EndLabelOn('A.pas', 1, mAnchor, mCaption));
+    Assert.AreEqual('TKunde.Speichern', mAnchor);
+    Assert.AreEqual('// TKunde.Speichern', mCaption);
+    Assert.IsTrue(mStore.EndLabelOn('A.pas', 1, mAnchor, mCaption, mHint), 'mit Blockanfang (#620)');
+    Assert.IsTrue(mHint.HasBlock);
+    Assert.AreEqual(0, mHint.BlockLine);
+    Assert.AreEqual(2, mHint.BlockCharacter);
+    Assert.AreEqual(0, Integer(Length(mStore.OnLine('A.pas', 1))), 'keine Parameternamen');
+    Assert.IsFalse(mStore.EndLabelOn('A.pas', 2, mAnchor, mCaption), 'Kommentar steht schon dahinter');
+    Assert.IsTrue(mStore.EndLabelOn('A.pas', 3, mAnchor, mCaption));
+    Assert.AreEqual(Integer(Length('// ') + TAtlasInlayHintStore.cMaxEndLabelLength), Integer(Length(mCaption)));
+    Assert.IsTrue(mCaption.EndsWith('…'));
+    Assert.IsFalse(mStore.EndLabelOn('A.pas', 4, mAnchor, mCaption), 'ohne Text');
+    Assert.IsFalse(TAtlasInlayHintStore.HasCommentAfter('end; // ''x''', 10));
+    Assert.IsFalse(TAtlasInlayHintStore.HasCommentAfter('S := ''//''; ', 4));
+    Assert.IsTrue(TAtlasInlayHintStore.HasCommentAfter('end; { Ende }', 4));
+  finally
+    mStore.Free;
+  end;
+end;
+
 procedure TAtlasInlayHintStoreTests.KeepsTypeHintsApart;
 var
   mStore: TAtlasInlayHintStore;
@@ -288,53 +337,6 @@ begin
     Assert.IsFalse(mStore.MethodOnLine('A.pas', 0, mCharacter));
     Assert.AreEqual(0, Integer(Length(mStore.OnLine('A.pas', 1))), 'keine Parameternamen');
     Assert.AreEqual(0, Integer(Length(mStore.TypesOnLine('A.pas', 1))), 'keine Typmarken');
-  finally
-    mStore.Free;
-  end;
-end;
-
-procedure TAtlasInlayHintStoreTests.KeepsEndLabelsApart;
-var
-  mStore: TAtlasInlayHintStore;
-  mText, mAnchor, mCaption: string;
-  mEnds: TArray<TAtlasInlayHint>;
-  mHint: TAtlasInlayHint;
-begin
-  mText := 'begin' + sLineBreak +
-    'end;' + sLineBreak +
-    'end; // schon kommentiert' + sLineBreak +
-    'end;' + sLineBreak +
-    'end;';
-  mEnds := [H(1, 4, 'TKunde.Speichern'), H(2, 4, 'TKunde.Laden'), H(3, 4, StringOfChar('x', 50)),
-    H(4, 4, ''), H(1, 4, 'doppelt')];
-  mEnds[0].EndLabel := True;
-  mEnds[1].EndLabel := True;
-  mEnds[2].EndLabel := True;
-  mEnds[3].EndLabel := True;
-  mEnds[4].EndLabel := True;
-  mEnds[0].BlockLine := 0;
-  mEnds[0].BlockCharacter := 2;
-  mEnds[0].HasBlock := True;
-  mStore := TAtlasInlayHintStore.Create;
-  try
-    mStore.SetText('A.pas', mText);
-    mStore.Put('A.pas', mText, 0, 4, mEnds);
-    Assert.IsTrue(mStore.EndLabelOn('A.pas', 1, mAnchor, mCaption));
-    Assert.AreEqual('TKunde.Speichern', mAnchor);
-    Assert.AreEqual('// TKunde.Speichern', mCaption);
-    Assert.IsTrue(mStore.EndLabelOn('A.pas', 1, mAnchor, mCaption, mHint), 'mit Blockanfang (#620)');
-    Assert.IsTrue(mHint.HasBlock);
-    Assert.AreEqual(0, mHint.BlockLine);
-    Assert.AreEqual(2, mHint.BlockCharacter);
-    Assert.AreEqual(0, Integer(Length(mStore.OnLine('A.pas', 1))), 'keine Parameternamen');
-    Assert.IsFalse(mStore.EndLabelOn('A.pas', 2, mAnchor, mCaption), 'Kommentar steht schon dahinter');
-    Assert.IsTrue(mStore.EndLabelOn('A.pas', 3, mAnchor, mCaption));
-    Assert.AreEqual(Integer(Length('// ') + TAtlasInlayHintStore.cMaxEndLabelLength), Integer(Length(mCaption)));
-    Assert.IsTrue(mCaption.EndsWith('…'));
-    Assert.IsFalse(mStore.EndLabelOn('A.pas', 4, mAnchor, mCaption), 'ohne Text');
-    Assert.IsFalse(TAtlasInlayHintStore.HasCommentAfter('end; // ''x''', 10));
-    Assert.IsFalse(TAtlasInlayHintStore.HasCommentAfter('S := ''//''; ', 4));
-    Assert.IsTrue(TAtlasInlayHintStore.HasCommentAfter('end; { Ende }', 4));
   finally
     mStore.Free;
   end;

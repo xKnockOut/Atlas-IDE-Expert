@@ -89,6 +89,8 @@ begin
   Result.OnLoad := Children;
 end;
 
+{ TAtlasCallDiagramViewTests }
+
 procedure TAtlasCallDiagramViewTests.ShowsFirstLevelAndLoadsOnClick;
 var
   mHost: TForm;

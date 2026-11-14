@@ -35,6 +35,8 @@ uses
   System.SysUtils,
   Atlas.Text.DebugDisplay;
 
+{ TTextDebugDisplayTests }
+
 procedure TTextDebugDisplayTests.TemplateSegments;
 var
   mTemplate: TDebugDisplayTemplate;

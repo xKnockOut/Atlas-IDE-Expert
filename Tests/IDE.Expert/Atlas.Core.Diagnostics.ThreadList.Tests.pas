@@ -42,6 +42,8 @@ type
     destructor Destroy; override;
   end;
 
+{ TFreedSignal }
+
 constructor TFreedSignal.Create(AFreed: TEvent);
 begin
   inherited Create;
@@ -77,6 +79,8 @@ procedure StartHanging(AList: TAtlasThreadList; ARelease, AFreed: TEvent);
 begin
   AList.Start(Hanging(ARelease, TFreedSignal.Create(AFreed)));
 end;
+
+{ TThreadListTests }
 
 procedure TThreadListTests.StartedThreadDoesNotFreeItself;
 var

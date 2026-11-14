@@ -133,6 +133,66 @@ begin
     end;
 end;
 
+{ TShellRefactoringsTests }
+
+function TShellRefactoringsTests.SettingsFor(const AUri: string): TRefactoringSettings;
+begin
+  Result := FSettings;
+end;
+
+function TShellRefactoringsTests.Run(const ACommand, AArguments: string): string;
+var
+  mArguments: TJSONArray;
+  mAnswer: TJSONValue;
+begin
+  mArguments := TJSONObject.ParseJSONValue(AArguments) as TJSONArray;
+  try
+    mAnswer := FCommands.Execute(ACommand, mArguments);
+    try
+      Result := mAnswer.ToJSON;
+    finally
+      mAnswer.Free;
+    end;
+  finally
+    mArguments.Free;
+  end;
+end;
+
+function TShellRefactoringsTests.ErrorOf(const ACommand, AArguments: string; out ACode: Integer): string;
+begin
+  ACode := 0;
+  Result := '';
+  try
+    Run(ACommand, AArguments);
+  except
+    on E: EJsonRpcError do
+    begin
+      ACode := E.Code;
+      Result := E.Message;
+    end;
+  end;
+end;
+
+function TShellRefactoringsTests.CommandsOf(APart: TShellRefactoringPart): string;
+var
+  mCommands: TLspCommands;
+  mCapability: TJSONObject;
+begin
+  mCommands := TLspCommands.Create;
+  try
+    APart.Register(mCommands);
+    mCapability := mCommands.Capability;
+    try
+      Result := mCapability.ToJSON;
+    finally
+      mCapability.Free;
+    end;
+  finally
+    mCommands.Free;
+    APart.Free;
+  end;
+end;
+
 procedure TShellRefactoringsTests.Setup;
 var
   mServices: TShellRefactoringServices;
@@ -201,62 +261,25 @@ begin
   FSettings := Default(TRefactoringSettings);
 end;
 
-function TShellRefactoringsTests.SettingsFor(const AUri: string): TRefactoringSettings;
-begin
-  Result := FSettings;
-end;
-
-function TShellRefactoringsTests.Run(const ACommand, AArguments: string): string;
+procedure TShellRefactoringsTests.RegistersCommandsOfAllParts;
 var
-  mArguments: TJSONArray;
-  mAnswer: TJSONValue;
-begin
-  mArguments := TJSONObject.ParseJSONValue(AArguments) as TJSONArray;
-  try
-    mAnswer := FCommands.Execute(ACommand, mArguments);
-    try
-      Result := mAnswer.ToJSON;
-    finally
-      mAnswer.Free;
-    end;
-  finally
-    mArguments.Free;
-  end;
-end;
-
-function TShellRefactoringsTests.ErrorOf(const ACommand, AArguments: string; out ACode: Integer): string;
-begin
-  ACode := 0;
-  Result := '';
-  try
-    Run(ACommand, AArguments);
-  except
-    on E: EJsonRpcError do
-    begin
-      ACode := E.Code;
-      Result := E.Message;
-    end;
-  end;
-end;
-
-function TShellRefactoringsTests.CommandsOf(APart: TShellRefactoringPart): string;
-var
-  mCommands: TLspCommands;
   mCapability: TJSONObject;
+  mText: string;
 begin
-  mCommands := TLspCommands.Create;
+  mCapability := FCommands.Capability;
   try
-    APart.Register(mCommands);
-    mCapability := mCommands.Capability;
-    try
-      Result := mCapability.ToJSON;
-    finally
-      mCapability.Free;
-    end;
+    mText := mCapability.ToJSON;
   finally
-    mCommands.Free;
-    APart.Free;
+    mCapability.Free;
   end;
+  Assert.IsTrue(Pos(TLspChangeSignature.cPrepareCommand, mText) > 0, 'Aufbau');
+  Assert.IsTrue(Pos(TLspSafeDelete.cApplyCommand, mText) > 0, 'Aufbau');
+  Assert.IsTrue(Pos(TLspTypeAlias.cInlineApplyCommand, mText) > 0, 'Typen');
+  Assert.IsTrue(Pos(TLspDisableWarning.cApplyCommand, mText) > 0, 'Korrekturen');
+  Assert.IsTrue(Pos(TLspUnitRename.cCommand, mText) > 0, 'Bearbeiten');
+  Assert.IsTrue(Pos(TLspStepFilter.cCountsCommand, mText) > 0, 'Debugger');
+  Assert.IsTrue(Pos(TLspMethodBreakpoints.cCommand, mText) > 0, 'Methodenhaltepunkte');
+  Assert.IsTrue(Pos(TLspRaiseVisibility.cCommand, mText) > 0, 'Sichtbarkeit');
 end;
 
 procedure TShellRefactoringsTests.EachPartRegistersItsCommands;
@@ -278,27 +301,6 @@ begin
     'Methodenhaltepunkte');
   Assert.IsTrue(Pos(TLspRaiseVisibility.cCommand, CommandsOf(TShellVisibilityRefactorings.Create(FServices))) > 0,
     'Sichtbarkeit');
-end;
-
-procedure TShellRefactoringsTests.RegistersCommandsOfAllParts;
-var
-  mCapability: TJSONObject;
-  mText: string;
-begin
-  mCapability := FCommands.Capability;
-  try
-    mText := mCapability.ToJSON;
-  finally
-    mCapability.Free;
-  end;
-  Assert.IsTrue(Pos(TLspChangeSignature.cPrepareCommand, mText) > 0, 'Aufbau');
-  Assert.IsTrue(Pos(TLspSafeDelete.cApplyCommand, mText) > 0, 'Aufbau');
-  Assert.IsTrue(Pos(TLspTypeAlias.cInlineApplyCommand, mText) > 0, 'Typen');
-  Assert.IsTrue(Pos(TLspDisableWarning.cApplyCommand, mText) > 0, 'Korrekturen');
-  Assert.IsTrue(Pos(TLspUnitRename.cCommand, mText) > 0, 'Bearbeiten');
-  Assert.IsTrue(Pos(TLspStepFilter.cCountsCommand, mText) > 0, 'Debugger');
-  Assert.IsTrue(Pos(TLspMethodBreakpoints.cCommand, mText) > 0, 'Methodenhaltepunkte');
-  Assert.IsTrue(Pos(TLspRaiseVisibility.cCommand, mText) > 0, 'Sichtbarkeit');
 end;
 
 procedure TShellRefactoringsTests.DisabledRefactoringsOfferNoActions;

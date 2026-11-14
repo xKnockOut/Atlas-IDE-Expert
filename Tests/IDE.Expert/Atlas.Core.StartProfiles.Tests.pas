@@ -69,6 +69,8 @@ const
   cProject = 'C:\Repo\App\App.dproj';
   cTeamFileName = 'C:\Repo\App\.atlas';
 
+{ TAtlasStartProfilesTests }
+
 function TAtlasStartProfilesTests.Team(const AText: string): TAtlasTeamSettings;
 begin
   Result := TAtlasTeamFile.Parse(AText, cTeamFileName, 'C:\Repo');
@@ -405,6 +407,41 @@ begin
   end;
 end;
 
+procedure TAtlasStartProfilesTests.BrokenFileSetAsideLockedFileKept;
+var
+  mFolder, mFileName: string;
+  mState: TAtlasStartProfileState;
+  mLock: TFileStream;
+begin
+  mFolder := TempFolder;
+  try
+    ForceDirectories(mFolder);
+    mFileName := TAtlasStartProfiles.FileFor(mFolder, cProject);
+    TFile.WriteAllText(mFileName, '{"profiles": [');
+    mState := TAtlasStartProfiles.Load(mFolder, cProject);
+    Assert.AreEqual(0, Integer(Length(mState.Profiles)));
+    Assert.IsTrue(FileExists(mFileName + TAtlasDataFile.cDefectExtension), 'beiseitegelegt');
+    mState.Profiles := [Profile('Lokal', '-lokal')];
+    Assert.IsTrue(TAtlasStartProfiles.Save(mFolder, mState));
+    mLock := TFileStream.Create(mFileName, fmOpenRead or fmShareExclusive);
+    try
+      mState := TAtlasStartProfiles.Load(mFolder, cProject);
+    finally
+      mLock.Free;
+    end;
+    Assert.AreEqual(0, Integer(Length(mState.Profiles)));
+    Assert.AreEqual(mFileName, mState.KeptFile);
+    mState.Profiles := [Profile('Ersatz', '-ersatz')];
+    Assert.IsFalse(TAtlasStartProfiles.Save(mFolder, mState), 'beim Laden gesperrt: nicht überschreiben');
+    Assert.Contains(TFile.ReadAllText(mFileName, TEncoding.UTF8), '-lokal');
+    Assert.DoesNotContain(TFile.ReadAllText(mFileName, TEncoding.UTF8), '-ersatz');
+  finally
+    RemoveFolder(mFolder);
+  end;
+  // Gemeldete Datendateien vergessen: Das Register bliebe sonst als Leck stehen.
+  TAtlasDataFile.ForgetReports;
+end;
+
 procedure TAtlasStartProfilesTests.TemporaryParametersAreRestored;
 var
   mState: TAtlasStartProfileState;
@@ -461,41 +498,6 @@ begin
   mBack := TAtlasStartProfiles.Parse(TAtlasStartProfiles.ToJson(mBack), cProject);
   Assert.IsFalse(mBack.HasTemporary, 'ohne Eintrag kein Abschnitt');
   Assert.DoesNotContain(TAtlasStartProfiles.ToJson(mBack), '"temporary"');
-end;
-
-procedure TAtlasStartProfilesTests.BrokenFileSetAsideLockedFileKept;
-var
-  mFolder, mFileName: string;
-  mState: TAtlasStartProfileState;
-  mLock: TFileStream;
-begin
-  mFolder := TempFolder;
-  try
-    ForceDirectories(mFolder);
-    mFileName := TAtlasStartProfiles.FileFor(mFolder, cProject);
-    TFile.WriteAllText(mFileName, '{"profiles": [');
-    mState := TAtlasStartProfiles.Load(mFolder, cProject);
-    Assert.AreEqual(0, Integer(Length(mState.Profiles)));
-    Assert.IsTrue(FileExists(mFileName + TAtlasDataFile.cDefectExtension), 'beiseitegelegt');
-    mState.Profiles := [Profile('Lokal', '-lokal')];
-    Assert.IsTrue(TAtlasStartProfiles.Save(mFolder, mState));
-    mLock := TFileStream.Create(mFileName, fmOpenRead or fmShareExclusive);
-    try
-      mState := TAtlasStartProfiles.Load(mFolder, cProject);
-    finally
-      mLock.Free;
-    end;
-    Assert.AreEqual(0, Integer(Length(mState.Profiles)));
-    Assert.AreEqual(mFileName, mState.KeptFile);
-    mState.Profiles := [Profile('Ersatz', '-ersatz')];
-    Assert.IsFalse(TAtlasStartProfiles.Save(mFolder, mState), 'beim Laden gesperrt: nicht überschreiben');
-    Assert.Contains(TFile.ReadAllText(mFileName, TEncoding.UTF8), '-lokal');
-    Assert.DoesNotContain(TFile.ReadAllText(mFileName, TEncoding.UTF8), '-ersatz');
-  finally
-    RemoveFolder(mFolder);
-  end;
-  // Gemeldete Datendateien vergessen: Das Register bliebe sonst als Leck stehen.
-  TAtlasDataFile.ForgetReports;
 end;
 
 initialization

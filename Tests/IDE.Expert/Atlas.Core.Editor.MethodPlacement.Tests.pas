@@ -54,6 +54,8 @@ begin
   Result := Copy(AText, 1, ARange.StartOffset) + ARange.NewText + Copy(AText, ARange.EndOffset + 1, MaxInt);
 end;
 
+{ TAtlasMethodPlacementTests }
+
 procedure TAtlasMethodPlacementTests.ArgumentsForBothScopes;
 begin
   Assert.AreEqual('["file:///C:/P/U.pas",{"mode":"declaration","scope":"all"}]',

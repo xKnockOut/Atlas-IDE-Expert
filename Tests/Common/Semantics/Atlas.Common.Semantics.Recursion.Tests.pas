@@ -94,6 +94,8 @@ begin
   end;
 end;
 
+{ TRecursionAnalysisTests }
+
 procedure TRecursionAnalysisTests.DirectRecursion;
 var
   mCalls: TArray<TRecursiveCall>;

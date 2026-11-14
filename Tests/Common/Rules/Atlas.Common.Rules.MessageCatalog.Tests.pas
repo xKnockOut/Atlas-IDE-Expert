@@ -34,6 +34,8 @@ uses
   Atlas.Common.Rules.MessageCatalog,
   Atlas.Common.Lsp.SettingsCommands;
 
+{ TMessageCatalogTests }
+
 procedure TMessageCatalogTests.FindsE2003InBothLanguages;
 var
   mGerman, mEnglish: TCompilerMessageEntry;

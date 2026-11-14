@@ -39,6 +39,8 @@ uses
   Atlas.Common.Mcp.Contract,
   Atlas.Common.Mcp.CheckTools;
 
+{ TMcpCheckToolsTests }
+
 procedure TMcpCheckToolsTests.ListsDiagnosticsWithLocation;
 var
   mText: string;

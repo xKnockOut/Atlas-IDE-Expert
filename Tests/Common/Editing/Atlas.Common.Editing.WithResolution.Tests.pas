@@ -142,6 +142,8 @@ begin
   Result := TExtractOptions.Default;
 end;
 
+{ TWithResolutionTests }
+
 procedure TWithResolutionTests.QualifiesMembersOfEveryElement;
 begin
   // with A, B: Name gehört zu B (innerstes Element), Ort zu A.

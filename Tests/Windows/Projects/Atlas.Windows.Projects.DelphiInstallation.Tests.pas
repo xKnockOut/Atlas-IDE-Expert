@@ -32,6 +32,8 @@ uses
   Atlas.Common.Projects.Contract,
   Atlas.Windows.Projects.DelphiInstallation;
 
+{ TDelphiInstallationTests }
+
 procedure TDelphiInstallationTests.WarmUpFirstUse;
 begin
   VersionsAreSortedAscending;

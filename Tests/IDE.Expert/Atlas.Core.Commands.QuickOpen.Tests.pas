@@ -79,6 +79,8 @@ begin
   Result.Folders := ['C:\Gruppe\Haupt', 'C:\Lib\Pfad', 'c:\gruppe\haupt'];
 end;
 
+{ TAtlasQuickOpenTests }
+
 procedure TAtlasQuickOpenTests.ParsesPrefixesAndLines;
 var
   mQuery: TAtlasQuickOpenQuery;

@@ -32,6 +32,8 @@ const
   cCtrlAltL = $6000 or Ord('L');
   cCtrlAltK = $6000 or Ord('K');
 
+{ TAtlasKeyStrokeTests }
+
 procedure TAtlasKeyStrokeTests.Setup;
 begin
   TAtlasKeyStroke.Reset;

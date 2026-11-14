@@ -74,6 +74,8 @@ type
     procedure FileSaved(const AFileName: string);
   end;
 
+{ TFakeModule }
+
 constructor TFakeModule.Create(const AId: string);
 begin
   inherited Create;
@@ -101,6 +103,8 @@ function TFakeModule.IsActive: Boolean;
 begin
   Result := not FStopped;
 end;
+
+{ TSource }
 
 constructor TSource.Create(const APrefix: string; AFail: Boolean; const AHover: string);
 begin
@@ -139,6 +143,25 @@ begin
   mEntry.Place := TAtlasMenuPlace.ViewMenu;
   mEntry.CommandId := FPrefix + '.Window';
   Result := Result + [mEntry];
+end;
+
+procedure TSource.ApplySettings;
+begin
+  Log := Log + 'settings;';
+  if FFail then
+  begin
+    raise EInvalidOp.Create('kaputt');
+  end;
+end;
+
+procedure TSource.ThemeChanged;
+begin
+  Log := Log + 'theme;';
+end;
+
+function TSource.HoverValue(const AExpression: string; const ATypeChain: TArray<string>; const AText: string): string;
+begin
+  Result := FHover;
 end;
 
 function TSource.Keys: TArray<TAtlasModuleKey>;
@@ -189,25 +212,6 @@ begin
   end;
 end;
 
-procedure TSource.ApplySettings;
-begin
-  Log := Log + 'settings;';
-  if FFail then
-  begin
-    raise EInvalidOp.Create('kaputt');
-  end;
-end;
-
-procedure TSource.ThemeChanged;
-begin
-  Log := Log + 'theme;';
-end;
-
-function TSource.HoverValue(const AExpression: string; const ATypeChain: TArray<string>; const AText: string): string;
-begin
-  Result := FHover;
-end;
-
 function Provide(const AScope: IAtlasModuleScope; ASource: TSource): TSource;
 var
   mRef: IInterface;
@@ -223,6 +227,8 @@ begin
   AScope.Provide(IAtlasFollowsEditorView, mRef);
   AScope.Provide(IAtlasFollowsSaves, mRef);
 end;
+
+{ TModuleContributionsTests }
 
 procedure TModuleContributionsTests.CommandsFollowTheModule;
 var
@@ -377,6 +383,8 @@ type
     function MenuEntries: TArray<TAtlasMenuEntry>;
   end;
 
+{ TDynamicSource }
+
 function TDynamicSource.MenuEntries: TArray<TAtlasMenuEntry>;
 var
   mEntry: TAtlasMenuEntry;
@@ -391,36 +399,6 @@ begin
       Inc(Runs);
     end;
   Result := [mEntry];
-end;
-
-procedure TModuleContributionsTests.MenuEntriesWithoutCommand;
-var
-  mRegistry: IAtlasModuleRegistry;
-  mScope: IAtlasModuleScope;
-  mDynamic: TDynamicSource;
-  mRef: IInterface;
-  mEntry: TAtlasMenuEntry;
-begin
-  mRegistry := TAtlasModuleRegistry.Create;
-  mScope := mRegistry.RegisterModule(TFakeModule.Create('atlas.a') as IAtlasModule);
-  Provide(mScope, TSource.Create('A', False, ''));
-  mDynamic := TDynamicSource.Create;
-  mRef := mDynamic as IAtlasMenuSource;
-  mScope.Provide(IAtlasMenuSource, mRef);
-  Assert.IsTrue(TAtlasModuleContributions.FindMenuEntry(mRegistry, TAtlasMenuPlace.AtlasMenu, 'TASK:prüfen', mEntry));
-  Assert.AreEqual('Prüfen', mEntry.Caption);
-  mEntry.Run();
-  Assert.AreEqual(1, mDynamic.Runs);
-  Assert.IsFalse(TAtlasModuleContributions.FindMenuEntry(mRegistry, TAtlasMenuPlace.AtlasMenu, 'A.Run', mEntry),
-    'Einträge mit Befehl zählen nicht');
-  Assert.IsFalse(TAtlasModuleContributions.FindMenuEntry(mRegistry, TAtlasMenuPlace.EditorContext, 'task:Prüfen',
-    mEntry), 'nur am eigenen Platz');
-  mEntry := Default(TAtlasMenuEntry);
-  mRef := nil;
-  mScope := nil;
-  mRegistry.UnregisterModule('atlas.a');
-  Assert.IsFalse(TAtlasModuleContributions.FindMenuEntry(mRegistry, TAtlasMenuPlace.AtlasMenu, 'task:Prüfen', mEntry));
-  mRegistry := nil;
 end;
 
 procedure TModuleContributionsTests.StoppedModuleContributesNothing;
@@ -455,6 +433,36 @@ begin
   mScope := nil;
   mModule := nil;
   mRegistry.UnregisterModule('atlas.a');
+  mRegistry := nil;
+end;
+
+procedure TModuleContributionsTests.MenuEntriesWithoutCommand;
+var
+  mRegistry: IAtlasModuleRegistry;
+  mScope: IAtlasModuleScope;
+  mDynamic: TDynamicSource;
+  mRef: IInterface;
+  mEntry: TAtlasMenuEntry;
+begin
+  mRegistry := TAtlasModuleRegistry.Create;
+  mScope := mRegistry.RegisterModule(TFakeModule.Create('atlas.a') as IAtlasModule);
+  Provide(mScope, TSource.Create('A', False, ''));
+  mDynamic := TDynamicSource.Create;
+  mRef := mDynamic as IAtlasMenuSource;
+  mScope.Provide(IAtlasMenuSource, mRef);
+  Assert.IsTrue(TAtlasModuleContributions.FindMenuEntry(mRegistry, TAtlasMenuPlace.AtlasMenu, 'TASK:prüfen', mEntry));
+  Assert.AreEqual('Prüfen', mEntry.Caption);
+  mEntry.Run();
+  Assert.AreEqual(1, mDynamic.Runs);
+  Assert.IsFalse(TAtlasModuleContributions.FindMenuEntry(mRegistry, TAtlasMenuPlace.AtlasMenu, 'A.Run', mEntry),
+    'Einträge mit Befehl zählen nicht');
+  Assert.IsFalse(TAtlasModuleContributions.FindMenuEntry(mRegistry, TAtlasMenuPlace.EditorContext, 'task:Prüfen',
+    mEntry), 'nur am eigenen Platz');
+  mEntry := Default(TAtlasMenuEntry);
+  mRef := nil;
+  mScope := nil;
+  mRegistry.UnregisterModule('atlas.a');
+  Assert.IsFalse(TAtlasModuleContributions.FindMenuEntry(mRegistry, TAtlasMenuPlace.AtlasMenu, 'task:Prüfen', mEntry));
   mRegistry := nil;
 end;
 

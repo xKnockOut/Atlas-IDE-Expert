@@ -30,6 +30,8 @@ uses
   Atlas.Core.Style.Palette,
   Atlas.UI.Notifications.Notice;
 
+{ TAtlasNoticeWindowTests }
+
 procedure TAtlasNoticeWindowTests.WarmUpFirstUse;
 begin
   ActionsReportIndexAndHide;

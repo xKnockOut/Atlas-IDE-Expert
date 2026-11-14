@@ -39,6 +39,8 @@ begin
   Result.AddUnit(U);
 end;
 
+{ TIndexFilesTests }
+
 procedure TIndexFilesTests.UnitOfFindsOwnFile;
 var
   mFound: TUnitIndex;

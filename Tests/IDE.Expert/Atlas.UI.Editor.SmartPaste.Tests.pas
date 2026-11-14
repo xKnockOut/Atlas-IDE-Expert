@@ -57,6 +57,8 @@ begin
   Result.SetScaling(96, 1, 'Segoe UI', 9);
 end;
 
+{ TAtlasSmartPasteWindowTests }
+
 procedure TAtlasSmartPasteWindowTests.WarmUpFirstUse;
 begin
   TitleCountsUniqueAndChosenUnits;

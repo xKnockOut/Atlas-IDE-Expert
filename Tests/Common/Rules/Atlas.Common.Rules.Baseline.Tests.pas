@@ -118,6 +118,8 @@ type
     procedure Check(const AContext: TRuleContext; const AReport: IRuleReport);
   end;
 
+{ TMarkerRule }
+
 function TMarkerRule.Descriptor: TRuleDescriptor;
 begin
   Result := TRuleDescriptor.Create('marker', TRuleSeverity.Warning, 'Meldet den Bezeichner Marker');

@@ -102,6 +102,8 @@ type
     function CalledStarting(const APrefix: string): Boolean;
   end;
 
+{ TFakeVcs }
+
 constructor TFakeVcs.Create;
 begin
   inherited Create;

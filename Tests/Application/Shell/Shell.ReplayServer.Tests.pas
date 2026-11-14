@@ -111,6 +111,8 @@ const
   cDemoUnit = 'unit Demo;'#13#10'interface'#13#10'procedure Hallo;'#13#10'implementation'#13#10 +
     'procedure Hallo;'#13#10'begin'#13#10'end;'#13#10'end.'#13#10;
 
+{ TShellReplayServerTests }
+
 procedure TShellReplayServerTests.WarmUpFirstUse;
 begin
   TCrashReplayTest.Replay(cHoverRequest, TArray<TCrashReplayFile>.Create(TCrashReplayFile.Create('Demo.pas',

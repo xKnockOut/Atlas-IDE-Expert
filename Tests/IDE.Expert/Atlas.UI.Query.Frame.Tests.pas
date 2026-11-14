@@ -82,6 +82,8 @@ begin
   end;
 end;
 
+{ TAtlasCodeQueryFrameTests }
+
 procedure TAtlasCodeQueryFrameTests.WarmUpFirstUse;
 begin
   SetUp;
@@ -133,27 +135,6 @@ begin
   FOpened := '';
   FRan := '';
   FCancelled := False;
-end;
-
-procedure TAtlasCodeQueryFrameTests.HelpWithoutAnswerAndOnButton;
-var
-  mCatalog: TAtlasQueryCatalog;
-begin
-  // SetUp hat ein Ergebnis gesetzt: Liste statt Hilfe.
-  Assert.IsFalse(FFrame.HelpMemo.Visible);
-  Assert.IsTrue(FFrame.ResultList.Visible);
-  // Ohne Ergebnis: Hilfe mit Aufbau und den Mengen des Katalogs.
-  FFrame.SetMessage('', False);
-  Assert.IsTrue(FFrame.HelpMemo.Visible);
-  Assert.IsFalse(FFrame.ResultList.Visible);
-  Assert.IsTrue(string(FFrame.HelpMemo.Text).Contains('order by'));
-  TAtlasQueryCatalog.Parse(QuerySampleCatalog, mCatalog);
-  Assert.IsTrue(string(FFrame.HelpMemo.Text).Contains(mCatalog.Entities[0].Name), 'Mengen aus dem Katalog');
-  // Knopf schaltet um, auch neben einem Ergebnis.
-  FFrame.Toolbar.HelpButton.Click;
-  Assert.IsFalse(FFrame.HelpMemo.Visible);
-  FFrame.Toolbar.HelpButton.Click;
-  Assert.IsTrue(FFrame.HelpMemo.Visible);
 end;
 
 procedure TAtlasCodeQueryFrameTests.ShowsRowsAndStatus;
@@ -291,6 +272,27 @@ begin
   Assert.IsFalse(FFrame.Toolbar.CopyCsvButton.Enabled);
   Assert.AreEqual(TAtlasSearchStrings.Text(TAtlasSearchTextId.QueryNoServer), FFrame.StatusLabel.Caption);
   Assert.AreEqual('', FFrame.ResultList.CsvText);
+end;
+
+procedure TAtlasCodeQueryFrameTests.HelpWithoutAnswerAndOnButton;
+var
+  mCatalog: TAtlasQueryCatalog;
+begin
+  // SetUp hat ein Ergebnis gesetzt: Liste statt Hilfe.
+  Assert.IsFalse(FFrame.HelpMemo.Visible);
+  Assert.IsTrue(FFrame.ResultList.Visible);
+  // Ohne Ergebnis: Hilfe mit Aufbau und den Mengen des Katalogs.
+  FFrame.SetMessage('', False);
+  Assert.IsTrue(FFrame.HelpMemo.Visible);
+  Assert.IsFalse(FFrame.ResultList.Visible);
+  Assert.IsTrue(string(FFrame.HelpMemo.Text).Contains('order by'));
+  TAtlasQueryCatalog.Parse(QuerySampleCatalog, mCatalog);
+  Assert.IsTrue(string(FFrame.HelpMemo.Text).Contains(mCatalog.Entities[0].Name), 'Mengen aus dem Katalog');
+  // Knopf schaltet um, auch neben einem Ergebnis.
+  FFrame.Toolbar.HelpButton.Click;
+  Assert.IsFalse(FFrame.HelpMemo.Visible);
+  FFrame.Toolbar.HelpButton.Click;
+  Assert.IsTrue(FFrame.HelpMemo.Visible);
 end;
 
 initialization

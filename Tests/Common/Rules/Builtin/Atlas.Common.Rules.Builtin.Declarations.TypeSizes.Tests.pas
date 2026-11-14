@@ -24,6 +24,8 @@ uses
   Atlas.Common.Rules.Builtin.Declarations.TypeSizes,
   Atlas.Tests.RuleAssert;
 
+{ TDeclarationTypeSizesTests }
+
 procedure TDeclarationTypeSizesTests.IsReported;
 var
   mFindings: TArray<TRuleFinding>;

@@ -42,6 +42,8 @@ begin
   Result.ClosedHeight := 20;
 end;
 
+{ TAtlasPreviewSectionsTests }
+
 function TAtlasPreviewSectionsTests.Inputs: TAtlasSectionInputs;
 begin
   // Pfad 40, ohne Kopfkommentar und Formular, Typen 200, uses 60, verwendet von 80: zusammen 380.

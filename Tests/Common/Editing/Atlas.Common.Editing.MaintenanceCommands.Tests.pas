@@ -172,6 +172,8 @@ const
     'unit Daten;'#10'interface'#10'implementation'#10'procedure TFoo.Laden;'#10'begin'#10'  %s'#10 +
     '  X := 1;'#10'end;'#10'end.';
 
+{ TMaintenanceCommandsTests }
+
 procedure TMaintenanceCommandsTests.SortUsesSortsAndRemovesLine;
 const
   cText = 'unit U;'#10'interface'#10'uses'#10'  System.SysUtils, System.Classes;'#10'implementation'#10 +

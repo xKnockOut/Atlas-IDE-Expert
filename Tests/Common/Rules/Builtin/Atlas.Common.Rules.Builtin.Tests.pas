@@ -154,6 +154,8 @@ type
       AConfidence: TRuleConfidence; const AFixes: TArray<TRuleFix>);
   end;
 
+{ TCountingReport }
+
 procedure TCountingReport.Add(const ARange: TTextRange; const AMessage: string);
 begin
   Inc(Count);
@@ -219,6 +221,8 @@ begin
     Result := StringReplace(cRichUnit, '§', Chain(cChainLength, ['+', '-']), [rfReplaceAll]);
   end;
 end;
+
+{ TBuiltinRulesTests }
 
 procedure TBuiltinRulesTests.AllRulesHandleDeepTrees;
 var

@@ -72,6 +72,8 @@ begin
   Result.SetScaling(96, 1, 'Segoe UI', 9);
 end;
 
+{ TAtlasUnwrapWindowTests }
+
 procedure TAtlasUnwrapWindowTests.WarmUpFirstUse;
 begin
   CaptionsAndNotes;

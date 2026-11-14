@@ -82,6 +82,8 @@ begin
   end;
 end;
 
+{ TTypeMembersTests }
+
 procedure TTypeMembersTests.OwnMembersThenAncestors;
 var
   mIndex: ISymbolIndex;

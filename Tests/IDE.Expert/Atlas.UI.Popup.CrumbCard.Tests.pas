@@ -33,6 +33,8 @@ begin
   Result.Limit := ALimit;
 end;
 
+{ TAtlasCrumbCardTipTests }
+
 procedure TAtlasCrumbCardTipTests.ValueShowsLimitWhenOver;
 var
   mOld: TAtlasLanguage;

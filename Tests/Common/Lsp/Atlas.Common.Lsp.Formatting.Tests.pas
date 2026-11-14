@@ -108,76 +108,6 @@ end;
 
 { TLspFormattingTests }
 
-procedure TLspFormattingTests.DocCommentAfterSlashIsSwitchable;
-const
-  cRequest = '{"jsonrpc":"2.0","id":1,"method":"textDocument/onTypeFormatting","params":{"textDocument":{"uri":"' +
-    cCancelUri + '"},"position":{"line":3,"character":5},"ch":"/"}}';
-var
-  mStore: IDocumentStore;
-  mFormatting: TLspFormatting;
-  mDispatcher: TJsonRpcDispatcher;
-  mEnabled: Boolean;
-begin
-  mStore := TDocumentStore.Create;
-  mStore.Open(cCancelUri, 'objectpascal', 1, 'unit Unit1;'#10'interface'#10#10'  ///'#10 +
-    'procedure Foo(A: Integer);'#10'implementation'#10'procedure Foo(A: Integer);'#10'begin'#10'end;'#10'end.');
-  mDispatcher := TJsonRpcDispatcher.Create;
-  mFormatting := TLspFormatting.Create(mStore, nil, nil);
-  try
-    mEnabled := True;
-    mFormatting.DocCommentsFor :=
-      function(const AUri: string): Boolean
-      begin
-        Result := mEnabled;
-      end;
-    mFormatting.Attach(mDispatcher);
-    Assert.AreEqual(1, EditCountOf(mDispatcher, cRequest), 'Gerüst eingeschaltet');
-    // completeBlocks.docComment = false: "///" bleibt, wie getippt.
-    mEnabled := False;
-    Assert.AreEqual(0, EditCountOf(mDispatcher, cRequest), 'Gerüst abgeschaltet');
-  finally
-    mFormatting.Free;
-    mDispatcher.Free;
-  end;
-end;
-
-procedure TLspFormattingTests.SlashCommandFollowsEditorOptions;
-const
-  cRequest = '{"jsonrpc":"2.0","id":1,"method":"textDocument/onTypeFormatting","params":{"textDocument":{"uri":"' +
-    cCancelUri + '"},"position":{"line":9,"character":1},"ch":"\n",' +
-    '"options":{"tabSize":4,"insertSpaces":false}}}';
-var
-  mStore: IDocumentStore;
-  mFormatting: TLspFormatting;
-  mDispatcher: TJsonRpcDispatcher;
-  mMessage_, mResponse: TJSONObject;
-begin
-  mStore := TDocumentStore.Create;
-  mStore.Open(cCancelUri, 'objectpascal', 1, 'unit Unit1;'#10'interface'#10'implementation'#10'procedure P;'#10 +
-    'var'#10#9'Liste: TStringList;'#10'begin'#10#9'Liste := TStringList.Create;'#10#9'/try'#10#9#10 +
-    #9'Liste.Sort;'#10'end;'#10'end.');
-  mDispatcher := TJsonRpcDispatcher.Create;
-  mFormatting := TLspFormatting.Create(mStore, nil, nil);
-  try
-    mFormatting.Attach(mDispatcher);
-    mMessage_ := TJSONObject.ParseJSONValue(cRequest) as TJSONObject;
-    try
-      mResponse := mDispatcher.DispatchMessage(mMessage_);
-      try
-        Assert.IsTrue(Pos('\t\tListe.Sort', mResponse.ToJSON) > 0, mResponse.ToJSON);
-        Assert.AreEqual(0, Pos('  \tListe.Sort', mResponse.ToJSON), mResponse.ToJSON);
-      finally
-        mResponse.Free;
-      end;
-    finally
-      mMessage_.Free;
-    end;
-  finally
-    mFormatting.Free;
-    mDispatcher.Free;
-  end;
-end;
-
 procedure TLspFormattingTests.EditorOptionsAreTheBase;
 var
   mJson: TJSONObject;
@@ -316,6 +246,76 @@ begin
     Assert.AreEqual(TJsonRpcErrorCode.cRequestCancelled, ErrorCodeOf(mDispatcher,
       '{"jsonrpc":"2.0","id":1,"method":"textDocument/formatting","params":{"textDocument":{"uri":"' +
       cCancelUri + '"},"options":{"tabSize":2,"insertSpaces":true}}}'));
+  finally
+    mFormatting.Free;
+    mDispatcher.Free;
+  end;
+end;
+
+procedure TLspFormattingTests.DocCommentAfterSlashIsSwitchable;
+const
+  cRequest = '{"jsonrpc":"2.0","id":1,"method":"textDocument/onTypeFormatting","params":{"textDocument":{"uri":"' +
+    cCancelUri + '"},"position":{"line":3,"character":5},"ch":"/"}}';
+var
+  mStore: IDocumentStore;
+  mFormatting: TLspFormatting;
+  mDispatcher: TJsonRpcDispatcher;
+  mEnabled: Boolean;
+begin
+  mStore := TDocumentStore.Create;
+  mStore.Open(cCancelUri, 'objectpascal', 1, 'unit Unit1;'#10'interface'#10#10'  ///'#10 +
+    'procedure Foo(A: Integer);'#10'implementation'#10'procedure Foo(A: Integer);'#10'begin'#10'end;'#10'end.');
+  mDispatcher := TJsonRpcDispatcher.Create;
+  mFormatting := TLspFormatting.Create(mStore, nil, nil);
+  try
+    mEnabled := True;
+    mFormatting.DocCommentsFor :=
+      function(const AUri: string): Boolean
+      begin
+        Result := mEnabled;
+      end;
+    mFormatting.Attach(mDispatcher);
+    Assert.AreEqual(1, EditCountOf(mDispatcher, cRequest), 'Gerüst eingeschaltet');
+    // completeBlocks.docComment = false: "///" bleibt, wie getippt.
+    mEnabled := False;
+    Assert.AreEqual(0, EditCountOf(mDispatcher, cRequest), 'Gerüst abgeschaltet');
+  finally
+    mFormatting.Free;
+    mDispatcher.Free;
+  end;
+end;
+
+procedure TLspFormattingTests.SlashCommandFollowsEditorOptions;
+const
+  cRequest = '{"jsonrpc":"2.0","id":1,"method":"textDocument/onTypeFormatting","params":{"textDocument":{"uri":"' +
+    cCancelUri + '"},"position":{"line":9,"character":1},"ch":"\n",' +
+    '"options":{"tabSize":4,"insertSpaces":false}}}';
+var
+  mStore: IDocumentStore;
+  mFormatting: TLspFormatting;
+  mDispatcher: TJsonRpcDispatcher;
+  mMessage_, mResponse: TJSONObject;
+begin
+  mStore := TDocumentStore.Create;
+  mStore.Open(cCancelUri, 'objectpascal', 1, 'unit Unit1;'#10'interface'#10'implementation'#10'procedure P;'#10 +
+    'var'#10#9'Liste: TStringList;'#10'begin'#10#9'Liste := TStringList.Create;'#10#9'/try'#10#9#10 +
+    #9'Liste.Sort;'#10'end;'#10'end.');
+  mDispatcher := TJsonRpcDispatcher.Create;
+  mFormatting := TLspFormatting.Create(mStore, nil, nil);
+  try
+    mFormatting.Attach(mDispatcher);
+    mMessage_ := TJSONObject.ParseJSONValue(cRequest) as TJSONObject;
+    try
+      mResponse := mDispatcher.DispatchMessage(mMessage_);
+      try
+        Assert.IsTrue(Pos('\t\tListe.Sort', mResponse.ToJSON) > 0, mResponse.ToJSON);
+        Assert.AreEqual(0, Pos('  \tListe.Sort', mResponse.ToJSON), mResponse.ToJSON);
+      finally
+        mResponse.Free;
+      end;
+    finally
+      mMessage_.Free;
+    end;
   finally
     mFormatting.Free;
     mDispatcher.Free;

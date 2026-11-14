@@ -67,6 +67,8 @@ begin
   Result := Default(TIndexSymbol);
 end;
 
+{ TIndexConditionsTests }
+
 procedure TIndexConditionsTests.BlankInactiveKeepsLinesAndColumns;
 var
   mText, mBlanked: string;

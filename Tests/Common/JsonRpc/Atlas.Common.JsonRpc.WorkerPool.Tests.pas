@@ -69,6 +69,8 @@ type
     function Done: Integer;
   end;
 
+{ TTestGate }
+
 constructor TTestGate.Create;
 begin
   inherited Create;

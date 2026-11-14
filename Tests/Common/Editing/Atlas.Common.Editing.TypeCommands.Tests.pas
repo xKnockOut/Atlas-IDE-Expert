@@ -182,6 +182,8 @@ begin
   Result := Expand(Format(cClassUnit, [ACommand]), 12);
 end;
 
+{ TTypeCommandsTests }
+
 procedure TTypeCommandsTests.EnumWithPrefixInTypeSection;
 begin
   Assert.AreEqual('ks', EnumPrefix('TKundenStatus'));
@@ -231,6 +233,14 @@ const
   cEnumUnit =
     'unit U;'#10'interface'#10'type'#10'  TFarbe = (Rot, Gruen, Blau);'#10'  %s'#10'implementation'#10'end.';
 
+procedure TTypeCommandsTests.HelperInRoutineFails;
+const
+  cText = 'unit U;'#10'interface'#10'implementation'#10'procedure P;'#10'begin'#10'  /helper TA'#10'end;'#10'end.';
+begin
+  Assert.AreEqual('/helper gilt nur auf Unit-Ebene', ProblemOf(cText));
+  Assert.AreEqual('/helper gilt nur auf Unit-Ebene', ProblemOf(Format(cClassUnit, ['/helper TA'])));
+end;
+
 procedure TTypeCommandsTests.HelperForEnumAddsNamesAndConversion;
 var
   mText: string;
@@ -250,6 +260,11 @@ begin
   Assert.IsTrue(Parses(mText), mText);
 end;
 
+const
+  cSetUnit =
+    'unit U;'#10'interface'#10'type'#10'  TFarbe = (Rot, Gruen, Blau);'#10'  TFarben = set of TFarbe;'#10 +
+    '  %s'#10'implementation'#10'end.';
+
 procedure TTypeCommandsTests.HelperForEnumSwitchedOff;
 var
   mHost: TRecordingSlashHost;
@@ -267,11 +282,6 @@ begin
   Assert.IsTrue(Pos('  TFarbeHelper = record helper for TFarbe'#10'  public'#10'  end;', mText) > 0, mText);
   Assert.AreEqual(0, Pos('cNames', mText), mText);
 end;
-
-const
-  cSetUnit =
-    'unit U;'#10'interface'#10'type'#10'  TFarbe = (Rot, Gruen, Blau);'#10'  TFarben = set of TFarbe;'#10 +
-    '  %s'#10'implementation'#10'end.';
 
 procedure TTypeCommandsTests.HelperForSetAddsMethods;
 var
@@ -339,6 +349,12 @@ begin
   Assert.IsTrue(Pos('  FreeAndNil(FInstance);', mText) > 0, mText);
 end;
 
+procedure TTypeCommandsTests.SingletonOutsideClassFails;
+begin
+  Assert.AreEqual('/singleton gilt nur in einer Klasse oder einer ihrer Methoden',
+    ProblemOf(Format(cTypeUnit, ['/singleton'])));
+end;
+
 procedure TTypeCommandsTests.SingletonNamesExistingConstructor;
 var
   mHost: TRecordingSlashHost;
@@ -360,12 +376,6 @@ begin
   Assert.AreEqual(0, Integer(Length(mHost.Notes)));
 end;
 
-procedure TTypeCommandsTests.SingletonOutsideClassFails;
-begin
-  Assert.AreEqual('/singleton gilt nur in einer Klasse oder einer ihrer Methoden',
-    ProblemOf(Format(cTypeUnit, ['/singleton'])));
-end;
-
 procedure TTypeCommandsTests.EncapsulateMakesProperty;
 var
   mText: string;
@@ -383,53 +393,6 @@ procedure TTypeCommandsTests.EncapsulatePrivateFieldFails;
 begin
   Assert.AreEqual('FListe ist schon private', ProblemOf(Format(cClassUnit, ['/encapsulate FListe'])));
   Assert.AreEqual('Kein Feld FOrt in TKunde', ProblemOf(Format(cClassUnit, ['/encapsulate FOrt'])));
-end;
-
-procedure TTypeCommandsTests.AssignCopiesFields;
-var
-  mText: string;
-begin
-  mText := InClass('/assign');
-  Assert.IsTrue(Pos('    procedure Assign(Source: TPersistent); override;'#10'  end;', mText) > 0, mText);
-  Assert.IsTrue(Pos('procedure TKunde.Assign(Source: TPersistent);'#10'begin'#10'  if Source is TKunde then'#10 +
-    '  begin'#10'    FListe.Assign(TKunde(Source).FListe);'#10'    FName := TKunde(Source).FName;'#10 +
-    '    FAlter := TKunde(Source).FAlter;'#10'    FAktiv := TKunde(Source).FAktiv;'#10'  end'#10'  else'#10 +
-    '    inherited Assign(Source);'#10'end;', mText) > 0, mText);
-end;
-
-procedure TTypeCommandsTests.AssignOutsideClassFails;
-begin
-  Assert.AreEqual('/assign gilt nur in einer Klasse oder einer ihrer Methoden',
-    ProblemOf(Format(cTypeUnit, ['/assign'])));
-end;
-
-procedure TTypeCommandsTests.JsonForSimpleFields;
-var
-  mText: string;
-begin
-  mText := InClass('/json');
-  Assert.IsTrue(Pos('  System.Classes, System.JSON;', mText) + Pos('  System.Classes,'#10'  System.JSON;', mText) > 0,
-    mText);
-  Assert.IsTrue(Pos('    function ToJson: TJSONObject;'#10 +
-    '    class function FromJson(AJson: TJSONObject): TKunde; static;', mText) > 0, mText);
-  Assert.IsTrue(Pos('  Result.AddPair(''Name'', FName);'#10'  Result.AddPair(''Alter'', TJSONNumber.Create(FAlter));'#10 +
-    '  Result.AddPair(''Aktiv'', TJSONBool.Create(FAktiv));', mText) > 0, mText);
-  Assert.IsTrue(Pos('  // TODO FListe: TStrings', mText) > 0, mText);
-  Assert.IsTrue(Pos('  Result := TKunde.Create;'#10, mText) > 0, mText);
-  Assert.IsTrue(Pos('  Result.FAlter := AJson.GetValue<Integer>(''Alter'');', mText) > 0, mText);
-end;
-
-procedure TTypeCommandsTests.JsonOutsideTypeFails;
-begin
-  Assert.AreEqual('/json gilt nur in einer Klasse oder einer ihrer Methoden', ProblemOf(Format(cTypeUnit, ['/json'])));
-end;
-
-procedure TTypeCommandsTests.HelperInRoutineFails;
-const
-  cText = 'unit U;'#10'interface'#10'implementation'#10'procedure P;'#10'begin'#10'  /helper TA'#10'end;'#10'end.';
-begin
-  Assert.AreEqual('/helper gilt nur auf Unit-Ebene', ProblemOf(cText));
-  Assert.AreEqual('/helper gilt nur auf Unit-Ebene', ProblemOf(Format(cClassUnit, ['/helper TA'])));
 end;
 
 procedure TTypeCommandsTests.EncapsulateKeepsUsesOutsideClass;
@@ -469,6 +432,45 @@ begin
     '/encapsulate FName', []), 7);
   Assert.IsTrue(Pos('  Name := Name + Self.Name;', mResult_) > 0, mResult_);
   Assert.IsTrue(Pos('  K.Name := ''x'';', mResult_) > 0, mResult_);
+end;
+
+procedure TTypeCommandsTests.AssignCopiesFields;
+var
+  mText: string;
+begin
+  mText := InClass('/assign');
+  Assert.IsTrue(Pos('    procedure Assign(Source: TPersistent); override;'#10'  end;', mText) > 0, mText);
+  Assert.IsTrue(Pos('procedure TKunde.Assign(Source: TPersistent);'#10'begin'#10'  if Source is TKunde then'#10 +
+    '  begin'#10'    FListe.Assign(TKunde(Source).FListe);'#10'    FName := TKunde(Source).FName;'#10 +
+    '    FAlter := TKunde(Source).FAlter;'#10'    FAktiv := TKunde(Source).FAktiv;'#10'  end'#10'  else'#10 +
+    '    inherited Assign(Source);'#10'end;', mText) > 0, mText);
+end;
+
+procedure TTypeCommandsTests.AssignOutsideClassFails;
+begin
+  Assert.AreEqual('/assign gilt nur in einer Klasse oder einer ihrer Methoden',
+    ProblemOf(Format(cTypeUnit, ['/assign'])));
+end;
+
+procedure TTypeCommandsTests.JsonForSimpleFields;
+var
+  mText: string;
+begin
+  mText := InClass('/json');
+  Assert.IsTrue(Pos('  System.Classes, System.JSON;', mText) + Pos('  System.Classes,'#10'  System.JSON;', mText) > 0,
+    mText);
+  Assert.IsTrue(Pos('    function ToJson: TJSONObject;'#10 +
+    '    class function FromJson(AJson: TJSONObject): TKunde; static;', mText) > 0, mText);
+  Assert.IsTrue(Pos('  Result.AddPair(''Name'', FName);'#10'  Result.AddPair(''Alter'', TJSONNumber.Create(FAlter));'#10 +
+    '  Result.AddPair(''Aktiv'', TJSONBool.Create(FAktiv));', mText) > 0, mText);
+  Assert.IsTrue(Pos('  // TODO FListe: TStrings', mText) > 0, mText);
+  Assert.IsTrue(Pos('  Result := TKunde.Create;'#10, mText) > 0, mText);
+  Assert.IsTrue(Pos('  Result.FAlter := AJson.GetValue<Integer>(''Alter'');', mText) > 0, mText);
+end;
+
+procedure TTypeCommandsTests.JsonOutsideTypeFails;
+begin
+  Assert.AreEqual('/json gilt nur in einer Klasse oder einer ihrer Methoden', ProblemOf(Format(cTypeUnit, ['/json'])));
 end;
 
 const

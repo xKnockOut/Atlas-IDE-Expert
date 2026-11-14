@@ -204,6 +204,8 @@ begin
   end;
 end;
 
+{ TLspPropertyFromAccessorsTests }
+
 procedure TLspPropertyFromAccessorsTests.Setup;
 begin
   FIndex := TSymbolIndex.Create;

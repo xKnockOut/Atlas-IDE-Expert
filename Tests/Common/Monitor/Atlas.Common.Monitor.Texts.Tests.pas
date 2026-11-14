@@ -26,6 +26,8 @@ uses
   Atlas.Common.Localization.Texts,
   Atlas.Common.Monitor.Texts;
 
+{ TMonitorTextsTests }
+
 procedure TMonitorTextsTests.TearDown;
 begin
   TAtlasLocale.Use(TTextLanguage.German);

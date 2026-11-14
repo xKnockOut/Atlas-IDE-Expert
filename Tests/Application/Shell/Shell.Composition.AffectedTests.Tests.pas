@@ -87,6 +87,8 @@ begin
   Result := TImpactOptions.Default;
 end;
 
+{ TShellAffectedTestsRequestTests }
+
 procedure TShellAffectedTestsRequestTests.Setup;
 var
   mRegistry: TShellWorkspaceRegistryServices;

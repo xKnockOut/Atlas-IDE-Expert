@@ -63,6 +63,21 @@ begin
   Result := '';
 end;
 
+{ TShellIdeTests }
+
+procedure TShellIdeTests.Notify(const AMethod, AParams: string);
+var
+  mMessage: TJSONObject;
+begin
+  mMessage := TJSONObject.ParseJSONValue('{"jsonrpc":"2.0","method":"' + AMethod + '","params":' + AParams + '}')
+    as TJSONObject;
+  try
+    FDispatcher.DispatchMessage(mMessage).Free;
+  finally
+    mMessage.Free;
+  end;
+end;
+
 procedure TShellIdeTests.Setup;
 var
   mRegistry: TShellWorkspaceRegistryServices;
@@ -105,19 +120,6 @@ begin
   FreeAndNil(FIde);
   FreeAndNil(FRegistry);
   FEvents := '';
-end;
-
-procedure TShellIdeTests.Notify(const AMethod, AParams: string);
-var
-  mMessage: TJSONObject;
-begin
-  mMessage := TJSONObject.ParseJSONValue('{"jsonrpc":"2.0","method":"' + AMethod + '","params":' + AParams + '}')
-    as TJSONObject;
-  try
-    FDispatcher.DispatchMessage(mMessage).Free;
-  finally
-    mMessage.Free;
-  end;
 end;
 
 procedure TShellIdeTests.ForwardsMessages;

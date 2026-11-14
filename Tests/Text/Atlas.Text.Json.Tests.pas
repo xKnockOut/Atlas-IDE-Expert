@@ -73,6 +73,8 @@ uses
   System.SysUtils,
   Atlas.Text.Json;
 
+{ TJsonTextTests }
+
 procedure TJsonTextTests.QuotesPlainText;
 begin
   Assert.AreEqual('""', TJsonText.Quote(''));

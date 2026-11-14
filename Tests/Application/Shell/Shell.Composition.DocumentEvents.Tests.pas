@@ -73,29 +73,7 @@ begin
   Result := nil;
 end;
 
-procedure TShellDocumentEventsTests.Setup;
-var
-  mServices: TShellCoreServices;
-begin
-  FDocuments := TDocumentStore.Create;
-  mServices := Default(TShellCoreServices);
-  mServices.Logger := TLogger.Create;
-  mServices.Documents := FDocuments;
-  mServices.Index := NoIndex;
-  mServices.SelectedProject := NoSelection;
-  mServices.ActiveProject := NoActive;
-  FCore := TShellCore.Create(mServices);
-  FFileChangesAsked := 0;
-  FDeriveAsked := 0;
-  TShellDocumentEvents.Attach(FDocuments, NewServices);
-end;
-
-procedure TShellDocumentEventsTests.TearDown;
-begin
-  FDocuments := nil;
-  FCore.FreeWorkspaces;
-  FreeAndNil(FCore);
-end;
+{ TShellDocumentEventsTests }
 
 function TShellDocumentEventsTests.NewServices: TShellDocumentEventServices;
 begin
@@ -119,6 +97,30 @@ begin
       Inc(FDeriveAsked);
       Result := False;
     end;
+end;
+
+procedure TShellDocumentEventsTests.Setup;
+var
+  mServices: TShellCoreServices;
+begin
+  FDocuments := TDocumentStore.Create;
+  mServices := Default(TShellCoreServices);
+  mServices.Logger := TLogger.Create;
+  mServices.Documents := FDocuments;
+  mServices.Index := NoIndex;
+  mServices.SelectedProject := NoSelection;
+  mServices.ActiveProject := NoActive;
+  FCore := TShellCore.Create(mServices);
+  FFileChangesAsked := 0;
+  FDeriveAsked := 0;
+  TShellDocumentEvents.Attach(FDocuments, NewServices);
+end;
+
+procedure TShellDocumentEventsTests.TearDown;
+begin
+  FDocuments := nil;
+  FCore.FreeWorkspaces;
+  FreeAndNil(FCore);
 end;
 
 procedure TShellDocumentEventsTests.OpenAsksFileChangesAndDerive;

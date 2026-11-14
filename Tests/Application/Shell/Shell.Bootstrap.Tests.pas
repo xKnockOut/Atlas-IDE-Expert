@@ -79,6 +79,8 @@ type
     procedure Error(const AText: string);
   end;
 
+{ TCaptureLogger }
+
 constructor TCaptureLogger.Create;
 begin
   inherited Create;
@@ -130,6 +132,12 @@ const
 
 { TShellBootstrapTests }
 
+function TShellBootstrapTests.Write(const AName, AText: string): string;
+begin
+  Result := TPath.Combine(FFolder, AName);
+  TFile.WriteAllText(Result, AText, TEncoding.UTF8);
+end;
+
 procedure TShellBootstrapTests.WarmUpFirstUse;
 begin
   Setup;
@@ -154,12 +162,6 @@ begin
   end;
   // Der Leckmonitor misst den Saldo von Setup und TearDown.
   FFolder := '';
-end;
-
-function TShellBootstrapTests.Write(const AName, AText: string): string;
-begin
-  Result := TPath.Combine(FFolder, AName);
-  TFile.WriteAllText(Result, AText, TEncoding.UTF8);
 end;
 
 procedure TShellBootstrapTests.ReadSourceText_Utf8Bom_ReturnsText;
@@ -261,17 +263,17 @@ begin
   Assert.AreEqual('{"mcp": {"disabledTools": ["rename_symbol"]}}', TShellBootstrap.LoadGlobalSettings(mFileName, nil));
 end;
 
+procedure TShellBootstrapTests.ProjectSettings_NoFile_Defaults;
+begin
+  Assert.IsTrue(TShellBootstrap.ProjectSettings(FFolder).McpGlobalSettings);
+end;
+
 procedure TShellBootstrapTests.TextLanguage_LocaleThenSettingThenEnglish;
 begin
   Assert.AreEqual<TTextLanguage>(TTextLanguage.German, TShellBootstrap.TextLanguage('de', '{"language": "en"}'));
   Assert.AreEqual<TTextLanguage>(TTextLanguage.German, TShellBootstrap.TextLanguage('', '{"language": "de"}'));
   Assert.AreEqual<TTextLanguage>(TTextLanguage.English, TShellBootstrap.TextLanguage('', '{"language": ""}'));
   Assert.AreEqual<TTextLanguage>(TTextLanguage.English, TShellBootstrap.TextLanguage('', ''));
-end;
-
-procedure TShellBootstrapTests.ProjectSettings_NoFile_Defaults;
-begin
-  Assert.IsTrue(TShellBootstrap.ProjectSettings(FFolder).McpGlobalSettings);
 end;
 
 procedure TShellBootstrapTests.ProjectSettings_McpGlobalSettingsOff;

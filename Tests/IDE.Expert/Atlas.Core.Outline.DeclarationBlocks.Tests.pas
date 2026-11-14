@@ -138,6 +138,8 @@ begin
   Result := mPlace.Blocks[mPlace.Current].Keyword;
 end;
 
+{ TAtlasDeclarationBlocksTests }
+
 procedure TAtlasDeclarationBlocksTests.BlocksOfBothSections;
 var
   mBlock: TAtlasDeclarationBlock;

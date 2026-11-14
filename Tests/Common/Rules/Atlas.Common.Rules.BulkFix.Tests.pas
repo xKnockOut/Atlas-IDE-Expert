@@ -188,6 +188,8 @@ const
   cUnitHead = 'unit U;'#13#10#13#10'interface'#13#10#13#10'uses'#13#10'  System.Classes;'#13#10#13#10 +
     'implementation'#13#10#13#10;
 
+{ TBulkFixTests }
+
 procedure TBulkFixTests.OptionsReadAllAndRules;
 var
   mOptions: TBulkFixOptions;

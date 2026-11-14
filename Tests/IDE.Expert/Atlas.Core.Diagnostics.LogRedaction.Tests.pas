@@ -53,6 +53,8 @@ const
   cMarkerCode = 'procedure TMarkerForm.Geheim;';
   cMarkerUser = 'MarkerBenutzer';
 
+{ TAtlasLogRedactorTests }
+
 procedure TAtlasLogRedactorTests.Setup;
 begin
   FFolder := TPath.Combine(TPath.GetTempPath, 'AtlasLogRedactionTests' + TGUID.NewGuid.ToString);
@@ -130,25 +132,6 @@ begin
   end;
 end;
 
-procedure TAtlasLogRedactorTests.ForgetStartsNumberingAgain;
-var
-  mRedactor: TAtlasLogRedactor;
-  mIndex: Integer;
-begin
-  mRedactor := TAtlasLogRedactor.Create(nil);
-  try
-    for mIndex := 1 to TAtlasLogRedactor.cMaxLabels do
-    begin
-      mRedactor.Redact(TLogMarks.Name('N' + IntToStr(mIndex)));
-    end;
-    mRedactor.Forget;
-    Assert.AreEqual('name#1', mRedactor.Redact(TLogMarks.Name('Lager')));
-    Assert.AreEqual('name#2', mRedactor.Redact(TLogMarks.Name('N1')), 'auch frühere Werte bekommen neue Nummern');
-  finally
-    mRedactor.Free;
-  end;
-end;
-
 procedure TAtlasLogRedactorTests.LabelsStopGrowingAtLimit;
 var
   mRedactor: TAtlasLogRedactor;
@@ -163,6 +146,25 @@ begin
     Assert.AreEqual('<name>', mRedactor.Redact(TLogMarks.Name('NeuerName')));
     Assert.AreEqual('<datei>.pas', mRedactor.Redact(TLogMarks.Path('Neu.pas')));
     Assert.AreEqual('name#1', mRedactor.Redact(TLogMarks.Name('N1')), 'bekannte Werte behalten ihre Nummer');
+  finally
+    mRedactor.Free;
+  end;
+end;
+
+procedure TAtlasLogRedactorTests.ForgetStartsNumberingAgain;
+var
+  mRedactor: TAtlasLogRedactor;
+  mIndex: Integer;
+begin
+  mRedactor := TAtlasLogRedactor.Create(nil);
+  try
+    for mIndex := 1 to TAtlasLogRedactor.cMaxLabels do
+    begin
+      mRedactor.Redact(TLogMarks.Name('N' + IntToStr(mIndex)));
+    end;
+    mRedactor.Forget;
+    Assert.AreEqual('name#1', mRedactor.Redact(TLogMarks.Name('Lager')));
+    Assert.AreEqual('name#2', mRedactor.Redact(TLogMarks.Name('N1')), 'auch frühere Werte bekommen neue Nummern');
   finally
     mRedactor.Free;
   end;

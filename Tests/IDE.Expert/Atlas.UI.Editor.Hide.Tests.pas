@@ -78,6 +78,8 @@ type
 var
   Language: TAtlasLanguage;
 
+{ TUndoCounter }
+
 procedure TUndoCounter.UndoClick(Sender: TObject);
 begin
   Inc(Count);
@@ -88,16 +90,7 @@ begin
   Result := TAtlasHideTarget.Create(AElement, 'C:\Projekt\Kunde.pas', 41, 'TKunde.Speichern');
 end;
 
-procedure TAtlasHideUiTests.Setup;
-begin
-  Language := TAtlasStrings.Language;
-  TAtlasStrings.Language := TAtlasLanguage.German;
-end;
-
-procedure TAtlasHideUiTests.TearDown;
-begin
-  TAtlasStrings.Language := Language;
-end;
+{ TAtlasHideUiTests }
 
 procedure TAtlasHideUiTests.WarmUpFirstUse;
 begin
@@ -114,6 +107,17 @@ begin
   finally
     TearDown;
   end;
+end;
+
+procedure TAtlasHideUiTests.Setup;
+begin
+  Language := TAtlasStrings.Language;
+  TAtlasStrings.Language := TAtlasLanguage.German;
+end;
+
+procedure TAtlasHideUiTests.TearDown;
+begin
+  TAtlasStrings.Language := Language;
 end;
 
 procedure TAtlasHideUiTests.MenuOfBlockEndLabelLikeMockup;

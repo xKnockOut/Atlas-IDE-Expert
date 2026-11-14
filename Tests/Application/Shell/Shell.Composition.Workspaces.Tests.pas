@@ -72,6 +72,23 @@ begin
   Result := '';
 end;
 
+{ TShellWorkspaceRegistryTests }
+
+function TShellWorkspaceRegistryTests.NewWorkspace(const ARoot, AName, AProjectFile,
+  AOrigin: string): TShellWorkspace;
+begin
+  Result := TShellWorkspace.Create(ARoot, AName, TShellWorkspaceServices.Create(TDocumentStore.Create,
+    TJsonRpcStreamTransport.Create(nil, TBytesStream.Create, True), TLogger.Create, TSymbolIndex.Create,
+    'atlas-test-index'));
+  Result.Setup.ProjectFile := AProjectFile;
+  Result.Setup.Origin := AOrigin;
+end;
+
+procedure TShellWorkspaceRegistryTests.CountVisited(const AWorkspaces: TArray<TShellWorkspace>);
+begin
+  FVisited := Length(AWorkspaces);
+end;
+
 procedure TShellWorkspaceRegistryTests.WarmUpFirstUse;
 begin
   Setup;
@@ -98,21 +115,6 @@ end;
 procedure TShellWorkspaceRegistryTests.TearDown;
 begin
   FreeAndNil(FRegistry);
-end;
-
-function TShellWorkspaceRegistryTests.NewWorkspace(const ARoot, AName, AProjectFile,
-  AOrigin: string): TShellWorkspace;
-begin
-  Result := TShellWorkspace.Create(ARoot, AName, TShellWorkspaceServices.Create(TDocumentStore.Create,
-    TJsonRpcStreamTransport.Create(nil, TBytesStream.Create, True), TLogger.Create, TSymbolIndex.Create,
-    'atlas-test-index'));
-  Result.Setup.ProjectFile := AProjectFile;
-  Result.Setup.Origin := AOrigin;
-end;
-
-procedure TShellWorkspaceRegistryTests.CountVisited(const AWorkspaces: TArray<TShellWorkspace>);
-begin
-  FVisited := Length(AWorkspaces);
 end;
 
 procedure TShellWorkspaceRegistryTests.EmptyRegistry;

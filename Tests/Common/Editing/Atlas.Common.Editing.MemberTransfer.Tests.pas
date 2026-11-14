@@ -71,6 +71,8 @@ begin
   end;
 end;
 
+{ TMemberTransferTests }
+
 procedure TMemberTransferTests.CandidatesWithNeeds;
 var
   mLayout: TClassLayout;

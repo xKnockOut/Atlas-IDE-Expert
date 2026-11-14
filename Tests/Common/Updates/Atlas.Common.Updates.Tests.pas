@@ -71,6 +71,8 @@ const
   cKnown = cKey + '\Known Packages';
   cDir = 'C:\Atlas\Win32';
 
+{ TCommonUpdatesTests }
+
 procedure TCommonUpdatesTests.Setup;
 begin
   FFake := TFakeUpdateSystem.Create;

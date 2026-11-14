@@ -89,6 +89,8 @@ begin
   end;
 end;
 
+{ TAtlasBoardLanesTests }
+
 procedure TAtlasBoardLanesTests.NoSwimlanesNoLanes;
 var
   mSnapshot: TAtlasBoardSnapshot;

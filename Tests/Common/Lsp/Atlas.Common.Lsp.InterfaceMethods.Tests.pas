@@ -129,21 +129,6 @@ const
 
 { TLspInterfaceMethodsTests }
 
-procedure TLspInterfaceMethodsTests.Setup;
-begin
-  FIndex := TSymbolIndex.Create;
-  FIndex.AddUnit(TIndexExtractor.ExtractText(cUnitApi, cApiFile, nil));
-  FIndex.AddUnit(TIndexExtractor.ExtractText(cUnitKunden, cKundenFile, nil));
-  FIndex.AddUnit(TIndexExtractor.ExtractText(cUnitSohn, cSohnFile, nil));
-  FResolver := TNameResolver.Create(FIndex);
-end;
-
-procedure TLspInterfaceMethodsTests.TearDown;
-begin
-  FResolver.Free;
-  FIndex := nil;
-end;
-
 function TLspInterfaceMethodsTests.Describe(const AText, AFileName: string): string;
 var
   mTree: TSyntaxTree;
@@ -165,6 +150,21 @@ begin
   finally
     mTree.Free;
   end;
+end;
+
+procedure TLspInterfaceMethodsTests.Setup;
+begin
+  FIndex := TSymbolIndex.Create;
+  FIndex.AddUnit(TIndexExtractor.ExtractText(cUnitApi, cApiFile, nil));
+  FIndex.AddUnit(TIndexExtractor.ExtractText(cUnitKunden, cKundenFile, nil));
+  FIndex.AddUnit(TIndexExtractor.ExtractText(cUnitSohn, cSohnFile, nil));
+  FResolver := TNameResolver.Create(FIndex);
+end;
+
+procedure TLspInterfaceMethodsTests.TearDown;
+begin
+  FResolver.Free;
+  FIndex := nil;
 end;
 
 procedure TLspInterfaceMethodsTests.MarksMethodsWithInheritedInterfaces;

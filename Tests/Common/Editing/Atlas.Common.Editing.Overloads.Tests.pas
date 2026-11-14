@@ -148,6 +148,8 @@ begin
   end;
 end;
 
+{ TOverloadsTests }
+
 procedure TOverloadsTests.CopyMethod;
 var
   mOutcome: TOverloadResult;

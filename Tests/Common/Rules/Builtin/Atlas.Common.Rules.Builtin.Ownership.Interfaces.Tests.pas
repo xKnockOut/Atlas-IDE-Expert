@@ -130,6 +130,8 @@ begin
     AParentField + '  end;'#10'implementation'#10'end.';
 end;
 
+{ TInterfaceCycleWithoutWeakTests }
+
 procedure TInterfaceCycleWithoutWeakTests.TwoClassesWithFix;
 var
   mSource, mFixed: string;

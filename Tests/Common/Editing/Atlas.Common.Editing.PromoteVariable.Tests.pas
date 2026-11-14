@@ -198,6 +198,8 @@ begin
   Assert.IsFalse(Run(AText, At(AMarker, AName), mTarget, mPromote, Result, mText), 'Aktion unerwartet: ' + mText);
 end;
 
+{ TPromoteVariableTests }
+
 procedure TPromoteVariableTests.Names;
 begin
   Assert.AreEqual('FLineNo', TPromoteVariable.FieldName('LLineNo'));

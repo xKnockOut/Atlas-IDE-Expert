@@ -147,6 +147,8 @@ begin
   Assert.AreEqual(0, Integer(Length(mShared.Tree.Diagnostics)), 'Syntaxfehler im aktiven Baum');
 end;
 
+{ TActiveBranchesTests }
+
 procedure TActiveBranchesTests.TearDown;
 begin
   TSyntaxTreeCache.SetDefinesProvider(nil);

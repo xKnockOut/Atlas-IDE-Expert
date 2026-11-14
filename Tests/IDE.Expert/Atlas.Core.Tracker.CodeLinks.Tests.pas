@@ -99,6 +99,8 @@ begin
   end;
 end;
 
+{ TAtlasCodeLinksTests }
+
 procedure TAtlasCodeLinksTests.PatternNeedsConfiguredTracker;
 begin
   Assert.IsFalse(TAtlasIssueKeyPattern.Empty.Active);

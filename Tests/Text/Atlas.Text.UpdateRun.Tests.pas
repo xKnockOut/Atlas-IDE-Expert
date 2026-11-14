@@ -36,6 +36,8 @@ uses
   System.SysUtils,
   Atlas.Text.UpdateRun;
 
+{ TTextUpdateRunTests }
+
 procedure TTextUpdateRunTests.ParsesArguments;
 var
   mArgs: TUpdateArguments;

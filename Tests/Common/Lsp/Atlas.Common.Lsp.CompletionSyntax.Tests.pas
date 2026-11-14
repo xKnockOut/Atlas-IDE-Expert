@@ -134,6 +134,11 @@ begin
   end;
 end;
 
+procedure TCompletionSyntaxTests.WarmUpFirstUse;
+begin
+  DispatcherAnswersWithNotice;
+end;
+
 procedure TCompletionSyntaxTests.ScopeIsCurrentRoutine;
 var
   mScope: TCompletionScope;
@@ -268,11 +273,6 @@ begin
   finally
     mList.Free;
   end;
-end;
-
-procedure TCompletionSyntaxTests.WarmUpFirstUse;
-begin
-  DispatcherAnswersWithNotice;
 end;
 
 procedure TCompletionSyntaxTests.DispatcherAnswersWithNotice;

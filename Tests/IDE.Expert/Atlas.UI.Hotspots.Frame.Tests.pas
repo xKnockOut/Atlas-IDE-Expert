@@ -53,6 +53,8 @@ uses
   Atlas.Core.Hotspots.Model,
   Atlas.Core.Hotspots.Model.Tests;
 
+{ TAtlasHotspotsFrameTests }
+
 procedure TAtlasHotspotsFrameTests.WarmUpFirstUse;
 begin
   SetUp;

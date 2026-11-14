@@ -29,6 +29,8 @@ uses
   Atlas.Core.EditorToolbar.Icons,
   Atlas.Core.EditorToolbar.Glyphs;
 
+{ TAtlasToolbarIconsTests }
+
 procedure TAtlasToolbarIconsTests.IconsOfKnownCommands;
 var
   mId: string;

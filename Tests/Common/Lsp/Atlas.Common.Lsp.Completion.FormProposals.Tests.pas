@@ -69,15 +69,7 @@ uses
   Atlas.Common.Lsp.FuzzyMatch,
   Atlas.Common.Lsp.CompletionCollector;
 
-procedure TLspCompletionFormProposalTests.WarmUpFirstUse;
-begin
-  Setup;
-  try
-    ComponentItemsSecondRequestUsesCache;
-  finally
-    TearDown;
-  end;
-end;
+{ TLspCompletionFormProposalTests }
 
 procedure TLspCompletionFormProposalTests.Setup;
 begin
@@ -87,6 +79,16 @@ end;
 procedure TLspCompletionFormProposalTests.TearDown;
 begin
   Release;
+end;
+
+procedure TLspCompletionFormProposalTests.WarmUpFirstUse;
+begin
+  Setup;
+  try
+    ComponentItemsSecondRequestUsesCache;
+  finally
+    TearDown;
+  end;
 end;
 
 procedure TLspCompletionFormProposalTests.OffersFormComponentsByNameAndType;

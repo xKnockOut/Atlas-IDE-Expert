@@ -34,6 +34,8 @@ type
     procedure ThrowIfCancellationRequested;
   end;
 
+{ TFakeToken }
+
 function TFakeToken.IsCancellationRequested: Boolean;
 begin
   Result := Cancelled;

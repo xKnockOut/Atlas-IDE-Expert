@@ -81,6 +81,8 @@ begin
   end;
 end;
 
+{ TFormFieldRulesTests }
+
 procedure TFormFieldRulesTests.DeletedObjectWithFieldReports;
 var
   mFindings: TArray<TRuleFinding>;

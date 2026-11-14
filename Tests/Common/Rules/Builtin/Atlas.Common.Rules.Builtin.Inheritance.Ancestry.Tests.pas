@@ -24,6 +24,8 @@ uses
   Atlas.Common.Rules.Builtin.Inheritance.Ancestry,
   Atlas.Common.Index.Contract;
 
+{ TInheritanceAncestryTests }
+
 procedure TInheritanceAncestryTests.VisibilityForDescendants;
 var
   mLocation: TSymbolLocation;

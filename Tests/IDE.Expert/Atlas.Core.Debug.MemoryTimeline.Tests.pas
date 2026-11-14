@@ -58,6 +58,8 @@ begin
   end;
 end;
 
+{ TAtlasMemoryTimelineTests }
+
 procedure TAtlasMemoryTimelineTests.GrowthBetweenTwoPoints;
 var
   mTimeline: TAtlasMemoryTimeline;

@@ -72,6 +72,8 @@ type
       out AError: TAtlasCiFetchError): Boolean;
   end;
 
+{ TFakeTransport }
+
 destructor TFakeTransport.Destroy;
 begin
   FPrefixes := nil;

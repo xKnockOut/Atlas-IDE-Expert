@@ -139,6 +139,18 @@ begin
   Assert.AreEqual('begin'#10'end.'#10, Formatted('begin'#10'end.', mSettings));
 end;
 
+procedure TFormatterTests.FormatsOnlyRange;
+var
+  mEdits: TArray<TRuleEdit>;
+  mText: string;
+begin
+  mText := 'begin'#10'  A:=1;'#10'  B:=2;'#10'end.';
+  mEdits := TFormatter.Edits(mText, TPascalLexer.Tokenize(mText), TFormatStyle.Default, 2, 2);
+  Assert.AreEqual(1, Integer(Length(mEdits)));
+  Assert.AreEqual(2, mEdits[0].Range.StartPos.Line);
+  Assert.AreEqual('  B := 2;', mEdits[0].NewText);
+end;
+
 procedure TFormatterTests.KeepsSingleFinalNewline;
 var
   mSettings: TFormatStyle;
@@ -154,18 +166,6 @@ end;
 procedure TFormatterTests.FormatsEmptyText;
 begin
   Assert.AreEqual('', Formatted('', TFormatStyle.Default));
-end;
-
-procedure TFormatterTests.FormatsOnlyRange;
-var
-  mEdits: TArray<TRuleEdit>;
-  mText: string;
-begin
-  mText := 'begin'#10'  A:=1;'#10'  B:=2;'#10'end.';
-  mEdits := TFormatter.Edits(mText, TPascalLexer.Tokenize(mText), TFormatStyle.Default, 2, 2);
-  Assert.AreEqual(1, Integer(Length(mEdits)));
-  Assert.AreEqual(2, mEdits[0].Range.StartPos.Line);
-  Assert.AreEqual('  B := 2;', mEdits[0].NewText);
 end;
 
 procedure TFormatterTests.LeavesFormattedCodeAlone;

@@ -59,22 +59,6 @@ uses
 
 { TAtlasVariablesTests }
 
-procedure TAtlasVariablesTests.Setup;
-begin
-  FList := TAtlasEvalList.Create;
-  FSearch := TAtlasVariableSearch.Create;
-  FValues := TDictionary<string, string>.Create;
-  FFields := TDictionary<string, string>.Create;
-end;
-
-procedure TAtlasVariablesTests.TearDown;
-begin
-  FreeAndNil(FFields);
-  FreeAndNil(FValues);
-  FreeAndNil(FSearch);
-  FreeAndNil(FList);
-end;
-
 procedure TAtlasVariablesTests.Put(ANode: TAtlasEvalNode);
 var
   mValue: string;
@@ -166,6 +150,22 @@ begin
     Add(FList.Roots[mIndex], Result);
   end;
   Result := Trim(Result);
+end;
+
+procedure TAtlasVariablesTests.Setup;
+begin
+  FList := TAtlasEvalList.Create;
+  FSearch := TAtlasVariableSearch.Create;
+  FValues := TDictionary<string, string>.Create;
+  FFields := TDictionary<string, string>.Create;
+end;
+
+procedure TAtlasVariablesTests.TearDown;
+begin
+  FreeAndNil(FFields);
+  FreeAndNil(FValues);
+  FreeAndNil(FSearch);
+  FreeAndNil(FList);
 end;
 
 procedure TAtlasVariablesTests.ReadsAnswerAndArguments;

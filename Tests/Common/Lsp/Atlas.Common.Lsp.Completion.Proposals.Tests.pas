@@ -83,143 +83,6 @@ uses
   Atlas.Common.Lsp.CompletionCollector,
   Atlas.Common.Lsp.Completion.Details;
 
-procedure TLspCompletionProposalTests.WarmUpFirstUse;
-begin
-  Setup;
-  try
-    OffersOverridesWithDeclarationAndBody;
-  finally
-    TearDown;
-  end;
-end;
-procedure TLspCompletionProposalTests.Setup;
-begin
-  Prepare;
-end;
-procedure TLspCompletionProposalTests.TearDown;
-begin
-  Release;
-end;
-procedure TLspCompletionProposalTests.HelpersFromOtherUnitsBringTheirUses;
-const
-  cUnitHilfen = 'unit Hilfen;'#10'interface'#10'uses Werkzeug;'#10'type'#10 +
-    '  TBasisHelper = class helper for TBasis'#10'  public'#10'    procedure Hilfe;'#10'  end;'#10 +
-    '  TTextHelper = record helper for string'#10'  public'#10'    function Laenge: Integer;'#10 +
-    '  private'#10'    procedure Intern;'#10'  end;'#10'implementation'#10'end.';
-var
-  mText: string;
-  mItems: TCompletionItems;
-  mItem: TCompletionItem;
-  mFound: Boolean;
-  mDetails: TJSONObject;
-begin
-  FIndex.AddUnit(TIndexExtractor.ExtractText(cUnitHilfen, 'C:\P\Hilfen.pas', nil));
-  // Detailpanel: „TTextHelper · Hilfen“ (Zeile 10: function Laenge).
-  mDetails := TCompletionDetails.Details(FIndex, 'C:\P\Hilfen.pas', cUnitHilfen, TTextPosition.Create(10, 13));
-  try
-    Assert.AreEqual('TTextHelper', mDetails.GetValue<string>('container'));
-    // TJSONBool.Create(True) ist kein TJSONTrue; erst der Parser erzeugt diese Klasse.
-    Assert.IsTrue((mDetails.GetValue('helper') is TJSONBool) and TJSONBool(mDetails.GetValue('helper')).AsBoolean,
-      mDetails.ToJSON);
-  finally
-    mDetails.Free;
-  end;
-  mText := WithCode('  Wert.');
-  mItems := ItemsAt(mText, 'Wert.');
-  // Eigene und geerbte Mitglieder zuerst, der Helper des Vorfahren dahinter.
-  Assert.AreEqual('Name Bar Zaehler Melde Hilfe', Names(mItems));
-  mFound := False;
-  for mItem in mItems.Items do
-  begin
-    if mItem.Name = 'Hilfe' then
-    begin
-      mFound := True;
-      Assert.IsTrue(mItem.IsHelper);
-      Assert.AreEqual(1, mItem.Depth);
-      Assert.AreEqual('Hilfen (uses ergänzen)', mItem.Detail);
-      Assert.AreEqual(1, Integer(Length(mItem.AdditionalEdits)));
-      // Verwendung im implementation-Teil: dort ein neuer uses-Abschnitt.
-      Assert.IsTrue(mItem.AdditionalEdits[0].NewText.Contains('Hilfen'), mItem.AdditionalEdits[0].NewText);
-    end;
-  end;
-  Assert.IsTrue(mFound);
-  // Eingebauter Typ: nur die öffentlichen Helper-Mitglieder.
-  Assert.AreEqual('Laenge', Names(ItemsAt(WithCode('  Wert.Name.'), 'Wert.Name.')));
-  // Eingebunden: aktiver Helper ohne uses-Eintrag.
-  mText := StringReplace(WithCode('  Wert.'), 'uses Werkzeug;', 'uses Werkzeug, Hilfen;', []);
-  for mItem in ItemsAt(mText, 'Wert.').Items do
-  begin
-    if mItem.Name = 'Hilfe' then
-    begin
-      Assert.IsTrue(mItem.IsHelper);
-      Assert.AreEqual(0, Integer(Length(mItem.AdditionalEdits)));
-    end;
-  end;
-end;
-procedure TLspCompletionProposalTests.OffersOverridesWithDeclarationAndBody;
-const
-  cUnitBasis =
-    'unit Basis;'#13#10 +
-    'interface'#13#10 +
-    'type'#13#10 +
-    '  TBasisListe = class'#13#10 +
-    '  protected'#13#10 +
-    '    procedure Changed; virtual;'#13#10 +
-    '    function Count: Integer; virtual;'#13#10 +
-    '    procedure Fest;'#13#10 +
-    '    procedure Pruefe(A: Integer; const B: string = ''''); virtual; abstract;'#13#10 +
-    '  end;'#13#10 +
-    'implementation'#13#10 +
-    'end.';
-  cText =
-    'unit Haupt;'#13#10 +
-    'interface'#13#10 +
-    'uses Basis;'#13#10 +
-    'type'#13#10 +
-    '  TLogList = class(TBasisListe)'#13#10 +
-    '  protected'#13#10 +
-    '    procedure '#13#10 +
-    '  end;'#13#10 +
-    'implementation'#13#10 +
-    'end.';
-var
-  mTree: TSyntaxTree;
-  mResolver: TNameResolver;
-  mItems: TCompletionItems;
-  mBody: string;
-begin
-  FIndex.AddUnit(TIndexExtractor.ExtractText(cUnitBasis, 'C:\P\Basis.pas', nil));
-  mTree := TPascalParser.Parse(cText);
-  mResolver := TNameResolver.Create(FIndex);
-  try
-    Assert.IsTrue(OverrideAt(LookupOf(mResolver, nil, mTree, cText,
-      function(const AFileName: string; out AText: string): Boolean
-      begin
-        AText := cUnitBasis;
-        Result := SameText(AFileName, 'C:\P\Basis.pas');
-      end),
-      PositionOf(cText, '    procedure '), mItems));
-    // Nur virtuelle Prozeduren; Count ist eine Funktion, Fest nicht virtuell.
-    Assert.AreEqual('Changed Pruefe', Names(mItems));
-    Assert.AreEqual('Changed; override;', mItems.Items[0].InsertText);
-    Assert.AreEqual('TBasisListe', mItems.Items[0].Container);
-    Assert.AreEqual(1, Integer(Length(mItems.Items[0].AdditionalEdits)));
-    mBody := mItems.Items[0].AdditionalEdits[0].NewText;
-    Assert.IsTrue(mBody.Contains('procedure TLogList.Changed;'#13#10'begin'#13#10'  inherited;'#13#10'end;'), mBody);
-    // Abstrakt: ohne inherited; Standardwert nur in der Deklaration.
-    Assert.AreEqual('Pruefe(A: Integer; const B: string = ''''); override;', mItems.Items[1].InsertText);
-    mBody := mItems.Items[1].AdditionalEdits[0].NewText;
-    Assert.IsTrue(mBody.Contains('procedure TLogList.Pruefe(A: Integer; const B: string);'), mBody);
-    Assert.IsFalse(mBody.Contains('inherited'), mBody);
-    // Außerhalb einer Klassendeklaration kein Override-Kontext.
-    Assert.IsFalse(OverrideAt(LookupOf(mResolver, nil, mTree, cText, nil),
-      PositionOf(cText, 'uses Ba'), mItems));
-  finally
-    mResolver.Free;
-    mTree.Free;
-  end;
-end;
-
 const
   cEventsUnitBasis =
     'unit Basis;'#13#10 +
@@ -256,61 +119,6 @@ const
     'end;'#13#10 +
     'end.';
 
-procedure TLspCompletionProposalTests.OffersMatchingHandlersAndNewMethodForEvents;
-var
-  mTree: TSyntaxTree;
-  mResolver: TNameResolver;
-  mItems: TCompletionItems;
-  mItem: TCompletionItem;
-  mHandlers, mEdits: string;
-  mEdit: TRuleEdit;
-begin
-  FIndex.AddUnit(TIndexExtractor.ExtractText(cEventsUnitBasis, 'C:\P\Basis.pas', nil));
-  mTree := TPascalParser.Parse(cEventsText);
-  mResolver := TNameResolver.Create(FIndex);
-  try
-    Assert.IsTrue(EventsAt(LookupOf(mResolver, nil, mTree, cEventsText,
-      function(const AFileName: string; out AText: string): Boolean
-      begin
-        AText := cEventsUnitBasis;
-        Result := SameText(AFileName, 'C:\P\Basis.pas');
-      end),
-      PositionOf(cEventsText, 'btnSave.OnClick := '), mItems));
-    // Nur Methoden mit (Sender: TObject); Fertig hat zwei Parameter.
-    mHandlers := '';
-    for mItem in mItems.Items do
-    begin
-      if mItem.Action = '' then
-      begin
-        mHandlers := mHandlers + ' ' + mItem.Name;
-        Assert.AreEqual('TNotifyEvent', mItem.Expected);
-        Assert.IsTrue(mItem.Fits);
-      end;
-    end;
-    Assert.AreEqual(' FormCreate btnSaveClick', mHandlers);
-    // Zuletzt die neue Methode; btnSaveClick ist vergeben.
-    mItem := mItems.Items[High(mItems.Items)];
-    Assert.AreEqual('create', mItem.Action);
-    Assert.AreEqual('Neue Methode btnSaveClick2 …', mItem.Name);
-    Assert.AreEqual('btnSaveClick2', mItem.InsertText);
-    mEdits := '';
-    for mEdit in mItem.AdditionalEdits do
-    begin
-      mEdits := mEdits + mEdit.NewText + '|';
-    end;
-    Assert.AreEqual(2, Integer(Length(mItem.AdditionalEdits)), mEdits);
-    Assert.IsTrue(mEdits.Contains('private'#13#10'    procedure btnSaveClick2(Sender: TObject);'), mEdits);
-    Assert.IsTrue(mEdits.Contains('procedure TForm1.btnSaveClick2(Sender: TObject);'#13#10'begin'#13#10#13#10'end;'),
-      mEdits);
-    // Keine Ereignis-Zuweisung: normale Vervollständigung.
-    Assert.IsFalse(EventsAt(LookupOf(mResolver, nil, mTree, cEventsText, nil),
-      PositionOf(cEventsText, 'uses Ba'), mItems));
-  finally
-    mResolver.Free;
-    mTree.Free;
-  end;
-end;
-
 const
   cGenericUnitListen =
     'unit Listen;'#13#10 +
@@ -339,47 +147,6 @@ const
     '  end;'#13#10 +
     'implementation'#13#10 +
     'end.';
-
-procedure TLspCompletionProposalTests.OffersGenericInterfaceMethods;
-var
-  mTree: TSyntaxTree;
-  mResolver: TNameResolver;
-  mItems: TArray<TCompletionItem>;
-  mList: TCompletionItems;
-  mEdits, mMerged: TArray<TRuleEdit>;
-  mItem: TCompletionItem;
-  mBatch: Boolean;
-begin
-  FIndex.AddUnit(TIndexExtractor.ExtractText(cGenericUnitListen, 'C:\P\Listen.pas', nil));
-  mTree := TPascalParser.Parse(cGenericText);
-  mResolver := TNameResolver.Create(FIndex);
-  try
-    Assert.IsTrue(InterfaceAt(LookupOf(mResolver, nil, mTree, cGenericText,
-      function(const AFileName: string; out AText: string): Boolean
-      begin
-        AText := cGenericUnitListen;
-        Result := SameText(AFileName, 'C:\P\Listen.pas');
-      end),
-      TTextPosition.Create(8, 4), TCompletionInterfaceSection.Public, mItems, mBatch));
-    mList.Items := mItems;
-    Assert.AreEqual('Add Items', Names(mList));
-    Assert.AreEqual('IListe<TKunde>', mItems[0].Container);
-    Assert.Contains(mItems[0].Detail, 'procedure Add(const AItem: TKunde)');
-    Assert.Contains(mItems[1].Detail, 'function Items: TArray<TKunde>');
-    mEdits := nil;
-    for mItem in mItems do
-    begin
-      mEdits := mEdits + mItem.AdditionalEdits;
-    end;
-    mMerged := TInterfaceStubs.Merge(mEdits);
-    Assert.IsTrue(mMerged[0].NewText.Contains('{ IListe<TKunde> }'), mMerged[0].NewText);
-    Assert.IsTrue(mMerged[1].NewText.Contains('procedure TKundenListe.Add(const AItem: TKunde);'), mMerged[1].NewText);
-    Assert.IsTrue(mMerged[1].NewText.Contains('Result := Default(TArray<TKunde>);'), mMerged[1].NewText);
-  finally
-    mResolver.Free;
-    mTree.Free;
-  end;
-end;
 
 const
   cMissingUnitBasis =
@@ -480,60 +247,6 @@ begin
   Assert.IsTrue(mItems[0].AdditionalEdits[0].NewText.Contains('function GetName: string;'));
   Assert.IsFalse(mItems[0].AdditionalEdits[0].NewText.Contains('Flush'));
 end;
-procedure TLspCompletionProposalTests.OffersMissingInterfaceMethods;
-var
-  mTree: TSyntaxTree;
-  mResolver: TNameResolver;
-  mItems: TArray<TCompletionItem>;
-  mList: TCompletionItems;
-  mBatch: Boolean;
-begin
-  FIndex.AddUnit(TIndexExtractor.ExtractText(cMissingUnitBasis, 'C:\P\Basis.pas', nil));
-  mTree := TPascalParser.Parse(cMissingText);
-  mResolver := TNameResolver.Create(FIndex);
-  try
-    // Strg+Leer auf der leeren Zeile: Liste mit Kontrollkästchen. SetName erbt die Klasse von TBasis.
-    Assert.IsTrue(InterfaceAt(LookupOf(mResolver, nil, mTree, cMissingText,
-      function(const AFileName: string; out AText: string): Boolean
-      begin
-        AText := cMissingUnitBasis;
-        Result := SameText(AFileName, 'C:\P\Basis.pas');
-      end),
-      TTextPosition.Create(7, 4), TCompletionInterfaceSection.Public, mItems, mBatch));
-    Assert.IsTrue(mBatch);
-    mList.Items := mItems;
-    Assert.AreEqual('Export GetName Flush', Names(mList));
-    Assert.AreEqual('IExporter', mItems[0].Container);
-    Assert.AreEqual('IFlush', mItems[2].Container);
-    Assert.AreEqual('IExporter, IFlush', mItems[0].SetOf);
-    Assert.IsTrue(mItems[0].Batch and mItems[0].SetChecked);
-    Assert.AreEqual(3, mItems[2].Ordinal);
-    Assert.AreEqual(7, mItems[0].SetRange.StartPos.Line);
-    AssertMergedInterfaceStubs(mItems);
-    // Abschnitt nach Einstellung: private steht schon als letzter da, also kein neuer.
-    Assert.IsTrue(InterfaceAt(LookupOf(mResolver, nil, mTree, cMissingText,
-      function(const AFileName: string; out AText: string): Boolean
-      begin
-        AText := cMissingUnitBasis;
-        Result := True;
-      end),
-      TTextPosition.Create(7, 4), TCompletionInterfaceSection.Private, mItems, mBatch));
-    Assert.AreEqual('    { IExporter }'#13#10, mItems[0].AdditionalEdits[0].NewText);
-    // Außerhalb der Klasse nichts.
-    Assert.IsFalse(InterfaceAt(LookupOf(mResolver, nil, mTree, cMissingText, nil),
-      TTextPosition.Create(2, 0), TCompletionInterfaceSection.Public, mItems, mBatch));
-  finally
-    mTree.Free;
-  end;
-  // Angefangenes Wort: je Interface ein Hinweis, der seine Methoden anlegt und das Wort entfernt.
-  mTree := TPascalParser.Parse(cMissingTyped);
-  try
-    AssertTypedInterfaceHints(mResolver, mTree);
-  finally
-    mResolver.Free;
-    mTree.Free;
-  end;
-end;
 const
   cUnknownText =
     'unit Haupt;'#13#10 +
@@ -559,78 +272,6 @@ const
     '  FLines := nil;'#13#10 +
     'end;'#13#10 +
     'end.';
-
-procedure TLspCompletionProposalTests.OffersDeclarationsForUnknownNames;
-var
-  mTree: TSyntaxTree;
-  mResolver: TNameResolver;
-  mItems: TArray<TCompletionItem>;
-  mKnown: TArray<TCompletionItem>;
-
-  function Named(const AName: string): TCompletionItem;
-  var
-    mItem: TCompletionItem;
-  begin
-    for mItem in mItems do
-    begin
-      if mItem.Name = AName then
-      begin
-        Exit(mItem);
-      end;
-    end;
-    raise Exception.CreateFmt('Eintrag "%s" fehlt', [AName]);
-  end;
-
-var
-  mItem: TCompletionItem;
-begin
-  mTree := TPascalParser.Parse(cUnknownText);
-  mResolver := TNameResolver.Create(FIndex);
-  try
-    // Ziel einer Zuweisung: Typ aus der rechten Seite.
-    Assert.IsTrue(DeclareAt(LookupOf(mResolver, FIndex, mTree, cUnknownText, nil),
-      PositionOf(cUnknownText, '  TotalCount'), True, nil, mItems));
-    mItem := Named('Lokale Variable anlegen');
-    Assert.AreEqual('TotalCount: Integer', mItem.Detail);
-    Assert.AreEqual('declare', mItem.Action);
-    Assert.AreEqual('TotalCount', mItem.Unknown);
-    // Die Verwendung bleibt, der Cursor auch; var vor begin.
-    Assert.AreEqual('TotalCount$0', mItem.TextEdit.NewText);
-    Assert.AreEqual(1, Integer(Length(mItem.AdditionalEdits)));
-    Assert.AreEqual('var'#13#10'  TotalCount: Integer;'#13#10, mItem.AdditionalEdits[0].NewText);
-    Assert.AreEqual(17, mItem.AdditionalEdits[0].Range.StartPos.Line);
-    Assert.AreEqual('var TotalCount$0', Named('Inline-Variable anlegen').TextEdit.NewText);
-    // Feld mit F-Konvention: im private-Abschnitt, die Verwendung heißt danach FTotalCount.
-    mItem := Named('Feld FTotalCount anlegen');
-    Assert.AreEqual('FTotalCount$0', mItem.TextEdit.NewText);
-    Assert.AreEqual(7, mItem.AdditionalEdits[0].Range.StartPos.Line);
-    Assert.AreEqual(#13#10'    FTotalCount: Integer;', mItem.AdditionalEdits[0].NewText);
-    // Keine Konstante als Ziel einer Zuweisung.
-    for mItem in mItems do
-    begin
-      Assert.AreNotEqual('Konstante anlegen', mItem.Name);
-    end;
-    // Als Argument: Typ des Parameters, auch als Konstante in der implementation.
-    Assert.IsTrue(DeclareAt(LookupOf(mResolver, FIndex, mTree, cUnknownText, nil),
-      PositionOf(cUnknownText, 'Zeige(Anzahl'), False, nil, mItems));
-    Assert.AreEqual('Anzahl: Integer', Named('Lokale Variable anlegen').Detail);
-    mItem := Named('Konstante anlegen');
-    Assert.AreEqual('Anzahl = 0;', mItem.Detail);
-    Assert.AreEqual(12, mItem.AdditionalEdits[0].Range.StartPos.Line);
-    // Bekannte Namen und genaue Treffer: nichts.
-    Assert.IsFalse(DeclareAt(LookupOf(mResolver, FIndex, mTree, cUnknownText, nil),
-      PositionOf(cUnknownText, 'Zeige(Anzahl);'#13#10'  FLines'), True, nil, mItems));
-    // Eigene Variable für die bekannten Einträge: Ein out-Parameter leert sein Ziel vor dem Aufruf.
-    SetLength(mKnown, 1);
-    mKnown[0] := Default(TCompletionItem);
-    mKnown[0].Name := 'Anzahl';
-    Assert.IsFalse(DeclareAt(LookupOf(mResolver, FIndex, mTree, cUnknownText, nil),
-      PositionOf(cUnknownText, 'Zeige(Anzahl'), True, mKnown, mItems));
-  finally
-    mResolver.Free;
-    mTree.Free;
-  end;
-end;
 
 const
   cCaseText =
@@ -663,50 +304,6 @@ const
     '    '#13#10 +
     'end;'#13#10 +
     'end.';
-
-procedure TLspCompletionProposalTests.OffersMissingCaseBranches;
-var
-  mTree: TSyntaxTree;
-  mResolver: TNameResolver;
-  mItems: TArray<TCompletionItem>;
-  mSetMode: Boolean;
-  mPosition: TTextPosition;
-begin
-  mTree := TPascalParser.Parse(cCaseText);
-  mResolver := TNameResolver.Create(FIndex);
-  try
-    // Ohne Zweige: „Alle Werte einfügen“ zuerst, mit Anzahl; alle vier Zweige und das fehlende end.
-    mPosition := PositionOf(cCaseText, 'case S.Kind of'#13#10'    ');
-    Assert.IsTrue(EnumAt(LookupOf(mResolver, FIndex, mTree, cCaseText, nil),
-      mPosition, mItems, mSetMode));
-    Assert.AreEqual('Alle Werte einfügen', mItems[0].Name);
-    Assert.IsTrue(mItems[0].Pinned);
-    Assert.AreEqual(4, Integer(mItems[0].Count));
-    Assert.IsTrue(mItems[0].HasTextEdit);
-    Assert.AreEqual(#13#10'    skCircle: $0;'#13#10'    skLine: ;'#13#10'    skRect: ;'#13#10'    skTriangle: ;' +
-      #13#10'  end;', mItems[0].TextEdit.NewText);
-    // Ersetzt wird ab dem "of" bis zum Cursor (der Leerraum der Zeile).
-    Assert.AreEqual(24, mItems[0].TextEdit.Range.StartPos.Line);
-    Assert.AreEqual(16, mItems[0].TextEdit.Range.StartPos.Character);
-    Assert.AreEqual(mPosition.Line, mItems[0].TextEdit.Range.EndPos.Line);
-    Assert.AreEqual(mPosition.Character, mItems[0].TextEdit.Range.EndPos.Character);
-    Assert.AreEqual('skCircle', mItems[1].Name, 'darunter die einzelnen Werte');
-    // Mit Zweig skCircle: nur die drei übrigen, end ist vorhanden.
-    Assert.IsTrue(EnumAt(LookupOf(mResolver, FIndex, mTree, cCaseText, nil),
-      PositionOf(cCaseText, 'skCircle: Zeichne;'#13#10'    sk'), mItems, mSetMode));
-    Assert.AreEqual('Fehlende Werte ergänzen (3)', mItems[0].Name);
-    Assert.AreEqual(0, Integer(mItems[0].Count));
-    Assert.AreEqual(#13#10'    skLine: $0;'#13#10'    skRect: ;'#13#10'    skTriangle: ;', mItems[0].TextEdit.NewText);
-    // Bereiche und Listen zählen als vorhanden: nichts mehr zu ergänzen.
-    Assert.IsTrue(EnumAt(LookupOf(mResolver, FIndex, mTree, cCaseText, nil),
-      PositionOf(cCaseText, 'skTriangle: ;'#13#10'    '), mItems, mSetMode));
-    Assert.AreEqual('skCircle', mItems[0].Name);
-    Assert.IsFalse(mItems[0].Pinned);
-  finally
-    mResolver.Free;
-    mTree.Free;
-  end;
-end;
 
 const
   cAssignText =
@@ -754,79 +351,6 @@ const
     '  TOpts.'#13#10 +
     'end;'#13#10 +
     'end.';
-
-procedure TLspCompletionProposalTests.AssignsAllFields;
-var
-  mItem: TCompletionItem;
-  mText: string;
-begin
-  // Abnahme: drei Felder mit Platzhaltern; steht Opts.Header schon in der nächsten Zeile, nur zwei.
-  mText := StringReplace(cAssignText, '  Opts.Header := ''x'';'#13#10, '', []);
-  Assert.IsTrue(AssignItem(mText, #10'  Opts.', True, True, mItem));
-  Assert.AreEqual('Alle Felder zuweisen (3)', mItem.Name);
-  Assert.IsTrue(mItem.Pinned);
-  Assert.IsTrue(mItem.Snippet);
-  Assert.AreEqual('Opts.Header := ${1:''''};'#10'Opts.Count := ${2:0};'#10'Opts.Kind := ${3:kA};',
-    mItem.TextEdit.NewText);
-  Assert.AreEqual(2, mItem.TextEdit.Range.StartPos.Character, 'ab dem Anfang des Ausdrucks');
-  Assert.AreEqual(7, mItem.TextEdit.Range.EndPos.Character);
-  Assert.IsTrue(AssignItem(cAssignText, #10'  Opts.', True, True, mItem));
-  Assert.AreEqual('Alle Felder zuweisen (2)', mItem.Name);
-  Assert.AreEqual('Opts.Count := ${1:0};'#10'Opts.Kind := ${2:kA};', mItem.TextEdit.NewText);
-  // Ohne Platzhalter: Klartext mit der Einrückung der Zeile.
-  Assert.IsTrue(AssignItem(cAssignText, #10'  Opts.', False, True, mItem));
-  Assert.IsFalse(mItem.Snippet);
-  Assert.AreEqual('Opts.Count := 0;'#13#10'  Opts.Kind := kA;', mItem.TextEdit.NewText);
-  // Klasse: Vorfahren zuerst; geschützte Property, die der Nachfahr öffentlich macht, ja; nur lesbare und
-  // private nicht.
-  Assert.IsTrue(AssignItem(cAssignText, #10'    C.', False, True, mItem));
-  Assert.AreEqual('C.Hidden := '''';'#13#10'    C.Tag := 0;'#13#10'    C.Name := '''';'#13#10 +
-    '    C.Owner := nil;'#13#10'    C.Flags := [];', mItem.TextEdit.NewText);
-  // Nicht am Anweisungsanfang, nach einem Typ und abgeschaltet: nichts.
-  Assert.IsFalse(AssignItem(cAssignText, 'X := Opts.', True, True, mItem), 'Zuweisung');
-  Assert.IsFalse(AssignItem(cAssignText, '  TOpts.', True, True, mItem), 'Typ');
-  Assert.IsFalse(AssignItem(cAssignText, #10'  Opts.', True, False, mItem), 'abgeschaltet');
-  mItem := Default(TCompletionItem);
-end;
-procedure TLspCompletionProposalTests.AssignsManyFieldsThroughList;
-var
-  mItem: TCompletionItem;
-  mText, mFields: string;
-  mIndex: Integer;
-  mJson: TJSONArray;
-  mData, mLine: TJSONObject;
-begin
-  // Mehr als 15 Felder: erst die Liste mit Kontrollkästchen, je Zeile samt Umbruch für die nächste.
-  mFields := '';
-  for mIndex := 0 to TAssignFields.cListThreshold do
-  begin
-    mFields := mFields + '    F' + IntToStr(mIndex) + ': Integer;'#13#10;
-  end;
-  mText := StringReplace(cAssignText, '    Header: string;'#13#10, mFields, []);
-  mText := StringReplace(mText, '  Opts.Header := ''x'';'#13#10, '', []);
-  Assert.IsTrue(AssignItem(mText, #10'  Opts.', True, True, mItem));
-  Assert.AreEqual('Alle Felder zuweisen (18)', mItem.Name);
-  Assert.IsFalse(mItem.Snippet);
-  Assert.AreEqual('Opts.', mItem.TextEdit.NewText, 'Text bleibt bis zur Auswahl');
-  Assert.AreEqual(18, Integer(Length(mItem.Assignments)));
-  Assert.AreEqual('F0', mItem.Assignments[0].Name);
-  Assert.AreEqual('Integer', mItem.Assignments[0].Detail);
-  Assert.AreEqual('Opts.F0 := 0;'#13#10'  ', mItem.Assignments[0].Text);
-  Assert.AreEqual('Opts.Kind := kA;'#13#10'  ', mItem.Assignments[17].Text);
-  // Im JSON unter data.assign.
-  mJson := TLspCompletion.ToJson([mItem], 0);
-  try
-    mData := TJSONObject(mJson.Items[0]).GetValue('data') as TJSONObject;
-    Assert.AreEqual('assign', mData.GetValue<string>('action'));
-    mLine := (mData.GetValue('assign') as TJSONArray).Items[0] as TJSONObject;
-    Assert.AreEqual('F0', mLine.GetValue<string>('name'));
-    Assert.AreEqual('Integer', mLine.GetValue<string>('detail'));
-    Assert.AreEqual('Opts.F0 := 0;'#13#10'  ', mLine.GetValue<string>('text'));
-  finally
-    mJson.Free;
-  end;
-  mItem := Default(TCompletionItem);
-end;
 
 const
   cEnumTypenFile = 'C:\P\Typen.pas';
@@ -934,6 +458,182 @@ begin
   Assert.AreEqual('set of TShapeKind', mItems[0].Expected);
   Assert.AreEqual('TShapeKind.skCircle', mItems[0].InsertText);
 end;
+const
+  cOverrideBasisFile = 'C:\P\Basis.pas';
+  cOverrideMitteFile = 'C:\P\Mitte.pas';
+  cOverrideUnitBasis =
+    'unit Basis;'#13#10 +
+    'interface'#13#10 +
+    'type'#13#10 +
+    '  TBasisListe = class'#13#10 +
+    '  protected'#13#10 +
+    '    procedure Changed; virtual;'#13#10 +
+    '    procedure Cleared; virtual;'#13#10 +
+    '    procedure Sorted; virtual;'#13#10 +
+    '  end;'#13#10 +
+    'implementation'#13#10 +
+    'end.';
+  cOverrideUnitMitte =
+    'unit Mitte;'#13#10 +
+    'interface'#13#10 +
+    'uses Basis;'#13#10 +
+    'type'#13#10 +
+    '  TMitte = class(TBasisListe)'#13#10 +
+    '  protected'#13#10 +
+    '    procedure Moved; virtual;'#13#10 +
+    '    procedure Renamed; virtual;'#13#10 +
+    '  end;'#13#10 +
+    'implementation'#13#10 +
+    'end.';
+  cOverrideText =
+    'unit Haupt;'#13#10 +
+    'interface'#13#10 +
+    'uses Basis, Mitte;'#13#10 +
+    'type'#13#10 +
+    '  TLogList = class(TMitte)'#13#10 +
+    '  protected'#13#10 +
+    '    procedure '#13#10 +
+    '  end;'#13#10 +
+    'implementation'#13#10 +
+    'end.';
+
+{ TLspCompletionProposalTests }
+
+procedure TLspCompletionProposalTests.Setup;
+begin
+  Prepare;
+end;
+procedure TLspCompletionProposalTests.TearDown;
+begin
+  Release;
+end;
+procedure TLspCompletionProposalTests.WarmUpFirstUse;
+begin
+  Setup;
+  try
+    OffersOverridesWithDeclarationAndBody;
+  finally
+    TearDown;
+  end;
+end;
+procedure TLspCompletionProposalTests.OffersOverridesWithDeclarationAndBody;
+const
+  cUnitBasis =
+    'unit Basis;'#13#10 +
+    'interface'#13#10 +
+    'type'#13#10 +
+    '  TBasisListe = class'#13#10 +
+    '  protected'#13#10 +
+    '    procedure Changed; virtual;'#13#10 +
+    '    function Count: Integer; virtual;'#13#10 +
+    '    procedure Fest;'#13#10 +
+    '    procedure Pruefe(A: Integer; const B: string = ''''); virtual; abstract;'#13#10 +
+    '  end;'#13#10 +
+    'implementation'#13#10 +
+    'end.';
+  cText =
+    'unit Haupt;'#13#10 +
+    'interface'#13#10 +
+    'uses Basis;'#13#10 +
+    'type'#13#10 +
+    '  TLogList = class(TBasisListe)'#13#10 +
+    '  protected'#13#10 +
+    '    procedure '#13#10 +
+    '  end;'#13#10 +
+    'implementation'#13#10 +
+    'end.';
+var
+  mTree: TSyntaxTree;
+  mResolver: TNameResolver;
+  mItems: TCompletionItems;
+  mBody: string;
+begin
+  FIndex.AddUnit(TIndexExtractor.ExtractText(cUnitBasis, 'C:\P\Basis.pas', nil));
+  mTree := TPascalParser.Parse(cText);
+  mResolver := TNameResolver.Create(FIndex);
+  try
+    Assert.IsTrue(OverrideAt(LookupOf(mResolver, nil, mTree, cText,
+      function(const AFileName: string; out AText: string): Boolean
+      begin
+        AText := cUnitBasis;
+        Result := SameText(AFileName, 'C:\P\Basis.pas');
+      end),
+      PositionOf(cText, '    procedure '), mItems));
+    // Nur virtuelle Prozeduren; Count ist eine Funktion, Fest nicht virtuell.
+    Assert.AreEqual('Changed Pruefe', Names(mItems));
+    Assert.AreEqual('Changed; override;', mItems.Items[0].InsertText);
+    Assert.AreEqual('TBasisListe', mItems.Items[0].Container);
+    Assert.AreEqual(1, Integer(Length(mItems.Items[0].AdditionalEdits)));
+    mBody := mItems.Items[0].AdditionalEdits[0].NewText;
+    Assert.IsTrue(mBody.Contains('procedure TLogList.Changed;'#13#10'begin'#13#10'  inherited;'#13#10'end;'), mBody);
+    // Abstrakt: ohne inherited; Standardwert nur in der Deklaration.
+    Assert.AreEqual('Pruefe(A: Integer; const B: string = ''''); override;', mItems.Items[1].InsertText);
+    mBody := mItems.Items[1].AdditionalEdits[0].NewText;
+    Assert.IsTrue(mBody.Contains('procedure TLogList.Pruefe(A: Integer; const B: string);'), mBody);
+    Assert.IsFalse(mBody.Contains('inherited'), mBody);
+    // Außerhalb einer Klassendeklaration kein Override-Kontext.
+    Assert.IsFalse(OverrideAt(LookupOf(mResolver, nil, mTree, cText, nil),
+      PositionOf(cText, 'uses Ba'), mItems));
+  finally
+    mResolver.Free;
+    mTree.Free;
+  end;
+end;
+procedure TLspCompletionProposalTests.OffersMatchingHandlersAndNewMethodForEvents;
+var
+  mTree: TSyntaxTree;
+  mResolver: TNameResolver;
+  mItems: TCompletionItems;
+  mItem: TCompletionItem;
+  mHandlers, mEdits: string;
+  mEdit: TRuleEdit;
+begin
+  FIndex.AddUnit(TIndexExtractor.ExtractText(cEventsUnitBasis, 'C:\P\Basis.pas', nil));
+  mTree := TPascalParser.Parse(cEventsText);
+  mResolver := TNameResolver.Create(FIndex);
+  try
+    Assert.IsTrue(EventsAt(LookupOf(mResolver, nil, mTree, cEventsText,
+      function(const AFileName: string; out AText: string): Boolean
+      begin
+        AText := cEventsUnitBasis;
+        Result := SameText(AFileName, 'C:\P\Basis.pas');
+      end),
+      PositionOf(cEventsText, 'btnSave.OnClick := '), mItems));
+    // Nur Methoden mit (Sender: TObject); Fertig hat zwei Parameter.
+    mHandlers := '';
+    for mItem in mItems.Items do
+    begin
+      if mItem.Action = '' then
+      begin
+        mHandlers := mHandlers + ' ' + mItem.Name;
+        Assert.AreEqual('TNotifyEvent', mItem.Expected);
+        Assert.IsTrue(mItem.Fits);
+      end;
+    end;
+    Assert.AreEqual(' FormCreate btnSaveClick', mHandlers);
+    // Zuletzt die neue Methode; btnSaveClick ist vergeben.
+    mItem := mItems.Items[High(mItems.Items)];
+    Assert.AreEqual('create', mItem.Action);
+    Assert.AreEqual('Neue Methode btnSaveClick2 …', mItem.Name);
+    Assert.AreEqual('btnSaveClick2', mItem.InsertText);
+    mEdits := '';
+    for mEdit in mItem.AdditionalEdits do
+    begin
+      mEdits := mEdits + mEdit.NewText + '|';
+    end;
+    Assert.AreEqual(2, Integer(Length(mItem.AdditionalEdits)), mEdits);
+    Assert.IsTrue(mEdits.Contains('private'#13#10'    procedure btnSaveClick2(Sender: TObject);'), mEdits);
+    Assert.IsTrue(mEdits.Contains('procedure TForm1.btnSaveClick2(Sender: TObject);'#13#10'begin'#13#10#13#10'end;'),
+      mEdits);
+    // Keine Ereignis-Zuweisung: normale Vervollständigung.
+    Assert.IsFalse(EventsAt(LookupOf(mResolver, nil, mTree, cEventsText, nil),
+      PositionOf(cEventsText, 'uses Ba'), mItems));
+  finally
+    mResolver.Free;
+    mTree.Free;
+  end;
+end;
+
 procedure TLspCompletionProposalTests.OffersEnumValuesAndSetValues;
 var
   mTree: TSyntaxTree;
@@ -968,90 +668,249 @@ begin
     mTree.Free;
   end;
 end;
-procedure TLspCompletionProposalTests.GroupsByExpectedType;
 
-  function MakeText(const ALine: string): string;
-  begin
-    Result :=
-      'unit Haupt;'#13#10 +
-      'interface'#13#10 +
-      'type'#13#10 +
-      '  TBasis = class'#13#10 +
-      '  end;'#13#10 +
-      '  TKind = class(TBasis)'#13#10 +
-      '  end;'#13#10 +
-      '  TListe = class'#13#10 +
-      '  public'#13#10 +
-      '    function Count: Integer;'#13#10 +
-      '    function Name: string;'#13#10 +
-      '    function IndexOf(const S: string): Integer;'#13#10 +
-      '    procedure Clear;'#13#10 +
-      '    property Erstes: TKind read FErstes;'#13#10 +
-      '  end;'#13#10 +
-      'function Rechne(A: Integer; B: TBasis): Integer;'#13#10 +
-      'implementation'#13#10 +
-      'function Rechne(A: Integer; B: TBasis): Integer;'#13#10 +
-      'var'#13#10 +
-      '  L: TListe;'#13#10 +
-      '  I: Integer;'#13#10 +
-      '  Obj: TBasis;'#13#10 +
-      'begin'#13#10 +
-      '  ' + ALine + #13#10 +
-      'end;'#13#10 +
-      'end.';
-  end;
-
-  function Check(const ALine, AExpected, AFits: string): string;
-  var
-    mText, mFits: string;
-    mTree: TSyntaxTree;
-    mResolver: TNameResolver;
-    mItems: TCompletionItems;
-    mItem: TCompletionItem;
-    mPosition: TTextPosition;
-    mFitting: Boolean;
-  begin
-    mText := MakeText(ALine);
-    mPosition := PositionOf(mText, ALine);
-    mTree := TPascalParser.Parse(mText);
-    mResolver := TNameResolver.Create(FIndex);
-    try
-      Result := TCompletionContexts.ExpectedType(mResolver, mTree, cHauptFile, mPosition);
-      mItems := TCompletionLists.Collect(mResolver, FIndex, mTree, cHauptFile, mPosition);
-      // Passende zuerst, danach keine passenden mehr.
-      mFits := '';
-      mFitting := True;
-      for mItem in mItems.Items do
-      begin
-        Assert.AreEqual(AExpected, mItem.Expected, ALine + ': ' + mItem.Name);
-        if mItem.Fits then
-        begin
-          Assert.IsTrue(mFitting, ALine + ': ' + mItem.Name + ' steht hinter nicht passenden');
-          mFits := mFits + ' ' + mItem.Name;
-        end
-        else
-        begin
-          mFitting := False;
-        end;
-      end;
-      Assert.AreEqual(AFits, Trim(mFits), ALine);
-    finally
-      mResolver.Free;
-      mTree.Free;
-    end;
-  end;
-
+procedure TLspCompletionProposalTests.OffersMissingCaseBranches;
+var
+  mTree: TSyntaxTree;
+  mResolver: TNameResolver;
+  mItems: TArray<TCompletionItem>;
+  mSetMode: Boolean;
+  mPosition: TTextPosition;
 begin
-  // Beispiel aus #417: Integer-Zuweisung, Count und IndexOf oben.
-  Assert.AreEqual('Integer', Check('I := L.', 'Integer', 'Count IndexOf'));
-  // Klasse: Nachfahr passt.
-  Assert.AreEqual('TBasis', Check('Obj := L.', 'TBasis', 'Erstes'));
-  // Parameter im Aufruf.
-  Assert.AreEqual('TBasis', Check('Rechne(1, L.', 'TBasis', 'Erstes'));
-  // Rückgabetyp bei Result.
-  Assert.AreEqual('Integer', Check('Result := L.', 'Integer', 'Count IndexOf'));
-  // Ohne erwarteten Typ keine Gruppierung.
-  Assert.AreEqual('', Check('L.', '', ''));
+  mTree := TPascalParser.Parse(cCaseText);
+  mResolver := TNameResolver.Create(FIndex);
+  try
+    // Ohne Zweige: „Alle Werte einfügen“ zuerst, mit Anzahl; alle vier Zweige und das fehlende end.
+    mPosition := PositionOf(cCaseText, 'case S.Kind of'#13#10'    ');
+    Assert.IsTrue(EnumAt(LookupOf(mResolver, FIndex, mTree, cCaseText, nil),
+      mPosition, mItems, mSetMode));
+    Assert.AreEqual('Alle Werte einfügen', mItems[0].Name);
+    Assert.IsTrue(mItems[0].Pinned);
+    Assert.AreEqual(4, Integer(mItems[0].Count));
+    Assert.IsTrue(mItems[0].HasTextEdit);
+    Assert.AreEqual(#13#10'    skCircle: $0;'#13#10'    skLine: ;'#13#10'    skRect: ;'#13#10'    skTriangle: ;' +
+      #13#10'  end;', mItems[0].TextEdit.NewText);
+    // Ersetzt wird ab dem "of" bis zum Cursor (der Leerraum der Zeile).
+    Assert.AreEqual(24, mItems[0].TextEdit.Range.StartPos.Line);
+    Assert.AreEqual(16, mItems[0].TextEdit.Range.StartPos.Character);
+    Assert.AreEqual(mPosition.Line, mItems[0].TextEdit.Range.EndPos.Line);
+    Assert.AreEqual(mPosition.Character, mItems[0].TextEdit.Range.EndPos.Character);
+    Assert.AreEqual('skCircle', mItems[1].Name, 'darunter die einzelnen Werte');
+    // Mit Zweig skCircle: nur die drei übrigen, end ist vorhanden.
+    Assert.IsTrue(EnumAt(LookupOf(mResolver, FIndex, mTree, cCaseText, nil),
+      PositionOf(cCaseText, 'skCircle: Zeichne;'#13#10'    sk'), mItems, mSetMode));
+    Assert.AreEqual('Fehlende Werte ergänzen (3)', mItems[0].Name);
+    Assert.AreEqual(0, Integer(mItems[0].Count));
+    Assert.AreEqual(#13#10'    skLine: $0;'#13#10'    skRect: ;'#13#10'    skTriangle: ;', mItems[0].TextEdit.NewText);
+    // Bereiche und Listen zählen als vorhanden: nichts mehr zu ergänzen.
+    Assert.IsTrue(EnumAt(LookupOf(mResolver, FIndex, mTree, cCaseText, nil),
+      PositionOf(cCaseText, 'skTriangle: ;'#13#10'    '), mItems, mSetMode));
+    Assert.AreEqual('skCircle', mItems[0].Name);
+    Assert.IsFalse(mItems[0].Pinned);
+  finally
+    mResolver.Free;
+    mTree.Free;
+  end;
+end;
+
+procedure TLspCompletionProposalTests.AssignsAllFields;
+var
+  mItem: TCompletionItem;
+  mText: string;
+begin
+  // Abnahme: drei Felder mit Platzhaltern; steht Opts.Header schon in der nächsten Zeile, nur zwei.
+  mText := StringReplace(cAssignText, '  Opts.Header := ''x'';'#13#10, '', []);
+  Assert.IsTrue(AssignItem(mText, #10'  Opts.', True, True, mItem));
+  Assert.AreEqual('Alle Felder zuweisen (3)', mItem.Name);
+  Assert.IsTrue(mItem.Pinned);
+  Assert.IsTrue(mItem.Snippet);
+  Assert.AreEqual('Opts.Header := ${1:''''};'#10'Opts.Count := ${2:0};'#10'Opts.Kind := ${3:kA};',
+    mItem.TextEdit.NewText);
+  Assert.AreEqual(2, mItem.TextEdit.Range.StartPos.Character, 'ab dem Anfang des Ausdrucks');
+  Assert.AreEqual(7, mItem.TextEdit.Range.EndPos.Character);
+  Assert.IsTrue(AssignItem(cAssignText, #10'  Opts.', True, True, mItem));
+  Assert.AreEqual('Alle Felder zuweisen (2)', mItem.Name);
+  Assert.AreEqual('Opts.Count := ${1:0};'#10'Opts.Kind := ${2:kA};', mItem.TextEdit.NewText);
+  // Ohne Platzhalter: Klartext mit der Einrückung der Zeile.
+  Assert.IsTrue(AssignItem(cAssignText, #10'  Opts.', False, True, mItem));
+  Assert.IsFalse(mItem.Snippet);
+  Assert.AreEqual('Opts.Count := 0;'#13#10'  Opts.Kind := kA;', mItem.TextEdit.NewText);
+  // Klasse: Vorfahren zuerst; geschützte Property, die der Nachfahr öffentlich macht, ja; nur lesbare und
+  // private nicht.
+  Assert.IsTrue(AssignItem(cAssignText, #10'    C.', False, True, mItem));
+  Assert.AreEqual('C.Hidden := '''';'#13#10'    C.Tag := 0;'#13#10'    C.Name := '''';'#13#10 +
+    '    C.Owner := nil;'#13#10'    C.Flags := [];', mItem.TextEdit.NewText);
+  // Nicht am Anweisungsanfang, nach einem Typ und abgeschaltet: nichts.
+  Assert.IsFalse(AssignItem(cAssignText, 'X := Opts.', True, True, mItem), 'Zuweisung');
+  Assert.IsFalse(AssignItem(cAssignText, '  TOpts.', True, True, mItem), 'Typ');
+  Assert.IsFalse(AssignItem(cAssignText, #10'  Opts.', True, False, mItem), 'abgeschaltet');
+  mItem := Default(TCompletionItem);
+end;
+procedure TLspCompletionProposalTests.AssignsManyFieldsThroughList;
+var
+  mItem: TCompletionItem;
+  mText, mFields: string;
+  mIndex: Integer;
+  mJson: TJSONArray;
+  mData, mLine: TJSONObject;
+begin
+  // Mehr als 15 Felder: erst die Liste mit Kontrollkästchen, je Zeile samt Umbruch für die nächste.
+  mFields := '';
+  for mIndex := 0 to TAssignFields.cListThreshold do
+  begin
+    mFields := mFields + '    F' + IntToStr(mIndex) + ': Integer;'#13#10;
+  end;
+  mText := StringReplace(cAssignText, '    Header: string;'#13#10, mFields, []);
+  mText := StringReplace(mText, '  Opts.Header := ''x'';'#13#10, '', []);
+  Assert.IsTrue(AssignItem(mText, #10'  Opts.', True, True, mItem));
+  Assert.AreEqual('Alle Felder zuweisen (18)', mItem.Name);
+  Assert.IsFalse(mItem.Snippet);
+  Assert.AreEqual('Opts.', mItem.TextEdit.NewText, 'Text bleibt bis zur Auswahl');
+  Assert.AreEqual(18, Integer(Length(mItem.Assignments)));
+  Assert.AreEqual('F0', mItem.Assignments[0].Name);
+  Assert.AreEqual('Integer', mItem.Assignments[0].Detail);
+  Assert.AreEqual('Opts.F0 := 0;'#13#10'  ', mItem.Assignments[0].Text);
+  Assert.AreEqual('Opts.Kind := kA;'#13#10'  ', mItem.Assignments[17].Text);
+  // Im JSON unter data.assign.
+  mJson := TLspCompletion.ToJson([mItem], 0);
+  try
+    mData := TJSONObject(mJson.Items[0]).GetValue('data') as TJSONObject;
+    Assert.AreEqual('assign', mData.GetValue<string>('action'));
+    mLine := (mData.GetValue('assign') as TJSONArray).Items[0] as TJSONObject;
+    Assert.AreEqual('F0', mLine.GetValue<string>('name'));
+    Assert.AreEqual('Integer', mLine.GetValue<string>('detail'));
+    Assert.AreEqual('Opts.F0 := 0;'#13#10'  ', mLine.GetValue<string>('text'));
+  finally
+    mJson.Free;
+  end;
+  mItem := Default(TCompletionItem);
+end;
+
+procedure TLspCompletionProposalTests.OffersDeclarationsForUnknownNames;
+var
+  mTree: TSyntaxTree;
+  mResolver: TNameResolver;
+  mItems: TArray<TCompletionItem>;
+  mKnown: TArray<TCompletionItem>;
+
+  function Named(const AName: string): TCompletionItem;
+  var
+    mItem: TCompletionItem;
+  begin
+    for mItem in mItems do
+    begin
+      if mItem.Name = AName then
+      begin
+        Exit(mItem);
+      end;
+    end;
+    raise Exception.CreateFmt('Eintrag "%s" fehlt', [AName]);
+  end;
+
+var
+  mItem: TCompletionItem;
+begin
+  mTree := TPascalParser.Parse(cUnknownText);
+  mResolver := TNameResolver.Create(FIndex);
+  try
+    // Ziel einer Zuweisung: Typ aus der rechten Seite.
+    Assert.IsTrue(DeclareAt(LookupOf(mResolver, FIndex, mTree, cUnknownText, nil),
+      PositionOf(cUnknownText, '  TotalCount'), True, nil, mItems));
+    mItem := Named('Lokale Variable anlegen');
+    Assert.AreEqual('TotalCount: Integer', mItem.Detail);
+    Assert.AreEqual('declare', mItem.Action);
+    Assert.AreEqual('TotalCount', mItem.Unknown);
+    // Die Verwendung bleibt, der Cursor auch; var vor begin.
+    Assert.AreEqual('TotalCount$0', mItem.TextEdit.NewText);
+    Assert.AreEqual(1, Integer(Length(mItem.AdditionalEdits)));
+    Assert.AreEqual('var'#13#10'  TotalCount: Integer;'#13#10, mItem.AdditionalEdits[0].NewText);
+    Assert.AreEqual(17, mItem.AdditionalEdits[0].Range.StartPos.Line);
+    Assert.AreEqual('var TotalCount$0', Named('Inline-Variable anlegen').TextEdit.NewText);
+    // Feld mit F-Konvention: im private-Abschnitt, die Verwendung heißt danach FTotalCount.
+    mItem := Named('Feld FTotalCount anlegen');
+    Assert.AreEqual('FTotalCount$0', mItem.TextEdit.NewText);
+    Assert.AreEqual(7, mItem.AdditionalEdits[0].Range.StartPos.Line);
+    Assert.AreEqual(#13#10'    FTotalCount: Integer;', mItem.AdditionalEdits[0].NewText);
+    // Keine Konstante als Ziel einer Zuweisung.
+    for mItem in mItems do
+    begin
+      Assert.AreNotEqual('Konstante anlegen', mItem.Name);
+    end;
+    // Als Argument: Typ des Parameters, auch als Konstante in der implementation.
+    Assert.IsTrue(DeclareAt(LookupOf(mResolver, FIndex, mTree, cUnknownText, nil),
+      PositionOf(cUnknownText, 'Zeige(Anzahl'), False, nil, mItems));
+    Assert.AreEqual('Anzahl: Integer', Named('Lokale Variable anlegen').Detail);
+    mItem := Named('Konstante anlegen');
+    Assert.AreEqual('Anzahl = 0;', mItem.Detail);
+    Assert.AreEqual(12, mItem.AdditionalEdits[0].Range.StartPos.Line);
+    // Bekannte Namen und genaue Treffer: nichts.
+    Assert.IsFalse(DeclareAt(LookupOf(mResolver, FIndex, mTree, cUnknownText, nil),
+      PositionOf(cUnknownText, 'Zeige(Anzahl);'#13#10'  FLines'), True, nil, mItems));
+    // Eigene Variable für die bekannten Einträge: Ein out-Parameter leert sein Ziel vor dem Aufruf.
+    SetLength(mKnown, 1);
+    mKnown[0] := Default(TCompletionItem);
+    mKnown[0].Name := 'Anzahl';
+    Assert.IsFalse(DeclareAt(LookupOf(mResolver, FIndex, mTree, cUnknownText, nil),
+      PositionOf(cUnknownText, 'Zeige(Anzahl'), True, mKnown, mItems));
+  finally
+    mResolver.Free;
+    mTree.Free;
+  end;
+end;
+
+procedure TLspCompletionProposalTests.OffersMissingInterfaceMethods;
+var
+  mTree: TSyntaxTree;
+  mResolver: TNameResolver;
+  mItems: TArray<TCompletionItem>;
+  mList: TCompletionItems;
+  mBatch: Boolean;
+begin
+  FIndex.AddUnit(TIndexExtractor.ExtractText(cMissingUnitBasis, 'C:\P\Basis.pas', nil));
+  mTree := TPascalParser.Parse(cMissingText);
+  mResolver := TNameResolver.Create(FIndex);
+  try
+    // Strg+Leer auf der leeren Zeile: Liste mit Kontrollkästchen. SetName erbt die Klasse von TBasis.
+    Assert.IsTrue(InterfaceAt(LookupOf(mResolver, nil, mTree, cMissingText,
+      function(const AFileName: string; out AText: string): Boolean
+      begin
+        AText := cMissingUnitBasis;
+        Result := SameText(AFileName, 'C:\P\Basis.pas');
+      end),
+      TTextPosition.Create(7, 4), TCompletionInterfaceSection.Public, mItems, mBatch));
+    Assert.IsTrue(mBatch);
+    mList.Items := mItems;
+    Assert.AreEqual('Export GetName Flush', Names(mList));
+    Assert.AreEqual('IExporter', mItems[0].Container);
+    Assert.AreEqual('IFlush', mItems[2].Container);
+    Assert.AreEqual('IExporter, IFlush', mItems[0].SetOf);
+    Assert.IsTrue(mItems[0].Batch and mItems[0].SetChecked);
+    Assert.AreEqual(3, mItems[2].Ordinal);
+    Assert.AreEqual(7, mItems[0].SetRange.StartPos.Line);
+    AssertMergedInterfaceStubs(mItems);
+    // Abschnitt nach Einstellung: private steht schon als letzter da, also kein neuer.
+    Assert.IsTrue(InterfaceAt(LookupOf(mResolver, nil, mTree, cMissingText,
+      function(const AFileName: string; out AText: string): Boolean
+      begin
+        AText := cMissingUnitBasis;
+        Result := True;
+      end),
+      TTextPosition.Create(7, 4), TCompletionInterfaceSection.Private, mItems, mBatch));
+    Assert.AreEqual('    { IExporter }'#13#10, mItems[0].AdditionalEdits[0].NewText);
+    // Außerhalb der Klasse nichts.
+    Assert.IsFalse(InterfaceAt(LookupOf(mResolver, nil, mTree, cMissingText, nil),
+      TTextPosition.Create(2, 0), TCompletionInterfaceSection.Public, mItems, mBatch));
+  finally
+    mTree.Free;
+  end;
+  // Angefangenes Wort: je Interface ein Hinweis, der seine Methoden anlegt und das Wort entfernt.
+  mTree := TPascalParser.Parse(cMissingTyped);
+  try
+    AssertTypedInterfaceHints(mResolver, mTree);
+  finally
+    mResolver.Free;
+    mTree.Free;
+  end;
 end;
 procedure TLspCompletionProposalTests.OffersTryFinallyAfterConstructor;
 const
@@ -1150,6 +1009,132 @@ begin
   Assert.IsTrue(GuardsAfterEnter('List := TStringList.Create;', '', mItems));
   Assert.IsFalse(GuardsAfterEnter('List := TStringList.Create', '  List', mItems));
 end;
+
+procedure TLspCompletionProposalTests.OffersGenericInterfaceMethods;
+var
+  mTree: TSyntaxTree;
+  mResolver: TNameResolver;
+  mItems: TArray<TCompletionItem>;
+  mList: TCompletionItems;
+  mEdits, mMerged: TArray<TRuleEdit>;
+  mItem: TCompletionItem;
+  mBatch: Boolean;
+begin
+  FIndex.AddUnit(TIndexExtractor.ExtractText(cGenericUnitListen, 'C:\P\Listen.pas', nil));
+  mTree := TPascalParser.Parse(cGenericText);
+  mResolver := TNameResolver.Create(FIndex);
+  try
+    Assert.IsTrue(InterfaceAt(LookupOf(mResolver, nil, mTree, cGenericText,
+      function(const AFileName: string; out AText: string): Boolean
+      begin
+        AText := cGenericUnitListen;
+        Result := SameText(AFileName, 'C:\P\Listen.pas');
+      end),
+      TTextPosition.Create(8, 4), TCompletionInterfaceSection.Public, mItems, mBatch));
+    mList.Items := mItems;
+    Assert.AreEqual('Add Items', Names(mList));
+    Assert.AreEqual('IListe<TKunde>', mItems[0].Container);
+    Assert.Contains(mItems[0].Detail, 'procedure Add(const AItem: TKunde)');
+    Assert.Contains(mItems[1].Detail, 'function Items: TArray<TKunde>');
+    mEdits := nil;
+    for mItem in mItems do
+    begin
+      mEdits := mEdits + mItem.AdditionalEdits;
+    end;
+    mMerged := TInterfaceStubs.Merge(mEdits);
+    Assert.IsTrue(mMerged[0].NewText.Contains('{ IListe<TKunde> }'), mMerged[0].NewText);
+    Assert.IsTrue(mMerged[1].NewText.Contains('procedure TKundenListe.Add(const AItem: TKunde);'), mMerged[1].NewText);
+    Assert.IsTrue(mMerged[1].NewText.Contains('Result := Default(TArray<TKunde>);'), mMerged[1].NewText);
+  finally
+    mResolver.Free;
+    mTree.Free;
+  end;
+end;
+procedure TLspCompletionProposalTests.GroupsByExpectedType;
+
+  function MakeText(const ALine: string): string;
+  begin
+    Result :=
+      'unit Haupt;'#13#10 +
+      'interface'#13#10 +
+      'type'#13#10 +
+      '  TBasis = class'#13#10 +
+      '  end;'#13#10 +
+      '  TKind = class(TBasis)'#13#10 +
+      '  end;'#13#10 +
+      '  TListe = class'#13#10 +
+      '  public'#13#10 +
+      '    function Count: Integer;'#13#10 +
+      '    function Name: string;'#13#10 +
+      '    function IndexOf(const S: string): Integer;'#13#10 +
+      '    procedure Clear;'#13#10 +
+      '    property Erstes: TKind read FErstes;'#13#10 +
+      '  end;'#13#10 +
+      'function Rechne(A: Integer; B: TBasis): Integer;'#13#10 +
+      'implementation'#13#10 +
+      'function Rechne(A: Integer; B: TBasis): Integer;'#13#10 +
+      'var'#13#10 +
+      '  L: TListe;'#13#10 +
+      '  I: Integer;'#13#10 +
+      '  Obj: TBasis;'#13#10 +
+      'begin'#13#10 +
+      '  ' + ALine + #13#10 +
+      'end;'#13#10 +
+      'end.';
+  end;
+
+  function Check(const ALine, AExpected, AFits: string): string;
+  var
+    mText, mFits: string;
+    mTree: TSyntaxTree;
+    mResolver: TNameResolver;
+    mItems: TCompletionItems;
+    mItem: TCompletionItem;
+    mPosition: TTextPosition;
+    mFitting: Boolean;
+  begin
+    mText := MakeText(ALine);
+    mPosition := PositionOf(mText, ALine);
+    mTree := TPascalParser.Parse(mText);
+    mResolver := TNameResolver.Create(FIndex);
+    try
+      Result := TCompletionContexts.ExpectedType(mResolver, mTree, cHauptFile, mPosition);
+      mItems := TCompletionLists.Collect(mResolver, FIndex, mTree, cHauptFile, mPosition);
+      // Passende zuerst, danach keine passenden mehr.
+      mFits := '';
+      mFitting := True;
+      for mItem in mItems.Items do
+      begin
+        Assert.AreEqual(AExpected, mItem.Expected, ALine + ': ' + mItem.Name);
+        if mItem.Fits then
+        begin
+          Assert.IsTrue(mFitting, ALine + ': ' + mItem.Name + ' steht hinter nicht passenden');
+          mFits := mFits + ' ' + mItem.Name;
+        end
+        else
+        begin
+          mFitting := False;
+        end;
+      end;
+      Assert.AreEqual(AFits, Trim(mFits), ALine);
+    finally
+      mResolver.Free;
+      mTree.Free;
+    end;
+  end;
+
+begin
+  // Beispiel aus #417: Integer-Zuweisung, Count und IndexOf oben.
+  Assert.AreEqual('Integer', Check('I := L.', 'Integer', 'Count IndexOf'));
+  // Klasse: Nachfahr passt.
+  Assert.AreEqual('TBasis', Check('Obj := L.', 'TBasis', 'Erstes'));
+  // Parameter im Aufruf.
+  Assert.AreEqual('TBasis', Check('Rechne(1, L.', 'TBasis', 'Erstes'));
+  // Rückgabetyp bei Result.
+  Assert.AreEqual('Integer', Check('Result := L.', 'Integer', 'Count IndexOf'));
+  // Ohne erwarteten Typ keine Gruppierung.
+  Assert.AreEqual('', Check('L.', '', ''));
+end;
 procedure TLspCompletionProposalTests.CollectWithOuterPinSameItems;
 var
   mText, mPlain: string;
@@ -1174,46 +1159,6 @@ begin
   end;
   Assert.AreEqual('Wert Anzahl Self Name Bar Zaehler Melde TFoo TBasis Rechne', mPlain);
 end;
-
-const
-  cOverrideBasisFile = 'C:\P\Basis.pas';
-  cOverrideMitteFile = 'C:\P\Mitte.pas';
-  cOverrideUnitBasis =
-    'unit Basis;'#13#10 +
-    'interface'#13#10 +
-    'type'#13#10 +
-    '  TBasisListe = class'#13#10 +
-    '  protected'#13#10 +
-    '    procedure Changed; virtual;'#13#10 +
-    '    procedure Cleared; virtual;'#13#10 +
-    '    procedure Sorted; virtual;'#13#10 +
-    '  end;'#13#10 +
-    'implementation'#13#10 +
-    'end.';
-  cOverrideUnitMitte =
-    'unit Mitte;'#13#10 +
-    'interface'#13#10 +
-    'uses Basis;'#13#10 +
-    'type'#13#10 +
-    '  TMitte = class(TBasisListe)'#13#10 +
-    '  protected'#13#10 +
-    '    procedure Moved; virtual;'#13#10 +
-    '    procedure Renamed; virtual;'#13#10 +
-    '  end;'#13#10 +
-    'implementation'#13#10 +
-    'end.';
-  cOverrideText =
-    'unit Haupt;'#13#10 +
-    'interface'#13#10 +
-    'uses Basis, Mitte;'#13#10 +
-    'type'#13#10 +
-    '  TLogList = class(TMitte)'#13#10 +
-    '  protected'#13#10 +
-    '    procedure '#13#10 +
-    '  end;'#13#10 +
-    'implementation'#13#10 +
-    'end.';
-
 procedure TLspCompletionProposalTests.OverrideItemsReadsEachFileOnce;
 var
   mTree: TSyntaxTree;
@@ -1315,6 +1260,63 @@ begin
   finally
     mResolver.Free;
     mTree.Free;
+  end;
+end;
+
+procedure TLspCompletionProposalTests.HelpersFromOtherUnitsBringTheirUses;
+const
+  cUnitHilfen = 'unit Hilfen;'#10'interface'#10'uses Werkzeug;'#10'type'#10 +
+    '  TBasisHelper = class helper for TBasis'#10'  public'#10'    procedure Hilfe;'#10'  end;'#10 +
+    '  TTextHelper = record helper for string'#10'  public'#10'    function Laenge: Integer;'#10 +
+    '  private'#10'    procedure Intern;'#10'  end;'#10'implementation'#10'end.';
+var
+  mText: string;
+  mItems: TCompletionItems;
+  mItem: TCompletionItem;
+  mFound: Boolean;
+  mDetails: TJSONObject;
+begin
+  FIndex.AddUnit(TIndexExtractor.ExtractText(cUnitHilfen, 'C:\P\Hilfen.pas', nil));
+  // Detailpanel: „TTextHelper · Hilfen“ (Zeile 10: function Laenge).
+  mDetails := TCompletionDetails.Details(FIndex, 'C:\P\Hilfen.pas', cUnitHilfen, TTextPosition.Create(10, 13));
+  try
+    Assert.AreEqual('TTextHelper', mDetails.GetValue<string>('container'));
+    // TJSONBool.Create(True) ist kein TJSONTrue; erst der Parser erzeugt diese Klasse.
+    Assert.IsTrue((mDetails.GetValue('helper') is TJSONBool) and TJSONBool(mDetails.GetValue('helper')).AsBoolean,
+      mDetails.ToJSON);
+  finally
+    mDetails.Free;
+  end;
+  mText := WithCode('  Wert.');
+  mItems := ItemsAt(mText, 'Wert.');
+  // Eigene und geerbte Mitglieder zuerst, der Helper des Vorfahren dahinter.
+  Assert.AreEqual('Name Bar Zaehler Melde Hilfe', Names(mItems));
+  mFound := False;
+  for mItem in mItems.Items do
+  begin
+    if mItem.Name = 'Hilfe' then
+    begin
+      mFound := True;
+      Assert.IsTrue(mItem.IsHelper);
+      Assert.AreEqual(1, mItem.Depth);
+      Assert.AreEqual('Hilfen (uses ergänzen)', mItem.Detail);
+      Assert.AreEqual(1, Integer(Length(mItem.AdditionalEdits)));
+      // Verwendung im implementation-Teil: dort ein neuer uses-Abschnitt.
+      Assert.IsTrue(mItem.AdditionalEdits[0].NewText.Contains('Hilfen'), mItem.AdditionalEdits[0].NewText);
+    end;
+  end;
+  Assert.IsTrue(mFound);
+  // Eingebauter Typ: nur die öffentlichen Helper-Mitglieder.
+  Assert.AreEqual('Laenge', Names(ItemsAt(WithCode('  Wert.Name.'), 'Wert.Name.')));
+  // Eingebunden: aktiver Helper ohne uses-Eintrag.
+  mText := StringReplace(WithCode('  Wert.'), 'uses Werkzeug;', 'uses Werkzeug, Hilfen;', []);
+  for mItem in ItemsAt(mText, 'Wert.').Items do
+  begin
+    if mItem.Name = 'Hilfe' then
+    begin
+      Assert.IsTrue(mItem.IsHelper);
+      Assert.AreEqual(0, Integer(Length(mItem.AdditionalEdits)));
+    end;
   end;
 end;
 

@@ -159,30 +159,6 @@ begin
   end;
 end;
 
-procedure TDebouncerTests.WaitIdleWaitsForPendingAndRunningActions;
-var
-  mDebouncer: TDebouncer;
-  mFinished: Integer;
-begin
-  // #177: Messungen im Dauerlauf erst, wenn nichts mehr geplant ist und nichts läuft.
-  mFinished := 0;
-  mDebouncer := TDebouncer.Create(20);
-  try
-    Assert.IsTrue(mDebouncer.WaitIdle(0), 'leer ist sofort ruhig');
-    mDebouncer.Schedule('a',
-      procedure
-      begin
-        TThread.Sleep(50);
-        TInterlocked.Increment(mFinished);
-      end);
-    Assert.IsFalse(mDebouncer.WaitIdle(5), 'geplant ist nicht ruhig');
-    Assert.IsTrue(mDebouncer.WaitIdle(2000));
-    Assert.AreEqual(1, TInterlocked.CompareExchange(mFinished, 0, 0), 'erst nach der laufenden Aktion ruhig');
-  finally
-    mDebouncer.Free;
-  end;
-end;
-
 procedure TDebouncerTests.CancelDropsPendingAction;
 var
   mDebouncer: TDebouncer;
@@ -260,6 +236,30 @@ begin
     end);
   mDebouncer.Free;
   Assert.IsFalse(mRan);
+end;
+
+procedure TDebouncerTests.WaitIdleWaitsForPendingAndRunningActions;
+var
+  mDebouncer: TDebouncer;
+  mFinished: Integer;
+begin
+  // #177: Messungen im Dauerlauf erst, wenn nichts mehr geplant ist und nichts läuft.
+  mFinished := 0;
+  mDebouncer := TDebouncer.Create(20);
+  try
+    Assert.IsTrue(mDebouncer.WaitIdle(0), 'leer ist sofort ruhig');
+    mDebouncer.Schedule('a',
+      procedure
+      begin
+        TThread.Sleep(50);
+        TInterlocked.Increment(mFinished);
+      end);
+    Assert.IsFalse(mDebouncer.WaitIdle(5), 'geplant ist nicht ruhig');
+    Assert.IsTrue(mDebouncer.WaitIdle(2000));
+    Assert.AreEqual(1, TInterlocked.CompareExchange(mFinished, 0, 0), 'erst nach der laufenden Aktion ruhig');
+  finally
+    mDebouncer.Free;
+  end;
 end;
 
 initialization

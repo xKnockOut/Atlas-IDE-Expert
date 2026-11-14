@@ -101,6 +101,8 @@ begin
   end;
 end;
 
+{ TMcpProfileToolsTests }
+
 procedure TMcpProfileToolsTests.Setup;
 begin
   TAtlasLocale.Use(TTextLanguage.German);

@@ -65,6 +65,8 @@ begin
   Result := string.Join('|', mLines);
 end;
 
+{ TAtlasSmartPasteTests }
+
 procedure TAtlasSmartPasteTests.ModesAndThreshold;
 begin
   Assert.AreEqual<TAtlasPasteMode>(TAtlasPasteMode.Both, TAtlasSmartPaste.ModeOf('both'));

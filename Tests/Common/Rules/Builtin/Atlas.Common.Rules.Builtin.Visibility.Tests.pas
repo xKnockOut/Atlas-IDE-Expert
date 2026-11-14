@@ -152,6 +152,8 @@ begin
     'procedure Arbeiten(B: TBasis);'#10'begin'#10 + ABody + 'end;'#10'end.';
 end;
 
+{ TInaccessibleMemberTests }
+
 procedure TInaccessibleMemberTests.IssueExampleInstanceFieldInClassMethod;
 var
   mFound: TArray<TRuleFinding>;
@@ -203,6 +205,21 @@ begin
     mFound[2].Message);
 end;
 
+procedure TInaccessibleMemberTests.DescendantsAndLocalClassesSeeProtected;
+var
+  mSource: string;
+begin
+  // Methode eines Nachfahren und protected über eine Klasse der eigenen Unit (TZugang(B).Schuetzen).
+  mSource := 'unit Kunden;'#10'interface'#10'uses'#10'  Basis;'#10'type'#10'  TKunde = class(TBasis)'#10 +
+    '    procedure Laden(B: TBasis);'#10'  end;'#10'  TZugang = class(TBasis)'#10'  end;'#10'implementation'#10 +
+    'procedure TKunde.Laden(B: TBasis);'#10'begin'#10'  Schuetzen;'#10'  Self.StrengSchuetzen;'#10 +
+    '  B.Schuetzen;'#10'end;'#10'procedure Arbeiten(B: TBasis);'#10'begin'#10'  TZugang(B).Schuetzen;'#10 +
+    'end;'#10'end.';
+  Assert.AreEqual(0, Integer(Length(Findings(mSource))));
+  // private bleibt auch für Nachfahren in einer anderen Unit unsichtbar.
+  Assert.AreEqual(1, Integer(Length(Findings(mSource.Replace('  B.Schuetzen;', '  B.FGeheim := 0;')))));
+end;
+
 procedure TInaccessibleMemberTests.ProtectedPropertyThroughCast;
 var
   mIndex: ISymbolIndex;
@@ -245,21 +262,6 @@ begin
     '  X: Integer;'#10'begin'#10'  X := TDialogBasis.cAbstand;'#10'end;'#10'end.', mIndex, '', 'Kunden.pas');
   Assert.AreEqual(1, Integer(Length(mFound)));
   Assert.AreEqual(14, mFound[0].Range.StartPos.Line);
-end;
-
-procedure TInaccessibleMemberTests.DescendantsAndLocalClassesSeeProtected;
-var
-  mSource: string;
-begin
-  // Methode eines Nachfahren und protected über eine Klasse der eigenen Unit (TZugang(B).Schuetzen).
-  mSource := 'unit Kunden;'#10'interface'#10'uses'#10'  Basis;'#10'type'#10'  TKunde = class(TBasis)'#10 +
-    '    procedure Laden(B: TBasis);'#10'  end;'#10'  TZugang = class(TBasis)'#10'  end;'#10'implementation'#10 +
-    'procedure TKunde.Laden(B: TBasis);'#10'begin'#10'  Schuetzen;'#10'  Self.StrengSchuetzen;'#10 +
-    '  B.Schuetzen;'#10'end;'#10'procedure Arbeiten(B: TBasis);'#10'begin'#10'  TZugang(B).Schuetzen;'#10 +
-    'end;'#10'end.';
-  Assert.AreEqual(0, Integer(Length(Findings(mSource))));
-  // private bleibt auch für Nachfahren in einer anderen Unit unsichtbar.
-  Assert.AreEqual(1, Integer(Length(Findings(mSource.Replace('  B.Schuetzen;', '  B.FGeheim := 0;')))));
 end;
 
 procedure TInaccessibleMemberTests.StrictPrivateInSameUnit;
@@ -461,6 +463,8 @@ begin
     Result := Copy(mText, 1, Length(mText) - 1);
   end;
 end;
+
+{ TUnusedPrivateMemberTests }
 
 procedure TUnusedPrivateMemberTests.IssueExampleWithFixes;
 var

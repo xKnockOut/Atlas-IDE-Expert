@@ -151,6 +151,8 @@ begin
   Assert.AreEqual(0, Integer(Length(Analyze(Result))), Result);
 end;
 
+{ TForwardDeclarationsTests }
+
 procedure TForwardDeclarationsTests.ClassInSameBlockGetsForward;
 var
   mFindings: TArray<TForwardFinding>;

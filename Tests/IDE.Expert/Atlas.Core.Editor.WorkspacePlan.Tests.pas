@@ -83,6 +83,8 @@ type
     function ProjectLoaded(const AProjectFile: string): Boolean;
   end;
 
+{ TFakeEnvironment }
+
 constructor TFakeEnvironment.Create;
 begin
   inherited Create;
@@ -214,6 +216,8 @@ begin
   mEnvironment := AEnvironment;
   Result := TAtlasEditPlanner.Plan(AEdit, mEnvironment);
 end;
+
+{ TWorkspacePlanTests }
 
 procedure TWorkspacePlanTests.CreateThenEditGoesIntoContent;
 var

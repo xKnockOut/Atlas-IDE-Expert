@@ -97,6 +97,8 @@ begin
   Result := AMetrics.Values[AKind];
 end;
 
+{ TMetricsCalculatorTests }
+
 procedure TMetricsCalculatorTests.EmptyRoutineHasCyclomaticOne;
 var
   mMetrics: TRoutineMetrics;

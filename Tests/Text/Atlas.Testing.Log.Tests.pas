@@ -42,6 +42,8 @@ begin
   end;
 end;
 
+{ TAtlasTestingLogTests }
+
 procedure TAtlasTestingLogTests.MultilineMessageBecomesSeveralLines;
 var
   mLines: TArray<string>;

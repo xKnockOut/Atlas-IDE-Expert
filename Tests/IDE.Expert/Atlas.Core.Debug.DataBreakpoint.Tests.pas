@@ -62,6 +62,8 @@ begin
   end;
 end;
 
+{ TCoreDebugDataBreakpointTests }
+
 procedure TCoreDebugDataBreakpointTests.ExpressionAtCursor;
 const
   cLine = '  FKunde.FSumme := 0; P^.X := 1;';

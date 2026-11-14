@@ -58,6 +58,8 @@ uses
   Atlas.Text.UpdateRun,
   Atlas.UI.Settings.Page.Startup;
 
+{ TAtlasUpdateConsentTests }
+
 procedure TAtlasUpdateConsentTests.WarmUpFirstUse;
 begin
   AsksOnceAndRunsFirstAnswer;
@@ -166,6 +168,8 @@ function Fmt(AId: TAtlasUpdatesTextId; const AArgs: array of const): string;
 begin
   Result := TAtlasUpdatesStrings.Fmt(AId, AArgs);
 end;
+
+{ TAtlasUpdateInstallUiTests }
 
 procedure TAtlasUpdateInstallUiTests.ErrorCodesHaveTexts;
 begin

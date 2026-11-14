@@ -99,6 +99,8 @@ uses
   Atlas.Common.Pascal.Preprocessor,
   Atlas.Common.Rules.Engine;
 
+{ TRuleAssert }
+
 class function TRuleAssert.Findings(ARule: IRule; const ASource: string): TArray<TRuleFinding>;
 begin
   Result := Findings(ARule, ASource, '', '');
@@ -267,32 +269,6 @@ begin
   end;
 end;
 
-class function TRuleAssert.ContextFindings(ARule: IRule; const AContext: TRuleContext;
-  const AConfigJson: string): TArray<TRuleFinding>;
-var
-  mSettings: TServerSettings;
-  mIssues: TArray<TConfigurationIssue>;
-  mContext: TRuleContext;
-  mTree: TSyntaxTree;
-begin
-  if AConfigJson = '' then
-  begin
-    mSettings := TServerSettings.Default;
-  end
-  else
-  begin
-    mSettings := TConfigurationParser.Parse(AConfigJson, mIssues);
-  end;
-  mTree := TPascalParser.Parse(AContext.Text);
-  try
-    mContext := AContext;
-    mContext.Tree := mTree;
-    Result := TRuleEngine.Run([ARule], mSettings, mContext);
-  finally
-    mTree.Free;
-  end;
-end;
-
 class function TRuleAssert.UnitFindings(ARule: IRule; const ASource, AFileName: string;
   const AUnits: IRuleUnitLookup; const AConfigJson, ARelativePath: string): TArray<TRuleFinding>;
 var
@@ -346,6 +322,32 @@ begin
     mContext.Text := ASource;
     mContext.Tree := mTree;
     mContext.Index := AIndex;
+    Result := TRuleEngine.Run([ARule], mSettings, mContext);
+  finally
+    mTree.Free;
+  end;
+end;
+
+class function TRuleAssert.ContextFindings(ARule: IRule; const AContext: TRuleContext;
+  const AConfigJson: string): TArray<TRuleFinding>;
+var
+  mSettings: TServerSettings;
+  mIssues: TArray<TConfigurationIssue>;
+  mContext: TRuleContext;
+  mTree: TSyntaxTree;
+begin
+  if AConfigJson = '' then
+  begin
+    mSettings := TServerSettings.Default;
+  end
+  else
+  begin
+    mSettings := TConfigurationParser.Parse(AConfigJson, mIssues);
+  end;
+  mTree := TPascalParser.Parse(AContext.Text);
+  try
+    mContext := AContext;
+    mContext.Tree := mTree;
     Result := TRuleEngine.Run([ARule], mSettings, mContext);
   finally
     mTree.Free;

@@ -84,6 +84,8 @@ begin
   Result := Pos(AText, ALine) - 1 + Length(AText);
 end;
 
+{ TCompletionDebugDisplayTests }
+
 procedure TCompletionDebugDisplayTests.PlaceholderAfterBrace;
 var
   mItems: TCompletionItems;

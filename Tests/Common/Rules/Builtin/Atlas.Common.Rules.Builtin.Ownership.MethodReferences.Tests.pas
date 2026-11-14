@@ -128,6 +128,8 @@ begin
     'end;'#10'end.';
 end;
 
+{ TEventHandlerNotUnhookedTests }
+
 procedure TEventHandlerNotUnhookedTests.FieldWithFix;
 var
   mSource, mFixed: string;

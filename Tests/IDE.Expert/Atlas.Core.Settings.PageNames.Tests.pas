@@ -28,6 +28,8 @@ uses
   Atlas.Core.Settings.PluginSchemaData,
   Atlas.Core.Settings.SchemaData;
 
+{ TAtlasSettingsPageNamesTests }
+
 procedure TAtlasSettingsPageNamesTests.TranslatesForEnglish;
 begin
   Assert.AreEqual('General', TAtlasSettingsPageNames.Caption('Allgemein', True));

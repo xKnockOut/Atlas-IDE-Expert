@@ -210,6 +210,8 @@ type
     property Available: Boolean read FAvailable write FAvailable;
   end;
 
+{ TSourceBox }
+
 procedure TSourceBox.ChangeFiles(const AFiles: TArray<string>);
 begin
   FSource.Files := AFiles;
@@ -229,6 +231,8 @@ begin
       Result := ABox.Available;
     end);
 end;
+
+{ TQueryServiceTests }
 
 procedure TQueryServiceTests.CachesPerGeneration;
 var

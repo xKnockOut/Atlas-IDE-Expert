@@ -37,6 +37,8 @@ begin
   Result := Ord(AKind);
 end;
 
+{ TResolvedTypeKindsTests }
+
 procedure TResolvedTypeKindsTests.BuiltinNames;
 begin
   Assert.AreEqual(Kind(TResolvedTypeKind.Integer_), Kind(TResolvedTypeKinds.OfBuiltin('Integer')));

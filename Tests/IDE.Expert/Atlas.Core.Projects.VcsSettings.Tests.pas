@@ -32,6 +32,8 @@ uses
 const
   cDefaultMs = TAtlasVcsPluginSettings.cDefaultTimeoutSeconds * TAtlasVcsPluginSettings.cMsPerSecond;
 
+{ TAtlasVcsPluginSettingsTests }
+
 procedure TAtlasVcsPluginSettingsTests.ReadsProviderPathsAndTimeout;
 var
   mSettings: TAtlasVcsPluginSettings;

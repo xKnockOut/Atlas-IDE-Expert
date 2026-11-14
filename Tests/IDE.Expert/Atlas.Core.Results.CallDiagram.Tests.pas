@@ -118,6 +118,29 @@ begin
   end;
 end;
 
+procedure TAtlasCallDiagramTests.HtmlFollowsLanguage;
+var
+  mDiagram: TAtlasCallDiagram;
+  mHtml: string;
+  mSaved: TAtlasLanguage;
+begin
+  mSaved := TAtlasTextLanguage.Current;
+  TAtlasTextLanguage.Current := TAtlasLanguage.English;
+  mDiagram := NewDiagram;
+  try
+    mDiagram.Reset(TAtlasHierarchyDirection.Outgoing, [Item('Start', 'C:\P\A.pas', 1)]);
+    mHtml := mDiagram.Html('TForm1.Start');
+  finally
+    mDiagram.Free;
+    TAtlasTextLanguage.Current := mSaved;
+  end;
+  Assert.IsTrue(Pos('<html lang="en">', mHtml) > 0, 'Sprache');
+  Assert.IsTrue(Pos('<title>Call diagram: TForm1.Start</title>', mHtml) > 0, 'Titel');
+  Assert.IsTrue(Pos('project units only', mHtml) > 0, 'Schalter');
+  Assert.AreEqual(0, Pos('{{', mHtml), 'Platzhalter');
+  Assert.AreEqual(0, Pos('nur Projekt-Units', mHtml), 'deutscher Schalter');
+end;
+
 procedure TAtlasCallDiagramTests.RecursionBecomesBackArrow;
 var
   mDiagram: TAtlasCallDiagram;
@@ -382,29 +405,6 @@ begin
   finally
     mDiagram.Free;
   end;
-end;
-
-procedure TAtlasCallDiagramTests.HtmlFollowsLanguage;
-var
-  mDiagram: TAtlasCallDiagram;
-  mHtml: string;
-  mSaved: TAtlasLanguage;
-begin
-  mSaved := TAtlasTextLanguage.Current;
-  TAtlasTextLanguage.Current := TAtlasLanguage.English;
-  mDiagram := NewDiagram;
-  try
-    mDiagram.Reset(TAtlasHierarchyDirection.Outgoing, [Item('Start', 'C:\P\A.pas', 1)]);
-    mHtml := mDiagram.Html('TForm1.Start');
-  finally
-    mDiagram.Free;
-    TAtlasTextLanguage.Current := mSaved;
-  end;
-  Assert.IsTrue(Pos('<html lang="en">', mHtml) > 0, 'Sprache');
-  Assert.IsTrue(Pos('<title>Call diagram: TForm1.Start</title>', mHtml) > 0, 'Titel');
-  Assert.IsTrue(Pos('project units only', mHtml) > 0, 'Schalter');
-  Assert.AreEqual(0, Pos('{{', mHtml), 'Platzhalter');
-  Assert.AreEqual(0, Pos('nur Projekt-Units', mHtml), 'deutscher Schalter');
 end;
 
 procedure TAtlasCallDiagramTests.HtmlIsSelfContained;

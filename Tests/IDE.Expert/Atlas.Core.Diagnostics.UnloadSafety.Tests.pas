@@ -32,6 +32,8 @@ implementation
 uses
   Atlas.Core.Diagnostics.UnloadSafety;
 
+{ TAtlasUnloadSafetyTests }
+
 procedure TAtlasUnloadSafetyTests.Setup;
 begin
   FPinned := nil;

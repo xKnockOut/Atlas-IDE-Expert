@@ -86,6 +86,8 @@ begin
   // Die Tests ändern keine beobachtete Datei auf der Platte.
 end;
 
+{ TShellFileChangesTests }
+
 procedure TShellFileChangesTests.WarmUpFirstUse;
 begin
   Setup;

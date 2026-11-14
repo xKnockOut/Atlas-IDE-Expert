@@ -56,6 +56,11 @@ end;
 
 { TAtlasTestApprovalTests }
 
+function TAtlasTestApprovalTests.PathOf(const AName: string): string;
+begin
+  Result := IncludeTrailingPathDelimiter(FFolder) + AName;
+end;
+
 procedure TAtlasTestApprovalTests.Setup;
 begin
   FFolder := TPath.Combine(TPath.GetTempPath, 'atlas-approval-plugin-' + IntToStr(Random(MaxInt)));
@@ -68,11 +73,6 @@ begin
     TDirectory.Delete(FFolder, True);
   end;
   FFolder := '';
-end;
-
-function TAtlasTestApprovalTests.PathOf(const AName: string): string;
-begin
-  Result := IncludeTrailingPathDelimiter(FFolder) + AName;
 end;
 
 procedure TAtlasTestApprovalTests.ParsesGermanDifference;

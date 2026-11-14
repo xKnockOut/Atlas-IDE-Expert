@@ -202,6 +202,8 @@ begin
   Assert.IsFalse(Run(AText, AMarker, Mode(True, APassThrough, []), mAction, Result, mText), 'Aktion unerwartet: ' + mText);
 end;
 
+{ TNestedRoutinesTests }
+
 procedure TNestedRoutinesTests.ExtractCapturesReadAndWritten;
 var
   mText, mDone: string;

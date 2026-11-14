@@ -39,6 +39,8 @@ uses
   System.SysUtils,
   Atlas.Core.Build.OpenBuild;
 
+{ TAtlasOpenBuildTests }
+
 procedure TAtlasOpenBuildTests.WaitsForQuietIde;
 var
   mBuild: TAtlasOpenBuild;

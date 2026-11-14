@@ -32,6 +32,8 @@ uses
   System.SyncObjs,
   Atlas.Windows.Documents.FileWatcher;
 
+{ TFileWatcherTests }
+
 procedure TFileWatcherTests.Setup;
 begin
   FFolder := TPath.Combine(TPath.GetTempPath, 'AtlasWatcher' + IntToStr(Random(1000000)));

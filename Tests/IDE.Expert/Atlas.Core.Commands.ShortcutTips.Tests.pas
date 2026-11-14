@@ -543,6 +543,47 @@ begin
   end;
 end;
 
+procedure TAtlasCommandUsageTests.BrokenFileSetAsideLockedFileKept;
+var
+  mUsage: TAtlasCommandUsage;
+  mFolder, mTipsFile, mUsageFile: string;
+  mLock: TFileStream;
+begin
+  mFolder := TPath.Combine(TPath.GetTempPath, 'atlas-usage-' + IntToStr(Random(MaxInt)));
+  mTipsFile := TPath.Combine(mFolder, 'shortcut-tips.json');
+  mUsageFile := TPath.Combine(mFolder, 'usage.json');
+  ForceDirectories(mFolder);
+  mUsage := TAtlasCommandUsage.Create;
+  try
+    TFile.WriteAllText(mTipsFile, '{kaputt');
+    TFile.WriteAllText(mUsageFile, '[1, 2]');
+    mUsage.LoadFromFiles(mTipsFile, mUsageFile);
+    Assert.IsTrue(TFile.Exists(mTipsFile + TAtlasDataFile.cDefectExtension), 'Tipps beiseitegelegt');
+    Assert.IsTrue(TFile.Exists(mUsageFile + TAtlasDataFile.cDefectExtension), 'Zähler beiseitegelegt');
+    Assert.IsTrue(mUsage.Writable);
+    Assert.IsTrue(mUsage.CountsWritable);
+    mUsage.Count('X', TAtlasCommandInput.Mouse, Moment(10, 0, 0));
+    Assert.IsTrue(mUsage.SaveCountsToFile(mUsageFile));
+    mLock := TFileStream.Create(mUsageFile, fmOpenRead or fmShareExclusive);
+    try
+      mUsage.LoadFromFiles(mTipsFile, mUsageFile);
+    finally
+      mLock.Free;
+    end;
+    Assert.IsFalse(mUsage.CountsWritable, 'beim Lesen gesperrt');
+    Assert.AreEqual(0, mUsage.UseCount('X'));
+    mUsage.Count('Y', TAtlasCommandInput.Mouse, Moment(10, 0, 0));
+    Assert.IsFalse(mUsage.SaveCountsToFile(mUsageFile), 'nicht überschreiben');
+    Assert.Contains(TFile.ReadAllText(mUsageFile, TEncoding.UTF8), '"X"');
+    Assert.DoesNotContain(TFile.ReadAllText(mUsageFile, TEncoding.UTF8), '"Y"');
+  finally
+    mUsage.Free;
+    TDirectory.Delete(mFolder, True);
+  end;
+  // Gemeldete Datendateien vergessen: Das Register bliebe sonst als Leck stehen.
+  TAtlasDataFile.ForgetReports;
+end;
+
 procedure TAtlasCommandUsageTests.SavesAndLoadsFile;
 var
   mUsage, mLoaded: TAtlasCommandUsage;
@@ -594,20 +635,6 @@ begin
   mEntry.Mouse := 0;
   mEntry.Keyboard := 5;
   Assert.IsFalse(mEntry.RarelyByKeyboard);
-end;
-
-procedure TAtlasCommandUsageTests.FileIsNotTheCompletionUsage;
-var
-  mFileName: string;
-begin
-  // %APPDATA%\Atlas\usage.json gehört der lernenden Vervollständigung (#418) und bleibt unberührt; die Zählung
-  // der Befehle (#757) liegt in %LOCALAPPDATA%\Atlas\usage.json, der Zustand der Tipps in shortcut-tips.json.
-  mFileName := TAtlasCommandUsage.DefaultFile('LocalAppData');
-  Assert.IsTrue(mFileName.EndsWith('shortcut-tips.json'));
-  Assert.IsTrue(mFileName.StartsWith(IncludeTrailingPathDelimiter('LocalAppData') + 'Atlas'));
-  mFileName := TAtlasCommandUsage.DefaultUsageFile('LocalAppData');
-  Assert.AreEqual(IncludeTrailingPathDelimiter(IncludeTrailingPathDelimiter('LocalAppData') + 'Atlas') + 'usage.json',
-    mFileName);
 end;
 
 /// <summary>Namen aller Felder in den Einträgen von "commands", sortiert und ohne Doppelte, mit Komma.</summary>
@@ -676,6 +703,20 @@ begin
     mNames.Free;
     mRoot.Free;
   end;
+end;
+
+procedure TAtlasCommandUsageTests.FileIsNotTheCompletionUsage;
+var
+  mFileName: string;
+begin
+  // %APPDATA%\Atlas\usage.json gehört der lernenden Vervollständigung (#418) und bleibt unberührt; die Zählung
+  // der Befehle (#757) liegt in %LOCALAPPDATA%\Atlas\usage.json, der Zustand der Tipps in shortcut-tips.json.
+  mFileName := TAtlasCommandUsage.DefaultFile('LocalAppData');
+  Assert.IsTrue(mFileName.EndsWith('shortcut-tips.json'));
+  Assert.IsTrue(mFileName.StartsWith(IncludeTrailingPathDelimiter('LocalAppData') + 'Atlas'));
+  mFileName := TAtlasCommandUsage.DefaultUsageFile('LocalAppData');
+  Assert.AreEqual(IncludeTrailingPathDelimiter(IncludeTrailingPathDelimiter('LocalAppData') + 'Atlas') + 'usage.json',
+    mFileName);
 end;
 
 procedure TAtlasCommandUsageTests.UsageJsonHoldsOnlyIdsCountersAndDate;
@@ -879,47 +920,6 @@ begin
   finally
     mUsage.Free;
   end;
-end;
-
-procedure TAtlasCommandUsageTests.BrokenFileSetAsideLockedFileKept;
-var
-  mUsage: TAtlasCommandUsage;
-  mFolder, mTipsFile, mUsageFile: string;
-  mLock: TFileStream;
-begin
-  mFolder := TPath.Combine(TPath.GetTempPath, 'atlas-usage-' + IntToStr(Random(MaxInt)));
-  mTipsFile := TPath.Combine(mFolder, 'shortcut-tips.json');
-  mUsageFile := TPath.Combine(mFolder, 'usage.json');
-  ForceDirectories(mFolder);
-  mUsage := TAtlasCommandUsage.Create;
-  try
-    TFile.WriteAllText(mTipsFile, '{kaputt');
-    TFile.WriteAllText(mUsageFile, '[1, 2]');
-    mUsage.LoadFromFiles(mTipsFile, mUsageFile);
-    Assert.IsTrue(TFile.Exists(mTipsFile + TAtlasDataFile.cDefectExtension), 'Tipps beiseitegelegt');
-    Assert.IsTrue(TFile.Exists(mUsageFile + TAtlasDataFile.cDefectExtension), 'Zähler beiseitegelegt');
-    Assert.IsTrue(mUsage.Writable);
-    Assert.IsTrue(mUsage.CountsWritable);
-    mUsage.Count('X', TAtlasCommandInput.Mouse, Moment(10, 0, 0));
-    Assert.IsTrue(mUsage.SaveCountsToFile(mUsageFile));
-    mLock := TFileStream.Create(mUsageFile, fmOpenRead or fmShareExclusive);
-    try
-      mUsage.LoadFromFiles(mTipsFile, mUsageFile);
-    finally
-      mLock.Free;
-    end;
-    Assert.IsFalse(mUsage.CountsWritable, 'beim Lesen gesperrt');
-    Assert.AreEqual(0, mUsage.UseCount('X'));
-    mUsage.Count('Y', TAtlasCommandInput.Mouse, Moment(10, 0, 0));
-    Assert.IsFalse(mUsage.SaveCountsToFile(mUsageFile), 'nicht überschreiben');
-    Assert.Contains(TFile.ReadAllText(mUsageFile, TEncoding.UTF8), '"X"');
-    Assert.DoesNotContain(TFile.ReadAllText(mUsageFile, TEncoding.UTF8), '"Y"');
-  finally
-    mUsage.Free;
-    TDirectory.Delete(mFolder, True);
-  end;
-  // Gemeldete Datendateien vergessen: Das Register bliebe sonst als Leck stehen.
-  TAtlasDataFile.ForgetReports;
 end;
 
 initialization

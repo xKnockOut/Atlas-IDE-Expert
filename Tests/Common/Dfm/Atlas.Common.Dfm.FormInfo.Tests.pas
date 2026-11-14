@@ -71,6 +71,8 @@ begin
   end;
 end;
 
+{ TFormInfoTests }
+
 procedure TFormInfoTests.ShowsPropertiesEventsAndLink;
 var
   mText: string;

@@ -96,6 +96,8 @@ begin
   Result := Result + [TAtlasToolbarButton.Create('Atlas.Custom', 'Eigener Befehl', '', TAtlasToolbarIcon.Letter)];
 end;
 
+{ TAtlasEditorToolbarTests }
+
 procedure TAtlasEditorToolbarTests.WarmUpFirstUse;
 begin
   SetUp;

@@ -65,6 +65,8 @@ begin
   TAtlasSymbolPathAnswer.Parse(SampleSymbolPathAnswer, Result);
 end;
 
+{ TAtlasSymbolPathUiTests }
+
 procedure TAtlasSymbolPathUiTests.SetUp;
 begin
   FForm := TForm.CreateNew(nil);

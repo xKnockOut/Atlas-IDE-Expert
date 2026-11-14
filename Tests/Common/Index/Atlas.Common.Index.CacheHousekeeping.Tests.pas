@@ -376,6 +376,24 @@ begin
   WarmUpLockInOtherThread(mDisk, mTarget);
 end;
 
+{ TIndexCacheDirectoryTests }
+
+function TIndexCacheDirectoryTests.CreateCache(const AName: string): string;
+begin
+  Result := TPath.Combine(FRoot, AName);
+  TFile.WriteAllText(Result, '{}');
+end;
+
+function TIndexCacheDirectoryTests.CreateFile(const AFileName: string; ASize: Integer): string;
+var
+  mData: TBytes;
+begin
+  Result := AFileName;
+  ForceDirectories(ExtractFileDir(Result));
+  SetLength(mData, ASize);
+  TFile.WriteAllBytes(Result, mData);
+end;
+
 procedure TIndexCacheDirectoryTests.WarmUpFirstUse;
 var
   mRoot: string;
@@ -413,65 +431,6 @@ begin
   TDirectory.Delete(FRoot, True);
   // Sonst gibt erst das nächste Setup den Pfad frei (Leck-Monitor).
   FRoot := '';
-end;
-
-procedure TIndexCacheDirectoryTests.DiskFileSystemOverwritesExistingFile;
-var
-  mFileSystem: TDiskIndexFileSystem;
-  mCache, mText: string;
-begin
-  // Der zweite Start schreibt über einen vorhandenen Cache (TFile.Replace); das scheiterte
-  // an der leeren Sicherungsdatei ("Pfad ist leer").
-  mCache := CreateCache('index-00000002.json');
-  mFileSystem := TDiskIndexFileSystem.Create;
-  try
-    Assert.IsTrue(mFileSystem.WriteText(mCache, '{"version":2}'));
-    Assert.IsTrue(mFileSystem.ReadText(mCache, mText));
-    Assert.AreEqual('{"version":2}', mText);
-    Assert.AreEqual(1, Integer(Length(TDirectory.GetFiles(FRoot))), 'keine .tmp- oder .bak-Reste');
-  finally
-    mFileSystem.Free;
-  end;
-end;
-
-procedure TIndexCacheDirectoryTests.DiskFileSystemRoundTripsBytes;
-var
-  mFileSystem: TDiskIndexFileSystem;
-  mCache, mError: string;
-  mData: TBytes;
-begin
-  // Binärer Cache (#617): Bytes kommen unverändert zurück, auch Nullbytes; fehlende Datei = False.
-  mCache := CreateCache('index-00000003.json');
-  mFileSystem := TDiskIndexFileSystem.Create;
-  try
-    Assert.IsTrue(mFileSystem.WriteBytes(mCache, TBytes.Create(0, 1, 255, 0, 13, 10), mError));
-    Assert.AreEqual('', mError);
-    Assert.IsTrue(mFileSystem.ReadBytes(mCache, mData));
-    Assert.AreEqual<NativeInt>(6, Length(mData));
-    Assert.AreEqual<Byte>(255, mData[2]);
-    Assert.AreEqual<Byte>(0, mData[3]);
-    Assert.IsFalse(mFileSystem.ReadBytes(TPath.Combine(FRoot, 'fehlt.json'), mData));
-    Assert.AreEqual<NativeInt>(0, Length(mData));
-    Assert.AreEqual(1, Integer(Length(TDirectory.GetFiles(FRoot))), 'keine .tmp- oder .bak-Reste');
-  finally
-    mFileSystem.Free;
-  end;
-end;
-
-function TIndexCacheDirectoryTests.CreateCache(const AName: string): string;
-begin
-  Result := TPath.Combine(FRoot, AName);
-  TFile.WriteAllText(Result, '{}');
-end;
-
-function TIndexCacheDirectoryTests.CreateFile(const AFileName: string; ASize: Integer): string;
-var
-  mData: TBytes;
-begin
-  Result := AFileName;
-  ForceDirectories(ExtractFileDir(Result));
-  SetLength(mData, ASize);
-  TFile.WriteAllBytes(Result, mData);
 end;
 
 procedure TIndexCacheDirectoryTests.SecondLockFails;
@@ -547,6 +506,49 @@ begin
   Assert.IsTrue(FileExists(mOwn));
 end;
 
+procedure TIndexCacheDirectoryTests.DiskFileSystemOverwritesExistingFile;
+var
+  mFileSystem: TDiskIndexFileSystem;
+  mCache, mText: string;
+begin
+  // Der zweite Start schreibt über einen vorhandenen Cache (TFile.Replace); das scheiterte
+  // an der leeren Sicherungsdatei ("Pfad ist leer").
+  mCache := CreateCache('index-00000002.json');
+  mFileSystem := TDiskIndexFileSystem.Create;
+  try
+    Assert.IsTrue(mFileSystem.WriteText(mCache, '{"version":2}'));
+    Assert.IsTrue(mFileSystem.ReadText(mCache, mText));
+    Assert.AreEqual('{"version":2}', mText);
+    Assert.AreEqual(1, Integer(Length(TDirectory.GetFiles(FRoot))), 'keine .tmp- oder .bak-Reste');
+  finally
+    mFileSystem.Free;
+  end;
+end;
+
+procedure TIndexCacheDirectoryTests.DiskFileSystemRoundTripsBytes;
+var
+  mFileSystem: TDiskIndexFileSystem;
+  mCache, mError: string;
+  mData: TBytes;
+begin
+  // Binärer Cache (#617): Bytes kommen unverändert zurück, auch Nullbytes; fehlende Datei = False.
+  mCache := CreateCache('index-00000003.json');
+  mFileSystem := TDiskIndexFileSystem.Create;
+  try
+    Assert.IsTrue(mFileSystem.WriteBytes(mCache, TBytes.Create(0, 1, 255, 0, 13, 10), mError));
+    Assert.AreEqual('', mError);
+    Assert.IsTrue(mFileSystem.ReadBytes(mCache, mData));
+    Assert.AreEqual<NativeInt>(6, Length(mData));
+    Assert.AreEqual<Byte>(255, mData[2]);
+    Assert.AreEqual<Byte>(0, mData[3]);
+    Assert.IsFalse(mFileSystem.ReadBytes(TPath.Combine(FRoot, 'fehlt.json'), mData));
+    Assert.AreEqual<NativeInt>(0, Length(mData));
+    Assert.AreEqual(1, Integer(Length(TDirectory.GetFiles(FRoot))), 'keine .tmp- oder .bak-Reste');
+  finally
+    mFileSystem.Free;
+  end;
+end;
+
 procedure TIndexCacheDirectoryTests.FileNameDependsOnlyOnSignature;
 begin
   // LSP- und MCP-Prozess bilden denselben Namen (#62).
@@ -572,25 +574,6 @@ begin
     TIndexCacheDirectory.FileFor(FRoot, '23.0', 'Projekt'));
   Assert.AreEqual(TPath.Combine(TPath.Combine(FRoot, 'Index'), 'ohne-Delphi'),
     TIndexCacheDirectory.VersionFolder(FRoot, ''));
-end;
-
-procedure TIndexCacheDirectoryTests.ClearRemovesNewLayoutAndEmptyFolders;
-var
-  mProject, mLibrary_, mLegacy: string;
-begin
-  mProject := CreateFile(TIndexCacheDirectory.FileFor(FRoot, '37.0', 'Projekt'), 100);
-  mLibrary_ := CreateFile(TIndexCacheDirectory.LibraryFileFor(FRoot, '37.0', 'Win64'), 200);
-  mLegacy := CreateCache('index-00000001.json');
-  CreateCache('anderes.json');
-  Assert.AreEqual<Int64>(300 + 2, TIndexCacheDirectory.TotalSize(FRoot));
-  Assert.AreEqual(3, TIndexCacheDirectory.Clear(FRoot));
-  Assert.IsFalse(FileExists(mProject));
-  Assert.IsFalse(FileExists(mLibrary_));
-  Assert.IsFalse(FileExists(mLegacy));
-  // Leere Projektordner gehen mit, fremde Dateien bleiben.
-  Assert.IsFalse(TDirectory.Exists(ExtractFileDir(mProject)));
-  Assert.IsTrue(FileExists(TPath.Combine(FRoot, 'anderes.json')));
-  Assert.AreEqual<Int64>(0, TIndexCacheDirectory.TotalSize(FRoot));
 end;
 
 procedure TIndexCacheDirectoryTests.FileNameCarriesFormatVersion;
@@ -619,6 +602,25 @@ begin
   Assert.IsTrue(FileExists(TPath.Combine(mFolder, TIndexCacheDirectory.cUseMarkerFileName)));
   Assert.AreEqual(1, TIndexCacheDirectory.Remove([mOlder]));
   Assert.IsFalse(TDirectory.Exists(mFolder));
+end;
+
+procedure TIndexCacheDirectoryTests.ClearRemovesNewLayoutAndEmptyFolders;
+var
+  mProject, mLibrary_, mLegacy: string;
+begin
+  mProject := CreateFile(TIndexCacheDirectory.FileFor(FRoot, '37.0', 'Projekt'), 100);
+  mLibrary_ := CreateFile(TIndexCacheDirectory.LibraryFileFor(FRoot, '37.0', 'Win64'), 200);
+  mLegacy := CreateCache('index-00000001.json');
+  CreateCache('anderes.json');
+  Assert.AreEqual<Int64>(300 + 2, TIndexCacheDirectory.TotalSize(FRoot));
+  Assert.AreEqual(3, TIndexCacheDirectory.Clear(FRoot));
+  Assert.IsFalse(FileExists(mProject));
+  Assert.IsFalse(FileExists(mLibrary_));
+  Assert.IsFalse(FileExists(mLegacy));
+  // Leere Projektordner gehen mit, fremde Dateien bleiben.
+  Assert.IsFalse(TDirectory.Exists(ExtractFileDir(mProject)));
+  Assert.IsTrue(FileExists(TPath.Combine(FRoot, 'anderes.json')));
+  Assert.AreEqual<Int64>(0, TIndexCacheDirectory.TotalSize(FRoot));
 end;
 
 procedure TIndexCacheDirectoryTests.RemoveAndSizeOfNamedCaches;
@@ -657,26 +659,6 @@ begin
   Assert.AreEqual<NativeInt>(1, Length(TDirectory.GetFiles(FRoot)));
 end;
 
-procedure TIndexCacheDirectoryTests.DiskWriteLockIsExclusive;
-var
-  mCache: string;
-  mFileSystem: IIndexFileSystem;
-  mFirst, mSecond: IInterface;
-begin
-  mCache := CreateCache('index-00000005.json');
-  mFileSystem := TDiskIndexFileSystem.Create;
-  mFirst := mFileSystem.TryLockWrite(mCache);
-  Assert.IsNotNull(mFirst);
-  mSecond := mFileSystem.TryLockWrite(mCache);
-  Assert.IsNull(mSecond, 'nur ein Schreiber');
-  Assert.IsTrue(TIndexCacheDirectory.IsLocked(mCache));
-  mFirst := nil;
-  Assert.IsFalse(TIndexCacheDirectory.IsLocked(mCache));
-  mSecond := mFileSystem.TryLockWrite(mCache);
-  Assert.IsNotNull(mSecond, 'nach dem Freigeben wieder frei');
-  mSecond := nil;
-end;
-
 procedure TIndexCacheDirectoryTests.FailedReplaceLeavesNoRemains;
 var
   mCache, mText, mError: string;
@@ -701,6 +683,26 @@ begin
   Assert.IsTrue(mFileSystem.ReadText(mCache, mText));
   Assert.AreEqual('{}', mText, 'alter Stand vollständig erhalten');
   Assert.AreEqual<NativeInt>(1, Length(TDirectory.GetFiles(FRoot)), 'keine .tmp- oder .bak-Reste');
+end;
+
+procedure TIndexCacheDirectoryTests.DiskWriteLockIsExclusive;
+var
+  mCache: string;
+  mFileSystem: IIndexFileSystem;
+  mFirst, mSecond: IInterface;
+begin
+  mCache := CreateCache('index-00000005.json');
+  mFileSystem := TDiskIndexFileSystem.Create;
+  mFirst := mFileSystem.TryLockWrite(mCache);
+  Assert.IsNotNull(mFirst);
+  mSecond := mFileSystem.TryLockWrite(mCache);
+  Assert.IsNull(mSecond, 'nur ein Schreiber');
+  Assert.IsTrue(TIndexCacheDirectory.IsLocked(mCache));
+  mFirst := nil;
+  Assert.IsFalse(TIndexCacheDirectory.IsLocked(mCache));
+  mSecond := mFileSystem.TryLockWrite(mCache);
+  Assert.IsNotNull(mSecond, 'nach dem Freigeben wieder frei');
+  mSecond := nil;
 end;
 
 procedure TIndexCacheDirectoryTests.RemoveOrphansDeletesCacheOfDeletedProject;

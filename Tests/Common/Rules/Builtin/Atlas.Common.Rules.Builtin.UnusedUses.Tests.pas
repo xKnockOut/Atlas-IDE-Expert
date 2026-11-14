@@ -122,6 +122,8 @@ begin
   end;
 end;
 
+{ TUnusedUsesTests }
+
 procedure TUnusedUsesTests.ReportsUnusedEntryWithSafeFix;
 var
   mFindings: TArray<TRuleFinding>;
@@ -201,47 +203,6 @@ begin
   end;
 end;
 
-procedure TUnusedUsesTests.FormReferenceKeepsUnit;
-const
-  cFormUnit = 'unit Haupt;'#13#10'interface'#13#10'type'#13#10'  THauptForm = class'#13#10'  end;'#13#10'var'#13#10 +
-    '  HauptForm: THauptForm;'#13#10'implementation'#13#10'end.'#13#10;
-  cFormText = 'object BerichtForm: TBerichtForm'#13#10'  object Query: TFDQuery'#13#10 +
-    '    Connection = HauptForm.Connection'#13#10'  end'#13#10'end'#13#10;
-var
-  mIndex: ISymbolIndex;
-  mContext: TRuleContext;
-begin
-  // Die Formulardatei verweist auf HauptForm.Connection: Der Eintrag Haupt bleibt (dfm-reference-unit-missing).
-  mIndex := Index;
-  mIndex.AddUnit(TIndexExtractor.ExtractText(cFormUnit, 'Haupt.pas', nil, nil, True));
-  mContext := Default(TRuleContext);
-  mContext.Text := UnitText('Andere, Haupt');
-  mContext.Index := mIndex;
-  mContext.FormText := cFormText;
-  Assert.AreEqual('', Names(TRuleAssert.ContextFindings(TUnusedUsesRule.Create, mContext, '')));
-  mContext.FormText := StringReplace(cFormText, 'HauptForm.', 'Query2.', []);
-  Assert.AreEqual('Aus Haupt wird nichts verwendet;', Names(TRuleAssert.ContextFindings(TUnusedUsesRule.Create,
-    mContext, '')));
-end;
-
-procedure TUnusedUsesTests.MemberNameDoesNotKeepUnit;
-const
-  cListe = 'unit Liste;'#13#10'interface'#13#10'type'#13#10'  TListe = class'#13#10'    function Count: Integer;'#13#10 +
-    '  end;'#13#10'implementation'#13#10'function TListe.Count: Integer;'#13#10'begin'#13#10'  Result := 0;'#13#10 +
-    'end;'#13#10'end.'#13#10;
-  cBericht = 'unit Bericht;'#13#10'interface'#13#10'uses'#13#10'  Liste, Andere;'#13#10'implementation'#13#10 +
-    'procedure X;'#13#10'var'#13#10'  Count: Integer;'#13#10'begin'#13#10'  Count := 1;'#13#10'  Mach;'#13#10 +
-    'end;'#13#10'end.'#13#10;
-var
-  mIndex: ISymbolIndex;
-begin
-  // Count ist eine lokale Variable, TListe.Count ist nicht gemeint: Liste wird gemeldet (#1925).
-  mIndex := Index;
-  mIndex.AddUnit(TIndexExtractor.ExtractText(cListe, 'Liste.pas', nil, nil, True));
-  Assert.AreEqual('Aus Liste wird nichts verwendet;', Names(Check(cBericht, TServerSettings.Default, mIndex,
-    'Bericht.pas')));
-end;
-
 procedure TUnusedUsesTests.InactiveBranchIsIgnored;
 begin
   // Der Eintrag im inaktiven Zweig zählt nicht; der aktive bleibt geprüft.
@@ -308,6 +269,47 @@ begin
   Assert.AreEqual(UnitText('Andere, Start'), mResult.NewText);
   Assert.AreEqual(2, mResult.FixCount);
   Assert.AreEqual('', Names(Check(mResult.NewText)));
+end;
+
+procedure TUnusedUsesTests.FormReferenceKeepsUnit;
+const
+  cFormUnit = 'unit Haupt;'#13#10'interface'#13#10'type'#13#10'  THauptForm = class'#13#10'  end;'#13#10'var'#13#10 +
+    '  HauptForm: THauptForm;'#13#10'implementation'#13#10'end.'#13#10;
+  cFormText = 'object BerichtForm: TBerichtForm'#13#10'  object Query: TFDQuery'#13#10 +
+    '    Connection = HauptForm.Connection'#13#10'  end'#13#10'end'#13#10;
+var
+  mIndex: ISymbolIndex;
+  mContext: TRuleContext;
+begin
+  // Die Formulardatei verweist auf HauptForm.Connection: Der Eintrag Haupt bleibt (dfm-reference-unit-missing).
+  mIndex := Index;
+  mIndex.AddUnit(TIndexExtractor.ExtractText(cFormUnit, 'Haupt.pas', nil, nil, True));
+  mContext := Default(TRuleContext);
+  mContext.Text := UnitText('Andere, Haupt');
+  mContext.Index := mIndex;
+  mContext.FormText := cFormText;
+  Assert.AreEqual('', Names(TRuleAssert.ContextFindings(TUnusedUsesRule.Create, mContext, '')));
+  mContext.FormText := StringReplace(cFormText, 'HauptForm.', 'Query2.', []);
+  Assert.AreEqual('Aus Haupt wird nichts verwendet;', Names(TRuleAssert.ContextFindings(TUnusedUsesRule.Create,
+    mContext, '')));
+end;
+
+procedure TUnusedUsesTests.MemberNameDoesNotKeepUnit;
+const
+  cListe = 'unit Liste;'#13#10'interface'#13#10'type'#13#10'  TListe = class'#13#10'    function Count: Integer;'#13#10 +
+    '  end;'#13#10'implementation'#13#10'function TListe.Count: Integer;'#13#10'begin'#13#10'  Result := 0;'#13#10 +
+    'end;'#13#10'end.'#13#10;
+  cBericht = 'unit Bericht;'#13#10'interface'#13#10'uses'#13#10'  Liste, Andere;'#13#10'implementation'#13#10 +
+    'procedure X;'#13#10'var'#13#10'  Count: Integer;'#13#10'begin'#13#10'  Count := 1;'#13#10'  Mach;'#13#10 +
+    'end;'#13#10'end.'#13#10;
+var
+  mIndex: ISymbolIndex;
+begin
+  // Count ist eine lokale Variable, TListe.Count ist nicht gemeint: Liste wird gemeldet (#1925).
+  mIndex := Index;
+  mIndex.AddUnit(TIndexExtractor.ExtractText(cListe, 'Liste.pas', nil, nil, True));
+  Assert.AreEqual('Aus Liste wird nichts verwendet;', Names(Check(cBericht, TServerSettings.Default, mIndex,
+    'Bericht.pas')));
 end;
 
 initialization

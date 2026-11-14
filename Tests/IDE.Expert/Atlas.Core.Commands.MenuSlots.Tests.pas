@@ -39,6 +39,8 @@ begin
   Result.Visible := AVisible;
 end;
 
+{ TAtlasMenuSlotsTests }
+
 procedure TAtlasMenuSlotsTests.SectionsBecomeGroupsInOrder;
 var
   mLayout: TAtlasSlotLayout;

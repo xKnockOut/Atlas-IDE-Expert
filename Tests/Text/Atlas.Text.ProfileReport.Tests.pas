@@ -95,6 +95,8 @@ begin
   Result := Default(TAtlasProfileMethod);
 end;
 
+{ TAtlasProfileAnalysisTests }
+
 procedure TAtlasProfileAnalysisTests.ExpensiveMethodComesFirst;
 var
   mMethods: TArray<TAtlasProfileMethod>;

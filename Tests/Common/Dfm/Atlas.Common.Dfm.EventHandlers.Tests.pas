@@ -116,10 +116,7 @@ begin
   Result[0].Text := cFormText;
 end;
 
-procedure TEventHandlersTests.TearDown;
-begin
-  FHandlers := nil;
-end;
+{ TEventHandlersTests }
 
 function TEventHandlersTests.Find(const AComponent, AEvent: string): TEventHandler;
 var
@@ -134,6 +131,11 @@ begin
   end;
   Assert.Fail('nicht gefunden: ' + AComponent + '.' + AEvent);
   Result := Default(TEventHandler);
+end;
+
+procedure TEventHandlersTests.TearDown;
+begin
+  FHandlers := nil;
 end;
 
 procedure TEventHandlersTests.FormEventsWithBodies;

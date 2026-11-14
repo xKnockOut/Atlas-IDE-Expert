@@ -117,42 +117,6 @@ const
 
   cFileName = 'C:\P\Kunden.pas';
 
-{ TLspAccessChainsTests }
-
-procedure TLspAccessChainsTests.Setup;
-begin
-  FIndex := TSymbolIndex.Create;
-end;
-
-procedure TLspAccessChainsTests.TearDown;
-begin
-  FIndex := nil;
-end;
-
-function TLspAccessChainsTests.Chains(ALine: Integer): TAccessChainsResult;
-begin
-  Result := Chains(ALine, 4);
-end;
-
-function TLspAccessChainsTests.Chains(ALine, APointerSize: Integer): TAccessChainsResult;
-var
-  mSource: TAccessChainSource;
-begin
-  mSource := Default(TAccessChainSource);
-  mSource.Tree := TPascalParser.Parse(cUnitText);
-  mSource.Resolver := TNameResolver.Create(FIndex);
-  try
-    mSource.Index := FIndex;
-    mSource.Text := cUnitText;
-    mSource.FileName := cFileName;
-    mSource.PointerSize := APointerSize;
-    Result := TLspAccessChains.Collect(mSource, ALine);
-  finally
-    mSource.Resolver.Free;
-    mSource.Tree.Free;
-  end;
-end;
-
 /// <summary>ALink als "Ausdruck:art:Typ" mit :call, :self, :idx=… und :plain.</summary>
 function LinkText(const ALink: TAccessLink): string;
 begin
@@ -191,6 +155,32 @@ begin
   end;
 end;
 
+{ TLspAccessChainsTests }
+
+function TLspAccessChainsTests.Chains(ALine: Integer): TAccessChainsResult;
+begin
+  Result := Chains(ALine, 4);
+end;
+
+function TLspAccessChainsTests.Chains(ALine, APointerSize: Integer): TAccessChainsResult;
+var
+  mSource: TAccessChainSource;
+begin
+  mSource := Default(TAccessChainSource);
+  mSource.Tree := TPascalParser.Parse(cUnitText);
+  mSource.Resolver := TNameResolver.Create(FIndex);
+  try
+    mSource.Index := FIndex;
+    mSource.Text := cUnitText;
+    mSource.FileName := cFileName;
+    mSource.PointerSize := APointerSize;
+    Result := TLspAccessChains.Collect(mSource, ALine);
+  finally
+    mSource.Resolver.Free;
+    mSource.Tree.Free;
+  end;
+end;
+
 function TLspAccessChainsTests.Describe(ALine: Integer): string;
 var
   mFound: TAccessChainsResult;
@@ -206,6 +196,16 @@ begin
     end;
     Result := Result + ChainText(mChain);
   end;
+end;
+
+procedure TLspAccessChainsTests.Setup;
+begin
+  FIndex := TSymbolIndex.Create;
+end;
+
+procedure TLspAccessChainsTests.TearDown;
+begin
+  FIndex := nil;
 end;
 
 procedure TLspAccessChainsTests.SplitsMemberChainWithoutLastMember;

@@ -43,6 +43,8 @@ uses
   Atlas.Core.Designer.DefaultSizes,
   Atlas.Tests.RecordText;
 
+{ TAtlasDefaultSizesTests }
+
 procedure TAtlasDefaultSizesTests.ParseTable;
 var
   mEntries: TArray<TAtlasSizeEntry>;

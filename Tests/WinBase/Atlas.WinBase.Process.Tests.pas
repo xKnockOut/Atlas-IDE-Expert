@@ -100,6 +100,8 @@ type
     procedure Execute; override;
   end;
 
+{ TLongStarter }
+
 procedure TLongStarter.Execute;
 var
   mEofMs: Int64;

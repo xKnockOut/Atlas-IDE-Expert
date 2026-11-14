@@ -58,11 +58,6 @@ const
 
 { TAtlasBreakpointListTests }
 
-procedure TAtlasBreakpointListTests.TearDown;
-begin
-  FRows := nil;
-end;
-
 procedure TAtlasBreakpointListTests.Fill;
 var
   mRow: TAtlasBreakpointRow;
@@ -89,6 +84,11 @@ begin
   mRow.Method := 'Laden';
   mRow.Group := 'lesen';
   FRows := FRows + [mRow];
+end;
+
+procedure TAtlasBreakpointListTests.TearDown;
+begin
+  FRows := nil;
 end;
 
 procedure TAtlasBreakpointListTests.LocationShowsUnitMethodAndLine;

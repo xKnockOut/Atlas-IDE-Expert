@@ -26,6 +26,8 @@ implementation
 uses
   Atlas.Common.Dfm.FormFiles;
 
+{ TFormFilesTests }
+
 procedure TFormFilesTests.UnitOfPlainForms;
 begin
   Assert.AreEqual('C:\P\Unit1.pas', TFormFiles.UnitFile('C:\P\Unit1.dfm'));

@@ -36,6 +36,8 @@ begin
   Result := string.Join(' ', AItems);
 end;
 
+{ TAtlasToolbarItemsTests }
+
 procedure TAtlasToolbarItemsTests.ParseAndFormat;
 var
   mItems: TArray<string>;

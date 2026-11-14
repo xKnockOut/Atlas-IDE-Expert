@@ -26,6 +26,8 @@ uses
   Atlas.Common.Rules.Builtin.Inheritance.OverrideTargets,
   Atlas.Tests.RuleAssert;
 
+{ TInheritanceOverrideTargetsTests }
+
 procedure TInheritanceOverrideTargetsTests.MissingTargetIsReported;
 var
   mFindings: TArray<TRuleFinding>;

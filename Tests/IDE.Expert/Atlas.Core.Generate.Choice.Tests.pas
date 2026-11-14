@@ -25,6 +25,8 @@ implementation
 uses
   Atlas.Core.Generate.Choice;
 
+{ TAtlasChoiceFilterTests }
+
 procedure TAtlasChoiceFilterTests.EmptySearchMatchesAll;
 begin
   Assert.AreEqual(3, Integer(Length(TAtlasChoiceFilter.Matches(['A', 'B', 'C'], '  '))));

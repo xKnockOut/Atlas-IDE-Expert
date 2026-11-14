@@ -103,6 +103,55 @@ begin
   Result := TTextPosition.Create(mLine, mIndex - mStart);
 end;
 
+/// <summary>Liest die Ersatz-Units aus AUnits.</summary>
+function ReaderOf(AUnits: TIdeUnits): TDocReadText;
+begin
+  Result :=
+    function(const AFileName: string; out AText: string): Boolean
+    begin
+      Result := AUnits.ReadText(AFileName, AText);
+    end;
+end;
+
+/// <summary>Namen der Vervollständigung an AMarker (+ AOffset), durch Leerzeichen getrennt.</summary>
+function CompletionNames(AUnits: TIdeUnits; const AText, AMarker: string; AOffset: Integer): string;
+var
+  mIndex: ISymbolIndex;
+  mResolver: TNameResolver;
+  mTree: TSyntaxTree;
+  mItem: TCompletionItem;
+begin
+  Result := '';
+  mIndex := TIdeIndex.Create(TSymbolIndex.Create, AUnits.Index);
+  mResolver := TNameResolver.Create(mIndex);
+  mTree := TPascalParser.Parse(AText);
+  try
+    for mItem in TCompletionLists.Collect(mResolver, mIndex, mTree, 'C:\P\Haupt.pas',
+      PositionOf(AText, AMarker, AOffset), TCompletionMatching.Prefix).Items do
+    begin
+      Result := Result + mItem.Name + ' ';
+    end;
+  finally
+    mTree.Free;
+    mResolver.Free;
+  end;
+end;
+
+{ TIdeUnitsTests }
+
+procedure TIdeUnitsTests.WarmUp;
+var
+  mUnits: TIdeUnits;
+begin
+  mUnits := Units;
+  try
+    CompletionNames(mUnits, cMain, 'G.;', 2);
+    CompletionNames(mUnits, StringReplace(cMain, 'gsEdit;', 'gs;', []), ':= gs;', 5);
+  finally
+    mUnits.Free;
+  end;
+end;
+
 procedure TIdeUnitsTests.ShortTypeDropsUnitsAndCollectsUses;
 var
   mUses: TList<string>;
@@ -212,16 +261,6 @@ begin
   end;
 end;
 
-/// <summary>Liest die Ersatz-Units aus AUnits.</summary>
-function ReaderOf(AUnits: TIdeUnits): TDocReadText;
-begin
-  Result :=
-    function(const AFileName: string; out AText: string): Boolean
-    begin
-      Result := AUnits.ReadText(AFileName, AText);
-    end;
-end;
-
 procedure TIdeUnitsTests.HoverShowsMemberOfIdeType;
 var
   mUnits: TIdeUnits;
@@ -256,43 +295,6 @@ begin
     mIndex := nil;
   finally
     mTree.Free;
-    mUnits.Free;
-  end;
-end;
-
-/// <summary>Namen der Vervollständigung an AMarker (+ AOffset), durch Leerzeichen getrennt.</summary>
-function CompletionNames(AUnits: TIdeUnits; const AText, AMarker: string; AOffset: Integer): string;
-var
-  mIndex: ISymbolIndex;
-  mResolver: TNameResolver;
-  mTree: TSyntaxTree;
-  mItem: TCompletionItem;
-begin
-  Result := '';
-  mIndex := TIdeIndex.Create(TSymbolIndex.Create, AUnits.Index);
-  mResolver := TNameResolver.Create(mIndex);
-  mTree := TPascalParser.Parse(AText);
-  try
-    for mItem in TCompletionLists.Collect(mResolver, mIndex, mTree, 'C:\P\Haupt.pas',
-      PositionOf(AText, AMarker, AOffset), TCompletionMatching.Prefix).Items do
-    begin
-      Result := Result + mItem.Name + ' ';
-    end;
-  finally
-    mTree.Free;
-    mResolver.Free;
-  end;
-end;
-
-procedure TIdeUnitsTests.WarmUp;
-var
-  mUnits: TIdeUnits;
-begin
-  mUnits := Units;
-  try
-    CompletionNames(mUnits, cMain, 'G.;', 2);
-    CompletionNames(mUnits, StringReplace(cMain, 'gsEdit;', 'gs;', []), ':= gs;', 5);
-  finally
     mUnits.Free;
   end;
 end;

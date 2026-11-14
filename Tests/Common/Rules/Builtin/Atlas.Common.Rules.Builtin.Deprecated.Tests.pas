@@ -252,32 +252,6 @@ end;
 
 { TDeprecatedRulesTests }
 
-procedure TDeprecatedRulesTests.DeclarationsOfSameNameAreNoUse;
-const
-  cSource =
-    'unit Haupt;'#10 +
-    'interface'#10 +
-    'uses Werkzeug;'#10 +
-    'type'#10 +
-    '  TStand = record'#10 +
-    '    Alt: Integer;'#10 +
-    '  end;'#10 +
-    '  TArt = (Eins, Alt);'#10 +
-    'implementation'#10 +
-    'procedure Lauf(Ohne: Integer);'#10 +
-    'begin'#10 +
-    '  Neu;'#10 +
-    'end;'#10 +
-    'procedure Aufruf;'#10 +
-    'begin'#10 +
-    '  Werkzeug.Alt;'#10 +
-    'end;'#10 +
-    'end.';
-begin
-  // Vorher meldete die Regel das Feld (Zeile 5), den Aufzählungswert (7) und den Parameter (9).
-  Assert.AreEqual('15:11 Alt ist deprecated: Nutze Neu (wie W1000).|', Messages(Run(cSource, '', True)));
-end;
-
 procedure TDeprecatedRulesTests.CallReportsReason;
 var
   mFindings: TArray<TRuleFinding>;
@@ -312,6 +286,32 @@ begin
   mFindings := Run(Haupt('Werkzeug', '  L.Anhaengen;'#10), '', True);
   Assert.AreEqual('9:4 Anhaengen ist deprecated: Use Add (wie W1000).|', Messages(mFindings));
   Assert.AreEqual('Add', mFindings[0].Fixes[0].Edits[0].NewText);
+end;
+
+procedure TDeprecatedRulesTests.DeclarationsOfSameNameAreNoUse;
+const
+  cSource =
+    'unit Haupt;'#10 +
+    'interface'#10 +
+    'uses Werkzeug;'#10 +
+    'type'#10 +
+    '  TStand = record'#10 +
+    '    Alt: Integer;'#10 +
+    '  end;'#10 +
+    '  TArt = (Eins, Alt);'#10 +
+    'implementation'#10 +
+    'procedure Lauf(Ohne: Integer);'#10 +
+    'begin'#10 +
+    '  Neu;'#10 +
+    'end;'#10 +
+    'procedure Aufruf;'#10 +
+    'begin'#10 +
+    '  Werkzeug.Alt;'#10 +
+    'end;'#10 +
+    'end.';
+begin
+  // Vorher meldete die Regel das Feld (Zeile 5), den Aufzählungswert (7) und den Parameter (9).
+  Assert.AreEqual('15:11 Alt ist deprecated: Nutze Neu (wie W1000).|', Messages(Run(cSource, '', True)));
 end;
 
 procedure TDeprecatedRulesTests.KindsOption;
@@ -378,31 +378,6 @@ begin
     '  Alt;'#10), '', True)));
 end;
 
-procedure TDeprecatedRulesTests.OnlyTheChosenOverload;
-const
-  cSource =
-    'unit Haupt;'#13#10 +
-    'interface'#13#10 +
-    'uses System.SysUtils;'#13#10 +
-    'type'#13#10 +
-    '  TDatei = class'#13#10 +
-    '    function Stempel(const AFileName: string; out AStamp: Int64): Boolean;'#13#10 +
-    '  end;'#13#10 +
-    'implementation'#13#10 +
-    'function TDatei.Stempel(const AFileName: string; out AStamp: Int64): Boolean;'#13#10 +
-    'var'#13#10 +
-    '  Age: TDateTime;'#13#10 +
-    'begin'#13#10 +
-    '  Result := FileAge(AFileName, Age);'#13#10 +
-    '  AStamp := FileAge(AFileName);'#13#10 +
-    '  Result := FileAge(AFileName, Age, False);'#13#10 +
-    'end;'#13#10 +
-    'end.';
-begin
-  // Nur die Überladung FileAge(string): LongInt ist deprecated; gemeldet wird nur der Aufruf, der sie wählt.
-  Assert.AreEqual('13:12 FileAge ist deprecated (wie W1000).|', Messages(Run(cSource, '', True)));
-end;
-
 procedure TDeprecatedRulesTests.DeprecatedUnits;
 var
   mSource: string;
@@ -426,6 +401,31 @@ begin
     Messages(Run(mSource, KindsConfig('"platform"'), True)));
   Assert.AreEqual(0, Integer(Length(Run(ReplaceStr(mSource, 'uses ', '{$WARN UNIT_DEPRECATED OFF}'#10 +
     '{$WARN UNIT_EXPERIMENTAL OFF}'#10'{$WARN UNIT_PLATFORM OFF}'#10'uses '), '', True))));
+end;
+
+procedure TDeprecatedRulesTests.OnlyTheChosenOverload;
+const
+  cSource =
+    'unit Haupt;'#13#10 +
+    'interface'#13#10 +
+    'uses System.SysUtils;'#13#10 +
+    'type'#13#10 +
+    '  TDatei = class'#13#10 +
+    '    function Stempel(const AFileName: string; out AStamp: Int64): Boolean;'#13#10 +
+    '  end;'#13#10 +
+    'implementation'#13#10 +
+    'function TDatei.Stempel(const AFileName: string; out AStamp: Int64): Boolean;'#13#10 +
+    'var'#13#10 +
+    '  Age: TDateTime;'#13#10 +
+    'begin'#13#10 +
+    '  Result := FileAge(AFileName, Age);'#13#10 +
+    '  AStamp := FileAge(AFileName);'#13#10 +
+    '  Result := FileAge(AFileName, Age, False);'#13#10 +
+    'end;'#13#10 +
+    'end.';
+begin
+  // Nur die Überladung FileAge(string): LongInt ist deprecated; gemeldet wird nur der Aufruf, der sie wählt.
+  Assert.AreEqual('13:12 FileAge ist deprecated (wie W1000).|', Messages(Run(cSource, '', True)));
 end;
 
 procedure TDeprecatedRulesTests.ReplacementFromKnownRoutine;

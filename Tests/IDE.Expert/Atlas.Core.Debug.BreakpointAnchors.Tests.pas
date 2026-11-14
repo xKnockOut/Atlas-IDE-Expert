@@ -73,6 +73,8 @@ const
   cReadLine = 12;
   cInserted = 10;
 
+{ TAtlasBreakpointAnchorsTests }
+
 function TAtlasBreakpointAnchorsTests.Item(const AText: string; ALine: Integer): TAtlasAnchoredBreakpoint;
 begin
   Result := TAtlasAnchoredBreakpoint.Create('C:\Src\Kunden.pas', ALine, TAtlasMethodAnchors.Capture(AText, ALine));

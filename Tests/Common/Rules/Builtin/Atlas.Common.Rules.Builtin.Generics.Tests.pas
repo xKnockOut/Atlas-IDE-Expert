@@ -102,6 +102,8 @@ begin
     '  Result := T.Create;'#10'end;'#10'end.';
 end;
 
+{ TGenericConstraintViolatedTests }
+
 procedure TGenericConstraintViolatedTests.IssueExampleWithFix;
 var
   mSource, mFixed: string;
@@ -292,6 +294,8 @@ end;
 const
   cNeu = 'Neu braucht ausdrückliche Typargumente (Neu<…>): T kommt in keinem Parameter vor und lässt sich nicht ' +
     'ableiten (wie E2531).';
+
+{ TGenericInferenceFailedTests }
 
 procedure TGenericInferenceFailedTests.MissingTypeArguments;
 var

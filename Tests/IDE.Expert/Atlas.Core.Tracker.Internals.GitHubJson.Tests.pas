@@ -38,6 +38,8 @@ begin
   Result := TJSONObject.ParseJSONValue(AJson) as TJSONObject;
 end;
 
+{ TAtlasGitHubJsonTests }
+
 procedure TAtlasGitHubJsonTests.ValuesOnlyWithMatchingType;
 var
   mObject: TJSONObject;

@@ -44,6 +44,8 @@ uses
 const
   cSha = '0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef';
 
+{ TTextUpdatesTests }
+
 procedure TTextUpdatesTests.ComparesSemVer;
 begin
   Assert.IsTrue(TUpdateVersions.Compare('2.0.1', '2.0.0') > 0);

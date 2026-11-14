@@ -24,6 +24,8 @@ uses
   System.IOUtils,
   Atlas.Core.Files.EncodingDefault;
 
+{ TAtlasEncodingDefaultTests }
+
 procedure TAtlasEncodingDefaultTests.ReadsEncodingSetting;
 begin
   Assert.AreEqual(1250, TAtlasEncodingDefault.FromJson('{ // Altprojekt' + sLineBreak + '"encoding": "windows-1250" }'));

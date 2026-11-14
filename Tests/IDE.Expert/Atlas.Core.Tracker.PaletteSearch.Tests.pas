@@ -93,6 +93,8 @@ type
       out AError: TAtlasCiFetchError): Boolean;
   end;
 
+{ TSearchTransport }
+
 procedure TSearchTransport.Answer(const APrefix: string; AStatus: Integer; const AText: string);
 begin
   FPrefixes := FPrefixes + [APrefix];

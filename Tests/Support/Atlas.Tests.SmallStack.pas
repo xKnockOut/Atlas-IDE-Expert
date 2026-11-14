@@ -34,6 +34,8 @@ type
     property Failure: string read FFailure;
   end;
 
+{ TSmallStackThread }
+
 constructor TSmallStackThread.Create(AStackKb: Integer; const AWork: TProc);
 begin
   inherited Create(True, NativeUInt(AStackKb) * 1024);
@@ -51,6 +53,8 @@ begin
   end;
   FWork := nil;
 end;
+
+{ TSmallStack }
 
 class function TSmallStack.Run(AStackKb: Integer; const AWork: TProc): string;
 var

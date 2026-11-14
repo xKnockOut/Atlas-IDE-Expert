@@ -124,6 +124,8 @@ begin
   Result := StringReplace(cRegisterUnit, '%s', ADirective, []);
 end;
 
+{ TPaletteIconTests }
+
 procedure TPaletteIconTests.ReadsResourceNames;
 var
   mNames: TArray<string>;

@@ -39,6 +39,8 @@ uses
   Atlas.Core.Settings.Plugin,
   Atlas.Core.Tests.OnSave;
 
+{ TAtlasTestsOnSaveTests }
+
 procedure TAtlasTestsOnSaveTests.FirstSaveStartsARun;
 var
   mQueue: TAtlasTestsOnSaveQueue;

@@ -113,17 +113,6 @@ const
 
 { TAtlasEventMapTests }
 
-procedure TAtlasEventMapTests.Setup;
-begin
-  FRows := TAtlasEventMap.Rows(TAtlasFormModel.Parse(cDfm), TAtlasEventMap.Handlers(cUnit, 'TfrmKunden'));
-end;
-
-procedure TAtlasEventMapTests.TearDown;
-begin
-  // Array-Feld leeren, sonst zählt der Leckmonitor es dem Test zu.
-  FRows := nil;
-end;
-
 function TAtlasEventMapTests.Row(const AComponent, AEvent: string): TAtlasEventRow;
 var
   mRow: TAtlasEventRow;
@@ -137,6 +126,17 @@ begin
   end;
   Assert.Fail(AComponent + '.' + AEvent + ' fehlt');
   Result := Default(TAtlasEventRow);
+end;
+
+procedure TAtlasEventMapTests.Setup;
+begin
+  FRows := TAtlasEventMap.Rows(TAtlasFormModel.Parse(cDfm), TAtlasEventMap.Handlers(cUnit, 'TfrmKunden'));
+end;
+
+procedure TAtlasEventMapTests.TearDown;
+begin
+  // Array-Feld leeren, sonst zählt der Leckmonitor es dem Test zu.
+  FRows := nil;
 end;
 
 procedure TAtlasEventMapTests.Assignments;

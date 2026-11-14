@@ -76,6 +76,8 @@ begin
     cNl + 'type' + cNl + AInterface + 'implementation' + cNl + AImplementation + 'end.';
 end;
 
+{ TOwnershipSitesTests }
+
 function TOwnershipSitesTests.Sites(const ASource: string): TArray<TOwnershipSite>;
 var
   mTree: TSyntaxTree;

@@ -196,52 +196,6 @@ begin
   end;
 end;
 
-{ TLspDataFlowTests }
-
-procedure TLspDataFlowTests.Setup;
-begin
-  FIndex := TSymbolIndex.Create;
-  FIndex.AddUnit(TIndexExtractor.ExtractText(cUnitDaten, cDatenFile, nil));
-  FIndex.AddUnit(TIndexExtractor.ExtractText(cUnitHaupt, cHauptFile, nil));
-  FIndex.AddUnit(TIndexExtractor.ExtractText(cUnitPruefung, cPruefFile, nil));
-  FResolver := TNameResolver.Create(FIndex);
-end;
-
-procedure TLspDataFlowTests.TearDown;
-begin
-  FResolver.Free;
-  FIndex := nil;
-end;
-
-function TLspDataFlowTests.Flow(const AFileName, AMarker: string; ADirection: TDataFlowDirection): TDataFlowResult;
-begin
-  Result := Flow(AFileName, AMarker, ADirection, Default(TDataFlowOptions));
-end;
-
-function TLspDataFlowTests.Flow(const AFileName, AMarker: string; ADirection: TDataFlowDirection;
-  const AOptions: TDataFlowOptions): TDataFlowResult;
-var
-  mText: string;
-  mRequest: TDataFlowRequest;
-begin
-  ReadFile(AFileName, mText);
-  mRequest := Default(TDataFlowRequest);
-  mRequest.Resolver := FResolver;
-  mRequest.Index := FIndex;
-  mRequest.FileName := AFileName;
-  mRequest.Position := PositionOf(mText, AMarker);
-  mRequest.Direction := ADirection;
-  mRequest.Options := AOptions;
-  mRequest.Files := TArray<string>.Create(cDatenFile, cHauptFile, cPruefFile);
-  mRequest.ReadText := ReadFile;
-  mRequest.Tree := TSyntaxTreeCache.Parse(mText);
-  try
-    Result := TLspDataFlow.Analyze(mRequest);
-  finally
-    mRequest.Tree.Free;
-  end;
-end;
-
 /// <summary>Quellen von ANode als "Quelle/leaf,…".</summary>
 function SourcesText(const ANode: TDataFlowNode): string;
 var
@@ -288,6 +242,37 @@ begin
   end;
 end;
 
+{ TLspDataFlowTests }
+
+function TLspDataFlowTests.Flow(const AFileName, AMarker: string; ADirection: TDataFlowDirection): TDataFlowResult;
+begin
+  Result := Flow(AFileName, AMarker, ADirection, Default(TDataFlowOptions));
+end;
+
+function TLspDataFlowTests.Flow(const AFileName, AMarker: string; ADirection: TDataFlowDirection;
+  const AOptions: TDataFlowOptions): TDataFlowResult;
+var
+  mText: string;
+  mRequest: TDataFlowRequest;
+begin
+  ReadFile(AFileName, mText);
+  mRequest := Default(TDataFlowRequest);
+  mRequest.Resolver := FResolver;
+  mRequest.Index := FIndex;
+  mRequest.FileName := AFileName;
+  mRequest.Position := PositionOf(mText, AMarker);
+  mRequest.Direction := ADirection;
+  mRequest.Options := AOptions;
+  mRequest.Files := TArray<string>.Create(cDatenFile, cHauptFile, cPruefFile);
+  mRequest.ReadText := ReadFile;
+  mRequest.Tree := TSyntaxTreeCache.Parse(mText);
+  try
+    Result := TLspDataFlow.Analyze(mRequest);
+  finally
+    mRequest.Tree.Free;
+  end;
+end;
+
 function TLspDataFlowTests.Describe(const AResult: TDataFlowResult): string;
 var
   mNode: TDataFlowNode;
@@ -302,6 +287,21 @@ begin
     end;
     Result := Result + NodeText(mNode);
   end;
+end;
+
+procedure TLspDataFlowTests.Setup;
+begin
+  FIndex := TSymbolIndex.Create;
+  FIndex.AddUnit(TIndexExtractor.ExtractText(cUnitDaten, cDatenFile, nil));
+  FIndex.AddUnit(TIndexExtractor.ExtractText(cUnitHaupt, cHauptFile, nil));
+  FIndex.AddUnit(TIndexExtractor.ExtractText(cUnitPruefung, cPruefFile, nil));
+  FResolver := TNameResolver.Create(FIndex);
+end;
+
+procedure TLspDataFlowTests.TearDown;
+begin
+  FResolver.Free;
+  FIndex := nil;
 end;
 
 procedure TLspDataFlowTests.LocalAssignmentsAreGrouped;

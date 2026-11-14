@@ -57,6 +57,8 @@ begin
   Result := TAtlasTestFromDebugStop.ReadDescription(cDescribe, 'kaputt');
 end;
 
+{ TAtlasTestFromDebugStopTests }
+
 procedure TAtlasTestFromDebugStopTests.HeaderArgumentsRespectStringsAndBrackets;
 var
   mArguments: TArray<string>;

@@ -210,26 +210,6 @@ begin
   Assert.AreEqual('Zaehler: Integer', Find(U, 'Zaehler').Signature);
 end;
 
-procedure TIndexContentTests.ProcedureTypesOverSeveralLines;
-var
-  mUnit: TUnitIndex;
-begin
-  mUnit := TIndexExtractor.ExtractText('unit Ereignisse;'#10'interface'#10'type'#10 +
-    '  TEv1 = procedure(Sender: TObject;'#10'    X: Integer) of object;'#10 +
-    '  TEv2 = procedure(Sender: TObject;'#10'    X: Integer)'#10'    of { Methode } object;'#10 +
-    '  TRoh = procedure(Sender: TObject;'#10'    X: Integer);'#10 +
-    '  TRef = reference to procedure(Sender: TObject;'#10'    X: Integer);'#10 +
-    '  TFeld = array[0..1] of Byte;'#10'implementation'#10'end.', 'C:\Projekt\Ereignisse.pas', nil);
-  Assert.AreEqual('TEv1 = procedure(Sender: TObject; X: Integer) of object', Find(mUnit, 'TEv1').Signature);
-  Assert.IsTrue(Find(mUnit, 'TEv1').HasDirective('of object'));
-  Assert.IsTrue(Find(mUnit, 'TEv2').HasDirective('of object'));
-  Assert.AreEqual('TRoh = procedure(Sender: TObject; X: Integer)', Find(mUnit, 'TRoh').Signature);
-  Assert.IsFalse(Find(mUnit, 'TRoh').HasDirective('of object'));
-  Assert.IsTrue(Find(mUnit, 'TRef').HasDirective('reference to'));
-  Assert.IsFalse(Find(mUnit, 'TRef').HasDirective('of object'));
-  Assert.AreEqual(0, Integer(Length(Find(mUnit, 'TFeld').Directives)));
-end;
-
 procedure TIndexContentTests.MarksClassMembers;
 var
   U: TUnitIndex;
@@ -252,6 +232,26 @@ begin
   Assert.IsFalse(Find(U, 'TZaehler.FLetzter').HasDirective('class'));
   Assert.IsFalse(Find(U, 'TErster.Wert').HasDirective('class'));
   Assert.IsFalse(Find(U, 'TErster.FWert').HasDirective('class'));
+end;
+
+procedure TIndexContentTests.ProcedureTypesOverSeveralLines;
+var
+  mUnit: TUnitIndex;
+begin
+  mUnit := TIndexExtractor.ExtractText('unit Ereignisse;'#10'interface'#10'type'#10 +
+    '  TEv1 = procedure(Sender: TObject;'#10'    X: Integer) of object;'#10 +
+    '  TEv2 = procedure(Sender: TObject;'#10'    X: Integer)'#10'    of { Methode } object;'#10 +
+    '  TRoh = procedure(Sender: TObject;'#10'    X: Integer);'#10 +
+    '  TRef = reference to procedure(Sender: TObject;'#10'    X: Integer);'#10 +
+    '  TFeld = array[0..1] of Byte;'#10'implementation'#10'end.', 'C:\Projekt\Ereignisse.pas', nil);
+  Assert.AreEqual('TEv1 = procedure(Sender: TObject; X: Integer) of object', Find(mUnit, 'TEv1').Signature);
+  Assert.IsTrue(Find(mUnit, 'TEv1').HasDirective('of object'));
+  Assert.IsTrue(Find(mUnit, 'TEv2').HasDirective('of object'));
+  Assert.AreEqual('TRoh = procedure(Sender: TObject; X: Integer)', Find(mUnit, 'TRoh').Signature);
+  Assert.IsFalse(Find(mUnit, 'TRoh').HasDirective('of object'));
+  Assert.IsTrue(Find(mUnit, 'TRef').HasDirective('reference to'));
+  Assert.IsFalse(Find(mUnit, 'TRef').HasDirective('of object'));
+  Assert.AreEqual(0, Integer(Length(Find(mUnit, 'TFeld').Directives)));
 end;
 
 procedure TIndexContentTests.CollectsUsagesWithoutDeclarations;
@@ -369,29 +369,6 @@ end;
 
 { TIndexServiceCacheTests }
 
-procedure TIndexServiceCacheTests.WarmUpFirstUse;
-begin
-  Setup;
-  try
-    DamagedCacheIsRebuiltSilently;
-  finally
-    TearDown;
-  end;
-end;
-
-procedure TIndexServiceCacheTests.Setup;
-begin
-  FFiles := TMemoryIndexFileSystem.Create;
-  FFilesRef := FFiles;
-  FFiles.Put(cKundeFile, cUnitKunde, 1);
-end;
-
-procedure TIndexServiceCacheTests.TearDown;
-begin
-  FFiles := nil;
-  FFilesRef := nil;
-end;
-
 function TIndexServiceCacheTests.Start(const AIndex: ISymbolIndex; const AFiles: TArray<string>;
   AUsages: Boolean): TIndexService;
 var
@@ -422,6 +399,29 @@ end;
 procedure TIndexServiceCacheTests.Build(const AIndex: ISymbolIndex; const AFiles: TArray<string>; AUsages: Boolean);
 begin
   Start(AIndex, AFiles, AUsages).Free;
+end;
+
+procedure TIndexServiceCacheTests.WarmUpFirstUse;
+begin
+  Setup;
+  try
+    DamagedCacheIsRebuiltSilently;
+  finally
+    TearDown;
+  end;
+end;
+
+procedure TIndexServiceCacheTests.Setup;
+begin
+  FFiles := TMemoryIndexFileSystem.Create;
+  FFilesRef := FFiles;
+  FFiles.Put(cKundeFile, cUnitKunde, 1);
+end;
+
+procedure TIndexServiceCacheTests.TearDown;
+begin
+  FFiles := nil;
+  FFilesRef := nil;
 end;
 
 procedure TIndexServiceCacheTests.DamagedCacheIsRebuiltSilently;

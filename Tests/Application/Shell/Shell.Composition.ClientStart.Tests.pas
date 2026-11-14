@@ -91,6 +91,8 @@ begin
   end;
 end;
 
+{ TShellClientStartTests }
+
 procedure TShellClientStartTests.WarmUpFirstUse;
 begin
   Setup;

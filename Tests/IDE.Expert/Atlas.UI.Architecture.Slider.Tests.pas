@@ -54,6 +54,8 @@ type
   /// <summary>Zugang zu den geschützten Maus- und Tastenmethoden.</summary>
   TSliderAccess = class(TAtlasResolutionSlider);
 
+{ TAtlasResolutionSliderTests }
+
 procedure TAtlasResolutionSliderTests.WarmUpFirstUse;
 begin
   SetUp;

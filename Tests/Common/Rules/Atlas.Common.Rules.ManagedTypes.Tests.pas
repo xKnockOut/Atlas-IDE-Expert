@@ -56,6 +56,8 @@ begin
   end;
 end;
 
+{ TManagedTypesTests }
+
 procedure TManagedTypesTests.PrimitiveAndArrayTypes;
 begin
   Check(nil,

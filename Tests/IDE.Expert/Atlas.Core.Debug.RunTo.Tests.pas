@@ -74,6 +74,8 @@ begin
   Result := TAtlasBreakpointState.Create(AFileName, ALine, AEnabled);
 end;
 
+{ TAtlasRunToTests }
+
 procedure TAtlasRunToTests.CodeLinesInsideBody;
 begin
   Assert.IsTrue(TAtlasRunTo.CodeLine(cSource, 13), 'begin der Routine');

@@ -85,6 +85,24 @@ begin
   Result := nil;
 end;
 
+{ TShellBaselinesTests }
+
+function TShellBaselinesTests.NewServices: TShellBaselineServices;
+begin
+  Result := Default(TShellBaselineServices);
+  Result.MetricsSourceFor := NoMetricsSource;
+  Result.ReadText := NoText;
+  Result.RuleContextFor := NoRuleContext;
+  Result.DefinesFor := NoDefines;
+  Result.IncludeResolverFor := NoIncludeResolver;
+  Result.RefreshLater := CountRefresh;
+end;
+
+procedure TShellBaselinesTests.CountRefresh;
+begin
+  Inc(FRefreshes);
+end;
+
 procedure TShellBaselinesTests.WarmUpFirstUse;
 begin
   Setup;
@@ -109,22 +127,6 @@ begin
     TDirectory.Delete(FFolder, True);
   end;
   FFolder := '';
-end;
-
-procedure TShellBaselinesTests.CountRefresh;
-begin
-  Inc(FRefreshes);
-end;
-
-function TShellBaselinesTests.NewServices: TShellBaselineServices;
-begin
-  Result := Default(TShellBaselineServices);
-  Result.MetricsSourceFor := NoMetricsSource;
-  Result.ReadText := NoText;
-  Result.RuleContextFor := NoRuleContext;
-  Result.DefinesFor := NoDefines;
-  Result.IncludeResolverFor := NoIncludeResolver;
-  Result.RefreshLater := CountRefresh;
 end;
 
 procedure TShellBaselinesTests.FilesWriteAndRead;

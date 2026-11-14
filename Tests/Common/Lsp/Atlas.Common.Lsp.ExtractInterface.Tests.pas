@@ -218,6 +218,8 @@ begin
   end;
 end;
 
+{ TLspExtractInterfaceTests }
+
 procedure TLspExtractInterfaceTests.Setup;
 begin
   FIndex := TSymbolIndex.Create;

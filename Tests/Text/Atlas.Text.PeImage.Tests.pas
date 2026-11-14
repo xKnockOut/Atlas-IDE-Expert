@@ -109,6 +109,8 @@ begin
   PutSection(Result, mSections + 40, '.text', ACodeSize, $1000);
 end;
 
+{ TPeImageTests }
+
 procedure TPeImageTests.ReadsPe32;
 var
   mImage: TPeImage;

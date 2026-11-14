@@ -65,6 +65,8 @@ begin
   Result := StringReplace(APath, '\', PathDelim, [rfReplaceAll]);
 end;
 
+{ TShellRuntimeReportTests }
+
 procedure TShellRuntimeReportTests.Setup;
 var
   mRegistry: TShellWorkspaceRegistryServices;

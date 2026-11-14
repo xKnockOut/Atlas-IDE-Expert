@@ -124,6 +124,8 @@ begin
   Result := Length(TRuleAssert.Findings(ARule, ASource, cAllOn));
 end;
 
+{ TPerformanceRulesTests }
+
 procedure TPerformanceRulesTests.RulesOffByDefault;
 var
   mRule: IRule;
@@ -292,20 +294,6 @@ begin
   Assert.Contains(mFindings[0].Message, 'FList.Items.BeginUpdate');
 end;
 
-procedure TPerformanceRulesTests.BeginUpdateNestedMenuAndPlainListSilent;
-const
-  cSource = 'unit U;'#10'interface'#10'uses Vcl.Menus, System.Generics.Collections;'#10'type'#10 +
-    '  TNode = class'#10'  private'#10'    FItems: TObjectList<TNode>;'#10'  public'#10 +
-    '    property Items: TObjectList<TNode> read FItems;'#10'  end;'#10'  TF = class'#10'  private'#10'    type'#10 +
-    '      TParts = record'#10'        Menu: TPopupMenu;'#10'      end;'#10'  private'#10'    FParts: TParts;'#10 +
-    '    procedure Fill(const ANames: TArray<string>; ANode: TNode);'#10'  end;'#10'implementation'#10 +
-    'procedure TF.Fill(const ANames: TArray<string>; ANode: TNode);'#10'var'#10'  mName: string;'#10'begin'#10 +
-    '  for mName in ANames do'#10'  begin'#10'    FParts.Menu.Items.Add(NewLine);'#10 +
-    '    ANode.Items.Add(TNode.Create);'#10'  end;'#10'end;'#10'end.';
-begin
-  Assert.AreEqual(0, Count(TMissingBeginUpdateRule.Create, cSource));
-end;
-
 /// <summary>Das Menü steckt in einem Record-Feld (FParts.Menu in Atlas.UI.Notifications.Window).</summary>
 procedure TPerformanceRulesTests.BeginUpdateMenuInFieldSilent;
 const
@@ -321,6 +309,20 @@ begin
   mFindings := TRuleAssert.Findings(TMissingBeginUpdateRule.Create, cSource, cAllOn);
   Assert.AreEqual(1, Integer(Length(mFindings)));
   Assert.Contains(mFindings[0].Message, 'FParts.List.Items.BeginUpdate');
+end;
+
+procedure TPerformanceRulesTests.BeginUpdateNestedMenuAndPlainListSilent;
+const
+  cSource = 'unit U;'#10'interface'#10'uses Vcl.Menus, System.Generics.Collections;'#10'type'#10 +
+    '  TNode = class'#10'  private'#10'    FItems: TObjectList<TNode>;'#10'  public'#10 +
+    '    property Items: TObjectList<TNode> read FItems;'#10'  end;'#10'  TF = class'#10'  private'#10'    type'#10 +
+    '      TParts = record'#10'        Menu: TPopupMenu;'#10'      end;'#10'  private'#10'    FParts: TParts;'#10 +
+    '    procedure Fill(const ANames: TArray<string>; ANode: TNode);'#10'  end;'#10'implementation'#10 +
+    'procedure TF.Fill(const ANames: TArray<string>; ANode: TNode);'#10'var'#10'  mName: string;'#10'begin'#10 +
+    '  for mName in ANames do'#10'  begin'#10'    FParts.Menu.Items.Add(NewLine);'#10 +
+    '    ANode.Items.Add(TNode.Create);'#10'  end;'#10'end;'#10'end.';
+begin
+  Assert.AreEqual(0, Count(TMissingBeginUpdateRule.Create, cSource));
 end;
 
 procedure TPerformanceRulesTests.BeginUpdateFewIterationsSilent;
@@ -700,6 +702,27 @@ begin
     'Vorfahren mit ändern).', mFindings[0].Message);
 end;
 
+procedure TPerformanceRulesTests.ManagedParamCallsFromIndex;
+var
+  mIndex: ISymbolIndex;
+  mSource: string;
+begin
+  mIndex := TSymbolIndex.Create;
+  mIndex.AddUnit(TIndexExtractor.ExtractText('unit Hilfe;'#10'interface'#10 +
+    'procedure Lesen(const S: string);'#10'procedure Schreiben(var S: string);'#10'implementation'#10 +
+    'procedure Lesen(const S: string); begin end;'#10'procedure Schreiben(var S: string); begin end;'#10'end.',
+    'C:\Projekt\Hilfe.pas', nil));
+  mSource := 'unit U;'#10'interface'#10'uses'#10'  Hilfe;'#10'procedure P(Text: string);'#10'implementation'#10 +
+    'procedure P(Text: string);'#10'begin'#10'  Lesen(Text);'#10'end;'#10'end.';
+  // Ohne Index ist die Übergabeart unbekannt: keine Meldung.
+  Assert.AreEqual(0, Integer(Length(ManagedFindings(mSource))));
+  Assert.AreEqual(1, Integer(Length(TRuleAssert.IndexFindings(TManagedParamWithoutConstRule.Create, mSource, mIndex,
+    cManagedOn, ''))));
+  mSource := StringReplace(mSource, '  Lesen(Text);', '  Schreiben(Text);', []);
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.IndexFindings(TManagedParamWithoutConstRule.Create, mSource, mIndex,
+    cManagedOn, ''))));
+end;
+
 procedure TPerformanceRulesTests.ManagedParamUsedAsValueElsewhere;
 const
   cHooks = 'unit Hooks;'#10'interface'#10'function LastFailed(AProject: string): TArray<string>;'#10 +
@@ -761,27 +784,6 @@ begin
   // Nur aufgerufen: gemeldet.
   Assert.AreEqual(1, Run('unit Composition;'#10'interface'#10'implementation'#10'uses'#10'  Hooks;'#10 +
     'procedure Start;'#10'begin'#10'  Writeln(Length(LastFailed(''p'')));'#10'end;'#10'end.'));
-end;
-
-procedure TPerformanceRulesTests.ManagedParamCallsFromIndex;
-var
-  mIndex: ISymbolIndex;
-  mSource: string;
-begin
-  mIndex := TSymbolIndex.Create;
-  mIndex.AddUnit(TIndexExtractor.ExtractText('unit Hilfe;'#10'interface'#10 +
-    'procedure Lesen(const S: string);'#10'procedure Schreiben(var S: string);'#10'implementation'#10 +
-    'procedure Lesen(const S: string); begin end;'#10'procedure Schreiben(var S: string); begin end;'#10'end.',
-    'C:\Projekt\Hilfe.pas', nil));
-  mSource := 'unit U;'#10'interface'#10'uses'#10'  Hilfe;'#10'procedure P(Text: string);'#10'implementation'#10 +
-    'procedure P(Text: string);'#10'begin'#10'  Lesen(Text);'#10'end;'#10'end.';
-  // Ohne Index ist die Übergabeart unbekannt: keine Meldung.
-  Assert.AreEqual(0, Integer(Length(ManagedFindings(mSource))));
-  Assert.AreEqual(1, Integer(Length(TRuleAssert.IndexFindings(TManagedParamWithoutConstRule.Create, mSource, mIndex,
-    cManagedOn, ''))));
-  mSource := StringReplace(mSource, '  Lesen(Text);', '  Schreiben(Text);', []);
-  Assert.AreEqual(0, Integer(Length(TRuleAssert.IndexFindings(TManagedParamWithoutConstRule.Create, mSource, mIndex,
-    cManagedOn, ''))));
 end;
 
 procedure TPerformanceRulesTests.ManagedParamSwitchedOff;

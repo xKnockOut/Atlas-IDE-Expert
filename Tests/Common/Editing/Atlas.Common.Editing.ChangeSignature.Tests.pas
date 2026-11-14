@@ -87,6 +87,8 @@ begin
   end;
 end;
 
+{ TChangeSignatureTests }
+
 procedure TChangeSignatureTests.ParsesParameters;
 var
   mParameters: TArray<TSignatureParameter>;

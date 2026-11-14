@@ -173,6 +173,8 @@ begin
   end;
 end;
 
+{ TClassCommandsTests }
+
 procedure TClassCommandsTests.WarmUp;
 begin
   Expand('/impl');

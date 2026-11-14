@@ -116,6 +116,8 @@ begin
   Result := TLspEdits.Apply(AText, TAtlasSearchReplace.Edits(mLines, mHits, AQuery, AReplace));
 end;
 
+{ TAtlasSearchReplaceTests }
+
 procedure TAtlasSearchReplaceTests.WarmUpFirstUse;
 begin
   InvalidRegexReportsErrorAndFindsNothing;

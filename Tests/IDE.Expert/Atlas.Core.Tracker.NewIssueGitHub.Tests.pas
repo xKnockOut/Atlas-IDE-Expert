@@ -92,6 +92,8 @@ type
       out AError: TAtlasCiFetchError): Boolean;
   end;
 
+{ TFakeTransport }
+
 destructor TFakeTransport.Destroy;
 begin
   FUrls := nil;
@@ -151,6 +153,8 @@ type
     function Environment(const AName: string): string;
     function TempFolder: string;
   end;
+
+{ TReadOnlyFiles }
 
 function TReadOnlyFiles.FileExists(const AFileName: string): Boolean;
 begin

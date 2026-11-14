@@ -111,6 +111,8 @@ begin
   end;
 end;
 
+{ TLspEnumTablesTests }
+
 procedure TLspEnumTablesTests.Setup;
 begin
   FIndex := TSymbolIndex.Create;

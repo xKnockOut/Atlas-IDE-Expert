@@ -59,6 +59,8 @@ type
     function IsActive: Boolean;
   end;
 
+{ TThing }
+
 constructor TThing.Create(const AName: string);
 begin
   inherited Create;
@@ -69,6 +71,8 @@ function TThing.Name: string;
 begin
   Result := FName;
 end;
+
+{ TFakeModule }
 
 constructor TFakeModule.Create(const AId: string);
 begin
@@ -94,6 +98,8 @@ function TFakeModule.IsActive: Boolean;
 begin
   Result := False;
 end;
+
+{ TProvidedWatchTests }
 
 procedure TProvidedWatchTests.FollowsProvideAndUnregister;
 var

@@ -74,6 +74,8 @@ end;
 
 { money-as-float }
 
+{ TIdiomRulesTests }
+
 procedure TIdiomRulesTests.MoneyIssueExample;
 var
   mSource, mFixed: string;

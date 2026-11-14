@@ -55,24 +55,7 @@ uses
   System.SysUtils,
   Atlas.Core.Hover.DebugValue;
 
-procedure TAtlasHoverTreeTests.Setup;
-var
-  mTexts: TAtlasHoverTreeTexts;
-begin
-  FChanges := TAtlasValueChanges.Create;
-  FTree := TAtlasHoverTree.Create(FChanges);
-  mTexts := Default(TAtlasHoverTreeTexts);
-  mTexts.Evaluate := 'auswerten';
-  mTexts.Pending := '…';
-  mTexts.More := 'weitere %d …';
-  FTree.Texts := mTexts;
-end;
-
-procedure TAtlasHoverTreeTests.TearDown;
-begin
-  FTree.Free;
-  FChanges.Free;
-end;
+{ TAtlasHoverTreeTests }
 
 procedure TAtlasHoverTreeTests.Answer(const AExpected, AText: string);
 var
@@ -107,6 +90,25 @@ begin
     end;
     Result := Result + IntToStr(mRow.Depth) + ':' + mRow.Name + '=' + mRow.Text;
   end;
+end;
+
+procedure TAtlasHoverTreeTests.Setup;
+var
+  mTexts: TAtlasHoverTreeTexts;
+begin
+  FChanges := TAtlasValueChanges.Create;
+  FTree := TAtlasHoverTree.Create(FChanges);
+  mTexts := Default(TAtlasHoverTreeTexts);
+  mTexts.Evaluate := 'auswerten';
+  mTexts.Pending := '…';
+  mTexts.More := 'weitere %d …';
+  FTree.Texts := mTexts;
+end;
+
+procedure TAtlasHoverTreeTests.TearDown;
+begin
+  FTree.Free;
+  FChanges.Free;
 end;
 
 procedure TAtlasHoverTreeTests.RootExpandsWithFieldNames;

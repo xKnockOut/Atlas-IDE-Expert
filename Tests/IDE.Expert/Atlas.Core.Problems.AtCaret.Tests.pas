@@ -53,6 +53,8 @@ begin
   Result := TAtlasActiveEditorFake.Create(TAtlasActiveEditorPos.At(cFile, ALine, ACharacter));
 end;
 
+{ TAtlasProblemAtCaretTests }
+
 procedure TAtlasProblemAtCaretTests.ReturnsRuleOfAtlasProblemAtCaret;
 var
   mStore: TAtlasProblemStore;

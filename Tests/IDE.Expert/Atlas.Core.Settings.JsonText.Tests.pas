@@ -56,6 +56,8 @@ const
     '  "custom": 1' + cLB +
     '}' + cLB;
 
+{ TAtlasJsonTextTests }
+
 procedure TAtlasJsonTextTests.ReplacesValueAndKeepsComments;
 begin
   Assert.AreEqual(cSample.Replace('"de"', '"en"'), TAtlasJsonText.SetValue(cSample, 'language', '"en"'));

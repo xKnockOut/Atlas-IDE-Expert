@@ -49,6 +49,8 @@ begin
   Result := mFound;
 end;
 
+{ TRoutineSignaturesTests }
+
 procedure TRoutineSignaturesTests.HeadKeepsConstraints;
 var
   mRest: string;

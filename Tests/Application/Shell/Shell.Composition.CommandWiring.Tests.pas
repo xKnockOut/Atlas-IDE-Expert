@@ -60,6 +60,8 @@ begin
   TShellFeatureWiring.Ide(AParts);
 end;
 
+{ TShellCommandWiringTests }
+
 procedure TShellCommandWiringTests.Setup;
 begin
   FParts := NewParts;

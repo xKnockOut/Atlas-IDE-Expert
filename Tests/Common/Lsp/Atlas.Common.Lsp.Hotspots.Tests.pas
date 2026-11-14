@@ -85,6 +85,8 @@ begin
   Result := True;
 end;
 
+{ TFixture }
+
 constructor TFixture.Create;
 begin
   inherited Create;

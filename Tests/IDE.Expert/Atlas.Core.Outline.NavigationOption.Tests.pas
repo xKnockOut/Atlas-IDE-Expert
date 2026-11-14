@@ -31,6 +31,8 @@ uses
   System.Variants,
   Atlas.Core.Outline.NavigationOption;
 
+{ TAtlasNavigationOptionTests }
+
 procedure TAtlasNavigationOptionTests.FindsTheOptionAndPrefersShow;
 begin
   Assert.AreEqual('ShowNavigationToolbar', TAtlasNavigationOption.Find(['AutoIndent', 'NavigationToolbarHeight',

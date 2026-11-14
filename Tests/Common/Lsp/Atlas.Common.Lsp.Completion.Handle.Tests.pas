@@ -150,66 +150,6 @@ const
 
 { TLspCompletionHandleTests }
 
-procedure TLspCompletionHandleTests.WarmUpFirstUse;
-begin
-  Setup;
-  try
-    DataNameInStringIsExclusive;
-  finally
-    TearDown;
-  end;
-  Setup;
-  try
-    PartialSendsEnumsThenStages;
-  finally
-    TearDown;
-  end;
-end;
-
-procedure TLspCompletionHandleTests.Setup;
-begin
-  FIndex := TSymbolIndex.Create;
-  FStore := TDocumentStore.Create;
-  FFiles := TDictionary<string, string>.Create;
-  FForm := '';
-  FProgress := nil;
-  FId := 0;
-  FCompletion := TLspCompletion.Create(FStore, FIndex);
-  FCompletion.Hooks.ReadText :=
-    function(const AFileName: string; out AText: string): Boolean
-    begin
-      if SameText(ExtractFileExt(AFileName), '.dfm') then
-      begin
-        AText := FForm;
-        Exit(FForm <> '');
-      end;
-      Result := FFiles.TryGetValue(LowerCase(AFileName), AText);
-    end;
-  FCompletion.Hooks.Notify :=
-    procedure(const AMethod: string; AParams: TJSONObject)
-    begin
-      try
-        FProgress := FProgress + [AParams.ToJSON];
-      finally
-        AParams.Free;
-      end;
-    end;
-  FDispatcher := TJsonRpcDispatcher.Create;
-  FCompletion.Attach(FDispatcher);
-end;
-
-procedure TLspCompletionHandleTests.TearDown;
-begin
-  FDispatcher.Free;
-  FCompletion.Free;
-  FFiles.Free;
-  FStore := nil;
-  FIndex := nil;
-  // Von den Tests gefüllt; der Leckmonitor zählte die Felder sonst dem Test an.
-  FProgress := nil;
-  FForm := '';
-end;
-
 procedure TLspCompletionHandleTests.AddUnit(const AFileName, AText: string);
 begin
   FIndex.AddUnit(TIndexExtractor.ExtractText(AText, AFileName, nil));
@@ -272,6 +212,66 @@ begin
   finally
     mResponse.Free;
   end;
+end;
+
+procedure TLspCompletionHandleTests.WarmUpFirstUse;
+begin
+  Setup;
+  try
+    DataNameInStringIsExclusive;
+  finally
+    TearDown;
+  end;
+  Setup;
+  try
+    PartialSendsEnumsThenStages;
+  finally
+    TearDown;
+  end;
+end;
+
+procedure TLspCompletionHandleTests.Setup;
+begin
+  FIndex := TSymbolIndex.Create;
+  FStore := TDocumentStore.Create;
+  FFiles := TDictionary<string, string>.Create;
+  FForm := '';
+  FProgress := nil;
+  FId := 0;
+  FCompletion := TLspCompletion.Create(FStore, FIndex);
+  FCompletion.Hooks.ReadText :=
+    function(const AFileName: string; out AText: string): Boolean
+    begin
+      if SameText(ExtractFileExt(AFileName), '.dfm') then
+      begin
+        AText := FForm;
+        Exit(FForm <> '');
+      end;
+      Result := FFiles.TryGetValue(LowerCase(AFileName), AText);
+    end;
+  FCompletion.Hooks.Notify :=
+    procedure(const AMethod: string; AParams: TJSONObject)
+    begin
+      try
+        FProgress := FProgress + [AParams.ToJSON];
+      finally
+        AParams.Free;
+      end;
+    end;
+  FDispatcher := TJsonRpcDispatcher.Create;
+  FCompletion.Attach(FDispatcher);
+end;
+
+procedure TLspCompletionHandleTests.TearDown;
+begin
+  FDispatcher.Free;
+  FCompletion.Free;
+  FFiles.Free;
+  FStore := nil;
+  FIndex := nil;
+  // Von den Tests gefüllt; der Leckmonitor zählte die Felder sonst dem Test an.
+  FProgress := nil;
+  FForm := '';
 end;
 
 /// <summary>Labels der Einträge, mit Leerzeichen getrennt.</summary>
@@ -342,26 +342,38 @@ begin
   end;
 end;
 
-procedure TLspCompletionHandleTests.SlashTypeArgumentAddsUses;
-var
-  mAnswer: TJSONObject;
-  mItem: TJSONObject;
-begin
-  AddUnit(cTypenFile, cUnitTypen);
-  mAnswer := Complete(
+procedure TLspCompletionHandleTests.SlashSortOffersCollectionsThenMembers;
+const
+  cSource =
     'unit Haupt;'#13#10 +
     'interface'#13#10 +
+    'type'#13#10 +
+    '  TKunde = class'#13#10 +
+    '  public'#13#10 +
+    '    Name: string;'#13#10 +
+    '    Umsatz: Double;'#13#10 +
+    '  end;'#13#10 +
     'implementation'#13#10 +
-    'procedure Laden;'#13#10 +
+    'procedure Laden(Kunden: TList<TKunde>);'#13#10 +
+    'var'#13#10 +
+    '  Wert: Integer;'#13#10 +
     'begin'#13#10 +
-    '  /var C: TCon|'#13#10 +
+    '  %s|'#13#10 +
     'end;'#13#10 +
-    'end.');
+    'end.';
+var
+  mAnswer: TJSONObject;
+begin
+  // #319: nach /sort die Sammlungen, nach der Sammlung die Mitglieder des Elementtyps.
+  mAnswer := Complete(Format(cSource, ['/sort ']));
   try
-    Assert.AreEqual('TControl', Labels(mAnswer));
-    mItem := ItemAt(mAnswer, 0);
-    Assert.IsTrue(mItem.GetValue('additionalTextEdits') is TJSONArray, mItem.ToJSON);
-    Assert.IsTrue(Pos('Typen', mItem.GetValue('additionalTextEdits').ToJSON) > 0, mItem.ToJSON);
+    Assert.AreEqual('Kunden', Labels(mAnswer));
+  finally
+    mAnswer.Free;
+  end;
+  mAnswer := Complete(Format(cSource, ['/filter Kunden Ums']));
+  try
+    Assert.AreEqual('Name Umsatz', Labels(mAnswer));
   finally
     mAnswer.Free;
   end;
@@ -412,38 +424,26 @@ begin
   end;
 end;
 
-procedure TLspCompletionHandleTests.SlashSortOffersCollectionsThenMembers;
-const
-  cSource =
-    'unit Haupt;'#13#10 +
-    'interface'#13#10 +
-    'type'#13#10 +
-    '  TKunde = class'#13#10 +
-    '  public'#13#10 +
-    '    Name: string;'#13#10 +
-    '    Umsatz: Double;'#13#10 +
-    '  end;'#13#10 +
-    'implementation'#13#10 +
-    'procedure Laden(Kunden: TList<TKunde>);'#13#10 +
-    'var'#13#10 +
-    '  Wert: Integer;'#13#10 +
-    'begin'#13#10 +
-    '  %s|'#13#10 +
-    'end;'#13#10 +
-    'end.';
+procedure TLspCompletionHandleTests.SlashTypeArgumentAddsUses;
 var
   mAnswer: TJSONObject;
+  mItem: TJSONObject;
 begin
-  // #319: nach /sort die Sammlungen, nach der Sammlung die Mitglieder des Elementtyps.
-  mAnswer := Complete(Format(cSource, ['/sort ']));
+  AddUnit(cTypenFile, cUnitTypen);
+  mAnswer := Complete(
+    'unit Haupt;'#13#10 +
+    'interface'#13#10 +
+    'implementation'#13#10 +
+    'procedure Laden;'#13#10 +
+    'begin'#13#10 +
+    '  /var C: TCon|'#13#10 +
+    'end;'#13#10 +
+    'end.');
   try
-    Assert.AreEqual('Kunden', Labels(mAnswer));
-  finally
-    mAnswer.Free;
-  end;
-  mAnswer := Complete(Format(cSource, ['/filter Kunden Ums']));
-  try
-    Assert.AreEqual('Name Umsatz', Labels(mAnswer));
+    Assert.AreEqual('TControl', Labels(mAnswer));
+    mItem := ItemAt(mAnswer, 0);
+    Assert.IsTrue(mItem.GetValue('additionalTextEdits') is TJSONArray, mItem.ToJSON);
+    Assert.IsTrue(Pos('Typen', mItem.GetValue('additionalTextEdits').ToJSON) > 0, mItem.ToJSON);
   finally
     mAnswer.Free;
   end;

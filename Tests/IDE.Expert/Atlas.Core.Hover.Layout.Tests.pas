@@ -110,16 +110,69 @@ uses
   Atlas.Core.Hover.DebugValue,
   Atlas.Core.Hover.Layout.TestSupport;
 
-{ THoverLayoutTests }
-
-function THoverLayoutTests.View(const ADeclaration: string): TAtlasHoverView;
-var
-  mData: TAtlasHoverData;
+function Unavailable(const AReason: string): TAtlasDebugValue;
 begin
-  mData := Default(TAtlasHoverData);
-  mData.Declaration := ADeclaration;
-  Result := TAtlasHoverView.Create(mData);
+  Result := TAtlasDebugValue.Failed('Summe', 'Inaccessible value');
+  Result.Note.Caption := 'kein Zugriff';
+  Result.Note.Reason := AReason;
 end;
+
+function Finding(ASeverity: TAtlasProblemSeverity; const ASource, ACode, AMessage, AFix: string): TAtlasProblem;
+begin
+  Result := Default(TAtlasProblem);
+  Result.Severity := ASeverity;
+  Result.Source := ASource;
+  Result.Code := ACode;
+  Result.Message := AMessage;
+  Result.FixTitle := AFix;
+end;
+
+function ActionCodes(const ALayout: TAtlasHoverLayout): string;
+var
+  mHit: TAtlasHoverHit;
+  mProblem: Integer;
+  mAction: TAtlasHoverProblemAction;
+begin
+  Result := '';
+  for mHit in ALayout.Hits do
+  begin
+    if mHit.Kind = TAtlasHoverHitKind.ProblemAction then
+    begin
+      TAtlasHoverProblemActionCode.Decode(mHit.Index, mProblem, mAction);
+      Result := Result + IntToStr(mProblem) + ':' + IntToStr(Ord(mAction)) + '|';
+    end;
+  end;
+end;
+
+function TextsOf(const ALayout: TAtlasHoverLayout; AKind: TAtlasHoverItemKind): string;
+var
+  mItem: TAtlasHoverItem;
+begin
+  Result := '';
+  for mItem in ALayout.Items do
+  begin
+    if mItem.Kind = AKind then
+    begin
+      Result := Result + mItem.Text + '|';
+    end;
+  end;
+end;
+
+function FirstProblemHit(const ALayout: TAtlasHoverLayout): Integer;
+var
+  mIndex: Integer;
+begin
+  Result := -1;
+  for mIndex := 0 to High(ALayout.Hits) do
+  begin
+    if ALayout.Hits[mIndex].Kind = TAtlasHoverHitKind.ProblemAction then
+    begin
+      Exit(mIndex);
+    end;
+  end;
+end;
+
+{ THoverLayoutTests }
 
 function THoverLayoutTests.Texts: TAtlasHoverTexts;
 begin
@@ -131,14 +184,23 @@ begin
   Result := HoverTestInput(AView, AWidth);
 end;
 
+function THoverLayoutTests.Build(const AView: TAtlasHoverView; AWidth: Integer): TAtlasHoverLayout;
+begin
+  Result := Build(Input(AView, AWidth));
+end;
+
 function THoverLayoutTests.Build(const AInput: TAtlasHoverInput): TAtlasHoverLayout;
 begin
   Result := BuildLayout(AInput);
 end;
 
-function THoverLayoutTests.Build(const AView: TAtlasHoverView; AWidth: Integer): TAtlasHoverLayout;
+function THoverLayoutTests.View(const ADeclaration: string): TAtlasHoverView;
+var
+  mData: TAtlasHoverData;
 begin
-  Result := Build(Input(AView, AWidth));
+  mData := Default(TAtlasHoverData);
+  mData.Declaration := ADeclaration;
+  Result := TAtlasHoverView.Create(mData);
 end;
 
 procedure THoverLayoutTests.CheckRect(const AExpected, AActual: TRect; const AWhat: string);
@@ -189,6 +251,27 @@ begin
   Assert.AreEqual(0, mLayout.Items[0].From);
   Assert.AreEqual(10, mLayout.Items[0].Till);
   Assert.AreEqual(32, mLayout.Height);
+end;
+
+procedure THoverLayoutTests.ReassignedLineInDescription;
+var
+  mHoverView: TAtlasHoverView;
+  mLayout: TAtlasHoverLayout;
+  mIndex: Integer;
+begin
+  mHoverView := View('Summe: Integer');
+  mHoverView.Data.ReassignedTarget := 'locals';
+  mHoverView.Data.ReassignedWrites := 2;
+  mHoverView.Data.ReassignedLines := TArray<Integer>.Create(3, 9);
+  mLayout := Build(mHoverView, 300);
+  mIndex := FirstKind(mLayout, TAtlasHoverItemKind.Block);
+  Assert.IsTrue(mIndex >= 0, 'Zeile unter der Linie');
+  Assert.AreEqual('2 mal 4, 10', mLayout.Items[mIndex].Text);
+  Assert.AreEqual(TAtlasColors.Light.Muted, mLayout.Items[mIndex].Color);
+  // Ausgeblendet (Art nicht gewaehlt): keine Beschreibung.
+  mHoverView.Data.ClearReassigned;
+  mLayout := Build(mHoverView, 300);
+  Assert.AreEqual(-1, FirstKind(mLayout, TAtlasHoverItemKind.Block));
 end;
 
 procedure THoverLayoutTests.LongDeclarationWrapsWithIndent;
@@ -265,27 +348,6 @@ begin
   Assert.AreEqual(50, mLayout.Height);
 end;
 
-procedure THoverLayoutTests.ReassignedLineInDescription;
-var
-  mHoverView: TAtlasHoverView;
-  mLayout: TAtlasHoverLayout;
-  mIndex: Integer;
-begin
-  mHoverView := View('Summe: Integer');
-  mHoverView.Data.ReassignedTarget := 'locals';
-  mHoverView.Data.ReassignedWrites := 2;
-  mHoverView.Data.ReassignedLines := TArray<Integer>.Create(3, 9);
-  mLayout := Build(mHoverView, 300);
-  mIndex := FirstKind(mLayout, TAtlasHoverItemKind.Block);
-  Assert.IsTrue(mIndex >= 0, 'Zeile unter der Linie');
-  Assert.AreEqual('2 mal 4, 10', mLayout.Items[mIndex].Text);
-  Assert.AreEqual(TAtlasColors.Light.Muted, mLayout.Items[mIndex].Color);
-  // Ausgeblendet (Art nicht gewaehlt): keine Beschreibung.
-  mHoverView.Data.ClearReassigned;
-  mLayout := Build(mHoverView, 300);
-  Assert.AreEqual(-1, FirstKind(mLayout, TAtlasHoverItemKind.Block));
-end;
-
 procedure THoverLayoutTests.DebugValuePendingShowsPlaceholder;
 var
   mHoverView: TAtlasHoverView;
@@ -337,13 +399,6 @@ begin
   Assert.AreEqual(Integer(0), CountKind(mLayout, TAtlasHoverItemKind.RoundFill));
 end;
 
-function Unavailable(const AReason: string): TAtlasDebugValue;
-begin
-  Result := TAtlasDebugValue.Failed('Summe', 'Inaccessible value');
-  Result.Note.Caption := 'kein Zugriff';
-  Result.Note.Reason := AReason;
-end;
-
 procedure THoverLayoutTests.UnavailableValueShowsCauseAndFixes;
 var
   mHoverView: TAtlasHoverView;
@@ -376,6 +431,31 @@ begin
     end;
   end;
   Assert.AreEqual(2, mFixes);
+end;
+
+procedure THoverLayoutTests.UnavailableValuePendingAndChecked;
+var
+  mHoverView: TAtlasHoverView;
+  mLayout: TAtlasHoverLayout;
+  mHit: TAtlasHoverHit;
+begin
+  mHoverView := View('');
+  mHoverView.DebugValue := Unavailable('');
+  mHoverView.DebugValue.Note.Pending := True;
+  mLayout := Build(mHoverView, 300);
+  Assert.AreEqual('kein Zugriff', mLayout.Items[1].Text);
+  Assert.AreEqual('sucht', mLayout.Items[2].Text, 'solange der Server antwortet');
+  mHoverView.DebugValue := Unavailable('unbekannt');
+  mHoverView.DebugValue.Note.Checked := ['Start', 'Schalter'];
+  mLayout := Build(mHoverView, 300);
+  Assert.AreEqual('unbekannt', mLayout.Items[2].Text);
+  Assert.AreEqual('geprüft', mLayout.Items[3].Text);
+  Assert.AreEqual('• Start', mLayout.Items[4].Text);
+  Assert.AreEqual('• Schalter', mLayout.Items[5].Text);
+  for mHit in mLayout.Hits do
+  begin
+    Assert.AreNotEqual<TAtlasHoverHitKind>(TAtlasHoverHitKind.DebugFix, mHit.Kind, 'ohne Korrekturen keine Klickfläche');
+  end;
 end;
 
 procedure THoverLayoutTests.DebugValueActionsAreLinks;
@@ -413,31 +493,6 @@ begin
   for mHit in mLayout.Hits do
   begin
     Assert.AreNotEqual<TAtlasHoverHitKind>(TAtlasHoverHitKind.DebugAction, mHit.Kind);
-  end;
-end;
-
-procedure THoverLayoutTests.UnavailableValuePendingAndChecked;
-var
-  mHoverView: TAtlasHoverView;
-  mLayout: TAtlasHoverLayout;
-  mHit: TAtlasHoverHit;
-begin
-  mHoverView := View('');
-  mHoverView.DebugValue := Unavailable('');
-  mHoverView.DebugValue.Note.Pending := True;
-  mLayout := Build(mHoverView, 300);
-  Assert.AreEqual('kein Zugriff', mLayout.Items[1].Text);
-  Assert.AreEqual('sucht', mLayout.Items[2].Text, 'solange der Server antwortet');
-  mHoverView.DebugValue := Unavailable('unbekannt');
-  mHoverView.DebugValue.Note.Checked := ['Start', 'Schalter'];
-  mLayout := Build(mHoverView, 300);
-  Assert.AreEqual('unbekannt', mLayout.Items[2].Text);
-  Assert.AreEqual('geprüft', mLayout.Items[3].Text);
-  Assert.AreEqual('• Start', mLayout.Items[4].Text);
-  Assert.AreEqual('• Schalter', mLayout.Items[5].Text);
-  for mHit in mLayout.Hits do
-  begin
-    Assert.AreNotEqual<TAtlasHoverHitKind>(TAtlasHoverHitKind.DebugFix, mHit.Kind, 'ohne Korrekturen keine Klickfläche');
   end;
 end;
 
@@ -652,125 +707,6 @@ begin
   Assert.AreEqual('1:0|1:1|2:2|', Codes(Build(mHoverInput)));
 end;
 
-procedure THoverLayoutTests.CycleUnitsAreLinks;
-
-  function Related(const AMessage: string; ALine: Integer): TAtlasProblemRelated;
-  begin
-    Result.Uri := 'file:///c%3A/p/' + AMessage + '.pas';
-    Result.Line := ALine;
-    Result.Character := 2;
-    Result.Message := AMessage;
-  end;
-
-  function Codes(const ALayout: TAtlasHoverLayout): string;
-  var
-    mHit: TAtlasHoverHit;
-    mProblem, mItem: Integer;
-    mAction: TAtlasHoverProblemAction;
-  begin
-    Result := '';
-    for mHit in ALayout.Hits do
-    begin
-      if mHit.Kind = TAtlasHoverHitKind.ProblemAction then
-      begin
-        TAtlasHoverProblemActionCode.Decode(mHit.Index, mProblem, mAction, mItem);
-        if mAction in [TAtlasHoverProblemAction.Related, TAtlasHoverProblemAction.ShowGraph] then
-        begin
-          Result := Result + IntToStr(mProblem) + ':' + IntToStr(Ord(mAction)) + ':' + IntToStr(mItem) + '|';
-        end;
-      end;
-    end;
-  end;
-
-var
-  mHoverView: TAtlasHoverView;
-  mCycle, mPlain: TAtlasProblem;
-  mHoverInput: TAtlasHoverInput;
-  mLayout: TAtlasHoverLayout;
-  mItem: TAtlasHoverItem;
-  mTexts, mProblem, mIndex: Integer;
-  mAction: TAtlasHoverProblemAction;
-begin
-  TAtlasHoverProblemActionCode.Decode(TAtlasHoverProblemActionCode.Encode(2, TAtlasHoverProblemAction.Related, 3),
-    mProblem, mAction, mIndex);
-  Assert.AreEqual(2, mProblem);
-  Assert.AreEqual(3, mIndex);
-  Assert.AreEqual<TAtlasHoverProblemAction>(TAtlasHoverProblemAction.Related, mAction);
-  mPlain := Default(TAtlasProblem);
-  mPlain.Message := 'x';
-  mCycle := Default(TAtlasProblem);
-  mCycle.Severity := TAtlasProblemSeverity.Error;
-  mCycle.Source := 'Atlas';
-  mCycle.Code := TAtlasProblem.cUsesCycleCode;
-  mCycle.Message := 'Zirkuläre Unit-Referenz';
-  mCycle.Related := [Related('uC', 3), Related('uA', 3), Related('uB', 3), Related('uC', 3)];
-  mHoverView := View('');
-  mHoverView.Problems := [mPlain, mCycle];
-  mHoverInput := Input(mHoverView, 600);
-  mHoverInput.Texts.ShowGraph := 'Graph zeigen';
-  mLayout := Build(mHoverInput);
-  // Jede Unit des Pfads ist ein Link mit ihrer Stelle, dahinter „Graph zeigen“.
-  Assert.AreEqual('1:6:0|1:6:1|1:6:2|1:6:3|1:7:0|', Codes(mLayout));
-  mTexts := 0;
-  for mItem in mLayout.Items do
-  begin
-    if (mItem.Kind = TAtlasHoverItemKind.Text) and (mItem.Text = ' → ') then
-    begin
-      Inc(mTexts);
-    end;
-  end;
-  Assert.AreEqual(3, mTexts, 'Pfeile zwischen den Units');
-  // Ohne Text kein „Graph zeigen“; andere Regeln ohne Stellen haben keine solche Zeile.
-  mHoverInput.Texts.ShowGraph := '';
-  Assert.AreEqual('1:6:0|1:6:1|1:6:2|1:6:3|', Codes(Build(mHoverInput)));
-  mCycle.Code := 'empty-except';
-  mCycle.Related := nil;
-  mHoverView.Problems := [mPlain, mCycle];
-  mHoverInput.View := mHoverView;
-  Assert.AreEqual('', Codes(Build(mHoverInput)));
-end;
-
-function Finding(ASeverity: TAtlasProblemSeverity; const ASource, ACode, AMessage, AFix: string): TAtlasProblem;
-begin
-  Result := Default(TAtlasProblem);
-  Result.Severity := ASeverity;
-  Result.Source := ASource;
-  Result.Code := ACode;
-  Result.Message := AMessage;
-  Result.FixTitle := AFix;
-end;
-
-function ActionCodes(const ALayout: TAtlasHoverLayout): string;
-var
-  mHit: TAtlasHoverHit;
-  mProblem: Integer;
-  mAction: TAtlasHoverProblemAction;
-begin
-  Result := '';
-  for mHit in ALayout.Hits do
-  begin
-    if mHit.Kind = TAtlasHoverHitKind.ProblemAction then
-    begin
-      TAtlasHoverProblemActionCode.Decode(mHit.Index, mProblem, mAction);
-      Result := Result + IntToStr(mProblem) + ':' + IntToStr(Ord(mAction)) + '|';
-    end;
-  end;
-end;
-
-function TextsOf(const ALayout: TAtlasHoverLayout; AKind: TAtlasHoverItemKind): string;
-var
-  mItem: TAtlasHoverItem;
-begin
-  Result := '';
-  for mItem in ALayout.Items do
-  begin
-    if mItem.Kind = AKind then
-    begin
-      Result := Result + mItem.Text + '|';
-    end;
-  end;
-end;
-
 procedure THoverLayoutTests.FindingsShowPillAndRuleErrorsFirst;
 var
   mHoverView: TAtlasHoverView;
@@ -975,20 +911,6 @@ begin
   Assert.AreEqual(mFirst, mLayout.NextProblemHit(mLast, False));
 end;
 
-function FirstProblemHit(const ALayout: TAtlasHoverLayout): Integer;
-var
-  mIndex: Integer;
-begin
-  Result := -1;
-  for mIndex := 0 to High(ALayout.Hits) do
-  begin
-    if ALayout.Hits[mIndex].Kind = TAtlasHoverHitKind.ProblemAction then
-    begin
-      Exit(mIndex);
-    end;
-  end;
-end;
-
 procedure THoverLayoutTests.RuleExampleLinkTogglesExample;
 var
   mHoverView: TAtlasHoverView;
@@ -1039,6 +961,84 @@ begin
   // Ohne Aktionszeile kein Beispiel.
   mHoverInput.ProblemActions := False;
   Assert.AreEqual(0, Pos('Verschluckt', TextsOf(Build(mHoverInput), TAtlasHoverItemKind.Block)));
+end;
+
+procedure THoverLayoutTests.CycleUnitsAreLinks;
+
+  function Related(const AMessage: string; ALine: Integer): TAtlasProblemRelated;
+  begin
+    Result.Uri := 'file:///c%3A/p/' + AMessage + '.pas';
+    Result.Line := ALine;
+    Result.Character := 2;
+    Result.Message := AMessage;
+  end;
+
+  function Codes(const ALayout: TAtlasHoverLayout): string;
+  var
+    mHit: TAtlasHoverHit;
+    mProblem, mItem: Integer;
+    mAction: TAtlasHoverProblemAction;
+  begin
+    Result := '';
+    for mHit in ALayout.Hits do
+    begin
+      if mHit.Kind = TAtlasHoverHitKind.ProblemAction then
+      begin
+        TAtlasHoverProblemActionCode.Decode(mHit.Index, mProblem, mAction, mItem);
+        if mAction in [TAtlasHoverProblemAction.Related, TAtlasHoverProblemAction.ShowGraph] then
+        begin
+          Result := Result + IntToStr(mProblem) + ':' + IntToStr(Ord(mAction)) + ':' + IntToStr(mItem) + '|';
+        end;
+      end;
+    end;
+  end;
+
+var
+  mHoverView: TAtlasHoverView;
+  mCycle, mPlain: TAtlasProblem;
+  mHoverInput: TAtlasHoverInput;
+  mLayout: TAtlasHoverLayout;
+  mItem: TAtlasHoverItem;
+  mTexts, mProblem, mIndex: Integer;
+  mAction: TAtlasHoverProblemAction;
+begin
+  TAtlasHoverProblemActionCode.Decode(TAtlasHoverProblemActionCode.Encode(2, TAtlasHoverProblemAction.Related, 3),
+    mProblem, mAction, mIndex);
+  Assert.AreEqual(2, mProblem);
+  Assert.AreEqual(3, mIndex);
+  Assert.AreEqual<TAtlasHoverProblemAction>(TAtlasHoverProblemAction.Related, mAction);
+  mPlain := Default(TAtlasProblem);
+  mPlain.Message := 'x';
+  mCycle := Default(TAtlasProblem);
+  mCycle.Severity := TAtlasProblemSeverity.Error;
+  mCycle.Source := 'Atlas';
+  mCycle.Code := TAtlasProblem.cUsesCycleCode;
+  mCycle.Message := 'Zirkuläre Unit-Referenz';
+  mCycle.Related := [Related('uC', 3), Related('uA', 3), Related('uB', 3), Related('uC', 3)];
+  mHoverView := View('');
+  mHoverView.Problems := [mPlain, mCycle];
+  mHoverInput := Input(mHoverView, 600);
+  mHoverInput.Texts.ShowGraph := 'Graph zeigen';
+  mLayout := Build(mHoverInput);
+  // Jede Unit des Pfads ist ein Link mit ihrer Stelle, dahinter „Graph zeigen“.
+  Assert.AreEqual('1:6:0|1:6:1|1:6:2|1:6:3|1:7:0|', Codes(mLayout));
+  mTexts := 0;
+  for mItem in mLayout.Items do
+  begin
+    if (mItem.Kind = TAtlasHoverItemKind.Text) and (mItem.Text = ' → ') then
+    begin
+      Inc(mTexts);
+    end;
+  end;
+  Assert.AreEqual(3, mTexts, 'Pfeile zwischen den Units');
+  // Ohne Text kein „Graph zeigen“; andere Regeln ohne Stellen haben keine solche Zeile.
+  mHoverInput.Texts.ShowGraph := '';
+  Assert.AreEqual('1:6:0|1:6:1|1:6:2|1:6:3|', Codes(Build(mHoverInput)));
+  mCycle.Code := 'empty-except';
+  mCycle.Related := nil;
+  mHoverView.Problems := [mPlain, mCycle];
+  mHoverInput.View := mHoverView;
+  Assert.AreEqual('', Codes(Build(mHoverInput)));
 end;
 
 initialization

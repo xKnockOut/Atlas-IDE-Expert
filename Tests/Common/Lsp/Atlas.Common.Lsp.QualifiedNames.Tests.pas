@@ -140,20 +140,6 @@ end;
 
 { TQualifiedNamesTests }
 
-procedure TQualifiedNamesTests.Setup;
-begin
-  FIndex := TSymbolIndex.Create;
-  FIndex.AddUnit(TIndexExtractor.ExtractText(cUnitControls, cControlsFile, nil));
-  FIndex.AddUnit(TIndexExtractor.ExtractText(cUnitMain, cMainFile, nil));
-  FResolver := TNameResolver.Create(FIndex);
-end;
-
-procedure TQualifiedNamesTests.TearDown;
-begin
-  FResolver.Free;
-  FIndex := nil;
-end;
-
 function TQualifiedNamesTests.NameAt(const AMarker: string; AOccurrence: Integer): string;
 begin
   Result := NameAt(AMarker, AOccurrence, False);
@@ -171,6 +157,20 @@ begin
   finally
     mTree.Free;
   end;
+end;
+
+procedure TQualifiedNamesTests.Setup;
+begin
+  FIndex := TSymbolIndex.Create;
+  FIndex.AddUnit(TIndexExtractor.ExtractText(cUnitControls, cControlsFile, nil));
+  FIndex.AddUnit(TIndexExtractor.ExtractText(cUnitMain, cMainFile, nil));
+  FResolver := TNameResolver.Create(FIndex);
+end;
+
+procedure TQualifiedNamesTests.TearDown;
+begin
+  FResolver.Free;
+  FIndex := nil;
 end;
 
 procedure TQualifiedNamesTests.DottedUnitNameStaysComplete;

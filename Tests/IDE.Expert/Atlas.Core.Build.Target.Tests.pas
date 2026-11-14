@@ -40,6 +40,8 @@ uses
 const
   cProject = 'C:\P\App.dproj';
 
+{ TAtlasBuildTargetTests }
+
 procedure TAtlasBuildTargetTests.ParsesDefinesOfTheIde;
 var
   mDefines: TArray<string>;

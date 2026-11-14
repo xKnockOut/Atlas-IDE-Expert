@@ -48,6 +48,8 @@ begin
   Result.State := TServerStatus.cStateReady;
 end;
 
+{ TMcpStatusToolsTests }
+
 procedure TMcpStatusToolsTests.Setup;
 var
   mStatus: TServerStatus;

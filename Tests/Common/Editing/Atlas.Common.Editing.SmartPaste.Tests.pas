@@ -133,6 +133,8 @@ begin
   Result := TChangeSignature.ApplyEdits(AText, mUses_.Edits);
 end;
 
+{ TSmartPasteTests }
+
 procedure TSmartPasteTests.FindsMissingNamesInRange;
 var
   mTree: TSyntaxTree;

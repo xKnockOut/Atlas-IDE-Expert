@@ -50,6 +50,8 @@ begin
   Result.Message := AMessage;
 end;
 
+{ TAtlasRuleExplanationTests }
+
 procedure TAtlasRuleExplanationTests.FindsRuleIgnoringCase;
 var
   mCatalog: TJSONValue;

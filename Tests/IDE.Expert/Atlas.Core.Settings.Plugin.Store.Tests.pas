@@ -68,6 +68,8 @@ type
     property Counts: TDictionary<string, Integer> read FCounts;
   end;
 
+{ TCountingStore }
+
 constructor TCountingStore.Create;
 begin
   inherited Create;

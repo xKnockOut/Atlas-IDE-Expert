@@ -90,9 +90,20 @@ begin
   end;
 end;
 
+{ TTestContribution }
+
 function TTestContribution.HostContract: TGUID;
 begin
   Result := ITestHost;
+end;
+
+{ TTestSection }
+
+procedure TTestSection.BuildRows;
+begin
+  Inc(FBuilds);
+  FModule := ModuleSwitch('bookmarks.enabled');
+  FNotes := Switch('notes.enabled', cNotesCaption);
 end;
 
 function TTestSection.OwnerId: string;
@@ -105,19 +116,14 @@ begin
   Result := 'Editor';
 end;
 
-procedure TTestSection.BuildRows;
-begin
-  Inc(FBuilds);
-  FModule := ModuleSwitch('bookmarks.enabled');
-  FNotes := Switch('notes.enabled', cNotesCaption);
-end;
-
 procedure TTestSection.Close;
 begin
   FModule := nil;
   FNotes := nil;
   inherited Close;
 end;
+
+{ TAtlasSettingsSectionTests }
 
 procedure TAtlasSettingsSectionTests.WarmUp;
 begin

@@ -68,6 +68,8 @@ begin
   Result.SetScaling(96, 1, 'Consolas', 10);
 end;
 
+{ TAtlasPeekUiTests }
+
 procedure TAtlasPeekUiTests.WarmUpFirstUse;
 begin
   HeightGrowsWithLines;

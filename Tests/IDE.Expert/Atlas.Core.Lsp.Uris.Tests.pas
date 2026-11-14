@@ -22,6 +22,8 @@ implementation
 uses
   Atlas.Core.Lsp.Uris;
 
+{ TLspUrisTests }
+
 procedure TLspUrisTests.PathToUri;
 begin
   Assert.AreEqual('file:///c%3A/Mein%20Projekt/%C3%9Cbung.pas', TLspUris.FromPath('C:\Mein Projekt\Übung.pas'));

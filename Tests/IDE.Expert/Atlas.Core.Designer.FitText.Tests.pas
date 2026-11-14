@@ -36,6 +36,8 @@ uses
   System.Types,
   Atlas.Core.Designer.FitText;
 
+{ TAtlasFitTextTests }
+
 procedure TAtlasFitTextTests.MaximumAndMinimum;
 var
   mItems: TArray<TAtlasFitItem>;

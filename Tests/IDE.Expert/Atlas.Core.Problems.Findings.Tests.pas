@@ -168,6 +168,8 @@ begin
   Result := Result.Trim;
 end;
 
+{ TAtlasFindingsTests }
+
 procedure TAtlasFindingsTests.SeverityMapsToKind;
 begin
   Assert.AreEqual<TAtlasFindingKind>(TAtlasFindingKind.Error, TAtlasFindings.KindOf(TAtlasProblemSeverity.Error));
@@ -308,26 +310,6 @@ begin
   end;
 end;
 
-procedure TAtlasFindingsTests.CompilerColumnText;
-var
-  mItem: TAtlasFinding;
-begin
-  mItem := Default(TAtlasFinding);
-  mItem.Problem := Problem(1, 'argument-count-mismatch', 'X erwartet 1 Argumente (wie E2035).',
-    TAtlasProblemSeverity.Error);
-  Assert.AreEqual('', mItem.CompilerText);
-  mItem.Problem.CompilerCodes := ['E2034', 'E2035'];
-  Assert.AreEqual('E2034, E2035', mItem.CompilerText);
-  mItem.Problem.Confirmed := True;
-  mItem.Problem.ConfirmedCode := 'E2035';
-  Assert.AreEqual('E2035 ' + #$00B7 + ' Atlas + dcc', mItem.CompilerText);
-  Assert.AreEqual('X erwartet 1 Argumente (wie E2035).', mItem.MessageText(True));
-  Assert.AreEqual('X erwartet 1 Argumente.', mItem.MessageText(False));
-  mItem.Problem := Problem(1, 'W1036', 'Variable nicht initialisiert', TAtlasProblemSeverity.Warning);
-  mItem.Problem.Source := TAtlasProblem.cCompilerSource;
-  Assert.AreEqual('W1036', mItem.CompilerText);
-end;
-
 procedure TAtlasFindingsTests.FiltersByKindCategoryTextAndCompiler;
 var
   mView: TAtlasFindingsView;
@@ -369,6 +351,26 @@ begin
   finally
     mView.Free;
   end;
+end;
+
+procedure TAtlasFindingsTests.CompilerColumnText;
+var
+  mItem: TAtlasFinding;
+begin
+  mItem := Default(TAtlasFinding);
+  mItem.Problem := Problem(1, 'argument-count-mismatch', 'X erwartet 1 Argumente (wie E2035).',
+    TAtlasProblemSeverity.Error);
+  Assert.AreEqual('', mItem.CompilerText);
+  mItem.Problem.CompilerCodes := ['E2034', 'E2035'];
+  Assert.AreEqual('E2034, E2035', mItem.CompilerText);
+  mItem.Problem.Confirmed := True;
+  mItem.Problem.ConfirmedCode := 'E2035';
+  Assert.AreEqual('E2035 ' + #$00B7 + ' Atlas + dcc', mItem.CompilerText);
+  Assert.AreEqual('X erwartet 1 Argumente (wie E2035).', mItem.MessageText(True));
+  Assert.AreEqual('X erwartet 1 Argumente.', mItem.MessageText(False));
+  mItem.Problem := Problem(1, 'W1036', 'Variable nicht initialisiert', TAtlasProblemSeverity.Warning);
+  mItem.Problem.Source := TAtlasProblem.cCompilerSource;
+  Assert.AreEqual('W1036', mItem.CompilerText);
 end;
 
 procedure TAtlasFindingsTests.ScopeLimitsFiles;
@@ -747,6 +749,8 @@ begin
   Result := Result.Trim;
 end;
 
+{ TAtlasFindingsTierTests }
+
 procedure TAtlasFindingsTierTests.TiersOrderFileGroups;
 var
   mView: TAtlasFindingsView;
@@ -1108,6 +1112,8 @@ type
     Count: Integer;
     function Reader: TFunc<string, TArray<string>>;
   end;
+
+{ TReadCounter }
 
 function TReadCounter.Reader: TFunc<string, TArray<string>>;
 begin

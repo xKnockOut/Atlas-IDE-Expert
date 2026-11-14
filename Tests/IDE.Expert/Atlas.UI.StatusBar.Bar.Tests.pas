@@ -80,6 +80,8 @@ begin
   Result := Point((ARect.Left + ARect.Right) div 2, (ARect.Top + ARect.Bottom) div 2);
 end;
 
+{ TAtlasEditorStatusBarTests }
+
 procedure TAtlasEditorStatusBarTests.SetUp;
 begin
   FForm := TForm.CreateNew(nil);

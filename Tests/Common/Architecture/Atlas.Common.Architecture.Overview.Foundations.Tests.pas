@@ -86,6 +86,8 @@ begin
   end;
 end;
 
+{ TFoundationSeparationTests }
+
 procedure TFoundationSeparationTests.RenumberFollowsFirstOccurrence;
 var
   mValues: TArray<Integer>;

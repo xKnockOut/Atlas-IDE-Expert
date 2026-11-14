@@ -36,6 +36,8 @@ begin
   Result.Documents := TDocumentStore.Create;
 end;
 
+{ TShellEditingTests }
+
 procedure TShellEditingTests.RegistersSlashMenuCommands;
 var
   mEditing: TShellEditing;

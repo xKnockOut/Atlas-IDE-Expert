@@ -69,6 +69,8 @@ begin
   Result := Run(ACommand, AEdits, '');
 end;
 
+{ TDatabaseCommandsTests }
+
 procedure TDatabaseCommandsTests.SqlWithTwoParams;
 var
   mEdits: TArray<TRuleEdit>;

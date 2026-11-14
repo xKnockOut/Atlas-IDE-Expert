@@ -104,23 +104,6 @@ begin
   Assert.IsTrue(mLayout.Bottom > mLayout.Top);
 end;
 
-procedure TLayoutTests.PartsOfSplitSubsystemSitSideBySide;
-var
-  mData: TArchitectureOverview;
-  mLayout: TArchitectureLayout;
-  mDistance: Double;
-begin
-  // Teilsystem 3 als Teil desselben ursprünglichen Teilsystems wie 0 (#1364): es legt sich an 0 an.
-  mData := Overview;
-  mData.Subsystems[0].Parent := 'N';
-  mData.Subsystems[3].Parent := 'N';
-  mLayout := TArchitectureLayouter.Compute(mData);
-  mDistance := Sqrt(Sqr(mLayout.Subsystems[3].X - mLayout.Subsystems[0].X) +
-    Sqr(mLayout.Subsystems[3].Y - mLayout.Subsystems[0].Y));
-  Assert.AreEqual(mLayout.Subsystems[0].Radius + mLayout.Subsystems[3].Radius + TArchitectureLayouter.cGap, mDistance,
-    1E-3);
-end;
-
 procedure TLayoutTests.EmptyOverviewGivesEmptyLayout;
 var
   mLayout: TArchitectureLayout;
@@ -142,6 +125,23 @@ begin
     Assert.AreEqual(mFirst.Units[mIndex].X, mSecond.Units[mIndex].X, 0);
     Assert.AreEqual(mFirst.Units[mIndex].Y, mSecond.Units[mIndex].Y, 0);
   end;
+end;
+
+procedure TLayoutTests.PartsOfSplitSubsystemSitSideBySide;
+var
+  mData: TArchitectureOverview;
+  mLayout: TArchitectureLayout;
+  mDistance: Double;
+begin
+  // Teilsystem 3 als Teil desselben ursprünglichen Teilsystems wie 0 (#1364): es legt sich an 0 an.
+  mData := Overview;
+  mData.Subsystems[0].Parent := 'N';
+  mData.Subsystems[3].Parent := 'N';
+  mLayout := TArchitectureLayouter.Compute(mData);
+  mDistance := Sqrt(Sqr(mLayout.Subsystems[3].X - mLayout.Subsystems[0].X) +
+    Sqr(mLayout.Subsystems[3].Y - mLayout.Subsystems[0].Y));
+  Assert.AreEqual(mLayout.Subsystems[0].Radius + mLayout.Subsystems[3].Radius + TArchitectureLayouter.cGap, mDistance,
+    1E-3);
 end;
 
 initialization

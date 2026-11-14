@@ -42,6 +42,8 @@ uses
   Atlas.Common.Lsp.Commands,
   Atlas.Common.Lsp.UnitSearch;
 
+{ TShellUnitSearchTests }
+
 procedure TShellUnitSearchTests.VisitNone(const AVisit: TShellWorkspacesProc);
 begin
   Inc(FVisits);
@@ -103,6 +105,30 @@ begin
   end;
 end;
 
+procedure TShellUnitSearchTests.ReadingCommandsRunConcurrently;
+var
+  mSearch: TShellUnitSearch;
+  mCommands: TLspCommands;
+  mName: string;
+begin
+  mSearch := TShellUnitSearch.Create(NewServices);
+  mCommands := TLspCommands.Create;
+  try
+    mSearch.RegisterCommands(mCommands);
+    for mName in TArray<string>.Create(TUnitSearch.cUnitsCommand, TUnitSearch.cPreviewCommand) do
+    begin
+      Assert.IsTrue(mCommands.IsConcurrentCommand(mName), mName);
+    end;
+    for mName in TArray<string>.Create(TUnitSearch.cAddUsesCommand) do
+    begin
+      Assert.IsFalse(mCommands.IsConcurrentCommand(mName), mName);
+    end;
+  finally
+    mCommands.Free;
+    mSearch.Free;
+  end;
+end;
+
 procedure TShellUnitSearchTests.UnitsVisitWorkspaces;
 var
   mSearch: TShellUnitSearch;
@@ -128,30 +154,6 @@ begin
     mSearch.Free;
   end;
   Assert.AreEqual(1, FVisits);
-end;
-
-procedure TShellUnitSearchTests.ReadingCommandsRunConcurrently;
-var
-  mSearch: TShellUnitSearch;
-  mCommands: TLspCommands;
-  mName: string;
-begin
-  mSearch := TShellUnitSearch.Create(NewServices);
-  mCommands := TLspCommands.Create;
-  try
-    mSearch.RegisterCommands(mCommands);
-    for mName in TArray<string>.Create(TUnitSearch.cUnitsCommand, TUnitSearch.cPreviewCommand) do
-    begin
-      Assert.IsTrue(mCommands.IsConcurrentCommand(mName), mName);
-    end;
-    for mName in TArray<string>.Create(TUnitSearch.cAddUsesCommand) do
-    begin
-      Assert.IsFalse(mCommands.IsConcurrentCommand(mName), mName);
-    end;
-  finally
-    mCommands.Free;
-    mSearch.Free;
-  end;
 end;
 
 initialization

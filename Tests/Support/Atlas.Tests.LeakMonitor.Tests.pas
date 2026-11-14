@@ -93,6 +93,8 @@ type
     procedure Leak;
   end;
 
+{ TWorkerLeak }
+
 constructor TWorkerLeak.Create(ACapacity: Integer);
 begin
   inherited Create;
@@ -354,6 +356,8 @@ begin
   end;
 end;
 
+
+{ TLeakMonitorTests }
 
 procedure TLeakMonitorTests.DetectsDeliberateLeak;
 var

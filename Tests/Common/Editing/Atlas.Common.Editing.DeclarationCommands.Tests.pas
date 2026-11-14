@@ -142,6 +142,8 @@ begin
   end;
 end;
 
+{ TDeclarationCommandsTests }
+
 procedure TDeclarationCommandsTests.WarmUp;
 var
   mEdits: TArray<TRuleEdit>;

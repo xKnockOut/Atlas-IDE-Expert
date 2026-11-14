@@ -39,6 +39,8 @@ uses
   System.SysUtils,
   Atlas.Core.Diagnostics.Deadline;
 
+{ TAtlasDeadlineTests }
+
 procedure TAtlasDeadlineTests.Setup;
 begin
   FNow := 1000;

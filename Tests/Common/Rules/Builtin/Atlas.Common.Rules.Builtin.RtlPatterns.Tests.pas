@@ -70,6 +70,8 @@ begin
   Result := 'unit U;'#10'interface'#10'implementation'#10'procedure P;'#10'begin'#10 + ABody + #10'end;'#10'end.';
 end;
 
+{ TRtlPatternRulesTests }
+
 procedure TRtlPatternRulesTests.SelfAssignmentReportedWithFix;
 var
   mFindings: TArray<TRuleFinding>;
@@ -81,6 +83,15 @@ begin
   Assert.AreEqual(27, mFindings[0].Fixes[0].Edits[0].Range.EndPos.Character);
   TRuleAssert.Reports(TSelfAssignmentRule.Create, InRoutine('  if A then X := x else Y := 1;'));
   TRuleAssert.Reports(TSelfAssignmentRule.Create, InRoutine('  begin Liste[I] := Liste[I] end;'));
+end;
+
+procedure TRtlPatternRulesTests.SelfAssignmentSilent;
+
+begin
+  TRuleAssert.Silent(TSelfAssignmentRule.Create, InRoutine('  X := Y;'#10'  Liste[I] := Liste[J];'#10 +
+    '  X := X + 1;'#10'  for I := I to 10 do;'));
+  TRuleAssert.Silent(TSelfAssignmentRule.Create, 'unit U;'#10'interface'#10'implementation'#10 +
+    'procedure P;'#10'var X: Integer;'#10'begin'#10'  X := F(X);'#10'end;'#10'end.');
 end;
 
 procedure TRtlPatternRulesTests.SelfAssignmentOffersSelfForHiddenField;
@@ -190,15 +201,6 @@ begin
   Assert.AreEqual(1, Integer(Length(mFindings)));
   Assert.AreEqual(21, mFindings[0].Range.StartPos.Line);
   mFindings := nil;
-end;
-
-procedure TRtlPatternRulesTests.SelfAssignmentSilent;
-
-begin
-  TRuleAssert.Silent(TSelfAssignmentRule.Create, InRoutine('  X := Y;'#10'  Liste[I] := Liste[J];'#10 +
-    '  X := X + 1;'#10'  for I := I to 10 do;'));
-  TRuleAssert.Silent(TSelfAssignmentRule.Create, 'unit U;'#10'interface'#10'implementation'#10 +
-    'procedure P;'#10'var X: Integer;'#10'begin'#10'  X := F(X);'#10'end;'#10'end.');
 end;
 
 procedure TRtlPatternRulesTests.ForHighToLowReportedWithFix;

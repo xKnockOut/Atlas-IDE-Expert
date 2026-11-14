@@ -72,6 +72,8 @@ begin
   Result.Run := ARun;
 end;
 
+{ TAtlasTaskRunsTests }
+
 procedure TAtlasTaskRunsTests.LinesAreSplitAcrossChunks;
 var
   mLines: TAtlasTaskLines;

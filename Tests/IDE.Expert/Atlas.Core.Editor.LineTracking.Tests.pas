@@ -53,6 +53,8 @@ uses
   System.Diagnostics,
   Atlas.Core.Editor.LineTracking;
 
+{ TAtlasLineTrackingTests }
+
 procedure TAtlasLineTrackingTests.WithoutMovesEveryLineIsItself;
 var
   mLines: TAtlasTrackedLines;

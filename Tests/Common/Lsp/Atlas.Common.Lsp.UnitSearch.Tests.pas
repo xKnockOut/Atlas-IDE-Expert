@@ -140,6 +140,8 @@ begin
   Result := [mMain, mTests];
 end;
 
+{ TUnitSearchTests }
+
 function TUnitSearchTests.Context: TUnitSearchContext;
 var
   mKunden, mHaupt, mKundenTests, mHilfe, mSys: TUnitIndex;

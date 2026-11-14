@@ -74,6 +74,8 @@ begin
   Result := TJSONObject.ParseJSONValue(cCatalogText);
 end;
 
+{ TAtlasRuleTableTests }
+
 procedure TAtlasRuleTableTests.RowsCarryCatalogFieldsAndOptionValues;
 var
   mValue: TJSONValue;

@@ -51,6 +51,8 @@ begin
   Result := '';
 end;
 
+{ TShellCompileSetupTests }
+
 procedure TShellCompileSetupTests.Setup;
 var
   mRegistry: TShellWorkspaceRegistryServices;

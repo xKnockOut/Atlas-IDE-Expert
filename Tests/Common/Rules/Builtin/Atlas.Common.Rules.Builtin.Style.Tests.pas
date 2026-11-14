@@ -206,6 +206,8 @@ begin
   end;
 end;
 
+{ TStyleRulesTests }
+
 procedure TStyleRulesTests.BoolCompareOnBoolean;
 var
   mFindings: TArray<TRuleFinding>;

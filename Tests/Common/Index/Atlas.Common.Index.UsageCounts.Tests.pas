@@ -61,16 +61,6 @@ end;
 
 { TIndexUsageCountsTests }
 
-procedure TIndexUsageCountsTests.Setup;
-begin
-  FIndex := TSymbolIndex.Create;
-end;
-
-procedure TIndexUsageCountsTests.TearDown;
-begin
-  FIndex := nil;
-end;
-
 procedure TIndexUsageCountsTests.AddUnit(const AFileName, ABody: string);
 begin
   AddUnit(AFileName, ABody, False);
@@ -84,6 +74,16 @@ begin
     nil, nil, True);
   mUnit.Library_ := ALibrary;
   FIndex.AddUnit(mUnit);
+end;
+
+procedure TIndexUsageCountsTests.Setup;
+begin
+  FIndex := TSymbolIndex.Create;
+end;
+
+procedure TIndexUsageCountsTests.TearDown;
+begin
+  FIndex := nil;
 end;
 
 procedure TIndexUsageCountsTests.CountsAcrossUnits;

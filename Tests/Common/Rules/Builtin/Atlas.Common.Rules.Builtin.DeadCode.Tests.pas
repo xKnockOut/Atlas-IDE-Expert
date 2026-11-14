@@ -120,6 +120,8 @@ type
     function Text(const AName: string): string;
   end;
 
+{ TScenario }
+
 procedure TScenario.Put(const AName, AText: string);
 var
   mIndex: Integer;
@@ -322,6 +324,8 @@ begin
     end;
   end;
 end;
+
+{ TDeadCodeTests }
 
 procedure TDeadCodeTests.CycleOverImplementationWithFullPath;
 var

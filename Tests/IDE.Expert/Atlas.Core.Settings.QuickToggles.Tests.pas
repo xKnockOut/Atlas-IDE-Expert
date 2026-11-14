@@ -66,6 +66,8 @@ const
       '"pairs":{"type":"boolean","x-quickToggle":true,"x-plugin":"PairColors"}}}' +
     '}}';
 
+{ TAtlasQuickTogglesTests }
+
 procedure TAtlasQuickTogglesTests.BuildsListFromCatalog;
 var
   mToggles: TArray<TAtlasQuickToggle>;

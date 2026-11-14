@@ -46,6 +46,8 @@ type
   TAtlasUnknownPart = class(TAtlasSettingsPagePart)
   end;
 
+{ TAtlasSettingsPagePartsTests }
+
 procedure TAtlasSettingsPagePartsTests.WarmUp;
 begin
   WarmUpSettingsPage;

@@ -29,6 +29,8 @@ implementation
 uses
   Atlas.Common.Rules.Builtin.TypeMismatch.ProcShapes;
 
+{ TProcShapesTests }
+
 procedure TProcShapesTests.ReadsProcedureOfObject;
 var
   mShape: TProcShape;

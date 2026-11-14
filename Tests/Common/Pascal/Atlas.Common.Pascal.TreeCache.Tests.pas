@@ -67,6 +67,50 @@ begin
   Result := TTextDocument.Create('file:///c:/a.pas', 'objectpascal', AVersion, AText);
 end;
 
+/// <summary>Ordner über der Test-exe, der Packages enthält; '' ohne.</summary>
+function SourceRoot: string;
+var
+  mDirectory: string;
+begin
+  Result := '';
+  mDirectory := ExtractFileDir(ParamStr(0));
+  while mDirectory <> '' do
+  begin
+    if TDirectory.Exists(TPath.Combine(mDirectory, 'Packages')) then
+    begin
+      Exit(mDirectory);
+    end;
+    if ExtractFileDir(mDirectory) = mDirectory then
+    begin
+      Break;
+    end;
+    mDirectory := ExtractFileDir(mDirectory);
+  end;
+end;
+
+/// <summary>Units unter ADirectory außer Parser und Cache, die TPascalParser.Parse aufrufen, je mit Leerzeichen
+/// davor.</summary>
+function ParserCallers(const ADirectory: string): string;
+var
+  mFileName, mName: string;
+begin
+  Result := '';
+  for mFileName in TDirectory.GetFiles(ADirectory, '*.pas', TSearchOption.soAllDirectories) do
+  begin
+    mName := ExtractFileName(mFileName);
+    if SameText(mName, 'Atlas.Common.Pascal.Parser.pas') or SameText(mName, 'Atlas.Common.Pascal.TreeCache.pas') then
+    begin
+      Continue;
+    end;
+    if Pos('TPascalParser.Parse', TFile.ReadAllText(mFileName, TEncoding.UTF8)) > 0 then
+    begin
+      Result := Result + ' ' + mName;
+    end;
+  end;
+end;
+
+{ TSyntaxTreeCacheTests }
+
 procedure TSyntaxTreeCacheTests.SameVersionParsesOnce;
 var
   mDocument: ITextDocument;
@@ -80,35 +124,6 @@ begin
   Assert.AreEqual(1, TSyntaxTreeCache.ParseCount - mBefore);
   Assert.AreSame(mFirst.Tree, mSecond.Tree);
   Assert.AreEqual('A', mFirst.Tree.Root.Name);
-end;
-
-procedure TSyntaxTreeCacheTests.StatsCountHitsAndLiveBytes;
-var
-  mDocument: ITextDocument;
-  mBefore, mHeld, mAfter: TSyntaxTreeCacheStats;
-  mFirst, mSecond: ISharedSyntaxTree;
-begin
-  mDocument := NewDocument(7, cSource);
-  mBefore := TSyntaxTreeCache.Stats;
-  mFirst := TSyntaxTreeCache.Get(mDocument);
-  mSecond := TSyntaxTreeCache.Get(mDocument);
-  mHeld := TSyntaxTreeCache.Stats;
-  Assert.AreEqual<Int64>(2, mHeld.Lookups - mBefore.Lookups);
-  Assert.AreEqual<Int64>(1, mHeld.Parses - mBefore.Parses);
-  Assert.AreEqual(1, mHeld.Trees - mBefore.Trees);
-  Assert.AreEqual<Int64>(TSyntaxTreeCache.EstimatedBytes(mFirst.Tree), mHeld.Bytes - mBefore.Bytes);
-  Assert.IsTrue(TSyntaxTreeCache.EstimatedBytes(mFirst.Tree) > Length(cSource) * SizeOf(Char));
-  mFirst := nil;
-  mSecond := nil;
-  mDocument := nil;
-  mAfter := TSyntaxTreeCache.Stats;
-  Assert.AreEqual(mBefore.Trees, mAfter.Trees, 'mit dem Dokument frei');
-  Assert.AreEqual<Int64>(mBefore.Bytes, mAfter.Bytes);
-  mHeld.Lookups := 4;
-  mHeld.Parses := 1;
-  Assert.AreEqual(75, mHeld.HitPercent);
-  Assert.AreEqual(-1, Default(TSyntaxTreeCacheStats).HitPercent);
-  Assert.AreEqual<Int64>(0, TSyntaxTreeCache.EstimatedBytes(nil));
 end;
 
 procedure TSyntaxTreeCacheTests.NewVersionGetsNewTree;
@@ -201,48 +216,6 @@ begin
   Assert.AreEqual(2, mCalls);
 end;
 
-/// <summary>Ordner über der Test-exe, der Packages enthält; '' ohne.</summary>
-function SourceRoot: string;
-var
-  mDirectory: string;
-begin
-  Result := '';
-  mDirectory := ExtractFileDir(ParamStr(0));
-  while mDirectory <> '' do
-  begin
-    if TDirectory.Exists(TPath.Combine(mDirectory, 'Packages')) then
-    begin
-      Exit(mDirectory);
-    end;
-    if ExtractFileDir(mDirectory) = mDirectory then
-    begin
-      Break;
-    end;
-    mDirectory := ExtractFileDir(mDirectory);
-  end;
-end;
-
-/// <summary>Units unter ADirectory außer Parser und Cache, die TPascalParser.Parse aufrufen, je mit Leerzeichen
-/// davor.</summary>
-function ParserCallers(const ADirectory: string): string;
-var
-  mFileName, mName: string;
-begin
-  Result := '';
-  for mFileName in TDirectory.GetFiles(ADirectory, '*.pas', TSearchOption.soAllDirectories) do
-  begin
-    mName := ExtractFileName(mFileName);
-    if SameText(mName, 'Atlas.Common.Pascal.Parser.pas') or SameText(mName, 'Atlas.Common.Pascal.TreeCache.pas') then
-    begin
-      Continue;
-    end;
-    if Pos('TPascalParser.Parse', TFile.ReadAllText(mFileName, TEncoding.UTF8)) > 0 then
-    begin
-      Result := Result + ' ' + mName;
-    end;
-  end;
-end;
-
 procedure TSyntaxTreeCacheTests.NoParserCallsOutsideCache;
 var
   mDirectory, mRoot: string;
@@ -265,6 +238,35 @@ begin
     end;
   end;
   Assert.AreEqual('', mOffenders, 'TPascalParser.Parse außerhalb des Caches');
+end;
+
+procedure TSyntaxTreeCacheTests.StatsCountHitsAndLiveBytes;
+var
+  mDocument: ITextDocument;
+  mBefore, mHeld, mAfter: TSyntaxTreeCacheStats;
+  mFirst, mSecond: ISharedSyntaxTree;
+begin
+  mDocument := NewDocument(7, cSource);
+  mBefore := TSyntaxTreeCache.Stats;
+  mFirst := TSyntaxTreeCache.Get(mDocument);
+  mSecond := TSyntaxTreeCache.Get(mDocument);
+  mHeld := TSyntaxTreeCache.Stats;
+  Assert.AreEqual<Int64>(2, mHeld.Lookups - mBefore.Lookups);
+  Assert.AreEqual<Int64>(1, mHeld.Parses - mBefore.Parses);
+  Assert.AreEqual(1, mHeld.Trees - mBefore.Trees);
+  Assert.AreEqual<Int64>(TSyntaxTreeCache.EstimatedBytes(mFirst.Tree), mHeld.Bytes - mBefore.Bytes);
+  Assert.IsTrue(TSyntaxTreeCache.EstimatedBytes(mFirst.Tree) > Length(cSource) * SizeOf(Char));
+  mFirst := nil;
+  mSecond := nil;
+  mDocument := nil;
+  mAfter := TSyntaxTreeCache.Stats;
+  Assert.AreEqual(mBefore.Trees, mAfter.Trees, 'mit dem Dokument frei');
+  Assert.AreEqual<Int64>(mBefore.Bytes, mAfter.Bytes);
+  mHeld.Lookups := 4;
+  mHeld.Parses := 1;
+  Assert.AreEqual(75, mHeld.HitPercent);
+  Assert.AreEqual(-1, Default(TSyntaxTreeCacheStats).HitPercent);
+  Assert.AreEqual<Int64>(0, TSyntaxTreeCache.EstimatedBytes(nil));
 end;
 
 initialization

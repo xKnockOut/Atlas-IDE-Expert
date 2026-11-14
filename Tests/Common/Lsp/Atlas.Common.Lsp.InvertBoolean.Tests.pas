@@ -240,6 +240,8 @@ begin
   Result := '';
 end;
 
+{ TLspInvertBooleanTests }
+
 procedure TLspInvertBooleanTests.Setup;
 begin
   FIndex := TSymbolIndex.Create;

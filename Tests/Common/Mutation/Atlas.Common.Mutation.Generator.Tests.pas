@@ -90,11 +90,6 @@ end;
 
 { TMutationGeneratorTests }
 
-procedure TMutationGeneratorTests.TearDown;
-begin
-  FMutants := nil;
-end;
-
 procedure TMutationGeneratorTests.Generate(const ABody: string; AOperators: TMutationOperators);
 var
   mOptions: TMutationOptions;
@@ -116,6 +111,11 @@ begin
     end;
   end;
   Result := False;
+end;
+
+procedure TMutationGeneratorTests.TearDown;
+begin
+  FMutants := nil;
 end;
 
 procedure TMutationGeneratorTests.BoundaryOperators;

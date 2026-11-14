@@ -65,6 +65,8 @@ type
     function Actions: TAtlasReportActions;
   end;
 
+{ TReportLog }
+
 function TReportLog.Actions: TAtlasReportActions;
 begin
   Result := Default(TAtlasReportActions);

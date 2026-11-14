@@ -24,6 +24,8 @@ uses
   Atlas.UI.Strings.Tests,
   Atlas.UI.Notifications.Strings;
 
+{ TAtlasNotificationsStringsTests }
+
 procedure TAtlasNotificationsStringsTests.EveryTextExistsInBothLanguages;
 var
   mId: TAtlasNotificationsTextId;

@@ -81,6 +81,8 @@ type
       Boolean;
   end;
 
+{ TFakeTransport }
+
 destructor TFakeTransport.Destroy;
 begin
   FMethods := nil;
@@ -90,14 +92,6 @@ begin
   Calls := nil;
   Bodies := nil;
   inherited Destroy;
-end;
-
-procedure TFakeTransport.Reply(const AMethod, APrefix: string; AStatus: Integer; const AText: string);
-begin
-  FMethods := FMethods + [AMethod];
-  FPrefixes := FPrefixes + [APrefix];
-  FStatus := FStatus + [AStatus];
-  FTexts := FTexts + [AText];
 end;
 
 function TFakeTransport.Answer(const AMethod, AUrl: string; out AStatus: Integer; out AText: string): Boolean;
@@ -117,6 +111,14 @@ begin
       Exit;
     end;
   end;
+end;
+
+procedure TFakeTransport.Reply(const AMethod, APrefix: string; AStatus: Integer; const AText: string);
+begin
+  FMethods := FMethods + [AMethod];
+  FPrefixes := FPrefixes + [APrefix];
+  FStatus := FStatus + [AStatus];
+  FTexts := FTexts + [AText];
 end;
 
 function TFakeTransport.Get(const AUrl: string; ATimeoutMs: Integer; out AStatus: Integer; out AText: string;

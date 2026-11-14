@@ -58,6 +58,8 @@ type
     procedure Check(const AContext: TRuleContext; const AReport: IRuleReport);
   end;
 
+{ TProbeLineRule }
+
 function TProbeLineRule.Descriptor: TRuleDescriptor;
 begin
   Result := TRuleDescriptor.Create('probe-line', TRuleSeverity.Warning, 'Probe');
@@ -89,6 +91,8 @@ begin
     #10 +                           // 6 (Cursor nach Enter)
     'end.';
 end;
+
+{ TSlashCommandsTests }
 
 procedure TSlashCommandsTests.WarmUp;
 begin

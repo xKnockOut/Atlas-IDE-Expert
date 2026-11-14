@@ -40,6 +40,8 @@ begin
   end;
 end;
 
+{ TAtlasWatchedChangesTests }
+
 procedure TAtlasWatchedChangesTests.WaitsUntilQuiet;
 var
   mChanges: TAtlasWatchedChanges;

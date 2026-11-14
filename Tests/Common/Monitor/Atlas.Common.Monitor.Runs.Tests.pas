@@ -36,6 +36,8 @@ uses
   Atlas.Common.Monitor.Commands,
   Atlas.Common.Monitor.Runs;
 
+{ TMonitorRunsTests }
+
 procedure TMonitorRunsTests.Setup;
 begin
   TAtlasLocale.Use(TTextLanguage.German);

@@ -253,6 +253,8 @@ end;
 
 { Variable einbetten }
 
+{ TInlineTests }
+
 procedure TInlineTests.InlineVariableAddsParentheses;
 begin
   Assert.AreEqual(Unit_(['procedure P;', 'var', '  Y: Integer;', 'begin', '  Y := (1 + 2) * 3;',

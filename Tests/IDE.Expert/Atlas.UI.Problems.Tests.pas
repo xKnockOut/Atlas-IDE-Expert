@@ -85,6 +85,8 @@ type
     procedure Fetch(Sender: TObject; Item: TListItem);
   end;
 
+{ TFetchCounter }
+
 procedure TFetchCounter.Fetch(Sender: TObject; Item: TListItem);
 begin
   Inc(Count);
@@ -250,93 +252,6 @@ begin
     Assert.AreEqual(3, Integer(mFrame.List.Items.Count));
   finally
     mHost.Free;
-  end;
-end;
-
-procedure TAtlasProblemsFrameTests.OpenFirstPinsDimsAndSkipsSections;
-var
-  mHost: TForm;
-  mFrame: TAtlasProblemsFrame;
-  mKey: Word;
-  mSaved: Boolean;
-begin
-  mHost := TForm.CreateNew(nil);
-  try
-    mFrame := NewFrame(mHost);
-    mFrame.ApplyTierSettings(True, TAtlasClosedUnits.Dimmed, True);
-    Assert.IsTrue(mFrame.OpenFirst);
-    Assert.IsTrue(mFrame.OpenFirstButton.Down);
-    mFrame.SetOpenFiles('C:\P\Lager.pas', ['C:\P\Lager.pas'], True);
-    Assert.AreEqual(6, Integer(mFrame.List.Items.Count));
-    Assert.AreEqual(#$25BE' '#$D83D#$DCCC' Lager.pas (1) '#$00B7' aktiver Editor', mFrame.List.Items[0].SubItems[0]);
-    Assert.AreEqual(1, mFrame.List.Items[1].ImageIndex, 'aktive Unit mit normalem Symbol');
-    Assert.AreEqual('Nicht geöffnet '#$00B7' 1 Units '#$00B7' 2 Befunde', mFrame.List.Items[2].SubItems[0]);
-    Assert.AreEqual(-1, mFrame.List.Items[2].ImageIndex, 'Trennzeile ohne Symbol');
-    Assert.AreEqual(#$25BE' Kunde.pas (2) '#$00B7' nicht geöffnet', mFrame.List.Items[3].SubItems[0]);
-    Assert.AreEqual(3, mFrame.List.Items[4].ImageIndex, 'ausgegrautes Fehlersymbol');
-    // ↓ von der letzten Zeile der aktiven Unit springt über die Trennzeile.
-    mFrame.List.ItemIndex := 1;
-    mFrame.View.Select(1);
-    mKey := VK_DOWN;
-    mFrame.List.OnKeyDown(mFrame.List, mKey, []);
-    Assert.AreEqual(0, Integer(mKey));
-    Assert.AreEqual(3, mFrame.List.ItemIndex);
-    // Knopf aus: wie #909, und die Einstellung wird gespeichert.
-    mSaved := False;
-    mFrame.OnLayout :=
-      procedure
-      begin
-        mSaved := True;
-      end;
-    mFrame.OpenFirstButton.Down := False;
-    mFrame.OpenFirstButton.OnClick(mFrame.OpenFirstButton);
-    Assert.IsTrue(mSaved);
-    Assert.IsFalse(mFrame.OpenFirst);
-    Assert.AreEqual(5, Integer(mFrame.List.Items.Count));
-    Assert.AreEqual(#$25BE' Kunde.pas (2)', mFrame.List.Items[0].SubItems[0]);
-  finally
-    mHost.Free;
-  end;
-end;
-
-procedure TAtlasProblemsFrameTests.RefillReselectsWithoutFetchingEveryRow;
-var
-  mHost: TForm;
-  mFrame: TAtlasProblemsFrame;
-  mCounter: TFetchCounter;
-  mProblems: TArray<TAtlasProblem>;
-  mIndex: Integer;
-begin
-  SetLength(mProblems, 300);
-  for mIndex := 0 to High(mProblems) do
-  begin
-    mProblems[mIndex] := Problem(mIndex, 'Atlas', 'empty-except', 'Leerer except-Block', TAtlasProblemSeverity.Warning,
-      '');
-  end;
-  mHost := TForm.CreateNew(nil);
-  mCounter := TFetchCounter.Create;
-  try
-    mFrame := NewFrame(mHost);
-    mFrame.SetFindings(TAtlasFindings.FromProblems('C:\P\Kunde.pas', mProblems, nil), 'C:\P\Kunde.pas', nil);
-    // Zwei Zeilen markiert, dann wählt die Sicht eine dritte.
-    mFrame.List.ItemIndex := 1;
-    mFrame.List.ItemIndex := 2; // lsp-ignore: duplicate-assignment -- markiert eine zweite Zeile (Mehrfachauswahl)
-    Assert.AreEqual(2, Integer(mFrame.List.SelCount));
-    mCounter.Inner := mFrame.List.OnData;
-    mFrame.List.OnData := mCounter.Fetch;
-    try
-      mFrame.View.Select(4);
-      mFrame.Refill;
-    finally
-      mFrame.List.OnData := mCounter.Inner;
-    end;
-    Assert.AreEqual(1, Integer(mFrame.List.SelCount));
-    Assert.AreEqual(4, mFrame.List.ItemIndex);
-    // Mit ClearSelection holte das jede der 301 Zeilen mindestens einmal.
-    Assert.IsTrue(mCounter.Count < 30, Format('%d Abrufe für %d Zeilen', [mCounter.Count, mFrame.List.Items.Count]));
-  finally
-    mHost.Free;
-    mCounter.Free;
   end;
 end;
 
@@ -599,6 +514,93 @@ begin
     Assert.IsNull(mDialog.DocWikiButton);
   finally
     mDialog.Free;
+  end;
+end;
+
+procedure TAtlasProblemsFrameTests.OpenFirstPinsDimsAndSkipsSections;
+var
+  mHost: TForm;
+  mFrame: TAtlasProblemsFrame;
+  mKey: Word;
+  mSaved: Boolean;
+begin
+  mHost := TForm.CreateNew(nil);
+  try
+    mFrame := NewFrame(mHost);
+    mFrame.ApplyTierSettings(True, TAtlasClosedUnits.Dimmed, True);
+    Assert.IsTrue(mFrame.OpenFirst);
+    Assert.IsTrue(mFrame.OpenFirstButton.Down);
+    mFrame.SetOpenFiles('C:\P\Lager.pas', ['C:\P\Lager.pas'], True);
+    Assert.AreEqual(6, Integer(mFrame.List.Items.Count));
+    Assert.AreEqual(#$25BE' '#$D83D#$DCCC' Lager.pas (1) '#$00B7' aktiver Editor', mFrame.List.Items[0].SubItems[0]);
+    Assert.AreEqual(1, mFrame.List.Items[1].ImageIndex, 'aktive Unit mit normalem Symbol');
+    Assert.AreEqual('Nicht geöffnet '#$00B7' 1 Units '#$00B7' 2 Befunde', mFrame.List.Items[2].SubItems[0]);
+    Assert.AreEqual(-1, mFrame.List.Items[2].ImageIndex, 'Trennzeile ohne Symbol');
+    Assert.AreEqual(#$25BE' Kunde.pas (2) '#$00B7' nicht geöffnet', mFrame.List.Items[3].SubItems[0]);
+    Assert.AreEqual(3, mFrame.List.Items[4].ImageIndex, 'ausgegrautes Fehlersymbol');
+    // ↓ von der letzten Zeile der aktiven Unit springt über die Trennzeile.
+    mFrame.List.ItemIndex := 1;
+    mFrame.View.Select(1);
+    mKey := VK_DOWN;
+    mFrame.List.OnKeyDown(mFrame.List, mKey, []);
+    Assert.AreEqual(0, Integer(mKey));
+    Assert.AreEqual(3, mFrame.List.ItemIndex);
+    // Knopf aus: wie #909, und die Einstellung wird gespeichert.
+    mSaved := False;
+    mFrame.OnLayout :=
+      procedure
+      begin
+        mSaved := True;
+      end;
+    mFrame.OpenFirstButton.Down := False;
+    mFrame.OpenFirstButton.OnClick(mFrame.OpenFirstButton);
+    Assert.IsTrue(mSaved);
+    Assert.IsFalse(mFrame.OpenFirst);
+    Assert.AreEqual(5, Integer(mFrame.List.Items.Count));
+    Assert.AreEqual(#$25BE' Kunde.pas (2)', mFrame.List.Items[0].SubItems[0]);
+  finally
+    mHost.Free;
+  end;
+end;
+
+procedure TAtlasProblemsFrameTests.RefillReselectsWithoutFetchingEveryRow;
+var
+  mHost: TForm;
+  mFrame: TAtlasProblemsFrame;
+  mCounter: TFetchCounter;
+  mProblems: TArray<TAtlasProblem>;
+  mIndex: Integer;
+begin
+  SetLength(mProblems, 300);
+  for mIndex := 0 to High(mProblems) do
+  begin
+    mProblems[mIndex] := Problem(mIndex, 'Atlas', 'empty-except', 'Leerer except-Block', TAtlasProblemSeverity.Warning,
+      '');
+  end;
+  mHost := TForm.CreateNew(nil);
+  mCounter := TFetchCounter.Create;
+  try
+    mFrame := NewFrame(mHost);
+    mFrame.SetFindings(TAtlasFindings.FromProblems('C:\P\Kunde.pas', mProblems, nil), 'C:\P\Kunde.pas', nil);
+    // Zwei Zeilen markiert, dann wählt die Sicht eine dritte.
+    mFrame.List.ItemIndex := 1;
+    mFrame.List.ItemIndex := 2; // lsp-ignore: duplicate-assignment -- markiert eine zweite Zeile (Mehrfachauswahl)
+    Assert.AreEqual(2, Integer(mFrame.List.SelCount));
+    mCounter.Inner := mFrame.List.OnData;
+    mFrame.List.OnData := mCounter.Fetch;
+    try
+      mFrame.View.Select(4);
+      mFrame.Refill;
+    finally
+      mFrame.List.OnData := mCounter.Inner;
+    end;
+    Assert.AreEqual(1, Integer(mFrame.List.SelCount));
+    Assert.AreEqual(4, mFrame.List.ItemIndex);
+    // Mit ClearSelection holte das jede der 301 Zeilen mindestens einmal.
+    Assert.IsTrue(mCounter.Count < 30, Format('%d Abrufe für %d Zeilen', [mCounter.Count, mFrame.List.Items.Count]));
+  finally
+    mHost.Free;
+    mCounter.Free;
   end;
 end;
 

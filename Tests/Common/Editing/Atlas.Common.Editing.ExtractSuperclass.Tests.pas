@@ -187,6 +187,8 @@ begin
   Result := Copy(AText, mStart, mStop - mStart);
 end;
 
+{ TExtractSuperclassTests }
+
 procedure TExtractSuperclassTests.SuggestsName;
 begin
   Assert.AreEqual('TExportBase', TExtractSuperclass.SuggestName('TPdfExport', 'Base'));

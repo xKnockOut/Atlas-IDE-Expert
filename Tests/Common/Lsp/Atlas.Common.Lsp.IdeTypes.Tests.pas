@@ -61,6 +61,8 @@ begin
   end;
 end;
 
+{ TIdeTypeCatalogTests }
+
 procedure TIdeTypeCatalogTests.ParsesNamesAndParents;
 var
   mEntries: TArray<TIdeTypeEntry>;

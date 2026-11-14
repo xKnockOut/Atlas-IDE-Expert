@@ -112,6 +112,8 @@ begin
   end;
 end;
 
+{ TShellCoveredByRequestTests }
+
 procedure TShellCoveredByRequestTests.Setup;
 var
   mRegistry: TShellWorkspaceRegistryServices;

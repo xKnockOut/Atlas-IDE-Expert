@@ -102,6 +102,8 @@ type
     procedure Write(const AFileName, AText: string);
   end;
 
+{ TRenameRule }
+
 function TRenameRule.Descriptor: TRuleDescriptor;
 begin
   Result := TRuleDescriptor.Create('test-alt', TRuleSeverity.Warning, 'Alt durch Neu ersetzen');
@@ -122,6 +124,8 @@ begin
   end;
 end;
 
+{ TNoFixRule }
+
 function TNoFixRule.Descriptor: TRuleDescriptor;
 begin
   Result := TRuleDescriptor.Create('test-ohne', TRuleSeverity.Warning, 'Alt ohne Korrektur');
@@ -139,6 +143,8 @@ begin
     end;
   end;
 end;
+
+{ TMemoryFiles }
 
 constructor TMemoryFiles.Create;
 begin
@@ -209,6 +215,8 @@ begin
     mParams.Free;
   end;
 end;
+
+{ TMcpEditToolsTests }
 
 procedure TMcpEditToolsTests.DisabledAndRestrictedToolsAreHiddenAndRefused;
 var

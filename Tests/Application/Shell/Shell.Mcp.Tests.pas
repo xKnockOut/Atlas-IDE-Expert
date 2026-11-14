@@ -65,6 +65,8 @@ begin
   end;
 end;
 
+{ TMcpShellTests }
+
 procedure TMcpShellTests.ToolsListMatchesDocumentation;
 var
   mListed, mDocumented: TArray<string>;

@@ -91,6 +91,8 @@ begin
 end;
 
 
+{ TFakeVcs }
+
 function TFakeVcs.Kind: TAtlasVcsKind;
 begin
   Result := FKind;

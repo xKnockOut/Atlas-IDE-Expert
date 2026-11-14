@@ -107,89 +107,91 @@ uses
   Atlas.Common.Configuration.Parser,
   Atlas.Common.Configuration.TestSupport;
 
-procedure TConfigurationParserTests.ReadsQuerySettings;
+{ TConfigurationParserTests }
+
+procedure TConfigurationParserTests.MergesLayersPerKey;
 var
-  mSettings: TServerSettings;
   mIssues: TArray<TConfigurationIssue>;
 begin
-  // Code-Abfragen (#1351)
-  mSettings := Parse('{}', mIssues);
-  Assert.IsTrue(mSettings.QueryEnabled);
-  Assert.AreEqual(0, Integer(Length(mSettings.Queries)));
-  mSettings := Parse('{"query": {"enabled": false}, "queries": [{"name": "grosse-klassen", ' +
-    '"query": " classes where methods > 40 ", "description": "Zu groß", "failIfAny": true, "severity": "error", ' +
-    '"message": "{name} hat {methods} Methoden"}, {"name": "b", "query": "units where usedBy = 0"}]}', mIssues);
+  // #227: globale Datei unter den Editor-Einstellungen; Objekte je Schlüssel, Listen ersetzt.
+  Assert.AreEqual('', TConfigurationParser.MergeText('', ''));
+  Assert.AreEqual('{"a": 1}', TConfigurationParser.MergeText('', '{"a": 1}'));
+  Assert.AreEqual('{"a": 1}', TConfigurationParser.MergeText('{"a": 1}', '  '));
+  Assert.AreEqual('{"a": 1}', TConfigurationParser.MergeText('{"a": 1', '{"a": 1}'));
+  Assert.AreEqual('{"b": 2, "a": 3}', TConfigurationParser.MergeText('{"a": 1, "b": 2}', '{"a": 3}'));
+  Assert.AreEqual('{"x": ["c"], "r": {"q": "error", "p": "off"}}', TConfigurationParser.MergeText(
+    '// global'#10'{"x": ["a", "b"], "r": {"p": "warning", "q": "error"}}', '{"x": ["c"], "r": {"p": "off"}}'));
+  Assert.AreEqual('{"k\"y": 1}', TConfigurationParser.MergeText('{"k\"y": 1}', '{}'));
+  TConfigurationParser.Parse(TConfigurationParser.MergeText('{"format": {"indentSize": 4, ' +
+    '"useTabs": true}}', '{"format": {"indentSize": 3}}'), mIssues);
   Assert.AreEqual(0, Integer(Length(mIssues)));
-  Assert.IsFalse(mSettings.QueryEnabled);
-  Assert.AreEqual(2, Integer(Length(mSettings.Queries)));
-  Assert.AreEqual('grosse-klassen', mSettings.Queries[0].Name);
-  Assert.AreEqual('classes where methods > 40', mSettings.Queries[0].Query);
-  Assert.AreEqual('Zu groß', mSettings.Queries[0].Description);
-  Assert.IsTrue(mSettings.Queries[0].FailIfAny);
-  Assert.AreEqual<TRuleSeverity>(TRuleSeverity.Error, mSettings.Queries[0].Severity);
-  Assert.AreEqual('{name} hat {methods} Methoden', mSettings.Queries[0].Message);
-  Assert.IsFalse(mSettings.Queries[1].FailIfAny);
-  Assert.AreEqual<TRuleSeverity>(TRuleSeverity.Warning, mSettings.Queries[1].Severity);
-  // Fehlender Name oder Abfrage, ungültiger Name, doppelter Name, falscher Schweregrad, unbekannte Angabe.
-  mSettings := Parse('{"queries": [{"query": "units where name = A"}, {"name": "x"}, {"name": "a b", "query": "q"}, ' +
-    '{"name": "d", "query": "q1"}, {"name": "D", "query": "q2"}, {"name": "s", "query": "q", "severity": "laut"}, ' +
-    '{"name": "u", "query": "q", "farbe": 1}]}', mIssues);
-  Assert.AreEqual('d,s,u', mSettings.Queries[0].Name + ',' + mSettings.Queries[1].Name + ',' + mSettings.Queries[2].Name);
-  Assert.AreEqual('q1', mSettings.Queries[0].Query);
-  Assert.AreEqual<TRuleSeverity>(TRuleSeverity.Warning, mSettings.Queries[1].Severity);
-  Assert.IsTrue(Length(mIssues) >= 6);
-  Parse('{"queries": {}, "query": {"enabled": 1, "x": 2}}', mIssues);
-  Assert.AreEqual(3, Integer(Length(mIssues)));
-  // Projektdatei vor Editor: queries gilt als Ganzes.
-  mSettings := TConfigurationParser.ParseLayered('{"queries": [{"name": "a", "query": "q"}]}',
-    '{"queries": [{"name": "b", "query": "r"}], "query": {"enabled": false}}', mIssues);
-  Assert.AreEqual(1, Integer(Length(mSettings.Queries)));
-  Assert.AreEqual('b', mSettings.Queries[0].Name);
-  Assert.IsFalse(mSettings.QueryEnabled);
 end;
-procedure TConfigurationParserTests.ReadsRuleChecksSwitch;
+procedure TConfigurationParserTests.ReadsArchitectureSettings;
 var
   mSettings: TServerSettings;
   mIssues: TArray<TConfigurationIssue>;
 begin
-  // Modul-Schalter Prüfregeln (#1454): Vorgabe an, aus über settings.json bzw. jede Ebene.
-  Assert.IsTrue(Parse('{}', mIssues).RuleChecksEnabled);
-  mSettings := Parse('{"ruleChecks": {"enabled": false}}', mIssues);
-  Assert.AreEqual(0, Integer(Length(mIssues)));
-  Assert.IsFalse(mSettings.RuleChecksEnabled);
-  Parse('{"ruleChecks": {"enabled": 1, "x": 2}}', mIssues);
-  Assert.AreEqual(2, Integer(Length(mIssues)), 'kein Wahrheitswert, unbekannte Angabe');
-  Parse('{"ruleChecks": true}', mIssues);
-  Assert.AreEqual(1, Integer(Length(mIssues)), 'kein Objekt');
-  mSettings := TConfigurationParser.ParseLayered('{}', '{"ruleChecks": {"enabled": false}}', mIssues);
-  Assert.IsFalse(mSettings.RuleChecksEnabled);
-end;
-procedure TConfigurationParserTests.ReadsArchitectureComparisonSettings;
-var
-  mSettings: TServerSettings;
-  mIssues: TArray<TConfigurationIssue>;
-begin
-  // Architekturvergleich (#1121)
+  // Architekturübersicht (#1118)
   mSettings := Parse('{}', mIssues);
-  Assert.AreEqual('', mSettings.ArchitectureBaseline);
-  Assert.AreEqual('newCycle', string.Join(',', mSettings.ArchitectureFailOn));
-  mSettings := Parse('{"architecture": {"baseline": " Stand/main.json ", "failOn": ["newCycle", "centralGrowth"]}}',
-    mIssues);
+  Assert.IsTrue(mSettings.ArchitectureEnabled);
+  Assert.AreEqual('projectGroup', mSettings.ArchitectureScope);
+  Assert.IsFalse(mSettings.ArchitectureIncludeLibraryUnits);
+  Assert.AreEqual(15, mSettings.ArchitectureCentralUnits);
+  Assert.AreEqual(0, Integer(Length(mSettings.ArchitectureExclude)));
+  mSettings := Parse('{"architecture": {"enabled": false, "scope": "project", "includeLibraryUnits": true, ' +
+    '"centralUnits": 40, "exclude": ["Tests/**", "*.Tests"]}}', mIssues);
   Assert.AreEqual(0, Integer(Length(mIssues)));
-  Assert.AreEqual('Stand/main.json', mSettings.ArchitectureBaseline);
-  Assert.AreEqual('newCycle,centralGrowth', string.Join(',', mSettings.ArchitectureFailOn));
-  mSettings := Parse('{"architecture": {"failOn": []}}', mIssues);
-  Assert.AreEqual(0, Integer(Length(mIssues)));
-  Assert.AreEqual(0, Integer(Length(mSettings.ArchitectureFailOn)));
-  mSettings := Parse('{"architecture": {"baseline": 3, "failOn": ["newCycle", "error"]}}', mIssues);
-  Assert.AreEqual(2, Integer(Length(mIssues)));
-  Assert.AreEqual('newCycle', string.Join(',', mSettings.ArchitectureFailOn));
-  Parse('{"architecture": {"failOn": "newCycle"}}', mIssues);
+  Assert.IsFalse(mSettings.ArchitectureEnabled);
+  Assert.AreEqual('project', mSettings.ArchitectureScope);
+  Assert.IsTrue(mSettings.ArchitectureIncludeLibraryUnits);
+  Assert.AreEqual(40, mSettings.ArchitectureCentralUnits);
+  Assert.AreEqual('Tests/**|*.Tests', string.Join('|', mSettings.ArchitectureExclude));
+  mSettings := Parse('{"architecture": {"enabled": 1, "scope": "alles", "centralUnits": 4, "exclude": "Tests", ' +
+    '"x": true}}', mIssues);
+  Assert.AreEqual(5, Integer(Length(mIssues)));
+  Assert.IsTrue(mSettings.ArchitectureEnabled);
+  Assert.AreEqual('projectGroup', mSettings.ArchitectureScope);
+  Assert.AreEqual(15, mSettings.ArchitectureCentralUnits);
+  Parse('{"architecture": {"centralUnits": 101}}', mIssues);
   Assert.AreEqual(1, Integer(Length(mIssues)));
-  mSettings := TConfigurationParser.ParseLayered('{}', '{"architecture": {"baseline": "a.json", ' +
-    '"failOn": ["subsystemChange"]}}', mIssues);
-  Assert.AreEqual('a.json', mSettings.ArchitectureBaseline);
-  Assert.AreEqual('subsystemChange', string.Join(',', mSettings.ArchitectureFailOn));
+  Parse('{"architecture": []}', mIssues);
+  Assert.AreEqual(1, Integer(Length(mIssues)));
+  mSettings := TConfigurationParser.ParseLayered('{"architecture": {"centralUnits": 30}}',
+    '{"architecture": {"exclude": ["Demo/**"]}}', mIssues);
+  Assert.AreEqual(1, Integer(Length(mSettings.ArchitectureExclude)));
+end;
+procedure TConfigurationParserTests.ReadsHotspotsSettings;
+var
+  mSettings: TServerSettings;
+  mIssues: TArray<TConfigurationIssue>;
+begin
+  // Hotspots (#1354)
+  mSettings := Parse('{}', mIssues);
+  Assert.IsTrue(mSettings.HotspotsEnabled);
+  Assert.AreEqual(12, mSettings.HotspotsMonths);
+  Assert.AreEqual(5, mSettings.HotspotsCouplingMinCommits);
+  mSettings := Parse('{"hotspots": {"enabled": false, "months": 24, "coupling": {"minCommits": 8}}}', mIssues);
+  Assert.AreEqual(0, Integer(Length(mIssues)));
+  Assert.IsFalse(mSettings.HotspotsEnabled);
+  Assert.AreEqual(24, mSettings.HotspotsMonths);
+  Assert.AreEqual(8, mSettings.HotspotsCouplingMinCommits);
+  mSettings := Parse('{"hotspots": {"enabled": 1, "months": 61, "coupling": {"minCommits": 1, "y": 2}, "x": true}}',
+    mIssues);
+  Assert.AreEqual(5, Integer(Length(mIssues)));
+  Assert.IsTrue(mSettings.HotspotsEnabled);
+  Assert.AreEqual(12, mSettings.HotspotsMonths);
+  Assert.AreEqual(5, mSettings.HotspotsCouplingMinCommits);
+  Parse('{"hotspots": {"months": 0, "coupling": {"minCommits": 1001}}}', mIssues);
+  Assert.AreEqual(2, Integer(Length(mIssues)));
+  Parse('{"hotspots": {"months": 2.5, "coupling": []}}', mIssues);
+  Assert.AreEqual(2, Integer(Length(mIssues)));
+  Parse('{"hotspots": []}', mIssues);
+  Assert.AreEqual(1, Integer(Length(mIssues)));
+  mSettings := TConfigurationParser.ParseLayered('{"hotspots": {"months": 6}}',
+    '{"hotspots": {"coupling": {"minCommits": 3}}}', mIssues);
+  // Die Datei setzt "hotspots" und hat damit für den ganzen Schlüssel Vorrang.
+  Assert.AreEqual(12, mSettings.HotspotsMonths);
+  Assert.AreEqual(3, mSettings.HotspotsCouplingMinCommits);
 end;
 /// <summary>Vorgaben, Nachteilung (#1364), Fundamente (#1365) und Zuordnung erklären (#1368).</summary>
 procedure ReadsGroupingSplitAndFoundations;
@@ -279,10 +281,94 @@ begin
     mIssues);
   Assert.AreEqual(Double(0.5), mSettings.ArchitectureGroupingResolution, 1E-9);
 end;
+procedure TConfigurationParserTests.ReadsArchitectureComparisonSettings;
+var
+  mSettings: TServerSettings;
+  mIssues: TArray<TConfigurationIssue>;
+begin
+  // Architekturvergleich (#1121)
+  mSettings := Parse('{}', mIssues);
+  Assert.AreEqual('', mSettings.ArchitectureBaseline);
+  Assert.AreEqual('newCycle', string.Join(',', mSettings.ArchitectureFailOn));
+  mSettings := Parse('{"architecture": {"baseline": " Stand/main.json ", "failOn": ["newCycle", "centralGrowth"]}}',
+    mIssues);
+  Assert.AreEqual(0, Integer(Length(mIssues)));
+  Assert.AreEqual('Stand/main.json', mSettings.ArchitectureBaseline);
+  Assert.AreEqual('newCycle,centralGrowth', string.Join(',', mSettings.ArchitectureFailOn));
+  mSettings := Parse('{"architecture": {"failOn": []}}', mIssues);
+  Assert.AreEqual(0, Integer(Length(mIssues)));
+  Assert.AreEqual(0, Integer(Length(mSettings.ArchitectureFailOn)));
+  mSettings := Parse('{"architecture": {"baseline": 3, "failOn": ["newCycle", "error"]}}', mIssues);
+  Assert.AreEqual(2, Integer(Length(mIssues)));
+  Assert.AreEqual('newCycle', string.Join(',', mSettings.ArchitectureFailOn));
+  Parse('{"architecture": {"failOn": "newCycle"}}', mIssues);
+  Assert.AreEqual(1, Integer(Length(mIssues)));
+  mSettings := TConfigurationParser.ParseLayered('{}', '{"architecture": {"baseline": "a.json", ' +
+    '"failOn": ["subsystemChange"]}}', mIssues);
+  Assert.AreEqual('a.json', mSettings.ArchitectureBaseline);
+  Assert.AreEqual('subsystemChange', string.Join(',', mSettings.ArchitectureFailOn));
+end;
 procedure TConfigurationParserTests.ReadsArchitectureGrouping;
 begin
   ReadsGroupingSplitAndFoundations;
   ReadsGroupingResolution;
+end;
+procedure TConfigurationParserTests.ReadsQuerySettings;
+var
+  mSettings: TServerSettings;
+  mIssues: TArray<TConfigurationIssue>;
+begin
+  // Code-Abfragen (#1351)
+  mSettings := Parse('{}', mIssues);
+  Assert.IsTrue(mSettings.QueryEnabled);
+  Assert.AreEqual(0, Integer(Length(mSettings.Queries)));
+  mSettings := Parse('{"query": {"enabled": false}, "queries": [{"name": "grosse-klassen", ' +
+    '"query": " classes where methods > 40 ", "description": "Zu groß", "failIfAny": true, "severity": "error", ' +
+    '"message": "{name} hat {methods} Methoden"}, {"name": "b", "query": "units where usedBy = 0"}]}', mIssues);
+  Assert.AreEqual(0, Integer(Length(mIssues)));
+  Assert.IsFalse(mSettings.QueryEnabled);
+  Assert.AreEqual(2, Integer(Length(mSettings.Queries)));
+  Assert.AreEqual('grosse-klassen', mSettings.Queries[0].Name);
+  Assert.AreEqual('classes where methods > 40', mSettings.Queries[0].Query);
+  Assert.AreEqual('Zu groß', mSettings.Queries[0].Description);
+  Assert.IsTrue(mSettings.Queries[0].FailIfAny);
+  Assert.AreEqual<TRuleSeverity>(TRuleSeverity.Error, mSettings.Queries[0].Severity);
+  Assert.AreEqual('{name} hat {methods} Methoden', mSettings.Queries[0].Message);
+  Assert.IsFalse(mSettings.Queries[1].FailIfAny);
+  Assert.AreEqual<TRuleSeverity>(TRuleSeverity.Warning, mSettings.Queries[1].Severity);
+  // Fehlender Name oder Abfrage, ungültiger Name, doppelter Name, falscher Schweregrad, unbekannte Angabe.
+  mSettings := Parse('{"queries": [{"query": "units where name = A"}, {"name": "x"}, {"name": "a b", "query": "q"}, ' +
+    '{"name": "d", "query": "q1"}, {"name": "D", "query": "q2"}, {"name": "s", "query": "q", "severity": "laut"}, ' +
+    '{"name": "u", "query": "q", "farbe": 1}]}', mIssues);
+  Assert.AreEqual('d,s,u', mSettings.Queries[0].Name + ',' + mSettings.Queries[1].Name + ',' + mSettings.Queries[2].Name);
+  Assert.AreEqual('q1', mSettings.Queries[0].Query);
+  Assert.AreEqual<TRuleSeverity>(TRuleSeverity.Warning, mSettings.Queries[1].Severity);
+  Assert.IsTrue(Length(mIssues) >= 6);
+  Parse('{"queries": {}, "query": {"enabled": 1, "x": 2}}', mIssues);
+  Assert.AreEqual(3, Integer(Length(mIssues)));
+  // Projektdatei vor Editor: queries gilt als Ganzes.
+  mSettings := TConfigurationParser.ParseLayered('{"queries": [{"name": "a", "query": "q"}]}',
+    '{"queries": [{"name": "b", "query": "r"}], "query": {"enabled": false}}', mIssues);
+  Assert.AreEqual(1, Integer(Length(mSettings.Queries)));
+  Assert.AreEqual('b', mSettings.Queries[0].Name);
+  Assert.IsFalse(mSettings.QueryEnabled);
+end;
+procedure TConfigurationParserTests.ReadsRuleChecksSwitch;
+var
+  mSettings: TServerSettings;
+  mIssues: TArray<TConfigurationIssue>;
+begin
+  // Modul-Schalter Prüfregeln (#1454): Vorgabe an, aus über settings.json bzw. jede Ebene.
+  Assert.IsTrue(Parse('{}', mIssues).RuleChecksEnabled);
+  mSettings := Parse('{"ruleChecks": {"enabled": false}}', mIssues);
+  Assert.AreEqual(0, Integer(Length(mIssues)));
+  Assert.IsFalse(mSettings.RuleChecksEnabled);
+  Parse('{"ruleChecks": {"enabled": 1, "x": 2}}', mIssues);
+  Assert.AreEqual(2, Integer(Length(mIssues)), 'kein Wahrheitswert, unbekannte Angabe');
+  Parse('{"ruleChecks": true}', mIssues);
+  Assert.AreEqual(1, Integer(Length(mIssues)), 'kein Objekt');
+  mSettings := TConfigurationParser.ParseLayered('{}', '{"ruleChecks": {"enabled": false}}', mIssues);
+  Assert.IsFalse(mSettings.RuleChecksEnabled);
 end;
 procedure TConfigurationParserTests.ReadsNavigationSymbolPath;
 var
@@ -305,90 +391,6 @@ begin
   // Steht navigation in der Datei, gilt ihr Objekt ganz, auch mit den Vorgaben.
   mSettings := TConfigurationParser.ParseLayered('{"navigation": {"symbolPath": false}}', '{"navigation": {}}', mIssues);
   Assert.IsTrue(mSettings.Navigation.SymbolPath);
-end;
-procedure TConfigurationParserTests.ReadsArchitectureSettings;
-var
-  mSettings: TServerSettings;
-  mIssues: TArray<TConfigurationIssue>;
-begin
-  // Architekturübersicht (#1118)
-  mSettings := Parse('{}', mIssues);
-  Assert.IsTrue(mSettings.ArchitectureEnabled);
-  Assert.AreEqual('projectGroup', mSettings.ArchitectureScope);
-  Assert.IsFalse(mSettings.ArchitectureIncludeLibraryUnits);
-  Assert.AreEqual(15, mSettings.ArchitectureCentralUnits);
-  Assert.AreEqual(0, Integer(Length(mSettings.ArchitectureExclude)));
-  mSettings := Parse('{"architecture": {"enabled": false, "scope": "project", "includeLibraryUnits": true, ' +
-    '"centralUnits": 40, "exclude": ["Tests/**", "*.Tests"]}}', mIssues);
-  Assert.AreEqual(0, Integer(Length(mIssues)));
-  Assert.IsFalse(mSettings.ArchitectureEnabled);
-  Assert.AreEqual('project', mSettings.ArchitectureScope);
-  Assert.IsTrue(mSettings.ArchitectureIncludeLibraryUnits);
-  Assert.AreEqual(40, mSettings.ArchitectureCentralUnits);
-  Assert.AreEqual('Tests/**|*.Tests', string.Join('|', mSettings.ArchitectureExclude));
-  mSettings := Parse('{"architecture": {"enabled": 1, "scope": "alles", "centralUnits": 4, "exclude": "Tests", ' +
-    '"x": true}}', mIssues);
-  Assert.AreEqual(5, Integer(Length(mIssues)));
-  Assert.IsTrue(mSettings.ArchitectureEnabled);
-  Assert.AreEqual('projectGroup', mSettings.ArchitectureScope);
-  Assert.AreEqual(15, mSettings.ArchitectureCentralUnits);
-  Parse('{"architecture": {"centralUnits": 101}}', mIssues);
-  Assert.AreEqual(1, Integer(Length(mIssues)));
-  Parse('{"architecture": []}', mIssues);
-  Assert.AreEqual(1, Integer(Length(mIssues)));
-  mSettings := TConfigurationParser.ParseLayered('{"architecture": {"centralUnits": 30}}',
-    '{"architecture": {"exclude": ["Demo/**"]}}', mIssues);
-  Assert.AreEqual(1, Integer(Length(mSettings.ArchitectureExclude)));
-end;
-procedure TConfigurationParserTests.ReadsHotspotsSettings;
-var
-  mSettings: TServerSettings;
-  mIssues: TArray<TConfigurationIssue>;
-begin
-  // Hotspots (#1354)
-  mSettings := Parse('{}', mIssues);
-  Assert.IsTrue(mSettings.HotspotsEnabled);
-  Assert.AreEqual(12, mSettings.HotspotsMonths);
-  Assert.AreEqual(5, mSettings.HotspotsCouplingMinCommits);
-  mSettings := Parse('{"hotspots": {"enabled": false, "months": 24, "coupling": {"minCommits": 8}}}', mIssues);
-  Assert.AreEqual(0, Integer(Length(mIssues)));
-  Assert.IsFalse(mSettings.HotspotsEnabled);
-  Assert.AreEqual(24, mSettings.HotspotsMonths);
-  Assert.AreEqual(8, mSettings.HotspotsCouplingMinCommits);
-  mSettings := Parse('{"hotspots": {"enabled": 1, "months": 61, "coupling": {"minCommits": 1, "y": 2}, "x": true}}',
-    mIssues);
-  Assert.AreEqual(5, Integer(Length(mIssues)));
-  Assert.IsTrue(mSettings.HotspotsEnabled);
-  Assert.AreEqual(12, mSettings.HotspotsMonths);
-  Assert.AreEqual(5, mSettings.HotspotsCouplingMinCommits);
-  Parse('{"hotspots": {"months": 0, "coupling": {"minCommits": 1001}}}', mIssues);
-  Assert.AreEqual(2, Integer(Length(mIssues)));
-  Parse('{"hotspots": {"months": 2.5, "coupling": []}}', mIssues);
-  Assert.AreEqual(2, Integer(Length(mIssues)));
-  Parse('{"hotspots": []}', mIssues);
-  Assert.AreEqual(1, Integer(Length(mIssues)));
-  mSettings := TConfigurationParser.ParseLayered('{"hotspots": {"months": 6}}',
-    '{"hotspots": {"coupling": {"minCommits": 3}}}', mIssues);
-  // Die Datei setzt "hotspots" und hat damit für den ganzen Schlüssel Vorrang.
-  Assert.AreEqual(12, mSettings.HotspotsMonths);
-  Assert.AreEqual(3, mSettings.HotspotsCouplingMinCommits);
-end;
-procedure TConfigurationParserTests.MergesLayersPerKey;
-var
-  mIssues: TArray<TConfigurationIssue>;
-begin
-  // #227: globale Datei unter den Editor-Einstellungen; Objekte je Schlüssel, Listen ersetzt.
-  Assert.AreEqual('', TConfigurationParser.MergeText('', ''));
-  Assert.AreEqual('{"a": 1}', TConfigurationParser.MergeText('', '{"a": 1}'));
-  Assert.AreEqual('{"a": 1}', TConfigurationParser.MergeText('{"a": 1}', '  '));
-  Assert.AreEqual('{"a": 1}', TConfigurationParser.MergeText('{"a": 1', '{"a": 1}'));
-  Assert.AreEqual('{"b": 2, "a": 3}', TConfigurationParser.MergeText('{"a": 1, "b": 2}', '{"a": 3}'));
-  Assert.AreEqual('{"x": ["c"], "r": {"q": "error", "p": "off"}}', TConfigurationParser.MergeText(
-    '// global'#10'{"x": ["a", "b"], "r": {"p": "warning", "q": "error"}}', '{"x": ["c"], "r": {"p": "off"}}'));
-  Assert.AreEqual('{"k\"y": 1}', TConfigurationParser.MergeText('{"k\"y": 1}', '{}'));
-  TConfigurationParser.Parse(TConfigurationParser.MergeText('{"format": {"indentSize": 4, ' +
-    '"useTabs": true}}', '{"format": {"indentSize": 3}}'), mIssues);
-  Assert.AreEqual(0, Integer(Length(mIssues)));
 end;
 procedure TConfigurationParserTests.ReadsAllSettings;
 var
@@ -813,6 +815,21 @@ begin
   Assert.Contains(mIssues[0].Message, '"factories"');
 end;
 
+procedure TConfigurationParserTests.ChecksTodoKeywordsOption;
+var
+  mSettings: TServerSettings;
+  mIssues: TArray<TConfigurationIssue>;
+begin
+  mSettings := Parse('{"rules": {"todo-comment": {"severity": "hint", "keywords": ["TODO", "hack"]}}}', mIssues);
+  Assert.AreEqual(0, Integer(Length(mIssues)));
+  Assert.AreEqual('{"severity": "hint", "keywords": ["TODO", "hack"]}', mSettings.Rules[0].Options);
+  Parse('{"rules": {"todo-comment": {"keywords": "TODO"}}}', mIssues);
+  Assert.AreEqual(1, Integer(Length(mIssues)));
+  Assert.Contains(mIssues[0].Message, '"keywords"');
+  // DONE ist die Marke der erledigten Einträge; Zeichen außer Buchstaben passen nicht zum ersten Wort.
+  Parse('{"rules": {"todo-comment": {"keywords": ["DONE", "TO-DO", "", 1, "XXX"]}}}', mIssues);
+  Assert.AreEqual(4, Integer(Length(mIssues)));
+end;
 procedure TConfigurationParserTests.ChecksForbiddenSymbolsOption;
 var
   mIssues: TArray<TConfigurationIssue>;
@@ -840,21 +857,8 @@ begin
   Assert.Contains(mIssues[3].Message, '"message"');
   Assert.Contains(mIssues[4].Message, '"farbe"');
 end;
-procedure TConfigurationParserTests.ChecksTodoKeywordsOption;
-var
-  mSettings: TServerSettings;
-  mIssues: TArray<TConfigurationIssue>;
-begin
-  mSettings := Parse('{"rules": {"todo-comment": {"severity": "hint", "keywords": ["TODO", "hack"]}}}', mIssues);
-  Assert.AreEqual(0, Integer(Length(mIssues)));
-  Assert.AreEqual('{"severity": "hint", "keywords": ["TODO", "hack"]}', mSettings.Rules[0].Options);
-  Parse('{"rules": {"todo-comment": {"keywords": "TODO"}}}', mIssues);
-  Assert.AreEqual(1, Integer(Length(mIssues)));
-  Assert.Contains(mIssues[0].Message, '"keywords"');
-  // DONE ist die Marke der erledigten Einträge; Zeichen außer Buchstaben passen nicht zum ersten Wort.
-  Parse('{"rules": {"todo-comment": {"keywords": ["DONE", "TO-DO", "", 1, "XXX"]}}}', mIssues);
-  Assert.AreEqual(4, Integer(Length(mIssues)));
-end;
+{ TServerSettingsTests }
+
 procedure TServerSettingsTests.RuleSeverityFallsBackToDefault;
 var
   mSettings: TServerSettings;

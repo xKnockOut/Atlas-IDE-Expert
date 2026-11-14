@@ -94,176 +94,201 @@ uses
   Atlas.Common.Configuration.Parser,
   Atlas.Common.Configuration.TestSupport;
 
-{ TConfigurationParserTests }
+{ TConfigurationFeatureTests }
 
-procedure TConfigurationFeatureTests.FileOverridesEditorPerKey;
-var
-  mIssues: TArray<TConfigurationIssue>;
-  mSettings: TServerSettings;
-begin
-  mSettings := TConfigurationParser.ParseLayered(
-    '{"serverPath": "C:\\Bin\\AtlasServer.exe", "platform": "Win32", "config": "Release", "language": "en"}',
-    '{ // Datei gewinnt'#10' "platform": "Win64", "language": "de" }', mIssues);
-  Assert.AreEqual('Win64', mSettings.Platform);
-  Assert.AreEqual('de', mSettings.Language);
-  Assert.AreEqual('Release', mSettings.Config);
-  // Unbekannte Editor-Schlüssel wie serverPath erzeugen keine Meldung.
-  Assert.AreEqual(0, Integer(Length(mIssues)));
-end;
-procedure TConfigurationFeatureTests.MergesRulesPerId;
-var
-  mIssues: TArray<TConfigurationIssue>;
-  mSettings: TServerSettings;
-begin
-  mSettings := TConfigurationParser.ParseLayered(
-    '{"rules": {"with-statement": "error", "unused-variable": "hint"}}',
-    '{"rules": {"with-statement": "off"}}', mIssues);
-  Assert.AreEqual<TRuleSeverity>(TRuleSeverity.Off, mSettings.RuleSeverity('with-statement', TRuleSeverity.Warning));
-  Assert.AreEqual<TRuleSeverity>(TRuleSeverity.Hint, mSettings.RuleSeverity('unused-variable', TRuleSeverity.Warning));
-end;
-procedure TConfigurationFeatureTests.ExcludeTestsGlobalOrProject;
-var
-  mIssues: TArray<TConfigurationIssue>;
-begin
-  Assert.IsTrue(TConfigurationParser.ParseLayered('{"excludeTests": true}', '{"platform": "Win64"}',
-    mIssues).ExcludeTests);
-  Assert.IsFalse(TConfigurationParser.ParseLayered('{"excludeTests": true}', '{"excludeTests": false}',
-    mIssues).ExcludeTests);
-  Assert.IsTrue(TConfigurationParser.ParseLayered('', '{"excludeTests": true}', mIssues).ExcludeTests);
-  Assert.IsFalse(TConfigurationParser.ParseLayered('{"platform": "Win32"}', '', mIssues).ExcludeTests);
-end;
-procedure TConfigurationFeatureTests.EditorOrFileAlone;
-var
-  mIssues: TArray<TConfigurationIssue>;
-begin
-  Assert.AreEqual('Win32', TConfigurationParser.ParseLayered('{"platform": "Win32"}', '', mIssues).Platform);
-  Assert.AreEqual('Win64', TConfigurationParser.ParseLayered('', '{"platform": "Win64"}', mIssues).Platform);
-  // Ohne Angabe entscheidet der Client (#1458).
-  Assert.AreEqual('', TConfigurationParser.ParseLayered('', '', mIssues).Language);
-  // Meldungen gelten nur der Datei.
-  TConfigurationParser.ParseLayered('{"language": "fr"}', '{"language": "xx"}', mIssues);
-  Assert.AreEqual(1, Integer(Length(mIssues)));
-end;
-procedure TConfigurationFeatureTests.ReadsDefaultEncoding;
-var
-  mIssues: TArray<TConfigurationIssue>;
-begin
-  Assert.AreEqual(65001, Parse('{}', mIssues).DefaultEncoding);
-  Assert.AreEqual(1250, Parse('{"encoding": "windows-1250"}', mIssues).DefaultEncoding);
-  Assert.AreEqual(0, Integer(Length(mIssues)));
-  Assert.AreEqual(65001, Parse('{"encoding": "utf-8"}', mIssues).DefaultEncoding);
-  // Unbekannte Kodierung: Meldung, es bleibt UTF-8.
-  Assert.AreEqual(65001, Parse('{"encoding": "klingonisch"}', mIssues).DefaultEncoding);
-  Assert.AreEqual(1, Integer(Length(mIssues)));
-  // atlas.json hat Vorrang vor dem Editor.
-  Assert.AreEqual(1252, TConfigurationParser.ParseLayered('{"encoding": "1250"}', '{"encoding": "cp1252"}',
-    mIssues).DefaultEncoding);
-  Assert.AreEqual(1250, TConfigurationParser.ParseLayered('{"encoding": "1250"}', '{}', mIssues).DefaultEncoding);
-end;
-{ TServerSettingsTests }
-
-procedure TConfigurationFeatureTests.ReadsFormatSettings;
+procedure TConfigurationFeatureTests.ReadsHints;
 var
   mSettings: TServerSettings;
   mIssues: TArray<TConfigurationIssue>;
 begin
   mSettings := Parse('{}', mIssues);
-  Assert.AreEqual(2, mSettings.Formatting.IndentSize);
-  Assert.AreEqual<TFormatKeys>([], mSettings.Formatting.Given);
-  mSettings := Parse('{"format": {"useTabs": true, "keywordCase": "lower", "endOfLine": "crlf", ' +
-    '"spaceAfterComma": false}}', mIssues);
+  Assert.AreEqual(THintSettings.cExpandLast, mSettings.Hints.XmlDocExpand);
+  Assert.AreEqual(0, mSettings.Hints.XmlDocMaxLines);
+  // published-Mitglieder im Hover (#110).
+  Assert.IsTrue(mSettings.Hints.PublishedMembers);
+  Assert.IsFalse(Parse('{"hints": {"publishedMembers": false}}', mIssues).Hints.PublishedMembers);
   Assert.AreEqual(0, Integer(Length(mIssues)));
-  Assert.IsTrue(mSettings.Formatting.UseTabs);
-  Assert.AreEqual<TKeywordCase>(TKeywordCase.Lower, mSettings.Formatting.KeywordCase);
-  Assert.AreEqual(#13#10, mSettings.Formatting.EndOfLine);
-  Assert.IsFalse(mSettings.Formatting.SpaceAfterComma);
-  Assert.AreEqual<TFormatKeys>([TFormatKey.UseTabs, TFormatKey.KeywordCase, TFormatKey.EndOfLine,
-    TFormatKey.SpaceAfterComma], mSettings.Formatting.Given);
-  mSettings := Parse('{"format": {"indentSize": 0, "keywordCase": "camel", "x": 1}}', mIssues);
+  Parse('{"hints": {"publishedMembers": 0}}', mIssues);
+  Assert.AreEqual(1, Integer(Length(mIssues)));
+  mSettings := Parse('{"hints": {"xmlDocExpand": "collapsed", "xmlDocMaxLines": 10}}', mIssues);
+  Assert.AreEqual(THintSettings.cExpandCollapsed, mSettings.Hints.XmlDocExpand);
+  Assert.AreEqual(10, mSettings.Hints.XmlDocMaxLines);
+  Assert.AreEqual(0, Integer(Length(mIssues)));
+  // Außerhalb 0–50 bzw. falsch getypt (Fehler), unbekannter Schlüssel (Warnung); Vorgaben bleiben.
+  mSettings := Parse('{"hints": {"xmlDocMaxLines": 51, "xmlDocExpand": "auf", "x": 1}}', mIssues);
+  Assert.AreEqual(0, mSettings.Hints.XmlDocMaxLines);
+  Assert.AreEqual(THintSettings.cExpandLast, mSettings.Hints.XmlDocExpand);
   Assert.AreEqual(3, Integer(Length(mIssues)));
-  Assert.AreEqual<TFormatKeys>([], mSettings.Formatting.Given);
-  // Blockstruktur, Stellung, Umbruch und Ausrichtung (#43).
+  Assert.IsTrue(mIssues[0].IsError);
+  Assert.IsTrue(mIssues[1].IsError);
+  Assert.IsFalse(mIssues[2].IsError);
+  Parse('{"hints": {"xmlDocMaxLines": -1}}', mIssues);
+  Assert.AreEqual(1, Integer(Length(mIssues)));
+  // Veraltetes xmlDocFull (#770): true = expanded, false = collapsed, mit Warnung; xmlDocExpand gewinnt.
+  mSettings := Parse('{"hints": {"xmlDocFull": false}}', mIssues);
+  Assert.AreEqual(THintSettings.cExpandCollapsed, mSettings.Hints.XmlDocExpand);
+  Assert.AreEqual(1, Integer(Length(mIssues)));
+  Assert.IsFalse(mIssues[0].IsError);
+  mSettings := Parse('{"hints": {"xmlDocFull": true}}', mIssues);
+  Assert.AreEqual(THintSettings.cExpandExpanded, mSettings.Hints.XmlDocExpand);
+  mSettings := Parse('{"hints": {"xmlDocExpand": "last", "xmlDocFull": false}}', mIssues);
+  Assert.AreEqual(THintSettings.cExpandLast, mSettings.Hints.XmlDocExpand);
+  // Die Datei ersetzt den Block aus dem Editor (IDE-Plugin).
+  mSettings := TConfigurationParser.ParseLayered('{"hints": {"xmlDocExpand": "collapsed"}}',
+    '{"hints": {"xmlDocMaxLines": 5}}', mIssues);
+  Assert.AreEqual(THintSettings.cExpandLast, mSettings.Hints.XmlDocExpand);
+  Assert.AreEqual(5, mSettings.Hints.XmlDocMaxLines);
+  // Begründungen (#1123): Schalter, Marken, ADR-Ordner.
   mSettings := Parse('{}', mIssues);
-  Assert.IsTrue(mSettings.Formatting.Reindent);
-  Assert.AreEqual<TBlockPlacement>(TBlockPlacement.Preserve, mSettings.Formatting.BeginPlacement);
-  Assert.AreEqual(0, mSettings.Formatting.MaxLineLength);
-  mSettings := Parse('{"format": {"reindent": false, "beginPlacement": "newLine", "elsePlacement": "sameLine", ' +
-    '"maxLineLength": 100, "alignAssignments": true, "alignDeclarations": true, "alignComments": true}}', mIssues);
+  Assert.IsTrue(mSettings.Hints.Rationale);
+  Assert.AreEqual(0, Integer(Length(mSettings.Hints.RationaleMarkers)));
+  Assert.AreEqual('', mSettings.Hints.AdrFolder);
+  mSettings := Parse('{"hints": {"rationale": false, "rationaleMarkers": ["WHY", " PERF "], ' +
+    '"adrFolder": "doc/decisions"}}', mIssues);
   Assert.AreEqual(0, Integer(Length(mIssues)));
-  Assert.IsFalse(mSettings.Formatting.Reindent);
-  Assert.AreEqual<TBlockPlacement>(TBlockPlacement.NewLine, mSettings.Formatting.BeginPlacement);
-  Assert.AreEqual<TBlockPlacement>(TBlockPlacement.SameLine, mSettings.Formatting.ElsePlacement);
-  Assert.AreEqual(100, mSettings.Formatting.MaxLineLength);
-  Assert.IsTrue(mSettings.Formatting.AlignAssignments);
-  Assert.IsTrue(mSettings.Formatting.AlignDeclarations);
-  Assert.IsTrue(mSettings.Formatting.AlignComments);
-  Assert.AreEqual<TFormatKeys>([TFormatKey.MaxLineLength], mSettings.Formatting.Given);
-  Parse('{"format": {"beginPlacement": "below", "maxLineLength": -1}}', mIssues);
-  Assert.AreEqual(2, Integer(Length(mIssues)));
+  Assert.IsFalse(mSettings.Hints.Rationale);
+  Assert.AreEqual('WHY PERF', string.Join(' ', mSettings.Hints.RationaleMarkers));
+  Assert.AreEqual('doc/decisions', mSettings.Hints.AdrFolder);
+  mSettings := Parse('{"hints": {"rationale": "ja", "rationaleMarkers": ["WHY", ""], "adrFolder": 3}}', mIssues);
+  Assert.AreEqual(3, Integer(Length(mIssues)));
+  Assert.IsTrue(mSettings.Hints.Rationale);
+  mSettings := Parse('{"hints": {"rationaleMarkers": "WHY"}}', mIssues);
+  Assert.AreEqual(1, Integer(Length(mIssues)));
+  Assert.AreEqual(0, Integer(Length(mSettings.Hints.RationaleMarkers)));
 end;
-procedure TConfigurationFeatureTests.ReadsVcsProvider;
+procedure TConfigurationFeatureTests.ReadsMcpDisabledTools;
 var
   mSettings: TServerSettings;
   mIssues: TArray<TConfigurationIssue>;
 begin
-  // Versionsverwaltung (#571): Vorgabe auto.
   mSettings := Parse('{}', mIssues);
-  Assert.AreEqual('auto', mSettings.VcsProvider);
-  mSettings := Parse('{"vcs": {"provider": "svn"}}', mIssues);
-  Assert.AreEqual('svn', mSettings.VcsProvider);
+  Assert.AreEqual(0, Integer(Length(mSettings.McpDisabledTools)));
+  mSettings := Parse('{"mcp": {"disabledTools": ["rename_symbol", 3], "x": 1}}', mIssues);
+  Assert.AreEqual(1, Integer(Length(mSettings.McpDisabledTools)));
+  Assert.AreEqual('rename_symbol', mSettings.McpDisabledTools[0]);
+  Assert.AreEqual(2, Integer(Length(mIssues)), 'Zahl in der Liste und unbekannter Schlüssel');
+  mSettings := TConfigurationParser.ParseLayered('{"mcp": {"disabledTools": ["a"]}}',
+    '{"mcp": {"disabledTools": ["b"]}}', mIssues);
+  Assert.AreEqual('b', mSettings.McpDisabledTools[0], 'Datei vor Editor');
+end;
+procedure TConfigurationFeatureTests.ReadsMcpGlobalSettings;
+var
+  mSettings: TServerSettings;
+  mIssues: TArray<TConfigurationIssue>;
+begin
+  mSettings := Parse('{}', mIssues);
+  Assert.IsTrue(mSettings.McpGlobalSettings, 'Vorgabe: globale Datei lesen');
+  mSettings := Parse('{"mcp": {"globalSettings": false}}', mIssues);
+  Assert.IsFalse(mSettings.McpGlobalSettings);
   Assert.AreEqual(0, Integer(Length(mIssues)));
-  mSettings := Parse('{"vcs": {"provider": "cvs", "x": 1}}', mIssues);
-  Assert.AreEqual('auto', mSettings.VcsProvider, 'unbekannter Wert bleibt bei der Vorgabe');
-  Assert.AreEqual(2, Integer(Length(mIssues)));
-  Parse('{"vcs": "git"}', mIssues);
-  Assert.AreEqual(1, Integer(Length(mIssues)), 'vcs muss ein Objekt sein');
-  mSettings := TConfigurationParser.ParseLayered('{"vcs": {"provider": "git"}}', '{"vcs": {"provider": "off"}}',
+  mSettings := Parse('{"mcp": {"globalSettings": "nein"}}', mIssues);
+  Assert.IsTrue(mSettings.McpGlobalSettings, 'Ungültiger Wert lässt die Vorgabe');
+  Assert.AreEqual(1, Integer(Length(mIssues)));
+  mSettings := TConfigurationParser.ParseLayered('{"mcp": {"globalSettings": true}}',
+    '{"mcp": {"globalSettings": false}}', mIssues);
+  Assert.IsFalse(mSettings.McpGlobalSettings, 'Datei vor Editor');
+end;
+procedure TConfigurationFeatureTests.ReadsMcpPrompts;
+var
+  mSettings: TServerSettings;
+  mIssues: TArray<TConfigurationIssue>;
+begin
+  mSettings := Parse('{}', mIssues);
+  Assert.IsTrue(mSettings.McpPrompts, 'Vorgabe: Prompts an');
+  Assert.AreEqual('de', mSettings.McpPromptLanguage);
+  Assert.AreEqual(0, Integer(Length(mSettings.McpCustomPrompts)));
+  mSettings := Parse('{"mcp": {"prompts": false, "promptLanguage": "en", "customPrompts": [' +
+    '{"name": "check_unit", "description": "Unit prüfen", "arguments": [{"name": "unit", "description": "Unit", ' +
+    '"required": true}, {"name": "focus"}], "text": "Prüfe {unit} mit Blick auf {focus}.", ' +
+    '"include": ["diagnostics", "metrics"]}]}}', mIssues);
+  Assert.AreEqual(0, Integer(Length(mIssues)));
+  Assert.IsFalse(mSettings.McpPrompts);
+  Assert.AreEqual('en', mSettings.McpPromptLanguage);
+  Assert.AreEqual(1, Integer(Length(mSettings.McpCustomPrompts)));
+  Assert.AreEqual('check_unit', mSettings.McpCustomPrompts[0].Name);
+  Assert.AreEqual('Unit prüfen', mSettings.McpCustomPrompts[0].Description);
+  Assert.AreEqual(2, Integer(Length(mSettings.McpCustomPrompts[0].Arguments)));
+  Assert.IsTrue(mSettings.McpCustomPrompts[0].Arguments[0].Required);
+  Assert.IsFalse(mSettings.McpCustomPrompts[0].Arguments[1].Required, 'Vorgabe: kein Pflichtargument');
+  Assert.AreEqual('Prüfe {unit} mit Blick auf {focus}.', mSettings.McpCustomPrompts[0].Text);
+  Assert.AreEqual(2, Integer(Length(mSettings.McpCustomPrompts[0].Include)));
+  Assert.AreEqual('metrics', mSettings.McpCustomPrompts[0].Include[1]);
+end;
+procedure TConfigurationFeatureTests.ChecksMcpCustomPrompts;
+var
+  mSettings: TServerSettings;
+  mIssues: TArray<TConfigurationIssue>;
+begin
+  mSettings := Parse('{"mcp": {"promptLanguage": "fr"}}', mIssues);
+  Assert.AreEqual(1, Integer(Length(mIssues)), 'nur de oder en');
+  Assert.AreEqual('de', mSettings.McpPromptLanguage, 'ungültige Sprache lässt die Vorgabe');
+  Parse('{"mcp": {"customPrompts": {"name": "a"}}}', mIssues);
+  Assert.AreEqual(1, Integer(Length(mIssues)), 'keine Liste');
+  // Ohne Text, Name mit Leerzeichen, unbekannter Inhalt, doppelter Name.
+  mSettings := Parse('{"mcp": {"customPrompts": [{"name": "ohne_text"}, {"name": "mit leer", "text": "x"}, ' +
+    '{"name": "a", "text": "x", "include": ["metrics", "wetter"]}, {"name": "A", "text": "y"}]}}', mIssues);
+  Assert.AreEqual(4, Integer(Length(mIssues)), 'ohne Text, ungültiger Name, unbekannter Inhalt, doppelter Name');
+  Assert.AreEqual(1, Integer(Length(mSettings.McpCustomPrompts)), 'nur der gültige Prompt a');
+  Assert.AreEqual(1, Integer(Length(mSettings.McpCustomPrompts[0].Include)), 'unbekannter Inhalt fällt weg');
+  // Platzhalter ohne Argument: nur eine Warnung, der Prompt gilt.
+  mSettings := Parse('{"mcp": {"customPrompts": [{"name": "b", "text": "Prüfe {unit}."}]}}', mIssues);
+  Assert.AreEqual(1, Integer(Length(mIssues)));
+  Assert.IsFalse(mIssues[0].IsError, 'Platzhalter ohne Argument ist eine Warnung');
+  Assert.AreEqual(1, Integer(Length(mSettings.McpCustomPrompts)));
+end;
+procedure TConfigurationFeatureTests.LayersMcpMembersSeparately;
+var
+  mSettings: TServerSettings;
+  mIssues: TArray<TConfigurationIssue>;
+begin
+  mSettings := TConfigurationParser.ParseLayered('{"mcp": {"prompts": false, "disabledTools": ["a"]}}',
+    '{"mcp": {"customPrompts": [{"name": "c", "text": "x"}]}}', mIssues);
+  Assert.IsFalse(mSettings.McpPrompts, 'mcp.prompts aus der globalen Ebene bleibt');
+  Assert.AreEqual(1, Integer(Length(mSettings.McpDisabledTools)), 'mcp.disabledTools aus der globalen Ebene bleibt');
+  Assert.AreEqual(1, Integer(Length(mSettings.McpCustomPrompts)), 'mcp.customPrompts aus der Datei');
+  mSettings := TConfigurationParser.ParseLayered('{"mcp": {"promptLanguage": "en"}}',
+    '{"mcp": {"promptLanguage": "de"}}', mIssues);
+  Assert.AreEqual('de', mSettings.McpPromptLanguage, 'Datei vor Editor');
+end;
+procedure TConfigurationFeatureTests.ChecksTasks;
+var
+  mSettings: TServerSettings;
+  mIssues: TArray<TConfigurationIssue>;
+begin
+  mSettings := Parse('{"tasks": [{"name": "Delphi-12-Prüfung", "command": "pwsh", "args": ["Tools/Check-Delphi12.ps1"],' +
+    ' "cwd": "${projectDir}", "group": "check", "matcher": "pwsh", "key": "Ctrl+Alt+1", "timeoutSec": 300,' +
+    ' "beforeBuild": "block", "env": {"NO_COLOR": "1"}},' +
+    ' {"name": "Fremd", "command": "lint.exe", "matcher": {"regex": "^(?<file>[^:]+):(?<line>\\d+) (?<message>.*)$",' +
+    ' "severity": "warning", "severityMap": {"SCHLIMM": "error"}}}]}', mIssues);
+  Assert.AreEqual(0, Integer(Length(mIssues)), 'Beispiel aus dem Issue ohne Meldung');
+  Assert.IsTrue(mSettings.Tasks.StartsWith('['), mSettings.Tasks);
+  Parse('{"tasks": [{"name": "A", "command": "x", "group": "lint", "matcher": "eslint", "timeoutSec": -1,' +
+    ' "beforeBuild": "stop", "foo": 1}, {"name": "a", "command": ""}, {"command": "y"}, 3,' +
+    ' {"name": "M", "command": "z", "matcher": {"severityMap": {"X": "fatal"}}}]}', mIssues);
+  // group, matcher, timeoutSec, beforeBuild, foo; Doppelname a und leerer command; ohne name; 3; Muster ohne regex
+  // und severityMap-Wert.
+  Assert.AreEqual(11, Integer(Length(mIssues)));
+  Parse('{"tasks": {"name": "A"}}', mIssues);
+  Assert.AreEqual(1, Integer(Length(mIssues)), 'keine Liste');
+  mSettings := TConfigurationParser.ParseLayered('{"tasks": []}', '{"tasks": [{"name": "B", "command": "b"}]}',
     mIssues);
-  Assert.AreEqual('off', mSettings.VcsProvider, 'Datei vor Editor');
-  mSettings := TConfigurationParser.ParseLayered('', '{"vcs": {"provider": "git"}}', mIssues);
-  Assert.AreEqual('git', mSettings.VcsProvider);
+  Assert.IsTrue(mSettings.Tasks.Contains('"B"'), 'Datei vor Editor');
 end;
-procedure TConfigurationFeatureTests.ReadsVcsToolPathsAndTimeout;
+procedure TConfigurationFeatureTests.ChecksTestLists;
 var
-  mSettings: TServerSettings;
   mIssues: TArray<TConfigurationIssue>;
 begin
-  mSettings := Parse('{}', mIssues);
-  Assert.AreEqual('', mSettings.VcsGitPath, 'leer = automatisch suchen');
-  Assert.AreEqual('', mSettings.VcsSvnPath);
-  Assert.AreEqual(15, mSettings.VcsTimeoutSeconds);
-  mSettings := Parse('{"vcs": {"git": {"path": "D:\\Portable\\Git\\cmd\\git.exe"}, ' +
-    '"svn": {"path": "C:\\Programme\\TortoiseSVN\\bin\\svn.exe"}, "timeoutSeconds": 60}}', mIssues);
-  Assert.AreEqual(0, Integer(Length(mIssues)));
-  Assert.AreEqual('D:\Portable\Git\cmd\git.exe', mSettings.VcsGitPath);
-  Assert.AreEqual('C:\Programme\TortoiseSVN\bin\svn.exe', mSettings.VcsSvnPath);
-  Assert.AreEqual(60, mSettings.VcsTimeoutSeconds);
-  mSettings := Parse('{"vcs": {"timeoutSeconds": 0}}', mIssues);
-  Assert.AreEqual(1, Integer(Length(mIssues)), 'unter 1');
-  Assert.AreEqual(15, mSettings.VcsTimeoutSeconds, 'ungültig: Vorgabe');
-  Parse('{"vcs": {"timeoutSeconds": 301}}', mIssues);
-  Assert.AreEqual(1, Integer(Length(mIssues)), 'über 300');
-  Parse('{"vcs": {"timeoutSeconds": "30"}}', mIssues);
-  Assert.AreEqual(1, Integer(Length(mIssues)), 'Text statt Zahl');
-  mSettings := Parse('{"vcs": {"git": "git.exe", "svn": {"pfad": "svn.exe"}}}', mIssues);
-  Assert.AreEqual(2, Integer(Length(mIssues)), 'git muss ein Objekt sein, svn.pfad unbekannt');
-  Assert.AreEqual('', mSettings.VcsGitPath);
-  Assert.AreEqual('', mSettings.VcsSvnPath);
-  mSettings := TConfigurationParser.ParseLayered('{"vcs": {"timeoutSeconds": 30}}',
-    '{"vcs": {"provider": "svn", "svn": {"path": "s.exe"}}}', mIssues);
-  Assert.AreEqual('svn', mSettings.VcsProvider, 'Datei vor Editor');
-  Assert.AreEqual('s.exe', mSettings.VcsSvnPath);
-  Assert.AreEqual(15, mSettings.VcsTimeoutSeconds, 'die Datei bestimmt den ganzen Abschnitt vcs');
-  // #1286: vcs.projects wird geprüft und als Text weitergegeben.
-  mSettings := Parse('{"vcs": {"projects": [{"match": "C:\\Kasse", "provider": "svn"}, ' +
-    '{"match": "C:\\Kasse\\Lib", "provider": "git", "mainBranch": "develop"}]}}', mIssues);
-  Assert.AreEqual(0, Integer(Length(mIssues)));
-  Assert.Contains(mSettings.VcsProjects, '"develop"');
-  Parse('{"vcs": {"projects": [{"match": "c:/kasse/"}, {"match": "C:\\Kasse"}, {"provider": "cvs"}, 3, ' +
-    '{"match": "C:\\X", "mainBranch": "mein branch", "y": 1}]}}', mIssues);
-  Assert.AreEqual(6, Integer(Length(mIssues)),
-    'doppelter Pfad, unbekannte Art, ohne match, kein Objekt, Leerzeichen im Branch, unbekannte Angabe');
-  Parse('{"vcs": {"projects": {}}}', mIssues);
+  Parse('{"testLists": [{"name": "Vor dem Commit", "rules": [{"category": "Benchmark", "exclude": true},' +
+    ' {"unit": "*.Slow.*", "exclude": true}, {"state": "failed"}]}, {"name": "Parser",' +
+    ' "tests": ["Atlas.Common.Pascal.Tests"]}]}', mIssues);
+  Assert.AreEqual(0, Integer(Length(mIssues)), 'Beispiel aus dem Issue ohne Meldung');
+  Parse('{"testLists": [{"name": "A", "rules": [{"state": "gelb"}, {"category": "K", "unit": "U"}, {},' +
+    ' {"category": 3, "exclude": "ja", "foo": 1}, 7], "tests": [1], "bar": true}, {"name": "a"}, {"tests": []},' +
+    ' 3]}', mIssues);
+  // state; zwei Arten; keine Art; category kein Text, exclude kein Wahrheitswert, foo unbekannt; 7; tests mit Zahl;
+  // bar unbekannt; Doppelname a; ohne name; 3.
+  Assert.AreEqual(12, Integer(Length(mIssues)));
+  Parse('{"testLists": {"name": "A"}}', mIssues);
   Assert.AreEqual(1, Integer(Length(mIssues)), 'keine Liste');
 end;
 /// <summary>Einstellungen ab „Vorgabe aus: Das Plugin wählt „Nach dem Speichern“ selbst“.</summary>
@@ -944,273 +969,6 @@ begin
   Assert.AreEqual('warning', mSettings.LogLevel);
 end;
 
-procedure TConfigurationFeatureTests.IgnoresRemovedIdeBackend;
-var
-  mSettings: TServerSettings;
-  mIssues: TArray<TConfigurationIssue>;
-begin
-  mSettings := Parse('{"compiler": {"backend": "ide", "ideCommand": "C:\\Werkzeug\\bau.ps1"}}', mIssues);
-  Assert.AreEqual(0, Integer(Length(mIssues)), 'alter Wert ohne Meldung');
-  Assert.AreEqual(Ord(TCompilerBackendSetting.Off), Ord(mSettings.Compiler.Backend));
-  // Auch ein Eintrag falschen Typs wird übergangen.
-  mSettings := Parse('{"compiler": {"ideCommand": 3}}', mIssues);
-  Assert.AreEqual(0, Integer(Length(mIssues)));
-  Assert.AreEqual(Ord(TCompilerBackendSetting.Auto), Ord(mSettings.Compiler.Backend));
-  mIssues := nil;
-end;
-
-procedure TConfigurationFeatureTests.ReadsCompilerSettings;
-begin
-  ReadsCompilerOnSaveAndSlashCommands;
-  ReadsDocCommentAndCompletion;
-  ReadsInterfaceSectionAndConversions;
-  ReadsAnonymousMethodsAndKeywords;
-  ReadsNameSuggestionsAndRefactorings;
-  ReadsWarningsAndCodeActions;
-  ReadsFreeFieldsAndConditions;
-  ReadsMethodWithoutSelfAndTypes;
-  ReadsExtractBaseClassAndDelete;
-  ReadsMemberRefactorings;
-  ReadsBudgetAndTimeLimits;
-  ReadsIndexScope;
-  ReadsProtocolSettings;
-end;
-procedure TConfigurationFeatureTests.ReadsStringLiteral;
-var
-  mSettings: TServerSettings;
-  mIssues: TArray<TConfigurationIssue>;
-begin
-  mSettings := Parse('{}', mIssues);
-  Assert.AreEqual(Ord(TStringLiteralStyle.Auto), Ord(mSettings.StringLiteral.Style));
-  Assert.AreEqual(Ord(TStringLiteralBreak.SLineBreak), Ord(mSettings.StringLiteral.LineBreak));
-  Assert.AreEqual(0, mSettings.StringLiteral.MaxLineLength);
-  mSettings := Parse('{"stringLiteral": {"style": "concat", "lineBreak": "#13#10", "maxLineLength": 100}}', mIssues);
-  Assert.AreEqual(0, Integer(Length(mIssues)));
-  Assert.AreEqual(Ord(TStringLiteralStyle.Concat), Ord(mSettings.StringLiteral.Style));
-  Assert.AreEqual(Ord(TStringLiteralBreak.CrLf), Ord(mSettings.StringLiteral.LineBreak));
-  Assert.AreEqual(100, mSettings.StringLiteral.MaxLineLength);
-  mSettings := Parse('{"stringLiteral": {"style": "kurz", "lineBreak": "space", "maxLineLength": -1, "x": 1}}', mIssues);
-  // Ungültiger Stil und negative Länge (Fehler), "x" unbekannt (Warnung).
-  Assert.AreEqual(3, Integer(Length(mIssues)));
-  Assert.AreEqual(Ord(TStringLiteralBreak.Space), Ord(mSettings.StringLiteral.LineBreak));
-  Assert.AreEqual(Ord(TStringLiteralStyle.Auto), Ord(mSettings.StringLiteral.Style));
-end;
-procedure TConfigurationFeatureTests.ReadsDirectives;
-var
-  mSettings: TServerSettings;
-  mIssues: TArray<TConfigurationIssue>;
-begin
-  mSettings := Parse('{}', mIssues);
-  Assert.IsTrue(mSettings.Directives.Completion);
-  Assert.IsTrue(mSettings.Directives.Hover);
-  mSettings := Parse('{"directives": {"completion": false, "hover": false}}', mIssues);
-  Assert.AreEqual(0, Integer(Length(mIssues)));
-  Assert.IsFalse(mSettings.Directives.Completion);
-  Assert.IsFalse(mSettings.Directives.Hover);
-  Parse('{"directives": {"x": 1}}', mIssues);
-  Assert.AreEqual(1, Integer(Length(mIssues)));
-  Parse('{"directives": 1}', mIssues);
-  Assert.AreEqual(1, Integer(Length(mIssues)));
-end;
-procedure TConfigurationFeatureTests.ReadsDfmPropertyRules;
-var
-  mIssues: TArray<TConfigurationIssue>;
-  mSettings: TServerSettings;
-begin
-  Assert.AreEqual(0, Integer(Length(Parse('{}', mIssues).DfmPropertyRules)));
-  mSettings := Parse('{"dfmPropertyRules": [' +
-    '{"class": "TLabel", "property": "Transparent", "condition": "=", "value": "True", "fix": "auto"},' +
-    '{"class": "TForm", "property": "Position", "condition": "<>", "value": "poDesigned", "message": "Zentriert",' +
-    ' "severity": "hint", "includeDescendants": false, "exclude": ["**/Alt/*.dfm"]},' +
-    '{"class": "TEdit", "property": "Hint", "condition": "notEmpty", "fix": "none"}]}', mIssues);
-  Assert.AreEqual(0, Integer(Length(mIssues)));
-  Assert.AreEqual(3, Integer(Length(mSettings.DfmPropertyRules)));
-  Assert.AreEqual('TLabel', mSettings.DfmPropertyRules[0].ClassName);
-  Assert.AreEqual('Transparent', mSettings.DfmPropertyRules[0].PropertyPath);
-  Assert.AreEqual<TDfmCondition>(TDfmCondition.Equal, mSettings.DfmPropertyRules[0].Condition);
-  Assert.AreEqual<TDfmFixMode>(TDfmFixMode.Auto, mSettings.DfmPropertyRules[0].Fix);
-  Assert.AreEqual<TRuleSeverity>(TRuleSeverity.Warning, mSettings.DfmPropertyRules[0].Severity);
-  Assert.IsTrue(mSettings.DfmPropertyRules[0].IncludeDescendants);
-  Assert.AreEqual<TDfmCondition>(TDfmCondition.NotEqual, mSettings.DfmPropertyRules[1].Condition);
-  Assert.AreEqual<TRuleSeverity>(TRuleSeverity.Hint, mSettings.DfmPropertyRules[1].Severity);
-  Assert.IsFalse(mSettings.DfmPropertyRules[1].IncludeDescendants);
-  Assert.AreEqual('Zentriert', mSettings.DfmPropertyRules[1].Message);
-  Assert.AreEqual('**/Alt/*.dfm', mSettings.DfmPropertyRules[1].Exclude[0]);
-  Assert.AreEqual<TDfmCondition>(TDfmCondition.NotEmpty, mSettings.DfmPropertyRules[2].Condition);
-  Assert.AreEqual<TDfmFixMode>(TDfmFixMode.None, mSettings.DfmPropertyRules[2].Fix);
-  // Fehlerhafte Regeln: ohne property, = ohne value, unbekannte Bedingung, unbekannter Schlüssel.
-  mSettings := Parse('{"dfmPropertyRules": [{"class": "TLabel"}, {"class": "TA", "property": "B", "condition": "="},' +
-    ' {"class": "TA", "property": "B", "condition": "gleich", "value": "1", "x": 1}, 5]}', mIssues);
-  Assert.AreEqual(5, Integer(Length(mIssues)));
-  Assert.AreEqual(1, Integer(Length(mSettings.DfmPropertyRules)));
-  Parse('{"dfmPropertyRules": {}}', mIssues);
-  Assert.AreEqual(1, Integer(Length(mIssues)));
-  // Editor zuerst, die Datei hat Vorrang.
-  mSettings := TConfigurationParser.ParseLayered('{"dfmPropertyRules": []}',
-    '{"dfmPropertyRules": [{"class": "TA", "property": "B", "value": "1"}]}', mIssues);
-  Assert.AreEqual(1, Integer(Length(mSettings.DfmPropertyRules)));
-end;
-procedure TConfigurationFeatureTests.ReadsMemberOrder;
-var
-  mSettings: TServerSettings;
-  mIssues: TArray<TConfigurationIssue>;
-begin
-  mSettings := Parse('{}', mIssues);
-  Assert.AreEqual(6, Integer(Length(mSettings.MemberOrder.Sections)));
-  Assert.AreEqual('field', mSettings.MemberOrder.Members[0]);
-  Assert.IsFalse(mSettings.MemberOrder.SortFields);
-  mSettings := Parse('{"memberOrder": {"sections": ["public", "private"], "members": ["method", "field"], ' +
-    '"sortFields": true, "sortPublished": true}}', mIssues);
-  Assert.AreEqual(0, Integer(Length(mIssues)));
-  Assert.AreEqual('public', mSettings.MemberOrder.Sections[0]);
-  Assert.AreEqual('method', mSettings.MemberOrder.Members[0]);
-  Assert.IsTrue(mSettings.MemberOrder.SortFields);
-  Assert.IsTrue(mSettings.MemberOrder.SortPublished);
-  Parse('{"memberOrder": {"sections": ["intern"], "x": 1}}', mIssues);
-  // Unbekannte Sichtbarkeit (Fehler), "x" unbekannt (Warnung).
-  Assert.AreEqual(2, Integer(Length(mIssues)));
-end;
-procedure TConfigurationFeatureTests.ReadsTestUnits;
-var
-  mSettings: TServerSettings;
-  mIssues: TArray<TConfigurationIssue>;
-begin
-  mSettings := Parse('{}', mIssues);
-  Assert.AreEqual('{unit}.Tests', mSettings.TestUnits.Pattern);
-  Assert.AreEqual('', mSettings.TestUnits.Folder);
-  Assert.AreEqual('', mSettings.TestUnits.Project);
-  mSettings := Parse('{"testUnits": {"pattern": "Test.{unit}", "folder": "Tests/Unit", ' +
-    '"project": "Tests/Tests.dproj"}}', mIssues);
-  Assert.AreEqual(0, Integer(Length(mIssues)));
-  Assert.AreEqual('Test.{unit}', mSettings.TestUnits.Pattern);
-  Assert.AreEqual('Tests/Unit', mSettings.TestUnits.Folder);
-  Assert.AreEqual('Tests/Tests.dproj', mSettings.TestUnits.Project);
-  mSettings := Parse('{"testUnits": {"pattern": "Tests", "project": "Tests.exe", "x": 1}}', mIssues);
-  // Muster ohne {unit} und Projekt ohne .dproj/.dpr (Fehler), "x" unbekannt (Warnung).
-  Assert.AreEqual(3, Integer(Length(mIssues)));
-  Assert.AreEqual('{unit}.Tests', mSettings.TestUnits.Pattern, 'ungültiges Muster bleibt bei der Vorgabe');
-end;
-procedure TConfigurationFeatureTests.ReadsMcpGlobalSettings;
-var
-  mSettings: TServerSettings;
-  mIssues: TArray<TConfigurationIssue>;
-begin
-  mSettings := Parse('{}', mIssues);
-  Assert.IsTrue(mSettings.McpGlobalSettings, 'Vorgabe: globale Datei lesen');
-  mSettings := Parse('{"mcp": {"globalSettings": false}}', mIssues);
-  Assert.IsFalse(mSettings.McpGlobalSettings);
-  Assert.AreEqual(0, Integer(Length(mIssues)));
-  mSettings := Parse('{"mcp": {"globalSettings": "nein"}}', mIssues);
-  Assert.IsTrue(mSettings.McpGlobalSettings, 'Ungültiger Wert lässt die Vorgabe');
-  Assert.AreEqual(1, Integer(Length(mIssues)));
-  mSettings := TConfigurationParser.ParseLayered('{"mcp": {"globalSettings": true}}',
-    '{"mcp": {"globalSettings": false}}', mIssues);
-  Assert.IsFalse(mSettings.McpGlobalSettings, 'Datei vor Editor');
-end;
-procedure TConfigurationFeatureTests.ReadsMcpPrompts;
-var
-  mSettings: TServerSettings;
-  mIssues: TArray<TConfigurationIssue>;
-begin
-  mSettings := Parse('{}', mIssues);
-  Assert.IsTrue(mSettings.McpPrompts, 'Vorgabe: Prompts an');
-  Assert.AreEqual('de', mSettings.McpPromptLanguage);
-  Assert.AreEqual(0, Integer(Length(mSettings.McpCustomPrompts)));
-  mSettings := Parse('{"mcp": {"prompts": false, "promptLanguage": "en", "customPrompts": [' +
-    '{"name": "check_unit", "description": "Unit prüfen", "arguments": [{"name": "unit", "description": "Unit", ' +
-    '"required": true}, {"name": "focus"}], "text": "Prüfe {unit} mit Blick auf {focus}.", ' +
-    '"include": ["diagnostics", "metrics"]}]}}', mIssues);
-  Assert.AreEqual(0, Integer(Length(mIssues)));
-  Assert.IsFalse(mSettings.McpPrompts);
-  Assert.AreEqual('en', mSettings.McpPromptLanguage);
-  Assert.AreEqual(1, Integer(Length(mSettings.McpCustomPrompts)));
-  Assert.AreEqual('check_unit', mSettings.McpCustomPrompts[0].Name);
-  Assert.AreEqual('Unit prüfen', mSettings.McpCustomPrompts[0].Description);
-  Assert.AreEqual(2, Integer(Length(mSettings.McpCustomPrompts[0].Arguments)));
-  Assert.IsTrue(mSettings.McpCustomPrompts[0].Arguments[0].Required);
-  Assert.IsFalse(mSettings.McpCustomPrompts[0].Arguments[1].Required, 'Vorgabe: kein Pflichtargument');
-  Assert.AreEqual('Prüfe {unit} mit Blick auf {focus}.', mSettings.McpCustomPrompts[0].Text);
-  Assert.AreEqual(2, Integer(Length(mSettings.McpCustomPrompts[0].Include)));
-  Assert.AreEqual('metrics', mSettings.McpCustomPrompts[0].Include[1]);
-end;
-procedure TConfigurationFeatureTests.ChecksMcpCustomPrompts;
-var
-  mSettings: TServerSettings;
-  mIssues: TArray<TConfigurationIssue>;
-begin
-  mSettings := Parse('{"mcp": {"promptLanguage": "fr"}}', mIssues);
-  Assert.AreEqual(1, Integer(Length(mIssues)), 'nur de oder en');
-  Assert.AreEqual('de', mSettings.McpPromptLanguage, 'ungültige Sprache lässt die Vorgabe');
-  Parse('{"mcp": {"customPrompts": {"name": "a"}}}', mIssues);
-  Assert.AreEqual(1, Integer(Length(mIssues)), 'keine Liste');
-  // Ohne Text, Name mit Leerzeichen, unbekannter Inhalt, doppelter Name.
-  mSettings := Parse('{"mcp": {"customPrompts": [{"name": "ohne_text"}, {"name": "mit leer", "text": "x"}, ' +
-    '{"name": "a", "text": "x", "include": ["metrics", "wetter"]}, {"name": "A", "text": "y"}]}}', mIssues);
-  Assert.AreEqual(4, Integer(Length(mIssues)), 'ohne Text, ungültiger Name, unbekannter Inhalt, doppelter Name');
-  Assert.AreEqual(1, Integer(Length(mSettings.McpCustomPrompts)), 'nur der gültige Prompt a');
-  Assert.AreEqual(1, Integer(Length(mSettings.McpCustomPrompts[0].Include)), 'unbekannter Inhalt fällt weg');
-  // Platzhalter ohne Argument: nur eine Warnung, der Prompt gilt.
-  mSettings := Parse('{"mcp": {"customPrompts": [{"name": "b", "text": "Prüfe {unit}."}]}}', mIssues);
-  Assert.AreEqual(1, Integer(Length(mIssues)));
-  Assert.IsFalse(mIssues[0].IsError, 'Platzhalter ohne Argument ist eine Warnung');
-  Assert.AreEqual(1, Integer(Length(mSettings.McpCustomPrompts)));
-end;
-procedure TConfigurationFeatureTests.LayersMcpMembersSeparately;
-var
-  mSettings: TServerSettings;
-  mIssues: TArray<TConfigurationIssue>;
-begin
-  mSettings := TConfigurationParser.ParseLayered('{"mcp": {"prompts": false, "disabledTools": ["a"]}}',
-    '{"mcp": {"customPrompts": [{"name": "c", "text": "x"}]}}', mIssues);
-  Assert.IsFalse(mSettings.McpPrompts, 'mcp.prompts aus der globalen Ebene bleibt');
-  Assert.AreEqual(1, Integer(Length(mSettings.McpDisabledTools)), 'mcp.disabledTools aus der globalen Ebene bleibt');
-  Assert.AreEqual(1, Integer(Length(mSettings.McpCustomPrompts)), 'mcp.customPrompts aus der Datei');
-  mSettings := TConfigurationParser.ParseLayered('{"mcp": {"promptLanguage": "en"}}',
-    '{"mcp": {"promptLanguage": "de"}}', mIssues);
-  Assert.AreEqual('de', mSettings.McpPromptLanguage, 'Datei vor Editor');
-end;
-procedure TConfigurationFeatureTests.ChecksTasks;
-var
-  mSettings: TServerSettings;
-  mIssues: TArray<TConfigurationIssue>;
-begin
-  mSettings := Parse('{"tasks": [{"name": "Delphi-12-Prüfung", "command": "pwsh", "args": ["Tools/Check-Delphi12.ps1"],' +
-    ' "cwd": "${projectDir}", "group": "check", "matcher": "pwsh", "key": "Ctrl+Alt+1", "timeoutSec": 300,' +
-    ' "beforeBuild": "block", "env": {"NO_COLOR": "1"}},' +
-    ' {"name": "Fremd", "command": "lint.exe", "matcher": {"regex": "^(?<file>[^:]+):(?<line>\\d+) (?<message>.*)$",' +
-    ' "severity": "warning", "severityMap": {"SCHLIMM": "error"}}}]}', mIssues);
-  Assert.AreEqual(0, Integer(Length(mIssues)), 'Beispiel aus dem Issue ohne Meldung');
-  Assert.IsTrue(mSettings.Tasks.StartsWith('['), mSettings.Tasks);
-  Parse('{"tasks": [{"name": "A", "command": "x", "group": "lint", "matcher": "eslint", "timeoutSec": -1,' +
-    ' "beforeBuild": "stop", "foo": 1}, {"name": "a", "command": ""}, {"command": "y"}, 3,' +
-    ' {"name": "M", "command": "z", "matcher": {"severityMap": {"X": "fatal"}}}]}', mIssues);
-  // group, matcher, timeoutSec, beforeBuild, foo; Doppelname a und leerer command; ohne name; 3; Muster ohne regex
-  // und severityMap-Wert.
-  Assert.AreEqual(11, Integer(Length(mIssues)));
-  Parse('{"tasks": {"name": "A"}}', mIssues);
-  Assert.AreEqual(1, Integer(Length(mIssues)), 'keine Liste');
-  mSettings := TConfigurationParser.ParseLayered('{"tasks": []}', '{"tasks": [{"name": "B", "command": "b"}]}',
-    mIssues);
-  Assert.IsTrue(mSettings.Tasks.Contains('"B"'), 'Datei vor Editor');
-end;
-procedure TConfigurationFeatureTests.ChecksTestLists;
-var
-  mIssues: TArray<TConfigurationIssue>;
-begin
-  Parse('{"testLists": [{"name": "Vor dem Commit", "rules": [{"category": "Benchmark", "exclude": true},' +
-    ' {"unit": "*.Slow.*", "exclude": true}, {"state": "failed"}]}, {"name": "Parser",' +
-    ' "tests": ["Atlas.Common.Pascal.Tests"]}]}', mIssues);
-  Assert.AreEqual(0, Integer(Length(mIssues)), 'Beispiel aus dem Issue ohne Meldung');
-  Parse('{"testLists": [{"name": "A", "rules": [{"state": "gelb"}, {"category": "K", "unit": "U"}, {},' +
-    ' {"category": 3, "exclude": "ja", "foo": 1}, 7], "tests": [1], "bar": true}, {"name": "a"}, {"tests": []},' +
-    ' 3]}', mIssues);
-  // state; zwei Arten; keine Art; category kein Text, exclude kein Wahrheitswert, foo unbekannt; 7; tests mit Zahl;
-  // bar unbekannt; Doppelname a; ohne name; 3.
-  Assert.AreEqual(12, Integer(Length(mIssues)));
-  Parse('{"testLists": {"name": "A"}}', mIssues);
-  Assert.AreEqual(1, Integer(Length(mIssues)), 'keine Liste');
-end;
-
 procedure TConfigurationFeatureTests.ChecksIssueConnections;
 var
   mSettings: TServerSettings;
@@ -1241,6 +999,7 @@ begin
     ' "url": "https://github.com"}]}}', mIssues);
   Assert.IsTrue(mSettings.IssueConnections.Contains('"B"'), 'Datei vor Editor');
 end;
+
 procedure TConfigurationFeatureTests.ChecksIssueProjects;
 var
   mSettings: TServerSettings;
@@ -1316,80 +1075,319 @@ begin
   Assert.AreEqual(2, Integer(Length(mIssues)));
   Assert.IsTrue(mIssues[0].Message.Contains('githubStateTarget'), mIssues[0].Message);
 end;
-procedure TConfigurationFeatureTests.ReadsMcpDisabledTools;
+procedure TConfigurationFeatureTests.ReadsStringLiteral;
 var
   mSettings: TServerSettings;
   mIssues: TArray<TConfigurationIssue>;
 begin
   mSettings := Parse('{}', mIssues);
-  Assert.AreEqual(0, Integer(Length(mSettings.McpDisabledTools)));
-  mSettings := Parse('{"mcp": {"disabledTools": ["rename_symbol", 3], "x": 1}}', mIssues);
-  Assert.AreEqual(1, Integer(Length(mSettings.McpDisabledTools)));
-  Assert.AreEqual('rename_symbol', mSettings.McpDisabledTools[0]);
-  Assert.AreEqual(2, Integer(Length(mIssues)), 'Zahl in der Liste und unbekannter Schlüssel');
-  mSettings := TConfigurationParser.ParseLayered('{"mcp": {"disabledTools": ["a"]}}',
-    '{"mcp": {"disabledTools": ["b"]}}', mIssues);
-  Assert.AreEqual('b', mSettings.McpDisabledTools[0], 'Datei vor Editor');
+  Assert.AreEqual(Ord(TStringLiteralStyle.Auto), Ord(mSettings.StringLiteral.Style));
+  Assert.AreEqual(Ord(TStringLiteralBreak.SLineBreak), Ord(mSettings.StringLiteral.LineBreak));
+  Assert.AreEqual(0, mSettings.StringLiteral.MaxLineLength);
+  mSettings := Parse('{"stringLiteral": {"style": "concat", "lineBreak": "#13#10", "maxLineLength": 100}}', mIssues);
+  Assert.AreEqual(0, Integer(Length(mIssues)));
+  Assert.AreEqual(Ord(TStringLiteralStyle.Concat), Ord(mSettings.StringLiteral.Style));
+  Assert.AreEqual(Ord(TStringLiteralBreak.CrLf), Ord(mSettings.StringLiteral.LineBreak));
+  Assert.AreEqual(100, mSettings.StringLiteral.MaxLineLength);
+  mSettings := Parse('{"stringLiteral": {"style": "kurz", "lineBreak": "space", "maxLineLength": -1, "x": 1}}', mIssues);
+  // Ungültiger Stil und negative Länge (Fehler), "x" unbekannt (Warnung).
+  Assert.AreEqual(3, Integer(Length(mIssues)));
+  Assert.AreEqual(Ord(TStringLiteralBreak.Space), Ord(mSettings.StringLiteral.LineBreak));
+  Assert.AreEqual(Ord(TStringLiteralStyle.Auto), Ord(mSettings.StringLiteral.Style));
 end;
-procedure TConfigurationFeatureTests.ReadsHints;
+procedure TConfigurationFeatureTests.ReadsDirectives;
 var
   mSettings: TServerSettings;
   mIssues: TArray<TConfigurationIssue>;
 begin
   mSettings := Parse('{}', mIssues);
-  Assert.AreEqual(THintSettings.cExpandLast, mSettings.Hints.XmlDocExpand);
-  Assert.AreEqual(0, mSettings.Hints.XmlDocMaxLines);
-  // published-Mitglieder im Hover (#110).
-  Assert.IsTrue(mSettings.Hints.PublishedMembers);
-  Assert.IsFalse(Parse('{"hints": {"publishedMembers": false}}', mIssues).Hints.PublishedMembers);
+  Assert.IsTrue(mSettings.Directives.Completion);
+  Assert.IsTrue(mSettings.Directives.Hover);
+  mSettings := Parse('{"directives": {"completion": false, "hover": false}}', mIssues);
   Assert.AreEqual(0, Integer(Length(mIssues)));
-  Parse('{"hints": {"publishedMembers": 0}}', mIssues);
+  Assert.IsFalse(mSettings.Directives.Completion);
+  Assert.IsFalse(mSettings.Directives.Hover);
+  Parse('{"directives": {"x": 1}}', mIssues);
   Assert.AreEqual(1, Integer(Length(mIssues)));
-  mSettings := Parse('{"hints": {"xmlDocExpand": "collapsed", "xmlDocMaxLines": 10}}', mIssues);
-  Assert.AreEqual(THintSettings.cExpandCollapsed, mSettings.Hints.XmlDocExpand);
-  Assert.AreEqual(10, mSettings.Hints.XmlDocMaxLines);
-  Assert.AreEqual(0, Integer(Length(mIssues)));
-  // Außerhalb 0–50 bzw. falsch getypt (Fehler), unbekannter Schlüssel (Warnung); Vorgaben bleiben.
-  mSettings := Parse('{"hints": {"xmlDocMaxLines": 51, "xmlDocExpand": "auf", "x": 1}}', mIssues);
-  Assert.AreEqual(0, mSettings.Hints.XmlDocMaxLines);
-  Assert.AreEqual(THintSettings.cExpandLast, mSettings.Hints.XmlDocExpand);
-  Assert.AreEqual(3, Integer(Length(mIssues)));
-  Assert.IsTrue(mIssues[0].IsError);
-  Assert.IsTrue(mIssues[1].IsError);
-  Assert.IsFalse(mIssues[2].IsError);
-  Parse('{"hints": {"xmlDocMaxLines": -1}}', mIssues);
+  Parse('{"directives": 1}', mIssues);
   Assert.AreEqual(1, Integer(Length(mIssues)));
-  // Veraltetes xmlDocFull (#770): true = expanded, false = collapsed, mit Warnung; xmlDocExpand gewinnt.
-  mSettings := Parse('{"hints": {"xmlDocFull": false}}', mIssues);
-  Assert.AreEqual(THintSettings.cExpandCollapsed, mSettings.Hints.XmlDocExpand);
-  Assert.AreEqual(1, Integer(Length(mIssues)));
-  Assert.IsFalse(mIssues[0].IsError);
-  mSettings := Parse('{"hints": {"xmlDocFull": true}}', mIssues);
-  Assert.AreEqual(THintSettings.cExpandExpanded, mSettings.Hints.XmlDocExpand);
-  mSettings := Parse('{"hints": {"xmlDocExpand": "last", "xmlDocFull": false}}', mIssues);
-  Assert.AreEqual(THintSettings.cExpandLast, mSettings.Hints.XmlDocExpand);
-  // Die Datei ersetzt den Block aus dem Editor (IDE-Plugin).
-  mSettings := TConfigurationParser.ParseLayered('{"hints": {"xmlDocExpand": "collapsed"}}',
-    '{"hints": {"xmlDocMaxLines": 5}}', mIssues);
-  Assert.AreEqual(THintSettings.cExpandLast, mSettings.Hints.XmlDocExpand);
-  Assert.AreEqual(5, mSettings.Hints.XmlDocMaxLines);
-  // Begründungen (#1123): Schalter, Marken, ADR-Ordner.
+end;
+procedure TConfigurationFeatureTests.ReadsMemberOrder;
+var
+  mSettings: TServerSettings;
+  mIssues: TArray<TConfigurationIssue>;
+begin
   mSettings := Parse('{}', mIssues);
-  Assert.IsTrue(mSettings.Hints.Rationale);
-  Assert.AreEqual(0, Integer(Length(mSettings.Hints.RationaleMarkers)));
-  Assert.AreEqual('', mSettings.Hints.AdrFolder);
-  mSettings := Parse('{"hints": {"rationale": false, "rationaleMarkers": ["WHY", " PERF "], ' +
-    '"adrFolder": "doc/decisions"}}', mIssues);
+  Assert.AreEqual(6, Integer(Length(mSettings.MemberOrder.Sections)));
+  Assert.AreEqual('field', mSettings.MemberOrder.Members[0]);
+  Assert.IsFalse(mSettings.MemberOrder.SortFields);
+  mSettings := Parse('{"memberOrder": {"sections": ["public", "private"], "members": ["method", "field"], ' +
+    '"sortFields": true, "sortPublished": true}}', mIssues);
   Assert.AreEqual(0, Integer(Length(mIssues)));
-  Assert.IsFalse(mSettings.Hints.Rationale);
-  Assert.AreEqual('WHY PERF', string.Join(' ', mSettings.Hints.RationaleMarkers));
-  Assert.AreEqual('doc/decisions', mSettings.Hints.AdrFolder);
-  mSettings := Parse('{"hints": {"rationale": "ja", "rationaleMarkers": ["WHY", ""], "adrFolder": 3}}', mIssues);
+  Assert.AreEqual('public', mSettings.MemberOrder.Sections[0]);
+  Assert.AreEqual('method', mSettings.MemberOrder.Members[0]);
+  Assert.IsTrue(mSettings.MemberOrder.SortFields);
+  Assert.IsTrue(mSettings.MemberOrder.SortPublished);
+  Parse('{"memberOrder": {"sections": ["intern"], "x": 1}}', mIssues);
+  // Unbekannte Sichtbarkeit (Fehler), "x" unbekannt (Warnung).
+  Assert.AreEqual(2, Integer(Length(mIssues)));
+end;
+procedure TConfigurationFeatureTests.ReadsTestUnits;
+var
+  mSettings: TServerSettings;
+  mIssues: TArray<TConfigurationIssue>;
+begin
+  mSettings := Parse('{}', mIssues);
+  Assert.AreEqual('{unit}.Tests', mSettings.TestUnits.Pattern);
+  Assert.AreEqual('', mSettings.TestUnits.Folder);
+  Assert.AreEqual('', mSettings.TestUnits.Project);
+  mSettings := Parse('{"testUnits": {"pattern": "Test.{unit}", "folder": "Tests/Unit", ' +
+    '"project": "Tests/Tests.dproj"}}', mIssues);
+  Assert.AreEqual(0, Integer(Length(mIssues)));
+  Assert.AreEqual('Test.{unit}', mSettings.TestUnits.Pattern);
+  Assert.AreEqual('Tests/Unit', mSettings.TestUnits.Folder);
+  Assert.AreEqual('Tests/Tests.dproj', mSettings.TestUnits.Project);
+  mSettings := Parse('{"testUnits": {"pattern": "Tests", "project": "Tests.exe", "x": 1}}', mIssues);
+  // Muster ohne {unit} und Projekt ohne .dproj/.dpr (Fehler), "x" unbekannt (Warnung).
   Assert.AreEqual(3, Integer(Length(mIssues)));
-  Assert.IsTrue(mSettings.Hints.Rationale);
-  mSettings := Parse('{"hints": {"rationaleMarkers": "WHY"}}', mIssues);
+  Assert.AreEqual('{unit}.Tests', mSettings.TestUnits.Pattern, 'ungültiges Muster bleibt bei der Vorgabe');
+end;
+procedure TConfigurationFeatureTests.ReadsDfmPropertyRules;
+var
+  mIssues: TArray<TConfigurationIssue>;
+  mSettings: TServerSettings;
+begin
+  Assert.AreEqual(0, Integer(Length(Parse('{}', mIssues).DfmPropertyRules)));
+  mSettings := Parse('{"dfmPropertyRules": [' +
+    '{"class": "TLabel", "property": "Transparent", "condition": "=", "value": "True", "fix": "auto"},' +
+    '{"class": "TForm", "property": "Position", "condition": "<>", "value": "poDesigned", "message": "Zentriert",' +
+    ' "severity": "hint", "includeDescendants": false, "exclude": ["**/Alt/*.dfm"]},' +
+    '{"class": "TEdit", "property": "Hint", "condition": "notEmpty", "fix": "none"}]}', mIssues);
+  Assert.AreEqual(0, Integer(Length(mIssues)));
+  Assert.AreEqual(3, Integer(Length(mSettings.DfmPropertyRules)));
+  Assert.AreEqual('TLabel', mSettings.DfmPropertyRules[0].ClassName);
+  Assert.AreEqual('Transparent', mSettings.DfmPropertyRules[0].PropertyPath);
+  Assert.AreEqual<TDfmCondition>(TDfmCondition.Equal, mSettings.DfmPropertyRules[0].Condition);
+  Assert.AreEqual<TDfmFixMode>(TDfmFixMode.Auto, mSettings.DfmPropertyRules[0].Fix);
+  Assert.AreEqual<TRuleSeverity>(TRuleSeverity.Warning, mSettings.DfmPropertyRules[0].Severity);
+  Assert.IsTrue(mSettings.DfmPropertyRules[0].IncludeDescendants);
+  Assert.AreEqual<TDfmCondition>(TDfmCondition.NotEqual, mSettings.DfmPropertyRules[1].Condition);
+  Assert.AreEqual<TRuleSeverity>(TRuleSeverity.Hint, mSettings.DfmPropertyRules[1].Severity);
+  Assert.IsFalse(mSettings.DfmPropertyRules[1].IncludeDescendants);
+  Assert.AreEqual('Zentriert', mSettings.DfmPropertyRules[1].Message);
+  Assert.AreEqual('**/Alt/*.dfm', mSettings.DfmPropertyRules[1].Exclude[0]);
+  Assert.AreEqual<TDfmCondition>(TDfmCondition.NotEmpty, mSettings.DfmPropertyRules[2].Condition);
+  Assert.AreEqual<TDfmFixMode>(TDfmFixMode.None, mSettings.DfmPropertyRules[2].Fix);
+  // Fehlerhafte Regeln: ohne property, = ohne value, unbekannte Bedingung, unbekannter Schlüssel.
+  mSettings := Parse('{"dfmPropertyRules": [{"class": "TLabel"}, {"class": "TA", "property": "B", "condition": "="},' +
+    ' {"class": "TA", "property": "B", "condition": "gleich", "value": "1", "x": 1}, 5]}', mIssues);
+  Assert.AreEqual(5, Integer(Length(mIssues)));
+  Assert.AreEqual(1, Integer(Length(mSettings.DfmPropertyRules)));
+  Parse('{"dfmPropertyRules": {}}', mIssues);
   Assert.AreEqual(1, Integer(Length(mIssues)));
-  Assert.AreEqual(0, Integer(Length(mSettings.Hints.RationaleMarkers)));
+  // Editor zuerst, die Datei hat Vorrang.
+  mSettings := TConfigurationParser.ParseLayered('{"dfmPropertyRules": []}',
+    '{"dfmPropertyRules": [{"class": "TA", "property": "B", "value": "1"}]}', mIssues);
+  Assert.AreEqual(1, Integer(Length(mSettings.DfmPropertyRules)));
+end;
+procedure TConfigurationFeatureTests.ReadsCompilerSettings;
+begin
+  ReadsCompilerOnSaveAndSlashCommands;
+  ReadsDocCommentAndCompletion;
+  ReadsInterfaceSectionAndConversions;
+  ReadsAnonymousMethodsAndKeywords;
+  ReadsNameSuggestionsAndRefactorings;
+  ReadsWarningsAndCodeActions;
+  ReadsFreeFieldsAndConditions;
+  ReadsMethodWithoutSelfAndTypes;
+  ReadsExtractBaseClassAndDelete;
+  ReadsMemberRefactorings;
+  ReadsBudgetAndTimeLimits;
+  ReadsIndexScope;
+  ReadsProtocolSettings;
+end;
+procedure TConfigurationFeatureTests.IgnoresRemovedIdeBackend;
+var
+  mSettings: TServerSettings;
+  mIssues: TArray<TConfigurationIssue>;
+begin
+  mSettings := Parse('{"compiler": {"backend": "ide", "ideCommand": "C:\\Werkzeug\\bau.ps1"}}', mIssues);
+  Assert.AreEqual(0, Integer(Length(mIssues)), 'alter Wert ohne Meldung');
+  Assert.AreEqual(Ord(TCompilerBackendSetting.Off), Ord(mSettings.Compiler.Backend));
+  // Auch ein Eintrag falschen Typs wird übergangen.
+  mSettings := Parse('{"compiler": {"ideCommand": 3}}', mIssues);
+  Assert.AreEqual(0, Integer(Length(mIssues)));
+  Assert.AreEqual(Ord(TCompilerBackendSetting.Auto), Ord(mSettings.Compiler.Backend));
+  mIssues := nil;
+end;
+procedure TConfigurationFeatureTests.ReadsVcsProvider;
+var
+  mSettings: TServerSettings;
+  mIssues: TArray<TConfigurationIssue>;
+begin
+  // Versionsverwaltung (#571): Vorgabe auto.
+  mSettings := Parse('{}', mIssues);
+  Assert.AreEqual('auto', mSettings.VcsProvider);
+  mSettings := Parse('{"vcs": {"provider": "svn"}}', mIssues);
+  Assert.AreEqual('svn', mSettings.VcsProvider);
+  Assert.AreEqual(0, Integer(Length(mIssues)));
+  mSettings := Parse('{"vcs": {"provider": "cvs", "x": 1}}', mIssues);
+  Assert.AreEqual('auto', mSettings.VcsProvider, 'unbekannter Wert bleibt bei der Vorgabe');
+  Assert.AreEqual(2, Integer(Length(mIssues)));
+  Parse('{"vcs": "git"}', mIssues);
+  Assert.AreEqual(1, Integer(Length(mIssues)), 'vcs muss ein Objekt sein');
+  mSettings := TConfigurationParser.ParseLayered('{"vcs": {"provider": "git"}}', '{"vcs": {"provider": "off"}}',
+    mIssues);
+  Assert.AreEqual('off', mSettings.VcsProvider, 'Datei vor Editor');
+  mSettings := TConfigurationParser.ParseLayered('', '{"vcs": {"provider": "git"}}', mIssues);
+  Assert.AreEqual('git', mSettings.VcsProvider);
+end;
+procedure TConfigurationFeatureTests.ReadsVcsToolPathsAndTimeout;
+var
+  mSettings: TServerSettings;
+  mIssues: TArray<TConfigurationIssue>;
+begin
+  mSettings := Parse('{}', mIssues);
+  Assert.AreEqual('', mSettings.VcsGitPath, 'leer = automatisch suchen');
+  Assert.AreEqual('', mSettings.VcsSvnPath);
+  Assert.AreEqual(15, mSettings.VcsTimeoutSeconds);
+  mSettings := Parse('{"vcs": {"git": {"path": "D:\\Portable\\Git\\cmd\\git.exe"}, ' +
+    '"svn": {"path": "C:\\Programme\\TortoiseSVN\\bin\\svn.exe"}, "timeoutSeconds": 60}}', mIssues);
+  Assert.AreEqual(0, Integer(Length(mIssues)));
+  Assert.AreEqual('D:\Portable\Git\cmd\git.exe', mSettings.VcsGitPath);
+  Assert.AreEqual('C:\Programme\TortoiseSVN\bin\svn.exe', mSettings.VcsSvnPath);
+  Assert.AreEqual(60, mSettings.VcsTimeoutSeconds);
+  mSettings := Parse('{"vcs": {"timeoutSeconds": 0}}', mIssues);
+  Assert.AreEqual(1, Integer(Length(mIssues)), 'unter 1');
+  Assert.AreEqual(15, mSettings.VcsTimeoutSeconds, 'ungültig: Vorgabe');
+  Parse('{"vcs": {"timeoutSeconds": 301}}', mIssues);
+  Assert.AreEqual(1, Integer(Length(mIssues)), 'über 300');
+  Parse('{"vcs": {"timeoutSeconds": "30"}}', mIssues);
+  Assert.AreEqual(1, Integer(Length(mIssues)), 'Text statt Zahl');
+  mSettings := Parse('{"vcs": {"git": "git.exe", "svn": {"pfad": "svn.exe"}}}', mIssues);
+  Assert.AreEqual(2, Integer(Length(mIssues)), 'git muss ein Objekt sein, svn.pfad unbekannt');
+  Assert.AreEqual('', mSettings.VcsGitPath);
+  Assert.AreEqual('', mSettings.VcsSvnPath);
+  mSettings := TConfigurationParser.ParseLayered('{"vcs": {"timeoutSeconds": 30}}',
+    '{"vcs": {"provider": "svn", "svn": {"path": "s.exe"}}}', mIssues);
+  Assert.AreEqual('svn', mSettings.VcsProvider, 'Datei vor Editor');
+  Assert.AreEqual('s.exe', mSettings.VcsSvnPath);
+  Assert.AreEqual(15, mSettings.VcsTimeoutSeconds, 'die Datei bestimmt den ganzen Abschnitt vcs');
+  // #1286: vcs.projects wird geprüft und als Text weitergegeben.
+  mSettings := Parse('{"vcs": {"projects": [{"match": "C:\\Kasse", "provider": "svn"}, ' +
+    '{"match": "C:\\Kasse\\Lib", "provider": "git", "mainBranch": "develop"}]}}', mIssues);
+  Assert.AreEqual(0, Integer(Length(mIssues)));
+  Assert.Contains(mSettings.VcsProjects, '"develop"');
+  Parse('{"vcs": {"projects": [{"match": "c:/kasse/"}, {"match": "C:\\Kasse"}, {"provider": "cvs"}, 3, ' +
+    '{"match": "C:\\X", "mainBranch": "mein branch", "y": 1}]}}', mIssues);
+  Assert.AreEqual(6, Integer(Length(mIssues)),
+    'doppelter Pfad, unbekannte Art, ohne match, kein Objekt, Leerzeichen im Branch, unbekannte Angabe');
+  Parse('{"vcs": {"projects": {}}}', mIssues);
+  Assert.AreEqual(1, Integer(Length(mIssues)), 'keine Liste');
+end;
+
+procedure TConfigurationFeatureTests.ReadsFormatSettings;
+var
+  mSettings: TServerSettings;
+  mIssues: TArray<TConfigurationIssue>;
+begin
+  mSettings := Parse('{}', mIssues);
+  Assert.AreEqual(2, mSettings.Formatting.IndentSize);
+  Assert.AreEqual<TFormatKeys>([], mSettings.Formatting.Given);
+  mSettings := Parse('{"format": {"useTabs": true, "keywordCase": "lower", "endOfLine": "crlf", ' +
+    '"spaceAfterComma": false}}', mIssues);
+  Assert.AreEqual(0, Integer(Length(mIssues)));
+  Assert.IsTrue(mSettings.Formatting.UseTabs);
+  Assert.AreEqual<TKeywordCase>(TKeywordCase.Lower, mSettings.Formatting.KeywordCase);
+  Assert.AreEqual(#13#10, mSettings.Formatting.EndOfLine);
+  Assert.IsFalse(mSettings.Formatting.SpaceAfterComma);
+  Assert.AreEqual<TFormatKeys>([TFormatKey.UseTabs, TFormatKey.KeywordCase, TFormatKey.EndOfLine,
+    TFormatKey.SpaceAfterComma], mSettings.Formatting.Given);
+  mSettings := Parse('{"format": {"indentSize": 0, "keywordCase": "camel", "x": 1}}', mIssues);
+  Assert.AreEqual(3, Integer(Length(mIssues)));
+  Assert.AreEqual<TFormatKeys>([], mSettings.Formatting.Given);
+  // Blockstruktur, Stellung, Umbruch und Ausrichtung (#43).
+  mSettings := Parse('{}', mIssues);
+  Assert.IsTrue(mSettings.Formatting.Reindent);
+  Assert.AreEqual<TBlockPlacement>(TBlockPlacement.Preserve, mSettings.Formatting.BeginPlacement);
+  Assert.AreEqual(0, mSettings.Formatting.MaxLineLength);
+  mSettings := Parse('{"format": {"reindent": false, "beginPlacement": "newLine", "elsePlacement": "sameLine", ' +
+    '"maxLineLength": 100, "alignAssignments": true, "alignDeclarations": true, "alignComments": true}}', mIssues);
+  Assert.AreEqual(0, Integer(Length(mIssues)));
+  Assert.IsFalse(mSettings.Formatting.Reindent);
+  Assert.AreEqual<TBlockPlacement>(TBlockPlacement.NewLine, mSettings.Formatting.BeginPlacement);
+  Assert.AreEqual<TBlockPlacement>(TBlockPlacement.SameLine, mSettings.Formatting.ElsePlacement);
+  Assert.AreEqual(100, mSettings.Formatting.MaxLineLength);
+  Assert.IsTrue(mSettings.Formatting.AlignAssignments);
+  Assert.IsTrue(mSettings.Formatting.AlignDeclarations);
+  Assert.IsTrue(mSettings.Formatting.AlignComments);
+  Assert.AreEqual<TFormatKeys>([TFormatKey.MaxLineLength], mSettings.Formatting.Given);
+  Parse('{"format": {"beginPlacement": "below", "maxLineLength": -1}}', mIssues);
+  Assert.AreEqual(2, Integer(Length(mIssues)));
+end;
+procedure TConfigurationFeatureTests.FileOverridesEditorPerKey;
+var
+  mIssues: TArray<TConfigurationIssue>;
+  mSettings: TServerSettings;
+begin
+  mSettings := TConfigurationParser.ParseLayered(
+    '{"serverPath": "C:\\Bin\\AtlasServer.exe", "platform": "Win32", "config": "Release", "language": "en"}',
+    '{ // Datei gewinnt'#10' "platform": "Win64", "language": "de" }', mIssues);
+  Assert.AreEqual('Win64', mSettings.Platform);
+  Assert.AreEqual('de', mSettings.Language);
+  Assert.AreEqual('Release', mSettings.Config);
+  // Unbekannte Editor-Schlüssel wie serverPath erzeugen keine Meldung.
+  Assert.AreEqual(0, Integer(Length(mIssues)));
+end;
+procedure TConfigurationFeatureTests.MergesRulesPerId;
+var
+  mIssues: TArray<TConfigurationIssue>;
+  mSettings: TServerSettings;
+begin
+  mSettings := TConfigurationParser.ParseLayered(
+    '{"rules": {"with-statement": "error", "unused-variable": "hint"}}',
+    '{"rules": {"with-statement": "off"}}', mIssues);
+  Assert.AreEqual<TRuleSeverity>(TRuleSeverity.Off, mSettings.RuleSeverity('with-statement', TRuleSeverity.Warning));
+  Assert.AreEqual<TRuleSeverity>(TRuleSeverity.Hint, mSettings.RuleSeverity('unused-variable', TRuleSeverity.Warning));
+end;
+procedure TConfigurationFeatureTests.ExcludeTestsGlobalOrProject;
+var
+  mIssues: TArray<TConfigurationIssue>;
+begin
+  Assert.IsTrue(TConfigurationParser.ParseLayered('{"excludeTests": true}', '{"platform": "Win64"}',
+    mIssues).ExcludeTests);
+  Assert.IsFalse(TConfigurationParser.ParseLayered('{"excludeTests": true}', '{"excludeTests": false}',
+    mIssues).ExcludeTests);
+  Assert.IsTrue(TConfigurationParser.ParseLayered('', '{"excludeTests": true}', mIssues).ExcludeTests);
+  Assert.IsFalse(TConfigurationParser.ParseLayered('{"platform": "Win32"}', '', mIssues).ExcludeTests);
+end;
+procedure TConfigurationFeatureTests.EditorOrFileAlone;
+var
+  mIssues: TArray<TConfigurationIssue>;
+begin
+  Assert.AreEqual('Win32', TConfigurationParser.ParseLayered('{"platform": "Win32"}', '', mIssues).Platform);
+  Assert.AreEqual('Win64', TConfigurationParser.ParseLayered('', '{"platform": "Win64"}', mIssues).Platform);
+  // Ohne Angabe entscheidet der Client (#1458).
+  Assert.AreEqual('', TConfigurationParser.ParseLayered('', '', mIssues).Language);
+  // Meldungen gelten nur der Datei.
+  TConfigurationParser.ParseLayered('{"language": "fr"}', '{"language": "xx"}', mIssues);
+  Assert.AreEqual(1, Integer(Length(mIssues)));
+end;
+procedure TConfigurationFeatureTests.ReadsDefaultEncoding;
+var
+  mIssues: TArray<TConfigurationIssue>;
+begin
+  Assert.AreEqual(65001, Parse('{}', mIssues).DefaultEncoding);
+  Assert.AreEqual(1250, Parse('{"encoding": "windows-1250"}', mIssues).DefaultEncoding);
+  Assert.AreEqual(0, Integer(Length(mIssues)));
+  Assert.AreEqual(65001, Parse('{"encoding": "utf-8"}', mIssues).DefaultEncoding);
+  // Unbekannte Kodierung: Meldung, es bleibt UTF-8.
+  Assert.AreEqual(65001, Parse('{"encoding": "klingonisch"}', mIssues).DefaultEncoding);
+  Assert.AreEqual(1, Integer(Length(mIssues)));
+  // atlas.json hat Vorrang vor dem Editor.
+  Assert.AreEqual(1252, TConfigurationParser.ParseLayered('{"encoding": "1250"}', '{"encoding": "cp1252"}',
+    mIssues).DefaultEncoding);
+  Assert.AreEqual(1250, TConfigurationParser.ParseLayered('{"encoding": "1250"}', '{}', mIssues).DefaultEncoding);
 end;
 
 initialization

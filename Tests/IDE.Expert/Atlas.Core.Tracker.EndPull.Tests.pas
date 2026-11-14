@@ -92,6 +92,8 @@ type
       const ASpec: TAtlasTrackerPullSpec): TAtlasTrackerPullResult;
   end;
 
+{ TFakePushVcs }
+
 constructor TFakePushVcs.Create(AKind: TAtlasVcsKind);
 begin
   inherited Create;
@@ -176,6 +178,8 @@ begin
   Calls := Calls + [Format('push %s %s %s %s', [ABranch, ARemote, ARemoteRef, BoolToStr(ASetUpstream, True)])];
   Result := PushOutcome;
 end;
+
+{ TFakePulls }
 
 function TFakePulls.SameRepository(const ATarget: TAtlasTrackerTarget; const AOriginUrl: string): Boolean;
 begin

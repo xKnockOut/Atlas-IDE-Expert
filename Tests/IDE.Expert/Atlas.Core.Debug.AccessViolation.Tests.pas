@@ -132,18 +132,6 @@ end;
 
 { TAtlasAccessViolationTests }
 
-procedure TAtlasAccessViolationTests.Setup;
-begin
-  FAnswers := TDictionary<string, string>.Create;
-end;
-
-procedure TAtlasAccessViolationTests.TearDown;
-begin
-  FreeAndNil(FAnswers);
-  FAsked := nil;
-  FSideEffects := nil;
-end;
-
 procedure TAtlasAccessViolationTests.Give(const AExpression, AValue: string);
 begin
   FAnswers.AddOrSetValue(AExpression, AValue);
@@ -189,6 +177,18 @@ begin
     end;
   end;
   Result := False;
+end;
+
+procedure TAtlasAccessViolationTests.Setup;
+begin
+  FAnswers := TDictionary<string, string>.Create;
+end;
+
+procedure TAtlasAccessViolationTests.TearDown;
+begin
+  FreeAndNil(FAnswers);
+  FAsked := nil;
+  FSideEffects := nil;
 end;
 
 procedure TAtlasAccessViolationTests.ParsesGermanMessage;

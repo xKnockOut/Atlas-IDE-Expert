@@ -64,6 +64,8 @@ type
     function CreateSection: IAtlasSettingsSection;
   end;
 
+{ TAtlasFixedSectionProvider }
+
 constructor TAtlasFixedSectionProvider.Create(const ASection: IAtlasSettingsSection);
 begin
   inherited Create;

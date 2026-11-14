@@ -52,6 +52,8 @@ begin
       Result := TAtlasWelcomeSearch.Search(APattern, Hits, 'Hinweis');
     end;
 end;
+{ TAtlasWelcomeSearchBoxTests }
+
 procedure TAtlasWelcomeSearchBoxTests.HeaderShowsAndHidesSearch;
 var
   mHeader: TAtlasWelcomeHeaderFrame;

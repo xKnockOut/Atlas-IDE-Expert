@@ -32,6 +32,8 @@ uses
   Atlas.Core.Settings.Plugin,
   Atlas.Core.Commands.KeyConflicts;
 
+{ TAtlasKeyConflictsTests }
+
 procedure TAtlasKeyConflictsTests.PaletteDefaultCollidesWithMacroPlayback;
 begin
   Assert.Contains(TAtlasKeyConflicts.OwnerOf(TAtlasKeyConflicts.cPaletteDefault, TAtlasKeyConflicts.KnownIdeKeys),

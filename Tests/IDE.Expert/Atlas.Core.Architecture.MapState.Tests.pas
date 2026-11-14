@@ -73,6 +73,8 @@ begin
   AState.OnPathChanged := CountPath(ACounter);
 end;
 
+{ TAtlasArchitectureMapStateTests }
+
 procedure TAtlasArchitectureMapStateTests.ShowsAndClearsShortestPath;
 var
   mState: TAtlasArchitectureMapState;

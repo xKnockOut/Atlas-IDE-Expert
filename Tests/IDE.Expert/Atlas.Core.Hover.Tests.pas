@@ -114,6 +114,104 @@ end;
 
 { TAtlasHoverTests }
 
+procedure TAtlasHoverTests.ReadsAtlasParts;
+var
+  mData: TAtlasHoverData;
+begin
+  mData := Parse(cHoverJson);
+  Assert.IsTrue(mData.Found);
+  Assert.AreEqual('TBFrame = class(TFrame)', mData.Declaration);
+  Assert.AreEqual('Gallery.Types', mData.UnitName);
+  Assert.AreEqual('Basis aller Seiten.', mData.Documentation);
+  Assert.AreEqual('class', mData.Kind);
+  Assert.AreEqual('https://docwiki/TBFrame', mData.DocWiki);
+  Assert.AreEqual('C:\P\Gallery.Types.pas', mData.Location.FileName);
+  Assert.AreEqual(19, mData.Location.Line);
+  Assert.AreEqual('TBFrame', mData.Location.Name, 'aus dem ersten Kettenglied');
+  Assert.AreEqual(1, Integer(Length(mData.Links)));
+  Assert.AreEqual(16, mData.Links[0].Start);
+  Assert.AreEqual('TFrame', mData.Links[0].Target.Name);
+  Assert.AreEqual(500, mData.Links[0].Target.Line);
+  Assert.AreEqual('TBFrame', mData.ChainOf);
+  Assert.AreEqual(3, Integer(Length(mData.Ancestors)));
+  Assert.AreEqual('System', mData.Ancestors[2].UnitName);
+end;
+
+procedure TAtlasHoverTests.FallsBackToPlainText;
+var
+  mData: TAtlasHoverData;
+begin
+  mData := Parse('{"contents": {"kind": "markdown", "value": "```pascal\nprocedure Lauf;\n```\n\nStartet."}}');
+  Assert.AreEqual('procedure Lauf;', mData.Declaration);
+  Assert.AreEqual('Startet.', mData.Documentation);
+  Assert.AreEqual(0, Integer(Length(mData.Links)));
+  Assert.IsFalse(mData.Location.HasLocation);
+  Assert.IsFalse(TAtlasHoverData.FromHover(nil).Found);
+end;
+
+procedure TAtlasHoverTests.ShortensLongChains;
+var
+  mData: TAtlasHoverData;
+  mIndex: Integer;
+  mChain: TArray<Integer>;
+begin
+  mData := Default(TAtlasHoverData);
+  for mIndex := 0 to 4 do
+  begin
+    mData.Ancestors := mData.Ancestors + [Ref('T' + IntToStr(mIndex), mIndex)];
+  end;
+  Assert.AreEqual(5, Integer(Length(mData.VisibleChain)), 'fünf Glieder ganz');
+  mData.Ancestors := mData.Ancestors + [Ref('T5', 5), Ref('TObject', 6)];
+  mChain := mData.VisibleChain;
+  // Die ersten vier, dann "…", dann das letzte.
+  Assert.AreEqual(6, Integer(Length(mChain)));
+  Assert.AreEqual(0, mChain[0]);
+  Assert.AreEqual(3, mChain[3]);
+  Assert.AreEqual(-1, mChain[4]);
+  Assert.AreEqual(6, mChain[5]);
+end;
+
+procedure TAtlasHoverTests.FindsLinkAtIndex;
+var
+  mData: TAtlasHoverData;
+begin
+  mData := Parse(cHoverJson);
+  Assert.AreEqual(-1, mData.LinkAt(15));
+  Assert.AreEqual(0, mData.LinkAt(16));
+  Assert.AreEqual(0, mData.LinkAt(21));
+  Assert.AreEqual(-1, mData.LinkAt(22));
+end;
+
+procedure TAtlasHoverTests.BadgeTitleAndLocation;
+var
+  mData: TAtlasHoverData;
+begin
+  mData := Parse(cHoverJson);
+  Assert.AreEqual('ty', mData.Badge);
+  Assert.AreEqual('TBFrame', mData.Title);
+  Assert.AreEqual('Gallery.Types.pas : 20', mData.LocationText);
+  mData := Default(TAtlasHoverData);
+  mData.Declaration := 'procedure Lauf(A: Integer);';
+  mData.Kind := 'routine';
+  mData.UnitName := 'Haupt';
+  Assert.AreEqual('fn', mData.Badge);
+  Assert.AreEqual('Lauf', mData.Title);
+  Assert.AreEqual('Haupt', mData.LocationText, 'ohne Fundort die Unit');
+end;
+
+procedure TAtlasHoverTests.ClassReferenceTitleIsOwnName;
+var
+  mData: TAtlasHoverData;
+begin
+  mData := Default(TAtlasHoverData);
+  mData.Declaration := 'TGalleryFrameClass = class of TBFrame;';
+  mData.Kind := TAtlasHoverData.cKindClassRef;
+  mData.ChainOf := 'TBFrame';
+  mData.Ancestors := [Ref('TBFrame', 19), Ref('TObject', 10)];
+  // Die Kette gehört zum Zieltyp, der Titel ist die Klassenreferenz selbst.
+  Assert.AreEqual('TGalleryFrameClass', mData.Title);
+end;
+
 procedure TAtlasHoverTests.ReadsStructuredDocumentation;
 var
   mData: TAtlasHoverData;
@@ -222,104 +320,6 @@ begin
   mData := Parse(cHoverJson);
   Assert.AreEqual('', mData.ReassignedTarget);
   Assert.AreEqual(0, Integer(Length(mData.ReassignedLines)));
-end;
-
-procedure TAtlasHoverTests.ReadsAtlasParts;
-var
-  mData: TAtlasHoverData;
-begin
-  mData := Parse(cHoverJson);
-  Assert.IsTrue(mData.Found);
-  Assert.AreEqual('TBFrame = class(TFrame)', mData.Declaration);
-  Assert.AreEqual('Gallery.Types', mData.UnitName);
-  Assert.AreEqual('Basis aller Seiten.', mData.Documentation);
-  Assert.AreEqual('class', mData.Kind);
-  Assert.AreEqual('https://docwiki/TBFrame', mData.DocWiki);
-  Assert.AreEqual('C:\P\Gallery.Types.pas', mData.Location.FileName);
-  Assert.AreEqual(19, mData.Location.Line);
-  Assert.AreEqual('TBFrame', mData.Location.Name, 'aus dem ersten Kettenglied');
-  Assert.AreEqual(1, Integer(Length(mData.Links)));
-  Assert.AreEqual(16, mData.Links[0].Start);
-  Assert.AreEqual('TFrame', mData.Links[0].Target.Name);
-  Assert.AreEqual(500, mData.Links[0].Target.Line);
-  Assert.AreEqual('TBFrame', mData.ChainOf);
-  Assert.AreEqual(3, Integer(Length(mData.Ancestors)));
-  Assert.AreEqual('System', mData.Ancestors[2].UnitName);
-end;
-
-procedure TAtlasHoverTests.FallsBackToPlainText;
-var
-  mData: TAtlasHoverData;
-begin
-  mData := Parse('{"contents": {"kind": "markdown", "value": "```pascal\nprocedure Lauf;\n```\n\nStartet."}}');
-  Assert.AreEqual('procedure Lauf;', mData.Declaration);
-  Assert.AreEqual('Startet.', mData.Documentation);
-  Assert.AreEqual(0, Integer(Length(mData.Links)));
-  Assert.IsFalse(mData.Location.HasLocation);
-  Assert.IsFalse(TAtlasHoverData.FromHover(nil).Found);
-end;
-
-procedure TAtlasHoverTests.ShortensLongChains;
-var
-  mData: TAtlasHoverData;
-  mIndex: Integer;
-  mChain: TArray<Integer>;
-begin
-  mData := Default(TAtlasHoverData);
-  for mIndex := 0 to 4 do
-  begin
-    mData.Ancestors := mData.Ancestors + [Ref('T' + IntToStr(mIndex), mIndex)];
-  end;
-  Assert.AreEqual(5, Integer(Length(mData.VisibleChain)), 'fünf Glieder ganz');
-  mData.Ancestors := mData.Ancestors + [Ref('T5', 5), Ref('TObject', 6)];
-  mChain := mData.VisibleChain;
-  // Die ersten vier, dann "…", dann das letzte.
-  Assert.AreEqual(6, Integer(Length(mChain)));
-  Assert.AreEqual(0, mChain[0]);
-  Assert.AreEqual(3, mChain[3]);
-  Assert.AreEqual(-1, mChain[4]);
-  Assert.AreEqual(6, mChain[5]);
-end;
-
-procedure TAtlasHoverTests.FindsLinkAtIndex;
-var
-  mData: TAtlasHoverData;
-begin
-  mData := Parse(cHoverJson);
-  Assert.AreEqual(-1, mData.LinkAt(15));
-  Assert.AreEqual(0, mData.LinkAt(16));
-  Assert.AreEqual(0, mData.LinkAt(21));
-  Assert.AreEqual(-1, mData.LinkAt(22));
-end;
-
-procedure TAtlasHoverTests.BadgeTitleAndLocation;
-var
-  mData: TAtlasHoverData;
-begin
-  mData := Parse(cHoverJson);
-  Assert.AreEqual('ty', mData.Badge);
-  Assert.AreEqual('TBFrame', mData.Title);
-  Assert.AreEqual('Gallery.Types.pas : 20', mData.LocationText);
-  mData := Default(TAtlasHoverData);
-  mData.Declaration := 'procedure Lauf(A: Integer);';
-  mData.Kind := 'routine';
-  mData.UnitName := 'Haupt';
-  Assert.AreEqual('fn', mData.Badge);
-  Assert.AreEqual('Lauf', mData.Title);
-  Assert.AreEqual('Haupt', mData.LocationText, 'ohne Fundort die Unit');
-end;
-
-procedure TAtlasHoverTests.ClassReferenceTitleIsOwnName;
-var
-  mData: TAtlasHoverData;
-begin
-  mData := Default(TAtlasHoverData);
-  mData.Declaration := 'TGalleryFrameClass = class of TBFrame;';
-  mData.Kind := TAtlasHoverData.cKindClassRef;
-  mData.ChainOf := 'TBFrame';
-  mData.Ancestors := [Ref('TBFrame', 19), Ref('TObject', 10)];
-  // Die Kette gehört zum Zieltyp, der Titel ist die Klassenreferenz selbst.
-  Assert.AreEqual('TGalleryFrameClass', mData.Title);
 end;
 
 { TAtlasHoverHistoryTests }

@@ -62,19 +62,7 @@ const
   /// <summary>So spät endet die Anfrage in den Tests nach dem Abbruch.</summary>
   cLateEndMs = 300;
 
-procedure TAtlasAsyncWaitTests.Setup;
-begin
-  FCompleted := False;
-  FCancels := 0;
-  FPolls := 0;
-  FLateEnd := TAtlasDeadline.After(60000);
-  TAtlasShutdown.Reset;
-end;
-
-procedure TAtlasAsyncWaitTests.TearDown;
-begin
-  TAtlasShutdown.Reset;
-end;
+{ TAtlasAsyncWaitTests }
 
 function TAtlasAsyncWaitTests.IsCompleted: TFunc<Boolean>;
 begin
@@ -114,6 +102,20 @@ begin
       Inc(FCancels);
       FLateEnd := TAtlasDeadline.After(AMs);
     end;
+end;
+
+procedure TAtlasAsyncWaitTests.Setup;
+begin
+  FCompleted := False;
+  FCancels := 0;
+  FPolls := 0;
+  FLateEnd := TAtlasDeadline.After(60000);
+  TAtlasShutdown.Reset;
+end;
+
+procedure TAtlasAsyncWaitTests.TearDown;
+begin
+  TAtlasShutdown.Reset;
 end;
 
 procedure TAtlasAsyncWaitTests.CompletedRequestIsDone;

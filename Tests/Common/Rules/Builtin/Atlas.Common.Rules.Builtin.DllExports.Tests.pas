@@ -59,6 +59,8 @@ const
   // Beispiel aus #973
   cKundeName = 'function KundeName(Id: Integer): string;'#10'begin'#10'  Result := '''';'#10'end;'#10;
 
+{ TExportRulesTests }
+
 procedure TExportRulesTests.IssueExampleWithFix;
 var
   mSource: string;

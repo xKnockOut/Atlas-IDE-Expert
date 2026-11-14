@@ -72,6 +72,8 @@ begin
   end;
 end;
 
+{ TAtlasSearchFilesTests }
+
 procedure TAtlasSearchFilesTests.Setup;
 begin
   FFolder := TPath.Combine(TPath.GetTempPath, 'AtlasSearchFiles' + IntToStr(Random(1000000)));

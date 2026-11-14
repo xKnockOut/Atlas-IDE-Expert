@@ -75,6 +75,31 @@ begin
   Result := 'C:\P\' + AName + '.pas';
 end;
 
+{ TSymbolPathCallsTests }
+
+procedure TSymbolPathCallsTests.AddUnit(const AName, AText: string);
+begin
+  FFiles.AddOrSetValue(FileOf(AName), AText);
+  FIndex.AddUnit(TIndexExtractor.ExtractText(AText, FileOf(AName), nil));
+end;
+
+function TSymbolPathCallsTests.NodeOf(const AName: string): Integer;
+begin
+  Result := FTable.Endpoints(AName, nil)[0];
+end;
+
+function TSymbolPathCallsTests.Reader: TSymbolPathReadText;
+var
+  mFiles: TDictionary<string, string>;
+begin
+  mFiles := FFiles;
+  Result :=
+    function(const AFileName: string; out AText: string): Boolean
+    begin
+      Result := mFiles.TryGetValue(AFileName, AText);
+    end;
+end;
+
 procedure TSymbolPathCallsTests.Setup;
 begin
   FFiles := TDictionary<string, string>.Create;
@@ -98,29 +123,6 @@ begin
   FIndex := nil;
   FFiles.Free;
   FFiles := nil;
-end;
-
-procedure TSymbolPathCallsTests.AddUnit(const AName, AText: string);
-begin
-  FFiles.AddOrSetValue(FileOf(AName), AText);
-  FIndex.AddUnit(TIndexExtractor.ExtractText(AText, FileOf(AName), nil));
-end;
-
-function TSymbolPathCallsTests.NodeOf(const AName: string): Integer;
-begin
-  Result := FTable.Endpoints(AName, nil)[0];
-end;
-
-function TSymbolPathCallsTests.Reader: TSymbolPathReadText;
-var
-  mFiles: TDictionary<string, string>;
-begin
-  mFiles := FFiles;
-  Result :=
-    function(const AFileName: string; out AText: string): Boolean
-    begin
-      Result := mFiles.TryGetValue(AFileName, AText);
-    end;
 end;
 
 procedure TSymbolPathCallsTests.CallsFromBody;

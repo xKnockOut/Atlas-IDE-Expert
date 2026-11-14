@@ -66,15 +66,18 @@ type
     property Computed: TComponent read GetComputed write FComputed;
   end;
 
+{ TBindingHost }
+
 constructor TBindingHost.Create(AOwner: TComponent);
 begin
   inherited Create(AOwner);
   FOptions := TBindingOptions.Create;
 end;
 
-function TBindingHost.GetComputed: TComponent;
+destructor TBindingHost.Destroy;
 begin
-  Result := FComputed;
+  FOptions.Free;
+  inherited Destroy;
 end;
 
 procedure TBindingHost.SetMenu(AValue: TComponent);
@@ -94,6 +97,11 @@ begin
   end;
 end;
 
+function TBindingHost.GetComputed: TComponent;
+begin
+  Result := FComputed;
+end;
+
 procedure TBindingHost.Notification(AComponent: TComponent; AOperation: TOperation);
 begin
   inherited Notification(AComponent, AOperation);
@@ -101,12 +109,6 @@ begin
   begin
     FMenu := nil;
   end;
-end;
-
-destructor TBindingHost.Destroy;
-begin
-  FOptions.Free;
-  inherited Destroy;
 end;
 
 function KindOf(const ALine: string): TAtlasUsageKind;
@@ -138,6 +140,11 @@ begin
 end;
 
 { TAtlasDesignerUsagesTests }
+
+procedure TAtlasDesignerUsagesTests.WarmUpFirstUse;
+begin
+  FindsBindings;
+end;
 
 procedure TAtlasDesignerUsagesTests.KindOfAccess;
 begin
@@ -218,11 +225,6 @@ begin
   Assert.AreEqual('edtNr', mUsages[0].Component);
   Assert.AreEqual('a.pas', mUsages[1].FileName);
   Assert.AreEqual(1, mUsages[2].Line);
-end;
-
-procedure TAtlasDesignerUsagesTests.WarmUpFirstUse;
-begin
-  FindsBindings;
 end;
 
 procedure TAtlasDesignerUsagesTests.FindsBindings;

@@ -54,6 +54,8 @@ begin
   end;
 end;
 
+{ TAtlasInlineCaptionTests }
+
 procedure TAtlasInlineCaptionTests.PropertyByClass;
 begin
   Assert.AreEqual('Caption', TAtlasInlineCaption.PropertyFor(['TLabel', 'TCustomLabel', 'TGraphicControl'], True, ''));

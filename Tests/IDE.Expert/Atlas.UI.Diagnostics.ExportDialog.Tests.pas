@@ -39,6 +39,8 @@ const
   cLongHint = 'Das Paket enthält die Dateien unten: Fehlerbericht, Status, Protokoll der Sitzung und, mit --trace, ' +
     'den Trace der letzten Minuten. Pfade, Benutzername und Bezeichner sind ersetzt. Zugangsdaten stehen nie darin.';
 
+{ TAtlasDiagnosticExportDialogTests }
+
 procedure TAtlasDiagnosticExportDialogTests.WarmUpFirstUse;
 begin
   HintKeepsItsWrappedHeight;

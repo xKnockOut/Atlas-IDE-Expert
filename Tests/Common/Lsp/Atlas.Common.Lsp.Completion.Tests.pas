@@ -106,14 +106,114 @@ uses
   Atlas.Common.Lsp.Completion.Values,
   Atlas.Common.Lsp.IdeTypes;
 
-procedure TLspCompletionTests.Setup;
+/// <summary>Eintrag, der jedes Datenfeld belegt.</summary>
+function FullDataItem: TCompletionItem;
 begin
-  Prepare;
+  Result := Default(TCompletionItem);
+  Result.Name := 'Wert';
+  Result.Kind := 6;
+  Result.Detail := 'TFoo';
+  Result.FilterText := 'We';
+  Result.InsertText := 'Wert()';
+  Result.Snippet := True;
+  Result.AdditionalEdits := [TRuleEdit.Create(TTextRange.Create(TTextPosition.Create(2, 0),
+    TTextPosition.Create(2, 1)), 'uses X;')];
+  Result.SourceFile := 'C:\P\U.pas';
+  Result.SourcePosition := TTextPosition.Create(3, 4);
+  Result.Expected := 'Integer';
+  Result.Fits := True;
+  Result.Action := 'declare';
+  Result.Container := 'TFoo';
+  Result.Depth := 2;
+  Result.IsHelper := True;
+  Result.HasParameters := True;
+  Result.Condition := 'WIN64';
+  Result.Unavailable := True;
+  Result.Scope := 5;
+  Result.Ordinal := 1;
+  Result.SetOf := 'TKind';
+  Result.SetChecked := True;
+  Result.SetRange := TTextRange.Create(TTextPosition.Create(5, 1), TTextPosition.Create(5, 9));
+  Result.Pinned := True;
+  Result.Count := 3;
+  Result.Unknown := 'Wert';
+  Result.Batch := True;
+  Result.Hint := True;
+  Result.Form := 'frmMain';
+  Result.ByType := True;
+  Result.Sender := 'TButton';
+  Result.SenderOf := 'btnSave';
+  Result.DataSet := 'qry';
+  Result.DataSource := 'select';
+  Result.Guard := 'newLine';
+  Result.UnitName := 'U';
+  Result.Hides := ['Feld TKunde.Wert'];
+  Result.Overloads := [TTextPosition.Create(7, 2)];
 end;
-procedure TLspCompletionTests.TearDown;
+/// <summary>Vervollständigung an AMarker mit den Typen ATypes aus der IDE.</summary>
+function IdeItemsAt(const ALookup: TEnumLookup; const AText, AMarker: string;
+  const ATypes: TArray<TIdeTypeEntry>): TCompletionItems;
+var
+  mRequest: TCompletionRequest;
+  mPostfix: TPostfixOptions;
 begin
-  Release;
+  mPostfix := TPostfixOptions.Default;
+  mPostfix.Enabled := False;
+  mRequest := RequestOf(ALookup, PositionOf(AText, AMarker));
+  try
+    mRequest.IdeTypes := ATypes;
+    Result := TCompletionLists.Collect(mRequest, mPostfix, nil);
+  finally
+    mRequest.Free;
+  end;
 end;
+
+/// <summary>Eintrag namens AName in AItems oder ein leerer.</summary>
+function ItemNamed(const AItems: TCompletionItems; const AName: string): TCompletionItem;
+var
+  mItem: TCompletionItem;
+begin
+  Result := Default(TCompletionItem);
+  for mItem in AItems.Items do
+  begin
+    if mItem.Name = AName then
+    begin
+      Exit(mItem);
+    end;
+  end;
+end;
+
+function FindItem(const AItems: TCompletionItems; const AName: string; out AItem: TCompletionItem): Integer;
+var
+  mIndex: Integer;
+begin
+  Result := 0;
+  for mIndex := 0 to High(AItems.Items) do
+  begin
+    if SameText(AItems.Items[mIndex].Name, AName) then
+    begin
+      if Result = 0 then
+      begin
+        AItem := AItems.Items[mIndex];
+      end;
+      Inc(Result);
+    end;
+  end;
+end;
+function IndexOfItem(const AItems: TCompletionItems; const AName: string): Integer;
+begin
+  for Result := 0 to High(AItems.Items) do
+  begin
+    if SameText(AItems.Items[Result].Name, AName) then
+    begin
+      Exit;
+    end;
+  end;
+  Result := -1;
+end;
+
+{ TLspCompletionTests }
+
 procedure TLspCompletionTests.WarmUpFirstUse;
 begin
   Setup;
@@ -122,6 +222,14 @@ begin
   finally
     TearDown;
   end;
+end;
+procedure TLspCompletionTests.Setup;
+begin
+  Prepare;
+end;
+procedure TLspCompletionTests.TearDown;
+begin
+  Release;
 end;
 procedure TLspCompletionTests.ScopeListsLocalsMembersAndUsedUnits;
 begin
@@ -152,6 +260,164 @@ begin
   Assert.IsTrue(mItems.Incomplete);
   Assert.AreEqual<NativeInt>(TLspCompletion.cMaxItems, Length(mItems.Items));
   Assert.IsTrue(Pos(' RechneSehrLangerName ', ' ' + Names(mItems) + ' ') > 0, 'eigene Methode fehlt');
+end;
+procedure TLspCompletionTests.PlainItemsHaveNoTextEdit;
+var
+  mItems: TCompletionItems;
+  mIndex: Integer;
+begin
+  // Regression: Add verwendete Scored wieder, ohne es zu leeren; HasTextEdit blieb mit
+  // leerem Bereich stehen und das Plugin löschte alles vom Dateianfang bis zum Wort.
+  FIndex.AddUnit(TIndexExtractor.ExtractText('unit Extra;'#10'interface'#10'procedure Berechne;'#10 +
+    'implementation'#10'end.', 'C:\P\Extra.pas', nil));
+  mItems := ItemsAt(WithCode('  B'), '  B', TCompletionMatching.Fuzzy);
+  Assert.IsTrue(Length(mItems.Items) > 1);
+  for mIndex := 0 to High(mItems.Items) do
+  begin
+    Assert.IsFalse(mItems.Items[mIndex].HasTextEdit, mItems.Items[mIndex].Name);
+  end;
+end;
+procedure TLspCompletionTests.ItemsCarryTheirScope;
+var
+  mItems: TCompletionItems;
+  mItem: TCompletionItem;
+  mScopes: string;
+begin
+  // #488: lokal 1, Parameter 2, Mitglied von Self 3, eigene Unit 4, andere Unit 5.
+  mItems := ItemsAt(WithCode('  Ziel := '), 'Ziel := ', TCompletionMatching.Prefix);
+  mScopes := '';
+  for mItem in mItems.Items do
+  begin
+    if (mItem.Name = 'Wert') or (mItem.Name = 'Anzahl') or (mItem.Name = 'Name') or (mItem.Name = 'TFoo') or
+      (mItem.Name = 'Rechne') then
+    begin
+      mScopes := mScopes + mItem.Name + '=' + IntToStr(mItem.Scope) + ';';
+    end;
+  end;
+  Assert.Contains(mScopes, 'Wert=1;');
+  Assert.Contains(mScopes, 'Anzahl=2;');
+  Assert.Contains(mScopes, 'Name=3;');
+  Assert.Contains(mScopes, 'TFoo=4;');
+  Assert.Contains(mScopes, 'Rechne=5;');
+end;
+procedure TLspCompletionTests.NearestScopeComesFirstWithoutPrefix;
+const
+  cText =
+    'unit Kasse;'#10 +
+    'interface'#10 +
+    'type'#10 +
+    '  TKasse = class'#10 +
+    '    FDiscount: Integer;'#10 +
+    '    function Calc(ACustomer: Integer): Integer;'#10 +
+    '  end;'#10 +
+    'implementation'#10 +
+    'function TKasse.Calc(ACustomer: Integer): Integer;'#10 +
+    'var'#10 +
+    '  Total: Integer;'#10 +
+    'begin'#10 +
+    '  Total := '#10 +
+    'end;'#10 +
+    'end.';
+var
+  mItems: TCompletionItems;
+  mTotalAt, mCustomerAt, mDiscountAt: Integer;
+begin
+  // #488, Abnahme: ohne Präfix lokal vor Parameter vor Feld.
+  mItems := ItemsAt(cText, 'Total := ');
+  mTotalAt := IndexOfItem(mItems, 'Total');
+  mCustomerAt := IndexOfItem(mItems, 'ACustomer');
+  mDiscountAt := IndexOfItem(mItems, 'FDiscount');
+  Assert.IsTrue(mTotalAt >= 0, Names(mItems));
+  Assert.IsTrue(mTotalAt < mCustomerAt, Names(mItems));
+  Assert.IsTrue(mCustomerAt < mDiscountAt, Names(mItems));
+end;
+procedure TLspCompletionTests.InlineVarBelowCaretIsNotOffered;
+var
+  mItems: TCompletionItems;
+  mItem: TCompletionItem;
+  mText: string;
+begin
+  // #488: Inline-Variablen oberhalb des Carets ja, unterhalb nicht.
+  mText := WithCode('  var Oben := 1;'#10'  Ziel := '#10'  var Unten := 2;');
+  mItems := ItemsAt(mText, 'Ziel := ');
+  Assert.AreEqual(1, FindItem(mItems, 'Oben', mItem), Names(mItems));
+  Assert.AreEqual(1, mItem.Scope);
+  Assert.AreEqual(0, FindItem(mItems, 'Unten', mItem), Names(mItems));
+end;
+procedure TLspCompletionTests.HiddenNamesAppearOnceWithHint;
+var
+  mItems: TCompletionItems;
+  mItem: TCompletionItem;
+  mText: string;
+  mJson: TJSONObject;
+begin
+  // #488, Abnahme: Ein lokaler Name verdeckt das Feld Name und die Routine Rechne aus Werkzeug; beide
+  // erscheinen einmal als „lokal“, das Detailpanel nennt die verdeckte Deklaration.
+  mText := StringReplace(WithCode('  Ziel := '), '  Wert: TFoo;', '  Wert: TFoo;'#10'  Name: string;'#10 +
+    '  Rechne: Integer;', []);
+  mItems := ItemsAt(mText, 'Ziel := ');
+  Assert.AreEqual(1, FindItem(mItems, 'Name', mItem), Names(mItems));
+  Assert.AreEqual(1, mItem.Scope);
+  Assert.AreEqual<NativeInt>(1, Length(mItem.Hides));
+  Assert.AreEqual('Feld TFoo.Name', mItem.Hides[0]);
+  Assert.AreEqual(1, FindItem(mItems, 'Rechne', mItem), Names(mItems));
+  Assert.AreEqual(1, mItem.Scope);
+  Assert.AreEqual<NativeInt>(1, Length(mItem.Hides));
+  Assert.AreEqual('Werkzeug.Rechne', mItem.Hides[0]);
+  // Nicht verdeckt: keine Angabe; aus einer anderen Unit: deren Name für das Tag.
+  Assert.AreEqual(1, FindItem(mItems, 'TBasis', mItem), Names(mItems));
+  Assert.AreEqual<NativeInt>(0, Length(mItem.Hides));
+  Assert.AreEqual(5, mItem.Scope);
+  Assert.AreEqual('Werkzeug', mItem.UnitName);
+  mJson := TLspCompletion.ToJson(mItems);
+  try
+    Assert.Contains(mJson.ToJSON, '"hides":["Feld TFoo.Name"]');
+    Assert.Contains(mJson.ToJSON, '"unit":"Werkzeug"');
+  finally
+    mJson.Free;
+  end;
+end;
+procedure TLspCompletionTests.ImportsKnowParameters;
+var
+  mItems: TCompletionItems;
+begin
+  // Import mit uses-Ergänzung: Parameter aus dem Index, damit das Plugin Klammern setzt.
+  FIndex.AddUnit(TIndexExtractor.ExtractText('unit Extra;'#10'interface'#10'procedure Zeige(const S: string);'#10 +
+    'implementation'#10'end.', 'C:\P\Extra.pas', nil));
+  mItems := ItemsAt(WithCode('  Zeig'), '  Zeig', TCompletionMatching.Prefix);
+  Assert.AreEqual('Zeige', mItems.Items[0].Name);
+  Assert.AreEqual(1, Integer(Length(mItems.Items[0].AdditionalEdits)));
+  Assert.IsTrue(mItems.Items[0].HasParameters);
+  Assert.AreEqual('C:\P\Extra.pas', mItems.Items[0].SourceFile);
+end;
+procedure TLspCompletionTests.ProjectImportsComeBeforeLibraryLimit;
+var
+  mLib: TUnitIndex;
+  mIndex: Integer;
+  mItems: TCompletionItems;
+  mFound: Boolean;
+  mItem: TCompletionItem;
+begin
+  // Mehr passende Bibliotheks-Symbole als die Höchstzahl: die eigene Unit fehlte sonst (#492).
+  for mIndex := 1 to 250 do
+  begin
+    mLib := TIndexExtractor.ExtractText(Format('unit Lib%d;'#10'interface'#10'type TTestLib%d = class end;'#10 +
+      'implementation'#10'end.', [mIndex, mIndex]), Format('C:\Lib\Lib%d.pas', [mIndex]), nil);
+    mLib.Library_ := True;
+    FIndex.AddUnit(mLib);
+  end;
+  FIndex.AddUnit(TIndexExtractor.ExtractText('unit Eigene;'#10'interface'#10'type TTestHier = class end;'#10 +
+    'implementation'#10'end.', 'C:\P\Eigene.pas', nil));
+  mItems := ItemsAt(WithCode('  TTest'), '  TTest', TCompletionMatching.Prefix);
+  mFound := False;
+  for mItem in mItems.Items do
+  begin
+    if mItem.Name = 'TTestHier' then
+    begin
+      mFound := True;
+    end;
+  end;
+  Assert.IsTrue(mFound, 'Klasse aus dem Projekt trotz vieler Bibliotheks-Treffer');
 end;
 procedure TLspCompletionTests.ScopeFiltersByPrefix;
 begin
@@ -207,50 +473,6 @@ begin
   finally
     mJson.Free;
   end;
-end;
-/// <summary>Eintrag, der jedes Datenfeld belegt.</summary>
-function FullDataItem: TCompletionItem;
-begin
-  Result := Default(TCompletionItem);
-  Result.Name := 'Wert';
-  Result.Kind := 6;
-  Result.Detail := 'TFoo';
-  Result.FilterText := 'We';
-  Result.InsertText := 'Wert()';
-  Result.Snippet := True;
-  Result.AdditionalEdits := [TRuleEdit.Create(TTextRange.Create(TTextPosition.Create(2, 0),
-    TTextPosition.Create(2, 1)), 'uses X;')];
-  Result.SourceFile := 'C:\P\U.pas';
-  Result.SourcePosition := TTextPosition.Create(3, 4);
-  Result.Expected := 'Integer';
-  Result.Fits := True;
-  Result.Action := 'declare';
-  Result.Container := 'TFoo';
-  Result.Depth := 2;
-  Result.IsHelper := True;
-  Result.HasParameters := True;
-  Result.Condition := 'WIN64';
-  Result.Unavailable := True;
-  Result.Scope := 5;
-  Result.Ordinal := 1;
-  Result.SetOf := 'TKind';
-  Result.SetChecked := True;
-  Result.SetRange := TTextRange.Create(TTextPosition.Create(5, 1), TTextPosition.Create(5, 9));
-  Result.Pinned := True;
-  Result.Count := 3;
-  Result.Unknown := 'Wert';
-  Result.Batch := True;
-  Result.Hint := True;
-  Result.Form := 'frmMain';
-  Result.ByType := True;
-  Result.Sender := 'TButton';
-  Result.SenderOf := 'btnSave';
-  Result.DataSet := 'qry';
-  Result.DataSource := 'select';
-  Result.Guard := 'newLine';
-  Result.UnitName := 'U';
-  Result.Hides := ['Feld TKunde.Wert'];
-  Result.Overloads := [TTextPosition.Create(7, 2)];
 end;
 procedure TLspCompletionTests.ToJsonWritesAllDataFields;
 var
@@ -393,6 +615,7 @@ begin
   Assert.AreEqual(Integer(TLspCompletion.cMaxImportItems), Integer(Length(mItems.Items)));
   Assert.IsTrue(mItems.Incomplete);
 end;
+
 procedure TLspCompletionTests.NameFilterSkipsIndexSymbols;
 var
   mTree: TSyntaxTree;
@@ -538,39 +761,16 @@ begin
   Assert.AreEqual(#13#10#13#10'uses'#13#10'  Extra;', mItems.Items[0].AdditionalEdits[0].NewText);
   Assert.AreEqual(8, mItems.Items[0].AdditionalEdits[0].Range.StartPos.Line);
 end;
-/// <summary>Vervollständigung an AMarker mit den Typen ATypes aus der IDE.</summary>
-function IdeItemsAt(const ALookup: TEnumLookup; const AText, AMarker: string;
-  const ATypes: TArray<TIdeTypeEntry>): TCompletionItems;
-var
-  mRequest: TCompletionRequest;
-  mPostfix: TPostfixOptions;
+procedure TLspCompletionTests.ImportsNeedTwoCharactersAndSkipUsedUnits;
 begin
-  mPostfix := TPostfixOptions.Default;
-  mPostfix.Enabled := False;
-  mRequest := RequestOf(ALookup, PositionOf(AText, AMarker));
-  try
-    mRequest.IdeTypes := ATypes;
-    Result := TCompletionLists.Collect(mRequest, mPostfix, nil);
-  finally
-    mRequest.Free;
-  end;
+  FIndex.AddUnit(TIndexExtractor.ExtractText('unit Extra;'#10'interface'#10'procedure Berechne;'#10 +
+    'implementation'#10'end.', 'C:\P\Extra.pas', nil));
+  Assert.AreEqual('Bar', Names(ItemsAt(WithCode('  B'), '  B', TCompletionMatching.Prefix)).Split([' '])[0]);
+  Assert.IsFalse(Names(ItemsAt(WithCode('  B'), '  B', TCompletionMatching.Prefix)).Contains('Berechne'));
+  // Rechne kommt aus dem eingebundenen Werkzeug und erscheint nur einmal, ohne uses-Eintrag.
+  Assert.AreEqual('Rechne', Names(ItemsAt(WithCode('  Rech'), '  Rech', TCompletionMatching.Prefix)));
+  Assert.AreEqual(0, Integer(Length(ItemsAt(WithCode('  Rech'), '  Rech', TCompletionMatching.Prefix).Items[0].AdditionalEdits)));
 end;
-
-/// <summary>Eintrag namens AName in AItems oder ein leerer.</summary>
-function ItemNamed(const AItems: TCompletionItems; const AName: string): TCompletionItem;
-var
-  mItem: TCompletionItem;
-begin
-  Result := Default(TCompletionItem);
-  for mItem in AItems.Items do
-  begin
-    if mItem.Name = AName then
-    begin
-      Exit(mItem);
-    end;
-  end;
-end;
-
 procedure TLspCompletionTests.OffersIdeTypesWithUsesEdit;
 var
   mTypes: TArray<TIdeTypeEntry>;
@@ -607,203 +807,6 @@ begin
     mTree.Free;
   end;
   mTypes := nil;
-end;
-
-procedure TLspCompletionTests.ImportsNeedTwoCharactersAndSkipUsedUnits;
-begin
-  FIndex.AddUnit(TIndexExtractor.ExtractText('unit Extra;'#10'interface'#10'procedure Berechne;'#10 +
-    'implementation'#10'end.', 'C:\P\Extra.pas', nil));
-  Assert.AreEqual('Bar', Names(ItemsAt(WithCode('  B'), '  B', TCompletionMatching.Prefix)).Split([' '])[0]);
-  Assert.IsFalse(Names(ItemsAt(WithCode('  B'), '  B', TCompletionMatching.Prefix)).Contains('Berechne'));
-  // Rechne kommt aus dem eingebundenen Werkzeug und erscheint nur einmal, ohne uses-Eintrag.
-  Assert.AreEqual('Rechne', Names(ItemsAt(WithCode('  Rech'), '  Rech', TCompletionMatching.Prefix)));
-  Assert.AreEqual(0, Integer(Length(ItemsAt(WithCode('  Rech'), '  Rech', TCompletionMatching.Prefix).Items[0].AdditionalEdits)));
-end;
-procedure TLspCompletionTests.ProjectImportsComeBeforeLibraryLimit;
-var
-  mLib: TUnitIndex;
-  mIndex: Integer;
-  mItems: TCompletionItems;
-  mFound: Boolean;
-  mItem: TCompletionItem;
-begin
-  // Mehr passende Bibliotheks-Symbole als die Höchstzahl: die eigene Unit fehlte sonst (#492).
-  for mIndex := 1 to 250 do
-  begin
-    mLib := TIndexExtractor.ExtractText(Format('unit Lib%d;'#10'interface'#10'type TTestLib%d = class end;'#10 +
-      'implementation'#10'end.', [mIndex, mIndex]), Format('C:\Lib\Lib%d.pas', [mIndex]), nil);
-    mLib.Library_ := True;
-    FIndex.AddUnit(mLib);
-  end;
-  FIndex.AddUnit(TIndexExtractor.ExtractText('unit Eigene;'#10'interface'#10'type TTestHier = class end;'#10 +
-    'implementation'#10'end.', 'C:\P\Eigene.pas', nil));
-  mItems := ItemsAt(WithCode('  TTest'), '  TTest', TCompletionMatching.Prefix);
-  mFound := False;
-  for mItem in mItems.Items do
-  begin
-    if mItem.Name = 'TTestHier' then
-    begin
-      mFound := True;
-    end;
-  end;
-  Assert.IsTrue(mFound, 'Klasse aus dem Projekt trotz vieler Bibliotheks-Treffer');
-end;
-procedure TLspCompletionTests.ImportsKnowParameters;
-var
-  mItems: TCompletionItems;
-begin
-  // Import mit uses-Ergänzung: Parameter aus dem Index, damit das Plugin Klammern setzt.
-  FIndex.AddUnit(TIndexExtractor.ExtractText('unit Extra;'#10'interface'#10'procedure Zeige(const S: string);'#10 +
-    'implementation'#10'end.', 'C:\P\Extra.pas', nil));
-  mItems := ItemsAt(WithCode('  Zeig'), '  Zeig', TCompletionMatching.Prefix);
-  Assert.AreEqual('Zeige', mItems.Items[0].Name);
-  Assert.AreEqual(1, Integer(Length(mItems.Items[0].AdditionalEdits)));
-  Assert.IsTrue(mItems.Items[0].HasParameters);
-  Assert.AreEqual('C:\P\Extra.pas', mItems.Items[0].SourceFile);
-end;
-procedure TLspCompletionTests.ItemsCarryTheirScope;
-var
-  mItems: TCompletionItems;
-  mItem: TCompletionItem;
-  mScopes: string;
-begin
-  // #488: lokal 1, Parameter 2, Mitglied von Self 3, eigene Unit 4, andere Unit 5.
-  mItems := ItemsAt(WithCode('  Ziel := '), 'Ziel := ', TCompletionMatching.Prefix);
-  mScopes := '';
-  for mItem in mItems.Items do
-  begin
-    if (mItem.Name = 'Wert') or (mItem.Name = 'Anzahl') or (mItem.Name = 'Name') or (mItem.Name = 'TFoo') or
-      (mItem.Name = 'Rechne') then
-    begin
-      mScopes := mScopes + mItem.Name + '=' + IntToStr(mItem.Scope) + ';';
-    end;
-  end;
-  Assert.Contains(mScopes, 'Wert=1;');
-  Assert.Contains(mScopes, 'Anzahl=2;');
-  Assert.Contains(mScopes, 'Name=3;');
-  Assert.Contains(mScopes, 'TFoo=4;');
-  Assert.Contains(mScopes, 'Rechne=5;');
-end;
-function FindItem(const AItems: TCompletionItems; const AName: string; out AItem: TCompletionItem): Integer;
-var
-  mIndex: Integer;
-begin
-  Result := 0;
-  for mIndex := 0 to High(AItems.Items) do
-  begin
-    if SameText(AItems.Items[mIndex].Name, AName) then
-    begin
-      if Result = 0 then
-      begin
-        AItem := AItems.Items[mIndex];
-      end;
-      Inc(Result);
-    end;
-  end;
-end;
-function IndexOfItem(const AItems: TCompletionItems; const AName: string): Integer;
-begin
-  for Result := 0 to High(AItems.Items) do
-  begin
-    if SameText(AItems.Items[Result].Name, AName) then
-    begin
-      Exit;
-    end;
-  end;
-  Result := -1;
-end;
-procedure TLspCompletionTests.NearestScopeComesFirstWithoutPrefix;
-const
-  cText =
-    'unit Kasse;'#10 +
-    'interface'#10 +
-    'type'#10 +
-    '  TKasse = class'#10 +
-    '    FDiscount: Integer;'#10 +
-    '    function Calc(ACustomer: Integer): Integer;'#10 +
-    '  end;'#10 +
-    'implementation'#10 +
-    'function TKasse.Calc(ACustomer: Integer): Integer;'#10 +
-    'var'#10 +
-    '  Total: Integer;'#10 +
-    'begin'#10 +
-    '  Total := '#10 +
-    'end;'#10 +
-    'end.';
-var
-  mItems: TCompletionItems;
-  mTotalAt, mCustomerAt, mDiscountAt: Integer;
-begin
-  // #488, Abnahme: ohne Präfix lokal vor Parameter vor Feld.
-  mItems := ItemsAt(cText, 'Total := ');
-  mTotalAt := IndexOfItem(mItems, 'Total');
-  mCustomerAt := IndexOfItem(mItems, 'ACustomer');
-  mDiscountAt := IndexOfItem(mItems, 'FDiscount');
-  Assert.IsTrue(mTotalAt >= 0, Names(mItems));
-  Assert.IsTrue(mTotalAt < mCustomerAt, Names(mItems));
-  Assert.IsTrue(mCustomerAt < mDiscountAt, Names(mItems));
-end;
-procedure TLspCompletionTests.InlineVarBelowCaretIsNotOffered;
-var
-  mItems: TCompletionItems;
-  mItem: TCompletionItem;
-  mText: string;
-begin
-  // #488: Inline-Variablen oberhalb des Carets ja, unterhalb nicht.
-  mText := WithCode('  var Oben := 1;'#10'  Ziel := '#10'  var Unten := 2;');
-  mItems := ItemsAt(mText, 'Ziel := ');
-  Assert.AreEqual(1, FindItem(mItems, 'Oben', mItem), Names(mItems));
-  Assert.AreEqual(1, mItem.Scope);
-  Assert.AreEqual(0, FindItem(mItems, 'Unten', mItem), Names(mItems));
-end;
-procedure TLspCompletionTests.HiddenNamesAppearOnceWithHint;
-var
-  mItems: TCompletionItems;
-  mItem: TCompletionItem;
-  mText: string;
-  mJson: TJSONObject;
-begin
-  // #488, Abnahme: Ein lokaler Name verdeckt das Feld Name und die Routine Rechne aus Werkzeug; beide
-  // erscheinen einmal als „lokal“, das Detailpanel nennt die verdeckte Deklaration.
-  mText := StringReplace(WithCode('  Ziel := '), '  Wert: TFoo;', '  Wert: TFoo;'#10'  Name: string;'#10 +
-    '  Rechne: Integer;', []);
-  mItems := ItemsAt(mText, 'Ziel := ');
-  Assert.AreEqual(1, FindItem(mItems, 'Name', mItem), Names(mItems));
-  Assert.AreEqual(1, mItem.Scope);
-  Assert.AreEqual<NativeInt>(1, Length(mItem.Hides));
-  Assert.AreEqual('Feld TFoo.Name', mItem.Hides[0]);
-  Assert.AreEqual(1, FindItem(mItems, 'Rechne', mItem), Names(mItems));
-  Assert.AreEqual(1, mItem.Scope);
-  Assert.AreEqual<NativeInt>(1, Length(mItem.Hides));
-  Assert.AreEqual('Werkzeug.Rechne', mItem.Hides[0]);
-  // Nicht verdeckt: keine Angabe; aus einer anderen Unit: deren Name für das Tag.
-  Assert.AreEqual(1, FindItem(mItems, 'TBasis', mItem), Names(mItems));
-  Assert.AreEqual<NativeInt>(0, Length(mItem.Hides));
-  Assert.AreEqual(5, mItem.Scope);
-  Assert.AreEqual('Werkzeug', mItem.UnitName);
-  mJson := TLspCompletion.ToJson(mItems);
-  try
-    Assert.Contains(mJson.ToJSON, '"hides":["Feld TFoo.Name"]');
-    Assert.Contains(mJson.ToJSON, '"unit":"Werkzeug"');
-  finally
-    mJson.Free;
-  end;
-end;
-procedure TLspCompletionTests.PlainItemsHaveNoTextEdit;
-var
-  mItems: TCompletionItems;
-  mIndex: Integer;
-begin
-  // Regression: Add verwendete Scored wieder, ohne es zu leeren; HasTextEdit blieb mit
-  // leerem Bereich stehen und das Plugin löschte alles vom Dateianfang bis zum Wort.
-  FIndex.AddUnit(TIndexExtractor.ExtractText('unit Extra;'#10'interface'#10'procedure Berechne;'#10 +
-    'implementation'#10'end.', 'C:\P\Extra.pas', nil));
-  mItems := ItemsAt(WithCode('  B'), '  B', TCompletionMatching.Fuzzy);
-  Assert.IsTrue(Length(mItems.Items) > 1);
-  for mIndex := 0 to High(mItems.Items) do
-  begin
-    Assert.IsFalse(mItems.Items[mIndex].HasTextEdit, mItems.Items[mIndex].Name);
-  end;
 end;
 procedure TLspCompletionTests.MembersCarryContainerDepthAndOverloads;
 const

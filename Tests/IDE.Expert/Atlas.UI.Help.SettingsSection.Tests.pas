@@ -34,6 +34,8 @@ uses
   Atlas.UI.Settings.Page.TestSupport,
   Atlas.UI.Help.SettingsSection;
 
+{ THelpSettingsSectionTests }
+
 procedure THelpSettingsSectionTests.WarmUp;
 begin
   WarmUpSettingsPage;

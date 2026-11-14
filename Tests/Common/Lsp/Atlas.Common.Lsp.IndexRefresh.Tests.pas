@@ -26,6 +26,8 @@ uses
   System.SyncObjs,
   Atlas.Common.Lsp.IndexRefresh;
 
+{ TLspIndexRefreshTests }
+
 procedure TLspIndexRefreshTests.AppliesPascalSourcesOnly;
 var
   mRefresh: TLspIndexRefresh;

@@ -92,6 +92,8 @@ begin
   Result := Pos(AMarker, AText) - 1;
 end;
 
+{ TUsesClauseTests }
+
 procedure TUsesClauseTests.ReadsUsedUnitsOfBothSections;
 begin
   Assert.AreEqual('System.SysUtils Werkzeug Classes Daten.Kunden',
@@ -102,6 +104,12 @@ procedure TUsesClauseTests.ReadsUsedUnitsOfText;
 begin
   Assert.AreEqual('System.SysUtils Werkzeug Classes Daten.Kunden', string.Join(' ', TUsesClauses.UsedUnitsOf(cUnitText)));
   Assert.AreEqual(0, Integer(Length(TUsesClauses.UsedUnitsOf(''))));
+end;
+
+procedure TUsesClauseTests.ReadsOwnName;
+begin
+  Assert.AreEqual('Haupt', TUsesClauses.OwnName(TPascalLexer.Tokenize(cUnitText)));
+  Assert.AreEqual('App.Main', TUsesClauses.OwnName(TPascalLexer.Tokenize('program App.Main;'#10'begin'#10'end.')));
 end;
 
 procedure TUsesClauseTests.ReadsReferencesWithPositions;
@@ -140,12 +148,6 @@ begin
   Assert.IsFalse(mReferences[1].InInterface, 'B');
   mReferences := TUsesClauses.References(TPascalLexer.Tokenize('program P;'#10'uses A;'#10'begin end.'));
   Assert.IsFalse(mReferences[0].InInterface, 'Programm');
-end;
-
-procedure TUsesClauseTests.ReadsOwnName;
-begin
-  Assert.AreEqual('Haupt', TUsesClauses.OwnName(TPascalLexer.Tokenize(cUnitText)));
-  Assert.AreEqual('App.Main', TUsesClauses.OwnName(TPascalLexer.Tokenize('program App.Main;'#10'begin'#10'end.')));
 end;
 
 procedure TUsesClauseTests.KnowsUnitsWithoutNamespace;

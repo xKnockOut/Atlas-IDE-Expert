@@ -54,6 +54,8 @@ type
     procedure AddWantedTo(ATable: TAtlasFeatureTable; AIndex: Integer; const AWanted: TAtlasFeatureWanted);
   end;
 
+{ TProbe }
+
 procedure TProbe.AddTo(ATable: TAtlasFeatureTable; AIndex: Integer; AMinLevel: TAtlasSafeLevel);
 begin
   AddWantedTo(ATable, AIndex,
@@ -84,6 +86,8 @@ begin
       Log := Log + '-' + mName;
     end);
 end;
+
+{ TFeatureTableTests }
 
 procedure TFeatureTableTests.StartsInOrder;
 var

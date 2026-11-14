@@ -85,6 +85,8 @@ begin
   end;
 end;
 
+{ TLspBulkFixTests }
+
 procedure TLspBulkFixTests.AnswersWithDiffAndEdit;
 var
   mAnswer, mFile: TJSONObject;

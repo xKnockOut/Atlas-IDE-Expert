@@ -102,6 +102,8 @@ begin
   end;
 end;
 
+{ TRuntimeReportTests }
+
 procedure TRuntimeReportTests.LeakGroupsWithProjectSite;
 var
   mReport: TRuntimeReport;

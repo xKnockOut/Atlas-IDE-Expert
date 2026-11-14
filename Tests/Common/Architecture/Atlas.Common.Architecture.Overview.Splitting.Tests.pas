@@ -88,6 +88,8 @@ begin
   end;
 end;
 
+{ TSubsystemSplitterTests }
+
 procedure TSubsystemSplitterTests.SplitsTwoCliquesWhenDecided;
 var
   mParts: TArray<TArray<Integer>>;

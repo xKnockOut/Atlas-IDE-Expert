@@ -55,15 +55,7 @@ implementation
 uses
   System.SysUtils;
 
-procedure TAtlasNewLineTests.Setup;
-begin
-  FOptions := TAtlasNewLineOptions.Defaults;
-end;
-
-procedure TAtlasNewLineTests.TearDown;
-begin
-  FOptions := Default(TAtlasNewLineOptions);
-end;
+{ TAtlasNewLineTests }
 
 function TAtlasNewLineTests.Below(const ALines: TArray<string>; ALine: Integer): TAtlasNewLineResult;
 begin
@@ -73,6 +65,16 @@ end;
 function TAtlasNewLineTests.Above(const ALines: TArray<string>; ALine: Integer): TAtlasNewLineResult;
 begin
   Result := TAtlasNewLine.Insert(ALines, ALine, TAtlasNewLineDirection.Above, FOptions);
+end;
+
+procedure TAtlasNewLineTests.Setup;
+begin
+  FOptions := TAtlasNewLineOptions.Defaults;
+end;
+
+procedure TAtlasNewLineTests.TearDown;
+begin
+  FOptions := Default(TAtlasNewLineOptions);
 end;
 
 procedure TAtlasNewLineTests.BelowPlainStatementKeepsIndent;

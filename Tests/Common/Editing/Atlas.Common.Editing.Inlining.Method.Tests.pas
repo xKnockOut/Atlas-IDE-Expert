@@ -79,6 +79,8 @@ begin
   end;
 end;
 
+{ TMethodInliningTests }
+
 procedure TMethodInliningTests.SimpleFunctionReplacesCall;
 var
   mTitle, mReason: string;

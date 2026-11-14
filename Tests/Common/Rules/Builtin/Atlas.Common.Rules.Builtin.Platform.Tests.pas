@@ -77,6 +77,8 @@ end;
 
 { ui-call-in-console-or-service }
 
+{ TPlatformRulesTests }
+
 procedure TPlatformRulesTests.UiCallIssueExample;
 var
   mFindings: TArray<TRuleFinding>;

@@ -54,6 +54,8 @@ begin
   Result.Texts := Texts;
 end;
 
+{ TAtlasAffectedHookTests }
+
 procedure TAtlasAffectedHookTests.Setup;
 begin
   FDir := TPath.Combine(TPath.GetTempPath, 'atlas-affected-' + IntToStr(Random(1000000)));

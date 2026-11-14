@@ -48,6 +48,26 @@ implementation
 uses
   System.Types;
 
+{ TAtlasNeighboursTests }
+
+function TAtlasNeighboursTests.Go(const AFrom: string; ADirection: TAtlasNeighbourDirection): string;
+begin
+  Result := Go(AFrom, ADirection, True);
+end;
+
+function TAtlasNeighboursTests.Go(const AFrom: string; ADirection: TAtlasNeighbourDirection;
+  ACross: Boolean): string;
+var
+  mIndex: Integer;
+begin
+  mIndex := TAtlasNeighbours.Find(FItems, TAtlasNeighbours.IndexOf(FItems, AFrom), ADirection, ACross);
+  Result := '';
+  if mIndex >= 0 then
+  begin
+    Result := FItems[mIndex].Name;
+  end;
+end;
+
 procedure TAtlasNeighboursTests.Setup;
 begin
   FItems := [
@@ -69,24 +89,6 @@ end;
 procedure TAtlasNeighboursTests.TearDown;
 begin
   FItems := nil;
-end;
-
-function TAtlasNeighboursTests.Go(const AFrom: string; ADirection: TAtlasNeighbourDirection): string;
-begin
-  Result := Go(AFrom, ADirection, True);
-end;
-
-function TAtlasNeighboursTests.Go(const AFrom: string; ADirection: TAtlasNeighbourDirection;
-  ACross: Boolean): string;
-var
-  mIndex: Integer;
-begin
-  mIndex := TAtlasNeighbours.Find(FItems, TAtlasNeighbours.IndexOf(FItems, AFrom), ADirection, ACross);
-  Result := '';
-  if mIndex >= 0 then
-  begin
-    Result := FItems[mIndex].Name;
-  end;
 end;
 
 procedure TAtlasNeighboursTests.AllDirections;

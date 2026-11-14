@@ -100,6 +100,8 @@ begin
   end;
 end;
 
+{ TFavoritesView }
+
 procedure TFavoritesView.ShowList(const AItems: TAtlasCompletionItems; const AOrder: TArray<Integer>;
   ASelected: Integer; const APattern: string);
 begin

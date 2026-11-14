@@ -199,6 +199,8 @@ const
     'end;'#10 +
     'end.';
 
+{ TFreeFieldsTests }
+
 procedure TFreeFieldsTests.CreatedAndNotFreedIsFound;
 var
   mFields: TArray<TOwnedField>;
@@ -292,272 +294,6 @@ begin
   mFields := Analyze(cText);
   Assert.AreEqual(1, Integer(Length(mFields)));
   Assert.AreEqual('FNil', mFields[0].Name);
-end;
-
-procedure TFreeFieldsTests.InterfaceFieldTakesOverObject;
-const
-  cText =
-    'unit U;'#10 +
-    'interface'#10 +
-    'type'#10 +
-    '  TFoo = class'#10 +
-    '  private'#10 +
-    '    FLog: ILog;'#10 +
-    '    FLogImpl: TLog;'#10 +
-    '    FCheck: TRegEx;'#10 +
-    '    FRest: TLog;'#10 +
-    '  public'#10 +
-    '    constructor Create;'#10 +
-    '    function Take: TLog;'#10 +
-    '  end;'#10 +
-    'implementation'#10 +
-    'constructor TFoo.Create;'#10 +
-    'begin'#10 +
-    '  FLogImpl := TLog.Create;'#10 +
-    '  FCheck := TRegEx.Create(''x'');'#10 +
-    '  FRest := TLog.Create;'#10 +
-    'end;'#10 +
-    'function TFoo.Take: TLog;'#10 +
-    'begin'#10 +
-    '  Result := FLogImpl;'#10 +
-    '  Self.FLog := FLogImpl;'#10 +
-    'end;'#10 +
-    'end.';
-var
-  mFields: TArray<TOwnedField>;
-begin
-  // FLogImpl gehört der Referenzzählung von FLog, auch wenn es vorher zurückgegeben wird (#918);
-  // TRegEx ist ein Record.
-  mFields := Analyze(cText);
-  Assert.AreEqual(1, Integer(Length(mFields)));
-  Assert.AreEqual('FRest', mFields[0].Name);
-  Assert.AreEqual(Ord(TOwnedFieldState.NotFreed), Ord(mFields[0].State));
-end;
-
-procedure TFreeFieldsTests.RecordInterfaceFieldTakesOverObject;
-const
-  cText =
-    'unit U;'#10 +
-    'interface'#10 +
-    'type'#10 +
-    '  TSystem = record'#10 +
-    '    Log: ILog;'#10 +
-    '    Name: TLog;'#10 +
-    '  end;'#10 +
-    '  TFoo = class'#10 +
-    '  private'#10 +
-    '    FSystem: TSystem;'#10 +
-    '    FLogImpl: TLog;'#10 +
-    '    FOther: TLog;'#10 +
-    '  public'#10 +
-    '    constructor Create;'#10 +
-    '  end;'#10 +
-    'implementation'#10 +
-    'constructor TFoo.Create;'#10 +
-    'begin'#10 +
-    '  FLogImpl := TLog.Create;'#10 +
-    '  FOther := TLog.Create;'#10 +
-    '  FSystem.Log := FLogImpl;'#10 +
-    '  Self.FSystem.Name := FOther;'#10 +
-    'end;'#10 +
-    'end.';
-var
-  mFields: TArray<TOwnedField>;
-begin
-  // FSystem.Log ist ein Interface: dessen Referenzzählung gibt FLogImpl frei (#1519); FSystem.Name nicht.
-  mFields := Analyze(cText);
-  Assert.AreEqual(1, Integer(Length(mFields)));
-  Assert.AreEqual('FOther', mFields[0].Name);
-  Assert.AreEqual(Ord(TOwnedFieldState.Unclear), Ord(mFields[0].State));
-end;
-
-procedure TFreeFieldsTests.ComponentFieldAsOwner;
-const
-  cText =
-    'unit U;'#10 +
-    'interface'#10 +
-    'type'#10 +
-    '  TChoiceBox = class(TComboBox)'#10 +
-    '  end;'#10 +
-    '  THelper = class'#10 +
-    '  end;'#10 +
-    '  TFoo = class'#10 +
-    '  private'#10 +
-    '    FHost: TForm;'#10 +
-    '    FBox: TCanvasBox;'#10 +
-    '    FMenu: TPopupMenu;'#10 +
-    '    FItem: TMenuItem;'#10 +
-    '    FChoice: TChoiceBox;'#10 +
-    '    FHelper: THelper;'#10 +
-    '  public'#10 +
-    '    constructor Create;'#10 +
-    '    destructor Destroy; override;'#10 +
-    '  end;'#10 +
-    'implementation'#10 +
-    'constructor TFoo.Create;'#10 +
-    'begin'#10 +
-    '  FHost := TForm.CreateNew(nil);'#10 +
-    '  FBox := TCanvasBox.Create(FHost);'#10 +
-    '  FItem := TMenuItem.Create(FMenu);'#10 +
-    '  FChoice := TChoiceBox.Create(Self);'#10 +
-    '  FHelper := THelper.Create(Self);'#10 +
-    'end;'#10 +
-    'destructor TFoo.Destroy;'#10 +
-    'begin'#10 +
-    '  FHost.Free;'#10 +
-    '  FMenu.Free;'#10 +
-    '  inherited;'#10 +
-    'end;'#10 +
-    'end.';
-var
-  mFields: TArray<TOwnedField>;
-begin
-  // Komponentenfeld als Owner, bekannte VCL-Komponente, Vorfahr ohne Index mit Self (#918);
-  // eine Klasse ohne Vorfahren ist sicher keine Komponente und bleibt trotz Self gemeldet.
-  mFields := Analyze(cText);
-  Assert.AreEqual(1, Integer(Length(mFields)));
-  Assert.AreEqual('FHelper', mFields[0].Name);
-end;
-
-procedure TFreeFieldsTests.HandOverAndCastToInterface;
-const
-  cText =
-    'unit U;'#10 +
-    'interface'#10 +
-    'type'#10 +
-    '  TFoo = class'#10 +
-    '  private'#10 +
-    '    FEnv: IEnvironment;'#10 +
-    '    FEnvObject: TObject;'#10 +
-    '    FWatcher: TWatcher;'#10 +
-    '    FTemp: TWatcher;'#10 +
-    '    FButton: TButton;'#10 +
-    '  public'#10 +
-    '    constructor Create(AEvents: TEvents);'#10 +
-    '  end;'#10 +
-    'implementation'#10 +
-    'constructor TFoo.Create(AEvents: TEvents);'#10 +
-    'begin'#10 +
-    '  FEnvObject := TEnvironment.Create;'#10 +
-    '  FEnv := TEnvironment(FEnvObject);'#10 +
-    '  FWatcher := TWatcher.Create;'#10 +
-    '  AEvents.Add(FWatcher);'#10 +
-    '  FTemp := TWatcher.Create;'#10 +
-    '  AEvents.Notify(FTemp);'#10 +
-    '  FButton := TButton.Create(Self);'#10 +
-    '  AEvents.Add(FButton);'#10 +
-    'end;'#10 +
-    'end.';
-var
-  mFields: TArray<TOwnedField>;
-begin
-  // Typumwandlung in ein Interface-Feld: still; Add übergibt (unklar); Notify übergibt nicht;
-  // eine Komponente mit Owner bleibt auch weitergereicht still (#918).
-  mFields := Analyze(cText);
-  Assert.AreEqual(2, Integer(Length(mFields)));
-  Assert.AreEqual('FWatcher', mFields[0].Name);
-  Assert.AreEqual(Ord(TOwnedFieldState.Unclear), Ord(mFields[0].State));
-  Assert.AreEqual('wird in TFoo.Create an AEvents.Add übergeben', mFields[0].Reason);
-  Assert.AreEqual('FTemp', mFields[1].Name);
-  Assert.AreEqual(Ord(TOwnedFieldState.NotFreed), Ord(mFields[1].State));
-end;
-
-const
-  cHandOverText =
-    'unit U;'#10 +
-    'interface'#10 +
-    'type'#10 +
-    '  TParticipant = class'#10 +
-    '  end;'#10 +
-    '  TEvents = class'#10 +
-    '  private'#10 +
-    '    FItems: TObjectList<TParticipant>;'#10 +
-    '  public'#10 +
-    '    procedure Add(AItem: TParticipant);'#10 +
-    '  end;'#10 +
-    '  TPlain = class'#10 +
-    '  public'#10 +
-    '    procedure Add(AItem: TParticipant);'#10 +
-    '  end;'#10 +
-    '  TFoo = class'#10 +
-    '  private type'#10 +
-    '    TWatcher = class(TParticipant)'#10 +
-    '    end;'#10 +
-    '  private'#10 +
-    '    FEvents: TEvents;'#10 +
-    '    FPlain: TPlain;'#10 +
-    '    FOwning: TObjectList<TWatcher>;'#10 +
-    '    FLoose: TObjectList<TWatcher>;'#10 +
-    '    FWatcher, FListed, FLoosely, FPlainly: TWatcher;'#10 +
-    '  public'#10 +
-    '    constructor Create(AEvents: TEvents; APlain: TPlain);'#10 +
-    '    destructor Destroy; override;'#10 +
-    '  end;'#10 +
-    'implementation'#10 +
-    'constructor TFoo.Create(AEvents: TEvents; APlain: TPlain);'#10 +
-    'begin'#10 +
-    '  FEvents := AEvents;'#10 +
-    '  FPlain := APlain;'#10 +
-    '  FOwning := TObjectList<TWatcher>.Create;'#10 +
-    '  FLoose := TObjectList<TWatcher>.Create(False);'#10 +
-    '  FWatcher := TWatcher.Create;'#10 +
-    '  FEvents.Add(FWatcher);'#10 +
-    '  FListed := TWatcher.Create;'#10 +
-    '  FOwning.Add(FListed);'#10 +
-    '  FLoosely := TWatcher.Create;'#10 +
-    '  FLoose.Add(FLoosely);'#10 +
-    '  FPlainly := TWatcher.Create;'#10 +
-    '  FPlain.Add(FPlainly);'#10 +
-    'end;'#10 +
-    'destructor TFoo.Destroy;'#10 +
-    'begin'#10 +
-    '  FOwning.Free;'#10 +
-    '  FLoose.Free;'#10 +
-    '  inherited;'#10 +
-    'end;'#10 +
-    'end.';
-
-procedure TFreeFieldsTests.HandOverToOwningListIsSilent;
-var
-  mFields: TArray<TOwnedField>;
-begin
-  // TEvents hält seine Teilnehmer in einer TObjectList, FOwning besitzt seine Elemente: beide übernehmen.
-  // Eine mit False erzeugte Liste und eine Klasse ohne besitzende Liste bleiben unklar.
-  mFields := Analyze(cHandOverText);
-  Assert.AreEqual(2, Integer(Length(mFields)));
-  Assert.AreEqual('FLoosely', mFields[0].Name);
-  Assert.AreEqual(Ord(TOwnedFieldState.Unclear), Ord(mFields[0].State));
-  Assert.AreEqual('wird in TFoo.Create an FLoose.Add übergeben', mFields[0].Reason);
-  Assert.AreEqual('FPlainly', mFields[1].Name);
-  Assert.AreEqual(Ord(TOwnedFieldState.Unclear), Ord(mFields[1].State));
-end;
-
-procedure TFreeFieldsTests.DynamicArrayIsNoObject;
-const
-  cText =
-    'unit U;'#10 +
-    'interface'#10 +
-    'type'#10 +
-    '  TFoo = class'#10 +
-    '  private'#10 +
-    '    FNames: TArray<string>;'#10 +
-    '  public'#10 +
-    '    constructor Create;'#10 +
-    '    function Names: TArray<string>;'#10 +
-    '  end;'#10 +
-    'implementation'#10 +
-    'constructor TFoo.Create;'#10 +
-    'begin'#10 +
-    '  FNames := TArray<string>.Create(''a'', ''b'');'#10 +
-    'end;'#10 +
-    'function TFoo.Names: TArray<string>;'#10 +
-    'begin'#10 +
-    '  Result := FNames;'#10 +
-    'end;'#10 +
-    'end.';
-begin
-  // TArray<T> ist ein dynamisches Array: Referenzzählung, keine Freigabe.
-  Assert.AreEqual(0, Integer(Length(Analyze(cText))));
 end;
 
 procedure TFreeFieldsTests.CreationInPrivateHelper;
@@ -719,6 +455,61 @@ begin
   // Nur lesbare Property und nil-Zuweisung lassen das Feld eigen.
   Assert.AreEqual(Ord(TOwnedFieldState.NotFreed), Ord(mFields[1].State));
 end;
+
+const
+  cHandOverText =
+    'unit U;'#10 +
+    'interface'#10 +
+    'type'#10 +
+    '  TParticipant = class'#10 +
+    '  end;'#10 +
+    '  TEvents = class'#10 +
+    '  private'#10 +
+    '    FItems: TObjectList<TParticipant>;'#10 +
+    '  public'#10 +
+    '    procedure Add(AItem: TParticipant);'#10 +
+    '  end;'#10 +
+    '  TPlain = class'#10 +
+    '  public'#10 +
+    '    procedure Add(AItem: TParticipant);'#10 +
+    '  end;'#10 +
+    '  TFoo = class'#10 +
+    '  private type'#10 +
+    '    TWatcher = class(TParticipant)'#10 +
+    '    end;'#10 +
+    '  private'#10 +
+    '    FEvents: TEvents;'#10 +
+    '    FPlain: TPlain;'#10 +
+    '    FOwning: TObjectList<TWatcher>;'#10 +
+    '    FLoose: TObjectList<TWatcher>;'#10 +
+    '    FWatcher, FListed, FLoosely, FPlainly: TWatcher;'#10 +
+    '  public'#10 +
+    '    constructor Create(AEvents: TEvents; APlain: TPlain);'#10 +
+    '    destructor Destroy; override;'#10 +
+    '  end;'#10 +
+    'implementation'#10 +
+    'constructor TFoo.Create(AEvents: TEvents; APlain: TPlain);'#10 +
+    'begin'#10 +
+    '  FEvents := AEvents;'#10 +
+    '  FPlain := APlain;'#10 +
+    '  FOwning := TObjectList<TWatcher>.Create;'#10 +
+    '  FLoose := TObjectList<TWatcher>.Create(False);'#10 +
+    '  FWatcher := TWatcher.Create;'#10 +
+    '  FEvents.Add(FWatcher);'#10 +
+    '  FListed := TWatcher.Create;'#10 +
+    '  FOwning.Add(FListed);'#10 +
+    '  FLoosely := TWatcher.Create;'#10 +
+    '  FLoose.Add(FLoosely);'#10 +
+    '  FPlainly := TWatcher.Create;'#10 +
+    '  FPlain.Add(FPlainly);'#10 +
+    'end;'#10 +
+    'destructor TFoo.Destroy;'#10 +
+    'begin'#10 +
+    '  FOwning.Free;'#10 +
+    '  FLoose.Free;'#10 +
+    '  inherited;'#10 +
+    'end;'#10 +
+    'end.';
 
 procedure TFreeFieldsTests.ObjectListIsNormalField;
 var
@@ -979,6 +770,174 @@ begin
   end;
 end;
 
+procedure TFreeFieldsTests.InterfaceFieldTakesOverObject;
+const
+  cText =
+    'unit U;'#10 +
+    'interface'#10 +
+    'type'#10 +
+    '  TFoo = class'#10 +
+    '  private'#10 +
+    '    FLog: ILog;'#10 +
+    '    FLogImpl: TLog;'#10 +
+    '    FCheck: TRegEx;'#10 +
+    '    FRest: TLog;'#10 +
+    '  public'#10 +
+    '    constructor Create;'#10 +
+    '    function Take: TLog;'#10 +
+    '  end;'#10 +
+    'implementation'#10 +
+    'constructor TFoo.Create;'#10 +
+    'begin'#10 +
+    '  FLogImpl := TLog.Create;'#10 +
+    '  FCheck := TRegEx.Create(''x'');'#10 +
+    '  FRest := TLog.Create;'#10 +
+    'end;'#10 +
+    'function TFoo.Take: TLog;'#10 +
+    'begin'#10 +
+    '  Result := FLogImpl;'#10 +
+    '  Self.FLog := FLogImpl;'#10 +
+    'end;'#10 +
+    'end.';
+var
+  mFields: TArray<TOwnedField>;
+begin
+  // FLogImpl gehört der Referenzzählung von FLog, auch wenn es vorher zurückgegeben wird (#918);
+  // TRegEx ist ein Record.
+  mFields := Analyze(cText);
+  Assert.AreEqual(1, Integer(Length(mFields)));
+  Assert.AreEqual('FRest', mFields[0].Name);
+  Assert.AreEqual(Ord(TOwnedFieldState.NotFreed), Ord(mFields[0].State));
+end;
+
+procedure TFreeFieldsTests.RecordInterfaceFieldTakesOverObject;
+const
+  cText =
+    'unit U;'#10 +
+    'interface'#10 +
+    'type'#10 +
+    '  TSystem = record'#10 +
+    '    Log: ILog;'#10 +
+    '    Name: TLog;'#10 +
+    '  end;'#10 +
+    '  TFoo = class'#10 +
+    '  private'#10 +
+    '    FSystem: TSystem;'#10 +
+    '    FLogImpl: TLog;'#10 +
+    '    FOther: TLog;'#10 +
+    '  public'#10 +
+    '    constructor Create;'#10 +
+    '  end;'#10 +
+    'implementation'#10 +
+    'constructor TFoo.Create;'#10 +
+    'begin'#10 +
+    '  FLogImpl := TLog.Create;'#10 +
+    '  FOther := TLog.Create;'#10 +
+    '  FSystem.Log := FLogImpl;'#10 +
+    '  Self.FSystem.Name := FOther;'#10 +
+    'end;'#10 +
+    'end.';
+var
+  mFields: TArray<TOwnedField>;
+begin
+  // FSystem.Log ist ein Interface: dessen Referenzzählung gibt FLogImpl frei (#1519); FSystem.Name nicht.
+  mFields := Analyze(cText);
+  Assert.AreEqual(1, Integer(Length(mFields)));
+  Assert.AreEqual('FOther', mFields[0].Name);
+  Assert.AreEqual(Ord(TOwnedFieldState.Unclear), Ord(mFields[0].State));
+end;
+
+procedure TFreeFieldsTests.ComponentFieldAsOwner;
+const
+  cText =
+    'unit U;'#10 +
+    'interface'#10 +
+    'type'#10 +
+    '  TChoiceBox = class(TComboBox)'#10 +
+    '  end;'#10 +
+    '  THelper = class'#10 +
+    '  end;'#10 +
+    '  TFoo = class'#10 +
+    '  private'#10 +
+    '    FHost: TForm;'#10 +
+    '    FBox: TCanvasBox;'#10 +
+    '    FMenu: TPopupMenu;'#10 +
+    '    FItem: TMenuItem;'#10 +
+    '    FChoice: TChoiceBox;'#10 +
+    '    FHelper: THelper;'#10 +
+    '  public'#10 +
+    '    constructor Create;'#10 +
+    '    destructor Destroy; override;'#10 +
+    '  end;'#10 +
+    'implementation'#10 +
+    'constructor TFoo.Create;'#10 +
+    'begin'#10 +
+    '  FHost := TForm.CreateNew(nil);'#10 +
+    '  FBox := TCanvasBox.Create(FHost);'#10 +
+    '  FItem := TMenuItem.Create(FMenu);'#10 +
+    '  FChoice := TChoiceBox.Create(Self);'#10 +
+    '  FHelper := THelper.Create(Self);'#10 +
+    'end;'#10 +
+    'destructor TFoo.Destroy;'#10 +
+    'begin'#10 +
+    '  FHost.Free;'#10 +
+    '  FMenu.Free;'#10 +
+    '  inherited;'#10 +
+    'end;'#10 +
+    'end.';
+var
+  mFields: TArray<TOwnedField>;
+begin
+  // Komponentenfeld als Owner, bekannte VCL-Komponente, Vorfahr ohne Index mit Self (#918);
+  // eine Klasse ohne Vorfahren ist sicher keine Komponente und bleibt trotz Self gemeldet.
+  mFields := Analyze(cText);
+  Assert.AreEqual(1, Integer(Length(mFields)));
+  Assert.AreEqual('FHelper', mFields[0].Name);
+end;
+
+procedure TFreeFieldsTests.HandOverAndCastToInterface;
+const
+  cText =
+    'unit U;'#10 +
+    'interface'#10 +
+    'type'#10 +
+    '  TFoo = class'#10 +
+    '  private'#10 +
+    '    FEnv: IEnvironment;'#10 +
+    '    FEnvObject: TObject;'#10 +
+    '    FWatcher: TWatcher;'#10 +
+    '    FTemp: TWatcher;'#10 +
+    '    FButton: TButton;'#10 +
+    '  public'#10 +
+    '    constructor Create(AEvents: TEvents);'#10 +
+    '  end;'#10 +
+    'implementation'#10 +
+    'constructor TFoo.Create(AEvents: TEvents);'#10 +
+    'begin'#10 +
+    '  FEnvObject := TEnvironment.Create;'#10 +
+    '  FEnv := TEnvironment(FEnvObject);'#10 +
+    '  FWatcher := TWatcher.Create;'#10 +
+    '  AEvents.Add(FWatcher);'#10 +
+    '  FTemp := TWatcher.Create;'#10 +
+    '  AEvents.Notify(FTemp);'#10 +
+    '  FButton := TButton.Create(Self);'#10 +
+    '  AEvents.Add(FButton);'#10 +
+    'end;'#10 +
+    'end.';
+var
+  mFields: TArray<TOwnedField>;
+begin
+  // Typumwandlung in ein Interface-Feld: still; Add übergibt (unklar); Notify übergibt nicht;
+  // eine Komponente mit Owner bleibt auch weitergereicht still (#918).
+  mFields := Analyze(cText);
+  Assert.AreEqual(2, Integer(Length(mFields)));
+  Assert.AreEqual('FWatcher', mFields[0].Name);
+  Assert.AreEqual(Ord(TOwnedFieldState.Unclear), Ord(mFields[0].State));
+  Assert.AreEqual('wird in TFoo.Create an AEvents.Add übergeben', mFields[0].Reason);
+  Assert.AreEqual('FTemp', mFields[1].Name);
+  Assert.AreEqual(Ord(TOwnedFieldState.NotFreed), Ord(mFields[1].State));
+end;
+
 procedure TFreeFieldsTests.ObjectCreationOutsideClasses;
 const
   cSource = 'unit U;'#10'interface'#10'implementation'#10'var'#10'  A: TListe;'#10'  B: TStopwatch;'#10 +
@@ -1005,6 +964,49 @@ begin
   finally
     mTree.Free;
   end;
+end;
+
+procedure TFreeFieldsTests.HandOverToOwningListIsSilent;
+var
+  mFields: TArray<TOwnedField>;
+begin
+  // TEvents hält seine Teilnehmer in einer TObjectList, FOwning besitzt seine Elemente: beide übernehmen.
+  // Eine mit False erzeugte Liste und eine Klasse ohne besitzende Liste bleiben unklar.
+  mFields := Analyze(cHandOverText);
+  Assert.AreEqual(2, Integer(Length(mFields)));
+  Assert.AreEqual('FLoosely', mFields[0].Name);
+  Assert.AreEqual(Ord(TOwnedFieldState.Unclear), Ord(mFields[0].State));
+  Assert.AreEqual('wird in TFoo.Create an FLoose.Add übergeben', mFields[0].Reason);
+  Assert.AreEqual('FPlainly', mFields[1].Name);
+  Assert.AreEqual(Ord(TOwnedFieldState.Unclear), Ord(mFields[1].State));
+end;
+
+procedure TFreeFieldsTests.DynamicArrayIsNoObject;
+const
+  cText =
+    'unit U;'#10 +
+    'interface'#10 +
+    'type'#10 +
+    '  TFoo = class'#10 +
+    '  private'#10 +
+    '    FNames: TArray<string>;'#10 +
+    '  public'#10 +
+    '    constructor Create;'#10 +
+    '    function Names: TArray<string>;'#10 +
+    '  end;'#10 +
+    'implementation'#10 +
+    'constructor TFoo.Create;'#10 +
+    'begin'#10 +
+    '  FNames := TArray<string>.Create(''a'', ''b'');'#10 +
+    'end;'#10 +
+    'function TFoo.Names: TArray<string>;'#10 +
+    'begin'#10 +
+    '  Result := FNames;'#10 +
+    'end;'#10 +
+    'end.';
+begin
+  // TArray<T> ist ein dynamisches Array: Referenzzählung, keine Freigabe.
+  Assert.AreEqual(0, Integer(Length(Analyze(cText))));
 end;
 
 procedure TFreeFieldsTests.ClassDestructorIsCreatedOrFilled;

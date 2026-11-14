@@ -63,6 +63,13 @@ const
     'end;'#10 +
     'end.';
 
+{ TSymbolPathNodesTests }
+
+procedure TSymbolPathNodesTests.AddUnit(const AName, AText: string);
+begin
+  FIndex.AddUnit(TIndexExtractor.ExtractText(AText, 'C:\P\' + AName + '.pas', nil));
+end;
+
 procedure TSymbolPathNodesTests.Setup;
 begin
   FIndex := TSymbolIndex.Create;
@@ -75,11 +82,6 @@ begin
   FTable.Free;
   FTable := nil;
   FIndex := nil;
-end;
-
-procedure TSymbolPathNodesTests.AddUnit(const AName, AText: string);
-begin
-  FIndex.AddUnit(TIndexExtractor.ExtractText(AText, 'C:\P\' + AName + '.pas', nil));
 end;
 
 procedure TSymbolPathNodesTests.TypeNamesSkipTypeWords;

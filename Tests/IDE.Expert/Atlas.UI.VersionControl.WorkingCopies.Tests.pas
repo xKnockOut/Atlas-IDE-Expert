@@ -85,6 +85,26 @@ end;
 
 { TAtlasWorkingCopiesDialogTests }
 
+procedure TAtlasWorkingCopiesDialogTests.Checked(Sender: TObject);
+begin
+  FCalls := FCalls + ['check'];
+end;
+
+procedure TAtlasWorkingCopiesDialogTests.Updated(Sender: TObject; AIndex: Integer; AIgnoreExternals: Boolean);
+begin
+  FCalls := FCalls + [Format('update %d %s', [AIndex, BoolToStr(AIgnoreExternals, True)])];
+end;
+
+procedure TAtlasWorkingCopiesDialogTests.Pinned(Sender: TObject; AIndex: Integer);
+begin
+  FCalls := FCalls + [Format('pin %d', [AIndex])];
+end;
+
+procedure TAtlasWorkingCopiesDialogTests.Opened(Sender: TObject; AIndex: Integer);
+begin
+  FCalls := FCalls + [Format('open %d', [AIndex])];
+end;
+
 procedure TAtlasWorkingCopiesDialogTests.WarmUpFirstUse;
 begin
   Setup;
@@ -106,26 +126,6 @@ procedure TAtlasWorkingCopiesDialogTests.TearDown;
 begin
   TAtlasStrings.Language := FLanguage;
   FCalls := nil;
-end;
-
-procedure TAtlasWorkingCopiesDialogTests.Checked(Sender: TObject);
-begin
-  FCalls := FCalls + ['check'];
-end;
-
-procedure TAtlasWorkingCopiesDialogTests.Updated(Sender: TObject; AIndex: Integer; AIgnoreExternals: Boolean);
-begin
-  FCalls := FCalls + [Format('update %d %s', [AIndex, BoolToStr(AIgnoreExternals, True)])];
-end;
-
-procedure TAtlasWorkingCopiesDialogTests.Pinned(Sender: TObject; AIndex: Integer);
-begin
-  FCalls := FCalls + [Format('pin %d', [AIndex])];
-end;
-
-procedure TAtlasWorkingCopiesDialogTests.Opened(Sender: TObject; AIndex: Integer);
-begin
-  FCalls := FCalls + [Format('open %d', [AIndex])];
 end;
 
 procedure TAtlasWorkingCopiesDialogTests.CellsPerColumn;

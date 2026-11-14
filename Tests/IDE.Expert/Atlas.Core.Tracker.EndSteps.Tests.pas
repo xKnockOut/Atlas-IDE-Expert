@@ -84,6 +84,8 @@ type
       AValue: string; ATimeoutMs: Integer): TAtlasTrackerWriteResult;
   end;
 
+{ TFakeEndWriter }
+
 function TFakeEndWriter.Logged(const ACall: string): TAtlasTrackerWriteResult;
 begin
   Calls := Calls + [ACall];
@@ -122,6 +124,8 @@ type
     function Get(const AUrl: string; ATimeoutMs: Integer; out AStatus: Integer; out AText: string;
       out AError: TAtlasCiFetchError): Boolean;
   end;
+
+{ TFakeLookupTransport }
 
 function TFakeLookupTransport.Get(const AUrl: string; ATimeoutMs: Integer; out AStatus: Integer; out AText: string;
   out AError: TAtlasCiFetchError): Boolean;

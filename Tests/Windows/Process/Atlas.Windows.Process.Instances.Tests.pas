@@ -27,6 +27,8 @@ uses
   System.SysUtils,
   Atlas.Windows.Process.Instances;
 
+{ TProcessInstancesTests }
+
 procedure TProcessInstancesTests.FindsOwnProcess;
 var
   mIds: TArray<Cardinal>;

@@ -244,7 +244,31 @@ begin
   Result := TTextRange.Create(TTextPosition.Create(0, 0), TTextPosition.Create(100, 0));
 end;
 
+/// <summary>Endmarken mit Blockanfang: "Zeile:Spalte Text @Anfangszeile:Anfangsspalte|".</summary>
+function DescribeEnds(const AHints: TArray<TInlayHint>): string;
+var
+  mHint: TInlayHint;
+begin
+  Result := '';
+  for mHint in AHints do
+  begin
+    Result := Result + Format('%d:%d %s @%d:%d|', [mHint.Position.Line, mHint.Position.Character, mHint.Text,
+      mHint.BlockStart.Line, mHint.BlockStart.Character]);
+  end;
+end;
+
 { TLspInlayHintsTests }
+
+function TLspInlayHintsTests.Describe(const AHints: TArray<TInlayHint>): string;
+var
+  mHint: TInlayHint;
+begin
+  Result := '';
+  for mHint in AHints do
+  begin
+    Result := Result + Format('%d:%d %s|', [mHint.Position.Line, mHint.Position.Character, mHint.Text]);
+  end;
+end;
 
 procedure TLspInlayHintsTests.WarmUpFirstUse;
 begin
@@ -267,17 +291,6 @@ procedure TLspInlayHintsTests.TearDown;
 begin
   FResolver.Free;
   FIndex := nil;
-end;
-
-function TLspInlayHintsTests.Describe(const AHints: TArray<TInlayHint>): string;
-var
-  mHint: TInlayHint;
-begin
-  Result := '';
-  for mHint in AHints do
-  begin
-    Result := Result + Format('%d:%d %s|', [mHint.Position.Line, mHint.Position.Character, mHint.Text]);
-  end;
 end;
 
 procedure TLspInlayHintsTests.ParameterNamesBeforeArguments;
@@ -308,50 +321,18 @@ begin
   end;
 end;
 
-procedure TLspInlayHintsTests.InferredTypesOfForInConstAndGenerics;
+procedure TLspInlayHintsTests.EndMarkersBehindLongBlocks;
 var
   mTree: TSyntaxTree;
 begin
-  FIndex.AddUnit(TIndexExtractor.ExtractText(cUnitDaten, cDatenFile, nil));
-  FIndex.AddUnit(TIndexExtractor.ExtractText(cUnitQuelle, cQuelleFile, nil));
-  mTree := TPascalParser.Parse(cUnitNutzer);
+  mTree := TPascalParser.Parse(cUnitHaupt);
   try
-    // Zeile 17 hat schon einen Typ.
-    Assert.AreEqual('9:7 : TDaten|10:11 : Integer|12:11 : TDaten|14:11 : Char|16:9 : Integer|',
-      Describe(TLspInlayHints.InferredTypes(FResolver, mTree, cNutzerFile, WholeFile)));
-  finally
-    mTree.Free;
-  end;
-end;
-
-procedure TLspInlayHintsTests.ExplicitTypeWritesTypeAndUses;
-var
-  mTree: TSyntaxTree;
-  mAction: TCodeAction;
-begin
-  FIndex.AddUnit(TIndexExtractor.ExtractText(cUnitDaten, cDatenFile, nil));
-  FIndex.AddUnit(TIndexExtractor.ExtractText(cUnitQuelle, cQuelleFile, nil));
-  mTree := TPascalParser.Parse(cUnitNutzer);
-  try
-    // Auf dem Namen X: ": TDaten" und uses Daten, weil Nutzer nur Quelle einbindet.
-    Assert.IsTrue(TLspInlayHints.ExplicitTypeAction(FResolver, mTree, cNutzerFile, TTextPosition.Create(9, 6), #10,
-      mAction));
-    Assert.AreEqual('Typ ausschreiben', mAction.Title);
-    Assert.AreEqual(2, Integer(Length(mAction.Edits)));
-    Assert.AreEqual(': TDaten', mAction.Edits[0].NewText);
-    Assert.AreEqual(9, mAction.Edits[0].Range.StartPos.Line);
-    Assert.AreEqual(7, mAction.Edits[0].Range.StartPos.Character);
-    Assert.IsTrue(mAction.Edits[1].NewText.Contains('Daten'), mAction.Edits[1].NewText);
-    // Integer braucht keine Unit.
-    Assert.IsTrue(TLspInlayHints.ExplicitTypeAction(FResolver, mTree, cNutzerFile, TTextPosition.Create(10, 10), #10,
-      mAction));
-    Assert.AreEqual(1, Integer(Length(mAction.Edits)));
-    Assert.AreEqual(': Integer', mAction.Edits[0].NewText);
-    // Mit Typ bzw. neben dem Namen nichts.
-    Assert.IsFalse(TLspInlayHints.ExplicitTypeAction(FResolver, mTree, cNutzerFile, TTextPosition.Create(17, 10), #10,
-      mAction));
-    Assert.IsFalse(TLspInlayHints.ExplicitTypeAction(FResolver, mTree, cNutzerFile, TTextPosition.Create(9, 12), #10,
-      mAction));
+    // Reihenfolge der Knoten im Baum; Collect sortiert nach Position.
+    Assert.AreEqual('18:4 // Arbeite|17:6 // if Assigned(nil)|',
+      Describe(TLspInlayHints.EndMarkers(mTree, WholeFile, 4)));
+    // Die Routine hat 15 Zeilen, der if-Block 4.
+    Assert.AreEqual('18:4 // Arbeite|', Describe(TLspInlayHints.EndMarkers(mTree, WholeFile, 5)));
+    Assert.AreEqual('', Describe(TLspInlayHints.EndMarkers(mTree, WholeFile, 20)));
   finally
     mTree.Free;
   end;
@@ -426,23 +407,6 @@ begin
   end;
 end;
 
-procedure TLspInlayHintsTests.EndMarkersBehindLongBlocks;
-var
-  mTree: TSyntaxTree;
-begin
-  mTree := TPascalParser.Parse(cUnitHaupt);
-  try
-    // Reihenfolge der Knoten im Baum; Collect sortiert nach Position.
-    Assert.AreEqual('18:4 // Arbeite|17:6 // if Assigned(nil)|',
-      Describe(TLspInlayHints.EndMarkers(mTree, WholeFile, 4)));
-    // Die Routine hat 15 Zeilen, der if-Block 4.
-    Assert.AreEqual('18:4 // Arbeite|', Describe(TLspInlayHints.EndMarkers(mTree, WholeFile, 5)));
-    Assert.AreEqual('', Describe(TLspInlayHints.EndMarkers(mTree, WholeFile, 20)));
-  finally
-    mTree.Free;
-  end;
-end;
-
 procedure TLspInlayHintsTests.SettingsSwitchHintsOffAndSort;
 var
   mTree: TSyntaxTree;
@@ -459,19 +423,6 @@ begin
     Assert.AreEqual('9:7 : string|10:7 : TFoo|11:7 : Integer|13:7 : TFarbe|18:4 // Arbeite|', Describe(mHints));
   finally
     mTree.Free;
-  end;
-end;
-
-/// <summary>Endmarken mit Blockanfang: "Zeile:Spalte Text @Anfangszeile:Anfangsspalte|".</summary>
-function DescribeEnds(const AHints: TArray<TInlayHint>): string;
-var
-  mHint: TInlayHint;
-begin
-  Result := '';
-  for mHint in AHints do
-  begin
-    Result := Result + Format('%d:%d %s @%d:%d|', [mHint.Position.Line, mHint.Position.Character, mHint.Text,
-      mHint.BlockStart.Line, mHint.BlockStart.Character]);
   end;
 end;
 
@@ -572,6 +523,55 @@ begin
   finally
     mDispatcher.Free;
     mHints.Free;
+  end;
+end;
+
+procedure TLspInlayHintsTests.InferredTypesOfForInConstAndGenerics;
+var
+  mTree: TSyntaxTree;
+begin
+  FIndex.AddUnit(TIndexExtractor.ExtractText(cUnitDaten, cDatenFile, nil));
+  FIndex.AddUnit(TIndexExtractor.ExtractText(cUnitQuelle, cQuelleFile, nil));
+  mTree := TPascalParser.Parse(cUnitNutzer);
+  try
+    // Zeile 17 hat schon einen Typ.
+    Assert.AreEqual('9:7 : TDaten|10:11 : Integer|12:11 : TDaten|14:11 : Char|16:9 : Integer|',
+      Describe(TLspInlayHints.InferredTypes(FResolver, mTree, cNutzerFile, WholeFile)));
+  finally
+    mTree.Free;
+  end;
+end;
+
+procedure TLspInlayHintsTests.ExplicitTypeWritesTypeAndUses;
+var
+  mTree: TSyntaxTree;
+  mAction: TCodeAction;
+begin
+  FIndex.AddUnit(TIndexExtractor.ExtractText(cUnitDaten, cDatenFile, nil));
+  FIndex.AddUnit(TIndexExtractor.ExtractText(cUnitQuelle, cQuelleFile, nil));
+  mTree := TPascalParser.Parse(cUnitNutzer);
+  try
+    // Auf dem Namen X: ": TDaten" und uses Daten, weil Nutzer nur Quelle einbindet.
+    Assert.IsTrue(TLspInlayHints.ExplicitTypeAction(FResolver, mTree, cNutzerFile, TTextPosition.Create(9, 6), #10,
+      mAction));
+    Assert.AreEqual('Typ ausschreiben', mAction.Title);
+    Assert.AreEqual(2, Integer(Length(mAction.Edits)));
+    Assert.AreEqual(': TDaten', mAction.Edits[0].NewText);
+    Assert.AreEqual(9, mAction.Edits[0].Range.StartPos.Line);
+    Assert.AreEqual(7, mAction.Edits[0].Range.StartPos.Character);
+    Assert.IsTrue(mAction.Edits[1].NewText.Contains('Daten'), mAction.Edits[1].NewText);
+    // Integer braucht keine Unit.
+    Assert.IsTrue(TLspInlayHints.ExplicitTypeAction(FResolver, mTree, cNutzerFile, TTextPosition.Create(10, 10), #10,
+      mAction));
+    Assert.AreEqual(1, Integer(Length(mAction.Edits)));
+    Assert.AreEqual(': Integer', mAction.Edits[0].NewText);
+    // Mit Typ bzw. neben dem Namen nichts.
+    Assert.IsFalse(TLspInlayHints.ExplicitTypeAction(FResolver, mTree, cNutzerFile, TTextPosition.Create(17, 10), #10,
+      mAction));
+    Assert.IsFalse(TLspInlayHints.ExplicitTypeAction(FResolver, mTree, cNutzerFile, TTextPosition.Create(9, 12), #10,
+      mAction));
+  finally
+    mTree.Free;
   end;
 end;
 

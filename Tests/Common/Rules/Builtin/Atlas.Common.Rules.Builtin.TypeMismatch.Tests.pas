@@ -509,6 +509,21 @@ begin
   Assert.AreEqual(0, Integer(Length(Findings(mSource, '{"rules": {"type-mismatch": {"exclude": ["Source/*.pas"]}}}'))));
 end;
 
+procedure TTypeMismatchTests.RuleIsRegistered;var
+  mRule: IRule;
+  mFound: Boolean;
+begin
+  mFound := False;
+  for mRule in BuiltinRules do
+  begin
+    if mRule.Descriptor.Id = cTypeMismatchRuleId then
+    begin
+      mFound := True;
+    end;
+  end;
+  Assert.IsTrue(mFound);
+end;
+
 procedure TTypeMismatchTests.OverloadsFromSeveralUnitsAreSilent;
 var
   mIndex: ISymbolIndex;
@@ -528,21 +543,6 @@ begin
     '  mOrder := AZahl + IfThen(AFlag, 0, AZahl);'#10'end;'#10'end.';
   Assert.AreEqual(0, Integer(Length(TRuleAssert.IndexFindings(TTypeMismatchRule.Create, mSource, mIndex, '',
     'Fall.pas'))));
-end;
-
-procedure TTypeMismatchTests.RuleIsRegistered;var
-  mRule: IRule;
-  mFound: Boolean;
-begin
-  mFound := False;
-  for mRule in BuiltinRules do
-  begin
-    if mRule.Descriptor.Id = cTypeMismatchRuleId then
-    begin
-      mFound := True;
-    end;
-  end;
-  Assert.IsTrue(mFound);
 end;
 
 initialization

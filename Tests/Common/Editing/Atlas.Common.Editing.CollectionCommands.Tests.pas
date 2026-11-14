@@ -189,6 +189,8 @@ begin
   Result := Expand(Format(cRoutineUnit, [ACommand]), 14);
 end;
 
+{ TCollectionCommandsTests }
+
 procedure TCollectionCommandsTests.ListInClassAddsFieldConstructorDestructor;
 var
   mText: string;

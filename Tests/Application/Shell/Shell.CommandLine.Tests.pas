@@ -136,26 +136,6 @@ begin
   Assert.AreEqual<NativeInt>(0, Length(mOptions.Warnings));
 end;
 
-procedure TCommandLineOptionsTests.ReadsClientProcessId;
-var
-  mOptions: TCommandLineOptions;
-begin
-  mOptions := TCommandLineOptions.Parse(['--stdio', '--clientProcessId=1234']);
-  Assert.AreEqual(Cardinal(1234), mOptions.ClientProcessId);
-  mOptions := TCommandLineOptions.Parse(['--clientProcessId', '99']);
-  Assert.AreEqual(Cardinal(99), mOptions.ClientProcessId);
-end;
-
-procedure TCommandLineOptionsTests.WarnsAboutInvalidClientProcessId;
-var
-  mOptions: TCommandLineOptions;
-begin
-  mOptions := TCommandLineOptions.Parse(['--clientProcessId=abc']);
-  Assert.AreEqual(Cardinal(0), mOptions.ClientProcessId);
-  Assert.AreEqual<NativeInt>(1, Length(mOptions.Warnings));
-  Assert.Contains(mOptions.Warnings[0].Text, 'abc');
-end;
-
 procedure TCommandLineOptionsTests.WarnsAboutUnknownArgument;
 var
   mOptions: TCommandLineOptions;
@@ -194,6 +174,26 @@ begin
   Assert.AreEqual<NativeInt>(0, Length(mOptions.Warnings));
   Assert.AreEqual('C:\Temp\atlas-server.log', mOptions.LogFile);
   Assert.AreEqual<TLogLevel>(TLogLevel.Debug, mOptions.LogLevel);
+end;
+
+procedure TCommandLineOptionsTests.ReadsClientProcessId;
+var
+  mOptions: TCommandLineOptions;
+begin
+  mOptions := TCommandLineOptions.Parse(['--stdio', '--clientProcessId=1234']);
+  Assert.AreEqual(Cardinal(1234), mOptions.ClientProcessId);
+  mOptions := TCommandLineOptions.Parse(['--clientProcessId', '99']);
+  Assert.AreEqual(Cardinal(99), mOptions.ClientProcessId);
+end;
+
+procedure TCommandLineOptionsTests.WarnsAboutInvalidClientProcessId;
+var
+  mOptions: TCommandLineOptions;
+begin
+  mOptions := TCommandLineOptions.Parse(['--clientProcessId=abc']);
+  Assert.AreEqual(Cardinal(0), mOptions.ClientProcessId);
+  Assert.AreEqual<NativeInt>(1, Length(mOptions.Warnings));
+  Assert.Contains(mOptions.Warnings[0].Text, 'abc');
 end;
 
 procedure TCommandLineOptionsTests.WarnsAboutInvalidLogLevel;
@@ -277,21 +277,6 @@ begin
   Assert.AreEqual(1, Integer(Length(mOptions.Warnings)));
 end;
 
-procedure TCommandLineOptionsTests.ReadsFailOnAndSourceRoot;
-var
-  mOptions: TCommandLineOptions;
-begin
-  mOptions := TCommandLineOptions.Parse(['--check', 'App\App.dproj', '--fail-on', 'warning', '--source-root=C:\Repo']);
-  Assert.AreEqual(0, Integer(Length(mOptions.Warnings)));
-  Assert.AreEqual(Ord(TFailOn.Warning), Ord(mOptions.FailOn));
-  Assert.AreEqual('C:\Repo', mOptions.SourceRoot);
-  mOptions := TCommandLineOptions.Parse(['--check', 'App.dproj']);
-  Assert.AreEqual(Ord(TFailOn.Error), Ord(mOptions.FailOn), 'Standard: nur Fehler');
-  Assert.AreEqual('', mOptions.SourceRoot);
-  mOptions := TCommandLineOptions.Parse(['--fail-on=never']);
-  Assert.AreEqual(Ord(TFailOn.Never), Ord(mOptions.FailOn));
-end;
-
 procedure TCommandLineOptionsTests.ReadsMcpArguments;
 var
   mOptions: TCommandLineOptions;
@@ -301,6 +286,76 @@ begin
   Assert.IsTrue(mOptions.Mcp);
   Assert.AreEqual('C:\Projekte\App', mOptions.McpRoot);
   Assert.IsFalse(TCommandLineOptions.Parse([]).Mcp);
+end;
+
+procedure TCommandLineOptionsTests.ReadsRestricted;
+var
+  mOptions: TCommandLineOptions;
+begin
+  mOptions := TCommandLineOptions.Parse(['--stdio', '--restricted']);
+  Assert.AreEqual(0, Integer(Length(mOptions.Warnings)));
+  Assert.IsTrue(mOptions.Restricted);
+  Assert.IsFalse(TCommandLineOptions.Parse([]).Restricted);
+end;
+
+procedure TCommandLineOptionsTests.ReadsProfile;
+var
+  mOptions: TCommandLineOptions;
+begin
+  mOptions := TCommandLineOptions.Parse(['--check', 'App.dproj', '--profile', 'strict']);
+  Assert.AreEqual(0, Integer(Length(mOptions.Warnings)));
+  Assert.AreEqual('strict', mOptions.Profile);
+  Assert.AreEqual('', TCommandLineOptions.Parse([]).Profile);
+end;
+
+procedure TCommandLineOptionsTests.ReadsLocale;
+var
+  mOptions: TCommandLineOptions;
+begin
+  mOptions := TCommandLineOptions.Parse(['--check', 'App.dproj', '--locale', 'en']);
+  Assert.AreEqual('en', mOptions.Locale);
+  Assert.AreEqual<NativeInt>(0, Length(mOptions.Warnings));
+  mOptions := TCommandLineOptions.Parse(['--locale=de-DE']);
+  Assert.AreEqual('de-DE', mOptions.Locale);
+  mOptions := TCommandLineOptions.Parse(['--locale', 'fr']);
+  Assert.AreEqual('', mOptions.Locale);
+  Assert.AreEqual<NativeInt>(1, Length(mOptions.Warnings));
+  mOptions := TCommandLineOptions.Parse([]);
+  Assert.AreEqual('', mOptions.Locale);
+end;
+
+procedure TCommandLineOptionsTests.ReadsTimings;
+var
+  mOptions: TCommandLineOptions;
+begin
+  mOptions := TCommandLineOptions.Parse(['--check', 'App.dproj', '--timings']);
+  Assert.AreEqual(0, Integer(Length(mOptions.Warnings)));
+  Assert.IsTrue(mOptions.Timings);
+  Assert.AreEqual('', mOptions.TimingsFile);
+  mOptions := TCommandLineOptions.Parse(['--check', 'App.dproj', '--timings', 'profil.md', '--profile', 'strict']);
+  Assert.AreEqual('profil.md', mOptions.TimingsFile);
+  Assert.AreEqual('strict', mOptions.Profile);
+  mOptions := TCommandLineOptions.Parse(['--timings=profil.json', '--check', 'App.dproj']);
+  Assert.AreEqual('profil.json', mOptions.TimingsFile);
+  Assert.AreEqual('App.dproj', mOptions.CheckTarget);
+  mOptions := TCommandLineOptions.Parse(['--timings', '--check', 'App.dproj']);
+  Assert.IsTrue(mOptions.Timings);
+  Assert.AreEqual('', mOptions.TimingsFile);
+  Assert.AreEqual('App.dproj', mOptions.CheckTarget);
+  mOptions := TCommandLineOptions.Parse(['--check', 'App.dproj']);
+  Assert.IsFalse(mOptions.Timings);
+end;
+
+procedure TCommandLineOptionsTests.WarnsAboutInvalidLinterValues;
+var
+  mOptions: TCommandLineOptions;
+begin
+  mOptions := TCommandLineOptions.Parse(['--format', 'xml', '--min-severity', 'off', '--fail-on', 'hint']);
+  Assert.AreEqual(3, Integer(Length(mOptions.Warnings)));
+  Assert.AreEqual(Ord(TFailOn.Error), Ord(mOptions.FailOn));
+  Assert.AreEqual(Ord(TFindingsFormat.Text), Ord(mOptions.CheckFormat));
+  Assert.AreEqual(Ord(TRuleSeverity.Default), Ord(mOptions.MinSeverity));
+  Assert.AreEqual('', mOptions.CheckTarget);
 end;
 
 procedure TCommandLineOptionsTests.ReadsChangedArguments;
@@ -344,74 +399,19 @@ begin
   Assert.AreEqual('', mOptions.ChangedRef);
 end;
 
-procedure TCommandLineOptionsTests.ReadsTimings;
+procedure TCommandLineOptionsTests.ReadsFailOnAndSourceRoot;
 var
   mOptions: TCommandLineOptions;
 begin
-  mOptions := TCommandLineOptions.Parse(['--check', 'App.dproj', '--timings']);
+  mOptions := TCommandLineOptions.Parse(['--check', 'App\App.dproj', '--fail-on', 'warning', '--source-root=C:\Repo']);
   Assert.AreEqual(0, Integer(Length(mOptions.Warnings)));
-  Assert.IsTrue(mOptions.Timings);
-  Assert.AreEqual('', mOptions.TimingsFile);
-  mOptions := TCommandLineOptions.Parse(['--check', 'App.dproj', '--timings', 'profil.md', '--profile', 'strict']);
-  Assert.AreEqual('profil.md', mOptions.TimingsFile);
-  Assert.AreEqual('strict', mOptions.Profile);
-  mOptions := TCommandLineOptions.Parse(['--timings=profil.json', '--check', 'App.dproj']);
-  Assert.AreEqual('profil.json', mOptions.TimingsFile);
-  Assert.AreEqual('App.dproj', mOptions.CheckTarget);
-  mOptions := TCommandLineOptions.Parse(['--timings', '--check', 'App.dproj']);
-  Assert.IsTrue(mOptions.Timings);
-  Assert.AreEqual('', mOptions.TimingsFile);
-  Assert.AreEqual('App.dproj', mOptions.CheckTarget);
+  Assert.AreEqual(Ord(TFailOn.Warning), Ord(mOptions.FailOn));
+  Assert.AreEqual('C:\Repo', mOptions.SourceRoot);
   mOptions := TCommandLineOptions.Parse(['--check', 'App.dproj']);
-  Assert.IsFalse(mOptions.Timings);
-end;
-
-procedure TCommandLineOptionsTests.ReadsLocale;
-var
-  mOptions: TCommandLineOptions;
-begin
-  mOptions := TCommandLineOptions.Parse(['--check', 'App.dproj', '--locale', 'en']);
-  Assert.AreEqual('en', mOptions.Locale);
-  Assert.AreEqual<NativeInt>(0, Length(mOptions.Warnings));
-  mOptions := TCommandLineOptions.Parse(['--locale=de-DE']);
-  Assert.AreEqual('de-DE', mOptions.Locale);
-  mOptions := TCommandLineOptions.Parse(['--locale', 'fr']);
-  Assert.AreEqual('', mOptions.Locale);
-  Assert.AreEqual<NativeInt>(1, Length(mOptions.Warnings));
-  mOptions := TCommandLineOptions.Parse([]);
-  Assert.AreEqual('', mOptions.Locale);
-end;
-
-procedure TCommandLineOptionsTests.ReadsProfile;
-var
-  mOptions: TCommandLineOptions;
-begin
-  mOptions := TCommandLineOptions.Parse(['--check', 'App.dproj', '--profile', 'strict']);
-  Assert.AreEqual(0, Integer(Length(mOptions.Warnings)));
-  Assert.AreEqual('strict', mOptions.Profile);
-  Assert.AreEqual('', TCommandLineOptions.Parse([]).Profile);
-end;
-
-procedure TCommandLineOptionsTests.ReadsRestricted;
-var
-  mOptions: TCommandLineOptions;
-begin
-  mOptions := TCommandLineOptions.Parse(['--stdio', '--restricted']);
-  Assert.AreEqual(0, Integer(Length(mOptions.Warnings)));
-  Assert.IsTrue(mOptions.Restricted);
-  Assert.IsFalse(TCommandLineOptions.Parse([]).Restricted);
-end;
-
-procedure TCommandLineOptionsTests.WarnsAboutInvalidLinterValues;
-var
-  mOptions: TCommandLineOptions;
-begin
-  mOptions := TCommandLineOptions.Parse(['--format', 'xml', '--min-severity', 'off', '--fail-on', 'hint']);
-  Assert.AreEqual(3, Integer(Length(mOptions.Warnings)));
-  Assert.AreEqual(Ord(TFailOn.Error), Ord(mOptions.FailOn));
-  Assert.AreEqual(Ord(TFindingsFormat.Text), Ord(mOptions.CheckFormat));
-  Assert.AreEqual(Ord(TRuleSeverity.Default), Ord(mOptions.MinSeverity));
-  Assert.AreEqual('', mOptions.CheckTarget);
+  Assert.AreEqual(Ord(TFailOn.Error), Ord(mOptions.FailOn), 'Standard: nur Fehler');
+  Assert.AreEqual('', mOptions.SourceRoot);
+  mOptions := TCommandLineOptions.Parse(['--fail-on=never']);
+  Assert.AreEqual(Ord(TFailOn.Never), Ord(mOptions.FailOn));
 end;
 
 procedure TCommandLineOptionsTests.ReadsTableOptions;

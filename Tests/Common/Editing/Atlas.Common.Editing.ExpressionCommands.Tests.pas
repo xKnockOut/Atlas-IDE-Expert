@@ -122,6 +122,8 @@ begin
   Result := Expand(ACommand, AStatement, '');
 end;
 
+{ TExpressionCommandsTests }
+
 procedure TExpressionCommandsTests.FormatUsesTypes;
 var
   mText: string;

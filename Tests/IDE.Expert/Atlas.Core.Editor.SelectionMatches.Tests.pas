@@ -50,20 +50,7 @@ uses
   System.SysUtils,
   Atlas.Core.Lsp.TextChanges;
 
-procedure TAtlasSelectionMatchesTests.Setup;
-begin
-  FLines := [
-    'Kunde := TKunde.Create;',             // 0
-    '// kunde anlegen',                    // 1
-    'Kunden.Add(Kunde);',                  // 2
-    'ShowMessage(''Kunde gespeichert'');', // 3
-    'FKunde := nil;'];                     // 4
-end;
-
-procedure TAtlasSelectionMatchesTests.TearDown;
-begin
-  FLines := nil;
-end;
+{ TAtlasSelectionMatchesTests }
 
 function TAtlasSelectionMatchesTests.Describe(const AList: TAtlasSelectionMatchList): string;
 var
@@ -86,6 +73,21 @@ begin
   Result := TAtlasSelectionMatchOptions.Defaults;
   Result.CaseSensitive := ACaseSensitive;
   Result.WholeWord := AWholeWord;
+end;
+
+procedure TAtlasSelectionMatchesTests.Setup;
+begin
+  FLines := [
+    'Kunde := TKunde.Create;',             // 0
+    '// kunde anlegen',                    // 1
+    'Kunden.Add(Kunde);',                  // 2
+    'ShowMessage(''Kunde gespeichert'');', // 3
+    'FKunde := nil;'];                     // 4
+end;
+
+procedure TAtlasSelectionMatchesTests.TearDown;
+begin
+  FLines := nil;
 end;
 
 procedure TAtlasSelectionMatchesTests.TermNeedsSingleLineMinLengthAndText;

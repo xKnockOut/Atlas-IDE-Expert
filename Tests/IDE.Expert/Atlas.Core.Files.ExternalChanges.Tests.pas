@@ -62,6 +62,8 @@ begin
   end;
 end;
 
+{ TAtlasExternalChangesTests }
+
 procedure TAtlasExternalChangesTests.FirstLookOnlyRemembers;
 var
   mChanges: TAtlasExternalChanges;

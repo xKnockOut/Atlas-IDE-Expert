@@ -242,6 +242,8 @@ type
     function Center(ARow, AIndex: Integer): TPoint;
   end;
 
+{ TBarHost }
+
 constructor TBarHost.Create(const ASource: IAtlasQuickActionsSource);
 begin
   inherited Create;
@@ -293,6 +295,27 @@ begin
       Exit(Point(X + 2, ARow * 40 + 18));
     end;
   end;
+end;
+
+/// <summary>Texte: Knopf, Fortschritt, Ergebnis aus der IDE-Schicht, nicht gestartet, Tooltip.</summary>
+procedure AssertTaskTexts;
+var
+  mButton: TAtlasQuickActionButton;
+  mState: TAtlasQuickActionState;
+begin
+  // Texte: Knopf, Fortschritt, Ergebnis aus der IDE-Schicht, nicht gestartet, Tooltip.
+  mButton := Default(TAtlasQuickActionButton);
+  mButton.Action := TAtlasQuickAction.Tasks;
+  mButton.Enabled := True;
+  Assert.AreEqual('Aufgaben ▾', TAtlasQuickActionTexts.Caption(mButton, TAtlasQuickActionState.Idle, 0));
+  mState := TAtlasQuickActionState.Started(TAtlasQuickAction.Tasks, 1000);
+  Assert.AreEqual('Aufgabe … 3 s', TAtlasQuickActionTexts.Caption(mButton, mState, 4200));
+  mState.Phase := TAtlasQuickActionPhase.Failed;
+  mState.Detail := 'Delphi-12-Prüfung: 2 Fehler 14:03';
+  Assert.AreEqual('Delphi-12-Prüfung: 2 Fehler 14:03', TAtlasQuickActionTexts.StateText(mState, 0, False));
+  mState.Phase := TAtlasQuickActionPhase.Refused;
+  Assert.AreEqual('Aufgabe nicht gestartet', TAtlasQuickActionTexts.StateText(mState, 0, False));
+  Assert.IsTrue(TAtlasQuickActionTexts.ButtonHint(mButton, False, 0, '').Contains('Atlas-Aufgaben'));
 end;
 
 { TAtlasQuickActionsBarTests }
@@ -719,6 +742,61 @@ begin
   end;
 end;
 
+procedure TAtlasQuickActionsBarTests.TasksChooseAndShowResult;
+var
+  mFake: TAtlasFakeQuickActions;
+  mSource: IAtlasQuickActionsSource;
+  mHost: TBarHost;
+  mItems: TMenuItem;
+  mMenu: TPopupMenu;
+  mIndex: Integer;
+begin
+  mFake := TAtlasFakeQuickActions.Create;
+  mSource := mFake;
+  mFake.Items := [TAtlasQuickAction.Folder, TAtlasQuickAction.Tasks];
+  mHost := TBarHost.Create(mSource);
+  try
+    // „Aufgaben ▾“: Überschrift, dann die Aufgaben der atlas.json in ihrer Reihenfolge.
+    mItems := mHost.Bar.Menus.Popup.Items;
+    Assert.IsTrue(mHost.Bar.ButtonsOf(0)[1].HasMenu);
+    Assert.IsTrue(mHost.Bar.Menus.FillChoices(mItems, 0, 1));
+    Assert.AreEqual(4, Integer(mItems.Count));
+    Assert.AreEqual('Projektaufgabe', StripHotkey(mItems[0].Caption));
+    Assert.AreEqual('Delphi-12-Prüfung', StripHotkey(mItems[2].Caption));
+    Assert.AreEqual('Konfigurationsdoku', StripHotkey(mItems[3].Caption));
+    mItems[3].Click;
+    CheckSynchronize;
+    Assert.AreEqual(1, Integer(Length(mFake.Calls)));
+    Assert.AreEqual('task ' + cProjectOne + ' Konfigurationsdoku', mFake.Calls[0]);
+    // Kontextmenü: Untermenü „Aufgabe ausführen“ ohne Überschrift.
+    mMenu := TPopupMenu.Create(mHost.Host);
+    mHost.Bar.Menus.Attach(mMenu);
+    mHost.Bar.Menus.Prepare(1);
+    mItems := nil;
+    for mIndex := 0 to mMenu.Items.Count - 1 do
+    begin
+      if StripHotkey(mMenu.Items[mIndex].Caption) = 'Aufgabe ausführen' then
+      begin
+        mItems := mMenu.Items[mIndex];
+      end;
+    end;
+    Assert.IsNotNull(mItems);
+    Assert.IsTrue(mItems.Visible);
+    Assert.AreEqual(2, Integer(mItems.Count));
+    mItems[0].Click;
+    CheckSynchronize;
+    Assert.AreEqual('task ' + cProjectTwo + ' Delphi-12-Prüfung', mFake.Calls[1]);
+    // Ohne Aufgaben keine Auswahl.
+    mFake.FTaskNames := nil;
+    Assert.IsFalse(mHost.Bar.Menus.FillChoices(mHost.Bar.Menus.Popup.Items, 0, 1));
+    mHost.Bar.Menus.Prepare(0);
+    Assert.IsFalse(mItems.Visible);
+  finally
+    mHost.Free;
+  end;
+  AssertTaskTexts;
+end;
+
 procedure TAtlasQuickActionsBarTests.UpdateAsksForExternals;
 var
   mFake: TAtlasFakeQuickActions;
@@ -779,82 +857,6 @@ begin
     mHost.Free;
   end;
   mFake.Calls := nil;
-end;
-
-/// <summary>Texte: Knopf, Fortschritt, Ergebnis aus der IDE-Schicht, nicht gestartet, Tooltip.</summary>
-procedure AssertTaskTexts;
-var
-  mButton: TAtlasQuickActionButton;
-  mState: TAtlasQuickActionState;
-begin
-  // Texte: Knopf, Fortschritt, Ergebnis aus der IDE-Schicht, nicht gestartet, Tooltip.
-  mButton := Default(TAtlasQuickActionButton);
-  mButton.Action := TAtlasQuickAction.Tasks;
-  mButton.Enabled := True;
-  Assert.AreEqual('Aufgaben ▾', TAtlasQuickActionTexts.Caption(mButton, TAtlasQuickActionState.Idle, 0));
-  mState := TAtlasQuickActionState.Started(TAtlasQuickAction.Tasks, 1000);
-  Assert.AreEqual('Aufgabe … 3 s', TAtlasQuickActionTexts.Caption(mButton, mState, 4200));
-  mState.Phase := TAtlasQuickActionPhase.Failed;
-  mState.Detail := 'Delphi-12-Prüfung: 2 Fehler 14:03';
-  Assert.AreEqual('Delphi-12-Prüfung: 2 Fehler 14:03', TAtlasQuickActionTexts.StateText(mState, 0, False));
-  mState.Phase := TAtlasQuickActionPhase.Refused;
-  Assert.AreEqual('Aufgabe nicht gestartet', TAtlasQuickActionTexts.StateText(mState, 0, False));
-  Assert.IsTrue(TAtlasQuickActionTexts.ButtonHint(mButton, False, 0, '').Contains('Atlas-Aufgaben'));
-end;
-
-procedure TAtlasQuickActionsBarTests.TasksChooseAndShowResult;
-var
-  mFake: TAtlasFakeQuickActions;
-  mSource: IAtlasQuickActionsSource;
-  mHost: TBarHost;
-  mItems: TMenuItem;
-  mMenu: TPopupMenu;
-  mIndex: Integer;
-begin
-  mFake := TAtlasFakeQuickActions.Create;
-  mSource := mFake;
-  mFake.Items := [TAtlasQuickAction.Folder, TAtlasQuickAction.Tasks];
-  mHost := TBarHost.Create(mSource);
-  try
-    // „Aufgaben ▾“: Überschrift, dann die Aufgaben der atlas.json in ihrer Reihenfolge.
-    mItems := mHost.Bar.Menus.Popup.Items;
-    Assert.IsTrue(mHost.Bar.ButtonsOf(0)[1].HasMenu);
-    Assert.IsTrue(mHost.Bar.Menus.FillChoices(mItems, 0, 1));
-    Assert.AreEqual(4, Integer(mItems.Count));
-    Assert.AreEqual('Projektaufgabe', StripHotkey(mItems[0].Caption));
-    Assert.AreEqual('Delphi-12-Prüfung', StripHotkey(mItems[2].Caption));
-    Assert.AreEqual('Konfigurationsdoku', StripHotkey(mItems[3].Caption));
-    mItems[3].Click;
-    CheckSynchronize;
-    Assert.AreEqual(1, Integer(Length(mFake.Calls)));
-    Assert.AreEqual('task ' + cProjectOne + ' Konfigurationsdoku', mFake.Calls[0]);
-    // Kontextmenü: Untermenü „Aufgabe ausführen“ ohne Überschrift.
-    mMenu := TPopupMenu.Create(mHost.Host);
-    mHost.Bar.Menus.Attach(mMenu);
-    mHost.Bar.Menus.Prepare(1);
-    mItems := nil;
-    for mIndex := 0 to mMenu.Items.Count - 1 do
-    begin
-      if StripHotkey(mMenu.Items[mIndex].Caption) = 'Aufgabe ausführen' then
-      begin
-        mItems := mMenu.Items[mIndex];
-      end;
-    end;
-    Assert.IsNotNull(mItems);
-    Assert.IsTrue(mItems.Visible);
-    Assert.AreEqual(2, Integer(mItems.Count));
-    mItems[0].Click;
-    CheckSynchronize;
-    Assert.AreEqual('task ' + cProjectTwo + ' Delphi-12-Prüfung', mFake.Calls[1]);
-    // Ohne Aufgaben keine Auswahl.
-    mFake.FTaskNames := nil;
-    Assert.IsFalse(mHost.Bar.Menus.FillChoices(mHost.Bar.Menus.Popup.Items, 0, 1));
-    mHost.Bar.Menus.Prepare(0);
-    Assert.IsFalse(mItems.Visible);
-  finally
-    mHost.Free;
-  end;
-  AssertTaskTexts;
 end;
 
 initialization

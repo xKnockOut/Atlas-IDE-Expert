@@ -59,6 +59,8 @@ begin
   Result.RecompileCount := ACount;
 end;
 
+{ TAtlasInterfaceCostTests }
+
 procedure TAtlasInterfaceCostTests.ParsesServerAnswer;
 var
   mValue: TAtlasInterfaceCost;

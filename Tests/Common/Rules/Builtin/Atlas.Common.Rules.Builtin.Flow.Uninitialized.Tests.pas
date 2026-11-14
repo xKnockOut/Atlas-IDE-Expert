@@ -36,6 +36,8 @@ begin
     'procedure P(B: Boolean);'#10'var'#10 + AVars + #10'begin'#10 + ABody + #10'end;'#10'end.';
 end;
 
+{ TFlowUninitializedTests }
+
 procedure TFlowUninitializedTests.ReadBeforeAssignIsReported;
 var
   mFindings: TArray<TRuleFinding>;

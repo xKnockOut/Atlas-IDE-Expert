@@ -73,6 +73,8 @@ begin
   Result := Trim(Result);
 end;
 
+{ TAtlasPropertyPainterTests }
+
 procedure TAtlasPropertyPainterTests.Groups;
 begin
   Assert.AreEqual<TAtlasPaintGroup>(TAtlasPaintGroup.Font, TAtlasPropertyPainter.GroupOf(P('Font.Color', 'TColor')));

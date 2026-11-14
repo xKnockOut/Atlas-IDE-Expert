@@ -42,6 +42,8 @@ uses
   Atlas.UI.Settings.Page.TestSupport,
   Atlas.UI.Bookmarks.SettingsSection;
 
+{ TBookmarksSettingsSectionTests }
+
 procedure TBookmarksSettingsSectionTests.WarmUp;
 begin
   WarmUpSettingsPage;

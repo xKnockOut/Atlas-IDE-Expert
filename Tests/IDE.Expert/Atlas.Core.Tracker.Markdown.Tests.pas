@@ -233,6 +233,37 @@ begin
   Assert.IsTrue(TAtlasTrackerMarkdown.ToDoc('   ').IsEmpty);
 end;
 
+procedure TAtlasTrackerMarkdownTests.SegmentsSplitAtImages;
+var
+  mSegments: TArray<TAtlasMarkdownSegment>;
+begin
+  mSegments := TAtlasTrackerMarkdown.Segments(Lines(TArray<string>.Create('Vorher', '', '![s](bilder/skizze.png)',
+    '', 'Nachher')));
+  Assert.AreEqual(Integer(3), Integer(Length(mSegments)));
+  Assert.AreEqual<TAtlasMarkdownSegmentKind>(TAtlasMarkdownSegmentKind.Doc, mSegments[0].Kind);
+  Assert.AreEqual<TAtlasMarkdownSegmentKind>(TAtlasMarkdownSegmentKind.Image, mSegments[1].Kind);
+  Assert.AreEqual('bilder/skizze.png', mSegments[1].Image.Url);
+  Assert.AreEqual('s', mSegments[1].Image.Text);
+  Assert.AreEqual<TAtlasMarkdownSegmentKind>(TAtlasMarkdownSegmentKind.Doc, mSegments[2].Kind);
+  // In einer Doku ohne Bildfläche wird das Bild zum Link mit dem Dateinamen.
+  Assert.AreEqual('skizze.png', TAtlasTrackerMarkdown.ToDoc('![](bilder/skizze.png)').Sections[0].Runs[0].Text);
+end;
+
+procedure TAtlasTrackerMarkdownTests.LinksSkipCode;
+var
+  mLinks: TArray<TAtlasMarkdownLink>;
+begin
+  mLinks := TAtlasTrackerMarkdown.Links(Lines(TArray<string>.Create('[a](https://h.de/1) ![b](c.png)', '',
+    '```', '[x](https://nicht.de)', '```', '', '`[y](https://auch-nicht.de)`', '', '| [t](https://t.de) |', '|---|',
+    '', '![d](d.png)')));
+  Assert.AreEqual(Integer(4), Integer(Length(mLinks)));
+  Assert.AreEqual('https://h.de/1', mLinks[0].Url);
+  Assert.AreEqual('c.png', mLinks[1].Url);
+  Assert.AreEqual('b', mLinks[1].Text);
+  Assert.AreEqual('https://t.de', mLinks[2].Url);
+  Assert.AreEqual('d.png', mLinks[3].Url);
+end;
+
 procedure TAtlasTrackerMarkdownTests.NumberedTasksAndLines;
 var
   mBlocks: TArray<TAtlasMarkdownBlock>;
@@ -280,37 +311,6 @@ begin
   // Über Bilder hinweg weiter gezählt.
   Assert.AreEqual(TAtlasTrackerMarkdown.TaskTarget(1), TAtlasTrackerMarkdown.Segments('- [ ] a'#10#10'![](b.png)'#10#10 +
     '- [ ] c', TAtlasMarkdownTasks.Clickable)[2].Doc.Sections[0].Runs[0].Target);
-end;
-
-procedure TAtlasTrackerMarkdownTests.SegmentsSplitAtImages;
-var
-  mSegments: TArray<TAtlasMarkdownSegment>;
-begin
-  mSegments := TAtlasTrackerMarkdown.Segments(Lines(TArray<string>.Create('Vorher', '', '![s](bilder/skizze.png)',
-    '', 'Nachher')));
-  Assert.AreEqual(Integer(3), Integer(Length(mSegments)));
-  Assert.AreEqual<TAtlasMarkdownSegmentKind>(TAtlasMarkdownSegmentKind.Doc, mSegments[0].Kind);
-  Assert.AreEqual<TAtlasMarkdownSegmentKind>(TAtlasMarkdownSegmentKind.Image, mSegments[1].Kind);
-  Assert.AreEqual('bilder/skizze.png', mSegments[1].Image.Url);
-  Assert.AreEqual('s', mSegments[1].Image.Text);
-  Assert.AreEqual<TAtlasMarkdownSegmentKind>(TAtlasMarkdownSegmentKind.Doc, mSegments[2].Kind);
-  // In einer Doku ohne Bildfläche wird das Bild zum Link mit dem Dateinamen.
-  Assert.AreEqual('skizze.png', TAtlasTrackerMarkdown.ToDoc('![](bilder/skizze.png)').Sections[0].Runs[0].Text);
-end;
-
-procedure TAtlasTrackerMarkdownTests.LinksSkipCode;
-var
-  mLinks: TArray<TAtlasMarkdownLink>;
-begin
-  mLinks := TAtlasTrackerMarkdown.Links(Lines(TArray<string>.Create('[a](https://h.de/1) ![b](c.png)', '',
-    '```', '[x](https://nicht.de)', '```', '', '`[y](https://auch-nicht.de)`', '', '| [t](https://t.de) |', '|---|',
-    '', '![d](d.png)')));
-  Assert.AreEqual(Integer(4), Integer(Length(mLinks)));
-  Assert.AreEqual('https://h.de/1', mLinks[0].Url);
-  Assert.AreEqual('c.png', mLinks[1].Url);
-  Assert.AreEqual('b', mLinks[1].Text);
-  Assert.AreEqual('https://t.de', mLinks[2].Url);
-  Assert.AreEqual('d.png', mLinks[3].Url);
 end;
 
 initialization

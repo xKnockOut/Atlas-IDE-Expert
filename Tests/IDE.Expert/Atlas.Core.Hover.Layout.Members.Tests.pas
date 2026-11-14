@@ -54,6 +54,8 @@ type
     property ItemCount: Integer read FItemCount;
   end;
 
+{ TMembersProbe }
+
 function TMembersProbe.Run: Integer;
 begin
   FLeft := 8;
@@ -183,6 +185,8 @@ begin
   Assert.IsFalse(HasItemText(mLayout, 'Height'));
   Assert.IsFalse(HasItemText(mLayout, 'Hint'));
 end;
+
+{ THoverLayoutMembersTests }
 
 procedure THoverLayoutMembersTests.PublishedMembersAsTables;
 var

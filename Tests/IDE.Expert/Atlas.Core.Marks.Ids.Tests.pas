@@ -32,6 +32,8 @@ uses
   System.SysUtils,
   Atlas.Core.Marks.Ids;
 
+{ TAtlasMarkIdsTests }
+
 procedure TAtlasMarkIdsTests.SameFileIgnoresCaseAndSlashes;
 begin
   Assert.IsTrue(TAtlasMarkIds.SameFile('C:\Projekte\Kunde.pas', ' c:/projekte/KUNDE.pas '));

@@ -46,6 +46,8 @@ uses
   System.Generics.Collections,
   Atlas.Core.Help.Links;
 
+{ TAtlasHelpLinksTests }
+
 procedure TAtlasHelpLinksTests.RulePageInBothLanguages;
 var
   mTarget: TAtlasHelpTarget;

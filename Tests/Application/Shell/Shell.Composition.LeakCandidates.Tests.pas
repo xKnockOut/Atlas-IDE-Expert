@@ -57,6 +57,8 @@ begin
   Result := '';
 end;
 
+{ TShellLeakCandidatesTests }
+
 procedure TShellLeakCandidatesTests.Setup;
 var
   mRegistry: TShellWorkspaceRegistryServices;

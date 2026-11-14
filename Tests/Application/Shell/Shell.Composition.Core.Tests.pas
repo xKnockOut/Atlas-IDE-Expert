@@ -60,6 +60,8 @@ begin
   Result := '';
 end;
 
+{ TShellCoreTests }
+
 procedure TShellCoreTests.Setup;
 var
   mServices: TShellCoreServices;

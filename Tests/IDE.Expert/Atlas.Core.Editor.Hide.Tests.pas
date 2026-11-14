@@ -70,6 +70,8 @@ const
     #13#10 +
     'end.' + #13#10;
 
+{ TAtlasHideTests }
+
 function TAtlasHideTests.Suppressed(const AText, ARuleId: string; ALine: Integer): Boolean;
 var
   mSuppressions: TSuppressions;

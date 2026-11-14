@@ -414,6 +414,8 @@ begin
   Assert.IsFalse(mFindings[0].Fixes[0].Safe);
 end;
 
+{ TUnicodeEncodingRuleTests }
+
 procedure TUnicodeEncodingRuleTests.FormCharCodeIsReported;
 var
   mFindings: TArray<TRuleFinding>;

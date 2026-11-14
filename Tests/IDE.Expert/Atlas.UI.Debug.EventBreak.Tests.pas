@@ -35,6 +35,8 @@ uses
   Atlas.UI.Strings,
   Atlas.UI.Debug.EventBreak;
 
+{ TAtlasEventBreakWindowTests }
+
 procedure TAtlasEventBreakWindowTests.WarmUpFirstUse;
 begin
   DialogShowsAndReturnsChoice;

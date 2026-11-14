@@ -35,6 +35,8 @@ uses
   Atlas.UI.Strings,
   Atlas.UI.Tracker.SprintDialog;
 
+{ TAtlasTrackerSprintDialogTests }
+
 procedure TAtlasTrackerSprintDialogTests.Setup;
 begin
   FSaved := Ord(TAtlasStrings.Language);

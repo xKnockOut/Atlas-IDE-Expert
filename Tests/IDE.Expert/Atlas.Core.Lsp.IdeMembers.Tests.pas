@@ -37,14 +37,7 @@ begin
   Result.Kind := AKind;
 end;
 
-procedure TAtlasIdeMembersTests.IsIdePathMatchesOnlyServerPrefix;
-begin
-  Assert.IsTrue(TAtlasIdeMembers.IsIdePath('atlas-ide:Vcl.Forms.pas'));
-  Assert.IsTrue(TAtlasIdeMembers.IsIdePath('ATLAS-IDE:Vcl.Forms.pas'));
-  Assert.IsFalse(TAtlasIdeMembers.IsIdePath('C:\P\atlas-ide:Vcl.Forms.pas'));
-  Assert.IsFalse(TAtlasIdeMembers.IsIdePath('C:\P\Vcl.Forms.pas'));
-  Assert.IsFalse(TAtlasIdeMembers.IsIdePath(''));
-end;
+{ TAtlasIdeMembersTests }
 
 procedure TAtlasIdeMembersTests.WantedUnitsReadsNamesAndSkipsOthers;
 var
@@ -61,6 +54,15 @@ begin
   Assert.AreEqual('Vendor.Grid', mUnits[0]);
   Assert.AreEqual('Vendor.Base', mUnits[1]);
   Assert.AreEqual(0, Integer(Length(TAtlasIdeMembers.WantedUnits(nil))));
+end;
+
+procedure TAtlasIdeMembersTests.IsIdePathMatchesOnlyServerPrefix;
+begin
+  Assert.IsTrue(TAtlasIdeMembers.IsIdePath('atlas-ide:Vcl.Forms.pas'));
+  Assert.IsTrue(TAtlasIdeMembers.IsIdePath('ATLAS-IDE:Vcl.Forms.pas'));
+  Assert.IsFalse(TAtlasIdeMembers.IsIdePath('C:\P\atlas-ide:Vcl.Forms.pas'));
+  Assert.IsFalse(TAtlasIdeMembers.IsIdePath('C:\P\Vcl.Forms.pas'));
+  Assert.IsFalse(TAtlasIdeMembers.IsIdePath(''));
 end;
 
 procedure TAtlasIdeMembersTests.JsonGroupsTypesByUnit;

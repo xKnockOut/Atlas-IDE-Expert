@@ -72,6 +72,8 @@ begin
   Result := Result + 'end.' + cNl;
 end;
 
+{ TLeakCandidatesTests }
+
 function TLeakCandidatesTests.Only(const AText, AClassName: string): TLeakCandidate;
 var
   mFound: TArray<TLeakCandidate>;

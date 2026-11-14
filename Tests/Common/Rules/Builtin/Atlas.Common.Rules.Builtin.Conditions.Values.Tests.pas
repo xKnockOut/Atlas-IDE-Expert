@@ -99,6 +99,8 @@ begin
   end;
 end;
 
+{ TConditionValuesTests }
+
 procedure TConditionValuesTests.DecidingOperand;
 var
   mValue: TConstantValue;

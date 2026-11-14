@@ -55,6 +55,13 @@ uses
 const
   cProject = 'C:\Projekte\Kasse.dproj';
 
+{ TDebugPinsTests }
+
+function TDebugPinsTests.Pin(const AFile: string; ALine: Integer; const AExpression: string): TAtlasDebugPin;
+begin
+  Result := TAtlasDebugPin.Create(cProject, AFile, ALine, AExpression);
+end;
+
 procedure TDebugPinsTests.Setup;
 begin
   FPins := TAtlasDebugPins.Create;
@@ -63,11 +70,6 @@ end;
 procedure TDebugPinsTests.TearDown;
 begin
   FreeAndNil(FPins);
-end;
-
-function TDebugPinsTests.Pin(const AFile: string; ALine: Integer; const AExpression: string): TAtlasDebugPin;
-begin
-  Result := TAtlasDebugPin.Create(cProject, AFile, ALine, AExpression);
 end;
 
 procedure TDebugPinsTests.AddRejectsDuplicatesAndEmpty;

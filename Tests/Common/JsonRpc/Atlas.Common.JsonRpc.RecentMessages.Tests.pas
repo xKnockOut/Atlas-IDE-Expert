@@ -47,6 +47,8 @@ begin
   end;
 end;
 
+{ TJsonRpcRecentMessagesTests }
+
 procedure TJsonRpcRecentMessagesTests.KeepsOrderOldestFirst;
 var
   mRecent: IJsonRpcRecentMessages;

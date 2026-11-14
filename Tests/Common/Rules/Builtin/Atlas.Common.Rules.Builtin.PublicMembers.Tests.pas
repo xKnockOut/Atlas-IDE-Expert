@@ -117,6 +117,8 @@ type
     function Text(const AName: string): string;
   end;
 
+{ TScenario }
+
 procedure TScenario.Put(const AName, AText: string);
 var
   mIndex: Integer;
@@ -316,6 +318,8 @@ begin
   end;
 end;
 
+{ TUnusedPublicMemberTests }
+
 procedure TUnusedPublicMemberTests.IssueExample;
 var
   mFound: TArray<TRuleFinding>;
@@ -470,6 +474,64 @@ begin
   Assert.AreEqual('', Messages(Run(Scenario(''), cMainFile)));
 end;
 
+procedure TUnusedPublicMemberTests.UnitTypesAndVariables;
+const
+  cTypesFile = 'C:\P\Kunden.Typen.pas';
+var
+  mData: TScenario;
+begin
+  mData := Scenario('');
+  mData.Put(cTypesFile,
+    'unit Kunden.Typen;'#10'interface'#10'type'#10 +
+    '  TUngenutzt = class'#10'  public'#10'    function Kopie: TUngenutzt;'#10'  end;'#10 +
+    '  TFarbe = (Rot, Gruen);'#10 +
+    '  BehaltenAttribute = class(TCustomAttribute)'#10'  end;'#10 +
+    '  [Behalten]'#10'  TMarkiert = class'#10'  end;'#10 +
+    '  TRegistriert = class'#10'  end;'#10 +
+    '  TGenutzt = record'#10'  end;'#10 +
+    'var'#10'  Zaehler: Integer;'#10'  Genutzt: Integer;'#10 +
+    'implementation'#10 +
+    'function TUngenutzt.Kopie: TUngenutzt;'#10'begin'#10'  Result := TUngenutzt.Create;'#10'end;'#10 +
+    'initialization'#10'  RegisterClass(TRegistriert);'#10'end.');
+  mData.Put(cMainFile, 'unit Kunden.Main;'#10'interface'#10'uses'#10'  Kunden.Service, Kunden.Typen;'#10 +
+    'procedure Start;'#10'implementation'#10'procedure Start;'#10'var'#10'  G: TGenutzt;'#10'begin'#10 +
+    '  Genutzt := 1;'#10'end;'#10'end.');
+  mData.Projects[0].Sources := mData.Projects[0].Sources + [cTypesFile];
+  // Eigene Deklaration und eigene Methoden zählen nicht; Attribut, Kurzform [Behalten] und RegisterClass schon.
+  Assert.AreEqual(
+    'Öffentlicher Typ TUngenutzt wird im Projekt nirgends verwendet.'#10 +
+    'Öffentliche Methode TUngenutzt.Kopie wird im Projekt nirgends verwendet.'#10 +
+    'Öffentlicher Typ TFarbe wird im Projekt nirgends verwendet.'#10 +
+    'Globale Variable Zaehler wird im Projekt nirgends verwendet.'#10, Messages(Run(mData, cTypesFile)));
+  // unitKinds: nur Routinen und Konstanten wie vor #64.
+  mData.Config := '{"rules": {"unused-public-member": {"unitKinds": ["routine", "constant"]}}}';
+  Assert.AreEqual('Öffentliche Methode TUngenutzt.Kopie wird im Projekt nirgends verwendet.'#10,
+    Messages(Run(mData, cTypesFile)));
+  // memberKinds wirkt nicht mehr auf die Unit-Ebene.
+  mData.Config := '{"rules": {"unused-public-member": {"memberKinds": ["property"]}}}';
+  Assert.AreEqual(
+    'Öffentlicher Typ TUngenutzt wird im Projekt nirgends verwendet.'#10 +
+    'Öffentlicher Typ TFarbe wird im Projekt nirgends verwendet.'#10 +
+    'Globale Variable Zaehler wird im Projekt nirgends verwendet.'#10, Messages(Run(mData, cTypesFile)));
+end;
+
+procedure TUnusedPublicMemberTests.DeadCodeKeepSettings;
+var
+  mData: TScenario;
+begin
+  mData := Scenario('');
+  // deadCode.keepPatterns aus den Einstellungen und keepPatterns der Regel gelten zusammen.
+  mData.Config := '{"deadCode": {"keepPatterns": ["*Xml"]}, "rules": {"unused-public-member": ' +
+    '{"keepPatterns": ["MaxKunden"]}}}';
+  Assert.AreEqual('Öffentliche Property TKundenService.LetzterFehler wird im Projekt nirgends verwendet.'#10,
+    Messages(Run(mData, cServiceFile)));
+  // deadCode.keepAttributes: alle Mitglieder eines Typs mit dem Attribut.
+  mData.Put(cServiceFile, StringReplace(cServiceText, '  TKundenService = class', '  [Api]'#10'  TKundenService = class',
+    []));
+  mData.Config := '{"deadCode": {"keepAttributes": ["Api"]}}';
+  Assert.AreEqual('', Messages(Run(mData, cServiceFile)));
+end;
+
 procedure TUnusedPublicMemberTests.VisibilitiesAndMemberKinds;
 var
   mData: TScenario;
@@ -557,57 +619,6 @@ begin
     '  TKundenService = class'#10, []));
   mData.Config := '{"rules": {"unused-public-member": {"keepAttributes": ["Dienst"]}}}';
   Assert.AreEqual('', Messages(Run(mData, cServiceFile)));
-end;
-
-procedure TUnusedPublicMemberTests.OffAndExclude;
-var
-  mData: TScenario;
-begin
-  mData := Scenario('');
-  mData.Config := '{"rules": {"unused-public-member": "off"}}';
-  Assert.AreEqual('', Messages(Run(mData, cServiceFile)));
-  mData.Config := '{"rules": {"unused-public-member": {"exclude": ["Kunden.Service.pas"]}}}';
-  Assert.AreEqual('', Messages(Run(mData, cServiceFile)));
-  mData.Put(cServiceFile, StringReplace(cServiceText, '    procedure ExportiereAlsXml',
-    '    // lsp-ignore: unused-public-member'#10'    procedure ExportiereAlsXml', []));
-  mData.Config := '';
-  Assert.IsFalse(Messages(Run(mData, cServiceFile)).Contains('ExportiereAlsXml'));
-end;
-
-procedure TUnusedPublicMemberTests.PublishedWithUnreadableFormOrRegistration;
-const
-  cPublished_ = '  published'#10'    procedure KundeGeaendert(Sender: TObject);'#10;
-  cExtra = '  published'#10'    procedure KundeGeaendert(Sender: TObject);'#10'    procedure Aktualisiere;'#10 +
-    '    property Titel: string read FFehler;'#10;
-  cBody = 'procedure TKundenService.KundeGeaendert(Sender: TObject);'#10'begin'#10'end;'#10;
-var
-  mData: TScenario;
-  mFound: string;
-begin
-  mData := Scenario('');
-  mData.Put(cServiceFile, StringReplace(StringReplace(cServiceText, cPublished_, cExtra, []), cBody,
-    cBody + 'procedure TKundenService.Aktualisiere;'#10'begin'#10'end;'#10, []));
-  mData.Config := '{"rules": {"unused-public-member": {"stringLiteralsCountAsUse": false}}}';
-  mFound := Messages(Run(mData, cServiceFile));
-  Assert.IsTrue(mFound.Contains('TKundenService.Aktualisiere'), mFound);
-  Assert.IsTrue(mFound.Contains('TKundenService.Titel'), mFound);
-  // Formulardatei nicht lesbar: published-Methoden können dort Handler sein, die Property nicht.
-  mData.Unreadable := cFormFile;
-  mFound := Messages(Run(mData, cServiceFile));
-  Assert.IsFalse(mFound.Contains('TKundenService.Aktualisiere'), mFound);
-  Assert.IsTrue(mFound.Contains('TKundenService.Titel'), mFound);
-  mData.Unreadable := '';
-  // RegisterClass in einer anderen Unit: alle published-Mitglieder erreicht das Streaming.
-  mData.Put(cMainFile, StringReplace(MainText(''), 'end.', 'initialization'#10'  RegisterClasses([TKunde, ' +
-    'TKundenService]);'#10'end.', []));
-  mFound := Messages(Run(mData, cServiceFile));
-  Assert.IsFalse(mFound.Contains('TKundenService.Aktualisiere'), mFound);
-  Assert.IsFalse(mFound.Contains('TKundenService.Titel'), mFound);
-  Assert.IsTrue(mFound.Contains('TKundenService.ExportiereAlsXml'), 'public bleibt gemeldet: ' + mFound);
-  // Ein anderer Name in der Registrierung zählt nicht.
-  mData.Put(cMainFile, StringReplace(MainText(''), 'end.', 'initialization'#10'  RegisterClass(TKunde);'#10 +
-    'end.', []));
-  Assert.IsTrue(Messages(Run(mData, cServiceFile)).Contains('TKundenService.Aktualisiere'));
 end;
 
 /// <summary>Ordner Tests\Referenzprojekt oberhalb der Testanwendung; '' ohne.</summary>
@@ -702,97 +713,55 @@ begin
   end;
 end;
 
-procedure TUnusedPublicMemberTests.ReferenceProjectMatchesMarkers;
-const
-  cMarker = '// ERWARTET-PROJEKT: unused-public-member';
-var
-  mFolder, mSource, mExpected, mActual: string;
-  mData: TScenario;
-  mSources, mForms: TArray<string>;
-begin
-  mFolder := ReferenceFolder;
-  if mFolder = '' then
-  begin
-    Assert.Pass('Referenzprojekt nicht gefunden; Prüfung übersprungen');
-  end;
-  // Units von RefApp aus den in-Klauseln der .dpr, Formulare daneben.
-  mData := Default(TScenario);
-  mSources := RefAppSources(mFolder, mData, mForms);
-  mData.Projects := [Project(TPath.Combine(mFolder, 'RefApp.dproj'), TRuleProjectKind.Application, False, mSources,
-    mForms)];
-  // TPluginAufruf trägt [Schnittstelle]: Mit deadCode.keepAttributes gilt Melden als verwendet (#64).
-  mData.Config := '{"deadCode": {"keepAttributes": ["Schnittstelle"]}}';
-  // Erwartet: genau die markierten Zeilen, sonst nichts (jede weitere Meldung ist ein Fehlalarm).
-  mExpected := '';
-  mActual := '';
-  for mSource in mSources do
-  begin
-    mExpected := mExpected + MarkedLines(mSource, mData.Text(mSource), cMarker);
-    if SameText(ExtractFileExt(mSource), '.pas') then
-    begin
-      mActual := mActual + FoundLines(mData, mSource);
-    end;
-  end;
-  Assert.AreEqual(mExpected, mActual);
-  Assert.AreNotEqual('', mExpected, 'Keine Markierungen im Referenzprojekt');
-end;
-
-procedure TUnusedPublicMemberTests.UnitTypesAndVariables;
-const
-  cTypesFile = 'C:\P\Kunden.Typen.pas';
+procedure TUnusedPublicMemberTests.OffAndExclude;
 var
   mData: TScenario;
 begin
   mData := Scenario('');
-  mData.Put(cTypesFile,
-    'unit Kunden.Typen;'#10'interface'#10'type'#10 +
-    '  TUngenutzt = class'#10'  public'#10'    function Kopie: TUngenutzt;'#10'  end;'#10 +
-    '  TFarbe = (Rot, Gruen);'#10 +
-    '  BehaltenAttribute = class(TCustomAttribute)'#10'  end;'#10 +
-    '  [Behalten]'#10'  TMarkiert = class'#10'  end;'#10 +
-    '  TRegistriert = class'#10'  end;'#10 +
-    '  TGenutzt = record'#10'  end;'#10 +
-    'var'#10'  Zaehler: Integer;'#10'  Genutzt: Integer;'#10 +
-    'implementation'#10 +
-    'function TUngenutzt.Kopie: TUngenutzt;'#10'begin'#10'  Result := TUngenutzt.Create;'#10'end;'#10 +
-    'initialization'#10'  RegisterClass(TRegistriert);'#10'end.');
-  mData.Put(cMainFile, 'unit Kunden.Main;'#10'interface'#10'uses'#10'  Kunden.Service, Kunden.Typen;'#10 +
-    'procedure Start;'#10'implementation'#10'procedure Start;'#10'var'#10'  G: TGenutzt;'#10'begin'#10 +
-    '  Genutzt := 1;'#10'end;'#10'end.');
-  mData.Projects[0].Sources := mData.Projects[0].Sources + [cTypesFile];
-  // Eigene Deklaration und eigene Methoden zählen nicht; Attribut, Kurzform [Behalten] und RegisterClass schon.
-  Assert.AreEqual(
-    'Öffentlicher Typ TUngenutzt wird im Projekt nirgends verwendet.'#10 +
-    'Öffentliche Methode TUngenutzt.Kopie wird im Projekt nirgends verwendet.'#10 +
-    'Öffentlicher Typ TFarbe wird im Projekt nirgends verwendet.'#10 +
-    'Globale Variable Zaehler wird im Projekt nirgends verwendet.'#10, Messages(Run(mData, cTypesFile)));
-  // unitKinds: nur Routinen und Konstanten wie vor #64.
-  mData.Config := '{"rules": {"unused-public-member": {"unitKinds": ["routine", "constant"]}}}';
-  Assert.AreEqual('Öffentliche Methode TUngenutzt.Kopie wird im Projekt nirgends verwendet.'#10,
-    Messages(Run(mData, cTypesFile)));
-  // memberKinds wirkt nicht mehr auf die Unit-Ebene.
-  mData.Config := '{"rules": {"unused-public-member": {"memberKinds": ["property"]}}}';
-  Assert.AreEqual(
-    'Öffentlicher Typ TUngenutzt wird im Projekt nirgends verwendet.'#10 +
-    'Öffentlicher Typ TFarbe wird im Projekt nirgends verwendet.'#10 +
-    'Globale Variable Zaehler wird im Projekt nirgends verwendet.'#10, Messages(Run(mData, cTypesFile)));
-end;
-
-procedure TUnusedPublicMemberTests.DeadCodeKeepSettings;
-var
-  mData: TScenario;
-begin
-  mData := Scenario('');
-  // deadCode.keepPatterns aus den Einstellungen und keepPatterns der Regel gelten zusammen.
-  mData.Config := '{"deadCode": {"keepPatterns": ["*Xml"]}, "rules": {"unused-public-member": ' +
-    '{"keepPatterns": ["MaxKunden"]}}}';
-  Assert.AreEqual('Öffentliche Property TKundenService.LetzterFehler wird im Projekt nirgends verwendet.'#10,
-    Messages(Run(mData, cServiceFile)));
-  // deadCode.keepAttributes: alle Mitglieder eines Typs mit dem Attribut.
-  mData.Put(cServiceFile, StringReplace(cServiceText, '  TKundenService = class', '  [Api]'#10'  TKundenService = class',
-    []));
-  mData.Config := '{"deadCode": {"keepAttributes": ["Api"]}}';
+  mData.Config := '{"rules": {"unused-public-member": "off"}}';
   Assert.AreEqual('', Messages(Run(mData, cServiceFile)));
+  mData.Config := '{"rules": {"unused-public-member": {"exclude": ["Kunden.Service.pas"]}}}';
+  Assert.AreEqual('', Messages(Run(mData, cServiceFile)));
+  mData.Put(cServiceFile, StringReplace(cServiceText, '    procedure ExportiereAlsXml',
+    '    // lsp-ignore: unused-public-member'#10'    procedure ExportiereAlsXml', []));
+  mData.Config := '';
+  Assert.IsFalse(Messages(Run(mData, cServiceFile)).Contains('ExportiereAlsXml'));
+end;
+
+procedure TUnusedPublicMemberTests.PublishedWithUnreadableFormOrRegistration;
+const
+  cPublished_ = '  published'#10'    procedure KundeGeaendert(Sender: TObject);'#10;
+  cExtra = '  published'#10'    procedure KundeGeaendert(Sender: TObject);'#10'    procedure Aktualisiere;'#10 +
+    '    property Titel: string read FFehler;'#10;
+  cBody = 'procedure TKundenService.KundeGeaendert(Sender: TObject);'#10'begin'#10'end;'#10;
+var
+  mData: TScenario;
+  mFound: string;
+begin
+  mData := Scenario('');
+  mData.Put(cServiceFile, StringReplace(StringReplace(cServiceText, cPublished_, cExtra, []), cBody,
+    cBody + 'procedure TKundenService.Aktualisiere;'#10'begin'#10'end;'#10, []));
+  mData.Config := '{"rules": {"unused-public-member": {"stringLiteralsCountAsUse": false}}}';
+  mFound := Messages(Run(mData, cServiceFile));
+  Assert.IsTrue(mFound.Contains('TKundenService.Aktualisiere'), mFound);
+  Assert.IsTrue(mFound.Contains('TKundenService.Titel'), mFound);
+  // Formulardatei nicht lesbar: published-Methoden können dort Handler sein, die Property nicht.
+  mData.Unreadable := cFormFile;
+  mFound := Messages(Run(mData, cServiceFile));
+  Assert.IsFalse(mFound.Contains('TKundenService.Aktualisiere'), mFound);
+  Assert.IsTrue(mFound.Contains('TKundenService.Titel'), mFound);
+  mData.Unreadable := '';
+  // RegisterClass in einer anderen Unit: alle published-Mitglieder erreicht das Streaming.
+  mData.Put(cMainFile, StringReplace(MainText(''), 'end.', 'initialization'#10'  RegisterClasses([TKunde, ' +
+    'TKundenService]);'#10'end.', []));
+  mFound := Messages(Run(mData, cServiceFile));
+  Assert.IsFalse(mFound.Contains('TKundenService.Aktualisiere'), mFound);
+  Assert.IsFalse(mFound.Contains('TKundenService.Titel'), mFound);
+  Assert.IsTrue(mFound.Contains('TKundenService.ExportiereAlsXml'), 'public bleibt gemeldet: ' + mFound);
+  // Ein anderer Name in der Registrierung zählt nicht.
+  mData.Put(cMainFile, StringReplace(MainText(''), 'end.', 'initialization'#10'  RegisterClass(TKunde);'#10 +
+    'end.', []));
+  Assert.IsTrue(Messages(Run(mData, cServiceFile)).Contains('TKundenService.Aktualisiere'));
 end;
 
 procedure TUnusedPublicMemberTests.ParserChecksOptions;
@@ -832,6 +801,41 @@ begin
   Assert.AreEqual('Als bewusst öffentlich markieren (lsp-ignore)', mFound[1].Fixes[0].Title);
   Assert.AreEqual(12, mFound[1].Fixes[0].Edits[0].Range.StartPos.Line);
   Assert.AreEqual('    // lsp-ignore: unused-public-member'#10, mFound[1].Fixes[0].Edits[0].NewText);
+end;
+
+procedure TUnusedPublicMemberTests.ReferenceProjectMatchesMarkers;
+const
+  cMarker = '// ERWARTET-PROJEKT: unused-public-member';
+var
+  mFolder, mSource, mExpected, mActual: string;
+  mData: TScenario;
+  mSources, mForms: TArray<string>;
+begin
+  mFolder := ReferenceFolder;
+  if mFolder = '' then
+  begin
+    Assert.Pass('Referenzprojekt nicht gefunden; Prüfung übersprungen');
+  end;
+  // Units von RefApp aus den in-Klauseln der .dpr, Formulare daneben.
+  mData := Default(TScenario);
+  mSources := RefAppSources(mFolder, mData, mForms);
+  mData.Projects := [Project(TPath.Combine(mFolder, 'RefApp.dproj'), TRuleProjectKind.Application, False, mSources,
+    mForms)];
+  // TPluginAufruf trägt [Schnittstelle]: Mit deadCode.keepAttributes gilt Melden als verwendet (#64).
+  mData.Config := '{"deadCode": {"keepAttributes": ["Schnittstelle"]}}';
+  // Erwartet: genau die markierten Zeilen, sonst nichts (jede weitere Meldung ist ein Fehlalarm).
+  mExpected := '';
+  mActual := '';
+  for mSource in mSources do
+  begin
+    mExpected := mExpected + MarkedLines(mSource, mData.Text(mSource), cMarker);
+    if SameText(ExtractFileExt(mSource), '.pas') then
+    begin
+      mActual := mActual + FoundLines(mData, mSource);
+    end;
+  end;
+  Assert.AreEqual(mExpected, mActual);
+  Assert.AreNotEqual('', mExpected, 'Keine Markierungen im Referenzprojekt');
 end;
 
 procedure TUnusedPublicMemberTests.CheckOfLargeProject;

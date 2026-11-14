@@ -71,6 +71,8 @@ begin
   Result.Count := Length(AFrames);
 end;
 
+{ TAtlasStackRingTests }
+
 procedure TAtlasStackRingTests.FindsNewestEntryOfSameThread;
 var
   mRing: TAtlasStackRing;

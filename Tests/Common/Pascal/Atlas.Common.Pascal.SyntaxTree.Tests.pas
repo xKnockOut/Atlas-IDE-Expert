@@ -86,6 +86,8 @@ begin
   end;
 end;
 
+{ TSyntaxTreeTests }
+
 procedure TSyntaxTreeTests.WalkVisitsAllNodesInTreeOrder;
 var
   mTree: TSyntaxTree;

@@ -115,6 +115,8 @@ type
       out AError: TAtlasCiFetchError): Boolean;
   end;
 
+{ TFakeSend }
+
 procedure TFakeSend.Answer(const AStatus: array of Integer);
 var
   mIndex: Integer;
@@ -172,6 +174,8 @@ begin
   AResponse.Text := '{}';
   Result := True;
 end;
+
+{ TFakeGetOnly }
 
 function TFakeGetOnly.Get(const AUrl: string; ATimeoutMs: Integer; out AStatus: Integer; out AText: string;
   out AError: TAtlasCiFetchError): Boolean;

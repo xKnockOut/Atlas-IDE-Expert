@@ -74,6 +74,8 @@ type
     procedure WMNCHitTest(var Message: TWMNCHitTest); message WM_NCHITTEST;
   end;
 
+{ TTransparentBar }
+
 procedure TTransparentBar.WMNCHitTest(var Message: TWMNCHitTest);
 begin
   Message.Result := HTTRANSPARENT;
@@ -110,6 +112,8 @@ begin
   Result[1].Children := [1, 2, 3];
   Result := Result + [Crumb('btnSpeichernClick', 'fn', 2, [2, 3])];
 end;
+
+{ TAtlasBreadcrumbBarTests }
 
 procedure TAtlasBreadcrumbBarTests.WarmUpFirstUse;
 begin

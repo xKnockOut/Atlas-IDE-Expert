@@ -24,6 +24,8 @@ uses
   Atlas.UI.Strings.Tests,
   Atlas.UI.StatusBar.Strings;
 
+{ TAtlasStatusBarStringsTests }
+
 procedure TAtlasStatusBarStringsTests.EveryTextExistsInBothLanguages;
 var
   mId: TAtlasStatusBarTextId;

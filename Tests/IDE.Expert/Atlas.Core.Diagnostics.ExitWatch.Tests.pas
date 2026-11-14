@@ -30,6 +30,8 @@ uses
 type
   TOpenWatch = class(TAtlasExitWatch);
 
+{ TExitWatchTests }
+
 procedure TExitWatchTests.RunsWhenTargetIsDestroyed;
 var
   mTarget: TComponent;

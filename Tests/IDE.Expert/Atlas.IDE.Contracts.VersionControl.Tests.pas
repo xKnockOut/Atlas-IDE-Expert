@@ -47,6 +47,8 @@ type
     function Run(const AWork, ADone: TProc): Boolean;
   end;
 
+{ TFakeVcsService }
+
 function TFakeVcsService.TimeoutMs: Cardinal;
 begin
   Result := 5000;

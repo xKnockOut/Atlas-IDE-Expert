@@ -59,6 +59,8 @@ begin
   end;
 end;
 
+{ TLspWorkspaceEditTests }
+
 procedure TLspWorkspaceEditTests.ReadsChangesPerFile;
 var
   mEdit: TLspWorkspaceEdit;

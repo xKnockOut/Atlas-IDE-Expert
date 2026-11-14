@@ -64,6 +64,8 @@ uses
   Atlas.Common.Lsp.Status,
   Atlas.Common.Diagnostics.CheckProfile;
 
+{ TLspStatusTests }
+
 procedure TLspStatusTests.StatisticsSumUpPerMethod;
 var
   mStatistics: IJsonRpcStatistics;

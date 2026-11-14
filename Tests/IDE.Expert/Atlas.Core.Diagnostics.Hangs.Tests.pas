@@ -50,6 +50,8 @@ begin
   Result.Activity := AActivity;
 end;
 
+{ TAtlasHangTests }
+
 procedure TAtlasHangTests.BelowThresholdWritesNothing;
 var
   mMonitor: TAtlasHangMonitor;
@@ -231,6 +233,24 @@ begin
   mOtherName := '';
 end;
 
+procedure TAtlasHangTests.StackScanMapsAddressesToModules;
+var
+  mModules: TArray<TAtlasModuleRange>;
+  mFrames: TArray<string>;
+begin
+  SetLength(mModules, 2);
+  mModules[0].Name := 'bds.exe';
+  mModules[0].Base := $400000;
+  mModules[0].Size := $10000;
+  mModules[1].Name := 'Atlas.IDE.Expert.bpl';
+  mModules[1].Base := $50000000;
+  mModules[1].Size := $100000;
+  // Daten ohne Modul fallen weg, gleiche Rahmen direkt hintereinander nur einmal.
+  mFrames := TAtlasStackScan.Frames([$401234, $12, $50000100, $50000100, $400010], mModules);
+  Assert.AreEqual('bds.exe+1234|Atlas.IDE.Expert.bpl+100|bds.exe+10', string.Join('|', mFrames));
+  Assert.AreEqual(1, Integer(Length(TAtlasStackScan.Frames([$401234, $401235, $401236], mModules, 1))));
+end;
+
 procedure TAtlasHangTests.AtlasFrameBelowShownFramesCounts;
 var
   mModules: TArray<TAtlasModuleRange>;
@@ -271,24 +291,6 @@ begin
   // Ohne Atlas-Modul im Abzug: leer.
   Assert.AreEqual('', TAtlasStackScan.FirstIn([UInt64($400010)], mModules, 'Atlas'));
   Assert.AreEqual('', TAtlasStackScan.FirstIn(mAddresses, [mModules[0]], 'Atlas'));
-end;
-
-procedure TAtlasHangTests.StackScanMapsAddressesToModules;
-var
-  mModules: TArray<TAtlasModuleRange>;
-  mFrames: TArray<string>;
-begin
-  SetLength(mModules, 2);
-  mModules[0].Name := 'bds.exe';
-  mModules[0].Base := $400000;
-  mModules[0].Size := $10000;
-  mModules[1].Name := 'Atlas.IDE.Expert.bpl';
-  mModules[1].Base := $50000000;
-  mModules[1].Size := $100000;
-  // Daten ohne Modul fallen weg, gleiche Rahmen direkt hintereinander nur einmal.
-  mFrames := TAtlasStackScan.Frames([$401234, $12, $50000100, $50000100, $400010], mModules);
-  Assert.AreEqual('bds.exe+1234|Atlas.IDE.Expert.bpl+100|bds.exe+10', string.Join('|', mFrames));
-  Assert.AreEqual(1, Integer(Length(TAtlasStackScan.Frames([$401234, $401235, $401236], mModules, 1))));
 end;
 
 initialization

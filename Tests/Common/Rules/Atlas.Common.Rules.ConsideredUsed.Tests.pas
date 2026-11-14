@@ -113,6 +113,8 @@ begin
     'implementation'#10'end.';
 end;
 
+{ TConsideredUsedTests }
+
 procedure TConsideredUsedTests.DirectivesConstructorsAndOperators;
 begin
   Assert.AreEqual<TConsideredUsedReason>(TConsideredUsedReason.Directive, ReasonOf(Probe('', '  public'#10 +

@@ -148,6 +148,8 @@ begin
   Result := InRoutine(ACommand, '');
 end;
 
+{ TTestCommandsTests }
+
 procedure TTestCommandsTests.WarmUp;
 begin
   SplitValuesKeepsCommasInStrings;

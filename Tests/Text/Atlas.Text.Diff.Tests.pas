@@ -41,6 +41,8 @@ uses
   System.SysUtils,
   Atlas.Text.Diff;
 
+{ TTextDiffTests }
+
 procedure TTextDiffTests.PrefixSuffixNoOverlap;
 var
   mPrefix, mSuffix: Integer;

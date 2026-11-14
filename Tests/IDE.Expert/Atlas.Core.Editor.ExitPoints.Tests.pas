@@ -60,6 +60,8 @@ begin
   end;
 end;
 
+{ TAtlasExitPointsTests }
+
 procedure TAtlasExitPointsTests.ReadsServerAnswer;
 var
   mFound: TAtlasExitPointSet;

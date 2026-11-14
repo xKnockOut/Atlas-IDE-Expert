@@ -82,6 +82,8 @@ begin
   Result := False;
 end;
 
+{ TAtlasLeakSetupTests }
+
 procedure TAtlasLeakSetupTests.ReadsState;
 var
   mInfo: TAtlasLeakSetupInfo;

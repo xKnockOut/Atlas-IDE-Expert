@@ -113,6 +113,8 @@ type
     procedure AddOutgoing(const ABranch, AUpstream: string; const ACommits: TArray<TAtlasVcsCommit>);
   end;
 
+{ TFakeVcs }
+
 function TFakeVcs.Kind: TAtlasVcsKind;
 begin
   Result := FKind;
@@ -216,6 +218,8 @@ type
     function CommitsSince(const APath, ARevision: string; out ACount: Integer): TAtlasVcsOutcome;
     function SetExternals(const AOwner, AText: string): TAtlasVcsOutcome;
   end;
+
+{ TFakeSvnStatus }
 
 function TFakeSvnStatus.StatusXml(out AText: string): TAtlasVcsOutcome;
 begin

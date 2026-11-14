@@ -102,6 +102,8 @@ begin
     '        - label: Ich habe gesucht', '          required: true', '        - label: Newsletter']);
 end;
 
+{ TAtlasIssueFormsTests }
+
 procedure TAtlasIssueFormsTests.Setup;
 begin
   Assert.IsTrue(TAtlasIssueForms.Parse(TAtlasIssueFormFile.Create('1-fehler.yml', BugForm), FForm));

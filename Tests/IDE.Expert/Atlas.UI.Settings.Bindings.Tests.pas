@@ -38,6 +38,8 @@ uses
   Atlas.UI.Settings.ChoiceBox,
   Atlas.UI.Settings.Bindings;
 
+{ TAtlasSettingsBindingsTests }
+
 procedure TAtlasSettingsBindingsTests.CheckLoadsAndSaves;
 var
   mBindings: TAtlasSettingsBindings;

@@ -35,6 +35,8 @@ uses
   System.SysUtils,
   Atlas.Core.Editor.Overview;
 
+{ TAtlasOverviewTests }
+
 procedure TAtlasOverviewTests.KindsFromSetting;
 begin
   Assert.AreEqual('diagnostics,search,changes,breakpoints,bookmarks,cursor',

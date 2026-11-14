@@ -45,6 +45,8 @@ uses
   Atlas.Core.Style.Palette,
   Atlas.Core.Style.Wrap;
 
+{ TFakeMeasure }
+
 constructor TFakeMeasure.Create(const ADeclaration: string);
 begin
   inherited Create;

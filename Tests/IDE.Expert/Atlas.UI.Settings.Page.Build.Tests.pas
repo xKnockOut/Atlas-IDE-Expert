@@ -33,6 +33,8 @@ uses
   Atlas.UI.Settings.Page.Build,
   Atlas.UI.Settings.Page.Completion;
 
+{ TAtlasSettingsPageBuildTests }
+
 procedure TAtlasSettingsPageBuildTests.WarmUp;
 begin
   WarmUpSettingsPage;

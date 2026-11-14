@@ -24,6 +24,8 @@ uses
   Atlas.Common.Rules.Builtin.Declarations.VariantRecords,
   Atlas.Tests.RuleAssert;
 
+{ TDeclarationVariantRecordsTests }
+
 procedure TDeclarationVariantRecordsTests.IsReported;
 var
   mFindings: TArray<TRuleFinding>;

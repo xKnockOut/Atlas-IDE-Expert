@@ -97,6 +97,8 @@ type
       ATimeoutMs: Cardinal): TAtlasVcsRunResult;
   end;
 
+{ TBenchRunner }
+
 function TBenchRunner.Run(const AExecutable: string; const AArguments: TArray<string>; const AWorkingDir: string;
   ATimeoutMs: Cardinal): TAtlasVcsRunResult;
 begin
@@ -123,6 +125,8 @@ type
     function Run(const AExecutable: string; const AArguments: TArray<string>; const AWorkingDir: string;
       ATimeoutMs: Cardinal): TAtlasVcsRunResult;
   end;
+
+{ THistoryRunner }
 
 function THistoryRunner.Run(const AExecutable: string; const AArguments: TArray<string>; const AWorkingDir: string;
   ATimeoutMs: Cardinal): TAtlasVcsRunResult;

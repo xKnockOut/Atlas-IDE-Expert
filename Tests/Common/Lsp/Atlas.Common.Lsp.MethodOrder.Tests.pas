@@ -55,15 +55,7 @@ const
   cRumpfB = #10'procedure TFoo.B;'#10'begin'#10'end;'#10;
   cEnde = #10'end.';
 
-procedure TLspMethodOrderTests.Setup;
-begin
-  FStore := TDocumentStore.Create;
-end;
-
-procedure TLspMethodOrderTests.TearDown;
-begin
-  FStore := nil;
-end;
+{ TLspMethodOrderTests }
 
 function TLspMethodOrderTests.Run(const AText, AOptions: string): TJSONObject;
 var
@@ -87,6 +79,16 @@ begin
   end;
   Assert.IsTrue(mReply is TJSONObject);
   Result := TJSONObject(mReply);
+end;
+
+procedure TLspMethodOrderTests.Setup;
+begin
+  FStore := TDocumentStore.Create;
+end;
+
+procedure TLspMethodOrderTests.TearDown;
+begin
+  FStore := nil;
 end;
 
 procedure TLspMethodOrderTests.ArrangesWholeUnit;

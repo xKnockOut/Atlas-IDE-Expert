@@ -110,6 +110,8 @@ begin
   Result.Prefixed := APrefixed;
 end;
 
+{ TNameSuggestionsTests }
+
 procedure TNameSuggestionsTests.DerivesNamesFromListType;
 begin
   // Akzeptanz #452: TCustomerList mit F-Konvention ergibt FCustomers, FCustomerList, FList.

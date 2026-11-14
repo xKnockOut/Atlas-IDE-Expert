@@ -156,6 +156,8 @@ begin
     ABody + #10'end;'#10'end.';
 end;
 
+{ TRtlTypePatternRulesTests }
+
 procedure TRtlTypePatternRulesTests.DeclaredTypesByScope;
 const
   cSource = 'unit U;'#10'interface'#10'type'#10'  TFoo = class'#10'  private'#10'    FCount: Int64;'#10 +
@@ -840,6 +842,8 @@ begin
     '    FAnzahl: Integer;'#10'  end;'#10'implementation'#10'procedure TfrmBestellung.btnOkClick(Sender: TObject);'#10 +
     'var'#10'  Menge: Integer;'#10 + AVars + 'begin'#10 + ABody + #10'end;'#10'end.';
 end;
+
+{ TRtlConversionRulesTests }
 
 procedure TRtlConversionRulesTests.UncheckedConversionIssueExample;
 var

@@ -79,20 +79,6 @@ const
 
 { TLspExpressionTypeTests }
 
-procedure TLspExpressionTypeTests.Setup;
-begin
-  FStore := TDocumentStore.Create;
-  FIndex := TSymbolIndex.Create;
-  FIndex.AddUnit(TIndexExtractor.ExtractText(cUnitOther, cOtherFile, nil));
-  FIndex.AddUnit(TIndexExtractor.ExtractText(cUnitMain, cMainFile, nil));
-end;
-
-procedure TLspExpressionTypeTests.TearDown;
-begin
-  FStore := nil;
-  FIndex := nil;
-end;
-
 function TLspExpressionTypeTests.Run(ALine, AStart, AEnd: Integer; const ASettings: string): TJSONObject;
 var
   mUri: string;
@@ -118,6 +104,20 @@ begin
   end;
   Assert.IsTrue(mReply is TJSONObject);
   Result := TJSONObject(mReply);
+end;
+
+procedure TLspExpressionTypeTests.Setup;
+begin
+  FStore := TDocumentStore.Create;
+  FIndex := TSymbolIndex.Create;
+  FIndex.AddUnit(TIndexExtractor.ExtractText(cUnitOther, cOtherFile, nil));
+  FIndex.AddUnit(TIndexExtractor.ExtractText(cUnitMain, cMainFile, nil));
+end;
+
+procedure TLspExpressionTypeTests.TearDown;
+begin
+  FStore := nil;
+  FIndex := nil;
 end;
 
 procedure TLspExpressionTypeTests.ReplyCarriesTypeConversionsAndLocation;

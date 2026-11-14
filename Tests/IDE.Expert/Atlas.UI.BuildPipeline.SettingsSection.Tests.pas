@@ -44,6 +44,8 @@ uses
   Atlas.UI.Settings.Page,
   Atlas.UI.Settings.Page.TestSupport;
 
+{ TBuildPipelineSettingsSectionTests }
+
 procedure TBuildPipelineSettingsSectionTests.WarmUp;
 begin
   WarmUpSettingsPage;

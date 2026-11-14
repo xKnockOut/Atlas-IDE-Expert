@@ -127,6 +127,8 @@ type
       AQueueMs, AElapsedMs: Int64);
   end;
 
+{ TQueueObserver }
+
 procedure TQueueObserver.Started(const AMethod: string);
 begin
 end;
@@ -151,6 +153,8 @@ type
     property Work: TList<TProc> read FWork;
     property Responses: TObjectList<TJSONObject> read FResponses;
   end;
+
+{ TManualScheduling }
 
 constructor TManualScheduling.Create;
 begin
@@ -215,6 +219,32 @@ end;
 procedure TJsonRpcDispatcherTests.TearDown;
 begin
   FreeAndNil(FDispatcher);
+end;
+
+procedure TJsonRpcDispatcherTests.CurrentRequestIsSetDuringHandler;
+var
+  mSyncSeen, mConcurrentSeen: Boolean;
+begin
+  mSyncSeen := False;
+  mConcurrentSeen := False;
+  FDispatcher.RegisterRequest('sync',
+    function(const AParams: TJSONValue): TJSONValue
+    begin
+      mSyncSeen := TJsonRpcCurrentRequest.Token <> nil;
+      Result := TJSONNull.Create;
+    end);
+  // Ohne Scheduler läuft auch die nebenläufige Anfrage in DispatchMessage.
+  FDispatcher.RegisterConcurrentRequest('concurrent',
+    function(const AParams: TJSONValue; const ACancellation: IJsonRpcCancellationToken): TJSONValue
+    begin
+      mConcurrentSeen := (TJsonRpcCurrentRequest.Token as IInterface) = (ACancellation as IInterface);
+      Result := TJSONNull.Create;
+    end);
+  DispatchJson(FDispatcher, '{"jsonrpc":"2.0","id":1,"method":"sync"}').Free;
+  DispatchJson(FDispatcher, '{"jsonrpc":"2.0","id":2,"method":"concurrent"}').Free;
+  Assert.IsTrue(mSyncSeen, 'synchroner Handler');
+  Assert.IsTrue(mConcurrentSeen, 'nebenläufiger Handler');
+  Assert.IsNull(TJsonRpcCurrentRequest.Token, 'nach dem Handler');
 end;
 
 procedure TJsonRpcDispatcherTests.RoutesRequestAndCopiesNumericId;
@@ -426,6 +456,89 @@ begin
   Assert.IsFalse(mCalled);
 end;
 
+procedure TJsonRpcDispatcherTests.RequestGuardRejectsWithParams;
+var
+  mResponse: TJSONObject;
+  mCalled: Boolean;
+  mSeen: string;
+  mCode: Integer;
+begin
+  mCalled := False;
+  mSeen := '';
+  FDispatcher.RegisterRequest('probe',
+    function(const AParams: TJSONValue): TJSONValue
+    begin
+      mCalled := True;
+      Result := TJSONNull.Create;
+    end);
+  FDispatcher.RequestGuard :=
+    procedure(const AMethod: string; const AParams: TJSONValue)
+    begin
+      mSeen := AMethod + ' ' + AParams.ToJSON;
+      raise EJsonRpcError.Create(TJsonRpcErrorCode.cRequestFailed, 'übersprungen');
+    end;
+  mResponse := DispatchJson(FDispatcher, '{"jsonrpc":"2.0","id":3,"method":"probe","params":{"a":1}}');
+  try
+    mCode := mResponse.GetValue<Integer>('error.code');
+    Assert.AreEqual(TJsonRpcErrorCode.cRequestFailed, mCode);
+    Assert.IsFalse(mCalled);
+    Assert.AreEqual('probe {"a":1}', mSeen);
+  finally
+    mResponse.Free;
+  end;
+  FDispatcher.RequestGuard := nil;
+end;
+
+procedure TJsonRpcDispatcherTests.RecentGetsEveryMessage;
+var
+  mRecent: IJsonRpcRecentMessages;
+  mLast: TArray<string>;
+  mMethod, mParams: string;
+begin
+  mRecent := TJsonRpcRecentMessages.Create;
+  FDispatcher.Recent := mRecent;
+  DispatchJson(FDispatcher, '{"jsonrpc":"2.0","id":4,"method":"echo","params":{"x":2}}').Free;
+  DispatchJson(FDispatcher, '{"jsonrpc":"2.0","method":"unknown/note"}').Free;
+  mLast := mRecent.Last(5);
+  Assert.AreEqual(2, Integer(Length(mLast)));
+  Assert.IsTrue(mLast[0].Contains('"echo"'));
+  Assert.IsTrue(mLast[1].Contains('unknown/note'));
+  Assert.IsTrue(mRecent.FindRequest('4', mMethod, mParams));
+  Assert.AreEqual('echo', mMethod);
+  Assert.AreEqual('{"x":2}', mParams);
+  FDispatcher.Recent := nil;
+end;
+
+procedure TJsonRpcDispatcherTests.OverflowInHandlerRestoresGuardPage;
+var
+  mRestored, mCode: Integer;
+  mResponse: TJSONObject;
+begin
+  mRestored := 0;
+  TStackGuard.Restore :=
+    procedure
+    begin
+      Inc(mRestored);
+    end;
+  try
+    FDispatcher.RegisterRequest('deep',
+      function(const AParams: TJSONValue): TJSONValue
+      begin
+        raise EStackOverflow.Create('Stapel');
+      end);
+    mResponse := DispatchJson(FDispatcher, '{"jsonrpc":"2.0","id":5,"method":"deep"}');
+    try
+      mCode := mResponse.GetValue<Integer>('error.code');
+      Assert.AreEqual(TJsonRpcErrorCode.cInternalError, mCode);
+    finally
+      mResponse.Free;
+    end;
+    Assert.AreEqual(1, mRestored);
+  finally
+    TStackGuard.Restore := nil;
+  end;
+end;
+
 procedure TJsonRpcDispatcherTests.RunsConcurrentRequestDirectlyWithoutScheduler;
 var
   mResponse: TJSONObject;
@@ -629,32 +742,6 @@ begin
   end;
 end;
 
-procedure TJsonRpcDispatcherTests.CurrentRequestIsSetDuringHandler;
-var
-  mSyncSeen, mConcurrentSeen: Boolean;
-begin
-  mSyncSeen := False;
-  mConcurrentSeen := False;
-  FDispatcher.RegisterRequest('sync',
-    function(const AParams: TJSONValue): TJSONValue
-    begin
-      mSyncSeen := TJsonRpcCurrentRequest.Token <> nil;
-      Result := TJSONNull.Create;
-    end);
-  // Ohne Scheduler läuft auch die nebenläufige Anfrage in DispatchMessage.
-  FDispatcher.RegisterConcurrentRequest('concurrent',
-    function(const AParams: TJSONValue; const ACancellation: IJsonRpcCancellationToken): TJSONValue
-    begin
-      mConcurrentSeen := (TJsonRpcCurrentRequest.Token as IInterface) = (ACancellation as IInterface);
-      Result := TJSONNull.Create;
-    end);
-  DispatchJson(FDispatcher, '{"jsonrpc":"2.0","id":1,"method":"sync"}').Free;
-  DispatchJson(FDispatcher, '{"jsonrpc":"2.0","id":2,"method":"concurrent"}').Free;
-  Assert.IsTrue(mSyncSeen, 'synchroner Handler');
-  Assert.IsTrue(mConcurrentSeen, 'nebenläufiger Handler');
-  Assert.IsNull(TJsonRpcCurrentRequest.Token, 'nach dem Handler');
-end;
-
 procedure TJsonRpcDispatcherTests.RunsConditionalRequestConcurrentlyWhenConditionHolds;
 var
   mScheduling: TManualScheduling;
@@ -743,89 +830,6 @@ begin
     mScheduling.Free;
   end;
   FDispatcher.Observer := nil;
-end;
-
-procedure TJsonRpcDispatcherTests.RequestGuardRejectsWithParams;
-var
-  mResponse: TJSONObject;
-  mCalled: Boolean;
-  mSeen: string;
-  mCode: Integer;
-begin
-  mCalled := False;
-  mSeen := '';
-  FDispatcher.RegisterRequest('probe',
-    function(const AParams: TJSONValue): TJSONValue
-    begin
-      mCalled := True;
-      Result := TJSONNull.Create;
-    end);
-  FDispatcher.RequestGuard :=
-    procedure(const AMethod: string; const AParams: TJSONValue)
-    begin
-      mSeen := AMethod + ' ' + AParams.ToJSON;
-      raise EJsonRpcError.Create(TJsonRpcErrorCode.cRequestFailed, 'übersprungen');
-    end;
-  mResponse := DispatchJson(FDispatcher, '{"jsonrpc":"2.0","id":3,"method":"probe","params":{"a":1}}');
-  try
-    mCode := mResponse.GetValue<Integer>('error.code');
-    Assert.AreEqual(TJsonRpcErrorCode.cRequestFailed, mCode);
-    Assert.IsFalse(mCalled);
-    Assert.AreEqual('probe {"a":1}', mSeen);
-  finally
-    mResponse.Free;
-  end;
-  FDispatcher.RequestGuard := nil;
-end;
-
-procedure TJsonRpcDispatcherTests.RecentGetsEveryMessage;
-var
-  mRecent: IJsonRpcRecentMessages;
-  mLast: TArray<string>;
-  mMethod, mParams: string;
-begin
-  mRecent := TJsonRpcRecentMessages.Create;
-  FDispatcher.Recent := mRecent;
-  DispatchJson(FDispatcher, '{"jsonrpc":"2.0","id":4,"method":"echo","params":{"x":2}}').Free;
-  DispatchJson(FDispatcher, '{"jsonrpc":"2.0","method":"unknown/note"}').Free;
-  mLast := mRecent.Last(5);
-  Assert.AreEqual(2, Integer(Length(mLast)));
-  Assert.IsTrue(mLast[0].Contains('"echo"'));
-  Assert.IsTrue(mLast[1].Contains('unknown/note'));
-  Assert.IsTrue(mRecent.FindRequest('4', mMethod, mParams));
-  Assert.AreEqual('echo', mMethod);
-  Assert.AreEqual('{"x":2}', mParams);
-  FDispatcher.Recent := nil;
-end;
-
-procedure TJsonRpcDispatcherTests.OverflowInHandlerRestoresGuardPage;
-var
-  mRestored, mCode: Integer;
-  mResponse: TJSONObject;
-begin
-  mRestored := 0;
-  TStackGuard.Restore :=
-    procedure
-    begin
-      Inc(mRestored);
-    end;
-  try
-    FDispatcher.RegisterRequest('deep',
-      function(const AParams: TJSONValue): TJSONValue
-      begin
-        raise EStackOverflow.Create('Stapel');
-      end);
-    mResponse := DispatchJson(FDispatcher, '{"jsonrpc":"2.0","id":5,"method":"deep"}');
-    try
-      mCode := mResponse.GetValue<Integer>('error.code');
-      Assert.AreEqual(TJsonRpcErrorCode.cInternalError, mCode);
-    finally
-      mResponse.Free;
-    end;
-    Assert.AreEqual(1, mRestored);
-  finally
-    TStackGuard.Restore := nil;
-  end;
 end;
 
 initialization

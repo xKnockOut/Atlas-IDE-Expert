@@ -119,6 +119,8 @@ begin
   end;
 end;
 
+{ TLspMethodWithoutSelfTests }
+
 procedure TLspMethodWithoutSelfTests.Setup;
 begin
   FIndex := TSymbolIndex.Create;

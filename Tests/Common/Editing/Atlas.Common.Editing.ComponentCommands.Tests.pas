@@ -89,6 +89,8 @@ const
     'implementation'#10 +                   // 10
     'end.';
 
+{ TComponentCommandsTests }
+
 procedure TComponentCommandsTests.NotifyCreatesEvent;
 var
   mText: string;

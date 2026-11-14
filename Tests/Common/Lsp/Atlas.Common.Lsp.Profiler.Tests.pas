@@ -59,6 +59,8 @@ type
     function MainFileName: string;
   end;
 
+{ TTestSampler }
+
 function TTestSampler.Start(AProcessId: Cardinal; AIntervalMs: Integer; out AError: string): Boolean;
 begin
   AError := 'Zugriff verweigert';
@@ -98,35 +100,6 @@ end;
 
 { TLspProfilerTests }
 
-procedure TLspProfilerTests.Setup;
-var
-  mSampler: IAtlasProfileSampler;
-  mTest: TTestSampler;
-begin
-  FFolder := TPath.Combine(TPath.GetTempPath, 'AtlasProfilerTests-' + TGUID.NewGuid.ToString);
-  mTest := TTestSampler.Create;
-  FEnded := @mTest.Ended;
-  FSampler := mTest;
-  mSampler := FSampler;
-  FProfiler := TLspProfiler.Create(
-    function: IAtlasProfileSampler
-    begin
-      Result := mSampler;
-    end, FFolder);
-end;
-
-procedure TLspProfilerTests.TearDown;
-begin
-  FreeAndNil(FProfiler);
-  if TDirectory.Exists(FFolder) then
-  begin
-    TDirectory.Delete(FFolder, True);
-  end;
-  FEnded := nil;
-  FSampler := nil;
-  FFolder := '';
-end;
-
 function TLspProfilerTests.Answer(const ACommand, AArguments: string): string;
 var
   mCommands: TLspCommands;
@@ -160,6 +133,35 @@ begin
     mDispatcher.Free;
     mCommands.Free;
   end;
+end;
+
+procedure TLspProfilerTests.Setup;
+var
+  mSampler: IAtlasProfileSampler;
+  mTest: TTestSampler;
+begin
+  FFolder := TPath.Combine(TPath.GetTempPath, 'AtlasProfilerTests-' + TGUID.NewGuid.ToString);
+  mTest := TTestSampler.Create;
+  FEnded := @mTest.Ended;
+  FSampler := mTest;
+  mSampler := FSampler;
+  FProfiler := TLspProfiler.Create(
+    function: IAtlasProfileSampler
+    begin
+      Result := mSampler;
+    end, FFolder);
+end;
+
+procedure TLspProfilerTests.TearDown;
+begin
+  FreeAndNil(FProfiler);
+  if TDirectory.Exists(FFolder) then
+  begin
+    TDirectory.Delete(FFolder, True);
+  end;
+  FEnded := nil;
+  FSampler := nil;
+  FFolder := '';
 end;
 
 procedure TLspProfilerTests.WithoutSamplerFails;

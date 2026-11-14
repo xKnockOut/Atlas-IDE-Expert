@@ -80,6 +80,8 @@ type
     function StoredKeys: TArray<string>;
   end;
 
+{ TTextValues }
+
 constructor TTextValues.Create;
 begin
   inherited Create;
@@ -143,6 +145,8 @@ begin
   Result := TAtlasTrackerConnection.FromTeamFile('Atlas', TAtlasTrackerTarget.Create('github',
     'https://github.com', 'xKnockOut/Atlas-IDE-Expert', ''));
 end;
+
+{ TAtlasTrackerSettingsTablesTests }
 
 procedure TAtlasTrackerSettingsTablesTests.ConnectionsSelectAndSaveOnlyComplete;
 var

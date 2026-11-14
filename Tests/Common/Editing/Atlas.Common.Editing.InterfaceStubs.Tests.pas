@@ -30,6 +30,8 @@ uses
   Atlas.Common.Pascal.Lexer,
   Atlas.Common.Editing.InterfaceStubs;
 
+{ TInterfaceStubsTests }
+
 procedure TInterfaceStubsTests.MakesDeclarationAndBody;
 var
   mStub: TInterfaceStub;

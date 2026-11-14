@@ -100,21 +100,6 @@ const
 
 { TAtlasNotificationCenterTests }
 
-function TAtlasNotificationCenterTests.NewCenter: TAtlasNotificationCenter;
-begin
-  FNow := EncodeDate(2026, 10, 16) + EncodeTime(9, 0, 0, 0);
-  Result := TAtlasNotificationCenter.Create(
-    function: TDateTime
-    begin
-      Result := FNow;
-    end);
-end;
-
-function TAtlasNotificationCenterTests.Seconds(ACount: Integer): TDateTime;
-begin
-  Result := ACount / SecsPerDay;
-end;
-
 procedure TAtlasNotificationCenterTests.NotifyThroughInterfaceAddsUnreadEntry;
 var
   mCenter: IAtlasNotificationCenter;
@@ -445,6 +430,21 @@ begin
   end;
 end;
 
+function TAtlasNotificationCenterTests.NewCenter: TAtlasNotificationCenter;
+begin
+  FNow := EncodeDate(2026, 10, 16) + EncodeTime(9, 0, 0, 0);
+  Result := TAtlasNotificationCenter.Create(
+    function: TDateTime
+    begin
+      Result := FNow;
+    end);
+end;
+
+function TAtlasNotificationCenterTests.Seconds(ACount: Integer): TDateTime;
+begin
+  Result := ACount / SecsPerDay;
+end;
+
 { TAtlasNotificationSourcesTests }
 
 procedure TAtlasNotificationSourcesTests.ParseSkipsBrokenEntries;
@@ -510,18 +510,6 @@ end;
 
 { TAtlasBuildNoticeTests }
 
-function TAtlasBuildNoticeTests.Msg(ASeverity: TAtlasCompilerSeverity; const AFileName: string;
-  ALine: Integer): TAtlasCompilerMessage;
-begin
-  Result := Default(TAtlasCompilerMessage);
-  Result.Severity := ASeverity;
-  Result.FileName := AFileName;
-  Result.Line := ALine;
-  Result.Column := 3;
-  Result.Code := 'E2003';
-  Result.Text := 'Undeklarierter Bezeichner';
-end;
-
 procedure TAtlasBuildNoticeTests.BuildWithErrorsTargetsFirstErrorWithFile;
 var
   mNotice: TAtlasBuildNotice;
@@ -539,6 +527,23 @@ begin
   Assert.AreEqual('C:\P\Main.pas', mNotice.Target.FileName, 'erste Fehlermeldung mit Datei');
   Assert.AreEqual(12, mNotice.Target.Line);
   Assert.AreEqual(TAtlasNotificationSources.cBuild, TAtlasBuildNotices.SourceOf(False));
+end;
+
+procedure TAtlasBuildNoticeTests.BuildWithWarningsSucceededOrFailed;
+var
+  mNotice: TAtlasBuildNotice;
+begin
+  mNotice := TAtlasBuildNotices.FromRun([Msg(TAtlasCompilerSeverity.Warning, 'C:\P\B.pas', 7)], True, True, False,
+    -1);
+  Assert.AreEqual(Ord(TAtlasBuildNoticeKind.Warnings), Ord(mNotice.Kind));
+  Assert.AreEqual(Ord(TAtlasNotificationSeverity.Warning), Ord(mNotice.Severity));
+  Assert.IsFalse(mNotice.HasTarget, 'Warnungen sind kein Fehler');
+  mNotice := TAtlasBuildNotices.FromRun(nil, True, True, False, -1);
+  Assert.AreEqual(Ord(TAtlasBuildNoticeKind.Succeeded), Ord(mNotice.Kind));
+  Assert.AreEqual(Ord(TAtlasNotificationSeverity.Info), Ord(mNotice.Severity));
+  mNotice := TAtlasBuildNotices.FromRun(nil, False, False, False, -1);
+  Assert.AreEqual(Ord(TAtlasBuildNoticeKind.Failed), Ord(mNotice.Kind), 'ohne lesbare Meldungen');
+  Assert.AreEqual(Ord(TAtlasNotificationSeverity.Error), Ord(mNotice.Severity));
 end;
 
 procedure TAtlasBuildNoticeTests.VerdictRejectsAndSkipsBaseline;
@@ -570,23 +575,6 @@ begin
   Assert.AreEqual(1, mNotice.Baselined);
 end;
 
-procedure TAtlasBuildNoticeTests.BuildWithWarningsSucceededOrFailed;
-var
-  mNotice: TAtlasBuildNotice;
-begin
-  mNotice := TAtlasBuildNotices.FromRun([Msg(TAtlasCompilerSeverity.Warning, 'C:\P\B.pas', 7)], True, True, False,
-    -1);
-  Assert.AreEqual(Ord(TAtlasBuildNoticeKind.Warnings), Ord(mNotice.Kind));
-  Assert.AreEqual(Ord(TAtlasNotificationSeverity.Warning), Ord(mNotice.Severity));
-  Assert.IsFalse(mNotice.HasTarget, 'Warnungen sind kein Fehler');
-  mNotice := TAtlasBuildNotices.FromRun(nil, True, True, False, -1);
-  Assert.AreEqual(Ord(TAtlasBuildNoticeKind.Succeeded), Ord(mNotice.Kind));
-  Assert.AreEqual(Ord(TAtlasNotificationSeverity.Info), Ord(mNotice.Severity));
-  mNotice := TAtlasBuildNotices.FromRun(nil, False, False, False, -1);
-  Assert.AreEqual(Ord(TAtlasBuildNoticeKind.Failed), Ord(mNotice.Kind), 'ohne lesbare Meldungen');
-  Assert.AreEqual(Ord(TAtlasNotificationSeverity.Error), Ord(mNotice.Severity));
-end;
-
 procedure TAtlasBuildNoticeTests.BackgroundCheckOnlyOnErrorsAndRecovery;
 var
   mNotice: TAtlasBuildNotice;
@@ -605,6 +593,18 @@ begin
   Assert.AreEqual(Ord(TAtlasBuildNoticeKind.None), Ord(mNotice.Kind), 'erste Prüfung ohne Fehler: nichts');
   mNotice := TAtlasBuildNotices.FromRun(nil, False, False, True, 3);
   Assert.AreEqual(Ord(TAtlasBuildNoticeKind.None), Ord(mNotice.Kind), 'nicht lesbar: keine Entwarnung');
+end;
+
+function TAtlasBuildNoticeTests.Msg(ASeverity: TAtlasCompilerSeverity; const AFileName: string;
+  ALine: Integer): TAtlasCompilerMessage;
+begin
+  Result := Default(TAtlasCompilerMessage);
+  Result.Severity := ASeverity;
+  Result.FileName := AFileName;
+  Result.Line := ALine;
+  Result.Column := 3;
+  Result.Code := 'E2003';
+  Result.Text := 'Undeklarierter Bezeichner';
 end;
 
 initialization

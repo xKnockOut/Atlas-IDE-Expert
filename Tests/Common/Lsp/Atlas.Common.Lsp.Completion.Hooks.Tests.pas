@@ -80,6 +80,8 @@ begin
     end;
 end;
 
+{ TCompletionHooksTests }
+
 procedure TCompletionHooksTests.WarmUpFirstUse;
 begin
   Setup;

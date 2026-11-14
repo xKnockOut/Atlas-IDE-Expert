@@ -77,6 +77,8 @@ begin
   Result[0].Argument := TAtlasGenerateArgument.Optional;
 end;
 
+{ TAtlasGenerateWindowTests }
+
 procedure TAtlasGenerateWindowTests.WarmUpFirstUse;
 begin
   Setup;

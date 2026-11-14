@@ -37,6 +37,8 @@ uses
   Atlas.UI.Settings.ServerPage,
   Atlas.UI.Settings.Page.TestSupport;
 
+{ TAtlasSettingsPagesTests }
+
 procedure TAtlasSettingsPagesTests.WarmUp;
 begin
   WarmUpSettingsPage;

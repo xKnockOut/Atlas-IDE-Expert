@@ -22,6 +22,8 @@ implementation
 uses
   Atlas.Text.Chars;
 
+{ TTextCharsTests }
+
 procedure TTextCharsTests.IdentCharUnicode;
 begin
   Assert.IsTrue(TTextChars.IsIdentChar('a'));

@@ -58,6 +58,8 @@ implementation
 uses
   System.SysUtils;
 
+{ TAtlasStatementCompletionTests }
+
 function TAtlasStatementCompletionTests.Completed(const AText: string;
   const AOptions: TAtlasStatementOptions): string;
 var

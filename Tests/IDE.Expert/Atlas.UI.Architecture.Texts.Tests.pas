@@ -55,6 +55,8 @@ begin
   Result.Line := ALine;
 end;
 
+{ TAtlasArchitectureTextsTests }
+
 procedure TAtlasArchitectureTextsTests.UnitCaptionByIndex;
 var
   mModel: TAtlasArchitectureModel;

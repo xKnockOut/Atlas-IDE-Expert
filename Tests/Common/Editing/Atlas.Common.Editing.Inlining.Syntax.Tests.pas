@@ -65,6 +65,8 @@ const
     'end;'#10 +
     'end.';
 
+{ TInlineSyntaxTests }
+
 procedure TInlineSyntaxTests.FindRoutinesKeepsSourceOrder;
 var
   mTree: TSyntaxTree;

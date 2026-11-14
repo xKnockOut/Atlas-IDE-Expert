@@ -163,6 +163,8 @@ begin
   end;
 end;
 
+{ TUsesUsageTests }
+
 procedure TUsesUsageTests.MemberNameDoesNotKeepUnit;
 var
   mText: string;

@@ -82,6 +82,8 @@ begin
     end;
 end;
 
+{ TCompletionSlashTests }
+
 procedure TCompletionSlashTests.ListsCommandsWithoutDisabled;
 var
   mRequest: TCompletionRequest;

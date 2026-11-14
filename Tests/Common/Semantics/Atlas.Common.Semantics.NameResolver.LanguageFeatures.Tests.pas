@@ -217,22 +217,6 @@ end;
 
 { TNameResolverLanguageFeatureTests }
 
-procedure TNameResolverLanguageFeatureTests.Setup;
-begin
-  FIndex := TSymbolIndex.Create;
-  AddUnit('C:\Lib\System.pas', cUnitSystem);
-  AddUnit('C:\Lib\System.SysUtils.pas', cUnitSysUtils);
-  AddUnit('C:\Lib\System.Generics.Collections.pas', cUnitCollections);
-  AddUnit('C:\P\Kunden.pas', cUnitKunden);
-  FResolver := TNameResolver.Create(FIndex);
-end;
-
-procedure TNameResolverLanguageFeatureTests.TearDown;
-begin
-  FResolver.Free;
-  FIndex := nil;
-end;
-
 procedure TNameResolverLanguageFeatureTests.AddUnit(const AFileName, AText: string);
 begin
   FIndex.AddUnit(TIndexExtractor.ExtractText(AText, AFileName, nil));
@@ -275,6 +259,22 @@ begin
   begin
     Result := Default(TResolvedSymbol);
   end;
+end;
+
+procedure TNameResolverLanguageFeatureTests.Setup;
+begin
+  FIndex := TSymbolIndex.Create;
+  AddUnit('C:\Lib\System.pas', cUnitSystem);
+  AddUnit('C:\Lib\System.SysUtils.pas', cUnitSysUtils);
+  AddUnit('C:\Lib\System.Generics.Collections.pas', cUnitCollections);
+  AddUnit('C:\P\Kunden.pas', cUnitKunden);
+  FResolver := TNameResolver.Create(FIndex);
+end;
+
+procedure TNameResolverLanguageFeatureTests.TearDown;
+begin
+  FResolver.Free;
+  FIndex := nil;
 end;
 
 procedure TNameResolverLanguageFeatureTests.ChoosesOverloadByArgumentCount;
@@ -333,6 +333,16 @@ begin
   Assert.IsFalse(ResolveAt(cSource, 'Unbekannt').Found);
 end;
 
+procedure TNameResolverLanguageFeatureTests.FollowsGenericAncestors;
+const
+  cSource = cHead + '  S := Liste.First.Name;'#10'  I := Liste.Count;'#10'  S := Liste.FCount;' + cTail;
+begin
+  Assert.AreEqual('TKunde', ResolveAt(cSource, 'Name;').Container);
+  Assert.AreEqual('TList', ResolveAt(cSource, 'Count;').Container);
+  // FCount ist private in einer anderen Unit.
+  Assert.IsFalse(ResolveAt(cSource, 'FCount').Found);
+end;
+
 procedure TNameResolverLanguageFeatureTests.NonGenericTypeBeatsGenericOfSameName;
 const
   cUnitClasses = 'unit System.Classes;'#10'interface'#10'type'#10'  TList = class'#10'  public'#10 +
@@ -355,52 +365,6 @@ begin
     R := ResolveAt('unit Haupt;'#10'interface'#10'uses ' + mUsesOrder + ', Kunden;'#10 + cBody, 'First');
     Assert.AreEqual('System.Generics.Collections', R.UnitName, mUsesOrder);
   end;
-end;
-
-procedure TNameResolverLanguageFeatureTests.FollowsGenericAncestors;
-const
-  cSource = cHead + '  S := Liste.First.Name;'#10'  I := Liste.Count;'#10'  S := Liste.FCount;' + cTail;
-begin
-  Assert.AreEqual('TKunde', ResolveAt(cSource, 'Name;').Container);
-  Assert.AreEqual('TList', ResolveAt(cSource, 'Count;').Container);
-  // FCount ist private in einer anderen Unit.
-  Assert.IsFalse(ResolveAt(cSource, 'FCount').Found);
-end;
-
-procedure TNameResolverLanguageFeatureTests.MissingMembersOfGenericInterfaces;
-const
-  cUnitListen =
-    'unit Listen;'#10'interface'#10'type'#10 +
-    '  IVergleich<T> = interface'#10'    function Compare(const Left, Right: T): Integer;'#10'  end;'#10 +
-    '  IListe<T> = interface(IVergleich<T>)'#10'    procedure Add(const AItem: T);'#10'  end;'#10 +
-    'implementation'#10'end.';
-  cSource =
-    'unit Haupt;'#10'interface'#10'uses Listen, Kunden;'#10'type'#10 +
-    '  TMeineListe = class(TObject, IListe<TKunde>)'#10 +
-    '    function Compare(const Left, Right: TKunde): Integer;'#10'  end;'#10 +
-    'implementation'#10'end.';
-var
-  mTree: TSyntaxTree;
-  mMissing: TArray<TResolvedSymbol>;
-begin
-  AddUnit('C:\P\Listen.pas', cUnitListen);
-  mTree := TPascalParser.Parse(cSource);
-  try
-    // Ohne Typargumente aus dem Quelltext (Index kennt nur die des ersten Vorfahren) und mit ihnen.
-    mMissing := FResolver.Queries.MissingInterfaceMembers(TIndexExtractor.Extract(mTree, 'C:\P\Haupt.pas'), 'TMeineListe',
-      ['TObject', 'IListe<TKunde>']);
-    Assert.AreEqual(1, Integer(Length(mMissing)));
-    Assert.AreEqual('Add', mMissing[0].Name);
-    Assert.AreEqual('IListe', mMissing[0].Container);
-    Assert.AreEqual(1, Integer(Length(mMissing[0].Bindings)));
-    Assert.AreEqual('T=TKunde', mMissing[0].Bindings[0]);
-  finally
-    mTree.Free;
-  end;
-  Assert.AreEqual('TKunde', FResolver.Queries.UnqualifyType('Kunden.TKunde'));
-  Assert.AreEqual('TList<TKunde>', FResolver.Queries.UnqualifyType('System.Generics.Collections.TList<Kunden.TKunde>'));
-  Assert.AreEqual('TOuter.TInner', FResolver.Queries.UnqualifyType('TOuter.TInner'));
-  Assert.AreEqual('TKunde', FResolver.Queries.UnqualifyType('Haupt.TKunde', 'Haupt'));
 end;
 
 procedure TNameResolverLanguageFeatureTests.BindsGenericMethodArguments;
@@ -556,6 +520,42 @@ begin
     end;
   end;
   Assert.AreEqual(4, mChecked);
+end;
+
+procedure TNameResolverLanguageFeatureTests.MissingMembersOfGenericInterfaces;
+const
+  cUnitListen =
+    'unit Listen;'#10'interface'#10'type'#10 +
+    '  IVergleich<T> = interface'#10'    function Compare(const Left, Right: T): Integer;'#10'  end;'#10 +
+    '  IListe<T> = interface(IVergleich<T>)'#10'    procedure Add(const AItem: T);'#10'  end;'#10 +
+    'implementation'#10'end.';
+  cSource =
+    'unit Haupt;'#10'interface'#10'uses Listen, Kunden;'#10'type'#10 +
+    '  TMeineListe = class(TObject, IListe<TKunde>)'#10 +
+    '    function Compare(const Left, Right: TKunde): Integer;'#10'  end;'#10 +
+    'implementation'#10'end.';
+var
+  mTree: TSyntaxTree;
+  mMissing: TArray<TResolvedSymbol>;
+begin
+  AddUnit('C:\P\Listen.pas', cUnitListen);
+  mTree := TPascalParser.Parse(cSource);
+  try
+    // Ohne Typargumente aus dem Quelltext (Index kennt nur die des ersten Vorfahren) und mit ihnen.
+    mMissing := FResolver.Queries.MissingInterfaceMembers(TIndexExtractor.Extract(mTree, 'C:\P\Haupt.pas'), 'TMeineListe',
+      ['TObject', 'IListe<TKunde>']);
+    Assert.AreEqual(1, Integer(Length(mMissing)));
+    Assert.AreEqual('Add', mMissing[0].Name);
+    Assert.AreEqual('IListe', mMissing[0].Container);
+    Assert.AreEqual(1, Integer(Length(mMissing[0].Bindings)));
+    Assert.AreEqual('T=TKunde', mMissing[0].Bindings[0]);
+  finally
+    mTree.Free;
+  end;
+  Assert.AreEqual('TKunde', FResolver.Queries.UnqualifyType('Kunden.TKunde'));
+  Assert.AreEqual('TList<TKunde>', FResolver.Queries.UnqualifyType('System.Generics.Collections.TList<Kunden.TKunde>'));
+  Assert.AreEqual('TOuter.TInner', FResolver.Queries.UnqualifyType('TOuter.TInner'));
+  Assert.AreEqual('TKunde', FResolver.Queries.UnqualifyType('Haupt.TKunde', 'Haupt'));
 end;
 
 initialization

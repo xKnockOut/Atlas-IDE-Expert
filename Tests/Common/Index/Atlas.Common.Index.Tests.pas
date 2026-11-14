@@ -277,6 +277,17 @@ begin
   Result := MakeUnit(AName, AFileName, ASymbols, '');
 end;
 
+type
+  /// <summary>Sperre aus TMemoryIndexFileSystem.TryLockWrite; gibt beim Freigeben frei.</summary>
+  TMemoryWriteLock = class(TInterfacedObject)
+  private
+    FFiles: TMemoryIndexFileSystem;
+    FFileName: string;
+  public
+    constructor Create(AFiles: TMemoryIndexFileSystem; const AFileName: string);
+    destructor Destroy; override;
+  end;
+
 { TMemoryIndexFileSystem }
 
 constructor TMemoryIndexFileSystem.Create;
@@ -301,13 +312,6 @@ procedure TMemoryIndexFileSystem.Put(const AFileName, AText: string; AStamp: Int
 begin
   FTexts.AddOrSetValue(UpperCase(AFileName), AText);
   FStamps.AddOrSetValue(UpperCase(AFileName), AStamp);
-end;
-
-procedure TMemoryIndexFileSystem.Delete(const AFileName: string);
-begin
-  FTexts.Remove(UpperCase(AFileName));
-  FBytes.Remove(UpperCase(AFileName));
-  FStamps.Remove(UpperCase(AFileName));
 end;
 
 function TMemoryIndexFileSystem.FileStamp(const AFileName: string; out AStamp: Int64): Boolean;
@@ -411,30 +415,6 @@ begin
   Result := WriteBytes(AFileName, ABytes, mError);
 end;
 
-type
-  /// <summary>Sperre aus TMemoryIndexFileSystem.TryLockWrite; gibt beim Freigeben frei.</summary>
-  TMemoryWriteLock = class(TInterfacedObject)
-  private
-    FFiles: TMemoryIndexFileSystem;
-    FFileName: string;
-  public
-    constructor Create(AFiles: TMemoryIndexFileSystem; const AFileName: string);
-    destructor Destroy; override;
-  end;
-
-constructor TMemoryWriteLock.Create(AFiles: TMemoryIndexFileSystem; const AFileName: string);
-begin
-  inherited Create;
-  FFiles := AFiles;
-  FFileName := AFileName;
-end;
-
-destructor TMemoryWriteLock.Destroy;
-begin
-  FFiles.Unlock(FFileName);
-  inherited;
-end;
-
 function TMemoryIndexFileSystem.TryLockWrite(const AFileName: string): IInterface;
 begin
   TMonitor.Enter(Self);
@@ -450,6 +430,21 @@ begin
   Result := TMemoryWriteLock.Create(Self, AFileName);
 end;
 
+{ TMemoryWriteLock }
+
+constructor TMemoryWriteLock.Create(AFiles: TMemoryIndexFileSystem; const AFileName: string);
+begin
+  inherited Create;
+  FFiles := AFiles;
+  FFileName := AFileName;
+end;
+
+destructor TMemoryWriteLock.Destroy;
+begin
+  FFiles.Unlock(FFileName);
+  inherited;
+end;
+
 procedure TMemoryIndexFileSystem.Unlock(const AFileName: string);
 begin
   TMonitor.Enter(Self);
@@ -458,6 +453,13 @@ begin
   finally
     TMonitor.Exit(Self);
   end;
+end;
+
+procedure TMemoryIndexFileSystem.Delete(const AFileName: string);
+begin
+  FTexts.Remove(UpperCase(AFileName));
+  FBytes.Remove(UpperCase(AFileName));
+  FStamps.Remove(UpperCase(AFileName));
 end;
 
 { TIndexExtractorTests }
@@ -626,6 +628,19 @@ begin
   Assert.AreEqual(5, S.SelectionRange.StartPos.Line);
 end;
 
+procedure TIndexExtractorTests.ExtractsProgramDeclarations;
+var
+  U: TUnitIndex;
+  S: TIndexSymbol;
+begin
+  U := TIndexExtractor.ExtractText('program P;'#10'uses A in ''A.pas'';'#10'var X: Integer;'#10'begin end.',
+    'C:\Projekt\P.dpr', nil);
+  Assert.AreEqual('P', U.UnitName);
+  Assert.AreEqual<NativeInt>(1, Length(U.ImplementationUses));
+  Assert.IsTrue(FindSymbol(U, 'X', S));
+  Assert.IsFalse(S.InInterface);
+end;
+
 procedure TIndexExtractorTests.RecordsConditionsAndUnavailableDeclarations;
 const
   cSource =
@@ -673,28 +688,6 @@ begin
   Assert.AreEqual('TNur64=WIN64;', mMissing);
   Assert.IsTrue(U.Unavailable[0].InInterface);
   Assert.AreEqual<TIndexSymbolKind>(TIndexSymbolKind.ClassType, U.Unavailable[0].Kind);
-end;
-
-procedure TIndexExtractorTests.KeepsShortStringLengthInSignature;
-var
-  U: TUnitIndex;
-  mSymbol: TIndexSymbol;
-  mFound: string;
-begin
-  U := TIndexExtractor.ExtractText('unit Satz;'#10'interface'#10'const'#10'  Laenge = 4;'#10'type'#10 +
-    '  TSatz = record'#10'    Kennung: string[8];'#10'    Kurz: string[Laenge];'#10'    Name: string;'#10 +
-    '    Liste: TList<string>;'#10'  end;'#10'var'#10'  Global: string [ 5 ];'#10'implementation'#10'end.',
-    'Satz.pas', nil);
-  mFound := '';
-  for mSymbol in U.Symbols do
-  begin
-    if mSymbol.Kind in [TIndexSymbolKind.Field, TIndexSymbolKind.Variable] then
-    begin
-      mFound := mFound + mSymbol.Signature + '|' + mSymbol.TypeName + #10;
-    end;
-  end;
-  Assert.AreEqual('Kennung: string[8]|string'#10'Kurz: string[Laenge]|string'#10'Name: string|string'#10 +
-    'Liste: TList<string>|TList'#10'Global: string[5]|string'#10, mFound);
 end;
 
 procedure TIndexExtractorTests.RecordsConditionsOfMembers;
@@ -749,6 +742,28 @@ begin
   Assert.AreEqual(15, U.Unavailable[1].SelectionRange.StartPos.Character, 'Spalte des zweiten Felds');
 end;
 
+procedure TIndexExtractorTests.KeepsShortStringLengthInSignature;
+var
+  U: TUnitIndex;
+  mSymbol: TIndexSymbol;
+  mFound: string;
+begin
+  U := TIndexExtractor.ExtractText('unit Satz;'#10'interface'#10'const'#10'  Laenge = 4;'#10'type'#10 +
+    '  TSatz = record'#10'    Kennung: string[8];'#10'    Kurz: string[Laenge];'#10'    Name: string;'#10 +
+    '    Liste: TList<string>;'#10'  end;'#10'var'#10'  Global: string [ 5 ];'#10'implementation'#10'end.',
+    'Satz.pas', nil);
+  mFound := '';
+  for mSymbol in U.Symbols do
+  begin
+    if mSymbol.Kind in [TIndexSymbolKind.Field, TIndexSymbolKind.Variable] then
+    begin
+      mFound := mFound + mSymbol.Signature + '|' + mSymbol.TypeName + #10;
+    end;
+  end;
+  Assert.AreEqual('Kennung: string[8]|string'#10'Kurz: string[Laenge]|string'#10'Name: string|string'#10 +
+    'Liste: TList<string>|TList'#10'Global: string[5]|string'#10, mFound);
+end;
+
 procedure TIndexExtractorTests.RecordsUnavailableImplementationRoutines;
 const
   cSource =
@@ -781,19 +796,6 @@ begin
   Assert.AreEqual('ApplyAppIcon=FPC;', mMissing);
   Assert.IsFalse(U.Unavailable[0].InInterface);
   Assert.AreEqual<TIndexSymbolKind>(TIndexSymbolKind.Routine, U.Unavailable[0].Kind);
-end;
-
-procedure TIndexExtractorTests.ExtractsProgramDeclarations;
-var
-  U: TUnitIndex;
-  S: TIndexSymbol;
-begin
-  U := TIndexExtractor.ExtractText('program P;'#10'uses A in ''A.pas'';'#10'var X: Integer;'#10'begin end.',
-    'C:\Projekt\P.dpr', nil);
-  Assert.AreEqual('P', U.UnitName);
-  Assert.AreEqual<NativeInt>(1, Length(U.ImplementationUses));
-  Assert.IsTrue(FindSymbol(U, 'X', S));
-  Assert.IsFalse(S.InInterface);
 end;
 
 { TSymbolIndexTests }
@@ -1378,34 +1380,62 @@ begin
   Assert.AreEqual('C:\P\A.pas', mFiles[1]);
 end;
 
-procedure TIndexProjectFilesTests.ListsPathUnitsOnceWithoutExcluded;
+procedure TIndexProjectFilesTests.CombinesDefinesWithPlatformSymbols;
 var
-  mListed: string;
-  mFiles: TArray<string>;
+  mProject: TProjectInfo;
+  mDefines: TArray<string>;
+  mDefine: string;
+  mHasDebug, mHasWin64, mHasVer: Boolean;
+  mSignature: string;
 begin
-  mListed := '';
-  mFiles := TIndexProjectFiles.PathFiles(['C:\A', 'c:\a\', ' C:\B ', ''],
-    function(const AFolder: string): TArray<string>
-    begin
-      mListed := mListed + AFolder + ';';
-      if SameText(AFolder, 'C:\A') then
-      begin
-        Result := ['C:\A\Z.pas', 'C:\A\Y.pas'];
-      end
-      else
-      begin
-        Result := ['C:\B\W.pas', 'C:\B\Demos\X.pas', 'c:\a\y.pas'];
-      end;
-    end,
-    function(const AFileName: string): Boolean
-    begin
-      Result := Pos('\DEMOS\', AnsiUpperCase(AFileName)) > 0;
-    end, ['C:\A\Z.pas']);
-  // Jeder Ordner einmal; Z steht schon im Projekt, X ist ausgeschlossen, Y doppelt.
-  Assert.AreEqual('C:\A;C:\B;', mListed);
-  Assert.AreEqual(2, Integer(Length(mFiles)));
-  Assert.AreEqual('C:\A\Y.pas', mFiles[0]);
-  Assert.AreEqual('C:\B\W.pas', mFiles[1]);
+  mProject := Default(TProjectInfo);
+  mProject.Platform := 'Win64';
+  mProject.Defines := ['DEBUG'];
+  mDefines := TIndexProjectFiles.Defines(mProject, '37.0');
+  mHasDebug := False;
+  mHasWin64 := False;
+  mHasVer := False;
+  for mDefine in mDefines do
+  begin
+    mHasDebug := mHasDebug or (mDefine = 'DEBUG');
+    mHasWin64 := mHasWin64 or (mDefine = 'WIN64');
+    mHasVer := mHasVer or (mDefine = 'VER370');
+  end;
+  Assert.IsTrue(mHasDebug);
+  Assert.IsTrue(mHasWin64);
+  Assert.IsTrue(mHasVer);
+  Assert.AreNotEqual(TIndexProjectFiles.Signature(mProject, '37.0'), TIndexProjectFiles.Signature(mProject, '36.0'));
+  // Geänderte Symbole, Suchpfade oder Namespaces machen den Cache ungültig, die Reihenfolge der Symbole nicht.
+  mSignature := TIndexProjectFiles.Signature(mProject, '37.0');
+  mProject.Defines := ['debug'];
+  Assert.AreEqual(mSignature, TIndexProjectFiles.Signature(mProject, '37.0'));
+  mProject.Defines := ['DEBUG', 'TRACE'];
+  Assert.AreNotEqual(mSignature, TIndexProjectFiles.Signature(mProject, '37.0'));
+  mProject.Defines := ['DEBUG'];
+  mProject.SearchPaths := ['C:\Lib'];
+  Assert.AreNotEqual(mSignature, TIndexProjectFiles.Signature(mProject, '37.0'));
+  mProject.SearchPaths := nil;
+  mProject.Namespaces := ['Vcl'];
+  Assert.AreNotEqual(mSignature, TIndexProjectFiles.Signature(mProject, '37.0'));
+  mProject.Namespaces := nil;
+  // Schalter der .dproj für $IFOPT (#847) stehen in den Defines und im Schlüssel.
+  mProject.Properties := [TPair<string, string>.Create('DCC_RangeChecking', 'true')];
+  Assert.AreNotEqual(mSignature, TIndexProjectFiles.Signature(mProject, '37.0'));
+  mHasDebug := False;
+  for mDefine in TIndexProjectFiles.Defines(mProject, '37.0') do
+  begin
+    mHasDebug := mHasDebug or (mDefine = '$R+');
+  end;
+  Assert.IsTrue(mHasDebug);
+  mProject.Properties := nil;
+  // Delphi 12: BDS 23.0 ergibt VER360, nicht VER230.
+  mHasVer := False;
+  for mDefine in TIndexProjectFiles.Defines(mProject, '23.0') do
+  begin
+    Assert.AreNotEqual('VER230', mDefine);
+    mHasVer := mHasVer or (mDefine = 'VER360');
+  end;
+  Assert.IsTrue(mHasVer);
 end;
 
 { TIndexSchedulerTests }
@@ -1428,6 +1458,8 @@ begin
       Result := (mQueue^.OldestWaitMs >= 100) or (mPolls^ >= 50);
     end;
 end;
+
+{ TIndexSchedulerTests }
 
 procedure TIndexSchedulerTests.OrdersByStageThenPriority;
 var
@@ -1504,6 +1536,8 @@ type
     procedure Leave;
   end;
 
+{ TProbeTurn }
+
 function TProbeTurn.Enter(AStage: TIndexStage; const ACancelled: TIndexCancelled): Boolean;
 begin
   Result := not (Assigned(ACancelled) and ACancelled());
@@ -1565,6 +1599,36 @@ begin
   end;
 end;
 
+procedure TIndexProjectFilesTests.ListsPathUnitsOnceWithoutExcluded;
+var
+  mListed: string;
+  mFiles: TArray<string>;
+begin
+  mListed := '';
+  mFiles := TIndexProjectFiles.PathFiles(['C:\A', 'c:\a\', ' C:\B ', ''],
+    function(const AFolder: string): TArray<string>
+    begin
+      mListed := mListed + AFolder + ';';
+      if SameText(AFolder, 'C:\A') then
+      begin
+        Result := ['C:\A\Z.pas', 'C:\A\Y.pas'];
+      end
+      else
+      begin
+        Result := ['C:\B\W.pas', 'C:\B\Demos\X.pas', 'c:\a\y.pas'];
+      end;
+    end,
+    function(const AFileName: string): Boolean
+    begin
+      Result := Pos('\DEMOS\', AnsiUpperCase(AFileName)) > 0;
+    end, ['C:\A\Z.pas']);
+  // Jeder Ordner einmal; Z steht schon im Projekt, X ist ausgeschlossen, Y doppelt.
+  Assert.AreEqual('C:\A;C:\B;', mListed);
+  Assert.AreEqual(2, Integer(Length(mFiles)));
+  Assert.AreEqual('C:\A\Y.pas', mFiles[0]);
+  Assert.AreEqual('C:\B\W.pas', mFiles[1]);
+end;
+
 procedure TIndexProjectFilesTests.SharesLibraryAcrossProjectDefines;
 var
   mDebug, mRelease: TProjectInfo;
@@ -1589,64 +1653,6 @@ begin
     mHasWin64 := mHasWin64 or (mDefine = 'WIN64');
   end;
   Assert.IsTrue(mHasWin64);
-end;
-
-procedure TIndexProjectFilesTests.CombinesDefinesWithPlatformSymbols;
-var
-  mProject: TProjectInfo;
-  mDefines: TArray<string>;
-  mDefine: string;
-  mHasDebug, mHasWin64, mHasVer: Boolean;
-  mSignature: string;
-begin
-  mProject := Default(TProjectInfo);
-  mProject.Platform := 'Win64';
-  mProject.Defines := ['DEBUG'];
-  mDefines := TIndexProjectFiles.Defines(mProject, '37.0');
-  mHasDebug := False;
-  mHasWin64 := False;
-  mHasVer := False;
-  for mDefine in mDefines do
-  begin
-    mHasDebug := mHasDebug or (mDefine = 'DEBUG');
-    mHasWin64 := mHasWin64 or (mDefine = 'WIN64');
-    mHasVer := mHasVer or (mDefine = 'VER370');
-  end;
-  Assert.IsTrue(mHasDebug);
-  Assert.IsTrue(mHasWin64);
-  Assert.IsTrue(mHasVer);
-  Assert.AreNotEqual(TIndexProjectFiles.Signature(mProject, '37.0'), TIndexProjectFiles.Signature(mProject, '36.0'));
-  // Geänderte Symbole, Suchpfade oder Namespaces machen den Cache ungültig, die Reihenfolge der Symbole nicht.
-  mSignature := TIndexProjectFiles.Signature(mProject, '37.0');
-  mProject.Defines := ['debug'];
-  Assert.AreEqual(mSignature, TIndexProjectFiles.Signature(mProject, '37.0'));
-  mProject.Defines := ['DEBUG', 'TRACE'];
-  Assert.AreNotEqual(mSignature, TIndexProjectFiles.Signature(mProject, '37.0'));
-  mProject.Defines := ['DEBUG'];
-  mProject.SearchPaths := ['C:\Lib'];
-  Assert.AreNotEqual(mSignature, TIndexProjectFiles.Signature(mProject, '37.0'));
-  mProject.SearchPaths := nil;
-  mProject.Namespaces := ['Vcl'];
-  Assert.AreNotEqual(mSignature, TIndexProjectFiles.Signature(mProject, '37.0'));
-  mProject.Namespaces := nil;
-  // Schalter der .dproj für $IFOPT (#847) stehen in den Defines und im Schlüssel.
-  mProject.Properties := [TPair<string, string>.Create('DCC_RangeChecking', 'true')];
-  Assert.AreNotEqual(mSignature, TIndexProjectFiles.Signature(mProject, '37.0'));
-  mHasDebug := False;
-  for mDefine in TIndexProjectFiles.Defines(mProject, '37.0') do
-  begin
-    mHasDebug := mHasDebug or (mDefine = '$R+');
-  end;
-  Assert.IsTrue(mHasDebug);
-  mProject.Properties := nil;
-  // Delphi 12: BDS 23.0 ergibt VER360, nicht VER230.
-  mHasVer := False;
-  for mDefine in TIndexProjectFiles.Defines(mProject, '23.0') do
-  begin
-    Assert.AreNotEqual('VER230', mDefine);
-    mHasVer := mHasVer or (mDefine = 'VER360');
-  end;
-  Assert.IsTrue(mHasVer);
 end;
 
 initialization

@@ -97,6 +97,8 @@ type
       out AError: TAtlasCiFetchError): Boolean;
   end;
 
+{ TFakeFlowTransport }
+
 procedure TFakeFlowTransport.Answer(const APart: string; AStatus: Integer; const AText: string);
 begin
   FParts := FParts + [APart];

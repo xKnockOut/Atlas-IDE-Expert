@@ -36,6 +36,8 @@ begin
   Result := string.Join(' ', AItems);
 end;
 
+{ TAtlasStatusBarItemsTests }
+
 procedure TAtlasStatusBarItemsTests.DefaultIsAllInOrder;
 begin
   Assert.AreEqual('status,findings,liveCheck,method', TAtlasStatusBarItems.DefaultText);

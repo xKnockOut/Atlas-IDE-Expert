@@ -135,25 +135,16 @@ const
 
 { TLspLinkedEditingTests }
 
-procedure TLspLinkedEditingTests.WarmUpFirstUse;
+function TLspLinkedEditingTests.RangesAt(ALine, ACharacter: Integer): TArray<TTextRange>;
+var
+  mTree: TSyntaxTree;
 begin
-  Setup;
+  mTree := TPascalParser.Parse(cUnitText);
   try
-    HandlerKeepsMethodsOnlyWithoutLocalsFlag;
+    Result := TLspLinkedEditing.Ranges(mTree, 'C:\P\Muster.pas', TTextPosition.Create(ALine, ACharacter));
   finally
-    TearDown;
+    mTree.Free;
   end;
-end;
-
-procedure TLspLinkedEditingTests.Setup;
-begin
-  FIndex := TSymbolIndex.Create;
-end;
-
-procedure TLspLinkedEditingTests.TearDown;
-begin
-  FIndex := nil;
-  FConflicts := nil;
 end;
 
 function TLspLinkedEditingTests.LocalsAt(ALine, ACharacter: Integer): string;
@@ -220,16 +211,25 @@ begin
   end;
 end;
 
-function TLspLinkedEditingTests.RangesAt(ALine, ACharacter: Integer): TArray<TTextRange>;
-var
-  mTree: TSyntaxTree;
+procedure TLspLinkedEditingTests.WarmUpFirstUse;
 begin
-  mTree := TPascalParser.Parse(cUnitText);
+  Setup;
   try
-    Result := TLspLinkedEditing.Ranges(mTree, 'C:\P\Muster.pas', TTextPosition.Create(ALine, ACharacter));
+    HandlerKeepsMethodsOnlyWithoutLocalsFlag;
   finally
-    mTree.Free;
+    TearDown;
   end;
+end;
+
+procedure TLspLinkedEditingTests.Setup;
+begin
+  FIndex := TSymbolIndex.Create;
+end;
+
+procedure TLspLinkedEditingTests.TearDown;
+begin
+  FIndex := nil;
+  FConflicts := nil;
 end;
 
 procedure TLspLinkedEditingTests.LinksMethodDeclarationAndImplementation;

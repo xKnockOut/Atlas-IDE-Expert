@@ -79,6 +79,8 @@ begin
   end;
 end;
 
+{ TAtlasToolbarLayoutTests }
+
 procedure TAtlasToolbarLayoutTests.EverythingFits;
 var
   mFit: TAtlasToolbarFit;

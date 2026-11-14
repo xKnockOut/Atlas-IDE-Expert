@@ -111,6 +111,8 @@ begin
   Result := Find(AItems, AKind, AReference, AArgument, TAtlasSimilarScope.Form);
 end;
 
+{ TAtlasSimilarTests }
+
 procedure TAtlasSimilarTests.SameClassSkipsOtherClasses;
 var
   mItems: TArray<TAtlasSimilarItem>;

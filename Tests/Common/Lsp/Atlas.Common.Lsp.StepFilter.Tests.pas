@@ -149,16 +149,6 @@ const
 
 { TLspStepFilterTests }
 
-procedure TLspStepFilterTests.Setup;
-begin
-  FTree := TPascalParser.Parse(cSource);
-end;
-
-procedure TLspStepFilterTests.TearDown;
-begin
-  FreeAndNil(FTree);
-end;
-
 function TLspStepFilterTests.At(ALine: Integer): TLspStepRoutine;
 begin
   Assert.IsTrue(TLspStepFilter.RoutineAt(FTree, cSource, ALine, Result), 'Routine an Zeile ' + IntToStr(ALine));
@@ -167,6 +157,16 @@ end;
 function TLspStepFilterTests.KindsAt(ALine: Integer): string;
 begin
   Result := TStepFilterNames.KindsText(At(ALine).Kinds);
+end;
+
+procedure TLspStepFilterTests.Setup;
+begin
+  FTree := TPascalParser.Parse(cSource);
+end;
+
+procedure TLspStepFilterTests.TearDown;
+begin
+  FreeAndNil(FTree);
 end;
 
 procedure TLspStepFilterTests.TrivialGetterIsGetterAndTrivial;

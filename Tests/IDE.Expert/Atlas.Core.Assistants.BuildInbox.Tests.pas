@@ -54,6 +54,8 @@ begin
   Result.UnknownMode := 'Art %s unbekannt';
 end;
 
+{ TAtlasBuildInboxTests }
+
 procedure TAtlasBuildInboxTests.Setup;
 begin
   FFolder := TAtlasBuildInbox.Folder(TPath.Combine(TPath.GetTempPath, 'Atlas-BuildInbox-' + IntToStr(Random(MaxInt))),

@@ -387,6 +387,21 @@ begin
   Assert.AreEqual(0, Integer(Length(mFound[0].Fixes)));
 end;
 
+procedure TNamingRulesTests.FixWhenNewNameOnlyElsewhere;
+var
+  mFound: TArray<TRuleFinding>;
+begin
+  mFound := Findings(UnitOf('', 'procedure Q(const ABuf; ACount: Integer);'#10'begin'#10'end;'#10 +
+    'procedure P(const Buf; ACount: Integer);'#10'begin'#10'end;'#10));
+  Assert.AreEqual(1, Integer(Length(mFound)), Messages(mFound));
+  Assert.AreEqual(1, Integer(Length(mFound[0].Fixes)), 'ABuf steht nur in Q');
+  Assert.AreEqual('In ABuf umbenennen', mFound[0].Fixes[0].Title);
+  // Ein Nachbarparameter heißt schon so.
+  mFound := Findings(UnitOf('', 'procedure P(const Buf; ABuf: Integer);'#10'begin'#10'end;'#10));
+  Assert.AreEqual(1, Integer(Length(mFound)), Messages(mFound));
+  Assert.AreEqual(0, Integer(Length(mFound[0].Fixes)));
+end;
+
 procedure TNamingRulesTests.ConfigurationAndProjectFile;
 var
   mSource: string;
@@ -422,6 +437,7 @@ begin
   Assert.AreEqual('Lokale Variable LIndex ohne Präfix m (erwartet: mLIndex)|', Messages(mFound));
 end;
 
+
 procedure TNamingRulesTests.ShadowedNameUsesProjectPrefixes;
 var
   mContext: TRuleContext;
@@ -440,7 +456,6 @@ begin
   Assert.AreEqual(1, Integer(Length(mFound)));
   Assert.AreEqual('In mState umbenennen', mFound[0].Fixes[0].Title);
 end;
-
 
 procedure TNamingRulesTests.NewNamesFollowActiveRule;
 var
@@ -501,21 +516,6 @@ begin
   mFixed := FixText('{"minConfidence": "low", "rules": {"magic-number": "hint", "naming-prefix": "hint"}}');
   Assert.IsTrue(Pos('cNewConstant = 0.93', mFixed) > 0, mFixed);
   Assert.IsTrue(Pos('APreis * cNewConstant', mFixed) > 0, mFixed);
-end;
-
-procedure TNamingRulesTests.FixWhenNewNameOnlyElsewhere;
-var
-  mFound: TArray<TRuleFinding>;
-begin
-  mFound := Findings(UnitOf('', 'procedure Q(const ABuf; ACount: Integer);'#10'begin'#10'end;'#10 +
-    'procedure P(const Buf; ACount: Integer);'#10'begin'#10'end;'#10));
-  Assert.AreEqual(1, Integer(Length(mFound)), Messages(mFound));
-  Assert.AreEqual(1, Integer(Length(mFound[0].Fixes)), 'ABuf steht nur in Q');
-  Assert.AreEqual('In ABuf umbenennen', mFound[0].Fixes[0].Title);
-  // Ein Nachbarparameter heißt schon so.
-  mFound := Findings(UnitOf('', 'procedure P(const Buf; ABuf: Integer);'#10'begin'#10'end;'#10));
-  Assert.AreEqual(1, Integer(Length(mFound)), Messages(mFound));
-  Assert.AreEqual(0, Integer(Length(mFound[0].Fixes)));
 end;
 
 initialization

@@ -38,6 +38,8 @@ begin
   Result := TJSONObject.ParseJSONValue(AText);
 end;
 
+{ TAtlasSmartIndentTests }
+
 procedure TAtlasSmartIndentTests.BuildsArguments;
 begin
   Assert.AreEqual('["file:///C:/P/U.pas",3,{"tabSize":2,"insertSpaces":true}]',

@@ -48,6 +48,8 @@ begin
   Result := IntToStr(Ord(AKind));
 end;
 
+{ TAtlasSignalTests }
+
 procedure TAtlasSignalTests.LightRingsStandOutOnBars;
 var
   mSignals: TAtlasSignals;

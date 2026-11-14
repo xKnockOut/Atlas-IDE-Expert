@@ -34,6 +34,8 @@ implementation
 uses
   Atlas.Text.Jsonc;
 
+{ TJsoncScannerTests }
+
 procedure TJsoncScannerTests.SkipsSpaceAndComments;
 var
   mPosition: Integer;

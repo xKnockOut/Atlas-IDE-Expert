@@ -65,12 +65,16 @@ type
       const AVerdict: TAtlasBuildVerdict);
   end;
 
+{ TFakeVerdictListener }
+
 procedure TFakeVerdictListener.BuildEvaluated(const AMessages: TArray<TAtlasCompilerMessage>;
   const AProject: TAtlasCompileProject; const AVerdict: TAtlasBuildVerdict);
 begin
   Inc(Heard);
   LastErrors := AVerdict.Errors;
 end;
+
+{ TFakeModule }
 
 function TFakeModule.Info: TAtlasModuleInfo;
 begin
@@ -92,6 +96,8 @@ function TFakeModule.IsActive: Boolean;
 begin
   Result := not FStopped;
 end;
+
+{ TFakePipeline }
 
 constructor TFakePipeline.Create(ATake: Boolean);
 begin
@@ -124,6 +130,8 @@ begin
   Result[0] := Default(TAtlasCompilerMessage);
   Result[1] := Default(TAtlasCompilerMessage);
 end;
+
+{ TAtlasBuildPipelineTests }
 
 procedure TAtlasBuildPipelineTests.MessagesReachEveryListener;
 var

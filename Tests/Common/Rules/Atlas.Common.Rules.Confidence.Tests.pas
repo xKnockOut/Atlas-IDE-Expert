@@ -63,6 +63,8 @@ type
     procedure Check(const AContext: TRuleContext; const AReport: IRuleReport);
   end;
 
+{ TFixedRule }
+
 constructor TFixedRule.Create(AConfidence: TRuleConfidence);
 begin
   Create(AConfidence, TRuleSeverity.Error, 'fixed');

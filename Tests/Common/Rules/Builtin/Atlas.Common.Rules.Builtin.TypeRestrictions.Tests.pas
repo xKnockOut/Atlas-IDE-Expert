@@ -176,6 +176,8 @@ begin
   Result := Geld(AMembers, '');
 end;
 
+{ TOperatorDeclarationInvalidTests }
+
 procedure TOperatorDeclarationInvalidTests.IssueExampleWithFix;
 var
   mSource: string;
@@ -362,6 +364,8 @@ function GenericUnit(const ATypes, AImplementation: string): string;
 begin
   Result := 'unit G;'#10'interface'#10'type'#10 + ATypes + 'implementation'#10 + AImplementation + 'end.';
 end;
+
+{ TGenericDeclarationInvalidTests }
 
 procedure TGenericDeclarationInvalidTests.IssueExample;
 var
@@ -659,6 +663,8 @@ begin
   Result := TRuleAssert.Findings(TTypeRestrictionViolatedRule.Create, ASource, AConfig, APath);
 end;
 
+{ TTypeRestrictionViolatedTests }
+
 procedure TTypeRestrictionViolatedTests.IssueExampleWithFix;
 var
   mSource, mFixed: string;
@@ -882,6 +888,8 @@ begin
   Result := TRuleAssert.Findings(TAttributeUsageInvalidRule.Create, ASource, AConfig, APath);
 end;
 
+{ TAttributeUsageInvalidTests }
+
 procedure TAttributeUsageInvalidTests.IssueExample;
 var
   mFound: TArray<TRuleFinding>;
@@ -1012,6 +1020,8 @@ begin
     AExpression + ';'#10'end;'#10'end.';
 end;
 
+{ TTypeInfoInvalidTests }
+
 procedure TTypeInfoInvalidTests.IssueExampleWithFix;
 var
   mSource, mFixed: string;
@@ -1120,6 +1130,8 @@ begin
     end);
   Result := mFound;
 end;
+
+{ TTypeRestrictionHeadsTests }
 
 procedure TTypeRestrictionHeadsTests.ReadsRoutineHeadAndFileTypes;
 var

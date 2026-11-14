@@ -51,6 +51,8 @@ begin
     end;
 end;
 
+{ TAtlasLensAskTests }
+
 procedure TAtlasLensAskTests.OnlyLatestAskIsAnswered;
 var
   mAsk: TAtlasLensAsk;

@@ -111,6 +111,8 @@ begin
   end;
 end;
 
+{ TMissingUnitTests }
+
 procedure TMissingUnitTests.Setup;
 begin
   Files.Clear;

@@ -43,6 +43,8 @@ type
     procedure ThrowIfCancellationRequested;
   end;
 
+{ TProbeToken }
+
 function TProbeToken.IsCancellationRequested: Boolean;
 begin
   Result := False;

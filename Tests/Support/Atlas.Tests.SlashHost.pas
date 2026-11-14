@@ -71,6 +71,8 @@ begin
   Result := False;
 end;
 
+{ TRecordingSlashHost }
+
 constructor TRecordingSlashHost.Create;
 begin
   inherited Create;

@@ -37,6 +37,8 @@ begin
     '  Result := nil;'#10'end;'#10'procedure P(L: TStringList);'#10'begin'#10 + ABody + #10'end;'#10'end.';
 end;
 
+{ TFlowDerefBeforeNilCheckTests }
+
 procedure TFlowDerefBeforeNilCheckTests.AccessBeforeCheckIsReported;
 var
   mFindings: TArray<TRuleFinding>;

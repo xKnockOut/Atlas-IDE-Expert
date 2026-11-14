@@ -60,6 +60,8 @@ begin
   Result.Notify(TAtlasNotificationSources.cServer, TAtlasNotificationSeverity.Warning, 'Meldung des Servers', 'x');
 end;
 
+{ TAtlasNotificationsWindowTests }
+
 procedure TAtlasNotificationsWindowTests.WarmUpFirstUse;
 begin
   ListsNewestFirstAndFilters;

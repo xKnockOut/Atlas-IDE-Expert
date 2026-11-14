@@ -43,6 +43,8 @@ uses
   Atlas.Core.VersionControl.Internals.GitParser,
   Atlas.Core.VersionControl.TestSupport;
 
+{ TAtlasVcsGitParserTests }
+
 procedure TAtlasVcsGitParserTests.GitStatusReadsBranchCommitAndChanges;
 var
   mHead: TAtlasVcsHead;

@@ -86,31 +86,6 @@ const
 
 { TLspSemanticTokensTests }
 
-procedure TLspSemanticTokensTests.Setup;
-begin
-  FIndex := TSymbolIndex.Create;
-  FIndex.AddUnit(TIndexExtractor.ExtractText(cUnitSysUtils, 'C:\RTL\System.SysUtils.pas', nil));
-  FResolver := TNameResolver.Create(FIndex);
-end;
-
-procedure TLspSemanticTokensTests.TearDown;
-begin
-  FResolver.Free;
-  FIndex := nil;
-end;
-
-function TLspSemanticTokensTests.Collect: TArray<TSemanticToken>;
-var
-  mTree: TSyntaxTree;
-begin
-  mTree := TPascalParser.Parse(cUnitHaupt);
-  try
-    Result := TLspSemanticTokens.Collect(FResolver, FIndex, mTree, cHauptFile, Default(TTextRange), False);
-  finally
-    mTree.Free;
-  end;
-end;
-
 function TLspSemanticTokensTests.Describe(const ATokens: TArray<TSemanticToken>; ALine: Integer): string;
 var
   mToken: TSemanticToken;
@@ -129,6 +104,31 @@ begin
       Result := Result + '|';
     end;
   end;
+end;
+
+function TLspSemanticTokensTests.Collect: TArray<TSemanticToken>;
+var
+  mTree: TSyntaxTree;
+begin
+  mTree := TPascalParser.Parse(cUnitHaupt);
+  try
+    Result := TLspSemanticTokens.Collect(FResolver, FIndex, mTree, cHauptFile, Default(TTextRange), False);
+  finally
+    mTree.Free;
+  end;
+end;
+
+procedure TLspSemanticTokensTests.Setup;
+begin
+  FIndex := TSymbolIndex.Create;
+  FIndex.AddUnit(TIndexExtractor.ExtractText(cUnitSysUtils, 'C:\RTL\System.SysUtils.pas', nil));
+  FResolver := TNameResolver.Create(FIndex);
+end;
+
+procedure TLspSemanticTokensTests.TearDown;
+begin
+  FResolver.Free;
+  FIndex := nil;
 end;
 
 procedure TLspSemanticTokensTests.ClassifiesDeclarations;

@@ -67,10 +67,7 @@ const
     '"handler":"actDruckenUpdate","container":"TfrmHaupt","origin":"form","file":"C:\\P\\Haupt.pas","line":45},' +
     '{"form":"TfrmHaupt","component":"x","event":"OnClick","handler":"Ohne","file":"","line":-1}]}';
 
-procedure TCoreDebugEventBreakTests.TearDown;
-begin
-  FAnswer := Default(TAtlasEventAnswer);
-end;
+{ TCoreDebugEventBreakTests }
 
 procedure TCoreDebugEventBreakTests.Load;
 var
@@ -82,6 +79,11 @@ begin
   finally
     mJson.Free;
   end;
+end;
+
+procedure TCoreDebugEventBreakTests.TearDown;
+begin
+  FAnswer := Default(TAtlasEventAnswer);
 end;
 
 procedure TCoreDebugEventBreakTests.ReadsAnswer;

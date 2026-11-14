@@ -84,6 +84,8 @@ begin
   end;
 end;
 
+{ TTypeInfoClassesTests }
+
 procedure TTypeInfoClassesTests.Setup;
 begin
   FIndex := TSymbolIndex.Create;
