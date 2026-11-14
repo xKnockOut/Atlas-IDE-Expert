@@ -9,7 +9,8 @@
 //   Einstellungen.
 // - Ort: TAtlasTeamFile.Locate mit dem Ordner der .dproj und dem der
 //   geöffneten .groupproj (LocateFor).
-// - Ein Zeitgeber prüft alle 2 s im Hauptthread, ob sich aktives Projekt,
+// - Ein Zeitgeber prüft alle 2 s im Hauptthread (nur mit geladenem Projekt
+//   laut TAtlasIdeOpenWatch; Öffnen und Schließen prüfen sofort), ob sich aktives Projekt,
 //   Ort oder Zeitstempel der Datei geändert haben; nur dann wird neu gelesen
 //   und die Version erhöht. Den Ort sucht er (Ordner aufwärts bis zur Wurzel
 //   des Repositorys) nur bei anderem Projekt oder anderer Gruppe, nach
@@ -49,6 +50,9 @@ type
     FLocateKey: string;
     FLocated: string;
     FLocatedAt: UInt64;
+    /// <summary>Anmeldung bei TAtlasIdeOpenWatch: ohne Projekt ruht der Takt.</summary>
+    FOpenHandle: Integer;
+    procedure OpenChanged;
     procedure Tick(Sender: TObject);
     /// <summary>Ort der Datei für AProject; sucht nur neu, wenn nötig (siehe Kopf).</summary>
     function LocatedFor(const AProject: string): string;
@@ -95,7 +99,8 @@ uses
   Atlas.IDE.Foundation.Settings,
   Atlas.UI.Foundation.Strings,
   Atlas.IDE.Foundation.Files,
-  Atlas.IDE.Foundation.Host;
+  Atlas.IDE.Foundation.Host,
+  Atlas.IDE.Foundation.OpenWatch;
 
 const
   cCheckMs = 2000;
@@ -111,13 +116,24 @@ begin
   FTimer := TTimer.Create(nil);
   FTimer.Interval := cCheckMs;
   FTimer.OnTimer := Tick;
-  FTimer.Enabled := True;
+  // Ohne Projekt gibt es keine .atlas (Current bleibt Empty); der Takt lief sonst alle 2 s auch auf der
+  // Willkommensseite. Externe Änderungen der Datei übernimmt er weiter, solange ein Projekt offen ist.
+  FOpenHandle := TAtlasIdeOpenWatch.Register(OpenChanged);
+  FTimer.Enabled := TAtlasIdeOpenWatch.ProjectOpen;
 end;
 
 destructor TAtlasIdeTeamFile.Destroy;
 begin
+  TAtlasIdeOpenWatch.Unregister(FOpenHandle);
   FTimer.Free;
   inherited Destroy;
+end;
+
+procedure TAtlasIdeTeamFile.OpenChanged;
+begin
+  FTimer.Enabled := TAtlasIdeOpenWatch.ProjectOpen;
+  // Gleich prüfen: beim Öffnen lesen, beim Schließen den leeren Stand melden (letzter Takt).
+  Tick(nil);
 end;
 
 procedure TAtlasIdeTeamFile.Tick(Sender: TObject);

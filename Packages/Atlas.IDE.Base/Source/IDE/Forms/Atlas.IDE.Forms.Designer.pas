@@ -13,6 +13,8 @@
 //   266 ms je Änderung). Ein geschlossenes Formular meldet Atlas mit
 //   didClose ab, danach gilt wieder die Datei. Nach einem Serverneustart
 //   gehen alle Formulare neu an den Server.
+// - Der Takt ruht ohne offenes Formular (nichts zu senden); DesignerOpened
+//   bzw. die nächste Änderung wirft ihn wieder an.
 // - Änderungen des Servers an einem offenen Formular (Umbenennen eines
 //   Handlers, #397) schreibt Atlas nicht auf die Platte, sonst überschreibt
 //   der Designer sie beim Speichern: TAtlasFormChanges vergleicht den
@@ -652,6 +654,18 @@ begin
         SyncDirty(mSession);
       end;
     end);
+  // Ohne offenes Formular ist nichts zu senden; der Takt lief sonst alle 500 ms auch auf der Willkommensseite.
+  // DesignerOpened und jede Änderung (Changed) werfen ihn wieder an; offene Formulare halten ihn am Laufen, damit
+  // eine neue Sitzung (Serverstart) sie weiter bekommt. FDirty bleibt stehen und gilt beim nächsten Formular.
+  try
+    if Length(FormEditors) = 0 then
+    begin
+      FTimer.Enabled := False;
+    end;
+  except
+    on E: Exception do
+      TAtlasGuard.Report(TAtlasFeature.Forms, E);
+  end;
 end;
 
 procedure TAtlasIdeForms.Changed(const ADesigner: IDesigner);

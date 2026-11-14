@@ -4,7 +4,8 @@
 // - Über dem Editor jedes Editorfensters steht eine Leiste
 //   (TAtlasBreadcrumbBar, alTop im Eltern-Steuerelement des Editors
 //   „Editor“). Fenster, die später aufgehen, bekommen sie beim nächsten Takt.
-// - Ein Zeitgeber (150 ms) rechnet für die aktive Ansicht den Pfad am Caret
+// - Ein Zeitgeber (150 ms, nur mit offenem Quelltext-Editor laut
+//   TAtlasIdeOpenWatch) rechnet für die aktive Ansicht den Pfad am Caret
 //   aus dem Stand von TAtlasIdeOutlineCache (gemeinsam mit dem
 //   Gliederungsfenster #537): Caret-Bewegung löst nie eine Serveranfrage
 //   aus, nach Änderungen fragt der Cache erst nach einer Tipppause. Bei
@@ -136,6 +137,7 @@ uses
   Atlas.IDE.Foundation.EditorBuffer,
   Atlas.IDE.Foundation.EditorStyle,
   Atlas.IDE.Foundation.Navigation,
+  Atlas.IDE.Foundation.OpenWatch,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Outline.Cache;
 
@@ -175,6 +177,9 @@ type
     FProblem: string;
     /// <summary>Kennzahlen-Karte (#1787); erst beim ersten Zeigen angelegt.</summary>
     FCard: TAtlasCrumbCardTip;
+    /// <summary>Anmeldung bei TAtlasIdeOpenWatch: ohne Quelltext-Editor ruht der Takt.</summary>
+    FOpenHandle: Integer;
+    procedure OpenChanged;
     function HasCard(ABar: TAtlasBreadcrumbBar; AIndex: Integer): Boolean;
     procedure ShowCard(ABar: TAtlasBreadcrumbBar; AIndex: Integer; const APoint: TPoint);
     procedure HideCard;
@@ -228,12 +233,16 @@ begin
   FTimer := TTimer.Create(nil);
   FTimer.Interval := cTickMs;
   FTimer.OnTimer := Tick;
-  FTimer.Enabled := True;
+  // Nur mit offenem Quelltext-Editor: Die Leiste steht nur in der Code-Ansicht (ShowIn), auf der Willkommensseite
+  // lief der Takt sonst ohne Arbeit weiter.
+  FOpenHandle := TAtlasIdeOpenWatch.Register(OpenChanged);
+  FTimer.Enabled := TAtlasIdeOpenWatch.EditorOpen;
   Reset;
 end;
 
 destructor TBreadcrumbsState.Destroy;
 begin
+  TAtlasIdeOpenWatch.Unregister(FOpenHandle);
   FTimer.Free;
   FCard.Free;
   // Navigationsleisten der IDE wieder zeigen: Option zurück, wenn Atlas sie ausgeschaltet hatte, bzw. zurückhängen.
@@ -278,6 +287,19 @@ begin
   begin
     FCard.HidePopup;
   end;
+end;
+
+procedure TBreadcrumbsState.OpenChanged;
+begin
+  if TAtlasIdeOpenWatch.EditorOpen then
+  begin
+    FTimer.Enabled := True;
+    Exit;
+  end;
+  // Letzter Quelltext-Editor zu: ein letzter Takt blendet die Leisten aus (Ansicht Code), danach Ruhe.
+  FTimer.Enabled := False;
+  HideCard;
+  Tick(nil);
 end;
 
 procedure TBreadcrumbsState.Tick(Sender: TObject);

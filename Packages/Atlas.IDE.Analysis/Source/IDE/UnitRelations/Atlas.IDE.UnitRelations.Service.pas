@@ -98,6 +98,7 @@ uses
   Atlas.IDE.Foundation.EditorBuffer,
   Atlas.IDE.Foundation.EditorSnapshot,
   Atlas.IDE.Foundation.Navigation,
+  Atlas.IDE.Foundation.OpenWatch,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Foundation.ResultsWindow,
   Atlas.IDE.UnitRelations.Window,
@@ -169,6 +170,12 @@ type
     FShownMessage: Boolean;
     /// <summary>Kosten einer interface-Änderung (#554).</summary>
     FCost: TInterfaceCostState;
+    /// <summary>Anmeldung bei TAtlasIdeOpenWatch: ohne Quelltext-Editor und ohne sichtbares Fenster ruht der Takt.
+    /// </summary>
+    FOpenHandle: Integer;
+    /// <summary>Takt wieder anwerfen (Editor auf, Fenster gezeigt, Einstellungen); der nächste Takt entscheidet.
+    /// </summary>
+    procedure Wake;
     procedure Tick(Sender: TObject);
     procedure Wire(AFrame: TAtlasUnitRelationsFrame);
     function EditorFile: string;
@@ -381,6 +388,13 @@ begin
   FTimer.Interval := cTickMs;
   FTimer.OnTimer := Tick;
   FTimer.Enabled := True;
+  // Ohne Quelltext-Editor und ohne Fenster gibt es nichts zu folgen; der Takt lief sonst auch auf der
+  // Willkommensseite. Ein Editorwechsel weckt ihn wieder.
+  FOpenHandle := TAtlasIdeOpenWatch.Register(
+    procedure
+    begin
+      Wake;
+    end);
   TAtlasIdeUnitRelationsWindow.OnFrame :=
     procedure(AFrame: TAtlasUnitRelationsFrame)
     begin
@@ -401,6 +415,7 @@ var
 begin
   // Antworten, die noch unterwegs sind, finden FState nicht mehr und fallen weg.
   Inc(FRequest);
+  TAtlasIdeOpenWatch.Unregister(FOpenHandle);
   FCost.Cancel;
   FTimer.Free;
   FCost.Hide;
@@ -418,22 +433,34 @@ begin
   inherited Destroy;
 end;
 
+procedure TUnitRelationsState.Wake;
+begin
+  FTimer.Enabled := True;
+end;
+
 procedure TUnitRelationsState.Tick(Sender: TObject);
 begin
   if not Active then
   begin
     FCost.Hide;
-    Exit;
-  end;
-  TAtlasGuard.Run(TAtlasFeature.UnitRelations,
-    procedure
-    begin
-      if TAtlasIdeUnitRelationsWindow.Visible then
+  end
+  else
+  begin
+    TAtlasGuard.Run(TAtlasFeature.UnitRelations,
+      procedure
       begin
-        Update;
-      end;
-      FCost.Update;
-    end);
+        if TAtlasIdeUnitRelationsWindow.Visible then
+        begin
+          Update;
+        end;
+        FCost.Update;
+      end);
+  end;
+  // Dieser Takt hat schon abgeräumt (ohne Editor kein Feld der interface-Kosten); danach Ruhe bis Wake.
+  if not TAtlasIdeOpenWatch.EditorOpen and not TAtlasIdeUnitRelationsWindow.Visible then
+  begin
+    FTimer.Enabled := False;
+  end;
 end;
 
 procedure TUnitRelationsState.Wire(AFrame: TAtlasUnitRelationsFrame);
@@ -800,6 +827,7 @@ begin
   end;
   TUnitRelationsState(FState).Reset;
   TUnitRelationsState(FState).Update;
+  TUnitRelationsState(FState).Wake;
   if mFrame.Filter.CanFocus then
   begin
     mFrame.Filter.SetFocus;
@@ -929,6 +957,7 @@ begin
   end;
   // build.showInterfaceCost oder Sprache geändert: Feld mit dem nächsten Takt neu.
   TUnitRelationsState(FState).HideCost;
+  TUnitRelationsState(FState).Wake;
 end;
 
 class procedure TAtlasIdeUnitRelations.ThemeChanged;

@@ -66,7 +66,7 @@ type
     procedure TreeChange(Sender: TObject; Node: TTreeNode);
     procedure TreeToggled(Sender: TObject; Node: TTreeNode);
     procedure TreeDblClick(Sender: TObject);
-    procedure TreeMouseUp(Sender: TObject; Button: TMouseButton; Shift: TShiftState; X, Y: Integer);
+    procedure TreeContextPopup(Sender: TObject; MousePos: TPoint; var Handled: Boolean);
     procedure TreeCustomDraw(Sender: TCustomTreeView; Node: TTreeNode; State: TCustomDrawState;
       var DefaultDraw: Boolean);
     procedure TreeDragOver(Sender, Source: TObject; X, Y: Integer; State: TDragState; var Accept: Boolean);
@@ -268,7 +268,9 @@ begin
   FTree.OnExpanded := TreeToggled;
   FTree.OnCollapsed := TreeToggled;
   FTree.OnDblClick := TreeDblClick;
-  FTree.OnMouseUp := TreeMouseUp;
+  // Kontextmenü über WM_CONTEXTMENU (auch Menütaste, Umschalt+F10) und als behandelt melden: Sonst läuft die
+  // Nachricht zum Andockfenster weiter, das zuerst sein eigenes Menü (Andockbar …) zeigt.
+  FTree.OnContextPopup := TreeContextPopup;
   FTree.OnCustomDrawItem := TreeCustomDraw;
   FTree.OnDragOver := TreeDragOver;
   FTree.OnDragDrop := TreeDragDrop;
@@ -406,18 +408,33 @@ begin
   end;
 end;
 
-procedure TAtlasStructureFrame.TreeMouseUp(Sender: TObject; Button: TMouseButton; Shift: TShiftState;
-  X, Y: Integer);
+procedure TAtlasStructureFrame.TreeContextPopup(Sender: TObject; MousePos: TPoint; var Handled: Boolean);
 var
   mNode: TTreeNode;
+  mRect: TRect;
 begin
-  mNode := FTree.GetNodeAt(X, Y);
-  if (Button <> mbRight) or (NameOf(mNode) = '') or not Assigned(FOnMenu) then
+  // Tastatur (Menütaste): MousePos = (-1, -1), dann der ausgewählte Knoten.
+  if (MousePos.X < 0) and (MousePos.Y < 0) then
+  begin
+    mNode := FTree.Selected;
+    if mNode <> nil then
+    begin
+      mRect := mNode.DisplayRect(True);
+      MousePos := Point(mRect.Left, mRect.Bottom);
+    end;
+  end
+  else
+  begin
+    mNode := FTree.GetNodeAt(MousePos.X, MousePos.Y);
+  end;
+  // Auf leerer Fläche bleibt das Menü des Andockfensters (Andockbar, Vordergrund) erreichbar.
+  if (NameOf(mNode) = '') or not Assigned(FOnMenu) then
   begin
     Exit;
   end;
+  Handled := True;
   FTree.Selected := mNode;
-  FOnMenu(NameOf(mNode), FTree.ClientToScreen(Point(X, Y)));
+  FOnMenu(NameOf(mNode), FTree.ClientToScreen(MousePos));
 end;
 
 procedure TAtlasStructureFrame.TreeCustomDraw(Sender: TCustomTreeView; Node: TTreeNode; State: TCustomDrawState;

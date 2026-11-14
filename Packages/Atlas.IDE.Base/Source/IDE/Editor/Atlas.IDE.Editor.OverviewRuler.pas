@@ -75,6 +75,7 @@ uses
   Atlas.IDE.Foundation.EditorSnapshot,
   Atlas.IDE.Foundation.EditorStyle,
   Atlas.IDE.Foundation.Navigation,
+  Atlas.IDE.Foundation.OpenWatch,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Problems.Controller,
   Atlas.IDE.Contracts.LineChanges;
@@ -111,6 +112,9 @@ type
     FHoverMark: Integer;
     FHoverPoint: TPoint;
     FHoverSince: UInt64;
+    /// <summary>Anmeldung bei TAtlasIdeOpenWatch: ohne Quelltext-Editor ruht der Takt.</summary>
+    FOpenHandle: Integer;
+    procedure OpenChanged;
     procedure Tick(Sender: TObject);
     function ActiveRuler: TAtlasOverviewRuler;
     function CreateRuler: TAtlasOverviewRuler;
@@ -168,16 +172,32 @@ begin
   FTimer := TTimer.Create(nil);
   FTimer.Interval := cTickMs;
   FTimer.OnTimer := Tick;
-  FTimer.Enabled := True;
+  // Ohne Quelltext-Ansicht hat Update nichts zu zeigen (keine aktive Ansicht); der Takt lief sonst auch auf der
+  // Willkommensseite.
+  FOpenHandle := TAtlasIdeOpenWatch.Register(OpenChanged);
+  FTimer.Enabled := TAtlasIdeOpenWatch.EditorOpen;
   Reset;
 end;
 
 destructor TOverviewState.Destroy;
 begin
+  TAtlasIdeOpenWatch.Unregister(FOpenHandle);
   FTimer.Free;
   FTip.Free;
   FHost.Free;
   inherited Destroy;
+end;
+
+procedure TOverviewState.OpenChanged;
+begin
+  if TAtlasIdeOpenWatch.EditorOpen then
+  begin
+    FTimer.Enabled := True;
+    Exit;
+  end;
+  // Letzter Quelltext-Editor zu: Vorschau schließen, danach ruht der Takt.
+  FTimer.Enabled := False;
+  HoverEnd;
 end;
 
 procedure TOverviewState.Tick(Sender: TObject);

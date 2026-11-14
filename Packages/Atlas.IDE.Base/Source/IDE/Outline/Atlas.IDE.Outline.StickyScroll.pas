@@ -33,7 +33,9 @@
 //   ab (ceoDisableScrollDC), und EditorScrolled zeichnet sofort ganz neu.
 //   Zeitgeber und PaintLine fangen Bildläufe ohne Ereignis weiter ab.
 // - Klick (links, ohne Umschalttasten) auf eine Kopfzeile springt nach dem
-//   Mausereignis zum Namen im Kopf.
+//   Loslassen der Maustaste zum Namen im Kopf und verwirft die Markierung, die
+//   der Editor ab der verdeckten Zeile begonnen hat (vorher markierte der
+//   Sprung bei noch gedrückter Taste den ganzen Bereich dazwischen).
 // - Strg+Klick auf einen Bezeichner im Kopf springt über SetDefinitionJump zu
 //   dessen Definition; wo der Kopf keinen Quelltext zeigt, wie ein Klick zum
 //   Namen im Kopf. Gehe zu Definition der IDE, die der Klick ebenfalls
@@ -271,6 +273,12 @@ type
     Known: Boolean;
     CtrlFile: string;
     CtrlTick: UInt64;
+    /// <summary>Sprung nach einem Klick auf den Kopf, ausgeführt erst nach dem Loslassen der Maustaste: Solange sie
+    /// gedrückt ist, zieht der Editor ab der verdeckten Zeile eine Markierung bis zur Sprungstelle auf.</summary>
+    JumpPending: Boolean;
+    JumpFile: string;
+    JumpLine: Integer;
+    JumpCharacter: Integer;
   end;
 
   TStickyState = class(TStickyPainter)
@@ -282,6 +290,8 @@ type
     FIndex: Integer;
     FOn: Boolean;
     procedure Tick(Sender: TObject);
+    /// <summary>Gemerkten Sprung ausführen, sobald die linke Maustaste oben ist.</summary>
+    procedure RunPendingJump;
     procedure Clear;
     procedure Update;
     procedure QueueInvalidate;
@@ -389,9 +399,32 @@ begin
   inherited Destroy;
 end;
 
+procedure TStickyState.RunPendingJump;
+begin
+  if not FPointer.JumpPending or (GetAsyncKeyState(VK_LBUTTON) < 0) then
+  begin
+    Exit;
+  end;
+  FPointer.JumpPending := False;
+  TAtlasGuard.Run(TAtlasFeature.StickyScroll,
+    procedure
+    var
+      mView: IOTAEditView;
+    begin
+      TAtlasIdeNavigation.GoToLocation(FPointer.JumpFile, FPointer.JumpLine, FPointer.JumpCharacter);
+      // Was der Editor beim Klick auf die verdeckte Zeile als Markierung begonnen hat, verwerfen.
+      mView := TAtlasEditorBuffer.ActiveView;
+      if (mView <> nil) and (mView.Block <> nil) then
+      begin
+        mView.Block.Reset;
+      end;
+    end);
+end;
+
 procedure TStickyState.Tick(Sender: TObject);
 begin
   try
+    RunPendingJump;
     Update;
   except
     on E: Exception do
@@ -1331,21 +1364,6 @@ begin
   end;
 end;
 
-/// <summary>Nach dem Mausereignis zu AFileName, ALine, ACharacter (0-basiert) springen: der Editor setzt sonst den
-/// Cursor auf die angeklickte Stelle.</summary>
-procedure QueueJump(const AFileName: string; ALine, ACharacter: Integer);
-begin
-  TAtlasMainThread.ForceQueue(TAtlasFeature.StickyScroll,
-    procedure
-    begin
-      TAtlasGuard.Run(TAtlasFeature.StickyScroll,
-        procedure
-        begin
-          TAtlasIdeNavigation.GoToLocation(AFileName, ALine, ACharacter);
-        end);
-    end);
-end;
-
 /// <summary>Nach dem Mausereignis zur Definition des Bezeichners an ALine, ACharacter (0-basiert) springen.</summary>
 procedure QueueDefinition(const AFileName: string; ALine, ACharacter: Integer);
 begin
@@ -1398,7 +1416,12 @@ begin
         Exit;
       end;
     end;
-    QueueJump(FFileName, FRows[mRow].Line, FRows[mRow].Character);
+    FPointer.JumpPending := True;
+    FPointer.JumpFile := FFileName;
+    FPointer.JumpLine := FRows[mRow].Line;
+    FPointer.JumpCharacter := FRows[mRow].Character;
+    // Gleich prüfen, falls die Taste schon wieder oben ist; sonst übernimmt der Takt.
+    TAtlasMainThread.ForceQueue(TAtlasFeature.StickyScroll, RunPendingJump);
   except
     on E: Exception do
       TAtlasGuard.Report(TAtlasFeature.StickyScroll, E);

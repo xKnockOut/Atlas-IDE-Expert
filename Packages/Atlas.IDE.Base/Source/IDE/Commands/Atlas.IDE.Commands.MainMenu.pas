@@ -210,6 +210,10 @@ uses
   Atlas.Core.Lsp.Progress;
 
 const
+  /// <summary>Takt des Fortschritts im Menütitel, solange ein Vorgang läuft.</summary>
+  cProgressMs = 500;
+  /// <summary>Takt ohne laufenden Vorgang (Willkommensseite, Server ruht).</summary>
+  cIdleProgressMs = 2000;
   // Name des Menüs „Tools“ in der IDE; Atlas steht dahinter, sonst am Ende.
   cToolsMenu = 'ToolsMenu';
   // Menü „Ansicht“ der IDE; dort steht das Untermenü „Atlas“ (#909, #1455).
@@ -386,7 +390,7 @@ begin
   UpdateKeyMap;
   UpdateImage;
   FTimer := TTimer.Create(nil);
-  FTimer.Interval := 500;
+  FTimer.Interval := cProgressMs;
   FTimer.OnTimer := TimerTick;
 end;
 
@@ -628,6 +632,16 @@ begin
       if Assigned(FProgress) then
       begin
         mText := FProgress();
+      end;
+      // Ohne laufenden Vorgang seltener nachsehen: Der Fortschritt kommt aus dem Server ohne Meldung im
+      // Hauptthread; 2 s Verzug beim Erscheinen genügen für den Menütitel, solange er läuft, wieder 500 ms.
+      if mText = '' then
+      begin
+        FTimer.Interval := cIdleProgressMs;
+      end
+      else
+      begin
+        FTimer.Interval := cProgressMs;
       end;
       if mText = FShownProgress then
       begin

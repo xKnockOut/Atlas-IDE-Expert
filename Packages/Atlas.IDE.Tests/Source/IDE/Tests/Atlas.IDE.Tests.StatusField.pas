@@ -1,7 +1,8 @@
 ﻿unit Atlas.IDE.Tests.StatusField;
 
 // Teststand als Feld der Atlas-Statusleiste (#1777, editor.statusBar.tests):
-// - Ein Zeitgeber (500 ms) bestimmt das Testprojekt der aktuellen Datei
+// - Ein Zeitgeber (500 ms, nur mit geladenem Projekt laut TAtlasIdeOpenWatch)
+//   bestimmt das Testprojekt der aktuellen Datei
 //   (Testunit: ihr Testprojekt; sonst wie „Tests ausführen“ das aktive bzw.
 //   das erste der Projektgruppe, ohne Rückfrage) und setzt das Zusatzfeld
 //   „Tests 41/42“ mit Ampelpunkt über TAtlasIdeHost.SetStatusItem; Text,
@@ -46,6 +47,8 @@ type
     /// <summary>Zuletzt gesetzter Inhalt (Text, Zustand, Tooltip); '' = kein Feld.</summary>
     FShown: string;
     FRerunFailed: Boolean;
+    /// <summary>Anmeldung bei TAtlasIdeOpenWatch: ohne Projekt ruht der Takt.</summary>
+    FOpenHandle: Integer;
     procedure Tick(Sender: TObject);
     procedure Refresh;
     procedure ResolveProject;
@@ -75,6 +78,7 @@ uses
   Atlas.Text.TestResults,
   Atlas.Core.Diagnostics.Guard,
   Atlas.IDE.Foundation.Host,
+  Atlas.IDE.Foundation.OpenWatch,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Tests.Projects,
   Atlas.UI.Tests.Strings;
@@ -159,12 +163,19 @@ begin
   FTimer := TTimer.Create(nil);
   FTimer.Interval := cTickMs;
   FTimer.OnTimer := Tick;
+  // Projekt geöffnet oder geschlossen: Takt an bzw. Feld weg (ApplySettings).
+  FOpenHandle := TAtlasIdeOpenWatch.Register(
+    procedure
+    begin
+      TAtlasGuard.Run(TAtlasFeature.Build, ApplySettings);
+    end);
   ApplySettings;
 end;
 
 destructor TAtlasIdeTestStatusField.Destroy;
 begin
-  // Erst der Zeitgeber, dann das Feld: Danach hält Base keinen Klick dieses Objekts mehr.
+  // Erst Beobachter und Zeitgeber, dann das Feld: Danach hält Base keinen Klick dieses Objekts mehr.
+  TAtlasIdeOpenWatch.Unregister(FOpenHandle);
   FreeAndNil(FTimer);
   Clear;
   FreeAndNil(FMenu);
@@ -339,7 +350,9 @@ end;
 
 procedure TAtlasIdeTestStatusField.ApplySettings;
 begin
-  FTimer.Enabled := Wanted;
+  // Ohne Projekt gibt es kein Testprojekt und kein Feld; der Takt lief sonst alle 500 ms auch auf der
+  // Willkommensseite. Ohne Projekt räumt der else-Zweig das Feld ab.
+  FTimer.Enabled := Wanted and TAtlasIdeOpenWatch.ProjectOpen;
   if FTimer.Enabled then
   begin
     // Neue Texte (Sprache) und Einstellungen sofort.

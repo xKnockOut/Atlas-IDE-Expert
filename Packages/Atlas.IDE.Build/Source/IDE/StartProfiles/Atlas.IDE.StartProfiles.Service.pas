@@ -53,6 +53,9 @@ type
   private
     FTimer: TTimer;
     FStamp: string;
+    /// <summary>Anmeldung bei TAtlasIdeOpenWatch: ohne Projekt ruht der Takt.</summary>
+    FOpenHandle: Integer;
+    procedure OpenChanged;
     procedure Tick(Sender: TObject);
     procedure Check(AForce: Boolean);
     procedure Publish(const AProject: string);
@@ -97,6 +100,7 @@ uses
   Vcl.Forms,
   Vcl.Dialogs,
   Atlas.Core.Diagnostics.Guard,
+  Atlas.IDE.Foundation.OpenWatch,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Foundation.StartOptions,
   Atlas.IDE.Foundation.EditorStyle,
@@ -120,17 +124,28 @@ begin
   FTimer := TTimer.Create(nil);
   FTimer.Interval := cCheckMs;
   FTimer.OnTimer := Tick;
-  FTimer.Enabled := True;
+  // Ohne Projekt gibt es kein Profil und keine Datei zu beobachten; der Takt lief sonst jede Sekunde auch auf der
+  // Willkommensseite.
+  FOpenHandle := TAtlasIdeOpenWatch.Register(OpenChanged);
+  FTimer.Enabled := TAtlasIdeOpenWatch.ProjectOpen;
 end;
 
 destructor TAtlasIdeStartProfiles.Destroy;
 begin
+  TAtlasIdeOpenWatch.Unregister(FOpenHandle);
   FTimer.Free;
   if Assigned(FOnStatus) then
   begin
     FOnStatus('', '');
   end;
   inherited Destroy;
+end;
+
+procedure TAtlasIdeStartProfiles.OpenChanged;
+begin
+  FTimer.Enabled := TAtlasIdeOpenWatch.ProjectOpen;
+  // Gleich prüfen: beim Öffnen das Profil setzen, beim Schließen das Statusfeld leeren (letzter Takt).
+  Tick(nil);
 end;
 
 procedure TAtlasIdeStartProfiles.Tick(Sender: TObject);

@@ -628,6 +628,7 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.IDE.Foundation.Files` | `IDE/Foundation/Atlas.IDE.Foundation.Files.pas` | Ordner `IDE/Foundation` |
 | `Atlas.IDE.Foundation.GutterColumns` | `IDE/Foundation/Atlas.IDE.Foundation.GutterColumns.pas` | Ordner `IDE/Foundation` |
 | `Atlas.IDE.Foundation.GutterMarks` | `IDE/Foundation/Atlas.IDE.Foundation.GutterMarks.pas` | Ordner `IDE/Foundation` |
+| `Atlas.IDE.Foundation.OpenWatch` | `IDE/Foundation/Atlas.IDE.Foundation.OpenWatch.pas` | Ordner `IDE/Foundation` |
 | `Atlas.IDE.ElementHelp.Keys` | `IDE/ElementHelp/Atlas.IDE.ElementHelp.Keys.pas` | Ordner `IDE/ElementHelp`: F1 in Atlas-Fenstern und auf der Optionsseite, fragt das Modul Hilfe nach `IAtlasHelpProvider` (#1886) |
 | `Atlas.IDE.Foundation.Host` | `IDE/Foundation/Atlas.IDE.Foundation.Host.pas` | Dienste von Base für die Module (Sitzung, Serverbefehle, Meldungen, Warnungen, Log, Statusfeld), #1455 |
 | `Atlas.IDE.Foundation.KeyHook` | `IDE/Foundation/Atlas.IDE.Foundation.KeyHook.pas` | Ordner `IDE/Foundation` |

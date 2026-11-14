@@ -108,6 +108,7 @@ uses
   Atlas.IDE.Foundation.EditorBuffer,
   Atlas.IDE.Foundation.EditorStyle,
   Atlas.IDE.Foundation.Navigation,
+  Atlas.IDE.Foundation.OpenWatch,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Problems.Controller,
   Atlas.IDE.Problems.Service,
@@ -115,6 +116,9 @@ uses
 
 const
   cTickMs = 250;
+  /// <summary>Takt ohne Quelltext-Editor: Die Leiste zeigt dann nur Status und Plakette (auch auf der
+  /// Willkommensseite); dafür reicht eine Sekunde.</summary>
+  cIdleTickMs = 1000;
   cLogPrefix = 'Atlas-Statusleiste: ';
 
 type
@@ -127,6 +131,9 @@ type
     FWanted: Boolean;
     // Methode der obersten Leiste beim letzten Takt: Ziel des Klicks.
     FTarget: TAtlasStatusBarMethodTarget;
+    /// <summary>Anmeldung bei TAtlasIdeOpenWatch: ohne Quelltext-Editor langsamerer Takt.</summary>
+    FOpenHandle: Integer;
+    procedure OpenChanged;
     procedure Tick(Sender: TObject);
     function CreateBar: TAtlasEditorStatusBar;
     /// <summary>Klicks auf Status (auch doppelt, Fenster „Atlas-Server“), Schnellschalter und Plakette.</summary>
@@ -209,15 +216,32 @@ begin
   FTimer := TTimer.Create(nil);
   FTimer.Interval := cTickMs;
   FTimer.OnTimer := Tick;
+  // Nicht ganz ruhen: Ohne Editor steht die Leiste unter der Willkommensseite und zeigt Serverstatus und
+  // Benachrichtigungen, die sich ohne Ereignis ändern. Nur langsamer.
+  FOpenHandle := TAtlasIdeOpenWatch.Register(OpenChanged);
+  OpenChanged;
   FTimer.Enabled := True;
 end;
 
 destructor TStatusBarState.Destroy;
 begin
+  TAtlasIdeOpenWatch.Unregister(FOpenHandle);
   FTimer.Free;
   Want(False);
   FHost.Free;
   inherited Destroy;
+end;
+
+procedure TStatusBarState.OpenChanged;
+begin
+  if TAtlasIdeOpenWatch.EditorOpen then
+  begin
+    FTimer.Interval := cTickMs;
+  end
+  else
+  begin
+    FTimer.Interval := cIdleTickMs;
+  end;
 end;
 
 procedure TStatusBarState.Tick(Sender: TObject);

@@ -196,6 +196,7 @@
         <DCCReference Include="Source\IDE\Foundation\Atlas.IDE.Foundation.EditorBuffer.pas"/>
         <DCCReference Include="Source\IDE\Foundation\Atlas.IDE.Foundation.EditorSnapshot.pas"/>
         <DCCReference Include="Source\IDE\Foundation\Atlas.IDE.Foundation.GutterColumns.pas"/>
+        <DCCReference Include="Source\IDE\Foundation\Atlas.IDE.Foundation.OpenWatch.pas"/>
         <DCCReference Include="Source\IDE\Foundation\Atlas.IDE.Foundation.EditorRefresh.pas"/>
         <DCCReference Include="Source\IDE\Foundation\Atlas.IDE.Foundation.Files.pas"/>
         <DCCReference Include="Source\IDE\Foundation\Atlas.IDE.Foundation.EditorFiles.pas"/>

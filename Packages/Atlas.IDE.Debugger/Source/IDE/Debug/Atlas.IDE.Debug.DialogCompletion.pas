@@ -111,6 +111,9 @@ type
     // Feld des Atlas-Fensters „Auswerten“: ohne eigenen Verlauf.
     FOwnField: Boolean;
     FLogged: TStringList;
+    /// <summary>Fenster mit Fokus, das kein Eingabefeld ist (Editor, Willkommensseite); solange es den Fokus hält,
+    /// überspringt Tick die Arbeit. 0 = keins.</summary>
+    FIdleFocus: HWND;
     constructor Create(const ASession: TAtlasDialogSessionFunc; const ALog: TProc<string>;
       const AProvider: TAtlasDialogProviderFactory);
     procedure Tick(Sender: TObject);
@@ -606,12 +609,28 @@ begin
 end;
 
 procedure TAtlasIdeDebugDialogCompletion.Tick(Sender: TObject);
+var
+  mFocus: HWND;
 begin
+  // Ruht ohne Arbeit: Die Debugger-Dialoge sind auch ohne Debug-Sitzung offen (Haltepunkt, Auswerten), ein
+  // Ereignis für den Fokuswechsel gibt die IDE nicht. Hält aber dasselbe Fenster den Fokus, das schon beim letzten
+  // Takt kein Eingabefeld war, ändert Step nichts; vorher lief Step so 10-mal je Sekunde auch auf der
+  // Willkommensseite. GetFocus und FindControl werfen nicht.
+  mFocus := GetFocus;
+  if (FEdit = 0) and (mFocus = FIdleFocus) then
+  begin
+    Exit;
+  end;
+  FIdleFocus := 0;
   TAtlasGuard.Run(TAtlasFeature.Debugger,
     procedure
     begin
       Step;
     end);
+  if (FEdit = 0) and (EditControl(mFocus) = nil) then
+  begin
+    FIdleFocus := mFocus;
+  end;
 end;
 
 procedure TAtlasIdeDebugDialogCompletion.Step;
