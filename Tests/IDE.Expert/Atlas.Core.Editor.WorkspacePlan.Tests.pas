@@ -224,7 +224,7 @@ begin
   Assert.AreEqual('', Planned.Error);
   Assert.AreEqual(1, Integer(Length(Planned.Creates)));
   Assert.AreEqual('unit Neu;', Planned.Creates[0].Content.Text);
-  Assert.IsTrue(Planned.Creates[0].Kind = TAtlasFileChangeKind.Created);
+  Assert.AreEqual<TAtlasFileChangeKind>(TAtlasFileChangeKind.Created, Planned.Creates[0].Kind);
   Assert.AreEqual(1, Planned.CreatedEdits);
   Assert.AreEqual(0, Integer(Length(Planned.Files)));
 end;
@@ -292,7 +292,7 @@ begin
   Assert.AreEqual('C:\P\Neu.pas', Planned.Creates[0].FileName);
   Assert.AreEqual('C:\P\P.dproj', Planned.Creates[0].Project);
   Assert.AreEqual('unit Alt;', Planned.Creates[0].Content.Text);
-  Assert.IsTrue(Planned.Creates[0].Content.Encoding = TAtlasTextEncoding.Ansi);
+  Assert.AreEqual<TAtlasTextEncoding>(TAtlasTextEncoding.Ansi, Planned.Creates[0].Content.Encoding);
   Assert.AreEqual(1252, Planned.Creates[0].Content.CodePage);
 end;
 
@@ -463,8 +463,8 @@ end;
 
 procedure TWorkspacePlanTests.PolicyFromSetting;
 begin
-  Assert.IsTrue(TAtlasUnopenedPolicies.FromSetting(True) = TAtlasUnopenedPolicy.OpenInEditor);
-  Assert.IsTrue(TAtlasUnopenedPolicies.FromSetting(False) = TAtlasUnopenedPolicy.WriteToDisk);
+  Assert.AreEqual<TAtlasUnopenedPolicy>(TAtlasUnopenedPolicy.OpenInEditor, TAtlasUnopenedPolicies.FromSetting(True));
+  Assert.AreEqual<TAtlasUnopenedPolicy>(TAtlasUnopenedPolicy.WriteToDisk, TAtlasUnopenedPolicies.FromSetting(False));
 end;
 
 initialization

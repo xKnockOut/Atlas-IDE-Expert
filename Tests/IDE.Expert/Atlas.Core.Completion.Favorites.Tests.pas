@@ -226,7 +226,7 @@ begin
   try
     Open := Member('Open', 'TDataSet', 1, 0);
     Assert.IsFalse(Favorites.IsFavorite(Open));
-    Assert.IsTrue(Favorites.Toggle(Open) = TAtlasFavoriteToggle.Added);
+    Assert.AreEqual<TAtlasFavoriteToggle>(TAtlasFavoriteToggle.Added, Favorites.Toggle(Open));
     Assert.IsTrue(Favorites.Changed);
     // Schlüssel wie #418: Paar (Typ, Member), Groß-/Kleinschreibung egal.
     OtherCase := Member('OPEN', 'tdataset', 0, 0);
@@ -238,12 +238,12 @@ begin
     OtherType := Member('ShowMessage', '', 0, 0);
     OtherType.DeclaringUnit := 'Vcl.Dialogs';
     Assert.AreEqual('Vcl.Dialogs', TAtlasFavorites.TypeNameOf(OtherType));
-    Assert.IsTrue(Favorites.Toggle(OtherType) = TAtlasFavoriteToggle.Added);
+    Assert.AreEqual<TAtlasFavoriteToggle>(TAtlasFavoriteToggle.Added, Favorites.Toggle(OtherType));
     Assert.AreEqual(1, Favorites.CountOf('VCL.DIALOGS'));
     Items := Favorites.Items;
     Assert.AreEqual('Vcl.Dialogs.ShowMessage', Items[1].DisplayName);
     // Erneut: lösen.
-    Assert.IsTrue(Favorites.Toggle(OtherCase) = TAtlasFavoriteToggle.Removed);
+    Assert.AreEqual<TAtlasFavoriteToggle>(TAtlasFavoriteToggle.Removed, Favorites.Toggle(OtherCase));
     Assert.IsFalse(Favorites.IsFavorite(Open));
     Assert.AreEqual(1, Integer(Favorites.Count));
     Assert.IsTrue(Favorites.Remove('vcl.dialogs|showmessage'));
@@ -263,18 +263,20 @@ begin
   try
     for Index := 1 to TAtlasFavorites.cMaxPerType do
     begin
-      Assert.IsTrue(Favorites.Toggle(Member('M' + IntToStr(Index), 'TDataSet', 0, 0)) = TAtlasFavoriteToggle.Added);
+      Assert.AreEqual<TAtlasFavoriteToggle>(TAtlasFavoriteToggle.Added,
+        Favorites.Toggle(Member('M' + IntToStr(Index), 'TDataSet', 0, 0)));
     end;
     // Ein sechster ersetzt nichts.
-    Assert.IsTrue(Favorites.Toggle(Member('M6', 'TDataSet', 0, 0)) = TAtlasFavoriteToggle.Full);
+    Assert.AreEqual<TAtlasFavoriteToggle>(TAtlasFavoriteToggle.Full, Favorites.Toggle(Member('M6', 'TDataSet', 0, 0)));
     Assert.AreEqual(5, Favorites.CountOf('TDataSet'));
     Assert.IsFalse(Favorites.IsFavorite(Member('M6', 'TDataSet', 0, 0)));
     Assert.IsTrue(Favorites.IsFavorite(Member('M1', 'TDataSet', 0, 0)), 'der erste bleibt');
     // Andere Typen haben ihr eigenes Kontingent.
-    Assert.IsTrue(Favorites.Toggle(Member('M6', 'TFDQuery', 0, 0)) = TAtlasFavoriteToggle.Added);
+    Assert.AreEqual<TAtlasFavoriteToggle>(TAtlasFavoriteToggle.Added, Favorites.Toggle(Member('M6', 'TFDQuery', 0, 0)));
     // Nach dem Lösen ist wieder Platz.
-    Assert.IsTrue(Favorites.Toggle(Member('M3', 'TDataSet', 0, 0)) = TAtlasFavoriteToggle.Removed);
-    Assert.IsTrue(Favorites.Toggle(Member('M6', 'TDataSet', 0, 0)) = TAtlasFavoriteToggle.Added);
+    Assert.AreEqual<TAtlasFavoriteToggle>(TAtlasFavoriteToggle.Removed,
+      Favorites.Toggle(Member('M3', 'TDataSet', 0, 0)));
+    Assert.AreEqual<TAtlasFavoriteToggle>(TAtlasFavoriteToggle.Added, Favorites.Toggle(Member('M6', 'TDataSet', 0, 0)));
     Assert.AreEqual(6, Integer(Favorites.Count));
   finally
     Favorites.Free;
@@ -291,7 +293,7 @@ begin
     Item := Member('Neue Methode btnSaveClick …', '', 0, 0);
     Item.IsAction := True;
     Assert.IsFalse(TAtlasFavorites.CanPin(Item));
-    Assert.IsTrue(Favorites.Toggle(Item) = TAtlasFavoriteToggle.NotAllowed);
+    Assert.AreEqual<TAtlasFavoriteToggle>(TAtlasFavoriteToggle.NotAllowed, Favorites.Toggle(Item));
     Item := Member('3 Methoden von IExporter fehlen', '', 0, 0);
     Item.Hint := True;
     Assert.IsFalse(TAtlasFavorites.CanPin(Item));
@@ -332,7 +334,7 @@ begin
     Assert.AreEqual(2, Integer(Length(Items)));
     Assert.AreEqual('TDataSet', Items[0].TypeName, 'Reihenfolge des Anheftens');
     Assert.AreEqual('Open', Items[0].Member);
-    Assert.IsTrue(Items[0].Kind = TAtlasItemKind.Method);
+    Assert.AreEqual<TAtlasItemKind>(TAtlasItemKind.Method, Items[0].Kind);
     Assert.AreEqual('Data.DB', Items[0].UnitName);
     Assert.AreEqual('procedure Open', Items[0].Signature);
     Assert.AreEqual(FormatDateTime('yyyy-mm-dd hh:nn:ss', Stamp), FormatDateTime('yyyy-mm-dd hh:nn:ss', Items[0].Added));
@@ -343,8 +345,8 @@ begin
     Assert.IsTrue(Pos('"version":1', Favorites.ToJson) > 0);
     Assert.IsTrue(Pos('"added":"2026-10-15T09:30:05"', Favorites.ToJson) > 0);
     Assert.IsTrue(Pos('"kind":"method"', Favorites.ToJson) > 0);
-    Assert.IsTrue(TAtlasFavorites.KindFromName('enumMember') = TAtlasItemKind.EnumMember);
-    Assert.IsTrue(TAtlasFavorites.KindFromName('unbekannt') = TAtlasItemKind.Unknown);
+    Assert.AreEqual<TAtlasItemKind>(TAtlasItemKind.EnumMember, TAtlasFavorites.KindFromName('enumMember'));
+    Assert.AreEqual<TAtlasItemKind>(TAtlasItemKind.Unknown, TAtlasFavorites.KindFromName('unbekannt'));
   finally
     Loaded.Free;
     Favorites.Free;
@@ -376,7 +378,7 @@ begin
     Assert.IsTrue(Favorites.Contains('|ohnetyp'));
     Items := Favorites.Items;
     Assert.AreEqual('ohneTyp', Items[1].Member);
-    Assert.IsTrue(Items[1].Added = 0, 'unlesbares Datum: 0');
+    Assert.AreEqual<TDateTime>(0, Items[1].Added, 'unlesbares Datum: 0');
     Assert.AreEqual(7, Integer(Favorites.Count));
   finally
     Favorites.Free;
@@ -532,11 +534,12 @@ begin
     Controller.GroupInherited := True;
     StartAndWait(Controller, '');
     Assert.AreEqual('ExecSQL,ParamByName,#,Active,Close,FieldByName,Open', View.Names);
-    Assert.IsTrue(Controller.ToggleFavorite(PositionOf(Controller, 'Open'), Item) = TAtlasFavoriteToggle.Added);
+    Assert.AreEqual<TAtlasFavoriteToggle>(TAtlasFavoriteToggle.Added,
+      Controller.ToggleFavorite(PositionOf(Controller, 'Open'), Item));
     Assert.AreEqual('Open', Item.Name);
     Assert.IsTrue(Item.Favorite);
-    Assert.IsTrue(Controller.ToggleFavorite(PositionOf(Controller, 'ParamByName'), Item) =
-      TAtlasFavoriteToggle.Added);
+    Assert.AreEqual<TAtlasFavoriteToggle>(TAtlasFavoriteToggle.Added,
+      Controller.ToggleFavorite(PositionOf(Controller, 'ParamByName'), Item));
     Assert.AreEqual('ParamByName,Open,ExecSQL,#,Active,Close,FieldByName', View.Names, 'sofort neu sortiert');
     Assert.IsTrue(Controller.Items[Controller.Order[0]].Favorite);
     // Nächste Abfrage (andere Query, dieselben Typen): beide oben.
@@ -554,7 +557,7 @@ begin
     Controller.Favorites := nil;
     StartAndWait(Controller, '');
     Assert.AreEqual('ExecSQL,ParamByName,#,Active,Close,FieldByName,Open', View.Names);
-    Assert.IsTrue(Controller.ToggleSelectedFavorite(Item) = TAtlasFavoriteToggle.NotAllowed);
+    Assert.AreEqual<TAtlasFavoriteToggle>(TAtlasFavoriteToggle.NotAllowed, Controller.ToggleSelectedFavorite(Item));
   finally
     Controller.Free;
     Restarted.Free;
@@ -589,15 +592,17 @@ begin
     Controller.Favorites := Favorites;
     StartAndWait(Controller, '');
     Before := View.Names;
-    Assert.IsTrue(Controller.ToggleFavorite(PositionOf(Controller, 'Open'), Item) = TAtlasFavoriteToggle.Full);
+    Assert.AreEqual<TAtlasFavoriteToggle>(TAtlasFavoriteToggle.Full,
+      Controller.ToggleFavorite(PositionOf(Controller, 'Open'), Item));
     Assert.AreEqual('TDataSet', TAtlasFavorites.TypeNameOf(Item), 'für den Hinweis in der Fußzeile');
     Assert.AreEqual(Before, View.Names, 'nichts geändert');
     Assert.IsFalse(Favorites.IsFavorite(Item));
     // Überschriften lassen sich nicht anheften.
     Controller.GroupInherited := True;
     StartAndWait(Controller, '');
-    Assert.IsTrue(Controller.ToggleFavorite(2, Item) = TAtlasFavoriteToggle.NotAllowed, 'Überschrift');
-    Assert.IsTrue(Controller.ToggleFavorite(99, Item) = TAtlasFavoriteToggle.NotAllowed);
+    Assert.AreEqual<TAtlasFavoriteToggle>(TAtlasFavoriteToggle.NotAllowed,
+      Controller.ToggleFavorite(2, Item), 'Überschrift');
+    Assert.AreEqual<TAtlasFavoriteToggle>(TAtlasFavoriteToggle.NotAllowed, Controller.ToggleFavorite(99, Item));
   finally
     Controller.Free;
     Favorites.Free;
@@ -623,17 +628,18 @@ begin
     Assert.AreEqual('ExecSQL,ParamByName,Active,Close,FieldByName,Open', View.Names);
     Controller.HandleKey(TAtlasNavigationKey.Last);
     // Strg+D: der gewählte Eintrag wandert nach oben, die Auswahl geht mit.
-    Assert.IsTrue(Controller.ToggleSelectedFavorite(Item) = TAtlasFavoriteToggle.Added);
+    Assert.AreEqual<TAtlasFavoriteToggle>(TAtlasFavoriteToggle.Added, Controller.ToggleSelectedFavorite(Item));
     Assert.AreEqual('Open,ExecSQL,ParamByName,Active,Close,FieldByName', View.Names);
     Assert.AreEqual(0, View.Selected);
     Assert.IsTrue(Controller.SelectedItem(Item));
     Assert.AreEqual('Open', Item.Name);
     // Stern einer anderen Zeile: Die Auswahl bleibt auf Open.
-    Assert.IsTrue(Controller.ToggleFavorite(PositionOf(Controller, 'Close'), Item) = TAtlasFavoriteToggle.Added);
+    Assert.AreEqual<TAtlasFavoriteToggle>(TAtlasFavoriteToggle.Added,
+      Controller.ToggleFavorite(PositionOf(Controller, 'Close'), Item));
     Assert.AreEqual('Close,Open,ExecSQL,ParamByName,Active,FieldByName', View.Names);
     Assert.AreEqual(1, View.Selected);
     // Lösen: zurück an den gewohnten Platz.
-    Assert.IsTrue(Controller.ToggleSelectedFavorite(Item) = TAtlasFavoriteToggle.Removed);
+    Assert.AreEqual<TAtlasFavoriteToggle>(TAtlasFavoriteToggle.Removed, Controller.ToggleSelectedFavorite(Item));
     Assert.IsFalse(Item.Favorite);
     Assert.AreEqual('Close,ExecSQL,ParamByName,Active,FieldByName,Open', View.Names);
     Assert.AreEqual(5, View.Selected);
@@ -655,13 +661,13 @@ begin
   Favorites := TAtlasFavorites.Create;
   try
     TFile.WriteAllText(FileName, '{kaputt');
-    Assert.IsTrue(Favorites.LoadFromFile(FileName) = TAtlasDataLoad.Renewed);
+    Assert.AreEqual<TAtlasDataLoad>(TAtlasDataLoad.Renewed, Favorites.LoadFromFile(FileName));
     Assert.AreEqual('{kaputt', TFile.ReadAllText(FileName + TAtlasDataFile.cDefectExtension, TEncoding.UTF8));
     Favorites.Toggle(Member('Open', 'TDataSet', 1, 0));
     Assert.IsTrue(Favorites.SaveToFile(FileName));
     Lock := TFileStream.Create(FileName, fmOpenRead or fmShareExclusive);
     try
-      Assert.IsTrue(Favorites.LoadFromFile(FileName) = TAtlasDataLoad.Kept);
+      Assert.AreEqual<TAtlasDataLoad>(TAtlasDataLoad.Kept, Favorites.LoadFromFile(FileName));
     finally
       Lock.Free;
     end;

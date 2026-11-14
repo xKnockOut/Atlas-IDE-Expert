@@ -66,7 +66,7 @@ var
 begin
   Found := Parsed(Answer);
   Assert.IsTrue(Found.Found);
-  Assert.IsTrue(Found.Query = TAtlasExitPointQuery.Routine);
+  Assert.AreEqual<TAtlasExitPointQuery>(TAtlasExitPointQuery.Routine, Found.Query);
   Assert.IsTrue(Found.HasRoutine);
   Assert.AreEqual('TFoo.Wert', Found.RoutineName);
   Assert.AreEqual(6, Found.RoutineLine);
@@ -77,11 +77,11 @@ begin
   Assert.IsTrue(Found.ResultMissing);
   // Unbekannte Arten fallen weg.
   Assert.AreEqual(3, Integer(Length(Found.Points)));
-  Assert.IsTrue(Found.Points[0].Kind = TAtlasExitPointKind.ExitCall);
+  Assert.AreEqual<TAtlasExitPointKind>(TAtlasExitPointKind.ExitCall, Found.Points[0].Kind);
   Assert.IsTrue(Found.Points[0].ResultMissing);
-  Assert.IsTrue(Found.Points[1].Kind = TAtlasExitPointKind.RaisingCall);
+  Assert.AreEqual<TAtlasExitPointKind>(TAtlasExitPointKind.RaisingCall, Found.Points[1].Kind);
   Assert.AreEqual('Abort', Found.Points[1].Detail);
-  Assert.IsTrue(Found.Points[2].Kind = TAtlasExitPointKind.FallThrough);
+  Assert.AreEqual<TAtlasExitPointKind>(TAtlasExitPointKind.FallThrough, Found.Points[2].Kind);
   Assert.AreEqual(1, Integer(Length(Found.PointsAt(12))));
   Assert.AreEqual(0, Integer(Length(Found.PointsAt(10))));
   Assert.IsTrue(Found.HasBadge);
@@ -174,15 +174,15 @@ var
   Point: TAtlasExitPoint;
 begin
   Found := Parsed(Answer);
-  Assert.IsTrue(Found.Points[0].Role = TAtlasExitPointRole.Missing);
-  Assert.IsTrue(Found.Points[1].Role = TAtlasExitPointRole.Leave);
+  Assert.AreEqual<TAtlasExitPointRole>(TAtlasExitPointRole.Missing, Found.Points[0].Role);
+  Assert.AreEqual<TAtlasExitPointRole>(TAtlasExitPointRole.Leave, Found.Points[1].Role);
   Point := Default(TAtlasExitPoint);
   Point.Kind := TAtlasExitPointKind.ResultAssign;
-  Assert.IsTrue(Point.Role = TAtlasExitPointRole.Assign);
+  Assert.AreEqual<TAtlasExitPointRole>(TAtlasExitPointRole.Assign, Point.Role);
   Point.Kind := TAtlasExitPointKind.ExceptionSource;
-  Assert.IsTrue(Point.Role = TAtlasExitPointRole.Source);
+  Assert.AreEqual<TAtlasExitPointRole>(TAtlasExitPointRole.Source, Point.Role);
   Point.Kind := TAtlasExitPointKind.LoopJump;
-  Assert.IsTrue(Point.Role = TAtlasExitPointRole.Loop);
+  Assert.AreEqual<TAtlasExitPointRole>(TAtlasExitPointRole.Loop, Point.Role);
   Assert.AreEqual('3 exits ' + #$00B7 + ' missing', TAtlasExitPoints.BadgeText(Found, 'one', '%d exits', 'missing'));
   Found.Exits := 1;
   Found.ResultMissing := False;
@@ -205,7 +205,7 @@ begin
   Assert.IsTrue(Settings.ExitPointsLoops);
   Assert.IsTrue(Settings.ExitPointsBadge);
   Assert.IsTrue(TAtlasDrawnElements.ForSetting('ExitPoints', Element));
-  Assert.IsTrue(Element = TAtlasDrawnElement.ExitPoints);
+  Assert.AreEqual<TAtlasDrawnElement>(TAtlasDrawnElement.ExitPoints, Element);
   Assert.IsTrue(TAtlasDrawnElements.Info(Element).Overlay);
   Assert.IsFalse(TAtlasDrawnElements.Info(Element).Gutter);
 end;

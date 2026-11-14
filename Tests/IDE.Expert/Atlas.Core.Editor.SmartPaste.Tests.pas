@@ -67,10 +67,10 @@ end;
 
 procedure TAtlasSmartPasteTests.ModesAndThreshold;
 begin
-  Assert.IsTrue(TAtlasSmartPaste.ModeOf('both') = TAtlasPasteMode.Both);
-  Assert.IsTrue(TAtlasSmartPaste.ModeOf('USES') = TAtlasPasteMode.UsesOnly);
-  Assert.IsTrue(TAtlasSmartPaste.ModeOf('indent') = TAtlasPasteMode.IndentOnly);
-  Assert.IsTrue(TAtlasSmartPaste.ModeOf('x') = TAtlasPasteMode.Off);
+  Assert.AreEqual<TAtlasPasteMode>(TAtlasPasteMode.Both, TAtlasSmartPaste.ModeOf('both'));
+  Assert.AreEqual<TAtlasPasteMode>(TAtlasPasteMode.UsesOnly, TAtlasSmartPaste.ModeOf('USES'));
+  Assert.AreEqual<TAtlasPasteMode>(TAtlasPasteMode.IndentOnly, TAtlasSmartPaste.ModeOf('indent'));
+  Assert.AreEqual<TAtlasPasteMode>(TAtlasPasteMode.Off, TAtlasSmartPaste.ModeOf('x'));
   Assert.IsTrue(TAtlasSmartPaste.WantsUses(TAtlasPasteMode.Both));
   Assert.IsFalse(TAtlasSmartPaste.WantsUses(TAtlasPasteMode.IndentOnly));
   Assert.IsTrue(TAtlasSmartPaste.WantsIndent(TAtlasPasteMode.IndentOnly));

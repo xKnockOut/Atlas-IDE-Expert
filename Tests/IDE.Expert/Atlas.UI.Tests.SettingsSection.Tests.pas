@@ -126,9 +126,9 @@ begin
     mPage.Parent := mHost;
     mPage.HandleNeeded;
     // Unterpunkte (x-node) der Bereiche von Base nehmen auch die Zeilen des Moduls auf.
-    Assert.IsTrue(SheetOf(CheckOf(mPage, 'TestRun')) = mPage.NodeSheet('compiler.tests'), 'Compiler › Tests');
-    Assert.IsTrue(SheetOf(CheckOf(mPage, 'CodeLensTests')) = mPage.NodeSheet('editor.codeLens'), 'Editor › Code Lens');
-    Assert.IsTrue(SheetOf(CheckOf(mPage, 'TestDebug')) = SheetOf(CheckOf(mPage, 'TestBreakAtStart')));
+    Assert.AreSame(mPage.NodeSheet('compiler.tests'), SheetOf(CheckOf(mPage, 'TestRun')), 'Compiler › Tests');
+    Assert.AreSame(mPage.NodeSheet('editor.codeLens'), SheetOf(CheckOf(mPage, 'CodeLensTests')), 'Editor › Code Lens');
+    Assert.AreSame(SheetOf(CheckOf(mPage, 'TestBreakAtStart')), SheetOf(CheckOf(mPage, 'TestDebug')));
     Assert.IsFalse(SheetOf(CheckOf(mPage, 'TestDebug')) = SheetOf(CheckOf(mPage, 'TestsEnabled')), 'eigener Reiter');
   finally
     mHost.Free;

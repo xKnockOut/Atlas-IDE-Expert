@@ -483,7 +483,8 @@ begin
   Assert.IsTrue(HasIssue(Team, TAtlasTeamIssueKind.WrongType, 'debugDisplayRules.TZahl'));
   Assert.IsTrue(HasIssue(Team, TAtlasTeamIssueKind.UnknownKey, 'debugDisplayRules.TExtra.farbe'));
   Assert.AreEqual('debugDisplayRules', TAtlasTeamFile.Values(Team)[0].Key);
-  Assert.IsTrue(Parsed('{"version": 1, "debugDisplayRules": []}').Issues[0].Kind = TAtlasTeamIssueKind.WrongType);
+  Assert.AreEqual<TAtlasTeamIssueKind>(TAtlasTeamIssueKind.WrongType,
+    Parsed('{"version": 1, "debugDisplayRules": []}').Issues[0].Kind);
   Assert.Contains(TAtlasTeamFile.Skeleton, '"debugDisplayRules"');
 end;
 

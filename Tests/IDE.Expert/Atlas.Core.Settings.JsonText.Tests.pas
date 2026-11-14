@@ -153,20 +153,20 @@ begin
       Assert.IsTrue(Found.ContainsKey(Key), Format('%s fehlt (%d Felder)', [Key, Length(Fields)]));
     end;
     Assert.IsFalse(Found.ContainsKey('$schema'));
-    Assert.IsTrue(Found['compiler.onSave'].Kind = TAtlasSettingKind.Boolean_);
+    Assert.AreEqual<TAtlasSettingKind>(TAtlasSettingKind.Boolean_, Found['compiler.onSave'].Kind);
     Assert.AreEqual('Compiler', Found['compiler.onSave'].Page);
-    Assert.IsTrue(Found['language'].Kind = TAtlasSettingKind.Choice);
+    Assert.AreEqual<TAtlasSettingKind>(TAtlasSettingKind.Choice, Found['language'].Kind);
     // Vorgabe "" = wie der Client bzw. die IDE (#1458).
     Assert.AreEqual('""', Found['language'].DefaultJson);
-    Assert.IsTrue(Found['format.indentSize'].Kind = TAtlasSettingKind.Integer_);
-    Assert.IsTrue(Found['exclude'].Kind = TAtlasSettingKind.List);
-    Assert.IsTrue(Found['rules'].Kind = TAtlasSettingKind.Complex);
-    Assert.IsTrue(Found['overrides'].Kind = TAtlasSettingKind.Complex);
-    Assert.IsTrue(Found['sortUses'].Kind = TAtlasSettingKind.Choice);
-    Assert.IsTrue(Found['profile'].Kind = TAtlasSettingKind.Text);
+    Assert.AreEqual<TAtlasSettingKind>(TAtlasSettingKind.Integer_, Found['format.indentSize'].Kind);
+    Assert.AreEqual<TAtlasSettingKind>(TAtlasSettingKind.List, Found['exclude'].Kind);
+    Assert.AreEqual<TAtlasSettingKind>(TAtlasSettingKind.Complex, Found['rules'].Kind);
+    Assert.AreEqual<TAtlasSettingKind>(TAtlasSettingKind.Complex, Found['overrides'].Kind);
+    Assert.AreEqual<TAtlasSettingKind>(TAtlasSettingKind.Choice, Found['sortUses'].Kind);
+    Assert.AreEqual<TAtlasSettingKind>(TAtlasSettingKind.Text, Found['profile'].Kind);
     Assert.AreEqual('Allgemein', TAtlasSettingsSchema.Pages(Fields)[0]);
     // Schalter für die globale Datei im MCP-Modus, als Kontrollkästchen der Projekt-Einstellungen.
-    Assert.IsTrue(Found['mcp.globalSettings'].Kind = TAtlasSettingKind.Boolean_);
+    Assert.AreEqual<TAtlasSettingKind>(TAtlasSettingKind.Boolean_, Found['mcp.globalSettings'].Kind);
     Assert.AreEqual('MCP', Found['mcp.globalSettings'].Page);
     Assert.IsFalse(Found['mcp.globalSettings'].Global, 'gehört nach atlas.json');
     Assert.AreEqual('true', Found['mcp.globalSettings'].DefaultJson);

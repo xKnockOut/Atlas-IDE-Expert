@@ -71,13 +71,17 @@ var
 begin
   mList := Default(TAtlasTestList);
   mList.Name := '  ';
-  Assert.IsTrue(TAtlasTestListText.Problem(mList, False, nil) = TAtlasTestListProblem.NameMissing);
+  Assert.AreEqual<TAtlasTestListProblem>(TAtlasTestListProblem.NameMissing,
+    TAtlasTestListText.Problem(mList, False, nil));
   mList.Name := 'Schnell ';
-  Assert.IsTrue(TAtlasTestListText.Problem(mList, False, ['Langsam', 'SCHNELL']) = TAtlasTestListProblem.NameTaken);
-  Assert.IsTrue(TAtlasTestListText.Problem(mList, True, ['Langsam']) = TAtlasTestListProblem.NoRule);
-  Assert.IsTrue(TAtlasTestListText.Problem(mList, False, ['Langsam']) = TAtlasTestListProblem.None);
+  Assert.AreEqual<TAtlasTestListProblem>(TAtlasTestListProblem.NameTaken,
+    TAtlasTestListText.Problem(mList, False, ['Langsam', 'SCHNELL']));
+  Assert.AreEqual<TAtlasTestListProblem>(TAtlasTestListProblem.NoRule,
+    TAtlasTestListText.Problem(mList, True, ['Langsam']));
+  Assert.AreEqual<TAtlasTestListProblem>(TAtlasTestListProblem.None,
+    TAtlasTestListText.Problem(mList, False, ['Langsam']));
   mList.Rules := [TAtlasTestListRule.Category('Schnell', False)];
-  Assert.IsTrue(TAtlasTestListText.Problem(mList, True, nil) = TAtlasTestListProblem.None);
+  Assert.AreEqual<TAtlasTestListProblem>(TAtlasTestListProblem.None, TAtlasTestListText.Problem(mList, True, nil));
 end;
 
 initialization

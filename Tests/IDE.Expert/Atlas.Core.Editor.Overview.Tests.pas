@@ -39,7 +39,8 @@ procedure TAtlasOverviewTests.KindsFromSetting;
 begin
   Assert.AreEqual('diagnostics,search,changes,breakpoints,bookmarks,cursor',
     TAtlasOverview.KindsText(TAtlasOverview.cAllKinds));
-  Assert.IsTrue(TAtlasOverview.Kinds('Changes, cursor') = [TAtlasOverviewKind.Changes, TAtlasOverviewKind.Cursor]);
+  Assert.AreEqual<TAtlasOverviewKinds>([TAtlasOverviewKind.Changes, TAtlasOverviewKind.Cursor],
+    TAtlasOverview.Kinds('Changes, cursor'));
   Assert.AreEqual('search,cursor', TAtlasOverview.Normalize('cursor;gibtsnicht,search,search'));
   Assert.AreEqual('', TAtlasOverview.Normalize(''));
 end;

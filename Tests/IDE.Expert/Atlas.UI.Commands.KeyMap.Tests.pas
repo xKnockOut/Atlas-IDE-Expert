@@ -279,7 +279,7 @@ begin
     Assert.IsTrue(TAtlasUiTheme.Subscribed(Window), 'folgt dem Themenwechsel');
     Assert.AreEqual(Integer(clBtnFace), Integer(Window.Color), 'keine eigene Fensterfarbe');
     Assert.AreEqual(Integer(clWindow), Integer(Window.List.Color), 'keine eigene Listenfarbe');
-    Assert.IsTrue(Window.BorderStyle = bsSizeable, 'Größe ziehbar');
+    Assert.AreEqual<TFormBorderStyle>(bsSizeable, Window.BorderStyle, 'Größe ziehbar');
     Window.SetItems(Sample);
     Fixed := 0;
     for Index := 0 to Window.List.Columns.Count - 2 do

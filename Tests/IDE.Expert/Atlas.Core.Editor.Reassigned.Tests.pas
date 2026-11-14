@@ -184,10 +184,10 @@ begin
   Assert.AreEqual('loopVars,fields', TAtlasReassignedNames.NormalizeTargets(' Fields; loopvars, unbekannt,fields'));
   Assert.AreEqual('', TAtlasReassignedNames.NormalizeTargets(''));
   Assert.IsTrue(TAtlasReassignedNames.TryTarget('VARPARAMS', Target));
-  Assert.IsTrue(Target = TAtlasReassignedTarget.VarParams);
+  Assert.AreEqual<TAtlasReassignedTarget>(TAtlasReassignedTarget.VarParams, Target);
   Assert.IsFalse(TAtlasReassignedNames.TryTarget('globals', Target));
-  Assert.IsTrue(TAtlasReassignedNames.StyleOf('Wavy') = TAtlasReassignedStyle.Wavy);
-  Assert.IsTrue(TAtlasReassignedNames.StyleOf('dashed') = TAtlasReassignedStyle.Dotted);
+  Assert.AreEqual<TAtlasReassignedStyle>(TAtlasReassignedStyle.Wavy, TAtlasReassignedNames.StyleOf('Wavy'));
+  Assert.AreEqual<TAtlasReassignedStyle>(TAtlasReassignedStyle.Dotted, TAtlasReassignedNames.StyleOf('dashed'));
   Assert.IsTrue(TAtlasReassignedNames.TryColor('#102030', Color));
   Assert.AreEqual('#102030', TAtlasColorMath.ToHex(Color));
   Assert.IsFalse(TAtlasReassignedNames.TryColor('theme', Color));
@@ -215,7 +215,7 @@ begin
   Assert.AreEqual('dotted', Settings.ReassignedStyle);
   Assert.AreEqual('theme', Settings.ReassignedColor);
   Assert.IsTrue(TAtlasDrawnElements.ForSetting('Reassigned', Element));
-  Assert.IsTrue(Element = TAtlasDrawnElement.Reassigned);
+  Assert.AreEqual<TAtlasDrawnElement>(TAtlasDrawnElement.Reassigned, Element);
   Assert.IsTrue(TAtlasDrawnElements.Info(Element).Overlay);
   Assert.IsFalse(TAtlasDrawnElements.Info(Element).Gutter);
 end;

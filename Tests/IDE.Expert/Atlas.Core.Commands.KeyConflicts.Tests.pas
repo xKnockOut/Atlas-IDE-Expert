@@ -73,16 +73,16 @@ begin
   Settings.CheckKeyPriority := True;
   Entries := TAtlasKeyEntry.FromSettings(Settings);
   Assert.AreEqual(9, Integer(Length(Entries)), 'sechs, dazu drei der schnellen Lesezeichen (#1104)');
-  Assert.IsTrue(Entries[0].Func = TAtlasKeyFunction.Palette);
+  Assert.AreEqual<TAtlasKeyFunction>(TAtlasKeyFunction.Palette, Entries[0].Func);
   Assert.AreEqual(Integer(TAtlasKeyConflicts.cPaletteDefault), Integer(Entries[0].Key));
-  Assert.IsTrue(Entries[1].Choice = TAtlasKeyChoice.UseAtlas);
-  Assert.IsTrue(Entries[3].Func = TAtlasKeyFunction.Signature);
+  Assert.AreEqual<TAtlasKeyChoice>(TAtlasKeyChoice.UseAtlas, Entries[1].Choice);
+  Assert.AreEqual<TAtlasKeyFunction>(TAtlasKeyFunction.Signature, Entries[3].Func);
   // Schnellschalter (#604) mit eigener Vorgabe.
-  Assert.IsTrue(Entries[4].Func = TAtlasKeyFunction.QuickToggle);
+  Assert.AreEqual<TAtlasKeyFunction>(TAtlasKeyFunction.QuickToggle, Entries[4].Func);
   Assert.AreEqual(Integer(TAtlasKeyConflicts.cQuickToggleDefault), Integer(Entries[4].Key));
   Entries[4].Key := $6051;
   // Diagnosemodus (#479): eigene Vorgabe, nicht die Taste der Schnellschalter.
-  Assert.IsTrue(Entries[5].Func = TAtlasKeyFunction.DiagnosticMode);
+  Assert.AreEqual<TAtlasKeyFunction>(TAtlasKeyFunction.DiagnosticMode, Entries[5].Func);
   Assert.AreEqual(Integer(TAtlasKeyConflicts.cDiagnosticModeDefault), Integer(Entries[5].Key));
   Assert.AreNotEqual(Integer(TAtlasKeyConflicts.cQuickToggleDefault), Integer(Entries[5].Key));
   Entries[5].Key := $6044;
@@ -108,21 +108,21 @@ var
 begin
   // Strg+Umschalt+Leer bleibt bei der IDE bzw. einer fremden Belegung, solange Atlas keine eigene hat.
   Entry := TAtlasKeyEntry.Create(TAtlasKeyFunction.Signature, 0, False);
-  Assert.IsTrue(Entry.Status('Fremde Erweiterung') = TAtlasKeyStatus.IdeKey);
+  Assert.AreEqual<TAtlasKeyStatus>(TAtlasKeyStatus.IdeKey, Entry.Status('Fremde Erweiterung'));
   Assert.AreEqual(Integer(TAtlasKeyConflicts.cIdeSignatureKey), Integer(Entry.IdeKey));
   // Entscheidet der Benutzer „Atlas verwenden“, belegt Atlas die Taste der IDE selbst.
   Entry.Choose(TAtlasKeyChoice.UseAtlas);
   Assert.AreEqual(Integer(TAtlasKeyConflicts.cIdeSignatureKey), Integer(Entry.Key));
-  Assert.IsTrue(Entry.Status('Fremde Erweiterung') = TAtlasKeyStatus.AtlasWins);
+  Assert.AreEqual<TAtlasKeyStatus>(TAtlasKeyStatus.AtlasWins, Entry.Status('Fremde Erweiterung'));
   Entry := TAtlasKeyEntry.Create(TAtlasKeyFunction.Palette, 0, True);
-  Assert.IsTrue(Entry.Status('') = TAtlasKeyStatus.NoKey);
+  Assert.AreEqual<TAtlasKeyStatus>(TAtlasKeyStatus.NoKey, Entry.Status(''));
   Assert.AreEqual(0, Integer(Entry.IdeKey));
   Entry := TAtlasKeyEntry.Create(TAtlasKeyFunction.Signature, TAtlasKeyConflicts.cIdeSignatureKey, False);
-  Assert.IsTrue(Entry.Status('') = TAtlasKeyStatus.Free);
-  Assert.IsTrue(Entry.Status('CnPack') = TAtlasKeyStatus.Left, 'fremde Belegung bleibt aktiv');
-  Assert.IsTrue(Entry.Choice = TAtlasKeyChoice.LeaveOther);
+  Assert.AreEqual<TAtlasKeyStatus>(TAtlasKeyStatus.Free, Entry.Status(''));
+  Assert.AreEqual<TAtlasKeyStatus>(TAtlasKeyStatus.Left, Entry.Status('CnPack'), 'fremde Belegung bleibt aktiv');
+  Assert.AreEqual<TAtlasKeyChoice>(TAtlasKeyChoice.LeaveOther, Entry.Choice);
   Entry.Choose(TAtlasKeyChoice.UseAtlas);
-  Assert.IsTrue(Entry.Status('CnPack') = TAtlasKeyStatus.AtlasWins);
+  Assert.AreEqual<TAtlasKeyStatus>(TAtlasKeyStatus.AtlasWins, Entry.Status('CnPack'));
   Entry.Choose(TAtlasKeyChoice.OtherKey);
   Assert.IsFalse(Entry.Priority, 'andere Taste: ohne Vorrang');
 end;
@@ -136,20 +136,22 @@ begin
   Settings := TAtlasPluginSettings.Defaults;
   Entries := TAtlasKeyEntry.FromSettings(Settings);
   Known := TAtlasKeyConflicts.KnownIdeKeys;
-  Assert.IsTrue(Entries[6].Func = TAtlasKeyFunction.QuickBookmark);
+  Assert.AreEqual<TAtlasKeyFunction>(TAtlasKeyFunction.QuickBookmark, Entries[6].Func);
   Assert.AreEqual($604B, Integer(Entries[6].Key), 'Strg+Umschalt+K');
-  Assert.IsTrue(Entries[7].Func = TAtlasKeyFunction.QuickBookmarkSet);
+  Assert.AreEqual<TAtlasKeyFunction>(TAtlasKeyFunction.QuickBookmarkSet, Entries[7].Func);
   Assert.AreEqual($6031, Integer(Entries[7].Key), 'Strg+Umschalt+1');
-  Assert.IsTrue(Entries[8].Func = TAtlasKeyFunction.QuickBookmarkJump);
+  Assert.AreEqual<TAtlasKeyFunction>(TAtlasKeyFunction.QuickBookmarkJump, Entries[8].Func);
   Assert.AreEqual($4031, Integer(Entries[8].Key), 'Strg+1');
   // Die IDE belegt die Tasten; Atlas nimmt sie mit Vorrang.
   Assert.Contains(TAtlasKeyConflicts.OwnerOf(Entries[6].Key, Known), 'Faltung');
   Assert.Contains(TAtlasKeyConflicts.OwnerOf(Entries[7].Key, Known), 'Lesezeichen 1');
   Assert.Contains(TAtlasKeyConflicts.OwnerOf($4030, Known), 'Lesezeichen 0', 'Strg+0 bleibt bekannt');
-  Assert.IsTrue(Entries[7].Status(TAtlasKeyConflicts.OwnerOf(Entries[7].Key, Known)) = TAtlasKeyStatus.AtlasWins);
+  Assert.AreEqual<TAtlasKeyStatus>(TAtlasKeyStatus.AtlasWins,
+    Entries[7].Status(TAtlasKeyConflicts.OwnerOf(Entries[7].Key, Known)));
   // „IDE überlassen“ für die Sprungtasten.
   Entries[8].Choose(TAtlasKeyChoice.LeaveOther);
-  Assert.IsTrue(Entries[8].Status(TAtlasKeyConflicts.OwnerOf(Entries[8].Key, Known)) = TAtlasKeyStatus.Left);
+  Assert.AreEqual<TAtlasKeyStatus>(TAtlasKeyStatus.Left,
+    Entries[8].Status(TAtlasKeyConflicts.OwnerOf(Entries[8].Key, Known)));
   Entries[7].Key := $C031;
   Saved := TAtlasPluginSettings.Defaults;
   TAtlasKeyEntry.ToSettings(Entries, Saved);

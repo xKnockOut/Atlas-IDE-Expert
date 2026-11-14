@@ -151,7 +151,7 @@ begin
     Menu.Build([Target(TAtlasDrawnElement.CompletionPreview)]);
     Assert.AreEqual(3, Integer(Menu.Menu.Items.Count));
     Assert.AreEqual(2, Integer(Length(Menu.Choices)));
-    Assert.IsTrue(Menu.Choices[0].Scope = TAtlasHideScope.Everywhere);
+    Assert.AreEqual<TAtlasHideScope>(TAtlasHideScope.Everywhere, Menu.Choices[0].Scope);
   finally
     Menu.Free;
   end;
@@ -197,7 +197,7 @@ begin
     // Wie ein Klick auf „Blockende-Beschriftungen überall ausblenden“.
     Menu.Menu.Items[2].Click;
     Assert.AreEqual(1, Calls);
-    Assert.IsTrue(Chosen.Scope = TAtlasHideScope.Everywhere);
+    Assert.AreEqual<TAtlasHideScope>(TAtlasHideScope.Everywhere, Chosen.Scope);
     Assert.IsFalse(Chosen.Settings);
     Assert.AreEqual('BlockEndLabels', Chosen.Target.SettingKey);
     Menu.Menu.Items[4].Click;
@@ -218,11 +218,11 @@ var
 begin
   for Element := Low(TAtlasDrawnElement) to High(TAtlasDrawnElement) do
   begin
-    Assert.IsTrue(TAtlasHideMenu.ElementName(Element, False) <> '', 'Einzahl ' + IntToStr(Ord(Element)));
-    Assert.IsTrue(TAtlasHideMenu.ElementName(Element, True) <> '', 'Mehrzahl ' + IntToStr(Ord(Element)));
+    Assert.AreNotEqual('', TAtlasHideMenu.ElementName(Element, False), 'Einzahl ' + IntToStr(Ord(Element)));
+    Assert.AreNotEqual('', TAtlasHideMenu.ElementName(Element, True), 'Mehrzahl ' + IntToStr(Ord(Element)));
     for Scope := Low(TAtlasHideScope) to High(TAtlasHideScope) do
     begin
-      Assert.IsTrue(TAtlasHideMenu.ScopeCaption(Element, Scope) <> '');
+      Assert.AreNotEqual('', TAtlasHideMenu.ScopeCaption(Element, Scope));
     end;
   end;
   TAtlasStrings.Language := TAtlasLanguage.English;
@@ -321,7 +321,7 @@ begin
       Parent := Parent.Parent;
     end;
     Assert.IsNotNull(Parent);
-    Assert.IsTrue(Page.Pages.ActivePage = Parent, 'Reiter der Zeile gewählt');
+    Assert.AreSame(Parent, Page.Pages.ActivePage, 'Reiter der Zeile gewählt');
     Assert.IsTrue(fsBold in TCheckBox(Control).Font.Style, 'Zeile hervorgehoben');
   finally
     Host.Free;

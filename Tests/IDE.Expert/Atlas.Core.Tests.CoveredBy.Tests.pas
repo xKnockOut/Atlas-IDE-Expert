@@ -158,11 +158,11 @@ begin
   mTally := TAtlasCoveredBy.TallyOf(TArray<TAtlasCoveredTest>.Create(Covered('U.F.Eins'), Covered('U.F.Drei')), Results);
   Assert.AreEqual(2, mTally.Total);
   Assert.AreEqual(1, mTally.Ran);
-  Assert.IsTrue(mTally.Shown = TAtlasTestStatus.Partial);
+  Assert.AreEqual<TAtlasTestStatus>(TAtlasTestStatus.Partial, mTally.Shown);
   mTally := TAtlasCoveredBy.TallyOf(TArray<TAtlasCoveredTest>.Create(Covered('U.F.Eins')), Results);
-  Assert.IsTrue(mTally.Shown = TAtlasTestStatus.Passed);
+  Assert.AreEqual<TAtlasTestStatus>(TAtlasTestStatus.Passed, mTally.Shown);
   mTally := TAtlasCoveredBy.TallyOf(TArray<TAtlasCoveredTest>.Create(Covered('U.F.Drei')), Results);
-  Assert.IsTrue(mTally.Shown = TAtlasTestStatus.Unknown);
+  Assert.AreEqual<TAtlasTestStatus>(TAtlasTestStatus.Unknown, mTally.Shown);
 end;
 
 procedure TAtlasCoveredByTests.TallyFailedWins;
@@ -171,7 +171,7 @@ var
 begin
   mTally := TAtlasCoveredBy.TallyOf(TArray<TAtlasCoveredTest>.Create(Covered('U.F.Eins'), Covered('U.F.Zwei')), Results);
   Assert.AreEqual(1, mTally.Failed);
-  Assert.IsTrue(mTally.Shown = TAtlasTestStatus.Failed);
+  Assert.AreEqual<TAtlasTestStatus>(TAtlasTestStatus.Failed, mTally.Shown);
 end;
 
 procedure TAtlasCoveredByTests.RunNamesWithoutDuplicates;

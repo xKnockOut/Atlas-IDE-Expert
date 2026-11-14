@@ -138,7 +138,7 @@ begin
   Settings.Normalize;
   Assert.AreEqual(TAtlasPluginSettings.cMaxRecursionDepth, Settings.RecursionMarkersDepth);
   Assert.IsTrue(TAtlasDrawnElements.ForSetting('RecursionMarkers', Element));
-  Assert.IsTrue(Element = TAtlasDrawnElement.Recursion);
+  Assert.AreEqual<TAtlasDrawnElement>(TAtlasDrawnElement.Recursion, Element);
   Assert.IsTrue(TAtlasDrawnElements.Info(Element).Gutter);
 end;
 

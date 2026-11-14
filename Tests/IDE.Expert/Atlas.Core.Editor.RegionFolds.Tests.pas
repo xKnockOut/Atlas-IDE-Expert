@@ -79,11 +79,12 @@ end;
 
 procedure TAtlasRegionFoldsTests.ModeFromSetting;
 begin
-  Assert.IsTrue(TAtlasRegionFolds.ModeOf('collapse') = TAtlasRegionFoldMode.Collapse);
-  Assert.IsTrue(TAtlasRegionFolds.ModeOf('Expand') = TAtlasRegionFoldMode.Expand);
-  Assert.IsTrue(TAtlasRegionFolds.ModeOf('off') = TAtlasRegionFoldMode.Off);
-  Assert.IsTrue(TAtlasRegionFolds.ModeOf('keep') = TAtlasRegionFoldMode.Keep);
-  Assert.IsTrue(TAtlasRegionFolds.ModeOf('irgendwie') = TAtlasRegionFoldMode.Keep, 'Unbekanntes wird zur Vorgabe');
+  Assert.AreEqual<TAtlasRegionFoldMode>(TAtlasRegionFoldMode.Collapse, TAtlasRegionFolds.ModeOf('collapse'));
+  Assert.AreEqual<TAtlasRegionFoldMode>(TAtlasRegionFoldMode.Expand, TAtlasRegionFolds.ModeOf('Expand'));
+  Assert.AreEqual<TAtlasRegionFoldMode>(TAtlasRegionFoldMode.Off, TAtlasRegionFolds.ModeOf('off'));
+  Assert.AreEqual<TAtlasRegionFoldMode>(TAtlasRegionFoldMode.Keep, TAtlasRegionFolds.ModeOf('keep'));
+  Assert.AreEqual<TAtlasRegionFoldMode>(TAtlasRegionFoldMode.Keep,
+    TAtlasRegionFolds.ModeOf('irgendwie'), 'Unbekanntes wird zur Vorgabe');
   Assert.AreEqual('keep', cAtlasRegionFoldModes[0], 'Vorgabe steht vorn');
 end;
 

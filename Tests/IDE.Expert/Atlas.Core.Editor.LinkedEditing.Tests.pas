@@ -307,13 +307,18 @@ begin
   SetLength(Conflicts, 1);
   Conflicts[0].Name := 'Anzahl';
   Conflicts[0].Detail := 'Parameter Anzahl';
-  Assert.IsTrue(TAtlasLinkedEditing.Problem('anzahl', 'Zeilen', Conflicts, Detail) = TAtlasLinkedProblem.Visible);
+  Assert.AreEqual<TAtlasLinkedProblem>(TAtlasLinkedProblem.Visible,
+    TAtlasLinkedEditing.Problem('anzahl', 'Zeilen', Conflicts, Detail));
   Assert.AreEqual('Parameter Anzahl', Detail);
-  Assert.IsTrue(TAtlasLinkedEditing.Problem('Begin', 'Zeilen', Conflicts, Detail) = TAtlasLinkedProblem.Reserved);
-  Assert.IsTrue(TAtlasLinkedEditing.Problem('Zeilen2', 'Zeilen', Conflicts, Detail) = TAtlasLinkedProblem.None);
+  Assert.AreEqual<TAtlasLinkedProblem>(TAtlasLinkedProblem.Reserved,
+    TAtlasLinkedEditing.Problem('Begin', 'Zeilen', Conflicts, Detail));
+  Assert.AreEqual<TAtlasLinkedProblem>(TAtlasLinkedProblem.None,
+    TAtlasLinkedEditing.Problem('Zeilen2', 'Zeilen', Conflicts, Detail));
   // Der alte Name und der leere Name sind nie ein Konflikt.
-  Assert.IsTrue(TAtlasLinkedEditing.Problem('ZEILEN', 'Zeilen', Conflicts, Detail) = TAtlasLinkedProblem.None);
-  Assert.IsTrue(TAtlasLinkedEditing.Problem('', 'Zeilen', Conflicts, Detail) = TAtlasLinkedProblem.None);
+  Assert.AreEqual<TAtlasLinkedProblem>(TAtlasLinkedProblem.None,
+    TAtlasLinkedEditing.Problem('ZEILEN', 'Zeilen', Conflicts, Detail));
+  Assert.AreEqual<TAtlasLinkedProblem>(TAtlasLinkedProblem.None,
+    TAtlasLinkedEditing.Problem('', 'Zeilen', Conflicts, Detail));
   Assert.AreEqual('', Detail);
   Conflicts := nil;
 end;

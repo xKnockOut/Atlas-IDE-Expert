@@ -694,8 +694,8 @@ var
 begin
   mFirst := AtlasSettingsParts;
   mSecond := AtlasSettingsParts;
-  Assert.IsTrue(mFirst <> nil);
-  Assert.IsTrue(mFirst = mSecond, 'jeder Aufruf liefert dieselbe Instanz');
+  Assert.IsNotNull(mFirst);
+  Assert.AreSame(mSecond, mFirst, 'jeder Aufruf liefert dieselbe Instanz');
 end;
 
 initialization

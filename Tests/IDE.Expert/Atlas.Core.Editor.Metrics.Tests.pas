@@ -113,7 +113,7 @@ begin
   Assert.AreEqual(2, Integer(Length(Metrics.StructuresAt(7))), 'Member und Vererbungstiefe in einer Zeile');
   Assert.IsFalse(Metrics.Structures[1].AtLeast);
   Assert.IsTrue(Metrics.Structures[2].AtLeast);
-  Assert.IsTrue(Metrics.StructuresAt(7)[1].Kind = TAtlasStructureMetric.InheritanceDepth);
+  Assert.AreEqual<TAtlasStructureMetric>(TAtlasStructureMetric.InheritanceDepth, Metrics.StructuresAt(7)[1].Kind);
   Assert.AreEqual(0, Integer(Length(Metrics.StructuresAt(0))));
 end;
 

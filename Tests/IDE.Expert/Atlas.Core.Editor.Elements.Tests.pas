@@ -56,7 +56,7 @@ begin
     for Element in TAtlasDrawnElements.All do
     begin
       Key := TAtlasDrawnElements.SettingKey(Element);
-      Assert.IsTrue(Key <> '', 'Element ohne Schlüssel');
+      Assert.AreNotEqual('', Key, 'Element ohne Schlüssel');
       Entry := TJSONObject(Properties).GetValue(Key);
       Assert.IsTrue(Entry is TJSONObject, 'nicht im Katalog: ' + Key);
       // Auswahl mit "off" (Fehlertext am Zeilenende #509): „Überall“ setzt "off"; „Alles aus“ erfasst sie über
@@ -100,7 +100,7 @@ begin
       Assert.IsFalse(Seen.Contains(Key), 'doppelt: ' + Key);
       Seen.Add(Key);
       Assert.IsTrue(TAtlasDrawnElements.ForSetting(UpperCase(Key), Found));
-      Assert.IsTrue(Found = Element, Key);
+      Assert.AreEqual<TAtlasDrawnElement>(Element, Found, Key);
     end;
   finally
     Seen.Free;
@@ -118,14 +118,15 @@ begin
   for Element in TAtlasDrawnElements.All do
   begin
     Info := TAtlasDrawnElements.Info(Element);
-    Assert.IsTrue(Info.Element = Element);
+    Assert.AreEqual<TAtlasDrawnElement>(Element, Info.Element);
     // „Überall“ gibt es immer: es setzt die Einstellung aus.
     Assert.IsTrue(TAtlasHideScope.Everywhere in Info.Scopes, Info.SettingKey);
     Assert.IsFalse(Info.Overlay and Info.Gutter, Info.SettingKey);
   end;
   Info := TAtlasDrawnElements.Info(TAtlasDrawnElement.BlockEndLabels);
   Assert.IsTrue(Info.Overlay);
-  Assert.IsTrue(Info.Scopes = [TAtlasHideScope.Here, TAtlasHideScope.InFile, TAtlasHideScope.Everywhere]);
+  Assert.AreEqual<TAtlasHideScopes>([TAtlasHideScope.Here, TAtlasHideScope.InFile, TAtlasHideScope.Everywhere],
+    Info.Scopes);
   Info := TAtlasDrawnElements.Info(TAtlasDrawnElement.Problems);
   Assert.IsFalse(Info.Overlay);
   Assert.IsTrue(TAtlasHideScope.Here in Info.Scopes);
@@ -150,7 +151,7 @@ begin
   for Id in TAtlasDrawnElements.KnownSections do
   begin
     Key := TAtlasDrawnElements.SectionSetting(Id);
-    Assert.IsTrue(Key <> '', Id);
+    Assert.AreNotEqual('', Key, Id);
     Found := False;
     for Name in Names do
     begin

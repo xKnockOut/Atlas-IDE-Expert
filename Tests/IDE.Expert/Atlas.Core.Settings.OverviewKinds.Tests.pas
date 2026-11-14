@@ -46,17 +46,17 @@ var
   Kinds: TAtlasOverviewKinds;
 begin
   Kinds := TAtlasOverviewKindNames.Parse('Diagnostics, SEARCH;cursor bookmarks');
-  Assert.IsTrue(Kinds = [TAtlasOverviewKind.Diagnostics, TAtlasOverviewKind.Search, TAtlasOverviewKind.Cursor,
-    TAtlasOverviewKind.Bookmarks]);
-  Assert.IsTrue(TAtlasOverviewKindNames.Parse('') = []);
-  Assert.IsTrue(TAtlasOverviewKindNames.Parse(
-    'diagnostics,search,changes,breakpoints,bookmarks,cursor') = TAtlasOverviewKindNames.cAll);
+  Assert.AreEqual<TAtlasOverviewKinds>([TAtlasOverviewKind.Diagnostics, TAtlasOverviewKind.Search,
+    TAtlasOverviewKind.Cursor, TAtlasOverviewKind.Bookmarks], Kinds);
+  Assert.AreEqual<TAtlasOverviewKinds>([], TAtlasOverviewKindNames.Parse(''));
+  Assert.AreEqual<TAtlasOverviewKinds>(TAtlasOverviewKindNames.cAll, TAtlasOverviewKindNames.Parse(
+    'diagnostics,search,changes,breakpoints,bookmarks,cursor'));
 end;
 
 procedure TAtlasOverviewKindNamesTests.DropsUnknownNames;
 begin
-  Assert.IsTrue(TAtlasOverviewKindNames.Parse('fehler,changes,,') = [TAtlasOverviewKind.Changes]);
-  Assert.IsTrue(TAtlasOverviewKindNames.Parse('diag') = []);
+  Assert.AreEqual<TAtlasOverviewKinds>([TAtlasOverviewKind.Changes], TAtlasOverviewKindNames.Parse('fehler,changes,,'));
+  Assert.AreEqual<TAtlasOverviewKinds>([], TAtlasOverviewKindNames.Parse('diag'));
 end;
 
 procedure TAtlasOverviewKindNamesTests.TextKeepsFixedOrder;

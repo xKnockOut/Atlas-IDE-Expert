@@ -61,10 +61,11 @@ var
 begin
   for mStyle := Low(TAtlasNestedRoutineStyle) to High(TAtlasNestedRoutineStyle) do
   begin
-    Assert.IsTrue(mStyle = TAtlasRoutineNesting.StyleOf(TAtlasRoutineNesting.cStyleNames[mStyle]));
+    Assert.AreEqual<TAtlasNestedRoutineStyle>(TAtlasRoutineNesting.StyleOf(TAtlasRoutineNesting.cStyleNames[mStyle]),
+      mStyle);
   end;
-  Assert.IsTrue(TAtlasNestedRoutineStyle.OwnColor = TAtlasRoutineNesting.StyleOf(' COLOR '));
-  Assert.IsTrue(TAtlasNestedRoutineStyle.Deeper = TAtlasRoutineNesting.StyleOf('irgendwas'));
+  Assert.AreEqual<TAtlasNestedRoutineStyle>(TAtlasNestedRoutineStyle.OwnColor, TAtlasRoutineNesting.StyleOf(' COLOR '));
+  Assert.AreEqual<TAtlasNestedRoutineStyle>(TAtlasNestedRoutineStyle.Deeper, TAtlasRoutineNesting.StyleOf('irgendwas'));
   Assert.AreEqual('deeper', TAtlasRoutineNesting.NormalizeName(''));
   Assert.AreEqual('outer', TAtlasRoutineNesting.NormalizeName('Outer'));
 end;
@@ -161,7 +162,8 @@ begin
   SameColor(TAtlasColors.Light.Pairs[1], mPalette.Pairs[1], '');
   mSettings.NestedRoutines := 'color';
   mSettings.NestedRoutineBand := True;
-  Assert.IsTrue(TAtlasNestedRoutineStyle.OwnColor = TAtlasRoutineNesting.FromSettings(mSettings).Style);
+  Assert.AreEqual<TAtlasNestedRoutineStyle>(TAtlasNestedRoutineStyle.OwnColor,
+    TAtlasRoutineNesting.FromSettings(mSettings).Style);
   Assert.IsTrue(TAtlasRoutineNesting.FromSettings(mSettings).Band);
 end;
 

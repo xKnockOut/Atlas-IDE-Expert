@@ -59,7 +59,7 @@ begin
   Assert.AreEqual('Kunden', Info.UnitName);
   Assert.AreEqual('Kunden.Tests', Info.Counterpart);
   Assert.AreEqual('P:file:///t.pas', Info.CounterpartFile);
-  Assert.IsTrue(Info.Lens = TAtlasTestUnitLens.ToTest);
+  Assert.AreEqual<TAtlasTestUnitLens>(TAtlasTestUnitLens.ToTest, Info.Lens);
 end;
 
 procedure TAtlasTestUnitTests.MissingTestUnitOffersCreate;
@@ -71,27 +71,27 @@ begin
   Assert.AreEqual('', Info.CounterpartFile);
   Assert.IsTrue(Info.CanCreate);
   Assert.AreEqual('P:file:///n.pas', Info.NewFile);
-  Assert.IsTrue(Info.Lens = TAtlasTestUnitLens.CreateTest);
+  Assert.AreEqual<TAtlasTestUnitLens>(TAtlasTestUnitLens.CreateTest, Info.Lens);
   Info := Parse('{"unit":"Kunden","isTest":false,"counterpart":"Kunden.Tests","uri":null,' +
     '"canCreate":false,"reason":"kein Testprojekt"}');
-  Assert.IsTrue(Info.Lens = TAtlasTestUnitLens.None);
+  Assert.AreEqual<TAtlasTestUnitLens>(TAtlasTestUnitLens.None, Info.Lens);
   Assert.AreEqual('kein Testprojekt', Info.Reason);
 end;
 
 procedure TAtlasTestUnitTests.TestUnitPointsBack;
 begin
-  Assert.IsTrue(Parse('{"unit":"Kunden.Tests","isTest":true,"counterpart":"Kunden","uri":"file:///k.pas"}').Lens =
-    TAtlasTestUnitLens.ToUnit);
+  Assert.AreEqual<TAtlasTestUnitLens>(TAtlasTestUnitLens.ToUnit,
+    Parse('{"unit":"Kunden.Tests","isTest":true,"counterpart":"Kunden","uri":"file:///k.pas"}').Lens);
 end;
 
 procedure TAtlasTestUnitTests.NoUnitNoLens;
 var
   Info: TAtlasTestUnitInfo;
 begin
-  Assert.IsTrue(Parse('{"unit":"","isTest":false,"uri":null}').Lens = TAtlasTestUnitLens.None);
+  Assert.AreEqual<TAtlasTestUnitLens>(TAtlasTestUnitLens.None, Parse('{"unit":"","isTest":false,"uri":null}').Lens);
   Info := TAtlasTestUnitInfo.FromJson(nil, nil);
   Assert.AreEqual('', Info.UnitName);
-  Assert.IsTrue(Info.Lens = TAtlasTestUnitLens.None);
+  Assert.AreEqual<TAtlasTestUnitLens>(TAtlasTestUnitLens.None, Info.Lens);
 end;
 
 procedure TAtlasTestUnitTests.UnitLineSkipsComments;
