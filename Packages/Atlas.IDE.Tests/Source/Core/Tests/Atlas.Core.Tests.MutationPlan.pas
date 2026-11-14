@@ -7,6 +7,10 @@
 // - Auswahl der Mutanten: die Methode an einer Zeile (die innerste Routine,
 //   deren Zeilen sie enthalten), die ganze Unit oder nur Routinen ohne
 //   gültiges Ergebnis (neu oder seit dem letzten Lauf geändert).
+// - Ausgang eines Testlaufs gegen einen Mutanten: Zeitüberschreitung,
+//   sonst der XML-Bericht (ein fehlgeschlagener Test erkennt den Mutanten,
+//   alle grün heißt überlebt); ohne Bericht zählt ein Exitcode ungleich 0 als
+//   erkannt (Absturz), sonst ist der Lauf nicht bewertbar.
 
 interface
 
@@ -43,6 +47,11 @@ type
     class function Select(const AList: TAtlasMutantList; AScope: TAtlasMutationScope; ALine: Integer;
       const AFileName: string; const ALines: TArray<string>; AResults: TAtlasMutationResults):
       TArray<TAtlasMutationJob>; static;
+    /// <summary>Ausgang eines Testlaufs: ATimedOut, Exitcode AExitCode und XML-Bericht AXml ('' = keiner). ABy
+    /// nennt beim Erkennen den ersten fehlgeschlagenen Test bzw. ohne Bericht den Exitcode als Zahl; ein Bericht
+    /// ohne Tests ist nicht bewertbar (Invalid).</summary>
+    class function StatusOf(ATimedOut: Boolean; AExitCode: Integer; const AXml: string; out ABy: string):
+      TAtlasMutationStatus; static;
   end;
 
 implementation
@@ -51,7 +60,8 @@ uses
   System.SysUtils,
   System.StrUtils,
   System.JSON,
-  System.Generics.Collections;
+  System.Generics.Collections,
+  Atlas.Text.TestResults;
 
 class function TAtlasMutationPlan.OperatorsOf(const ASetting: string): TArray<string>;
 var
@@ -169,6 +179,41 @@ begin
     end;
   finally
     mValid.Free;
+  end;
+end;
+
+class function TAtlasMutationPlan.StatusOf(ATimedOut: Boolean; AExitCode: Integer; const AXml: string;
+  out ABy: string): TAtlasMutationStatus;
+var
+  mRun: TTestRunResult;
+begin
+  ABy := '';
+  if ATimedOut then
+  begin
+    Exit(TAtlasMutationStatus.TimedOut);
+  end;
+  mRun := Default(TTestRunResult);
+  if Trim(AXml) <> '' then
+  begin
+    mRun := TTestResults.Parse(AXml);
+  end;
+  if mRun.Valid and (Length(mRun.Failures) > 0) then
+  begin
+    ABy := mRun.Failures[0].FullName;
+    Result := TAtlasMutationStatus.Killed;
+  end
+  else if mRun.Valid and (mRun.Total > 0) then
+  begin
+    Result := TAtlasMutationStatus.Survived;
+  end
+  else if not mRun.Valid and (AExitCode <> 0) then
+  begin
+    ABy := IntToStr(AExitCode);
+    Result := TAtlasMutationStatus.Killed;
+  end
+  else
+  begin
+    Result := TAtlasMutationStatus.Invalid;
   end;
 end;
 

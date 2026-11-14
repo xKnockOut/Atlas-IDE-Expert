@@ -167,6 +167,16 @@ Einstellungen: `tests.compare`, `tests.compare.format`
 
 Einstellung: `tests.coverage`
 
+### Mutationslauf (#1460, experimentell)
+Ein Mutationslauf prüft, ob die Tests Fehler im Code überhaupt bemerken: Atlas verändert den Code an kleinen Stellen (aus `>=` wird `>`, aus `+` wird `-`, eine Konstante wird um eins größer, eine Anweisung fällt weg …) und führt je Veränderung („Mutant“) die Tests aus.
+- Befehle (Befehlspalette, *Atlas*-Menü, Kontextmenü einer Unit unter *Atlas › Tests*): „Mutationen der Methode prüfen“ (Methode am Cursor bzw. an der zuletzt rechts geklickten Zeile der Rinne), „Mutationen der Unit prüfen“, „Mutationen geänderter Methoden prüfen“ (nur Methoden ohne gültiges Ergebnis) und „Mutationslauf abbrechen“.
+- Das Testprojekt wählt Atlas wie bei „Tests ausführen“. Für den Lauf legt Atlas unter `.atlas-local\mutation\<Projekt>` neben dem Testprojekt ein Schattenprojekt mit eigener dpr/dproj und eigenen Ausgabeordnern an und holt es kurz in die Projektgruppe; Original, DCUs und das aktive Projekt bleiben unberührt. Der Text der Unit kommt aus dem Editor, auch ungespeichert.
+- Zuerst laufen die Tests gegen die unveränderte Kopie; sind sie schon dann nicht grün, endet der Lauf. Danach je Mutant: bauen, Tests mit Zeitlimit ausführen. Ein fehlgeschlagener Test (oder ein Absturz, oder das Zeitlimit) **erkennt** den Mutanten, alle grün heißt **überlebt**; nicht übersetzbare oder nicht anwendbare Mutanten zählen nicht mit.
+- Die Meldungsansicht nennt je Mutant den Ausgang, am Ende Zahlen und Mutation-Score und je überlebendem Mutanten eine anklickbare Zeile.
+- Die Rinne zeigt je Zeile mit Mutanten einen Punkt: grün alle erkannt, rot einer überlebt, grau nicht bewertbar; der Tooltip nennt Original, Ersatz und den erkennenden Test. Ergebnisse liegen in `.atlas-local\mutation\results.json` des Testprojekts und gelten, solange die Methode unverändert ist (Einrückung und Kommentare zählen nicht). Ausblenden je Datei oder überall über das Kontextmenü der Rinne.
+
+Einstellungen: `tests.mutation` (aus), `tests.mutation.timeoutSec` (60), `tests.mutation.operators` (leer = alle)
+
 ### Vergleichsdateien für Tests (#1881)
 Für Exporte, Berichte, erzeugten Code oder JSON prüft ein Test das Ergebnis gegen eine gespeicherte Datei statt mit einem Assert je Zeile („Approval“). Die Hilfs-Unit `Atlas.Testing.Approval` liegt unter `Setup\Vorlagen` (MIT-Lizenz, nur RTL und DUnitX); ins Testprojekt kopieren oder ihren Ordner in den Suchpfad aufnehmen. Beispiel: [approval-tests.pas](../../Beispiele/approval-tests.pas).
 - `TApproval.Verify(Ergebnis, 'TFixture.Methode')` vergleicht mit `TFixture.Methode.approved.txt`; eine eigene Endung (`'.json'`) und ein Normalisierer für Datum oder GUID sind möglich.

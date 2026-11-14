@@ -140,6 +140,8 @@
         <DCCReference Include="Source\IDE\Tests\Atlas.IDE.Tests.OnSave.pas"/>
         <DCCReference Include="Source\IDE\Tests\Atlas.IDE.Tests.Compare.pas"/>
         <DCCReference Include="Source\IDE\Tests\Atlas.IDE.Tests.Coverage.pas"/>
+        <DCCReference Include="Source\IDE\Tests\Atlas.IDE.Tests.Mutation.pas"/>
+        <DCCReference Include="Source\IDE\Tests\Atlas.IDE.Tests.MutationMarks.pas"/>
         <DCCReference Include="Source\IDE\Tests\Atlas.IDE.Tests.ApprovalFiles.pas"/>
         <DCCReference Include="Source\IDE\Tests\Atlas.IDE.Tests.Slowest.pas"/>
         <DCCReference Include="Source\IDE\Tests\Atlas.IDE.Tests.Flaky.pas"/>

@@ -24,8 +24,7 @@
 interface
 
 uses
-  System.Generics.Collections,
-  Atlas.Core.Tests.Mutants;
+  System.Generics.Collections;
 
 type
 {$SCOPEDENUMS ON}
@@ -127,7 +126,8 @@ uses
   System.SysUtils,
   System.JSON,
   Atlas.Text.Json,
-  Atlas.Core.Projects.Summary.Json;
+  Atlas.Core.Projects.Summary.Json,
+  Atlas.Core.Tests.Mutants;
 
 const
   cStatusIds: array[TAtlasMutationStatus] of string = ('killed', 'survived', 'timeout', 'buildFailed', 'invalid');

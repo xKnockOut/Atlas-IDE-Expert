@@ -1,0 +1,2 @@
+### Neu
+- Mutationslauf in der IDE (#1460, experimentell, `tests.mutation`): „Mutationen der Methode prüfen“, „… der Unit“ und „… geänderter Methoden“ bauen je Mutant ein Schattenprojekt neben dem Testprojekt (Original, DCUs und aktives Projekt bleiben unberührt), prüfen vorher die Tests ohne Mutation und führen sie je Mutant mit Zeitlimit aus. Meldungsansicht mit Zahlen, Mutation-Score und anklickbaren Überlebenden; Punkte in der Rinne (grün erkannt, rot überlebt) mit Tooltip, gültig, solange die Methode unverändert ist.

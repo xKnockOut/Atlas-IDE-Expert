@@ -104,6 +104,8 @@ contains
   Atlas.IDE.Tests.OnSave in 'Source\IDE\Tests\Atlas.IDE.Tests.OnSave.pas',
   Atlas.IDE.Tests.Compare in 'Source\IDE\Tests\Atlas.IDE.Tests.Compare.pas',
   Atlas.IDE.Tests.Coverage in 'Source\IDE\Tests\Atlas.IDE.Tests.Coverage.pas',
+  Atlas.IDE.Tests.Mutation in 'Source\IDE\Tests\Atlas.IDE.Tests.Mutation.pas',
+  Atlas.IDE.Tests.MutationMarks in 'Source\IDE\Tests\Atlas.IDE.Tests.MutationMarks.pas',
   Atlas.IDE.Tests.ApprovalFiles in 'Source\IDE\Tests\Atlas.IDE.Tests.ApprovalFiles.pas',
   Atlas.IDE.Tests.Slowest in 'Source\IDE\Tests\Atlas.IDE.Tests.Slowest.pas',
   Atlas.IDE.Tests.Flaky in 'Source\IDE\Tests\Atlas.IDE.Tests.Flaky.pas',

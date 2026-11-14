@@ -2,7 +2,7 @@
 
 // Tests der Auswahl eines Mutationslaufs (#1460): Operatoren aus der
 // Einstellung, Anfrage an den Server, innerste Routine an einer Zeile, Auswahl
-// nach Methode, Unit und geänderten Routinen.
+// nach Methode, Unit und geänderten Routinen, Ausgang eines Testlaufs.
 
 interface
 
@@ -24,6 +24,8 @@ type
     procedure SelectsRoutineAndUnit;
     [Test]
     procedure SelectsChangedOnly;
+    [Test]
+    procedure StatusOfRun;
   end;
 
 implementation
@@ -138,6 +140,34 @@ begin
   finally
     mResults.Free;
   end;
+end;
+
+procedure TAtlasMutationPlanTests.StatusOfRun;
+const
+  cRed = '<test-run total="2"><test-suite type="TestFixture" name="TT" fullname="U.TT">' +
+    '<test-case fullname="U.TT.A" name="A" result="Passed"/>' +
+    '<test-case fullname="U.TT.B" name="B" result="Failed"><failure><message>x</message></failure></test-case>' +
+    '</test-suite></test-run>';
+  cGreen = '<test-run total="1"><test-suite type="TestFixture" name="TT" fullname="U.TT">' +
+    '<test-case fullname="U.TT.A" name="A" result="Passed"/></test-suite></test-run>';
+var
+  mBy: string;
+begin
+  Assert.AreEqual<TAtlasMutationStatus>(TAtlasMutationStatus.Killed,
+    TAtlasMutationPlan.StatusOf(False, 0, cRed, mBy));
+  Assert.AreEqual('U.TT.B', mBy);
+  Assert.AreEqual<TAtlasMutationStatus>(TAtlasMutationStatus.Survived,
+    TAtlasMutationPlan.StatusOf(False, 0, cGreen, mBy));
+  Assert.AreEqual('', mBy);
+  Assert.AreEqual<TAtlasMutationStatus>(TAtlasMutationStatus.TimedOut,
+    TAtlasMutationPlan.StatusOf(True, 1, cRed, mBy));
+  Assert.AreEqual<TAtlasMutationStatus>(TAtlasMutationStatus.Killed,
+    TAtlasMutationPlan.StatusOf(False, 3, '', mBy));
+  Assert.AreEqual('3', mBy);
+  Assert.AreEqual<TAtlasMutationStatus>(TAtlasMutationStatus.Invalid,
+    TAtlasMutationPlan.StatusOf(False, 0, '', mBy));
+  Assert.AreEqual<TAtlasMutationStatus>(TAtlasMutationStatus.Invalid,
+    TAtlasMutationPlan.StatusOf(False, 0, '<test-run total="0"></test-run>', mBy));
 end;
 
 initialization
