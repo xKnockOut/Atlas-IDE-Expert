@@ -1135,7 +1135,16 @@ begin
   Result.InInterface := AInInterface;
 end;
 
+{$SCOPEDENUMS ON}
+
 type
+  /// <summary>Was die Extraktion außer den Deklarationen sammelt: Verwendungen bzw. Folgemuster.</summary>
+  TExtractExtra = (Usages, Patterns);
+
+{$SCOPEDENUMS OFF}
+
+  TExtractExtras = set of TExtractExtra;
+
   /// <summary>Fügt die Deklarationen aktiver $I-Dateien in den Eintrag einer Unit ein (#500).</summary>
   TIncludeMerger = class
   private
@@ -1161,8 +1170,7 @@ type
     destructor Destroy; override;
     procedure Merge(var AUnit: TUnitIndex);
     class function ExtractLevel(const AText, AFileName: string; const ADefines: TArray<string>;
-      const AResolver: TIncludeResolver; const AStack: TArray<string>; AUsages, APatterns: Boolean): TUnitIndex;
-      static;
+      const AResolver: TIncludeResolver; const AStack: TArray<string>; AExtras: TExtractExtras): TUnitIndex; static;
   end;
 
 constructor TIncludeMerger.Create(ATree: TSyntaxTree; const AFileName: string; const ADefines: TArray<string>;
@@ -1265,7 +1273,7 @@ begin
     mText := ASection + #10 + AText;
     mShift := 1;
   end;
-  AddSymbols(ExtractLevel(mText, AFile, FDefines, FResolver, FStack + [AFile], False, False), AFile, mHost, mShift,
+  AddSymbols(ExtractLevel(mText, AFile, FDefines, FResolver, FStack + [AFile], []), AFile, mHost, mShift,
     (FTree.Root.Kind = TSyntaxKind.UnitFile) and (AToken.Offset < FImplementationOffset));
 end;
 
@@ -1320,7 +1328,7 @@ begin
 end;
 
 class function TIncludeMerger.ExtractLevel(const AText, AFileName: string; const ADefines: TArray<string>;
-  const AResolver: TIncludeResolver; const AStack: TArray<string>; AUsages, APatterns: Boolean): TUnitIndex;
+  const AResolver: TIncludeResolver; const AStack: TArray<string>; AExtras: TExtractExtras): TUnitIndex;
 var
   mTree: TSyntaxTree;
   mIncludes: TArray<string>;
@@ -1333,12 +1341,12 @@ begin
     Result := TIndexExtractor.Extract(mTree, AFileName);
     Result.Includes := mIncludes;
     TIndexConditions.AnnotateConditions(Result, AText, mConditionals);
-    if AUsages then
+    if TExtractExtra.Usages in AExtras then
     begin
       Result.Usages := CollectUsages(mTree.Tokens, Result.Symbols);
       Result.UsagesIndexed := True;
     end;
-    if APatterns then
+    if TExtractExtra.Patterns in AExtras then
     begin
       Result.Patterns := TIndexFollowPatterns.Collect(mTree);
     end;
@@ -1376,8 +1384,19 @@ end;
 
 class function TIndexExtractor.ExtractText(const AText, AFileName: string;
   const ADefines: TArray<string>; const AResolver: TIncludeResolver; AUsages, APatterns: Boolean): TUnitIndex;
+var
+  mExtras: TExtractExtras;
 begin
-  Result := TIncludeMerger.ExtractLevel(AText, AFileName, ADefines, AResolver, [AFileName], AUsages, APatterns);
+  mExtras := [];
+  if AUsages then
+  begin
+    Include(mExtras, TExtractExtra.Usages);
+  end;
+  if APatterns then
+  begin
+    Include(mExtras, TExtractExtra.Patterns);
+  end;
+  Result := TIncludeMerger.ExtractLevel(AText, AFileName, ADefines, AResolver, [AFileName], mExtras);
 end;
 
 end.

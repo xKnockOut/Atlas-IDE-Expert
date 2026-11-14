@@ -70,10 +70,6 @@ type
     function Execute: Integer;
     /// <summary>--check; Fehler in der Befehlszeile und unerwartete Fehler geben 3.</summary>
     class function Run(const AOptions: TCommandLineOptions): Integer; static;
-    /// <summary>Beschreibungen aller Regeln für SARIF: Syntax, Sprachstand, ARules und mit Index die
-    /// gespeicherten Abfragen mit failIfAny (#1351) als Regeln query:&lt;name&gt;.</summary>
-    class function DescriptorsOf(const ARules: TArray<IRule>; const ASettings: TServerSettings;
-      AWithIndex: Boolean): TArray<TRuleDescriptor>; static;
   end;
 
 implementation
@@ -85,7 +81,6 @@ uses
   Atlas.Common.Documents.FileEncoding,
   Atlas.Common.Rules.Output,
   Atlas.Common.Rules.Builtin,
-  Atlas.Common.Rules.Builtin.SavedQueries,
   Atlas.Common.Diagnostics.ShutdownLeaks,
   Atlas.Common.Lsp.ServerActivity,
   Shell.Linter.Output,
@@ -94,26 +89,6 @@ uses
   Shell.Linter.Changes,
   Shell.Linter.Index,
   Shell.Linter.Reports;
-
-class function TLinterCheck.DescriptorsOf(const ARules: TArray<IRule>; const ASettings: TServerSettings;
-  AWithIndex: Boolean): TArray<TRuleDescriptor>;
-var
-  mRule: IRule;
-begin
-  Result := TArray<TRuleDescriptor>.Create(TFileChecker.SyntaxDescriptor, TFileChecker.LanguageFeatureDescriptor);
-  for mRule in ARules do
-  begin
-    Result := Result + [mRule.Descriptor];
-  end;
-  if not AWithIndex then
-  begin
-    Exit;
-  end;
-  for mRule in TSavedQueryRule.RulesOf(ASettings) do
-  begin
-    Result := Result + [mRule.Descriptor];
-  end;
-end;
 
 constructor TLinterCheck.Create(const AOptions: TCommandLineOptions; const AConfigRoot: string);
 begin
@@ -144,7 +119,7 @@ begin
   TLinterSettings.ApplyProfile(FOptions, FSettings);
   FFilter := TLinterSettings.FilterOf(FOptions);
   FRules := BuiltinRules;
-  FDescriptors := DescriptorsOf(FRules, FSettings, not FOptions.NoIndex);
+  FDescriptors := TLinterSettings.DescriptorsOf(FRules, FSettings, not FOptions.NoIndex);
   FBaselinePath := TLinterBaseline.PathOf(FOptions, FConfigRoot);
   Result := TLinterBaseline.Load(FOptions, FBaselinePath, FBaseline);
 end;

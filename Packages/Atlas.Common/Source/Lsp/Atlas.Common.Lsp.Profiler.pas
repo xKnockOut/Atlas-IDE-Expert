@@ -45,6 +45,9 @@ type
     function HandleStatus(const AArguments: TJSONArray): TJSONValue;
     function HandleStop(const AArguments: TJSONArray): TJSONValue;
     procedure LoadMap(const AFileName: string);
+    function StartedSampler(AParams: TJSONObject; AProcessId: Integer): IAtlasProfileSampler;
+    procedure BeginProfile(AParams: TJSONObject; const ASampler: IAtlasProfileSampler; AProcessId: Integer);
+    function StartResult(const AMapFile: string): TJSONObject;
     /// <summary>Beendet den Lauf, schreibt die Datei und räumt auf; Ergebnis wie atlas/profilerStop.</summary>
     function Finish: TJSONObject;
     procedure Prune;
@@ -134,13 +137,69 @@ begin
   end;
 end;
 
+/// <summary>Abtastung des Prozesses AProcessId mit dem Takt aus AParams, gestartet; sonst EJsonRpcError.</summary>
+function TLspProfiler.StartedSampler(AParams: TJSONObject; AProcessId: Integer): IAtlasProfileSampler;
+var
+  mError: string;
+begin
+  Result := nil;
+  if Assigned(FFactory) then
+  begin
+    Result := FFactory();
+  end;
+  if Result = nil then
+  begin
+    raise EJsonRpcError.Create(TJsonRpcErrorCode.cRequestFailed, cTexts[TProfilerText.NotAvailable].Text);
+  end;
+  if not Result.Start(Cardinal(AProcessId), EnsureRange(IntParam(AParams, 'intervalMs', cDefaultIntervalMs),
+    cMinIntervalMs, cMaxIntervalMs), mError) then
+  begin
+    raise EJsonRpcError.Create(TJsonRpcErrorCode.cRequestFailed,
+      cTexts[TProfilerText.StartFailed].Fmt([AProcessId, mError]));
+  end;
+end;
+
+/// <summary>Übernimmt die laufende Abtastung ASampler und legt den Kopf des Profils aus AParams an.</summary>
+procedure TLspProfiler.BeginProfile(AParams: TJSONObject; const ASampler: IAtlasProfileSampler; AProcessId: Integer);
+begin
+  FSampler := ASampler;
+  FProcessId := Cardinal(AProcessId);
+  FWatch := TStopwatch.StartNew;
+  FProfile := Default(TAtlasProfile);
+  FProfile.ProgramName := TextParam(AParams, 'program');
+  FProfile.Project := TextParam(AParams, 'project');
+  FProfile.Platform := TextParam(AParams, 'platform');
+  FProfile.StartedAt := Now;
+  FProfile.IntervalMs := EnsureRange(IntParam(AParams, 'intervalMs', cDefaultIntervalMs), cMinIntervalMs,
+    cMaxIntervalMs);
+  if FProfile.ProgramName = '' then
+  begin
+    FProfile.ProgramName := ExtractFileName(ASampler.MainFileName);
+  end;
+end;
+
+/// <summary>Antwort von atlas/profilerStart mit der Map-Datei AMapFile.</summary>
+function TLspProfiler.StartResult(const AMapFile: string): TJSONObject;
+var
+  mRoutines: Integer;
+begin
+  mRoutines := 0;
+  if FMap <> nil then
+  begin
+    mRoutines := FMap.SymbolCount;
+  end;
+  Result := TJSONObject.Create;
+  Result.AddPair('started', TJSONBool.Create(True));
+  Result.AddPair('mapFile', AMapFile);
+  Result.AddPair('routines', TJSONNumber.Create(mRoutines));
+end;
+
 function TLspProfiler.HandleStart(const AArguments: TJSONArray): TJSONValue;
 var
   mParams: TJSONObject;
   mSampler: IAtlasProfileSampler;
-  mError, mMapFile: string;
+  mMapFile: string;
   mProcessId: Integer;
-  mResult: TJSONObject;
 begin
   mParams := nil;
   if (AArguments <> nil) and (AArguments.Count > 0) and (AArguments.Items[0] is TJSONObject) then
@@ -157,53 +216,15 @@ begin
   begin
     raise EJsonRpcError.Create(TJsonRpcErrorCode.cInvalidParams, cTexts[TProfilerText.ProcessIdMissing].Text);
   end;
-  mSampler := nil;
-  if Assigned(FFactory) then
-  begin
-    mSampler := FFactory();
-  end;
-  if mSampler = nil then
-  begin
-    raise EJsonRpcError.Create(TJsonRpcErrorCode.cRequestFailed, cTexts[TProfilerText.NotAvailable].Text);
-  end;
-  if not mSampler.Start(Cardinal(mProcessId), EnsureRange(IntParam(mParams, 'intervalMs', cDefaultIntervalMs),
-    cMinIntervalMs, cMaxIntervalMs), mError) then
-  begin
-    raise EJsonRpcError.Create(TJsonRpcErrorCode.cRequestFailed,
-      cTexts[TProfilerText.StartFailed].Fmt([mProcessId, mError]));
-  end;
-  FSampler := mSampler;
-  FProcessId := Cardinal(mProcessId);
-  FWatch := TStopwatch.StartNew;
-  FProfile := Default(TAtlasProfile);
-  FProfile.ProgramName := TextParam(mParams, 'program');
-  FProfile.Project := TextParam(mParams, 'project');
-  FProfile.Platform := TextParam(mParams, 'platform');
-  FProfile.StartedAt := Now;
-  FProfile.IntervalMs := EnsureRange(IntParam(mParams, 'intervalMs', cDefaultIntervalMs), cMinIntervalMs,
-    cMaxIntervalMs);
-  if FProfile.ProgramName = '' then
-  begin
-    FProfile.ProgramName := ExtractFileName(mSampler.MainFileName);
-  end;
+  mSampler := StartedSampler(mParams, mProcessId);
+  BeginProfile(mParams, mSampler, mProcessId);
   mMapFile := TextParam(mParams, 'mapFile');
   if mMapFile = '' then
   begin
     mMapFile := ChangeFileExt(mSampler.MainFileName, '.map');
   end;
   LoadMap(mMapFile);
-  mResult := TJSONObject.Create;
-  mResult.AddPair('started', TJSONBool.Create(True));
-  mResult.AddPair('mapFile', mMapFile);
-  if FMap <> nil then
-  begin
-    mResult.AddPair('routines', TJSONNumber.Create(FMap.SymbolCount));
-  end
-  else
-  begin
-    mResult.AddPair('routines', TJSONNumber.Create(0));
-  end;
-  Result := mResult;
+  Result := StartResult(mMapFile);
 end;
 
 function TLspProfiler.HandleStatus(const AArguments: TJSONArray): TJSONValue;

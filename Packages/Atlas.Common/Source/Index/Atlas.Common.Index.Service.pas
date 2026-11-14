@@ -117,6 +117,14 @@ type
     Written: TIndexCacheWrittenEvent;
   end;
 
+  /// <summary>Rückmeldungen des Aufbaus an den Aufrufer.</summary>
+  TIndexServiceEvents = record
+    Progress: TIndexProgressEvent;
+    Finished: TIndexFinishedEvent;
+    ProjectReady: TIndexFinishedEvent;
+    Error: TIndexErrorEvent;
+  end;
+
   /// <summary>Wartet höchstens AMs oder bis der Aufbau abgebrochen wird; True bei Abbruch. Für das Warten auf
   /// eine andere Instanz (Schreibsperre, Cache-Datei): Dafür gibt es kein Signal über Prozessgrenzen, also wird
   /// nachgesehen; der Abbruch aber wirkt sofort und nicht erst nach dem nächsten Takt.</summary>
@@ -178,10 +186,7 @@ type
     FUsers: Integer;
     /// <summary>Hält ApplyText und ApplyChanges in Reihe; EnsureUnit wartet darauf nicht.</summary>
     FApplyLock: TObject;
-    FOnProgress: TIndexProgressEvent;
-    FOnFinished: TIndexFinishedEvent;
-    FOnProjectReady: TIndexFinishedEvent;
-    FOnError: TIndexErrorEvent;
+    FEvents: TIndexServiceEvents;
     FScheduler: TIndexScheduler;
     FStages: TIndexStageWatch;
     FCacheEvents: TIndexCacheEvents;
@@ -224,12 +229,12 @@ type
     property OnCacheNotWritten: TIndexCacheRejectedEvent read FCacheEvents.NotWritten write FCacheEvents.NotWritten;
     /// <summary>Nach jedem geschriebenen Cache; im Index-Thread.</summary>
     property OnCacheWritten: TIndexCacheWrittenEvent read FCacheEvents.Written write FCacheEvents.Written;
-    property OnProgress: TIndexProgressEvent read FOnProgress write FOnProgress;
-    property OnFinished: TIndexFinishedEvent read FOnFinished write FOnFinished;
+    property OnProgress: TIndexProgressEvent read FEvents.Progress write FEvents.Progress;
+    property OnFinished: TIndexFinishedEvent read FEvents.Finished write FEvents.Finished;
     /// <summary>Projektstufe fertig (Projektdateien und über uses erreichbare Units), Cache geschrieben;
     /// Suchpfade und Bibliothek folgen. Im Index-Thread, nicht bei Abbruch.</summary>
-    property OnProjectReady: TIndexFinishedEvent read FOnProjectReady write FOnProjectReady;
-    property OnError: TIndexErrorEvent read FOnError write FOnError;
+    property OnProjectReady: TIndexFinishedEvent read FEvents.ProjectReady write FEvents.ProjectReady;
+    property OnError: TIndexErrorEvent read FEvents.Error write FEvents.Error;
     /// <summary>Gemeinsam für alle Projekte (#648); gehört dem Aufrufer, nil = ohne Reihenfolge.</summary>
     property Scheduler: TIndexScheduler read FScheduler write FScheduler;
   end;
@@ -1070,8 +1075,8 @@ begin
         mTurn := FScheduler.Register(ARequest.Priority);
       end;
       mTurn := FStages.Watch(mTurn);
-      mBuilder.OnProjectDone := ProjectDoneHandler(mCaches, mWatch, FOnProjectReady);
-      mResult := mBuilder.Build(ARequest.Files, ARequest.SearchFiles, ARequest.LibraryFiles, FOnProgress,
+      mBuilder.OnProjectDone := ProjectDoneHandler(mCaches, mWatch, FEvents.ProjectReady);
+      mResult := mBuilder.Build(ARequest.Files, ARequest.SearchFiles, ARequest.LibraryFiles, FEvents.Progress,
         BuilderCancelled(ACancelled), mTurn);
       mBuilder.OnProjectDone := nil;
       // Abmelden vor dem Schreiben des Caches: Das nächste Projekt muss darauf nicht warten.
@@ -1086,9 +1091,9 @@ begin
       // Rückmeldung 01.11.2026).
       mBuilder.ReleaseCache;
       mCaches.Release;
-      if Assigned(FOnFinished) then
+      if Assigned(FEvents.Finished) then
       begin
-        FOnFinished(mResult, mWatch.ElapsedMilliseconds);
+        FEvents.Finished(mResult, mWatch.ElapsedMilliseconds);
       end;
     except
       // lsp-ignore: catch-all-without-raise -- Fehlergrenze des Hintergrundlaufs; ReportError meldet
@@ -1109,12 +1114,12 @@ end;
 
 procedure TIndexService.ReportError(const AError: Exception);
 begin
-  if not Assigned(FOnError) then
+  if not Assigned(FEvents.Error) then
   begin
     Exit;
   end;
   try
-    FOnError(AError);
+    FEvents.Error(AError);
   except
     // Sonst läge die Ausnahme ungelesen in TThread.FatalException.
   end;

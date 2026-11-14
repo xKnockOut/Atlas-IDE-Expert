@@ -78,6 +78,15 @@ type
   /// <summary>Kennt der Index einen Bezeichner dieses Namens?</summary>
   TLearnedNameCheck = reference to function(const AName: string): Boolean;
 
+  /// <summary>Was das Projekt für Vorschläge beiträgt: die Units des Index, aus denen Muster gelernt werden, und
+  /// die Prüfung, ob ein Bezeichner außerhalb der Datei bekannt ist.</summary>
+  TLearnedProject = record
+    Units: TArray<TUnitIndex>;
+    Known: TLearnedNameCheck;
+    class function Create(const AUnits: TArray<TUnitIndex>; const AKnown: TLearnedNameCheck): TLearnedProject;
+      static;
+  end;
+
   TLearnedSuggestions = class
   public const
     /// <summary>Muster mit weniger Stellen zeigt die Liste der gelernten Vorschläge nicht.</summary>
@@ -106,11 +115,10 @@ type
     /// <summary>Auslöser vor der leeren Zeile ALine (0-basiert) von AText mit Baum ATree.</summary>
     class function TriggerAt(ATree: TSyntaxTree; const AText: string; ALine: Integer; out AStatement: TSyntaxNode;
       out ATrigger: TFollowTrigger): Boolean; static;
-    /// <summary>Vorschlag für die leere Zeile ALine; AKnown prüft Bezeichner, die nicht in der Datei stehen.
-    /// </summary>
-    class function Suggest(ATree: TSyntaxTree; const AText: string; ALine: Integer; const AUnits: TArray<TUnitIndex>;
-      const AOptions: TLearnedOptions; const AKnown: TLearnedNameCheck; out ASuggestion: TLearnedSuggestion): Boolean;
-      static;
+    /// <summary>Vorschlag für die leere Zeile ALine aus den Mustern von AProject; dessen Known prüft Bezeichner,
+    /// die nicht in der Datei stehen.</summary>
+    class function Suggest(ATree: TSyntaxTree; const AText: string; ALine: Integer; const AProject: TLearnedProject;
+      const AOptions: TLearnedOptions; out ASuggestion: TLearnedSuggestion): Boolean; static;
     /// <summary>Bringt ASuggestion keinen neuen Syntaxfehler und keinen unbekannten Bezeichner in AText?</summary>
     class function Valid(ATree: TSyntaxTree; const AText: string; ALine: Integer;
       const ASuggestion: TLearnedSuggestion; const AKnown: TLearnedNameCheck): Boolean; static;
@@ -167,6 +175,15 @@ begin
       Exit(AdjustBy[mIndex]);
     end;
   end;
+end;
+
+{ TLearnedProject }
+
+class function TLearnedProject.Create(const AUnits: TArray<TUnitIndex>;
+  const AKnown: TLearnedNameCheck): TLearnedProject;
+begin
+  Result.Units := AUnits;
+  Result.Known := AKnown;
 end;
 
 { TLearnedSuggestions }
@@ -424,40 +441,50 @@ begin
   ALine := StringReplace(ALine, TIndexFollowPatterns.cTypeName, ATrigger.TypeName, [rfReplaceAll]);
 end;
 
+/// <summary>Einrückung je Ebene nach AOptions: ein Tabulator oder IndentSize Leerzeichen.</summary>
+function IndentUnit(const AOptions: TLearnedOptions): string;
+begin
+  if AOptions.UseTabs then
+  begin
+    Result := #9;
+  end
+  else
+  begin
+    Result := StringOfChar(' ', Max(1, AOptions.IndentSize));
+  end;
+end;
+
+/// <summary>Zeile AFollowLine einer Vorlage ohne ihre Einrückungszeichen; APrefix ist AIndent und je Zeichen
+/// einmal AUnit.</summary>
+function WithoutIndentMarks(const AFollowLine, AIndent, AUnit: string; out APrefix: string): string;
+var
+  mDepth: Integer;
+begin
+  mDepth := 0;
+  APrefix := AIndent;
+  while (mDepth < Length(AFollowLine)) and (AFollowLine[mDepth + 1] = TIndexFollowPatterns.cIndentMark) do
+  begin
+    Inc(mDepth);
+    APrefix := APrefix + AUnit;
+  end;
+  Result := Copy(AFollowLine, mDepth + 1, MaxInt);
+end;
+
 class function TLearnedSuggestions.Render(const AFollow: string; const ATrigger: TFollowTrigger;
   const AIndent: string; const AOptions: TLearnedOptions; out ASuggestion: TLearnedSuggestion): Boolean;
 var
   mUnit, mText, mLine, mPrefix: string;
-  mDepth, mIndex: Integer;
+  mIndex: Integer;
   mParts: TArray<string>;
 begin
   ASuggestion := Default(TLearnedSuggestion);
-  if AOptions.UseTabs then
-  begin
-    mUnit := #9;
-  end
-  else
-  begin
-    mUnit := StringOfChar(' ', Max(1, AOptions.IndentSize));
-  end;
+  mUnit := IndentUnit(AOptions);
   mParts := AFollow.Split([#10]);
   Result := Length(mParts) > 0;
   ASuggestion.CursorLine := -1;
   for mIndex := 0 to High(mParts) do
   begin
-    mText := mParts[mIndex];
-    mDepth := 0;
-    while (mDepth < Length(mText)) and (mText[mDepth + 1] = TIndexFollowPatterns.cIndentMark) do
-    begin
-      Inc(mDepth);
-    end;
-    mText := Copy(mText, mDepth + 1, MaxInt);
-    mPrefix := AIndent;
-    while mDepth > 0 do
-    begin
-      mPrefix := mPrefix + mUnit;
-      Dec(mDepth);
-    end;
+    mText := WithoutIndentMarks(mParts[mIndex], AIndent, mUnit, mPrefix);
     if mText = TIndexFollowPatterns.cBody then
     begin
       mLine := mPrefix;
@@ -516,12 +543,49 @@ begin
   end;
 end;
 
+/// <summary>Endoffset der Anweisung, deren Semikolon direkt vor der Zeile ALine steht; False ohne.</summary>
+function StatementEndBefore(const ATokens: TArray<TPascalToken>; ALine: Integer; out AEnd: Integer): Boolean;
+var
+  mSemicolon, mLast: Integer;
+begin
+  AEnd := -1;
+  mSemicolon := CodeTokenBefore(ATokens, FirstTokenOfLine(ATokens, ALine));
+  mLast := -1;
+  if (mSemicolon >= 0) and ATokens[mSemicolon].IsSymbol(';') then
+  begin
+    mLast := CodeTokenBefore(ATokens, mSemicolon);
+  end;
+  Result := mLast >= 0;
+  if Result then
+  begin
+    AEnd := ATokens[mLast].Offset + Length(ATokens[mLast].Text);
+  end;
+end;
+
+/// <summary>Zuweisung oder Aufruf in einer Anweisungsliste unter ARoot, die bei AEnd endet; nil ohne.</summary>
+function ListStatementEndingAt(ARoot: TSyntaxNode; AEnd: Integer): TSyntaxNode;
+begin
+  Result := ARoot.Search(
+    function(ANode: TSyntaxNode): TSyntaxSearchStep
+    begin
+      if (ANode.StartOffset > AEnd) or (ANode.EndOffset < AEnd) then
+      begin
+        Exit(TSyntaxSearchStep.Skip);
+      end;
+      if (ANode.EndOffset = AEnd) and (ANode.Kind in [TSyntaxKind.AssignStatement, TSyntaxKind.CallStatement]) and
+        (ANode.Parent <> nil) and TIndexFollowPatterns.IsList(ANode.Parent.Kind) then
+      begin
+        Exit(TSyntaxSearchStep.Found);
+      end;
+      Result := TSyntaxSearchStep.Descend;
+    end);
+end;
+
 class function TLearnedSuggestions.TriggerAt(ATree: TSyntaxTree; const AText: string; ALine: Integer;
   out AStatement: TSyntaxNode; out ATrigger: TFollowTrigger): Boolean;
 var
   mLines: TArray<string>;
-  mTokens: TArray<TPascalToken>;
-  mSemicolon, mLast, mEnd: Integer;
+  mEnd: Integer;
   mFound: TSyntaxNode;
 begin
   AStatement := nil;
@@ -532,42 +596,16 @@ begin
   begin
     Exit;
   end;
-  mTokens := ATree.Tokens;
-  mSemicolon := CodeTokenBefore(mTokens, FirstTokenOfLine(mTokens, ALine));
-  if (mSemicolon < 0) or not mTokens[mSemicolon].IsSymbol(';') then
+  if not StatementEndBefore(ATree.Tokens, ALine, mEnd) then
   begin
     Exit;
   end;
-  mLast := CodeTokenBefore(mTokens, mSemicolon);
-  if mLast < 0 then
+  mFound := ListStatementEndingAt(ATree.Root, mEnd);
+  if (mFound <> nil) and TIndexFollowPatterns.TriggerOf(ATree, mFound, ATrigger) then
   begin
-    Exit;
+    AStatement := mFound;
+    Result := True;
   end;
-  mEnd := mTokens[mLast].Offset + Length(mTokens[mLast].Text);
-  mFound := ATree.Root.Search(
-    function(ANode: TSyntaxNode): TSyntaxSearchStep
-    begin
-      if ANode.StartOffset > mEnd then
-      begin
-        Exit(TSyntaxSearchStep.Skip);
-      end;
-      if (ANode.EndOffset = mEnd) and (ANode.Kind in [TSyntaxKind.AssignStatement, TSyntaxKind.CallStatement]) and
-        (ANode.Parent <> nil) and TIndexFollowPatterns.IsList(ANode.Parent.Kind) then
-      begin
-        Exit(TSyntaxSearchStep.Found);
-      end;
-      if ANode.EndOffset < mEnd then
-      begin
-        Exit(TSyntaxSearchStep.Skip);
-      end;
-      Result := TSyntaxSearchStep.Descend;
-    end);
-  if (mFound = nil) or not TIndexFollowPatterns.TriggerOf(ATree, mFound, ATrigger) then
-  begin
-    Exit;
-  end;
-  AStatement := mFound;
-  Result := True;
 end;
 
 /// <summary>Einrückung der Zeile ALine von AText.</summary>
@@ -590,8 +628,7 @@ begin
 end;
 
 class function TLearnedSuggestions.Suggest(ATree: TSyntaxTree; const AText: string; ALine: Integer;
-  const AUnits: TArray<TUnitIndex>; const AOptions: TLearnedOptions; const AKnown: TLearnedNameCheck;
-  out ASuggestion: TLearnedSuggestion): Boolean;
+  const AProject: TLearnedProject; const AOptions: TLearnedOptions; out ASuggestion: TLearnedSuggestion): Boolean;
 var
   mStatement, mNext: TSyntaxNode;
   mTrigger: TFollowTrigger;
@@ -615,7 +652,7 @@ begin
   mFound := TeamPattern(mTrigger, AOptions, mPattern);
   if not mFound then
   begin
-    mPatterns := Gather(AUnits, mTrigger.Keys);
+    mPatterns := Gather(AProject.Units, mTrigger.Keys);
     for mKey in mTrigger.Keys do
     begin
       if not mFound then
@@ -630,7 +667,7 @@ begin
     Exit;
   end;
   ASuggestion.Pattern := mPattern;
-  Result := Valid(ATree, AText, ALine, ASuggestion, AKnown);
+  Result := Valid(ATree, AText, ALine, ASuggestion, AProject.Known);
 end;
 
 /// <summary>Bezeichner in ATokens, kleingeschrieben.</summary>

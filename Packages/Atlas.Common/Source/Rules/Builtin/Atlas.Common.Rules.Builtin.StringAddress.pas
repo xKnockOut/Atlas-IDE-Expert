@@ -81,6 +81,37 @@ begin
     cTexts[TStringAddressText.Title].Text);
 end;
 
+const
+  cComparisons: array[0..3] of string = ('<', '>', '<=', '>=');
+  cMirroredComparisons: array[0..3] of string = ('>', '<', '>=', '<=');
+
+/// <summary>Vergleich mit vertauschten Seiten: aus 0 &lt; N wird N &gt; 0.</summary>
+function MirroredOperator(const AOperator: string): string;
+var
+  mIndex: Integer;
+begin
+  Result := AOperator;
+  mIndex := IndexStr(AOperator, cComparisons);
+  if mIndex >= 0 then
+  begin
+    Result := cMirroredComparisons[mIndex];
+  end;
+end;
+
+/// <summary>Ist der Vergleich Length(S) AOperator ALimit wahr nur bei nicht leerem S (ANonEmpty) bzw. nur bei
+/// leerem S (not ANonEmpty)? AOperator und ALimit klein und ohne Leerraum.</summary>
+function LengthSays(const AOperator, ALimit: string; ANonEmpty: Boolean): Boolean;
+begin
+  if ANonEmpty then
+  begin
+    Result := (ALimit = '0') and MatchStr(AOperator, ['>', '<>']) or (ALimit = '1') and (AOperator = '>=');
+  end
+  else
+  begin
+    Result := (ALimit = '0') and MatchStr(AOperator, ['=', '<=']) or (ALimit = '1') and (AOperator = '<');
+  end;
+end;
+
 procedure TFirstCharAddressRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
 var
   mScope: TTypedScope;
@@ -224,22 +255,15 @@ var
     mRight := Squeezed(Unwrapped(ACondition[1]));
     if (mLeft = ABase) and (mRight = '''''') or (mRight = ABase) and (mLeft = '''''') then
     begin
-      Exit(ANonEmpty and (mOperator = '<>') or not ANonEmpty and (mOperator = '='));
-    end;
-    if IsLengthOf(ACondition[0], ABase, ARoutine) then
-    begin
-      if ANonEmpty then
-      begin
-        Result := (mRight = '0') and MatchStr(mOperator, ['>', '<>']) or (mRight = '1') and (mOperator = '>=');
-      end
-      else
-      begin
-        Result := (mRight = '0') and MatchStr(mOperator, ['=', '<=']) or (mRight = '1') and (mOperator = '<');
-      end;
+      Result := ANonEmpty and (mOperator = '<>') or not ANonEmpty and (mOperator = '=');
     end
-    else if IsLengthOf(ACondition[1], ABase, ARoutine) and (mLeft = '0') then
+    else if IsLengthOf(ACondition[0], ABase, ARoutine) then
     begin
-      Result := ANonEmpty and MatchStr(mOperator, ['<', '<>']) or not ANonEmpty and MatchStr(mOperator, ['=', '>=']);
+      Result := LengthSays(mOperator, mRight, ANonEmpty);
+    end
+    else if IsLengthOf(ACondition[1], ABase, ARoutine) then
+    begin
+      Result := LengthSays(MirroredOperator(mOperator), mLeft, ANonEmpty);
     end;
   end;
 
@@ -257,6 +281,32 @@ var
       (mText = 'break');
   end;
 
+  /// <summary>Ist AChild der then-Zweig eines if, das nur bei nicht leerem S gilt, bzw. der else-Zweig eines if,
+  /// das nur bei leerem S gilt?</summary>
+  function BranchGuards(AIf, AChild: TSyntaxNode; const ABase, ARoutine: string): Boolean;
+  begin
+    Result := (AIf.Kind = TSyntaxKind.IfStatement) and (AIf.ChildCount > 1) and
+      ((AIf[1] = AChild) and ConditionSays(AIf[0], ABase, ARoutine, True) or
+      (AIf.ChildCount > 2) and (AIf[2] = AChild) and ConditionSays(AIf[0], ABase, ARoutine, False));
+  end;
+
+  /// <summary>Steht im Block ABlock vor AChild ein "if S = '' then Exit;"?</summary>
+  function LeftBefore(ABlock, AChild: TSyntaxNode; const ABase, ARoutine: string): Boolean;
+  var
+    mIndex: Integer;
+    mStatement: TSyntaxNode;
+  begin
+    Result := False;
+    mIndex := 0;
+    while not Result and (mIndex < ABlock.ChildCount) and (ABlock[mIndex] <> AChild) do
+    begin
+      mStatement := ABlock[mIndex];
+      Result := (mStatement.Kind = TSyntaxKind.IfStatement) and (mStatement.ChildCount = 2) and
+        Leaves(mStatement[1]) and ConditionSays(mStatement[0], ABase, ARoutine, False);
+      Inc(mIndex);
+    end;
+  end;
+
   /// <summary>Steht ANode nur bei nicht leerem ABase: im then-Zweig von "if S &lt;&gt; '' then" bzw. hinter
   /// "if S = '' then Exit;" (FP-Prüfung 28.10.2026, F12: SetLength(Result, Len); if Len &gt; 0 then … @Result[1]).
   /// </summary>
@@ -264,7 +314,6 @@ var
   var
     mChild, mParent, mRoutineNode: TSyntaxNode;
     mBase, mRoutine: string;
-    mIndex: Integer;
   begin
     Result := False;
     mBase := Squeezed(ABase);
@@ -280,33 +329,10 @@ var
     end;
     mChild := ANode;
     mParent := ANode.Parent;
-    while (mParent <> nil) and (mParent <> mRoutineNode) do
+    while not Result and (mParent <> nil) and (mParent <> mRoutineNode) do
     begin
-      if (mParent.Kind = TSyntaxKind.IfStatement) and (mParent.ChildCount > 1) and (mParent[1] = mChild) and
-        ConditionSays(mParent[0], mBase, mRoutine, True) then
-      begin
-        Exit(True);
-      end;
-      if (mParent.Kind = TSyntaxKind.IfStatement) and (mParent.ChildCount > 2) and (mParent[2] = mChild) and
-        ConditionSays(mParent[0], mBase, mRoutine, False) then
-      begin
-        Exit(True);
-      end;
-      if mParent.Kind = TSyntaxKind.Block then
-      begin
-        for mIndex := 0 to mParent.ChildCount - 1 do
-        begin
-          if mParent[mIndex] = mChild then
-          begin
-            Break;
-          end;
-          if (mParent[mIndex].Kind = TSyntaxKind.IfStatement) and (mParent[mIndex].ChildCount = 2) and
-            Leaves(mParent[mIndex][1]) and ConditionSays(mParent[mIndex][0], mBase, mRoutine, False) then
-          begin
-            Exit(True);
-          end;
-        end;
-      end;
+      Result := BranchGuards(mParent, mChild, mBase, mRoutine) or (mParent.Kind = TSyntaxKind.Block) and
+        LeftBefore(mParent, mChild, mBase, mRoutine);
       mChild := mParent;
       mParent := mParent.Parent;
     end;

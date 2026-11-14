@@ -168,6 +168,22 @@ end;
 
 { TMigrationTypes }
 
+const
+  // Wortteile von Symbolen, die eine Plattform, einen Prozessor oder eine Bitbreite nennen.
+  cPlatformWordParts: array[0..4] of string = ('ASM', 'X86', 'X64', '64BIT', '32BIT');
+
+/// <summary>Nennt das groß geschriebene Wort AWord eine Plattform, einen Prozessor oder eine Bitbreite?</summary>
+function IsPlatformWord(const AWord: string): Boolean;
+var
+  mPart: string;
+begin
+  Result := StartsStr('CPU', AWord) or MatchStr(AWord, ['WIN32', 'WIN64', 'PUREPASCAL', 'LINUX64', 'OSX64']);
+  for mPart in cPlatformWordParts do
+  begin
+    Result := Result or ContainsStr(AWord, mPart);
+  end;
+end;
+
 class function TMigrationTypes.IsPlatformCondition(const ADirective: string): Boolean;
 var
   mText, mWord: string;
@@ -191,9 +207,7 @@ begin
         Inc(mIndex);
       end;
       mWord := Copy(mText, mStart, mIndex - mStart);
-      if StartsStr('CPU', mWord) or MatchStr(mWord, ['WIN32', 'WIN64', 'PUREPASCAL', 'LINUX64', 'OSX64']) or
-        ContainsStr(mWord, 'ASM') or ContainsStr(mWord, 'X86') or ContainsStr(mWord, 'X64') or
-        ContainsStr(mWord, '64BIT') or ContainsStr(mWord, '32BIT') then
+      if IsPlatformWord(mWord) then
       begin
         Exit(True);
       end;

@@ -51,6 +51,9 @@ type
     function HasCall(ANode: TSyntaxNode): Boolean;
     function RootIsValue(ANode: TSyntaxNode): Boolean;
     procedure Add(const AText: string);
+    procedure AddAll(const ATexts: TArray<string>);
+    procedure AddHeaderNames(AHeader: TSyntaxNode);
+    procedure AddVarNames(ASection: TSyntaxNode);
     function TryAddChain(ANode: TSyntaxNode): Boolean;
     procedure CollectCall(ANode: TSyntaxNode);
     procedure Collect(ANode: TSyntaxNode);
@@ -313,7 +316,6 @@ end;
 procedure TLspDebugVariables.CollectStatement(AStatement: TSyntaxNode);
 var
   mIndex: Integer;
-  mName: string;
 begin
   if AStatement = nil then
   begin
@@ -326,10 +328,7 @@ begin
   // Schleifen- und Inline-Variablen tragen ihren Namen am Knoten.
   if AStatement.Kind in [TSyntaxKind.ForStatement, TSyntaxKind.ForInStatement, TSyntaxKind.InlineVar] then
   begin
-    for mName in NamesOf(AStatement) do
-    begin
-      Add(mName);
-    end;
+    AddAll(NamesOf(AStatement));
   end;
   // Nur die Ausdrücke der Anweisung selbst: Rümpfe und Zweige sind eigene Anweisungen.
   for mIndex := 0 to AStatement.ChildCount - 1 do
@@ -409,11 +408,55 @@ begin
   Result := FFound.ToArray;
 end;
 
+procedure TLspDebugVariables.AddAll(const ATexts: TArray<string>);
+var
+  mText: string;
+begin
+  for mText in ATexts do
+  begin
+    Add(mText);
+  end;
+end;
+
+/// <summary>Parameter und Result aus dem Kopf AHeader einer Routine.</summary>
+procedure TLspDebugVariables.AddHeaderNames(AHeader: TSyntaxNode);
+var
+  mParams: TSyntaxNode;
+  mIndex: Integer;
+begin
+  mParams := AHeader.FindChild(TSyntaxKind.Parameters);
+  if mParams <> nil then
+  begin
+    for mIndex := 0 to mParams.ChildCount - 1 do
+    begin
+      AddAll(NamesOf(mParams.Children[mIndex]));
+    end;
+  end;
+  // Ergebnistyp direkt am Kopf: Funktion bzw. Operator.
+  if AHeader.FindChild(TSyntaxKind.TypeReference) <> nil then
+  begin
+    Add('Result');
+  end;
+end;
+
+/// <summary>Variablen des var-Abschnitts ASection.</summary>
+procedure TLspDebugVariables.AddVarNames(ASection: TSyntaxNode);
+var
+  mDecl: Integer;
+begin
+  for mDecl := 0 to ASection.ChildCount - 1 do
+  begin
+    if ASection.Children[mDecl].Kind = TSyntaxKind.VarDecl then
+    begin
+      AddAll(NamesOf(ASection.Children[mDecl]));
+    end;
+  end;
+end;
+
 procedure TLspDebugVariables.AddLocalsOf(ARoutine: TSyntaxNode);
 var
-  mHeader, mParams, mChild: TSyntaxNode;
-  mIndex, mDecl: Integer;
-  mName: string;
+  mHeader: TSyntaxNode;
+  mIndex: Integer;
 begin
   mHeader := ARoutine.FindChild(TSyntaxKind.RoutineHeader);
   // Methoden „TKlasse.Name“ haben Self.
@@ -423,39 +466,13 @@ begin
   end;
   if mHeader <> nil then
   begin
-    mParams := mHeader.FindChild(TSyntaxKind.Parameters);
-    if mParams <> nil then
-    begin
-      for mIndex := 0 to mParams.ChildCount - 1 do
-      begin
-        for mName in NamesOf(mParams.Children[mIndex]) do
-        begin
-          Add(mName);
-        end;
-      end;
-    end;
-    // Ergebnistyp direkt am Kopf: Funktion bzw. Operator.
-    if mHeader.FindChild(TSyntaxKind.TypeReference) <> nil then
-    begin
-      Add('Result');
-    end;
+    AddHeaderNames(mHeader);
   end;
   for mIndex := 0 to ARoutine.ChildCount - 1 do
   begin
-    mChild := ARoutine.Children[mIndex];
-    if mChild.Kind <> TSyntaxKind.VarSection then
+    if ARoutine.Children[mIndex].Kind = TSyntaxKind.VarSection then
     begin
-      Continue;
-    end;
-    for mDecl := 0 to mChild.ChildCount - 1 do
-    begin
-      if mChild.Children[mDecl].Kind = TSyntaxKind.VarDecl then
-      begin
-        for mName in NamesOf(mChild.Children[mDecl]) do
-        begin
-          Add(mName);
-        end;
-      end;
+      AddVarNames(ARoutine.Children[mIndex]);
     end;
   end;
 end;
@@ -472,7 +489,6 @@ begin
   mBlock.Walk(
     function(ANode: TSyntaxNode): Boolean
     var
-      mName: string;
       mScoped: Boolean;
     begin
       // Verschachtelte Routinen und anonyme Methoden haben eigene Variablen.
@@ -483,10 +499,7 @@ begin
         ((ANode.Kind in [TSyntaxKind.ForStatement, TSyntaxKind.ForInStatement]) and Contains(ANode, ALine));
       if mScoped then
       begin
-        for mName in NamesOf(ANode) do
-        begin
-          Add(mName);
-        end;
+        AddAll(NamesOf(ANode));
       end;
     end);
 end;

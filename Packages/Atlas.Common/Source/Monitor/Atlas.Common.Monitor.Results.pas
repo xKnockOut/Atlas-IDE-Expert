@@ -248,12 +248,34 @@ end;
 
 { Zusammenführen }
 
+/// <summary>Hängt die Läufe ("runs") des SARIF-Texts AText an ARuns an.</summary>
+procedure AppendRuns(ARuns: TJSONArray; const AText: string);
+var
+  mRoot: TJSONObject;
+  mSource: TJSONArray;
+  mValue: TJSONValue;
+begin
+  mRoot := TJsonRead.ParseObject(AText);
+  try
+    mSource := TJsonRead.Items(mRoot, 'runs');
+    if mSource = nil then
+    begin
+      Exit;
+    end;
+    for mValue in mSource do
+    begin
+      ARuns.AddElement(mValue.Clone as TJSONValue);
+    end;
+  finally
+    mRoot.Free;
+  end;
+end;
+
 class function TMonitorResults.MergeSarif(const ATexts: TArray<string>): string;
 var
-  mMerged, mRoot: TJSONObject;
-  mRuns, mSource: TJSONArray;
+  mMerged: TJSONObject;
+  mRuns: TJSONArray;
   mText: string;
-  mValue: TJSONValue;
 begin
   mMerged := TJSONObject.Create;
   try
@@ -263,19 +285,7 @@ begin
     mMerged.AddPair('runs', mRuns);
     for mText in ATexts do
     begin
-      mRoot := TJsonRead.ParseObject(mText);
-      try
-        mSource := TJsonRead.Items(mRoot, 'runs');
-        if mSource <> nil then
-        begin
-          for mValue in mSource do
-          begin
-            mRuns.AddElement(mValue.Clone as TJSONValue);
-          end;
-        end;
-      finally
-        mRoot.Free;
-      end;
+      AppendRuns(mRuns, mText);
     end;
     Result := mMerged.ToJSON([]);
   finally

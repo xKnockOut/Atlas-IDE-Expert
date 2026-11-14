@@ -268,6 +268,11 @@ function TCoveredByTests.RequestOf(ADepth: Integer; AIncludePrivate: Boolean): T
 begin
   Result := Default(TCoveredRequest);
   Result.Files := TArray<string>.Create(BasisFile, AndereFile, BasisTestFile);
+  Result.ReadText :=
+    function(const AName: string; out AContent: string): Boolean
+    begin
+      Result := ReadFile(AName, AContent);
+    end;
   Result.Options := TImpactOptions.Default;
   Result.Options.Depth := ADepth;
   Result.Options.Tests := TImpactTestScope.FromProgram('{unit}.Tests', ProgramTests);
@@ -277,20 +282,12 @@ end;
 function TCoveredByTests.Determine(const AFileName, AText: string; ADepth: Integer;
   AIncludePrivate: Boolean): TCoveredResult;
 begin
-  Result := TCoveredBy.Determine(FResolver, FIndex, AFileName, AText, RequestOf(ADepth, AIncludePrivate),
-    function(const AName: string; out AContent: string): Boolean
-    begin
-      Result := ReadFile(AName, AContent);
-    end, nil);
+  Result := TCoveredBy.Determine(FResolver, FIndex, AFileName, AText, RequestOf(ADepth, AIncludePrivate), nil);
 end;
 
 function TCoveredByTests.Project(ABudgetMs: Integer): TUntestedResult;
 begin
-  Result := TCoveredBy.Project(FResolver, FIndex, RequestOf(1, False),
-    function(const AName: string; out AContent: string): Boolean
-    begin
-      Result := ReadFile(AName, AContent);
-    end, nil, ABudgetMs);
+  Result := TCoveredBy.Project(FResolver, FIndex, RequestOf(1, False), nil, ABudgetMs);
 end;
 
 procedure TCoveredByTests.PublicMethodsAndInterfaceRoutines;

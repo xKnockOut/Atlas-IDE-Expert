@@ -35,6 +35,7 @@ type
     FSelectionMatchesMaxMatches: TEdit;
     procedure EditorToolbarCustomizeClick(Sender: TObject);
     procedure BuildBreadcrumbs;
+    procedure BuildEditorToolbar;
   public
     procedure Build;
     procedure Build2;
@@ -128,8 +129,6 @@ begin
 end;
 
 procedure TAtlasSettingsEditorViewPart.Build;
-var
-  mPanel: TWinControl;
 begin
   AddSheet(TAtlasTextId.SettingsTabEditor);
   BindCheck('HoverTooltip', AddCheck(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsHover)));
@@ -184,7 +183,14 @@ begin
   BindCheck('DimUnusedUses', AddCheck(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsDimUnusedUses)));
   BuildBreadcrumbs;
   BindCheck('MouseNavButtons', AddCheck(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsMouseNavButtons)));
-  // Atlas-Editorleiste (#1101).
+  BuildEditorToolbar;
+end;
+
+/// <summary>Atlas-Editorleiste (#1101): Position, Einträge mit Anpassen-Knopf, Beschriftungen.</summary>
+procedure TAtlasSettingsEditorViewPart.BuildEditorToolbar;
+var
+  mPanel: TWinControl;
+begin
   BindCheck('EditorToolbar', AddCheck(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsEditorToolbar)));
   FEditorToolbarPosition := AddChoice(TAtlasStrings.Text(TAtlasTextId.EditorToolbarPosition),
     [TAtlasStrings.Text(TAtlasTextId.EditorToolbarPositionBelow),
