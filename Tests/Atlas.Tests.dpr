@@ -2055,6 +2055,8 @@ uses
   Atlas.Common.Mcp.ReportTools.Tests in 'Common\Mcp\Atlas.Common.Mcp.ReportTools.Tests.pas',
   Atlas.Common.Profiling.Profile.Tests in 'Common\Profiling\Atlas.Common.Profiling.Profile.Tests.pas',
   Atlas.Common.Profiling.Report.Tests in 'Common\Profiling\Atlas.Common.Profiling.Report.Tests.pas',
+  Atlas.Common.Profiling.Sampling.Tests in 'Common\Profiling\Atlas.Common.Profiling.Sampling.Tests.pas',
+  Atlas.Common.Lsp.Profiler.Tests in 'Common\Lsp\Atlas.Common.Lsp.Profiler.Tests.pas',
   Atlas.Common.Mcp.DeadCodeTools.Tests in 'Common\Mcp\Atlas.Common.Mcp.DeadCodeTools.Tests.pas',
   Atlas.Common.Mcp.StatusTools.Tests in 'Common\Mcp\Atlas.Common.Mcp.StatusTools.Tests.pas',
   Atlas.Common.Mcp.Prompts.Tests in 'Common\Mcp\Atlas.Common.Mcp.Prompts.Tests.pas',
