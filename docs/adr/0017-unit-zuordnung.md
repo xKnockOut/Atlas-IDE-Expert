@@ -1482,6 +1482,7 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.IDE.Designer.EventMap` | `IDE/Designer/Atlas.IDE.Designer.EventMap.pas` | Ordner `IDE/Designer` |
 | `Atlas.IDE.Designer.Usages` | `IDE/Designer/Atlas.IDE.Designer.Usages.pas` | Ordner `IDE/Designer` |
 | `Atlas.IDE.Designer.DesktopLayout` | `IDE/Designer/Atlas.IDE.Designer.DesktopLayout.pas` | Ordner `IDE/Designer` |
+| `Atlas.IDE.Designer.OpenWatch` | `IDE/Designer/Atlas.IDE.Designer.OpenWatch.pas` | Ordner `IDE/Designer` |
 | `Atlas.IDE.Designer.UndoApply` | `IDE/Designer/Atlas.IDE.Designer.UndoApply.pas` | Ordner `IDE/Designer` |
 | `Atlas.IDE.Designer.Undo` | `IDE/Designer/Atlas.IDE.Designer.Undo.pas` | Ordner `IDE/Designer` |
 | `Atlas.UI.Designer.Bar` | `UI/Designer/Atlas.UI.Designer.Bar.pas` | Ordner `UI/Designer` |

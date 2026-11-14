@@ -1,7 +1,7 @@
 ﻿unit Atlas.IDE.Designer.DesktopLayout;
 
 // Eigenes Desktop-Layout im Formular-Designer (#2079) in der IDE: Ein Takt
-// (100 ms) erhebt, was die IDE zeigt, und gibt es an TAtlasDesktopSwitch;
+// (100 ms, nur bei offenem Formular-Designer) erhebt was die IDE zeigt, und gibt es an TAtlasDesktopSwitch;
 // verlangt der ein anderes Layout, lädt die Unit es über das
 // Desktop-Auswahlfeld der Titelleiste (AppBuilder.cbDesktop).
 // - Laden: ItemIndex setzen und Click wie bei einer Auswahl mit der Maus.
@@ -38,6 +38,7 @@ type
 implementation
 
 uses
+  Atlas.IDE.Designer.OpenWatch,
   Winapi.Windows,
   System.Classes,
   System.Win.Registry,
@@ -81,6 +82,8 @@ type
     FOnMessage: TProc<string>;
     FSwitch: TAtlasDesktopSwitch;
     FTimer: TTimer;
+    /// <summary>Offene Formular-Designer: ohne Designer ruht der Takt (vorher alle 100 ms, auch ohne Projekt).</summary>
+    FOpen: TAtlasDesignerOpenWatch;
     FNotifier: TProjectNotifier;
     FNotifierIndex: Integer;
     FProjectLoading: Boolean;
@@ -89,6 +92,7 @@ type
     FDefaultReadOnce: Boolean;
     FComboMissingLogged: Boolean;
     procedure TimerTick(Sender: TObject);
+    procedure OpenChanged;
     procedure Tick;
     function DefaultLayout(ANow: UInt64): string;
     procedure Load(ACombo: TCustomComboBox; const AAction: TAtlasDesktopAction);
@@ -283,13 +287,25 @@ begin
   FTimer := TTimer.Create(nil);
   FTimer.Interval := cTickMilliseconds;
   FTimer.OnTimer := TimerTick;
-  FTimer.Enabled := True;
+  FOpen := TAtlasDesignerOpenWatch.Create(OpenChanged);
+  FTimer.Enabled := FOpen.Any;
+end;
+
+procedure TRunner.OpenChanged;
+begin
+  if not FOpen.Any then
+  begin
+    // Letzter Takt: zurück zum Layout außerhalb des Designers, danach ruht der Takt.
+    TimerTick(nil);
+  end;
+  FTimer.Enabled := FOpen.Any;
 end;
 
 destructor TRunner.Destroy;
 var
   mServices: IOTAServices;
 begin
+  FOpen.Free;
   FTimer.Free;
   if FNotifier <> nil then
   begin
