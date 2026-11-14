@@ -80,7 +80,7 @@ var
 begin
   Assert.IsTrue(TAtlasSymbolPathAnswer.Parse(SampleSymbolPathAnswer, Answer));
   Assert.IsTrue(Answer.Enabled);
-  Assert.IsTrue(Answer.Status = TAtlasSymbolPathStatus.Found);
+  Assert.AreEqual<TAtlasSymbolPathStatus>(TAtlasSymbolPathStatus.Found, Answer.Status);
   Assert.AreEqual(3, Answer.StepCount);
   Assert.AreEqual(42, Answer.Visited);
   Assert.AreEqual(7, Answer.ElapsedMs);
@@ -166,7 +166,7 @@ begin
   finally
     Service.Free;
   end;
-  Assert.IsTrue(Answer.Status = TAtlasSymbolPathStatus.Found);
+  Assert.AreEqual<TAtlasSymbolPathStatus>(TAtlasSymbolPathStatus.Found, Answer.Status);
   Assert.AreEqual(1, Answer.StepCount);
   Assert.AreEqual('uses', Answer.Routes[0].Steps[0].Kind);
   Assert.AreEqual('uA,uB', string.Join(',', Answer.Routes[0].UnitNames));
@@ -191,7 +191,7 @@ begin
     '"routes":[],"candidates":[{"caption":"TKundenRepo.Laden","unit":"uKundenRepo","file":"C:\\P\\uKundenRepo.pas",' +
     '"line":7,"character":14},{"caption":"TCacheRepo.Laden","unit":"uCacheRepo","file":"C:\\P\\uCacheRepo.pas",' +
     '"line":9,"character":14}]}', Answer));
-  Assert.IsTrue(Answer.Status = TAtlasSymbolPathStatus.Ambiguous);
+  Assert.AreEqual<TAtlasSymbolPathStatus>(TAtlasSymbolPathStatus.Ambiguous, Answer.Status);
   Assert.AreEqual('Laden', Answer.Subject);
   Assert.AreEqual(2, Integer(Length(Answer.Candidates)));
   Assert.AreEqual(0, Answer.StepCount);
@@ -206,8 +206,8 @@ begin
   Rows := Answer.Rows;
   // Ein Weg: keine Überschrift, 4 Knoten und 3 Schritte im Wechsel.
   Assert.AreEqual(7, Integer(Length(Rows)));
-  Assert.IsTrue(Rows[0].Kind = TAtlasSymbolPathRowKind.Node);
-  Assert.IsTrue(Rows[1].Kind = TAtlasSymbolPathRowKind.Step);
+  Assert.AreEqual<TAtlasSymbolPathRowKind>(TAtlasSymbolPathRowKind.Node, Rows[0].Kind);
+  Assert.AreEqual<TAtlasSymbolPathRowKind>(TAtlasSymbolPathRowKind.Step, Rows[1].Kind);
   // Schritt ohne Fundstelle springt zum Knoten, zu dem er führt.
   Assert.AreEqual('C:\P\uKundenForm.pas', Rows[1].FileName);
   Assert.AreEqual(8, Rows[1].Line);
@@ -218,15 +218,15 @@ begin
   Answer.Routes := Answer.Routes + [Answer.Routes[0]];
   Rows := Answer.Rows;
   Assert.AreEqual(16, Integer(Length(Rows)));
-  Assert.IsTrue(Rows[0].Kind = TAtlasSymbolPathRowKind.Header);
-  Assert.IsTrue(Rows[8].Kind = TAtlasSymbolPathRowKind.Header);
+  Assert.AreEqual<TAtlasSymbolPathRowKind>(TAtlasSymbolPathRowKind.Header, Rows[0].Kind);
+  Assert.AreEqual<TAtlasSymbolPathRowKind>(TAtlasSymbolPathRowKind.Header, Rows[8].Kind);
   Assert.AreEqual(1, Rows[8].Route);
   // Mehrdeutig: nur die Treffer.
   Answer.Status := TAtlasSymbolPathStatus.Ambiguous;
   Answer.Candidates := Answer.Routes[0].Nodes;
   Rows := Answer.Rows;
   Assert.AreEqual(4, Integer(Length(Rows)));
-  Assert.IsTrue(Rows[0].Kind = TAtlasSymbolPathRowKind.Candidate);
+  Assert.AreEqual<TAtlasSymbolPathRowKind>(TAtlasSymbolPathRowKind.Candidate, Rows[0].Kind);
   Assert.AreEqual(7, Rows[3].Line);
 end;
 

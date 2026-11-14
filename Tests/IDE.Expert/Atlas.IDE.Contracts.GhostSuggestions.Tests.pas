@@ -81,10 +81,10 @@ begin
   TAtlasGhostProviders.Add(mSecond);
   TAtlasGhostProviders.Add(mFirst);
   Assert.AreEqual(2, Integer(Length(TAtlasGhostProviders.List)), 'zweimal angemeldet zählt einmal');
-  Assert.IsTrue(TAtlasGhostProviders.List[0] = mSecond, 'erneutes Anmelden stellt hinten an');
+  Assert.AreSame(mSecond, TAtlasGhostProviders.List[0], 'erneutes Anmelden stellt hinten an');
   TAtlasGhostProviders.Remove(mSecond);
   Assert.AreEqual(1, Integer(Length(TAtlasGhostProviders.List)));
-  Assert.IsTrue(TAtlasGhostProviders.List[0] = mFirst);
+  Assert.AreSame(mFirst, TAtlasGhostProviders.List[0]);
 end;
 
 procedure TAtlasGhostProvidersTests.AnyEnabledAsksProviders;

@@ -76,10 +76,11 @@ end;
 
 procedure TAtlasUpdateInstallTests.ReadsInstallMode;
 begin
-  Assert.IsTrue(TAtlasUpdateInstall.ModeOf('auto') = TAtlasUpdateInstallMode.Auto);
-  Assert.IsTrue(TAtlasUpdateInstall.ModeOf('OFF') = TAtlasUpdateInstallMode.Off);
-  Assert.IsTrue(TAtlasUpdateInstall.ModeOf('ask') = TAtlasUpdateInstallMode.Ask);
-  Assert.IsTrue(TAtlasUpdateInstall.ModeOf('irgendwie') = TAtlasUpdateInstallMode.Ask, 'unbekannt: anbieten');
+  Assert.AreEqual<TAtlasUpdateInstallMode>(TAtlasUpdateInstallMode.Auto, TAtlasUpdateInstall.ModeOf('auto'));
+  Assert.AreEqual<TAtlasUpdateInstallMode>(TAtlasUpdateInstallMode.Off, TAtlasUpdateInstall.ModeOf('OFF'));
+  Assert.AreEqual<TAtlasUpdateInstallMode>(TAtlasUpdateInstallMode.Ask, TAtlasUpdateInstall.ModeOf('ask'));
+  Assert.AreEqual<TAtlasUpdateInstallMode>(TAtlasUpdateInstallMode.Ask,
+    TAtlasUpdateInstall.ModeOf('irgendwie'), 'unbekannt: anbieten');
 end;
 
 procedure TAtlasUpdateInstallTests.ChoosesChannel;
@@ -95,18 +96,18 @@ var
   mEnvironment: TAtlasUpdateEnvironment;
 begin
   mEnvironment := Environment;
-  Assert.IsTrue(TAtlasUpdateInstall.Blocked(mEnvironment) = TAtlasUpdateBlock.None);
+  Assert.AreEqual<TAtlasUpdateBlock>(TAtlasUpdateBlock.None, TAtlasUpdateInstall.Blocked(mEnvironment));
   Assert.AreEqual('C:\Users\Ich\AppData\Local\Programs\Atlas', TAtlasUpdateInstall.TargetOf(cPluginDir));
   Assert.AreEqual('C:\Users\Ich\AppData\Local\Programs\Atlas\AtlasUpdate.exe',
     TAtlasUpdateInstall.UpdaterOf(cPluginDir));
   mEnvironment.UpdaterExists := False;
-  Assert.IsTrue(TAtlasUpdateInstall.Blocked(mEnvironment) = TAtlasUpdateBlock.NoUpdater);
+  Assert.AreEqual<TAtlasUpdateBlock>(TAtlasUpdateBlock.NoUpdater, TAtlasUpdateInstall.Blocked(mEnvironment));
   // Ausgabeordner des Repos statt <Ziel>\Win32.
   mEnvironment := Environment;
   mEnvironment.PluginDir := 'D:\Atlas\Output\Win32\Debug\Bpl\';
-  Assert.IsTrue(TAtlasUpdateInstall.Blocked(mEnvironment) = TAtlasUpdateBlock.NoReleaseFolder);
+  Assert.AreEqual<TAtlasUpdateBlock>(TAtlasUpdateBlock.NoReleaseFolder, TAtlasUpdateInstall.Blocked(mEnvironment));
   mEnvironment.PluginDir := 'C:\Users\Public\Documents\Embarcadero\Studio\37.0\CatalogRepository\Atlas-2.0\Win32\';
-  Assert.IsTrue(TAtlasUpdateInstall.Blocked(mEnvironment) = TAtlasUpdateBlock.GetIt);
+  Assert.AreEqual<TAtlasUpdateBlock>(TAtlasUpdateBlock.GetIt, TAtlasUpdateInstall.Blocked(mEnvironment));
 end;
 
 procedure TAtlasUpdateInstallTests.PreparesWithoutAskingOnlyInAutoWithinMajor;
@@ -132,7 +133,7 @@ begin
   Assert.AreEqual('C:\Users\Ich\AppData\Local\Programs\Atlas', mParsed.Target);
   Assert.AreEqual(cRoot + '\2.1.0', mParsed.Staging);
   Assert.AreEqual('Software\Embarcadero\BDS\37.0', mParsed.RegistryKey);
-  Assert.IsTrue(mParsed.NewModules = TUpdateNewModules.Skip);
+  Assert.AreEqual<TUpdateNewModules>(TUpdateNewModules.Skip, mParsed.NewModules);
 end;
 
 procedure TAtlasUpdateInstallTests.BuildsApplyArgumentsFromSelection;

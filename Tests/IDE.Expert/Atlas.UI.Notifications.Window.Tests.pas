@@ -40,6 +40,7 @@ uses
   System.DateUtils,
   Vcl.Forms,
   Vcl.Menus,
+  Atlas.Core.Style.Color,
   Atlas.Core.Style.Palette,
   Atlas.Core.Style.Signal,
   Atlas.Core.Status.Contract,
@@ -173,8 +174,9 @@ begin
     Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.NotificationsModeCollect), Menu.Items[4].Caption);
     Menu.Items[4].Click;
     Assert.AreEqual(TAtlasNotificationSources.cServer, Changed);
-    Assert.IsTrue(ChangedMode = TAtlasNotificationMode.Collect);
-    Assert.IsTrue(Center.ModeOf(TAtlasNotificationSources.cServer) = TAtlasNotificationMode.Collect);
+    Assert.AreEqual<TAtlasNotificationMode>(TAtlasNotificationMode.Collect, ChangedMode);
+    Assert.AreEqual<TAtlasNotificationMode>(TAtlasNotificationMode.Collect,
+      Center.ModeOf(TAtlasNotificationSources.cServer));
     Menu := Window.BuildMenu(0);
     Assert.IsTrue(Menu.Items[4].Checked);
     Menu.Items[0].Click;
@@ -237,16 +239,16 @@ begin
   // Dieselben kräftigen Signalfarben wie die Plakette der Statusleiste, nicht die blassen Textfarben.
   mDark := TAtlasColors.Dark;
   mLight := TAtlasColors.Light;
-  Assert.IsTrue(TAtlasNotificationTexts.SeveritySignal(mDark, TAtlasNotificationSeverity.Warning).Fill =
-    mDark.Signals.ForStatus(TAtlasStatusState.Yellow).Solid, 'Warnung dunkel');
-  Assert.IsTrue(TAtlasNotificationTexts.SeveritySignal(mDark, TAtlasNotificationSeverity.Error).Fill =
-    mDark.Signals.ForStatus(TAtlasStatusState.Red).Solid, 'Fehler dunkel');
-  Assert.IsTrue(TAtlasNotificationTexts.SeveritySignal(mDark, TAtlasNotificationSeverity.Warning).Fill <>
-    mDark.Warn, 'nicht die Textfarbe');
-  Assert.IsTrue(TAtlasNotificationTexts.SeveritySignal(mLight, TAtlasNotificationSeverity.Error).Solid =
-    mLight.Signals.ForStatus(TAtlasStatusState.Red).Solid, 'Fehler hell');
-  Assert.IsTrue(TAtlasNotificationTexts.SeveritySignal(mLight, TAtlasNotificationSeverity.Info).Fill =
-    mLight.Signals.Get(TAtlasSignalKind.Info).Fill, 'Info');
+  Assert.AreEqual<TAtlasColor>(mDark.Signals.ForStatus(TAtlasStatusState.Yellow).Solid,
+    TAtlasNotificationTexts.SeveritySignal(mDark, TAtlasNotificationSeverity.Warning).Fill, 'Warnung dunkel');
+  Assert.AreEqual<TAtlasColor>(mDark.Signals.ForStatus(TAtlasStatusState.Red).Solid,
+    TAtlasNotificationTexts.SeveritySignal(mDark, TAtlasNotificationSeverity.Error).Fill, 'Fehler dunkel');
+  Assert.AreNotEqual<TAtlasColor>(mDark.Warn,
+    TAtlasNotificationTexts.SeveritySignal(mDark, TAtlasNotificationSeverity.Warning).Fill, 'nicht die Textfarbe');
+  Assert.AreEqual<TAtlasColor>(mLight.Signals.ForStatus(TAtlasStatusState.Red).Solid,
+    TAtlasNotificationTexts.SeveritySignal(mLight, TAtlasNotificationSeverity.Error).Solid, 'Fehler hell');
+  Assert.AreEqual<TAtlasColor>(mLight.Signals.Get(TAtlasSignalKind.Info).Fill,
+    TAtlasNotificationTexts.SeveritySignal(mLight, TAtlasNotificationSeverity.Info).Fill, 'Info');
 end;
 
 initialization

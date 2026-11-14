@@ -163,7 +163,7 @@ var
   mError: string;
 begin
   Assert.IsFalse(TAtlasSearchRegex.Check('(abc', mError));
-  Assert.IsTrue(mError <> '', 'Fehlertext der Engine');
+  Assert.AreNotEqual('', mError, 'Fehlertext der Engine');
   Assert.AreEqual('', FindIn('(abc abc', Query('(abc', False, False, False, True)));
   Assert.IsTrue(TAtlasSearchRegex.Check('a(b)c', mError));
   Assert.AreEqual('', mError);

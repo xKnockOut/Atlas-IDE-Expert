@@ -135,10 +135,10 @@ begin
   Assert.AreEqual('Jenkins #482', Entry.Text);
   Assert.AreEqual(1, Integer(Entry.Count));
   Assert.IsFalse(Entry.Read);
-  Assert.IsTrue(Entry.Time = FNow, 'Zeit der Meldung');
+  Assert.AreEqual<TDateTime>(FNow, Entry.Time, 'Zeit der Meldung');
   Assert.AreEqual(1, Center.UnreadCount);
-  Assert.IsTrue(Center.Find(1) <> nil);
-  Assert.IsTrue(Center.Find(2) = nil);
+  Assert.IsNotNull(Center.Find(1));
+  Assert.IsNull(Center.Find(2));
 end;
 
 procedure TAtlasNotificationCenterTests.NewestComesFirst;
@@ -175,7 +175,7 @@ begin
   Assert.AreEqual(3, Integer(Entry.Count));
   Assert.AreEqual(1, Entry.Id, 'Kennung bleibt');
   Assert.AreEqual('dritter', Entry.Text, 'neuester Text');
-  Assert.IsTrue(Entry.Time = FNow, 'Zeit der letzten Meldung');
+  Assert.AreEqual<TDateTime>(FNow, Entry.Time, 'Zeit der letzten Meldung');
   Assert.IsFalse(Entry.Read, 'wieder ungelesen');
   Assert.AreEqual(1, Center.UnreadCount);
 end;
@@ -233,7 +233,7 @@ begin
   Assert.AreEqual(10, Integer(Length(Center.Items())));
   Assert.AreEqual('Eintrag 12', Center.Items()[0].Title, 'neuester bleibt');
   Assert.AreEqual('Eintrag 3', Center.Items()[9].Title, 'die ältesten fallen weg');
-  Assert.IsTrue(Center.Find(1) = nil);
+  Assert.IsNull(Center.Find(1));
   Assert.AreEqual(10, Center.UnreadCount);
 end;
 
@@ -432,7 +432,7 @@ begin
   TAtlasNotificationCenter.ReleaseDefault;
   try
     Center := TAtlasNotificationCenter.Default;
-    Assert.IsTrue(Center = TAtlasNotificationCenter.Default, 'eine Zentrale');
+    Assert.AreSame(TAtlasNotificationCenter.Default, Center, 'eine Zentrale');
     Assert.AreEqual(Ord(TAtlasNotificationMode.Show),
       Ord(Center.Notify(Tips, TAtlasNotificationSeverity.Info, 'a', '')));
     Assert.AreEqual(0, Integer(Length(Center.Items())), 'ohne Plugin-Einstellung wie vor #601');

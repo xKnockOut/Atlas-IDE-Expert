@@ -97,7 +97,7 @@ var
   Sections: TAtlasUnitSections;
 begin
   Sections := Scan(UnitCode);
-  Assert.IsTrue(Sections.Kind = TAtlasSourceKind.Unit_);
+  Assert.AreEqual<TAtlasSourceKind>(TAtlasSourceKind.Unit_, Sections.Kind);
   Assert.IsTrue(Sections.HasParts);
   CheckMark(Sections.InterfacePart, 2, 0, 'interface');
   CheckMark(Sections.ImplementationPart, 12, 0, 'implementation');
@@ -184,7 +184,7 @@ var
 begin
   Sections := Scan('program AtlasServer;'#10'{$APPTYPE CONSOLE}'#10'uses Atlas.Server.Main;'#10 +
     'const interface_ = 1;'#10'begin'#10'  Run;'#10'end.');
-  Assert.IsTrue(Sections.Kind = TAtlasSourceKind.Program_);
+  Assert.AreEqual<TAtlasSourceKind>(TAtlasSourceKind.Program_, Sections.Kind);
   Assert.IsFalse(Sections.HasParts);
   CheckMark(Sections.HeaderUses.Start, 2, 0, 'uses');
   Assert.IsFalse(Sections.Target(TAtlasSectionTarget.InterfacePart, 5, 2, Mark));
@@ -192,8 +192,8 @@ begin
   Assert.IsFalse(Sections.Target(TAtlasSectionTarget.Initialization_, 5, 2, Mark));
   Assert.IsTrue(Sections.Target(TAtlasSectionTarget.UsesClause, 5, 2, Mark));
   CheckMark(Mark, 2, 0, 'Ziel uses');
-  Assert.IsTrue(Sections.SectionAt(2, 8) = TAtlasCodeSection.UsesClause);
-  Assert.IsTrue(Sections.SectionAt(5, 2) = TAtlasCodeSection.None);
+  Assert.AreEqual<TAtlasCodeSection>(TAtlasCodeSection.UsesClause, Sections.SectionAt(2, 8));
+  Assert.AreEqual<TAtlasCodeSection>(TAtlasCodeSection.None, Sections.SectionAt(5, 2));
 end;
 
 procedure TAtlasSectionScannerTests.PackageUsesContains;
@@ -202,7 +202,7 @@ var
 begin
   Sections := Scan('package Atlas.IDE.Expert;'#10'requires'#10'  rtl;'#10'contains'#10'  Atlas.Core.Foo in ''Foo.pas'';'#10 +
     'end.');
-  Assert.IsTrue(Sections.Kind = TAtlasSourceKind.Package);
+  Assert.AreEqual<TAtlasSourceKind>(TAtlasSourceKind.Package, Sections.Kind);
   Assert.IsFalse(Sections.HasParts);
   CheckMark(Sections.HeaderUses.Start, 3, 0, 'contains');
   CheckMark(Sections.HeaderUses.Stop, 4, 29, 'Ende von contains');
@@ -213,7 +213,7 @@ var
   Sections: TAtlasUnitSections;
 begin
   Sections := Scan('library Atlas;'#10'uses'#10'  System.SysUtils;'#10'exports Foo;'#10'begin'#10'end.');
-  Assert.IsTrue(Sections.Kind = TAtlasSourceKind.Library_);
+  Assert.AreEqual<TAtlasSourceKind>(TAtlasSourceKind.Library_, Sections.Kind);
   CheckMark(Sections.HeaderUses.Start, 1, 0, 'uses');
   Assert.IsFalse(Sections.InterfacePart.Found);
 end;
@@ -224,7 +224,7 @@ var
   Mark: TAtlasSectionMark;
 begin
   Sections := Scan('{$IFDEF DEBUG}'#10'interface'#10'implementation'#10'uses Foo;'#10'{$ENDIF}');
-  Assert.IsTrue(Sections.Kind = TAtlasSourceKind.Include);
+  Assert.AreEqual<TAtlasSourceKind>(TAtlasSourceKind.Include, Sections.Kind);
   Assert.IsFalse(Sections.HasParts);
   Assert.IsFalse(Sections.InterfacePart.Found);
   Assert.IsFalse(Sections.ImplementationPart.Found);
@@ -237,14 +237,15 @@ var
   Sections: TAtlasUnitSections;
 begin
   Sections := Scan(UnitCode);
-  Assert.IsTrue(Sections.SectionAt(0, 3) = TAtlasCodeSection.None, 'Kopf');
-  Assert.IsTrue(Sections.SectionAt(2, 0) = TAtlasCodeSection.InterfacePart, 'auf interface');
-  Assert.IsTrue(Sections.SectionAt(4, 10) = TAtlasCodeSection.UsesClause, 'uses');
-  Assert.IsTrue(Sections.SectionAt(7, 4) = TAtlasCodeSection.InterfacePart, 'im Typ');
-  Assert.IsTrue(Sections.SectionAt(13, 6) = TAtlasCodeSection.UsesClause, 'uses der implementation');
-  Assert.IsTrue(Sections.SectionAt(16, 4) = TAtlasCodeSection.ImplementationPart, 'Methode');
-  Assert.IsTrue(Sections.SectionAt(20, 2) = TAtlasCodeSection.Initialization_, 'initialization');
-  Assert.IsTrue(Sections.SectionAt(22, 2) = TAtlasCodeSection.Finalization_, 'finalization');
+  Assert.AreEqual<TAtlasCodeSection>(TAtlasCodeSection.None, Sections.SectionAt(0, 3), 'Kopf');
+  Assert.AreEqual<TAtlasCodeSection>(TAtlasCodeSection.InterfacePart, Sections.SectionAt(2, 0), 'auf interface');
+  Assert.AreEqual<TAtlasCodeSection>(TAtlasCodeSection.UsesClause, Sections.SectionAt(4, 10), 'uses');
+  Assert.AreEqual<TAtlasCodeSection>(TAtlasCodeSection.InterfacePart, Sections.SectionAt(7, 4), 'im Typ');
+  Assert.AreEqual<TAtlasCodeSection>(TAtlasCodeSection.UsesClause,
+    Sections.SectionAt(13, 6), 'uses der implementation');
+  Assert.AreEqual<TAtlasCodeSection>(TAtlasCodeSection.ImplementationPart, Sections.SectionAt(16, 4), 'Methode');
+  Assert.AreEqual<TAtlasCodeSection>(TAtlasCodeSection.Initialization_, Sections.SectionAt(20, 2), 'initialization');
+  Assert.AreEqual<TAtlasCodeSection>(TAtlasCodeSection.Finalization_, Sections.SectionAt(22, 2), 'finalization');
 end;
 
 procedure TAtlasSectionScannerTests.UsesTargetFollowsCurrentSection;

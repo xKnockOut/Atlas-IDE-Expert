@@ -85,7 +85,7 @@ begin
     TAtlasStrings.Language := TAtlasLanguage.English;
     Assert.IsTrue(TAtlasTextLanguage.IsEnglish);
     TAtlasTextLanguage.Current := TAtlasLanguage.German;
-    Assert.IsTrue(TAtlasStrings.Language = TAtlasLanguage.German);
+    Assert.AreEqual<TAtlasLanguage>(TAtlasLanguage.German, TAtlasStrings.Language);
   finally
     TAtlasTextLanguage.Current := mSaved;
   end;
@@ -148,12 +148,12 @@ var
   mResult: TAtlasIdeLanguage;
 begin
   mResult := TAtlasIdeLanguage.Decide(TArray<string>.Create('DE'), 'EN', False);
-  Assert.IsTrue(mResult.Language = TAtlasLanguage.German);
-  Assert.IsTrue(mResult.Source = TAtlasIdeLanguageSource.Resources);
+  Assert.AreEqual<TAtlasLanguage>(TAtlasLanguage.German, mResult.Language);
+  Assert.AreEqual<TAtlasIdeLanguageSource>(TAtlasIdeLanguageSource.Resources, mResult.Source);
   Assert.AreEqual('DE', mResult.Value);
   mResult := TAtlasIdeLanguage.Decide(TArray<string>.Create('', 'en'), 'DE', True);
-  Assert.IsTrue(mResult.Language = TAtlasLanguage.English);
-  Assert.IsTrue(mResult.Source = TAtlasIdeLanguageSource.Resources);
+  Assert.AreEqual<TAtlasLanguage>(TAtlasLanguage.English, mResult.Language);
+  Assert.AreEqual<TAtlasIdeLanguageSource>(TAtlasIdeLanguageSource.Resources, mResult.Source);
 end;
 
 procedure TAtlasIdeLanguageTests.RegistryCodesInAnyForm;
@@ -164,12 +164,12 @@ begin
   for mCode in TArray<string>.Create('DE', 'de', ' DE ', 'DEU', 'de-DE', 'de_AT') do
   begin
     mResult := TAtlasIdeLanguage.Decide(nil, mCode, False);
-    Assert.IsTrue(mResult.Language = TAtlasLanguage.German, mCode);
-    Assert.IsTrue(mResult.Source = TAtlasIdeLanguageSource.Registry, mCode);
+    Assert.AreEqual<TAtlasLanguage>(TAtlasLanguage.German, mResult.Language, mCode);
+    Assert.AreEqual<TAtlasIdeLanguageSource>(TAtlasIdeLanguageSource.Registry, mResult.Source, mCode);
   end;
   mResult := TAtlasIdeLanguage.Decide(nil, 'EN', True);
-  Assert.IsTrue(mResult.Language = TAtlasLanguage.English);
-  Assert.IsTrue(mResult.Source = TAtlasIdeLanguageSource.Registry);
+  Assert.AreEqual<TAtlasLanguage>(TAtlasLanguage.English, mResult.Language);
+  Assert.AreEqual<TAtlasIdeLanguageSource>(TAtlasIdeLanguageSource.Registry, mResult.Source);
 end;
 
 procedure TAtlasIdeLanguageTests.WindowsThenFallback;
@@ -177,19 +177,19 @@ var
   mResult: TAtlasIdeLanguage;
 begin
   mResult := TAtlasIdeLanguage.Decide(nil, '', True);
-  Assert.IsTrue(mResult.Language = TAtlasLanguage.German);
-  Assert.IsTrue(mResult.Source = TAtlasIdeLanguageSource.Windows);
+  Assert.AreEqual<TAtlasLanguage>(TAtlasLanguage.German, mResult.Language);
+  Assert.AreEqual<TAtlasIdeLanguageSource>(TAtlasIdeLanguageSource.Windows, mResult.Source);
   mResult := TAtlasIdeLanguage.Decide(nil, ' ', False);
-  Assert.IsTrue(mResult.Language = TAtlasLanguage.English);
-  Assert.IsTrue(mResult.Source = TAtlasIdeLanguageSource.Fallback);
+  Assert.AreEqual<TAtlasLanguage>(TAtlasLanguage.English, mResult.Language);
+  Assert.AreEqual<TAtlasIdeLanguageSource>(TAtlasIdeLanguageSource.Fallback, mResult.Source);
   Assert.AreEqual('', mResult.Value);
 end;
 
 procedure TAtlasIdeLanguageTests.OtherLanguagesAreEnglish;
 begin
-  Assert.IsTrue(TAtlasIdeLanguage.Decide(TArray<string>.Create('FR'), '', True).Language =
-    TAtlasLanguage.English);
-  Assert.IsTrue(TAtlasIdeLanguage.Decide(nil, 'JA', True).Language = TAtlasLanguage.English);
+  Assert.AreEqual<TAtlasLanguage>(TAtlasLanguage.English,
+    TAtlasIdeLanguage.Decide(TArray<string>.Create('FR'), '', True).Language);
+  Assert.AreEqual<TAtlasLanguage>(TAtlasLanguage.English, TAtlasIdeLanguage.Decide(nil, 'JA', True).Language);
 end;
 
 procedure TAtlasIdeLanguageTests.DescribeNamesSourceAndValue;

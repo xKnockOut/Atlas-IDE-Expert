@@ -183,7 +183,7 @@ begin
   Assert.IsFalse(FBar.Places.ButtonRect(TAtlasToolbarItems.cGotoInterface).IsEmpty, 'angeheftet');
   Assert.IsFalse(FBar.Places.ButtonRect(TAtlasToolbarItems.cGotoImplementation).IsEmpty, 'angeheftet');
   Assert.IsFalse(FBar.Places.Return.IsEmpty, 'Rücksprung bleibt sichtbar');
-  Assert.IsFalse(Overflow[0] = TAtlasToolbarItems.cSeparator, 'kein Trennstrich vorn im Menü');
+  Assert.AreNotEqual(TAtlasToolbarItems.cSeparator, Overflow[0], 'kein Trennstrich vorn im Menü');
   FBar.Repaint;
 end;
 

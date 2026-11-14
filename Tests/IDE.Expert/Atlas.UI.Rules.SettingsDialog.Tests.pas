@@ -56,7 +56,7 @@ var
   mProvider: IAtlasSettingsDialogProvider;
 begin
   mProvider := TAtlasRulesDialogProvider.Create;
-  Assert.IsTrue(mProvider.DialogClass = TAtlasRulesSettingsDialog);
+  Assert.AreEqual<TClass>(TAtlasRulesSettingsDialog, mProvider.DialogClass);
 end;
 procedure TAtlasRulesSettingsDialogTests.DialogRuleTableChangesOnlyThatRule;
 const
@@ -124,7 +124,7 @@ begin
       Assert.Contains(mModel.ResultText, '"group:threads"');
       // „Regel einstellen…“: Knoten der Gruppe der Regel, die Regel markiert.
       Assert.IsTrue(mDialog.SelectRule('magic-number'));
-      Assert.IsTrue(mDialog.PageTree.Selected = mDialog.GroupNode('style'));
+      Assert.AreSame(mDialog.GroupNode('style'), mDialog.PageTree.Selected);
       Assert.AreEqual('style', mDialog.RuleEditor.FixedGroup);
       Assert.IsNotNull(mDialog.RuleList.Selected);
       Assert.AreEqual('magic-number', mDialog.RuleList.Selected.Caption);

@@ -94,7 +94,7 @@ var
 begin
   Verdict := TAtlasBuildVerdicts.Evaluate([Msg('Hint', 'H2164 X', 5)], nil, True, Settings(True, ''));
   Assert.IsFalse(Verdict.Effective);
-  Assert.IsTrue(Verdict.Reason = TAtlasBuildVerdictReason.ZeroHints);
+  Assert.AreEqual<TAtlasBuildVerdictReason>(TAtlasBuildVerdictReason.ZeroHints, Verdict.Reason);
   Verdict := TAtlasBuildVerdicts.Evaluate([Msg('Info', 'Erfolg', 0)], nil, True, Settings(True, ''));
   Assert.IsTrue(Verdict.Effective, 'ohne Warnungen und Hinweise');
 end;
@@ -106,7 +106,7 @@ begin
   Verdict := TAtlasBuildVerdicts.Evaluate([Msg('Warning', 'W1036 Variable X ist vielleicht nicht initialisiert', 4),
     Msg('Warning', 'W1035 Ergebnis der Funktion F ist vielleicht undefiniert', 9)], nil, True,
     Settings(False, 'W1035'));
-  Assert.IsTrue(Verdict.Reason = TAtlasBuildVerdictReason.WarningsAsErrors);
+  Assert.AreEqual<TAtlasBuildVerdictReason>(TAtlasBuildVerdictReason.WarningsAsErrors, Verdict.Reason);
   Assert.AreEqual(1, Verdict.Promoted);
   Assert.AreEqual('W1035', Verdict.PromotedCode);
   Assert.AreEqual(1, Verdict.First, 'zeigt auf W1035');
@@ -142,10 +142,11 @@ var
 begin
   Verdict := TAtlasBuildVerdicts.Evaluate([Msg('Error', 'E2003 Undeklarierter Bezeichner: X', 7)], nil, False,
     Settings(True, 'W1035'));
-  Assert.IsTrue(Verdict.Reason = TAtlasBuildVerdictReason.CompilerFailed);
+  Assert.AreEqual<TAtlasBuildVerdictReason>(TAtlasBuildVerdictReason.CompilerFailed, Verdict.Reason);
   Assert.AreEqual(1, Verdict.Errors);
   Verdict := TAtlasBuildVerdicts.Evaluate(nil, nil, False, Settings(False, ''));
-  Assert.IsTrue(Verdict.Reason = TAtlasBuildVerdictReason.CompilerFailed, 'ohne Meldung, z. B. Linker');
+  Assert.AreEqual<TAtlasBuildVerdictReason>(TAtlasBuildVerdictReason.CompilerFailed,
+    Verdict.Reason, 'ohne Meldung, z. B. Linker');
   Assert.AreEqual(-1, Verdict.First);
 end;
 

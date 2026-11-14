@@ -151,10 +151,10 @@ begin
   Assert.IsTrue(StartsStr(TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.ArchitectureCycleImplementation),
     FFrame.ListText(TAtlasArchFrameList.Cycles)[0]));
   Assert.IsTrue(Pos('App.Data.Cache', Joined(FFrame.ListText(TAtlasArchFrameList.Cycles))) > 0);
-  Assert.IsTrue(Pos(TAtlasAnalysisStrings.Fmt(TAtlasAnalysisTextId.ArchitectureStatus,
+  Assert.AreEqual(1, Pos(TAtlasAnalysisStrings.Fmt(TAtlasAnalysisTextId.ArchitectureStatus,
     [6, Length(FFrame.Model.Subsystems), 1,
     Length(FFrame.Model.CrossLinks), Integer(FFrame.Model.Generation and $7FFFFFFF), FFrame.Model.DurationMs]),
-    FFrame.Parts.Status.Caption) = 1);
+    FFrame.Parts.Status.Caption));
   // Aktive Ausschlüsse stehen in der Statuszeile.
   Assert.IsTrue(Pos('Tests/**', FFrame.Parts.Status.Caption) > 0);
   Assert.IsTrue(FFrame.Parts.Save.Enabled);
@@ -168,7 +168,7 @@ begin
   mLines := FFrame.ListText(TAtlasArchFrameList.Central);
   Assert.IsTrue(StrToInt(mLines[0].Split([#9])[3]) >= StrToInt(mLines[1].Split([#9])[3]));
   FFrame.Parts.Central.OnColumnClick(FFrame.Parts.Central, FFrame.Parts.Central.Columns[0]);
-  Assert.IsTrue(FFrame.Sort.Column = TAtlasArchColumn.Name);
+  Assert.AreEqual<TAtlasArchColumn>(TAtlasArchColumn.Name, FFrame.Sort.Column);
   Assert.IsFalse(FFrame.Sort.Descending);
   mLines := FFrame.ListText(TAtlasArchFrameList.Central);
   Assert.IsTrue(CompareText(mLines[0].Split([#9])[0], mLines[1].Split([#9])[0]) < 0);
@@ -187,9 +187,9 @@ begin
   FFrame.Parts.Central.OnColumnClick(FFrame.Parts.Central, FFrame.Parts.Central.Columns[0]);
   FFrame.Parts.Pages.ActivePageIndex := 0;
   FFrame.ShowCostRanking;
-  Assert.IsTrue(FFrame.Sort.Column = TAtlasArchColumn.Total);
+  Assert.AreEqual<TAtlasArchColumn>(TAtlasArchColumn.Total, FFrame.Sort.Column);
   Assert.IsTrue(FFrame.Sort.Descending);
-  Assert.IsTrue(FFrame.Parts.Pages.ActivePage = FFrame.Parts.Central.Parent, 'Reiter „Zentrale Units“');
+  Assert.AreSame(FFrame.Parts.Central.Parent, FFrame.Parts.Pages.ActivePage, 'Reiter „Zentrale Units“');
   mLines := FFrame.ListText(TAtlasArchFrameList.Central);
   for mIndex := 1 to High(mLines) do
   begin

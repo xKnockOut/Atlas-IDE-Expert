@@ -106,9 +106,10 @@ begin
     mPage := TAtlasSettingsPage.Create(mHost);
     mPage.Parent := mHost;
     mPage.HandleNeeded;
-    Assert.IsTrue(SheetOf(CheckOf(mPage, 'ArchitectureEnabled')) = mPage.NodeSheet('general.architecture'));
-    Assert.IsTrue(SheetOf(CheckOf(mPage, 'HotspotsEnabled')) = mPage.NodeSheet('general.hotspots'));
-    Assert.IsTrue(SheetOf(CheckOf(mPage, 'CodeLensMetrics')) = mPage.NodeSheet('editor.codeLens'), 'Editor › Code Lens');
+    Assert.AreSame(mPage.NodeSheet('general.architecture'), SheetOf(CheckOf(mPage, 'ArchitectureEnabled')));
+    Assert.AreSame(mPage.NodeSheet('general.hotspots'), SheetOf(CheckOf(mPage, 'HotspotsEnabled')));
+    Assert.AreSame(mPage.NodeSheet('editor.codeLens'),
+      SheetOf(CheckOf(mPage, 'CodeLensMetrics')), 'Editor › Code Lens');
   finally
     mHost.Free;
   end;

@@ -33,16 +33,18 @@ procedure TAtlasToolbarIconsTests.IconsOfKnownCommands;
 var
   Id: string;
 begin
-  Assert.IsTrue(TAtlasToolbarIcons.IconOf(TAtlasToolbarItems.cGotoInterface) = TAtlasToolbarIcon.InterfacePart);
-  Assert.IsTrue(TAtlasToolbarIcons.IconOf('Atlas.ProblemsWindow') = TAtlasToolbarIcon.Problems);
-  Assert.IsTrue(TAtlasToolbarIcons.IconOf('atlas.navback') = TAtlasToolbarIcon.Back, 'ohne Groß-/Kleinschreibung');
-  Assert.IsTrue(TAtlasToolbarIcons.IconOf('Atlas.Rename') = TAtlasToolbarIcon.Letter, 'unbekannt');
+  Assert.AreEqual<TAtlasToolbarIcon>(TAtlasToolbarIcon.InterfacePart,
+    TAtlasToolbarIcons.IconOf(TAtlasToolbarItems.cGotoInterface));
+  Assert.AreEqual<TAtlasToolbarIcon>(TAtlasToolbarIcon.Problems, TAtlasToolbarIcons.IconOf('Atlas.ProblemsWindow'));
+  Assert.AreEqual<TAtlasToolbarIcon>(TAtlasToolbarIcon.Back,
+    TAtlasToolbarIcons.IconOf('atlas.navback'), 'ohne Groß-/Kleinschreibung');
+  Assert.AreEqual<TAtlasToolbarIcon>(TAtlasToolbarIcon.Letter, TAtlasToolbarIcons.IconOf('Atlas.Rename'), 'unbekannt');
   // Jeder Knopf der Vorgabe hat ein eigenes Symbol.
   for Id in TAtlasToolbarItems.Default do
   begin
     if not TAtlasToolbarItems.IsSeparator(Id) then
     begin
-      Assert.IsFalse(TAtlasToolbarIcons.IconOf(Id) = TAtlasToolbarIcon.Letter, Id);
+      Assert.AreNotEqual<TAtlasToolbarIcon>(TAtlasToolbarIcon.Letter, TAtlasToolbarIcons.IconOf(Id), Id);
     end;
   end;
 end;

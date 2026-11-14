@@ -106,7 +106,7 @@ begin
   mForm := TForm.CreateNew(nil);
   try
     TAtlasUiTheme.Apply(mForm);
-    Assert.IsTrue(mApplied = mForm);
+    Assert.AreSame(mForm, mApplied);
   finally
     mForm.Free;
   end;

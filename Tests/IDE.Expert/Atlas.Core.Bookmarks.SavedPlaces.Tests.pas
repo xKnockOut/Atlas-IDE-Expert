@@ -65,7 +65,7 @@ begin
   mOther.Notes := TArray<TAtlasNote>.Create(Note('n2', 'C:\Zeta\Haupt.pas', 'Aufräumen', 4));
   mPlaces := TAtlasBookmarksSavedPlaces.FromNotes(TArray<TAtlasNoteBook>.Create(mBook, mOther));
   Assert.AreEqual(2, Integer(Length(mPlaces)));
-  Assert.IsTrue(mPlaces[0].Kind = TAtlasSavedPlaceKind.Note);
+  Assert.AreEqual<TAtlasSavedPlaceKind>(TAtlasSavedPlaceKind.Note, mPlaces[0].Kind);
   Assert.AreEqual('n1', mPlaces[0].Id);
   Assert.AreEqual('Prüfen, ob leer …', mPlaces[0].Text, 'Titel der Notiz');
   Assert.AreEqual('C:\Atlas\Kunde.pas', mPlaces[0].FileName);
@@ -90,7 +90,7 @@ begin
   mList.Bookmarks[1].Lost := True;
   mPlaces := TAtlasBookmarksSavedPlaces.FromBookmarks(TArray<TAtlasBookmarkList>.Create(mList));
   Assert.AreEqual(2, Integer(Length(mPlaces)));
-  Assert.IsTrue(mPlaces[0].Kind = TAtlasSavedPlaceKind.Bookmark);
+  Assert.AreEqual<TAtlasSavedPlaceKind>(TAtlasSavedPlaceKind.Bookmark, mPlaces[0].Kind);
   Assert.AreEqual('b2', mPlaces[0].Id);
   Assert.AreEqual('Speichern', mPlaces[0].Text);
   Assert.AreEqual('TKunde.Speichern', mPlaces[0].Detail);

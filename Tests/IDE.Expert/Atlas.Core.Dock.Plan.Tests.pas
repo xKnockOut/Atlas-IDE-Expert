@@ -38,35 +38,35 @@ uses
 
 procedure TAtlasDockPlanTests.CreatesWhenNoForm;
 begin
-  Assert.IsTrue(TAtlasDockPlan.ShowStep(True, False, False) = TAtlasDockStep.CreateForm);
+  Assert.AreEqual<TAtlasDockStep>(TAtlasDockStep.CreateForm, TAtlasDockPlan.ShowStep(True, False, False));
 end;
 
 procedure TAtlasDockPlanTests.CreatesWhenFormGoneButFrameLeft;
 begin
   // Die IDE hat die Form freigegeben, der Frame-Zeiger ist veraltet: neu anlegen statt toten Frame benutzen.
-  Assert.IsTrue(TAtlasDockPlan.ShowStep(True, False, True) = TAtlasDockStep.CreateForm);
+  Assert.AreEqual<TAtlasDockStep>(TAtlasDockStep.CreateForm, TAtlasDockPlan.ShowStep(True, False, True));
 end;
 
 procedure TAtlasDockPlanTests.RecreatesFormWithoutFrame;
 begin
-  Assert.IsTrue(TAtlasDockPlan.ShowStep(True, True, False) = TAtlasDockStep.RecreateForm);
+  Assert.AreEqual<TAtlasDockStep>(TAtlasDockStep.RecreateForm, TAtlasDockPlan.ShowStep(True, True, False));
 end;
 
 procedure TAtlasDockPlanTests.RevealsLivingWindow;
 begin
   // Nach dem Schließen über das X lebt die Form noch (versteckt): nur wieder sichtbar machen.
-  Assert.IsTrue(TAtlasDockPlan.ShowStep(True, True, True) = TAtlasDockStep.RevealForm);
+  Assert.AreEqual<TAtlasDockStep>(TAtlasDockStep.RevealForm, TAtlasDockPlan.ShowStep(True, True, True));
 end;
 
 procedure TAtlasDockPlanTests.UnavailableWithoutServices;
 begin
-  Assert.IsTrue(TAtlasDockPlan.ShowStep(False, False, False) = TAtlasDockStep.Unavailable);
-  Assert.IsTrue(TAtlasDockPlan.ShowStep(False, True, False) = TAtlasDockStep.Unavailable);
+  Assert.AreEqual<TAtlasDockStep>(TAtlasDockStep.Unavailable, TAtlasDockPlan.ShowStep(False, False, False));
+  Assert.AreEqual<TAtlasDockStep>(TAtlasDockStep.Unavailable, TAtlasDockPlan.ShowStep(False, True, False));
 end;
 
 procedure TAtlasDockPlanTests.RevealsWithoutServicesWhenAlive;
 begin
-  Assert.IsTrue(TAtlasDockPlan.ShowStep(False, True, True) = TAtlasDockStep.RevealForm);
+  Assert.AreEqual<TAtlasDockStep>(TAtlasDockStep.RevealForm, TAtlasDockPlan.ShowStep(False, True, True));
 end;
 
 procedure TAtlasDockPlanTests.FrameNotUsableWithoutForm;

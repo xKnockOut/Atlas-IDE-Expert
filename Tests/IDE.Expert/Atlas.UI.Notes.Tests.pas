@@ -139,7 +139,7 @@ begin
     Assert.IsTrue(mDialog.CancelButton.Cancel, 'Esc bricht ab');
     mDialog.Memo.Lines.Text := '  Eins' + #13#10 + 'Zwei  ' + #13#10#13#10;
     mDialog.Accept;
-    Assert.IsTrue(mDialog.Choice = TAtlasNoteChoice.Save);
+    Assert.AreEqual<TAtlasNoteChoice>(TAtlasNoteChoice.Save, mDialog.Choice);
     Assert.AreEqual('Eins' + #10 + 'Zwei', mDialog.NoteText);
   finally
     mDialog.Free;
@@ -163,7 +163,7 @@ begin
     Assert.AreEqual('Löschen', mDialog.DeleteButton.Caption);
     Assert.AreEqual('Speichern', mDialog.SaveButton.Caption);
     mDialog.DeleteButton.Click;
-    Assert.IsTrue(mDialog.Choice = TAtlasNoteChoice.Delete);
+    Assert.AreEqual<TAtlasNoteChoice>(TAtlasNoteChoice.Delete, mDialog.Choice);
   finally
     mDialog.Free;
   end;
@@ -177,16 +177,17 @@ begin
   try
     mDialog.Memo.Lines.Text := '   ';
     mDialog.SaveButton.Click;
-    Assert.IsTrue(mDialog.Choice = TAtlasNoteChoice.Delete, 'leerer Text löscht die vorhandene Notiz');
+    Assert.AreEqual<TAtlasNoteChoice>(TAtlasNoteChoice.Delete,
+      mDialog.Choice, 'leerer Text löscht die vorhandene Notiz');
   finally
     mDialog.Free;
   end;
   mDialog := TAtlasNoteDialog.CreateDialog(nil, 'Neu', '', False);
   try
     mDialog.SaveButton.Click;
-    Assert.IsTrue(mDialog.Choice = TAtlasNoteChoice.Cancel, 'ohne Text keine neue Notiz');
+    Assert.AreEqual<TAtlasNoteChoice>(TAtlasNoteChoice.Cancel, mDialog.Choice, 'ohne Text keine neue Notiz');
     mDialog.CancelButton.Click;
-    Assert.IsTrue(mDialog.Choice = TAtlasNoteChoice.Cancel);
+    Assert.AreEqual<TAtlasNoteChoice>(TAtlasNoteChoice.Cancel, mDialog.Choice);
   finally
     mDialog.Free;
   end;
@@ -203,14 +204,14 @@ begin
     mDialog.Memo.Lines.Text := 'Merken';
     mKey := VK_RETURN;
     mDialog.Memo.OnKeyDown(mDialog.Memo, mKey, []);
-    Assert.IsTrue(mDialog.Choice = TAtlasNoteChoice.Cancel, 'Enter allein speichert nicht');
+    Assert.AreEqual<TAtlasNoteChoice>(TAtlasNoteChoice.Cancel, mDialog.Choice, 'Enter allein speichert nicht');
     Assert.AreEqual(Integer(VK_RETURN), Integer(mKey), 'Enter bleibt beim Textfeld');
     mDialog.Memo.OnKeyDown(mDialog.Memo, mKey, [ssCtrl]);
-    Assert.IsTrue(mDialog.Choice = TAtlasNoteChoice.Save);
+    Assert.AreEqual<TAtlasNoteChoice>(TAtlasNoteChoice.Save, mDialog.Choice);
     Assert.AreEqual(0, Integer(mKey));
     mCh := #10;
     mDialog.Memo.OnKeyPress(mDialog.Memo, mCh);
-    Assert.IsTrue(mCh = #0, 'kein Zeilenumbruch durch Strg+Enter');
+    Assert.AreEqual<Char>(#0, mCh, 'kein Zeilenumbruch durch Strg+Enter');
   finally
     mDialog.Free;
   end;
@@ -264,7 +265,7 @@ begin
     // Auswahl nach Kennung.
     mFrame.Items.Show(TAtlasNotesList.Build('Notizen', mBook.Groups, mBook.Notes[0].Id, nil, nil));
     Assert.AreEqual(mBook.Notes[0].Id, mFrame.Items.SelectedId);
-    Assert.IsTrue(mFrame.Tree.Selected = mFrame.Tree.Items[2]);
+    Assert.AreSame(mFrame.Tree.Items[2], mFrame.Tree.Selected);
   finally
     mHost.Free;
   end;

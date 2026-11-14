@@ -56,7 +56,7 @@ begin
   Assert.AreEqual(2, Integer(Length(Parsed.Chains)));
   Assert.AreEqual('Auftrag.Kunde.Adresse', Parsed.Chains[0].Text);
   Assert.AreEqual(2, Integer(Length(Parsed.Chains[0].Links)));
-  Assert.IsTrue(Parsed.Chains[0].Links[0].Kind = TAtlasAvLinkKind.ClassRef);
+  Assert.AreEqual<TAtlasAvLinkKind>(TAtlasAvLinkKind.ClassRef, Parsed.Chains[0].Links[0].Kind);
   Assert.AreEqual(40, Parsed.Chains[0].Links[0].StartLine);
   Assert.AreEqual(9, Parsed.Chains[0].Links[0].EndCharacter);
   Assert.AreEqual(2, Parsed.Chains[0].Links[0].NameCharacter);
@@ -64,7 +64,7 @@ begin
   Assert.AreEqual('TKunde', Parsed.Chains[0].Links[1].TypeName);
   Assert.AreEqual(2, Integer(Length(Parsed.Chains[0].Links[1].Fields)));
   Assert.AreEqual(-1, Parsed.Chains[0].Links[1].Fields[1].Offset);
-  Assert.IsTrue(Parsed.Chains[1].Links[0].Kind = TAtlasAvLinkKind.DynArray);
+  Assert.AreEqual<TAtlasAvLinkKind>(TAtlasAvLinkKind.DynArray, Parsed.Chains[1].Links[0].Kind);
   Assert.IsTrue(Parsed.Chains[1].Links[0].ImplicitSelf);
   Assert.AreEqual('I', Parsed.Chains[1].Links[0].IndexText);
   Assert.IsTrue(Parsed.Chains[1].Links[0].IndexPlain);

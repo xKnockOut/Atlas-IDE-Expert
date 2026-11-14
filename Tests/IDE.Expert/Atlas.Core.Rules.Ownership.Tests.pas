@@ -98,10 +98,10 @@ begin
   Assert.AreEqual(12, mMarks[0].Character);
   Assert.AreEqual('  FNamen := TStringList.Create;', mMarks[0].LineText);
   Assert.AreEqual('FNamen', mMarks[0].Target);
-  Assert.IsTrue(mMarks[0].Kind = TAtlasOwnershipKind.InDestroy);
+  Assert.AreEqual<TAtlasOwnershipKind>(TAtlasOwnershipKind.InDestroy, mMarks[0].Kind);
   Assert.AreEqual(21, mMarks[0].FreeLine);
-  Assert.IsTrue(mMarks[0].Container = TAtlasOwnershipContainer.OwnsElements);
-  Assert.IsTrue(mMarks[1].Kind = TAtlasOwnershipKind.Never);
+  Assert.AreEqual<TAtlasOwnershipContainer>(TAtlasOwnershipContainer.OwnsElements, mMarks[0].Container);
+  Assert.AreEqual<TAtlasOwnershipKind>(TAtlasOwnershipKind.Never, mMarks[1].Kind);
   Assert.AreEqual(-1, mMarks[1].FreeLine);
   Assert.AreEqual('field-not-freed', mMarks[1].Rule);
   Assert.AreEqual('FAlt wird nie freigegeben', mMarks[1].Message);
@@ -123,14 +123,16 @@ begin
   for mKind in [TAtlasOwnershipKind.InDestroy, TAtlasOwnershipKind.InFinally, TAtlasOwnershipKind.Owner,
     TAtlasOwnershipKind.OwnedList, TAtlasOwnershipKind.RefCounted] do
   begin
-    Assert.IsTrue(Mark(mKind).Tone = TAtlasOwnershipTone.Safe, TAtlasOwnershipMarks.cKindNames[mKind]);
+    Assert.AreEqual<TAtlasOwnershipTone>(TAtlasOwnershipTone.Safe,
+      Mark(mKind).Tone, TAtlasOwnershipMarks.cKindNames[mKind]);
   end;
   for mKind in [TAtlasOwnershipKind.Freed, TAtlasOwnershipKind.Returned, TAtlasOwnershipKind.Passed,
     TAtlasOwnershipKind.Unknown] do
   begin
-    Assert.IsTrue(Mark(mKind).Tone = TAtlasOwnershipTone.Elsewhere, TAtlasOwnershipMarks.cKindNames[mKind]);
+    Assert.AreEqual<TAtlasOwnershipTone>(TAtlasOwnershipTone.Elsewhere,
+      Mark(mKind).Tone, TAtlasOwnershipMarks.cKindNames[mKind]);
   end;
-  Assert.IsTrue(Mark(TAtlasOwnershipKind.Never).Tone = TAtlasOwnershipTone.Never);
+  Assert.AreEqual<TAtlasOwnershipTone>(TAtlasOwnershipTone.Never, Mark(TAtlasOwnershipKind.Never).Tone);
 end;
 
 procedure TAtlasOwnershipMarksTests.OnlyProblemsDropsGreen;
@@ -189,10 +191,10 @@ var
 begin
   mMarks := [Mark(TAtlasOwnershipKind.RefCounted), Mark(TAtlasOwnershipKind.Returned)];
   Assert.AreEqual('Referenzzählung | an Aufrufer zurückgegeben', TAtlasOwnershipMarks.LineCaption(mMarks, Texts));
-  Assert.IsTrue(TAtlasOwnershipMarks.LineTone(mMarks) = TAtlasOwnershipTone.Elsewhere);
+  Assert.AreEqual<TAtlasOwnershipTone>(TAtlasOwnershipTone.Elsewhere, TAtlasOwnershipMarks.LineTone(mMarks));
   mMarks := mMarks + [Mark(TAtlasOwnershipKind.Never)];
-  Assert.IsTrue(TAtlasOwnershipMarks.LineTone(mMarks) = TAtlasOwnershipTone.Never);
-  Assert.IsTrue(TAtlasOwnershipMarks.LineTone(nil) = TAtlasOwnershipTone.Safe);
+  Assert.AreEqual<TAtlasOwnershipTone>(TAtlasOwnershipTone.Never, TAtlasOwnershipMarks.LineTone(mMarks));
+  Assert.AreEqual<TAtlasOwnershipTone>(TAtlasOwnershipTone.Safe, TAtlasOwnershipMarks.LineTone(nil));
   Assert.AreEqual(-1, TAtlasOwnershipMarks.JumpLine(mMarks));
   mMarks[1].FreeLine := 9;
   Assert.AreEqual(9, TAtlasOwnershipMarks.JumpLine(mMarks));

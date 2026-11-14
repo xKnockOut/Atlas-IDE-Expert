@@ -147,12 +147,12 @@ begin
   State := Default(TAtlasUpdateState);
   // Ohne Zustimmung keine Netzwerkabfrage.
   Outcome := TAtlasUpdates.Run(Keep, Query('1.0.0'), State, False, Today);
-  Assert.IsTrue(Outcome.Outcome = TAtlasUpdateOutcome.Disabled);
+  Assert.AreEqual<TAtlasUpdateOutcome>(TAtlasUpdateOutcome.Disabled, Outcome.Outcome);
   Assert.AreEqual(0, Source.Calls);
   Assert.AreEqual(Double(0), Double(State.LastCheck), 1 / SecsPerDay);
   State.LastCheck := IncHour(Today, -3);
   Outcome := TAtlasUpdates.Run(Keep, Query('1.0.0'), State, True, Today);
-  Assert.IsTrue(Outcome.Outcome = TAtlasUpdateOutcome.NotDue);
+  Assert.AreEqual<TAtlasUpdateOutcome>(TAtlasUpdateOutcome.NotDue, Outcome.Outcome);
   Assert.AreEqual(0, Source.Calls);
 end;
 
@@ -170,7 +170,7 @@ begin
   State := Default(TAtlasUpdateState);
   Source.Answer := '{"version":"1.1.0","changes":"https://example.org/1.1.0"}';
   Outcome := TAtlasUpdates.Run(Keep, Query('1.0.0'), State, True, Today);
-  Assert.IsTrue(Outcome.Outcome = TAtlasUpdateOutcome.NewVersion);
+  Assert.AreEqual<TAtlasUpdateOutcome>(TAtlasUpdateOutcome.NewVersion, Outcome.Outcome);
   Assert.AreEqual('1.1.0', Outcome.Release.Version);
   Assert.AreEqual('https://example.org/1.1.0', Outcome.Release.ChangesUrl);
   Assert.AreEqual(1, Source.Calls);
@@ -178,23 +178,23 @@ begin
   Assert.AreEqual(Double(Today), Double(State.LastCheck), 1 / SecsPerDay);
   // Am selben Tag nicht noch einmal.
   Outcome := TAtlasUpdates.Run(Keep, Query('1.0.0'), State, True, IncHour(Today, 5));
-  Assert.IsTrue(Outcome.Outcome = TAtlasUpdateOutcome.NotDue);
+  Assert.AreEqual<TAtlasUpdateOutcome>(TAtlasUpdateOutcome.NotDue, Outcome.Outcome);
   Assert.AreEqual(1, Source.Calls);
   // Gleich oder älter: aktuell.
   Outcome := TAtlasUpdates.Run(Keep, Query('1.1.0'), State, True, IncDay(Today, 1));
-  Assert.IsTrue(Outcome.Outcome = TAtlasUpdateOutcome.Current);
+  Assert.AreEqual<TAtlasUpdateOutcome>(TAtlasUpdateOutcome.Current, Outcome.Outcome);
   Outcome := TAtlasUpdates.Run(Keep, Query('1.2.0-beta.1'), State, True, IncDay(Today, 2));
-  Assert.IsTrue(Outcome.Outcome = TAtlasUpdateOutcome.Current);
+  Assert.AreEqual<TAtlasUpdateOutcome>(TAtlasUpdateOutcome.Current, Outcome.Outcome);
   // Fehler zählen als Prüfung: höchstens einmal am Tag.
   Source.Fails := True;
   Outcome := TAtlasUpdates.Run(Keep, Query('1.0.0'), State, True, IncDay(Today, 3));
-  Assert.IsTrue(Outcome.Outcome = TAtlasUpdateOutcome.Failed);
+  Assert.AreEqual<TAtlasUpdateOutcome>(TAtlasUpdateOutcome.Failed, Outcome.Outcome);
   Assert.AreEqual('HTTP 404', Outcome.Error);
   Assert.AreEqual(Double(IncDay(Today, 3)), Double(State.LastCheck), 1 / SecsPerDay);
   Source.Fails := False;
   Source.Answer := 'kaputt';
   Outcome := TAtlasUpdates.Run(Keep, Query('1.0.0'), State, True, IncDay(Today, 4));
-  Assert.IsTrue(Outcome.Outcome = TAtlasUpdateOutcome.Failed);
+  Assert.AreEqual<TAtlasUpdateOutcome>(TAtlasUpdateOutcome.Failed, Outcome.Outcome);
 end;
 
 procedure TAtlasUpdatesTests.StateRoundTrip;

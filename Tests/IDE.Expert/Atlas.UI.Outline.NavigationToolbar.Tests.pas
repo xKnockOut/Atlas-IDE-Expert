@@ -114,14 +114,14 @@ procedure TAtlasNavigationToolbarTests.FindsToolbarByName;
 var
   Other: TWinControl;
 begin
-  Assert.IsTrue(TAtlasNavigationToolbar.Find(FForm) = FToolbar, 'am Namen');
-  Assert.IsTrue(TAtlasNavigationToolbar.Find(FEditor) = nil, 'nicht unter dem Editor');
-  Assert.IsTrue(TAtlasNavigationToolbar.Find(nil) = nil);
+  Assert.AreSame(FToolbar, TAtlasNavigationToolbar.Find(FForm), 'am Namen');
+  Assert.IsNull(TAtlasNavigationToolbar.Find(FEditor), 'nicht unter dem Editor');
+  Assert.IsNull(TAtlasNavigationToolbar.Find(nil));
   FToolbar.Name := '';
-  Assert.IsTrue(TAtlasNavigationToolbar.Find(FForm) = nil, 'ohne Namen');
+  Assert.IsNull(TAtlasNavigationToolbar.Find(FForm), 'ohne Namen');
   Other := TEditorNavigationToolbarLike.Create(FForm);
   Other.Parent := FEditor;
-  Assert.IsTrue(TAtlasNavigationToolbar.Find(FForm) = Other, 'am Klassennamen');
+  Assert.AreSame(Other, TAtlasNavigationToolbar.Find(FForm), 'am Klassennamen');
 end;
 
 procedure TAtlasNavigationToolbarTests.HidesEvenWhenIdeShowsItAgain;
@@ -148,7 +148,7 @@ begin
   FHider.Apply(FForm, True);
   FHider.Apply(FForm, False);
   Assert.IsFalse(TAtlasNavigationToolbar.IsHidden(FToolbar));
-  Assert.IsTrue(FToolbar.Parent = FHost);
+  Assert.AreSame(FHost, FToolbar.Parent);
   Assert.IsTrue(FToolbar.Showing);
   Assert.AreEqual(0, FHider.HiddenCount);
   Assert.IsTrue(FToolbar.Top >= FTabs.Top + FTabs.Height, 'unter den Reitern');
@@ -156,7 +156,7 @@ begin
   // Wieder ausblenden und alle zurück (Einstellung aus, Entladen).
   FHider.Apply(FForm, True);
   FHider.RestoreAll;
-  Assert.IsTrue(FToolbar.Parent = FHost);
+  Assert.AreSame(FHost, FToolbar.Parent);
   Assert.AreEqual(0, FHider.HiddenCount);
 end;
 

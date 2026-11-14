@@ -49,7 +49,8 @@ begin
   end;
   Assert.AreEqual(2, Problem.StartLine);
   Assert.AreEqual(9, Problem.EndCharacter);
-  Assert.IsTrue(Problem.Severity = Atlas.Core.Lsp.Contract.TAtlasProblemSeverity.Warning);
+  Assert.AreEqual<Atlas.Core.Lsp.Contract.TAtlasProblemSeverity>(Atlas.Core.Lsp.Contract.TAtlasProblemSeverity.Warning,
+    Problem.Severity);
   Assert.AreEqual('Achtung (W1000)', Problem.Caption);
 end;
 
@@ -124,7 +125,8 @@ begin
   Direct.Severity := Atlas.Core.Problems.Contract.TAtlasProblemSeverity.Hint;
   Problem := Direct;
   Assert.AreEqual('x', Problem.Caption);
-  Assert.IsTrue(Problem.Severity = Atlas.Core.Lsp.Contract.TAtlasProblemSeverity.Hint);
+  Assert.AreEqual<Atlas.Core.Lsp.Contract.TAtlasProblemSeverity>(Atlas.Core.Lsp.Contract.TAtlasProblemSeverity.Hint,
+    Problem.Severity);
   Item := Default(Atlas.Core.Lsp.Contract.TAtlasHierarchyItem);
   Item.Name := 'Run';
   Assert.AreEqual('Run', Item.Name);

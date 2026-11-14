@@ -94,18 +94,18 @@ begin
   Assert.AreEqual(6, Flow.Symbol.Line);
   // Die Stelle ohne Fundort fällt weg.
   Assert.AreEqual(2, Integer(Length(Flow.Nodes)));
-  Assert.IsTrue(Flow.Nodes[0].Kind = TAtlasDataFlowKind.Assignment);
+  Assert.AreEqual<TAtlasDataFlowKind>(TAtlasDataFlowKind.Assignment, Flow.Nodes[0].Kind);
   Assert.AreEqual('Summe', Flow.Nodes[0].Via);
   Assert.AreEqual(2, Integer(Length(Flow.Nodes[0].Places)));
   Assert.AreEqual(13, Flow.Nodes[0].Places[1].Line);
   Assert.AreEqual('Zaehler := Summe(Wert);', Flow.Nodes[0].Places[0].LineText);
   Assert.IsTrue(SameText('C:\P\Daten.pas', Flow.Nodes[0].Sources[0].FileName));
-  Assert.IsTrue(Flow.Nodes[0].Sources[0].Leaf = TAtlasDataFlowLeaf.None);
+  Assert.AreEqual<TAtlasDataFlowLeaf>(TAtlasDataFlowLeaf.None, Flow.Nodes[0].Sources[0].Leaf);
   Assert.IsTrue(Flow.Nodes[1].Literal);
   Assert.IsTrue(Flow.Nodes[1].Unsafe);
   Assert.AreEqual('move', Flow.Nodes[1].UnsafeReason);
-  Assert.IsTrue(Flow.Nodes[1].Sources[0].Leaf = TAtlasDataFlowLeaf.Cycle);
-  Assert.IsTrue(Flow.Nodes[1].Sources[1].Leaf = TAtlasDataFlowLeaf.Constant);
+  Assert.AreEqual<TAtlasDataFlowLeaf>(TAtlasDataFlowLeaf.Cycle, Flow.Nodes[1].Sources[0].Leaf);
+  Assert.AreEqual<TAtlasDataFlowLeaf>(TAtlasDataFlowLeaf.Constant, Flow.Nodes[1].Sources[1].Leaf);
 end;
 
 procedure TAtlasLspDataFlowTests.NotFoundAndNull;
@@ -129,10 +129,10 @@ end;
 
 procedure TAtlasLspDataFlowTests.UnknownKind;
 begin
-  Assert.IsTrue(TAtlasDataFlowJson.KindOf('callerArgument') = TAtlasDataFlowKind.CallerArgument);
-  Assert.IsTrue(TAtlasDataFlowJson.KindOf('initialization') = TAtlasDataFlowKind.Initializer);
-  Assert.IsTrue(TAtlasDataFlowJson.KindOf('neu') = TAtlasDataFlowKind.Unknown);
-  Assert.IsTrue(TAtlasDataFlowJson.KindOf('') = TAtlasDataFlowKind.Unknown);
+  Assert.AreEqual<TAtlasDataFlowKind>(TAtlasDataFlowKind.CallerArgument, TAtlasDataFlowJson.KindOf('callerArgument'));
+  Assert.AreEqual<TAtlasDataFlowKind>(TAtlasDataFlowKind.Initializer, TAtlasDataFlowJson.KindOf('initialization'));
+  Assert.AreEqual<TAtlasDataFlowKind>(TAtlasDataFlowKind.Unknown, TAtlasDataFlowJson.KindOf('neu'));
+  Assert.AreEqual<TAtlasDataFlowKind>(TAtlasDataFlowKind.Unknown, TAtlasDataFlowJson.KindOf(''));
 end;
 
 end.

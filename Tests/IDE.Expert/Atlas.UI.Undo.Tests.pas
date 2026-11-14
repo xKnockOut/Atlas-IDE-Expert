@@ -272,7 +272,7 @@ begin
     // Zwei Sätze mit je zwei Dateien.
     Assert.AreEqual(6, Integer(Frame.Tree.Items.Count));
     Assert.AreEqual(2, Integer(Frame.Tree.Items[0].Count));
-    Assert.IsTrue(Frame.Tree.Selected = Frame.Tree.Items[0], 'neuester Satz ausgewählt');
+    Assert.AreSame(Frame.Tree.Items[0], Frame.Tree.Selected, 'neuester Satz ausgewählt');
     // Menü: angewendeter Satz lässt sich zurücknehmen, aber nicht wiederherstellen.
     Frame.Menu.OnPopup(Frame.Menu);
     Assert.IsTrue(Frame.Menu.Items[0].Visible);
@@ -296,7 +296,7 @@ begin
     // Neu aufbauen behält die Auswahl.
     Frame.Tree.Selected := Frame.Tree.Items[3];
     Frame.Changes.Show('Atlas-Änderungen', [SampleSet(False), Older], Now, True);
-    Assert.IsTrue(Frame.Tree.Selected = Frame.Tree.Items[3]);
+    Assert.AreSame(Frame.Tree.Items[3], Frame.Tree.Selected);
   finally
     Host.Free;
     mProbe.Free;

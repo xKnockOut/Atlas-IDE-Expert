@@ -431,7 +431,7 @@ begin
   Assert.AreNotEqual(mId, mOther);
   Assert.AreEqual(2, Integer(mList.Count));
   Assert.AreEqual('Rundung', mList.Bookmarks[0].Name);
-  Assert.IsTrue(mList.Bookmarks[0].Created = EncodeDate(2026, 10, 15));
+  Assert.AreEqual<TDateTime>(EncodeDate(2026, 10, 15), mList.Bookmarks[0].Created);
   Assert.AreEqual(0, mList.IndexOf(UpperCase(mId)));
   Assert.IsTrue(mList.Rename(mId, 'Rundung prüfen'));
   Assert.AreEqual('Rundung prüfen', mList.Bookmarks[0].Name);
