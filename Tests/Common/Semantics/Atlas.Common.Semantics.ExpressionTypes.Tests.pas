@@ -346,7 +346,7 @@ begin
   Assert.AreEqual('TListe<TKunde>', Info.BaseName, 'Grundtyp des Alias');
   Assert.AreEqual(MainFile, Info.TypeFile, 'Sprung zum Alias');
   Info := TypeOf('G := G');
-  Assert.IsTrue(Info.Error = TExpressionErrorKind.NoExpression, 'Zuweisung ist kein Ausdruck');
+  Assert.AreEqual<TExpressionErrorKind>(TExpressionErrorKind.NoExpression, Info.Error, 'Zuweisung ist kein Ausdruck');
   Info := TypeOf('Z + D');
   Assert.AreEqual('Double', Info.TypeName, 'Alias auf Integer rechnet wie Integer');
 end;
@@ -387,13 +387,13 @@ var
 begin
   Info := TypeIn('Count := Count + S;', 'Count + S');
   Assert.IsFalse(Info.Found, Info.TypeName + ' ' + Info.Expression);
-  Assert.IsTrue(Info.Error = TExpressionErrorKind.OperatorMismatch);
+  Assert.AreEqual<TExpressionErrorKind>(TExpressionErrorKind.OperatorMismatch, Info.Error);
   Assert.AreEqual('+|Integer|string', Info.ErrorDetail);
   Info := TypeOf('Unbekannt + 1');
-  Assert.IsTrue(Info.Error = TExpressionErrorKind.UnknownName);
+  Assert.AreEqual<TExpressionErrorKind>(TExpressionErrorKind.UnknownName, Info.Error);
   Assert.AreEqual('Unbekannt', Info.ErrorDetail);
   Info := TypeOf('Leer');
-  Assert.IsTrue(Info.Error = TExpressionErrorKind.NoResult);
+  Assert.AreEqual<TExpressionErrorKind>(TExpressionErrorKind.NoResult, Info.Error);
   Info := TypeIn('Price := Price *', 'ric');
   Assert.AreEqual('Currency', Info.TypeName, 'kleinster umfassender Ausdruck: Price ganz');
   Assert.AreEqual('Price', Info.Expression);

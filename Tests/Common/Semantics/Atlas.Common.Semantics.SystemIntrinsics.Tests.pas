@@ -193,13 +193,13 @@ begin
   // Standardwert zählt nicht zur Mindestzahl.
   Assert.AreEqual(1, Found[0].MinArgs);
   Assert.AreEqual(2, Found[0].MaxArgs);
-  Assert.IsTrue(TSystemIntrinsics.Find('Integer')[0].Kind = TIndexSymbolKind.RecordType);
-  Assert.IsTrue(TSystemIntrinsics.Find('Assigned')[0].Kind = TIndexSymbolKind.Routine);
+  Assert.AreEqual<TIndexSymbolKind>(TIndexSymbolKind.RecordType, TSystemIntrinsics.Find('Integer')[0].Kind);
+  Assert.AreEqual<TIndexSymbolKind>(TIndexSymbolKind.Routine, TSystemIntrinsics.Find('Assigned')[0].Kind);
   Assert.IsTrue(TSystemIntrinsics.IsKnown('NativeInt'));
   Assert.IsTrue(TSystemIntrinsics.IsKnown('Cardinal'));
   Assert.IsFalse(TSystemIntrinsics.IsKnown('Unbekannt'));
   // CompilerVersion steht in System.pas nur im Kommentar; der Compiler setzt sie.
-  Assert.IsTrue(TSystemIntrinsics.Find('CompilerVersion')[0].Kind = TIndexSymbolKind.Constant);
+  Assert.AreEqual<TIndexSymbolKind>(TIndexSymbolKind.Constant, TSystemIntrinsics.Find('CompilerVersion')[0].Kind);
   // Typen des Compilers ohne Deklaration in System.pas und Fail der alten object-Syntax (#1382).
   Assert.IsTrue(TSystemIntrinsics.IsType('TextFile'));
   Assert.IsTrue(TSystemIntrinsics.IsType('Text'));

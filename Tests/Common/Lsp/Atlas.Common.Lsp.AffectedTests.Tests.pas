@@ -451,7 +451,7 @@ var
 begin
   mChanges := TAffectedTests.MapPascal(BasisFile, UnitBasis, LinesAt(UnitBasis, 'Result := Normalize'));
   Assert.AreEqual(1, Integer(Length(mChanges)));
-  Assert.IsTrue(mChanges[0].Kind = TAffectedChangeKind.Symbol);
+  Assert.AreEqual<TAffectedChangeKind>(TAffectedChangeKind.Symbol, mChanges[0].Kind);
   Assert.AreEqual('TBaseline.Match', mChanges[0].Text);
   Assert.AreEqual('implementation', mChanges[0].Place);
   Assert.AreEqual(BasisFile, mChanges[0].Source);
@@ -464,7 +464,7 @@ begin
   // Eine geänderte Signatur im interface zählt für die Methode, nicht für die ganze Klasse.
   mChanges := TAffectedTests.MapPascal(BasisFile, UnitBasis, LinesAt(UnitBasis, '    function Match('));
   Assert.AreEqual(1, Integer(Length(mChanges)));
-  Assert.IsTrue(mChanges[0].Kind = TAffectedChangeKind.Symbol);
+  Assert.AreEqual<TAffectedChangeKind>(TAffectedChangeKind.Symbol, mChanges[0].Kind);
   Assert.AreEqual('TBaseline.Match', mChanges[0].Text);
   Assert.AreEqual('interface', mChanges[0].Place);
 end;
@@ -475,7 +475,7 @@ var
 begin
   mChanges := TAffectedTests.MapPascal(BasisFile, UnitBasis, LinesAt(UnitBasis, 'cLimit = 3'));
   Assert.AreEqual(1, Integer(Length(mChanges)));
-  Assert.IsTrue(mChanges[0].Kind = TAffectedChangeKind.Symbol);
+  Assert.AreEqual<TAffectedChangeKind>(TAffectedChangeKind.Symbol, mChanges[0].Kind);
   Assert.AreEqual('cLimit', mChanges[0].Item.Name);
 end;
 
@@ -485,7 +485,7 @@ var
 begin
   mChanges := TAffectedTests.MapPascal(BasisFile, UnitBasis, LinesAt(UnitBasis, 'TBaseline.ClassName'));
   Assert.AreEqual(1, Integer(Length(mChanges)));
-  Assert.IsTrue(mChanges[0].Kind = TAffectedChangeKind.WholeUnit);
+  Assert.AreEqual<TAffectedChangeKind>(TAffectedChangeKind.WholeUnit, mChanges[0].Kind);
   Assert.AreEqual('Unit Basis', mChanges[0].Text);
   Assert.AreEqual('initialization', mChanges[0].Place);
 end;
@@ -496,7 +496,7 @@ var
 begin
   mChanges := TAffectedTests.MapPascal(BasisFile, UnitBasis, LinesAt(UnitBasis, 'uses System.SysUtils'));
   Assert.AreEqual(1, Integer(Length(mChanges)));
-  Assert.IsTrue(mChanges[0].Kind = TAffectedChangeKind.WholeUnit);
+  Assert.AreEqual<TAffectedChangeKind>(TAffectedChangeKind.WholeUnit, mChanges[0].Kind);
   Assert.AreEqual('interface', mChanges[0].Place);
 end;
 
@@ -528,7 +528,7 @@ begin
   // Vor "function TBaseline.Match" entfernt (etwa eine ganze Routine): davor Normalize, danach Match.
   mChanges := TAffectedTests.MapPascal(BasisFile, UnitBasis, Gap(LineOf(UnitBasis, 'function TBaseline.Match')));
   Assert.AreEqual(1, Integer(Length(mChanges)));
-  Assert.IsTrue(mChanges[0].Kind = TAffectedChangeKind.WholeUnit);
+  Assert.AreEqual<TAffectedChangeKind>(TAffectedChangeKind.WholeUnit, mChanges[0].Kind);
   Assert.AreEqual('implementation', mChanges[0].Place);
 end;
 
@@ -629,7 +629,7 @@ begin
   Assert.AreEqual('Include', mFound.Changes[0].Place);
   Assert.AreEqual(FormularInclude, mFound.Changes[0].Source);
   // Das {$I} steht außerhalb jeder Routine: die ganze Unit Formular.
-  Assert.IsTrue(mFound.Changes[0].Kind = TAffectedChangeKind.WholeUnit);
+  Assert.AreEqual<TAffectedChangeKind>(TAffectedChangeKind.WholeUnit, mFound.Changes[0].Kind);
   Assert.IsTrue(TestNamed(mFound, 'Formular.Tests.TFormularTests', mTest), Names(mFound));
   Assert.IsFalse(TestNamed(mFound, 'Basis.Tests.TBaselineTests', mTest), Names(mFound));
 end;
@@ -717,11 +717,11 @@ var
   mFormat: TAffectedFormat;
 begin
   Assert.IsTrue(TAffectedReport.TryParseFormat('', mFormat));
-  Assert.IsTrue(mFormat = TAffectedFormat.Text);
+  Assert.AreEqual<TAffectedFormat>(TAffectedFormat.Text, mFormat);
   Assert.IsTrue(TAffectedReport.TryParseFormat('JSON', mFormat));
-  Assert.IsTrue(mFormat = TAffectedFormat.Json);
+  Assert.AreEqual<TAffectedFormat>(TAffectedFormat.Json, mFormat);
   Assert.IsTrue(TAffectedReport.TryParseFormat('dunitx', mFormat));
-  Assert.IsTrue(mFormat = TAffectedFormat.DUnitX);
+  Assert.AreEqual<TAffectedFormat>(TAffectedFormat.DUnitX, mFormat);
   Assert.IsFalse(TAffectedReport.TryParseFormat('xml', mFormat));
 end;
 

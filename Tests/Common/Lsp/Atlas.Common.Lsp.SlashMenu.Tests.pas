@@ -198,7 +198,7 @@ begin
     Assert.AreEqual('generate', Group);
     Assert.AreEqual('optional', Argument);
     Assert.IsTrue(Choices);
-    Assert.IsTrue(Field(First, 'summary') <> '');
+    Assert.AreNotEqual('', Field(First, 'summary'));
   finally
     Answer.Free;
     Args.Free;
@@ -309,7 +309,7 @@ begin
   Answer := FMenu.ExecuteRun(Args);
   try
     Assert.AreEqual(0, List(Answer, 'edits').Count);
-    Assert.IsTrue(Field(Answer, 'reason') <> '');
+    Assert.AreNotEqual('', Field(Answer, 'reason'));
   finally
     Answer.Free;
     Args.Free;

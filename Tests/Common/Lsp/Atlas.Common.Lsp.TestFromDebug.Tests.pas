@@ -242,7 +242,7 @@ var
   Request: TDebugStopRequest;
 begin
   Request := TLspTestFromDebug.ReadRequest(nil);
-  Assert.IsTrue(Request.Kind = TTestDraftKind.Works);
+  Assert.AreEqual<TTestDraftKind>(TTestDraftKind.Works, Request.Kind);
   Assert.AreEqual(TTestFromDebug.cDefaultMaxArray, Request.MaxArray);
   Json := TJSONObject.ParseJSONValue('{"kind": "raises", "maxArray": 5, "testName": "X"}') as TJSONObject;
   try
@@ -250,7 +250,7 @@ begin
   finally
     Json.Free;
   end;
-  Assert.IsTrue(Request.Kind = TTestDraftKind.Raises);
+  Assert.AreEqual<TTestDraftKind>(TTestDraftKind.Raises, Request.Kind);
   Assert.AreEqual(5, Request.MaxArray);
   Assert.AreEqual('X', Request.TestName);
   Request := Default(TDebugStopRequest);

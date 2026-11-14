@@ -444,7 +444,7 @@ begin
   try
     Assert.IsTrue(TLspHotspots.ApplyOptions(mParams, mRequest, mError));
     Assert.AreEqual(3, mRequest.Options.Months);
-    Assert.IsTrue(mRequest.Level = THotspotLevel.Methods);
+    Assert.AreEqual<THotspotLevel>(THotspotLevel.Methods, mRequest.Level);
   finally
     mParams.Free;
   end;

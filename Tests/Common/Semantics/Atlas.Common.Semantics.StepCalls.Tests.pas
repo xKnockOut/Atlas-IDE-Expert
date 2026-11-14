@@ -126,7 +126,7 @@ var
 begin
   Assert.AreEqual('Quelle Wert Ziel Name:=',
     SitesAt(Body + '  Ziel.Name := Quelle.Wert;'#10 + 'end;'#10 + 'end.', 5, Statement));
-  Assert.IsTrue(Statement.Sites[3].Receiver <> nil);
+  Assert.IsNotNull(Statement.Sites[3].Receiver);
   Assert.AreEqual('Ziel', Statement.Sites[3].Receiver.Name);
   Assert.AreEqual('I Liste[]:=', SitesAt(Body + '  Liste[I] := 0;'#10 + 'end;'#10 + 'end.', 5, Statement));
 end;

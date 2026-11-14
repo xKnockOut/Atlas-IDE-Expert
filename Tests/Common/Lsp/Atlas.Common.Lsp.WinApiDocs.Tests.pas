@@ -76,7 +76,7 @@ begin
   for Url in TWinApiDocs.KnownUrls do
   begin
     Assert.IsTrue(StartsStr(TWinApiDocs.cApiBase, Url), Url);
-    Assert.IsTrue(Pos(' ', Url) = 0, Url);
+    Assert.AreEqual(0, Pos(' ', Url), Url);
     Assert.AreEqual(LowerCase(Url), Url);
     Assert.IsTrue(ContainsStr(Url, '/nf-') or ContainsStr(Url, '/ns-'), Url);
   end;

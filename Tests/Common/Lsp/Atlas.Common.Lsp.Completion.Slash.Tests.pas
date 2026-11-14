@@ -143,7 +143,7 @@ begin
       if mItem.Name = 'DEFINE' then
       begin
         mFound := True;
-        Assert.IsTrue(mItem.Detail <> '', 'Beschreibung');
+        Assert.AreNotEqual('', mItem.Detail, 'Beschreibung');
       end;
     end;
     Assert.IsTrue(mFound, string.Join(',', Names(mItems)));

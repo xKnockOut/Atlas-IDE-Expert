@@ -452,7 +452,7 @@ begin
   Assert.IsTrue(Find(ItemsAt('  TFoo(Wert).free'), 'free', KindSnippet, Item));
   Assert.AreEqual('FreeAndNil(TFoo(Wert));', Item.TextEdit.NewText);
   // Nach einer offenen Klammer beginnt der Ausdruck dahinter.
-  Assert.IsTrue(Find(ItemsAt('  Bar(Liste.fo'), 'for', KindSnippet, Item) = False);
+  Assert.IsFalse(Find(ItemsAt('  Bar(Liste.fo'), 'for', KindSnippet, Item));
   Assert.IsTrue(Find(ItemsAt('  Name := Name.fmt'), 'fmt', KindSnippet, Item));
 end;
 

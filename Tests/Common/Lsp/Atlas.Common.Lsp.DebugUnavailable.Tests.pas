@@ -108,9 +108,10 @@ begin
   Assert.IsTrue(Facts.Local);
   Assert.AreEqual(22, Facts.FirstUse);
   Assert.AreEqual(29, Facts.LastUse);
-  Assert.IsTrue(Facts.Lifetime = TVariableLifetime.Before, 'vor der ersten Verwendung');
-  Assert.IsTrue(FactsAt('Summe', 25).Lifetime = TVariableLifetime.Within);
-  Assert.IsTrue(FactsAt('Summe', 30).Lifetime = TVariableLifetime.After, 'nach der letzten Verwendung');
+  Assert.AreEqual<TVariableLifetime>(TVariableLifetime.Before, Facts.Lifetime, 'vor der ersten Verwendung');
+  Assert.AreEqual<TVariableLifetime>(TVariableLifetime.Within, FactsAt('Summe', 25).Lifetime);
+  Assert.AreEqual<TVariableLifetime>(TVariableLifetime.After,
+    FactsAt('Summe', 30).Lifetime, 'nach der letzten Verwendung');
 end;
 
 procedure TLspDebugUnavailableTests.LoopCountsAsWhole;
@@ -120,8 +121,8 @@ begin
   // Rest steht zuletzt in Zeile 25, die Schleife reicht bis 27: am Ende der Schleife lebt Rest noch.
   Facts := FactsAt('Rest', 27);
   Assert.AreEqual(27, Facts.LastUse);
-  Assert.IsTrue(Facts.Lifetime = TVariableLifetime.Within);
-  Assert.IsTrue(FactsAt('Rest', 28).Lifetime = TVariableLifetime.After);
+  Assert.AreEqual<TVariableLifetime>(TVariableLifetime.Within, Facts.Lifetime);
+  Assert.AreEqual<TVariableLifetime>(TVariableLifetime.After, FactsAt('Rest', 28).Lifetime);
 end;
 
 procedure TLspDebugUnavailableTests.ParameterLivesFromStart;
@@ -132,8 +133,8 @@ begin
   Assert.IsTrue(Facts.IsParameter);
   Assert.IsTrue(Facts.Local);
   Assert.AreEqual(14, Facts.FirstUse, 'ab Routinenanfang');
-  Assert.IsTrue(Facts.Lifetime = TVariableLifetime.Within);
-  Assert.IsTrue(FactsAt('Anzahl', 25).Lifetime = TVariableLifetime.After);
+  Assert.AreEqual<TVariableLifetime>(TVariableLifetime.Within, Facts.Lifetime);
+  Assert.AreEqual<TVariableLifetime>(TVariableLifetime.After, FactsAt('Anzahl', 25).Lifetime);
 end;
 
 procedure TLspDebugUnavailableTests.InlineAtDeclaration;
@@ -151,7 +152,7 @@ end;
 procedure TLspDebugUnavailableTests.FieldIsNotLocal;
 begin
   Assert.IsFalse(FactsAt('FCount', 26).Local);
-  Assert.IsTrue(FactsAt('Gibts', 26).Lifetime = TVariableLifetime.Unused);
+  Assert.AreEqual<TVariableLifetime>(TVariableLifetime.Unused, FactsAt('Gibts', 26).Lifetime);
 end;
 
 procedure TLspDebugUnavailableTests.FixesAroundOuterRoutine;

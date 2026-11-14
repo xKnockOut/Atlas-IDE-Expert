@@ -245,7 +245,7 @@ begin
     Entries := TLspCodeLens.MetricLenses(Tree, TMetricLimits.Default);
     // Aufbau (#939) zuerst: Unit-Name, uses, je Klasse; dann nur die Rümpfe, keine Deklarationen.
     Assert.AreEqual(7, Integer(Length(Entries)));
-    Assert.IsTrue(Entries[0].Kind = TCodeLensKind.Metrics);
+    Assert.AreEqual<TCodeLensKind>(TCodeLensKind.Metrics, Entries[0].Kind);
     Assert.AreEqual('24 Zeilen', Entries[0].Title);
     Assert.AreEqual(0, Entries[0].Range.StartPos.Line);
     Assert.AreEqual('1 Units im uses', Entries[1].Title);

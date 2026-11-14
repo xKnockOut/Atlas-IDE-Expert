@@ -293,7 +293,7 @@ begin
         end));
       Assert.AreEqual('Haupt.pas:8:4 Haupt.pas:9:4 Haupt.pas:9:12 Werkzeug.pas:8:18', Describe(Found));
       Again := FResolver.ExtractedUnit(Tree, HauptFile);
-      Assert.IsTrue(Pointer(Pinned.Symbols) = Pointer(Again.Symbols));
+      Assert.AreEqual<Pointer>(Pointer(Again.Symbols), Pointer(Pinned.Symbols));
     finally
       FResolver.UnpinTree;
     end;

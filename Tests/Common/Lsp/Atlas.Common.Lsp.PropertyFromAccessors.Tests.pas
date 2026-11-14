@@ -195,8 +195,8 @@ begin
     begin
       AWarnings := AWarnings + [Item.Value];
     end;
-    Assert.IsTrue(((Answer.GetValue('edit') as TJSONObject).GetValue('changeAnnotations') as TJSONObject)
-      .GetValue(TLspPropertyFromAccessors.cAnnotationId) <> nil);
+    Assert.IsNotNull(((Answer.GetValue('edit') as TJSONObject).GetValue('changeAnnotations') as TJSONObject)
+      .GetValue(TLspPropertyFromAccessors.cAnnotationId));
   finally
     Answer.Free;
     Resolver.Free;

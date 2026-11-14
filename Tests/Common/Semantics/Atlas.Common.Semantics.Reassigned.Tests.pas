@@ -596,12 +596,12 @@ var
   Symbols: TArray<TReassignedSymbol>;
 begin
   Assert.IsTrue(TReassigned.TryParseTarget('valueParams', Target));
-  Assert.IsTrue(Target = TReassignedTarget.ValueParams);
+  Assert.AreEqual<TReassignedTarget>(TReassignedTarget.ValueParams, Target);
   Assert.IsTrue(TReassigned.TryParseTarget(' LOOPVARS ', Target));
-  Assert.IsTrue(Target = TReassignedTarget.LoopVars);
+  Assert.AreEqual<TReassignedTarget>(TReassignedTarget.LoopVars, Target);
   Assert.IsFalse(TReassigned.TryParseTarget('globals', Target));
-  Assert.IsTrue(TReassigned.TargetsOf(TArray<string>.Create('locals', 'fields', 'x')) =
-    [TReassignedTarget.Locals, TReassignedTarget.Fields]);
+  Assert.AreEqual<TReassignedTargets>([TReassignedTarget.Locals, TReassignedTarget.Fields],
+    TReassigned.TargetsOf(TArray<string>.Create('locals', 'fields', 'x')));
   Tree := TPascalParser.Parse(Wrap(Source));
   try
     Symbols := TReassigned.Analyze(Wrap(Source), Tree, nil);

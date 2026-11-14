@@ -60,9 +60,9 @@ var
   mFormat: TAffectedFormat;
 begin
   Assert.IsTrue(TAffectedReport.TryParseFormat('', mFormat));
-  Assert.IsTrue(mFormat = TAffectedFormat.Text);
+  Assert.AreEqual<TAffectedFormat>(TAffectedFormat.Text, mFormat);
   Assert.IsTrue(TAffectedReport.TryParseFormat('Json', mFormat));
-  Assert.IsTrue(mFormat = TAffectedFormat.Json);
+  Assert.AreEqual<TAffectedFormat>(TAffectedFormat.Json, mFormat);
   Assert.IsFalse(TAffectedReport.TryParseFormat('csv', mFormat));
 end;
 

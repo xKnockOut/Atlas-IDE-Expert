@@ -354,7 +354,7 @@ begin
   Assert.AreEqual(0, Hilfe);
   Assert.AreEqual(1, Found.Places[Hilfe].Level);
   Assert.AreEqual(-1, Found.Places[Hilfe].Cause);
-  Assert.IsTrue(Found.Places[Hilfe].Edge = TImpactEdge.Call);
+  Assert.AreEqual<TImpactEdge>(TImpactEdge.Call, Found.Places[Hilfe].Edge);
   // Beide Aufrufe in Hilfe gehören zur selben Stelle.
   Assert.AreEqual(2, Integer(Length(Found.Places[Hilfe].Ranges)));
   Assert.IsTrue(Found.Places[Hilfe].Confidence.IsSure);
@@ -495,7 +495,7 @@ begin
   Index := PlaceNamed(Found, 'Arbeite');
   Assert.IsTrue(Index >= 0);
   Assert.AreEqual('TKind', Found.Places[Index].Item.Container);
-  Assert.IsTrue(Found.Places[Index].Edge = TImpactEdge.Override_);
+  Assert.AreEqual<TImpactEdge>(TImpactEdge.Override_, Found.Places[Index].Edge);
 end;
 
 procedure TImpactAnalysisTests.BaseMethodFoundFromOverride;
@@ -507,7 +507,7 @@ begin
   Index := PlaceNamed(Found, 'Arbeite');
   Assert.IsTrue(Index >= 0);
   Assert.AreEqual('TBasis', Found.Places[Index].Item.Container);
-  Assert.IsTrue(Found.Places[Index].Edge = TImpactEdge.BaseMethod);
+  Assert.AreEqual<TImpactEdge>(TImpactEdge.BaseMethod, Found.Places[Index].Edge);
 end;
 
 procedure TImpactAnalysisTests.ImplementationFoundFromInterface;
@@ -519,7 +519,7 @@ begin
   Index := PlaceNamed(Found, 'Rechne');
   Assert.IsTrue(Index >= 0);
   Assert.AreEqual('TKind', Found.Places[Index].Item.Container);
-  Assert.IsTrue(Found.Places[Index].Edge = TImpactEdge.Implementation_);
+  Assert.AreEqual<TImpactEdge>(TImpactEdge.Implementation_, Found.Places[Index].Edge);
 end;
 
 procedure TImpactAnalysisTests.InterfaceMethodFoundFromImplementation;
@@ -531,7 +531,7 @@ begin
   Index := PlaceNamed(Found, 'Rechne');
   Assert.IsTrue(Index >= 0);
   Assert.AreEqual('IRechner', Found.Places[Index].Item.Container);
-  Assert.IsTrue(Found.Places[Index].Edge = TImpactEdge.InterfaceMethod);
+  Assert.AreEqual<TImpactEdge>(TImpactEdge.InterfaceMethod, Found.Places[Index].Edge);
 end;
 
 procedure TImpactAnalysisTests.DepthClamped;
@@ -661,7 +661,7 @@ begin
   Tools := NewTools(FIndex);
   try
     Text := Tools.Impact('Ziel', 2, False);
-    Assert.IsTrue(Pos('Auswirkungen von Ziel', Text) = 1, Text);
+    Assert.AreEqual(1, Pos('Auswirkungen von Ziel', Text), Text);
     Assert.IsTrue(Pos('Tiefe 2', Text) > 0, Text);
     Assert.IsTrue(Pos(' Hilfe – Unit Werkzeug', Text) > 0, Text);
     // Ebene 2 eine Stufe tiefer eingerückt unter ihrer Ursache.

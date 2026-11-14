@@ -127,7 +127,7 @@ begin
   Source := Lines(['unit U;', 'implementation', 'procedure P(A: Boolean);', 'begin', '  if A then', '    Exit;',
     '  Foo;', 'end;', 'end.']);
   Assert.AreEqual('exit@5:4 end@7:0', Query(Source, 5, 5, Found));
-  Assert.IsTrue(Found.Query = TExitPointQuery.Routine);
+  Assert.AreEqual<TExitPointQuery>(TExitPointQuery.Routine, Found.Query);
   Assert.AreEqual(2, Found.ExitCount);
   Assert.IsTrue(Found.HasRoutine);
   Assert.AreEqual(2, Found.RoutineRange.StartPos.Line);
@@ -229,7 +229,7 @@ begin
     '    Exit;', '  if B then', '    Exit(2);', '  if A or B then', '    Result := 1;', 'end;', 'end.']);
   // Auf Result: Austritte und Zuweisungen; Exit ohne Wert und das end kommen ohne Ergebnis an.
   Assert.AreEqual('exit@5:4! exit@7:4 result@9:4 end@10:0!', Query(Source, 9, 6, Found));
-  Assert.IsTrue(Found.Query = TExitPointQuery.ResultValue);
+  Assert.AreEqual<TExitPointQuery>(TExitPointQuery.ResultValue, Found.Query);
   Assert.IsTrue(Found.IsFunction);
   Assert.IsTrue(Found.ResultMissing);
   Assert.AreEqual(3, Found.ExitCount, 'Zuweisungen zählen nicht als Austritt');
@@ -269,7 +269,7 @@ begin
     '    raise EBar.Create(''y'');', '  except', '    on E: EFoo do', '      Log(E);', '  end;', 'end;', 'end.']);
   // Auf der Klasse des Handlers: L.Load (laut Doku EFoo) und raise EOwn (stammt von EFoo ab), nicht Other (EBar).
   Assert.AreEqual('source@21:6 source@23:4 handler@26:10', Query(Source, 26, 12, Found));
-  Assert.IsTrue(Found.Query = TExitPointQuery.Exceptions);
+  Assert.AreEqual<TExitPointQuery>(TExitPointQuery.Exceptions, Found.Query);
   Assert.AreEqual('EFoo', Found.Points[0].ExceptionClass);
   Assert.AreEqual('EOwn', Found.Points[1].Detail);
   // Auf "on" dasselbe.

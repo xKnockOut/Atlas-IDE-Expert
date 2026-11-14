@@ -180,7 +180,7 @@ begin
   Assert.IsTrue(Pos('"line":5,"character":2,"className":"TKunde","rating":"neverFreed","target":"",' +
     '"routine":"Lade"', mJson) > 0, mJson);
   Assert.IsTrue(Pos('"project":', mJson) > 0, mJson);
-  Assert.IsTrue(Pos('Leer.pas', mJson) = 0, 'Datei ohne den Namen');
+  Assert.AreEqual(0, Pos('Leer.pas', mJson), 'Datei ohne den Namen');
 end;
 
 procedure TLspLeakCandidatesTests.TestUnitOutsideProgram;
@@ -199,7 +199,7 @@ begin
   TFakeFiles(FFake).MainText := 'program AppTests;' + cNl + 'uses DUnitX.TestFramework, Kunden.Tests;' + cNl +
     'begin' + cNl + 'end.';
   mJson := Run('{"classes":["TKunde"]}');
-  Assert.IsTrue(Pos('notInProgram', mJson) = 0, mJson);
+  Assert.AreEqual(0, Pos('notInProgram', mJson), mJson);
 end;
 
 procedure TLspLeakCandidatesTests.MentionsAnyIgnoresCase;

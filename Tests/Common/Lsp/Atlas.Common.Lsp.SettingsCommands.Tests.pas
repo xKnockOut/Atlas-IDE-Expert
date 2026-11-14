@@ -134,12 +134,12 @@ begin
         Found := True;
         Assert.AreEqual('error', Rules.Items[Index].GetValue<string>('severity'));
         Assert.AreEqual('bug', Rules.Items[Index].GetValue<string>('category'));
-        Assert.IsTrue(Rules.Items[Index].GetValue<string>('name') <> '');
+        Assert.AreNotEqual('', Rules.Items[Index].GetValue<string>('name'));
       end;
     end;
     Assert.IsTrue(Found);
     Assert.AreEqual('C:\Users\x\AppData\Roaming\Atlas\settings.json', Answer.GetValue<string>('globalFile'));
-    Assert.IsTrue(Answer.GetValue<string>('version') <> '');
+    Assert.AreNotEqual('', Answer.GetValue<string>('version'));
   finally
     Answer.Free;
   end;
@@ -159,8 +159,8 @@ begin
   Assert.AreEqual('max', mOption.GetValue<string>('name'));
   Assert.AreEqual('integer', mOption.GetValue<string>('type'));
   Assert.AreEqual(60, mOption.GetValue<Integer>('default'));
-  Assert.IsTrue(mOption.GetValue<string>('description') <> '');
-  Assert.IsTrue(ARule.GetValue<string>('bad') <> '');
+  Assert.AreNotEqual('', mOption.GetValue<string>('description'));
+  Assert.AreNotEqual('', ARule.GetValue<string>('bad'));
 end;
 
 /// <summary>Tabelle der Symbole (#1133): Spalten, Listen markiert.</summary>
@@ -203,7 +203,7 @@ begin
     for Index := 0 to Rules.Count - 1 do
     begin
       Rule := Rules.Items[Index];
-      Assert.IsTrue(Rule.GetValue<string>('group') <> '', Rule.GetValue<string>('id'));
+      Assert.AreNotEqual('', Rule.GetValue<string>('group'), Rule.GetValue<string>('id'));
       if Rule.GetValue<string>('id') = 'metric-method-length' then
       begin
         SeenMetric := True;

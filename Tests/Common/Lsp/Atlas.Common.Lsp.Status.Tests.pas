@@ -451,7 +451,7 @@ var
   Json: TJSONObject;
 begin
   Status := Default(TServerStatus);
-  Assert.IsTrue(Pos('Compiler', Status.ToMarkdown) = 0, 'ohne Angabe keine Zeile');
+  Assert.AreEqual(0, Pos('Compiler', Status.ToMarkdown), 'ohne Angabe keine Zeile');
   Status.Compiler := 'Compiler: nicht verfügbar (Starter Edition)';
   Status.CompilerBackend := 'off';
   Status.CompilerReason := 'Atlas kann nicht kompilieren: kein Kommandozeilen-Compiler.';

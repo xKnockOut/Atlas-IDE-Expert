@@ -554,7 +554,7 @@ begin
     Assert.IsTrue(Text.StartsWith('alNone alTop alClient '), Text);
     // Aus der übrigen Liste nicht noch einmal.
     Assert.AreEqual(1, Occurrences(' ' + Text + ' ', ' alNone '), Text);
-    Assert.IsTrue(Occurrences(' ' + Text + ' ', ' TControl ') = 1, Text);
+    Assert.AreEqual(1, Occurrences(' ' + Text + ' ', ' TControl '), Text);
     Assert.AreEqual('00000', ItemAt(Answer, 0).GetValue<string>('sortText'));
   finally
     Answer.Free;

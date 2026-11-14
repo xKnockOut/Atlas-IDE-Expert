@@ -140,7 +140,7 @@ begin
     Request := TLspSymbolPath.ReadRequest(Params);
     Assert.AreEqual('uA', Request.From);
     Assert.AreEqual('uC', Request.To_);
-    Assert.IsTrue(Request.Via = [TSymbolPathEdgeKind.Uses_]);
+    Assert.AreEqual<TSymbolPathEdgeKinds>([TSymbolPathEdgeKind.Uses_], Request.Via);
     Assert.IsTrue(Request.ThroughLibrary);
     Assert.AreEqual(3, Request.MaxSteps);
     Assert.IsTrue(Request.All);
@@ -151,7 +151,7 @@ begin
   Params := ParamsOf('{"from":"uA","to":"uC"}');
   try
     Request := TLspSymbolPath.ReadRequest(Params);
-    Assert.IsTrue(Request.Via = cAllSymbolPathEdges);
+    Assert.AreEqual<TSymbolPathEdgeKinds>(cAllSymbolPathEdges, Request.Via);
     Assert.IsFalse(Request.ThroughLibrary);
     Assert.AreEqual(TSymbolPathRequest.cDefaultSteps, Request.MaxSteps);
     Assert.IsFalse(Request.All);

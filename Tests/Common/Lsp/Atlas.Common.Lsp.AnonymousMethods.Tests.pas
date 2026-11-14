@@ -247,7 +247,7 @@ begin
   try
     Assert.AreEqual(1, Integer(Length(Actions)));
     Assert.AreEqual(TAnonymousMethods.EmbedTitle, Actions[0].GetValue<string>('title'));
-    Assert.IsTrue(Actions[0].GetValue<string>('data.preview') <> '', Actions[0].ToJSON);
+    Assert.AreNotEqual('', Actions[0].GetValue<string>('data.preview'), Actions[0].ToJSON);
     Assert.IsTrue(Pos('procedure(const AWert: Integer)', Actions[0].ToJSON) > 0, Actions[0].ToJSON);
   finally
     FreeAll(Actions);

@@ -190,8 +190,10 @@ begin
   finally
     Json.Free;
   end;
-  Assert.IsTrue(TTextPosition.Create(1, 2) = Range.StartPos);
-  Assert.IsTrue(TTextPosition.Create(3, 4) = Range.EndPos);
+  Assert.AreEqual(1, Range.StartPos.Line);
+  Assert.AreEqual(2, Range.StartPos.Character);
+  Assert.AreEqual(3, Range.EndPos.Line);
+  Assert.AreEqual(4, Range.EndPos.Character);
 end;
 
 initialization

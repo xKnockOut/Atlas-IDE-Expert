@@ -222,10 +222,10 @@ begin
     Method('constructor CreateParented(ParentWindow: THandle);', 'TWinControl', 2)], Abstract_);
   Assert.AreEqual(3, Integer(Length(Calls)));
   Assert.AreEqual('Create(AOwner)', Calls[0].Text);
-  Assert.IsTrue(Calls[0].Match = TInheritedMatch.Same);
+  Assert.AreEqual<TInheritedMatch>(TInheritedMatch.Same, Calls[0].Match);
   Assert.AreEqual('TBaseView', Calls[0].Container);
   Assert.AreEqual('CreateNew(AOwner, Dummy)', Calls[1].Text);
-  Assert.IsTrue(Calls[1].Match = TInheritedMatch.Sibling);
+  Assert.AreEqual<TInheritedMatch>(TInheritedMatch.Sibling, Calls[1].Match);
   Assert.AreEqual('CreateParented(ParentWindow)', Calls[2].Text);
   // Funktion: die passende Überladung zuerst, keine Konstruktoren.
   Calls := TCompletionInherited.Calls(Header('function TLogView.FormatZeile(const AText: string; ALevel: Integer): string'), [
@@ -235,7 +235,7 @@ begin
   Assert.AreEqual(2, Integer(Length(Calls)));
   Assert.AreEqual('FormatZeile(AText, ALevel)', Calls[0].Text);
   Assert.AreEqual('FormatZeile(AText)', Calls[1].Text);
-  Assert.IsTrue(Calls[1].Match = TInheritedMatch.Overload);
+  Assert.AreEqual<TInheritedMatch>(TInheritedMatch.Overload, Calls[1].Match);
   Assert.AreEqual(0, Integer(Length(Abstract_)));
 end;
 

@@ -69,7 +69,7 @@ begin
       Refresh.Changed('C:\P\A.pas', 'eins');
       Refresh.Changed('C:\P\A.pas', 'zwei');
       Refresh.Changed('C:\P\A.pas', 'drei');
-      Assert.IsTrue(Done.WaitFor(2000) = wrSignaled, 'nach der Pause übernommen');
+      Assert.AreEqual<TWaitResult>(wrSignaled, Done.WaitFor(2000), 'nach der Pause übernommen');
       Sleep(100);
     finally
       Refresh.Free;

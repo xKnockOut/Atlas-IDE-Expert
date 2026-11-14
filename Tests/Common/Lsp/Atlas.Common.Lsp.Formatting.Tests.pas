@@ -224,7 +224,7 @@ begin
     Assert.AreEqual(8, Style.IndentSize);
     // Nicht ausdrücklich gesetzt: bleibt beim Wert aus .editorconfig bzw. der Vorgabe.
     Assert.IsFalse(Style.UseTabs);
-    Assert.IsTrue(Style.KeywordCase = TKeywordCase.Preserve);
+    Assert.AreEqual<TKeywordCase>(TKeywordCase.Preserve, Style.KeywordCase);
   finally
     Json.Free;
   end;
@@ -236,7 +236,7 @@ begin
   Configured.MaxLineLength := 90;
   Style := TLspFormatting.Resolve(nil, 'C:\P\Unit1.pas', Configured, nil);
   Assert.IsFalse(Style.Reindent);
-  Assert.IsTrue(Style.BeginPlacement = TBlockPlacement.NewLine);
+  Assert.AreEqual<TBlockPlacement>(TBlockPlacement.NewLine, Style.BeginPlacement);
   Assert.IsTrue(Style.AlignComments);
   Assert.AreEqual(0, Style.MaxLineLength);
   Configured.Given := [TFormatKey.MaxLineLength];

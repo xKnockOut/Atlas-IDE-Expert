@@ -236,7 +236,7 @@ begin
     mUnits.Merged(FIndex, cFileName);
     Assert.AreEqual(1, mObject.Merges);
     Assert.AreEqual(1, mObject.Extractions);
-    Assert.IsTrue(mMerged.NameTable <> nil, 'Namenstabelle wie bei TNameResolver.TreeUnit');
+    Assert.IsNotNull(mMerged.NameTable, 'Namenstabelle wie bei TNameResolver.TreeUnit');
     mOther := TSymbolIndex.Create;
     mUnits.Merged(mOther, cFileName);
     Assert.AreEqual(2, mObject.Merges, 'anderer Index: neu zusammenführen');
@@ -384,10 +384,10 @@ begin
     TRuleEngine.Run([mFirstRule, mSecondRule], TServerSettings.Default, mContext);
     Assert.IsTrue(mFirst.Held, 'erste Regel sieht die Auswertung des Baums');
     Assert.IsTrue(mSecond.Held);
-    Assert.IsTrue(mFirst.Units = mSecond.Units, 'beide Regeln teilen eine Auswertung');
+    Assert.AreSame(mSecond.Units, mFirst.Units, 'beide Regeln teilen eine Auswertung');
     Assert.AreEqual(mFirst.Types, mSecond.Types);
     Assert.IsFalse(mFirst.Units.Holds(mTree), 'nach dem Lauf gehört sie zu keinem Baum mehr');
-    Assert.IsTrue(mContext.TreeUnits = nil, 'der Kontext des Aufrufers bleibt unverändert');
+    Assert.IsNull(mContext.TreeUnits, 'der Kontext des Aufrufers bleibt unverändert');
   finally
     mTree.Free;
   end;
@@ -415,7 +415,7 @@ begin
     mContext.TreeUnits := mUnits;
     TRuleEngine.Run([mRuleRef], TServerSettings.Default, mContext);
     TRuleEngine.Run([mRuleRef], TServerSettings.Default, mContext);
-    Assert.IsTrue(mRule.Units = mUnits);
+    Assert.AreSame(mUnits, mRule.Units);
     Assert.IsTrue(mUnits.Holds(mTree), 'die Auswertung des Aufrufers löst nur er selbst');
     Assert.AreEqual(1, mObject.Extractions, 'zwei Läufe mit derselben Auswertung');
     mUnits.Clear;
@@ -476,10 +476,11 @@ begin
   try
     mFirst := TTreeExtracts.ForTree(mTree);
     mSecond := TTreeExtracts.ForTree(mTree);
-    Assert.IsTrue(mFirst = mSecond, 'dieselbe Auswertung am Baum');
+    Assert.AreSame(mSecond, mFirst, 'dieselbe Auswertung am Baum');
     mUnit := mFirst.Extracted(cFileName);
     mAgain := mSecond.Extracted(AnsiLowerCase(cFileName));
-    Assert.IsTrue(Pointer(mUnit.Symbols) = Pointer(mAgain.Symbols), 'einmal extrahiert, Dateiname ohne Schreibung');
+    Assert.AreEqual<Pointer>(Pointer(mAgain.Symbols),
+      Pointer(mUnit.Symbols), 'einmal extrahiert, Dateiname ohne Schreibung');
     Assert.AreEqual(Integer(Length(TIndexExtractor.Extract(mTree, cFileName).Symbols)), Integer(Length(mUnit.Symbols)));
     mFirst := nil;
     mSecond := nil;
