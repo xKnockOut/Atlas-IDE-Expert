@@ -301,13 +301,35 @@ var
       TMigrationTypes.IsWideCharPointer(ATypeName);
   end;
 
+  /// <summary>Meldung für den Aufruf ANode, dessen Anzahl ALength aus ASource zählt: ohne Puffer (ABuffers = nil)
+  /// bei GetMem/ReallocMem auf einen PChar, sonst wenn einer der Puffer aus ASource stammt.</summary>
+  function CountMessage(ANode: TSyntaxNode; const ABuffers: TArray<Integer>; ALength, ASource: TSyntaxNode;
+    out AMessage: string): Boolean;
+  var
+    mBuffer: Integer;
+    mTypeName: string;
+  begin
+    Result := False;
+    if ABuffers = nil then
+    begin
+      Result := CharPointerTarget(ANode, mTypeName);
+      AMessage := cTexts[TMigrationUnicodeText.CountAllocates].Fmt([mScope.Text(ALength), ANode.Name,
+        mScope.Text(ANode[1]), mTypeName]);
+      Exit;
+    end;
+    for mBuffer in ABuffers do
+    begin
+      Result := Result or ((mBuffer + 1 < ANode.ChildCount) and BufferOf(ANode[mBuffer + 1], ASource));
+    end;
+    AMessage := cTexts[TMigrationUnicodeText.CountCopies].Fmt([mScope.Text(ALength), ANode.Name]);
+  end;
+
   procedure CheckCall(ANode: TSyntaxNode);
   var
     mBuffers: TArray<Integer>;
-    mCount, mBuffer: Integer;
+    mCount: Integer;
     mCountNode, mLength, mSource: TSyntaxNode;
-    mFound: Boolean;
-    mTypeName, mNewText, mMessage: string;
+    mNewText, mMessage: string;
   begin
     if not (ANode[0].Kind in [TSyntaxKind.Identifier, TSyntaxKind.MemberAccess]) then
     begin
@@ -323,27 +345,9 @@ var
     begin
       Exit;
     end;
-    if mBuffers = nil then
+    if not CountMessage(ANode, mBuffers, mLength, mSource, mMessage) then
     begin
-      if not CharPointerTarget(ANode, mTypeName) then
-      begin
-        Exit;
-      end;
-      mMessage := cTexts[TMigrationUnicodeText.CountAllocates].Fmt([mScope.Text(mLength), ANode.Name,
-        mScope.Text(ANode[1]), mTypeName]);
-    end
-    else
-    begin
-      mFound := False;
-      for mBuffer in mBuffers do
-      begin
-        mFound := mFound or ((mBuffer + 1 < ANode.ChildCount) and BufferOf(ANode[mBuffer + 1], mSource));
-      end;
-      if not mFound then
-      begin
-        Exit;
-      end;
-      mMessage := cTexts[TMigrationUnicodeText.CountCopies].Fmt([mScope.Text(mLength), ANode.Name]);
+      Exit;
     end;
     mNewText := mScope.Text(mCountNode);
     if Unwrapped(mCountNode).Kind = TSyntaxKind.BinaryExpr then

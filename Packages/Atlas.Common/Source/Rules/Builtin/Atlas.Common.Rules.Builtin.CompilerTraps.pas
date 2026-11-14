@@ -244,6 +244,43 @@ begin
   end;
 end;
 
+/// <summary>Das Array-Literal von Exit([...]), wenn ANode diese Anweisung ist; sonst nil.</summary>
+function ExitSetLiteral(ANode: TSyntaxNode): TSyntaxNode;
+var
+  mCall: TSyntaxNode;
+begin
+  Result := nil;
+  if (ANode.Kind <> TSyntaxKind.CallStatement) or (ANode.ChildCount <> 1) then
+  begin
+    Exit;
+  end;
+  mCall := ANode[0];
+  if (mCall.Kind <> TSyntaxKind.Call) or (mCall.ChildCount <> 2) or (mCall[0].Kind <> TSyntaxKind.Identifier) then
+  begin
+    Exit;
+  end;
+  if SameText(mCall[0].Name, 'Exit') and (mCall[1].Kind = TSyntaxKind.SetConstructor) and
+    (mCall[1].ChildCount > 0) then
+  begin
+    Result := mCall[1];
+  end;
+end;
+
+/// <summary>Korrektur der Anweisung AStatement zu Result := ALiteralText; Exit, außerhalb eines Blocks mit
+/// begin/end darum.</summary>
+function ExitArrayFix(AStatement: TSyntaxNode; const ALiteralText: string): TRuleFix;
+var
+  mText: string;
+begin
+  mText := 'Result := ' + ALiteralText + ';' + ' Exit';
+  if (AStatement.Parent = nil) or (AStatement.Parent.Kind <> TSyntaxKind.Block) then
+  begin
+    mText := 'begin ' + mText + '; end';
+  end;
+  Result := TRuleFix.Create(cTexts[TTrapText.ExitFix].Text, [TTextEdit.Create(TTextRange.Create(AStatement.StartPos,
+    AStatement.EndPos), mText)], True);
+end;
+
 procedure TExitArrayLiteralRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
 begin
   if (AContext.Tree = nil) or (AContext.Tree.Root = nil) or not ContainsText(AContext.Text, 'Exit') then
@@ -254,23 +291,16 @@ begin
     function(ANode: TSyntaxNode): Boolean
     var
       mCall, mLiteral, mRoutine: TSyntaxNode;
-      mType, mLiteralText, mText: string;
+      mType, mLiteralText: string;
       mFix: TRuleFix;
     begin
       Result := True;
-      if (ANode.Kind <> TSyntaxKind.CallStatement) or (ANode.ChildCount <> 1) then
+      mLiteral := ExitSetLiteral(ANode);
+      mRoutine := nil;
+      if mLiteral <> nil then
       begin
-        Exit;
+        mRoutine := EnclosingRoutine(ANode);
       end;
-      mCall := ANode[0];
-      if (mCall.Kind <> TSyntaxKind.Call) or (mCall.ChildCount <> 2) or
-        (mCall[0].Kind <> TSyntaxKind.Identifier) or not SameText(mCall[0].Name, 'Exit') or
-        (mCall[1].Kind <> TSyntaxKind.SetConstructor) or (mCall[1].ChildCount = 0) then
-      begin
-        Exit;
-      end;
-      mLiteral := mCall[1];
-      mRoutine := EnclosingRoutine(ANode);
       if mRoutine = nil then
       begin
         Exit;
@@ -280,14 +310,9 @@ begin
       begin
         Exit;
       end;
+      mCall := ANode[0];
       mLiteralText := Copy(AContext.Text, mLiteral.StartOffset + 1, mLiteral.EndOffset - mLiteral.StartOffset);
-      mText := 'Result := ' + mLiteralText + ';' + ' Exit';
-      if (ANode.Parent = nil) or (ANode.Parent.Kind <> TSyntaxKind.Block) then
-      begin
-        mText := 'begin ' + mText + '; end';
-      end;
-      mFix := TRuleFix.Create(cTexts[TTrapText.ExitFix].Text, [TTextEdit.Create(TTextRange.Create(ANode.StartPos,
-        ANode.EndPos), mText)], True);
+      mFix := ExitArrayFix(ANode, mLiteralText);
       AReport.Add(TTextRange.Create(mCall.StartPos, mCall.EndPos), cTexts[TTrapText.ExitMessage].Fmt(
         [mLiteralText, mType]), TRuleConfidence.High, [mFix]);
     end);
@@ -361,6 +386,13 @@ begin
   Result := TRuleDescriptor.Create(cUsesOrderHidesTypeRuleId, TRuleSeverity.Error, cTexts[TTrapText.OrderTitle].Text);
 end;
 
+/// <summary>Steht APosition an oder hinter AAfter?</summary>
+function NotBefore(const APosition, AAfter: TTextPosition): Boolean;
+begin
+  Result := (APosition.Line > AAfter.Line) or (APosition.Line = AAfter.Line) and
+    (APosition.Character >= AAfter.Character);
+end;
+
 /// <summary>Nennt die Datei TBitmap hinter AAfter (dem Windows-Eintrag), außerhalb der uses-Listen und nicht nach
 /// einem Punkt? Davor gilt der Eintrag noch nicht: Das uses des implementation-Teils wirkt nicht auf den interface-
 /// Teil.</summary>
@@ -372,8 +404,7 @@ begin
   for mIndex := 0 to High(ATokens) do
   begin
     if (ATokens[mIndex].Kind = TPascalTokenKind.Identifier) and SameText(ATokens[mIndex].Text, 'TBitmap') and
-      ((ATokens[mIndex].StartPos.Line > AAfter.Line) or ((ATokens[mIndex].StartPos.Line = AAfter.Line) and
-      (ATokens[mIndex].StartPos.Character >= AAfter.Character))) and not AfterDot(ATokens, mIndex) and
+      NotBefore(ATokens[mIndex].StartPos, AAfter) and not AfterDot(ATokens, mIndex) and
       not TUsesClauses.InClause(ATokens, AClauses, ATokens[mIndex].Offset) then
     begin
       Exit(True);
@@ -382,71 +413,86 @@ begin
   Result := False;
 end;
 
+/// <summary>Einträge der uses-Listen in Dateireihenfolge, ohne contains und requires.</summary>
+function UsesListEntries(const ATokens: TArray<TPascalToken>): TArray<TUsesReference>;
+var
+  mRef: TUsesReference;
+begin
+  Result := nil;
+  for mRef in TUsesClauses.References(ATokens) do
+  begin
+    if mRef.List = TUsesListKind.UsesList then
+    begin
+      Result := Result + [mRef];
+    end;
+  end;
+end;
+
+/// <summary>Index des ersten Eintrags in AUses, dessen Name in ANames steht; -1 ohne.</summary>
+function FirstEntryOf(const AUses: TArray<TUsesReference>; const ANames: array of string): Integer;
+var
+  mIndex: Integer;
+begin
+  for mIndex := 0 to High(AUses) do
+  begin
+    if MatchText(AUses[mIndex].Name, ANames) then
+    begin
+      Exit(mIndex);
+    end;
+  end;
+  Result := -1;
+end;
+
+/// <summary>Korrektur innerhalb derselben Liste: Eintrag AWindows samt Komma davor entfernen und vor AGraphics
+/// einsetzen, bei Einträgen je Zeile auf eigener Zeile.</summary>
+function MoveBeforeFix(const AText: string; const AUses: TArray<TUsesReference>; AWindows,
+  AGraphics: Integer): TRuleFix;
+var
+  mLines: TLineTable;
+  mInsert: string;
+  mGraphicsStart: TTextPosition;
+begin
+  mLines := TLineTable.Build(AText);
+  mGraphicsStart := AUses[AGraphics].Range.StartPos;
+  mInsert := Copy(AText, mLines.LineStart(mGraphicsStart.Line) + 1, mGraphicsStart.Character);
+  if Trim(mInsert) = '' then
+  begin
+    mInsert := AUses[AWindows].Name + ',' + TTextLines.LineBreakOf(AText) + mInsert;
+  end
+  else
+  begin
+    mInsert := AUses[AWindows].Name + ', ';
+  end;
+  Result := TRuleFix.Create(cTexts[TTrapText.OrderFix].Fmt([AUses[AWindows].Name, AUses[AGraphics].Name]),
+    [TTextEdit.Create(TTextRange.Create(mGraphicsStart, mGraphicsStart), mInsert),
+    TTextEdit.Create(TTextRange.Create(AUses[AWindows - 1].Range.EndPos, AUses[AWindows].Range.EndPos), '')], True);
+end;
+
 procedure TUsesOrderHidesTypeRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
 var
   mTokens: TArray<TPascalToken>;
-  mClauses: TArray<TUsesClauseInfo>;
-  mRefs, mUses: TArray<TUsesReference>;
-  mRef: TUsesReference;
-  mWindows, mGraphics, mBefore: Integer;
+  mUses: TArray<TUsesReference>;
+  mWindows, mGraphics: Integer;
   mFixes: TArray<TRuleFix>;
-  mLines: TLineTable;
-  mIndent, mLineBreak: string;
-  mGraphicsLine: Integer;
 begin
   if (AContext.Tree = nil) or not ContainsText(AContext.Text, 'TBitmap') then
   begin
     Exit;
   end;
   mTokens := AContext.Tree.Tokens;
-  mClauses := TUsesClauses.Clauses(mTokens);
-  mRefs := TUsesClauses.References(mTokens);
-  mUses := nil;
-  for mRef in mRefs do
-  begin
-    if mRef.List = TUsesListKind.UsesList then
-    begin
-      mUses := mUses + [mRef];
-    end;
-  end;
-  mWindows := -1;
-  mGraphics := -1;
-  for mBefore := 0 to High(mUses) do
-  begin
-    if (mWindows < 0) and MatchText(mUses[mBefore].Name, cWindowsUnits) then
-    begin
-      mWindows := mBefore;
-    end;
-    if (mGraphics < 0) and MatchText(mUses[mBefore].Name, cGraphicsUnits) then
-    begin
-      mGraphics := mBefore;
-    end;
-  end;
+  mUses := UsesListEntries(mTokens);
+  mWindows := FirstEntryOf(mUses, cWindowsUnits);
+  mGraphics := FirstEntryOf(mUses, cGraphicsUnits);
   if (mWindows < 0) or (mGraphics < 0) or (mWindows < mGraphics) or
-    not NamesBitmap(mTokens, mClauses, mUses[mWindows].Range.EndPos) then
+    not NamesBitmap(mTokens, TUsesClauses.Clauses(mTokens), mUses[mWindows].Range.EndPos) then
   begin
     Exit;
   end;
   mFixes := nil;
-  // Korrektur nur innerhalb derselben Liste: Eintrag samt Komma davor entfernen, vor Graphics einsetzen.
   if (mUses[mWindows].InInterface = mUses[mGraphics].InInterface) and (mWindows > 0) then
   begin
-    mLines := TLineTable.Build(AContext.Text);
-    mLineBreak := TTextLines.LineBreakOf(AContext.Text);
-    mGraphicsLine := mUses[mGraphics].Range.StartPos.Line;
-    mIndent := Copy(AContext.Text, mLines.LineStart(mGraphicsLine) + 1, mUses[mGraphics].Range.StartPos.Character);
-    if Trim(mIndent) = '' then
-    begin
-      mIndent := mUses[mWindows].Name + ',' + mLineBreak + mIndent;
-    end
-    else
-    begin
-      mIndent := mUses[mWindows].Name + ', ';
-    end;
-    mFixes := [TRuleFix.Create(cTexts[TTrapText.OrderFix].Fmt([mUses[mWindows].Name, mUses[mGraphics].Name]),
-      [TTextEdit.Create(TTextRange.Create(mUses[mGraphics].Range.StartPos, mUses[mGraphics].Range.StartPos),
-      mIndent), TTextEdit.Create(TTextRange.Create(mUses[mWindows - 1].Range.EndPos, mUses[mWindows].Range.EndPos),
-      '')], True)];
+    SetLength(mFixes, 1);
+    mFixes[0] := MoveBeforeFix(AContext.Text, mUses, mWindows, mGraphics);
   end;
   AReport.Add(mUses[mWindows].Range, cTexts[TTrapText.OrderMessage].Fmt([mUses[mWindows].Name,
     mUses[mGraphics].Name]), TRuleConfidence.High, mFixes);
@@ -471,6 +517,8 @@ type
     FUses: TArray<TUsesReference>;
     FReported: TArray<string>;
     function DeclaringEntry(const AName: string; out AEntry: Integer): Boolean;
+    function LastInterfaceEntry: Integer;
+    function RemovalRange(AEntry: Integer; const AClause: TUsesClauseInfo): TTextRange;
     function MoveFix(AEntry: Integer): TRuleFix;
     procedure CheckToken(AScope: TTypedScope; AIndex: Integer);
   public
@@ -479,21 +527,13 @@ type
   end;
 
 constructor TInterfaceUsesCheck.Create(const AContext: TRuleContext; const AReport: IRuleReport);
-var
-  mRef: TUsesReference;
 begin
   inherited Create;
   FContext := AContext;
   FReport := AReport;
   FTokens := AContext.Tree.Tokens;
   FClauses := TUsesClauses.Clauses(FTokens);
-  for mRef in TUsesClauses.References(FTokens) do
-  begin
-    if mRef.List = TUsesListKind.UsesList then
-    begin
-      FUses := FUses + [mRef];
-    end;
-  end;
+  FUses := UsesListEntries(FTokens);
 end;
 
 /// <summary>Eintrag des implementation-uses, dessen Unit AName auf Unit-Ebene im interface deklariert.</summary>
@@ -534,54 +574,61 @@ begin
   Result := False;
 end;
 
+/// <summary>Index des letzten Eintrags im interface-uses; -1 ohne.</summary>
+function TInterfaceUsesCheck.LastInterfaceEntry: Integer;
+var
+  mIndex: Integer;
+begin
+  Result := -1;
+  for mIndex := 0 to High(FUses) do
+  begin
+    if FUses[mIndex].InInterface then
+    begin
+      Result := mIndex;
+    end;
+  end;
+end;
+
+/// <summary>Bereich, dessen Entfernen den Eintrag AEntry aus seiner Liste AClause nimmt: als einziger Eintrag die
+/// ganze Liste, sonst samt Komma davor bzw. danach.</summary>
+function TInterfaceUsesCheck.RemovalRange(AEntry: Integer; const AClause: TUsesClauseInfo): TTextRange;
+begin
+  if Length(AClause.Names) = 1 then
+  begin
+    Result := TTextRange.Create(FTokens[AClause.UsesIndex].StartPos, FTokens[AClause.Semicolon].EndPos);
+  end
+  else if (AEntry > 0) and not FUses[AEntry - 1].InInterface then
+  begin
+    Result := TTextRange.Create(FUses[AEntry - 1].Range.EndPos, FUses[AEntry].Range.EndPos);
+  end
+  else
+  begin
+    Result := TTextRange.Create(FUses[AEntry].Range.StartPos, FUses[AEntry + 1].Range.StartPos);
+  end;
+end;
+
 /// <summary>Verschiebt den Eintrag AEntry des implementation-uses ins interface-uses; ohne Edits, wenn es kein
 /// interface-uses gibt.</summary>
 function TInterfaceUsesCheck.MoveFix(AEntry: Integer): TRuleFix;
 var
   mClause: TUsesClauseInfo;
   mInterface: Integer;
-  mFrom, mTo: TTextPosition;
   mEdits: TArray<TTextEdit>;
-  mIndex: Integer;
 begin
   mEdits := nil;
-  mInterface := -1;
-  for mIndex := 0 to High(FUses) do
-  begin
-    if FUses[mIndex].InInterface then
-    begin
-      mInterface := mIndex;
-    end;
-  end;
+  mInterface := LastInterfaceEntry;
   if mInterface >= 0 then
   begin
     mEdits := [TTextEdit.Create(TTextRange.Create(FUses[mInterface].Range.EndPos, FUses[mInterface].Range.EndPos),
       ', ' + FUses[AEntry].Name)];
     for mClause in FClauses do
     begin
-      if mClause.InInterface or not InRange(FUses[AEntry].Range.StartPos, FTokens[mClause.UsesIndex].StartPos,
+      if not mClause.InInterface and InRange(FUses[AEntry].Range.StartPos, FTokens[mClause.UsesIndex].StartPos,
         FTokens[mClause.Semicolon].EndPos) then
       begin
-        Continue;
+        mEdits := mEdits + [TTextEdit.Create(RemovalRange(AEntry, mClause), '')];
+        Break;
       end;
-      if Length(mClause.Names) = 1 then
-      begin
-        // Einziger Eintrag: die ganze Liste entfällt.
-        mFrom := FTokens[mClause.UsesIndex].StartPos;
-        mTo := FTokens[mClause.Semicolon].EndPos;
-      end
-      else if (AEntry > 0) and not FUses[AEntry - 1].InInterface then
-      begin
-        mFrom := FUses[AEntry - 1].Range.EndPos;
-        mTo := FUses[AEntry].Range.EndPos;
-      end
-      else
-      begin
-        mFrom := FUses[AEntry].Range.StartPos;
-        mTo := FUses[AEntry + 1].Range.StartPos;
-      end;
-      mEdits := mEdits + [TTextEdit.Create(TTextRange.Create(mFrom, mTo), '')];
-      Break;
     end;
   end;
   Result := TRuleFix.Create(cTexts[TTrapText.InterfaceFix].Fmt([FUses[AEntry].Name]), mEdits, False);

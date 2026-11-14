@@ -37,7 +37,6 @@ implementation
 
 uses
   System.SysUtils,
-  System.Generics.Collections,
   System.JSON,
   Atlas.Common.Product.Version,
   Atlas.Common.Logging.Contract,
@@ -46,24 +45,16 @@ uses
   Atlas.Common.JsonRpc.Connection,
   Atlas.Common.JsonRpc.LineTransport,
   Atlas.Common.JsonRpc.RecentMessages,
-  Atlas.Common.Index.Contract,
-  Atlas.Common.Index.Adapters.DiskFileSystem,
-  Atlas.Common.Configuration.Contract,
   Atlas.Common.Lsp.ServerActivity,
   Atlas.Common.Lsp.StatusFile,
   Atlas.Common.Mcp.Server,
-  Atlas.Common.Mcp.Freshness,
   Atlas.Common.Mcp.Prompts,
-  Atlas.Common.Mcp.Paths,
   Shell.Platform,
   Shell.CrashCases,
   Shell.WorkspaceGroup,
-  Shell.Workspace,
   Shell.Mcp.Context,
   Shell.Mcp.Services,
   Shell.Mcp.Tools,
-  Shell.Mcp.Changes,
-  Shell.Mcp.Conventions,
   Shell.Mcp.Startup,
   Atlas.Text.LogMarks,
   Atlas.Common.Localization.Texts;
@@ -106,129 +97,6 @@ begin
   finally
     mServer.Free;
   end;
-end;
-
-/// <summary>Abgeschaltete Werkzeuge: mcp.disabledTools und die Werkzeuge abgeschalteter Funktionen (#227).</summary>
-function DisabledTools(const ASettings: TServerSettings): TArray<string>;
-var
-  mOff: TList<string>;
-begin
-  mOff := TList<string>.Create;
-  try
-    mOff.AddRange(ASettings.McpDisabledTools);
-    if not ASettings.ArchitectureEnabled then
-    begin
-      mOff.Add('get_architecture');
-    end;
-    if not ASettings.HotspotsEnabled then
-    begin
-      mOff.Add('get_hotspots');
-    end;
-    if not ASettings.Navigation.SymbolPath then
-    begin
-      mOff.Add('find_path');
-    end;
-    // Betroffene Tests (#1353).
-    if not ASettings.Tests.Affected then
-    begin
-      mOff.Add('get_affected_tests');
-    end;
-    if not ASettings.QueryEnabled then
-    begin
-      mOff.Add('query_code');
-    end;
-    Result := mOff.ToArray;
-  finally
-    mOff.Free;
-  end;
-end;
-
-function DisabledToolsOf(AWorkspace: TShellWorkspace): TFunc<TArray<string>>;
-begin
-  Result :=
-    function: TArray<string>
-    begin
-      Result := DisabledTools(AWorkspace.Configuration.Settings);
-    end;
-end;
-
-function ServerAuditOf(const ALogger: ILogger): TProc<string>;
-var
-  mLogger: ILogger;
-begin
-  mLogger := ALogger;
-  Result :=
-    procedure(AText: string)
-    begin
-      mLogger.Info(AText);
-    end;
-end;
-
-/// <summary>Vor jedem Werkzeugaufruf geänderte Projektdateien nachladen (#48).</summary>
-function BeforeToolCallOf(const AServices: TMcpServices; const ALogger: ILogger): TProc;
-var
-  mServices: TMcpServices;
-  mLogger: ILogger;
-  mAllFiles: TFunc<TArray<string>>;
-begin
-  mServices := AServices;
-  mLogger := ALogger;
-  mAllFiles := AServices.AllFiles();
-  Result :=
-    procedure
-    var
-      mChanges: TArray<TFileChange>;
-    begin
-      mChanges := TMcpFreshness.Changes(mServices.Index, TDiskIndexFileSystem.Create, mAllFiles());
-      if Length(mChanges) > 0 then
-      begin
-        mLogger.Info(Format('%d geänderte Dateien nachgeladen, %d Units aktualisiert',
-          [Length(mChanges), mServices.Workspace.ApplyChanges(mChanges)]));
-        mServices.Group.Invalidate;
-      end;
-    end;
-end;
-
-/// <summary>Werkzeuge, Sicherheit (#99), Konventionen und das Nachladen vor jedem Werkzeugaufruf.</summary>
-procedure ConfigureServer(AServer: TMcpServer; const AServices: TMcpServices; ARestricted: Boolean;
-  const ALogger: ILogger);
-begin
-  AServer.Instructions := cTexts[TMcpHostText.Instructions].Fmt([AServices.Root]);
-  RegisterContextTools(AServices.ToolContext(AServer));
-  AServer.Restricted := ARestricted;
-  AServer.OnDisabledTools := DisabledToolsOf(AServices.Workspace);
-  AServer.OnAudit := ServerAuditOf(ALogger);
-  TMcpConventions.Register(AServer, AServices.Workspace);
-  AServer.OnBeforeToolCall := BeforeToolCallOf(AServices, ALogger);
-end;
-
-function PromptSettingsOf(AWorkspace: TShellWorkspace): TFunc<TServerSettings>;
-begin
-  Result :=
-    function: TServerSettings
-    begin
-      Result := AWorkspace.Configuration.Settings;
-    end;
-end;
-
-function ResolveFileOf(AGuard: TMcpPathGuard): TFunc<string, string>;
-begin
-  Result :=
-    function(APath: string): string
-    begin
-      Result := AGuard.Resolve(APath);
-    end;
-end;
-
-/// <summary>Prompts und Ressourcenvorlagen (#1357), abschaltbar mit mcp.prompts.</summary>
-function NewPrompts(AServer: TMcpServer; const AServices: TMcpServices): TMcpPrompts;
-begin
-  Result := TMcpPrompts.Create(AServer, PromptSettingsOf(AServices.Workspace));
-  Result.ReadText := ReadSourceText;
-  Result.ResolveFile := ResolveFileOf(AServices.Guard);
-  Result.ResolveUnit := UnitFileOf(AServices.Index, AServices.Group, AServices.Guard);
-  Result.Changes := ChangesOf(AServices.Group, AServices.Root);
-  Result.Register;
 end;
 
 function ConnectionErrorOf(const ALogger: ILogger): TJsonRpcErrorEvent;
@@ -300,6 +168,7 @@ begin
   TServerActivity.Shared.Enabled := mServices.Workspace.Configuration.Settings.ServerStatusFile;
   mDispatcher.Observer := TServerActivityObserver.Create(TServerActivity.Shared, nil);
   try
+    mServer.Instructions := cTexts[TMcpHostText.Instructions].Fmt([mServices.Root]);
     ConfigureServer(mServer, mServices, AOptions.Restricted, mLogger);
     mServer.OnClientInfo := ClientInfoOf(mServices.Group, mCrashCases);
     mPrompts := NewPrompts(mServer, mServices);

@@ -135,6 +135,8 @@ type
     function OwningList(const AClassName, AName: string): Boolean;
     procedure SetContainer(AIndex: Integer);
     procedure Handover(const AClassName: string; ACall: TSyntaxNode; var ASite: TOwnershipSite);
+    function FieldVerdict(const ARaw: TOwnershipRaw; const AField: string; var ASite: TOwnershipSite): Boolean;
+    procedure FieldRelease(const ARaw: TOwnershipRaw; const AField: string; var ASite: TOwnershipSite);
     procedure ClassifyField(const ARaw: TOwnershipRaw; const AField: string; var ASite: TOwnershipSite);
     procedure ClassifyLocal(const ARaw: TOwnershipRaw; const AName: string; var ASite: TOwnershipSite);
     procedure UseOfLocal(const ARaw: TOwnershipRaw; AOccurrence: TSyntaxNode; var ASite: TOwnershipSite);
@@ -454,36 +456,55 @@ begin
   Take(ASite, TOwnershipKind.Passed, -1, TFreeFieldTypes.CodeOf(FText, mCallee));
 end;
 
-/// <summary>Feld der Klasse: Analyse wie field-not-freed, sonst Free im Destruktor bzw. in einer anderen Methode.
-/// </summary>
-procedure TOwnershipScan.ClassifyField(const ARaw: TOwnershipRaw; const AField: string; var ASite: TOwnershipSite);
+/// <summary>Urteil der Analyse wie field-not-freed über das Feld: nie freigegeben (mit Befund) oder unklar; False,
+/// wenn sie nichts dazu sagt.</summary>
+function TOwnershipScan.FieldVerdict(const ARaw: TOwnershipRaw; const AField: string;
+  var ASite: TOwnershipSite): Boolean;
 var
   mField: TOwnedField;
   mFinding: TRuleFinding;
-  mMethod, mNode: TSyntaxNode;
-  mKind: TOwnershipKind;
   mShort: string;
 begin
+  Result := False;
   // TFreeFields kennt die Klasse unter ihrem Namen ohne äußere Klassen.
   mShort := Copy(ARaw.ClassName, LastDelimiter('.', ARaw.ClassName) + 1, MaxInt);
   for mField in FFields do
   begin
-    if SameText(mField.Name, AField) and SameText(mField.ClassName, mShort) then
+    if not SameText(mField.Name, AField) or not SameText(mField.ClassName, mShort) then
     begin
-      if (mField.State = TOwnedFieldState.NotFreed) and FindingAt(mField.Range.StartPos.Line, mFinding) then
-      begin
-        ASite.Kind := TOwnershipKind.Never;
-        ASite.Rule := mFinding.RuleId;
-        ASite.Message := mFinding.Message;
-        Exit;
-      end;
-      if mField.State = TOwnedFieldState.Unclear then
-      begin
-        ASite.Message := mField.Reason;
-        Exit;
-      end;
+      Continue;
+    end;
+    if (mField.State = TOwnedFieldState.NotFreed) and FindingAt(mField.Range.StartPos.Line, mFinding) then
+    begin
+      ASite.Kind := TOwnershipKind.Never;
+      ASite.Rule := mFinding.RuleId;
+      ASite.Message := mFinding.Message;
+      Exit(True);
+    end;
+    if mField.State = TOwnedFieldState.Unclear then
+    begin
+      ASite.Message := mField.Reason;
+      Exit(True);
     end;
   end;
+end;
+
+/// <summary>Feld der Klasse: Analyse wie field-not-freed, sonst Free im Destruktor bzw. in einer anderen Methode.
+/// </summary>
+procedure TOwnershipScan.ClassifyField(const ARaw: TOwnershipRaw; const AField: string; var ASite: TOwnershipSite);
+begin
+  if not FieldVerdict(ARaw, AField, ASite) then
+  begin
+    FieldRelease(ARaw, AField, ASite);
+  end;
+end;
+
+/// <summary>Freigabe des Felds in einer Methode der Klasse; die im Destruktor geht vor.</summary>
+procedure TOwnershipScan.FieldRelease(const ARaw: TOwnershipRaw; const AField: string; var ASite: TOwnershipSite);
+var
+  mMethod, mNode: TSyntaxNode;
+  mKind: TOwnershipKind;
+begin
   for mMethod in TOwnershipTree.MethodsOf(FTree.Root, ARaw.ClassName) do
   begin
     mKind := TOwnershipKind.Freed;

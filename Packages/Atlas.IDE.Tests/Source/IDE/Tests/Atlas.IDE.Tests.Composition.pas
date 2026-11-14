@@ -111,9 +111,9 @@ uses
   Atlas.Text.Product.Version,
   Atlas.Core.Diagnostics.Guard,
   Atlas.Core.Diagnostics.ModuleHost,
-  Atlas.Core.Modules.FeatureParts,
   Atlas.Core.VersionControl.Contract,
   Atlas.Core.VersionControl.Adapters.ProcessRunner,
+  Atlas.Core.Modules.FeatureParts,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Tests.Output,
   Atlas.IDE.Tests.Runner,
@@ -124,19 +124,12 @@ uses
   Atlas.IDE.Tests.CoveredBy,
   Atlas.IDE.Tests.Stale,
   Atlas.IDE.Tests.Compare,
-  Atlas.IDE.Tests.ApprovalFiles,
   Atlas.IDE.Tests.Slowest,
   Atlas.IDE.Tests.Composition.Cases,
   Atlas.IDE.Tests.Affected,
-  Atlas.IDE.Tests.UnitCommands,
-  Atlas.IDE.Tests.Explorer,
+  Atlas.IDE.Tests.Composition.Explorer,
   Atlas.IDE.Tests.Series,
-  Atlas.IDE.Tests.Flaky,
-  Atlas.IDE.Tests.StatusField,
-  Atlas.IDE.Tests.Coverage,
-  Atlas.Core.Tests.MutationPlan,
-  Atlas.IDE.Tests.Mutation,
-  Atlas.IDE.Tests.MutationMarks,
+  Atlas.IDE.Tests.Composition.Coverage,
   Atlas.UI.Tests.Strings;
 
 var
@@ -150,15 +143,10 @@ var
   GStale: TAtlasIdeStaleTests;
   GCompare: TAtlasIdeTestCompare;
   GSlowest: TAtlasIdeTestSlowest;
-  GExplorer: TAtlasIdeTestExplorer;
   /// <summary>Serien (#1782) und ihr Abbruchwunsch, den der Prozessläufer liest; GStopRef hält ihn.</summary>
   GSeries: TAtlasIdeTestSeries;
   GStop: TAtlasIdeTestStop;
   GStopRef: IInterface;
-  GFlaky: TAtlasIdeFlakyTests;
-  GLists: TAtlasIdeTestLists;
-  GStatusField: TAtlasIdeTestStatusField;
-  GMutation: TAtlasIdeMutationRun;
 
 { Sichtbarkeit }
 
@@ -305,16 +293,10 @@ begin
   GDebugger := TAtlasIdeTestDebugger.Create(GTests);
   // Tests N-mal bzw. in zufälliger Reihenfolge (#1782): Läufe im Hintergrund über den Läufer.
   GSeries := TAtlasIdeTestSeries.Create(GTests, GOutput, GStop);
-  // Wackelnde Tests (#1773): Verlauf je Test; reicht den Lauf an die langsamsten Tests weiter.
-  GFlaky := TAtlasIdeFlakyTests.Create(GTests, GSlowest.Remember);
-  // Fenster „Atlas-Tests“ (#1776): Ergebnisse je Testprojekt; reicht den Lauf an die wackelnden Tests weiter.
-  // Testlisten (#2167): vor dem Fenster, das sie über TAtlasIdeTestLists.Instance findet, und nach ihm frei.
-  GLists := TAtlasIdeTestLists.Create(GTests);
-  GExplorer := TAtlasIdeTestExplorer.Create(GTests, GDebugger, GSeries, GFlaky.QueriesWith(GStale.StaleIn),
-    GFlaky.Remember);
-  GTests.OnReported := GExplorer.Remember;
-  GStatusField := TAtlasIdeTestStatusField.Create(GTests, GExplorer);
-  GLens := TAtlasIdeTestsLens.Create(GTests, GDebugger, GFlaky.QueriesWith(GStale.StaleIn), CompareHooks);
+  // Wackelnde Tests (#1773), Fenster „Atlas-Tests“ (#1776), Testlisten (#2167) und Teststand (#1777); das Fenster
+  // hängt sich als OnReported an, die wackelnden Tests reichen den Lauf an die langsamsten Tests weiter.
+  StartExplorer(GTests, GDebugger, GSeries, GStale.StaleIn, GSlowest.Remember);
+  GLens := TAtlasIdeTestsLens.Create(GTests, GDebugger, StateQueries(GStale.StaleIn), CompareHooks);
   // Marke „getestet von“ an Methoden normaler Units (#1778).
   GCoveredBy := TAtlasIdeCoveredByLens.Create(GTests, ModuleScope, GStale.StaleIn);
   // TestCase-Tabelle (#1879): Befehl und Marke „Tabelle“ der Lens; Grenzfälle (#2173) vorn in OnReported.
@@ -325,7 +307,7 @@ begin
   // Betroffene Tests beim Speichern (#1775): im Hintergrund über den Läufer.
   GOnSave := TAtlasIdeTestsOnSave.Create(GTests, GOutput);
   // Mutationslauf (#1460): Projektwahl und Ausgabe des Läufers, eigener Prozessläufer, Build des Schattenprojekts.
-  GMutation := TAtlasIdeMutationRun.Create(GScope, GTests, GOutput, TestsProcess(GStop), BuildForMutation);
+  StartMutation(GScope, GTests, GOutput, TestsProcess(GStop));
 end;
 
 procedure StopTests;
@@ -338,7 +320,7 @@ begin
   end;
   TAtlasIdeAffectedTests.Uninstall;
   // Mutationslauf (#1460) vor dem Läufer, dessen Projektwahl und Ausgabe er nutzt; schließt sein Schattenprojekt.
-  FreeAndNil(GMutation);
+  StopMutation;
   // Tests beim Speichern (#1775) vor dem Läufer: Uninstall hat ihre offenen Anfragen schon verworfen.
   FreeAndNil(GOnSave);
   // Erst die Lens (sie zeigt auf Läufer und Debugger-Teil), dann der Debugger-Teil (stellt eine laufende Sitzung
@@ -350,9 +332,7 @@ begin
   end;
   // Der Teststand (#1777) liest aus dem Fenster „Atlas-Tests“ (#1776), das auf Läufer und Debugger-Teil zeigt:
   // vor allen.
-  FreeAndNil(GStatusField);
-  FreeAndNil(GExplorer);
-  FreeAndNil(GLists);
+  StopExplorer;
   FreeAndNil(GCoveredBy);
   FreeAndNil(GLens);
   // Serie (#1782) nach Fenster und Lens, die auf sie zeigen; vor dem Läufer, dessen Ende sie erwartet.
@@ -360,7 +340,7 @@ begin
   StopCases(GTests);
   FreeAndNil(GDebugger);
   // Wackelnde Tests (#1773) nach Fenster und Lens, die sie abfragen.
-  FreeAndNil(GFlaky);
+  StopFlakyTests;
   FreeAndNil(GSlowest);
   FreeAndNil(GCompare);
   FreeAndNil(GStale);
@@ -495,67 +475,6 @@ begin
   end;
 end;
 
-{ Testabdeckung (#275) }
-
-function CoverageVisible: Boolean;
-begin
-  Result := TAtlasIdeSettings.Current.TestCoverage and TAtlasIdeTestCoverage.Started;
-end;
-
-function CoverageClearVisible: Boolean;
-begin
-  Result := CoverageVisible and TAtlasIdeTestCoverage.Loaded;
-end;
-
-{ Mutationslauf (#1460) }
-
-function MutationVisible: Boolean;
-begin
-  Result := TestsVisible and TAtlasIdeSettings.Current.TestsMutation and (GMutation <> nil);
-end;
-
-function MutationIdle: Boolean;
-begin
-  Result := MutationVisible and not GMutation.Running;
-end;
-
-function MutationRunning: Boolean;
-begin
-  Result := MutationVisible and GMutation.Running;
-end;
-
-procedure MutateMethod;
-begin
-  if GMutation <> nil then
-  begin
-    GMutation.Start(TAtlasMutationScope.Routine);
-  end;
-end;
-
-procedure MutateUnit;
-begin
-  if GMutation <> nil then
-  begin
-    GMutation.Start(TAtlasMutationScope.WholeUnit);
-  end;
-end;
-
-procedure MutateChanged;
-begin
-  if GMutation <> nil then
-  begin
-    GMutation.Start(TAtlasMutationScope.Changed);
-  end;
-end;
-
-procedure CancelMutation;
-begin
-  if GMutation <> nil then
-  begin
-    GMutation.Cancel;
-  end;
-end;
-
 { Langsamste Tests (#1772) }
 
 function SlowestVisible: Boolean;
@@ -591,60 +510,11 @@ begin
 end;
 
 procedure CleanApprovalFiles;
-var
-  mProject: string;
 begin
-  // Testprojekt des letzten Laufs; ohne Lauf das aktive Projekt.
-  mProject := '';
+  // Compare lebt mit dem Läufer.
   if GCompare <> nil then
   begin
-    mProject := GCompare.LastProject;
-  end;
-  if GTests <> nil then
-  begin
-    TAtlasIdeApprovalFiles.Clean(GTests, mProject);
-  end;
-end;
-
-{ Fenster „Atlas-Tests“ (#1776) }
-
-/// <summary>Fenster „Atlas-Tests“ mit allen Tests.</summary>
-procedure ShowAll;
-begin
-  GExplorer.Show(False);
-end;
-
-/// <summary>Fenster „Atlas-Tests“ nur mit wackelnden Tests (#1773).</summary>
-procedure ShowFlakyOnly;
-begin
-  GExplorer.Show(True);
-end;
-
-function ExplorerVisible: Boolean;
-begin
-  Result := TestsVisible and TAtlasIdeTestExplorer.Wanted and (GExplorer <> nil);
-end;
-
-procedure ShowExplorer;
-begin
-  if GExplorer <> nil then
-  begin
-    TAtlasGuard.Run(TAtlasFeature.Build, ShowAll);
-  end;
-end;
-
-{ Wackelnde Tests (#1773) }
-
-function FlakyVisible: Boolean;
-begin
-  Result := ExplorerVisible and TAtlasIdeSettings.Current.TestsFlaky;
-end;
-
-procedure ShowFlaky;
-begin
-  if GExplorer <> nil then
-  begin
-    TAtlasGuard.Run(TAtlasFeature.Build, ShowFlakyOnly);
+    GCompare.CleanApprovalFiles;
   end;
 end;
 
@@ -652,12 +522,12 @@ end;
 
 function ProjectUnitTestsVisible: Boolean;
 begin
-  Result := TestsVisible and TAtlasIdeTestUnitCommands.HasProjectUnits;
+  Result := TestsVisible and ProjectUnitsSelected;
 end;
 
 procedure RunProjectUnitTests;
 begin
-  TAtlasIdeTestUnitCommands.RunProjectUnits(GTests);
+  RunSelectedUnitTests(GTests);
 end;
 
 { Test aus dem Debug-Halt (#1873) }
@@ -683,51 +553,6 @@ function Described(const ACommand: TAtlasModuleCommand; ADescription: TAtlasTest
 begin
   Result := ACommand;
   Result.Description := TAtlasTestsStrings.Text(ADescription);
-end;
-
-{ Testlisten (#2167) }
-
-/// <summary>Befehl „Testliste ausführen: AName“; eigene Routine, damit jeder Befehl seinen Namen fängt.</summary>
-function ListCommand(const AName: string): TAtlasModuleCommand;
-begin
-  Result := Default(TAtlasModuleCommand);
-  Result.Id := 'Atlas.RunTestList:' + AName;
-  Result.Caption := TAtlasTestsStrings.Fmt(TAtlasTestsTextId.ListsRunCommand, [AName]);
-  Result.Description := TAtlasTestsStrings.Text(TAtlasTestsTextId.ListsRunCommandHint);
-  Result.Run :=
-    procedure
-    begin
-      if GLists <> nil then
-      begin
-        TAtlasGuard.Run(TAtlasFeature.Build,
-          procedure
-          begin
-            GLists.RunByName(AName);
-          end);
-      end;
-    end;
-end;
-
-/// <summary>Je Testliste des gewählten Testprojekts ein Befehl der Palette.</summary>
-function ListCommands: TArray<TAtlasModuleCommand>;
-var
-  mName: string;
-begin
-  Result := nil;
-  if (GLists = nil) or not TestsVisible then
-  begin
-    Exit;
-  end;
-  for mName in GLists.Names do
-  begin
-    Result := Result + [ListCommand(mName)];
-  end;
-end;
-
-/// <summary>Zuletzt benutzte Testliste ausführen; False ohne eine (die Taste geht dann an die IDE).</summary>
-function RunLastList: Boolean;
-begin
-  Result := (GLists <> nil) and GLists.RunLast;
 end;
 
 { TAtlasTestsModule }
@@ -800,7 +625,7 @@ begin
       Guarded(TAtlasFeature.Build, RunProjectUnitTests), ProjectUnitTestsVisible),
     // Assistent in Datei › Neu › Weitere (#1821); auch in der Palette.
     Described(Command('Atlas.NewTestUnitFor', TAtlasTestsTextId.TestsGalleryTestUnit,
-      Guarded(TAtlasFeature.Generate, TAtlasIdeTestUnitCommands.NewTestUnitFor), nil),
+      Guarded(TAtlasFeature.Generate, NewTestUnitFor), nil),
       TAtlasTestsTextId.TestsGalleryTestUnitHint),
     // Test aus dem Debug-Halt (#1873): sichtbar mit tests.fromDebugStop und einem Modul, das den Halt liefert.
     Command(TestFromDebugCommand, TAtlasTestsTextId.TestsFromDebugCommand,
@@ -810,9 +635,9 @@ begin
       Guarded(TAtlasFeature.Build, RunLeakSetup), LeakSetupVisible), TAtlasTestsTextId.LeakSetupHint),
     // Testabdeckung (#275): sichtbar mit tests.coverage; ausblenden nur mit geladenem Bericht.
     Command('Atlas.LoadTestCoverage', TAtlasTestsTextId.CoverageLoadCommand,
-      Guarded(TAtlasFeature.Build, TAtlasIdeTestCoverage.Choose), CoverageVisible),
+      Guarded(TAtlasFeature.Build, LoadCoverage), CoverageVisible),
     Command('Atlas.ClearTestCoverage', TAtlasTestsTextId.CoverageClearCommand,
-      Guarded(TAtlasFeature.Build, TAtlasIdeTestCoverage.Clear), CoverageClearVisible),
+      Guarded(TAtlasFeature.Build, ClearCoverage), CoverageClearVisible),
     // Mutationslauf (#1460): sichtbar mit tests.mutation und tests.run; abbrechen nur, solange er läuft.
     Command('Atlas.MutateMethod', TAtlasTestsTextId.MutationMethodCommand,
       Guarded(TAtlasFeature.Build, MutateMethod), MutationIdle),
@@ -827,21 +652,9 @@ begin
 end;
 
 function TAtlasTestsModule.Keys: TArray<TAtlasModuleKey>;
-var
-  mKey: TAtlasModuleKey;
 begin
-  Result := nil;
-  // Zuletzt benutzte Testliste (#2167): ohne Liste geht die Taste an die IDE weiter.
-  if not TAtlasIdeTestLists.Wanted or (TAtlasIdeSettings.Current.TestsListsRunKey = 0) then
-  begin
-    Exit;
-  end;
-  mKey := Default(TAtlasModuleKey);
-  mKey.Id := 'Atlas.RunLastTestList';
-  mKey.Caption := TAtlasTestsStrings.Text(TAtlasTestsTextId.ListsRunLast);
-  mKey.Key := TAtlasIdeSettings.Current.TestsListsRunKey;
-  mKey.Attempt := RunLastList;
-  Result := [mKey];
+  // Zuletzt benutzte Testliste (#2167).
+  Result := ListKeys;
 end;
 
 function MenuEntry(const ACommandId: string; APlace: TAtlasMenuPlace): TAtlasMenuEntry;
@@ -944,29 +757,13 @@ begin
   begin
     GOnSave.ApplySettings;
   end;
-  // tests.window aus (#1776): Fenster weg.
-  if GExplorer <> nil then
-  begin
-    GExplorer.ApplySettings;
-  end;
-  // tests.lists (#2167): Reiter zeigen bzw. verbergen.
-  if GLists <> nil then
-  begin
-    GLists.ApplySettings;
-  end;
-  // editor.statusBar.tests (#1777): Feld neu bzw. weg.
-  if GStatusField <> nil then
-  begin
-    GStatusField.ApplySettings;
-  end;
+  // tests.window (#1776), tests.lists (#2167) und editor.statusBar.tests (#1777).
+  ApplyExplorerSettings;
 end;
 
 procedure TAtlasTestsModule.ThemeChanged;
 begin
-  if GExplorer <> nil then
-  begin
-    TAtlasGuard.Run(TAtlasFeature.Build, TAtlasIdeTestExplorer.ThemeChanged);
-  end;
+  ExplorerThemeChanged;
 end;
 
 procedure TAtlasTestsModule.BuildEvaluated(const AMessages: TArray<TAtlasCompilerMessage>;
@@ -1029,10 +826,7 @@ end;
 procedure TAtlasTestsModule.FileSaved(const AFileName: string);
 begin
   // Fenster „Atlas-Tests“ (#1776): gespeicherte Testunit neu lesen.
-  if GExplorer <> nil then
-  begin
-    GExplorer.FileSaved(AFileName);
-  end;
+  ExplorerFileSaved(AFileName);
   // Betroffene Tests beim Speichern (#1775).
   if GOnSave <> nil then
   begin
@@ -1046,7 +840,7 @@ end;
 
 function TAtlasTestsModule.Busy: Boolean;
 begin
-  Result := ((GTests <> nil) and GTests.Busy) or ((GMutation <> nil) and GMutation.Running);
+  Result := ((GTests <> nil) and GTests.Busy) or MutationBusy;
 end;
 
 function TAtlasTestsModule.HasValuesAt(ALine: Integer): Boolean;
@@ -1085,11 +879,7 @@ begin
         Result := (ALevel = TAtlasSafeLevel.Normal) and TAtlasIdeSettings.Current.TestRun;
       end, TestsStarted, StartTests, StopTests),
     // Testabdeckung (#275): liest nur einen Bericht, baut und startet nichts; unabhängig von tests.run.
-    TAtlasFeaturePart.When('TestCoverage',
-      function(ALevel: TAtlasSafeLevel): Boolean
-      begin
-        Result := (ALevel = TAtlasSafeLevel.Normal) and TAtlasIdeSettings.Current.TestCoverage;
-      end, TAtlasIdeTestCoverage.Started, TAtlasIdeTestCoverage.Start, TAtlasIdeTestCoverage.Stop)];
+    CoveragePart];
 end;
 
 class function TAtlasTestsModule.RegisterModule: Boolean;
@@ -1124,10 +914,8 @@ begin
   GScope.Provide(IAtlasTestsSource, mRef);
   // „Vergleichen“ (#1779) im Befund-Hover und auf der Kachel „Testergebnisse“.
   GScope.Provide(IAtlasTestValues, mRef);
-  // Balken der Testabdeckung in der Rinne (#275).
-  TAtlasIdeTestCoverage.ProvideIn(GScope);
-  // Ergebnisse des Mutationslaufs in der Rinne (#1460).
-  TAtlasIdeMutationMarks.ProvideIn(GScope);
+  // Balken der Testabdeckung (#275) und Ergebnisse des Mutationslaufs (#1460) in der Rinne.
+  ProvideGutterMarks(GScope);
   ProvideSettingsSections;
   Result := True;
 end;

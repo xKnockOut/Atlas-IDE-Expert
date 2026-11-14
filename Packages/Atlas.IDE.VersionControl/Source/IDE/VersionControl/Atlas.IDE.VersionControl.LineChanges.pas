@@ -105,7 +105,6 @@ uses
   Atlas.Core.Diagnostics.Guard,
   Atlas.Core.Settings.Plugin,
   Atlas.Core.Diagnostics.MainThread,
-  Atlas.Core.Style.Color,
   Atlas.Core.Style.Palette,
   Atlas.Core.Editor.Elements,
   Atlas.Core.Editor.LineTail,
@@ -123,8 +122,6 @@ uses
 const
   cTickMs = 150;
   cHoverMs = 400;
-  /// <summary>Deckkraft der Zeilenhistorie über dem Hintergrund.</summary>
-  cBlameStrength = 0.55;
   /// <summary>Abstand des Hinweises zum alten Text hinter dem Zeilenende, in Spalten.</summary>
   cTipColumnGap = 3;
   /// <summary>Abstand des Hinweises zur Markierung am Rand, in Pixeln.</summary>
@@ -512,34 +509,18 @@ function TLineChangesState.PaintBlame(const ARect: TRect; const AContext: INTACo
 var
   mCell: TRect;
   mKey: string;
-  mX, mTop, mSaved: Integer;
-  mDC: HDC;
-  mFront, mBack: TAtlasColor;
-  mSize: TSize;
+  mX: Integer;
 begin
   mCell := AContext.EditorState.GetCharacterPosPx(
     TAtlasLineChangesPaint.EndColumn(ALineText, TAtlasEditorBuffer.TabWidth(AContext.EditView.Buffer)) + cTipColumnGap,
     AContext.EditorLineNum);
   mKey := TAtlasLineTail.KeyOf(AContext.FileName, AContext.LogicalLineNum, AContext.EditorLineNum, ARect.Top);
   mX := TAtlasLineTail.Start(Self, mKey, mCell.Left);
-  mDC := AContext.Canvas.Handle;
-  // Hintergrund des Editor-Farbschemas am rechten Rand (dort steht nichts).
-  mBack := TAtlasIdeStyle.SampleBack(AContext.Canvas, ARect.Right - 2, ARect.Top + 1);
-  mFront := TAtlasColorMath.Mix(TAtlasColors.ForBackground(mBack).Muted, mBack, cBlameStrength);
   FFont.Follow(AContext.Canvas.Font);
-  mSaved := SaveDC(mDC);
-  try
-    SelectObject(mDC, FFont.Font.Handle);
-    SetTextColor(mDC, COLORREF(ColorToRGB(TColor(mFront))));
-    SetBkMode(mDC, TRANSPARENT);
-    GetTextExtentPoint32W(mDC, PChar(ACaption), Length(ACaption), mSize);
-    mTop := ARect.Top + Max(0, (ARect.Bottom - ARect.Top - mSize.cy) div 2);
-    TextOutW(mDC, mX, mTop, PChar(ACaption), Length(ACaption));
-  finally
-    RestoreDC(mDC, mSaved);
-  end;
-  TAtlasLineTail.Finish(Self, mKey, mX + mSize.cx);
-  Result := TRect.Create(mX, mTop, mX + mSize.cx, mTop + mSize.cy);
+  // Hintergrund des Editor-Farbschemas am rechten Rand (dort steht nichts).
+  Result := TAtlasLineChangesPaint.PaintCaption(AContext.Canvas.Handle, ARect, mX, ACaption, FFont.Font.Handle,
+    TAtlasIdeStyle.SampleBack(AContext.Canvas, ARect.Right - 2, ARect.Top + 1));
+  TAtlasLineTail.Finish(Self, mKey, Result.Right);
 end;
 
 procedure TLineChangesState.PaintLine(const Rect: TRect; const Stage: TPaintLineStage; const BeforeEvent: Boolean;

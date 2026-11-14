@@ -189,11 +189,11 @@ begin
   end;
   mIndex := AIndex;
   mShared := TSyntaxTreeCache.Get(mDocument);
-  if not TLearnedSuggestions.Suggest(mShared.Tree, mDocument.Text, mLine, AIndex.Units, mOptions,
+  if not TLearnedSuggestions.Suggest(mShared.Tree, mDocument.Text, mLine, TLearnedProject.Create(AIndex.Units,
     function(const AName: string): Boolean
     begin
       Result := Length(mIndex.FindSymbols(AName)) > 0;
-    end, mSuggestion) then
+    end), mOptions, mSuggestion) then
   begin
     Exit(TJSONNull.Create);
   end;

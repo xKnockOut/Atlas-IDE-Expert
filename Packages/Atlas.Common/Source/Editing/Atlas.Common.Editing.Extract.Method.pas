@@ -96,16 +96,16 @@ type
     FText: string;
     FTree: TSyntaxTree;
     FOptions: TExtractOptions;
-    FStart: Integer;
-    FEnd: Integer;
+    /// <summary>Auswahl.</summary>
+    FWindow: TExtractWindow;
     FRoutine: TSyntaxNode;
     FBody: TSyntaxNode;
     FStatements: TArray<TSyntaxNode>;
     FLocals: TArray<TRoutineLocal>;
     FOnlyNames: TArray<string>;
     FLookup: TFlowSignatureLookup;
-    FLoopStart: Integer;
-    FLoopEnd: Integer;
+    /// <summary>Äußerste Schleife um die Auswahl innerhalb der Routine, sonst die Auswahl.</summary>
+    FLoop: TExtractWindow;
     FOccurrences: TList<TLocalOccurrence>;
     FUses: TArray<TLocalUse>;
     FOrder: TArray<Integer>;
@@ -118,13 +118,10 @@ type
     /// <summary>Schleife um die Auswahl: Zugriffe darin vor der Auswahl laufen auch danach.</summary>
     procedure FindLoop;
     function CollectOccurrences: Boolean;
-    /// <summary>Liegt AOffset in einer der weiteren Stellen aus FContext?</summary>
-    function InOther(AOffset: Integer): Boolean;
     /// <summary>Zugriff außerhalb der Auswahl an AStart..AEnd: davor bzw. danach.</summary>
     procedure MarkOutside(ALocal, AStart, AEnd: Integer);
     /// <summary>Weitere Stellen als Aufruf mit den angenommenen Parameterarten.</summary>
     procedure MarkAssumed;
-    function Parameters: TArray<TExtractParameter>;
     /// <summary>False mit Grund, wenn ANode in der Auswahl auf Result oder nur in der Routine Sichtbares zeigt.
     /// </summary>
     function VisibleOutside(ANode: TSyntaxNode; ALocal: Integer): Boolean;
@@ -132,19 +129,13 @@ type
     procedure MarkForLoops;
     procedure MarkOccurrence(const AOccurrence: TLocalOccurrence);
     procedure MarkInside(const AOccurrence: TLocalOccurrence);
-    function DeclaredInside(AIndex: Integer): Boolean;
-    /// <summary>Lokale Variable, die nur noch die neue Methode braucht.</summary>
-    function OnlyInside(AIndex: Integer): Boolean;
     function ChooseModes: Boolean;
     /// <summary>Anonyme Methoden dürfen var- und out-Parameter nicht einfangen.</summary>
     function CheckCaptures: Boolean;
     function CapturedByReference(AAnonymous: TSyntaxNode): Boolean;
-    /// <summary>Eingaben zuerst, dann var, dann out; sonst in der Reihenfolge des ersten Vorkommens.</summary>
-    function SortedOrder: TArray<Integer>;
     function BuildSignature(ASignature: TExtractSignature): Boolean;
     function AddToSignature(ASignature: TExtractSignature; AIndex: Integer): Boolean;
     function BuildEdits(ASignature: TExtractSignature; out AEdits: TArray<TTextEdit>): Boolean;
-    procedure RemoveLocals(var AEdits: TArray<TTextEdit>);
   public
     constructor Create(const AText: string; ATree: TSyntaxTree; const AOptions: TExtractOptions);
     destructor Destroy; override;
@@ -518,6 +509,89 @@ begin
   Result.Finish := AFinish;
 end;
 
+/// <summary>Liegt AOffset in einem der Fenster AWindows?</summary>
+function InWindows(const AWindows: TArray<TExtractWindow>; AOffset: Integer): Boolean;
+var
+  mWindow: TExtractWindow;
+begin
+  Result := False;
+  for mWindow in AWindows do
+  begin
+    Result := Result or ((AOffset >= mWindow.Start) and (AOffset < mWindow.Finish));
+  end;
+end;
+
+/// <summary>Inline- oder Schleifenvariable, die in der Auswahl AWindow deklariert ist.</summary>
+function DeclaredInside(const ALocal: TRoutineLocal; const AWindow: TExtractWindow): Boolean;
+begin
+  Result := (ALocal.Kind in [TRoutineLocalKind.InlineVariable, TRoutineLocalKind.LoopVariable]) and
+    TExtractSupport.InSelection(ALocal.Decl, AWindow.Start, AWindow.Finish);
+end;
+
+/// <summary>Lokale Variable, die nur noch die neue Methode braucht.</summary>
+function OnlyInside(const ALocal: TRoutineLocal; const AUse: TLocalUse): Boolean;
+begin
+  Result := (AUse.Mode = TParameterMode.LocalVar) and (ALocal.Kind = TRoutineLocalKind.Variable) and
+    not AUse.Before and not AUse.After;
+end;
+
+/// <summary>AOrder mit Eingaben zuerst, dann var, dann out; sonst in der Reihenfolge des ersten Vorkommens.
+/// </summary>
+function SortedOrder(const AOrder: TArray<Integer>; const AUses: TArray<TLocalUse>): TArray<Integer>;
+var
+  mGroup, mIndex: Integer;
+begin
+  Result := nil;
+  for mGroup := 0 to 2 do
+  begin
+    for mIndex in AOrder do
+    begin
+      if GroupOf(AUses[mIndex].Mode) = mGroup then
+      begin
+        Result := Result + [mIndex];
+      end;
+    end;
+  end;
+end;
+
+/// <summary>Parameter der neuen Methode in der Reihenfolge von SortedOrder.</summary>
+function ParametersOf(const AOrder: TArray<Integer>; const ALocals: TArray<TRoutineLocal>;
+  const AUses: TArray<TLocalUse>): TArray<TExtractParameter>;
+var
+  mIndex: Integer;
+  mParameter: TExtractParameter;
+begin
+  Result := nil;
+  for mIndex in SortedOrder(AOrder, AUses) do
+  begin
+    mParameter.Name := ALocals[mIndex].Name;
+    mParameter.Mode := AUses[mIndex].Mode;
+    Result := Result + [mParameter];
+  end;
+end;
+
+/// <summary>Edits, die die Variablen ARemoved aus den var-Abschnitten von ARoutine entfernen.</summary>
+procedure RemoveLocals(ATree: TSyntaxTree; ARoutine: TSyntaxNode; const ARemoved: TArray<string>;
+  var AEdits: TArray<TTextEdit>);
+var
+  mIndex, mInner: Integer;
+begin
+  if ARemoved = nil then
+  begin
+    Exit;
+  end;
+  for mIndex := 0 to ARoutine.ChildCount - 1 do
+  begin
+    if ARoutine[mIndex].Kind = TSyntaxKind.VarSection then
+    begin
+      for mInner := 0 to ARoutine[mIndex].ChildCount - 1 do
+      begin
+        TRoutineLocals.RemoveVariables(ATree, ARoutine[mIndex][mInner], ARemoved, AEdits);
+      end;
+    end;
+  end;
+end;
+
 { TMethodExtraction }
 
 constructor TMethodExtraction.Create(const AText: string; ATree: TSyntaxTree; const AOptions: TExtractOptions);
@@ -537,38 +611,37 @@ end;
 
 function TMethodExtraction.Prepare(const ARange: TTextRange): Boolean;
 begin
-  if not TExtractSupport.Selection(FText, FTree, ARange, FStart, FEnd) then
+  if not TExtractSupport.Selection(FText, FTree, ARange, FWindow.Start, FWindow.Finish) then
   begin
     Exit(Fail(cTexts[TExtractMethodText.NoSelection].Text, FReason));
   end;
-  FRoutine := TRoutineBody.RoutineAt(FTree, FStart);
-  if (FRoutine = nil) or (TRoutineBody.RoutineAt(FTree, FEnd) <> FRoutine) then
+  FRoutine := TRoutineBody.RoutineAt(FTree, FWindow.Start);
+  if (FRoutine = nil) or (TRoutineBody.RoutineAt(FTree, FWindow.Finish) <> FRoutine) then
   begin
     Exit(Fail(cTexts[TExtractMethodText.NotInTheBodyOf].Text, FReason));
   end;
   FBody := TRoutineBody.BodyOf(FRoutine);
-  if not SelectedStatements(FTree, FBody, FStart, FEnd, FStatements) then
+  if not SelectedStatements(FTree, FBody, FWindow.Start, FWindow.Finish, FStatements) then
   begin
     Exit(Fail(cTexts[TExtractMethodText.NoCompleteStatements].Text, FReason));
   end;
   // In einer anonymen Methode oder einem with-Rumpf: Namen hätten außen eine andere Bedeutung.
   Result := not TExtractSupport.InsideBlocked(FStatements[0], FBody, FReason) and
-    JumpsInside(FBody, FStatements, FStart, FEnd, FReason);
+    JumpsInside(FBody, FStatements, FWindow.Start, FWindow.Finish, FReason);
 end;
 
 procedure TMethodExtraction.FindLoop;
 var
   mLoop: TSyntaxNode;
 begin
-  FLoopStart := FStart;
-  FLoopEnd := FEnd;
+  FLoop := FWindow;
   mLoop := FStatements[0].Parent;
   while (mLoop <> nil) and (mLoop <> FBody) do
   begin
     if mLoop.Kind in cLoopKinds then
     begin
-      FLoopStart := mLoop.StartOffset;
-      FLoopEnd := mLoop.EndOffset;
+      FLoop.Start := mLoop.StartOffset;
+      FLoop.Finish := mLoop.EndOffset;
     end;
     mLoop := mLoop.Parent;
   end;
@@ -603,13 +676,14 @@ begin
     TRoutineLocals.CollectKind(FBody, TSyntaxKind.Identifier, mNodes);
     for mNode in mNodes do
     begin
-      if InOther(mNode.StartOffset) then
+      if InWindows(FContext.Others, mNode.StartOffset) then
       begin
         Continue;
       end;
       mOccurrence.Node := mNode;
       mOccurrence.Local := TRoutineLocals.IndexOf(FLocals, mNode.Name, mNode.StartOffset);
-      if TExtractSupport.InSelection(mNode, FStart, FEnd) and not VisibleOutside(mNode, mOccurrence.Local) then
+      if TExtractSupport.InSelection(mNode, FWindow.Start, FWindow.Finish) and
+        not VisibleOutside(mNode, mOccurrence.Local) then
       begin
         Exit(False);
       end;
@@ -640,15 +714,15 @@ begin
       begin
         mIndex := TRoutineLocals.IndexOf(FLocals, mNode.Name, mNode.StartOffset);
       end;
-      if (mIndex < 0) or InOther(mNode.StartOffset) then
+      if (mIndex < 0) or InWindows(FContext.Others, mNode.StartOffset) then
       begin
         Continue;
       end;
-      if TExtractSupport.InSelection(mNode, FStart, FEnd) then
+      if TExtractSupport.InSelection(mNode, FWindow.Start, FWindow.Finish) then
       begin
         FUses[mIndex].WriteIn := True;
       end
-      else if mNode.StartOffset < FStart then
+      else if mNode.StartOffset < FWindow.Start then
       begin
         FUses[mIndex].Before := True;
       end
@@ -697,7 +771,7 @@ var
   mNode: TSyntaxNode;
 begin
   mNode := AOccurrence.Node;
-  if TExtractSupport.InSelection(mNode, FStart, FEnd) then
+  if TExtractSupport.InSelection(mNode, FWindow.Start, FWindow.Finish) then
   begin
     MarkInside(AOccurrence);
   end
@@ -709,10 +783,10 @@ end;
 
 procedure TMethodExtraction.MarkOutside(ALocal, AStart, AEnd: Integer);
 begin
-  if AStart < FStart then
+  if AStart < FWindow.Start then
   begin
     FUses[ALocal].Before := True;
-    if (AStart >= FLoopStart) and (AEnd <= FLoopEnd) and (FLoopStart < FStart) then
+    if (AStart >= FLoop.Start) and (AEnd <= FLoop.Finish) and (FLoop.Start < FWindow.Start) then
     begin
       FUses[ALocal].After := True;
     end;
@@ -723,16 +797,6 @@ begin
   end;
 end;
 
-function TMethodExtraction.InOther(AOffset: Integer): Boolean;
-var
-  mWindow: TExtractWindow;
-begin
-  Result := False;
-  for mWindow in FContext.Others do
-  begin
-    Result := Result or ((AOffset >= mWindow.Start) and (AOffset < mWindow.Finish));
-  end;
-end;
 
 procedure TMethodExtraction.MarkAssumed;
 var
@@ -757,32 +821,6 @@ begin
   end;
 end;
 
-function TMethodExtraction.Parameters: TArray<TExtractParameter>;
-var
-  mIndex: Integer;
-  mParameter: TExtractParameter;
-begin
-  Result := nil;
-  for mIndex in SortedOrder do
-  begin
-    mParameter.Name := FLocals[mIndex].Name;
-    mParameter.Mode := FUses[mIndex].Mode;
-    Result := Result + [mParameter];
-  end;
-end;
-
-function TMethodExtraction.DeclaredInside(AIndex: Integer): Boolean;
-begin
-  Result := (FLocals[AIndex].Kind in [TRoutineLocalKind.InlineVariable, TRoutineLocalKind.LoopVariable]) and
-    TExtractSupport.InSelection(FLocals[AIndex].Decl, FStart, FEnd);
-end;
-
-function TMethodExtraction.OnlyInside(AIndex: Integer): Boolean;
-begin
-  Result := (FUses[AIndex].Mode = TParameterMode.LocalVar) and
-    (FLocals[AIndex].Kind = TRoutineLocalKind.Variable) and not FUses[AIndex].Before and not FUses[AIndex].After;
-end;
-
 function TMethodExtraction.ChooseModes: Boolean;
 var
   mIndex: Integer;
@@ -795,7 +833,7 @@ begin
     begin
       FUses[mIndex].Mode := TParameterMode.CopyConst;
     end
-    else if DeclaredInside(mIndex) then
+    else if DeclaredInside(FLocals[mIndex], FWindow) then
     begin
       if FUses[mIndex].After then
       begin
@@ -805,7 +843,7 @@ begin
     else
     begin
       FUses[mIndex].Mode := FlowMode(FUses[mIndex], FLocals[mIndex].Kind);
-      if OnlyInside(mIndex) then
+      if OnlyInside(FLocals[mIndex], FUses[mIndex]) then
       begin
         FRemoved := FRemoved + [FLocals[mIndex].Name];
       end;
@@ -879,23 +917,6 @@ begin
   end;
 end;
 
-function TMethodExtraction.SortedOrder: TArray<Integer>;
-var
-  mGroup, mIndex: Integer;
-begin
-  Result := nil;
-  for mGroup := 0 to 2 do
-  begin
-    for mIndex in FOrder do
-    begin
-      if GroupOf(FUses[mIndex].Mode) = mGroup then
-      begin
-        Result := Result + [mIndex];
-      end;
-    end;
-  end;
-end;
-
 function TMethodExtraction.AddToSignature(ASignature: TExtractSignature; AIndex: Integer): Boolean;
 var
   mType: string;
@@ -920,7 +941,7 @@ var
   mIndex: Integer;
 begin
   Result := True;
-  for mIndex in SortedOrder do
+  for mIndex in SortedOrder(FOrder, FUses) do
   begin
     if FUses[mIndex].Mode = TParameterMode.CopyConst then
     begin
@@ -929,26 +950,6 @@ begin
     else if Result and (FUses[mIndex].Mode <> TParameterMode.None) then
     begin
       Result := AddToSignature(ASignature, mIndex);
-    end;
-  end;
-end;
-
-procedure TMethodExtraction.RemoveLocals(var AEdits: TArray<TTextEdit>);
-var
-  mIndex, mInner: Integer;
-begin
-  if FRemoved = nil then
-  begin
-    Exit;
-  end;
-  for mIndex := 0 to FRoutine.ChildCount - 1 do
-  begin
-    if FRoutine[mIndex].Kind = TSyntaxKind.VarSection then
-    begin
-      for mInner := 0 to FRoutine[mIndex].ChildCount - 1 do
-      begin
-        TRoutineLocals.RemoveVariables(FTree, FRoutine[mIndex][mInner], FRemoved, AEdits);
-      end;
     end;
   end;
 end;
@@ -980,7 +981,7 @@ begin
     Exit;
   end;
   // Rumpf: die Anweisungen eine Ebene unter begin.
-  mBody := Copy(FText, FStart + 1, FEnd - FStart);
+  mBody := Copy(FText, FWindow.Start + 1, FWindow.Finish - FWindow.Start);
   if not EndsStr(';', mBody) then
   begin
     mBody := mBody + ';';
@@ -990,7 +991,7 @@ begin
     mBody, TTextLines.IndentOf(FText, FStatements[0].StartPos.Line)))];
   FPlan.Key := ASignature.Key(mHead.Text);
   FPlan.LocalEdits := nil;
-  RemoveLocals(FPlan.LocalEdits);
+  RemoveLocals(FTree, FRoutine, FRemoved, FPlan.LocalEdits);
   FPlan.CallRange := TTextRange.Create(FStatements[0].StartPos, FStatements[High(FStatements)].EndPos);
   FPlan.CallText := mHead.ShortName + ASignature.ArgsText;
   AEdits := AEdits + FPlan.LocalEdits + [TTextEdit.Create(FPlan.CallRange, FPlan.CallText)];
@@ -1019,7 +1020,7 @@ begin
     AAction.Title := cTexts[TExtractMethodText.ExtractMethod].Text;
     AAction.Kind := cExtractKind;
     AAction.Edits := mEdits;
-    FPlan.Parameters := Parameters;
+    FPlan.Parameters := ParametersOf(FOrder, FLocals, FUses);
     FPlan.Routine := FRoutine;
   end;
   AReason := FReason;

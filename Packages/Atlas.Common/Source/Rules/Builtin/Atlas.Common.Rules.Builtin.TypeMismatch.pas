@@ -147,8 +147,6 @@ type
     FLocal: TUnitIndex;
     FValues: TDictionary<TSyntaxNode, TValueType>;
     FDepth: Integer;
-    function NodeText(ANode: TSyntaxNode): string;
-    function DeclaredText(const ASymbol: TResolvedSymbol): string;
     function IsIntrinsic(ACallee: TSyntaxNode): Boolean;
     function BuiltinCast(ACallee: TSyntaxNode; out AType: TResolvedSymbol): Boolean;
     function HiddenMember(ANode: TSyntaxNode; const ASymbol: TResolvedSymbol): Boolean;
@@ -170,9 +168,6 @@ type
     procedure Mismatch(ANode: TSyntaxNode; const ATarget, ASource: string);
     procedure CheckAssignment(ANode: TSyntaxNode);
     procedure CheckProcedural(ASource: TSyntaxNode; const ATarget: TProcShape; const ATargetName: string);
-    /// <summary>Text des Kopfs der anonymen Methode ANode: "procedure(const A: string)", "function: Integer".
-    /// </summary>
-    function AnonymousHeader(ANode: TSyntaxNode): string;
     /// <summary>Anonyme Methode an eine Methodenreferenz: Zahl, const/var/out und Typen der Parameter müssen
     /// passen (wie E2010, #1345).</summary>
     procedure CheckAnonymous(ASource: TSyntaxNode; const ATarget: TProcShape; const ATargetName: string);
@@ -343,9 +338,10 @@ begin
     (ANode.FindChild(TSyntaxKind.GenericArgs) = nil);
 end;
 
-function TTypeMismatchCheck.NodeText(ANode: TSyntaxNode): string;
+/// <summary>Quelltext von ANode, gekürzt auf die Länge, die Meldungen zeigen.</summary>
+function ShortText(AScope: TTypedScope; ANode: TSyntaxNode): string;
 begin
-  Result := FScope.Text(ANode);
+  Result := AScope.Text(ANode);
   if Length(Result) > TExpressionTypes.cMaxExpressionLength then
   begin
     Result := Copy(Result, 1, TExpressionTypes.cMaxExpressionLength - 1) + #$2026;
@@ -395,17 +391,19 @@ begin
   end;
 end;
 
-function TTypeMismatchCheck.DeclaredText(const ASymbol: TResolvedSymbol): string;
+/// <summary>Typangabe der Deklaration von ASymbol im Baum ATree, wenn sie in dieser Datei steht; sonst ''.
+/// </summary>
+function DeclaredText(AScope: TTypedScope; ATree: TSyntaxTree; const ASymbol: TResolvedSymbol): string;
 var
   mDecl, mChild: TSyntaxNode;
   mIndex: Integer;
 begin
   Result := '';
-  if not SameText(ASymbol.FileName, FScope.FileName) and (ASymbol.Kind <> TResolvedKind.Local) then
+  if not SameText(ASymbol.FileName, AScope.FileName) and (ASymbol.Kind <> TResolvedKind.Local) then
   begin
     Exit;
   end;
-  mDecl := DeclarationAt(FContext.Tree, ASymbol.SelectionRange.StartPos);
+  mDecl := DeclarationAt(ATree, ASymbol.SelectionRange.StartPos);
   if mDecl = nil then
   begin
     Exit;
@@ -417,7 +415,7 @@ begin
       TSyntaxKind.PointerType, TSyntaxKind.SetType, TSyntaxKind.SubrangeType, TSyntaxKind.RecordType,
       TSyntaxKind.EnumType, TSyntaxKind.FileType] then
     begin
-      Exit(FScope.Text(mChild));
+      Exit(AScope.Text(mChild));
     end;
   end;
 end;
@@ -900,7 +898,7 @@ begin
   else
   begin
     // array[0..2] of Integer ohne eigenen Typ.
-    mText := DeclaredText(ASymbol);
+    mText := DeclaredText(FScope, FContext.Tree, ASymbol);
     if IsStaticArrayText(mText) then
     begin
       Result := TValueType.Create(mText, TExpressionCategory.Other, TValueKind.StaticArray);
@@ -983,7 +981,7 @@ begin
   mBody := ASymbol.TypeName;
   if not (StartsText('procedure', mBody) or StartsText('function', mBody) or StartsText('reference', mBody)) then
   begin
-    mBody := DeclaredText(ASymbol);
+    mBody := DeclaredText(FScope, FContext.Tree, ASymbol);
   end;
   if StartsText('procedure', mBody) or StartsText('function', mBody) or StartsText('reference', mBody) then
   begin
@@ -1042,7 +1040,7 @@ begin
   mFix := TRuleFix.Create(cTexts[TTypeMismatchText.AddParens].Text,
     [TTextEdit.Create(TTextRange.Create(ASource.EndPos, ASource.EndPos), '()')]);
   FReport.Add(TTextRange.Create(ASource.StartPos, ASource.EndPos), cTexts[TTypeMismatchText.NotCalled].Fmt(
-    [ATargetName, NodeText(ASource), ATargetName]), TRuleConfidence.High, [mFix]);
+    [ATargetName, ShortText(FScope, ASource), ATargetName]), TRuleConfidence.High, [mFix]);
 end;
 
 procedure TTypeMismatchCheck.Mismatch(ANode: TSyntaxNode; const ATarget, ASource: string);
@@ -1096,7 +1094,9 @@ begin
   end;
 end;
 
-function TTypeMismatchCheck.AnonymousHeader(ANode: TSyntaxNode): string;
+/// <summary>Text des Kopfs der anonymen Methode ANode: "procedure(const A: string)", "function: Integer".
+/// </summary>
+function AnonymousHeader(AScope: TTypedScope; ANode: TSyntaxNode): string;
 var
   mIndex: Integer;
   mChild: TSyntaxNode;
@@ -1107,11 +1107,11 @@ begin
     mChild := ANode[mIndex];
     if mChild.Kind = TSyntaxKind.Parameters then
     begin
-      Result := Result + FScope.Text(mChild);
+      Result := Result + AScope.Text(mChild);
     end
     else if mChild.Kind = TSyntaxKind.TypeReference then
     begin
-      Result := Result + ': ' + FScope.Text(mChild);
+      Result := Result + ': ' + AScope.Text(mChild);
     end
     else
     begin
@@ -1127,7 +1127,7 @@ var
   mShape: TProcShape;
   mMatch: TProcMatch;
 begin
-  mHeader := AnonymousHeader(ASource);
+  mHeader := AnonymousHeader(FScope, ASource);
   if not ATarget.Reference or not TProcShapes.ParseShape(mHeader, False, mShape) then
   begin
     Exit;
@@ -1156,7 +1156,8 @@ var
     if ATarget.Reference and (mVerdict.First in [TProcMatch.Parameters, TProcMatch.ParameterType]) then
     begin
       FReport.Add(TTextRange.Create(ASource.StartPos, ASource.EndPos),
-        cTexts[TTypeMismatchText.ReferenceParams].Fmt([ATargetName, NodeText(ASource)]), TRuleConfidence.High);
+        cTexts[TTypeMismatchText.ReferenceParams].Fmt([ATargetName, ShortText(FScope, ASource)]),
+        TRuleConfidence.High);
       Exit;
     end;
     case mVerdict.First of
@@ -1164,16 +1165,16 @@ var
         if ATarget.OfObject then
         begin
           FReport.Add(TTextRange.Create(ASource.StartPos, ASource.EndPos), cTexts[TTypeMismatchText.MethodVsProc].Fmt(
-            [NodeText(ASource)]), TRuleConfidence.High);
+            [ShortText(FScope, ASource)]), TRuleConfidence.High);
         end
         else
         begin
           FReport.Add(TTextRange.Create(ASource.StartPos, ASource.EndPos), cTexts[TTypeMismatchText.ProcVsMethod].Fmt(
-            [NodeText(ASource)]), TRuleConfidence.High);
+            [ShortText(FScope, ASource)]), TRuleConfidence.High);
         end;
       TProcMatch.Parameters, TProcMatch.ParameterType:
         FReport.Add(TTextRange.Create(ASource.StartPos, ASource.EndPos),
-          cTexts[TTypeMismatchText.ParamList].Fmt([NodeText(ASource)]),
+          cTexts[TTypeMismatchText.ParamList].Fmt([ShortText(FScope, ASource)]),
           TRuleConfidence.High);
     else
       // Yes und Unsure sind oben ausgeschieden.
@@ -1245,7 +1246,7 @@ begin
       TExpressionCategory.Currency_, TExpressionCategory.String_]) then
     begin
       FReport.Add(TTextRange.Create(ANode[2].StartPos, ANode[2].EndPos), cTexts[TTypeMismatchText.IncStep].Fmt([AName,
-        NodeText(ANode[2]), mValue.Name]),
+        ShortText(FScope, ANode[2]), mValue.Name]),
         TRuleConfidence.High);
     end;
   end
@@ -1255,7 +1256,7 @@ begin
     if (mValue.Kind = TValueKind.Builtin) and (mValue.Category = TExpressionCategory.String_) then
     begin
       FReport.Add(TTextRange.Create(ANode[1].StartPos, ANode[1].EndPos),
-        cTexts[TTypeMismatchText.PtrArg].Fmt([NodeText(ANode[1]), mValue.Name]), TRuleConfidence.High);
+        cTexts[TTypeMismatchText.PtrArg].Fmt([ShortText(FScope, ANode[1]), mValue.Name]), TRuleConfidence.High);
     end;
   end;
 end;

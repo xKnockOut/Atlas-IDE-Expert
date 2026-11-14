@@ -18,12 +18,18 @@ type
   public const
     /// <summary>Höchstens so viele alte Zeilen im Fenster.</summary>
     cMaxOldLines = 15;
+    /// <summary>Deckkraft der Zeilenhistorie über dem Hintergrund.</summary>
+    cBlameStrength = 0.55;
   public
     /// <summary>Balken ABar in der Farbe AColor.</summary>
     class procedure FillBar(ADC: HDC; const ABar: TRect; AColor: TAtlasColor); static;
     /// <summary>Dreieck nach rechts an ALeft: über der Zeile ARect, mit AAtEnd (Dateiende) unter ihr.</summary>
     class procedure PaintDeleted(ADC: HDC; ALeft, ASize: Integer; const ARect: TRect; AAtEnd: Boolean;
       AColor: TAtlasColor); static;
+    /// <summary>Zeilenhistorie ACaption ab AX, senkrecht in ARect mittig, mit der Schrift AFont in gedämpfter
+    /// Farbe über dem Hintergrund ABack; liefert das beschriebene Rechteck.</summary>
+    class function PaintCaption(ADC: HDC; const ARect: TRect; AX: Integer; const ACaption: string; AFont: HFONT;
+      ABack: TAtlasColor): TRect; static;
     /// <summary>Editorspalte (1-basiert) hinter dem letzten Zeichen von ALine; Tabs aufgelöst.</summary>
     class function EndColumn(const ALine: string; ATabWidth: Integer): Integer; static;
     /// <summary>Alter Stand einer Änderung, höchstens cMaxOldLines Zeilen; leere Zeilen bleiben sichtbar.</summary>
@@ -43,6 +49,7 @@ uses
   ToolsAPI,
   ToolsAPI.Editor,
   Atlas.Core.Editor.Pairs,
+  Atlas.Core.Style.Palette,
   Atlas.UI.Strings,
   Atlas.UI.VersionControl.Strings,
   Atlas.IDE.Foundation.EditorRefresh,
@@ -119,6 +126,28 @@ begin
     DeleteObject(mPen);
     DeleteObject(mBrush);
   end;
+end;
+
+class function TAtlasLineChangesPaint.PaintCaption(ADC: HDC; const ARect: TRect; AX: Integer;
+  const ACaption: string; AFont: HFONT; ABack: TAtlasColor): TRect;
+var
+  mFront: TAtlasColor;
+  mSize: TSize;
+  mTop, mSaved: Integer;
+begin
+  mFront := TAtlasColorMath.Mix(TAtlasColors.ForBackground(ABack).Muted, ABack, cBlameStrength);
+  mSaved := SaveDC(ADC);
+  try
+    SelectObject(ADC, AFont);
+    SetTextColor(ADC, COLORREF(ColorToRGB(TColor(mFront))));
+    SetBkMode(ADC, TRANSPARENT);
+    GetTextExtentPoint32W(ADC, PChar(ACaption), Length(ACaption), mSize);
+    mTop := ARect.Top + Max(0, (ARect.Bottom - ARect.Top - mSize.cy) div 2);
+    TextOutW(ADC, AX, mTop, PChar(ACaption), Length(ACaption));
+  finally
+    RestoreDC(ADC, mSaved);
+  end;
+  Result := TRect.Create(AX, mTop, AX + mSize.cx, mTop + mSize.cy);
 end;
 
 class function TAtlasLineChangesPaint.EndColumn(const ALine: string; ATabWidth: Integer): Integer;

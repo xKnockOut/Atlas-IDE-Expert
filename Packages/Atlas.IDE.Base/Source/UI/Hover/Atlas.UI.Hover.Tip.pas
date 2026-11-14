@@ -106,12 +106,9 @@ type
     function LayoutKey(AWidth: Integer): string;
     /// <summary>Setzt FLayout für die Fensterbreite AWidth mit der jetzigen Doku-Höhe.</summary>
     procedure BuildLayout(AWidth: Integer);
-    procedure PaintLine(const AItem: TAtlasHoverItem; AHot: Boolean; AColor: TAtlasColor);
     procedure PaintText(const AItem: TAtlasHoverItem; const AFace: TAtlasHoverFace; AColor: TAtlasColor);
     procedure PaintCenterText(const AItem: TAtlasHoverItem; const AFace: TAtlasHoverFace; AColor: TAtlasColor);
-    procedure PaintBlock(const AItem: TAtlasHoverItem; AColor: TAtlasColor);
     procedure PaintItem(const AItem: TAtlasHoverItem);
-    procedure ClipScroll(const AScroll: TAtlasHoverScroll; AIndex: Integer);
     function PreferredWidth: Integer;
   protected
     FView: TAtlasHoverView;
@@ -737,20 +734,46 @@ begin
   FLayoutKey := LayoutKey(AWidth);
 end;
 
-procedure TAtlasHoverTipView.PaintLine(const AItem: TAtlasHoverItem; AHot: Boolean; AColor: TAtlasColor);
+/// <summary>Trennlinie AItem, hervorgehoben dicker.</summary>
+procedure PaintHoverLine(ACanvas: TCanvas; const AItem: TAtlasHoverItem; AHot: Boolean; AColor: TAtlasColor);
 begin
-  Canvas.Pen.Color := ToColor(AColor);
+  ACanvas.Pen.Color := ToColor(AColor);
   if AHot then
   begin
-    Canvas.Pen.Width := AItem.HotPenWidth;
+    ACanvas.Pen.Width := AItem.HotPenWidth;
   end
   else
   begin
-    Canvas.Pen.Width := AItem.PenWidth;
+    ACanvas.Pen.Width := AItem.PenWidth;
   end;
-  Canvas.MoveTo(AItem.Rect.Left, AItem.Rect.Top);
-  Canvas.LineTo(AItem.Rect.Right, AItem.Rect.Top);
-  Canvas.Pen.Width := 1;
+  ACanvas.MoveTo(AItem.Rect.Left, AItem.Rect.Top);
+  ACanvas.LineTo(AItem.Rect.Right, AItem.Rect.Top);
+  ACanvas.Pen.Width := 1;
+end;
+
+/// <summary>Umbrochener Textblock AItem in der Schrift AUIFont.</summary>
+procedure PaintHoverBlock(ACanvas: TCanvas; AUIFont: TFont; const AItem: TAtlasHoverItem; AColor: TAtlasColor);
+var
+  mArea: TRect;
+begin
+  ACanvas.Font := AUIFont;
+  ACanvas.Font.Color := ToColor(AColor);
+  ACanvas.Brush.Style := bsClear;
+  mArea := AItem.Rect;
+  DrawText(ACanvas.Handle, PChar(AItem.Text), -1, mArea, DT_WORDBREAK or DT_NOPREFIX or DT_END_ELLIPSIS);
+end;
+
+/// <summary>Beim Baustein AIndex die Clip-Region für den Rollbereich AScroll setzen bzw. aufheben.</summary>
+procedure ClipScroll(ACanvas: TCanvas; const AScroll: TAtlasHoverScroll; AIndex: Integer);
+begin
+  if AIndex = AScroll.ClipFrom then
+  begin
+    IntersectClipRect(ACanvas.Handle, AScroll.View.Left, AScroll.View.Top, AScroll.View.Right, AScroll.View.Bottom);
+  end
+  else if (AIndex = AScroll.ClipTill) and (AScroll.ClipFrom >= 0) then
+  begin
+    SelectClipRgn(ACanvas.Handle, 0);
+  end;
 end;
 
 procedure TAtlasHoverTipView.PaintText(const AItem: TAtlasHoverItem; const AFace: TAtlasHoverFace;
@@ -772,17 +795,6 @@ begin
   Canvas.Brush.Style := bsClear;
   mArea := AItem.Rect;
   DrawText(Canvas.Handle, PChar(AItem.Text), -1, mArea, DT_CENTER or DT_VCENTER or DT_SINGLELINE or DT_NOPREFIX);
-end;
-
-procedure TAtlasHoverTipView.PaintBlock(const AItem: TAtlasHoverItem; AColor: TAtlasColor);
-var
-  mArea: TRect;
-begin
-  Canvas.Font := UIFont;
-  Canvas.Font.Color := ToColor(AColor);
-  Canvas.Brush.Style := bsClear;
-  mArea := AItem.Rect;
-  DrawText(Canvas.Handle, PChar(AItem.Text), -1, mArea, DT_WORDBREAK or DT_NOPREFIX or DT_END_ELLIPSIS);
 end;
 
 procedure TAtlasHoverTipView.PaintItem(const AItem: TAtlasHoverItem);
@@ -808,7 +820,7 @@ begin
         Canvas.FillRect(AItem.Rect);
       end;
     TAtlasHoverItemKind.Line:
-      PaintLine(AItem, mHot, mColor);
+      PaintHoverLine(Canvas, AItem, mHot, mColor);
     TAtlasHoverItemKind.Text:
       PaintText(AItem, mFace, mColor);
     TAtlasHoverItemKind.CenterText:
@@ -818,7 +830,7 @@ begin
     TAtlasHoverItemKind.RoundFill:
       FillRounded(AItem.Rect, mColor, AItem.Radius);
     TAtlasHoverItemKind.Block:
-      PaintBlock(AItem, mColor);
+      PaintHoverBlock(Canvas, UIFont, AItem, mColor);
     TAtlasHoverItemKind.Styled:
       begin
         Canvas.Font := Font;
@@ -1244,19 +1256,6 @@ begin
   end;
 end;
 
-/// <summary>Beim Baustein AIndex die Clip-Region für den Rollbereich AScroll setzen bzw. aufheben.</summary>
-procedure TAtlasHoverTipView.ClipScroll(const AScroll: TAtlasHoverScroll; AIndex: Integer);
-begin
-  if AIndex = AScroll.ClipFrom then
-  begin
-    IntersectClipRect(Canvas.Handle, AScroll.View.Left, AScroll.View.Top, AScroll.View.Right, AScroll.View.Bottom);
-  end
-  else if (AIndex = AScroll.ClipTill) and (AScroll.ClipFrom >= 0) then
-  begin
-    SelectClipRgn(Canvas.Handle, 0);
-  end;
-end;
-
 procedure TAtlasHoverTipView.Paint;
 var
   mIndex: Integer;
@@ -1275,8 +1274,8 @@ begin
   begin
     // Rollbereiche der Mitglieder (#1841) und des Debug-Werts (#895) über die Clip-Region beschneiden.
     // Erst den oberen Bereich (Debug-Wert) beenden, dann den der Mitglieder beginnen.
-    ClipScroll(FLayout.DebugRows, mIndex);
-    ClipScroll(FLayout.Members, mIndex);
+    ClipScroll(Canvas, FLayout.DebugRows, mIndex);
+    ClipScroll(Canvas, FLayout.Members, mIndex);
     PaintItem(FLayout.Items[mIndex]);
   end;
   SelectClipRgn(Canvas.Handle, 0);

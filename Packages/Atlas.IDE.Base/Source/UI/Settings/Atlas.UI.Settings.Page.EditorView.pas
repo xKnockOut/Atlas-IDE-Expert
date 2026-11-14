@@ -35,6 +35,7 @@ type
     FSelectionMatchesMaxMatches: TEdit;
     procedure EditorToolbarCustomizeClick(Sender: TObject);
     procedure BuildBreadcrumbs;
+    procedure BuildEditorToolbar;
   public
     procedure Build;
     procedure Build2;
@@ -128,8 +129,6 @@ begin
 end;
 
 procedure TAtlasSettingsEditorViewPart.Build;
-var
-  mPanel: TWinControl;
 begin
   AddSheet(TAtlasTextId.SettingsTabEditor);
   BindCheck('HoverTooltip', AddCheck(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsHover)));
@@ -184,20 +183,32 @@ begin
   BindCheck('DimUnusedUses', AddCheck(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsDimUnusedUses)));
   BuildBreadcrumbs;
   BindCheck('MouseNavButtons', AddCheck(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsMouseNavButtons)));
-  // Atlas-Editorleiste (#1101).
+  BuildEditorToolbar;
+end;
+
+/// <summary>Atlas-Editorleiste (#1101): Position, Einträge mit Anpassen-Knopf, Beschriftungen.</summary>
+procedure TAtlasSettingsEditorViewPart.BuildEditorToolbar;
+const
+  // Zeile mit dem Knopf „Anpassen …“ in Pixeln bei 96 dpi: Höhe, Abstand oben, Breite des Knopfs.
+  cCustomizeRowHeight = 32;
+  cCustomizeTop = 3;
+  cCustomizeWidth = 180;
+var
+  mPanel: TWinControl;
+begin
   BindCheck('EditorToolbar', AddCheck(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsEditorToolbar)));
   FEditorToolbarPosition := AddChoice(TAtlasStrings.Text(TAtlasTextId.EditorToolbarPosition),
     [TAtlasStrings.Text(TAtlasTextId.EditorToolbarPositionBelow),
     TAtlasStrings.Text(TAtlasTextId.EditorToolbarPositionAbove),
     TAtlasStrings.Text(TAtlasTextId.EditorToolbarPositionInline)]);
   FEditorToolbarItems := AddTextLine(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsEditorToolbarItems));
-  mPanel := AddPanel(32);
+  mPanel := AddPanel(cCustomizeRowHeight);
   FEditorToolbarCustomize := TButton.Create(FPage);
   FEditorToolbarCustomize.Parent := mPanel;
   FEditorToolbarCustomize.Caption := TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsEditorToolbarCustomize);
   FEditorToolbarCustomize.Left := 0;
-  FEditorToolbarCustomize.Top := FEditorToolbarCustomize.ScaleValue(3);
-  FEditorToolbarCustomize.Width := FEditorToolbarCustomize.ScaleValue(180);
+  FEditorToolbarCustomize.Top := FEditorToolbarCustomize.ScaleValue(cCustomizeTop);
+  FEditorToolbarCustomize.Width := FEditorToolbarCustomize.ScaleValue(cCustomizeWidth);
   FEditorToolbarCustomize.OnClick := EditorToolbarCustomizeClick;
   Attach(mPanel, FEditorToolbarItems);
   BindCheck('EditorToolbarReturnButton',

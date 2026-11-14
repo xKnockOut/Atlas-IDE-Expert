@@ -325,9 +325,12 @@ begin
   if (mBefore >= 2) and ATokens[mBefore - 1].IsSymbol(':') and
     (ATokens[mBefore - 2].Kind = TPascalTokenKind.Identifier) then
   begin
-    Exit(AssignedName(ATokens, ATokens[mBefore - 2].Text, mBefore - 2, mAssign));
+    Result := AssignedName(ATokens, ATokens[mBefore - 2].Text, mBefore - 2, mAssign);
+  end
+  else
+  begin
+    Result := AssignedName(ATokens, ATokens[mBefore].Text, mBefore, mAssign);
   end;
-  Result := AssignedName(ATokens, ATokens[mBefore].Text, mBefore, mAssign);
 end;
 
 /// <summary>Fund am Literal bei AIndex; AResource: im resourcestring-Abschnitt (nur Schlüsselformate).</summary>
