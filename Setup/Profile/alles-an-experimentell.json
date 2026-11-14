@@ -38,6 +38,7 @@
     "tests.run": true,
     "tests.afterBuild": true,
     "tests.debug": true,
+    "tests.mutation": true,
     "build.releaseGuard": true,
     "welcomePage.enabled": true,
     "welcomePage.projectSetup": true,
