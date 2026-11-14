@@ -498,29 +498,28 @@ end;
 /// <summary>Zeilen je Name (klein geschrieben), in denen der implementation-Teil von AUnit ihn deklariert. Alle
 /// zählen: Welche ein Rumpf meint, entscheidet erst der Compiler (gleichnamige Aufzählungswerte, forward).
 /// </summary>
-function LocalDeclarationLines(const AUnit: TUnitIndex): TDictionary<string, TArray<Integer>>;
+function LocalDeclarationLines(const AUnit: TUnitIndex): TObjectDictionary<string, TList<Integer>>;
 var
   mSymbol: TIndexSymbol;
-  mLines: TArray<Integer>;
+  mLines: TList<Integer>;
 begin
-  Result := TDictionary<string, TArray<Integer>>.Create;
+  Result := TObjectDictionary<string, TList<Integer>>.Create([doOwnsValues]);
   for mSymbol in AUnit.Symbols do
   begin
     if IsLocalDeclaration(mSymbol) then
     begin
       if not Result.TryGetValue(LowerCase(mSymbol.Name), mLines) then
       begin
-        mLines := nil;
+        mLines := TList<Integer>.Create;
+        Result.Add(LowerCase(mSymbol.Name), mLines);
       end;
-      SetLength(mLines, Length(mLines) + 1);
-      mLines[High(mLines)] := mSymbol.SelectionRange.StartPos.Line;
-      Result.AddOrSetValue(LowerCase(mSymbol.Name), mLines);
+      mLines.Add(mSymbol.SelectionRange.StartPos.Line);
     end;
   end;
 end;
 
 /// <summary>Letzte Zeile aus ALines vor ABefore; sonst ACurrent.</summary>
-function LatestBefore(const ALines: TArray<Integer>; ABefore, ACurrent: Integer): Integer;
+function LatestBefore(ALines: TList<Integer>; ABefore, ACurrent: Integer): Integer;
 var
   mLine: Integer;
 begin
@@ -558,8 +557,8 @@ end;
 /// </summary>
 procedure MarkNeeds(ATree: TSyntaxTree; const AUnit: TUnitIndex; var ABlocks: TBlocks; ALineCount: Integer);
 var
-  mDeclared: TDictionary<string, TArray<Integer>>;
-  mLines: TArray<Integer>;
+  mDeclared: TObjectDictionary<string, TList<Integer>>;
+  mLines: TList<Integer>;
   mBlockAt: TArray<Integer>;
   mToken: TPascalToken;
   mIndex: Integer;
