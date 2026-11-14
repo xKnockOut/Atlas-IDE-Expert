@@ -622,6 +622,15 @@ begin
     Exit;
   end;
   mEntry := FStack.Entries[mRow.First];
+  // Herkunft einer eingereihten Methode (#859): kursiv, die Überschrift fett.
+  if mEntry.Caption <> '' then
+  begin
+    ACanvas.Font.Style := [fsBold, fsItalic];
+  end
+  else if mEntry.Origin then
+  begin
+    ACanvas.Font.Style := [fsItalic];
+  end;
   if FBar.Comparing and (mEntry.Changed or mEntry.ParamsChanged) and not (cdsSelected in AState) then
   begin
     ACanvas.Font.Color := cChangedColor;

@@ -2,7 +2,7 @@
 
 // Tests zum Inhalt des Fensters „Aufrufstapel“ (#843): Gruppen der Bibliotheksrahmen, Suche auch in zugeklappten
 // Gruppen, Kopieren als Text und Markdown, Vergleich mit dem letzten Halt und die Grenze der gemerkten Stellen,
-// ohne IDE.
+// Herkunft eingereihter Methoden (#859), ohne IDE.
 
 interface
 
@@ -39,6 +39,12 @@ type
     procedure HistoryKeepsTwentyPlaces;
     [Test]
     procedure UnitNameAndArea;
+    [Test]
+    procedure OriginFollowsAnonymousFrame;
+    [Test]
+    procedure CompareIgnoresOrigin;
+    [Test]
+    procedure HistoryForgetsOrigin;
   end;
 
 implementation
@@ -225,6 +231,79 @@ begin
   Assert.AreEqual('RTL', TAtlasDebugStackView.AreaOf('System.SysUtils'));
   Assert.AreEqual('Windows', TAtlasDebugStackView.AreaOf('Winapi.Messages'));
   Assert.AreEqual('JclDebug', TAtlasDebugStackView.AreaOf('JclDebug'));
+end;
+
+function QueuedStack: TAtlasDebugStackView;
+begin
+  Result := TAtlasDebugStackView.FromFrames([
+    Frame('Main.TForm1.Laden$ActRec.$0$Body', 'C:\P\Main.pas', 31, True),
+    Frame('System.Classes.CheckSynchronize', 'System.Classes.pas', 15000, False),
+    Frame('Vcl.Forms.TApplication.Run', 'Vcl.Forms.pas', 11000, False),
+    Frame('Projekt.Projekt', 'C:\P\Projekt.dpr', 19, True)]);
+end;
+
+function EnqueueFrames: TAtlasDebugFrames;
+begin
+  Result := [Frame('Main.TLader.Execute', 'C:\P\Main.pas', 28, True),
+    Frame('System.Classes.ThreadProc(($2A3F2C0))', 'System.Classes.pas', 15600, False),
+    Frame(':7714C3E2 KERNEL32.BaseThreadInitThunk', '', 0, False)];
+end;
+
+procedure TAtlasDebugStackViewTests.OriginFollowsAnonymousFrame;
+var
+  mStack: TAtlasDebugStackView;
+  mRows: TAtlasDebugStackRows;
+begin
+  mStack := QueuedStack;
+  mStack.InsertOrigin(0, 'Eingereiht mit TThread.Queue von Thread 4120', EnqueueFrames);
+  // Überschrift und der eigene Rahmen der Einreihung; ThreadProc und Kernel darunter fallen weg.
+  Assert.AreEqual(6, mStack.Count);
+  Assert.AreEqual('Eingereiht mit TThread.Queue von Thread 4120', mStack.Entries[1].Text);
+  Assert.AreEqual('', mStack.Entries[1].UnitName);
+  Assert.AreEqual('', mStack.Entries[1].Location);
+  Assert.AreEqual('Main.pas:28', mStack.Entries[2].Location);
+  Assert.IsTrue(mStack.Entries[2].Origin);
+  Assert.IsFalse(mStack.Entries[3].Origin);
+  // Die Herkunft wird weder benannt noch ausgewertet; die Bibliothek danach bleibt eine eigene Gruppe.
+  mRows := mStack.Rows(nil);
+  Assert.AreEqual(0, Integer(Length(mStack.Unnamed(mRows))));
+  Assert.AreEqual(5, Integer(Length(mRows)));
+  Assert.AreEqual(Ord(TAtlasDebugStackRowKind.LibraryGroup), Ord(mRows[3].Kind));
+  Assert.AreEqual(3, mRows[3].First);
+  // Außerhalb des Stapels nichts.
+  mStack.InsertOrigin(9, 'X', EnqueueFrames);
+  Assert.AreEqual(6, mStack.Count);
+end;
+
+procedure TAtlasDebugStackViewTests.CompareIgnoresOrigin;
+var
+  mStack: TAtlasDebugStackView;
+begin
+  mStack := QueuedStack;
+  mStack.InsertOrigin(0, 'Eingereiht', EnqueueFrames);
+  mStack.CompareWith(QueuedStack);
+  Assert.IsFalse(mStack.Entries[0].Changed);
+  Assert.IsFalse(mStack.Entries[1].Changed);
+  Assert.IsFalse(mStack.Entries[2].Changed);
+  Assert.IsFalse(mStack.Entries[5].Changed);
+end;
+
+procedure TAtlasDebugStackViewTests.HistoryForgetsOrigin;
+var
+  mHistory: TAtlasDebugStackHistory;
+  mStack, mPrevious: TAtlasDebugStackView;
+begin
+  mStack := QueuedStack;
+  mStack.InsertOrigin(0, 'Eingereiht', EnqueueFrames);
+  mHistory := TAtlasDebugStackHistory.Create;
+  try
+    mHistory.Remember(mStack);
+    Assert.IsTrue(mHistory.Previous(mStack.Key, mPrevious));
+    Assert.AreEqual(4, mPrevious.Count);
+    Assert.AreEqual(4, mStack.WithoutOrigin.Count);
+  finally
+    mHistory.Free;
+  end;
 end;
 
 end.
