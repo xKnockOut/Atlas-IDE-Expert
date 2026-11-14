@@ -124,7 +124,7 @@ var
 begin
   mResult := TCrashReplayTest.Replay(cHoverRequest, TArray<TCrashReplayFile>.Create(
     TCrashReplayFile.Create('Demo.pas', cDemoUnit)));
-  Assert.IsTrue(mResult.Outcome = TReplayOutcome.NotReproduced, mResult.Text);
+  Assert.AreEqual<TReplayOutcome>(TReplayOutcome.NotReproduced, mResult.Outcome, mResult.Text);
   Assert.AreEqual(TShellReplay.cExitNotReproduced, TShellReplay.ExitCodeOf(mResult));
   // Sauber beendet: Liefen beim Ende noch Anfragen, gibt die Komposition ihre Objekte absichtlich nicht frei.
   Assert.IsFalse(string.Join(#10, TCrashReplayTest.LastLog).Contains('liefen noch Anfragen'),

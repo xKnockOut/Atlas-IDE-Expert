@@ -61,11 +61,11 @@ begin
   mFinding := Default(TMonitorFinding);
   mQueue.Runs[0].Findings := TArray<TMonitorFinding>.Create(mFinding, mFinding);
   mQueue.Finish(0, 0);
-  Assert.IsTrue(mQueue.Runs[0].State = TMonitorRunState.Done);
+  Assert.AreEqual<TMonitorRunState>(TMonitorRunState.Done, mQueue.Runs[0].State);
   Assert.AreEqual(1, mQueue.NextIndex);
   Assert.AreEqual('1 von 2 Zielen fertig, 2 Befunde', mQueue.Summary);
   mQueue.Finish(1, 3);
-  Assert.IsTrue(mQueue.Runs[1].State = TMonitorRunState.Failed);
+  Assert.AreEqual<TMonitorRunState>(TMonitorRunState.Failed, mQueue.Runs[1].State);
   Assert.IsFalse(mQueue.Busy);
   Assert.AreEqual(2, Integer(Length(mQueue.AllFindings)));
   mQueue.Finish(7, 0);
@@ -91,9 +91,9 @@ begin
   mQueue.Finish(0, 0);
   mQueue.Runs[1].State := TMonitorRunState.Running;
   mQueue.CancelAll;
-  Assert.IsTrue(mQueue.Runs[0].State = TMonitorRunState.Done);
-  Assert.IsTrue(mQueue.Runs[1].State = TMonitorRunState.Cancelled);
-  Assert.IsTrue(mQueue.Runs[2].State = TMonitorRunState.Cancelled);
+  Assert.AreEqual<TMonitorRunState>(TMonitorRunState.Done, mQueue.Runs[0].State);
+  Assert.AreEqual<TMonitorRunState>(TMonitorRunState.Cancelled, mQueue.Runs[1].State);
+  Assert.AreEqual<TMonitorRunState>(TMonitorRunState.Cancelled, mQueue.Runs[2].State);
   Assert.AreEqual(-1, mQueue.NextIndex);
   mQueue := Default(TMonitorRunQueue);
 end;

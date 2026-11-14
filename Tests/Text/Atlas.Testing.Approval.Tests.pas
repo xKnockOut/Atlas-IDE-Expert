@@ -86,21 +86,21 @@ begin
   mReceived := TApproval.FileOf(FFolder, 'TReport.Writes', TApproval.cReceived, 'json');
   Assert.AreEqual(TPath.Combine(FFolder, 'TReport.Writes.approved.json'), mApproved);
   // Neu: received schreiben, Meldung nennt beide Dateien.
-  Assert.IsTrue(TApproval.Compare('{"a": 1}'#13#10, FFolder, 'TReport.Writes', '.json', mMessage) =
-    TApprovalOutcome.New);
+  Assert.AreEqual<TApprovalOutcome>(TApprovalOutcome.New,
+    TApproval.Compare('{"a": 1}'#13#10, FFolder, 'TReport.Writes', '.json', mMessage));
   Assert.IsTrue(FileExists(mReceived));
   Assert.AreEqual('Approval: neu, bitte prüfen: "' + mReceived + '" (erwartet: "' + mApproved + '")', mMessage);
   // Übernehmen wie im Plugin: received wird approved; dann grün und ohne received.
   TFile.Move(mReceived, mApproved);
   WriteFile(mReceived, 'alt');
-  Assert.IsTrue(TApproval.Compare('{"a": 1}'#10, FFolder, 'TReport.Writes', '.json', mMessage) =
-    TApprovalOutcome.Same);
+  Assert.AreEqual<TApprovalOutcome>(TApprovalOutcome.Same,
+    TApproval.Compare('{"a": 1}'#10, FFolder, 'TReport.Writes', '.json', mMessage));
   Assert.AreEqual('', mMessage);
   Assert.IsFalse(FileExists(mReceived), 'überholte received-Datei gelöscht');
   // Abweichung in Zeile 2.
   TApproval.English := True;
-  Assert.IsTrue(TApproval.Compare('{"a": 1}'#10'{"b": 2}', FFolder, 'TReport.Writes', '.json', mMessage) =
-    TApprovalOutcome.Different);
+  Assert.AreEqual<TApprovalOutcome>(TApprovalOutcome.Different,
+    TApproval.Compare('{"a": 1}'#10'{"b": 2}', FFolder, 'TReport.Writes', '.json', mMessage));
   Assert.AreEqual('Approval: difference from line 2, see "' + mReceived + '" (expected: "' + mApproved + '")',
     mMessage);
   Assert.AreEqual('{"a": 1}'#10'{"b": 2}', TApproval.Normalized(TFile.ReadAllText(mReceived, TEncoding.UTF8)));

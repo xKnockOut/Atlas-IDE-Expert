@@ -284,7 +284,7 @@ end;
 procedure TShellLinterTests.MetricsAsMarkdownAndJson;
 begin
   Assert.AreEqual(0, Run(['--check', TPath.Combine(FFolder, 'Src'), '--metrics']));
-  Assert.IsTrue(Trim(OutputText) <> '');
+  Assert.AreNotEqual('', Trim(OutputText));
   Assert.AreEqual(0, Run(['--check', TPath.Combine(FFolder, 'Src'), '--metrics', '--format', 'json']));
   Assert.Contains(OutputText, 'Gut.pas');
 end;
@@ -462,7 +462,7 @@ end;
 procedure TShellLinterTests.SuppressionStatsGiveZero;
 begin
   Assert.AreEqual(0, Run(['--check', Path('Src/Kaputt.pas'), '--suppression-stats', '--format', 'json']));
-  Assert.IsTrue(Trim(OutputText) <> '');
+  Assert.AreNotEqual('', Trim(OutputText));
 end;
 
 procedure TShellLinterTests.UpdatedBaselineHidesFindings;
@@ -610,18 +610,18 @@ begin
   Assert.Contains(OutputText, 'MitBom.pas: formatiert');
   mBytes := TFile.ReadAllBytes(Path('Src/MitBom.pas'));
   mText := TFileEncoding.Decode(mBytes, mFormat);
-  Assert.IsTrue(mFormat.Encoding = TFileEncodingKind.Utf8Bom);
-  Assert.IsTrue(mFormat.LineBreak = TLineBreakStyle.CRLF);
+  Assert.AreEqual<TFileEncodingKind>(TFileEncodingKind.Utf8Bom, mFormat.Encoding);
+  Assert.AreEqual<TLineBreakStyle>(TLineBreakStyle.CRLF, mFormat.LineBreak);
   Assert.Contains(mText, #13#10'  P; // Größe'#13#10);
   mText := TFileEncoding.Decode(TFile.ReadAllBytes(Path('Src/OhneBom.pas')), mFormat);
-  Assert.IsTrue(mFormat.Encoding = TFileEncodingKind.Utf8);
+  Assert.AreEqual<TFileEncodingKind>(TFileEncodingKind.Utf8, mFormat.Encoding);
   Assert.IsFalse(mText.Contains(#13));
   Assert.Contains(mText, #10'  P; // Größe'#10);
   mBytes := TFile.ReadAllBytes(Path('Src/Ansi.pas'));
   // Eine Spalte weniger Einrückung, sonst Byte für Byte gleich: das ö bleibt ein Byte.
   Assert.AreEqual(Integer(Length(mAnsi)) - 1, Integer(Length(mBytes)));
   mText := TFileEncoding.Decode(mBytes, mFormat);
-  Assert.IsTrue(mFormat.Encoding = TFileEncodingKind.Ansi1252);
+  Assert.AreEqual<TFileEncodingKind>(TFileEncodingKind.Ansi1252, mFormat.Encoding);
   Assert.Contains(mText, 'Größe');
   // Stabil: danach weicht nichts mehr ab, und keine Nachbardatei bleibt liegen.
   Assert.AreEqual(0, Run(['--check', Path('Src'), '--format-check']));

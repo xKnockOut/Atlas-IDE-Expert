@@ -116,8 +116,8 @@ begin
   Settings := TConfigurationParser.ParseLayered(
     '{"rules": {"with-statement": "error", "unused-variable": "hint"}}',
     '{"rules": {"with-statement": "off"}}', Issues);
-  Assert.IsTrue(Settings.RuleSeverity('with-statement', TRuleSeverity.Warning) = TRuleSeverity.Off);
-  Assert.IsTrue(Settings.RuleSeverity('unused-variable', TRuleSeverity.Warning) = TRuleSeverity.Hint);
+  Assert.AreEqual<TRuleSeverity>(TRuleSeverity.Off, Settings.RuleSeverity('with-statement', TRuleSeverity.Warning));
+  Assert.AreEqual<TRuleSeverity>(TRuleSeverity.Hint, Settings.RuleSeverity('unused-variable', TRuleSeverity.Warning));
 end;
 procedure TConfigurationFeatureTests.ExcludeTestsGlobalOrProject;
 var
@@ -167,35 +167,35 @@ var
 begin
   Settings := Parse('{}', Issues);
   Assert.AreEqual(2, Settings.Formatting.IndentSize);
-  Assert.IsTrue(Settings.Formatting.Given = []);
+  Assert.AreEqual<TFormatKeys>([], Settings.Formatting.Given);
   Settings := Parse('{"format": {"useTabs": true, "keywordCase": "lower", "endOfLine": "crlf", ' +
     '"spaceAfterComma": false}}', Issues);
   Assert.AreEqual(0, Integer(Length(Issues)));
   Assert.IsTrue(Settings.Formatting.UseTabs);
-  Assert.IsTrue(Settings.Formatting.KeywordCase = TKeywordCase.Lower);
+  Assert.AreEqual<TKeywordCase>(TKeywordCase.Lower, Settings.Formatting.KeywordCase);
   Assert.AreEqual(#13#10, Settings.Formatting.EndOfLine);
   Assert.IsFalse(Settings.Formatting.SpaceAfterComma);
-  Assert.IsTrue(Settings.Formatting.Given = [TFormatKey.UseTabs, TFormatKey.KeywordCase, TFormatKey.EndOfLine,
-    TFormatKey.SpaceAfterComma]);
+  Assert.AreEqual<TFormatKeys>([TFormatKey.UseTabs, TFormatKey.KeywordCase, TFormatKey.EndOfLine,
+    TFormatKey.SpaceAfterComma], Settings.Formatting.Given);
   Settings := Parse('{"format": {"indentSize": 0, "keywordCase": "camel", "x": 1}}', Issues);
   Assert.AreEqual(3, Integer(Length(Issues)));
-  Assert.IsTrue(Settings.Formatting.Given = []);
+  Assert.AreEqual<TFormatKeys>([], Settings.Formatting.Given);
   // Blockstruktur, Stellung, Umbruch und Ausrichtung (#43).
   Settings := Parse('{}', Issues);
   Assert.IsTrue(Settings.Formatting.Reindent);
-  Assert.IsTrue(Settings.Formatting.BeginPlacement = TBlockPlacement.Preserve);
+  Assert.AreEqual<TBlockPlacement>(TBlockPlacement.Preserve, Settings.Formatting.BeginPlacement);
   Assert.AreEqual(0, Settings.Formatting.MaxLineLength);
   Settings := Parse('{"format": {"reindent": false, "beginPlacement": "newLine", "elsePlacement": "sameLine", ' +
     '"maxLineLength": 100, "alignAssignments": true, "alignDeclarations": true, "alignComments": true}}', Issues);
   Assert.AreEqual(0, Integer(Length(Issues)));
   Assert.IsFalse(Settings.Formatting.Reindent);
-  Assert.IsTrue(Settings.Formatting.BeginPlacement = TBlockPlacement.NewLine);
-  Assert.IsTrue(Settings.Formatting.ElsePlacement = TBlockPlacement.SameLine);
+  Assert.AreEqual<TBlockPlacement>(TBlockPlacement.NewLine, Settings.Formatting.BeginPlacement);
+  Assert.AreEqual<TBlockPlacement>(TBlockPlacement.SameLine, Settings.Formatting.ElsePlacement);
   Assert.AreEqual(100, Settings.Formatting.MaxLineLength);
   Assert.IsTrue(Settings.Formatting.AlignAssignments);
   Assert.IsTrue(Settings.Formatting.AlignDeclarations);
   Assert.IsTrue(Settings.Formatting.AlignComments);
-  Assert.IsTrue(Settings.Formatting.Given = [TFormatKey.MaxLineLength]);
+  Assert.AreEqual<TFormatKeys>([TFormatKey.MaxLineLength], Settings.Formatting.Given);
   Parse('{"format": {"beginPlacement": "below", "maxLineLength": -1}}', Issues);
   Assert.AreEqual(2, Integer(Length(Issues)));
 end;
@@ -364,10 +364,12 @@ begin
     Issues).SlashSetHelper);
   Assert.AreEqual(0, Integer(Length(Issues)));
   // Vervollständigung (#229)
-  Assert.IsTrue(Parse('{}', Issues).Completion.Matching = TCompletionMatching.Fuzzy);
-  Assert.IsTrue(Parse('{"completion": {"matching": "prefix"}}', Issues).Completion.Matching = TCompletionMatching.Prefix);
+  Assert.AreEqual<TCompletionMatching>(TCompletionMatching.Fuzzy, Parse('{}', Issues).Completion.Matching);
+  Assert.AreEqual<TCompletionMatching>(TCompletionMatching.Prefix,
+    Parse('{"completion": {"matching": "prefix"}}', Issues).Completion.Matching);
   Assert.AreEqual(0, Integer(Length(Issues)));
-  Assert.IsTrue(Parse('{"completion": {"matching": "egal", "x": 1}}', Issues).Completion.Matching = TCompletionMatching.Fuzzy);
+  Assert.AreEqual<TCompletionMatching>(TCompletionMatching.Fuzzy,
+    Parse('{"completion": {"matching": "egal", "x": 1}}', Issues).Completion.Matching);
   Assert.AreEqual(2, Integer(Length(Issues)));
 end;
 /// <summary>Einstellungen ab „Abschnitt für Interface-Methoden (#466)“.</summary>
@@ -376,30 +378,32 @@ var
   Issues: TArray<TConfigurationIssue>;
 begin
   // Abschnitt für Interface-Methoden (#466)
-  Assert.IsTrue(Parse('{}', Issues).Completion.InterfaceSection = TCompletionInterfaceSection.Public);
-  Assert.IsTrue(Parse('{"completion": {"interfaceSection": "protected"}}', Issues).Completion.InterfaceSection =
-    TCompletionInterfaceSection.Protected);
+  Assert.AreEqual<TCompletionInterfaceSection>(TCompletionInterfaceSection.Public,
+    Parse('{}', Issues).Completion.InterfaceSection);
+  Assert.AreEqual<TCompletionInterfaceSection>(TCompletionInterfaceSection.Protected,
+    Parse('{"completion": {"interfaceSection": "protected"}}', Issues).Completion.InterfaceSection);
   Assert.AreEqual(0, Integer(Length(Issues)));
-  Assert.IsTrue(Parse('{"completion": {"interfaceSection": "strict"}}', Issues).Completion.InterfaceSection =
-    TCompletionInterfaceSection.Public);
+  Assert.AreEqual<TCompletionInterfaceSection>(TCompletionInterfaceSection.Public,
+    Parse('{"completion": {"interfaceSection": "strict"}}', Issues).Completion.InterfaceSection);
   Assert.AreEqual(1, Integer(Length(Issues)));
   // Typumwandlung von Sender (#480)
-  Assert.IsTrue(Parse('{}', Issues).Completion.SenderCast = TCompletionSenderCast.AsOperator);
-  Assert.IsTrue(Parse('{"completion": {"senderCast": "cast"}}', Issues).Completion.SenderCast =
-    TCompletionSenderCast.HardCast);
+  Assert.AreEqual<TCompletionSenderCast>(TCompletionSenderCast.AsOperator, Parse('{}', Issues).Completion.SenderCast);
+  Assert.AreEqual<TCompletionSenderCast>(TCompletionSenderCast.HardCast,
+    Parse('{"completion": {"senderCast": "cast"}}', Issues).Completion.SenderCast);
   Assert.AreEqual(0, Integer(Length(Issues)));
-  Assert.IsTrue(Parse('{"completion": {"senderCast": "hart"}}', Issues).Completion.SenderCast =
-    TCompletionSenderCast.AsOperator);
+  Assert.AreEqual<TCompletionSenderCast>(TCompletionSenderCast.AsOperator,
+    Parse('{"completion": {"senderCast": "hart"}}', Issues).Completion.SenderCast);
   Assert.AreEqual(1, Integer(Length(Issues)));
   // Typkonvertierung vorschlagen (#490, experimentell)
-  Assert.IsTrue(Parse('{}', Issues).Completion.TypeConversion = TCompletionTypeConversion.Off);
-  Assert.IsTrue(Parse('{"completion": {"typeConversion": "helper"}}', Issues).Completion.TypeConversion =
-    TCompletionTypeConversion.Helper);
-  Assert.IsTrue(Parse('{"completion": {"typeConversion": "function"}}', Issues).Completion.TypeConversion =
-    TCompletionTypeConversion.Function_);
+  Assert.AreEqual<TCompletionTypeConversion>(TCompletionTypeConversion.Off,
+    Parse('{}', Issues).Completion.TypeConversion);
+  Assert.AreEqual<TCompletionTypeConversion>(TCompletionTypeConversion.Helper,
+    Parse('{"completion": {"typeConversion": "helper"}}', Issues).Completion.TypeConversion);
+  Assert.AreEqual<TCompletionTypeConversion>(TCompletionTypeConversion.Function_,
+    Parse('{"completion": {"typeConversion": "function"}}', Issues).Completion.TypeConversion);
   Assert.AreEqual(0, Integer(Length(Issues)));
-  Assert.IsTrue(Parse('{"completion": {"typeConversion": "immer"}}', Issues).Completion.TypeConversion =
-    TCompletionTypeConversion.Off);
+  Assert.AreEqual<TCompletionTypeConversion>(TCompletionTypeConversion.Off,
+    Parse('{"completion": {"typeConversion": "immer"}}', Issues).Completion.TypeConversion);
   Assert.AreEqual(1, Integer(Length(Issues)));
   // Alle Felder zuweisen (#491, experimentell)
   Assert.IsFalse(Parse('{}', Issues).Completion.AssignAllFields);
@@ -457,11 +461,12 @@ begin
   Assert.AreEqual(1, Integer(Length(Issues)));
   // Gleiche Namen aus verschiedenen Units (#475)
   Assert.IsTrue(Parse('{}', Issues).Completion.SameNameVariants);
-  Assert.IsTrue(Parse('{}', Issues).Completion.SameNameInsert = TCompletionSameNameInsert.Prefix);
+  Assert.AreEqual<TCompletionSameNameInsert>(TCompletionSameNameInsert.Prefix,
+    Parse('{}', Issues).Completion.SameNameInsert);
   Assert.IsFalse(Parse('{}', Issues).Completion.ShowFmxUnits);
   Assert.IsFalse(Parse('{"completion": {"sameNameVariants": false}}', Issues).Completion.SameNameVariants);
-  Assert.IsTrue(Parse('{"completion": {"sameNameInsert": "uses"}}', Issues).Completion.SameNameInsert =
-    TCompletionSameNameInsert.Uses_);
+  Assert.AreEqual<TCompletionSameNameInsert>(TCompletionSameNameInsert.Uses_,
+    Parse('{"completion": {"sameNameInsert": "uses"}}', Issues).Completion.SameNameInsert);
   Assert.IsTrue(Parse('{"completion": {"showFmxUnits": true}}', Issues).Completion.ShowFmxUnits);
   Assert.AreEqual(0, Integer(Length(Issues)));
   Parse('{"completion": {"sameNameInsert": "move"}}', Issues);
@@ -482,10 +487,10 @@ begin
   Assert.AreEqual(0, Integer(Length(Issues)));
   // Freigabe absichern (#489)
   Assert.IsTrue(Parse('{}', Issues).Completion.OfferTryFinally);
-  Assert.IsTrue(Parse('{}', Issues).Completion.FreeStyle = TCompletionFreeStyle.Free);
+  Assert.AreEqual<TCompletionFreeStyle>(TCompletionFreeStyle.Free, Parse('{}', Issues).Completion.FreeStyle);
   Assert.IsFalse(Parse('{"completion": {"offerTryFinally": false}}', Issues).Completion.OfferTryFinally);
-  Assert.IsTrue(Parse('{"completion": {"freeStyle": "freeAndNil"}}', Issues).Completion.FreeStyle =
-    TCompletionFreeStyle.FreeAndNil);
+  Assert.AreEqual<TCompletionFreeStyle>(TCompletionFreeStyle.FreeAndNil,
+    Parse('{"completion": {"freeStyle": "freeAndNil"}}', Issues).Completion.FreeStyle);
   Assert.AreEqual(0, Integer(Length(Issues)));
   Parse('{"completion": {"freeStyle": "nil"}}', Issues);
   Assert.AreEqual(1, Integer(Length(Issues)));
@@ -511,12 +516,13 @@ begin
   // Feld und Zugriffsmethoden nach read/write (#467)
   Assert.IsTrue(Parse('{}', Issues).Completion.CreateAccessors);
   Assert.IsFalse(Parse('{"completion": {"createAccessors": false}}', Issues).Completion.CreateAccessors);
-  Assert.IsTrue(Parse('{}', Issues).Completion.AccessorSection = TCompletionAccessorSection.Private);
-  Assert.IsTrue(Parse('{"completion": {"accessorSection": "protected"}}', Issues).Completion.AccessorSection =
-    TCompletionAccessorSection.Protected);
+  Assert.AreEqual<TCompletionAccessorSection>(TCompletionAccessorSection.Private,
+    Parse('{}', Issues).Completion.AccessorSection);
+  Assert.AreEqual<TCompletionAccessorSection>(TCompletionAccessorSection.Protected,
+    Parse('{"completion": {"accessorSection": "protected"}}', Issues).Completion.AccessorSection);
   Assert.AreEqual(0, Integer(Length(Issues)));
-  Assert.IsTrue(Parse('{"completion": {"accessorSection": "public"}}', Issues).Completion.AccessorSection =
-    TCompletionAccessorSection.Private);
+  Assert.AreEqual<TCompletionAccessorSection>(TCompletionAccessorSection.Private,
+    Parse('{"completion": {"accessorSection": "public"}}', Issues).Completion.AccessorSection);
   Assert.AreEqual(1, Integer(Length(Issues)));
   // String als resourcestring auslagern (#473)
   Assert.IsTrue(Parse('{}', Issues).Completion.ResourceStrings);
@@ -1019,17 +1025,17 @@ begin
   Assert.AreEqual(3, Integer(Length(Settings.DfmPropertyRules)));
   Assert.AreEqual('TLabel', Settings.DfmPropertyRules[0].ClassName);
   Assert.AreEqual('Transparent', Settings.DfmPropertyRules[0].PropertyPath);
-  Assert.IsTrue(Settings.DfmPropertyRules[0].Condition = TDfmCondition.Equal);
-  Assert.IsTrue(Settings.DfmPropertyRules[0].Fix = TDfmFixMode.Auto);
-  Assert.IsTrue(Settings.DfmPropertyRules[0].Severity = TRuleSeverity.Warning);
+  Assert.AreEqual<TDfmCondition>(TDfmCondition.Equal, Settings.DfmPropertyRules[0].Condition);
+  Assert.AreEqual<TDfmFixMode>(TDfmFixMode.Auto, Settings.DfmPropertyRules[0].Fix);
+  Assert.AreEqual<TRuleSeverity>(TRuleSeverity.Warning, Settings.DfmPropertyRules[0].Severity);
   Assert.IsTrue(Settings.DfmPropertyRules[0].IncludeDescendants);
-  Assert.IsTrue(Settings.DfmPropertyRules[1].Condition = TDfmCondition.NotEqual);
-  Assert.IsTrue(Settings.DfmPropertyRules[1].Severity = TRuleSeverity.Hint);
+  Assert.AreEqual<TDfmCondition>(TDfmCondition.NotEqual, Settings.DfmPropertyRules[1].Condition);
+  Assert.AreEqual<TRuleSeverity>(TRuleSeverity.Hint, Settings.DfmPropertyRules[1].Severity);
   Assert.IsFalse(Settings.DfmPropertyRules[1].IncludeDescendants);
   Assert.AreEqual('Zentriert', Settings.DfmPropertyRules[1].Message);
   Assert.AreEqual('**/Alt/*.dfm', Settings.DfmPropertyRules[1].Exclude[0]);
-  Assert.IsTrue(Settings.DfmPropertyRules[2].Condition = TDfmCondition.NotEmpty);
-  Assert.IsTrue(Settings.DfmPropertyRules[2].Fix = TDfmFixMode.None);
+  Assert.AreEqual<TDfmCondition>(TDfmCondition.NotEmpty, Settings.DfmPropertyRules[2].Condition);
+  Assert.AreEqual<TDfmFixMode>(TDfmFixMode.None, Settings.DfmPropertyRules[2].Fix);
   // Fehlerhafte Regeln: ohne property, = ohne value, unbekannte Bedingung, unbekannter Schlüssel.
   Settings := Parse('{"dfmPropertyRules": [{"class": "TLabel"}, {"class": "TA", "property": "B", "condition": "="},' +
     ' {"class": "TA", "property": "B", "condition": "gleich", "value": "1", "x": 1}, 5]}', Issues);

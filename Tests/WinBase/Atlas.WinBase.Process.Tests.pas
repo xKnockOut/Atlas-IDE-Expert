@@ -122,7 +122,7 @@ begin
   mLaunch := TAtlasProcessLaunch.Create('', 'x', '', INVALID_HANDLE_VALUE, 12, 12);
   mList := TAtlasProcessLauncher.InheritList(mLaunch);
   Assert.AreEqual(1, Integer(Length(mList)));
-  Assert.IsTrue(mList[0] = 12);
+  Assert.AreEqual<THandle>(12, mList[0]);
   mLaunch := TAtlasProcessLaunch.Create('', 'x', '', 4, 8, 12);
   mList := TAtlasProcessLauncher.InheritList(mLaunch);
   Assert.AreEqual(3, Integer(Length(mList)));
@@ -187,8 +187,8 @@ begin
       '', 0, mWrite, mWrite), mInfo);
     mError := GetLastError;
     Assert.IsFalse(mStarted);
-    Assert.IsTrue(mError <> 0);
-    Assert.IsTrue(mInfo.hProcess = 0);
+    Assert.AreNotEqual<DWORD>(0, mError);
+    Assert.AreEqual<THandle>(0, mInfo.hProcess);
   finally
     CloseHandle(mRead);
     CloseHandle(mWrite);

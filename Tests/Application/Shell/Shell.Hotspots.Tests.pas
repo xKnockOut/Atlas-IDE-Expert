@@ -260,7 +260,7 @@ var
   mCommits: TArray<THotspotCommit>;
   mError, mHead: string;
 begin
-  Assert.IsTrue(AVcs.Kind = THotspotVcsKind.Git);
+  Assert.AreEqual<THotspotVcsKind>(THotspotVcsKind.Git, AVcs.Kind);
   Assert.IsTrue(SameText(ExcludeTrailingPathDelimiter(AFolder), AVcs.Root));
   mHead := AVcs.Head;
   Assert.AreEqual(Exec(ARunner, AGit, ['rev-parse', 'HEAD'], AFolder), mHead);
@@ -268,7 +268,7 @@ begin
   Assert.AreEqual(5, Integer(Length(mCommits)));
   Assert.AreEqual('Schritt 5', mCommits[0].Summary, 'neueste zuerst');
   Assert.AreEqual('Atlas Test', mCommits[0].Author);
-  Assert.IsTrue(mCommits[2].Files[0].Kind = THotspotChangeKind.Renamed, 'git mv');
+  Assert.AreEqual<THotspotChangeKind>(THotspotChangeKind.Renamed, mCommits[2].Files[0].Kind, 'git mv');
   Assert.AreEqual('Src/Alt.pas', mCommits[2].Files[0].OldPath);
 end;
 
@@ -291,10 +291,10 @@ procedure AssertTextStates(const AVcs: IHotspotVcs);
 var
   mText: string;
 begin
-  Assert.IsTrue(AVcs.TextAt('Src/Neu.pas', IncDay(Now, 1), mText) = THotspotTextState.Found);
+  Assert.AreEqual<THotspotTextState>(THotspotTextState.Found, AVcs.TextAt('Src/Neu.pas', IncDay(Now, 1), mText));
   Assert.IsTrue(mText.Contains('// vier'));
-  Assert.IsTrue(AVcs.TextAt('Src/Fehlt.pas', IncDay(Now, 1), mText) = THotspotTextState.Missing);
-  Assert.IsTrue(AVcs.TextAt('Src/Neu.pas', IncDay(Now, -2), mText) = THotspotTextState.Unknown);
+  Assert.AreEqual<THotspotTextState>(THotspotTextState.Missing, AVcs.TextAt('Src/Fehlt.pas', IncDay(Now, 1), mText));
+  Assert.AreEqual<THotspotTextState>(THotspotTextState.Unknown, AVcs.TextAt('Src/Neu.pas', IncDay(Now, -2), mText));
 end;
 
 procedure TShellHotspotsTests.GitHistoryFollowsRenameAndMatchesGitLog;
@@ -446,7 +446,7 @@ begin
     Exec(mRunner, mSvn, ['update', '-q', '--non-interactive'], mWorkingCopy);
     Assert.IsTrue(TShellHotspotVcs.Detect(mGitFolder, TServerSettings.Default, mGitVcs, mError), mError);
     Assert.IsTrue(TShellHotspotVcs.Detect(mWorkingCopy, TServerSettings.Default, mSvnVcs, mError), mError);
-    Assert.IsTrue(mSvnVcs.Kind = THotspotVcsKind.Svn);
+    Assert.AreEqual<THotspotVcsKind>(THotspotVcsKind.Svn, mSvnVcs.Kind);
     Assert.AreEqual('6', mSvnVcs.Head, 'Ablage = r1, fünf Schritte');
     mGitResult := Analyze(mGitFolder, mGitVcs);
     mSvnResult := Analyze(mWorkingCopy, mSvnVcs);

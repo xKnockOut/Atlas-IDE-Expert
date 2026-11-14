@@ -68,7 +68,7 @@ var
 begin
   mEditing := TShellEditing.Create(NewServices);
   try
-    Assert.IsTrue(mEditing.SlashHost = nil);
+    Assert.IsNull(mEditing.SlashHost);
   finally
     mEditing.Free;
   end;

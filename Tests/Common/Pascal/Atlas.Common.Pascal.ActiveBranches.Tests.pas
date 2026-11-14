@@ -235,7 +235,7 @@ begin
   Assert.AreSame(Again.Tree, Win32.Tree);
   UseDefines(TPascalPreprocessor.PredefinedSymbols('Win64', 37.0));
   Win64 := TSyntaxTreeCache.Get(Document);
-  Assert.IsFalse(Win32.Tree = Win64.Tree);
+  Assert.AreNotSame(Win32.Tree, Win64.Tree);
   Assert.AreEqual(2, TSyntaxTreeCache.ParseCount - Before);
   Assert.IsNotNull(Win32.Tree.Root.FindChild(TSyntaxKind.ImplementationSection).FindChild(TSyntaxKind.RoutineDecl)
     .FindChild(TSyntaxKind.AsmBlock));
@@ -267,7 +267,7 @@ begin
   UseDefines(['MSWINDOWS']);
   All := TSyntaxTreeCache.GetAll(Document);
   Assert.AreEqual('Winapi.Windows Posix.Unistd System.SysUtils TA', Outline(All.Tree));
-  Assert.IsFalse(All.Tree = TSyntaxTreeCache.Get(Document).Tree);
+  Assert.AreNotSame(All.Tree, TSyntaxTreeCache.Get(Document).Tree);
   Assert.AreSame(TSyntaxTreeCache.GetAll(Document).Tree, All.Tree);
 end;
 

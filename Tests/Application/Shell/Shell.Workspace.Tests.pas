@@ -121,18 +121,20 @@ begin
   mOutside := Default(TCheckProject);
   mMerged := TShellRuleProjects.MergeRuleProjects(nil, 'U.pas');
   Assert.AreEqual('U.pas', mMerged.FileName);
-  Assert.IsTrue(mMerged.Application = TRuleApplicationKind.Unknown, 'Ohne Projekt unbekannt');
+  Assert.AreEqual<TRuleApplicationKind>(TRuleApplicationKind.Unknown, mMerged.Application, 'Ohne Projekt unbekannt');
   mMerged := TShellRuleProjects.MergeRuleProjects([mOutside, Member('Tests', TRuleApplicationKind.Console)], 'U.pas');
-  Assert.IsTrue(mMerged.Application = TRuleApplicationKind.Console, 'Projekt ohne die Datei zählt nicht');
+  Assert.AreEqual<TRuleApplicationKind>(TRuleApplicationKind.Console,
+    mMerged.Application, 'Projekt ohne die Datei zählt nicht');
   Assert.AreEqual('Tests', mMerged.Name);
   Assert.AreEqual('U.pas', mMerged.FileName);
   mMerged := TShellRuleProjects.MergeRuleProjects([Member('A', TRuleApplicationKind.Gui),
     Member('B', TRuleApplicationKind.Gui)], 'U.pas');
-  Assert.IsTrue(mMerged.Application = TRuleApplicationKind.Gui, 'Gleiche Art bleibt');
+  Assert.AreEqual<TRuleApplicationKind>(TRuleApplicationKind.Gui, mMerged.Application, 'Gleiche Art bleibt');
   Assert.AreEqual('A', mMerged.Name, 'Das erste Projekt liefert den Namen');
   mMerged := TShellRuleProjects.MergeRuleProjects([Member('Tests', TRuleApplicationKind.Console),
     Member('Plugin', TRuleApplicationKind.Package), Member('Noch', TRuleApplicationKind.Console)], 'U.pas');
-  Assert.IsTrue(mMerged.Application = TRuleApplicationKind.Unknown, 'Verschiedene Arten ergeben Unknown');
+  Assert.AreEqual<TRuleApplicationKind>(TRuleApplicationKind.Unknown,
+    mMerged.Application, 'Verschiedene Arten ergeben Unknown');
   Assert.AreEqual('Tests', mMerged.Name);
 end;
 

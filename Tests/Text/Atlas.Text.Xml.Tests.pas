@@ -34,7 +34,7 @@ var
 begin
   mCursor.Init('<a x="1" Y=''zwei''><b/>Text</a>');
   Assert.IsTrue(mCursor.Next);
-  Assert.IsTrue(mCursor.Kind = TXmlNodeKind.StartTag);
+  Assert.AreEqual<TXmlNodeKind>(TXmlNodeKind.StartTag, mCursor.Kind);
   Assert.AreEqual('a', mCursor.Name);
   Assert.AreEqual('1', mCursor.Attribute('X'));
   Assert.AreEqual('zwei', mCursor.Attribute('y'));
@@ -44,10 +44,10 @@ begin
   Assert.AreEqual('b', mCursor.Name);
   Assert.IsTrue(mCursor.SelfClosing);
   Assert.IsTrue(mCursor.Next);
-  Assert.IsTrue(mCursor.Kind = TXmlNodeKind.Text);
+  Assert.AreEqual<TXmlNodeKind>(TXmlNodeKind.Text, mCursor.Kind);
   Assert.AreEqual('Text', mCursor.Value);
   Assert.IsTrue(mCursor.Next);
-  Assert.IsTrue(mCursor.Kind = TXmlNodeKind.EndTag);
+  Assert.AreEqual<TXmlNodeKind>(TXmlNodeKind.EndTag, mCursor.Kind);
   Assert.AreEqual('a', mCursor.Name);
   Assert.IsFalse(mCursor.Next);
 end;
@@ -62,7 +62,7 @@ begin
   Assert.IsTrue(mCursor.Next);
   Assert.AreEqual('x & y', mCursor.Value);
   Assert.IsTrue(mCursor.Next);
-  Assert.IsTrue(mCursor.Kind = TXmlNodeKind.Text);
+  Assert.AreEqual<TXmlNodeKind>(TXmlNodeKind.Text, mCursor.Kind);
   Assert.AreEqual('<roh> &amp;', mCursor.Value);
 end;
 
@@ -78,7 +78,7 @@ begin
     Assert.AreEqual('', Trim(mCursor.Value));
     Assert.IsTrue(mCursor.Next);
   end;
-  Assert.IsTrue(mCursor.Kind = TXmlNodeKind.StartTag);
+  Assert.AreEqual<TXmlNodeKind>(TXmlNodeKind.StartTag, mCursor.Kind);
   Assert.AreEqual('report', mCursor.Name);
 end;
 

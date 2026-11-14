@@ -426,7 +426,7 @@ begin
   mReport := TShellEncodingReport.Create('Test', FFolder, mLogger, nil, mIndex);
   try
     Assert.AreEqual(-1, mIndexing.Loading, 'Kein Aufbau läuft');
-    Assert.IsTrue(mIndexing.Index = mIndex);
+    Assert.AreSame(mIndex, mIndexing.Index);
     mReport.Report(nil);
   finally
     mReport.Free;

@@ -124,7 +124,8 @@ begin
     Assert.AreEqual(Path('Kunde.pas'), mProject.FileName);
     Assert.IsNotNull(mProject.Services.Index, 'Regeln bekommen den Index');
     Assert.IsTrue(mProject.Services.Index.FindUnit('Kunde', mFound), 'Unit des Projekts im Index');
-    Assert.IsTrue(mProject.Application = TRuleApplicationKind.Console, 'Anwendungsart aus der .dproj (DCC_ConsoleTarget)');
+    Assert.AreEqual<TRuleApplicationKind>(TRuleApplicationKind.Console,
+      mProject.Application, 'Anwendungsart aus der .dproj (DCC_ConsoleTarget)');
     Assert.AreEqual('Lauf', mProject.Name);
     Assert.IsNotNull(mProject.Services.ProjectFiles, 'Projekte der Gruppe für projektweite Regeln');
     Assert.AreSame(mGroup.Main, mGroup.WorkspaceOf(Path('Fremd.pas')), 'Fremde Datei: Hauptarbeitsbereich');
@@ -146,7 +147,7 @@ begin
     mGroup.Load('');
     Assert.IsTrue(mGroup.WaitForIndex(60000), 'Ohne Projekt wartet nichts');
     mProject := mGroup.RuleProject(Path('Kunde.pas'));
-    Assert.IsTrue(mProject.Application = TRuleApplicationKind.Unknown);
+    Assert.AreEqual<TRuleApplicationKind>(TRuleApplicationKind.Unknown, mProject.Application);
     Assert.AreEqual('', mProject.Name);
     mGroup.Stop;
   finally

@@ -100,7 +100,7 @@ begin
   mOptions := TCommandLineOptions.Parse(mNoArguments);
   Assert.AreEqual('', mOptions.LogFile);
   Assert.AreEqual('', mOptions.TraceFile);
-  Assert.IsTrue(mOptions.LogLevel = TLogLevel.Info);
+  Assert.AreEqual<TLogLevel>(TLogLevel.Info, mOptions.LogLevel);
   Assert.AreEqual<NativeInt>(0, Length(mOptions.Warnings));
 end;
 
@@ -112,7 +112,7 @@ begin
     '--trace', 'C:\Logs\trace.txt']);
   Assert.AreEqual('C:\Logs\server.log', mOptions.LogFile);
   Assert.AreEqual('C:\Logs\trace.txt', mOptions.TraceFile);
-  Assert.IsTrue(mOptions.LogLevel = TLogLevel.Debug);
+  Assert.AreEqual<TLogLevel>(TLogLevel.Debug, mOptions.LogLevel);
   Assert.IsFalse(mOptions.LogNames, 'anonym ist Vorgabe');
   mOptions := TCommandLineOptions.Parse(['--log-names']);
   Assert.IsTrue(mOptions.LogNames);
@@ -125,7 +125,7 @@ var
 begin
   mOptions := TCommandLineOptions.Parse(['--log=server.log', '--log-level=WARNING']);
   Assert.AreEqual('server.log', mOptions.LogFile);
-  Assert.IsTrue(mOptions.LogLevel = TLogLevel.Warning);
+  Assert.AreEqual<TLogLevel>(TLogLevel.Warning, mOptions.LogLevel);
 end;
 
 procedure TCommandLineOptionsTests.IgnoresEditorArgumentsSilently;
@@ -174,7 +174,7 @@ begin
   try
     mOptions := TCommandLineOptions.Parse(['--gibtsnicht', '--log-level', 'laut']);
     Assert.AreEqual<NativeInt>(2, Length(mOptions.Warnings));
-    Assert.IsTrue(mOptions.Warnings[0].Kind = TCommandLineWarningKind.UnknownParameter);
+    Assert.AreEqual<TCommandLineWarningKind>(TCommandLineWarningKind.UnknownParameter, mOptions.Warnings[0].Kind);
     TAtlasLocale.Use(TTextLanguage.English);
     Assert.AreEqual('Unknown parameter "--gibtsnicht" is ignored', mOptions.Warnings[0].Text);
     Assert.AreEqual('Unknown log level "laut", using info', mOptions.Warnings[1].Text);
@@ -193,7 +193,7 @@ begin
   mOptions := TCommandLineOptions.Parse([#$2013'log', 'C:\Temp\atlas-server.log', '-log-level', 'debug']);
   Assert.AreEqual<NativeInt>(0, Length(mOptions.Warnings));
   Assert.AreEqual('C:\Temp\atlas-server.log', mOptions.LogFile);
-  Assert.IsTrue(mOptions.LogLevel = TLogLevel.Debug);
+  Assert.AreEqual<TLogLevel>(TLogLevel.Debug, mOptions.LogLevel);
 end;
 
 procedure TCommandLineOptionsTests.WarnsAboutInvalidLogLevel;
@@ -201,7 +201,7 @@ var
   mOptions: TCommandLineOptions;
 begin
   mOptions := TCommandLineOptions.Parse(['--log-level', 'laut']);
-  Assert.IsTrue(mOptions.LogLevel = TLogLevel.Info);
+  Assert.AreEqual<TLogLevel>(TLogLevel.Info, mOptions.LogLevel);
   Assert.AreEqual<NativeInt>(1, Length(mOptions.Warnings));
 end;
 
@@ -474,7 +474,7 @@ begin
   mOptions := TCommandLineOptions.Parse(['--check', 'Src', '--format-write', '--format=DIFF', '--format', 'json']);
   Assert.IsTrue(mOptions.FormatWrite);
   Assert.IsFalse(mOptions.FormatDiff);
-  Assert.IsTrue(mOptions.CheckFormat = TFindingsFormat.Json);
+  Assert.AreEqual<TFindingsFormat>(TFindingsFormat.Json, mOptions.CheckFormat);
   Assert.IsFalse(TCommandLineOptions.Parse([]).FormatCheck);
 end;
 
@@ -559,8 +559,8 @@ begin
   mParsed := TCommandLineOptions.Parse(TMonitorCommands.Arguments(TMonitorCommand.Check, 'C:\Src', mOptions,
     'C:\Temp\out.sarif', 'de'));
   Assert.AreEqual('dev', mParsed.ChangedRef);
-  Assert.IsTrue(mParsed.CheckFormat = TFindingsFormat.Sarif);
-  Assert.IsTrue(mParsed.FailOn = TFailOn.Never);
+  Assert.AreEqual<TFindingsFormat>(TFindingsFormat.Sarif, mParsed.CheckFormat);
+  Assert.AreEqual<TFailOn>(TFailOn.Never, mParsed.FailOn);
   Assert.AreEqual('C:\Temp\out.timings.md', mParsed.TimingsFile);
   Assert.AreEqual('anfrage.json', TCommandLineOptions.Parse(TMonitorCommands.Arguments(TMonitorCommand.Replay, '',
     mOptions, '', '')).ReplayFile);

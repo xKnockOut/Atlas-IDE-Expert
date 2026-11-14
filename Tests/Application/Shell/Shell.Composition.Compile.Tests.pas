@@ -86,7 +86,7 @@ begin
   mStatus := Default(TServerStatus);
   FHost.StatusOf(mStatus);
   Assert.AreEqual(0, FCalls);
-  Assert.IsTrue(mStatus.Compiler <> TCompilerBackends.UncheckedStatus);
+  Assert.AreNotEqual(TCompilerBackends.UncheckedStatus, mStatus.Compiler);
 end;
 
 procedure TShellCompileHostTests.MissingProjectIsRemembered;

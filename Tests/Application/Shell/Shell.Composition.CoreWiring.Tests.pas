@@ -69,8 +69,8 @@ end;
 
 procedure TShellCoreWiringTests.IndexIsShared;
 begin
-  Assert.IsTrue(FParts.Index <> nil);
-  Assert.IsTrue(FParts.Index = FParts.IndexArea.Index);
+  Assert.IsNotNull(FParts.Index);
+  Assert.AreSame(FParts.IndexArea.Index, FParts.Index);
 end;
 
 initialization

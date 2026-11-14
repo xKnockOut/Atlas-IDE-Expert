@@ -87,7 +87,7 @@ begin
   try
     First := Pool.Intern(Copy('TObjekt', 1, MaxInt));
     Second := Pool.Intern(Copy('TObjekt', 1, MaxInt));
-    Assert.IsTrue(Pointer(First) = Pointer(Second));
+    Assert.AreEqual<Pointer>(Pointer(Second), Pointer(First));
     Assert.AreEqual(1, Integer(Pool.Count));
     Assert.AreEqual('', Pool.Intern(''));
   finally
@@ -109,7 +109,7 @@ begin
     Pooled := Original;
     Pooled.Symbols := Copy(Original.Symbols);
     Pool.InternUnit(Pooled);
-    Assert.IsTrue(Before = Pointer(Original.Symbols[0].Ancestors[0]));
+    Assert.AreEqual<Pointer>(Pointer(Original.Symbols[0].Ancestors[0]), Before);
     Assert.AreEqual('TObject', Pooled.Symbols[0].Ancestors[0]);
   finally
     Pool.Free;
@@ -227,8 +227,8 @@ begin
   Index.AddUnit(MakeUnit('Vcl', True, 5, 50));
   Assert.IsTrue(Index.FindUnit('Projekt', Found) and Found.Compact);
   Assert.IsTrue(Index.FindUnit('Vcl', Found) and Found.Compact);
-  Assert.IsTrue(Index.FindSymbols('VclSymbol0') <> nil);
-  Assert.IsTrue(Index.FindSymbols('VclSymbol10') = nil);
+  Assert.AreNotEqual(0, Integer(Length(Index.FindSymbols('VclSymbol0'))));
+  Assert.AreEqual(0, Integer(Length(Index.FindSymbols('VclSymbol10'))));
 end;
 
 procedure TIndexMemoryTests.KeepsProjectUsagesWhileLibrariesAreEnough;

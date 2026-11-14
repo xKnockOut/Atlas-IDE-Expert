@@ -88,10 +88,10 @@ var
 begin
   mPrevious := @Exception.GetStackInfoStringProc;
   TStackTrace.Install;
-  Assert.IsTrue(@Exception.GetStackInfoStringProc <> mPrevious);
+  Assert.AreNotEqual<Pointer>(mPrevious, @Exception.GetStackInfoStringProc);
   TStackTrace.Uninstall;
   Assert.IsFalse(TStackTrace.Installed);
-  Assert.IsTrue(@Exception.GetStackInfoStringProc = mPrevious);
+  Assert.AreEqual<Pointer>(mPrevious, @Exception.GetStackInfoStringProc);
 end;
 
 procedure TStackTraceTests.DescribesAddressAsModuleAndOffset;

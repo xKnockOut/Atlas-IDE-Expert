@@ -129,7 +129,8 @@ begin
     Assert.AreSame(mPage.NodeSheet('compiler.tests'), SheetOf(CheckOf(mPage, 'TestRun')), 'Compiler › Tests');
     Assert.AreSame(mPage.NodeSheet('editor.codeLens'), SheetOf(CheckOf(mPage, 'CodeLensTests')), 'Editor › Code Lens');
     Assert.AreSame(SheetOf(CheckOf(mPage, 'TestBreakAtStart')), SheetOf(CheckOf(mPage, 'TestDebug')));
-    Assert.IsFalse(SheetOf(CheckOf(mPage, 'TestDebug')) = SheetOf(CheckOf(mPage, 'TestsEnabled')), 'eigener Reiter');
+    Assert.AreNotSame(SheetOf(CheckOf(mPage, 'TestsEnabled')), SheetOf(CheckOf(mPage, 'TestDebug')),
+      'eigener Reiter');
   finally
     mHost.Free;
   end;

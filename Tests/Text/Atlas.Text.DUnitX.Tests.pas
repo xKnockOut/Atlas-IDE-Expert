@@ -121,17 +121,18 @@ end;
 
 procedure TDUnitXSourceTests.AttributeNamesWithSuffixAndQualified;
 begin
-  Assert.IsTrue(TDUnitXSource.AttributeOf('TestFixture') = TDUnitXAttribute.TestFixture);
-  Assert.IsTrue(TDUnitXSource.AttributeOf('TestFixtureAttribute') = TDUnitXAttribute.TestFixture);
-  Assert.IsTrue(TDUnitXSource.AttributeOf('DUnitX.Attributes.TestFixture') = TDUnitXAttribute.TestFixture);
-  Assert.IsTrue(TDUnitXSource.AttributeOf('test') = TDUnitXAttribute.Test);
-  Assert.IsTrue(TDUnitXSource.AttributeOf('TestCase') = TDUnitXAttribute.TestCase);
-  Assert.IsTrue(TDUnitXSource.AttributeOf('IgnoreAttribute') = TDUnitXAttribute.Ignore);
-  Assert.IsTrue(TDUnitXSource.AttributeOf('Category') = TDUnitXAttribute.Category);
-  Assert.IsTrue(TDUnitXSource.AttributeOf('SetupFixture') = TDUnitXAttribute.SetupFixture);
-  Assert.IsTrue(TDUnitXSource.AttributeOf('TearDown') = TDUnitXAttribute.TearDown);
-  Assert.IsTrue(TDUnitXSource.AttributeOf('Weak') = TDUnitXAttribute.None);
-  Assert.IsTrue(TDUnitXSource.AttributeOf('Attribute') = TDUnitXAttribute.None, 'nur die Endung');
+  Assert.AreEqual<TDUnitXAttribute>(TDUnitXAttribute.TestFixture, TDUnitXSource.AttributeOf('TestFixture'));
+  Assert.AreEqual<TDUnitXAttribute>(TDUnitXAttribute.TestFixture, TDUnitXSource.AttributeOf('TestFixtureAttribute'));
+  Assert.AreEqual<TDUnitXAttribute>(TDUnitXAttribute.TestFixture,
+    TDUnitXSource.AttributeOf('DUnitX.Attributes.TestFixture'));
+  Assert.AreEqual<TDUnitXAttribute>(TDUnitXAttribute.Test, TDUnitXSource.AttributeOf('test'));
+  Assert.AreEqual<TDUnitXAttribute>(TDUnitXAttribute.TestCase, TDUnitXSource.AttributeOf('TestCase'));
+  Assert.AreEqual<TDUnitXAttribute>(TDUnitXAttribute.Ignore, TDUnitXSource.AttributeOf('IgnoreAttribute'));
+  Assert.AreEqual<TDUnitXAttribute>(TDUnitXAttribute.Category, TDUnitXSource.AttributeOf('Category'));
+  Assert.AreEqual<TDUnitXAttribute>(TDUnitXAttribute.SetupFixture, TDUnitXSource.AttributeOf('SetupFixture'));
+  Assert.AreEqual<TDUnitXAttribute>(TDUnitXAttribute.TearDown, TDUnitXSource.AttributeOf('TearDown'));
+  Assert.AreEqual<TDUnitXAttribute>(TDUnitXAttribute.None, TDUnitXSource.AttributeOf('Weak'));
+  Assert.AreEqual<TDUnitXAttribute>(TDUnitXAttribute.None, TDUnitXSource.AttributeOf('Attribute'), 'nur die Endung');
 end;
 
 procedure TDUnitXSourceTests.FindsFixtureTestsAndLines;

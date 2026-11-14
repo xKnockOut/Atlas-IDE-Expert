@@ -127,7 +127,7 @@ begin
   First := TRuleDerived.Open(Context);
   Second := TRuleDerived.Open(Context);
   Assert.IsNotNull(First);
-  Assert.IsTrue(First <> Second, 'ohne Engine je Aufruf ein eigener Cache');
+  Assert.AreNotSame(First, Second, 'ohne Engine je Aufruf ein eigener Cache');
   Shared := TRuleDerivedCache.Create;
   Context.Derived := Shared;
   Assert.AreSame(Shared, TRuleDerived.Open(Context), 'Cache des Laufs');
@@ -209,7 +209,7 @@ begin
     Other := TRuleDerived.Graph(Cache, Context, Routines[1]);
     Assert.IsNotNull(First);
     Assert.AreSame(Again, First, 'derselbe Graph');
-    Assert.IsTrue(First <> Other, 'je Routine ein Graph');
+    Assert.AreNotSame(First, Other, 'je Routine ein Graph');
     Assert.IsTrue(First.Complete);
     Cache := nil;
   finally

@@ -49,7 +49,7 @@ begin
   Assert.AreEqual(2, Integer(Length(mArgs.Select)));
   Assert.AreEqual('Atlas.IDE.Debugger', mArgs.Select[1]);
   Assert.AreEqual(Cardinal(1234), mArgs.WaitPid);
-  Assert.IsTrue(mArgs.NewModules = TUpdateNewModules.Skip);
+  Assert.AreEqual<TUpdateNewModules>(TUpdateNewModules.Skip, mArgs.NewModules);
 end;
 
 procedure TTextUpdateRunTests.ArgumentsRoundTrip;
@@ -68,7 +68,7 @@ begin
   Assert.AreEqual(mArgs.RegistryKey, mCopy.RegistryKey);
   Assert.AreEqual(mArgs.Target, mCopy.Target);
   Assert.AreEqual('2.0.0', mCopy.Previous);
-  Assert.IsTrue(mCopy.NewModules = TUpdateNewModules.Install);
+  Assert.AreEqual<TUpdateNewModules>(TUpdateNewModules.Install, mCopy.NewModules);
   Assert.IsTrue(mArgs.CommandLine.StartsWith('prepare '));
 end;
 
@@ -100,7 +100,7 @@ begin
   mStage.Candidates[1].Name := 'Atlas.IDE.Search';
   mStage.Candidates[1].IsNew := True;
   mCopy := TUpdateStage.FromJson(mStage.ToJson);
-  Assert.IsTrue(mCopy.Phase = TUpdatePhase.Ready);
+  Assert.AreEqual<TUpdatePhase>(TUpdatePhase.Ready, mCopy.Phase);
   Assert.AreEqual(100, mCopy.Progress);
   Assert.IsTrue(mCopy.FromSource);
   Assert.IsTrue(mCopy.AskSelection);
@@ -113,8 +113,8 @@ end;
 
 procedure TTextUpdateRunTests.BrokenStateIsFailed;
 begin
-  Assert.IsTrue(TUpdateStage.FromJson('{kaputt').Phase = TUpdatePhase.Failed);
-  Assert.IsTrue(TUpdateStage.FromJson('').Phase = TUpdatePhase.Failed);
+  Assert.AreEqual<TUpdatePhase>(TUpdatePhase.Failed, TUpdateStage.FromJson('{kaputt').Phase);
+  Assert.AreEqual<TUpdatePhase>(TUpdatePhase.Failed, TUpdateStage.FromJson('').Phase);
 end;
 
 procedure TTextUpdateRunTests.OutcomeRoundTrip;
@@ -129,7 +129,7 @@ begin
   mOutcome.Detail := 'Win32\Atlas.IDE.Base370.bpl';
   mOutcome.Added := TArray<string>.Create('Atlas.IDE.Search');
   mCopy := TUpdateOutcome.FromJson(mOutcome.ToJson);
-  Assert.IsTrue(mCopy.Kind = TUpdateOutcomeKind.RolledBack);
+  Assert.AreEqual<TUpdateOutcomeKind>(TUpdateOutcomeKind.RolledBack, mCopy.Kind);
   Assert.AreEqual('2.0.0', mCopy.Previous);
   Assert.AreEqual(TUpdateErrors.cLocked, mCopy.Reason);
   Assert.AreEqual(mOutcome.Detail, mCopy.Detail);
@@ -144,14 +144,14 @@ var
 begin
   for mPhase := Low(TUpdatePhase) to High(TUpdatePhase) do
   begin
-    Assert.IsTrue(TUpdateNames.ParsePhase(TUpdateNames.PhaseName(mPhase)) = mPhase);
+    Assert.AreEqual<TUpdatePhase>(mPhase, TUpdateNames.ParsePhase(TUpdateNames.PhaseName(mPhase)));
   end;
   for mValue := Low(TUpdateNewModules) to High(TUpdateNewModules) do
   begin
-    Assert.IsTrue(TUpdateNames.ParseNewModules(TUpdateNames.NewModulesName(mValue)) = mValue);
+    Assert.AreEqual<TUpdateNewModules>(mValue, TUpdateNames.ParseNewModules(TUpdateNames.NewModulesName(mValue)));
   end;
-  Assert.IsTrue(TUpdateNames.ParseNewModules('quatsch') = TUpdateNewModules.Ask);
-  Assert.IsTrue(TUpdateNames.ParseOutcome('installed') = TUpdateOutcomeKind.Installed);
+  Assert.AreEqual<TUpdateNewModules>(TUpdateNewModules.Ask, TUpdateNames.ParseNewModules('quatsch'));
+  Assert.AreEqual<TUpdateOutcomeKind>(TUpdateOutcomeKind.Installed, TUpdateNames.ParseOutcome('installed'));
 end;
 
 procedure TTextUpdateRunTests.JoinsWindowsPaths;

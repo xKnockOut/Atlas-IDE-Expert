@@ -48,7 +48,7 @@ begin
     try
       Assert.AreEqual('{"jsonrpc":"2.0","id":7,"result":"fertig"}', Message.ToJSON);
       // Die id ist kopiert: Das Original gehört weiter dem Aufrufer.
-      Assert.IsFalse(Message.GetValue('id') = Id);
+      Assert.AreNotEqual<Pointer>(Pointer(Id), Pointer(Message.GetValue('id')));
     finally
       Message.Free;
     end;

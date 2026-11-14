@@ -503,6 +503,7 @@
         <DCCReference Include="Support\Atlas.Tests.RuleAssert.pas"/>
         <DCCReference Include="Support\Atlas.Tests.RtlStubs.pas"/>
         <DCCReference Include="Support\Atlas.Tests.SmallStack.pas"/>
+        <DCCReference Include="Support\Atlas.Tests.RecordText.pas"/>
         <DCCReference Include="Support\Atlas.Tests.SlashHost.pas"/>
         <DCCReference Include="Common\Rules\Atlas.Common.Rules.Engine.Tests.pas"/>
         <DCCReference Include="Common\Rules\Atlas.Common.Rules.Derived.Tests.pas"/>

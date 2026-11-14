@@ -40,7 +40,8 @@ implementation
 
 uses
   System.Types,
-  Atlas.Core.Designer.DefaultSizes;
+  Atlas.Core.Designer.DefaultSizes,
+  Atlas.Tests.RecordText;
 
 procedure TAtlasDefaultSizesTests.ParseTable;
 var
@@ -129,7 +130,7 @@ begin
   Assert.AreEqual(125, mRects[0].Bottom);
   Assert.AreEqual(95, mRects[0].Top);
   mRects := TAtlasDefaultSizes.Layout([TAtlasSizeItem.Create(Bounds(100, 100, 121, 21), -1, 23, False, False)], 500);
-  Assert.IsTrue(mRects[0] = Bounds(100, 100, 121, 23), 'nur die Höhe');
+  Assert.AreEqual(TRecordText.Rect(Bounds(100, 100, 121, 23)), TRecordText.Rect(mRects[0]), 'nur die Höhe');
 end;
 
 procedure TAtlasDefaultSizesTests.StackedStaySingle;

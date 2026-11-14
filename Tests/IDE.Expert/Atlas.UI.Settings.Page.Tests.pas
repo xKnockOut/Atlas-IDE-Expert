@@ -193,7 +193,7 @@ begin
     Assert.IsNotNull(Minimap);
     Assert.AreEqual('editor.minimap', Page.NodeOfSheet(Minimap));
     Assert.AreSame(Minimap, SheetOf(EditOf(Page, 'MinimapWidth')));
-    Assert.IsFalse(SheetOf(CheckOf(Page, 'StickyScroll')) = Minimap);
+    Assert.AreNotSame(Minimap, SheetOf(CheckOf(Page, 'StickyScroll')));
     Node := TreeNodeOf(Page, Minimap);
     Assert.IsNotNull(Node, 'Knoten im Baum');
     Assert.AreEqual(1, Node.Level);

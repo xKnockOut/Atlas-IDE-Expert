@@ -138,10 +138,10 @@ begin
     // Neue Datei: Ordner angelegt, UTF-8 mit BOM und CRLF; vorhandene behält ihr Format.
     mText := TFileEncoding.LoadFromFile(mNewFile, mFileFormat);
     Assert.AreEqual('unit Neu;'#13#10'end.'#13#10, mText);
-    Assert.IsTrue(mFileFormat.Encoding = TFileEncodingKind.Utf8Bom);
+    Assert.AreEqual<TFileEncodingKind>(TFileEncodingKind.Utf8Bom, mFileFormat.Encoding);
     mText := TFileEncoding.LoadFromFile(mOldFile, mFileFormat);
     Assert.AreEqual('program App;'#10'uses Neu;'#10'end.'#10, mText);
-    Assert.IsTrue(mFileFormat.Encoding = TFileEncodingKind.Utf8);
+    Assert.AreEqual<TFileEncodingKind>(TFileEncodingKind.Utf8, mFileFormat.Encoding);
     // Danach neu geladen (ohne Schleife sofort).
     Assert.AreEqual(1, mCalls);
   finally
@@ -173,8 +173,8 @@ begin
       True)], '');
     mText := TFileEncoding.LoadFromFile(mNewFile, mFileFormat);
     Assert.AreEqual('unit Zaehler;'#10'end.'#10, mText);
-    Assert.IsTrue(mFileFormat.Encoding = TFileEncodingKind.Utf8);
-    Assert.IsTrue(mFileFormat.LineBreak = TLineBreakStyle.LF);
+    Assert.AreEqual<TFileEncodingKind>(TFileEncodingKind.Utf8, mFileFormat.Encoding);
+    Assert.AreEqual<TLineBreakStyle>(TLineBreakStyle.LF, mFileFormat.LineBreak);
   finally
     mRef := nil;
     TDirectory.Delete(mFolder, True);

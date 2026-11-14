@@ -205,11 +205,11 @@ var
 begin
   mResult := TShellReplay.Run(SampleCase, TReplayPlace.Isolated, nil,
     FakeServer(TJsonRpcErrorCode.cInternalError, 'ECrashTest: künstlich', mMethods));
-  Assert.IsTrue(mResult.Outcome = TReplayOutcome.Reproduced, mResult.Text);
+  Assert.AreEqual<TReplayOutcome>(TReplayOutcome.Reproduced, mResult.Outcome, mResult.Text);
   Assert.IsFalse(mResult.Original);
   Assert.AreEqual('initialize;initialized;textDocument/didOpen;textDocument/hover;shutdown;exit;', mMethods());
   mResult := TShellReplay.Run(SampleCase, TReplayPlace.Isolated, nil, FakeServer(0, '', mMethods));
-  Assert.IsTrue(mResult.Outcome = TReplayOutcome.NotReproduced, mResult.Text);
+  Assert.AreEqual<TReplayOutcome>(TReplayOutcome.NotReproduced, mResult.Outcome, mResult.Text);
 end;
 
 procedure TShellReplayTests.UnreadableFileGivesExitCode2;

@@ -90,7 +90,7 @@ var
 begin
   mCompletion := TShellCompletion.Create(NewServices);
   try
-    Assert.IsTrue(mCompletion.Completion.Hooks.MatchingFor(cUri) = TCompletionMatching.Prefix);
+    Assert.AreEqual<TCompletionMatching>(TCompletionMatching.Prefix, mCompletion.Completion.Hooks.MatchingFor(cUri));
   finally
     mCompletion.Free;
   end;

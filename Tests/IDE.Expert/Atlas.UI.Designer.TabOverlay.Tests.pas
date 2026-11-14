@@ -38,7 +38,8 @@ uses
   System.SysUtils,
   System.Types,
   Vcl.Controls,
-  Atlas.Core.Style.Palette;
+  Atlas.Core.Style.Palette,
+  Atlas.Tests.RecordText;
 
 type
   TOverlayAccess = class(TAtlasTabOrderOverlay);
@@ -122,7 +123,7 @@ begin
     TAtlasTabFrame.Create(Rect(20, 20, 100, 90), 2)));
   Assert.AreEqual(2, Integer(Length(FOverlay.Frames)));
   Assert.AreEqual(2, FOverlay.Frames[1].Group);
-  Assert.IsTrue(FOverlay.Frames[0].Bounds = Rect(10, 10, 200, 100));
+  Assert.AreEqual(TRecordText.Rect(TRect.Create(10, 10, 200, 100)), TRecordText.Rect(FOverlay.Frames[0].Bounds));
   FOverlay.SetFrames(nil);
   Assert.AreEqual(0, Integer(Length(FOverlay.Frames)));
 end;
