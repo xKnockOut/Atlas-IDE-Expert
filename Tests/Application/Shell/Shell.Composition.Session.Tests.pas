@@ -86,7 +86,7 @@ end;
 
 procedure TShellSessionTests.StartsWithInputClosedAndDefaultTimeout;
 begin
-  Assert.IsTrue(FSession.EndReason = TDiagnosticEndReason.InputClosed);
+  Assert.AreEqual<TDiagnosticEndReason>(TDiagnosticEndReason.InputClosed, FSession.EndReason);
   Assert.AreEqual(Cardinal(cTimeoutMs), FSession.RequestTimeout);
   Assert.AreEqual(0, FStops);
 end;

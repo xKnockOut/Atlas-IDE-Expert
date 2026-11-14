@@ -257,7 +257,7 @@ begin
   mFilter.Descriptors := TArray<TRuleDescriptor>.Create(mDescriptor);
   mKept := TLinterBaseline.KeptMarks(mMarks, mFilter, Path('A.pas'));
   Assert.AreEqual(3, Integer(Length(mKept)));
-  Assert.IsTrue(mKept[2].Finding.Severity = TRuleSeverity.Warning, 'Standard-Schweregrad der Regel');
+  Assert.AreEqual<TRuleSeverity>(TRuleSeverity.Warning, mKept[2].Finding.Severity, 'Standard-Schweregrad der Regel');
   mFilter.Filter.MinSeverity := TRuleSeverity.Error;
   Assert.AreEqual(2, Integer(Length(TLinterBaseline.KeptMarks(mMarks, mFilter, Path('A.pas')))), 'Filter');
 end;
@@ -289,13 +289,13 @@ var
 begin
   Assert.IsTrue(TLinterFormatting.KindOf(TCommandLineOptions.Parse(['--check', FFolder, '--format-check']),
     mKind));
-  Assert.IsTrue(mKind = TFormatOutputKind.Text);
+  Assert.AreEqual<TFormatOutputKind>(TFormatOutputKind.Text, mKind);
   Assert.IsTrue(TLinterFormatting.KindOf(TCommandLineOptions.Parse(['--check', FFolder, '--format-check',
     '--format', 'json']), mKind));
-  Assert.IsTrue(mKind = TFormatOutputKind.Json);
+  Assert.AreEqual<TFormatOutputKind>(TFormatOutputKind.Json, mKind);
   Assert.IsTrue(TLinterFormatting.KindOf(TCommandLineOptions.Parse(['--check', FFolder, '--format-check',
     '--format', 'diff']), mKind));
-  Assert.IsTrue(mKind = TFormatOutputKind.Diff);
+  Assert.AreEqual<TFormatOutputKind>(TFormatOutputKind.Diff, mKind);
   Assert.IsFalse(TLinterFormatting.KindOf(TCommandLineOptions.Parse(['--check', FFolder, '--format-check',
     '--format', 'sarif']), mKind));
   Assert.IsFalse(TLinterFormatting.KindOf(TCommandLineOptions.Parse(['--check', FFolder, '--format-check',
@@ -326,7 +326,7 @@ begin
   Assert.AreEqual(1, Integer(Length(TLinterReports.TodosOf('A.pas', '// TODO: weiter' + sLineBreak + 'unit A;',
     TServerSettings.Default))));
   Assert.AreEqual(0, Integer(Length(TLinterReports.TodosOf('A.pas', 'unit A;', TServerSettings.Default))));
-  Assert.IsTrue(TLinterReports.TodosText(nil, True, 'T') <> '', 'JSON auch ohne Einträge');
+  Assert.AreNotEqual('', TLinterReports.TodosText(nil, True, 'T'), 'JSON auch ohne Einträge');
 end;
 
 procedure TLinterPartsTests.ProjectOfAndTestPrograms;

@@ -120,7 +120,7 @@ begin
   Old := TSyntaxTreeCache.Get(Document);
   Changed := Document.ApplyChanges([TTextChange.Full(StringReplace(Source, 'unit A', 'unit B', []))], 2);
   New := TSyntaxTreeCache.Get(Changed);
-  Assert.IsFalse(Old.Tree = New.Tree);
+  Assert.AreNotSame(Old.Tree, New.Tree);
   Assert.AreEqual('A', Old.Tree.Root.Name);
   Assert.AreEqual('B', New.Tree.Root.Name);
 end;

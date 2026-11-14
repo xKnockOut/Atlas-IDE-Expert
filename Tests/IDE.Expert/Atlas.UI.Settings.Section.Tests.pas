@@ -132,7 +132,7 @@ begin
   mProvider := TAtlasSettingsSectionFactory.Create(TTestSection);
   mFirst := mProvider.CreateSection;
   mSecond := mProvider.CreateSection;
-  Assert.IsTrue(mFirst <> mSecond, 'je Seite ein neuer Abschnitt');
+  Assert.AreNotSame(mFirst, mSecond, 'je Seite ein neuer Abschnitt');
   Assert.AreEqual('Editor', mFirst.AreaId);
 end;
 

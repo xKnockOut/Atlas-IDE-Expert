@@ -224,7 +224,7 @@ begin
     Page.LoadFrom(Settings);
     General := SheetOf(CheckOf(Page, 'SettingsBackupBeforeImport'));
     Assert.IsNotNull(General);
-    Assert.IsTrue(SheetOf(CheckOf(Page, 'HoverProblemActions')) <> General, 'Befund-Hover auf einem anderen Reiter');
+    Assert.AreNotSame(General, SheetOf(CheckOf(Page, 'HoverProblemActions')), 'Befund-Hover auf einem anderen Reiter');
     Page.Pages.ActivePage := General;
     Page.ResetPage;
     Assert.IsTrue(CheckOf(Page, 'SettingsBackupBeforeImport').Checked, 'Reiter zurückgesetzt');

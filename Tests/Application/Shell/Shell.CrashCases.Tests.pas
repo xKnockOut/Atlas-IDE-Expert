@@ -264,7 +264,7 @@ begin
   mFolders := TCrashCases.Folders(FRoot);
   Assert.AreEqual(1, Integer(Length(mFolders)));
   Assert.IsTrue(TCrashCases.Load(TPath.Combine(mFolders[0], TCrashCases.cRequestName), mCase, mError), mError);
-  Assert.IsTrue(mCase.Kind = TCrashCaseKind.Timeout);
+  Assert.AreEqual<TCrashCaseKind>(TCrashCaseKind.Timeout, mCase.Kind);
   Assert.AreEqual(1, mCase.Line);
   Assert.AreEqual(Cardinal(5000), mCase.TimeoutMs);
   // Zeitüberschreitungen zählen nicht fürs Überspringen.

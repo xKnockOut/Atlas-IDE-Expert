@@ -41,7 +41,7 @@ begin
     TAtlasLocale.Use(mLanguage);
     for mText := Low(TMonitorText) to High(TMonitorText) do
     begin
-      Assert.IsTrue(TMonitorTexts.Text(mText).Trim <> '', IntToStr(Ord(mText)));
+      Assert.AreNotEqual('', TMonitorTexts.Text(mText).Trim, IntToStr(Ord(mText)));
     end;
   end;
 end;

@@ -73,7 +73,7 @@ var
   mFileName: string;
 begin
   mFileName := DocumentationFile;
-  Assert.IsTrue(mFileName <> '', 'docs\MCP.md nicht gefunden');
+  Assert.AreNotEqual('', mFileName, 'docs\MCP.md nicht gefunden');
   mDocumented := nil;
   for mMatch in TRegEx.Matches(ToolSection(TFile.ReadAllText(mFileName, TEncoding.UTF8)), '^\| `(\w+)` \|', [roMultiLine]) do
   begin

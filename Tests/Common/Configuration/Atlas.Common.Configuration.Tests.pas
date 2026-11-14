@@ -126,17 +126,17 @@ begin
   Assert.AreEqual('classes where methods > 40', Settings.Queries[0].Query);
   Assert.AreEqual('Zu groß', Settings.Queries[0].Description);
   Assert.IsTrue(Settings.Queries[0].FailIfAny);
-  Assert.IsTrue(Settings.Queries[0].Severity = TRuleSeverity.Error);
+  Assert.AreEqual<TRuleSeverity>(TRuleSeverity.Error, Settings.Queries[0].Severity);
   Assert.AreEqual('{name} hat {methods} Methoden', Settings.Queries[0].Message);
   Assert.IsFalse(Settings.Queries[1].FailIfAny);
-  Assert.IsTrue(Settings.Queries[1].Severity = TRuleSeverity.Warning);
+  Assert.AreEqual<TRuleSeverity>(TRuleSeverity.Warning, Settings.Queries[1].Severity);
   // Fehlender Name oder Abfrage, ungültiger Name, doppelter Name, falscher Schweregrad, unbekannte Angabe.
   Settings := Parse('{"queries": [{"query": "units where name = A"}, {"name": "x"}, {"name": "a b", "query": "q"}, ' +
     '{"name": "d", "query": "q1"}, {"name": "D", "query": "q2"}, {"name": "s", "query": "q", "severity": "laut"}, ' +
     '{"name": "u", "query": "q", "farbe": 1}]}', Issues);
   Assert.AreEqual('d,s,u', Settings.Queries[0].Name + ',' + Settings.Queries[1].Name + ',' + Settings.Queries[2].Name);
   Assert.AreEqual('q1', Settings.Queries[0].Query);
-  Assert.IsTrue(Settings.Queries[1].Severity = TRuleSeverity.Warning);
+  Assert.AreEqual<TRuleSeverity>(TRuleSeverity.Warning, Settings.Queries[1].Severity);
   Assert.IsTrue(Length(Issues) >= 6);
   Parse('{"queries": {}, "query": {"enabled": 1, "x": 2}}', Issues);
   Assert.AreEqual(3, Integer(Length(Issues)));
@@ -412,8 +412,8 @@ begin
   Assert.AreEqual('Release', Settings.Config);
   Assert.AreEqual('Win64', Settings.Platform);
   Assert.AreEqual<NativeInt>(2, Length(Settings.Rules));
-  Assert.IsTrue(Settings.RuleSeverity('UNUSED-VARIABLE', TRuleSeverity.Hint) = TRuleSeverity.Warning);
-  Assert.IsTrue(Settings.RuleSeverity('with-statement', TRuleSeverity.Hint) = TRuleSeverity.Off);
+  Assert.AreEqual<TRuleSeverity>(TRuleSeverity.Warning, Settings.RuleSeverity('UNUSED-VARIABLE', TRuleSeverity.Hint));
+  Assert.AreEqual<TRuleSeverity>(TRuleSeverity.Off, Settings.RuleSeverity('with-statement', TRuleSeverity.Hint));
   Assert.AreEqual('ThirdParty/**', Settings.Exclude[0]);
   Assert.AreEqual('{ "indentSize": 4 }', Settings.Format);
   Assert.AreEqual(4, Settings.Formatting.IndentSize);
@@ -495,7 +495,7 @@ var
 begin
   Settings := Parse('{"rules": {"max-length": {"severity": "info", "limit": 120}}}', Issues);
   Assert.AreEqual<NativeInt>(0, Length(Issues));
-  Assert.IsTrue(Settings.Rules[0].Severity = TRuleSeverity.Information);
+  Assert.AreEqual<TRuleSeverity>(TRuleSeverity.Information, Settings.Rules[0].Severity);
   Assert.AreEqual('{"severity": "info", "limit": 120}', Settings.Rules[0].Options);
 end;
 procedure TConfigurationParserTests.ReadsInlayHints;
@@ -860,7 +860,7 @@ var
   Settings: TServerSettings;
 begin
   Settings := TServerSettings.Default;
-  Assert.IsTrue(Settings.RuleSeverity('x', TRuleSeverity.Error) = TRuleSeverity.Error);
+  Assert.AreEqual<TRuleSeverity>(TRuleSeverity.Error, Settings.RuleSeverity('x', TRuleSeverity.Error));
 end;
 procedure TServerSettingsTests.MatchesGlobPatterns;
 begin

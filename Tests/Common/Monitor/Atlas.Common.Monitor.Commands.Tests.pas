@@ -62,7 +62,7 @@ begin
   Assert.AreEqual('--check App.dproj --format sarif --fail-on never --output out.sarif --locale de',
     Joined(TMonitorCommands.Arguments(TMonitorCommand.Check, 'App.dproj', Default(TMonitorOptions), 'out.sarif',
     'de')));
-  Assert.IsTrue(TMonitorCommands.OutputKind(TMonitorCommand.Check) = TMonitorOutputKind.Findings);
+  Assert.AreEqual<TMonitorOutputKind>(TMonitorOutputKind.Findings, TMonitorCommands.OutputKind(TMonitorCommand.Check));
   Assert.AreEqual('.sarif', TMonitorCommands.OutputExtension(TMonitorCommand.Check));
 end;
 
@@ -128,8 +128,8 @@ begin
   mOptions.AffectedBase := 'dev';
   Assert.AreEqual('--check T.dproj --affected-tests=dev --output t.txt', Joined(TMonitorCommands.Arguments(
     TMonitorCommand.AffectedTests, 'T.dproj', mOptions, 't.txt', '')));
-  Assert.IsTrue(TMonitorCommands.OutputKind(TMonitorCommand.Hotspots) = TMonitorOutputKind.Html);
-  Assert.IsTrue(TMonitorCommands.OutputKind(TMonitorCommand.Todos) = TMonitorOutputKind.Text);
+  Assert.AreEqual<TMonitorOutputKind>(TMonitorOutputKind.Html, TMonitorCommands.OutputKind(TMonitorCommand.Hotspots));
+  Assert.AreEqual<TMonitorOutputKind>(TMonitorOutputKind.Text, TMonitorCommands.OutputKind(TMonitorCommand.Todos));
   mOptions := Default(TMonitorOptions);
 end;
 

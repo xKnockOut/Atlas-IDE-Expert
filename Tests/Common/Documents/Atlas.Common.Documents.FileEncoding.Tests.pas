@@ -145,37 +145,43 @@ end;
 
 procedure TFileEncodingTests.DetectsBoms;
 begin
-  Assert.IsTrue(TFileEncoding.DetectEncoding(Bytes([$EF, $BB, $BF, $41])) = TFileEncodingKind.Utf8Bom);
-  Assert.IsTrue(TFileEncoding.DetectEncoding(Bytes([$FF, $FE, $41, $00])) = TFileEncodingKind.Utf16LE);
-  Assert.IsTrue(TFileEncoding.DetectEncoding(Bytes([$FE, $FF, $00, $41])) = TFileEncodingKind.Utf16BE);
+  Assert.AreEqual<TFileEncodingKind>(TFileEncodingKind.Utf8Bom,
+    TFileEncoding.DetectEncoding(Bytes([$EF, $BB, $BF, $41])));
+  Assert.AreEqual<TFileEncodingKind>(TFileEncodingKind.Utf16LE,
+    TFileEncoding.DetectEncoding(Bytes([$FF, $FE, $41, $00])));
+  Assert.AreEqual<TFileEncodingKind>(TFileEncodingKind.Utf16BE,
+    TFileEncoding.DetectEncoding(Bytes([$FE, $FF, $00, $41])));
 end;
 
 procedure TFileEncodingTests.DetectsUtf8WithoutBom;
 begin
   // "ä" als UTF-8
-  Assert.IsTrue(TFileEncoding.DetectEncoding(Bytes([$61, $C3, $A4]), TFileEncodingKind.Ansi1252) = TFileEncodingKind.Utf8);
+  Assert.AreEqual<TFileEncodingKind>(TFileEncodingKind.Utf8,
+    TFileEncoding.DetectEncoding(Bytes([$61, $C3, $A4]), TFileEncodingKind.Ansi1252));
 end;
 
 procedure TFileEncodingTests.DetectsAnsiForInvalidUtf8;
 begin
   // "ä" als Windows-1252, ungültig als UTF-8
-  Assert.IsTrue(TFileEncoding.DetectEncoding(Bytes([$61, $E4, $62])) = TFileEncodingKind.Ansi1252);
+  Assert.AreEqual<TFileEncodingKind>(TFileEncodingKind.Ansi1252, TFileEncoding.DetectEncoding(Bytes([$61, $E4, $62])));
   // Abgeschnittene Folge am Ende
-  Assert.IsTrue(TFileEncoding.DetectEncoding(Bytes([$61, $C3])) = TFileEncodingKind.Ansi1252);
+  Assert.AreEqual<TFileEncodingKind>(TFileEncodingKind.Ansi1252, TFileEncoding.DetectEncoding(Bytes([$61, $C3])));
 end;
 
 procedure TFileEncodingTests.PureAsciiUsesDefault;
 begin
-  Assert.IsTrue(TFileEncoding.DetectEncoding(Bytes([$61, $62]), TFileEncodingKind.Ansi1252) = TFileEncodingKind.Ansi1252);
-  Assert.IsTrue(TFileEncoding.DetectEncoding(Bytes([$61, $62])) = TFileEncodingKind.Utf8);
-  Assert.IsTrue(TFileEncoding.DetectEncoding(Bytes([$61, $62]), TFileEncodingKind.Utf8Bom) = TFileEncodingKind.Utf8);
+  Assert.AreEqual<TFileEncodingKind>(TFileEncodingKind.Ansi1252,
+    TFileEncoding.DetectEncoding(Bytes([$61, $62]), TFileEncodingKind.Ansi1252));
+  Assert.AreEqual<TFileEncodingKind>(TFileEncodingKind.Utf8, TFileEncoding.DetectEncoding(Bytes([$61, $62])));
+  Assert.AreEqual<TFileEncodingKind>(TFileEncodingKind.Utf8,
+    TFileEncoding.DetectEncoding(Bytes([$61, $62]), TFileEncodingKind.Utf8Bom));
 end;
 
 procedure TFileEncodingTests.RejectsOverlongUtf8;
 begin
   // Überlange Form von "/" und kodiertes Surrogat
-  Assert.IsTrue(TFileEncoding.DetectEncoding(Bytes([$E0, $80, $AF])) = TFileEncodingKind.Ansi1252);
-  Assert.IsTrue(TFileEncoding.DetectEncoding(Bytes([$ED, $A0, $80])) = TFileEncodingKind.Ansi1252);
+  Assert.AreEqual<TFileEncodingKind>(TFileEncodingKind.Ansi1252, TFileEncoding.DetectEncoding(Bytes([$E0, $80, $AF])));
+  Assert.AreEqual<TFileEncodingKind>(TFileEncodingKind.Ansi1252, TFileEncoding.DetectEncoding(Bytes([$ED, $A0, $80])));
 end;
 
 procedure TFileEncodingTests.DecodesAnsiUmlautsAndEuro;
@@ -184,7 +190,7 @@ var
   Text: string;
 begin
   Text := TFileEncoding.Decode(Bytes([$E4, $F6, $FC, $DF, $80]), Format);
-  Assert.IsTrue(Format.Encoding = TFileEncodingKind.Ansi1252);
+  Assert.AreEqual<TFileEncodingKind>(TFileEncodingKind.Ansi1252, Format.Encoding);
   Assert.AreEqual(#$E4#$F6#$FC#$DF#$20AC, Text);
 end;
 
@@ -192,11 +198,12 @@ procedure TFileEncodingTests.DetectsDominantLineBreak;
 var
   Mixed: Boolean;
 begin
-  Assert.IsTrue(TFileEncoding.DetectLineBreak('a'#13#10'b'#13#10'c'#10, Mixed) = TLineBreakStyle.CRLF);
+  Assert.AreEqual<TLineBreakStyle>(TLineBreakStyle.CRLF,
+    TFileEncoding.DetectLineBreak('a'#13#10'b'#13#10'c'#10, Mixed));
   Assert.IsTrue(Mixed);
-  Assert.IsTrue(TFileEncoding.DetectLineBreak('a'#10'b'#10, Mixed) = TLineBreakStyle.LF);
+  Assert.AreEqual<TLineBreakStyle>(TLineBreakStyle.LF, TFileEncoding.DetectLineBreak('a'#10'b'#10, Mixed));
   Assert.IsFalse(Mixed);
-  Assert.IsTrue(TFileEncoding.DetectLineBreak('abc', Mixed, TLineBreakStyle.LF) = TLineBreakStyle.LF);
+  Assert.AreEqual<TLineBreakStyle>(TLineBreakStyle.LF, TFileEncoding.DetectLineBreak('abc', Mixed, TLineBreakStyle.LF));
   Assert.IsFalse(Mixed);
 end;
 
@@ -208,7 +215,7 @@ var
 begin
   Original := Bytes([$75, $6E, $69, $74, $20, $C4, $3B, $0D, $0A, $80, $0D, $0A]);
   Text := TFileEncoding.Decode(Original, Format);
-  Assert.IsTrue(Format.LineBreak = TLineBreakStyle.CRLF);
+  Assert.AreEqual<TLineBreakStyle>(TLineBreakStyle.CRLF, Format.LineBreak);
   Assert.IsTrue(SameBytes(Original, TFileEncoding.Encode(Text, Format)));
 end;
 
@@ -233,7 +240,7 @@ begin
   Original := Bytes([$FF, $FE, $E4, $00, $0A, $00]);
   Text := TFileEncoding.Decode(Original, Format);
   Assert.AreEqual(#$E4#10, Text);
-  Assert.IsTrue(Format.LineBreak = TLineBreakStyle.LF);
+  Assert.AreEqual<TLineBreakStyle>(TLineBreakStyle.LF, Format.LineBreak);
   Assert.IsTrue(SameBytes(Original, TFileEncoding.Encode(Text, Format)));
 end;
 
@@ -355,7 +362,7 @@ begin
   Source := Bytes([$8A, $E8, $0D, $0A]);
   Text := TFileEncoding.DecodeWithCodePage(Source, Format, 1250);
   Assert.AreEqual(#$0160#$010D#13#10, Text);
-  Assert.IsTrue(Format.Encoding = TFileEncodingKind.Ansi1252);
+  Assert.AreEqual<TFileEncodingKind>(TFileEncodingKind.Ansi1252, Format.Encoding);
   Assert.AreEqual(1250, Format.CodePage);
   Assert.IsTrue(SameBytes(Source, TFileEncoding.Encode(Text, Format)));
 end;
@@ -366,7 +373,7 @@ var
   Text: string;
 begin
   Text := TFileEncoding.DecodeWithCodePage(Bytes([$61, $62]), Format, 1250);
-  Assert.IsTrue(Format.Encoding = TFileEncodingKind.Ansi1252);
+  Assert.AreEqual<TFileEncodingKind>(TFileEncodingKind.Ansi1252, Format.Encoding);
   // Ein eingefügtes "č" landet als ein Byte der Codepage in der Datei.
   Assert.IsTrue(SameBytes(Bytes([$61, $62, $E8]), TFileEncoding.Encode(Text + #$010D, Format)));
 end;
@@ -376,7 +383,7 @@ var
   Format: TFileFormat;
 begin
   Assert.AreEqual('a'#$E4, TFileEncoding.DecodeWithCodePage(Bytes([$61, $C3, $A4]), Format, 1250));
-  Assert.IsTrue(Format.Encoding = TFileEncodingKind.Utf8);
+  Assert.AreEqual<TFileEncodingKind>(TFileEncodingKind.Utf8, Format.Encoding);
 end;
 
 procedure TFileEncodingDefaultTests.Utf8DefaultBehavesLikeDecode;
@@ -384,7 +391,7 @@ var
   Format: TFileFormat;
 begin
   TFileEncoding.DecodeWithCodePage(Bytes([$61, $62]), Format, TFileEncoding.cUtf8CodePage);
-  Assert.IsTrue(Format.Encoding = TFileEncodingKind.Utf8);
+  Assert.AreEqual<TFileEncodingKind>(TFileEncodingKind.Utf8, Format.Encoding);
   Assert.AreEqual(#$00E4, TFileEncoding.DecodeWithCodePage(Bytes([$E4]), Format, TFileEncoding.cUtf8CodePage));
   Assert.AreEqual(1252, Format.CodePage);
 end;
@@ -611,7 +618,7 @@ begin
   // Die Datei gibt es nicht: Der Text kommt allein vom Leser.
   Assert.AreEqual('aä', TFileEncoding.LoadFromFile(FFolder + 'Fehlt.pas', Format));
   Assert.AreEqual(FFolder + 'Fehlt.pas', Asked);
-  Assert.IsTrue(Format.Encoding = TFileEncodingKind.Utf8);
+  Assert.AreEqual<TFileEncodingKind>(TFileEncodingKind.Utf8, Format.Encoding);
   TFileEncoding.Reader := nil;
   Assert.WillRaise(
     procedure
@@ -646,16 +653,17 @@ begin
   // "// Grüße aus Köln, Zeichen °" mit Umlauten in Windows-1252 und "°" als UTF-8 (C2 B0), wie F15.
   mAnsi := TEncoding.ASCII.GetBytes('// Gr') + Bytes([$FC, $DF]) + TEncoding.ASCII.GetBytes('e aus K') + Bytes([$F6]) +
     TEncoding.ASCII.GetBytes('ln, Zeichen ') + Bytes([$C2, $B0, 13, 10, Ord('S'), Ord('='), $E4, $F6, $FC]);
-  Assert.IsTrue(TFileEncoding.DetectEncoding(mAnsi) = TFileEncodingKind.Ansi1252, 'ANSI');
+  Assert.AreEqual<TFileEncodingKind>(TFileEncodingKind.Ansi1252, TFileEncoding.DetectEncoding(mAnsi), 'ANSI');
   mText := TFileEncoding.Decode(mAnsi, mFormat);
   Assert.AreEqual('// Grüße aus Köln, Zeichen Â°'#13#10'S=äöü', mText);
   Assert.AreEqual(0, Integer(Length(TFileEncoding.InvalidUtf8(mAnsi, mFormat))), 'Fehlstellen');
   // Derselbe Text ganz in UTF-8 ohne BOM: UTF-8.
   mUtf8 := TEncoding.UTF8.GetBytes('// Grüße aus Köln, Zeichen °'#13#10'S=äöü');
-  Assert.IsTrue(TFileEncoding.DetectEncoding(mUtf8, TFileEncodingKind.Ansi1252) = TFileEncodingKind.Utf8, 'UTF-8');
+  Assert.AreEqual<TFileEncodingKind>(TFileEncodingKind.Utf8,
+    TFileEncoding.DetectEncoding(mUtf8, TFileEncodingKind.Ansi1252), 'UTF-8');
   // Mit BOM entscheidet die BOM, auch wenn danach ANSI-Bytes stehen.
   mWithBom := Bytes([$EF, $BB, $BF]) + mAnsi;
-  Assert.IsTrue(TFileEncoding.DetectEncoding(mWithBom) = TFileEncodingKind.Utf8Bom, 'BOM');
+  Assert.AreEqual<TFileEncodingKind>(TFileEncodingKind.Utf8Bom, TFileEncoding.DetectEncoding(mWithBom), 'BOM');
   TFileEncoding.Decode(mWithBom, mFormat);
   Assert.AreEqual(6, Integer(Length(TFileEncoding.InvalidUtf8(mWithBom, mFormat))), 'Fehlstellen nach BOM');
 end;
@@ -669,7 +677,7 @@ begin
   // "äöü" als UTF-8 und ein eingestreutes "ß" in Windows-1252 ($DF): Die Datei ist UTF-8 mit einer Fehlstelle.
   mData := Bytes([$C3, $A4, $C3, $B6, $C3, $BC, Ord(' '), $DF, Ord('!')]);
   TFileEncoding.Decode(mData, mFormat);
-  Assert.IsTrue(mFormat.Encoding = TFileEncodingKind.Ansi1252, 'dcc liest sie als ANSI');
+  Assert.AreEqual<TFileEncodingKind>(TFileEncodingKind.Ansi1252, mFormat.Encoding, 'dcc liest sie als ANSI');
   mInvalid := TFileEncoding.InvalidUtf8(mData, mFormat);
   Assert.AreEqual(1, Integer(Length(mInvalid)));
   Assert.AreEqual(7, mInvalid[0].ByteOffset);

@@ -459,7 +459,7 @@ begin
         Assert.AreEqual(2, mProvider.Created);
         Assert.AreEqual(1, mFirst.Builds);
         Assert.AreEqual(1, mSecond.Builds);
-        Assert.IsTrue(mFirst.Row <> mSecond.Row);
+        Assert.AreNotSame(mFirst.Row, mSecond.Row);
       finally
         mPage2.Free;
       end;

@@ -105,11 +105,11 @@ begin
   Assert.AreEqual(6, mReport.Counts[0].Count);
   Assert.AreEqual(1, mReport.Counts[0].MinSize);
   Assert.AreEqual(20, mReport.Counts[0].MaxSize);
-  Assert.IsTrue(mReport.Counts[0].Kind = TLeakKind.Text);
+  Assert.AreEqual<TLeakKind>(TLeakKind.Text, mReport.Counts[0].Kind);
   Assert.AreEqual('TKunde', mReport.Counts[1].Name);
-  Assert.IsTrue(mReport.Counts[1].Kind = TLeakKind.Instance);
+  Assert.AreEqual<TLeakKind>(TLeakKind.Instance, mReport.Counts[1].Kind);
   Assert.AreEqual(2, mReport.CountOf('tstringlist'));
-  Assert.IsTrue(mReport.Counts[3].Kind = TLeakKind.Unknown);
+  Assert.AreEqual<TLeakKind>(TLeakKind.Unknown, mReport.Counts[3].Kind);
   Assert.AreEqual(2, Integer(Length(mReport.LargeSizes)));
   Assert.AreEqual(Int64(80000), mReport.LargeSizes[1]);
   Assert.IsFalse(mReport.HasStacks);
@@ -198,7 +198,7 @@ begin
   Assert.AreEqual(2, mGroups[0].Count, 'gleicher Stapel zusammen, häufigster zuerst');
   Assert.AreEqual(Int64(40), mGroups[0].TotalSize);
   Assert.AreEqual(3, mGroups[0].Site);
-  Assert.IsTrue(mGroups[0].Frames[mGroups[0].Site].Address = $4C2B10, 'Adresse der Stelle');
+  Assert.AreEqual<UInt64>($4C2B10, mGroups[0].Frames[mGroups[0].Site].Address, 'Adresse der Stelle');
   Assert.AreEqual(1, mGroups[1].Count);
 end;
 
@@ -208,7 +208,7 @@ var
 begin
   Assert.IsTrue(TLeakReports.ParseFrame('  000000000040A3C3 [System.pas][System][System.TObject.NewInstance][7542]',
     mFrame));
-  Assert.IsTrue(mFrame.Address = $40A3C3, 'Adresse');
+  Assert.AreEqual<UInt64>($40A3C3, mFrame.Address, 'Adresse');
   Assert.AreEqual('System', mFrame.UnitName);
   Assert.AreEqual('System.TObject.NewInstance', mFrame.Routine);
   Assert.AreEqual(7542, mFrame.Line);
@@ -236,9 +236,9 @@ end;
 
 procedure TLeakReportTests.KindsOfNames;
 begin
-  Assert.IsTrue(TLeakReports.KindOf('AnsiString') = TLeakKind.Text);
-  Assert.IsTrue(TLeakReports.KindOf('unknown') = TLeakKind.Unknown);
-  Assert.IsTrue(TLeakReports.KindOf('TKunde') = TLeakKind.Instance);
+  Assert.AreEqual<TLeakKind>(TLeakKind.Text, TLeakReports.KindOf('AnsiString'));
+  Assert.AreEqual<TLeakKind>(TLeakKind.Unknown, TLeakReports.KindOf('unknown'));
+  Assert.AreEqual<TLeakKind>(TLeakKind.Instance, TLeakReports.KindOf('TKunde'));
 end;
 
 procedure TLeakReportTests.OtherTextIsEmpty;

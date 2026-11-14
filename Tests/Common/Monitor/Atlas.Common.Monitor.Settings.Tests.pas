@@ -119,13 +119,14 @@ end;
 
 procedure TMonitorSettingsTests.ChoosesLanguage;
 begin
-  Assert.IsTrue(TMonitorSettings.LanguageOf('en', '{"language": "de"}', 'de-DE') = TTextLanguage.English,
+  Assert.AreEqual<TTextLanguage>(TTextLanguage.English,
+    TMonitorSettings.LanguageOf('en', '{"language": "de"}', 'de-DE'),
     '--locale zuerst');
-  Assert.IsTrue(TMonitorSettings.LanguageOf('', '{"language": "en"}', 'de-DE') = TTextLanguage.English,
+  Assert.AreEqual<TTextLanguage>(TTextLanguage.English, TMonitorSettings.LanguageOf('', '{"language": "en"}', 'de-DE'),
     'dann settings.json');
-  Assert.IsTrue(TMonitorSettings.LanguageOf('', '{}', 'de-DE') = TTextLanguage.German, 'dann Windows');
-  Assert.IsTrue(TMonitorSettings.LanguageOf('', '', 'fr') = TTextLanguage.English, 'sonst Englisch');
-  Assert.IsTrue(TMonitorSettings.LanguageOf('xx', 'kaputt', '') = TTextLanguage.English);
+  Assert.AreEqual<TTextLanguage>(TTextLanguage.German, TMonitorSettings.LanguageOf('', '{}', 'de-DE'), 'dann Windows');
+  Assert.AreEqual<TTextLanguage>(TTextLanguage.English, TMonitorSettings.LanguageOf('', '', 'fr'), 'sonst Englisch');
+  Assert.AreEqual<TTextLanguage>(TTextLanguage.English, TMonitorSettings.LanguageOf('xx', 'kaputt', ''));
 end;
 
 initialization

@@ -263,10 +263,10 @@ end;
 
 procedure TShellBootstrapTests.TextLanguage_LocaleThenSettingThenEnglish;
 begin
-  Assert.IsTrue(TShellBootstrap.TextLanguage('de', '{"language": "en"}') = TTextLanguage.German);
-  Assert.IsTrue(TShellBootstrap.TextLanguage('', '{"language": "de"}') = TTextLanguage.German);
-  Assert.IsTrue(TShellBootstrap.TextLanguage('', '{"language": ""}') = TTextLanguage.English);
-  Assert.IsTrue(TShellBootstrap.TextLanguage('', '') = TTextLanguage.English);
+  Assert.AreEqual<TTextLanguage>(TTextLanguage.German, TShellBootstrap.TextLanguage('de', '{"language": "en"}'));
+  Assert.AreEqual<TTextLanguage>(TTextLanguage.German, TShellBootstrap.TextLanguage('', '{"language": "de"}'));
+  Assert.AreEqual<TTextLanguage>(TTextLanguage.English, TShellBootstrap.TextLanguage('', '{"language": ""}'));
+  Assert.AreEqual<TTextLanguage>(TTextLanguage.English, TShellBootstrap.TextLanguage('', ''));
 end;
 
 procedure TShellBootstrapTests.ProjectSettings_NoFile_Defaults;

@@ -51,7 +51,8 @@ begin
   Assert.AreEqual('', TStepFilterNames.NormalizeKinds(''));
   Assert.AreEqual('getters,setters,trivial,operators,emptyConstructors',
     TStepFilterNames.KindsText(TStepFilterNames.cAllKinds));
-  Assert.IsTrue(TStepFilterNames.ParseKinds('emptyconstructors') = [TStepFilterKind.EmptyConstructors]);
+  Assert.AreEqual<TStepFilterKinds>([TStepFilterKind.EmptyConstructors],
+    TStepFilterNames.ParseKinds('emptyconstructors'));
 end;
 
 procedure TStepFilterNamesTests.DefaultKindsAreGettersAndTrivial;

@@ -159,6 +159,9 @@ begin
   Assert.AreEqual(0, Count(TDUnitXIsTrueEqualityRule.Create, '  Assert.IsTrue(FPunkt = FAnders);'#10 +
     '  Assert.IsFalse(FPunkt <> FAnders);'#10'  Assert.IsTrue(Assigned(FAktion));'#10 +
     '  Assert.IsFalse(FFrage = nil);'#10'  Assert.IsTrue(not Assigned(FFrage));'));
+  // Typ unbekannt (aus einer Unit ohne Index): kann ein Methodenzeiger sein.
+  Assert.AreEqual(0, Count(TDUnitXIsTrueEqualityRule.Create, '  Assert.IsTrue(Assigned(Fremd.Wert));'#10 +
+    '  Assert.IsFalse(Fremd.Wert = nil);'));
   // Ein Objekt daneben meldet weiter.
   Assert.AreEqual(1, Count(TDUnitXIsTrueEqualityRule.Create, '  Assert.IsTrue(FPunkt = FAnders);'#10 +
     '  Assert.IsTrue(Assigned(FFake));'));

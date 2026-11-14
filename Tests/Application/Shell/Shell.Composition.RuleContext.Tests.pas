@@ -132,7 +132,7 @@ begin
   Assert.IsTrue(FRuleContext.RuleContextFor(TDocumentUris.FromPath(mFileName), mContext));
   Assert.AreEqual(mFileName, mContext.FileName);
   Assert.IsTrue(Length(mContext.Rules) > 0, 'Regeln');
-  Assert.IsTrue(mContext.Services.Index = FIndex, 'Index');
+  Assert.AreSame(FIndex, mContext.Services.Index, 'Index');
   Assert.IsTrue(mContext.Live);
   Assert.AreEqual(ChangeFileExt(mFileName, '.dfm'), mContext.FormFile);
   Assert.AreEqual('object Form1: TForm1 end', mContext.FormText);

@@ -49,6 +49,12 @@ begin
   Result := TRgbColor.Create(R, G, B);
 end;
 
+// "R,G,B" für Assert.AreEqual: Records vergleicht AreEqual binär, die Meldung zeigte nur "(record)".
+function RgbText(const AColor: TRgbColor): string;
+begin
+  Result := Format('%d,%d,%d', [AColor.R, AColor.G, AColor.B]);
+end;
+
 function GreenForBtnFace(AIndex: Integer; out AColor: TRgbColor): Boolean;
 begin
   Result := AIndex = 15;
@@ -66,7 +72,7 @@ var
 begin
   Found := TSourceColors.Find('Color := $00FF8000;');
   Assert.AreEqual<NativeInt>(1, Length(Found));
-  Assert.IsTrue(Found[0].Color = Rgb($00, $80, $FF));
+  Assert.AreEqual('0,128,255', RgbText(Found[0].Color));
   Assert.AreEqual(Ord(TColorFormat.Hex), Ord(Found[0].Format));
   Assert.AreEqual(9, Found[0].Range.StartPos.Character);
   Assert.AreEqual(18, Found[0].Range.EndPos.Character);
@@ -84,7 +90,7 @@ var
 begin
   Found := TSourceColors.Find('C := RGB(255, { rot } 128, 0);');
   Assert.AreEqual<NativeInt>(1, Length(Found));
-  Assert.IsTrue(Found[0].Color = Rgb(255, 128, 0));
+  Assert.AreEqual('255,128,0', RgbText(Found[0].Color));
   Assert.AreEqual(Ord(TColorFormat.Rgb), Ord(Found[0].Format));
   Assert.AreEqual(5, Found[0].Range.StartPos.Character);
   Assert.AreEqual(29, Found[0].Range.EndPos.Character);
@@ -102,8 +108,8 @@ var
 begin
   Found := TSourceColors.Find('A := clRed; B := CLNAVY; C := clUnbekannt;');
   Assert.AreEqual<NativeInt>(2, Length(Found));
-  Assert.IsTrue(Found[0].Color = Rgb(255, 0, 0));
-  Assert.IsTrue(Found[1].Color = Rgb(0, 0, 128));
+  Assert.AreEqual('255,0,0', RgbText(Found[0].Color));
+  Assert.AreEqual('0,0,128', RgbText(Found[1].Color));
   Assert.AreEqual(Ord(TColorFormat.Named), Ord(Found[1].Format));
 end;
 
@@ -114,9 +120,9 @@ begin
   Found := TSourceColors.Find('A := clBtnFace; B := clWindow;', GreenForBtnFace);
   Assert.AreEqual<NativeInt>(2, Length(Found));
   Assert.AreEqual(Ord(TColorFormat.SystemColor), Ord(Found[0].Format));
-  Assert.IsTrue(Found[0].Color = Rgb(0, 255, 0));
+  Assert.AreEqual('0,255,0', RgbText(Found[0].Color));
   // Ohne Wert vom Provider: Standardwert von Windows 10.
-  Assert.IsTrue(Found[1].Color = Rgb(255, 255, 255));
+  Assert.AreEqual('255,255,255', RgbText(Found[1].Color));
 end;
 
 procedure TSourceColorsTests.PresentationKeepsHexFormat;
@@ -160,7 +166,7 @@ begin
   Json := TLspColors.ColorToJson(Rgb(255, 128, 0));
   try
     Assert.IsTrue(TLspColors.TryReadColor(Json, Color));
-    Assert.IsTrue(Color = Rgb(255, 128, 0));
+    Assert.AreEqual('255,128,0', RgbText(Color));
   finally
     Json.Free;
   end;

@@ -253,7 +253,7 @@ begin
   GSection.Kind.VcsLinkWelcome.Click;
   Assert.AreSame(mVcs, APage.Pages.ActivePage, 'ohne Ziel bleibt die Seite');
   GSection.Kind.VcsLinkEditor.Click;
-  Assert.IsFalse(APage.Pages.ActivePage = mVcs, 'Editor-Seite mit Git-Rand');
+  Assert.AreNotSame(mVcs, APage.Pages.ActivePage, 'Editor-Seite mit Git-Rand');
 end;
 /// <summary>Alle Werte der Seite ändern.</summary>
 procedure EditVcsPage(APage: TAtlasSettingsPage);

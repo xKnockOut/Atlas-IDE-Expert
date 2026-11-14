@@ -471,8 +471,8 @@ begin
       end);
     Assert.IsTrue(BuildResult.Cancelled);
     Assert.AreEqual(1, FIndex.UnitCount);
-    Assert.IsTrue(Events.First = TIndexProgressKind.Started);
-    Assert.IsTrue(Events.Last = TIndexProgressKind.Finished);
+    Assert.AreEqual<TIndexProgressKind>(TIndexProgressKind.Started, Events.First);
+    Assert.AreEqual<TIndexProgressKind>(TIndexProgressKind.Finished, Events.Last);
   finally
     Builder.Free;
     Events.Free;
@@ -878,7 +878,7 @@ begin
         Order.Add('zweiter');
       end;
     Service.Start(First);
-    Assert.IsTrue(Entered.WaitFor(5000) = TWaitResult.wrSignaled, 'der erste Aufbau läuft');
+    Assert.AreEqual<TWaitResult>(TWaitResult.wrSignaled, Entered.WaitFor(5000), 'der erste Aufbau läuft');
     Watch := TStopwatch.StartNew;
     Service.Start(Second);
     Assert.IsTrue(Watch.ElapsedMilliseconds < 2000, 'Start wartet nicht auf den laufenden Aufbau');
@@ -1275,8 +1275,8 @@ begin
     end);
   Releaser.FreeOnTerminate := False;
   Releaser.Start;
-  Assert.IsTrue(Locked.WaitFor(5000) = wrSignaled, 'Sperre genommen');
-  Assert.IsTrue(FFileSystem.TryLockWrite(LibraryCache) = nil, 'nur ein Schreiber');
+  Assert.AreEqual<TWaitResult>(wrSignaled, Locked.WaitFor(5000), 'Sperre genommen');
+  Assert.IsNull(FFileSystem.TryLockWrite(LibraryCache), 'nur ein Schreiber');
   NotWritten := '';
   Service := TIndexService.Create(FIndex, FFileSystem);
   try

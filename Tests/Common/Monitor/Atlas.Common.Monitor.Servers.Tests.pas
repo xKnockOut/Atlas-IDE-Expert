@@ -74,7 +74,7 @@ end;
 
 procedure TMonitorServersTests.IdleWhenReady;
 begin
-  Assert.IsTrue(TMonitorServers.HealthOf(ReadyEntry, cNow) = TMonitorHealth.Idle);
+  Assert.AreEqual<TMonitorHealth>(TMonitorHealth.Idle, TMonitorServers.HealthOf(ReadyEntry, cNow));
   Assert.AreEqual('ruht', TMonitorServers.HealthText(TMonitorHealth.Idle));
 end;
 
@@ -85,12 +85,13 @@ begin
   mEntry := ReadyEntry;
   mEntry.Running := 1;
   mEntry.RunningMs := 800;
-  Assert.IsTrue(TMonitorServers.HealthOf(mEntry, cNow) = TMonitorHealth.Busy);
+  Assert.AreEqual<TMonitorHealth>(TMonitorHealth.Busy, TMonitorServers.HealthOf(mEntry, cNow));
   mEntry := ReadyEntry;
   mEntry.State := 'loading';
-  Assert.IsTrue(TMonitorServers.HealthOf(mEntry, cNow) = TMonitorHealth.Busy);
+  Assert.AreEqual<TMonitorHealth>(TMonitorHealth.Busy, TMonitorServers.HealthOf(mEntry, cNow));
   mEntry.State := '';
-  Assert.IsTrue(TMonitorServers.HealthOf(mEntry, cNow) = TMonitorHealth.Idle, 'alte Datei ohne Zustand');
+  Assert.AreEqual<TMonitorHealth>(TMonitorHealth.Idle,
+    TMonitorServers.HealthOf(mEntry, cNow), 'alte Datei ohne Zustand');
 end;
 
 procedure TMonitorServersTests.HangingWhenSilentOrRequestTooLong;
@@ -99,15 +100,15 @@ var
 begin
   mEntry := ReadyEntry;
   mEntry.Written := IncSecond(cNow, -(TMonitorServers.cSilentSeconds + 1));
-  Assert.IsTrue(TMonitorServers.HealthOf(mEntry, cNow) = TMonitorHealth.Hanging);
+  Assert.AreEqual<TMonitorHealth>(TMonitorHealth.Hanging, TMonitorServers.HealthOf(mEntry, cNow));
   mEntry := ReadyEntry;
   mEntry.Running := 1;
   mEntry.RunningMs := TMonitorServers.cHangingRequestMs + 1;
-  Assert.IsTrue(TMonitorServers.HealthOf(mEntry, cNow) = TMonitorHealth.Hanging);
+  Assert.AreEqual<TMonitorHealth>(TMonitorHealth.Hanging, TMonitorServers.HealthOf(mEntry, cNow));
   // Eine Uhr, die nachgeht, macht keinen Server hängend.
   mEntry := ReadyEntry;
   mEntry.Written := IncSecond(cNow, 30);
-  Assert.IsTrue(TMonitorServers.HealthOf(mEntry, cNow) = TMonitorHealth.Idle);
+  Assert.AreEqual<TMonitorHealth>(TMonitorHealth.Idle, TMonitorServers.HealthOf(mEntry, cNow));
 end;
 
 procedure TMonitorServersTests.OverallIsWorst;
@@ -118,11 +119,11 @@ begin
   mBusy.Running := 1;
   mHanging := ReadyEntry;
   mHanging.Written := IncMinute(cNow, -5);
-  Assert.IsTrue(TMonitorServers.Overall(nil, cNow) = TMonitorHealth.Idle);
-  Assert.IsTrue(TMonitorServers.Overall(TArray<TServerStatusEntry>.Create(ReadyEntry, mBusy), cNow) =
-    TMonitorHealth.Busy);
-  Assert.IsTrue(TMonitorServers.Overall(TArray<TServerStatusEntry>.Create(mHanging, mBusy), cNow) =
-    TMonitorHealth.Hanging);
+  Assert.AreEqual<TMonitorHealth>(TMonitorHealth.Idle, TMonitorServers.Overall(nil, cNow));
+  Assert.AreEqual<TMonitorHealth>(TMonitorHealth.Busy,
+    TMonitorServers.Overall(TArray<TServerStatusEntry>.Create(ReadyEntry, mBusy), cNow));
+  Assert.AreEqual<TMonitorHealth>(TMonitorHealth.Hanging,
+    TMonitorServers.Overall(TArray<TServerStatusEntry>.Create(mHanging, mBusy), cNow));
 end;
 
 procedure TMonitorServersTests.KindTextNamesKindAndCommand;

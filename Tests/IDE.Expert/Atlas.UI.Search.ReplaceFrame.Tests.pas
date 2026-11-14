@@ -168,7 +168,7 @@ begin
     Assert.IsTrue(mRow.Height >= mFrame.ReplaceButton.Height + mFrame.ReplaceButton.Margins.Top +
       mFrame.ReplaceButton.Margins.Bottom, 'Zeile so hoch wie der Knopf');
     Assert.AreSame(mRow, mFrame.Notice.Parent, 'Hinweis neben dem Knopf');
-    Assert.IsFalse(mFrame.Title.Parent = mRow, 'Kopfzeile darüber');
+    Assert.AreNotSame(mRow, mFrame.Title.Parent, 'Kopfzeile darüber');
   finally
     mHost.Free;
   end;

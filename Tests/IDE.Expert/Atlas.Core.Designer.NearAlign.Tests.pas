@@ -47,7 +47,8 @@ implementation
 uses
   System.Types,
   System.SysUtils,
-  Atlas.Core.Designer.NearAlign;
+  Atlas.Core.Designer.NearAlign,
+  Atlas.Tests.RecordText;
 
 function Item(const AName: string; ALeft, ATop, AWidth, AHeight: Integer): TAtlasAlignItem;
 begin
@@ -198,7 +199,7 @@ begin
   Assert.AreEqual(90, mRects[1].Left);
   Assert.AreEqual(290, mRects[1].Right);
   Assert.AreEqual(40, mRects[1].Top);
-  Assert.IsTrue(mRects[0] = mItems[0].Bounds);
+  Assert.AreEqual(TRecordText.Rect(mItems[0].Bounds), TRecordText.Rect(mRects[0]));
 end;
 
 procedure TAtlasNearAlignTests.FixBaselineYieldsToTop;

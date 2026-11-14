@@ -54,15 +54,18 @@ uses
 
 procedure TConfigurationScopesTests.KnowsPlaceOfEachKey;
 begin
-  Assert.IsTrue(TConfigurationScopes.ScopeOf('index.projectGroup') = TConfigurationScope.Global);
-  Assert.IsTrue(TConfigurationScopes.ScopeOf('index.exclude') = TConfigurationScope.Project);
-  Assert.IsTrue(TConfigurationScopes.ScopeOf('memoryBudgetMb') = TConfigurationScope.Global);
-  Assert.IsTrue(TConfigurationScopes.ScopeOf('hints.xmlDocFull') = TConfigurationScope.Global, 'erbt von hints');
-  Assert.IsTrue(TConfigurationScopes.ScopeOf('rules') = TConfigurationScope.Both, 'global und Projekt');
-  Assert.IsTrue(TConfigurationScopes.ScopeOf('format.indentSize') = TConfigurationScope.Project);
-  Assert.IsTrue(TConfigurationScopes.ScopeOf('completion.matching') = TConfigurationScope.Global);
-  Assert.IsTrue(TConfigurationScopes.ScopeOf('completion.senderCast') = TConfigurationScope.Project);
-  Assert.IsTrue(TConfigurationScopes.ScopeOf('unbekannt') = TConfigurationScope.Unknown);
+  Assert.AreEqual<TConfigurationScope>(TConfigurationScope.Global, TConfigurationScopes.ScopeOf('index.projectGroup'));
+  Assert.AreEqual<TConfigurationScope>(TConfigurationScope.Project, TConfigurationScopes.ScopeOf('index.exclude'));
+  Assert.AreEqual<TConfigurationScope>(TConfigurationScope.Global, TConfigurationScopes.ScopeOf('memoryBudgetMb'));
+  Assert.AreEqual<TConfigurationScope>(TConfigurationScope.Global,
+    TConfigurationScopes.ScopeOf('hints.xmlDocFull'), 'erbt von hints');
+  Assert.AreEqual<TConfigurationScope>(TConfigurationScope.Both,
+    TConfigurationScopes.ScopeOf('rules'), 'global und Projekt');
+  Assert.AreEqual<TConfigurationScope>(TConfigurationScope.Project, TConfigurationScopes.ScopeOf('format.indentSize'));
+  Assert.AreEqual<TConfigurationScope>(TConfigurationScope.Global, TConfigurationScopes.ScopeOf('completion.matching'));
+  Assert.AreEqual<TConfigurationScope>(TConfigurationScope.Project,
+    TConfigurationScopes.ScopeOf('completion.senderCast'));
+  Assert.AreEqual<TConfigurationScope>(TConfigurationScope.Unknown, TConfigurationScopes.ScopeOf('unbekannt'));
   Assert.IsTrue(TConfigurationScopes.IsMixed('index'));
   Assert.IsTrue(TConfigurationScopes.IsMixed('completion'));
   Assert.IsFalse(TConfigurationScopes.IsMixed('hints'));
@@ -306,7 +309,8 @@ begin
     List := List + [Text];
   end;
   // Hauptschalter: global, Vorgabe aus, vom Parser gelesen.
-  Assert.IsTrue(TConfigurationScopes.ScopeOf('experimental.enabled') = TConfigurationScope.Global);
+  Assert.AreEqual<TConfigurationScope>(TConfigurationScope.Global,
+    TConfigurationScopes.ScopeOf('experimental.enabled'));
   Assert.IsFalse(TServerSettings.Default.ExperimentalEnabled);
   Assert.IsTrue(TConfigurationParser.Parse('{"experimental": {"enabled": true}}', Issues).ExperimentalEnabled);
   Assert.AreEqual(0, Integer(Length(Issues)));

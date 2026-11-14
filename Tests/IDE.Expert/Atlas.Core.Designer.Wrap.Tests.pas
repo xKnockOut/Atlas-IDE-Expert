@@ -35,7 +35,8 @@ implementation
 uses
   System.Types,
   Atlas.Core.Designer.Anchors,
-  Atlas.Core.Designer.Wrap;
+  Atlas.Core.Designer.Wrap,
+  Atlas.Tests.RecordText;
 
 procedure TAtlasContainerWrapTests.ContainerRect;
 var
@@ -60,7 +61,7 @@ begin
   Assert.AreEqual(8, mInside.Top);
   Assert.AreEqual(100, mInside.Width);
   mBack := TAtlasContainerWrap.OutOfContainer(mInside, Rect(12, 7, 148, 105), Point(2, 15));
-  Assert.IsTrue(mBack = Bounds(20, 30, 100, 17));
+  Assert.AreEqual(TRecordText.Rect(Bounds(20, 30, 100, 17)), TRecordText.Rect(mBack));
 end;
 
 procedure TAtlasContainerWrapTests.TabOrders;

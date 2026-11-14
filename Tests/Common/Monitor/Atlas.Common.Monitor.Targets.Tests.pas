@@ -54,10 +54,10 @@ end;
 
 procedure TMonitorTargetsTests.KindFromExtension;
 begin
-  Assert.IsTrue(TargetOf('C:\Src').Kind = TMonitorTargetKind.Folder);
-  Assert.IsTrue(TargetOf('C:\Src\App.DPROJ').Kind = TMonitorTargetKind.Project);
-  Assert.IsTrue(TargetOf('C:\Src\Alle.groupproj').Kind = TMonitorTargetKind.Group);
-  Assert.IsTrue(TargetOf('C:\Src\Main.pas').Kind = TMonitorTargetKind.SourceFile);
+  Assert.AreEqual<TMonitorTargetKind>(TMonitorTargetKind.Folder, TargetOf('C:\Src').Kind);
+  Assert.AreEqual<TMonitorTargetKind>(TMonitorTargetKind.Project, TargetOf('C:\Src\App.DPROJ').Kind);
+  Assert.AreEqual<TMonitorTargetKind>(TMonitorTargetKind.Group, TargetOf('C:\Src\Alle.groupproj').Kind);
+  Assert.AreEqual<TMonitorTargetKind>(TMonitorTargetKind.SourceFile, TargetOf('C:\Src\Main.pas').Kind);
   Assert.AreEqual('Projektgruppe', TargetOf('a.groupproj').KindText);
 end;
 
@@ -118,7 +118,7 @@ begin
   finally
     mJson.Free;
   end;
-  Assert.IsTrue(mRead.Command = TMonitorCommand.Hotspots);
+  Assert.AreEqual<TMonitorCommand>(TMonitorCommand.Hotspots, mRead.Command);
   Assert.AreEqual('a,b', mRead.Options.Rules);
   Assert.IsTrue(mRead.Options.ChangedLines);
   Assert.IsFalse(mRead.Options.NoIndex);
@@ -135,14 +135,14 @@ var
   mJson: TJSONObject;
 begin
   mState := TMonitorCheckState.FromJson(nil);
-  Assert.IsTrue(mState.Command = TMonitorCommand.Check);
+  Assert.AreEqual<TMonitorCommand>(TMonitorCommand.Check, mState.Command);
   mJson := TJSONObject.ParseJSONValue('{"command": "gibtsnicht", "rules": 5}') as TJSONObject;
   try
     mState := TMonitorCheckState.FromJson(mJson);
   finally
     mJson.Free;
   end;
-  Assert.IsTrue(mState.Command = TMonitorCommand.Check);
+  Assert.AreEqual<TMonitorCommand>(TMonitorCommand.Check, mState.Command);
   Assert.AreEqual('', mState.Options.Rules);
   mState := Default(TMonitorCheckState);
 end;
@@ -165,9 +165,9 @@ begin
   mText := mSettings.ToText('{"other": 1}');
   Assert.IsTrue(mText.Contains('"other"'), mText);
   mSettings := TMonitorSettings.FromText(mText);
-  Assert.IsTrue(mSettings.Check.Command = TMonitorCommand.Query);
+  Assert.AreEqual<TMonitorCommand>(TMonitorCommand.Query, mSettings.Check.Command);
   Assert.AreEqual(1, Integer(Length(mSettings.Check.Targets.Items)));
-  Assert.IsTrue(TMonitorSettings.FromText('').Check.Command = TMonitorCommand.Check);
+  Assert.AreEqual<TMonitorCommand>(TMonitorCommand.Check, TMonitorSettings.FromText('').Check.Command);
   mSettings := Default(TMonitorSettings);
   mText := '';
 end;

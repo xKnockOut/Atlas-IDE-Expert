@@ -72,7 +72,7 @@ var
 begin
   mReport := TCoverage.Parse(cSummary);
   Assert.IsTrue(mReport.Valid);
-  Assert.IsTrue(mReport.Format = TCoverageFormat.DelphiCodeCoverage);
+  Assert.AreEqual<TCoverageFormat>(TCoverageFormat.DelphiCodeCoverage, mReport.Format);
   Assert.AreEqual(2, Integer(Length(mReport.Files)));
   Assert.AreEqual('Rechner.pas', mReport.Files[0].Name);
   Assert.AreEqual(3, mReport.Files[0].LineCount);
@@ -101,7 +101,7 @@ var
 begin
   mReport := TCoverage.Parse(cJaCoCo);
   Assert.IsTrue(mReport.Valid);
-  Assert.IsTrue(mReport.Format = TCoverageFormat.JaCoCo);
+  Assert.AreEqual<TCoverageFormat>(TCoverageFormat.JaCoCo, mReport.Format);
   Assert.AreEqual(1, Integer(Length(mReport.Files)));
   Assert.AreEqual(12, mReport.Files[0].Lines[0].Line);
   Assert.AreEqual(1, mReport.Files[0].HitsAt(12));
@@ -115,15 +115,15 @@ begin
   mReport := TCoverage.Parse('<report><stats><totallines value="5"/></stats><data><all name="all classes"/>' +
     '</data></report>');
   Assert.IsFalse(mReport.Valid);
-  Assert.IsTrue(mReport.Problem = TCoverageProblem.NoLines);
-  Assert.IsTrue(mReport.Format = TCoverageFormat.DelphiCodeCoverage);
+  Assert.AreEqual<TCoverageProblem>(TCoverageProblem.NoLines, mReport.Problem);
+  Assert.AreEqual<TCoverageFormat>(TCoverageFormat.DelphiCodeCoverage, mReport.Format);
 end;
 
 procedure TCoverageTests.NotAReport;
 begin
-  Assert.IsTrue(TCoverage.Parse('<test-results/>').Problem = TCoverageProblem.NotAReport);
-  Assert.IsTrue(TCoverage.Parse('').Problem = TCoverageProblem.NotAReport);
-  Assert.IsTrue(TCoverage.Parse('kein XML').Problem = TCoverageProblem.NotAReport);
+  Assert.AreEqual<TCoverageProblem>(TCoverageProblem.NotAReport, TCoverage.Parse('<test-results/>').Problem);
+  Assert.AreEqual<TCoverageProblem>(TCoverageProblem.NotAReport, TCoverage.Parse('').Problem);
+  Assert.AreEqual<TCoverageProblem>(TCoverageProblem.NotAReport, TCoverage.Parse('kein XML').Problem);
 end;
 
 procedure TCoverageTests.ParsesLineHitText;

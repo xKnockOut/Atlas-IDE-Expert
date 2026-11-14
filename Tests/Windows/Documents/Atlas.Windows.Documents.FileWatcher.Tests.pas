@@ -78,7 +78,7 @@ begin
       mWatcher.SetFiles([mConfig, mOther]);
       Sleep(200);
       TFile.WriteAllText(mConfig, '{"platform": "Win64"}');
-      Assert.IsTrue(mSignal.WaitFor(5000) = wrSignaled);
+      Assert.AreEqual<TWaitResult>(wrSignaled, mSignal.WaitFor(5000));
       TMonitor.Enter(mLock);
       try
         Assert.AreEqual('atlas.json;', mSeen);
@@ -89,7 +89,7 @@ begin
       // Neu angelegte Datei wird ebenso gemeldet; andere Dateien im Ordner nicht.
       TFile.WriteAllText(TPath.Combine(FFolder, 'Unit1.pas'), 'unit Unit1;');
       TFile.WriteAllText(mOther, '{}');
-      Assert.IsTrue(mSignal.WaitFor(5000) = wrSignaled);
+      Assert.AreEqual<TWaitResult>(wrSignaled, mSignal.WaitFor(5000));
       Sleep(300);
       TMonitor.Enter(mLock);
       try
@@ -114,7 +114,7 @@ begin
   Assert.AreEqual('', TFileWatcher.Stamp(mFileName));
   TFile.WriteAllText(mFileName, '{}');
   mBefore := TFileWatcher.Stamp(mFileName);
-  Assert.IsTrue(mBefore <> '');
+  Assert.AreNotEqual('', mBefore);
   TFile.WriteAllText(mFileName, '{"a": 1}');
   Assert.AreNotEqual(mBefore, TFileWatcher.Stamp(mFileName));
   Assert.AreEqual('', TFileWatcher.Stamp(FFolder));

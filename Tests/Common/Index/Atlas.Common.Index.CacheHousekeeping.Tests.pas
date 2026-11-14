@@ -477,9 +477,9 @@ begin
   Cache := CreateCache('index-00000001.json');
   First := TIndexCacheDirectory.TryLock(Cache);
   try
-    Assert.IsTrue(First <> nil);
+    Assert.IsNotNull(First);
     Second := TIndexCacheDirectory.TryLock(Cache);
-    Assert.IsTrue(Second = nil);
+    Assert.IsNull(Second);
     Assert.IsTrue(TIndexCacheDirectory.IsLocked(Cache));
   finally
     First.Free;
@@ -497,16 +497,16 @@ begin
     'index-00000001.atlasidx'));
   mLock := TIndexCacheDirectory.TryLock(mCache);
   try
-    Assert.IsTrue(mLock <> nil);
+    Assert.IsNotNull(mLock);
     Assert.IsTrue(TIndexCacheDirectory.IsLocked(mDetour));
-    Assert.IsTrue(TIndexCacheDirectory.TryLock(mDetour) = nil);
+    Assert.IsNull(TIndexCacheDirectory.TryLock(mDetour));
   finally
     mLock.Free;
   end;
   Assert.IsFalse(TIndexCacheDirectory.IsLocked(mDetour));
   mSecond := TIndexCacheDirectory.TryLock(mDetour);
   try
-    Assert.IsTrue(mSecond <> nil);
+    Assert.IsNotNull(mSecond);
     Assert.IsTrue(TIndexCacheDirectory.IsLocked(mCache));
   finally
     mSecond.Free;
@@ -661,14 +661,14 @@ begin
   Cache := CreateCache('index-00000005.json');
   FileSystem := TDiskIndexFileSystem.Create;
   First := FileSystem.TryLockWrite(Cache);
-  Assert.IsTrue(First <> nil);
+  Assert.IsNotNull(First);
   Second := FileSystem.TryLockWrite(Cache);
-  Assert.IsTrue(Second = nil, 'nur ein Schreiber');
+  Assert.IsNull(Second, 'nur ein Schreiber');
   Assert.IsTrue(TIndexCacheDirectory.IsLocked(Cache));
   First := nil;
   Assert.IsFalse(TIndexCacheDirectory.IsLocked(Cache));
   Second := FileSystem.TryLockWrite(Cache);
-  Assert.IsTrue(Second <> nil, 'nach dem Freigeben wieder frei');
+  Assert.IsNotNull(Second, 'nach dem Freigeben wieder frei');
   Second := nil;
 end;
 

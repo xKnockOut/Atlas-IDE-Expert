@@ -462,23 +462,23 @@ begin
   U := Extract(UnitA);
   Assert.AreEqual('A', U.UnitName);
   Assert.IsTrue(FindSymbol(U, 'TFoo', S));
-  Assert.IsTrue(S.Kind = TIndexSymbolKind.ClassType);
+  Assert.AreEqual<TIndexSymbolKind>(TIndexSymbolKind.ClassType, S.Kind);
   Assert.AreEqual(6, S.SelectionRange.StartPos.Line);
   Assert.AreEqual(2, S.SelectionRange.StartPos.Character);
   Assert.IsTrue(FindSymbol(U, 'TFoo.FValue', S));
-  Assert.IsTrue(S.Kind = TIndexSymbolKind.Field);
+  Assert.AreEqual<TIndexSymbolKind>(TIndexSymbolKind.Field, S.Kind);
   Assert.IsTrue(FindSymbol(U, 'TFoo.Value', S));
-  Assert.IsTrue(S.Kind = TIndexSymbolKind.Property_);
+  Assert.AreEqual<TIndexSymbolKind>(TIndexSymbolKind.Property_, S.Kind);
   Assert.IsTrue(FindSymbol(U, 'TFoo.Create', S));
-  Assert.IsTrue(S.Kind = TIndexSymbolKind.Constructor_);
+  Assert.AreEqual<TIndexSymbolKind>(TIndexSymbolKind.Constructor_, S.Kind);
   // Deklaration im interface und Rumpf in implementation
   Assert.AreEqual(2, Count(U, 'TFoo.Run'));
   Assert.IsTrue(FindSymbol(U, 'TFarbe.Gruen', S));
-  Assert.IsTrue(S.Kind = TIndexSymbolKind.EnumMember);
+  Assert.AreEqual<TIndexSymbolKind>(TIndexSymbolKind.EnumMember, S.Kind);
   Assert.IsTrue(FindSymbol(U, 'Max', S));
-  Assert.IsTrue(S.Kind = TIndexSymbolKind.Constant);
+  Assert.AreEqual<TIndexSymbolKind>(TIndexSymbolKind.Constant, S.Kind);
   Assert.IsTrue(FindSymbol(U, 'Global', S));
-  Assert.IsTrue(S.Kind = TIndexSymbolKind.Variable);
+  Assert.AreEqual<TIndexSymbolKind>(TIndexSymbolKind.Variable, S.Kind);
   Assert.AreEqual(2, Count(U, 'Hilfe'));
 end;
 
@@ -664,7 +664,7 @@ begin
   end;
   Assert.AreEqual('TNur64=WIN64;', Missing);
   Assert.IsTrue(U.Unavailable[0].InInterface);
-  Assert.IsTrue(U.Unavailable[0].Kind = TIndexSymbolKind.ClassType);
+  Assert.AreEqual<TIndexSymbolKind>(TIndexSymbolKind.ClassType, U.Unavailable[0].Kind);
 end;
 
 procedure TIndexExtractorTests.KeepsShortStringLengthInSignature;
@@ -735,9 +735,9 @@ begin
   end;
   Assert.AreEqual('TGeraet.FHandle64=WIN64;TGeraet.FExtra=WIN64;TGeraet.Nur64=WIN64;TGeraet.Groesse64=WIN64;',
     Missing);
-  Assert.IsTrue(U.Unavailable[0].Kind = TIndexSymbolKind.Field);
-  Assert.IsTrue(U.Unavailable[2].Kind = TIndexSymbolKind.Method);
-  Assert.IsTrue(U.Unavailable[3].Kind = TIndexSymbolKind.Property_);
+  Assert.AreEqual<TIndexSymbolKind>(TIndexSymbolKind.Field, U.Unavailable[0].Kind);
+  Assert.AreEqual<TIndexSymbolKind>(TIndexSymbolKind.Method, U.Unavailable[2].Kind);
+  Assert.AreEqual<TIndexSymbolKind>(TIndexSymbolKind.Property_, U.Unavailable[3].Kind);
   Assert.AreEqual(15, U.Unavailable[1].SelectionRange.StartPos.Character, 'Spalte des zweiten Felds');
 end;
 
@@ -772,7 +772,7 @@ begin
   end;
   Assert.AreEqual('ApplyAppIcon=FPC;', Missing);
   Assert.IsFalse(U.Unavailable[0].InInterface);
-  Assert.IsTrue(U.Unavailable[0].Kind = TIndexSymbolKind.Routine);
+  Assert.AreEqual<TIndexSymbolKind>(TIndexSymbolKind.Routine, U.Unavailable[0].Kind);
 end;
 
 procedure TIndexExtractorTests.ExtractsProgramDeclarations;
@@ -984,7 +984,7 @@ begin
   Index := TSymbolIndex.Create;
   Index.AddUnit(MakeUnit('A', 'C:\A.pas', ['Foo', 'Bar', 'foo']));
   Assert.IsTrue(Index.FindUnit('A', Found));
-  Assert.IsTrue(Found.NameTable <> nil);
+  Assert.IsNotNull(Found.NameTable);
   Positions := Found.SymbolsNamed('FOO');
   Assert.AreEqual<NativeInt>(2, Length(Positions));
   Assert.AreEqual(0, Positions[0]);
@@ -1016,7 +1016,7 @@ begin
   Assert.AreEqual<NativeInt>(1, Length(Found.SymbolsNamed('neu')));
   // Ohne Tabelle (Unit nie im Index) ebenso.
   Found := MakeUnit('C', 'C:\C.pas', ['X', 'Y', 'x']);
-  Assert.IsTrue(Found.NameTable = nil);
+  Assert.IsNull(Found.NameTable);
   Assert.AreEqual<NativeInt>(2, Length(Found.SymbolsNamed('X')));
 end;
 
@@ -1032,11 +1032,11 @@ begin
   First := Index.Units;
   Second := Index.Units;
   Assert.AreEqual<NativeInt>(2, Length(First));
-  Assert.IsTrue(Pointer(First) = Pointer(Second));
+  Assert.AreEqual<Pointer>(Pointer(Second), Pointer(First));
   // Lesende Zugriffe ändern den Stand nicht.
   Assert.IsTrue(Index.FindUnit('A', Found));
   Index.FindSymbols('Foo');
-  Assert.IsTrue(Pointer(First) = Pointer(Index.Units));
+  Assert.AreEqual<Pointer>(Pointer(Index.Units), Pointer(First));
 end;
 
 procedure TSymbolIndexTests.UnitsSnapshotRenewedAfterChange;
@@ -1049,13 +1049,13 @@ begin
   First := Index.Units;
   Index.AddUnit(MakeUnit('B', 'C:\B.pas', ['Bar']));
   Second := Index.Units;
-  Assert.IsFalse(Pointer(First) = Pointer(Second));
+  Assert.AreNotEqual<Pointer>(Pointer(Second), Pointer(First));
   Assert.AreEqual<NativeInt>(1, Length(First));
   Assert.AreEqual<NativeInt>(2, Length(Second));
   // Ersetzen derselben Datei.
   Index.AddUnit(MakeUnit('B', 'C:\B.pas', ['Bar', 'Baz']));
   First := Index.Units;
-  Assert.IsFalse(Pointer(First) = Pointer(Second));
+  Assert.AreNotEqual<Pointer>(Pointer(Second), Pointer(First));
   Assert.AreEqual<NativeInt>(2, Length(First));
   Index.RemoveFile('C:\A.pas');
   Second := Index.Units;
@@ -1141,7 +1141,7 @@ begin
   // Der Pool teilt gleiche Zeichenketten auch zwischen den Threads.
   Assert.IsTrue(Index.FindUnit('U0_1', First));
   Assert.IsTrue(Index.FindUnit('U3_100', Last));
-  Assert.IsTrue(Pointer(First.Symbols[0].Name) = Pointer(Last.Symbols[0].Name));
+  Assert.AreEqual<Pointer>(Pointer(Last.Symbols[0].Name), Pointer(First.Symbols[0].Name));
 end;
 
 { TIndexCacheTests }
@@ -1169,7 +1169,7 @@ begin
   Assert.IsTrue(S.InInterface);
   Assert.AreEqual(6, S.SelectionRange.StartPos.Line);
   Assert.IsTrue(FindSymbol(U, 'TFoo.Value', S));
-  Assert.IsTrue(S.Kind = TIndexSymbolKind.Property_);
+  Assert.AreEqual<TIndexSymbolKind>(TIndexSymbolKind.Property_, S.Kind);
 end;
 
 procedure TIndexCacheTests.RoundTripsSpecialCharactersAndFlags;
@@ -1330,7 +1330,7 @@ begin
   Loaded := TIndexCache.Deserialize(TIndexCache.Serialize([First, Second]));
   Assert.AreEqual<NativeInt>(2, Length(Loaded));
   Assert.AreEqual(Symbol.TypeName, Loaded[1].Symbols[0].TypeName);
-  Assert.IsTrue(Pointer(Loaded[0].Symbols[0].TypeName) = Pointer(Loaded[1].Symbols[0].TypeName));
+  Assert.AreEqual<Pointer>(Pointer(Loaded[1].Symbols[0].TypeName), Pointer(Loaded[0].Symbols[0].TypeName));
 end;
 
 procedure TIndexCacheTests.RejectsDamagedSymbolBlock;

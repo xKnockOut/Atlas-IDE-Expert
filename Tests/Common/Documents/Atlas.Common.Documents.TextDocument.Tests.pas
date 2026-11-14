@@ -44,7 +44,8 @@ implementation
 uses
   System.SysUtils,
   Atlas.Common.Documents.Contract,
-  Atlas.Common.Documents.TextDocument;
+  Atlas.Common.Documents.TextDocument,
+  Atlas.Tests.RecordText;
 
 function Doc(const AText: string): ITextDocument;
 begin
@@ -120,15 +121,15 @@ var
   Document: ITextDocument;
 begin
   Document := Doc('ab'#13#10'cde'#10'f');
-  Assert.IsTrue(TTextPosition.Create(0, 0) = Document.PositionAt(0));
-  Assert.IsTrue(TTextPosition.Create(0, 2) = Document.PositionAt(2));
+  Assert.AreEqual(TRecordText.Position(0, 0), TRecordText.Position(Document.PositionAt(0)));
+  Assert.AreEqual(TRecordText.Position(0, 2), TRecordText.Position(Document.PositionAt(2)));
   // Offset innerhalb von CRLF: Zeilenende.
-  Assert.IsTrue(TTextPosition.Create(0, 2) = Document.PositionAt(3));
-  Assert.IsTrue(TTextPosition.Create(1, 0) = Document.PositionAt(4));
-  Assert.IsTrue(TTextPosition.Create(1, 3) = Document.PositionAt(7));
-  Assert.IsTrue(TTextPosition.Create(2, 0) = Document.PositionAt(8));
-  Assert.IsTrue(TTextPosition.Create(2, 1) = Document.PositionAt(99));
-  Assert.IsTrue(TTextPosition.Create(0, 0) = Document.PositionAt(-3));
+  Assert.AreEqual(TRecordText.Position(0, 2), TRecordText.Position(Document.PositionAt(3)));
+  Assert.AreEqual(TRecordText.Position(1, 0), TRecordText.Position(Document.PositionAt(4)));
+  Assert.AreEqual(TRecordText.Position(1, 3), TRecordText.Position(Document.PositionAt(7)));
+  Assert.AreEqual(TRecordText.Position(2, 0), TRecordText.Position(Document.PositionAt(8)));
+  Assert.AreEqual(TRecordText.Position(2, 1), TRecordText.Position(Document.PositionAt(99)));
+  Assert.AreEqual(TRecordText.Position(0, 0), TRecordText.Position(Document.PositionAt(-3)));
 end;
 
 procedure TTextDocumentTests.CountsUtf16CodeUnits;

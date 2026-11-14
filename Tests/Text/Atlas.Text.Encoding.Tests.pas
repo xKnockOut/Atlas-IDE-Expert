@@ -87,11 +87,11 @@ end;
 
 procedure TTextEncodingProbeTests.BomDetection;
 begin
-  Assert.IsTrue(TTextEncodingProbe.BomOf(TBytes.Create($EF, $BB, $BF, Ord('a'))) = TTextBom.Utf8);
-  Assert.IsTrue(TTextEncodingProbe.BomOf(TBytes.Create($FF, $FE)) = TTextBom.Utf16LE);
-  Assert.IsTrue(TTextEncodingProbe.BomOf(TBytes.Create($FE, $FF)) = TTextBom.Utf16BE);
-  Assert.IsTrue(TTextEncodingProbe.BomOf(TBytes.Create($EF, $BB)) = TTextBom.None);
-  Assert.IsTrue(TTextEncodingProbe.BomOf(nil) = TTextBom.None);
+  Assert.AreEqual<TTextBom>(TTextBom.Utf8, TTextEncodingProbe.BomOf(TBytes.Create($EF, $BB, $BF, Ord('a'))));
+  Assert.AreEqual<TTextBom>(TTextBom.Utf16LE, TTextEncodingProbe.BomOf(TBytes.Create($FF, $FE)));
+  Assert.AreEqual<TTextBom>(TTextBom.Utf16BE, TTextEncodingProbe.BomOf(TBytes.Create($FE, $FF)));
+  Assert.AreEqual<TTextBom>(TTextBom.None, TTextEncodingProbe.BomOf(TBytes.Create($EF, $BB)));
+  Assert.AreEqual<TTextBom>(TTextBom.None, TTextEncodingProbe.BomOf(nil));
   Assert.AreEqual<Integer>(3, TTextEncodingProbe.BomLength(TTextBom.Utf8));
   Assert.AreEqual<Integer>(2, TTextEncodingProbe.BomLength(TTextBom.Utf16BE));
   Assert.AreEqual<Integer>(0, TTextEncodingProbe.BomLength(TTextBom.None));

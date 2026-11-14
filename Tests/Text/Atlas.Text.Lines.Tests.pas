@@ -66,7 +66,8 @@ type
 implementation
 
 uses
-  Atlas.Text.Lines;
+  Atlas.Text.Lines,
+  Atlas.Tests.RecordText;
 
 { TTextLinesTests }
 
@@ -80,24 +81,24 @@ end;
 
 procedure TTextLinesTests.KindOfMixed;
 begin
-  Assert.IsTrue(TTextLines.KindOf('abc') = TTextLineBreak.None);
-  Assert.IsTrue(TTextLines.KindOf('a'#13#10'b'#13#10) = TTextLineBreak.CRLF);
-  Assert.IsTrue(TTextLines.KindOf('a'#10'b') = TTextLineBreak.LF);
-  Assert.IsTrue(TTextLines.KindOf('a'#13'b') = TTextLineBreak.CR);
-  Assert.IsTrue(TTextLines.KindOf('a'#13#10'b'#10) = TTextLineBreak.Mixed);
+  Assert.AreEqual<TTextLineBreak>(TTextLineBreak.None, TTextLines.KindOf('abc'));
+  Assert.AreEqual<TTextLineBreak>(TTextLineBreak.CRLF, TTextLines.KindOf('a'#13#10'b'#13#10));
+  Assert.AreEqual<TTextLineBreak>(TTextLineBreak.LF, TTextLines.KindOf('a'#10'b'));
+  Assert.AreEqual<TTextLineBreak>(TTextLineBreak.CR, TTextLines.KindOf('a'#13'b'));
+  Assert.AreEqual<TTextLineBreak>(TTextLineBreak.Mixed, TTextLines.KindOf('a'#13#10'b'#10));
 end;
 
 procedure TTextLinesTests.DominantOfPrefersGivenOnTie;
 var
   mMixed: Boolean;
 begin
-  Assert.IsTrue(TTextLines.DominantOf('a'#10'b'#13#10'c'#10, mMixed) = TTextLineBreak.LF);
+  Assert.AreEqual<TTextLineBreak>(TTextLineBreak.LF, TTextLines.DominantOf('a'#10'b'#13#10'c'#10, mMixed));
   Assert.IsTrue(mMixed);
-  Assert.IsTrue(TTextLines.DominantOf('a'#10'b'#13#10, mMixed) = TTextLineBreak.CRLF);
-  Assert.IsTrue(TTextLines.DominantOf('a'#10'b'#13#10, TTextLineBreak.LF, mMixed) = TTextLineBreak.LF);
-  Assert.IsTrue(TTextLines.DominantOf('a'#13#10'b', TTextLineBreak.LF, mMixed) = TTextLineBreak.CRLF);
+  Assert.AreEqual<TTextLineBreak>(TTextLineBreak.CRLF, TTextLines.DominantOf('a'#10'b'#13#10, mMixed));
+  Assert.AreEqual<TTextLineBreak>(TTextLineBreak.LF, TTextLines.DominantOf('a'#10'b'#13#10, TTextLineBreak.LF, mMixed));
+  Assert.AreEqual<TTextLineBreak>(TTextLineBreak.CRLF, TTextLines.DominantOf('a'#13#10'b', TTextLineBreak.LF, mMixed));
   Assert.IsFalse(mMixed);
-  Assert.IsTrue(TTextLines.DominantOf('abc', mMixed) = TTextLineBreak.None);
+  Assert.AreEqual<TTextLineBreak>(TTextLineBreak.None, TTextLines.DominantOf('abc', mMixed));
   Assert.IsFalse(mMixed);
 end;
 
@@ -229,10 +230,10 @@ var
 begin
   mTable := TLineTable.Build('ab'#13#10'cd'#10'e');
   Assert.AreEqual<Integer>(3, mTable.LineCount);
-  Assert.IsTrue(mTable.PositionAt(0) = TTextPosition.Create(0, 0));
-  Assert.IsTrue(mTable.PositionAt(4) = TTextPosition.Create(1, 0));
-  Assert.IsTrue(mTable.PositionAt(6) = TTextPosition.Create(1, 2));
-  Assert.IsTrue(mTable.PositionAt(7) = TTextPosition.Create(2, 0));
+  Assert.AreEqual(TRecordText.Position(0, 0), TRecordText.Position(mTable.PositionAt(0)));
+  Assert.AreEqual(TRecordText.Position(1, 0), TRecordText.Position(mTable.PositionAt(4)));
+  Assert.AreEqual(TRecordText.Position(1, 2), TRecordText.Position(mTable.PositionAt(6)));
+  Assert.AreEqual(TRecordText.Position(2, 0), TRecordText.Position(mTable.PositionAt(7)));
 end;
 
 procedure TLineTableTests.PositionAtInsideCrlfStaysOnLine;
@@ -241,8 +242,8 @@ var
 begin
   mTable := TLineTable.Build('ab'#13#10'cd');
   // Offset 3 liegt zwischen CR und LF: Ende der ersten Zeile.
-  Assert.IsTrue(mTable.PositionAt(3) = TTextPosition.Create(0, 2));
-  Assert.IsTrue(mTable.PositionAt(2) = TTextPosition.Create(0, 2));
+  Assert.AreEqual(TRecordText.Position(0, 2), TRecordText.Position(mTable.PositionAt(3)));
+  Assert.AreEqual(TRecordText.Position(0, 2), TRecordText.Position(mTable.PositionAt(2)));
 end;
 
 procedure TLineTableTests.PositionAtClampsBeyondEnd;
@@ -250,8 +251,8 @@ var
   mTable: TLineTable;
 begin
   mTable := TLineTable.Build('ab'#10'c');
-  Assert.IsTrue(mTable.PositionAt(99) = TTextPosition.Create(1, 1));
-  Assert.IsTrue(mTable.PositionAt(-5) = TTextPosition.Create(0, 0));
+  Assert.AreEqual(TRecordText.Position(1, 1), TRecordText.Position(mTable.PositionAt(99)));
+  Assert.AreEqual(TRecordText.Position(0, 0), TRecordText.Position(mTable.PositionAt(-5)));
 end;
 
 procedure TLineTableTests.OffsetAtClampsToLineEnd;

@@ -169,11 +169,11 @@ begin
   Assert.IsTrue(mRun.Valid);
   Assert.AreEqual('nunit3', mRun.Format);
   Assert.AreEqual(Int64(500), mRun.DurationMs);
-  Assert.IsTrue(mRun.Cases[0].Outcome = TTestOutcome.Passed);
-  Assert.IsTrue(mRun.Cases[1].Outcome = TTestOutcome.Error);
+  Assert.AreEqual<TTestOutcome>(TTestOutcome.Passed, mRun.Cases[0].Outcome);
+  Assert.AreEqual<TTestOutcome>(TTestOutcome.Error, mRun.Cases[1].Outcome);
   Assert.AreEqual('Zugriffsverletzung', mRun.Cases[1].Message);
   Assert.AreEqual('U', mRun.Cases[1].UnitName);
-  Assert.IsTrue(mRun.Cases[2].Outcome = TTestOutcome.Skipped);
+  Assert.AreEqual<TTestOutcome>(TTestOutcome.Skipped, mRun.Cases[2].Outcome);
 end;
 
 procedure TTestResultsTests.ReadsJUnitReport;
@@ -199,13 +199,13 @@ begin
   Assert.AreEqual('TRechnerTests', mRun.Cases[1].Fixture);
   Assert.AreEqual('Summe', mRun.Cases[1].Method);
   Assert.AreEqual('Klein', mRun.Cases[1].CaseName);
-  Assert.IsTrue(mRun.Cases[1].Outcome = TTestOutcome.Failed);
+  Assert.AreEqual<TTestOutcome>(TTestOutcome.Failed, mRun.Cases[1].Outcome);
   Assert.AreEqual('3', mRun.Cases[1].Expected);
   Assert.AreEqual('4', mRun.Cases[1].Actual);
   Assert.AreEqual('Aufrufliste', mRun.Cases[1].StackTrace);
-  Assert.IsTrue(mRun.Cases[2].Outcome = TTestOutcome.Error);
+  Assert.AreEqual<TTestOutcome>(TTestOutcome.Error, mRun.Cases[2].Outcome);
   Assert.AreEqual('EZeroDivide', mRun.Cases[2].Message, 'erste Zeile ohne Attribut');
-  Assert.IsTrue(mRun.Cases[3].Outcome = TTestOutcome.Skipped);
+  Assert.AreEqual<TTestOutcome>(TTestOutcome.Skipped, mRun.Cases[3].Outcome);
   Assert.AreEqual('später', mRun.Cases[3].Message);
 end;
 
@@ -271,7 +271,8 @@ begin
       'time="0.001"><failure><message><![CDATA[Expected 3 but got 4]]></message></failure></test-case>' +
     '</results></test-suite></test-results>');
   Assert.IsTrue(mRun.Valid);
-  Assert.IsTrue(mRun.Cases[0].Outcome = TTestOutcome.Failed, 'das Ergebnis bleibt, wie der Bericht es nennt');
+  Assert.AreEqual<TTestOutcome>(TTestOutcome.Failed,
+    mRun.Cases[0].Outcome, 'das Ergebnis bleibt, wie der Bericht es nennt');
   Assert.AreEqual(Int64(40), mRun.Cases[0].LeakBytes);
   Assert.IsTrue(mRun.Cases[0].IsLeak);
   Assert.AreEqual(Int64(16), mRun.Cases[1].LeakBytes, 'Leck in Setup oder TearDown');
@@ -280,7 +281,7 @@ begin
   mRun := TTestResults.Parse('<testsuites><testsuite name="Konto.Tests.TKontoTests">' +
     '<testcase classname="Konto.Tests.TKontoTests" name="Bucht"><error message="' +
     '24 bytes were leaked in the setup/test/teardown methods"/></testcase></testsuite></testsuites>');
-  Assert.IsTrue(mRun.Cases[0].Outcome = TTestOutcome.Error);
+  Assert.AreEqual<TTestOutcome>(TTestOutcome.Error, mRun.Cases[0].Outcome);
   Assert.AreEqual(Int64(24), mRun.Cases[0].LeakBytes);
 end;
 

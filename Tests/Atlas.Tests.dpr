@@ -473,6 +473,7 @@ uses
   Atlas.Tests.RuleAssert in 'Support\Atlas.Tests.RuleAssert.pas',
   Atlas.Tests.RtlStubs in 'Support\Atlas.Tests.RtlStubs.pas',
   Atlas.Tests.SmallStack in 'Support\Atlas.Tests.SmallStack.pas',
+  Atlas.Tests.RecordText in 'Support\Atlas.Tests.RecordText.pas',
   Atlas.Tests.SlashHost in 'Support\Atlas.Tests.SlashHost.pas',
   Atlas.Common.Rules.Engine.Tests in 'Common\Rules\Atlas.Common.Rules.Engine.Tests.pas',
   Atlas.Common.Rules.Derived.Tests in 'Common\Rules\Atlas.Common.Rules.Derived.Tests.pas',

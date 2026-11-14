@@ -47,8 +47,8 @@ implementation
 
 uses
   System.Types,
-  System.SysUtils,
-  Atlas.Core.Designer.Layout;
+  Atlas.Core.Designer.Layout,
+  Atlas.Tests.RecordText;
 
 function Node(const AName: string; AParent, ALeft, ATop, AWidth, AHeight: Integer): TAtlasLayoutNode;
 begin
@@ -81,9 +81,7 @@ end;
 
 procedure AssertRect(const AExpected, AActual: TRect; const AMessage: string = '');
 begin
-  Assert.IsTrue(AExpected = AActual, Format('%s erwartet (%d,%d,%d,%d), ist (%d,%d,%d,%d)', [AMessage,
-    AExpected.Left, AExpected.Top, AExpected.Right, AExpected.Bottom, AActual.Left, AActual.Top, AActual.Right,
-    AActual.Bottom]));
+  Assert.AreEqual(TRecordText.Rect(AExpected), TRecordText.Rect(AActual), AMessage);
 end;
 
 { TAtlasFormLayoutTests }
