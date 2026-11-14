@@ -213,6 +213,7 @@
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.RuntimeReport.Tests.pas"/>
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.TestCases.Tests.pas"/>
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.BoundaryCases.Tests.pas"/>
+        <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.Mutants.Tests.pas"/>
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.BoundaryTests.Tests.pas"/>
         <DCCReference Include="Common\Leaks\Atlas.Common.Leaks.Setup.Tests.pas"/>
         <DCCReference Include="Common\Leaks\Atlas.Common.Leaks.Candidates.Tests.pas"/>
@@ -1339,6 +1340,12 @@
         <DCCReference Include="IDE.Expert\Atlas.Core.Tests.Compare.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Tests\Source\Core\Tests\Atlas.Core.Tests.Coverage.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Tests.Coverage.Tests.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Tests\Source\Core\Tests\Atlas.Core.Tests.Mutants.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.Core.Tests.Mutants.Tests.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Tests\Source\Core\Tests\Atlas.Core.Tests.MutationShadow.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.Core.Tests.MutationShadow.Tests.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Tests\Source\Core\Tests\Atlas.Core.Tests.MutationResults.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.Core.Tests.MutationResults.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Tests\Source\Core\Tests\Atlas.Core.Tests.Approval.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Tests.Approval.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Tests\Source\Core\Tests\Atlas.Core.Tests.Durations.pas"/>

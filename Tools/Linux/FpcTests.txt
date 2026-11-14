@@ -211,6 +211,7 @@ Atlas.Common.Lsp.StatusHeartbeat.Tests
 Atlas.Common.Lsp.StringLiteralCommands.Tests
 Atlas.Common.Lsp.TestCases.Tests
 Atlas.Common.Lsp.BoundaryCases.Tests
+Atlas.Common.Lsp.Mutants.Tests
 Atlas.Common.Lsp.BoundaryTests.Tests
 Atlas.Common.Lsp.TextDocumentSync.Tests
 Atlas.Common.Lsp.Todos.Tests
@@ -484,6 +485,9 @@ Atlas.Core.Tests.Compare.Tests
 Atlas.Core.Diagnostics.AsyncWait.Tests
 Atlas.Core.Diagnostics.BoundedStream.Tests
 Atlas.Core.Tests.Coverage.Tests
+Atlas.Core.Tests.Mutants.Tests
+Atlas.Core.Tests.MutationShadow.Tests
+Atlas.Core.Tests.MutationResults.Tests
 Atlas.Core.Tests.Approval.Tests
 Atlas.Core.Tests.Durations.Tests
 Atlas.Core.Tests.Series.Tests

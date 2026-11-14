@@ -1,0 +1,2 @@
+### Neu
+- Mutationslauf, Vorbereitung (#1460): Serverbefehl `atlas.server.mutants` liefert die Mutanten einer Unit samt Zeilen ihrer Routinen (Auswahl nach Routine, Operatoren, Zeilen und Symbolen). Im Plugin stehen Mutanten anwenden, Schattenprojekt (eigene dpr/dproj unter `.atlas-local\mutation`, das Original bleibt unberührt) und die Ablage der Ergebnisse je Routine mit Prüfsumme bereit; Befehle und Anzeige in der IDE folgen.
