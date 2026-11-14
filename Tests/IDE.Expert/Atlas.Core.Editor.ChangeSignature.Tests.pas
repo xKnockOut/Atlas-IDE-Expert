@@ -102,7 +102,7 @@ end;
 procedure TSignatureModelTests.UnchangedIsNotChanged;
 begin
   Assert.IsFalse(Prepared(Basis).Changed);
-  Assert.IsTrue(FModel.Validate = TAtlasSignatureProblem.None);
+  Assert.AreEqual<TAtlasSignatureProblem>(TAtlasSignatureProblem.None, FModel.Validate);
 end;
 
 procedure TSignatureModelTests.AddInsertsAfterSelection;
@@ -127,12 +127,12 @@ var
 begin
   Model := Prepared(Basis);
   Model.Add(0, 'B', '', '', '0');
-  Assert.IsTrue(Model.Validate(Subject) = TAtlasSignatureProblem.MissingType);
+  Assert.AreEqual<TAtlasSignatureProblem>(TAtlasSignatureProblem.MissingType, Model.Validate(Subject));
   Assert.AreEqual('B', Subject);
   Model.Change(1, 'Integer', '', '');
-  Assert.IsTrue(Model.Validate = TAtlasSignatureProblem.MissingValue);
+  Assert.AreEqual<TAtlasSignatureProblem>(TAtlasSignatureProblem.MissingValue, Model.Validate);
   Model.Change(1, 'Integer', '', '42');
-  Assert.IsTrue(Model.Validate = TAtlasSignatureProblem.None);
+  Assert.AreEqual<TAtlasSignatureProblem>(TAtlasSignatureProblem.None, Model.Validate);
 end;
 
 procedure TSignatureModelTests.RejectsReservedAndDuplicateNames;
@@ -142,14 +142,14 @@ var
 begin
   Model := Prepared(Basis);
   Model.Rename(0, 'begin');
-  Assert.IsTrue(Model.Validate(Subject) = TAtlasSignatureProblem.BadName);
+  Assert.AreEqual<TAtlasSignatureProblem>(TAtlasSignatureProblem.BadName, Model.Validate(Subject));
   Assert.AreEqual('begin', Subject);
   Model.Rename(0, '1A');
-  Assert.IsTrue(Model.Validate = TAtlasSignatureProblem.BadName);
+  Assert.AreEqual<TAtlasSignatureProblem>(TAtlasSignatureProblem.BadName, Model.Validate);
   Model.Rename(0, 's');
-  Assert.IsTrue(Model.Validate = TAtlasSignatureProblem.Duplicate);
+  Assert.AreEqual<TAtlasSignatureProblem>(TAtlasSignatureProblem.Duplicate, Model.Validate);
   Model.Rename(0, 'Anzahl');
-  Assert.IsTrue(Model.Validate = TAtlasSignatureProblem.None);
+  Assert.AreEqual<TAtlasSignatureProblem>(TAtlasSignatureProblem.None, Model.Validate);
 end;
 
 procedure TSignatureModelTests.RejectsNewParameterAfterDefault;
@@ -159,9 +159,9 @@ begin
   // Hinter einem Standardwert darf kein Parameter ohne stehen; Atlas erzeugt selbst keinen.
   Model := Prepared(Basis);
   Model.Add(1, 'B', 'Integer', '', '0');
-  Assert.IsTrue(Model.Validate = TAtlasSignatureProblem.AfterDefault);
+  Assert.AreEqual<TAtlasSignatureProblem>(TAtlasSignatureProblem.AfterDefault, Model.Validate);
   Assert.IsTrue(Model.MoveRow(2, -1));
-  Assert.IsTrue(Model.Validate = TAtlasSignatureProblem.None);
+  Assert.AreEqual<TAtlasSignatureProblem>(TAtlasSignatureProblem.None, Model.Validate);
 end;
 
 procedure TSignatureModelTests.MoveRowSwapsAndStopsAtEdge;
@@ -243,9 +243,9 @@ begin
   Assert.IsTrue(Model.EventFixed);
   Assert.AreEqual('TNotifyEvent', Model.BoundEvent);
   Model.Rename(0, 'AOrigin');
-  Assert.IsTrue(Model.Validate = TAtlasSignatureProblem.None);
+  Assert.AreEqual<TAtlasSignatureProblem>(TAtlasSignatureProblem.None, Model.Validate);
   Model.Add(0, 'B', 'Integer', '', '0');
-  Assert.IsTrue(Model.Validate(Subject) = TAtlasSignatureProblem.TypesFixed);
+  Assert.AreEqual<TAtlasSignatureProblem>(TAtlasSignatureProblem.TypesFixed, Model.Validate(Subject));
   Assert.AreEqual('TNotifyEvent', Subject);
 end;
 

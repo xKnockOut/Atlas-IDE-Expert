@@ -94,7 +94,7 @@ begin
   Assert.AreEqual(12, mInfo.ReportLine);
   Assert.AreEqual('FastMM_FullDebugMode64.dll', mInfo.DllName);
   Assert.AreEqual('C:\P\Win64\Debug', mInfo.DllTarget);
-  Assert.IsTrue(mInfo.UsesManager = TAtlasLeakChoice.Simple, 'kein Speichermanager im uses');
+  Assert.AreEqual<TAtlasLeakChoice>(TAtlasLeakChoice.Simple, mInfo.UsesManager, 'kein Speichermanager im uses');
 end;
 
 procedure TAtlasLeakSetupTests.RejectsOtherAnswers;
@@ -140,16 +140,16 @@ var
   mInfo: TAtlasLeakSetupInfo;
 begin
   mInfo := State(StringReplace(cState, '"manager":"none"', '"manager":"fastmm4"', []));
-  Assert.IsTrue(mInfo.Preselect = TAtlasLeakChoice.FastMM4);
+  Assert.AreEqual<TAtlasLeakChoice>(TAtlasLeakChoice.FastMM4, mInfo.Preselect);
 end;
 
 procedure TAtlasLeakSetupTests.PreselectPrefersFastMM5;
 var
   mInfo: TAtlasLeakSetupInfo;
 begin
-  Assert.IsTrue(State(cState).Preselect = TAtlasLeakChoice.FastMM5);
+  Assert.AreEqual<TAtlasLeakChoice>(TAtlasLeakChoice.FastMM5, State(cState).Preselect);
   mInfo := State(StringReplace(cState, '"file":"C:\\Lib\\FastMM5.pas"', '"file":""', []));
-  Assert.IsTrue(mInfo.Preselect = TAtlasLeakChoice.Simple, 'ohne FastMM bleibt Einfach');
+  Assert.AreEqual<TAtlasLeakChoice>(TAtlasLeakChoice.Simple, mInfo.Preselect, 'ohne FastMM bleibt Einfach');
 end;
 
 procedure TAtlasLeakSetupTests.StatusOfPackageIsOneLine;
@@ -158,7 +158,7 @@ var
 begin
   mStatus := State(StringReplace(cState, '"isPackage":false', '"isPackage":true', [])).Status;
   Assert.AreEqual(1, Integer(Length(mStatus)));
-  Assert.IsTrue(mStatus[0].Line = TAtlasLeakLine.Package);
+  Assert.AreEqual<TAtlasLeakLine>(TAtlasLeakLine.Package, mStatus[0].Line);
   Assert.IsFalse(mStatus[0].Ok);
   Assert.AreEqual('App.dpr', mStatus[0].Value);
 end;
@@ -203,7 +203,7 @@ var
 begin
   Assert.IsTrue(TAtlasLeakSetupPlan.FromJson('{"mainSource":"x","plan":{"manager":"fastmm5","fileReport":true,' +
     '"edit":{"changes":{}},"defines":["FastMM_FullDebugMode"],"copyDll":true,"empty":false}}', mPlan));
-  Assert.IsTrue(mPlan.Choice = TAtlasLeakChoice.FastMM5);
+  Assert.AreEqual<TAtlasLeakChoice>(TAtlasLeakChoice.FastMM5, mPlan.Choice);
   Assert.IsTrue(mPlan.FileReport);
   Assert.AreEqual('{"changes":{}}', mPlan.EditJson);
   Assert.AreEqual(1, Integer(Length(mPlan.Defines)));

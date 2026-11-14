@@ -135,7 +135,7 @@ begin
   try
     Page.LoadFrom(TAtlasPluginSettings.Defaults);
     Assert.IsTrue(Page.Part<TAtlasSettingsTransferPart>.TransferBar.Visible, 'Standard: Knöpfe da');
-    Assert.IsTrue(Page.Part<TAtlasSettingsTransferPart>.ExportButton.Parent <> nil);
+    Assert.IsNotNull(Page.Part<TAtlasSettingsTransferPart>.ExportButton.Parent);
     Settings := TAtlasPluginSettings.Defaults;
     Settings.SettingsExportImport := False;
     Page.LoadFrom(Settings);
@@ -223,7 +223,7 @@ begin
     Settings.SettingsExportSecrets := 'placeholder';
     Page.LoadFrom(Settings);
     General := SheetOf(CheckOf(Page, 'SettingsBackupBeforeImport'));
-    Assert.IsTrue(General <> nil);
+    Assert.IsNotNull(General);
     Assert.IsTrue(SheetOf(CheckOf(Page, 'HoverProblemActions')) <> General, 'Befund-Hover auf einem anderen Reiter');
     Page.Pages.ActivePage := General;
     Page.ResetPage;
@@ -247,7 +247,7 @@ begin
     Settings := TAtlasPluginSettings.Defaults;
     Settings.HoverProblemActions := False;
     Page.LoadFrom(Settings);
-    Assert.IsTrue(CheckOf(Page, 'HoverProblemActions').PopupMenu = Page.Marks.Menu, 'Kontextmenü am Feld');
+    Assert.AreSame(Page.Marks.Menu, CheckOf(Page, 'HoverProblemActions').PopupMenu, 'Kontextmenü am Feld');
     Assert.AreEqual(1, Integer(Length(Page.Marks.NamesOf(CheckOf(Page, 'HoverProblemActions')))));
     // Wie beim Rechtsklick (ohne das Menü modal zu zeigen).
     Page.Marks.Menu.PopupComponent := CheckOf(Page, 'HoverProblemActions');
@@ -385,9 +385,9 @@ begin
     try
       Options := Dialog.Options;
       Assert.AreEqual(Integer(Length(Catalog.Areas)), Integer(Length(Options.Areas)), 'alle Bereiche gewählt');
-      Assert.IsTrue(Options.Secrets = smPlaceholder);
+      Assert.AreEqual<TAtlasSecretMode>(smPlaceholder, Options.Secrets);
       Dialog.Secrets.ItemIndex := 0;
-      Assert.IsTrue(Dialog.Options.Secrets = smOmit);
+      Assert.AreEqual<TAtlasSecretMode>(smOmit, Dialog.Options.Secrets);
     finally
       Dialog.Free;
     end;

@@ -797,7 +797,7 @@ begin
     Names);
   Assert.AreEqual('summary>$0</summary>', TAtlasXmlDoc.TagItems(Declaration)[0].InsertText);
   // Prozedur: kein returns.
-  Assert.IsFalse(String.Join('|', [TAtlasXmlDoc.TagItems('procedure Add(A: Integer);')[2].Name]) = 'returns');
+  Assert.AreNotEqual('returns', String.Join('|', [TAtlasXmlDoc.TagItems('procedure Add(A: Integer);')[2].Name]));
 end;
 
 { TAtlasMatchingBudgetTests }

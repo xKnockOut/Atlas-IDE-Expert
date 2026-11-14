@@ -135,8 +135,9 @@ begin
       Rect(0, 0, 1200, 800));
     Link := Window.LinkRect(TAtlasShortcutTipLink.Never);
     Assert.IsFalse(Link.IsEmpty, '„Nicht mehr zeigen“ ist da');
-    Assert.IsTrue(Window.LinkAt(Link.CenterPoint.X, Link.CenterPoint.Y) = TAtlasShortcutTipLink.Never);
-    Assert.IsTrue(Window.LinkAt(0, 0) = TAtlasShortcutTipLink.None, 'Rand ist kein Link');
+    Assert.AreEqual<TAtlasShortcutTipLink>(TAtlasShortcutTipLink.Never,
+      Window.LinkAt(Link.CenterPoint.X, Link.CenterPoint.Y));
+    Assert.AreEqual<TAtlasShortcutTipLink>(TAtlasShortcutTipLink.None, Window.LinkAt(0, 0), 'Rand ist kein Link');
     Window.ClickLink(TAtlasShortcutTipLink.Never);
     Assert.AreEqual(1, Counter.Never);
     Assert.AreEqual(0, Counter.AllKeys);

@@ -257,8 +257,9 @@ var
   mArguments: TArray<string>;
 begin
   mUnits := Sample;
-  Assert.IsTrue(TAtlasTestListModel.RunArguments(Dynamic([TAtlasTestListRule.Category('Benchmark', True)]),
-    TAtlasTestListModel.Items(mUnits), mUnits, mArguments) = TAtlasTestListRun.Ready);
+  Assert.AreEqual<TAtlasTestListRun>(TAtlasTestListRun.Ready,
+    TAtlasTestListModel.RunArguments(Dynamic([TAtlasTestListRule.Category('Benchmark', True)]),
+    TAtlasTestListModel.Items(mUnits), mUnits, mArguments));
   Assert.AreEqual('--exclude:Benchmark', Joined(mArguments), 'nur am Test: DUnitX wertet aus');
   TAtlasTestListModel.RunArguments(Dynamic([TAtlasTestListRule.Category('Benchmark', False),
     TAtlasTestListRule.Pattern('Demo.*', False)]), TAtlasTestListModel.Items(mUnits), mUnits, mArguments);
@@ -329,8 +330,9 @@ var
   mList: TAtlasTestList;
 begin
   mUnits := Sample;
-  Assert.IsTrue(TAtlasTestListModel.RunArguments(Fixed(['Gibt.Es.Nicht']), TAtlasTestListModel.Items(mUnits),
-    mUnits, mArguments) = TAtlasTestListRun.Empty);
+  Assert.AreEqual<TAtlasTestListRun>(TAtlasTestListRun.Empty,
+    TAtlasTestListModel.RunArguments(Fixed(['Gibt.Es.Nicht']), TAtlasTestListModel.Items(mUnits),
+    mUnits, mArguments));
   mTests := nil;
   mList := Fixed(nil);
   for mIndex := 0 to 2000 do
@@ -342,8 +344,8 @@ begin
     end;
   end;
   mUnits := [NewUnit('Viele', [NewFixture('TVieleTests', nil, mTests)])];
-  Assert.IsTrue(TAtlasTestListModel.RunArguments(mList, TAtlasTestListModel.Items(mUnits), mUnits, mArguments) =
-    TAtlasTestListRun.TooLong);
+  Assert.AreEqual<TAtlasTestListRun>(TAtlasTestListRun.TooLong,
+    TAtlasTestListModel.RunArguments(mList, TAtlasTestListModel.Items(mUnits), mUnits, mArguments));
   Assert.AreEqual(0, Integer(Length(mArguments)));
 end;
 
@@ -362,13 +364,13 @@ begin
   mRead := TAtlasTestListModel.Parse(mJson, TAtlasTestListStore.Personal);
   Assert.AreEqual(2, Integer(Length(mRead)));
   Assert.AreEqual('Vor dem Commit', mRead[0].Name);
-  Assert.IsTrue(mRead[0].Store = TAtlasTestListStore.Personal);
+  Assert.AreEqual<TAtlasTestListStore>(TAtlasTestListStore.Personal, mRead[0].Store);
   Assert.AreEqual(3, Integer(Length(mRead[0].Rules)));
-  Assert.IsTrue(mRead[0].Rules[0].Kind = TAtlasTestListRuleKind.Category);
+  Assert.AreEqual<TAtlasTestListRuleKind>(TAtlasTestListRuleKind.Category, mRead[0].Rules[0].Kind);
   Assert.IsTrue(mRead[0].Rules[0].Exclude);
-  Assert.IsTrue(mRead[0].Rules[1].Kind = TAtlasTestListRuleKind.Pattern);
+  Assert.AreEqual<TAtlasTestListRuleKind>(TAtlasTestListRuleKind.Pattern, mRead[0].Rules[1].Kind);
   Assert.AreEqual('*.Slow.*', mRead[0].Rules[1].Value);
-  Assert.IsTrue(mRead[0].Rules[2].State = TAtlasTestListState.NotRun);
+  Assert.AreEqual<TAtlasTestListState>(TAtlasTestListState.NotRun, mRead[0].Rules[2].State);
   Assert.IsFalse(mRead[0].Rules[2].Exclude);
   Assert.IsFalse(mRead[1].IsDynamic);
   Assert.AreEqual('Ä.TÖ.Ü|B', Joined(mRead[1].Tests));

@@ -70,7 +70,7 @@ begin
     Assert.AreEqual(0, mLog.Calls, 'Antwort einer älteren Frage gilt nicht');
     mSecond(mValue);
     Assert.AreEqual(1, mLog.Calls, 'Antwort der jüngsten Frage kommt an');
-    Assert.IsTrue(mLog.Last = mValue, 'Wert unverändert weitergegeben');
+    Assert.AreSame(mValue, mLog.Last, 'Wert unverändert weitergegeben');
   finally
     mAsk.Close;
     mFirst := nil;

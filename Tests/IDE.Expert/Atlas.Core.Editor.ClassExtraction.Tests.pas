@@ -177,22 +177,22 @@ var
   Subject: string;
 begin
   Model := Prepared(Basis);
-  Assert.IsTrue(Model.Validate = TAtlasExtractionProblem.None);
+  Assert.AreEqual<TAtlasExtractionProblem>(TAtlasExtractionProblem.None, Model.Validate);
   Model.Name := '1Kunde';
-  Assert.IsTrue(Model.Validate(Subject) = TAtlasExtractionProblem.BadName);
+  Assert.AreEqual<TAtlasExtractionProblem>(TAtlasExtractionProblem.BadName, Model.Validate(Subject));
   Assert.AreEqual('1Kunde', Subject);
   Model.Name := 'begin';
-  Assert.IsTrue(Model.Validate = TAtlasExtractionProblem.BadName);
+  Assert.AreEqual<TAtlasExtractionProblem>(TAtlasExtractionProblem.BadName, Model.Validate);
   Model.Name := '';
-  Assert.IsTrue(Model.Validate = TAtlasExtractionProblem.BadName);
+  Assert.AreEqual<TAtlasExtractionProblem>(TAtlasExtractionProblem.BadName, Model.Validate);
   Model.Name := '  IKunde  ';
-  Assert.IsTrue(Model.Validate = TAtlasExtractionProblem.None);
+  Assert.AreEqual<TAtlasExtractionProblem>(TAtlasExtractionProblem.None, Model.Validate);
 end;
 
 procedure TClassExtractionModelTests.RejectsNameOfClass;
 begin
   Prepared(Basis).Name := 'tkunde';
-  Assert.IsTrue(FModel.Validate = TAtlasExtractionProblem.SameName);
+  Assert.AreEqual<TAtlasExtractionProblem>(TAtlasExtractionProblem.SameName, FModel.Validate);
 end;
 
 procedure TClassExtractionModelTests.NeedsOneMember;
@@ -200,7 +200,7 @@ var
   Subject: string;
 begin
   Prepared(Basis).CheckAll(False);
-  Assert.IsTrue(FModel.Validate(Subject) = TAtlasExtractionProblem.NoMembers);
+  Assert.AreEqual<TAtlasExtractionProblem>(TAtlasExtractionProblem.NoMembers, FModel.Validate(Subject));
   Assert.AreEqual('', Subject);
 end;
 
@@ -209,10 +209,10 @@ var
   Subject: string;
 begin
   Prepared(Basis).TargetUnit := 'Kunden..Daten';
-  Assert.IsTrue(FModel.Validate(Subject) = TAtlasExtractionProblem.BadUnit);
+  Assert.AreEqual<TAtlasExtractionProblem>(TAtlasExtractionProblem.BadUnit, FModel.Validate(Subject));
   Assert.AreEqual('Kunden..Daten', Subject);
   FModel.TargetUnit := 'Kunden.Schnittstellen';
-  Assert.IsTrue(FModel.Validate = TAtlasExtractionProblem.None);
+  Assert.AreEqual<TAtlasExtractionProblem>(TAtlasExtractionProblem.None, FModel.Validate);
 end;
 
 procedure TClassExtractionModelTests.RequestJsonCarriesCheckedIds;
@@ -235,7 +235,7 @@ begin
   FModel := TAtlasClassExtractionModel.Create(nil);
   Assert.AreEqual(0, Integer(FModel.Count));
   Assert.AreEqual('', FModel.Name);
-  Assert.IsTrue(FModel.Validate = TAtlasExtractionProblem.BadName);
+  Assert.AreEqual<TAtlasExtractionProblem>(TAtlasExtractionProblem.BadName, FModel.Validate);
 end;
 
 procedure TClassExtractionModelTests.OwnUnitMeansSameUnit;

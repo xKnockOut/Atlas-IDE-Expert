@@ -62,13 +62,18 @@ end;
 
 procedure TAtlasProjectSelectionTests.KindFollowsExtension;
 begin
-  Assert.IsTrue(TAtlasProjectSelection.KindOf('C:\P\Main.PAS') = TAtlasProjectNodeKind.SourceFile);
-  Assert.IsTrue(TAtlasProjectSelection.KindOf('C:\P\Main.dfm') = TAtlasProjectNodeKind.FormFile);
-  Assert.IsTrue(TAtlasProjectSelection.KindOf('C:\P\Main.fmx') = TAtlasProjectNodeKind.FormFile);
-  Assert.IsTrue(TAtlasProjectSelection.KindOf('C:\P\App.dproj') = TAtlasProjectNodeKind.Project);
-  Assert.IsTrue(TAtlasProjectSelection.KindOf('C:\P\Core') = TAtlasProjectNodeKind.Folder);
-  Assert.IsTrue(TAtlasProjectSelection.KindOf('C:\P\v1.2\') = TAtlasProjectNodeKind.Folder);
-  Assert.IsTrue(TAtlasProjectSelection.KindOf('C:\P\App.res') = TAtlasProjectNodeKind.OtherFile);
+  Assert.AreEqual<TAtlasProjectNodeKind>(TAtlasProjectNodeKind.SourceFile,
+    TAtlasProjectSelection.KindOf('C:\P\Main.PAS'));
+  Assert.AreEqual<TAtlasProjectNodeKind>(TAtlasProjectNodeKind.FormFile,
+    TAtlasProjectSelection.KindOf('C:\P\Main.dfm'));
+  Assert.AreEqual<TAtlasProjectNodeKind>(TAtlasProjectNodeKind.FormFile,
+    TAtlasProjectSelection.KindOf('C:\P\Main.fmx'));
+  Assert.AreEqual<TAtlasProjectNodeKind>(TAtlasProjectNodeKind.Project,
+    TAtlasProjectSelection.KindOf('C:\P\App.dproj'));
+  Assert.AreEqual<TAtlasProjectNodeKind>(TAtlasProjectNodeKind.Folder, TAtlasProjectSelection.KindOf('C:\P\Core'));
+  Assert.AreEqual<TAtlasProjectNodeKind>(TAtlasProjectNodeKind.Folder, TAtlasProjectSelection.KindOf('C:\P\v1.2\'));
+  Assert.AreEqual<TAtlasProjectNodeKind>(TAtlasProjectNodeKind.OtherFile,
+    TAtlasProjectSelection.KindOf('C:\P\App.res'));
 end;
 
 procedure TAtlasProjectSelectionTests.UnitStaysItself;

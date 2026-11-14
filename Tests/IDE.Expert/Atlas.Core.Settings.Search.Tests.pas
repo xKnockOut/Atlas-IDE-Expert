@@ -199,7 +199,7 @@ end;
 
 procedure TAtlasSettingsSearchTests.ShortcutFindsKeys;
 begin
-  Assert.IsTrue(RankOf('shortcut befehlspalette', 'PaletteKey') = 0);
+  Assert.AreEqual(0, RankOf('shortcut befehlspalette', 'PaletteKey'));
   Assert.IsTrue(RankOf('shortcut', 'PaletteKey') >= 0);
 end;
 
@@ -257,12 +257,12 @@ begin
   Assert.AreEqual(1, Integer(Length(mHits)));
   TAtlasSettingsSearch.Annotate(FCatalog, FGroups, mSettings, mHits, False);
   Assert.IsTrue(mHits[0].Modified, 'Breite geändert');
-  Assert.IsTrue(mHits[0].LockReason = lrMasterOff, 'Minimap aus sperrt die Breite');
+  Assert.AreEqual<TAtlasLockReason>(lrMasterOff, mHits[0].LockReason, 'Minimap aus sperrt die Breite');
   Assert.AreEqual('Minimap', mHits[0].LockMaster);
   Assert.Contains(TAtlasSettingsSearch.StateText(mHits[0]), 'Minimap');
   mSettings.ExperimentalEnabled := False;
   TAtlasSettingsSearch.Annotate(FCatalog, FGroups, mSettings, mHits, False);
-  Assert.IsTrue(mHits[0].LockReason = lrExperimental, 'experimentell vor Hauptschalter');
+  Assert.AreEqual<TAtlasLockReason>(lrExperimental, mHits[0].LockReason, 'experimentell vor Hauptschalter');
   Assert.IsTrue(mHits[0].Experimental);
 end;
 
@@ -304,7 +304,7 @@ begin
   Assert.IsTrue(mEntry.QuickToggle);
   mEntry := FCatalog[FCatalog.IndexOfName('SettingsSearch')];
   Assert.AreEqual('settings.search', mEntry.Key);
-  Assert.IsTrue(mEntry.Description <> '');
+  Assert.AreNotEqual('', mEntry.Description);
   Assert.IsTrue(TAtlasPluginSettings.Defaults.SettingsSearch);
   Assert.IsTrue(TAtlasPluginSettings.Defaults.PaletteSettingsPrefix);
 end;
@@ -513,9 +513,10 @@ end;
 
 procedure TAtlasSettingsPaletteSearchTests.AltEnterIsToggleAction;
 begin
-  Assert.IsTrue(TAtlasPaletteRows.ActionOf(False, False, True) = TAtlasPaletteAction.Toggle);
-  Assert.IsTrue(TAtlasPaletteRows.ActionOf(True, True, True) = TAtlasPaletteAction.Toggle, 'Alt vor Strg');
-  Assert.IsTrue(TAtlasPaletteRows.ActionOf(True, False, False) = TAtlasPaletteAction.Start);
+  Assert.AreEqual<TAtlasPaletteAction>(TAtlasPaletteAction.Toggle, TAtlasPaletteRows.ActionOf(False, False, True));
+  Assert.AreEqual<TAtlasPaletteAction>(TAtlasPaletteAction.Toggle,
+    TAtlasPaletteRows.ActionOf(True, True, True), 'Alt vor Strg');
+  Assert.AreEqual<TAtlasPaletteAction>(TAtlasPaletteAction.Start, TAtlasPaletteRows.ActionOf(True, False, False));
 end;
 
 initialization

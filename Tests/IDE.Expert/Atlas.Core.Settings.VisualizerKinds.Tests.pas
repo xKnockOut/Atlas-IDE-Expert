@@ -35,7 +35,7 @@ procedure TAtlasVisualizerSettingsTests.KindsNormalizeInFixedOrder;
 begin
   Assert.AreEqual('lists,json,colors', TAtlasVisualizerSettings.NormalizeKinds(' Colors, lists ;JSON, unbekannt'));
   Assert.AreEqual('', TAtlasVisualizerSettings.NormalizeKinds(''));
-  Assert.IsTrue(TAtlasVisualizerSettings.ParseKinds('GUID') = [TAtlasVisualizerKind.Guid]);
+  Assert.AreEqual<TAtlasVisualizerKinds>([TAtlasVisualizerKind.Guid], TAtlasVisualizerSettings.ParseKinds('GUID'));
 end;
 
 procedure TAtlasVisualizerSettingsTests.KindsTextOfAllKinds;

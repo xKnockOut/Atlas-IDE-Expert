@@ -40,11 +40,11 @@ uses
 
 procedure TAtlasTestCompareTests.RecognizesJsonAndXml;
 begin
-  Assert.IsTrue(TAtlasTestCompare.FormatOf(' {"a":1} ') = TAtlasCompareFormat.Json);
-  Assert.IsTrue(TAtlasTestCompare.FormatOf('[1,2]') = TAtlasCompareFormat.Json);
-  Assert.IsTrue(TAtlasTestCompare.FormatOf('<a><b/></a>') = TAtlasCompareFormat.Xml);
-  Assert.IsTrue(TAtlasTestCompare.FormatOf('abc') = TAtlasCompareFormat.Plain);
-  Assert.IsTrue(TAtlasTestCompare.FormatOf('{') = TAtlasCompareFormat.Plain);
+  Assert.AreEqual<TAtlasCompareFormat>(TAtlasCompareFormat.Json, TAtlasTestCompare.FormatOf(' {"a":1} '));
+  Assert.AreEqual<TAtlasCompareFormat>(TAtlasCompareFormat.Json, TAtlasTestCompare.FormatOf('[1,2]'));
+  Assert.AreEqual<TAtlasCompareFormat>(TAtlasCompareFormat.Xml, TAtlasTestCompare.FormatOf('<a><b/></a>'));
+  Assert.AreEqual<TAtlasCompareFormat>(TAtlasCompareFormat.Plain, TAtlasTestCompare.FormatOf('abc'));
+  Assert.AreEqual<TAtlasCompareFormat>(TAtlasCompareFormat.Plain, TAtlasTestCompare.FormatOf('{'));
 end;
 
 procedure TAtlasTestCompareTests.PrettyJsonIndentsAndKeepsStrings;
@@ -67,7 +67,7 @@ var
 begin
   mResult := TAtlasTestCompare.Build('{"name":"Anna","age":30,"city":"Bonn"}',
     '{"name":"Anna","age":31,"city":"Bonn"}', True);
-  Assert.IsTrue(mResult.Format = TAtlasCompareFormat.Json);
+  Assert.AreEqual<TAtlasCompareFormat>(TAtlasCompareFormat.Json, mResult.Format);
   Assert.AreEqual(1, mResult.Differences, 'nur die Zeile mit age');
   mFound := False;
   for mRow in mResult.Rows do
@@ -98,7 +98,7 @@ begin
   Assert.AreEqual('e', mLines[3]);
   mResult := TAtlasTestCompare.Build('x'#13#10'y', 'x'#10'y', True);
   Assert.AreEqual(1, mResult.Differences, 'nur das Zeilenende');
-  Assert.IsTrue(mResult.Rows[0].Kind = TAtlasCompareKind.Changed);
+  Assert.AreEqual<TAtlasCompareKind>(TAtlasCompareKind.Changed, mResult.Rows[0].Kind);
   Assert.AreEqual(1, mResult.Rows[0].LeftStart);
   Assert.AreEqual(1, mResult.Rows[0].LeftLength, 'das ␍');
   Assert.AreEqual(0, mResult.Rows[0].RightLength);
@@ -112,12 +112,12 @@ var
 begin
   mResult := TAtlasTestCompare.Build('a'#10'b'#10'c', 'a'#10'c', False);
   Assert.AreEqual(3, Integer(Length(mResult.Rows)));
-  Assert.IsTrue(mResult.Rows[1].Kind = TAtlasCompareKind.Removed);
+  Assert.AreEqual<TAtlasCompareKind>(TAtlasCompareKind.Removed, mResult.Rows[1].Kind);
   Assert.IsTrue(mResult.Rows[1].HasLeft);
   Assert.IsFalse(mResult.Rows[1].HasRight, 'Lücke rechts');
-  Assert.IsTrue(mResult.Rows[2].Kind = TAtlasCompareKind.Same);
+  Assert.AreEqual<TAtlasCompareKind>(TAtlasCompareKind.Same, mResult.Rows[2].Kind);
   mResult := TAtlasTestCompare.Build('a', 'a'#10'z', False);
-  Assert.IsTrue(mResult.Rows[Length(mResult.Rows) - 1].Kind = TAtlasCompareKind.Added);
+  Assert.AreEqual<TAtlasCompareKind>(TAtlasCompareKind.Added, mResult.Rows[Length(mResult.Rows) - 1].Kind);
 end;
 
 procedure TAtlasTestCompareTests.WithoutFormatTextStaysAsIs;
@@ -125,10 +125,10 @@ var
   mResult: TAtlasCompareResult;
 begin
   mResult := TAtlasTestCompare.Build('{"a":1}', '{"a":2}', False);
-  Assert.IsTrue(mResult.Format = TAtlasCompareFormat.Plain);
+  Assert.AreEqual<TAtlasCompareFormat>(TAtlasCompareFormat.Plain, mResult.Format);
   Assert.AreEqual(1, Integer(Length(mResult.Rows)));
   mResult := TAtlasTestCompare.Build('{"a":1}', '<a/>', True);
-  Assert.IsTrue(mResult.Format = TAtlasCompareFormat.Plain, 'verschiedene Formate bleiben roh');
+  Assert.AreEqual<TAtlasCompareFormat>(TAtlasCompareFormat.Plain, mResult.Format, 'verschiedene Formate bleiben roh');
   Assert.AreEqual(0, TAtlasTestCompare.Build('gleich', 'gleich', True).Differences);
 end;
 

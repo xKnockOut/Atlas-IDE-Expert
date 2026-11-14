@@ -118,14 +118,17 @@ var
 begin
   mSettings := TAtlasPluginSettings.Defaults;
   mSituation := Default(TAtlasOnSaveSituation);
-  Assert.IsTrue(TAtlasOnSaveBlock.Off = TAtlasTestsOnSave.Block(mSettings, mSituation), 'Vorgabe aus');
+  Assert.AreEqual<TAtlasOnSaveBlock>(TAtlasOnSaveBlock.Off,
+    TAtlasTestsOnSave.Block(mSettings, mSituation), 'Vorgabe aus');
   mSettings.TestsOnSave := True;
-  Assert.IsTrue(TAtlasOnSaveBlock.None = TAtlasTestsOnSave.Block(mSettings, mSituation));
+  Assert.AreEqual<TAtlasOnSaveBlock>(TAtlasOnSaveBlock.None, TAtlasTestsOnSave.Block(mSettings, mSituation));
   mSettings.TestsAffected := False;
-  Assert.IsTrue(TAtlasOnSaveBlock.Off = TAtlasTestsOnSave.Block(mSettings, mSituation), 'tests.affected aus');
+  Assert.AreEqual<TAtlasOnSaveBlock>(TAtlasOnSaveBlock.Off,
+    TAtlasTestsOnSave.Block(mSettings, mSituation), 'tests.affected aus');
   mSettings.TestsAffected := True;
   mSettings.TestRun := False;
-  Assert.IsTrue(TAtlasOnSaveBlock.Off = TAtlasTestsOnSave.Block(mSettings, mSituation), 'tests.run aus');
+  Assert.AreEqual<TAtlasOnSaveBlock>(TAtlasOnSaveBlock.Off,
+    TAtlasTestsOnSave.Block(mSettings, mSituation), 'tests.run aus');
 end;
 
 procedure TAtlasTestsOnSaveTests.DebuggingBuildingAndBusyBlock;
@@ -137,20 +140,23 @@ begin
   mSettings.TestsOnSave := True;
   mSituation := Default(TAtlasOnSaveSituation);
   mSituation.TestsBusy := True;
-  Assert.IsTrue(TAtlasOnSaveBlock.TestsBusy = TAtlasTestsOnSave.Block(mSettings, mSituation));
+  Assert.AreEqual<TAtlasOnSaveBlock>(TAtlasOnSaveBlock.TestsBusy, TAtlasTestsOnSave.Block(mSettings, mSituation));
   mSituation.Building := True;
-  Assert.IsTrue(TAtlasOnSaveBlock.Building = TAtlasTestsOnSave.Block(mSettings, mSituation));
+  Assert.AreEqual<TAtlasOnSaveBlock>(TAtlasOnSaveBlock.Building, TAtlasTestsOnSave.Block(mSettings, mSituation));
   mSituation.Debugging := True;
-  Assert.IsTrue(TAtlasOnSaveBlock.Debugging = TAtlasTestsOnSave.Block(mSettings, mSituation), 'Debuggen zuerst');
+  Assert.AreEqual<TAtlasOnSaveBlock>(TAtlasOnSaveBlock.Debugging,
+    TAtlasTestsOnSave.Block(mSettings, mSituation), 'Debuggen zuerst');
 end;
 
 procedure TAtlasTestsOnSaveTests.VerdictByCountAndLimit;
 begin
-  Assert.IsTrue(TAtlasOnSaveVerdict.NoTests = TAtlasTestsOnSave.Verdict(0, False, 50));
-  Assert.IsTrue(TAtlasOnSaveVerdict.Run = TAtlasTestsOnSave.Verdict(3, False, 50));
-  Assert.IsTrue(TAtlasOnSaveVerdict.Run = TAtlasTestsOnSave.Verdict(50, False, 50), 'genau die Grenze');
-  Assert.IsTrue(TAtlasOnSaveVerdict.TooMany = TAtlasTestsOnSave.Verdict(51, False, 50));
-  Assert.IsTrue(TAtlasOnSaveVerdict.AllNeeded = TAtlasTestsOnSave.Verdict(0, True, 50), 'alle nötig: kein Lauf');
+  Assert.AreEqual<TAtlasOnSaveVerdict>(TAtlasOnSaveVerdict.NoTests, TAtlasTestsOnSave.Verdict(0, False, 50));
+  Assert.AreEqual<TAtlasOnSaveVerdict>(TAtlasOnSaveVerdict.Run, TAtlasTestsOnSave.Verdict(3, False, 50));
+  Assert.AreEqual<TAtlasOnSaveVerdict>(TAtlasOnSaveVerdict.Run,
+    TAtlasTestsOnSave.Verdict(50, False, 50), 'genau die Grenze');
+  Assert.AreEqual<TAtlasOnSaveVerdict>(TAtlasOnSaveVerdict.TooMany, TAtlasTestsOnSave.Verdict(51, False, 50));
+  Assert.AreEqual<TAtlasOnSaveVerdict>(TAtlasOnSaveVerdict.AllNeeded,
+    TAtlasTestsOnSave.Verdict(0, True, 50), 'alle nötig: kein Lauf');
 end;
 
 procedure TAtlasTestsOnSaveTests.OnlySourcesCount;

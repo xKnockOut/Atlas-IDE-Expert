@@ -315,12 +315,12 @@ end;
 
 procedure TAtlasRankingTests.ListModeNames;
 begin
-  Assert.IsTrue(TAtlasListModes.ModeOf('filter') = TAtlasListMode.Filter);
-  Assert.IsTrue(TAtlasListModes.ModeOf(' ALL ') = TAtlasListMode.All);
-  Assert.IsTrue(TAtlasListModes.ModeOf('rest') = TAtlasListMode.Rest);
-  Assert.IsTrue(TAtlasListModes.ModeOf('alles') = TAtlasListMode.Filter, 'Unbekanntes wird Filter');
-  Assert.IsTrue(TAtlasListModes.ScopeOf('everywhere') = TAtlasListScope.Everywhere);
-  Assert.IsTrue(TAtlasListModes.ScopeOf('') = TAtlasListScope.Members);
+  Assert.AreEqual<TAtlasListMode>(TAtlasListMode.Filter, TAtlasListModes.ModeOf('filter'));
+  Assert.AreEqual<TAtlasListMode>(TAtlasListMode.All, TAtlasListModes.ModeOf(' ALL '));
+  Assert.AreEqual<TAtlasListMode>(TAtlasListMode.Rest, TAtlasListModes.ModeOf('rest'));
+  Assert.AreEqual<TAtlasListMode>(TAtlasListMode.Filter, TAtlasListModes.ModeOf('alles'), 'Unbekanntes wird Filter');
+  Assert.AreEqual<TAtlasListScope>(TAtlasListScope.Everywhere, TAtlasListModes.ScopeOf('everywhere'));
+  Assert.AreEqual<TAtlasListScope>(TAtlasListScope.Members, TAtlasListModes.ScopeOf(''));
 end;
 
 procedure TAtlasRankingTests.GroupsInheritedMembersWithHeaders;
@@ -533,7 +533,7 @@ begin
       Found := True;
       Assert.AreEqual('Zweig 0', Tag.Text);
       Assert.AreEqual('0', Tag.Arg);
-      Assert.IsTrue(Tag.Kind = TAtlasTagKind.Neutral);
+      Assert.AreEqual<TAtlasTagKind>(TAtlasTagKind.Neutral, Tag.Kind);
     end;
   end;
   Assert.IsTrue(Found);
@@ -541,7 +541,7 @@ begin
   Item.VariantBranch := '';
   for Tag in TAtlasItemPresentation.Tags(Item) do
   begin
-    Assert.IsFalse(Tag.Id = TAtlasTagId.VariantBranch);
+    Assert.AreNotEqual<TAtlasTagId>(TAtlasTagId.VariantBranch, Tag.Id);
   end;
 end;
 
@@ -762,7 +762,7 @@ begin
   end;
   Assert.IsTrue(Item.Attribute);
   Assert.AreEqual('at', TAtlasItemPresentation.Badge(Item).Code);
-  Assert.IsTrue(TAtlasItemPresentation.Badge(Item).Kind = TAtlasBadgeKind.Type_);
+  Assert.AreEqual<TAtlasBadgeKind>(TAtlasBadgeKind.Type_, TAtlasItemPresentation.Badge(Item).Kind);
   Json := TJSONObject.ParseJSONValue('{"label":"TKunde","kind":7}') as TJSONObject;
   try
     Item := TAtlasServerCompletionProvider.ItemFromLsp(Json, 0);
@@ -862,7 +862,7 @@ begin
   Assert.IsTrue(Found);
   for Tag in TAtlasItemPresentation.Tags(Items[0]) do
   begin
-    Assert.IsFalse(Tag.Id = TAtlasTagId.Active);
+    Assert.AreNotEqual<TAtlasTagId>(TAtlasTagId.Active, Tag.Id);
   end;
   Assert.AreEqual('FMX.Graphics.TBitmap', string.Join(',', TAtlasItemPresentation.SameNameHidden(Items)));
   Details := Default(TAtlasItemDetails);
@@ -966,8 +966,8 @@ begin
   // Zirkelbezug als Marke in Fehlerfarbe, anderer Abschnitt rechts, kein Dateiname.
   Tags := TAtlasItemPresentation.Tags(Items[3]);
   Assert.AreEqual(1, Integer(Length(Tags)));
-  Assert.IsTrue(Tags[0].Kind = TAtlasTagKind.Error);
-  Assert.IsTrue(Tags[0].Id = TAtlasTagId.Cycle);
+  Assert.AreEqual<TAtlasTagKind>(TAtlasTagKind.Error, Tags[0].Kind);
+  Assert.AreEqual<TAtlasTagId>(TAtlasTagId.Cycle, Tags[0].Id);
   Assert.AreEqual('', TAtlasItemPresentation.Detail(Items[3]));
   Assert.AreEqual('bereits im implementation-Teil', TAtlasItemPresentation.Detail(Items[2]));
   Assert.AreEqual(1, Integer(Length(TAtlasItemPresentation.UsesHidden(Items))));
@@ -1007,14 +1007,14 @@ begin
       Usage.Record_(Begin_);
     end;
     Assert.AreEqual(75, Usage.Boost(Begin_), '3 × 15 + 30 für zuletzt');
-    Assert.IsTrue(Usage.Mark(Begin_) = TAtlasUsageMark.Recent);
+    Assert.AreEqual<TAtlasUsageMark>(TAtlasUsageMark.Recent, Usage.Mark(Begin_));
     Usage.Record_(Add);
-    Assert.IsTrue(Usage.Mark(Add) = TAtlasUsageMark.Recent);
-    Assert.IsTrue(Usage.Mark(Begin_) = TAtlasUsageMark.None, 'erst ab 5 Übernahmen häufig');
+    Assert.AreEqual<TAtlasUsageMark>(TAtlasUsageMark.Recent, Usage.Mark(Add));
+    Assert.AreEqual<TAtlasUsageMark>(TAtlasUsageMark.None, Usage.Mark(Begin_), 'erst ab 5 Übernahmen häufig');
     Usage.Record_(Begin_);
     Usage.Record_(Begin_);
     Usage.Record_(Add);
-    Assert.IsTrue(Usage.Mark(Begin_) = TAtlasUsageMark.Frequent);
+    Assert.AreEqual<TAtlasUsageMark>(TAtlasUsageMark.Frequent, Usage.Mark(Begin_));
     Assert.AreEqual(60, Usage.Boost(Begin_), 'gedeckelt, nicht mehr zuletzt');
   finally
     Usage.Free;
@@ -1039,7 +1039,7 @@ begin
     Assert.IsFalse(Usage.Changed);
     Loaded.LoadFromFile(FileName);
     Assert.AreEqual(Usage.Boost(Item), Loaded.Boost(Item));
-    Assert.IsTrue(Loaded.Mark(Item) = TAtlasUsageMark.Recent);
+    Assert.AreEqual<TAtlasUsageMark>(TAtlasUsageMark.Recent, Loaded.Mark(Item));
     Loaded.Clear;
     Assert.AreEqual(0, Loaded.Boost(Item));
     // Fehlende Datei: leer, kein Fehler.
@@ -1081,7 +1081,7 @@ begin
       end));
     Assert.AreEqual('BeginUpdate,Add', View.Names);
     Assert.IsTrue(Controller.SelectedItem(Item));
-    Assert.IsTrue(Item.Usage = TAtlasUsageMark.Recent);
+    Assert.AreEqual<TAtlasUsageMark>(TAtlasUsageMark.Recent, Item.Usage);
   finally
     Controller.Free;
     Usage.Free;
@@ -1271,13 +1271,13 @@ begin
   Usage := TAtlasUsage.Create;
   try
     TFile.WriteAllText(FileName, '{"entries": 5}');
-    Assert.IsTrue(Usage.LoadFromFile(FileName) = TAtlasDataLoad.Renewed);
+    Assert.AreEqual<TAtlasDataLoad>(TAtlasDataLoad.Renewed, Usage.LoadFromFile(FileName));
     Assert.IsTrue(TFile.Exists(FileName + TAtlasDataFile.cDefectExtension), 'beiseitegelegt');
     Usage.Record_(Member('BeginUpdate', 'TStrings', 1, 0));
     Assert.IsTrue(Usage.SaveToFile(FileName));
     Lock := TFileStream.Create(FileName, fmOpenRead or fmShareExclusive);
     try
-      Assert.IsTrue(Usage.LoadFromFile(FileName) = TAtlasDataLoad.Kept);
+      Assert.AreEqual<TAtlasDataLoad>(TAtlasDataLoad.Kept, Usage.LoadFromFile(FileName));
     finally
       Lock.Free;
     end;

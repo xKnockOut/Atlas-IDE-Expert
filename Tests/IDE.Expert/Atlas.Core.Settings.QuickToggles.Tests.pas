@@ -205,8 +205,8 @@ begin
   for mToggle in AToggles do
   begin
     Assert.IsTrue(TAtlasQuickToggles.GetFlag(TAtlasPluginSettings.Defaults, mToggle.Key, mValue), mToggle.Key);
-    Assert.IsTrue(mToggle.Caption <> '', mToggle.Key);
-    Assert.IsTrue(mToggle.Page <> '', mToggle.Key);
+    Assert.AreNotEqual('', mToggle.Caption, mToggle.Key);
+    Assert.AreNotEqual('', mToggle.Page, mToggle.Key);
   end;
 end;
 
@@ -311,7 +311,7 @@ begin
   Effective := Session.Apply(Stored, Toggles);
   Assert.IsFalse(Effective.PairColors);
   Assert.IsFalse(Effective.PairGuides);
-  Assert.IsTrue(Effective.Preview = Stored.Preview);
+  Assert.AreEqual<Boolean>(Stored.Preview, Effective.Preview);
   Assert.IsTrue(Effective.GenerateMenu, 'Befehl (#719) ist keine Zeichnung');
   Assert.IsTrue(Effective.TodoList, 'Befehl (#68) ist keine Zeichnung');
   Assert.IsTrue(Effective.MetricsReport, 'Befehl (#66) ist keine Zeichnung');

@@ -155,13 +155,13 @@ begin
   ForceDirectories(mFolder);
   try
     TFile.WriteAllText(mFileName, '{"choices": [');
-    Assert.IsTrue(TAtlasTestProjectChoices.Load(mFileName, mChoices) = TAtlasDataLoad.Renewed);
+    Assert.AreEqual<TAtlasDataLoad>(TAtlasDataLoad.Renewed, TAtlasTestProjectChoices.Load(mFileName, mChoices));
     Assert.IsTrue(FileExists(mFileName + TAtlasDataFile.cDefectExtension), 'beiseitegelegt');
     TAtlasTestProjectChoices.Remember(mChoices, ['A', 'B'], 'B');
     Assert.IsTrue(TAtlasTestProjectChoices.Save(mFileName, mChoices));
     mLock := TFileStream.Create(mFileName, fmOpenRead or fmShareExclusive);
     try
-      Assert.IsTrue(TAtlasTestProjectChoices.Load(mFileName, mChoices) = TAtlasDataLoad.Kept);
+      Assert.AreEqual<TAtlasDataLoad>(TAtlasDataLoad.Kept, TAtlasTestProjectChoices.Load(mFileName, mChoices));
       Assert.AreEqual(0, Integer(Length(mChoices)));
       Assert.IsFalse(TAtlasTestProjectChoices.Save(mFileName, mChoices), 'gerade nicht lesbar: nicht überschreiben');
     finally

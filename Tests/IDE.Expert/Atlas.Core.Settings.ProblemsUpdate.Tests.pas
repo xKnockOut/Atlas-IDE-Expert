@@ -33,7 +33,8 @@ var
 begin
   for mMode := Low(TAtlasProblemsUpdate) to High(TAtlasProblemsUpdate) do
   begin
-    Assert.IsTrue(TAtlasProblemsUpdateSetting.Parse(TAtlasProblemsUpdateSetting.Name(mMode)) = mMode);
+    Assert.AreEqual<TAtlasProblemsUpdate>(mMode,
+      TAtlasProblemsUpdateSetting.Parse(TAtlasProblemsUpdateSetting.Name(mMode)));
   end;
   Assert.AreEqual('live', TAtlasProblemsUpdateSetting.Name(TAtlasProblemsUpdate.Live));
   Assert.AreEqual('save', TAtlasProblemsUpdateSetting.Name(TAtlasProblemsUpdate.Save));
@@ -42,9 +43,9 @@ end;
 
 procedure TAtlasProblemsUpdateSettingTests.UnknownValueIsLive;
 begin
-  Assert.IsTrue(TAtlasProblemsUpdateSetting.Parse('') = TAtlasProblemsUpdate.Live);
-  Assert.IsTrue(TAtlasProblemsUpdateSetting.Parse('manuell') = TAtlasProblemsUpdate.Live);
-  Assert.IsTrue(TAtlasProblemsUpdateSetting.Parse(' MANUAL ') = TAtlasProblemsUpdate.Manual);
+  Assert.AreEqual<TAtlasProblemsUpdate>(TAtlasProblemsUpdate.Live, TAtlasProblemsUpdateSetting.Parse(''));
+  Assert.AreEqual<TAtlasProblemsUpdate>(TAtlasProblemsUpdate.Live, TAtlasProblemsUpdateSetting.Parse('manuell'));
+  Assert.AreEqual<TAtlasProblemsUpdate>(TAtlasProblemsUpdate.Manual, TAtlasProblemsUpdateSetting.Parse(' MANUAL '));
   Assert.AreEqual('save', TAtlasProblemsUpdateSetting.Normalize('Save'));
   Assert.AreEqual('live', TAtlasProblemsUpdateSetting.Normalize('unsinn'));
 end;

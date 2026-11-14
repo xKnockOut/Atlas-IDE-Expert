@@ -174,10 +174,10 @@ begin
   Rows := TAtlasExpressionType.Rows(Parse(Answer), Texts);
   Assert.AreEqual('Price * Count|TPreis = Currency|= 48|Count: Integer widen Currency|V: Variant convert string|' +
     'overload function Max(A, B: Double): Double;|again|', RowsText(Rows));
-  Assert.IsTrue(Rows[1].Kind = TAtlasExpressionTypeRowKind.TypeName);
+  Assert.AreEqual<TAtlasExpressionTypeRowKind>(TAtlasExpressionTypeRowKind.TypeName, Rows[1].Kind);
   Assert.IsTrue(Rows[1].Link, 'mit Fundort anklickbar');
   Assert.IsFalse(Rows[0].Link);
-  Assert.IsTrue(Rows[High(Rows)].Kind = TAtlasExpressionTypeRowKind.Hint);
+  Assert.AreEqual<TAtlasExpressionTypeRowKind>(TAtlasExpressionTypeRowKind.Hint, Rows[High(Rows)].Kind);
   // Ohne Fundort, ohne Alias und ohne Erweitern-Text.
   Info := Default(TAtlasExpressionTypeInfo);
   Info.Expression := 'I';

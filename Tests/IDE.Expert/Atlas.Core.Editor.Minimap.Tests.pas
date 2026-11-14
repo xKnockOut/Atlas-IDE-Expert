@@ -376,8 +376,8 @@ begin
   Assert.AreEqual(Ord(TAtlasOverviewMarkKind.Error), Ord(Bars[2].Kind));
   Assert.AreEqual(96, Bars[2].Top);
   Assert.AreEqual(6, Bars[2].Mark);
-  Assert.IsTrue(TAtlasMinimap.MarkerKinds = [TAtlasOverviewKind.Diagnostics, TAtlasOverviewKind.Search,
-    TAtlasOverviewKind.Changes]);
+  Assert.AreEqual<TAtlasOverviewKinds>([TAtlasOverviewKind.Diagnostics, TAtlasOverviewKind.Search,
+    TAtlasOverviewKind.Changes], TAtlasMinimap.MarkerKinds);
 end;
 
 procedure TAtlasMinimapTests.RunsPerWord;

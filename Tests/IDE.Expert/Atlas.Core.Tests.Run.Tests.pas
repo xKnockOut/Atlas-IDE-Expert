@@ -236,7 +236,7 @@ begin
   Assert.AreEqual('Test TRechnerTests.Summe.Gross fehlgeschlagen: erwartet 30, erhalten 31', mItems[0].Value.Message);
   Assert.AreEqual(18, mItems[0].Value.StartLine);
   Assert.AreEqual(TAtlasProblemStore.cTestSource, mItems[0].Value.Source);
-  Assert.IsTrue(mItems[0].Value.Severity = TAtlasProblemSeverity.Error);
+  Assert.AreEqual<TAtlasProblemSeverity>(TAtlasProblemSeverity.Error, mItems[0].Value.Severity);
   Assert.AreEqual('', mItems[0].Value.Code, 'kein Regeltreffer');
   Assert.AreEqual('Test TRechnerTests.Teilt fehlgeschlagen: EZeroDivide: Division durch 0', mItems[1].Value.Message,
     'nur die erste Zeile');
@@ -306,19 +306,24 @@ var
   mCases: TArray<TTestCaseResult>;
 begin
   mCases := TTestResults.Parse(cReport).Cases;
-  Assert.IsTrue(TAtlasTestRun.StatusOf(mCases, 'Rechner.Tests', 'TRechnerTests', 'Addiert') = TAtlasTestStatus.Passed);
-  Assert.IsTrue(TAtlasTestRun.StatusOf(mCases, 'Rechner.Tests', 'TRechnerTests', 'Summe') = TAtlasTestStatus.Failed,
+  Assert.AreEqual<TAtlasTestStatus>(TAtlasTestStatus.Passed,
+    TAtlasTestRun.StatusOf(mCases, 'Rechner.Tests', 'TRechnerTests', 'Addiert'));
+  Assert.AreEqual<TAtlasTestStatus>(TAtlasTestStatus.Failed,
+    TAtlasTestRun.StatusOf(mCases, 'Rechner.Tests', 'TRechnerTests', 'Summe'),
     'ein Fall fehlgeschlagen');
-  Assert.IsTrue(TAtlasTestRun.StatusOf(mCases, 'Rechner.Tests', 'TRechnerTests', '') = TAtlasTestStatus.Failed,
+  Assert.AreEqual<TAtlasTestStatus>(TAtlasTestStatus.Failed,
+    TAtlasTestRun.StatusOf(mCases, 'Rechner.Tests', 'TRechnerTests', ''),
     'Fixture mit Fehlschlag');
-  Assert.IsTrue(TAtlasTestRun.StatusOf(mCases, 'Rechner.Tests', 'TRechnerTests', 'Neu') = TAtlasTestStatus.Unknown);
-  Assert.IsTrue(TAtlasTestRun.StatusOf(mCases, 'Andere.Tests', 'TRechnerTests', 'Addiert') = TAtlasTestStatus.Unknown,
+  Assert.AreEqual<TAtlasTestStatus>(TAtlasTestStatus.Unknown,
+    TAtlasTestRun.StatusOf(mCases, 'Rechner.Tests', 'TRechnerTests', 'Neu'));
+  Assert.AreEqual<TAtlasTestStatus>(TAtlasTestStatus.Unknown,
+    TAtlasTestRun.StatusOf(mCases, 'Andere.Tests', 'TRechnerTests', 'Addiert'),
     'andere Unit');
   // Einzelner Fall (#585, Marke je [TestCase]).
-  Assert.IsTrue(TAtlasTestRun.StatusOf(mCases, 'Rechner.Tests', 'TRechnerTests', 'Summe', 'Gross') =
-    TAtlasTestStatus.Failed);
-  Assert.IsTrue(TAtlasTestRun.StatusOf(mCases, 'Rechner.Tests', 'TRechnerTests', 'Summe', 'Mittel') =
-    TAtlasTestStatus.Unknown, 'Fall nicht im Bericht');
+  Assert.AreEqual<TAtlasTestStatus>(TAtlasTestStatus.Failed,
+    TAtlasTestRun.StatusOf(mCases, 'Rechner.Tests', 'TRechnerTests', 'Summe', 'Gross'));
+  Assert.AreEqual<TAtlasTestStatus>(TAtlasTestStatus.Unknown,
+    TAtlasTestRun.StatusOf(mCases, 'Rechner.Tests', 'TRechnerTests', 'Summe', 'Mittel'), 'Fall nicht im Bericht');
 end;
 
 /// <summary>Fixture mit vier Tests (einer mit zwei Fällen, einer mit [Ignore]) wie im Bild von Marco.</summary>
@@ -399,14 +404,14 @@ var
   mTally: TAtlasTestTally;
 begin
   mTally := WelcomeTally(['NothingAfterFree=Success'], -1, -1);
-  Assert.IsTrue(mTally.Status = TAtlasTestStatus.Partial, 'nur ein Test gelaufen');
+  Assert.AreEqual<TAtlasTestStatus>(TAtlasTestStatus.Partial, mTally.Status, 'nur ein Test gelaufen');
   Assert.AreEqual(1, mTally.Passed);
   Assert.AreEqual(4, mTally.Total);
-  Assert.IsTrue(WelcomeTally(['NothingAfterFree=Success'], 3, -1).Status = TAtlasTestStatus.Passed,
+  Assert.AreEqual<TAtlasTestStatus>(TAtlasTestStatus.Passed, WelcomeTally(['NothingAfterFree=Success'], 3, -1).Status,
     'der gelaufene Test selbst');
-  Assert.IsTrue(WelcomeTally(['NothingAfterFree=Success'], 0, -1).Status = TAtlasTestStatus.Unknown,
+  Assert.AreEqual<TAtlasTestStatus>(TAtlasTestStatus.Unknown, WelcomeTally(['NothingAfterFree=Success'], 0, -1).Status,
     'nicht gelaufener Test');
-  Assert.IsTrue(WelcomeTally(['NothingAfterFree=Failure'], -1, -1).Status = TAtlasTestStatus.Failed,
+  Assert.AreEqual<TAtlasTestStatus>(TAtlasTestStatus.Failed, WelcomeTally(['NothingAfterFree=Failure'], -1, -1).Status,
     'ein Fehlschlag gilt für die Fixture sofort');
 end;
 
@@ -416,18 +421,20 @@ var
 begin
   mTally := WelcomeTally(['IsReported=Success', 'Lookup.Kurz=Success', 'Lookup.Lang=Success',
     'Spaeter=Ignored', 'NothingAfterFree=Success'], -1, -1);
-  Assert.IsTrue(mTally.Status = TAtlasTestStatus.Passed);
+  Assert.AreEqual<TAtlasTestStatus>(TAtlasTestStatus.Passed, mTally.Status);
   Assert.AreEqual(4, mTally.Passed);
 end;
 
 procedure TAtlasTestRunTests.CasesOfMethodCountSeparately;
 begin
-  Assert.IsTrue(WelcomeTally(['Lookup.Kurz=Success'], 1, -1).Status = TAtlasTestStatus.Partial,
+  Assert.AreEqual<TAtlasTestStatus>(TAtlasTestStatus.Partial, WelcomeTally(['Lookup.Kurz=Success'], 1, -1).Status,
     'ein Fall von zwei');
-  Assert.IsTrue(WelcomeTally(['Lookup.Kurz=Success'], 1, 0).Status = TAtlasTestStatus.Passed, 'der Fall selbst');
-  Assert.IsTrue(WelcomeTally(['Lookup.Kurz=Success'], 1, 1).Status = TAtlasTestStatus.Unknown, 'anderer Fall');
-  Assert.IsTrue(WelcomeTally(['Lookup.Kurz=Success', 'Lookup.Lang=Success'], 1, -1).Status =
-    TAtlasTestStatus.Passed);
+  Assert.AreEqual<TAtlasTestStatus>(TAtlasTestStatus.Passed,
+    WelcomeTally(['Lookup.Kurz=Success'], 1, 0).Status, 'der Fall selbst');
+  Assert.AreEqual<TAtlasTestStatus>(TAtlasTestStatus.Unknown,
+    WelcomeTally(['Lookup.Kurz=Success'], 1, 1).Status, 'anderer Fall');
+  Assert.AreEqual<TAtlasTestStatus>(TAtlasTestStatus.Passed,
+    WelcomeTally(['Lookup.Kurz=Success', 'Lookup.Lang=Success'], 1, -1).Status);
 end;
 
 procedure TAtlasTestRunTests.TallyStatus;
@@ -435,16 +442,16 @@ var
   mTally: TAtlasTestTally;
 begin
   mTally := Default(TAtlasTestTally);
-  Assert.IsTrue(mTally.Status = TAtlasTestStatus.Unknown, 'ohne Tests');
+  Assert.AreEqual<TAtlasTestStatus>(TAtlasTestStatus.Unknown, mTally.Status, 'ohne Tests');
   mTally.Total := 2;
   mTally.Ran := 2;
-  Assert.IsTrue(mTally.Status = TAtlasTestStatus.Unknown, 'alle übersprungen');
+  Assert.AreEqual<TAtlasTestStatus>(TAtlasTestStatus.Unknown, mTally.Status, 'alle übersprungen');
   mTally.Passed := 1;
-  Assert.IsTrue(mTally.Status = TAtlasTestStatus.Passed, 'einer bestanden, einer übersprungen');
+  Assert.AreEqual<TAtlasTestStatus>(TAtlasTestStatus.Passed, mTally.Status, 'einer bestanden, einer übersprungen');
   mTally.Ran := 1;
-  Assert.IsTrue(mTally.Status = TAtlasTestStatus.Partial);
+  Assert.AreEqual<TAtlasTestStatus>(TAtlasTestStatus.Partial, mTally.Status);
   mTally.Failed := 1;
-  Assert.IsTrue(mTally.Status = TAtlasTestStatus.Failed);
+  Assert.AreEqual<TAtlasTestStatus>(TAtlasTestStatus.Failed, mTally.Status);
 end;
 
 procedure TAtlasTestRunTests.TallySumsDurations;
@@ -481,7 +488,7 @@ begin
   mKey := Default(TAtlasTestKey);
   mKey.Method := 'Addiert';
   mTally := TAtlasTestRun.TallyOf(mCases, 'Rechner.Tests', 'TRechnerTests', [mKey]);
-  Assert.IsTrue(mTally.Status = TAtlasTestStatus.Passed);
+  Assert.AreEqual<TAtlasTestStatus>(TAtlasTestStatus.Passed, mTally.Status);
   Assert.AreEqual(1, mTally.Leaked);
   Assert.AreEqual(Int64(40), mTally.LeakBytes);
   mLeak := Default(TAtlasTestFailure);
@@ -491,7 +498,7 @@ begin
   mItems := TAtlasTestRun.LeakProblems([mLeak], 'Leck in %s: %d Bytes');
   Assert.AreEqual(1, Integer(Length(mItems)));
   Assert.AreEqual('Leck in TRechnerTests.Addiert: 40 Bytes', mItems[0].Value.Message);
-  Assert.IsTrue(mItems[0].Value.Severity = TAtlasProblemSeverity.Warning);
+  Assert.AreEqual<TAtlasProblemSeverity>(TAtlasProblemSeverity.Warning, mItems[0].Value.Severity);
   Assert.AreEqual(TAtlasProblemStore.cTestSource, mItems[0].Value.Source);
   Assert.AreEqual(15, mItems[0].Value.StartLine);
   // Ohne Fundstelle keine Warnung.
@@ -581,13 +588,13 @@ begin
   Assert.AreEqual(1, mTally.Stale);
   Assert.AreEqual(4, mTally.Passed, 'Stand des Laufs');
   Assert.AreEqual(3, mTally.FreshPassed, 'die Zählung nimmt den veralteten nicht als bestanden');
-  Assert.IsTrue(mTally.Status = TAtlasTestStatus.Passed, 'alter Stand');
-  Assert.IsTrue(mTally.Shown = TAtlasTestStatus.Partial, 'die Marke zeigt 3/4');
+  Assert.AreEqual<TAtlasTestStatus>(TAtlasTestStatus.Passed, mTally.Status, 'alter Stand');
+  Assert.AreEqual<TAtlasTestStatus>(TAtlasTestStatus.Partial, mTally.Shown, 'die Marke zeigt 3/4');
   // Der veraltete Test selbst: alter Stand „bestanden“ mit Zusatz.
   mTally := TAtlasTestRun.TallyOf(mCases, 'Welcome.Tests', 'TNameTests',
     TAtlasTestRun.Expected(WelcomeSource, 0, 0, -1), StaleOnly('IsReported'));
   Assert.IsTrue(mTally.IsStale);
-  Assert.IsTrue(mTally.Shown = TAtlasTestStatus.Passed);
+  Assert.AreEqual<TAtlasTestStatus>(TAtlasTestStatus.Passed, mTally.Shown);
   // Ein anderer Test ist nicht betroffen.
   mTally := TAtlasTestRun.TallyOf(mCases, 'Welcome.Tests', 'TNameTests',
     TAtlasTestRun.Expected(WelcomeSource, 0, 3, -1), StaleOnly('IsReported'));
@@ -596,7 +603,7 @@ begin
   mCases := WelcomeCases(['IsReported=Failure']);
   mTally := TAtlasTestRun.TallyOf(mCases, 'Welcome.Tests', 'TNameTests',
     TAtlasTestRun.Expected(WelcomeSource, 0, 0, -1), StaleOnly('IsReported'));
-  Assert.IsTrue(mTally.Shown = TAtlasTestStatus.Failed);
+  Assert.AreEqual<TAtlasTestStatus>(TAtlasTestStatus.Failed, mTally.Shown);
   Assert.IsTrue(mTally.IsStale);
   // Schlüssel aus TAtlasTestStamps.StaleIn als Abfrage für die Marke.
   mTally := TAtlasTestRun.TallyOf(mCases, 'Welcome.Tests', 'TNameTests',

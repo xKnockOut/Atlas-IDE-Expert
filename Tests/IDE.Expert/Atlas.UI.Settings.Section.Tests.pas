@@ -185,7 +185,7 @@ begin
       mPage.LoadFrom(TAtlasPluginSettings.Defaults);
       mIndex := mPage.Catalog.IndexOfName('BookmarksEnabled');
       Assert.IsTrue(mIndex >= 0);
-      Assert.IsTrue(mSection.ModuleCheck = CheckOf(mPage, 'BookmarksEnabled'), 'an den Schlüssel gebunden');
+      Assert.AreSame(CheckOf(mPage, 'BookmarksEnabled'), mSection.ModuleCheck, 'an den Schlüssel gebunden');
       mExpected := mPage.Catalog[mIndex].Caption;
       if TAtlasStrings.Language = TAtlasLanguage.English then
       begin

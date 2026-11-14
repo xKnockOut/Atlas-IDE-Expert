@@ -188,7 +188,7 @@ begin
   Assert.AreEqual('lst', Snippet.Prefix);
   Assert.AreEqual('TStringList mit Freigabe', Snippet.Description);
   Assert.AreEqual('${1:L} := TStringList.Create;'#10'  $0', Snippet.Body);
-  Assert.IsTrue(Snippet.Origin = TAtlasSnippetOrigin.User);
+  Assert.AreEqual<TAtlasSnippetOrigin>(TAtlasSnippetOrigin.User, Snippet.Origin);
   // Ohne Namen gilt das Kürzel.
   Assert.IsTrue(TAtlasSnippets.Parse('prefix: x'#10'---'#10'X;', '', Snippet, Error));
   Assert.AreEqual('x', Snippet.Name);
@@ -259,7 +259,7 @@ begin
   Assert.IsTrue(Find(Merged, 'tryf', Found));
   Assert.AreEqual('eigene', Found.Body);
   Assert.IsTrue(Find(Merged, 'forin', Found));
-  Assert.IsTrue(Found.Origin = TAtlasSnippetOrigin.BuiltIn);
+  Assert.AreEqual<TAtlasSnippetOrigin>(TAtlasSnippetOrigin.BuiltIn, Found.Origin);
 end;
 
 procedure TAtlasSnippetsTests.BuiltInSnippetsParse;
@@ -289,7 +289,7 @@ begin
       Text := 'unit U;'#10'interface'#10'implementation'#10'procedure P;'#10'begin'#10'    ' + Code + #10'end;'#10'end.';
     end;
     Assert.IsTrue(Parses(Text), Snippet.Prefix + ': ' + Text);
-    Assert.IsTrue(Snippet.Description <> '', Snippet.Prefix);
+    Assert.AreNotEqual('', Snippet.Description, Snippet.Prefix);
   end;
 end;
 
@@ -543,7 +543,7 @@ begin
   Items := TAtlasSnippetCompletionProvider.Items(TAtlasSnippets.BuiltIn);
   Assert.AreEqual(Integer(Length(TAtlasSnippets.BuiltIn)), Integer(Length(Items)));
   Assert.AreEqual('tryf', Items[0].Name);
-  Assert.IsTrue(Items[0].Kind = TAtlasItemKind.Snippet);
+  Assert.AreEqual<TAtlasItemKind>(TAtlasItemKind.Snippet, Items[0].Kind);
   Assert.AreEqual('try…finally mit Create/Free', Items[0].Signature);
   Assert.AreEqual(TAtlasSnippets.BuiltIn[0].Body, Items[0].Snippet);
   Assert.StartsWith('Objekt anlegen', Items[0].Documentation);
@@ -646,7 +646,7 @@ begin
   // Mitgelieferte Vorlagen haben einen Kontext.
   for Snippet in TAtlasSnippets.BuiltIn do
   begin
-    Assert.IsTrue(Snippet.Context <> '', Snippet.Prefix);
+    Assert.AreNotEqual('', Snippet.Context, Snippet.Prefix);
   end;
   // Dateivorlage (#759): Kopf "file:", nur unit, form oder test; bleibt beim Speichern erhalten.
   Assert.IsTrue(TAtlasSnippets.Parse('prefix: svc'#10'file: Unit'#10'---'#10'unit %Unit%;', '', Snippet, Error), Error);
@@ -769,8 +769,8 @@ begin
   Catalog := TAtlasSnippetCatalog.Create(TAtlasSnippets.BuiltIn, [Ide], [OwnSnippet('tryf', 'X;')]);
   try
     Assert.AreEqual(Integer(Length(TAtlasSnippets.BuiltIn)) + 2, Catalog.Count);
-    Assert.IsTrue(Catalog.Entry(0).Snippet.Origin = TAtlasSnippetOrigin.User);
-    Assert.IsTrue(Catalog.Entry(1).Snippet.Origin = TAtlasSnippetOrigin.Ide);
+    Assert.AreEqual<TAtlasSnippetOrigin>(TAtlasSnippetOrigin.User, Catalog.Entry(0).Snippet.Origin);
+    Assert.AreEqual<TAtlasSnippetOrigin>(TAtlasSnippetOrigin.Ide, Catalog.Entry(1).Snippet.Origin);
     Assert.IsFalse(Catalog.Replaced(0));
     Assert.IsFalse(Catalog.Replaced(1));
     for Index := 2 to Catalog.Count - 1 do
@@ -836,10 +836,10 @@ begin
     Assert.IsFalse(Catalog.Validate(Problems));
     Assert.AreEqual(4, Integer(Length(Problems)));
     Assert.AreEqual(1, Problems[0].Index);
-    Assert.IsTrue(Problems[0].Kind = TAtlasSnippetProblemKind.PrefixTwice);
-    Assert.IsTrue(Problems[1].Kind = TAtlasSnippetProblemKind.PrefixMissing);
-    Assert.IsTrue(Problems[2].Kind = TAtlasSnippetProblemKind.PrefixInvalid);
-    Assert.IsTrue(Problems[3].Kind = TAtlasSnippetProblemKind.BodyMissing);
+    Assert.AreEqual<TAtlasSnippetProblemKind>(TAtlasSnippetProblemKind.PrefixTwice, Problems[0].Kind);
+    Assert.AreEqual<TAtlasSnippetProblemKind>(TAtlasSnippetProblemKind.PrefixMissing, Problems[1].Kind);
+    Assert.AreEqual<TAtlasSnippetProblemKind>(TAtlasSnippetProblemKind.PrefixInvalid, Problems[2].Kind);
+    Assert.AreEqual<TAtlasSnippetProblemKind>(TAtlasSnippetProblemKind.BodyMissing, Problems[3].Kind);
     // Gleiches Kürzel wie eine mitgelieferte ist erlaubt: die eigene ersetzt sie.
     Assert.AreEqual(3, Problems[3].Index);
   finally
@@ -928,7 +928,7 @@ var
   Stats: TAtlasLiveTemplateStats;
   Snippet: TAtlasSnippet;
 begin
-  Assert.IsTrue(LiveTemplateFolder <> '', 'Ordner Tests\Data\LiveTemplates\Delphi12 fehlt');
+  Assert.AreNotEqual('', LiveTemplateFolder, 'Ordner Tests\Data\LiveTemplates\Delphi12 fehlt');
   List := TAtlasLiveTemplates.LoadFolder(LiveTemplateFolder, Stats);
   Assert.AreEqual(2, Stats.Templates);
   // Die C++-Vorlage wird übersprungen, das Skript in "forb" entfällt.
@@ -936,7 +936,7 @@ begin
   Assert.AreEqual(1, Stats.Scripts);
   Assert.IsTrue(Find(List, 'forb', Snippet));
   Assert.AreEqual('for statement', Snippet.Description);
-  Assert.IsTrue(Snippet.Origin = TAtlasSnippetOrigin.Ide);
+  Assert.AreEqual<TAtlasSnippetOrigin>(TAtlasSnippetOrigin.Ide, Snippet.Origin);
   Assert.IsFalse(Find(List, 'cppfor', Snippet));
 end;
 

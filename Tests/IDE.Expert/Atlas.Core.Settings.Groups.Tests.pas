@@ -262,7 +262,7 @@ begin
     Assert.IsFalse(Subject.LockOf('C', IsOn, True).Locked, 'alles an');
     Off.Add('B');
     Lock := Subject.LockOf('C', IsOn, True);
-    Assert.IsTrue(Lock.Reason = lrMasterOff);
+    Assert.AreEqual<TAtlasLockReason>(lrMasterOff, Lock.Reason);
     Assert.AreEqual('B', Lock.Master);
     Assert.IsFalse(Subject.LockOf('B', IsOn, True).Locked, 'der Hauptschalter selbst bleibt bedienbar');
     Off.Add('A');
@@ -294,9 +294,10 @@ begin
         Result := True;
       end;
     Lock := Subject.LockOf('Exp', IsOn, False);
-    Assert.IsTrue(Lock.Reason = lrExperimental, 'auch der Hauptschalter der Funktion');
+    Assert.AreEqual<TAtlasLockReason>(lrExperimental, Lock.Reason, 'auch der Hauptschalter der Funktion');
     Assert.AreEqual(TAtlasExperimental.cMasterName, Lock.Master);
-    Assert.IsTrue(Subject.LockOf('ExpWidth', IsOn, False).Reason = lrExperimental, 'Unteroption mit gesperrt');
+    Assert.AreEqual<TAtlasLockReason>(lrExperimental,
+      Subject.LockOf('ExpWidth', IsOn, False).Reason, 'Unteroption mit gesperrt');
     Assert.IsTrue(Subject.IsExperimental('ExpWidth'));
     Assert.IsFalse(Subject.LockOf('Plain', IsOn, False).Locked);
     Assert.IsFalse(Subject.LockOf('ExperimentalEnabled', IsOn, False).Locked, 'der Hauptschalter nie');
@@ -306,8 +307,9 @@ begin
       begin
         Result := AName <> 'Exp';
       end;
-    Assert.IsTrue(Subject.LockOf('ExpWidth', IsOn, False).Reason = lrExperimental, 'experimentell geht vor');
-    Assert.IsTrue(Subject.LockOf('ExpWidth', IsOn, True).Reason = lrMasterOff);
+    Assert.AreEqual<TAtlasLockReason>(lrExperimental,
+      Subject.LockOf('ExpWidth', IsOn, False).Reason, 'experimentell geht vor');
+    Assert.AreEqual<TAtlasLockReason>(lrMasterOff, Subject.LockOf('ExpWidth', IsOn, True).Reason);
   finally
     Subject.Free;
   end;
@@ -351,7 +353,7 @@ begin
         Index := Catalog.IndexOfName(Parent);
         Assert.IsTrue(Index >= 0, Name + ' → ' + Parent);
         Entry := Catalog[Index];
-        Assert.IsTrue(Entry.Kind = akBoolean, Name + ' → ' + Parent);
+        Assert.AreEqual<TAtlasSettingKind>(akBoolean, Entry.Kind, Name + ' → ' + Parent);
       end;
     end;
     for Index := 0 to High(Subject.Nodes) do

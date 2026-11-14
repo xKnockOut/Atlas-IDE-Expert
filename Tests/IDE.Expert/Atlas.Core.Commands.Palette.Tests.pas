@@ -231,13 +231,13 @@ begin
   History := TAtlasCommandHistory.Create;
   try
     TFile.WriteAllText(FileName, '[1, 2]');
-    Assert.IsTrue(History.LoadFromFile(FileName) = TAtlasDataLoad.Renewed);
+    Assert.AreEqual<TAtlasDataLoad>(TAtlasDataLoad.Renewed, History.LoadFromFile(FileName));
     Assert.IsTrue(TFile.Exists(FileName + TAtlasDataFile.cDefectExtension), 'beiseitegelegt');
     History.Executed('A');
     Assert.IsTrue(History.SaveToFile(FileName));
     Lock := TFileStream.Create(FileName, fmOpenRead or fmShareExclusive);
     try
-      Assert.IsTrue(History.LoadFromFile(FileName) = TAtlasDataLoad.Kept);
+      Assert.AreEqual<TAtlasDataLoad>(TAtlasDataLoad.Kept, History.LoadFromFile(FileName));
     finally
       Lock.Free;
     end;
@@ -276,7 +276,7 @@ var
 begin
   mRows := TAtlasPaletteRows.Create(3, TAtlasPaletteGroup.None);
   Assert.AreEqual(3, mRows.Count);
-  Assert.IsTrue(mRows.Kind(2, mIndex) = TAtlasPaletteRowKind.Command);
+  Assert.AreEqual<TAtlasPaletteRowKind>(TAtlasPaletteRowKind.Command, mRows.Kind(2, mIndex));
   Assert.AreEqual(2, mIndex);
   Assert.AreEqual(0, mRows.First);
   // Einträge ohne Titel: keine Gruppe.
@@ -294,12 +294,12 @@ var
 begin
   mRows := TAtlasPaletteRows.Create(2, Group('Suche im Tracker …', 2));
   Assert.AreEqual(6, mRows.Count, '2 Befehle, Überschrift, Status, 2 Einträge');
-  Assert.IsTrue(mRows.Kind(1, mIndex) = TAtlasPaletteRowKind.Command);
-  Assert.IsTrue(mRows.Kind(2, mIndex) = TAtlasPaletteRowKind.Header);
-  Assert.IsTrue(mRows.Kind(3, mIndex) = TAtlasPaletteRowKind.Status);
-  Assert.IsTrue(mRows.Kind(4, mIndex) = TAtlasPaletteRowKind.Item);
+  Assert.AreEqual<TAtlasPaletteRowKind>(TAtlasPaletteRowKind.Command, mRows.Kind(1, mIndex));
+  Assert.AreEqual<TAtlasPaletteRowKind>(TAtlasPaletteRowKind.Header, mRows.Kind(2, mIndex));
+  Assert.AreEqual<TAtlasPaletteRowKind>(TAtlasPaletteRowKind.Status, mRows.Kind(3, mIndex));
+  Assert.AreEqual<TAtlasPaletteRowKind>(TAtlasPaletteRowKind.Item, mRows.Kind(4, mIndex));
   Assert.AreEqual(0, mIndex);
-  Assert.IsTrue(mRows.Kind(5, mIndex) = TAtlasPaletteRowKind.Item);
+  Assert.AreEqual<TAtlasPaletteRowKind>(TAtlasPaletteRowKind.Item, mRows.Kind(5, mIndex));
   Assert.AreEqual(1, mIndex);
   Assert.IsFalse(mRows.Selectable(2));
   Assert.IsFalse(mRows.Selectable(3));
@@ -308,7 +308,7 @@ begin
   // Ohne Status folgen die Einträge direkt der Überschrift.
   mRows := TAtlasPaletteRows.Create(0, Group('', 1));
   Assert.AreEqual(2, mRows.Count);
-  Assert.IsTrue(mRows.Kind(1, mIndex) = TAtlasPaletteRowKind.Item);
+  Assert.AreEqual<TAtlasPaletteRowKind>(TAtlasPaletteRowKind.Item, mRows.Kind(1, mIndex));
   Assert.AreEqual(1, mRows.First, 'ohne Befehle der erste Eintrag');
   // Nur Status ("Suche im Tracker …"): nichts wählbar.
   Assert.AreEqual(-1, TAtlasPaletteRows.Create(0, Group('Suche im Tracker …', 0)).First);
@@ -334,10 +334,11 @@ end;
 
 procedure TAtlasCommandPaletteTests.ActionOfModifiers;
 begin
-  Assert.IsTrue(TAtlasPaletteRows.ActionOf(False, False) = TAtlasPaletteAction.Open);
-  Assert.IsTrue(TAtlasPaletteRows.ActionOf(True, False) = TAtlasPaletteAction.Start);
-  Assert.IsTrue(TAtlasPaletteRows.ActionOf(False, True) = TAtlasPaletteAction.Browse);
-  Assert.IsTrue(TAtlasPaletteRows.ActionOf(True, True) = TAtlasPaletteAction.Start, 'Strg vor Umschalt');
+  Assert.AreEqual<TAtlasPaletteAction>(TAtlasPaletteAction.Open, TAtlasPaletteRows.ActionOf(False, False));
+  Assert.AreEqual<TAtlasPaletteAction>(TAtlasPaletteAction.Start, TAtlasPaletteRows.ActionOf(True, False));
+  Assert.AreEqual<TAtlasPaletteAction>(TAtlasPaletteAction.Browse, TAtlasPaletteRows.ActionOf(False, True));
+  Assert.AreEqual<TAtlasPaletteAction>(TAtlasPaletteAction.Start,
+    TAtlasPaletteRows.ActionOf(True, True), 'Strg vor Umschalt');
 end;
 
 initialization

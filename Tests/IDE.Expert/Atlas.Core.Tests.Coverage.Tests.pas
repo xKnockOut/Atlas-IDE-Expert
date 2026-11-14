@@ -136,9 +136,9 @@ begin
   try
     Assert.IsTrue(mState.Accept('R.xml', cReport, Now, mProblem));
     Assert.IsFalse(mState.Accept('S.xml', '<report><stats/><data/></report>', Now, mProblem));
-    Assert.IsTrue(mProblem = TCoverageProblem.NoLines);
+    Assert.AreEqual<TCoverageProblem>(TCoverageProblem.NoLines, mProblem);
     Assert.IsFalse(mState.Load(TPath.Combine(FFolder, 'fehlt.xml'), mProblem));
-    Assert.IsTrue(mProblem = TCoverageProblem.NotAReport);
+    Assert.AreEqual<TCoverageProblem>(TCoverageProblem.NotAReport, mProblem);
     Assert.AreEqual('R.xml', mState.Path);
     Assert.AreEqual(2, mState.HitsAt('Rechner.pas', 2));
   finally

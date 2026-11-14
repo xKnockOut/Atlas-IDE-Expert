@@ -91,12 +91,12 @@ begin
     Language := Settings.IndexOf('language');
     Budget := Settings.IndexOf('memoryBudgetMb');
     Timeout := Settings.IndexOf('requestTimeoutMs');
-    Assert.IsTrue(Settings.Origin(Language) = TAtlasSettingOrigin.Project);
+    Assert.AreEqual<TAtlasSettingOrigin>(TAtlasSettingOrigin.Project, Settings.Origin(Language));
     Assert.AreEqual('"en"', Settings.Effective(Language));
     Assert.AreEqual('"de"', Settings.Inherited_(Language));
-    Assert.IsTrue(Settings.Origin(Budget) = TAtlasSettingOrigin.Global);
+    Assert.AreEqual<TAtlasSettingOrigin>(TAtlasSettingOrigin.Global, Settings.Origin(Budget));
     Assert.AreEqual('512', Settings.Effective(Budget));
-    Assert.IsTrue(Settings.Origin(Timeout) = TAtlasSettingOrigin.Default_);
+    Assert.AreEqual<TAtlasSettingOrigin>(TAtlasSettingOrigin.Default_, Settings.Origin(Timeout));
     Assert.AreEqual(Settings.Fields[Timeout].DefaultJson, Settings.Effective(Timeout));
   finally
     Settings.Free;
@@ -112,7 +112,7 @@ begin
   try
     Language := Settings.IndexOf('language');
     Settings.Reset(Language);
-    Assert.IsTrue(Settings.Origin(Language) = TAtlasSettingOrigin.Global);
+    Assert.AreEqual<TAtlasSettingOrigin>(TAtlasSettingOrigin.Global, Settings.Origin(Language));
     Assert.AreEqual('"de"', Settings.Effective(Language));
     Assert.AreEqual(StringReplace(ProjectText, '  "language": "en",' + LB, '', []), Settings.ResultText);
   finally
@@ -150,7 +150,7 @@ begin
   try
     Budget := Settings.IndexOf('memoryBudgetMb');
     Assert.IsTrue(Settings.Global);
-    Assert.IsTrue(Settings.Origin(Budget) = TAtlasSettingOrigin.Global);
+    Assert.AreEqual<TAtlasSettingOrigin>(TAtlasSettingOrigin.Global, Settings.Origin(Budget));
     // Global erbt nichts vom Projekt.
     Assert.AreEqual('', Settings.Inherited_(Settings.IndexOf('rules')));
     Settings.SetValue(Budget, '1024');
@@ -371,7 +371,7 @@ begin
     Ansi.Free;
   end;
   Content := TAtlasTextFile.Decode(Bytes, 1252);
-  Assert.IsTrue(Content.Encoding = TAtlasTextEncoding.Ansi);
+  Assert.AreEqual<TAtlasTextEncoding>(TAtlasTextEncoding.Ansi, Content.Encoding);
   Settings := TAtlasSettingsModel.Create(TAtlasSettingsSchema.Fields(AtlasSchemaJson), Content.Text, '', False);
   try
     Content.Text := Settings.ResultText;
@@ -390,7 +390,7 @@ begin
   // UTF-8 mit BOM bleibt mit BOM.
   Bytes := TEncoding.UTF8.GetPreamble + TEncoding.UTF8.GetBytes('{"language": "de"}');
   Content := TAtlasTextFile.Decode(Bytes);
-  Assert.IsTrue(Content.Encoding = TAtlasTextEncoding.Utf8Bom);
+  Assert.AreEqual<TAtlasTextEncoding>(TAtlasTextEncoding.Utf8Bom, Content.Encoding);
   Saved := TAtlasTextFile.Encode(Content);
   Assert.AreEqual(Integer(Length(Bytes)), Integer(Length(Saved)));
 end;

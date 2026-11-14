@@ -187,12 +187,12 @@ begin
     Areas := TopLevelNodes(Page);
     Assert.AreEqual(14, Integer(Length(Areas)));
     AssertTreeAreas(Page, Areas);
-    Assert.IsTrue(Page.Pages.ActivePage = Page.Pages.Pages[0], 'erstes Öffnen: Allgemein');
+    Assert.AreSame(Page.Pages.Pages[0], Page.Pages.ActivePage, 'erstes Öffnen: Allgemein');
     // Unterpunkt „Minikarte“ unter „Editor“ mit ihren Einstellungen und nichts sonst.
     Minimap := Page.NodeSheet('editor.minimap');
     Assert.IsNotNull(Minimap);
     Assert.AreEqual('editor.minimap', Page.NodeOfSheet(Minimap));
-    Assert.IsTrue(SheetOf(EditOf(Page, 'MinimapWidth')) = Minimap);
+    Assert.AreSame(Minimap, SheetOf(EditOf(Page, 'MinimapWidth')));
     Assert.IsFalse(SheetOf(CheckOf(Page, 'StickyScroll')) = Minimap);
     Node := TreeNodeOf(Page, Minimap);
     Assert.IsNotNull(Node, 'Knoten im Baum');
@@ -201,7 +201,7 @@ begin
     Page.Navigation.OnChange(Page.Navigation, Areas[11]);
     Assert.AreEqual('', Page.NodeOfSheet(Page.Pages.ActivePage), 'Hauptknoten zeigt den Bereich');
     Page.Navigation.OnChange(Page.Navigation, Node);
-    Assert.IsTrue(Page.Pages.ActivePage = Minimap, 'Klick im Baum schaltet die Seite');
+    Assert.AreSame(Minimap, Page.Pages.ActivePage, 'Klick im Baum schaltet die Seite');
   finally
     Host.Free;
   end;
@@ -211,7 +211,7 @@ begin
     Page := TAtlasSettingsPage.Create(Host);
     Page.Parent := Host;
     Page.HandleNeeded;
-    Assert.IsTrue(Page.Pages.ActivePage = Page.NodeSheet('editor.minimap'), 'Auswahl gemerkt');
+    Assert.AreSame(Page.NodeSheet('editor.minimap'), Page.Pages.ActivePage, 'Auswahl gemerkt');
     Assert.IsNotNull(Page.Navigation.Selected);
     Assert.IsTrue(Page.Navigation.Selected.Parent.Expanded, 'Bereich aufgeklappt');
   finally
@@ -262,7 +262,7 @@ begin
         Continue;
       end;
       Ancestors := Page.Groups.AncestorsOf(Known);
-      Assert.IsTrue(Frame.MasterName <> '', Known);
+      Assert.AreNotEqual('', Frame.MasterName, Known);
       Assert.IsTrue(MatchText(Frame.MasterName, Ancestors), Known + ' in ' + Frame.MasterName);
     end;
   finally
@@ -285,7 +285,7 @@ begin
     Page.LoadFrom(Settings);
     Frame := Page.FrameOf('Minimap');
     Assert.IsNotNull(Frame, 'Minikarte hat einen Rahmen');
-    Assert.IsTrue(Frame.Master = CheckOf(Page, 'Minimap'), 'Hauptschalter oben im Rahmen');
+    Assert.AreSame(CheckOf(Page, 'Minimap'), Frame.Master, 'Hauptschalter oben im Rahmen');
     Assert.IsTrue(Page.Part<TAtlasSettingsEditorViewPart>.MinimapRender.Enabled and EditOf(Page, 'MinimapWidth').Enabled);
     Assert.IsFalse(Page.SheetGray(Page.NodeSheet('editor.minimap')));
     CheckOf(Page, 'Minimap').Checked := False;
@@ -362,7 +362,7 @@ begin
     Mirror := Page.OverviewMirror('Minimap');
     Assert.IsNotNull(Mirror);
     Assert.AreEqual('', Page.NodeOfSheet(SheetOf(Mirror)), 'auf dem Hauptknoten');
-    Assert.IsTrue(SheetOf(Mirror) <> nil);
+    Assert.IsNotNull(SheetOf(Mirror));
     Assert.IsTrue(Mirror.Checked);
     Mirror.Checked := False;
     Assert.IsFalse(CheckOf(Page, 'Minimap').Checked, 'Spiegel schaltet');
@@ -395,8 +395,8 @@ begin
     Master := Page.ControlOf('PairColors') as TCheckBox;
     Assert.IsTrue(Page.Reveal('PairGuides'));
     Assert.IsTrue(fsBold in Master.Font.Style, 'Hauptschalter hervorgehoben');
-    Assert.IsTrue(Page.Pages.ActivePage = SheetOf(Master), 'dessen Seite gewählt');
-    Assert.IsTrue(Page.Navigation.Selected <> nil);
+    Assert.AreSame(SheetOf(Master), Page.Pages.ActivePage, 'dessen Seite gewählt');
+    Assert.IsNotNull(Page.Navigation.Selected);
   finally
     Host.Free;
     TAtlasSettingsPageTree.ForgetTreeState;
@@ -882,7 +882,7 @@ begin
     Assert.AreEqual(10, First.Top);
     Assert.AreEqual(40, Second.Top);
     Assert.AreEqual(70, Third.Top);
-    Assert.IsTrue(Marks.Filter = sfAll);
+    Assert.AreEqual<TAtlasSettingsFilter>(sfAll, Marks.Filter);
   finally
     Owner.Free;
   end;
@@ -1008,8 +1008,8 @@ begin
     Assert.AreEqual('50', EditOf(Page, 'UndoMultiFileMaxSizeMb').Text);
     Assert.AreEqual(1, Page.Part<TAtlasSettingsStartupPart>.UndoOnConflict.Choice);
     Assert.AreEqual(2, Page.Part<TAtlasSettingsStartupPart>.UndoNewFiles.Choice);
-    Assert.IsTrue(EditOf(Page, 'UndoKey').Text <> '');
-    Assert.IsTrue(EditOf(Page, 'RedoKey').Text <> '');
+    Assert.AreNotEqual('', EditOf(Page, 'UndoKey').Text);
+    Assert.AreNotEqual('', EditOf(Page, 'RedoKey').Text);
     CheckOf(Page, 'UndoMultiFile').Checked := False;
     CheckOf(Page, 'UndoMultiFilePersist').Checked := False;
     EditOf(Page, 'UndoMultiFileDepth').Text := '999';
@@ -1122,8 +1122,9 @@ begin
     Assert.IsTrue(CheckOf(Page, 'ProblemsWindowOpenFirst').Checked);
     Assert.AreEqual(0, Page.Part<TAtlasSettingsRulesPart>.ProblemsWindowClosedUnitsChoice.Choice);
     Assert.IsTrue(CheckOf(Page, 'ProblemsWindowShowCleanActive').Checked);
-    Assert.IsTrue(SheetOf(CheckOf(Page, 'ProblemsWindowOpenFirst')) = Page.NodeSheet('rules.window'));
-    Assert.IsTrue(SheetOf(Page.Part<TAtlasSettingsRulesPart>.ProblemsWindowClosedUnitsChoice) = Page.NodeSheet('rules.window'));
+    Assert.AreSame(Page.NodeSheet('rules.window'), SheetOf(CheckOf(Page, 'ProblemsWindowOpenFirst')));
+    Assert.AreSame(Page.NodeSheet('rules.window'),
+      SheetOf(Page.Part<TAtlasSettingsRulesPart>.ProblemsWindowClosedUnitsChoice));
     Assert.IsTrue(Page.Part<TAtlasSettingsRulesPart>.ProblemsWindowClosedUnitsChoice.Enabled and CheckOf(Page, 'ProblemsWindowShowCleanActive').Enabled);
     CheckOf(Page, 'ProblemsWindowOpenFirst').Checked := False;
     Assert.IsFalse(Page.Part<TAtlasSettingsRulesPart>.ProblemsWindowClosedUnitsChoice.Enabled, 'Auswahl gesperrt');
@@ -1146,9 +1147,9 @@ end;
 /// Modul Prüfregeln (#1755).</summary>
 procedure AssertRulesNodes(APage: TAtlasSettingsPage);
 begin
-  Assert.IsTrue(SheetOf(CheckOf(APage, 'ProblemsWindow')) = APage.NodeSheet('rules.window'));
-  Assert.IsTrue(SheetOf(APage.Part<TAtlasSettingsRulesPart>.ProblemsUpdateChoice) = APage.NodeSheet('rules.window'));
-  Assert.IsTrue(SheetOf(APage.Part<TAtlasSettingsRulesPart>.ProblemsLiveDelayEdit) = APage.NodeSheet('rules.window'));
+  Assert.AreSame(APage.NodeSheet('rules.window'), SheetOf(CheckOf(APage, 'ProblemsWindow')));
+  Assert.AreSame(APage.NodeSheet('rules.window'), SheetOf(APage.Part<TAtlasSettingsRulesPart>.ProblemsUpdateChoice));
+  Assert.AreSame(APage.NodeSheet('rules.window'), SheetOf(APage.Part<TAtlasSettingsRulesPart>.ProblemsLiveDelayEdit));
   Assert.IsNull(APage.NodeSheet('rules.profiles'), 'Profile und Baseline im Abschnitt des Moduls');
   Assert.IsNull(APage.NodeSheet('rules.group.threads'), 'keine Regelgruppen in Tools › Optionen');
 end;
@@ -1202,7 +1203,7 @@ begin
     // Gruppe „Compiler vorab“ (#1024): eigener Knoten mit den Plugin-Einstellungen der Gruppe.
     Assert.AreEqual(0, Page.Part<TAtlasSettingsRulesPart>.ProblemsCompilerMergeChoice.Choice);
     Assert.IsTrue(CheckOf(Page, 'ProblemsShowCompilerCode').Checked);
-    Assert.IsTrue(SheetOf(CheckOf(Page, 'ProblemsShowCompilerCode')) = Page.NodeSheet('rules.group.compiler'));
+    Assert.AreSame(Page.NodeSheet('rules.group.compiler'), SheetOf(CheckOf(Page, 'ProblemsShowCompilerCode')));
     Page.Part<TAtlasSettingsRulesPart>.ProblemsCompilerMergeChoice.Choice := 1;
     CheckOf(Page, 'ProblemsShowCompilerCode').Checked := False;
     Settings := TAtlasPluginSettings.Defaults;

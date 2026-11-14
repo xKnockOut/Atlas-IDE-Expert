@@ -54,7 +54,7 @@ begin
   Assert.AreEqual('Vor dem Commit', mRead[0].LastRun);
   Assert.AreEqual(1, Integer(Length(mRead[0].Lists)));
   Assert.AreEqual('Parser', mRead[0].Lists[0].Name);
-  Assert.IsTrue(mRead[0].Lists[0].Store = TAtlasTestListStore.Personal);
+  Assert.AreEqual<TAtlasTestListStore>(TAtlasTestListStore.Personal, mRead[0].Lists[0].Store);
   Assert.AreEqual('Parser.Tests', mRead[0].Lists[0].Tests[0]);
   Assert.AreEqual('C:\Ander\Ä.dproj', mRead[1].Project);
   Assert.AreEqual(0, Integer(Length(mRead[1].Lists)));

@@ -115,11 +115,11 @@ begin
   Assert.IsTrue(mCard.Available);
   Assert.IsTrue(mCard.Title.Contains('Speichern(A, B: Integer)'), mCard.Title);
   Assert.AreEqual(4, Integer(Length(mCard.Rows)));
-  Assert.IsTrue(mCard.Rows[0].Metric = TAtlasCardMetric.Lines);
+  Assert.AreEqual<TAtlasCardMetric>(TAtlasCardMetric.Lines, mCard.Rows[0].Metric);
   Assert.AreEqual(86, mCard.Rows[0].Value);
   Assert.AreEqual(60, mCard.Rows[0].Limit);
   Assert.IsTrue(mCard.Rows[0].Over);
-  Assert.IsTrue(mCard.Rows[1].Metric = TAtlasCardMetric.Cyclomatic);
+  Assert.AreEqual<TAtlasCardMetric>(TAtlasCardMetric.Cyclomatic, mCard.Rows[1].Metric);
   Assert.AreEqual(3, mCard.Rows[1].Value);
   Assert.IsFalse(mCard.Rows[1].Over);
 end;
@@ -134,10 +134,10 @@ begin
   Assert.IsTrue(mCard.Available);
   Assert.AreEqual('TKunde = class(TObject)', mCard.Title);
   Assert.AreEqual(3, Integer(Length(mCard.Rows)));
-  Assert.IsTrue(mCard.Rows[0].Metric = TAtlasCardMetric.Lines);
+  Assert.AreEqual<TAtlasCardMetric>(TAtlasCardMetric.Lines, mCard.Rows[0].Metric);
   Assert.AreEqual(MaxInt, mCard.Rows[0].Limit);
-  Assert.IsTrue(mCard.Rows[1].Metric = TAtlasCardMetric.Members);
-  Assert.IsTrue(mCard.Rows[2].Metric = TAtlasCardMetric.InheritanceDepth);
+  Assert.AreEqual<TAtlasCardMetric>(TAtlasCardMetric.Members, mCard.Rows[1].Metric);
+  Assert.AreEqual<TAtlasCardMetric>(TAtlasCardMetric.InheritanceDepth, mCard.Rows[2].Metric);
   Assert.IsTrue(mCard.Rows[2].AtLeast);
 end;
 
@@ -149,7 +149,7 @@ begin
   mNodes := Nodes;
   mCard := TAtlasCrumbCards.Build(mNodes, Lines, NodeAt(mNodes, 'Speichern', 4), False, Default(TAtlasFileMetrics));
   Assert.IsFalse(mCard.Available);
-  Assert.IsTrue(mCard.Title <> '');
+  Assert.AreNotEqual('', mCard.Title);
   Assert.AreEqual(0, Integer(Length(mCard.Rows)));
   Assert.IsFalse(TAtlasCrumbCards.HasCard(mNodes, -1));
   Assert.IsFalse(TAtlasCrumbCards.HasCard(mNodes, NodeAt(mNodes, 'Kunden', 0)));

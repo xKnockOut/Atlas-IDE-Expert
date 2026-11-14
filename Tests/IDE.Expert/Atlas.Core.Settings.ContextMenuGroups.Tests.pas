@@ -39,9 +39,9 @@ end;
 
 procedure TAtlasContextMenuGroupNamesTests.ParsesSeparatorsAndCase;
 begin
-  Assert.IsTrue(TAtlasContextMenuGroupNames.Parse('Debug; NOTES,edit') = [TAtlasContextMenuGroup.Edit,
-    TAtlasContextMenuGroup.Debug, TAtlasContextMenuGroup.Notes]);
-  Assert.IsTrue(TAtlasContextMenuGroupNames.Parse('') = []);
+  Assert.AreEqual<TAtlasContextMenuGroups>([TAtlasContextMenuGroup.Edit, TAtlasContextMenuGroup.Debug,
+    TAtlasContextMenuGroup.Notes], TAtlasContextMenuGroupNames.Parse('Debug; NOTES,edit'));
+  Assert.AreEqual<TAtlasContextMenuGroups>([], TAtlasContextMenuGroupNames.Parse(''));
 end;
 
 procedure TAtlasContextMenuGroupNamesTests.NormalizeKeepsFixedOrder;

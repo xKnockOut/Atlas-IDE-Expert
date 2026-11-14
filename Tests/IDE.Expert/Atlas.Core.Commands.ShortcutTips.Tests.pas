@@ -123,8 +123,8 @@ begin
   try
     // Abnahme: Klasse vervollständigen über das Kontextmenü zeigt einen Tipp mit Strg+Umschalt+C.
     Usage.Count(ClassCompletion, TAtlasCommandInput.Mouse, Moment(10, 0, 0));
-    Assert.IsTrue(TAtlasShortcutTips.Decide(Usage.Entry(ClassCompletion), Situation(Moment(10, 0, 0))) =
-      TAtlasTipVerdict.Show);
+    Assert.AreEqual<TAtlasTipVerdict>(TAtlasTipVerdict.Show,
+      TAtlasShortcutTips.Decide(Usage.Entry(ClassCompletion), Situation(Moment(10, 0, 0))));
     Assert.AreEqual(1, Usage.Entry(ClassCompletion).Mouse);
   finally
     Usage.Free;
@@ -137,17 +137,18 @@ var
   Later: TAtlasTipSituation;
 begin
   Entry := TAtlasCommandUsageEntry.Create(ClassCompletion);
-  Assert.IsTrue(TAtlasShortcutTips.Decide(Entry, Situation(Moment(10, 0, 0))) = TAtlasTipVerdict.Show);
+  Assert.AreEqual<TAtlasTipVerdict>(TAtlasTipVerdict.Show,
+    TAtlasShortcutTips.Decide(Entry, Situation(Moment(10, 0, 0))));
   TAtlasShortcutTips.MarkShown(Entry, Moment(10, 0, 0));
   // Zweiter Aufruf am selben Tag (lange nach dem 30-s-Abstand): kein Tipp.
   Later := Situation(Moment(16, 30, 0));
   Later.LastTipAt := Moment(10, 0, 0);
-  Assert.IsTrue(TAtlasShortcutTips.Decide(Entry, Later) = TAtlasTipVerdict.ShownToday);
+  Assert.AreEqual<TAtlasTipVerdict>(TAtlasTipVerdict.ShownToday, TAtlasShortcutTips.Decide(Entry, Later));
   // Kurz vor Mitternacht noch derselbe Tag, am nächsten Tag wieder.
   Later := Situation(Moment(23, 59, 59));
-  Assert.IsTrue(TAtlasShortcutTips.Decide(Entry, Later) = TAtlasTipVerdict.ShownToday);
+  Assert.AreEqual<TAtlasTipVerdict>(TAtlasTipVerdict.ShownToday, TAtlasShortcutTips.Decide(Entry, Later));
   Later := Situation(Moment(10, 0, 0) + 1);
-  Assert.IsTrue(TAtlasShortcutTips.Decide(Entry, Later) = TAtlasTipVerdict.Show);
+  Assert.AreEqual<TAtlasTipVerdict>(TAtlasTipVerdict.Show, TAtlasShortcutTips.Decide(Entry, Later));
   Assert.IsTrue(TAtlasShortcutTips.SameDay(Moment(0, 0, 0), Moment(23, 59, 59)));
   Assert.IsFalse(TAtlasShortcutTips.SameDay(0, Moment(10, 0, 0)), 'nie gezeigt');
 end;
@@ -164,12 +165,14 @@ begin
       Usage.Count(ClassCompletion, TAtlasCommandInput.Keyboard, Moment(9, Index, 0));
     end;
     Usage.Count(ClassCompletion, TAtlasCommandInput.Mouse, Moment(10, 0, 0));
-    Assert.IsTrue(TAtlasShortcutTips.Decide(Usage.Entry(ClassCompletion), Situation(Moment(10, 0, 0))) =
-      TAtlasTipVerdict.Show, 'zwei Mal über das Kürzel: noch ein Tipp');
+    Assert.AreEqual<TAtlasTipVerdict>(TAtlasTipVerdict.Show,
+      TAtlasShortcutTips.Decide(Usage.Entry(ClassCompletion), Situation(Moment(10, 0, 0))),
+      'zwei Mal über das Kürzel: noch ein Tipp');
     Usage.Count(ClassCompletion, TAtlasCommandInput.Keyboard, Moment(10, 5, 0));
     Assert.AreEqual(3, Usage.Entry(ClassCompletion).Keyboard);
-    Assert.IsTrue(TAtlasShortcutTips.Decide(Usage.Entry(ClassCompletion), Situation(Moment(11, 0, 0) + 1)) =
-      TAtlasTipVerdict.Learned, 'nach dreimaliger Nutzung des Kürzels kein Tipp mehr');
+    Assert.AreEqual<TAtlasTipVerdict>(TAtlasTipVerdict.Learned,
+      TAtlasShortcutTips.Decide(Usage.Entry(ClassCompletion), Situation(Moment(11, 0, 0) + 1)),
+      'nach dreimaliger Nutzung des Kürzels kein Tipp mehr');
   finally
     Usage.Free;
   end;
@@ -184,14 +187,14 @@ begin
   Entry := TAtlasCommandUsageEntry.Create('SearchFindCommand');
   Current := Situation(Moment(10, 0, 29));
   Current.LastTipAt := Moment(10, 0, 0);
-  Assert.IsTrue(TAtlasShortcutTips.Decide(Entry, Current) = TAtlasTipVerdict.TooSoon);
+  Assert.AreEqual<TAtlasTipVerdict>(TAtlasTipVerdict.TooSoon, TAtlasShortcutTips.Decide(Entry, Current));
   Current := Situation(Moment(10, 0, 31));
   Current.LastTipAt := Moment(10, 0, 0);
-  Assert.IsTrue(TAtlasShortcutTips.Decide(Entry, Current) = TAtlasTipVerdict.Show);
+  Assert.AreEqual<TAtlasTipVerdict>(TAtlasTipVerdict.Show, TAtlasShortcutTips.Decide(Entry, Current));
   // Zurückgestellte Uhr: auch dann nicht gleich wieder.
   Current := Situation(Moment(9, 59, 50));
   Current.LastTipAt := Moment(10, 0, 0);
-  Assert.IsTrue(TAtlasShortcutTips.Decide(Entry, Current) = TAtlasTipVerdict.TooSoon);
+  Assert.AreEqual<TAtlasTipVerdict>(TAtlasTipVerdict.TooSoon, TAtlasShortcutTips.Decide(Entry, Current));
 end;
 
 procedure TAtlasShortcutTipsTests.NeverShowAgainOnlyForThatCommand;
@@ -204,15 +207,15 @@ begin
     Entry := Usage.Entry(ClassCompletion);
     Entry.Never := True;
     Usage.Put(Entry);
-    Assert.IsTrue(TAtlasShortcutTips.Decide(Usage.Entry(ClassCompletion), Situation(Moment(10, 0, 0))) =
-      TAtlasTipVerdict.Hidden);
+    Assert.AreEqual<TAtlasTipVerdict>(TAtlasTipVerdict.Hidden,
+      TAtlasShortcutTips.Decide(Usage.Entry(ClassCompletion), Situation(Moment(10, 0, 0))));
     // Dauerhaft: auch an späteren Tagen und nach dem Lesen der Datei.
     Usage.Parse(Usage.ToJson);
-    Assert.IsTrue(TAtlasShortcutTips.Decide(Usage.Entry(ClassCompletion), Situation(Moment(10, 0, 0) + 30)) =
-      TAtlasTipVerdict.Hidden);
+    Assert.AreEqual<TAtlasTipVerdict>(TAtlasTipVerdict.Hidden,
+      TAtlasShortcutTips.Decide(Usage.Entry(ClassCompletion), Situation(Moment(10, 0, 0) + 30)));
     // Andere Befehle zeigen weiter Tipps.
-    Assert.IsTrue(TAtlasShortcutTips.Decide(Usage.Entry('SearchFindCommand'), Situation(Moment(10, 0, 0))) =
-      TAtlasTipVerdict.Show);
+    Assert.AreEqual<TAtlasTipVerdict>(TAtlasTipVerdict.Show,
+      TAtlasShortcutTips.Decide(Usage.Entry('SearchFindCommand'), Situation(Moment(10, 0, 0))));
   finally
     Usage.Free;
   end;
@@ -224,11 +227,11 @@ var
 begin
   Current := Situation(Moment(10, 0, 0));
   Current.KeyText := '';
-  Assert.IsTrue(TAtlasShortcutTips.Decide(TAtlasCommandUsageEntry.Create('ProjectOptions'), Current) =
-    TAtlasTipVerdict.NoShortCut);
+  Assert.AreEqual<TAtlasTipVerdict>(TAtlasTipVerdict.NoShortCut,
+    TAtlasShortcutTips.Decide(TAtlasCommandUsageEntry.Create('ProjectOptions'), Current));
   Current.KeyText := '   ';
-  Assert.IsTrue(TAtlasShortcutTips.Decide(TAtlasCommandUsageEntry.Create('ProjectOptions'), Current) =
-    TAtlasTipVerdict.NoShortCut);
+  Assert.AreEqual<TAtlasTipVerdict>(TAtlasTipVerdict.NoShortCut,
+    TAtlasShortcutTips.Decide(TAtlasCommandUsageEntry.Create('ProjectOptions'), Current));
 end;
 
 procedure TAtlasShortcutTipsTests.KeyboardUseShowsNoTip;
@@ -237,8 +240,8 @@ var
 begin
   Current := Situation(Moment(10, 0, 0));
   Current.ViaKeyboard := True;
-  Assert.IsTrue(TAtlasShortcutTips.Decide(TAtlasCommandUsageEntry.Create(ClassCompletion), Current) =
-    TAtlasTipVerdict.ViaKeyboard);
+  Assert.AreEqual<TAtlasTipVerdict>(TAtlasTipVerdict.ViaKeyboard,
+    TAtlasShortcutTips.Decide(TAtlasCommandUsageEntry.Create(ClassCompletion), Current));
 end;
 
 procedure TAtlasShortcutTipsTests.ScopeAtlasSkipsIdeCommands;
@@ -246,15 +249,15 @@ var
   Current: TAtlasTipSituation;
 begin
   Current := TAtlasTipSituation.Create(True, TAtlasTipScope.Atlas, False, 'Strg+Umschalt+C', Moment(10, 0, 0));
-  Assert.IsTrue(TAtlasShortcutTips.Decide(TAtlasCommandUsageEntry.Create(ClassCompletion), Current) =
-    TAtlasTipVerdict.OutOfScope);
+  Assert.AreEqual<TAtlasTipVerdict>(TAtlasTipVerdict.OutOfScope,
+    TAtlasShortcutTips.Decide(TAtlasCommandUsageEntry.Create(ClassCompletion), Current));
   Current := TAtlasTipSituation.Create(True, TAtlasTipScope.Atlas, True, 'Alt+Eingabe', Moment(10, 0, 0));
-  Assert.IsTrue(TAtlasShortcutTips.Decide(TAtlasCommandUsageEntry.Create('Atlas.CodeActions'), Current) =
-    TAtlasTipVerdict.Show);
-  Assert.IsTrue(TAtlasShortcutTips.ScopeOf('atlas') = TAtlasTipScope.Atlas);
-  Assert.IsTrue(TAtlasShortcutTips.ScopeOf(' ATLAS ') = TAtlasTipScope.Atlas);
-  Assert.IsTrue(TAtlasShortcutTips.ScopeOf('all') = TAtlasTipScope.All);
-  Assert.IsTrue(TAtlasShortcutTips.ScopeOf('unsinn') = TAtlasTipScope.All, 'Vorgabe all');
+  Assert.AreEqual<TAtlasTipVerdict>(TAtlasTipVerdict.Show,
+    TAtlasShortcutTips.Decide(TAtlasCommandUsageEntry.Create('Atlas.CodeActions'), Current));
+  Assert.AreEqual<TAtlasTipScope>(TAtlasTipScope.Atlas, TAtlasShortcutTips.ScopeOf('atlas'));
+  Assert.AreEqual<TAtlasTipScope>(TAtlasTipScope.Atlas, TAtlasShortcutTips.ScopeOf(' ATLAS '));
+  Assert.AreEqual<TAtlasTipScope>(TAtlasTipScope.All, TAtlasShortcutTips.ScopeOf('all'));
+  Assert.AreEqual<TAtlasTipScope>(TAtlasTipScope.All, TAtlasShortcutTips.ScopeOf('unsinn'), 'Vorgabe all');
   Assert.AreEqual('atlas', TAtlasShortcutTips.ScopeName(TAtlasTipScope.Atlas));
   Assert.AreEqual('all', TAtlasShortcutTips.ScopeName(TAtlasTipScope.All));
 end;
@@ -267,13 +270,13 @@ begin
   Entry := TAtlasCommandUsageEntry.Create(ClassCompletion);
   Current := Situation(Moment(10, 0, 0));
   Current.DebugPaused := True;
-  Assert.IsTrue(TAtlasShortcutTips.Decide(Entry, Current) = TAtlasTipVerdict.Debugging);
+  Assert.AreEqual<TAtlasTipVerdict>(TAtlasTipVerdict.Debugging, TAtlasShortcutTips.Decide(Entry, Current));
   Current := Situation(Moment(10, 0, 0));
   Current.ModalOpen := True;
-  Assert.IsTrue(TAtlasShortcutTips.Decide(Entry, Current) = TAtlasTipVerdict.Modal);
+  Assert.AreEqual<TAtlasTipVerdict>(TAtlasTipVerdict.Modal, TAtlasShortcutTips.Decide(Entry, Current));
   Current := Situation(Moment(10, 0, 0));
   Current.Enabled := False;
-  Assert.IsTrue(TAtlasShortcutTips.Decide(Entry, Current) = TAtlasTipVerdict.Disabled);
+  Assert.AreEqual<TAtlasTipVerdict>(TAtlasTipVerdict.Disabled, TAtlasShortcutTips.Decide(Entry, Current));
 end;
 
 procedure TAtlasShortcutTipsTests.TwoStepShortCutsKeepBothSteps;
@@ -355,11 +358,11 @@ begin
     Assert.IsTrue(Ord(Entry.Func) <= Ord(Func));
   end;
   Assert.IsTrue(TAtlasShortcutTips.AtlasFunctionOf('Atlas.ToggleMethod', Func));
-  Assert.IsTrue(Func = TAtlasKeyFunction.MethodToggleUp);
+  Assert.AreEqual<TAtlasKeyFunction>(TAtlasKeyFunction.MethodToggleUp, Func);
   Assert.IsTrue(TAtlasShortcutTips.AtlasFunctionOf('Atlas.UnitSearch', Func));
-  Assert.IsTrue(Func = TAtlasKeyFunction.UnitSearch);
+  Assert.AreEqual<TAtlasKeyFunction>(TAtlasKeyFunction.UnitSearch, Func);
   Assert.IsTrue(TAtlasShortcutTips.AtlasFunctionOf('Atlas.SwitchTestUnit', Func));
-  Assert.IsTrue(Func = TAtlasKeyFunction.TestUnit);
+  Assert.AreEqual<TAtlasKeyFunction>(TAtlasKeyFunction.TestUnit, Func);
   Assert.AreEqual('Atlas.ExpandSelection', TAtlasShortcutTips.AtlasCommandId(TAtlasKeyFunction.ExpandSelection));
   Assert.AreEqual('Atlas.CommandPalette', TAtlasShortcutTips.AtlasCommandId(TAtlasKeyFunction.Palette));
   Assert.IsFalse(TAtlasShortcutTips.AtlasFunctionOf('ecClassCompletion', Func));
@@ -384,16 +387,16 @@ var
 begin
   // Karte „Atlas entdecken“ (#757): Tipps zu Tasten ohne Befehl der Palette zeigen die Taste selbst.
   Assert.IsTrue(TAtlasShortcutTips.IsKeyOnly(TAtlasShortcutTips.cPaletteCommandId, Func));
-  Assert.IsTrue(Func = TAtlasKeyFunction.Palette);
+  Assert.AreEqual<TAtlasKeyFunction>(TAtlasKeyFunction.Palette, Func);
   Assert.IsTrue(TAtlasShortcutTips.IsKeyOnly('atlas.completion', Func), 'ohne Groß/klein');
-  Assert.IsTrue(Func = TAtlasKeyFunction.Completion);
+  Assert.AreEqual<TAtlasKeyFunction>(TAtlasKeyFunction.Completion, Func);
   Assert.IsTrue(TAtlasShortcutTips.IsKeyOnly('Atlas.Signature', Func));
   Assert.IsTrue(TAtlasShortcutTips.IsKeyOnly('Atlas.WelcomeSearch', Func));
   // Schnellaktionen der Willkommensseite (#764): Knopf und Taste, kein Befehl der Palette.
   Assert.IsTrue(TAtlasShortcutTips.IsKeyOnly('Atlas.WelcomeQuickBuild', Func));
-  Assert.IsTrue(Func = TAtlasKeyFunction.WelcomeQuickBuild);
+  Assert.AreEqual<TAtlasKeyFunction>(TAtlasKeyFunction.WelcomeQuickBuild, Func);
   Assert.IsTrue(TAtlasShortcutTips.IsKeyOnly('Atlas.WelcomeQuickTests', Func));
-  Assert.IsTrue(Func = TAtlasKeyFunction.WelcomeQuickTests);
+  Assert.AreEqual<TAtlasKeyFunction>(TAtlasKeyFunction.WelcomeQuickTests, Func);
   Assert.IsFalse(TAtlasShortcutTips.IsKeyOnly('Atlas.ExpandSelection', Func), 'Befehl der Palette');
   Assert.IsFalse(TAtlasShortcutTips.IsKeyOnly('Atlas.QuickToggles', Func), 'Befehl der Palette');
   Assert.IsFalse(TAtlasShortcutTips.IsKeyOnly('Atlas.Rename', Func), 'keine Atlas-Taste');
@@ -468,7 +471,7 @@ begin
     Assert.AreEqual('', TAtlasCommandUsage.TimeText(0));
     Assert.AreEqual(TAtlasCommandUsage.TimeText(Moment(9, 30, 0)),
       TAtlasCommandUsage.TimeText(TAtlasCommandUsage.TimeOf('2026-10-15T09:30:00.123Z')));
-    Assert.IsTrue(TAtlasCommandUsage.TimeOf('gestern') = 0);
+    Assert.AreEqual<TDateTime>(0, TAtlasCommandUsage.TimeOf('gestern'));
   finally
     Loaded.Free;
     Usage.Free;
@@ -751,7 +754,7 @@ begin
     Assert.AreEqual(0, Usage.UseCount('Atlas.CodeActions'));
     Assert.AreEqual(0, Usage.UseCount(ClassCompletion));
     Assert.IsTrue(Usage.Entry(ClassCompletion).Never, '„Nicht mehr zeigen“ bleibt');
-    Assert.IsTrue(Usage.Entry('Atlas.CodeActions').LastUsed = 0);
+    Assert.AreEqual<TDateTime>(0, Usage.Entry('Atlas.CodeActions').LastUsed);
     Assert.AreEqual('', FieldNames(Usage.CountsToJson), 'usage.json leer');
     Usage.Changed := False;
     Usage.ResetCounts;
