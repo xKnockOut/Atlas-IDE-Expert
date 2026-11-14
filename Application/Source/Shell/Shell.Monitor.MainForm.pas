@@ -28,17 +28,55 @@ uses
   Shell.Monitor.CheckPage;
 
 type
+  /// <summary>Was der Reiter „Server“ vom Fenster braucht: dessen Befehle Protokollordner und Cache leeren, Neulesen
+  /// nach dem Beenden eines Servers, Rückfrage und Hinweis.</summary>
+  TMonitorServerActions = record
+    OpenLogFolder: TNotifyEvent;
+    ClearCache: TNotifyEvent;
+    Changed: TProc;
+    Confirm: TMonitorConfirm;
+    Inform: TProc<string>;
+  end;
+
+  /// <summary>Reiter „Server“: alle laufenden Atlas-Server aus ihren Statusdateien, Einzelheiten zum gewählten,
+  /// Knöpfe zum Beenden, Protokoll öffnen, Protokollordner und Cache leeren.</summary>
+  TMonitorServerPage = class(TComponent)
+  private
+    FStatusRoot: string;
+    FEntries: TArray<TServerStatusEntry>;
+    FTab: TTabSheet;
+    FList: TListView;
+    FDetails: TMemo;
+    FActions: TMonitorServerActions;
+    procedure BuildButtons;
+    function SelectedEntry(out AEntry: TServerStatusEntry): Boolean;
+    procedure StopSelectedClick(ASender: TObject);
+    procedure OpenLogClick(ASender: TObject);
+    procedure ListSelectItem(ASender: TObject; AItem: TListItem; ASelected: Boolean);
+  public
+    /// <summary>Legt den Reiter in APages an (noch verborgen, siehe Tab).</summary>
+    constructor Create(AOwner: TComponent; APages: TPageControl; const AStatusRoot: string;
+      const AActions: TMonitorServerActions); reintroduce;
+    destructor Destroy; override;
+    /// <summary>Server neu aus den Statusdateien lesen.</summary>
+    procedure ReadEntries;
+    /// <summary>Liste füllen (Auswahl bleibt) und Einzelheiten zeigen; erst mit Fenster.</summary>
+    procedure Fill;
+    procedure ShowDetails;
+    procedure SelectPid(APid: Cardinal);
+    property Entries: TArray<TServerStatusEntry> read FEntries;
+    /// <summary>Ohne Fenster scheitert ein sichtbarer Reiter; das Formular zeigt ihn in CreateWnd.</summary>
+    property Tab: TTabSheet read FTab;
+  end;
+
   TAtlasMonitorForm = class(TForm)
   private
     FSettings: TMonitorSettings;
     FSettingsFile: string;
     FStatusRoot: string;
-    FEntries: TArray<TServerStatusEntry>;
     FPages: TPageControl;
-    FServerTab: TTabSheet;
+    FServerPage: TMonitorServerPage;
     FCheckPage: TMonitorCheckPage;
-    FServerList: TListView;
-    FDetails: TMemo;
     FTimer: TTimer;
     FTray: TTrayIcon;
     FTrayMenu: TPopupMenu;
@@ -48,21 +86,12 @@ type
     FIcons: array[TMonitorHealth] of TIcon;
     FQuitting: Boolean;
     FTrayHintShown: Boolean;
-    procedure BuildServerTab;
-    procedure BuildButtons(AParent: TWinControl);
     procedure BuildMenus;
     procedure BuildTray;
-    procedure ReadEntries;
     procedure RefreshServers(ASender: TObject);
-    procedure FillList;
-    procedure ShowDetails;
     procedure UpdateTray;
     procedure FillTrayMenu(ASender: TObject);
-    function SelectedEntry(out AEntry: TServerStatusEntry): Boolean;
-    procedure SelectPid(APid: Cardinal);
-    procedure StopSelectedClick(ASender: TObject);
     procedure StopAllClick(ASender: TObject);
-    procedure OpenLogClick(ASender: TObject);
     procedure OpenLogFolderClick(ASender: TObject);
     procedure ClearCacheClick(ASender: TObject);
     procedure OpenWindowClick(ASender: TObject);
@@ -70,15 +99,11 @@ type
     procedure ToggleTrayIconClick(ASender: TObject);
     procedure ToggleAutostartClick(ASender: TObject);
     procedure QuitClick(ASender: TObject);
-    procedure ListSelectItem(ASender: TObject; AItem: TListItem; ASelected: Boolean);
     procedure FormCloseQuery(ASender: TObject; var ACanClose: Boolean);
     procedure SaveSettings;
     procedure ApplyAutostart(AEnabled: Boolean);
     function Confirm(const AText: string): Boolean;
     procedure Inform(const AText: string);
-    function LogFolder: string;
-    function InformProc: TProc<string>;
-    function ConfirmFunc: TMonitorConfirm;
   protected
     procedure CreateParams(var AParams: TCreateParams); override;
     procedure CreateWnd; override;
@@ -176,10 +201,258 @@ begin
     end;
 end;
 
+/// <summary>Protokollordner der Server unter AStatusRoot.</summary>
+function LogFolder(const AStatusRoot: string): string;
+begin
+  Result := TPath.Combine(AStatusRoot, 'Logs');
+end;
+
+/// <summary>Hinweis von AForm als Prozedur; eigene Routine, damit die Referenz nur AForm einfängt.</summary>
+function InformOf(AForm: TAtlasMonitorForm): TProc<string>;
+begin
+  Result :=
+    procedure(AText: string)
+    begin
+      AForm.Inform(AText);
+    end;
+end;
+
+/// <summary>Rückfrage von AForm als Funktion; eigene Routine, damit die Referenz nur AForm einfängt.</summary>
+function ConfirmOf(AForm: TAtlasMonitorForm): TMonitorConfirm;
+begin
+  Result :=
+    function(const AText: string): Boolean
+    begin
+      Result := AForm.Confirm(AText);
+    end;
+end;
+
+/// <summary>Befehle von AForm für den Reiter „Server“; eigene Routine, damit die Referenzen nur AForm einfangen.
+/// </summary>
+function ServerActionsOf(AForm: TAtlasMonitorForm): TMonitorServerActions;
+begin
+  Result := Default(TMonitorServerActions);
+  Result.OpenLogFolder := AForm.OpenLogFolderClick;
+  Result.ClearCache := AForm.ClearCacheClick;
+  Result.Changed :=
+    procedure
+    begin
+      AForm.RefreshServers(nil);
+    end;
+  Result.Confirm := ConfirmOf(AForm);
+  Result.Inform := InformOf(AForm);
+end;
+
 /// <summary>Befehlszeile für den Start mit Windows: nur das Symbol, ohne Fenster.</summary>
 function AutostartCommand: string;
 begin
   Result := '"' + ParamStr(0) + '" --tray';
+end;
+
+{ TMonitorServerPage }
+
+constructor TMonitorServerPage.Create(AOwner: TComponent; APages: TPageControl; const AStatusRoot: string;
+  const AActions: TMonitorServerActions);
+var
+  mTitle: string;
+  mColumn: TListColumn;
+  mSplitter: TSplitter;
+begin
+  inherited Create(AOwner);
+  FStatusRoot := AStatusRoot;
+  FActions := AActions;
+  FTab := TTabSheet.Create(Self);
+  FTab.Caption := TMonitorTexts.Text(TMonitorText.TabServers);
+  // Ohne Fenster scheitert ein sichtbarer Reiter; das Formular zeigt ihn in CreateWnd.
+  FTab.TabVisible := False;
+  FTab.PageControl := APages;
+  BuildButtons;
+  FDetails := TMemo.Create(Self);
+  FDetails.Width := Px(cDetailsWidth);
+  FDetails.Align := alRight;
+  FDetails.ReadOnly := True;
+  FDetails.ScrollBars := ssVertical;
+  FDetails.Parent := FTab;
+  mSplitter := TSplitter.Create(Self);
+  mSplitter.Align := alRight;
+  mSplitter.Parent := FTab;
+  FList := TListView.Create(Self);
+  FList.Align := alClient;
+  FList.ViewStyle := vsReport;
+  FList.ReadOnly := True;
+  FList.RowSelect := True;
+  FList.HideSelection := False;
+  FList.OnSelectItem := ListSelectItem;
+  for mTitle in TMonitorServers.ColumnTitles do
+  begin
+    mColumn := FList.Columns.Add;
+    mColumn.Caption := mTitle;
+    mColumn.Width := Px(110);
+  end;
+  // Ordner bzw. Ziel ist die breiteste Spalte.
+  FList.Columns[1].Width := Px(280);
+  FList.Parent := FTab;
+end;
+
+destructor TMonitorServerPage.Destroy;
+begin
+  FEntries := nil;
+  inherited;
+end;
+
+procedure TMonitorServerPage.BuildButtons;
+var
+  mPanel: TPanel;
+  mLeft: Integer;
+
+  procedure AddButton(const ACaption: string; const AOnClick: TNotifyEvent);
+  var
+    mButton: TButton;
+  begin
+    mButton := TButton.Create(Self);
+    mButton.Caption := ACaption;
+    mButton.OnClick := AOnClick;
+    mButton.SetBounds(mLeft, Px(cButtonGap), Px(cButtonWidth), Px(cPanelHeight - 2 * cButtonGap));
+    mButton.Parent := mPanel;
+    mLeft := mLeft + Px(cButtonWidth + cButtonGap);
+  end;
+
+begin
+  mPanel := TPanel.Create(Self);
+  // Höhe vor Align und Parent, sonst kann die VCL die Reihenfolge beim Anlegen vertauschen.
+  mPanel.Height := Px(cPanelHeight);
+  mPanel.Align := alBottom;
+  mPanel.BevelOuter := bvNone;
+  mPanel.Parent := FTab;
+  mLeft := Px(cButtonGap);
+  AddButton(TMonitorTexts.Text(TMonitorText.StopServer), StopSelectedClick);
+  AddButton(TMonitorTexts.Text(TMonitorText.OpenLog), OpenLogClick);
+  AddButton(TMonitorTexts.Text(TMonitorText.OpenLogFolder), FActions.OpenLogFolder);
+  AddButton(TMonitorTexts.Text(TMonitorText.ClearCache), FActions.ClearCache);
+end;
+
+procedure TMonitorServerPage.ReadEntries;
+begin
+  FEntries := TServerStatusFile.List(FStatusRoot, Now, AliveCheck());
+end;
+
+procedure TMonitorServerPage.Fill;
+var
+  mEntry: TServerStatusEntry;
+  mItem: TListItem;
+  mCells: TArray<string>;
+  mIndex: Integer;
+  mSelected: Cardinal;
+begin
+  mSelected := 0;
+  if SelectedEntry(mEntry) then
+  begin
+    mSelected := mEntry.Pid;
+  end;
+  FList.Items.BeginUpdate;
+  try
+    FList.Items.Clear;
+    for mEntry in FEntries do
+    begin
+      mCells := TMonitorServers.Columns(mEntry, Now);
+      mItem := FList.Items.Add;
+      mItem.Caption := mCells[0];
+      for mIndex := 1 to High(mCells) do
+      begin
+        mItem.SubItems.Add(mCells[mIndex]);
+      end;
+    end;
+  finally
+    FList.Items.EndUpdate;
+  end;
+  SelectPid(mSelected);
+  ShowDetails;
+end;
+
+function TMonitorServerPage.SelectedEntry(out AEntry: TServerStatusEntry): Boolean;
+var
+  mIndex: Integer;
+begin
+  AEntry := Default(TServerStatusEntry);
+  mIndex := -1;
+  if FList.Selected <> nil then
+  begin
+    mIndex := FList.Selected.Index;
+  end;
+  Result := (mIndex >= 0) and (mIndex <= High(FEntries));
+  if Result then
+  begin
+    AEntry := FEntries[mIndex];
+  end;
+end;
+
+procedure TMonitorServerPage.SelectPid(APid: Cardinal);
+var
+  mIndex: Integer;
+begin
+  for mIndex := 0 to High(FEntries) do
+  begin
+    if (FEntries[mIndex].Pid = APid) and (mIndex < FList.Items.Count) then
+    begin
+      FList.Items[mIndex].Selected := True;
+      FList.Items[mIndex].MakeVisible(False);
+      Exit;
+    end;
+  end;
+end;
+
+procedure TMonitorServerPage.ShowDetails;
+var
+  mEntry: TServerStatusEntry;
+begin
+  if SelectedEntry(mEntry) then
+  begin
+    FDetails.Lines.Text := string.Join(sLineBreak, TMonitorServers.Details(mEntry, Now));
+  end
+  else if FEntries = nil then
+  begin
+    FDetails.Lines.Text := TMonitorTexts.Text(TMonitorText.NoServers);
+  end
+  else
+  begin
+    FDetails.Lines.Text := TMonitorTexts.Text(TMonitorText.SelectServer);
+  end;
+end;
+
+procedure TMonitorServerPage.ListSelectItem(ASender: TObject; AItem: TListItem; ASelected: Boolean);
+begin
+  ShowDetails;
+end;
+
+procedure TMonitorServerPage.StopSelectedClick(ASender: TObject);
+var
+  mEntry: TServerStatusEntry;
+begin
+  if not SelectedEntry(mEntry) then
+  begin
+    FActions.Inform(TMonitorTexts.Text(TMonitorText.SelectServer));
+    Exit;
+  end;
+  if not FActions.Confirm(TMonitorTexts.Fmt(TMonitorText.ConfirmStop, [mEntry.Pid])) then
+  begin
+    Exit;
+  end;
+  if not TMonitorSystem.TerminateServer(mEntry.Pid) then
+  begin
+    FActions.Inform(TMonitorTexts.Fmt(TMonitorText.StopFailed, [mEntry.Pid]));
+  end;
+  FActions.Changed();
+end;
+
+procedure TMonitorServerPage.OpenLogClick(ASender: TObject);
+var
+  mEntry: TServerStatusEntry;
+begin
+  // Ohne eigene Protokolldatei (Server ohne --log) der Protokollordner.
+  if not SelectedEntry(mEntry) or not TMonitorSystem.OpenFile(mEntry.LogFile) then
+  begin
+    FActions.OpenLogFolder(ASender);
+  end;
 end;
 
 { TAtlasMonitorForm }
@@ -202,15 +475,18 @@ begin
     FIcons[mHealth] := HealthIcon(mHealth);
   end;
   BuildMenus;
-  BuildServerTab;
-  FCheckPage := TMonitorCheckPage.Create(Self, FPages, FSettings.Check, FStatusRoot, InformProc(), ConfirmFunc());
+  FPages := TPageControl.Create(Self);
+  FPages.Align := alClient;
+  FPages.Parent := Self;
+  FServerPage := TMonitorServerPage.Create(Self, FPages, FStatusRoot, ServerActionsOf(Self));
+  FCheckPage := TMonitorCheckPage.Create(Self, FPages, FSettings.Check, FStatusRoot, InformOf(Self), ConfirmOf(Self));
   BuildTray;
   // Die Einstellung gilt: ein fehlender oder veralteter Eintrag (Programm verschoben) wird nachgezogen.
   ApplyAutostart(FSettings.StartWithWindows);
   FTimer := TTimer.Create(Self);
   FTimer.Interval := cRefreshMs;
   FTimer.OnTimer := RefreshServers;
-  ReadEntries;
+  FServerPage.ReadEntries;
   UpdateTray;
 end;
 
@@ -233,7 +509,6 @@ begin
   begin
     FreeAndNil(FIcons[mHealth]);
   end;
-  FEntries := nil;
   inherited;
 end;
 
@@ -261,79 +536,6 @@ begin
   Menu := FMainMenu;
 end;
 
-procedure TAtlasMonitorForm.BuildServerTab;
-var
-  mTitle: string;
-  mColumn: TListColumn;
-  mSplitter: TSplitter;
-begin
-  FPages := TPageControl.Create(Self);
-  FPages.Align := alClient;
-  FPages.Parent := Self;
-  FServerTab := TTabSheet.Create(Self);
-  FServerTab.Caption := TMonitorTexts.Text(TMonitorText.TabServers);
-  // Ohne Fenster scheitert ein sichtbarer Reiter; CreateWnd zeigt ihn.
-  FServerTab.TabVisible := False;
-  FServerTab.PageControl := FPages;
-  BuildButtons(FServerTab);
-  FDetails := TMemo.Create(Self);
-  FDetails.Width := Px(cDetailsWidth);
-  FDetails.Align := alRight;
-  FDetails.ReadOnly := True;
-  FDetails.ScrollBars := ssVertical;
-  FDetails.Parent := FServerTab;
-  mSplitter := TSplitter.Create(Self);
-  mSplitter.Align := alRight;
-  mSplitter.Parent := FServerTab;
-  FServerList := TListView.Create(Self);
-  FServerList.Align := alClient;
-  FServerList.ViewStyle := vsReport;
-  FServerList.ReadOnly := True;
-  FServerList.RowSelect := True;
-  FServerList.HideSelection := False;
-  FServerList.OnSelectItem := ListSelectItem;
-  for mTitle in TMonitorServers.ColumnTitles do
-  begin
-    mColumn := FServerList.Columns.Add;
-    mColumn.Caption := mTitle;
-    mColumn.Width := Px(110);
-  end;
-  // Ordner bzw. Ziel ist die breiteste Spalte.
-  FServerList.Columns[1].Width := Px(280);
-  FServerList.Parent := FServerTab;
-end;
-
-procedure TAtlasMonitorForm.BuildButtons(AParent: TWinControl);
-var
-  mPanel: TPanel;
-  mLeft: Integer;
-
-  procedure AddButton(const ACaption: string; const AOnClick: TNotifyEvent);
-  var
-    mButton: TButton;
-  begin
-    mButton := TButton.Create(Self);
-    mButton.Caption := ACaption;
-    mButton.OnClick := AOnClick;
-    mButton.SetBounds(mLeft, Px(cButtonGap), Px(cButtonWidth), Px(cPanelHeight - 2 * cButtonGap));
-    mButton.Parent := mPanel;
-    mLeft := mLeft + Px(cButtonWidth + cButtonGap);
-  end;
-
-begin
-  mPanel := TPanel.Create(Self);
-  // Höhe vor Align und Parent, sonst kann die VCL die Reihenfolge beim Anlegen vertauschen.
-  mPanel.Height := Px(cPanelHeight);
-  mPanel.Align := alBottom;
-  mPanel.BevelOuter := bvNone;
-  mPanel.Parent := AParent;
-  mLeft := Px(cButtonGap);
-  AddButton(TMonitorTexts.Text(TMonitorText.StopServer), StopSelectedClick);
-  AddButton(TMonitorTexts.Text(TMonitorText.OpenLog), OpenLogClick);
-  AddButton(TMonitorTexts.Text(TMonitorText.OpenLogFolder), OpenLogFolderClick);
-  AddButton(TMonitorTexts.Text(TMonitorText.ClearCache), ClearCacheClick);
-end;
-
 procedure TAtlasMonitorForm.BuildTray;
 begin
   FTrayMenu := TPopupMenu.Create(Self);
@@ -359,11 +561,11 @@ end;
 procedure TAtlasMonitorForm.CreateWnd;
 begin
   inherited;
-  if (FServerTab <> nil) and not FServerTab.TabVisible then
+  if (FServerPage <> nil) and not FServerPage.Tab.TabVisible then
   begin
-    FServerTab.TabVisible := True;
+    FServerPage.Tab.TabVisible := True;
     FCheckPage.Activate;
-    FPages.ActivePage := FServerTab;
+    FPages.ActivePage := FServerPage.Tab;
   end;
 end;
 
@@ -378,114 +580,21 @@ begin
   inherited WndProc(AMessage);
 end;
 
-procedure TAtlasMonitorForm.ReadEntries;
-begin
-  FEntries := TServerStatusFile.List(FStatusRoot, Now, AliveCheck());
-end;
-
 procedure TAtlasMonitorForm.RefreshServers(ASender: TObject);
 begin
-  ReadEntries;
+  FServerPage.ReadEntries;
   UpdateTray;
   // Verborgen braucht die Liste kein Fenster; ShowFromTray füllt sie beim Zeigen.
   if Showing then
   begin
-    FillList;
+    FServerPage.Fill;
   end;
-end;
-
-procedure TAtlasMonitorForm.FillList;
-var
-  mEntry: TServerStatusEntry;
-  mItem: TListItem;
-  mCells: TArray<string>;
-  mIndex: Integer;
-  mSelected: Cardinal;
-begin
-  mSelected := 0;
-  if SelectedEntry(mEntry) then
-  begin
-    mSelected := mEntry.Pid;
-  end;
-  FServerList.Items.BeginUpdate;
-  try
-    FServerList.Items.Clear;
-    for mEntry in FEntries do
-    begin
-      mCells := TMonitorServers.Columns(mEntry, Now);
-      mItem := FServerList.Items.Add;
-      mItem.Caption := mCells[0];
-      for mIndex := 1 to High(mCells) do
-      begin
-        mItem.SubItems.Add(mCells[mIndex]);
-      end;
-    end;
-  finally
-    FServerList.Items.EndUpdate;
-  end;
-  SelectPid(mSelected);
-  ShowDetails;
-end;
-
-function TAtlasMonitorForm.SelectedEntry(out AEntry: TServerStatusEntry): Boolean;
-var
-  mIndex: Integer;
-begin
-  AEntry := Default(TServerStatusEntry);
-  mIndex := -1;
-  if FServerList.Selected <> nil then
-  begin
-    mIndex := FServerList.Selected.Index;
-  end;
-  Result := (mIndex >= 0) and (mIndex <= High(FEntries));
-  if Result then
-  begin
-    AEntry := FEntries[mIndex];
-  end;
-end;
-
-procedure TAtlasMonitorForm.SelectPid(APid: Cardinal);
-var
-  mIndex: Integer;
-begin
-  for mIndex := 0 to High(FEntries) do
-  begin
-    if (FEntries[mIndex].Pid = APid) and (mIndex < FServerList.Items.Count) then
-    begin
-      FServerList.Items[mIndex].Selected := True;
-      FServerList.Items[mIndex].MakeVisible(False);
-      Exit;
-    end;
-  end;
-end;
-
-procedure TAtlasMonitorForm.ShowDetails;
-var
-  mEntry: TServerStatusEntry;
-begin
-  if SelectedEntry(mEntry) then
-  begin
-    FDetails.Lines.Text := string.Join(sLineBreak, TMonitorServers.Details(mEntry, Now));
-  end
-  else if FEntries = nil then
-  begin
-    FDetails.Lines.Text := TMonitorTexts.Text(TMonitorText.NoServers);
-  end
-  else
-  begin
-    FDetails.Lines.Text := TMonitorTexts.Text(TMonitorText.SelectServer);
-  end;
-end;
-
-procedure TAtlasMonitorForm.ListSelectItem(ASender: TObject; AItem: TListItem; ASelected: Boolean);
-begin
-  ShowDetails;
 end;
 
 procedure TAtlasMonitorForm.UpdateTray;
 begin
-  FTray.Icon := FIcons[TMonitorServers.Overall(FEntries, Now)];
-  FTray.Hint := TMonitorServers.Hint(FEntries, Now);
+  FTray.Icon := FIcons[TMonitorServers.Overall(FServerPage.Entries, Now)];
+  FTray.Hint := TMonitorServers.Hint(FServerPage.Entries, Now);
 end;
 
 procedure TAtlasMonitorForm.FillTrayMenu(ASender: TObject);
@@ -493,14 +602,14 @@ var
   mEntry: TServerStatusEntry;
   mItem: TMenuItem;
 begin
-  ReadEntries;
+  FServerPage.ReadEntries;
   FTrayMenu.Items.Clear;
-  for mEntry in FEntries do
+  for mEntry in FServerPage.Entries do
   begin
     mItem := AddItem(FTrayMenu.Items, TMonitorServers.MenuText(mEntry, Now), ServerItemClick);
     mItem.Tag := NativeInt(mEntry.Pid);
   end;
-  if FEntries = nil then
+  if FServerPage.Entries = nil then
   begin
     AddItem(FTrayMenu.Items, TMonitorTexts.Text(TMonitorText.NoServers), nil).Enabled := False;
   end;
@@ -508,7 +617,7 @@ begin
   mItem := AddItem(FTrayMenu.Items, TMonitorTexts.Text(TMonitorText.OpenWindow), OpenWindowClick);
   mItem.Default := True;
   AddItem(FTrayMenu.Items, TMonitorTexts.Text(TMonitorText.StopAllServers), StopAllClick).Enabled :=
-    FEntries <> nil;
+    FServerPage.Entries <> nil;
   AddItem(FTrayMenu.Items, TMonitorTexts.Text(TMonitorText.ClearCache), ClearCacheClick);
   AddItem(FTrayMenu.Items, TMonitorTexts.Text(TMonitorText.OpenLogFolder), OpenLogFolderClick);
   AddItem(FTrayMenu.Items, TMonitorTexts.Text(TMonitorText.StartWithWindows), ToggleAutostartClick).Checked :=
@@ -525,8 +634,8 @@ begin
     WindowState := wsNormal;
   end;
   Application.BringToFront;
-  ReadEntries;
-  FillList;
+  FServerPage.ReadEntries;
+  FServerPage.Fill;
   UpdateTray;
 end;
 
@@ -538,8 +647,8 @@ end;
 procedure TAtlasMonitorForm.ServerItemClick(ASender: TObject);
 begin
   ShowFromTray;
-  SelectPid(Cardinal((ASender as TMenuItem).Tag));
-  ShowDetails;
+  FServerPage.SelectPid(Cardinal((ASender as TMenuItem).Tag));
+  FServerPage.ShowDetails;
 end;
 
 function TAtlasMonitorForm.Confirm(const AText: string): Boolean;
@@ -552,54 +661,17 @@ begin
   Application.MessageBox(PChar(AText), PChar(Caption), MB_OK or MB_ICONINFORMATION);
 end;
 
-function TAtlasMonitorForm.InformProc: TProc<string>;
-begin
-  Result :=
-    procedure(AText: string)
-    begin
-      Inform(AText);
-    end;
-end;
-
-function TAtlasMonitorForm.ConfirmFunc: TMonitorConfirm;
-begin
-  Result :=
-    function(const AText: string): Boolean
-    begin
-      Result := Confirm(AText);
-    end;
-end;
-
-procedure TAtlasMonitorForm.StopSelectedClick(ASender: TObject);
-var
-  mEntry: TServerStatusEntry;
-begin
-  if not SelectedEntry(mEntry) then
-  begin
-    Inform(TMonitorTexts.Text(TMonitorText.SelectServer));
-    Exit;
-  end;
-  if not Confirm(TMonitorTexts.Fmt(TMonitorText.ConfirmStop, [mEntry.Pid])) then
-  begin
-    Exit;
-  end;
-  if not TMonitorSystem.TerminateServer(mEntry.Pid) then
-  begin
-    Inform(TMonitorTexts.Fmt(TMonitorText.StopFailed, [mEntry.Pid]));
-  end;
-  RefreshServers(nil);
-end;
-
 procedure TAtlasMonitorForm.StopAllClick(ASender: TObject);
 var
   mEntry: TServerStatusEntry;
 begin
-  ReadEntries;
-  if (FEntries = nil) or not Confirm(TMonitorTexts.Fmt(TMonitorText.ConfirmStopAll, [Length(FEntries)])) then
+  FServerPage.ReadEntries;
+  if (FServerPage.Entries = nil) or
+    not Confirm(TMonitorTexts.Fmt(TMonitorText.ConfirmStopAll, [Length(FServerPage.Entries)])) then
   begin
     Exit;
   end;
-  for mEntry in FEntries do
+  for mEntry in FServerPage.Entries do
   begin
     if not TMonitorSystem.TerminateServer(mEntry.Pid) then
     begin
@@ -609,26 +681,10 @@ begin
   RefreshServers(nil);
 end;
 
-function TAtlasMonitorForm.LogFolder: string;
-begin
-  Result := TPath.Combine(FStatusRoot, 'Logs');
-end;
-
-procedure TAtlasMonitorForm.OpenLogClick(ASender: TObject);
-var
-  mEntry: TServerStatusEntry;
-begin
-  // Ohne eigene Protokolldatei (Server ohne --log) der Protokollordner.
-  if not SelectedEntry(mEntry) or not TMonitorSystem.OpenFile(mEntry.LogFile) then
-  begin
-    OpenLogFolderClick(ASender);
-  end;
-end;
-
 procedure TAtlasMonitorForm.OpenLogFolderClick(ASender: TObject);
 begin
-  ForceDirectories(LogFolder);
-  TMonitorSystem.OpenFile(LogFolder);
+  ForceDirectories(LogFolder(FStatusRoot));
+  TMonitorSystem.OpenFile(LogFolder(FStatusRoot));
 end;
 
 procedure TAtlasMonitorForm.ClearCacheClick(ASender: TObject);
