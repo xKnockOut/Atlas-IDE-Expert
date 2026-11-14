@@ -230,6 +230,8 @@ Atlas.Common.Metrics.Report.Tests
 Atlas.Common.Monitor.Servers.Tests
 Atlas.Common.Profiling.Profile.Tests
 Atlas.Common.Profiling.Report.Tests
+Atlas.Common.Profiling.Sampling.Tests
+Atlas.Common.Lsp.Profiler.Tests
 Atlas.Common.Monitor.Settings.Tests
 Atlas.Common.Monitor.Texts.Tests
 Atlas.Common.Monitor.Commands.Tests
@@ -386,6 +388,7 @@ Atlas.Core.Debug.HoverTree.Tests
 Atlas.Core.Debug.Pins.Tests
 Atlas.Core.Style.Listeners.Tests
 Atlas.Core.Debug.MemoryTimeline.Tests
+Atlas.Core.Debug.ObjectCount.Tests
 Atlas.Core.Designer.Structure.Tests
 Atlas.Core.Designer.DataBindings.Tests
 Atlas.Core.Editor.BarDock.Tests

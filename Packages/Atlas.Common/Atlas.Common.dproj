@@ -707,6 +707,8 @@
         <DCCReference Include="Source\Mcp\Atlas.Common.Mcp.ReportTools.pas"/>
         <DCCReference Include="Source\Profiling\Atlas.Common.Profiling.Profile.pas"/>
         <DCCReference Include="Source\Profiling\Atlas.Common.Profiling.Report.pas"/>
+        <DCCReference Include="Source\Profiling\Atlas.Common.Profiling.Contract.pas"/>
+        <DCCReference Include="Source\Profiling\Atlas.Common.Profiling.Sampling.pas"/>
         <DCCReference Include="Source\Mcp\Atlas.Common.Mcp.DeadCodeTools.pas"/>
         <DCCReference Include="Source\Mcp\Atlas.Common.Mcp.StatusTools.pas"/>
         <DCCReference Include="Source\Mcp\Atlas.Common.Mcp.Prompts.pas"/>
@@ -888,6 +890,7 @@
         <DCCReference Include="Source\Pascal\Atlas.Common.Pascal.XmlDoc.pas"/>
         <DCCReference Include="Source\Pascal\Atlas.Common.Pascal.CompilerSwitches.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.CompilerSwitches.pas"/>
+        <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.Profiler.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.DebugUnavailable.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.ExpressionCompletion.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.DataFlow.pas"/>

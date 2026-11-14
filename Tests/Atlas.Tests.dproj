@@ -2101,6 +2101,8 @@
         <DCCReference Include="Common\Mcp\Atlas.Common.Mcp.ReportTools.Tests.pas"/>
         <DCCReference Include="Common\Profiling\Atlas.Common.Profiling.Profile.Tests.pas"/>
         <DCCReference Include="Common\Profiling\Atlas.Common.Profiling.Report.Tests.pas"/>
+        <DCCReference Include="Common\Profiling\Atlas.Common.Profiling.Sampling.Tests.pas"/>
+        <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.Profiler.Tests.pas"/>
         <DCCReference Include="Common\Mcp\Atlas.Common.Mcp.DeadCodeTools.Tests.pas"/>
         <DCCReference Include="Common\Mcp\Atlas.Common.Mcp.StatusTools.Tests.pas"/>
         <DCCReference Include="Common\Mcp\Atlas.Common.Mcp.Prompts.Tests.pas"/>
@@ -2319,6 +2321,10 @@
         <DCCReference Include="..\Packages\Atlas.IDE.Debugger\Source\UI\Debug\Atlas.UI.Debug.MemoryChart.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Debugger\Source\UI\Debug\Atlas.UI.Debug.MemoryFrame.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.UI.Debug.MemoryFrame.Tests.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Debugger\Source\Core\Debug\Atlas.Core.Debug.ObjectCount.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.Core.Debug.ObjectCount.Tests.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Debugger\Source\UI\Debug\Atlas.UI.Debug.ObjectCountPanel.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.UI.Debug.ObjectCountPanel.Tests.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Debug.EventLog.Tests.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Debug.LeakCapture.Tests.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Debug.LeakView.Tests.pas"/>

@@ -579,8 +579,10 @@ Open it from the Atlas menu › Memory timeline or with the command `Atlas.Debug
 - Drag a range with the mouse to see the growth of every value below, e.g. `Private bytes +38.0 MB · Handles +12`. Double-click clears the range.
 - “Copy CSV” puts the timeline with its marks on the clipboard, “Clear” starts over.
 - Limit: in the 32-bit IDE, Windows caps memory values of a 64-bit program above 4 GB.
+- Experimental (`debug.memoryTimeline.objectCount`, default off): below the line is the section “Count objects”. In the paused program Atlas searches its memory for references to classes and shows count and size of live objects per class. Every further count is compared with the previous one; growth is on top (`+10` for a class created ten times and never freed). The field “Filter classes” narrows the table.
+- The count does not depend on the memory manager and is an approximation: class references in fields (`TClass`) count too, freed objects drop out once the memory manager overwrites their start (FastMM does).
 
-Settings: `debug.memoryTimeline`, `debug.memoryTimeline.intervalMs`
+Settings: `debug.memoryTimeline`, `debug.memoryTimeline.intervalMs`, `debug.memoryTimeline.objectCount`
 
 <a id="window-atlasbreakpoints"></a>
 ### Breakpoints window

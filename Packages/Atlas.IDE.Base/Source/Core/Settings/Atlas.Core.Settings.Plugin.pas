@@ -543,6 +543,8 @@ type
     property DebugMemoryTimeline: Boolean read FDebug.DebugMemoryTimeline write FDebug.DebugMemoryTimeline;
     property DebugMemoryTimelineIntervalMs: Integer read FDebug.DebugMemoryTimelineIntervalMs
       write FDebug.DebugMemoryTimelineIntervalMs;
+    property DebugMemoryTimelineObjectCount: Boolean read FDebug.DebugMemoryTimelineObjectCount
+      write FDebug.DebugMemoryTimelineObjectCount;
     property DebugOwnCodeFolders: string read FDebug.DebugOwnCodeFolders write FDebug.DebugOwnCodeFolders;
     property DebugWhyHere: Boolean read FDebug.DebugWhyHere write FDebug.DebugWhyHere;
     property DebugWhyHereDepth: Integer read FDebug.DebugWhyHereDepth write FDebug.DebugWhyHereDepth;
