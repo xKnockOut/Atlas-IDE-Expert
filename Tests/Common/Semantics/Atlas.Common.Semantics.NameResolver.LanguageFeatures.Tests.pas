@@ -452,7 +452,7 @@ begin
   Assert.IsFalse(ResolveAt(Source, 'Name := 1').Found);
   // Außerhalb des with wieder die lokale Variable.
   R := ResolveAt(Source, 'Name := 2');
-  Assert.IsTrue(R.Kind = TResolvedKind.Local);
+  Assert.AreEqual<TResolvedKind>(TResolvedKind.Local, R.Kind);
 end;
 
 procedure TNameResolverLanguageFeatureTests.InfersInlineVarTypes;
@@ -473,7 +473,7 @@ var
   R: TResolvedSymbol;
 begin
   R := ResolveAt(Source, 'Lauf;');
-  Assert.IsTrue(R.Kind = TResolvedKind.Local);
+  Assert.AreEqual<TResolvedKind>(TResolvedKind.Local, R.Kind);
   Assert.IsFalse(ResolveAt(Source, 'Lauf;', 2).Found);
 end;
 

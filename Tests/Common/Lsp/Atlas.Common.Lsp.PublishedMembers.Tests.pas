@@ -280,18 +280,18 @@ var
   Text: string;
 begin
   Members := TPublishedMembers.Collect(FIndex, 'TVarianten', ReadSource);
-  Assert.IsTrue(Members[Find(Members, 'Breite')].DefaultKind = TPublishedDefaultKind.Explicit);
+  Assert.AreEqual<TPublishedDefaultKind>(TPublishedDefaultKind.Explicit, Members[Find(Members, 'Breite')].DefaultKind);
   Assert.AreEqual('64', Members[Find(Members, 'Breite')].DefaultValue);
-  Assert.IsTrue(Members[Find(Members, 'Aktiv')].DefaultKind = TPublishedDefaultKind.Implicit);
+  Assert.AreEqual<TPublishedDefaultKind>(TPublishedDefaultKind.Implicit, Members[Find(Members, 'Aktiv')].DefaultKind);
   Assert.AreEqual('False', Members[Find(Members, 'Aktiv')].DefaultValue);
-  Assert.IsTrue(Members[Find(Members, 'Zahl')].DefaultKind = TPublishedDefaultKind.NoDefault);
+  Assert.AreEqual<TPublishedDefaultKind>(TPublishedDefaultKind.NoDefault, Members[Find(Members, 'Zahl')].DefaultKind);
   Assert.AreEqual('False', Members[Find(Members, 'Titel')].Stored);
-  Assert.IsTrue(Members[Find(Members, 'Titel')].DefaultKind = TPublishedDefaultKind.None);
+  Assert.AreEqual<TPublishedDefaultKind>(TPublishedDefaultKind.None, Members[Find(Members, 'Titel')].DefaultKind);
   Assert.AreEqual('IsFarbeStored', Members[Find(Members, 'Farbe')].Stored);
   Assert.AreEqual('5', Members[Find(Members, 'Farbe')].DefaultValue);
   Assert.AreEqual('arLinks', Members[Find(Members, 'Ausrichtung')].DefaultValue);
   // Der Name "Default" ist keine Angabe; implizit 0.
-  Assert.IsTrue(Members[Find(Members, 'Default')].DefaultKind = TPublishedDefaultKind.Implicit);
+  Assert.AreEqual<TPublishedDefaultKind>(TPublishedDefaultKind.Implicit, Members[Find(Members, 'Default')].DefaultKind);
   Assert.AreEqual('0', Members[Find(Members, 'Default')].DefaultValue);
   Assert.AreEqual('default 5, stored IsFarbeStored', TPublishedMembers.DefaultText(Members[Find(Members, 'Farbe')]));
   Assert.AreEqual('default False (implizit)', TPublishedMembers.DefaultText(Members[Find(Members, 'Aktiv')]));
@@ -313,8 +313,8 @@ begin
   Assert.AreEqual('', TPublishedMembers.DefaultProperty(FIndex, 'TKnopf', ReadSource));
   Text := TPublishedMembers.ToMarkdown(TPublishedMembers.Collect(FIndex, 'TVarianten', ReadSource),
     'Strings[Index: Integer]: string');
-  Assert.IsTrue(Pos('**Standard-Property:** `Strings[Index: Integer]: string`', Text) = 1, Text);
-  Assert.IsTrue(Pos('- `Strings`', Text) = 0, Text);
+  Assert.AreEqual(1, Pos('**Standard-Property:** `Strings[Index: Integer]: string`', Text), Text);
+  Assert.AreEqual(0, Pos('- `Strings`', Text), Text);
 end;
 
 procedure TPublishedMembersTests.DeclaringClassIsFirstTypedDeclaration;

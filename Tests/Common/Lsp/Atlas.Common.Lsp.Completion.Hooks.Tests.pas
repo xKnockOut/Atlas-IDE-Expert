@@ -102,7 +102,7 @@ end;
 
 procedure TCompletionHooksTests.DefaultsWithoutHooks;
 begin
-  Assert.IsTrue(FHooks.MatchingOf(cUri) = TCompletionMatching.Fuzzy);
+  Assert.AreEqual<TCompletionMatching>(TCompletionMatching.Fuzzy, FHooks.MatchingOf(cUri));
   Assert.AreEqual(TCompletionSettings.Default.Keywords, FHooks.SettingsOf(cUri).Keywords);
   Assert.AreEqual(TPostfixOptions.Default.Enabled, FHooks.PostfixOf(cUri).Enabled);
 end;
@@ -112,8 +112,8 @@ begin
   FHooks.MatchingFor := PrefixMatching();
   FHooks.SettingsFor := WithoutKeywords();
   FHooks.PostfixFor := PostfixOff();
-  Assert.IsTrue(FHooks.MatchingOf(cUri) = TCompletionMatching.Prefix);
-  Assert.IsTrue(FHooks.MatchingOf('file:///C:/P/Andere.pas') = TCompletionMatching.Fuzzy);
+  Assert.AreEqual<TCompletionMatching>(TCompletionMatching.Prefix, FHooks.MatchingOf(cUri));
+  Assert.AreEqual<TCompletionMatching>(TCompletionMatching.Fuzzy, FHooks.MatchingOf('file:///C:/P/Andere.pas'));
   Assert.IsFalse(FHooks.SettingsOf(cUri).Keywords);
   Assert.IsFalse(FHooks.PostfixOf(cUri).Enabled);
 end;

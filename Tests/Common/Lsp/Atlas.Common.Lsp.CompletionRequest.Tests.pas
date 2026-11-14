@@ -179,7 +179,7 @@ var
 begin
   Request := TCompletionRequest.Create('', '', TTextPosition.Create(0, 0));
   try
-    Assert.IsTrue(Request.Matching = TCompletionMatching.Fuzzy);
+    Assert.AreEqual<TCompletionMatching>(TCompletionMatching.Fuzzy, Request.Matching);
     Assert.IsTrue(Request.Settings.Keywords);
     Assert.IsTrue(Request.Settings.OfferTryFinally);
     Assert.AreEqual('', Request.Trigger);

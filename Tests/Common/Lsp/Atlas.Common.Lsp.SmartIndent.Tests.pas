@@ -124,12 +124,12 @@ begin
   Assert.IsTrue(TLspSmartIndent.OptionsFrom(mSettings, mStyle, mOptions));
   Assert.AreEqual(4, mOptions.IndentSize);
   Assert.IsTrue(mOptions.UseTabs);
-  Assert.IsTrue(mOptions.StringContinuation = TStringContinuation.Indent);
+  Assert.AreEqual<TStringContinuation>(TStringContinuation.Indent, mOptions.StringContinuation);
   mSettings.SplitStringsIndent := 'align';
   mSettings.OutdentClosers := False;
   mSettings.Enabled := False;
   Assert.IsFalse(TLspSmartIndent.OptionsFrom(mSettings, mStyle, mOptions));
-  Assert.IsTrue(mOptions.StringContinuation = TStringContinuation.Align);
+  Assert.AreEqual<TStringContinuation>(TStringContinuation.Align, mOptions.StringContinuation);
   Assert.IsFalse(mOptions.OutdentClosers);
   Assert.IsTrue(mOptions.AfterEnter);
 end;

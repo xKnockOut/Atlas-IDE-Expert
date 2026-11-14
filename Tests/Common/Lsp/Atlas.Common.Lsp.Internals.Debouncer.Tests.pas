@@ -204,7 +204,7 @@ begin
       begin
         Done.SetEvent;
       end);
-    Assert.IsTrue(Done.WaitFor(2000) = TWaitResult.wrSignaled);
+    Assert.AreEqual<TWaitResult>(TWaitResult.wrSignaled, Done.WaitFor(2000));
     Assert.IsFalse(Cancelled);
   finally
     Debouncer.Free;
@@ -238,7 +238,7 @@ begin
       begin
         Done.SetEvent;
       end);
-    Assert.IsTrue(Done.WaitFor(2000) = TWaitResult.wrSignaled);
+    Assert.AreEqual<TWaitResult>(TWaitResult.wrSignaled, Done.WaitFor(2000));
     Assert.AreEqual('kaputt', Error);
   finally
     Debouncer.Free;

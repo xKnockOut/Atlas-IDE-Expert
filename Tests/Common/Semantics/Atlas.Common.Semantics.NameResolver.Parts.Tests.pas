@@ -225,7 +225,7 @@ begin
   mMoves := FCore.Place.MoveCount;
   FCore.Place.MoveToUnit(FCore.Place.Current);
   Assert.IsTrue(FCore.Place.MoveCount > mMoves);
-  Assert.IsTrue(FCore.Place.Tree = nil);
+  Assert.IsNull(FCore.Place.Tree);
 end;
 
 procedure TResolverPartsTests.UnitsFindIndexedUnits;
@@ -278,7 +278,7 @@ var
 begin
   MoveTo('{M}');
   Assert.IsTrue(FCore.Locals.LookupLocal('AZahl', mLocal));
-  Assert.IsTrue(mLocal.Kind = TResolvedKind.Local);
+  Assert.AreEqual<TResolvedKind>(TResolvedKind.Local, mLocal.Kind);
   Assert.IsTrue(mLocal.IsParameter);
 end;
 
@@ -437,7 +437,7 @@ begin
     Assert.IsTrue(mWide.ChildCount > 16, IntToStr(mWide.ChildCount));
     for mOffset := 0 to Length(mText) + 1 do
     begin
-      Assert.IsTrue(TResolverNodes.ChildAround(mWide, mOffset) = LinearChildAround(mWide, mOffset),
+      Assert.AreSame(LinearChildAround(mWide, mOffset), TResolverNodes.ChildAround(mWide, mOffset),
         IntToStr(mOffset));
     end;
   finally

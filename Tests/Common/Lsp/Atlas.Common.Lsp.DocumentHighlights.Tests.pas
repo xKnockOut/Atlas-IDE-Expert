@@ -171,12 +171,13 @@ begin
         PositionOf(Source, 'Wert;', 1));
       Assert.AreEqual(3, Integer(Length(Found)));
       Assert.AreEqual(7, Found[0].Range.StartPos.Line);
-      Assert.IsTrue(Found[0].Kind = THighlightKind.Text);
+      Assert.AreEqual<THighlightKind>(THighlightKind.Text, Found[0].Kind);
       Assert.AreEqual(12, Found[1].Range.StartPos.Line);
-      Assert.IsTrue(Found[1].Kind = THighlightKind.Read);
+      Assert.AreEqual<THighlightKind>(THighlightKind.Read, Found[1].Kind);
       Assert.AreEqual(13, Found[2].Range.StartPos.Line);
-      Assert.IsTrue(Found[2].Kind = THighlightKind.Write);
-      Assert.IsTrue(Pointer(Pinned.Symbols) = Pointer(FResolver.ExtractedUnit(Tree, 'C:\P\Haupt.pas').Symbols));
+      Assert.AreEqual<THighlightKind>(THighlightKind.Write, Found[2].Kind);
+      Assert.AreEqual<Pointer>(Pointer(FResolver.ExtractedUnit(Tree, 'C:\P\Haupt.pas').Symbols),
+        Pointer(Pinned.Symbols));
     finally
       FResolver.UnpinTree;
     end;

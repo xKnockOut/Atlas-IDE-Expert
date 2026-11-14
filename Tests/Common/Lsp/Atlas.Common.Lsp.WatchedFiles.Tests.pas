@@ -49,9 +49,9 @@ begin
   end;
   Assert.AreEqual(3, Integer(Length(Changes)));
   Assert.IsTrue(SameText('C:\P\A.pas', Changes[0].FileName), Changes[0].FileName);
-  Assert.IsTrue(Changes[0].Kind = TFileChangeKind.Created);
-  Assert.IsTrue(Changes[1].Kind = TFileChangeKind.Changed);
-  Assert.IsTrue(Changes[2].Kind = TFileChangeKind.Deleted);
+  Assert.AreEqual<TFileChangeKind>(TFileChangeKind.Created, Changes[0].Kind);
+  Assert.AreEqual<TFileChangeKind>(TFileChangeKind.Changed, Changes[1].Kind);
+  Assert.AreEqual<TFileChangeKind>(TFileChangeKind.Deleted, Changes[2].Kind);
 end;
 
 procedure TLspWatchedFilesTests.IgnoresInvalidEntries;
@@ -126,7 +126,7 @@ begin
   end;
   Assert.AreEqual(2, Integer(Length(Changes)));
   Assert.IsTrue(SameText('c:\Projekt\atlas.json', Changes[0].FileName), Changes[0].FileName);
-  Assert.IsTrue(Changes[1].Kind = TFileChangeKind.Changed);
+  Assert.AreEqual<TFileChangeKind>(TFileChangeKind.Changed, Changes[1].Kind);
 end;
 
 initialization

@@ -387,13 +387,13 @@ var
 begin
   mHits := Find('TBasis.Validiere');
   Assert.AreEqual(3, Integer(Length(mHits)));
-  Assert.IsTrue(mHits[1].Reason = TMethodHitReason.Match);
+  Assert.AreEqual<TMethodHitReason>(TMethodHitReason.Match, mHits[1].Reason);
   Assert.AreEqual('', mHits[1].Via);
-  Assert.IsTrue(mHits[2].Reason = TMethodHitReason.Override_);
+  Assert.AreEqual<TMethodHitReason>(TMethodHitReason.Override_, mHits[2].Reason);
   Assert.AreEqual('TBasis.Validiere', mHits[2].Via);
   // Über mehrere Stufen und Units hinweg.
   Assert.AreEqual('Andere', mHits[0].UnitName);
-  Assert.IsTrue(mHits[0].Reason = TMethodHitReason.Override_);
+  Assert.AreEqual<TMethodHitReason>(TMethodHitReason.Override_, mHits[0].Reason);
   Assert.AreEqual(LineOf('spezial-validiere'), mHits[0].Line);
 end;
 
@@ -445,7 +445,7 @@ begin
   // TBasis setzt direkt um, TAndere über die Methodenzuordnung; der Interface-Member selbst hat keinen Rumpf.
   mHits := Find('IAuftrag.Pruefe');
   Assert.AreEqual('TBasis.Pruefe TAndere.Meine', Names(mHits));
-  Assert.IsTrue(mHits[0].Reason = TMethodHitReason.Implementation_);
+  Assert.AreEqual<TMethodHitReason>(TMethodHitReason.Implementation_, mHits[0].Reason);
   Assert.AreEqual('IAuftrag.Pruefe', mHits[0].Via);
   Assert.AreEqual(LineOf('basis-pruefe'), mHits[0].Line);
   Assert.AreEqual(LineOf('andere-meine'), mHits[1].Line);

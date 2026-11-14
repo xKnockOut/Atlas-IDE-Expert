@@ -118,7 +118,7 @@ begin
       Response.GetValue<Integer>('result.capabilities.textDocumentSync'));
     Assert.AreEqual('TestServer', Response.GetValue<string>('result.serverInfo.name'));
     Assert.AreEqual('1.2.3', Response.GetValue<string>('result.serverInfo.version'));
-    Assert.IsTrue(FLifecycle.State = TLspServerState.Running);
+    Assert.AreEqual<TLspServerState>(TLspServerState.Running, FLifecycle.State);
   finally
     Response.Free;
   end;
@@ -185,7 +185,7 @@ begin
   Response := Send('{"jsonrpc":"2.0","id":2,"method":"shutdown"}');
   try
     Assert.IsTrue(Response.GetValue('result') is TJSONNull);
-    Assert.IsTrue(FLifecycle.State = TLspServerState.ShuttingDown);
+    Assert.AreEqual<TLspServerState>(TLspServerState.ShuttingDown, FLifecycle.State);
   finally
     Response.Free;
   end;
@@ -204,7 +204,7 @@ begin
   Send('{"jsonrpc":"2.0","id":2,"method":"shutdown"}').Free;
   Assert.IsNull(Send('{"jsonrpc":"2.0","method":"exit"}'));
   Assert.IsTrue(FExitCalled);
-  Assert.IsTrue(FLifecycle.State = TLspServerState.Exited);
+  Assert.AreEqual<TLspServerState>(TLspServerState.Exited, FLifecycle.State);
   Assert.AreEqual(0, FLifecycle.ExitCode);
 end;
 

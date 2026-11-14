@@ -209,7 +209,7 @@ begin
   Assert.AreEqual(Ord(TCompletionTrust.Limited), Ord(Notice.Trust));
   Assert.AreEqual(13, Notice.Line);
   Assert.AreEqual(12, Notice.Character);
-  Assert.IsTrue(Notice.Message <> '');
+  Assert.AreNotEqual('', Notice.Message);
 end;
 
 procedure TCompletionSyntaxTests.TypingAtCursorIsNoNotice;

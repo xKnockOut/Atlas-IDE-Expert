@@ -229,17 +229,17 @@ var
   R: TResolvedSymbol;
 begin
   R := ResolveAt(Source, 'Zwischen :=');
-  Assert.IsTrue(R.Kind = TResolvedKind.Local);
+  Assert.AreEqual<TResolvedKind>(TResolvedKind.Local, R.Kind);
   Assert.AreEqual('Double', R.TypeName);
   Assert.AreEqual(6, R.SelectionRange.StartPos.Line);
   R := ResolveAt(Source, 'B;');
   Assert.IsTrue(R.IsParameter);
   Assert.AreEqual('Integer', R.TypeName);
   R := ResolveAt(Source, 'Result :=');
-  Assert.IsTrue(R.Kind = TResolvedKind.Local);
+  Assert.AreEqual<TResolvedKind>(TResolvedKind.Local, R.Kind);
   Assert.AreEqual('Integer', R.TypeName);
   R := ResolveAt(Source, 'Zaehler;');
-  Assert.IsTrue(R.Kind = TResolvedKind.Symbol);
+  Assert.AreEqual<TResolvedKind>(TResolvedKind.Symbol, R.Kind);
   Assert.AreEqual('Haupt', R.UnitName);
   Assert.AreEqual(3, R.SelectionRange.StartPos.Line);
 end;
@@ -343,9 +343,9 @@ var
   R: TResolvedSymbol;
 begin
   R := ResolveAt(Source, 'X := 1');
-  Assert.IsTrue(R.Kind = TResolvedKind.Symbol, 'vor der Inline-Variablen gilt die globale');
+  Assert.AreEqual<TResolvedKind>(TResolvedKind.Symbol, R.Kind, 'vor der Inline-Variablen gilt die globale');
   R := ResolveAt(Source, 'X := ''a''');
-  Assert.IsTrue(R.Kind = TResolvedKind.Local);
+  Assert.AreEqual<TResolvedKind>(TResolvedKind.Local, R.Kind);
   Assert.AreEqual('string', R.TypeName);
 end;
 
@@ -371,7 +371,7 @@ var
   R: TResolvedSymbol;
 begin
   R := ResolveAt(Source, 'FWert := 1');
-  Assert.IsTrue(R.Kind = TResolvedKind.Symbol);
+  Assert.AreEqual<TResolvedKind>(TResolvedKind.Symbol, R.Kind);
   Assert.AreEqual('TFoo.FWert', R.QualifiedName);
   Assert.AreEqual(5, R.SelectionRange.StartPos.Line);
   R := ResolveAt(Source, 'FWert := 2');
@@ -408,7 +408,7 @@ var
 begin
   // read und write stehen im Bereich der Klasse, auch für strict private (#690).
   R := ResolveAt(Source, 'FWert write');
-  Assert.IsTrue(R.Kind = TResolvedKind.Symbol);
+  Assert.AreEqual<TResolvedKind>(TResolvedKind.Symbol, R.Kind);
   Assert.AreEqual('TFoo.FWert', R.QualifiedName);
   Assert.AreEqual(5, R.SelectionRange.StartPos.Line);
   R := ResolveAt(Source, 'SetWert;');
@@ -470,13 +470,13 @@ var
   R: TResolvedSymbol;
 begin
   R := ResolveAt(SourceVerdeckt, 'Name := Name; {M1}');
-  Assert.IsTrue(R.Kind = TResolvedKind.Symbol, 'Self.Name ist das Feld');
+  Assert.AreEqual<TResolvedKind>(TResolvedKind.Symbol, R.Kind, 'Self.Name ist das Feld');
   Assert.AreEqual('TKunde.Name', R.QualifiedName);
   R := ResolveAt(SourceVerdeckt, 'Name; {M1}');
-  Assert.IsTrue(R.Kind = TResolvedKind.Local);
+  Assert.AreEqual<TResolvedKind>(TResolvedKind.Local, R.Kind);
   Assert.IsTrue(R.IsParameter);
   R := ResolveAt(SourceVerdeckt, 'Anzahl := Wert; {M2}');
-  Assert.IsTrue(R.Kind = TResolvedKind.Local);
+  Assert.AreEqual<TResolvedKind>(TResolvedKind.Local, R.Kind);
   Assert.AreEqual(19, R.SelectionRange.StartPos.Line);
   R := ResolveAt(SourceVerdeckt, 'Wert; {M2}');
   Assert.AreEqual('TKunde.Wert', R.QualifiedName);
@@ -488,19 +488,19 @@ var
 begin
   // Parameter der anonymen Methode verdeckt das Feld Wert; Anzahl bleibt das Feld.
   R := ResolveAt(SourceVerdeckt, 'Wert; {M3}');
-  Assert.IsTrue(R.Kind = TResolvedKind.Local);
+  Assert.AreEqual<TResolvedKind>(TResolvedKind.Local, R.Kind);
   Assert.IsTrue(R.IsParameter);
   Assert.AreEqual(28, R.SelectionRange.StartPos.Line);
   R := ResolveAt(SourceVerdeckt, 'Anzahl := Wert; {M3}');
   Assert.AreEqual('TKunde.Anzahl', R.QualifiedName);
   // var-Abschnitt der anonymen Methode; Wert ist dort wieder das Feld.
   R := ResolveAt(SourceVerdeckt, 'Anzahl := Wert; {M4}');
-  Assert.IsTrue(R.Kind = TResolvedKind.Local);
+  Assert.AreEqual<TResolvedKind>(TResolvedKind.Local, R.Kind);
   Assert.AreEqual(34, R.SelectionRange.StartPos.Line);
   R := ResolveAt(SourceVerdeckt, 'Wert; {M4}');
   Assert.AreEqual('TKunde.Wert', R.QualifiedName);
   R := ResolveAt(SourceVerdeckt, 'Result := Anzahl');
-  Assert.IsTrue(R.Kind = TResolvedKind.Local);
+  Assert.AreEqual<TResolvedKind>(TResolvedKind.Local, R.Kind);
   // Außerhalb der anonymen Methoden gilt wieder das Feld.
   R := ResolveAt(SourceVerdeckt, 'Wert := 1; {M5}');
   Assert.AreEqual('TKunde.Wert', R.QualifiedName);
@@ -612,7 +612,7 @@ begin
   Assert.AreEqual('TBasis.FName', R.QualifiedName);
   R := ResolveAt(Source, 'Create');
   Assert.AreEqual('TBasis.Create', R.QualifiedName);
-  Assert.IsTrue(R.SymbolKind = TIndexSymbolKind.Constructor_);
+  Assert.AreEqual<TIndexSymbolKind>(TIndexSymbolKind.Constructor_, R.SymbolKind);
 end;
 
 procedure TNameResolverTests.ResolvesQualifiedNames;
@@ -635,7 +635,7 @@ begin
   R := ResolveAt(Source, 'Wert');
   Assert.AreEqual('Basis', R.UnitName, 'Basis.Wert trotz Zweit dahinter');
   R := ResolveAt(Source, 'Basis', 2);
-  Assert.IsTrue(R.Kind = TResolvedKind.UnitName);
+  Assert.AreEqual<TResolvedKind>(TResolvedKind.UnitName, R.Kind);
   R := ResolveAt(Source, 'Create');
   Assert.AreEqual('TBasis.Create', R.QualifiedName);
   R := ResolveAt(Source, 'TWerkzeug');
@@ -814,19 +814,19 @@ begin
     // Gepinnt: dieselbe Auswertung, kein neues Extrakt (gleiches Symbol-Array).
     First := FResolver.ExtractedUnit(Tree, 'C:\P\Haupt.pas');
     Second := FResolver.ExtractedUnit(Tree, 'C:\P\Haupt.pas');
-    Assert.IsTrue(Pointer(First.Symbols) = Pointer(Second.Symbols));
+    Assert.AreEqual<Pointer>(Pointer(Second.Symbols), Pointer(First.Symbols));
     Assert.AreEqual('TBasis.Melde', FResolver.Resolve(Tree, 'C:\P\Haupt.pas',
       PositionOf(PinSource, 'Melde;', 1)).QualifiedName);
     FResolver.UnpinTree;
     // Das innere UnpinTree löst den Baum noch nicht.
     Second := FResolver.ExtractedUnit(Tree, 'C:\P\Haupt.pas');
-    Assert.IsTrue(Pointer(First.Symbols) = Pointer(Second.Symbols));
+    Assert.AreEqual<Pointer>(Pointer(Second.Symbols), Pointer(First.Symbols));
     Assert.AreEqual('TBasis.Melde', FResolver.Resolve(Tree, 'C:\P\Haupt.pas',
       PositionOf(PinSource, 'Melde;', 1)).QualifiedName);
     FResolver.UnpinTree;
     // Ungepinnt teilt der Aufruf das am Baum hinterlegte Extrakt (kein neues Extrahieren je Anbieter).
     Second := FResolver.ExtractedUnit(Tree, 'C:\P\Haupt.pas');
-    Assert.IsTrue(Pointer(First.Symbols) = Pointer(Second.Symbols));
+    Assert.AreEqual<Pointer>(Pointer(Second.Symbols), Pointer(First.Symbols));
     Assert.AreEqual(Integer(Length(First.Symbols)), Integer(Length(Second.Symbols)));
     Assert.AreEqual('TBasis.Melde', FResolver.Resolve(Tree, 'C:\P\Haupt.pas',
       PositionOf(PinSource, 'Melde;', 1)).QualifiedName);
@@ -853,18 +853,20 @@ begin
           Assert.AreEqual('Zweit', FResolver.Resolve(Inner, 'C:\P\Andere.pas',
             PositionOf(PinOther, 'Wert;', 1)).UnitName);
           // Der äußere Baum bleibt gepinnt, auch während der innere es ist.
-          Assert.IsTrue(Pointer(Pinned.Symbols) = Pointer(FResolver.ExtractedUnit(Outer, 'C:\P\Haupt.pas').Symbols));
+          Assert.AreEqual<Pointer>(Pointer(FResolver.ExtractedUnit(Outer, 'C:\P\Haupt.pas').Symbols),
+            Pointer(Pinned.Symbols));
         finally
           FResolver.UnpinTree;
         end;
       finally
         Inner.Free;
       end;
-      Assert.IsTrue(Pointer(Pinned.Symbols) = Pointer(FResolver.ExtractedUnit(Outer, 'C:\P\Haupt.pas').Symbols));
+      Assert.AreEqual<Pointer>(Pointer(FResolver.ExtractedUnit(Outer, 'C:\P\Haupt.pas').Symbols),
+        Pointer(Pinned.Symbols));
       R := FResolver.Resolve(Outer, 'C:\P\Haupt.pas', PositionOf(PinSource, 'Zahl :=', 1));
       Assert.IsTrue(R.Found);
       Assert.AreEqual('Zahl', R.Name);
-      Assert.IsTrue(R.Kind = TResolvedKind.Local);
+      Assert.AreEqual<TResolvedKind>(TResolvedKind.Local, R.Kind);
       Assert.AreEqual('TBasis.Melde', FResolver.Resolve(Outer, 'C:\P\Haupt.pas',
         PositionOf(PinSource, 'Melde;', 1)).QualifiedName);
     finally
@@ -1081,7 +1083,7 @@ begin
     Assert.AreEqual('Pos', Symbol.Name);
     Assert.IsTrue(TypeFound);
     Assert.AreEqual('TPunkt', TypeInfo.Name);
-    Assert.IsTrue(TypeInfo.SymbolKind = TIndexSymbolKind.RecordType);
+    Assert.AreEqual<TIndexSymbolKind>(TIndexSymbolKind.RecordType, TypeInfo.SymbolKind);
     Assert.IsTrue(FResolver.PropertyReadsField(Symbol, ReadsField));
     Assert.IsTrue(ReadsField);
     Assert.IsTrue(FResolver.NodeType(Tree, 'C:\P\Haupt.pas', Receivers[1], Symbol, TypeInfo, TypeFound));

@@ -186,7 +186,7 @@ begin
   try
     Assert.IsTrue(F.Graph.Complete);
     Assert.AreEqual(1, Integer(Length(F.Graph.UnreachableStatements)));
-    Assert.IsTrue(F.Graph.IsReachable(NodeNamed(F, 'Dead')) = TFlowAnswer.No);
+    Assert.AreEqual<TFlowAnswer>(TFlowAnswer.No, F.Graph.IsReachable(NodeNamed(F, 'Dead')));
   finally
     F.Free;
   end;
@@ -198,7 +198,7 @@ var
 begin
   F := Flow('  if X > 0 then Exit;'#13#10'  Alive;');
   try
-    Assert.IsTrue(F.Graph.IsReachable(NodeNamed(F, 'Alive')) = TFlowAnswer.Yes);
+    Assert.AreEqual<TFlowAnswer>(TFlowAnswer.Yes, F.Graph.IsReachable(NodeNamed(F, 'Alive')));
   finally
     F.Free;
   end;
@@ -210,7 +210,7 @@ var
 begin
   F := Flow('  if X > 0 then Result := 1 else Result := 2;');
   try
-    Assert.IsTrue(F.Graph.MayEndWithout('Result') = TFlowAnswer.No);
+    Assert.AreEqual<TFlowAnswer>(TFlowAnswer.No, F.Graph.MayEndWithout('Result'));
   finally
     F.Free;
   end;
@@ -222,7 +222,7 @@ var
 begin
   F := Flow('  if X > 0 then Result := 1;');
   try
-    Assert.IsTrue(F.Graph.MayEndWithout('Result') = TFlowAnswer.Yes);
+    Assert.AreEqual<TFlowAnswer>(TFlowAnswer.Yes, F.Graph.MayEndWithout('Result'));
   finally
     F.Free;
   end;
@@ -316,7 +316,7 @@ var
 begin
   F := Flow('  if X > 0 then Exit(1);'#13#10'  Result := 2;');
   try
-    Assert.IsTrue(F.Graph.MayEndWithout('Result') = TFlowAnswer.No);
+    Assert.AreEqual<TFlowAnswer>(TFlowAnswer.No, F.Graph.MayEndWithout('Result'));
   finally
     F.Free;
   end;
@@ -334,7 +334,7 @@ begin
   begin
     F := Flow(Body);
     try
-      Assert.IsTrue(F.Graph.MayEndWithout('Result') = TFlowAnswer.No, Body);
+      Assert.AreEqual<TFlowAnswer>(TFlowAnswer.No, F.Graph.MayEndWithout('Result'), Body);
     finally
       F.Free;
     end;
@@ -342,7 +342,7 @@ begin
   // Break verlässt die Schleife ohne Result.
   F := Flow('  while True do'#13#10'    if X > 0 then Break else Exit(1);');
   try
-    Assert.IsTrue(F.Graph.MayEndWithout('Result') = TFlowAnswer.Yes);
+    Assert.AreEqual<TFlowAnswer>(TFlowAnswer.Yes, F.Graph.MayEndWithout('Result'));
   finally
     F.Free;
   end;
@@ -354,8 +354,8 @@ var
 begin
   F := Flow('  while True do'#13#10'  begin'#13#10'    Break;'#13#10'    Dead;'#13#10'  end;'#13#10'  After;');
   try
-    Assert.IsTrue(F.Graph.IsReachable(NodeNamed(F, 'Dead')) = TFlowAnswer.No);
-    Assert.IsTrue(F.Graph.IsReachable(NodeNamed(F, 'After')) = TFlowAnswer.Yes);
+    Assert.AreEqual<TFlowAnswer>(TFlowAnswer.No, F.Graph.IsReachable(NodeNamed(F, 'Dead')));
+    Assert.AreEqual<TFlowAnswer>(TFlowAnswer.Yes, F.Graph.IsReachable(NodeNamed(F, 'After')));
   finally
     F.Free;
   end;
@@ -367,7 +367,7 @@ var
 begin
   F := Flow('  for I := 0 to 3 do'#13#10'  begin'#13#10'    Continue;'#13#10'    Dead;'#13#10'  end;');
   try
-    Assert.IsTrue(F.Graph.IsReachable(NodeNamed(F, 'Dead')) = TFlowAnswer.No);
+    Assert.AreEqual<TFlowAnswer>(TFlowAnswer.No, F.Graph.IsReachable(NodeNamed(F, 'Dead')));
   finally
     F.Free;
   end;
@@ -394,8 +394,8 @@ begin
       end;
     end;
     Assert.IsTrue(OnExitPath, 'finally läuft');
-    Assert.IsTrue(F.Graph.IsReachable(F.Graph.ExitNode) = TFlowAnswer.Yes, 'Routine endet');
-    Assert.IsTrue(F.Graph.IsReachable(NodeNamed(F, 'Dead')) = TFlowAnswer.No, 'Exit springt');
+    Assert.AreEqual<TFlowAnswer>(TFlowAnswer.Yes, F.Graph.IsReachable(F.Graph.ExitNode), 'Routine endet');
+    Assert.AreEqual<TFlowAnswer>(TFlowAnswer.No, F.Graph.IsReachable(NodeNamed(F, 'Dead')), 'Exit springt');
   finally
     F.Free;
   end;
@@ -407,9 +407,9 @@ var
 begin
   F := Flow('  raise Exception.Create(''x'');'#13#10'  Dead;');
   try
-    Assert.IsTrue(F.Graph.IsReachable(NodeNamed(F, 'Dead')) = TFlowAnswer.No);
-    Assert.IsTrue(F.Graph.IsReachable(F.Graph.RaiseExit) = TFlowAnswer.Yes);
-    Assert.IsTrue(F.Graph.IsReachable(F.Graph.ExitNode) = TFlowAnswer.No);
+    Assert.AreEqual<TFlowAnswer>(TFlowAnswer.No, F.Graph.IsReachable(NodeNamed(F, 'Dead')));
+    Assert.AreEqual<TFlowAnswer>(TFlowAnswer.Yes, F.Graph.IsReachable(F.Graph.RaiseExit));
+    Assert.AreEqual<TFlowAnswer>(TFlowAnswer.No, F.Graph.IsReachable(F.Graph.ExitNode));
   finally
     F.Free;
   end;
@@ -421,9 +421,9 @@ var
 begin
   F := Flow('  try'#13#10'    Work;'#13#10'  except'#13#10'    on E: Exception do Handle;'#13#10'  end;');
   try
-    Assert.IsTrue(F.Graph.IsReachable(NodeNamed(F, 'Handle')) = TFlowAnswer.Yes);
+    Assert.AreEqual<TFlowAnswer>(TFlowAnswer.Yes, F.Graph.IsReachable(NodeNamed(F, 'Handle')));
     // Nicht behandelte Ausnahmen verlassen die Routine.
-    Assert.IsTrue(F.Graph.IsReachable(F.Graph.RaiseExit) = TFlowAnswer.Yes);
+    Assert.AreEqual<TFlowAnswer>(TFlowAnswer.Yes, F.Graph.IsReachable(F.Graph.RaiseExit));
   finally
     F.Free;
   end;
@@ -435,8 +435,8 @@ var
 begin
   F := Flow('  goto L1;'#13#10'  Dead;'#13#10'L1:'#13#10'  Target;');
   try
-    Assert.IsTrue(F.Graph.IsReachable(NodeNamed(F, 'Dead')) = TFlowAnswer.No);
-    Assert.IsTrue(F.Graph.IsReachable(NodeNamed(F, 'Target')) = TFlowAnswer.Yes);
+    Assert.AreEqual<TFlowAnswer>(TFlowAnswer.No, F.Graph.IsReachable(NodeNamed(F, 'Dead')));
+    Assert.AreEqual<TFlowAnswer>(TFlowAnswer.Yes, F.Graph.IsReachable(NodeNamed(F, 'Target')));
   finally
     F.Free;
   end;
@@ -448,8 +448,8 @@ var
 begin
   F := Flow('  Y := 1;'#13#10'  if X > 0 then Z := 2;'#13#10'  Use;');
   try
-    Assert.IsTrue(F.Graph.Dominates(NodeNamed(F, 'Y'), NodeNamed(F, 'Use')) = TFlowAnswer.Yes);
-    Assert.IsTrue(F.Graph.Dominates(NodeNamed(F, 'Z'), NodeNamed(F, 'Use')) = TFlowAnswer.No);
+    Assert.AreEqual<TFlowAnswer>(TFlowAnswer.Yes, F.Graph.Dominates(NodeNamed(F, 'Y'), NodeNamed(F, 'Use')));
+    Assert.AreEqual<TFlowAnswer>(TFlowAnswer.No, F.Graph.Dominates(NodeNamed(F, 'Z'), NodeNamed(F, 'Use')));
   finally
     F.Free;
   end;
@@ -478,8 +478,8 @@ begin
   // sie endet nicht normal ohne Result (#647).
   F := Flow('  try'#13#10'    Work;'#13#10'    Result := 1;'#13#10'  finally'#13#10'    Cleanup;'#13#10'  end;');
   try
-    Assert.IsTrue(F.Graph.MayEndWithout('Result') = TFlowAnswer.No);
-    Assert.IsTrue(F.Graph.IsReachable(F.Graph.RaiseExit) = TFlowAnswer.Yes);
+    Assert.AreEqual<TFlowAnswer>(TFlowAnswer.No, F.Graph.MayEndWithout('Result'));
+    Assert.AreEqual<TFlowAnswer>(TFlowAnswer.Yes, F.Graph.IsReachable(F.Graph.RaiseExit));
   finally
     F.Free;
   end;
@@ -487,7 +487,7 @@ begin
   F := Flow('  try'#13#10'    Exit;'#13#10'  finally'#13#10'    Cleanup;'#13#10'  end;'#13#10'  Dead;');
   try
     Assert.AreEqual(1, Integer(Length(F.Graph.UnreachableStatements)));
-    Assert.IsTrue(F.Graph.UnreachableStatements[0] = NodeNamed(F, 'Dead'));
+    Assert.AreSame(NodeNamed(F, 'Dead'), F.Graph.UnreachableStatements[0]);
   finally
     F.Free;
   end;
@@ -505,7 +505,7 @@ begin
     Assert.AreEqual(2, Integer(Length(Defs.Definitions)));
     Defs := F.Graph.ReachingDefinitions(NodeNamed(F, 'Report'), 'Y');
     Assert.AreEqual(1, Integer(Length(Defs.Definitions)));
-    Assert.IsTrue(Defs.Definitions[0] = NodeNamed(F, 'Y'), 'im except gilt nur Y := nil');
+    Assert.AreSame(NodeNamed(F, 'Y'), Defs.Definitions[0], 'im except gilt nur Y := nil');
   finally
     F.Free;
   end;
@@ -533,8 +533,8 @@ var
 begin
   F := Flow('  if X > 0 then Y := 1;'#13#10'  Result := Y;');
   try
-    Assert.IsTrue(F.Graph.MayReadBeforeWrite('Y') = TFlowAnswer.Yes);
-    Assert.IsTrue(F.Graph.MayReadBeforeWrite(NodeNamed(F, 'Result'), 'Y') = TFlowAnswer.Yes);
+    Assert.AreEqual<TFlowAnswer>(TFlowAnswer.Yes, F.Graph.MayReadBeforeWrite('Y'));
+    Assert.AreEqual<TFlowAnswer>(TFlowAnswer.Yes, F.Graph.MayReadBeforeWrite(NodeNamed(F, 'Result'), 'Y'));
   finally
     F.Free;
   end;
@@ -546,10 +546,10 @@ var
 begin
   F := Flow('  Y := X;'#13#10'  if X > 0 then Y := 2;'#13#10'  Result := Y;');
   try
-    Assert.IsTrue(F.Graph.MayReadBeforeWrite('Y') = TFlowAnswer.No);
-    Assert.IsTrue(F.Graph.MayReadBeforeWrite(NodeNamed(F, 'Result'), 'Y') = TFlowAnswer.No);
+    Assert.AreEqual<TFlowAnswer>(TFlowAnswer.No, F.Graph.MayReadBeforeWrite('Y'));
+    Assert.AreEqual<TFlowAnswer>(TFlowAnswer.No, F.Graph.MayReadBeforeWrite(NodeNamed(F, 'Result'), 'Y'));
     // X ist Parameter und hat keine Zuweisung: aus Sicht der Routine vom Anfang an gelesen.
-    Assert.IsTrue(F.Graph.MayReadBeforeWrite('X') = TFlowAnswer.Yes);
+    Assert.AreEqual<TFlowAnswer>(TFlowAnswer.Yes, F.Graph.MayReadBeforeWrite('X'));
   finally
     F.Free;
   end;
@@ -562,8 +562,8 @@ begin
   F := Flow('  if X > 0 then Result := 1;'#13#10'  Y := ) 2;');
   try
     Assert.IsFalse(F.Graph.Complete);
-    Assert.IsTrue(F.Graph.MayEndWithout('Result') = TFlowAnswer.Unknown);
-    Assert.IsTrue(F.Graph.MayReadBeforeWrite('Y') = TFlowAnswer.Unknown);
+    Assert.AreEqual<TFlowAnswer>(TFlowAnswer.Unknown, F.Graph.MayEndWithout('Result'));
+    Assert.AreEqual<TFlowAnswer>(TFlowAnswer.Unknown, F.Graph.MayReadBeforeWrite('Y'));
   finally
     F.Free;
   end;
@@ -585,7 +585,7 @@ begin
     F := Flow('  ' + Statement);
     try
       Assert.IsTrue(F.Graph.Complete, Statement);
-      Assert.IsTrue(F.Graph.MayEndWithout('Result') = TFlowAnswer.Unknown, Statement);
+      Assert.AreEqual<TFlowAnswer>(TFlowAnswer.Unknown, F.Graph.MayEndWithout('Result'), Statement);
       Defs := F.Graph.ReachingDefinitions(F.Graph.ExitNode, 'Result');
       Assert.IsFalse(Defs.FromEntry, Statement);
       Assert.IsTrue(Defs.MaybeFromEntry, Statement);
@@ -603,15 +603,15 @@ begin
   F := FlowWith('procedure Show(const V: Integer; W: Integer);'#13#10'begin'#13#10'end;',
     '  Show(Result, Result);');
   try
-    Assert.IsTrue(F.Graph.MayEndWithout('Result') = TFlowAnswer.Yes);
-    Assert.IsTrue(F.Graph.MayReadBeforeWrite('Result') = TFlowAnswer.Yes);
+    Assert.AreEqual<TFlowAnswer>(TFlowAnswer.Yes, F.Graph.MayEndWithout('Result'));
+    Assert.AreEqual<TFlowAnswer>(TFlowAnswer.Yes, F.Graph.MayReadBeforeWrite('Result'));
   finally
     F.Free;
   end;
   // Standardroutinen mit Wertparametern ebenso.
   F := Flow('  Writeln(IntToStr(Result));');
   try
-    Assert.IsTrue(F.Graph.MayEndWithout('Result') = TFlowAnswer.Yes);
+    Assert.AreEqual<TFlowAnswer>(TFlowAnswer.Yes, F.Graph.MayEndWithout('Result'));
   finally
     F.Free;
   end;
@@ -624,17 +624,17 @@ begin
   F := FlowWith('procedure Fill(var V: Integer);'#13#10'begin'#13#10'end;',
     '  Fill(Result);');
   try
-    Assert.IsTrue(F.Graph.MayEndWithout('Result') = TFlowAnswer.Unknown);
-    Assert.IsTrue(F.Graph.MayReadBeforeWrite('Result') = TFlowAnswer.Unknown);
+    Assert.AreEqual<TFlowAnswer>(TFlowAnswer.Unknown, F.Graph.MayEndWithout('Result'));
+    Assert.AreEqual<TFlowAnswer>(TFlowAnswer.Unknown, F.Graph.MayReadBeforeWrite('Result'));
   finally
     F.Free;
   end;
   F := FlowWith('procedure Take(out V: Integer);'#13#10'begin'#13#10'end;',
     '  Take(Result);');
   try
-    Assert.IsTrue(F.Graph.MayEndWithout('Result') = TFlowAnswer.Unknown);
+    Assert.AreEqual<TFlowAnswer>(TFlowAnswer.Unknown, F.Graph.MayEndWithout('Result'));
     // out liest nicht.
-    Assert.IsTrue(F.Graph.MayReadBeforeWrite('Result') = TFlowAnswer.No);
+    Assert.AreEqual<TFlowAnswer>(TFlowAnswer.No, F.Graph.MayReadBeforeWrite('Result'));
   finally
     F.Free;
   end;
@@ -642,7 +642,7 @@ begin
   F := FlowWith('procedure Show(const V: Integer); overload;'#13#10'begin'#13#10'end;'#13#10 +
     'procedure Show(var V: Integer); overload;'#13#10'begin'#13#10'end;', '  Show(Result);');
   try
-    Assert.IsTrue(F.Graph.MayEndWithout('Result') = TFlowAnswer.Unknown);
+    Assert.AreEqual<TFlowAnswer>(TFlowAnswer.Unknown, F.Graph.MayEndWithout('Result'));
   finally
     F.Free;
   end;
@@ -654,14 +654,14 @@ var
 begin
   F := Flow('  SetLength(Result, X);'#13#10'  Result := 1;');
   try
-    Assert.IsTrue(F.Graph.MayEndWithout('Result') = TFlowAnswer.No);
+    Assert.AreEqual<TFlowAnswer>(TFlowAnswer.No, F.Graph.MayEndWithout('Result'));
   finally
     F.Free;
   end;
   // Ein Weg ohne unsichere Änderung bleibt Yes.
   F := Flow('  if X > 0 then SetLength(Result, X);');
   try
-    Assert.IsTrue(F.Graph.MayEndWithout('Result') = TFlowAnswer.Yes);
+    Assert.AreEqual<TFlowAnswer>(TFlowAnswer.Yes, F.Graph.MayEndWithout('Result'));
   finally
     F.Free;
   end;
@@ -699,7 +699,7 @@ begin
   F := Flow('  asm'#13#10'    nop'#13#10'  end;');
   try
     Assert.IsFalse(F.Graph.Complete);
-    Assert.IsTrue(F.Graph.MayEndWithout('Result') = TFlowAnswer.Unknown);
+    Assert.AreEqual<TFlowAnswer>(TFlowAnswer.Unknown, F.Graph.MayEndWithout('Result'));
   finally
     F.Free;
   end;
@@ -713,9 +713,9 @@ begin
   F := Flow('  try'#13#10'    Y := 1;'#13#10'  finally'#13#10'    TMonitor.Exit(Self);'#13#10'  end;'#13#10 +
     '  Result := Y;');
   try
-    Assert.IsTrue(F.Graph.IsReachable(NodeNamed(F, 'Result')) = TFlowAnswer.Yes);
+    Assert.AreEqual<TFlowAnswer>(TFlowAnswer.Yes, F.Graph.IsReachable(NodeNamed(F, 'Result')));
     Assert.AreEqual(0, Integer(Length(F.Graph.UnreachableStatements)));
-    Assert.IsTrue(F.Graph.MayEndWithout('Result') = TFlowAnswer.No);
+    Assert.AreEqual<TFlowAnswer>(TFlowAnswer.No, F.Graph.MayEndWithout('Result'));
   finally
     F.Free;
   end;
@@ -751,7 +751,7 @@ begin
     Assert.AreEqual(1, ImplicitEdges(NodeNamed(F, 'A')), 'A: Weg zum except');
     Assert.AreEqual(1, ImplicitEdges(NodeNamed(F, 'D')), 'D: Weg zur finally-Kopie für Ausnahmen');
     Assert.IsFalse(NodeNamed(F, 'E').MayRaise, 'finally liegt außerhalb des try-Teils');
-    Assert.IsTrue(F.Graph.IsReachable(NodeNamed(F, 'Result')) = TFlowAnswer.Yes);
+    Assert.AreEqual<TFlowAnswer>(TFlowAnswer.Yes, F.Graph.IsReachable(NodeNamed(F, 'Result')));
   finally
     F.Free;
   end;

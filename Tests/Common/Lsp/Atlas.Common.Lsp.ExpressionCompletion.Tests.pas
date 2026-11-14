@@ -210,7 +210,7 @@ begin
     Found := Labels(Answer);
     Assert.IsTrue(Pos(',Name,', Found) > 0, Found);
     Assert.IsTrue(Pos(',Umsatz,', Found) > 0, Found);
-    Assert.IsTrue(Pos(',Summe,', Found) = 0, 'nach dem Punkt keine lokalen Namen: ' + Found);
+    Assert.AreEqual(0, Pos(',Summe,', Found), 'nach dem Punkt keine lokalen Namen: ' + Found);
   finally
     Answer.Free;
   end;
@@ -229,7 +229,7 @@ begin
       Kind := (Value as TJSONObject).GetValue<Integer>('kind');
       Assert.IsTrue((Kind <> 14) and (Kind <> 15), Value.ToJSON);
     end;
-    Assert.IsTrue(Pos(',begin,', LowerCase(Labels(Answer))) = 0);
+    Assert.AreEqual(0, Pos(',begin,', LowerCase(Labels(Answer))));
   finally
     Answer.Free;
   end;

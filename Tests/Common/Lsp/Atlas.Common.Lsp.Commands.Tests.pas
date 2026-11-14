@@ -79,7 +79,7 @@ begin
   try
     Commands.RegisterCancellable('atlas.test', Recorder(Received));
     Commands.Execute('atlas.test', nil, Token).Free;
-    Assert.IsTrue(Received = Token);
+    Assert.AreSame(Token, Received);
   finally
     Commands.Free;
     Received := nil;
@@ -100,14 +100,14 @@ begin
     Commands.RegisterCancellable('atlas.test', Recorder(Received));
     // Außerhalb einer Anfrage: kein Token.
     Commands.Execute('atlas.test', nil).Free;
-    Assert.IsTrue(Received = nil);
+    Assert.IsNull(Received);
     Previous := TJsonRpcCurrentRequest.Enter(Token);
     try
       Commands.Execute('atlas.test', nil).Free;
     finally
       TJsonRpcCurrentRequest.Leave(Previous);
     end;
-    Assert.IsTrue(Received = Token);
+    Assert.AreSame(Token, Received);
   finally
     Commands.Free;
     Received := nil;

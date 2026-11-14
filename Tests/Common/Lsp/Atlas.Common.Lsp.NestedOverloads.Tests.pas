@@ -212,10 +212,10 @@ begin
   try
     // Hilf('x', 3) ist die Überladung hinter Rufe (Zeile 26), Hilf(4) die vor Rufe (Zeile 12).
     Resolved := FResolver.Resolve(Tree, HauptFile, PositionOf(UnitHaupt, #10'  Hil'));
-    Assert.IsTrue(Resolved.Kind = TResolvedKind.Local);
+    Assert.AreEqual<TResolvedKind>(TResolvedKind.Local, Resolved.Kind);
     Assert.AreEqual(26, Resolved.SelectionRange.StartPos.Line);
     Resolved := FResolver.Resolve(Tree, HauptFile, PositionOf(UnitHaupt, '3);'#10'  Hil'));
-    Assert.IsTrue(Resolved.Kind = TResolvedKind.Local);
+    Assert.AreEqual<TResolvedKind>(TResolvedKind.Local, Resolved.Kind);
     Assert.AreEqual(12, Resolved.SelectionRange.StartPos.Line);
   finally
     Tree.Free;

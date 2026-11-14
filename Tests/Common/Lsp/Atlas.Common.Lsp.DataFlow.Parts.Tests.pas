@@ -144,8 +144,8 @@ begin
   mParam.Position := TTextPosition.Create(3, 4);
   mSymbol := mParam.Symbol;
   Assert.AreEqual('AWert', mSymbol.Name);
-  Assert.IsTrue(mSymbol.SymbolKind = TIndexSymbolKind.Variable);
-  Assert.IsTrue(mSymbol.Leaf = TDataFlowLeaf.None);
+  Assert.AreEqual<TIndexSymbolKind>(TIndexSymbolKind.Variable, mSymbol.SymbolKind);
+  Assert.AreEqual<TDataFlowLeaf>(TDataFlowLeaf.None, mSymbol.Leaf);
   Assert.AreEqual('C:\P\A.PAS|3:4', mSymbol.Key);
 end;
 
@@ -168,7 +168,7 @@ begin
     Assert.AreEqual('inc', mSite.Callee);
     Assert.AreEqual('Inc', mSite.Via);
     mSpot := mSite.Spot(TDataFlowKind.Modify);
-    Assert.IsTrue(mSpot.Kind = TDataFlowKind.Modify);
+    Assert.AreEqual<TDataFlowKind>(TDataFlowKind.Modify, mSpot.Kind);
     Assert.AreEqual(cFile, mSpot.FileName);
     Assert.AreEqual(50, mSpot.Position.Character);
   finally
@@ -206,7 +206,7 @@ begin
     Assert.IsFalse(TDataFlowSyntax.InRoutineHeader(mInner));
     mReason := '';
     Assert.IsTrue(TDataFlowSyntax.WrittenTarget(mInner, mStatement, mReason));
-    Assert.IsTrue(mStatement.Kind = TSyntaxKind.AssignStatement);
+    Assert.AreEqual<TSyntaxKind>(TSyntaxKind.AssignStatement, mStatement.Kind);
     Assert.AreEqual('', mReason);
   finally
     mTree.Free;
@@ -222,7 +222,7 @@ begin
   try
     mFiles := TDataFlowFiles.Create(NewRequest(mTree, TArray<string>.Create(cFile)));
     try
-      Assert.IsTrue(mFiles.TreeOf(cFile) = mTree, 'Eigener Baum statt neu geparst');
+      Assert.AreSame(mTree, mFiles.TreeOf(cFile), 'Eigener Baum statt neu geparst');
       Assert.IsTrue(mFiles.InProject(cFile));
       Assert.IsFalse(mFiles.InProject(cTestFile), 'Lesbar, aber nicht im Projekt');
       Assert.AreEqual('X := A;', mFiles.LineText(cFile, 7));
@@ -266,7 +266,7 @@ begin
     end;
     Assert.IsTrue(mResult.Found);
     Assert.AreEqual(1, Integer(Length(mResult.Nodes)));
-    Assert.IsTrue(mResult.Nodes[0].Kind = TDataFlowKind.Assignment);
+    Assert.AreEqual<TDataFlowKind>(TDataFlowKind.Assignment, mResult.Nodes[0].Kind);
     Assert.AreEqual('X', mResult.Nodes[0].Detail);
     Assert.AreEqual('X', mResult.Nodes[0].Sources[0].Name);
     mRequest.Position := PositionOf('X := A');
@@ -278,7 +278,7 @@ begin
       mRun.Free;
     end;
     Assert.AreEqual(1, Integer(Length(mResult.Nodes)));
-    Assert.IsTrue(mResult.Nodes[0].Kind = TDataFlowKind.Assignment);
+    Assert.AreEqual<TDataFlowKind>(TDataFlowKind.Assignment, mResult.Nodes[0].Kind);
     Assert.AreEqual('Y := X', mResult.Nodes[0].Detail);
     Assert.AreEqual('Y', mResult.Nodes[0].Sources[0].Name);
   finally

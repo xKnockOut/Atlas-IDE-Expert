@@ -356,14 +356,14 @@ begin
   UnitInfo := Default(TUnitIndex);
   UnitInfo.UnitName := 'Vcl.Forms';
   UnitInfo.FileName := 'D:\Quellen\Vcl.Forms.pas';
-  Assert.IsTrue(TCompletionUses.GroupOf(UnitInfo) = TUsesGroup.Project);
+  Assert.AreEqual<TUsesGroup>(TUsesGroup.Project, TCompletionUses.GroupOf(UnitInfo));
   UnitInfo.Library_ := True;
-  Assert.IsTrue(TCompletionUses.GroupOf(UnitInfo) = TUsesGroup.Rtl);
+  Assert.AreEqual<TUsesGroup>(TUsesGroup.Rtl, TCompletionUses.GroupOf(UnitInfo));
   UnitInfo.UnitName := 'IdHTTP';
   UnitInfo.FileName := 'C:\Program Files\Embarcadero\Studio\23.0\source\Indy10\Protocols\IdHTTP.pas';
-  Assert.IsTrue(TCompletionUses.GroupOf(UnitInfo) = TUsesGroup.Rtl);
+  Assert.AreEqual<TUsesGroup>(TUsesGroup.Rtl, TCompletionUses.GroupOf(UnitInfo));
   UnitInfo.FileName := 'C:\Komponenten\Indy\IdHTTP.pas';
-  Assert.IsTrue(TCompletionUses.GroupOf(UnitInfo) = TUsesGroup.Library_);
+  Assert.AreEqual<TUsesGroup>(TUsesGroup.Library_, TCompletionUses.GroupOf(UnitInfo));
   Assert.AreEqual('$(BDS)\source\Indy10\Protocols\IdHTTP.pas',
     TCompletionUses.ShortPath('C:\Program Files\Embarcadero\Studio\23.0\source\Indy10\Protocols\IdHTTP.pas'));
   Assert.AreEqual('C:\Komponenten\Indy\IdHTTP.pas', TCompletionUses.ShortPath('C:\Komponenten\Indy\IdHTTP.pas'));
@@ -377,11 +377,11 @@ begin
   Tree := TPascalParser.Parse(UnitHaupt);
   try
     Site := TCompletionUses.SiteAt(Tree.Tokens, PositionOf(UnitHaupt, 'Gener'));
-    Assert.IsTrue(Site.Section = TUsesSection.Interface_);
+    Assert.AreEqual<TUsesSection>(TUsesSection.Interface_, Site.Section);
     Assert.AreEqual('System.SysUtils', string.Join(',', Site.Here));
     Assert.AreEqual('System.Generics.Defaults', string.Join(',', Site.Other));
     Site := TCompletionUses.SiteAt(Tree.Tokens, PositionOf(UnitHaupt, 'uses System.Gen'));
-    Assert.IsTrue(Site.Section = TUsesSection.Implementation_);
+    Assert.AreEqual<TUsesSection>(TUsesSection.Implementation_, Site.Section);
     Assert.AreEqual('', string.Join(',', Site.Here));
     Assert.AreEqual('System.SysUtils,Gener', string.Join(',', Site.Other));
   finally

@@ -194,9 +194,9 @@ var
   mManager: TLeakManager;
 begin
   Assert.IsTrue(TLspLeakSetup.ManagerOf('FastMM4', mManager));
-  Assert.IsTrue(mManager = TLeakManager.FastMM4);
+  Assert.AreEqual<TLeakManager>(TLeakManager.FastMM4, mManager);
   Assert.IsTrue(TLspLeakSetup.ManagerOf('none', mManager));
-  Assert.IsTrue(mManager = TLeakManager.None);
+  Assert.AreEqual<TLeakManager>(TLeakManager.None, mManager);
   Assert.IsFalse(TLspLeakSetup.ManagerOf('', mManager));
 end;
 

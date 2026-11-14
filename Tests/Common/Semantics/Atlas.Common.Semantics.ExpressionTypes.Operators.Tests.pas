@@ -45,13 +45,18 @@ var
   mWidth: Integer;
   mSigned: Boolean;
 begin
-  Assert.IsTrue(TExpressionOperators.CategoryOf('System.Cardinal', mWidth, mSigned) = TExpressionCategory.Integer_);
+  Assert.AreEqual<TExpressionCategory>(TExpressionCategory.Integer_,
+    TExpressionOperators.CategoryOf('System.Cardinal', mWidth, mSigned));
   Assert.AreEqual(4, mWidth);
   Assert.IsFalse(mSigned);
-  Assert.IsTrue(TExpressionOperators.CategoryOf('^TKunde', mWidth, mSigned) = TExpressionCategory.Pointer_);
-  Assert.IsTrue(TExpressionOperators.CategoryOf('set of Byte', mWidth, mSigned) = TExpressionCategory.Set_);
-  Assert.IsTrue(TExpressionOperators.CategoryOf('', mWidth, mSigned) = TExpressionCategory.Unknown);
-  Assert.IsTrue(TExpressionOperators.CategoryOf('TKunde', mWidth, mSigned) = TExpressionCategory.Other);
+  Assert.AreEqual<TExpressionCategory>(TExpressionCategory.Pointer_,
+    TExpressionOperators.CategoryOf('^TKunde', mWidth, mSigned));
+  Assert.AreEqual<TExpressionCategory>(TExpressionCategory.Set_,
+    TExpressionOperators.CategoryOf('set of Byte', mWidth, mSigned));
+  Assert.AreEqual<TExpressionCategory>(TExpressionCategory.Unknown,
+    TExpressionOperators.CategoryOf('', mWidth, mSigned));
+  Assert.AreEqual<TExpressionCategory>(TExpressionCategory.Other,
+    TExpressionOperators.CategoryOf('TKunde', mWidth, mSigned));
 end;
 
 procedure TExpressionOperatorsTests.IntegerArithmeticWidens;
@@ -83,7 +88,7 @@ begin
   mFound := TExpressionOperators.OperationResult('/', TExpressionOperators.Typed('string'),
     TExpressionOperators.Typed('Integer'), False, mNoted);
   Assert.IsFalse(mFound.Known);
-  Assert.IsTrue(mFound.Error = TExpressionErrorKind.OperatorMismatch);
+  Assert.AreEqual<TExpressionErrorKind>(TExpressionErrorKind.OperatorMismatch, mFound.Error);
   Assert.AreEqual('/|string|Integer', mFound.ErrorDetail);
 end;
 
@@ -102,10 +107,10 @@ var
 begin
   Assert.IsTrue(TExpressionOperators.ConversionKind(TExpressionOperators.Typed('Integer'),
     TExpressionOperators.Typed('Currency'), mKind));
-  Assert.IsTrue(mKind = TExpressionConversionKind.Widen);
+  Assert.AreEqual<TExpressionConversionKind>(TExpressionConversionKind.Widen, mKind);
   Assert.IsTrue(TExpressionOperators.ConversionKind(TExpressionOperators.Typed('Char'),
     TExpressionOperators.Typed('string'), mKind));
-  Assert.IsTrue(mKind = TExpressionConversionKind.Convert);
+  Assert.AreEqual<TExpressionConversionKind>(TExpressionConversionKind.Convert, mKind);
   Assert.IsFalse(TExpressionOperators.ConversionKind(TExpressionOperators.Typed('TKunde'),
     TExpressionOperators.Typed('string'), mKind));
 end;

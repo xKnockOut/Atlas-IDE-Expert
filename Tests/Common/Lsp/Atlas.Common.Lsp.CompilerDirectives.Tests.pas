@@ -51,8 +51,8 @@ begin
   Assert.IsTrue(Length(TCompilerDirectives.All) > 40);
   for Info in TCompilerDirectives.All do
   begin
-    Assert.IsTrue(Info.Text <> '', Info.Name);
-    Assert.IsTrue(Info.Topic <> '', Info.Name);
+    Assert.AreNotEqual('', Info.Text, Info.Name);
+    Assert.AreNotEqual('', Info.Topic, Info.Name);
     // Die Prüfregel conditional-directive-unbalanced (#989) kennt jede Direktive der Tabelle.
     Assert.IsTrue(TDirectiveNames.IsDirective(Info.Name), Info.Name);
     Assert.AreEqual('https://docwiki.embarcadero.com/RADStudio/Athens/en/' + Info.Topic,
