@@ -18,6 +18,8 @@ type
     [Test]
     procedure ArrangeTwiceChangesNothing;
     [Test]
+    procedure MovesNeededDeclarationsAhead;
+    [Test]
     procedure ArrangesAlphabetically;
     [Test]
     procedure KeepsBodiesInConditionals;
@@ -219,6 +221,28 @@ begin
     TMethodPlacement.Declaration, mOrder);
   Arranged(mDone, TMethodPlacement.Declaration, mOrder);
   Assert.AreEqual(0, Integer(Length(mOrder.Edits)));
+end;
+
+// Rückt ein Rumpf über eine freie Routine oder Konstante nach vorn, die er braucht, wandert sie mit vor den
+// ersten Rumpf; sonst übersetzte die Unit nicht mehr.
+procedure TMethodOrderTests.MovesNeededDeclarationsAhead;
+const
+  cRumpfA = #10'procedure TFoo.A;'#10'begin'#10'end;'#10;
+  cRumpfB = #10'procedure TFoo.B;'#10'begin'#10'  Hilfe;'#10'end;'#10;
+  cRumpfC = #10'procedure TFoo.C;'#10'begin'#10'end;'#10;
+  cHilfe = #10'const'#10'  cZahl = 2;'#10#10'function Hilfe: Integer;'#10'begin'#10'  Result := cZahl;'#10'end;'#10;
+  cKommentar = '// Gehört zum Rumpf dahinter.'#10;
+var
+  mDone: string;
+  mOrder: TMethodOrderResult;
+begin
+  // Der Kommentar hinter dem Code bleibt stehen.
+  mDone := Arranged(cFooKopf + cRumpfC + cRumpfA + cHilfe + cKommentar + cRumpfB + cEnde,
+    TMethodPlacement.Declaration, mOrder);
+  Assert.AreEqual(cFooKopf + cHilfe + cRumpfA + cRumpfB + #10 + cKommentar + cRumpfC + cEnde, mDone);
+  Assert.IsTrue(ParsesClean(mDone), 'Ergebnis parst');
+  Arranged(mDone, TMethodPlacement.Declaration, mOrder);
+  Assert.AreEqual(0, Integer(Length(mOrder.Edits)), 'zweites Ordnen ändert nichts');
 end;
 
 procedure TMethodOrderTests.ArrangesAlphabetically;

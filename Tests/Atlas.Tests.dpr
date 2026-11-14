@@ -117,6 +117,7 @@ uses
   Atlas.Common.Lsp.ExpressionType.Tests in 'Common\Lsp\Atlas.Common.Lsp.ExpressionType.Tests.pas',
   Atlas.Common.Editing.MethodOrder.Tests in 'Common\Editing\Atlas.Common.Editing.MethodOrder.Tests.pas',
   Atlas.Common.Editing.TypeComments.Tests in 'Common\Editing\Atlas.Common.Editing.TypeComments.Tests.pas',
+  Atlas.Common.Editing.HoistedDeclarations.Tests in 'Common\Editing\Atlas.Common.Editing.HoistedDeclarations.Tests.pas',
   Atlas.Common.Editing.ClassBodies.Tests in 'Common\Editing\Atlas.Common.Editing.ClassBodies.Tests.pas',
   Atlas.Common.Lsp.MethodOrder.Tests in 'Common\Lsp\Atlas.Common.Lsp.MethodOrder.Tests.pas',
   Atlas.Common.Editing.SuggestConst.Tests in 'Common\Editing\Atlas.Common.Editing.SuggestConst.Tests.pas',
