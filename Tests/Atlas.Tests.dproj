@@ -2094,6 +2094,8 @@
         <DCCReference Include="Common\Mcp\Atlas.Common.Mcp.ReportTools.Tests.pas"/>
         <DCCReference Include="Common\Profiling\Atlas.Common.Profiling.Profile.Tests.pas"/>
         <DCCReference Include="Common\Profiling\Atlas.Common.Profiling.Report.Tests.pas"/>
+        <DCCReference Include="Common\Profiling\Atlas.Common.Profiling.Sampling.Tests.pas"/>
+        <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.Profiler.Tests.pas"/>
         <DCCReference Include="Common\Mcp\Atlas.Common.Mcp.DeadCodeTools.Tests.pas"/>
         <DCCReference Include="Common\Mcp\Atlas.Common.Mcp.StatusTools.Tests.pas"/>
         <DCCReference Include="Common\Mcp\Atlas.Common.Mcp.Prompts.Tests.pas"/>

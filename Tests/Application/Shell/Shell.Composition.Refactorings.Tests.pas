@@ -59,6 +59,10 @@ type
     procedure MethodBreakpointsFindRoutineOfOpenDocument;
     [Test]
     procedure MethodBreakpointsReportInvalidPattern;
+    /// <summary>Die Befehle des Profilers (#2057) sind angemeldet; ohne Lauf meldet der Status nichts Laufendes.
+    /// </summary>
+    [Test]
+    procedure ProfilerStatusWithoutRun;
     /// <summary>refactoring.raiseVisibility schaltet die Code-Aktion auf der Deklaration (#2108).</summary>
     [Test]
     procedure RaiseVisibilityOnDeclaration;
@@ -98,7 +102,9 @@ uses
   Shell.Composition.Refactorings.Fixes,
   Shell.Composition.Refactorings.Editing,
   Shell.Composition.Stepping,
-  Shell.Composition.MethodBreakpoints;
+  Shell.Composition.MethodBreakpoints,
+  Atlas.Common.Lsp.Profiler,
+  Shell.Composition.Profiler;
 
 const
   cUri = 'file:///tmp/Kunden.pas';
@@ -389,6 +395,17 @@ begin
   finally
     mAnswer.Free;
   end;
+end;
+
+procedure TShellRefactoringsTests.ProfilerStatusWithoutRun;
+var
+  mAnswer: string;
+begin
+  // Shell.Composition.Profiler meldet die Befehle an; der Prober entsteht erst beim Start.
+  Assert.AreEqual('TShellProfiler', TShellProfiler.ClassName);
+  mAnswer := Run(TLspProfiler.cStatusCommand, '[{}]');
+  Assert.Contains(mAnswer, '"running":false');
+  Assert.Contains(mAnswer, '"lastFile":""');
 end;
 
 procedure TShellRefactoringsTests.RaiseVisibilityOnDeclaration;
