@@ -167,11 +167,11 @@ begin
   end;
   // Rang der Kantenart zuerst; gleiche Kanten nur einmal (die mit der früheren Fundstelle).
   Assert.AreEqual(3, Integer(Length(mEdges)));
-  Assert.IsTrue(mEdges[0].Kind = TSymbolPathEdgeKind.Inherits);
-  Assert.IsTrue(mEdges[1].Kind = TSymbolPathEdgeKind.Implements);
+  Assert.AreEqual<TSymbolPathEdgeKind>(TSymbolPathEdgeKind.Inherits, mEdges[0].Kind);
+  Assert.AreEqual<TSymbolPathEdgeKind>(TSymbolPathEdgeKind.Implements, mEdges[1].Kind);
   Assert.IsTrue(mEdges[1].Reverse);
   Assert.IsTrue(mEdges[1].Inferred);
-  Assert.IsTrue(mEdges[2].Kind = TSymbolPathEdgeKind.Contains);
+  Assert.AreEqual<TSymbolPathEdgeKind>(TSymbolPathEdgeKind.Contains, mEdges[2].Kind);
   Assert.AreEqual(1, mEdges[2].Position.Line);
 end;
 

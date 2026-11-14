@@ -157,7 +157,7 @@ begin
   mSite := SiteOf(Sites(UnitText(cFieldWithoutFree, cFieldCreated)), 'TStringList', 'FNamen');
   Assert.AreEqual('never', KindName(mSite));
   Assert.AreEqual('field-not-freed', mSite.Rule);
-  Assert.IsTrue(mSite.Message <> '');
+  Assert.AreNotEqual('', mSite.Message);
   Assert.AreEqual(-1, mSite.FreeLine);
 end;
 

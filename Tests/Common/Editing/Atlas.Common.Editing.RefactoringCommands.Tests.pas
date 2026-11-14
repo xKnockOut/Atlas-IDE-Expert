@@ -135,7 +135,7 @@ var
 begin
   Text := Expand('/fmt');
   Assert.IsTrue(Pos('begin'#10'  Liste := TStringList.Create;'#10'  Liste.Free;'#10'end;', Text) > 0, Text);
-  Assert.IsTrue(Pos('/fmt', Text) = 0, Text);
+  Assert.AreEqual(0, Pos('/fmt', Text), Text);
 end;
 
 procedure TRefactoringCommandsTests.FmtOutsideRoutineFails;
@@ -241,8 +241,8 @@ begin
   Text := Apply(Format(ExtractUnit, ['/extract Verdopple']), Edits);
   Assert.IsTrue(Pos('procedure Verdopple(const AValue: Integer; var Total: Integer);', Text) > 0, Text);
   Assert.IsTrue(Pos('  Verdopple(AValue, Total);'#10#10'  Total := Total + 1;', Text) > 0, Text);
-  Assert.IsTrue(Pos('ExtractedMethod', Text) = 0, Text);
-  Assert.IsTrue(Pos('/extract', Text) = 0, Text);
+  Assert.AreEqual(0, Pos('ExtractedMethod', Text), Text);
+  Assert.AreEqual(0, Pos('/extract', Text), Text);
   Assert.IsTrue(Parses(Text), Text);
 end;
 

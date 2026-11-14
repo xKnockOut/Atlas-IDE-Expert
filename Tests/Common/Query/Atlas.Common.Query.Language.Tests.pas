@@ -72,15 +72,15 @@ begin
   Assert.AreEqual(Integer(14), Integer(Length(mTokens)));
   Assert.AreEqual('classes', mTokens[0].Text);
   Assert.AreEqual(1, mTokens[0].Column);
-  Assert.IsTrue(mTokens[4].Kind = TQueryTokenKind.Text);
+  Assert.AreEqual<TQueryTokenKind>(TQueryTokenKind.Text, mTokens[4].Kind);
   Assert.AreEqual('O''B*', mTokens[4].Text);
   Assert.AreEqual('>=', mTokens[7].Text);
-  Assert.IsTrue(mTokens[8].Kind = TQueryTokenKind.Number);
+  Assert.AreEqual<TQueryTokenKind>(TQueryTokenKind.Number, mTokens[8].Kind);
   Assert.AreEqual('-3', mTokens[8].Text);
   // != gilt als <>.
   Assert.AreEqual('<>', mTokens[11].Text);
   Assert.AreEqual('a b', mTokens[12].Text);
-  Assert.IsTrue(mTokens[High(mTokens)].Kind = TQueryTokenKind.EndOfQuery);
+  Assert.AreEqual<TQueryTokenKind>(TQueryTokenKind.EndOfQuery, mTokens[High(mTokens)].Kind);
 end;
 
 procedure TQueryLanguageTests.ParsesWhereOrderByAndLimit;
@@ -89,7 +89,7 @@ var
 begin
   mAst := TQueryParser.Parse('classes where inherits TForm and methods > 40 order by methods desc limit 5');
   try
-    Assert.IsTrue(mAst.Entity = TQueryEntity.Classes);
+    Assert.AreEqual<TQueryEntity>(TQueryEntity.Classes, mAst.Entity);
     Assert.IsTrue(mAst.Condition is TQueryLogicNode);
     Assert.IsTrue(mAst.HasOrder);
     Assert.AreEqual('methods', mAst.OrderField.Name);
@@ -100,7 +100,7 @@ begin
   end;
   mAst := TQueryParser.Parse('UNITS');
   try
-    Assert.IsTrue(mAst.Entity = TQueryEntity.Units);
+    Assert.AreEqual<TQueryEntity>(TQueryEntity.Units, mAst.Entity);
     Assert.IsNull(mAst.Condition);
     Assert.AreEqual(-1, mAst.Limit);
   finally
@@ -117,11 +117,11 @@ begin
   try
     Assert.IsTrue(mAst.Condition is TQueryLogicNode);
     mOr := TQueryLogicNode(mAst.Condition);
-    Assert.IsTrue(mOr.Logic = TQueryLogic.Or_);
+    Assert.AreEqual<TQueryLogic>(TQueryLogic.Or_, mOr.Logic);
     Assert.AreEqual(Integer(2), Integer(mOr.Items.Count));
     Assert.IsTrue(mOr.Items[0] is TQueryCompareNode);
     Assert.IsTrue(mOr.Items[1] is TQueryLogicNode);
-    Assert.IsTrue(TQueryLogicNode(mOr.Items[1]).Logic = TQueryLogic.And_);
+    Assert.AreEqual<TQueryLogic>(TQueryLogic.And_, TQueryLogicNode(mOr.Items[1]).Logic);
   finally
     mAst.Free;
   end;
@@ -137,10 +137,10 @@ begin
     Assert.IsTrue(mAst.Condition is TQueryNotNode);
     Assert.IsTrue(TQueryNotNode(mAst.Condition).Inner is TQueryLogicNode);
     mCompare := TQueryLogicNode(TQueryNotNode(mAst.Condition).Inner).Items[0] as TQueryCompareNode;
-    Assert.IsTrue(mCompare.Comparison = TQueryOperator.NotLike);
+    Assert.AreEqual<TQueryOperator>(TQueryOperator.NotLike, mCompare.Comparison);
     Assert.AreEqual('Get*', mCompare.Value.Text);
     mCompare := TQueryLogicNode(TQueryNotNode(mAst.Condition).Inner).Items[1] as TQueryCompareNode;
-    Assert.IsTrue(mCompare.Value.Kind = TQueryValueKind.Flag);
+    Assert.AreEqual<TQueryValueKind>(TQueryValueKind.Flag, mCompare.Value.Kind);
     Assert.AreEqual(Int64(1), mCompare.Value.Number);
   finally
     mAst.Free;
@@ -161,7 +161,7 @@ begin
   mAst := TQueryParser.Parse('units where uses System.SysUtils');
   try
     Assert.IsTrue(mAst.Condition is TQueryPredicateNode);
-    Assert.IsTrue(TQueryPredicateNode(mAst.Condition).Kind = TQueryPredicateKind.Uses_);
+    Assert.AreEqual<TQueryPredicateKind>(TQueryPredicateKind.Uses_, TQueryPredicateNode(mAst.Condition).Kind);
     Assert.AreEqual('System.SysUtils', TQueryPredicateNode(mAst.Condition).Argument);
   finally
     mAst.Free;
@@ -185,12 +185,13 @@ begin
   try
     mItems := mAst.Condition as TQueryLogicNode;
     Assert.AreEqual(Integer(5), Integer(mItems.Items.Count));
-    Assert.IsTrue((mItems.Items[0] as TQueryPredicateNode).Kind = TQueryPredicateKind.Inherits);
-    Assert.IsTrue((mItems.Items[1] as TQueryPredicateNode).Kind = TQueryPredicateKind.Implements);
-    Assert.IsTrue((mItems.Items[2] as TQueryPredicateNode).Kind = TQueryPredicateKind.Uses_);
-    Assert.IsTrue((mItems.Items[3] as TQueryPredicateNode).Kind = TQueryPredicateKind.Calls);
+    Assert.AreEqual<TQueryPredicateKind>(TQueryPredicateKind.Inherits, (mItems.Items[0] as TQueryPredicateNode).Kind);
+    Assert.AreEqual<TQueryPredicateKind>(TQueryPredicateKind.Implements, (mItems.Items[1] as TQueryPredicateNode).Kind);
+    Assert.AreEqual<TQueryPredicateKind>(TQueryPredicateKind.Uses_, (mItems.Items[2] as TQueryPredicateNode).Kind);
+    Assert.AreEqual<TQueryPredicateKind>(TQueryPredicateKind.Calls, (mItems.Items[3] as TQueryPredicateNode).Kind);
     Assert.AreEqual('TFoo.Bar', (mItems.Items[3] as TQueryPredicateNode).Argument);
-    Assert.IsTrue((mItems.Items[4] as TQueryPredicateNode).Kind = TQueryPredicateKind.HasAttribute);
+    Assert.AreEqual<TQueryPredicateKind>(TQueryPredicateKind.HasAttribute,
+      (mItems.Items[4] as TQueryPredicateNode).Kind);
     Assert.AreEqual('Test', (mItems.Items[4] as TQueryPredicateNode).Argument);
   finally
     mAst.Free;
@@ -304,7 +305,7 @@ begin
   for mEntity := Low(TQueryEntity) to High(TQueryEntity) do
   begin
     Assert.IsTrue(TQueryCatalog.TryEntity(TQueryCatalog.EntityName(mEntity), mFound));
-    Assert.IsTrue(mFound = mEntity);
+    Assert.AreEqual<TQueryEntity>(mEntity, mFound);
     Assert.IsTrue(Length(TQueryCatalog.FieldNames(mEntity)) >= 4, TQueryCatalog.EntityName(mEntity));
   end;
   Assert.IsTrue(TQueryCatalog.TryField('USEDBY', mField));

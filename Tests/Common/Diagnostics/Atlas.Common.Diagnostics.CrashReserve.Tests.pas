@@ -44,7 +44,7 @@ begin
   finally
     mReserve.Free;
   end;
-  Assert.IsTrue(TThread.CurrentThread.ThreadID <> mThread);
+  Assert.AreNotEqual<TThreadID>(TThread.CurrentThread.ThreadID, mThread);
   Assert.AreEqual('', mFailure);
 end;
 

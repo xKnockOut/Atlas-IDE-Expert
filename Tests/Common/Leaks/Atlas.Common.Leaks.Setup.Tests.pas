@@ -250,7 +250,7 @@ var
 begin
   mState := TLeakSetup.Analyze(Input(cPlain), nil);
   Assert.IsFalse(mState.Sources[TLeakManager.FastMM4].Found);
-  Assert.IsTrue(mState.UsesManager = TLeakManager.None);
+  Assert.AreEqual<TLeakManager>(TLeakManager.None, mState.UsesManager);
   Assert.AreEqual(0, mState.ReportLine);
   Assert.IsTrue(mState.HasUses);
   Assert.IsTrue(mState.HasMainBlock);
@@ -265,7 +265,7 @@ begin
   mState := Default(TLeakSetupState);
   TLeakSetup.ScanMain('program App;' + cBreak + 'uses' + cBreak + '  {$IFDEF DEBUG}' + cBreak + '  FastMM4,' +
     cBreak + '  {$ENDIF}' + cBreak + '  System.SysUtils;' + cBreak + 'begin' + cBreak + 'end.', mState);
-  Assert.IsTrue(mState.UsesManager = TLeakManager.FastMM4);
+  Assert.AreEqual<TLeakManager>(TLeakManager.FastMM4, mState.UsesManager);
   Assert.IsTrue(mState.UsesFirst);
   Assert.IsTrue(mState.UsesDebugOnly);
 end;
@@ -276,7 +276,7 @@ var
 begin
   mState := Default(TLeakSetupState);
   TLeakSetup.ScanMain('program App; uses System.SysUtils, FastMM5; begin end.', mState);
-  Assert.IsTrue(mState.UsesManager = TLeakManager.FastMM5);
+  Assert.AreEqual<TLeakManager>(TLeakManager.FastMM5, mState.UsesManager);
   Assert.IsFalse(mState.UsesFirst);
   Assert.IsFalse(mState.UsesDebugOnly);
 end;
@@ -399,7 +399,7 @@ begin
   Assert.IsTrue(Pos('uses' + cBreak + '  {$IFDEF DEBUG}' + cBreak + '  FastMM4,' + cBreak + '  {$ENDIF}' + cBreak +
     '  Vcl.Forms,', mText) > 0, mText);
   mState := TLeakSetup.Analyze(Input(mText), FFiles);
-  Assert.IsTrue(mState.UsesManager = TLeakManager.FastMM4);
+  Assert.AreEqual<TLeakManager>(TLeakManager.FastMM4, mState.UsesManager);
   Assert.IsTrue(mState.UsesFirst);
   Assert.IsTrue(mState.UsesDebugOnly);
   Assert.IsTrue(mState.ReportDebugOnly);
@@ -432,7 +432,7 @@ begin
     'mmetUnexpectedMemoryLeakSummary];', mText) > 0, mText);
   mState := TLeakSetup.Analyze(Input(mText), FFiles);
   Assert.IsTrue(mState.FileReport);
-  Assert.IsTrue(mState.UsesManager = TLeakManager.FastMM5);
+  Assert.AreEqual<TLeakManager>(TLeakManager.FastMM5, mState.UsesManager);
 end;
 
 procedure TLeakSetupTests.FastMM4FileReportIsDefine;

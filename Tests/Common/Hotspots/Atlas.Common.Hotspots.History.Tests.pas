@@ -131,7 +131,7 @@ begin
   Assert.AreEqual(3, mCommits[0].Files[0].Added);
   Assert.AreEqual(1, mCommits[0].Files[0].Deleted);
   Assert.AreEqual(-1, mCommits[0].Files[1].Added, 'Binärdatei: unbekannt');
-  Assert.IsTrue(mCommits[0].Files[2].Kind = THotspotChangeKind.Renamed);
+  Assert.AreEqual<THotspotChangeKind>(THotspotChangeKind.Renamed, mCommits[0].Files[2].Kind);
   Assert.AreEqual('Src/Neu/B.pas', mCommits[0].Files[2].Path);
   Assert.AreEqual('Src/Alt/B.pas', mCommits[0].Files[2].OldPath);
   Assert.AreEqual(10, mCommits[1].Files[0].Added);
@@ -168,13 +168,13 @@ begin
   Assert.AreEqual('2026-10-20T08:30:00Z', THotspotHistory.IsoDate(mCommits[0].Date));
   Assert.AreEqual(2, Integer(Length(mCommits[0].Files)), 'die gelöschte Quelle steht beim neuen Pfad');
   Assert.AreEqual('Src/Neu.pas', mCommits[0].Files[0].Path);
-  Assert.IsTrue(mCommits[0].Files[0].Kind = THotspotChangeKind.Renamed);
+  Assert.AreEqual<THotspotChangeKind>(THotspotChangeKind.Renamed, mCommits[0].Files[0].Kind);
   Assert.AreEqual('Src/Alt.pas', mCommits[0].Files[0].OldPath);
   Assert.AreEqual(-1, mCommits[0].Files[0].Added, 'svn log kennt keine Zeilen');
-  Assert.IsTrue(mCommits[0].Files[1].Kind = THotspotChangeKind.Modified);
+  Assert.AreEqual<THotspotChangeKind>(THotspotChangeKind.Modified, mCommits[0].Files[1].Kind);
   Assert.AreEqual(2, Integer(Length(mCommits[1].Files)), 'Ordner und anderer Branch fallen weg');
-  Assert.IsTrue(mCommits[1].Files[0].Kind = THotspotChangeKind.Added);
-  Assert.IsTrue(mCommits[1].Files[1].Kind = THotspotChangeKind.Deleted);
+  Assert.AreEqual<THotspotChangeKind>(THotspotChangeKind.Added, mCommits[1].Files[0].Kind);
+  Assert.AreEqual<THotspotChangeKind>(THotspotChangeKind.Deleted, mCommits[1].Files[1].Kind);
 end;
 
 procedure THotspotHistoryTests.SvnOnlyBelowPrefix;

@@ -232,7 +232,7 @@ end;
 
 procedure AssertLacks(const AText, APart: string);
 begin
-  Assert.IsTrue(Pos(APart, AText) = 0, 'Unerwartet "' + APart + '" in:'#10 + AText);
+  Assert.AreEqual(0, Pos(APart, AText), 'Unerwartet "' + APart + '" in:'#10 + AText);
 end;
 
 { TGenericListsTests }

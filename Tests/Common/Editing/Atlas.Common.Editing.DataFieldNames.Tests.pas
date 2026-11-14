@@ -100,7 +100,7 @@ begin
   Assert.IsTrue(TDataFieldNames.CallAt(Line, 36, Call));
   Assert.AreEqual('qryOrders', Call.DataSet);
   Assert.AreEqual('FieldByName', Call.Method);
-  Assert.IsTrue(Call.Kind = TDataNameKind.Field);
+  Assert.AreEqual<TDataNameKind>(TDataNameKind.Field, Call.Kind);
   Assert.AreEqual(34, Call.ContentStart);
   Assert.AreEqual(36, Call.ContentEnd);
   Assert.AreEqual('cu', Call.Content);
@@ -108,7 +108,7 @@ begin
   Line := '  Self.qryOrders.Params.ParamByName(''';
   Assert.IsTrue(TDataFieldNames.CallAt(Line, Length(Line), Call));
   Assert.AreEqual('qryOrders', Call.DataSet);
-  Assert.IsTrue(Call.Kind = TDataNameKind.Param);
+  Assert.AreEqual<TDataNameKind>(TDataNameKind.Param, Call.Kind);
   Assert.AreEqual(Integer(Length(Line)), Call.ContentStart);
   Assert.AreEqual(Integer(Length(Line)), Call.ContentEnd);
   Line := '  if qryOrders.FindField(''NO'') = nil then';
@@ -139,7 +139,7 @@ begin
   Assert.AreEqual('dmMain.qryOrders', Call.DisplayName);
   Assert.IsTrue(TDataFieldNames.CallAt('  Self.dmMain.qryOrders.Params.ParamByName(''', 44, Call));
   Assert.AreEqual('dmMain', Call.Owner);
-  Assert.IsTrue(Call.Kind = TDataNameKind.Param);
+  Assert.AreEqual<TDataNameKind>(TDataNameKind.Param, Call.Kind);
   Assert.IsTrue(TDataFieldNames.CallAt('  qryOrders.FieldByName(''cu'');', 27, Call));
   Assert.AreEqual('', Call.Owner);
   Assert.AreEqual('qryOrders', Call.DisplayName);

@@ -34,7 +34,7 @@ uses
 
 procedure TJsonRpcCurrentRequestTests.TokenIsNilOutsideHandler;
 begin
-  Assert.IsTrue(TJsonRpcCurrentRequest.Token = nil);
+  Assert.IsNull(TJsonRpcCurrentRequest.Token);
   // Ohne Anfrage nichts auslösen.
   TJsonRpcCurrentRequest.ThrowIfCancellationRequested;
 end;
@@ -62,7 +62,7 @@ begin
     finally
       Other.Free;
     end;
-    Assert.IsTrue((TJsonRpcCurrentRequest.Token as IInterface) = (Token as IInterface));
+    Assert.AreSame(Token as IInterface, TJsonRpcCurrentRequest.Token as IInterface);
   finally
     TJsonRpcCurrentRequest.Leave(Previous);
   end;
@@ -80,15 +80,15 @@ begin
   try
     InnerPrevious := TJsonRpcCurrentRequest.Enter(Inner);
     try
-      Assert.IsTrue((TJsonRpcCurrentRequest.Token as IInterface) = (Inner as IInterface));
+      Assert.AreSame(Inner as IInterface, TJsonRpcCurrentRequest.Token as IInterface);
     finally
       TJsonRpcCurrentRequest.Leave(InnerPrevious);
     end;
-    Assert.IsTrue((TJsonRpcCurrentRequest.Token as IInterface) = (Outer as IInterface));
+    Assert.AreSame(Outer as IInterface, TJsonRpcCurrentRequest.Token as IInterface);
   finally
     TJsonRpcCurrentRequest.Leave(OuterPrevious);
   end;
-  Assert.IsTrue(TJsonRpcCurrentRequest.Token = nil);
+  Assert.IsNull(TJsonRpcCurrentRequest.Token);
 end;
 
 procedure TJsonRpcCurrentRequestTests.ThrowIfCancellationRequestedRaisesForCancelledToken;

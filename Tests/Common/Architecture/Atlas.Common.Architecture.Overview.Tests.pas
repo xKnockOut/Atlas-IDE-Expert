@@ -311,7 +311,7 @@ begin
   Outlier := Overview.Outliers[0];
   Assert.AreEqual('App.Ui.Export', Overview.Units[Outlier.Unit_].Name);
   Assert.AreEqual('Ui', Overview.Subsystems[Outlier.Suggested].Name);
-  Assert.IsTrue(Outlier.Reason = TOverviewOutlierReason.Namespace);
+  Assert.AreEqual<TOverviewOutlierReason>(TOverviewOutlierReason.Namespace, Outlier.Reason);
   Assert.AreEqual(3, Outlier.Inside);
   Assert.AreEqual(0, Outlier.Toward);
 end;
@@ -327,7 +327,7 @@ begin
   Assert.AreEqual(0, Base.Uses_);
   // Interface-Änderung an Base: Types, Log, Util, Db direkt; über das interface von Types noch Log und Util.
   Assert.AreEqual(4, Base.Total);
-  Assert.IsTrue(Base.Role = TOverviewUnitRole.Foundation);
+  Assert.AreEqual<TOverviewUnitRole>(TOverviewUnitRole.Foundation, Base.Role);
   Assert.AreEqual('App.Core.Base', Overview.Units[Overview.Central[0]].Name);
   Assert.AreEqual(10, Integer(Length(Overview.Central)), 'auf CentralCount gekürzt');
   Assert.AreEqual('Fundament', TArchitectureAnalyzer.RoleCaption(TOverviewUnitRole.Foundation));
@@ -382,10 +382,10 @@ begin
     Link := Overview.CrossLinks[1];
     Assert.AreEqual('App.Ui.Main', Overview.Units[Link.Edge.Source].Name);
     Assert.AreEqual('App.Data.Model', Overview.Units[Link.Edge.Target].Name);
-    Assert.IsTrue(Link.Reason = TOverviewCrossReason.Rare);
+    Assert.AreEqual<TOverviewCrossReason>(TOverviewCrossReason.Rare, Link.Reason);
     Assert.AreEqual(1, Link.Forward);
     Assert.AreEqual(0, Link.Backward);
-    Assert.IsTrue(Link.Edge.Section = TUsesSection.Implementation_);
+    Assert.AreEqual<TUsesSection>(TUsesSection.Implementation_, Link.Edge.Section);
     Assert.IsTrue(Link.Edge.Located);
     Assert.AreEqual(5, Link.Edge.Location.Range.StartPos.Line);
     Assert.AreEqual(2, Link.Edge.Location.Range.StartPos.Character);
@@ -827,7 +827,8 @@ begin
   for mMode := Low(TArchitectureFoundations) to High(TArchitectureFoundations) do
   begin
     mOverview := FoundationsWith(mMode);
-    Assert.IsTrue(mOverview.Units[mOverview.IndexOf('App.Index.Types')].Role = TOverviewUnitRole.Foundation);
+    Assert.AreEqual<TOverviewUnitRole>(TOverviewUnitRole.Foundation,
+      mOverview.Units[mOverview.IndexOf('App.Index.Types')].Role);
     Assert.AreEqual(SubsystemOf(mOverview, 'App.Index.A'), SubsystemOf(mOverview, 'App.Index.Types'));
     Assert.AreEqual('Index', SubsystemOf(mOverview, 'App.Index.Types'));
   end;
@@ -838,11 +839,12 @@ var
   mGrouping: TArchitectureGrouping;
   mMode: TArchitectureFoundations;
 begin
-  Assert.IsTrue(TArchitectureGrouping.Default.Foundations = TArchitectureFoundations.Separate);
+  Assert.AreEqual<TArchitectureFoundations>(TArchitectureFoundations.Separate,
+    TArchitectureGrouping.Default.Foundations);
   for mMode := Low(TArchitectureFoundations) to High(TArchitectureFoundations) do
   begin
     Assert.IsTrue(TArchitectureGrouping.TryFoundations(TArchitectureGrouping.FoundationsText(mMode), mGrouping.Foundations));
-    Assert.IsTrue(mGrouping.Foundations = mMode);
+    Assert.AreEqual<TArchitectureFoundations>(mMode, mGrouping.Foundations);
   end;
   Assert.IsFalse(TArchitectureGrouping.TryFoundations('Separate', mMode));
   mGrouping := TArchitectureGrouping.Default;

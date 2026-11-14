@@ -285,7 +285,7 @@ begin
   for Item in TSlashMenu.Catalog do
   begin
     Assert.IsTrue(TSlashCommandRegistry.Shared.Find(Item.Name, Command), Item.Name);
-    Assert.IsTrue(Item.Places <> [], 'Ortsregel: ' + Item.Name);
+    Assert.AreNotEqual<TSlashPlaces>([], Item.Places, 'Ortsregel: ' + Item.Name);
     Assert.AreEqual(0, Pos(',' + Item.Name + ',', Names), 'doppelt: ' + Item.Name);
     Names := Names + ',' + Item.Name + ',';
   end;
@@ -469,7 +469,7 @@ begin
     'ignore', 'unused-', nil, ['with-statement', 'unused-parameter', 'unused-local'])));
   Assert.AreEqual(0, Integer(Length(TSlashMenu.ArgumentChoices(ClassUnit, 11, 'ignore', 'unused-local Gr', nil,
     ['unused-local']))));
-  Assert.IsTrue(TSlashMenu.ArgumentKind('var', 'X: T') = TSlashArgumentKind.Types);
+  Assert.AreEqual<TSlashArgumentKind>(TSlashArgumentKind.Types, TSlashMenu.ArgumentKind('var', 'X: T'));
   Assert.AreEqual('TK', TSlashMenu.CurrentWord('FKunde:TK'));
 end;
 
@@ -482,7 +482,8 @@ begin
   Assert.AreEqual(1, Integer(Length(Edits)));
   Assert.AreEqual(1, Edits[0].Range.StartPos.Line);
   Assert.AreEqual(0, Edits[0].Range.StartPos.Character);
-  Assert.IsTrue(Edits[0].Range.EndPos = Edits[0].Range.StartPos);
+  Assert.AreEqual(1, Edits[0].Range.EndPos.Line);
+  Assert.AreEqual(0, Edits[0].Range.EndPos.Character);
   Assert.AreEqual('  Neu;'#10, Edits[0].NewText);
   // Zeile samt Zeilenende entfernt: entfällt; spätere Zeilen rücken eine Zeile nach oben.
   Edits := TSlashMenu.MapEdits([TRuleEdit.Create(TTextRange.Create(1, 0, 2, 0), ''),

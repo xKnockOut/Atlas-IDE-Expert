@@ -71,19 +71,19 @@ end;
 
 procedure TFreeFieldTypesTests.GuessesKindsFromFile;
 begin
-  Assert.IsTrue(Guess('TFoo') = tgClass);
-  Assert.IsTrue(Guess('TPoint3') = tgRecord);
-  Assert.IsTrue(Guess('IThing') = tgInterface);
-  Assert.IsTrue(Guess('TColorSet') = tgOther);
+  Assert.AreEqual<TTypeGuess>(tgClass, Guess('TFoo'));
+  Assert.AreEqual<TTypeGuess>(tgRecord, Guess('TPoint3'));
+  Assert.AreEqual<TTypeGuess>(tgInterface, Guess('IThing'));
+  Assert.AreEqual<TTypeGuess>(tgOther, Guess('TColorSet'));
 end;
 
 procedure TFreeFieldTypesTests.FollowsAliasesAndFallbacks;
 begin
-  Assert.IsTrue(Guess('TAlias') = tgRecord);
-  Assert.IsTrue(Guess('TArray<Integer>') = tgOther);
-  Assert.IsTrue(Guess('TStopwatch') = tgRecord);
-  Assert.IsTrue(Guess('IUnknownThing') = tgInterface);
-  Assert.IsTrue(Guess('TUnknown') = tgUnknown);
+  Assert.AreEqual<TTypeGuess>(tgRecord, Guess('TAlias'));
+  Assert.AreEqual<TTypeGuess>(tgOther, Guess('TArray<Integer>'));
+  Assert.AreEqual<TTypeGuess>(tgRecord, Guess('TStopwatch'));
+  Assert.AreEqual<TTypeGuess>(tgInterface, Guess('IUnknownThing'));
+  Assert.AreEqual<TTypeGuess>(tgUnknown, Guess('TUnknown'));
 end;
 
 procedure TFreeFieldTypesTests.FollowsAliasesOfOtherUnits;
@@ -106,11 +106,11 @@ begin
   mTypes := TFreeFieldTypes.Create(mTree, cHier, mIndex);
   try
     // Alias anderen Namens in einer anderen Unit, gleichen Namens dort und Alias der Datei auf einen davon.
-    Assert.IsTrue(mTypes.TypeGuess('TPos') = tgRecord);
-    Assert.IsTrue(mTypes.TypeGuess('TLage') = tgRecord);
-    Assert.IsTrue(mTypes.TypeGuess('TOrt') = tgRecord);
+    Assert.AreEqual<TTypeGuess>(tgRecord, mTypes.TypeGuess('TPos'));
+    Assert.AreEqual<TTypeGuess>(tgRecord, mTypes.TypeGuess('TLage'));
+    Assert.AreEqual<TTypeGuess>(tgRecord, mTypes.TypeGuess('TOrt'));
     // Ziel unbekannt: bleibt unbekannt.
-    Assert.IsTrue(mTypes.TypeGuess('TFremd') = tgUnknown);
+    Assert.AreEqual<TTypeGuess>(tgUnknown, mTypes.TypeGuess('TFremd'));
   finally
     mTypes.Free;
     mTree.Free;

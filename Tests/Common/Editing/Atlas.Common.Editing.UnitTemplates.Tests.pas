@@ -130,7 +130,7 @@ begin
   Document := TDfmParser.Parse(TUnitTemplates.FormDfm('TKundeForm', TFormKind.Form, True, #10));
   try
     Assert.AreEqual(0, Integer(Length(Document.Errors)));
-    Assert.IsTrue(Document.Root.Kind = TDfmObjectKind.Inherited_);
+    Assert.AreEqual<TDfmObjectKind>(TDfmObjectKind.Inherited_, Document.Root.Kind);
   finally
     Document.Free;
   end;

@@ -550,7 +550,7 @@ begin
   Assert.IsFalse(ContainsStr(Done, 'TFoo.ProcessItem'), Done);
   Assert.IsFalse(ContainsStr(Done, 'Zaehlt mit'), Done);
   Assert.IsFalse(ContainsStr(Done, '    procedure ProcessItem'), Done);
-  Assert.IsTrue(Action.Preview <> '');
+  Assert.AreNotEqual('', Action.Preview);
   // Auch von der Deklaration in der Klasse aus.
   Assert.IsTrue(EmbedAt(Text, 'ProcessItem(const AItem: Integer);' + LF + '  end;', TProcTypeKind.Reference, Action,
     Reason, Done), Reason);

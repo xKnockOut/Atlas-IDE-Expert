@@ -114,7 +114,7 @@ end;
 function Expand(const ACommand, AStatement: string; const AVersion: string = ''): string;
 begin
   Assert.IsTrue(TryRun(ACommand, AStatement, AVersion, Result), ACommand + ' ' + AStatement);
-  Assert.IsTrue(Pos(ACommand, Result) = 0, Result);
+  Assert.AreEqual(0, Pos(ACommand, Result), Result);
 end;
 
 procedure TExpressionCommandsTests.FormatUsesTypes;
@@ -217,7 +217,7 @@ var
 begin
   Text := Expand('/modern', '  Zaehler := N;'#10'  Log(Zaehler);');
   Assert.IsTrue(Pos('  var Zaehler: Integer := N;', Text) > 0, Text);
-  Assert.IsTrue(Pos('  Zaehler: Integer;', Text) = 0, Text);
+  Assert.AreEqual(0, Pos('  Zaehler: Integer;', Text), Text);
 end;
 
 procedure TExpressionCommandsTests.ModernWithoutChangesFails;

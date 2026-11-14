@@ -83,7 +83,7 @@ begin
     Member('Caption', TIndexSymbolKind.Property_, 'property Caption', '', TIndexVisibility.Published)]);
   Assert.AreEqual(2, Integer(Length(Merged)));
   Assert.AreEqual('Caption', Merged[0].Name, 'an der Stelle der geerbten');
-  Assert.IsTrue(Merged[0].Visibility = TIndexVisibility.Published);
+  Assert.AreEqual<TIndexVisibility>(TIndexVisibility.Published, Merged[0].Visibility);
   Assert.AreEqual('string', Merged[0].TypeName);
   Assert.IsTrue(TAssignFields.Writable(Merged[0]));
   Merged := nil;

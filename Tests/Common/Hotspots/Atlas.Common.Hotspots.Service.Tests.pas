@@ -376,7 +376,7 @@ begin
     mExpected := 2;
     mExpected := mExpected / 3 / 8;
     Assert.AreEqual(mExpected, mResult.Units[1].Score, 1E-9);
-    Assert.IsTrue(mResult.Kind = THotspotVcsKind.Git);
+    Assert.AreEqual<THotspotVcsKind>(THotspotVcsKind.Git, mResult.Kind);
     Assert.AreEqual('h1', mResult.Head);
     Assert.AreEqual(0, Integer(Length(mResult.Methods)), 'Unit-Ebene');
   finally
@@ -513,7 +513,7 @@ begin
     Assert.AreEqual(2, Integer(Length(mResult.Units[0].Changes.Authors)));
     Assert.AreEqual(PathOf('App.Alt'), mVcs.Texts[0], 'Stand vor drei Monaten unter dem damaligen Namen');
     Assert.AreEqual(2, mResult.Units[0].PastComplexity);
-    Assert.IsTrue(mResult.Units[0].Trend = THotspotTrend.Rising);
+    Assert.AreEqual<THotspotTrend>(THotspotTrend.Rising, mResult.Units[0].Trend);
   finally
     mService.Free;
     mTexts.Free;
@@ -546,15 +546,16 @@ begin
     mVcs.SetPast('B.pas', HotspotUnitText('B', 4));
     mVcs.PastState := THotspotTextState.Missing;
     mResult := mService.Analyze(NewRequest, mVcsRef, HotspotNow);
-    Assert.IsTrue(mResult.Units[IndexOf(mResult.Units, 'A')].Trend = THotspotTrend.Falling);
-    Assert.IsTrue(mResult.Units[IndexOf(mResult.Units, 'B')].Trend = THotspotTrend.Steady);
-    Assert.IsTrue(mResult.Units[IndexOf(mResult.Units, 'C')].Trend = THotspotTrend.New, 'gab es damals nicht');
+    Assert.AreEqual<THotspotTrend>(THotspotTrend.Falling, mResult.Units[IndexOf(mResult.Units, 'A')].Trend);
+    Assert.AreEqual<THotspotTrend>(THotspotTrend.Steady, mResult.Units[IndexOf(mResult.Units, 'B')].Trend);
+    Assert.AreEqual<THotspotTrend>(THotspotTrend.New,
+      mResult.Units[IndexOf(mResult.Units, 'C')].Trend, 'gab es damals nicht');
     Assert.AreEqual(-1, mResult.Units[IndexOf(mResult.Units, 'C')].PastComplexity);
     // Verlauf reicht nicht zurück (flacher Klon): unbekannt, nicht neu.
     mVcs.PastState := THotspotTextState.Unknown;
     mVcs.HeadValue := 'h2';
     mResult := mService.Analyze(NewRequest, mVcsRef, HotspotNow);
-    Assert.IsTrue(mResult.Units[IndexOf(mResult.Units, 'C')].Trend = THotspotTrend.Unknown);
+    Assert.AreEqual<THotspotTrend>(THotspotTrend.Unknown, mResult.Units[IndexOf(mResult.Units, 'C')].Trend);
   finally
     mService.Free;
     mTexts.Free;

@@ -243,7 +243,7 @@ begin
   for Kind := Low(TMetricKind) to High(TMetricKind) do
   begin
     Assert.IsTrue(TMetrics.TryKindOf(TMetrics.Key(Kind), Found), TMetrics.Key(Kind));
-    Assert.IsTrue(Kind = Found, TMetrics.Key(Kind));
+    Assert.AreEqual<TMetricKind>(Found, Kind, TMetrics.Key(Kind));
   end;
   Assert.IsFalse(TMetrics.TryKindOf('lines', Found));
 end;

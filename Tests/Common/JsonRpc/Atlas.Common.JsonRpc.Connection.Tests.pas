@@ -600,7 +600,7 @@ begin
     Dispatcher.Free;
   end;
   Assert.AreEqual('first work last', Order);
-  Assert.IsTrue(LoopThread = WorkThread, 'Arbeit lief nicht im Thread der Schleife');
+  Assert.AreEqual<TThreadID>(LoopThread, WorkThread, 'Arbeit lief nicht im Thread der Schleife');
 end;
 
 procedure TJsonRpcConnectionTests.QueueWithoutLoopReturnsFalse;
@@ -711,7 +711,7 @@ begin
       end;
       Assert.AreEqual(1, ForFirst, 'genau eine Antwort auf id 1');
       Assert.AreEqual(TJsonRpcErrorCode.cRequestCancelled, FindResponse(Responses, 1).GetValue<Integer>('error.code'));
-      Assert.IsTrue(FindResponse(Responses, 1).GetValue('result') = nil, 'späte Antwort verworfen');
+      Assert.IsNull(FindResponse(Responses, 1).GetValue('result'), 'späte Antwort verworfen');
       Assert.IsTrue(FindResponse(Responses, 2).GetValue<Boolean>('result'));
     finally
       Responses.Free;

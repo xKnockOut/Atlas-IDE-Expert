@@ -387,10 +387,10 @@ begin
   for mOperator := Low(TMutationOperator) to High(TMutationOperator) do
   begin
     Assert.IsTrue(TMutation.TryParseOperator(TMutation.OperatorId(mOperator), mParsed));
-    Assert.IsTrue(mParsed = mOperator);
+    Assert.AreEqual<TMutationOperator>(mOperator, mParsed);
   end;
   mOperators := TMutation.ParseOperators(['Boundary', ' not ', 'gibtsnicht', ''], mUnknown);
-  Assert.IsTrue(mOperators = [TMutationOperator.Boundary, TMutationOperator.RemoveNot]);
+  Assert.AreEqual<TMutationOperators>([TMutationOperator.Boundary, TMutationOperator.RemoveNot], mOperators);
   Assert.AreEqual(1, Integer(Length(mUnknown)));
   Assert.AreEqual('gibtsnicht', mUnknown[0]);
 end;

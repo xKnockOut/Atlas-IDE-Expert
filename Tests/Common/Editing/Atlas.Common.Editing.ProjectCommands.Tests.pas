@@ -646,7 +646,7 @@ begin
   Assert.IsTrue(TSlashCommandRegistry.Shared.AfterEnter(Format(FormUnit, ['/component TZaehler']),
     TTextPosition.Create(10, 0), TSlashEnvironment.Create(nil, nil, nil, '', Uri, Keep), Edits));
   Text := Host.WrittenFiles[0].Text;
-  Assert.IsTrue(Pos(#13, Text) = 0, 'LF wie die Datei des Befehls');
+  Assert.AreEqual(0, Pos(#13, Text), 'LF wie die Datei des Befehls');
   Assert.IsTrue(Pos(#10'  TZaehler = class(TComponent)'#10'  private'#10, Text) > 0, Text);
   Style := TFormatStyle.Default;
   Style.IndentSize := 4;

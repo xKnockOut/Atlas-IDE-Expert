@@ -89,11 +89,12 @@ procedure TMcpIdeEditsTests.WritesItselfWhenNobodyTakesTheRequest;
 var
   Reason: string;
 begin
-  Assert.IsTrue(TMcpIdeEdits.Send(FInbox, TMcpIdeEdit.Make('C:\P\A.pas', 'alt', 'neu'),
+  Assert.AreEqual<TMcpIdeEditOutcome>(TMcpIdeEditOutcome.WriteYourself,
+    TMcpIdeEdits.Send(FInbox, TMcpIdeEdit.Make('C:\P\A.pas', 'alt', 'neu'),
     procedure
     begin
       Inc(Now_, 100);
-    end, Clock, Reason) = TMcpIdeEditOutcome.WriteYourself);
+    end, Clock, Reason));
   Assert.AreEqual(0, Integer(Length(TDirectory.GetFiles(FInbox))), 'Auftrag zurückgezogen');
 end;
 
@@ -102,12 +103,13 @@ var
   Reason, Seen: string;
   Json: TJSONValue;
 begin
-  Assert.IsTrue(TMcpIdeEdits.Send(FInbox, TMcpIdeEdit.Make('C:\P\A.pas', 'alt', 'neu'),
+  Assert.AreEqual<TMcpIdeEditOutcome>(TMcpIdeEditOutcome.Applied,
+    TMcpIdeEdits.Send(FInbox, TMcpIdeEdit.Make('C:\P\A.pas', 'alt', 'neu'),
     procedure
     begin
       Inc(Now_, 100);
       Plugin(FInbox, '{"applied":true}', Seen);
-    end, Clock, Reason) = TMcpIdeEditOutcome.Applied);
+    end, Clock, Reason));
   Json := TJSONObject.ParseJSONValue(Seen);
   try
     Assert.AreEqual('C:\P\A.pas', Json.GetValue<string>('file'));
@@ -123,18 +125,20 @@ procedure TMcpIdeEditsTests.WritesItselfWhenTheFileIsNoLongerOpen;
 var
   Reason, Seen: string;
 begin
-  Assert.IsTrue(TMcpIdeEdits.Send(FInbox, TMcpIdeEdit.Make('C:\P\A.pas', 'alt', 'neu'),
+  Assert.AreEqual<TMcpIdeEditOutcome>(TMcpIdeEditOutcome.WriteYourself,
+    TMcpIdeEdits.Send(FInbox, TMcpIdeEdit.Make('C:\P\A.pas', 'alt', 'neu'),
     procedure
     begin
       Inc(Now_, 100);
       Plugin(FInbox, '{"applied":false,"notOpen":true,"reason":"nicht offen"}', Seen);
-    end, Clock, Reason) = TMcpIdeEditOutcome.WriteYourself);
-  Assert.IsTrue(TMcpIdeEdits.Send(FInbox, TMcpIdeEdit.Make('C:\P\A.pas', 'alt', 'neu'),
+    end, Clock, Reason));
+  Assert.AreEqual<TMcpIdeEditOutcome>(TMcpIdeEditOutcome.Failed,
+    TMcpIdeEdits.Send(FInbox, TMcpIdeEdit.Make('C:\P\A.pas', 'alt', 'neu'),
     procedure
     begin
       Inc(Now_, 100);
       Plugin(FInbox, '{"applied":false,"reason":"gesperrt"}', Seen);
-    end, Clock, Reason) = TMcpIdeEditOutcome.Failed);
+    end, Clock, Reason));
   Assert.AreEqual('gesperrt', Reason);
 end;
 
@@ -142,12 +146,13 @@ procedure TMcpIdeEditsTests.FailsWhenTakenButNeverAnswered;
 var
   Reason, Seen: string;
 begin
-  Assert.IsTrue(TMcpIdeEdits.Send(FInbox, TMcpIdeEdit.Make('C:\P\A.pas', 'alt', 'neu'),
+  Assert.AreEqual<TMcpIdeEditOutcome>(TMcpIdeEditOutcome.Failed,
+    TMcpIdeEdits.Send(FInbox, TMcpIdeEdit.Make('C:\P\A.pas', 'alt', 'neu'),
     procedure
     begin
       Inc(Now_, 1000);
       Plugin(FInbox, '', Seen);
-    end, Clock, Reason) = TMcpIdeEditOutcome.Failed);
+    end, Clock, Reason));
   Assert.IsNotEmpty(Reason);
 end;
 

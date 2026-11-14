@@ -194,7 +194,7 @@ begin
   Unit_ := TTestUnits.UnitText('Werkzeug.Tests', Index, '', #13#10);
   Assert.IsTrue(Parses(Unit_), Unit_);
   Assert.IsTrue(Pos('TWerkzeugTests = class', Unit_) > 0, Unit_);
-  Assert.IsTrue(Pos('FSubject', Unit_) = 0, Unit_);
+  Assert.AreEqual(0, Pos('FSubject', Unit_), Unit_);
 end;
 
 procedure TTestUnitsTests.CreateExpressions;
@@ -248,7 +248,7 @@ begin
   Unit_ := TTestUnits.UnitText('U.Tests', TIndexExtractor.ExtractText(Text, 'U.pas', nil), 'TMitArg', #10);
   Assert.IsTrue(Parses(Unit_), Unit_);
   Assert.IsTrue(Pos('// TMitArg braucht Argumente im Konstruktor', Unit_) > 0, Unit_);
-  Assert.IsTrue(Pos('FSubject := TMitArg', Unit_) = 0, Unit_);
+  Assert.AreEqual(0, Pos('FSubject := TMitArg', Unit_), Unit_);
 end;
 
 procedure TTestUnitsTests.TestProgramDetected;

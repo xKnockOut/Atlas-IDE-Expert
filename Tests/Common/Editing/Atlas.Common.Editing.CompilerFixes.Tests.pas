@@ -392,11 +392,11 @@ begin
   for Index := 0 to High(Codes) do
   begin
     Text := Fixed1(Text, TFixMessage.Create(Codes[Index], Lines[Index], -1, Texts[Index]));
-    Assert.IsTrue(Text <> '', Codes[Index]);
+    Assert.AreNotEqual('', Text, Codes[Index]);
   end;
   FileName := TestsFile(TPath.Combine('Common', TPath.Combine('Editing',
     'Atlas.Common.Editing.CompilerFixesGolden.pas')));
-  Assert.IsTrue(FileName <> '', 'Golden-Datei nicht gefunden');
+  Assert.AreNotEqual('', FileName, 'Golden-Datei nicht gefunden');
   Golden := TFile.ReadAllText(FileName, TEncoding.UTF8);
   if (Golden <> '') and (Golden[1] = #$FEFF) then
   begin

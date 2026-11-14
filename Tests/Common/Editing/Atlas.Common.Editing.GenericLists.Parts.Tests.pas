@@ -155,9 +155,9 @@ begin
     Assert.AreEqual('FListe', TGenericListSyntax.IdentifierAfter(mTree, mProperty, 'read'));
     Assert.AreEqual('', TGenericListSyntax.IdentifierAfter(mTree, mProperty, 'write'));
     Assert.IsTrue(TGenericListSyntax.HasInlineVar(mTree, mLoop));
-    Assert.IsTrue(TGenericListSyntax.EnclosingRoutine(mLoop) <> nil);
-    Assert.IsTrue(TGenericListSyntax.EnclosingRoutine(mField) = nil);
-    Assert.IsTrue(TGenericListSyntax.DeclarationNodeAt(mTree.Root, mField.StartPos) = mField);
+    Assert.IsNotNull(TGenericListSyntax.EnclosingRoutine(mLoop));
+    Assert.IsNull(TGenericListSyntax.EnclosingRoutine(mField));
+    Assert.AreSame(mField, TGenericListSyntax.DeclarationNodeAt(mTree.Root, mField.StartPos));
   finally
     mTree.Free;
   end;
@@ -173,12 +173,12 @@ begin
   try
     mProperty := FindKind(mTree.Root, TSyntaxKind.PropertyDecl);
     mName := 'Liste';
-    Assert.IsTrue(TGenericListDeclarations.DeclarationAt(mTree, mProperty.StartPos, mName) =
-      FindKind(mTree.Root, TSyntaxKind.Field));
+    Assert.AreSame(FindKind(mTree.Root, TSyntaxKind.Field),
+      TGenericListDeclarations.DeclarationAt(mTree, mProperty.StartPos, mName));
     Assert.AreEqual('FListe', mName);
     // Name passt nicht zur Stelle (veralteter Index): keine Deklaration.
     mName := 'Andere';
-    Assert.IsTrue(TGenericListDeclarations.DeclarationAt(mTree, mProperty.StartPos, mName) = nil);
+    Assert.IsNull(TGenericListDeclarations.DeclarationAt(mTree, mProperty.StartPos, mName));
   finally
     mTree.Free;
   end;
@@ -306,13 +306,13 @@ begin
     mElement := Default(TGenericListElement);
     mElement.Node := FindKind(mTree.Root, TSyntaxKind.Field);
     mElement.TypeName := 'nil';
-    Assert.IsTrue(mCheck.Check(mElement) = TGenericListElementFit.Fits);
+    Assert.AreEqual<TGenericListElementFit>(TGenericListElementFit.Fits, mCheck.Check(mElement));
     mElement.TypeName := 'TPosition';
-    Assert.IsTrue(mCheck.Check(mElement) = TGenericListElementFit.Fits);
+    Assert.AreEqual<TGenericListElementFit>(TGenericListElementFit.Fits, mCheck.Check(mElement));
     mElement.TypeName := '';
-    Assert.IsTrue(mCheck.Check(mElement) = TGenericListElementFit.Unknown);
+    Assert.AreEqual<TGenericListElementFit>(TGenericListElementFit.Unknown, mCheck.Check(mElement));
     mElement.TypeName := 'Integer';
-    Assert.IsTrue(mCheck.Check(mElement) = TGenericListElementFit.Wrong);
+    Assert.AreEqual<TGenericListElementFit>(TGenericListElementFit.Wrong, mCheck.Check(mElement));
     Assert.AreEqual('FListe nimmt in Zeile 7 Werte vom Typ Integer auf', mCheck.Problem);
   finally
     mResolver.Free;

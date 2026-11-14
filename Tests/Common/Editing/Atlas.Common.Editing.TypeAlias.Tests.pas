@@ -448,7 +448,7 @@ var
   Scope: TTypeAliasScope;
 begin
   Assert.IsTrue(TTypeAlias.ScopeOf('project', Scope));
-  Assert.IsTrue(Scope = TTypeAliasScope.Project);
+  Assert.AreEqual<TTypeAliasScope>(TTypeAliasScope.Project, Scope);
   Assert.AreEqual('here', TTypeAlias.ScopeName(TTypeAliasScope.Here));
   Assert.AreEqual('unit', TTypeAlias.ScopeName(TTypeAliasScope.InUnit));
   Assert.IsFalse(TTypeAlias.ScopeOf('alles', Scope));

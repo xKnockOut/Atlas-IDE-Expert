@@ -265,7 +265,7 @@ begin
     TSlashEnvironment.Create(nil, nil, nil, '', 'file:///U.pas', Keep), Edits));
   Text := Apply(Text, Edits);
   Assert.IsTrue(Pos('  TFarbeHelper = record helper for TFarbe'#10'  public'#10'  end;', Text) > 0, Text);
-  Assert.IsTrue(Pos('cNames', Text) = 0, Text);
+  Assert.AreEqual(0, Pos('cNames', Text), Text);
 end;
 
 const
@@ -291,7 +291,7 @@ begin
     '    Exclude(Self, AValue)'#10'  else'#10'    Include(Self, AValue);'#10'end;', Text) > 0, Text);
   Assert.IsTrue(Pos('class function TFarbenHelper.All: TFarben;'#10'begin'#10 +
     '  Result := [Low(TFarbe)..High(TFarbe)];'#10'end;', Text) > 0, Text);
-  Assert.IsTrue(Pos('System.TypInfo', Text) = 0, Text);
+  Assert.AreEqual(0, Pos('System.TypInfo', Text), Text);
   Assert.IsTrue(Parses(Text), Text);
 end;
 
@@ -304,7 +304,7 @@ begin
     'implementation'#10'end.', 4);
   Assert.IsTrue(Pos('    Result := Result + GetEnumName(TypeInfo(TFontStyle), Ord(Value));', Text) > 0, Text);
   Assert.IsTrue(Pos('System.TypInfo', Text) > 0, Text);
-  Assert.IsTrue(Pos('cNames', Text) = 0, Text);
+  Assert.AreEqual(0, Pos('cNames', Text), Text);
   Assert.IsTrue(Parses(Text), Text);
 end;
 
@@ -323,7 +323,7 @@ begin
     TSlashEnvironment.Create(nil, nil, nil, '', 'file:///U.pas', Keep), Edits));
   Text := Apply(Text, Edits);
   Assert.IsTrue(Pos('  TFarbenHelper = record helper for TFarben'#10'  public'#10'  end;', Text) > 0, Text);
-  Assert.IsTrue(Pos('Contains', Text) = 0, Text);
+  Assert.AreEqual(0, Pos('Contains', Text), Text);
   Host.Settings := nil;
 end;
 
@@ -533,7 +533,7 @@ var
 begin
   FileName := TestsFile(TPath.Combine('Common', TPath.Combine('Editing',
     'Atlas.Common.Editing.TypeCommands.JsonGolden.pas')));
-  Assert.IsTrue(FileName <> '', 'Golden-Datei nicht gefunden');
+  Assert.AreNotEqual('', FileName, 'Golden-Datei nicht gefunden');
   Golden := TFile.ReadAllText(FileName, TEncoding.UTF8);
   if (Golden <> '') and (Golden[1] = #$FEFF) then
   begin

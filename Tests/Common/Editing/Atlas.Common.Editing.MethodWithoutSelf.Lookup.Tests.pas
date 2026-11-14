@@ -110,17 +110,17 @@ begin
   mTree := TPascalParser.Parse(cLager);
   try
     mLookup := TMethodLookup.FromTree(mTree);
-    Assert.IsTrue(LevelOf(mLookup, mTree, 'FMenge', mVisibility) = TMemberLevel.Instance);
-    Assert.IsTrue(mVisibility = TIndexVisibility.StrictPrivate);
-    Assert.IsTrue(LevelOf(mLookup, mTree, 'FAnzahl', mVisibility) = TMemberLevel.StaticLevel);
-    Assert.IsTrue(mVisibility = TIndexVisibility.Private);
-    Assert.IsTrue(LevelOf(mLookup, mTree, 'Grenze', mVisibility) = TMemberLevel.StaticLevel);
-    Assert.IsTrue(LevelOf(mLookup, mTree, 'Neu', mVisibility) = TMemberLevel.ClassLevel);
-    Assert.IsTrue(mVisibility = TIndexVisibility.Public);
-    Assert.IsTrue(LevelOf(mLookup, mTree, 'Leer', mVisibility) = TMemberLevel.StaticLevel);
-    Assert.IsTrue(LevelOf(mLookup, mTree, 'Frei', mVisibility) = TMemberLevel.NotMember);
+    Assert.AreEqual<TMemberLevel>(TMemberLevel.Instance, LevelOf(mLookup, mTree, 'FMenge', mVisibility));
+    Assert.AreEqual<TIndexVisibility>(TIndexVisibility.StrictPrivate, mVisibility);
+    Assert.AreEqual<TMemberLevel>(TMemberLevel.StaticLevel, LevelOf(mLookup, mTree, 'FAnzahl', mVisibility));
+    Assert.AreEqual<TIndexVisibility>(TIndexVisibility.Private, mVisibility);
+    Assert.AreEqual<TMemberLevel>(TMemberLevel.StaticLevel, LevelOf(mLookup, mTree, 'Grenze', mVisibility));
+    Assert.AreEqual<TMemberLevel>(TMemberLevel.ClassLevel, LevelOf(mLookup, mTree, 'Neu', mVisibility));
+    Assert.AreEqual<TIndexVisibility>(TIndexVisibility.Public, mVisibility);
+    Assert.AreEqual<TMemberLevel>(TMemberLevel.StaticLevel, LevelOf(mLookup, mTree, 'Leer', mVisibility));
+    Assert.AreEqual<TMemberLevel>(TMemberLevel.NotMember, LevelOf(mLookup, mTree, 'Frei', mVisibility));
     // Ohne fremden Vorfahren kennt die Datei alle Mitglieder.
-    Assert.IsTrue(LevelOf(mLookup, mTree, 'Unbekannt', mVisibility) = TMemberLevel.NotMember);
+    Assert.AreEqual<TMemberLevel>(TMemberLevel.NotMember, LevelOf(mLookup, mTree, 'Unbekannt', mVisibility));
   finally
     mTree.Free;
   end;
@@ -135,9 +135,9 @@ begin
   mTree := TPascalParser.Parse(StringReplace(cLager, '  TLager = class'#10, '  TLager = class(TBasis)'#10, []));
   try
     mLookup := TMethodLookup.FromTree(mTree);
-    Assert.IsTrue(LevelOf(mLookup, mTree, 'Unbekannt', mVisibility) = TMemberLevel.Unknown);
-    Assert.IsTrue(LevelOf(mLookup, mTree, 'Frei', mVisibility) = TMemberLevel.NotMember);
-    Assert.IsTrue(LevelOf(mLookup, mTree, 'FMenge', mVisibility) = TMemberLevel.Instance);
+    Assert.AreEqual<TMemberLevel>(TMemberLevel.Unknown, LevelOf(mLookup, mTree, 'Unbekannt', mVisibility));
+    Assert.AreEqual<TMemberLevel>(TMemberLevel.NotMember, LevelOf(mLookup, mTree, 'Frei', mVisibility));
+    Assert.AreEqual<TMemberLevel>(TMemberLevel.Instance, LevelOf(mLookup, mTree, 'FMenge', mVisibility));
   finally
     mTree.Free;
   end;

@@ -651,7 +651,7 @@ begin
   DispatchJson(FDispatcher, '{"jsonrpc":"2.0","id":2,"method":"concurrent"}').Free;
   Assert.IsTrue(SyncSeen, 'synchroner Handler');
   Assert.IsTrue(ConcurrentSeen, 'nebenläufiger Handler');
-  Assert.IsTrue(TJsonRpcCurrentRequest.Token = nil, 'nach dem Handler');
+  Assert.IsNull(TJsonRpcCurrentRequest.Token, 'nach dem Handler');
 end;
 
 procedure TJsonRpcDispatcherTests.RunsConditionalRequestConcurrentlyWhenConditionHolds;

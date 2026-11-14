@@ -151,7 +151,7 @@ var
 begin
   Comparison := TArchitectureComparer.Compare(SnapshotOf(ArchitectureSampleUnits), SnapshotOf(ArchitectureSampleUnits));
   Assert.IsTrue(Comparison.IsEmpty);
-  Assert.IsTrue(Comparison.Kinds = []);
+  Assert.AreEqual<TArchitectureFailKinds>([], Comparison.Kinds);
   Assert.AreEqual(0, Integer(Length(Comparison.AddedEdges)));
   Assert.AreEqual('Beispiel', Comparison.BaselineTitle);
   Assert.AreEqual(12, Comparison.BaselineUnits);
@@ -197,7 +197,7 @@ begin
   Assert.AreEqual('Ui', Comparison.NewCrossLinks[0].FromSubsystem);
   Assert.AreEqual(1, Integer(Length(Comparison.RemovedCrossLinks)));
   Assert.AreEqual('u1', Comparison.RemovedCrossLinks[0].Source);
-  Assert.IsTrue(Comparison.Kinds = [TArchitectureFailKind.NewCrossLink]);
+  Assert.AreEqual<TArchitectureFailKinds>([TArchitectureFailKind.NewCrossLink], Comparison.Kinds);
 end;
 
 procedure TArchitectureComparisonTests.FindsEdgesBetweenSubsystems;
@@ -223,7 +223,7 @@ begin
   Assert.AreEqual(2, Integer(Length(Comparison.AddedEdges)));
   Assert.AreEqual(2, Integer(Length(Comparison.DroppedEdges)));
   // Kanten zählen nicht für --fail-on.
-  Assert.IsTrue(Comparison.Kinds = []);
+  Assert.AreEqual<TArchitectureFailKinds>([], Comparison.Kinds);
 end;
 
 procedure TArchitectureComparisonTests.RenumberedSubsystemsAreNoChange;
@@ -272,7 +272,7 @@ begin
   Assert.AreEqual('k4', Comparison.Moves[0].Unit_);
   Assert.AreEqual('Kern', Comparison.Moves[0].FromSubsystem);
   Assert.AreEqual('Ui', Comparison.Moves[0].ToSubsystem);
-  Assert.IsTrue(Comparison.Kinds = [TArchitectureFailKind.SubsystemChange]);
+  Assert.AreEqual<TArchitectureFailKinds>([TArchitectureFailKind.SubsystemChange], Comparison.Kinds);
 end;
 
 procedure TArchitectureComparisonTests.FindsCentralGrowth;
@@ -302,7 +302,7 @@ begin
   Assert.AreEqual(40, Comparison.Growth[0].Before);
   Assert.AreEqual(50, Comparison.Growth[0].After);
   Assert.AreEqual('Wächst', Comparison.Growth[1].Unit_);
-  Assert.IsTrue(Comparison.Kinds = [TArchitectureFailKind.CentralGrowth]);
+  Assert.AreEqual<TArchitectureFailKinds>([TArchitectureFailKind.CentralGrowth], Comparison.Kinds);
 end;
 
 procedure TArchitectureComparisonTests.FindsNewAndRemovedUnits;
@@ -388,15 +388,15 @@ var
   Error: string;
 begin
   Assert.IsTrue(TArchitectureComparer.ParseKindList('newCycle,NEWCROSSLINK subsystemChange', Kinds, Error));
-  Assert.IsTrue(Kinds = [TArchitectureFailKind.NewCycle, TArchitectureFailKind.NewCrossLink,
-    TArchitectureFailKind.SubsystemChange]);
+  Assert.AreEqual<TArchitectureFailKinds>([TArchitectureFailKind.NewCycle, TArchitectureFailKind.NewCrossLink,
+    TArchitectureFailKind.SubsystemChange], Kinds);
   Assert.IsFalse(TArchitectureComparer.ParseKindList('newCycle,error', Kinds, Error));
   Assert.Contains(Error, '"error"');
   Assert.IsTrue(TArchitectureComparer.ParseKindList('', Kinds, Error));
-  Assert.IsTrue(Kinds = []);
+  Assert.AreEqual<TArchitectureFailKinds>([], Kinds);
   Assert.AreEqual('newCycle,centralGrowth', string.Join(',', TArchitectureComparer.KindNames(
     [TArchitectureFailKind.CentralGrowth, TArchitectureFailKind.NewCycle])));
-  Assert.IsTrue(TArchitectureComparer.DefaultFailOn = [TArchitectureFailKind.NewCycle]);
+  Assert.AreEqual<TArchitectureFailKinds>([TArchitectureFailKind.NewCycle], TArchitectureComparer.DefaultFailOn);
 end;
 
 procedure TArchitectureComparisonTests.NotesDifferentResolution;

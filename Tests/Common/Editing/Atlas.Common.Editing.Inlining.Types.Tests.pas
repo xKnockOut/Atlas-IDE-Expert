@@ -37,7 +37,7 @@ begin
     mSource := TInlineSource.Create('u.pas', 'unit U;', mTree);
     Assert.AreEqual('u.pas', mSource.FileName);
     Assert.AreEqual('unit U;', mSource.Text);
-    Assert.IsTrue(mSource.Tree = mTree);
+    Assert.AreSame(mTree, mSource.Tree);
   finally
     mTree.Free;
   end;
@@ -52,7 +52,7 @@ begin
   try
     mCallee := TInlineCallee.Create(TInlineSource.Create('c.pas', 'x', mTree), mTree.Root);
     Assert.AreEqual('c.pas', mCallee.Source.FileName);
-    Assert.IsTrue(mCallee.Routine = mTree.Root);
+    Assert.AreSame(mTree.Root, mCallee.Routine);
   finally
     mTree.Free;
   end;

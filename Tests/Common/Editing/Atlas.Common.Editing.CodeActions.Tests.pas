@@ -474,7 +474,7 @@ var
 begin
   FileName := TestsFile(TPath.Combine('Common', TPath.Combine('Editing',
     'Atlas.Common.Editing.CodeActions.TryFinallyGolden.pas')));
-  Assert.IsTrue(FileName <> '', 'Golden-Datei nicht gefunden');
+  Assert.AreNotEqual('', FileName, 'Golden-Datei nicht gefunden');
   Golden := TFile.ReadAllText(FileName, TEncoding.UTF8);
   if (Golden <> '') and (Golden[1] = #$FEFF) then
   begin

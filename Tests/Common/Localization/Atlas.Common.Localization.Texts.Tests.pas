@@ -86,13 +86,13 @@ var
   mLanguage: TTextLanguage;
 begin
   Assert.IsTrue(TAtlasLocale.TryParse('de', mLanguage));
-  Assert.IsTrue(mLanguage = TTextLanguage.German);
+  Assert.AreEqual<TTextLanguage>(TTextLanguage.German, mLanguage);
   Assert.IsTrue(TAtlasLocale.TryParse(' DE-at ', mLanguage));
-  Assert.IsTrue(mLanguage = TTextLanguage.German);
+  Assert.AreEqual<TTextLanguage>(TTextLanguage.German, mLanguage);
   Assert.IsTrue(TAtlasLocale.TryParse('de_CH', mLanguage));
-  Assert.IsTrue(mLanguage = TTextLanguage.German);
+  Assert.AreEqual<TTextLanguage>(TTextLanguage.German, mLanguage);
   Assert.IsTrue(TAtlasLocale.TryParse('en-US', mLanguage));
-  Assert.IsTrue(mLanguage = TTextLanguage.English);
+  Assert.AreEqual<TTextLanguage>(TTextLanguage.English, mLanguage);
   Assert.AreEqual('de', TAtlasLocale.Code(TTextLanguage.German));
   Assert.AreEqual('en', TAtlasLocale.Code(TTextLanguage.English));
 end;
@@ -108,11 +108,11 @@ end;
 
 procedure TLocalizationTextsTests.ResolveOrder;
 begin
-  Assert.IsTrue(TAtlasLocale.Resolve('de', 'en-US') = TTextLanguage.German);
-  Assert.IsTrue(TAtlasLocale.Resolve('en', 'de') = TTextLanguage.English);
-  Assert.IsTrue(TAtlasLocale.Resolve('', 'de-DE') = TTextLanguage.German);
-  Assert.IsTrue(TAtlasLocale.Resolve('', 'ja') = TTextLanguage.English);
-  Assert.IsTrue(TAtlasLocale.Resolve('', '') = TTextLanguage.English);
+  Assert.AreEqual<TTextLanguage>(TTextLanguage.German, TAtlasLocale.Resolve('de', 'en-US'));
+  Assert.AreEqual<TTextLanguage>(TTextLanguage.English, TAtlasLocale.Resolve('en', 'de'));
+  Assert.AreEqual<TTextLanguage>(TTextLanguage.German, TAtlasLocale.Resolve('', 'de-DE'));
+  Assert.AreEqual<TTextLanguage>(TTextLanguage.English, TAtlasLocale.Resolve('', 'ja'));
+  Assert.AreEqual<TTextLanguage>(TTextLanguage.English, TAtlasLocale.Resolve('', ''));
 end;
 
 procedure TLocalizationTextsTests.PlaceholdersFollowFormat;
