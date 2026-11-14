@@ -165,9 +165,9 @@ var
   mContent: TBytes;
   mLines: TArray<TAtlasVcsBlameLine>;
 begin
-  Assert.IsTrue(AVcs.FileAt(TPath.Combine(AFolder, 'A.pas'), '', mContent) = TAtlasVcsOutcome.Ok);
+  Assert.AreEqual<TAtlasVcsOutcome>(TAtlasVcsOutcome.Ok, AVcs.FileAt(TPath.Combine(AFolder, 'A.pas'), '', mContent));
   Assert.AreEqual('unit A;'#10'end.'#10, TEncoding.UTF8.GetString(mContent), AMessage);
-  Assert.IsTrue(AVcs.Blame(TPath.Combine(AFolder, 'A.pas'), mLines) = TAtlasVcsOutcome.Ok);
+  Assert.AreEqual<TAtlasVcsOutcome>(TAtlasVcsOutcome.Ok, AVcs.Blame(TPath.Combine(AFolder, 'A.pas'), mLines));
   Assert.AreEqual(3, Integer(Length(mLines)));
   Assert.AreEqual(ARevision, mLines[0].Revision);
   Assert.IsTrue(mLines[2].Uncommitted);
@@ -183,14 +183,14 @@ begin
   TFile.AppendAllText(TPath.Combine(AFolder, 'A.pas'), '// neu'#10, TEncoding.ASCII);
   TFile.WriteAllText(TPath.Combine(AFolder, 'src\Neu Datei.pas'), 'unit Neu;'#10, TEncoding.ASCII);
   TFile.Delete(TPath.Combine(AFolder, 'B.pas'));
-  Assert.IsTrue(AVcs.Changes(mChanges) = TAtlasVcsOutcome.Ok);
+  Assert.AreEqual<TAtlasVcsOutcome>(TAtlasVcsOutcome.Ok, AVcs.Changes(mChanges));
   Assert.AreEqual(3, Integer(Length(mChanges)));
   Assert.IsTrue(Find(mChanges, TPath.Combine(AFolder, 'A.pas'), mChange));
-  Assert.IsTrue(mChange.Kind = TAtlasVcsChangeKind.Modified);
+  Assert.AreEqual<TAtlasVcsChangeKind>(TAtlasVcsChangeKind.Modified, mChange.Kind);
   Assert.IsTrue(Find(mChanges, TPath.Combine(AFolder, 'src\Neu Datei.pas'), mChange), 'neue Datei im Unterordner');
-  Assert.IsTrue(mChange.Kind = TAtlasVcsChangeKind.Untracked);
+  Assert.AreEqual<TAtlasVcsChangeKind>(TAtlasVcsChangeKind.Untracked, mChange.Kind);
   Assert.IsTrue(Find(mChanges, TPath.Combine(AFolder, 'B.pas'), mChange));
-  Assert.IsTrue(mChange.Kind = TAtlasVcsChangeKind.Deleted);
+  Assert.AreEqual<TAtlasVcsChangeKind>(TAtlasVcsChangeKind.Deleted, mChange.Kind);
 end;
 
 /// <summary>Die Wache meldet git checkout -b als Branch- und einen Commit als Revisionswechsel.</summary>
@@ -201,12 +201,12 @@ var
 begin
   mWatch := TAtlasVcsWatch.Create(AVcs);
   try
-    Assert.IsTrue(mWatch.Check = TAtlasVcsSwitch.None);
+    Assert.AreEqual<TAtlasVcsSwitch>(TAtlasVcsSwitch.None, mWatch.Check);
     Exec(ARunner, AGitExe, ['checkout', '-q', '-b', 'feature/x'], AFolder);
-    Assert.IsTrue(mWatch.Check = TAtlasVcsSwitch.Branch, 'git checkout -b');
+    Assert.AreEqual<TAtlasVcsSwitch>(TAtlasVcsSwitch.Branch, mWatch.Check, 'git checkout -b');
     Assert.AreEqual('feature/x', mWatch.Head.Branch);
     Exec(ARunner, AGitExe, ['commit', '-q', '-a', '-m', 'Zweiter Stand'], AFolder);
-    Assert.IsTrue(mWatch.Check = TAtlasVcsSwitch.Revision, 'Commit');
+    Assert.AreEqual<TAtlasVcsSwitch>(TAtlasVcsSwitch.Revision, mWatch.Check, 'Commit');
   finally
     mWatch.Free;
   end;
@@ -238,12 +238,12 @@ begin
     TDirectory.CreateDirectory(TPath.Combine(Folder, 'src'));
 
     Vcs := TAtlasVersionControl.Open(TPath.Combine(Folder, 'src'), TAtlasVcsProvider.Auto, Runner);
-    Assert.IsTrue(Vcs.Kind = TAtlasVcsKind.Git);
+    Assert.AreEqual<TAtlasVcsKind>(TAtlasVcsKind.Git, Vcs.Kind);
     Assert.AreEqual(ExcludeTrailingPathDelimiter(Folder), Vcs.WorkingCopy.Root);
-    Assert.IsTrue(Vcs.Head(Head) = TAtlasVcsOutcome.Ok);
+    Assert.AreEqual<TAtlasVcsOutcome>(TAtlasVcsOutcome.Ok, Vcs.Head(Head));
     Assert.AreEqual('main', Head.Branch);
     Assert.AreEqual(Commit, Head.Revision);
-    Assert.IsTrue(Vcs.Changes(Changes) = TAtlasVcsOutcome.Ok);
+    Assert.AreEqual<TAtlasVcsOutcome>(TAtlasVcsOutcome.Ok, Vcs.Changes(Changes));
     Assert.AreEqual(0, Integer(Length(Changes)), 'frisch übernommen');
 
     AssertGitChanges(Vcs, Folder);
@@ -297,12 +297,12 @@ var
 begin
   TFile.AppendAllText(TPath.Combine(AWorkingCopy, 'A.pas'), '// neu'#10, TEncoding.ASCII);
   TFile.WriteAllText(TPath.Combine(AWorkingCopy, 'Neu.pas'), 'unit Neu;'#10, TEncoding.ASCII);
-  Assert.IsTrue(AVcs.Changes(mChanges) = TAtlasVcsOutcome.Ok);
+  Assert.AreEqual<TAtlasVcsOutcome>(TAtlasVcsOutcome.Ok, AVcs.Changes(mChanges));
   Assert.AreEqual(2, Integer(Length(mChanges)));
   Assert.IsTrue(Find(mChanges, TPath.Combine(AWorkingCopy, 'A.pas'), mChange));
-  Assert.IsTrue(mChange.Kind = TAtlasVcsChangeKind.Modified);
+  Assert.AreEqual<TAtlasVcsChangeKind>(TAtlasVcsChangeKind.Modified, mChange.Kind);
   Assert.IsTrue(Find(mChanges, TPath.Combine(AWorkingCopy, 'Neu.pas'), mChange));
-  Assert.IsTrue(mChange.Kind = TAtlasVcsChangeKind.Untracked);
+  Assert.AreEqual<TAtlasVcsChangeKind>(TAtlasVcsChangeKind.Untracked, mChange.Kind);
 end;
 
 /// <summary>Die Wache meldet svn switch auf branches/x als Branchwechsel.</summary>
@@ -313,12 +313,12 @@ var
 begin
   mWatch := TAtlasVcsWatch.Create(AVcs);
   try
-    Assert.IsTrue(mWatch.Check = TAtlasVcsSwitch.None);
+    Assert.AreEqual<TAtlasVcsSwitch>(TAtlasVcsSwitch.None, mWatch.Check);
     Exec(ARunner, ASvnExe, ['revert', '-q', 'A.pas'], AWorkingCopy);
     Exec(ARunner, ASvnExe, ['copy', '-q', '-m', 'Branch', AUrl + '/trunk', AUrl + '/branches/x', '--non-interactive'],
       AWorkingCopy);
     Exec(ARunner, ASvnExe, ['switch', '-q', AUrl + '/branches/x', '--non-interactive'], AWorkingCopy);
-    Assert.IsTrue(mWatch.Check = TAtlasVcsSwitch.Branch, 'svn switch');
+    Assert.AreEqual<TAtlasVcsSwitch>(TAtlasVcsSwitch.Branch, mWatch.Check, 'svn switch');
     Assert.AreEqual('branches/x', mWatch.Head.Branch);
   finally
     mWatch.Free;
@@ -346,9 +346,9 @@ begin
     Url := CreateSvnCheckout(Runner, SvnExe, SvnAdmin, Folder, WorkingCopy);
 
     Vcs := TAtlasVersionControl.Open(WorkingCopy, TAtlasVcsProvider.Auto, Runner);
-    Assert.IsTrue(Vcs.Kind = TAtlasVcsKind.Svn);
+    Assert.AreEqual<TAtlasVcsKind>(TAtlasVcsKind.Svn, Vcs.Kind);
     Assert.IsTrue(SameText(ExcludeTrailingPathDelimiter(WorkingCopy), Vcs.WorkingCopy.Root));
-    Assert.IsTrue(Vcs.Head(Head) = TAtlasVcsOutcome.Ok);
+    Assert.AreEqual<TAtlasVcsOutcome>(TAtlasVcsOutcome.Ok, Vcs.Head(Head));
     Assert.AreEqual('trunk', Head.Branch);
     Assert.AreEqual('2', Head.Revision, 'Ablage = r1, erster Stand = r2');
 
@@ -398,17 +398,17 @@ var
   mBranches: TArray<TAtlasVcsBranch>;
   mCommits: TArray<TAtlasVcsCommit>;
 begin
-  Assert.IsTrue(ALocal.Remotes(mRemotes) = TAtlasVcsOutcome.Ok);
+  Assert.AreEqual<TAtlasVcsOutcome>(TAtlasVcsOutcome.Ok, ALocal.Remotes(mRemotes));
   Assert.AreEqual(1, Integer(Length(mRemotes)));
   Assert.AreEqual('origin', mRemotes[0]);
-  Assert.IsTrue(ALocal.Branches(mBranches) = TAtlasVcsOutcome.Ok);
+  Assert.AreEqual<TAtlasVcsOutcome>(TAtlasVcsOutcome.Ok, ALocal.Branches(mBranches));
   Assert.AreEqual(1, Integer(Length(mBranches)));
   Assert.AreEqual('main', mBranches[0].Name);
   Assert.AreEqual('origin/main', mBranches[0].Upstream);
   Assert.AreEqual(3, mBranches[0].Ahead);
   Assert.AreEqual(0, mBranches[0].Behind);
   Assert.IsTrue(mBranches[0].Current);
-  Assert.IsTrue(ALocal.Outgoing('main', 'origin/main', 10, mCommits) = TAtlasVcsOutcome.Ok);
+  Assert.AreEqual<TAtlasVcsOutcome>(TAtlasVcsOutcome.Ok, ALocal.Outgoing('main', 'origin/main', 10, mCommits));
   Assert.AreEqual(3, Integer(Length(mCommits)));
   Assert.AreEqual('Vier', mCommits[0].Summary, 'neuester zuerst');
 end;
@@ -420,14 +420,14 @@ var
   mChanges: TArray<TAtlasVcsChange>;
   mChange: TAtlasVcsChange;
 begin
-  Assert.IsTrue(ALocal.Stashes(mStashes) = TAtlasVcsOutcome.Ok);
+  Assert.AreEqual<TAtlasVcsOutcome>(TAtlasVcsOutcome.Ok, ALocal.Stashes(mStashes));
   Assert.AreEqual(1, Integer(Length(mStashes)));
   Assert.AreEqual('Versuch', mStashes[0].Message);
   Assert.AreEqual('main', mStashes[0].Branch);
-  Assert.IsTrue(ALocal.ChangesIn(mStashes[0].Hash, mChanges) = TAtlasVcsOutcome.Ok);
+  Assert.AreEqual<TAtlasVcsOutcome>(TAtlasVcsOutcome.Ok, ALocal.ChangesIn(mStashes[0].Hash, mChanges));
   Assert.AreEqual(1, Integer(Length(mChanges)));
   Assert.IsTrue(Find(mChanges, TPath.Combine(AFolder, 'A.pas'), mChange), 'Datei im Stash');
-  Assert.IsTrue(mChange.Kind = TAtlasVcsChangeKind.Modified);
+  Assert.AreEqual<TAtlasVcsChangeKind>(TAtlasVcsChangeKind.Modified, mChange.Kind);
 end;
 
 /// <summary>Was die Willkommensseite aus PrepareLocalWork als nicht gesichert zeigt.</summary>
@@ -466,15 +466,15 @@ var
   mPlans: TArray<TAtlasUnsavedPush>;
 begin
   Assert.IsTrue(AState.Find(AKind, mItem));
-  Assert.IsTrue(TAtlasWelcomeUnsaved.PushPlans(ALocal, mItem, mPlans) = TAtlasVcsOutcome.Ok);
+  Assert.AreEqual<TAtlasVcsOutcome>(TAtlasVcsOutcome.Ok, TAtlasWelcomeUnsaved.PushPlans(ALocal, mItem, mPlans));
   Assert.AreEqual(1, Integer(Length(mPlans)));
   Assert.AreEqual(ATarget, mPlans[0].Target);
   if AKind = TAtlasUnsavedKind.NoUpstream then
   begin
     Assert.IsTrue(mPlans[0].SetUpstream, 'neuer Branch mit --set-upstream');
   end;
-  Assert.IsTrue(ALocal.Push(mPlans[0].Branch, mPlans[0].Remote, mPlans[0].RemoteRef, mPlans[0].SetUpstream) =
-    TAtlasVcsOutcome.Ok);
+  Assert.AreEqual<TAtlasVcsOutcome>(TAtlasVcsOutcome.Ok,
+    ALocal.Push(mPlans[0].Branch, mPlans[0].Remote, mPlans[0].RemoteRef, mPlans[0].SetUpstream));
 end;
 
 /// <summary>Nach beiden Pushes: beide Branches verfolgt, nichts mehr voraus.</summary>
@@ -483,7 +483,7 @@ var
   mBranches: TArray<TAtlasVcsBranch>;
   mName: string;
 begin
-  Assert.IsTrue(ALocal.Branches(mBranches) = TAtlasVcsOutcome.Ok);
+  Assert.AreEqual<TAtlasVcsOutcome>(TAtlasVcsOutcome.Ok, ALocal.Branches(mBranches));
   Assert.AreEqual(2, Integer(Length(mBranches)));
   for mName in TArray<string>.Create('feature/lokal', 'main') do
   begin
@@ -525,7 +525,7 @@ begin
     // Branch ohne Upstream mit einem Commit, der auf keinem Remote liegt.
     Exec(Runner, GitExe, ['checkout', '-q', '-b', 'feature/lokal'], Folder);
     Exec(Runner, GitExe, ['commit', '-q', '--allow-empty', '-m', 'Nur lokal'], Folder);
-    Assert.IsTrue(Local.Outgoing('feature/lokal', '', 10, Commits) = TAtlasVcsOutcome.Ok);
+    Assert.AreEqual<TAtlasVcsOutcome>(TAtlasVcsOutcome.Ok, Local.Outgoing('feature/lokal', '', 10, Commits));
     Assert.AreEqual(4, Integer(Length(Commits)), 'drei von main und einer eigener, keiner auf origin');
     Assert.IsTrue(TAtlasWelcomeUnsaved.Probe(Vcs, Folder, NowUtc, nil, nil, State));
     Assert.IsTrue(State.Find(TAtlasUnsavedKind.NoUpstream, Item));
@@ -536,7 +536,7 @@ begin
     PushPlanned(Local, State, TAtlasUnsavedKind.Commits, 'origin/main');
     PushPlanned(Local, State, TAtlasUnsavedKind.NoUpstream, 'origin/feature/lokal');
     AssertAllPushed(Local);
-    Assert.IsTrue(Local.Push('-x', 'origin', 'refs/heads/main', False) = TAtlasVcsOutcome.Failed,
+    Assert.AreEqual<TAtlasVcsOutcome>(TAtlasVcsOutcome.Failed, Local.Push('-x', 'origin', 'refs/heads/main', False),
       'keine Optionen als Branch');
   finally
     Vcs := nil;
@@ -652,16 +652,16 @@ begin
   Ping := TPath.Combine(GetEnvironmentVariable('SystemRoot'), 'System32\PING.EXE');
   Runner := TAtlasVcsProcessRunner.Create;
   Answer := Runner.Run(Ping, ['-n', '1', '127.0.0.1'], '', 5000);
-  Assert.IsTrue(Answer.Outcome = TAtlasVcsOutcome.MainThread, 'Hauptthread abgelehnt');
+  Assert.AreEqual<TAtlasVcsOutcome>(TAtlasVcsOutcome.MainThread, Answer.Outcome, 'Hauptthread abgelehnt');
   Runner := TAtlasVcsProcessRunner.Create(True, nil);
   Answer := Runner.Run(TPath.Combine(TPath.GetTempPath, 'gibt-es-nicht.exe'), [], '', 5000);
-  Assert.IsTrue(Answer.Outcome = TAtlasVcsOutcome.ToolMissing);
+  Assert.AreEqual<TAtlasVcsOutcome>(TAtlasVcsOutcome.ToolMissing, Answer.Outcome);
   Started := TThread.GetTickCount64;
   Answer := Runner.Run(Ping, ['-n', '30', '127.0.0.1'], '', 300);
-  Assert.IsTrue(Answer.Outcome = TAtlasVcsOutcome.TimedOut, 'Zeitlimit');
+  Assert.AreEqual<TAtlasVcsOutcome>(TAtlasVcsOutcome.TimedOut, Answer.Outcome, 'Zeitlimit');
   Assert.IsTrue(TThread.GetTickCount64 - Started < 5000, 'Prozess beendet, nicht abgewartet');
   Answer := Runner.Run(Ping, ['-n', '1', '127.0.0.1'], '', 10000);
-  Assert.IsTrue(Answer.Outcome = TAtlasVcsOutcome.Ok);
+  Assert.AreEqual<TAtlasVcsOutcome>(TAtlasVcsOutcome.Ok, Answer.Outcome);
   Assert.IsTrue(Length(Answer.Output) > 0, 'stdout gelesen');
   Assert.AreEqual('"a b"', TAtlasVcsProcessRunner.QuoteArgument('a b'));
   Assert.AreEqual('"x\"y"', TAtlasVcsProcessRunner.QuoteArgument('x"y'));
@@ -677,7 +677,7 @@ begin
   // Der Läufer der IDE: lehnt den Hauptthread ab, im Worker läuft er.
   mRunner := TAtlasVcsProcessRunner.Create;
   Result := TAtlasVersionControl.ForWorkingCopy(Default(TAtlasVcsWorkingCopy), mRunner, AGitExe, 5000);
-  Assert.IsTrue(Result.Kind = TAtlasVcsKind.None, 'ohne Arbeitskopie die leere Umsetzung');
+  Assert.AreEqual<TAtlasVcsKind>(TAtlasVcsKind.None, Result.Kind, 'ohne Arbeitskopie die leere Umsetzung');
   // Arbeitskopie des Repositorys, in dem die Tests laufen; ohne: irgendein Ordner (dann NoWorkingCopy).
   Result := TAtlasVersionControl.Open(ExtractFilePath(ParamStr(0)), TAtlasVcsProvider.Auto, mRunner);
 end;
@@ -688,8 +688,8 @@ procedure AssertRepositoryHead(const AVcs: IAtlasVersionControl; AOutcome: TAtla
 begin
   if AVcs.Kind = TAtlasVcsKind.Git then
   begin
-    Assert.IsTrue(AOutcome = TAtlasVcsOutcome.Ok);
-    Assert.IsTrue(AHead.Revision <> '', 'Commit des Repositorys');
+    Assert.AreEqual<TAtlasVcsOutcome>(TAtlasVcsOutcome.Ok, AOutcome);
+    Assert.AreNotEqual('', AHead.Revision, 'Commit des Repositorys');
   end;
 end;
 
@@ -731,7 +731,7 @@ begin
     end;
     Assert.IsTrue(Done, 'Ergebnis zugestellt');
     Assert.IsTrue(InMain, 'im Hauptthread');
-    Assert.IsTrue(Outcome <> TAtlasVcsOutcome.MainThread, 'im Hintergrund gelaufen');
+    Assert.AreNotEqual<TAtlasVcsOutcome>(TAtlasVcsOutcome.MainThread, Outcome, 'im Hintergrund gelaufen');
     AssertRepositoryHead(Vcs, Outcome, Head);
     Assert.AreEqual(0, Worker.Pending);
     // Nach Stop kommt nichts mehr an.

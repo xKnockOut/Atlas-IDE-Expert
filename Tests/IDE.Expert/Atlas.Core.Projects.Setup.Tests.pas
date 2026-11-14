@@ -163,11 +163,11 @@ begin
   for Template := Low(TAtlasSetupTemplate) to High(TAtlasSetupTemplate) do
   begin
     Assert.IsTrue(TAtlasProjectSetups.TemplateOf(UpperCase(TAtlasProjectSetups.TemplateId(Template)), Read));
-    Assert.IsTrue(Read = Template);
+    Assert.AreEqual<TAtlasSetupTemplate>(Template, Read);
   end;
   Assert.AreEqual('atlas-legacy.json', TAtlasProjectSetups.TemplateFile(TAtlasSetupTemplate.Legacy));
   Assert.IsFalse(TAtlasProjectSetups.TemplateOf('gibtsnicht', Read));
-  Assert.IsTrue(Read = TAtlasSetupTemplate.Existing, 'Vorgabe: Bestehendes Projekt');
+  Assert.AreEqual<TAtlasSetupTemplate>(TAtlasSetupTemplate.Existing, Read, 'Vorgabe: Bestehendes Projekt');
 end;
 
 procedure TAtlasProjectSetupTests.FindsTemplateFolderBesideOrAbovePlugin;
@@ -255,19 +255,19 @@ begin
   // Neues Projekt: Schritt 1 erledigt (die Karte erscheint), alles andere offen.
   Steps := TAtlasProjectSetups.OpenSteps(Facts('C:\P\App.dproj', False, False, False, False));
   Assert.AreEqual(3, Integer(Length(Steps)));
-  Assert.IsTrue(Steps[0] = TAtlasSetupStep.Config);
+  Assert.AreEqual<TAtlasSetupStep>(TAtlasSetupStep.Config, Steps[0]);
   Assert.IsTrue(TAtlasProjectSetups.StepDone(TAtlasSetupStep.Found, Facts('C:\P\App.dproj', False, False, False,
     False)));
   Assert.IsTrue(TAtlasProjectSetups.NeedsCard(Facts('C:\P\App.dproj', False, False, False, False)));
   // atlas.json da, Baseline fehlt: Karte bleibt.
   Steps := TAtlasProjectSetups.OpenSteps(Facts('C:\P\App.dproj', True, False, False, False));
   Assert.AreEqual(2, Integer(Length(Steps)));
-  Assert.IsTrue(Steps[0] = TAtlasSetupStep.Baseline);
+  Assert.AreEqual<TAtlasSetupStep>(TAtlasSetupStep.Baseline, Steps[0]);
   Assert.IsTrue(TAtlasProjectSetups.NeedsCard(Facts('C:\P\App.dproj', True, False, False, False)));
   // Prüfung lief, fand aber etwas: Schritt 4 bleibt offen.
   Steps := TAtlasProjectSetups.OpenSteps(Facts('C:\P\App.dproj', True, True, True, False));
   Assert.AreEqual(1, Integer(Length(Steps)));
-  Assert.IsTrue(Steps[0] = TAtlasSetupStep.Paths);
+  Assert.AreEqual<TAtlasSetupStep>(TAtlasSetupStep.Paths, Steps[0]);
   // Ohne Projekt keine Karte.
   Assert.IsFalse(TAtlasProjectSetups.NeedsCard(Facts('', False, False, False, False)));
   Assert.IsFalse(TAtlasProjectSetups.StepDone(TAtlasSetupStep.Found, Facts('', False, False, False, False)));

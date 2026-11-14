@@ -75,7 +75,7 @@ begin
   Assert.AreEqual('git', mRows[1].Provider);
   Assert.AreEqual('develop', mRows[1].MainBranch);
   Assert.IsFalse(mRows[1].ReadOnly);
-  Assert.IsTrue(mRows[0].Kind = TAtlasProjectMatch.Folder);
+  Assert.AreEqual<TAtlasProjectMatch>(TAtlasProjectMatch.Folder, mRows[0].Kind);
 end;
 
 procedure TAtlasVcsProjectsTests.ReadSkipsEmptyDuplicateAndUnknown;
@@ -99,21 +99,21 @@ begin
   mRows := [Row('C:\Projekte', 'off', ''), Row(cKasseFolder, 'svn', 'trunk'), Row(cKasseGroup, 'git', 'develop'),
     Row(cKasseProject, 'git', 'main')];
   mResult := TAtlasVcsProjects.Resolve('', '', mRows, TAtlasVcsProvider.Auto, cKasseProject, cKasseGroup);
-  Assert.IsTrue(mResult.Match = TAtlasProjectMatch.Project);
+  Assert.AreEqual<TAtlasProjectMatch>(TAtlasProjectMatch.Project, mResult.Match);
   Assert.AreEqual('main', mResult.MainBranch);
-  Assert.IsTrue(mResult.Source = TAtlasVcsProviderSource.Project);
+  Assert.AreEqual<TAtlasVcsProviderSource>(TAtlasVcsProviderSource.Project, mResult.Source);
   Assert.AreEqual(cKasseProject, mResult.SourceMatch);
   mResult := TAtlasVcsProjects.Resolve('', '', mRows, TAtlasVcsProvider.Auto, 'C:\Projekte\Kasse\Tool\T.dproj',
     cKasseGroup);
-  Assert.IsTrue(mResult.Match = TAtlasProjectMatch.Group);
-  Assert.IsTrue(mResult.Provider = TAtlasVcsProvider.Git);
+  Assert.AreEqual<TAtlasProjectMatch>(TAtlasProjectMatch.Group, mResult.Match);
+  Assert.AreEqual<TAtlasVcsProvider>(TAtlasVcsProvider.Git, mResult.Provider);
   mResult := TAtlasVcsProjects.Resolve('', '', mRows, TAtlasVcsProvider.Auto, 'C:\Projekte\Kasse\Tool\T.dproj', '');
-  Assert.IsTrue(mResult.Match = TAtlasProjectMatch.Folder);
-  Assert.IsTrue(mResult.Provider = TAtlasVcsProvider.Svn);
+  Assert.AreEqual<TAtlasProjectMatch>(TAtlasProjectMatch.Folder, mResult.Match);
+  Assert.AreEqual<TAtlasVcsProvider>(TAtlasVcsProvider.Svn, mResult.Provider);
   Assert.AreEqual(1, mResult.Index);
   mResult := TAtlasVcsProjects.Resolve('', '', mRows, TAtlasVcsProvider.Svn, 'D:\Anders\A.dproj', '');
-  Assert.IsTrue(mResult.Provider = TAtlasVcsProvider.Svn, 'global');
-  Assert.IsTrue(mResult.Source = TAtlasVcsProviderSource.Setting);
+  Assert.AreEqual<TAtlasVcsProvider>(TAtlasVcsProvider.Svn, mResult.Provider, 'global');
+  Assert.AreEqual<TAtlasVcsProviderSource>(TAtlasVcsProviderSource.Setting, mResult.Source);
   Assert.AreEqual('', mResult.MainBranch);
   Assert.AreEqual(-1, mResult.Index);
 end;
@@ -123,12 +123,15 @@ var
   mRows: TArray<TAtlasVcsProjectMapping>;
 begin
   mRows := [Row(cKasseFolder + '\', 'svn', ''), Row(cLibFolder + '\', 'git', '')];
-  Assert.IsTrue(TAtlasVcsProjects.ResolveFolder('', '', mRows, TAtlasVcsProvider.Auto,
-    cLibFolder + '\Source').Provider = TAtlasVcsProvider.Git);
-  Assert.IsTrue(TAtlasVcsProjects.ResolveFolder('', '', mRows, TAtlasVcsProvider.Auto,
-    'C:\Projekte\Kasse\App').Provider = TAtlasVcsProvider.Svn);
-  Assert.IsTrue(TAtlasVcsProjects.ResolveFolder('', '', mRows, TAtlasVcsProvider.Auto,
-    'C:\Projekte\Anders').Provider = TAtlasVcsProvider.Auto);
+  Assert.AreEqual<TAtlasVcsProvider>(TAtlasVcsProvider.Git,
+    TAtlasVcsProjects.ResolveFolder('', '', mRows, TAtlasVcsProvider.Auto,
+    cLibFolder + '\Source').Provider);
+  Assert.AreEqual<TAtlasVcsProvider>(TAtlasVcsProvider.Svn,
+    TAtlasVcsProjects.ResolveFolder('', '', mRows, TAtlasVcsProvider.Auto,
+    'C:\Projekte\Kasse\App').Provider);
+  Assert.AreEqual<TAtlasVcsProvider>(TAtlasVcsProvider.Auto,
+    TAtlasVcsProjects.ResolveFolder('', '', mRows, TAtlasVcsProvider.Auto,
+    'C:\Projekte\Anders').Provider);
 end;
 
 procedure TAtlasVcsProjectsTests.OffRowDisablesNetworkShare;
@@ -137,7 +140,7 @@ var
 begin
   mResult := TAtlasVcsProjects.ResolveFolder('', '', [Row('\\NAS\Projekte', 'off', '')], TAtlasVcsProvider.Auto,
     '\\nas\projekte\Alt\Source');
-  Assert.IsTrue(mResult.Provider = TAtlasVcsProvider.Off);
+  Assert.AreEqual<TAtlasVcsProvider>(TAtlasVcsProvider.Off, mResult.Provider);
   Assert.AreEqual('\\NAS\Projekte', mResult.SourceMatch);
 end;
 
@@ -151,12 +154,12 @@ begin
   // Nur mainBranch in der .atlas: Hauptbranch aus der Datei, Art aus der Zeile.
   mResult := TAtlasVcsProjects.Resolve('', 'develop', mRows, TAtlasVcsProvider.Auto, cKasseProject, '');
   Assert.AreEqual('develop', mResult.MainBranch);
-  Assert.IsTrue(mResult.Provider = TAtlasVcsProvider.Svn);
-  Assert.IsTrue(mResult.Source = TAtlasVcsProviderSource.Project);
-  Assert.IsTrue(mResult.Match = TAtlasProjectMatch.TeamFile);
+  Assert.AreEqual<TAtlasVcsProvider>(TAtlasVcsProvider.Svn, mResult.Provider);
+  Assert.AreEqual<TAtlasVcsProviderSource>(TAtlasVcsProviderSource.Project, mResult.Source);
+  Assert.AreEqual<TAtlasProjectMatch>(TAtlasProjectMatch.TeamFile, mResult.Match);
   mResult := TAtlasVcsProjects.Resolve('git', '', mRows, TAtlasVcsProvider.Auto, cKasseProject, '');
-  Assert.IsTrue(mResult.Provider = TAtlasVcsProvider.Git);
-  Assert.IsTrue(mResult.Source = TAtlasVcsProviderSource.TeamFile);
+  Assert.AreEqual<TAtlasVcsProvider>(TAtlasVcsProvider.Git, mResult.Provider);
+  Assert.AreEqual<TAtlasVcsProviderSource>(TAtlasVcsProviderSource.TeamFile, mResult.Source);
   Assert.AreEqual('trunk', mResult.MainBranch, 'Hauptbranch der Zeile, wenn die .atlas keinen setzt');
   Assert.IsTrue(TAtlasVcsProjects.Covered(mRows[0], True, cKasseProject, ''));
   Assert.IsFalse(TAtlasVcsProjects.Covered(mRows[0], False, cKasseProject, ''));
@@ -174,12 +177,12 @@ var
   mResult: TAtlasVcsProjectResolution;
 begin
   mResult := TAtlasVcsProjects.Resolve('', '', nil, TAtlasVcsProvider.Git, cKasseProject, cKasseGroup);
-  Assert.IsTrue(mResult.Provider = TAtlasVcsProvider.Git);
-  Assert.IsTrue(mResult.Source = TAtlasVcsProviderSource.Setting);
-  Assert.IsTrue(mResult.Match = TAtlasProjectMatch.None);
+  Assert.AreEqual<TAtlasVcsProvider>(TAtlasVcsProvider.Git, mResult.Provider);
+  Assert.AreEqual<TAtlasVcsProviderSource>(TAtlasVcsProviderSource.Setting, mResult.Source);
+  Assert.AreEqual<TAtlasProjectMatch>(TAtlasProjectMatch.None, mResult.Match);
   Assert.AreEqual('', mResult.MainBranch, 'raten wie bisher');
   mResult := TAtlasVcsProjects.ResolveFolder('', '', nil, TAtlasVcsProvider.Off, cKasseFolder);
-  Assert.IsTrue(mResult.Provider = TAtlasVcsProvider.Off);
+  Assert.AreEqual<TAtlasVcsProvider>(TAtlasVcsProvider.Off, mResult.Provider);
 end;
 
 initialization

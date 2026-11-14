@@ -62,10 +62,10 @@ end;
 
 procedure TAtlasProjectMatchingTests.KindFollowsExtension;
 begin
-  Assert.IsTrue(TAtlasProjectMatching.KindOf(cKasseProject) = TAtlasProjectMatch.Project);
-  Assert.IsTrue(TAtlasProjectMatching.KindOf('C:\P\Kasse.GROUPPROJ') = TAtlasProjectMatch.Group);
-  Assert.IsTrue(TAtlasProjectMatching.KindOf(cKasseFolder + '\') = TAtlasProjectMatch.Folder);
-  Assert.IsTrue(TAtlasProjectMatching.KindOf('  ') = TAtlasProjectMatch.None);
+  Assert.AreEqual<TAtlasProjectMatch>(TAtlasProjectMatch.Project, TAtlasProjectMatching.KindOf(cKasseProject));
+  Assert.AreEqual<TAtlasProjectMatch>(TAtlasProjectMatch.Group, TAtlasProjectMatching.KindOf('C:\P\Kasse.GROUPPROJ'));
+  Assert.AreEqual<TAtlasProjectMatch>(TAtlasProjectMatch.Folder, TAtlasProjectMatching.KindOf(cKasseFolder + '\'));
+  Assert.AreEqual<TAtlasProjectMatch>(TAtlasProjectMatch.None, TAtlasProjectMatching.KindOf('  '));
   Assert.AreEqual('c:\projekte\kasse\app', TAtlasProjectMatching.FolderOf(cKasseProject));
   Assert.AreEqual('c:\projekte\kasse', TAtlasProjectMatching.FolderOf('C:/Projekte/Kasse/'));
 end;
@@ -75,10 +75,10 @@ begin
   Assert.AreEqual('c:\projekte\kasse', TAtlasProjectMatching.NormalizedPath(' C:/Projekte//Kasse\ '));
   Assert.AreEqual('\\server\freigabe\kasse', TAtlasProjectMatching.NormalizedPath('\\Server\Freigabe\\Kasse\'));
   Assert.AreEqual('c:', TAtlasProjectMatching.NormalizedPath('C:\'), 'Laufwerk ohne Trenner');
-  Assert.IsTrue(TAtlasProjectMatching.Matches('\\SERVER\freigabe', '\\server\Freigabe\Kasse\Kasse.dproj', '') =
-    TAtlasProjectMatch.Folder, 'UNC');
-  Assert.IsTrue(TAtlasProjectMatching.Matches('c:/projekte/kasse/app/KASSE.dproj', cKasseProject, '') =
-    TAtlasProjectMatch.Project);
+  Assert.AreEqual<TAtlasProjectMatch>(TAtlasProjectMatch.Folder,
+    TAtlasProjectMatching.Matches('\\SERVER\freigabe', '\\server\Freigabe\Kasse\Kasse.dproj', ''), 'UNC');
+  Assert.AreEqual<TAtlasProjectMatch>(TAtlasProjectMatch.Project,
+    TAtlasProjectMatching.Matches('c:/projekte/kasse/app/KASSE.dproj', cKasseProject, ''));
 end;
 
 procedure TAtlasProjectMatchingTests.ProjectBeforeGroupBeforeLongestFolder;
@@ -89,13 +89,13 @@ begin
   mRows := Rows(['C:\Projekte', cKasseFolder, cKasseGroup, cKasseProject]);
   mFound := TAtlasProjectMatching.Find(mRows, nil, cKasseProject, cKasseGroup);
   Assert.AreEqual(3, mFound.Index);
-  Assert.IsTrue(mFound.Match = TAtlasProjectMatch.Project);
+  Assert.AreEqual<TAtlasProjectMatch>(TAtlasProjectMatch.Project, mFound.Match);
   mFound := TAtlasProjectMatching.Find(mRows, nil, 'C:\Projekte\Kasse\Tool\Tool.dproj', cKasseGroup);
   Assert.AreEqual(2, mFound.Index, 'Gruppe vor Ordner');
-  Assert.IsTrue(mFound.Match = TAtlasProjectMatch.Group);
+  Assert.AreEqual<TAtlasProjectMatch>(TAtlasProjectMatch.Group, mFound.Match);
   mFound := TAtlasProjectMatching.Find(mRows, nil, 'C:\Projekte\Kasse\Tool\Tool.dproj', '');
   Assert.AreEqual(1, mFound.Index, 'längster Ordner ohne geöffnete Gruppe');
-  Assert.IsTrue(mFound.Match = TAtlasProjectMatch.Folder);
+  Assert.AreEqual<TAtlasProjectMatch>(TAtlasProjectMatch.Folder, mFound.Match);
   mFound := TAtlasProjectMatching.Find(mRows, nil, 'D:\Anders\A.dproj', '');
   Assert.IsFalse(mFound.Found);
   Assert.AreEqual(-1, mFound.Index);
@@ -129,7 +129,7 @@ begin
   Assert.AreEqual(1, mFound.Index, 'der Ordner selbst');
   mFound := TAtlasProjectMatching.FindForFolder(mRows, nil, 'C:\Projekte\Kasse\App');
   Assert.AreEqual(0, mFound.Index);
-  Assert.IsTrue(mFound.Match = TAtlasProjectMatch.Folder);
+  Assert.AreEqual<TAtlasProjectMatch>(TAtlasProjectMatch.Folder, mFound.Match);
   // Eine .dproj-Zeile gilt für ihren Ordner; die genauere Ordnerzeile darunter gewinnt trotzdem.
   mRows := Rows([cKasseGroup, cLibFolder]);
   Assert.AreEqual(0, TAtlasProjectMatching.FindForFolder(mRows, nil, 'C:\Projekte\Kasse\App').Index);
@@ -145,16 +145,16 @@ begin
   mFound := TAtlasProjectMatching.FindForFolder(Rows([cKasseFolder, cKasseGroup, 'C:\Projekte\Kasse\Kasse.dproj']),
     nil, cKasseFolder + '\Source');
   Assert.AreEqual(2, mFound.Index);
-  Assert.IsTrue(mFound.Match = TAtlasProjectMatch.Project);
+  Assert.AreEqual<TAtlasProjectMatch>(TAtlasProjectMatch.Project, mFound.Match);
   mFound := TAtlasProjectMatching.FindForFolder(Rows([cKasseFolder, cKasseGroup]), nil, cKasseFolder);
   Assert.AreEqual(1, mFound.Index);
-  Assert.IsTrue(mFound.Match = TAtlasProjectMatch.Group);
+  Assert.AreEqual<TAtlasProjectMatch>(TAtlasProjectMatch.Group, mFound.Match);
 end;
 
 procedure TAtlasProjectMatchingTests.FolderMatchesWholeFoldersOnly;
 begin
-  Assert.IsTrue(TAtlasProjectMatching.Matches(cKasseFolder, 'C:\Projekte\Kassenbuch\K.dproj', '') =
-    TAtlasProjectMatch.None);
+  Assert.AreEqual<TAtlasProjectMatch>(TAtlasProjectMatch.None,
+    TAtlasProjectMatching.Matches(cKasseFolder, 'C:\Projekte\Kassenbuch\K.dproj', ''));
   Assert.IsFalse(TAtlasProjectMatching.FindForFolder(Rows([cKasseFolder]), nil, 'C:\Projekte\Kassenbuch').Found);
 end;
 

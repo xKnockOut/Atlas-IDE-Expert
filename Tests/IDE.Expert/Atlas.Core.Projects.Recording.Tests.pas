@@ -181,7 +181,7 @@ begin
   Assert.AreEqual(12, Summary.Build.First.Line);
   Assert.AreEqual(3, Summary.Build.First.Column);
   Assert.AreEqual('E2003', Summary.Build.First.Code);
-  Assert.IsTrue(Summary.Build.At = Now_);
+  Assert.AreEqual<TDateTime>(Now_, Summary.Build.At);
   Assert.IsFalse(Summary.Check.Known, 'Build ist keine Prüfung');
   // Hintergrundprüfung (#548): nur "check", der Build bleibt.
   TAtlasProjectRecording.RecordCompile(Summary, [], TAtlasProjectCompileRun.Create(True, True, 'check', 'Debug', 'Win32'),
@@ -226,7 +226,7 @@ begin
   Assert.AreEqual(3, State.Changed);
   Assert.AreEqual(1, State.Ahead);
   Assert.AreEqual(2, State.Behind);
-  Assert.IsTrue(State.At = 46000);
+  Assert.AreEqual<TDateTime>(46000, State.At);
   // Änderungen nicht lesbar (Zeitlimit): Branch gilt, Anzahl unbekannt.
   Fake.FChangesOutcome := TAtlasVcsOutcome.TimedOut;
   Assert.IsTrue(TAtlasProjectRecording.Probe(Vcs, 46000, State));
@@ -376,7 +376,7 @@ begin
   TAtlasProjectRecording.RecordRules(Summary, 4, 46000);
   Assert.IsTrue(Summary.Rules.Known);
   Assert.AreEqual(4, Summary.Rules.NewHits);
-  Assert.IsTrue(Summary.Rules.At = 46000);
+  Assert.AreEqual<TDateTime>(46000, Summary.Rules.At);
   Found := False;
   for Pill in TAtlasWelcomeProjects.Pills(Entry(Summary)) do
   begin
@@ -392,7 +392,7 @@ begin
   Assert.IsTrue(Summary.Rules.Known);
   for Pill in TAtlasWelcomeProjects.Pills(Entry(Summary)) do
   begin
-    Assert.IsFalse(Pill.Kind = TAtlasProjectPillKind.Rules);
+    Assert.AreNotEqual<TAtlasProjectPillKind>(TAtlasProjectPillKind.Rules, Pill.Kind);
   end;
 end;
 

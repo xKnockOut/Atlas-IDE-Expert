@@ -258,13 +258,13 @@ begin
   State := TAtlasProjectBaselines.StateOf(Folder, Exists, ReadText);
   TAtlasProjectBaselines.Measured(Section, State, 2);
   Assert.IsTrue(Section.Known);
-  Assert.IsTrue(Section.At = 2);
+  Assert.AreEqual<TDateTime>(2, Section.At);
   Assert.IsTrue(Section.Exists);
   Assert.IsTrue(Section.Valid);
   Assert.AreEqual(5, Section.Entries);
   Assert.AreEqual(11, Section.Hits);
   Assert.AreEqual(8, Section.Orphaned);
-  Assert.IsTrue(Section.Updated = 1, 'ein Build ändert das letzte Aktualisieren nicht');
+  Assert.AreEqual<TDateTime>(1, Section.Updated, 'ein Build ändert das letzte Aktualisieren nicht');
   Assert.AreEqual(3, Section.Added);
   // Baseline gelöscht: bekannt, aber nicht vorhanden.
   Reset([]);
@@ -290,8 +290,8 @@ begin
   TAtlasProjectBaselines.Updated(Section, Update, State, 4);
   Assert.IsTrue(Section.Known);
   Assert.IsTrue(Section.Exists);
-  Assert.IsTrue(Section.At = 4);
-  Assert.IsTrue(Section.Updated = 4);
+  Assert.AreEqual<TDateTime>(4, Section.At);
+  Assert.AreEqual<TDateTime>(4, Section.Updated);
   Assert.AreEqual(2, Section.Added);
   Assert.AreEqual(9, Section.Removed);
   Assert.AreEqual(0, Section.Orphaned);

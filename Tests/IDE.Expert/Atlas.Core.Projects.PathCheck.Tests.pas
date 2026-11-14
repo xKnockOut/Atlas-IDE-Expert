@@ -314,15 +314,19 @@ end;
 
 procedure TAtlasPathCheckTests.EvaluatesExpressions;
 begin
-  Assert.IsTrue(TAtlasPathCheck.Evaluate('DEFINED(A)', ['a']) = TAtlasBranchState.Active);
-  Assert.IsTrue(TAtlasPathCheck.Evaluate('defined(A) and not Defined(B)', ['A']) = TAtlasBranchState.Active);
-  Assert.IsTrue(TAtlasPathCheck.Evaluate('DEFINED(A) AND DEFINED(B)', ['A']) = TAtlasBranchState.Inactive);
-  Assert.IsTrue(TAtlasPathCheck.Evaluate('(DEFINED(A) or DEFINED(B)) and not (DEFINED(C))', ['B']) =
-    TAtlasBranchState.Active);
-  Assert.IsTrue(TAtlasPathCheck.Evaluate('CompilerVersion >= 36', ['A']) = TAtlasBranchState.Unknown);
-  Assert.IsTrue(TAtlasPathCheck.Evaluate('DEFINED(A) or (RTLVersion > 1)', ['A']) = TAtlasBranchState.Unknown);
-  Assert.IsTrue(TAtlasPathCheck.Evaluate('DEFINED(A', ['A']) = TAtlasBranchState.Unknown);
-  Assert.IsTrue(TAtlasPathCheck.Evaluate('', nil) = TAtlasBranchState.Unknown);
+  Assert.AreEqual<TAtlasBranchState>(TAtlasBranchState.Active, TAtlasPathCheck.Evaluate('DEFINED(A)', ['a']));
+  Assert.AreEqual<TAtlasBranchState>(TAtlasBranchState.Active,
+    TAtlasPathCheck.Evaluate('defined(A) and not Defined(B)', ['A']));
+  Assert.AreEqual<TAtlasBranchState>(TAtlasBranchState.Inactive,
+    TAtlasPathCheck.Evaluate('DEFINED(A) AND DEFINED(B)', ['A']));
+  Assert.AreEqual<TAtlasBranchState>(TAtlasBranchState.Active,
+    TAtlasPathCheck.Evaluate('(DEFINED(A) or DEFINED(B)) and not (DEFINED(C))', ['B']));
+  Assert.AreEqual<TAtlasBranchState>(TAtlasBranchState.Unknown,
+    TAtlasPathCheck.Evaluate('CompilerVersion >= 36', ['A']));
+  Assert.AreEqual<TAtlasBranchState>(TAtlasBranchState.Unknown,
+    TAtlasPathCheck.Evaluate('DEFINED(A) or (RTLVersion > 1)', ['A']));
+  Assert.AreEqual<TAtlasBranchState>(TAtlasBranchState.Unknown, TAtlasPathCheck.Evaluate('DEFINED(A', ['A']));
+  Assert.AreEqual<TAtlasBranchState>(TAtlasBranchState.Unknown, TAtlasPathCheck.Evaluate('', nil));
 end;
 
 procedure TAtlasPathCheckTests.ReportsMissingUnitWithName;
@@ -882,7 +886,8 @@ begin
   Assert.AreEqual('B|C|D', UnitNames(Scan));
   Assert.AreEqual(1, Integer(Length(Scan.Defined)));
   Assert.AreEqual('Y', Scan.Defined[0]);
-  Assert.IsTrue(TAtlasPathScan.Evaluate('defined(X) and not defined(Y)', ['x']) = TAtlasBranchState.Active);
+  Assert.AreEqual<TAtlasBranchState>(TAtlasBranchState.Active,
+    TAtlasPathScan.Evaluate('defined(X) and not defined(Y)', ['x']));
 end;
 
 initialization

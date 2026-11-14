@@ -366,12 +366,12 @@ begin
   mRunner.Answer('--no-walk', cGitMessages);
   mVcs := TAtlasGitVersionControl.Create(Root, mRunnerRef, 'git.exe', 5000);
   Assert.IsTrue(Supports(mVcs, IAtlasVcsLineHistory, mHistory), 'Git bietet IAtlasVcsLineHistory');
-  Assert.IsTrue(mHistory.LineHistory(Under('src/f.pas'), 1, 3, 200, mCommits) = TAtlasVcsOutcome.Ok);
+  Assert.AreEqual<TAtlasVcsOutcome>(TAtlasVcsOutcome.Ok, mHistory.LineHistory(Under('src/f.pas'), 1, 3, 200, mCommits));
   Assert.AreEqual(cPrefix + 'log --format=' + TAtlasGitParser.cLineLogFormat + ' --max-count=200 --no-ext-diff ' +
     '-L1,3:src/f.pas', mRunner.Calls[0]);
   Assert.AreEqual(2, Integer(Length(mCommits)));
-  Assert.IsTrue(mHistory.Messages(Under('src/f.pas'), TArray<string>.Create(cHashA, cHashB), mMessages) =
-    TAtlasVcsOutcome.Ok);
+  Assert.AreEqual<TAtlasVcsOutcome>(TAtlasVcsOutcome.Ok,
+    mHistory.Messages(Under('src/f.pas'), TArray<string>.Create(cHashA, cHashB), mMessages));
   Assert.AreEqual(cPrefix + 'log --no-walk=unsorted --format=' + TAtlasGitParser.cMessageFormat + ' ' + cHashA + ' ' +
     cHashB + ' --', mRunner.Calls[1]);
   Assert.AreEqual(2, Integer(Length(mMessages)));
@@ -381,15 +381,18 @@ begin
   begin
     mRevisions[mIndex] := cHashA;
   end;
-  Assert.IsTrue(mHistory.Messages(Under('src/f.pas'), mRevisions, mMessages) = TAtlasVcsOutcome.Ok);
+  Assert.AreEqual<TAtlasVcsOutcome>(TAtlasVcsOutcome.Ok, mHistory.Messages(Under('src/f.pas'), mRevisions, mMessages));
   Assert.AreEqual(4, Integer(Length(mRunner.Calls)));
   // Ohne Commits kein Prozess; Optionen und ungültige Bereiche starten keinen.
-  Assert.IsTrue(mHistory.Messages(Under('src/f.pas'), nil, mMessages) = TAtlasVcsOutcome.Ok);
-  Assert.IsTrue(mHistory.Messages(Under('src/f.pas'), TArray<string>.Create('--all'), mMessages) =
-    TAtlasVcsOutcome.Failed);
-  Assert.IsTrue(mHistory.LineHistory(Under('src/f.pas'), 5, 4, 200, mCommits) = TAtlasVcsOutcome.Failed);
-  Assert.IsTrue(mHistory.LineHistory(Under('src/f.pas'), 0, 4, 200, mCommits) = TAtlasVcsOutcome.Failed);
-  Assert.IsTrue(mHistory.LineHistory('/anderswo/f.pas', 1, 4, 200, mCommits) = TAtlasVcsOutcome.Failed);
+  Assert.AreEqual<TAtlasVcsOutcome>(TAtlasVcsOutcome.Ok, mHistory.Messages(Under('src/f.pas'), nil, mMessages));
+  Assert.AreEqual<TAtlasVcsOutcome>(TAtlasVcsOutcome.Failed,
+    mHistory.Messages(Under('src/f.pas'), TArray<string>.Create('--all'), mMessages));
+  Assert.AreEqual<TAtlasVcsOutcome>(TAtlasVcsOutcome.Failed,
+    mHistory.LineHistory(Under('src/f.pas'), 5, 4, 200, mCommits));
+  Assert.AreEqual<TAtlasVcsOutcome>(TAtlasVcsOutcome.Failed,
+    mHistory.LineHistory(Under('src/f.pas'), 0, 4, 200, mCommits));
+  Assert.AreEqual<TAtlasVcsOutcome>(TAtlasVcsOutcome.Failed,
+    mHistory.LineHistory('/anderswo/f.pas', 1, 4, 200, mCommits));
   Assert.AreEqual(4, Integer(Length(mRunner.Calls)));
 end;
 
@@ -408,7 +411,7 @@ begin
   mRunner.Answer('--xml', cSvnLogXml);
   mVcs := TAtlasSvnVersionControl.Create(Root, mRunnerRef, 'svn.exe', 5000);
   Assert.IsTrue(Supports(mVcs, IAtlasVcsLineHistory, mHistory), 'SVN bietet IAtlasVcsLineHistory');
-  Assert.IsTrue(mHistory.LineHistory(Under('f.pas'), 1, 3, 200, mCommits) = TAtlasVcsOutcome.Ok);
+  Assert.AreEqual<TAtlasVcsOutcome>(TAtlasVcsOutcome.Ok, mHistory.LineHistory(Under('f.pas'), 1, 3, 200, mCommits));
   Assert.AreEqual('log --xml -l 200 f.pas@ --non-interactive', mRunner.Calls[0]);
   Assert.AreEqual('log --diff -l 200 f.pas@ --non-interactive', mRunner.Calls[1]);
   Assert.AreEqual(2, Integer(Length(mCommits)), 'r3 und r2 ändern die Zeilen 1–3');
@@ -416,13 +419,13 @@ begin
   Assert.AreEqual('ATL-2 b groß' + #10 + 'Siehe auch ATL-3', mCommits[0].Message);
   Assert.AreEqual('Index: f.pas', mCommits[0].Patch[0]);
   Assert.AreEqual('2', mCommits[1].Revision);
-  Assert.IsTrue(mHistory.Messages(Under('f.pas'), TArray<string>.Create('3', '2'), mMessages) =
-    TAtlasVcsOutcome.Ok);
+  Assert.AreEqual<TAtlasVcsOutcome>(TAtlasVcsOutcome.Ok,
+    mHistory.Messages(Under('f.pas'), TArray<string>.Create('3', '2'), mMessages));
   Assert.AreEqual('log --xml -c 3,2 f.pas@ --non-interactive', mRunner.Calls[2]);
   Assert.AreEqual(2, Integer(Length(mMessages)));
   Assert.AreEqual('ATL-1 Anfang', mMessages[1].Message);
-  Assert.IsTrue(mHistory.Messages(Under('f.pas'), TArray<string>.Create('-r'), mMessages) =
-    TAtlasVcsOutcome.Failed);
+  Assert.AreEqual<TAtlasVcsOutcome>(TAtlasVcsOutcome.Failed,
+    mHistory.Messages(Under('f.pas'), TArray<string>.Create('-r'), mMessages));
   Assert.AreEqual(3, Integer(Length(mRunner.Calls)));
 end;
 
@@ -435,10 +438,11 @@ var
 begin
   mVcs := TAtlasNullVersionControl.Create(TAtlasVcsOutcome.ToolMissing);
   Assert.IsTrue(Supports(mVcs, IAtlasVcsLineHistory, mHistory));
-  Assert.IsTrue(mHistory.LineHistory(Under('f.pas'), 1, 3, 200, mCommits) = TAtlasVcsOutcome.ToolMissing);
+  Assert.AreEqual<TAtlasVcsOutcome>(TAtlasVcsOutcome.ToolMissing,
+    mHistory.LineHistory(Under('f.pas'), 1, 3, 200, mCommits));
   Assert.AreEqual(0, Integer(Length(mCommits)));
-  Assert.IsTrue(mHistory.Messages(Under('f.pas'), TArray<string>.Create('3'), mMessages) =
-    TAtlasVcsOutcome.ToolMissing);
+  Assert.AreEqual<TAtlasVcsOutcome>(TAtlasVcsOutcome.ToolMissing,
+    mHistory.Messages(Under('f.pas'), TArray<string>.Create('3'), mMessages));
 end;
 
 procedure TAtlasVcsLineHistoryTests.ConsoleTextFallsBackToAnsi;

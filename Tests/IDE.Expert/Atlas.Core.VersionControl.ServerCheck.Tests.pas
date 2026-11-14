@@ -126,57 +126,64 @@ end;
 
 procedure TAtlasVcsServerCheckTests.GitStatesFromFixtures;
 begin
-  Assert.IsTrue(GitState(0, '') = TAtlasVcsServerState.Reachable);
-  Assert.IsTrue(GitState(128, 'remote: HTTP Basic: Access denied' + sLineBreak +
-    'fatal: Authentication failed for ''https://gitlab.firma.local/kasse.git/''') =
-    TAtlasVcsServerState.LoginNeeded);
-  Assert.IsTrue(GitState(128, 'fatal: could not read Username for ''https://github.com'': terminal prompts disabled') =
-    TAtlasVcsServerState.LoginNeeded);
-  Assert.IsTrue(GitState(128, 'git@github.com: Permission denied (publickey).' + sLineBreak +
-    'fatal: Could not read from remote repository.') = TAtlasVcsServerState.LoginNeeded);
-  Assert.IsTrue(GitState(128, 'fatal: Authentifizierung für ''https://github.com/x/y.git/'' fehlgeschlagen') =
-    TAtlasVcsServerState.LoginNeeded, 'deutsche Meldung von git');
-  Assert.IsTrue(GitState(128, 'fatal: unable to access ''https://git.firma.local/kasse.git/'': ' +
-    'Could not resolve host: git.firma.local') = TAtlasVcsServerState.Unreachable);
-  Assert.IsTrue(GitState(128, 'ssh: connect to host git.firma.local port 22: Connection timed out') =
-    TAtlasVcsServerState.Unreachable);
-  Assert.IsTrue(GitState(128, 'fatal: ''origin'' does not appear to be a git repository') =
-    TAtlasVcsServerState.NoServer);
-  Assert.IsTrue(GitState(128, 'fatal: something else') = TAtlasVcsServerState.Failed);
-  Assert.IsTrue(TAtlasVcsServerAccess.State(TAtlasVcsKind.Git, Answer(TAtlasVcsOutcome.TimedOut, -1, '')) =
-    TAtlasVcsServerState.Unreachable, 'Zeitgrenze');
-  Assert.IsTrue(TAtlasVcsServerAccess.State(TAtlasVcsKind.Git, Answer(TAtlasVcsOutcome.ToolMissing, -1, '')) =
-    TAtlasVcsServerState.ToolMissing);
-  Assert.IsTrue(TAtlasVcsServerAccess.State(TAtlasVcsKind.Git, Answer(TAtlasVcsOutcome.Cancelled, -1, '')) =
-    TAtlasVcsServerState.Failed);
+  Assert.AreEqual<TAtlasVcsServerState>(TAtlasVcsServerState.Reachable, GitState(0, ''));
+  Assert.AreEqual<TAtlasVcsServerState>(TAtlasVcsServerState.LoginNeeded,
+    GitState(128, 'remote: HTTP Basic: Access denied' + sLineBreak +
+    'fatal: Authentication failed for ''https://gitlab.firma.local/kasse.git/'''));
+  Assert.AreEqual<TAtlasVcsServerState>(TAtlasVcsServerState.LoginNeeded,
+    GitState(128, 'fatal: could not read Username for ''https://github.com'': terminal prompts disabled'));
+  Assert.AreEqual<TAtlasVcsServerState>(TAtlasVcsServerState.LoginNeeded,
+    GitState(128, 'git@github.com: Permission denied (publickey).' + sLineBreak +
+    'fatal: Could not read from remote repository.'));
+  Assert.AreEqual<TAtlasVcsServerState>(TAtlasVcsServerState.LoginNeeded,
+    GitState(128, 'fatal: Authentifizierung für ''https://github.com/x/y.git/'' fehlgeschlagen'), 'deutsche Meldung von git');
+  Assert.AreEqual<TAtlasVcsServerState>(TAtlasVcsServerState.Unreachable,
+    GitState(128, 'fatal: unable to access ''https://git.firma.local/kasse.git/'': ' +
+    'Could not resolve host: git.firma.local'));
+  Assert.AreEqual<TAtlasVcsServerState>(TAtlasVcsServerState.Unreachable,
+    GitState(128, 'ssh: connect to host git.firma.local port 22: Connection timed out'));
+  Assert.AreEqual<TAtlasVcsServerState>(TAtlasVcsServerState.NoServer,
+    GitState(128, 'fatal: ''origin'' does not appear to be a git repository'));
+  Assert.AreEqual<TAtlasVcsServerState>(TAtlasVcsServerState.Failed, GitState(128, 'fatal: something else'));
+  Assert.AreEqual<TAtlasVcsServerState>(TAtlasVcsServerState.Unreachable,
+    TAtlasVcsServerAccess.State(TAtlasVcsKind.Git, Answer(TAtlasVcsOutcome.TimedOut, -1, '')), 'Zeitgrenze');
+  Assert.AreEqual<TAtlasVcsServerState>(TAtlasVcsServerState.ToolMissing,
+    TAtlasVcsServerAccess.State(TAtlasVcsKind.Git, Answer(TAtlasVcsOutcome.ToolMissing, -1, '')));
+  Assert.AreEqual<TAtlasVcsServerState>(TAtlasVcsServerState.Failed,
+    TAtlasVcsServerAccess.State(TAtlasVcsKind.Git, Answer(TAtlasVcsOutcome.Cancelled, -1, '')));
 end;
 
 procedure TAtlasVcsServerCheckTests.SvnStatesFromFixtures;
 begin
-  Assert.IsTrue(SvnState(0, '') = TAtlasVcsServerState.Reachable);
-  Assert.IsTrue(SvnState(1, 'svn: E170001: Authentication required for ''<https://svn.firma.local:443> Firma''') =
-    TAtlasVcsServerState.LoginNeeded);
-  Assert.IsTrue(SvnState(1, 'svn: E215004: No more credentials or we tried too many times.' + sLineBreak +
-    'Authentication failed') = TAtlasVcsServerState.LoginNeeded);
-  Assert.IsTrue(SvnState(1, 'svn: E170013: Unable to connect to a repository at URL ''https://svn.firma.local/x''' +
-    sLineBreak + 'svn: E731001: Unbekannter Host') = TAtlasVcsServerState.Unreachable);
-  Assert.IsTrue(SvnState(1, 'svn: E155007: ''C:\Projekte\Kasse'' is not a working copy') =
-    TAtlasVcsServerState.NoServer);
-  Assert.IsTrue(SvnState(1, 'svn: E000001: anderes') = TAtlasVcsServerState.Failed);
+  Assert.AreEqual<TAtlasVcsServerState>(TAtlasVcsServerState.Reachable, SvnState(0, ''));
+  Assert.AreEqual<TAtlasVcsServerState>(TAtlasVcsServerState.LoginNeeded,
+    SvnState(1, 'svn: E170001: Authentication required for ''<https://svn.firma.local:443> Firma'''));
+  Assert.AreEqual<TAtlasVcsServerState>(TAtlasVcsServerState.LoginNeeded,
+    SvnState(1, 'svn: E215004: No more credentials or we tried too many times.' + sLineBreak +
+    'Authentication failed'));
+  Assert.AreEqual<TAtlasVcsServerState>(TAtlasVcsServerState.Unreachable,
+    SvnState(1, 'svn: E170013: Unable to connect to a repository at URL ''https://svn.firma.local/x''' +
+    sLineBreak + 'svn: E731001: Unbekannter Host'));
+  Assert.AreEqual<TAtlasVcsServerState>(TAtlasVcsServerState.NoServer,
+    SvnState(1, 'svn: E155007: ''C:\Projekte\Kasse'' is not a working copy'));
+  Assert.AreEqual<TAtlasVcsServerState>(TAtlasVcsServerState.Failed, SvnState(1, 'svn: E000001: anderes'));
 end;
 
 procedure TAtlasVcsServerCheckTests.OutcomeMarksMissingLogin;
 begin
-  Assert.IsTrue(TAtlasVcsServerAccess.OutcomeOf(TAtlasVcsKind.Git, Answer(TAtlasVcsOutcome.Ok, 0, '')) =
-    TAtlasVcsOutcome.Ok);
-  Assert.IsTrue(TAtlasVcsServerAccess.OutcomeOf(TAtlasVcsKind.Git, Answer(TAtlasVcsOutcome.Ok, 128,
-    'fatal: Authentication failed')) = TAtlasVcsOutcome.LoginNeeded);
-  Assert.IsTrue(TAtlasVcsServerAccess.OutcomeOf(TAtlasVcsKind.Git, Answer(TAtlasVcsOutcome.Ok, 1,
-    'error: failed to push some refs')) = TAtlasVcsOutcome.Failed);
-  Assert.IsTrue(TAtlasVcsServerAccess.OutcomeOf(TAtlasVcsKind.Svn, Answer(TAtlasVcsOutcome.Ok, 1,
-    'svn: E215004: No more credentials')) = TAtlasVcsOutcome.LoginNeeded);
-  Assert.IsTrue(TAtlasVcsServerAccess.OutcomeOf(TAtlasVcsKind.Git, Answer(TAtlasVcsOutcome.TimedOut, -1, '')) =
-    TAtlasVcsOutcome.TimedOut);
+  Assert.AreEqual<TAtlasVcsOutcome>(TAtlasVcsOutcome.Ok,
+    TAtlasVcsServerAccess.OutcomeOf(TAtlasVcsKind.Git, Answer(TAtlasVcsOutcome.Ok, 0, '')));
+  Assert.AreEqual<TAtlasVcsOutcome>(TAtlasVcsOutcome.LoginNeeded,
+    TAtlasVcsServerAccess.OutcomeOf(TAtlasVcsKind.Git, Answer(TAtlasVcsOutcome.Ok, 128,
+    'fatal: Authentication failed')));
+  Assert.AreEqual<TAtlasVcsOutcome>(TAtlasVcsOutcome.Failed,
+    TAtlasVcsServerAccess.OutcomeOf(TAtlasVcsKind.Git, Answer(TAtlasVcsOutcome.Ok, 1,
+    'error: failed to push some refs')));
+  Assert.AreEqual<TAtlasVcsOutcome>(TAtlasVcsOutcome.LoginNeeded,
+    TAtlasVcsServerAccess.OutcomeOf(TAtlasVcsKind.Svn, Answer(TAtlasVcsOutcome.Ok, 1,
+    'svn: E215004: No more credentials')));
+  Assert.AreEqual<TAtlasVcsOutcome>(TAtlasVcsOutcome.TimedOut,
+    TAtlasVcsServerAccess.OutcomeOf(TAtlasVcsKind.Git, Answer(TAtlasVcsOutcome.TimedOut, -1, '')));
 end;
 
 procedure TAtlasVcsServerCheckTests.EnvironmentNeverPrompts;
@@ -251,19 +258,19 @@ begin
   Assert.AreEqual('rev-parse --abbrev-ref --symbolic-full-name @{u}', mRunner.Calls[1]);
   Assert.AreEqual('remote get-url upstream', mRunner.Calls[2]);
   Assert.AreEqual('-c credential.interactive=never -c core.askPass= ls-remote --heads upstream', mRunner.Calls[3]);
-  Assert.IsTrue(mRunner.Timeouts[3] = 10000, 'Zeitgrenze 10 s');
-  Assert.IsTrue(mCheck.State = TAtlasVcsServerState.LoginNeeded);
+  Assert.AreEqual<Cardinal>(10000, mRunner.Timeouts[3], 'Zeitgrenze 10 s');
+  Assert.AreEqual<TAtlasVcsServerState>(TAtlasVcsServerState.LoginNeeded, mCheck.State);
   Assert.AreEqual('upstream', mCheck.Remote);
   Assert.AreEqual('https://github.com/x/y.git', mCheck.Url, 'ohne Zugangsdaten');
   Assert.AreEqual('upstream · github.com', mCheck.ServerText);
   Assert.IsTrue(mCheck.CanLogin);
-  Assert.IsTrue(mCheck.CheckedAt = EncodeDate(2026, 10, 28));
+  Assert.AreEqual<TDateTime>(EncodeDate(2026, 10, 28), mCheck.CheckedAt);
   // Mit Anmeldung: erreichbar.
   mRunner.ExitCodes[3] := 0;
   mRunner.Errors[3] := '';
   mCheck := TAtlasVcsServerChecks.Check(mRef, TAtlasVcsKind.Git, 'git.exe', 'C:\Projekte\Kasse',
     TAtlasVcsServerChecks.cTimeoutMs, Now);
-  Assert.IsTrue(mCheck.State = TAtlasVcsServerState.Reachable);
+  Assert.AreEqual<TAtlasVcsServerState>(TAtlasVcsServerState.Reachable, mCheck.State);
   Assert.IsFalse(mCheck.CanLogin);
 end;
 
@@ -277,19 +284,19 @@ begin
   mRef := mRunner;
   mRunner.Answer('remote', '', 0, '', TAtlasVcsOutcome.Ok);
   mCheck := TAtlasVcsServerChecks.Check(mRef, TAtlasVcsKind.Git, 'git.exe', 'C:\Projekte\Kasse', 10000, Now);
-  Assert.IsTrue(mCheck.State = TAtlasVcsServerState.NoServer);
+  Assert.AreEqual<TAtlasVcsServerState>(TAtlasVcsServerState.NoServer, mCheck.State);
   Assert.AreEqual(2, Integer(Length(mRunner.Calls)), 'ohne Remote keine Abfrage beim Server');
   mCheck := TAtlasVcsServerChecks.Check(mRef, TAtlasVcsKind.Git, '', 'C:\Projekte\Kasse', 10000, Now);
-  Assert.IsTrue(mCheck.State = TAtlasVcsServerState.ToolMissing);
+  Assert.AreEqual<TAtlasVcsServerState>(TAtlasVcsServerState.ToolMissing, mCheck.State);
   Assert.AreEqual(2, Integer(Length(mRunner.Calls)));
   // Zeitgrenze: nicht erreichbar.
   mRunner.Outputs[0] := 'origin'#10;
   mRunner.Answer('-c', '', -1, '', TAtlasVcsOutcome.TimedOut);
   mCheck := TAtlasVcsServerChecks.Check(mRef, TAtlasVcsKind.Git, 'git.exe', 'C:\Projekte\Kasse', 10000, Now);
-  Assert.IsTrue(mCheck.State = TAtlasVcsServerState.Unreachable);
+  Assert.AreEqual<TAtlasVcsServerState>(TAtlasVcsServerState.Unreachable, mCheck.State);
   Assert.AreEqual('origin', mCheck.Remote, 'ohne verfolgten Branch origin');
   mCheck := TAtlasVcsServerChecks.Check(mRef, TAtlasVcsKind.None, 'git.exe', 'C:\Projekte\Kasse', 10000, Now);
-  Assert.IsTrue(mCheck.State = TAtlasVcsServerState.NoServer);
+  Assert.AreEqual<TAtlasVcsServerState>(TAtlasVcsServerState.NoServer, mCheck.State);
 end;
 
 procedure TAtlasVcsServerCheckTests.SvnCheckRunsInfo;
@@ -306,14 +313,14 @@ begin
   mCheck := TAtlasVcsServerChecks.Check(mRef, TAtlasVcsKind.Svn, 'svn.exe', 'C:\Projekte\Kasse', 10000, Now);
   Assert.AreEqual('info --show-item repos-root-url --non-interactive', mRunner.Calls[0]);
   Assert.AreEqual('info --non-interactive ^/', mRunner.Calls[1]);
-  Assert.IsTrue(mCheck.State = TAtlasVcsServerState.LoginNeeded);
+  Assert.AreEqual<TAtlasVcsServerState>(TAtlasVcsServerState.LoginNeeded, mCheck.State);
   Assert.AreEqual('https://svn.firma.local/repos/kasse', mCheck.ServerText);
   Assert.IsTrue(mCheck.CanLogin);
   // Keine Arbeitskopie: kein Server.
   mRunner.ExitCodes[0] := 1;
   mRunner.Errors[0] := 'svn: E155007: ''C:\Projekte\Kasse'' is not a working copy';
   mCheck := TAtlasVcsServerChecks.Check(mRef, TAtlasVcsKind.Svn, 'svn.exe', 'C:\Projekte\Kasse', 10000, Now);
-  Assert.IsTrue(mCheck.State = TAtlasVcsServerState.NoServer);
+  Assert.AreEqual<TAtlasVcsServerState>(TAtlasVcsServerState.NoServer, mCheck.State);
 end;
 
 procedure TAtlasVcsServerCheckTests.LoginCommandLines;

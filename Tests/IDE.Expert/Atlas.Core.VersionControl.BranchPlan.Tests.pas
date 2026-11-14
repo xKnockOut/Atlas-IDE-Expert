@@ -625,8 +625,8 @@ begin
   mFake.HeadBranch := 'feature/12-x';
   mFake.LocalBranches := ['master'];
   mFacts := TAtlasVcsBranchPlan.Inspect(mVcs, TArray<string>.Create('-x', 'main', 'master'));
-  Assert.IsTrue(mFacts.Outcome = TAtlasVcsOutcome.Ok);
-  Assert.IsTrue(mFacts.Kind = TAtlasVcsKind.Git);
+  Assert.AreEqual<TAtlasVcsOutcome>(TAtlasVcsOutcome.Ok, mFacts.Outcome);
+  Assert.AreEqual<TAtlasVcsKind>(TAtlasVcsKind.Git, mFacts.Kind);
   Assert.AreEqual('feature/12-x', mFacts.Current);
   Assert.AreEqual('master', mFacts.MainBranch);
   Assert.IsTrue(mFacts.LocalMain);
@@ -646,7 +646,7 @@ begin
   // Keiner vorhanden.
   mFake.RemoteBranches := nil;
   mFacts := TAtlasVcsBranchPlan.Inspect(mVcs, TArray<string>.Create('main', 'master'));
-  Assert.IsTrue(mFacts.Outcome = TAtlasVcsOutcome.Ok);
+  Assert.AreEqual<TAtlasVcsOutcome>(TAtlasVcsOutcome.Ok, mFacts.Outcome);
   Assert.AreEqual('', mFacts.MainBranch);
   mFake.Calls := nil;
   mFacts := TAtlasVcsBranchFacts.Empty;
@@ -665,7 +665,7 @@ begin
   mFake.RepoPath := 'Kasse/trunk';
   mFake.Externals := True;
   mFacts := TAtlasVcsBranchPlan.Inspect(mVcs, TArray<string>.Create('trunk'));
-  Assert.IsTrue(mFacts.Outcome = TAtlasVcsOutcome.Ok);
+  Assert.AreEqual<TAtlasVcsOutcome>(TAtlasVcsOutcome.Ok, mFacts.Outcome);
   Assert.AreEqual('Kasse/trunk', mFacts.Current, 'voller Pfad, nicht der gekürzte aus Head');
   Assert.AreEqual('48100', mFacts.Revision);
   // #1290: "trunk" liegt unter der Projektwurzel ^/Kasse.
@@ -678,7 +678,7 @@ begin
   TAtlasVcsBranchPlan.InspectServer(mVcs, mFacts);
   Assert.IsFalse(mFacts.NeedsServer);
   Assert.IsTrue(mFacts.ServerChecked);
-  Assert.IsTrue(mFacts.ServerOutcome = TAtlasVcsOutcome.Ok);
+  Assert.AreEqual<TAtlasVcsOutcome>(TAtlasVcsOutcome.Ok, mFacts.ServerOutcome);
   Assert.AreEqual('48230', mFacts.HeadRevision);
   Assert.AreEqual('revision Kasse/trunk', mFake.Calls[1]);
   // Ohne Anmeldung: Ergebnis festhalten, Revision bleibt unbekannt.
@@ -690,7 +690,7 @@ begin
   Assert.IsFalse(mFacts.LayoutKnown);
   TAtlasVcsBranchPlan.InspectServer(mVcs, mFacts);
   Assert.IsTrue(mFacts.ServerChecked);
-  Assert.IsTrue(mFacts.ServerOutcome = TAtlasVcsOutcome.LoginNeeded);
+  Assert.AreEqual<TAtlasVcsOutcome>(TAtlasVcsOutcome.LoginNeeded, mFacts.ServerOutcome);
   Assert.AreEqual('', mFacts.HeadRevision);
   mFake.Calls := nil;
   mFacts := TAtlasVcsBranchFacts.Empty;
@@ -703,14 +703,14 @@ var
   mPlain: IAtlasVersionControl;
 begin
   mFacts := TAtlasVcsBranchPlan.Inspect(nil, TArray<string>.Create('main'));
-  Assert.IsTrue(mFacts.Outcome = TAtlasVcsOutcome.NoWorkingCopy);
+  Assert.AreEqual<TAtlasVcsOutcome>(TAtlasVcsOutcome.NoWorkingCopy, mFacts.Outcome);
   Assert.AreEqual(0, Integer(Length(TAtlasVcsBranchPlan.Bases(mFacts))));
   Assert.IsFalse(TAtlasVcsBranchPlan.DefaultBase(mFacts, mBase));
   // Ohne IAtlasVcsBranching kein Anlegen.
   // In einer Variablen: ein Objekt direkt als const-Schnittstelle würde nie freigegeben.
   mPlain := TPlainVcs.Create;
   mFacts := TAtlasVcsBranchPlan.Inspect(mPlain, TArray<string>.Create('main'));
-  Assert.IsTrue(mFacts.Outcome = TAtlasVcsOutcome.NoWorkingCopy);
+  Assert.AreEqual<TAtlasVcsOutcome>(TAtlasVcsOutcome.NoWorkingCopy, mFacts.Outcome);
   Assert.IsFalse(mFacts.NeedsServer);
   mFacts := TAtlasVcsBranchFacts.Empty;
 end;
@@ -723,22 +723,23 @@ var
 begin
   mBases := TAtlasVcsBranchPlan.Bases(GitFacts(True, True, 'feature/12-x'));
   Assert.AreEqual(3, Integer(Length(mBases)));
-  Assert.IsTrue(mBases[0].Kind = TAtlasVcsBranchBaseKind.RemoteMain);
-  Assert.IsTrue(mBases[1].Kind = TAtlasVcsBranchBaseKind.LocalMain);
-  Assert.IsTrue(mBases[2].Kind = TAtlasVcsBranchBaseKind.Current);
+  Assert.AreEqual<TAtlasVcsBranchBaseKind>(TAtlasVcsBranchBaseKind.RemoteMain, mBases[0].Kind);
+  Assert.AreEqual<TAtlasVcsBranchBaseKind>(TAtlasVcsBranchBaseKind.LocalMain, mBases[1].Kind);
+  Assert.AreEqual<TAtlasVcsBranchBaseKind>(TAtlasVcsBranchBaseKind.Current, mBases[2].Kind);
   Assert.AreEqual('feature/12-x', mBases[2].Name);
   Assert.IsTrue(TAtlasVcsBranchPlan.DefaultBase(GitFacts(True, True, 'feature/12-x'), mBase));
-  Assert.IsTrue(mBase.Kind = TAtlasVcsBranchBaseKind.LocalMain, 'lokal vor origin wie bei „Beginnen“');
+  Assert.AreEqual<TAtlasVcsBranchBaseKind>(TAtlasVcsBranchBaseKind.LocalMain,
+    mBase.Kind, 'lokal vor origin wie bei „Beginnen“');
   // Auf main: der aktuelle Branch steht schon als lokaler Hauptbranch da.
   mBases := TAtlasVcsBranchPlan.Bases(GitFacts(True, True, 'main'));
   Assert.AreEqual(2, Integer(Length(mBases)));
   // Nur origin: Vorgabe origin/main.
   Assert.IsTrue(TAtlasVcsBranchPlan.DefaultBase(GitFacts(False, True, 'main'), mBase));
-  Assert.IsTrue(mBase.Kind = TAtlasVcsBranchBaseKind.RemoteMain);
+  Assert.AreEqual<TAtlasVcsBranchBaseKind>(TAtlasVcsBranchBaseKind.RemoteMain, mBase.Kind);
   // Ohne Hauptbranch: nur der aktuelle Branch zur Wahl, aber keine Vorgabe.
   mBases := TAtlasVcsBranchPlan.Bases(GitFacts(False, False, ''));
   Assert.AreEqual(1, Integer(Length(mBases)));
-  Assert.IsTrue(mBases[0].Kind = TAtlasVcsBranchBaseKind.Current);
+  Assert.AreEqual<TAtlasVcsBranchBaseKind>(TAtlasVcsBranchBaseKind.Current, mBases[0].Kind);
   Assert.AreEqual('', mBases[0].Name, 'losgelöster HEAD');
   Assert.IsFalse(TAtlasVcsBranchPlan.DefaultBase(GitFacts(False, False, 'feature/12-x'), mBase));
   Assert.IsFalse(TAtlasVcsBranchPlan.DefaultRequest(GitFacts(False, False, 'feature/12-x'), 'feature/13-y', '',
@@ -757,14 +758,14 @@ var
 begin
   mBases := TAtlasVcsBranchPlan.Bases(SvnFacts('48230'));
   Assert.AreEqual(2, Integer(Length(mBases)));
-  Assert.IsTrue(mBases[0].Kind = TAtlasVcsBranchBaseKind.Head);
+  Assert.AreEqual<TAtlasVcsBranchBaseKind>(TAtlasVcsBranchBaseKind.Head, mBases[0].Kind);
   Assert.AreEqual('trunk', mBases[0].Name);
   Assert.AreEqual('48230', mBases[0].Revision);
-  Assert.IsTrue(mBases[1].Kind = TAtlasVcsBranchBaseKind.WorkingCopy);
+  Assert.AreEqual<TAtlasVcsBranchBaseKind>(TAtlasVcsBranchBaseKind.WorkingCopy, mBases[1].Kind);
   Assert.AreEqual('Kasse/trunk', mBases[1].Name);
   Assert.AreEqual('48100', mBases[1].Revision);
   Assert.IsTrue(TAtlasVcsBranchPlan.DefaultBase(SvnFacts(''), mBase));
-  Assert.IsTrue(mBase.Kind = TAtlasVcsBranchBaseKind.Head);
+  Assert.AreEqual<TAtlasVcsBranchBaseKind>(TAtlasVcsBranchBaseKind.Head, mBase.Kind);
   Assert.AreEqual('trunk', TAtlasVcsBranchPlan.BaseName(TAtlasVcsKind.Svn, mBase), 'HEAD beim Kopieren');
   Assert.AreEqual('trunk@48230', TAtlasVcsBranchPlan.BaseName(TAtlasVcsKind.Svn, mBases[0]));
   mFacts := SvnFacts('');
@@ -875,7 +876,7 @@ begin
   mFake.Calls := nil;
   mRun := TAtlasVcsBranchPlan.Execute(mBranching, mSteps);
   Assert.IsFalse(mRun.Succeeded);
-  Assert.IsTrue(mRun.Outcome = TAtlasVcsOutcome.LoginNeeded);
+  Assert.AreEqual<TAtlasVcsOutcome>(TAtlasVcsOutcome.LoginNeeded, mRun.Outcome);
   Assert.AreEqual(1, mRun.Done);
   Assert.AreEqual(1, mRun.Failed);
   mServer := TAtlasVcsBranchPlan.ServerStepsDone(mSteps, mRun.Done);
@@ -890,9 +891,9 @@ begin
   Assert.AreEqual(0, Integer(Length(TAtlasVcsBranchPlan.ServerStepsDone(mSteps, mRun.Done))));
   // Ohne Schritte bzw. ohne Versionsverwaltung.
   mRun := TAtlasVcsBranchPlan.Execute(mBranching, nil);
-  Assert.IsTrue(mRun.Outcome = TAtlasVcsOutcome.Failed);
+  Assert.AreEqual<TAtlasVcsOutcome>(TAtlasVcsOutcome.Failed, mRun.Outcome);
   mRun := TAtlasVcsBranchPlan.Execute(nil, mSteps);
-  Assert.IsTrue(mRun.Outcome = TAtlasVcsOutcome.NoWorkingCopy);
+  Assert.AreEqual<TAtlasVcsOutcome>(TAtlasVcsOutcome.NoWorkingCopy, mRun.Outcome);
   Assert.IsFalse(mRun.Succeeded);
   mFake.Calls := nil;
   mSteps := nil;
@@ -1007,7 +1008,7 @@ begin
   mRequest := TAtlasVcsBranchRequest.Make(TAtlasVcsKind.Git, 'feature/1-x',
     Base(TAtlasVcsBranchBaseKind.LocalMain, 'main', ''), '');
   Assert.IsTrue(TAtlasVcsBranchPlan.ApplySvn(mRequest, mFacts, mOptions));
-  Assert.IsTrue(mRequest.After = TAtlasVcsSvnAfter.Switch);
+  Assert.AreEqual<TAtlasVcsSvnAfter>(TAtlasVcsSvnAfter.Switch, mRequest.After);
   mSteps := nil;
   mFacts := TAtlasVcsBranchFacts.Empty;
 end;
@@ -1025,19 +1026,19 @@ begin
   mFacts.MainBranch := 'Kasse/trunk';
   mOptions := TAtlasVcsSvnBranchOptions.Default;
   Assert.IsTrue(TAtlasVcsBranchPlan.DefaultRequest(mFacts, 'KASSE-42-bon', 'm', mOptions, mRequest));
-  Assert.IsTrue(mRequest.Base.Kind = TAtlasVcsBranchBaseKind.Head);
+  Assert.AreEqual<TAtlasVcsBranchBaseKind>(TAtlasVcsBranchBaseKind.Head, mRequest.Base.Kind);
   Assert.AreEqual('Kasse/branches/KASSE-42-bon', mRequest.Location);
-  Assert.IsTrue(mRequest.After = TAtlasVcsSvnAfter.Switch);
+  Assert.AreEqual<TAtlasVcsSvnAfter>(TAtlasVcsSvnAfter.Switch, mRequest.After);
   // Quelle Arbeitskopie: genau der Stand, den man gerade übersetzt.
   mOptions.Source := TAtlasVcsSvnSource.WorkingCopy;
   Assert.IsTrue(TAtlasVcsBranchPlan.DefaultRequest(mFacts, 'KASSE-42-bon', 'm', mOptions, mRequest));
-  Assert.IsTrue(mRequest.Base.Kind = TAtlasVcsBranchBaseKind.WorkingCopy);
+  Assert.AreEqual<TAtlasVcsBranchBaseKind>(TAtlasVcsBranchBaseKind.WorkingCopy, mRequest.Base.Kind);
   Assert.AreEqual('Kasse/trunk@48100', TAtlasVcsBranchPlan.BaseName(TAtlasVcsKind.Svn, mRequest.Base));
   Assert.IsTrue(TAtlasVcsBranchPlan.DefaultBase(mFacts, TAtlasVcsSvnSource.WorkingCopy, mBase));
-  Assert.IsTrue(mBase.Kind = TAtlasVcsBranchBaseKind.WorkingCopy);
+  Assert.AreEqual<TAtlasVcsBranchBaseKind>(TAtlasVcsBranchBaseKind.WorkingCopy, mBase.Kind);
   // Git ignoriert die SVN-Quelle.
   Assert.IsTrue(TAtlasVcsBranchPlan.DefaultBase(GitFacts(True, True, 'x'), TAtlasVcsSvnSource.WorkingCopy, mBase));
-  Assert.IsTrue(mBase.Kind = TAtlasVcsBranchBaseKind.LocalMain);
+  Assert.AreEqual<TAtlasVcsBranchBaseKind>(TAtlasVcsBranchBaseKind.LocalMain, mBase.Kind);
   // Ohne Layout: keine Vorgabe-Anfrage (Beginnen ohne Dialog scheitert, statt an der Wurzel anzulegen).
   mFacts.LayoutKnown := False;
   Assert.IsFalse(TAtlasVcsBranchPlan.DefaultRequest(mFacts, 'KASSE-42-bon', 'm', mOptions, mRequest));
@@ -1108,7 +1109,7 @@ begin
   mFake.ExternalsOutcome := TAtlasVcsOutcome.Ok;
   mFake.ExternalsText := '<properties><target';
   mFacts := TAtlasVcsBranchPlan.Inspect(mVcs, TArray<string>.Create('trunk'));
-  Assert.IsTrue(mFacts.Outcome = TAtlasVcsOutcome.Ok, 'kaputtes XML hält das Anlegen nicht auf');
+  Assert.AreEqual<TAtlasVcsOutcome>(TAtlasVcsOutcome.Ok, mFacts.Outcome, 'kaputtes XML hält das Anlegen nicht auf');
   mFake.Calls := nil;
   mFake.FolderVersions := nil;
   mFacts := TAtlasVcsBranchFacts.Empty;
@@ -1227,9 +1228,9 @@ begin
   mOptions := TAtlasVcsSvnBranchOptions.Default;
   mActions := TAtlasVcsBranchPlan.DefaultActions(mFacts, mOptions);
   Assert.AreEqual(3, Integer(Length(mActions)));
-  Assert.IsTrue(mActions[0] = TAtlasVcsExternalAction.Pin);
-  Assert.IsTrue(mActions[1] = TAtlasVcsExternalAction.Keep, 'mit Revision');
-  Assert.IsTrue(mActions[2] = TAtlasVcsExternalAction.Pin);
+  Assert.AreEqual<TAtlasVcsExternalAction>(TAtlasVcsExternalAction.Pin, mActions[0]);
+  Assert.AreEqual<TAtlasVcsExternalAction>(TAtlasVcsExternalAction.Keep, mActions[1], 'mit Revision');
+  Assert.AreEqual<TAtlasVcsExternalAction>(TAtlasVcsExternalAction.Pin, mActions[2]);
   Assert.IsTrue(TAtlasVcsBranchPlan.DefaultRequest(mFacts, 'KASSE-42-bon', 'm', mOptions, mRequest));
   Assert.AreEqual(3, Integer(Length(mRequest.ExternalActions)));
   Assert.IsTrue(TAtlasVcsBranchPlan.ChangesExternals(mRequest), 'festschreiben und umschalten');
@@ -1275,8 +1276,8 @@ begin
     '{"source": "^/packages/basis", "onBranch": "branch"}, {"source": "https://svn.x/Libs", "onBranch": "BRANCH"}]');
   Assert.AreEqual(2, Integer(Length(mRules)), 'ohne Quelle, ask und doppelte Quelle fallen weg');
   Assert.AreEqual('^/Packages/Basis', mRules[0].Source);
-  Assert.IsTrue(mRules[0].Action = TAtlasVcsExternalAction.Keep);
-  Assert.IsTrue(mRules[1].Action = TAtlasVcsExternalAction.Branch);
+  Assert.AreEqual<TAtlasVcsExternalAction>(TAtlasVcsExternalAction.Keep, mRules[0].Action);
+  Assert.AreEqual<TAtlasVcsExternalAction>(TAtlasVcsExternalAction.Branch, mRules[1].Action);
   Assert.AreEqual('[{"source": "^/Packages/Basis", "onBranch": "keep"}, ' +
     '{"source": "https://svn.x/Libs", "onBranch": "branch"}]', TAtlasVcsExternalRules.RulesJson(mRules));
   Assert.AreEqual('^/Packages/Basis = keep' + sLineBreak + 'https://svn.x/Libs = branch',
@@ -1286,9 +1287,9 @@ begin
   Assert.IsTrue(TAtlasVcsExternalRules.RulesOfText('# Kommentar'#13#10'^/Packages/Basis = keep'#13#10#13#10 +
     '  ^/Libs=pin '#10'^/packages/basis = branch', mRules, mInvalid));
   Assert.AreEqual(2, Integer(Length(mRules)));
-  Assert.IsTrue(mRules[0].Action = TAtlasVcsExternalAction.Branch, 'letzte Zeile gewinnt');
+  Assert.AreEqual<TAtlasVcsExternalAction>(TAtlasVcsExternalAction.Branch, mRules[0].Action, 'letzte Zeile gewinnt');
   Assert.AreEqual('^/Libs', mRules[1].Source);
-  Assert.IsTrue(mRules[1].Action = TAtlasVcsExternalAction.Pin);
+  Assert.AreEqual<TAtlasVcsExternalAction>(TAtlasVcsExternalAction.Pin, mRules[1].Action);
   Assert.AreEqual('', mInvalid);
   Assert.IsFalse(TAtlasVcsExternalRules.RulesOfText('^/a = keep'#13#10'^/b = fragen', mRules, mInvalid));
   Assert.AreEqual('^/b = fragen', mInvalid);
@@ -1306,29 +1307,29 @@ var
   mOptions: TAtlasVcsGitBranchOptions;
 begin
   mOptions := TAtlasVcsGitBranchOptions.FromSettings('remote', 'later', 'carry', False, '');
-  Assert.IsTrue(mOptions.Base = TAtlasVcsGitBaseOption.Remote);
+  Assert.AreEqual<TAtlasVcsGitBaseOption>(TAtlasVcsGitBaseOption.Remote, mOptions.Base);
   Assert.IsFalse(mOptions.PushNow);
-  Assert.IsTrue(mOptions.Uncommitted = TAtlasVcsGitUncommitted.Carry);
+  Assert.AreEqual<TAtlasVcsGitUncommitted>(TAtlasVcsGitUncommitted.Carry, mOptions.Uncommitted);
   Assert.IsFalse(mOptions.Worktree);
   Assert.AreEqual(TAtlasVcsGitBranchOptions.cDefaultWorktreeFolder, mOptions.WorktreeFolder, 'leer = Vorgabe');
   mOptions := TAtlasVcsGitBranchOptions.FromSettings(' Local ', 'now', 'stash', True, ' ..\{name} ');
-  Assert.IsTrue(mOptions.Base = TAtlasVcsGitBaseOption.Local);
+  Assert.AreEqual<TAtlasVcsGitBaseOption>(TAtlasVcsGitBaseOption.Local, mOptions.Base);
   Assert.IsTrue(mOptions.PushNow);
-  Assert.IsTrue(mOptions.Uncommitted = TAtlasVcsGitUncommitted.Stash);
+  Assert.AreEqual<TAtlasVcsGitUncommitted>(TAtlasVcsGitUncommitted.Stash, mOptions.Uncommitted);
   Assert.IsTrue(mOptions.Worktree);
   Assert.AreEqual('..\{name}', mOptions.WorktreeFolder);
   mOptions := TAtlasVcsGitBranchOptions.FromSettings('current', 'bald', 'ask', False, '');
-  Assert.IsTrue(mOptions.Base = TAtlasVcsGitBaseOption.Current);
+  Assert.AreEqual<TAtlasVcsGitBaseOption>(TAtlasVcsGitBaseOption.Current, mOptions.Base);
   Assert.IsFalse(mOptions.PushNow, 'unbekannt = later');
-  Assert.IsTrue(mOptions.Uncommitted = TAtlasVcsGitUncommitted.Ask);
+  Assert.AreEqual<TAtlasVcsGitUncommitted>(TAtlasVcsGitUncommitted.Ask, mOptions.Uncommitted);
   mOptions := TAtlasVcsGitBranchOptions.FromSettings('irgendwo', '', 'weg', False, '');
-  Assert.IsTrue(mOptions.Base = TAtlasVcsGitBaseOption.Remote, 'unbekannt = remote');
-  Assert.IsTrue(mOptions.Uncommitted = TAtlasVcsGitUncommitted.Carry, 'unbekannt = carry');
+  Assert.AreEqual<TAtlasVcsGitBaseOption>(TAtlasVcsGitBaseOption.Remote, mOptions.Base, 'unbekannt = remote');
+  Assert.AreEqual<TAtlasVcsGitUncommitted>(TAtlasVcsGitUncommitted.Carry, mOptions.Uncommitted, 'unbekannt = carry');
   // Verhalten vor #1289.
   mOptions := TAtlasVcsGitBranchOptions.Classic;
-  Assert.IsTrue(mOptions.Base = TAtlasVcsGitBaseOption.Local);
+  Assert.AreEqual<TAtlasVcsGitBaseOption>(TAtlasVcsGitBaseOption.Local, mOptions.Base);
   Assert.IsFalse(mOptions.PushNow);
-  Assert.IsTrue(mOptions.Uncommitted = TAtlasVcsGitUncommitted.Carry);
+  Assert.AreEqual<TAtlasVcsGitUncommitted>(TAtlasVcsGitUncommitted.Carry, mOptions.Uncommitted);
   Assert.IsFalse(mOptions.Worktree);
   mOptions.WorktreeFolder := '';
 end;
@@ -1389,7 +1390,7 @@ begin
   // remote: origin/main mit Abruf.
   Assert.IsTrue(TAtlasVcsBranchPlan.DefaultRequest(mFacts, 'feature/13-y', '', 'ATL-13',
     GitOptions(TAtlasVcsGitBaseOption.Remote, False, TAtlasVcsGitUncommitted.Carry, False), mRequest));
-  Assert.IsTrue(mRequest.Base.Kind = TAtlasVcsBranchBaseKind.RemoteMain);
+  Assert.AreEqual<TAtlasVcsBranchBaseKind>(TAtlasVcsBranchBaseKind.RemoteMain, mRequest.Base.Kind);
   Assert.IsTrue(mRequest.Fetch);
   Assert.IsFalse(mRequest.PushNow);
   Assert.IsFalse(mRequest.Stash);
@@ -1397,12 +1398,12 @@ begin
   // remote ohne origin/main: lokaler Hauptbranch, ohne Abruf.
   Assert.IsTrue(TAtlasVcsBranchPlan.DefaultRequest(GitFacts(True, False, 'x'), 'feature/13-y', '', '',
     GitOptions(TAtlasVcsGitBaseOption.Remote, False, TAtlasVcsGitUncommitted.Carry, False), mRequest));
-  Assert.IsTrue(mRequest.Base.Kind = TAtlasVcsBranchBaseKind.LocalMain);
+  Assert.AreEqual<TAtlasVcsBranchBaseKind>(TAtlasVcsBranchBaseKind.LocalMain, mRequest.Base.Kind);
   Assert.IsFalse(mRequest.Fetch);
   // local: wie vor #1289, mit push und stash.
   Assert.IsTrue(TAtlasVcsBranchPlan.DefaultRequest(mFacts, 'feature/13-y', '', '',
     GitOptions(TAtlasVcsGitBaseOption.Local, True, TAtlasVcsGitUncommitted.Stash, False), mRequest));
-  Assert.IsTrue(mRequest.Base.Kind = TAtlasVcsBranchBaseKind.LocalMain);
+  Assert.AreEqual<TAtlasVcsBranchBaseKind>(TAtlasVcsBranchBaseKind.LocalMain, mRequest.Base.Kind);
   Assert.IsFalse(mRequest.Fetch);
   Assert.IsTrue(mRequest.PushNow);
   Assert.IsTrue(mRequest.Stash);
@@ -1413,11 +1414,11 @@ begin
   // current: der aktuelle Branch; auf main der lokale Hauptbranch.
   Assert.IsTrue(TAtlasVcsBranchPlan.DefaultRequest(mFacts, 'feature/13-y', '', '',
     GitOptions(TAtlasVcsGitBaseOption.Current, False, TAtlasVcsGitUncommitted.Carry, False), mRequest));
-  Assert.IsTrue(mRequest.Base.Kind = TAtlasVcsBranchBaseKind.Current);
+  Assert.AreEqual<TAtlasVcsBranchBaseKind>(TAtlasVcsBranchBaseKind.Current, mRequest.Base.Kind);
   Assert.AreEqual('feature/12-x', mRequest.Base.Name);
   Assert.IsTrue(TAtlasVcsBranchPlan.DefaultBase(GitFacts(True, True, 'main'),
     GitOptions(TAtlasVcsGitBaseOption.Current, False, TAtlasVcsGitUncommitted.Carry, False), mBase));
-  Assert.IsTrue(mBase.Kind = TAtlasVcsBranchBaseKind.LocalMain);
+  Assert.AreEqual<TAtlasVcsBranchBaseKind>(TAtlasVcsBranchBaseKind.LocalMain, mBase.Kind);
   // current geht auch ohne Hauptbranch (ausdrücklich gewählt); local und remote nicht.
   Assert.IsTrue(TAtlasVcsBranchPlan.DefaultBase(GitFacts(False, False, 'feature/12-x'),
     GitOptions(TAtlasVcsGitBaseOption.Current, False, TAtlasVcsGitUncommitted.Carry, False), mBase));
@@ -1434,7 +1435,7 @@ begin
   mFacts.ProjectRoot := 'Kasse';
   Assert.IsTrue(TAtlasVcsBranchPlan.DefaultRequest(mFacts, 'ATL-1-a', '', 'ATL-1',
     GitOptions(TAtlasVcsGitBaseOption.Remote, True, TAtlasVcsGitUncommitted.Stash, True), mRequest));
-  Assert.IsTrue(mRequest.Base.Kind = TAtlasVcsBranchBaseKind.Head);
+  Assert.AreEqual<TAtlasVcsBranchBaseKind>(TAtlasVcsBranchBaseKind.Head, mRequest.Base.Kind);
   Assert.IsFalse(mRequest.Fetch);
   Assert.IsFalse(mRequest.PushNow);
   Assert.AreEqual('', mRequest.WorktreeFolder);
@@ -1562,7 +1563,7 @@ begin
   // Abruf ohne Anmeldung: nichts weiter, nichts geändert.
   mFake.FailOn := 'fetch';
   mRun := TAtlasVcsBranchPlan.Execute(mBranching, mSteps);
-  Assert.IsTrue(mRun.Outcome = TAtlasVcsOutcome.LoginNeeded);
+  Assert.AreEqual<TAtlasVcsOutcome>(TAtlasVcsOutcome.LoginNeeded, mRun.Outcome);
   Assert.AreEqual(0, mRun.Failed);
   Assert.AreEqual(1, Integer(Length(mFake.Calls)));
   Assert.IsTrue(TAtlasVcsBranchPlan.FetchFailed(mSteps, mRun));
@@ -1570,13 +1571,13 @@ begin
   // Rückfall: lokaler Hauptbranch ohne Abruf, die übrigen Optionen bleiben.
   mFallback := TAtlasVcsBranchPlan.LocalFallback(mFacts, mRequest);
   Assert.IsFalse(mFallback.Fetch);
-  Assert.IsTrue(mFallback.Base.Kind = TAtlasVcsBranchBaseKind.LocalMain);
+  Assert.AreEqual<TAtlasVcsBranchBaseKind>(TAtlasVcsBranchBaseKind.LocalMain, mFallback.Base.Kind);
   Assert.IsTrue(mFallback.PushNow);
   Assert.IsTrue(mFallback.Stash);
   Assert.AreEqual('stash', TAtlasVcsBranchPlan.Steps(mFallback)[0].Arguments[0]);
   // Ohne lokalen Hauptbranch: der zuletzt abgerufene Stand.
   mFallback := TAtlasVcsBranchPlan.LocalFallback(GitFacts(False, True, 'x'), mRequest);
-  Assert.IsTrue(mFallback.Base.Kind = TAtlasVcsBranchBaseKind.RemoteMain);
+  Assert.AreEqual<TAtlasVcsBranchBaseKind>(TAtlasVcsBranchBaseKind.RemoteMain, mFallback.Base.Kind);
   Assert.IsFalse(mFallback.Fetch);
   // Nur der Push scheitert: der Branch ist angelegt.
   mFake.FailOn := 'push';

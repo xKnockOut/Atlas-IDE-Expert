@@ -163,25 +163,25 @@ end;
 /// <summary>Steuerelemente der Seite: Lage im Baum und geladene Werte (#1285, #1288, #1290–#1292).</summary>
 procedure AssertVcsPageControls(APage: TAtlasSettingsPage; AVcs: TTabSheet);
 begin
-  Assert.IsTrue(SheetOf(GSection.Tools.VcsPath(TAtlasVcsKind.Git)) = AVcs);
-  Assert.IsTrue(SheetOf(GSection.Tools.VcsPath(TAtlasVcsKind.Svn)) = AVcs);
-  Assert.IsTrue(SheetOf(EditOf(APage, 'VcsTimeoutSeconds')) = AVcs);
-  Assert.IsTrue(SheetOf(GSection.Project.VcsProjectInfo) = AVcs);
+  Assert.AreSame(AVcs, SheetOf(GSection.Tools.VcsPath(TAtlasVcsKind.Git)));
+  Assert.AreSame(AVcs, SheetOf(GSection.Tools.VcsPath(TAtlasVcsKind.Svn)));
+  Assert.AreSame(AVcs, SheetOf(EditOf(APage, 'VcsTimeoutSeconds')));
+  Assert.AreSame(AVcs, SheetOf(GSection.Project.VcsProjectInfo));
   Assert.AreEqual(2, GSection.Kind.VcsProviderChoice.Choice, 'svn');
   Assert.AreEqual('D:\Tools\svn.exe', GSection.Tools.VcsPath(TAtlasVcsKind.Svn).Text);
   Assert.AreEqual('45', EditOf(APage, 'VcsTimeoutSeconds').Text);
   // #1288: Dialog „Branch anlegen“ bei „Beginnen“, Unterknoten vcs.branches (Schema).
-  Assert.IsTrue(SheetOf(CheckOf(APage, 'VcsBranchConfirm')) = APage.NodeSheet('vcs.branches'));
+  Assert.AreSame(APage.NodeSheet('vcs.branches'), SheetOf(CheckOf(APage, 'VcsBranchConfirm')));
   Assert.IsTrue(CheckOf(APage, 'VcsBranchConfirm').Checked);
   // #1290: SVN-Gruppe auf derselben Seite, Vorgaben aus den Einstellungen.
-  Assert.IsTrue(SheetOf(EditOf(APage, 'VcsBranchSvnLocation')) = APage.NodeSheet('vcs.branches'));
-  Assert.IsTrue(SheetOf(EditOf(APage, 'VcsBranchSvnMessage')) = APage.NodeSheet('vcs.branches'));
+  Assert.AreSame(APage.NodeSheet('vcs.branches'), SheetOf(EditOf(APage, 'VcsBranchSvnLocation')));
+  Assert.AreSame(APage.NodeSheet('vcs.branches'), SheetOf(EditOf(APage, 'VcsBranchSvnMessage')));
   Assert.AreEqual('{projektwurzel}/branches/{name}', EditOf(APage, 'VcsBranchSvnLocation').Text);
   Assert.AreEqual(0, GSection.Branch.VcsBranchSvnSource.Choice, 'head');
   Assert.AreEqual(0, GSection.Branch.VcsBranchSvnAfter.Choice, 'switch');
   Assert.AreEqual('..\{projekt}-{kennung}', EditOf(APage, 'VcsBranchSvnCheckoutFolder').Text);
   // #1291: Gruppe „Externals“ auf derselben Seite, Regeln als Zeilen; ungültige Zeile mit Hinweis.
-  Assert.IsTrue(SheetOf(GSection.Branch.VcsExternalsRules) = APage.NodeSheet('vcs.externals'));
+  Assert.AreSame(APage.NodeSheet('vcs.externals'), SheetOf(GSection.Branch.VcsExternalsRules));
   Assert.AreEqual(0, GSection.Branch.VcsExternalsOnBranch.Choice, 'pin');
   Assert.AreEqual(0, GSection.Branch.VcsExternalsSuggest.Choice, 'modified');
   Assert.AreEqual('', GSection.Branch.VcsExternalsRules.Text);
@@ -192,7 +192,7 @@ begin
   GSection.Branch.VcsExternalsRules.OnChange(GSection.Branch.VcsExternalsRules);
   Assert.AreEqual('', GSection.Branch.VcsExternalsRulesError.Caption);
   // #1292: Arbeitskopien und Aktualisieren auf derselben Seite.
-  Assert.IsTrue(SheetOf(CheckOf(APage, 'VcsExternalsShow')) = APage.NodeSheet('vcs.externals'));
+  Assert.AreSame(APage.NodeSheet('vcs.externals'), SheetOf(CheckOf(APage, 'VcsExternalsShow')));
   Assert.IsTrue(CheckOf(APage, 'VcsExternalsShow').Checked);
   Assert.AreEqual(0, GSection.Branch.VcsExternalsUpdate.Choice, 'with');
 end;
@@ -206,12 +206,12 @@ begin
   GSection.Tools.VcsPath(TAtlasVcsKind.Git).OnChange(GSection.Tools.VcsPath(TAtlasVcsKind.Git));
   Assert.AreEqual('X:\fehlt\git.exe', AProbe.FLocated);
   Assert.Contains(GSection.Tools.VcsState(TAtlasVcsKind.Git).Caption, 'X:\fehlt\git.exe');
-  Assert.IsTrue(AProbe.FCheckedKind = TAtlasVcsKind.None, 'Prüfen erst auf Klick');
+  Assert.AreEqual<TAtlasVcsKind>(TAtlasVcsKind.None, AProbe.FCheckedKind, 'Prüfen erst auf Klick');
   GSection.Tools.VcsPath(TAtlasVcsKind.Git).Text := '';
   GSection.Tools.VcsPath(TAtlasVcsKind.Git).OnChange(GSection.Tools.VcsPath(TAtlasVcsKind.Git));
   Assert.Contains(GSection.Tools.VcsState(TAtlasVcsKind.Git).Caption, 'C:\Program Files\Git\cmd\git.exe');
   GSection.Tools.VcsCheckButton(TAtlasVcsKind.Svn).Click;
-  Assert.IsTrue(AProbe.FCheckedKind = TAtlasVcsKind.Svn);
+  Assert.AreEqual<TAtlasVcsKind>(TAtlasVcsKind.Svn, AProbe.FCheckedKind);
   Assert.AreEqual('D:\Tools\svn.exe', AProbe.FCheckedPath);
   Assert.IsFalse(GSection.Tools.VcsCheckButton(TAtlasVcsKind.Svn).Enabled);
   mCheck := TAtlasVcsToolChecks.Missing(TAtlasVcsKind.Svn, TAtlasVcsToolLocation.Empty);
@@ -234,7 +234,7 @@ begin
   GSection.Project.CheckShown;
   Assert.AreEqual(0, AProbe.FProjectCalls, 'anderer Reiter: keine Abfrage');
   APage.Navigation.OnChange(APage.Navigation, AVcsNode);
-  Assert.IsTrue(APage.Pages.ActivePage = mVcs);
+  Assert.AreSame(mVcs, APage.Pages.ActivePage);
   GSection.Project.CheckShown;
   Assert.AreEqual(1, AProbe.FProjectCalls);
   Assert.AreEqual(TAtlasVcsStrings.Text(TAtlasVcsTextId.SettingsVcsProjectQuerying), GSection.Project.VcsProjectInfo.Caption);
@@ -251,7 +251,7 @@ begin
   Assert.IsFalse(GSection.Kind.VcsLinkWelcome.Visible, 'Willkommensseite fehlt');
   Assert.IsFalse(GSection.Kind.VcsLinkIssues.Visible, 'Tracker fehlt');
   GSection.Kind.VcsLinkWelcome.Click;
-  Assert.IsTrue(APage.Pages.ActivePage = mVcs, 'ohne Ziel bleibt die Seite');
+  Assert.AreSame(mVcs, APage.Pages.ActivePage, 'ohne Ziel bleibt die Seite');
   GSection.Kind.VcsLinkEditor.Click;
   Assert.IsFalse(APage.Pages.ActivePage = mVcs, 'Editor-Seite mit Git-Rand');
 end;

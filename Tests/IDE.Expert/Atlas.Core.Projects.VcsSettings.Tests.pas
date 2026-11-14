@@ -38,7 +38,7 @@ var
 begin
   mSettings := TAtlasVcsPluginSettings.Parse('{"vcs": {"provider": "svn", "git": {"path": " C:\\Git\\git.exe "},' +
     ' "svn": {"path": "C:\\Svn\\svn.exe"}, "timeoutSeconds": 42}}');
-  Assert.IsTrue(mSettings.Provider = TAtlasVcsProvider.Svn);
+  Assert.AreEqual<TAtlasVcsProvider>(TAtlasVcsProvider.Svn, mSettings.Provider);
   Assert.AreEqual('C:\Git\git.exe', mSettings.GitPath, 'getrimmt');
   Assert.AreEqual('C:\Svn\svn.exe', mSettings.SvnPath);
   Assert.AreEqual(Cardinal(42000), mSettings.TimeoutMs);
@@ -62,7 +62,7 @@ begin
   for mText in mTexts do
   begin
     mSettings := TAtlasVcsPluginSettings.Parse(mText);
-    Assert.IsTrue(mSettings.Provider = TAtlasVcsProvider.Auto, mText);
+    Assert.AreEqual<TAtlasVcsProvider>(TAtlasVcsProvider.Auto, mSettings.Provider, mText);
     Assert.AreEqual('', mSettings.GitPath, mText);
     Assert.AreEqual(Cardinal(cDefaultMs), mSettings.TimeoutMs, mText);
     Assert.AreEqual(0, Integer(Length(mSettings.Projects)), mText);
