@@ -47,6 +47,9 @@ type
     procedure MissingBaselineFails;
     [Test]
     procedure CleanFileGivesZero;
+    /// <summary>TLinterCheck.Run ohne die Weiche von TLinterShell: fehlende Datei 3, Syntaxfehler 1.</summary>
+    [Test]
+    procedure CheckRunsWithoutShell;
     /// <summary>Wie im Editor: atlas.json wird von der Datei aus nach oben gesucht bis zum Stamm des
     /// Repositorys.</summary>
     [Test]
@@ -123,6 +126,7 @@ uses
   Atlas.Common.Editing.FormatCheck,
   Shell.CommandLine,
   Shell.Linter,
+  Shell.Linter.Check,
   Shell.Linter.Mutation,
   Shell.Workspace.Listings;
 
@@ -135,30 +139,6 @@ const
   cTodoUnit = 'unit Offen;'#13#10'interface'#13#10'implementation'#13#10'// TODO: Aufräumen'#13#10'end.'#13#10;
 
 { TShellLinterTests }
-
-function TShellLinterTests.Path(const AName: string): string;
-begin
-  Result := TPath.Combine(FFolder, StringReplace(AName, '/', PathDelim, [rfReplaceAll]));
-end;
-
-function TShellLinterTests.Run(const AArgs: TArray<string>): Integer;
-begin
-  if TFile.Exists(FOutput) then
-  begin
-    TFile.Delete(FOutput);
-  end;
-  Result := TLinterShell.Run(TCommandLineOptions.Parse(AArgs + ['--output', FOutput, '--index-cache',
-    TPath.Combine(ExtractFilePath(ParamStr(0)), 'TestIndexCache')]));
-end;
-
-function TShellLinterTests.OutputText: string;
-begin
-  Result := '';
-  if TFile.Exists(FOutput) then
-  begin
-    Result := TFile.ReadAllText(FOutput, TEncoding.UTF8);
-  end;
-end;
 
 procedure TShellLinterTests.WarmUpFirstUse;
 begin
@@ -208,6 +188,30 @@ begin
   FOutput := '';
 end;
 
+function TShellLinterTests.Path(const AName: string): string;
+begin
+  Result := TPath.Combine(FFolder, StringReplace(AName, '/', PathDelim, [rfReplaceAll]));
+end;
+
+function TShellLinterTests.Run(const AArgs: TArray<string>): Integer;
+begin
+  if TFile.Exists(FOutput) then
+  begin
+    TFile.Delete(FOutput);
+  end;
+  Result := TLinterShell.Run(TCommandLineOptions.Parse(AArgs + ['--output', FOutput, '--index-cache',
+    TPath.Combine(ExtractFilePath(ParamStr(0)), 'TestIndexCache')]));
+end;
+
+function TShellLinterTests.OutputText: string;
+begin
+  Result := '';
+  if TFile.Exists(FOutput) then
+  begin
+    Result := TFile.ReadAllText(FOutput, TEncoding.UTF8);
+  end;
+end;
+
 procedure TShellLinterTests.MissingTargetFails;
 begin
   Assert.AreEqual(3, Run(['--check', Path('Src/Fehlt.pas')]));
@@ -241,21 +245,16 @@ begin
   Assert.DoesNotContain(OutputText, 'Kaputt.pas');
 end;
 
-procedure TShellLinterTests.ConfigurationFoundInParentFolder;
-const
-  cUnitText = 'unit Tief;'#13#10'interface'#13#10'implementation'#13#10'procedure Lauf;'#13#10'begin'#13#10 +
-    '  with TObject.Create do'#13#10'    Free;'#13#10'end;'#13#10'end.'#13#10;
+procedure TShellLinterTests.CheckRunsWithoutShell;
+var
+  mCache: string;
 begin
-  ForceDirectories(Path('Repo/.git'));
-  ForceDirectories(Path('Repo/Src/Tief'));
-  TFile.WriteAllText(Path('Repo/Src/Tief/Tief.pas'), cUnitText);
-  Assert.AreEqual(0, Run(['--check', Path('Repo/Src/Tief/Tief.pas'), '--format', 'json', '--fail-on', 'never',
-    '--no-index']));
-  Assert.IsTrue(Pos('"with-statement"', OutputText) > 0, OutputText);
-  TFile.WriteAllText(Path('Repo/atlas.json'), '{"rules": {"with-statement": "off"}}');
-  Assert.AreEqual(0, Run(['--check', Path('Repo/Src/Tief/Tief.pas'), '--format', 'json', '--fail-on', 'never',
-    '--no-index']));
-  Assert.IsFalse(Pos('"with-statement"', OutputText) > 0, OutputText);
+  mCache := TPath.Combine(ExtractFilePath(ParamStr(0)), 'TestIndexCache');
+  Assert.AreEqual(3, TLinterCheck.Run(TCommandLineOptions.Parse(['--check', Path('Src/Fehlt.pas'), '--output', FOutput,
+    '--index-cache', mCache])));
+  Assert.AreEqual(1, TLinterCheck.Run(TCommandLineOptions.Parse(['--check', Path('Src/Kaputt.pas'), '--format=json',
+    '--output', FOutput, '--index-cache', mCache])));
+  Assert.Contains(OutputText, 'Kaputt.pas');
 end;
 
 procedure TShellLinterTests.SyntaxErrorGivesOne;
@@ -330,6 +329,40 @@ begin
   TFile.WriteAllText(Path('Src/atlas.json'), '{"architecture": {"enabled": false}}');
   Assert.AreEqual(0, TLinterShell.Architecture(TCommandLineOptions.Parse(['--check', TPath.Combine(FFolder, 'Src'),
     '--architecture', mReport])), 'atlas.json schaltet nicht ab');
+end;
+
+procedure TShellLinterTests.HotspotsNeedVersionControl;
+var
+  mReport, mGit, mText: string;
+  mRunner: IAtlasVcsRunner;
+  mCommands: TArray<string>;
+  mCommand: string;
+begin
+  mReport := Path('hotspots.md');
+  // Der Temp-Ordner liegt in keiner Arbeitskopie: Grund auf stderr, Exit-Code 3.
+  Assert.AreEqual(3, TLinterShell.Hotspots(TCommandLineOptions.Parse(['--check', TPath.Combine(FFolder, 'Src'),
+    '--hotspots', mReport])));
+  Assert.IsFalse(TFile.Exists(mReport));
+  Assert.AreEqual(3, TLinterShell.Hotspots(TCommandLineOptions.Parse(['--check', TPath.Combine(FFolder, 'Src'),
+    '--hotspots', Path('hotspots.pdf')])));
+  mGit := TVcsChanges.ToolFor(TAtlasVcsKind.Git, '');
+  if mGit = '' then
+  begin
+    Exit;
+  end;
+  mRunner := TShellPlatform.CreateVcsRunner(True, nil);
+  mCommands := TArray<string>.Create('init -q', 'config user.name Atlas', 'config user.email test@example.org',
+    'config commit.gpgsign false', 'add Src', 'commit -q -m Start');
+  for mCommand in mCommands do
+  begin
+    Assert.AreEqual(0, mRunner.Run(mGit, mCommand.Split([' ']), FFolder, 60000).ExitCode, mCommand);
+  end;
+  Assert.AreEqual(0, TLinterShell.Hotspots(TCommandLineOptions.Parse(['--check', TPath.Combine(FFolder, 'Src'),
+    '--hotspots', mReport])));
+  mText := TFile.ReadAllText(mReport, TEncoding.UTF8);
+  Assert.IsTrue(mText.StartsWith('# Hotspots'), mText);
+  Assert.IsTrue(mText.Contains('1 Commits'), mText);
+  Assert.IsTrue(mText.Contains('Kaputt'), 'geänderte Unit im Bericht');
 end;
 
 procedure TShellLinterTests.ArchitectureCompareFailsOnNewCycle;
@@ -409,40 +442,6 @@ begin
   Assert.AreEqual(1, Query(['--query', '@erben']));
   Assert.Contains(OutputText, 'TKind');
   Assert.AreEqual(3, Query(['--query', '@fehlt']));
-end;
-
-procedure TShellLinterTests.HotspotsNeedVersionControl;
-var
-  mReport, mGit, mText: string;
-  mRunner: IAtlasVcsRunner;
-  mCommands: TArray<string>;
-  mCommand: string;
-begin
-  mReport := Path('hotspots.md');
-  // Der Temp-Ordner liegt in keiner Arbeitskopie: Grund auf stderr, Exit-Code 3.
-  Assert.AreEqual(3, TLinterShell.Hotspots(TCommandLineOptions.Parse(['--check', TPath.Combine(FFolder, 'Src'),
-    '--hotspots', mReport])));
-  Assert.IsFalse(TFile.Exists(mReport));
-  Assert.AreEqual(3, TLinterShell.Hotspots(TCommandLineOptions.Parse(['--check', TPath.Combine(FFolder, 'Src'),
-    '--hotspots', Path('hotspots.pdf')])));
-  mGit := TVcsChanges.ToolFor(TAtlasVcsKind.Git, '');
-  if mGit = '' then
-  begin
-    Exit;
-  end;
-  mRunner := TShellPlatform.CreateVcsRunner(True, nil);
-  mCommands := TArray<string>.Create('init -q', 'config user.name Atlas', 'config user.email test@example.org',
-    'config commit.gpgsign false', 'add Src', 'commit -q -m Start');
-  for mCommand in mCommands do
-  begin
-    Assert.AreEqual(0, mRunner.Run(mGit, mCommand.Split([' ']), FFolder, 60000).ExitCode, mCommand);
-  end;
-  Assert.AreEqual(0, TLinterShell.Hotspots(TCommandLineOptions.Parse(['--check', TPath.Combine(FFolder, 'Src'),
-    '--hotspots', mReport])));
-  mText := TFile.ReadAllText(mReport, TEncoding.UTF8);
-  Assert.IsTrue(mText.StartsWith('# Hotspots'), mText);
-  Assert.IsTrue(mText.Contains('1 Commits'), mText);
-  Assert.IsTrue(mText.Contains('Kaputt'), 'geänderte Unit im Bericht');
 end;
 
 procedure TShellLinterTests.MutateFormatsAndExitCodes;
@@ -542,6 +541,23 @@ begin
   Assert.AreEqual(0, Run(['--check', Path('Idx/Lauf.dproj'), '--format', 'json', '--fail-on', 'never',
     '--units', 'Suche', '--no-index']));
   Assert.IsFalse(Pos('"legacy-stack-queue"', OutputText) > 0, OutputText);
+end;
+
+procedure TShellLinterTests.ConfigurationFoundInParentFolder;
+const
+  cUnitText = 'unit Tief;'#13#10'interface'#13#10'implementation'#13#10'procedure Lauf;'#13#10'begin'#13#10 +
+    '  with TObject.Create do'#13#10'    Free;'#13#10'end;'#13#10'end.'#13#10;
+begin
+  ForceDirectories(Path('Repo/.git'));
+  ForceDirectories(Path('Repo/Src/Tief'));
+  TFile.WriteAllText(Path('Repo/Src/Tief/Tief.pas'), cUnitText);
+  Assert.AreEqual(0, Run(['--check', Path('Repo/Src/Tief/Tief.pas'), '--format', 'json', '--fail-on', 'never',
+    '--no-index']));
+  Assert.IsTrue(Pos('"with-statement"', OutputText) > 0, OutputText);
+  TFile.WriteAllText(Path('Repo/atlas.json'), '{"rules": {"with-statement": "off"}}');
+  Assert.AreEqual(0, Run(['--check', Path('Repo/Src/Tief/Tief.pas'), '--format', 'json', '--fail-on', 'never',
+    '--no-index']));
+  Assert.IsFalse(Pos('"with-statement"', OutputText) > 0, OutputText);
 end;
 
 procedure TShellLinterTests.InlineCompilerVersionWithoutInstallation;

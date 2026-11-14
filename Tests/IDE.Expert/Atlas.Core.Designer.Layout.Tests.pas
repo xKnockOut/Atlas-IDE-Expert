@@ -55,10 +55,10 @@ begin
   Result := TAtlasLayoutNode.Create(AName, 'TControl', AParent, Bounds(ALeft, ATop, AWidth, AHeight));
 end;
 
-function Aligned(const AName: string; AParent: Integer; AAlign: TAtlasLayoutAlign; ALeft, ATop, AWidth,
-  AHeight: Integer): TAtlasLayoutNode;
+function Aligned(const AName: string; AParent: Integer; AAlign: TAtlasLayoutAlign;
+  const ABounds: TRect): TAtlasLayoutNode;
 begin
-  Result := Node(AName, AParent, ALeft, ATop, AWidth, AHeight);
+  Result := Node(AName, AParent, ABounds.Left, ABounds.Top, ABounds.Width, ABounds.Height);
   Result.Align := AAlign;
 end;
 
@@ -143,11 +143,11 @@ var
   mNew: TArray<TRect>;
 begin
   // Zwei alTop untereinander, ein alBottom, ein alLeft, ein alClient im Rest.
-  mNew := TAtlasFormLayout.Arrange([Aligned('pnlTop2', -1, TAtlasLayoutAlign.Top, 0, 40, 800, 30),
-    Aligned('pnlTop1', -1, TAtlasLayoutAlign.Top, 0, 0, 800, 40),
-    Aligned('pnlBottom', -1, TAtlasLayoutAlign.Bottom, 0, 560, 800, 40),
-    Aligned('tree', -1, TAtlasLayoutAlign.Left, 0, 70, 200, 490),
-    Aligned('memo', -1, TAtlasLayoutAlign.Client, 200, 70, 600, 490)], TSize.Create(800, 600),
+  mNew := TAtlasFormLayout.Arrange([Aligned('pnlTop2', -1, TAtlasLayoutAlign.Top, Bounds(0, 40, 800, 30)),
+    Aligned('pnlTop1', -1, TAtlasLayoutAlign.Top, Bounds(0, 0, 800, 40)),
+    Aligned('pnlBottom', -1, TAtlasLayoutAlign.Bottom, Bounds(0, 560, 800, 40)),
+    Aligned('tree', -1, TAtlasLayoutAlign.Left, Bounds(0, 70, 200, 490)),
+    Aligned('memo', -1, TAtlasLayoutAlign.Client, Bounds(200, 70, 600, 490))], TSize.Create(800, 600),
     TSize.Create(600, 400));
   Assert.AreEqual(0, mNew[1].Top, 'pnlTop1 zuerst, weil weiter oben');
   Assert.AreEqual(40, mNew[0].Top);
@@ -163,7 +163,7 @@ var
   mNodes: TArray<TAtlasLayoutNode>;
   mNew: TArray<TRect>;
 begin
-  mNodes := [Node('pnl', -1, 0, 0, 400, 300), Aligned('memo', 0, TAtlasLayoutAlign.Client, 0, 0, 400, 300)];
+  mNodes := [Node('pnl', -1, 0, 0, 400, 300), Aligned('memo', 0, TAtlasLayoutAlign.Client, Bounds(0, 0, 400, 300))];
   mNodes[0].Padding := Rect(4, 4, 4, 4);
   mNodes[1].AlignWithMargins := True;
   mNodes[1].Margins := Rect(3, 3, 3, 3);
@@ -177,7 +177,7 @@ var
   mNew: TArray<TRect>;
 begin
   // Panel alClient mit Rahmen (1 px), darin ein Knopf rechts unten verankert.
-  mNodes := [Aligned('pnl', -1, TAtlasLayoutAlign.Client, 0, 0, 800, 600), Node('btn', 0, 700, 560, 75, 25)];
+  mNodes := [Aligned('pnl', -1, TAtlasLayoutAlign.Client, Bounds(0, 0, 800, 600)), Node('btn', 0, 700, 560, 75, 25)];
   mNodes[0].Inset := Rect(1, 1, 1, 1);
   mNodes[1].Anchors := [TAtlasLayoutAnchor.Right, TAtlasLayoutAnchor.Bottom];
   mNew := TAtlasFormLayout.Arrange(mNodes, TSize.Create(800, 600), TSize.Create(1000, 700));
@@ -245,9 +245,9 @@ var
   mFindings: TArray<TAtlasLayoutFinding>;
   mFinding: TAtlasLayoutFinding;
 begin
-  mNodes := [Node('pnl', -1, 0, 0, 400, 300), Aligned('memoA', 0, TAtlasLayoutAlign.Client, 0, 0, 400, 300),
-    Aligned('memoB', 0, TAtlasLayoutAlign.Client, 0, 0, 400, 300),
-    Aligned('pnlTop', -1, TAtlasLayoutAlign.Top, 0, 0, 400, 30)];
+  mNodes := [Node('pnl', -1, 0, 0, 400, 300), Aligned('memoA', 0, TAtlasLayoutAlign.Client, Bounds(0, 0, 400, 300)),
+    Aligned('memoB', 0, TAtlasLayoutAlign.Client, Bounds(0, 0, 400, 300)),
+    Aligned('pnlTop', -1, TAtlasLayoutAlign.Top, Bounds(0, 0, 400, 30))];
   mNodes[3].Anchors := [TAtlasLayoutAnchor.Left, TAtlasLayoutAnchor.Top, TAtlasLayoutAnchor.Right,
     TAtlasLayoutAnchor.Bottom];
   mFindings := TAtlasFormLayout.Problems(mNodes, TAtlasFormLayout.Arrange(mNodes, TSize.Create(400, 300),

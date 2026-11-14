@@ -132,6 +132,76 @@ begin
   Assert.AreEqual($6077, ALoaded.PreviousProblemKey);
   Assert.AreEqual(0, ALoaded.HideElementKey, '0 = keine Taste');
 end;
+/// <summary>Normalize begrenzt die Debug-Werte (Inline-Werte, Warum hier, Variablen, Vorhersage, Hover, Zeitachse,
+/// Profiler).</summary>
+procedure CheckDebugClamps(var ASettings: TAtlasPluginSettings);
+begin
+  ASettings.DebugInlineValuesPerLine := 0;
+  ASettings.DebugWhyHereDepth := 99;
+  ASettings.DebugVariablesSearchDepth := 0;
+  ASettings.DebugVariablesSearchLimit := 1000000;
+  ASettings.DebugPredictLines := 0;
+  ASettings.DebugHoverMaxChildren := 5000;
+  ASettings.Normalize;
+  Assert.AreEqual(TAtlasPluginSettings.cMinInlineValuesPerLine, ASettings.DebugInlineValuesPerLine,
+    'debug.inlineValuesPerLine unten begrenzt (#508)');
+  Assert.AreEqual(TAtlasPluginSettings.cMaxWhyHereDepth, ASettings.DebugWhyHereDepth,
+    'debug.whyHere.depth oben begrenzt (#1878)');
+  Assert.AreEqual(TAtlasPluginSettings.cMinVariablesSearchDepth, ASettings.DebugVariablesSearchDepth,
+    'debug.variablesWindow.searchDepth unten begrenzt (#853)');
+  Assert.AreEqual(TAtlasPluginSettings.cMaxVariablesSearchLimit, ASettings.DebugVariablesSearchLimit,
+    'debug.variablesWindow.searchLimit oben begrenzt (#853)');
+  Assert.AreEqual(TAtlasPluginSettings.cMinPredictLines, ASettings.DebugPredictLines,
+    'debug.predictConditions.lines unten begrenzt (#2169)');
+  Assert.AreEqual(TAtlasPluginSettings.cMaxHoverMaxChildren, ASettings.DebugHoverMaxChildren,
+    'debug.hoverMaxChildren oben begrenzt (#895)');
+  ASettings.DebugMemoryTimelineIntervalMs := 60000;
+  ASettings.Normalize;
+  Assert.AreEqual(TAtlasPluginSettings.cMaxMemoryTimelineIntervalMs, ASettings.DebugMemoryTimelineIntervalMs,
+    'debug.memoryTimeline.intervalMs oben begrenzt (#858)');
+  ASettings.DebugProfilerIntervalMs := 0;
+  ASettings.Normalize;
+  Assert.AreEqual(TAtlasPluginSettings.cMinProfilerIntervalMs, ASettings.DebugProfilerIntervalMs,
+    'debug.profiler.intervalMs unten begrenzt (#2057)');
+end;
+
+procedure TAtlasViewSettingsTests.HideElementOptions;
+var
+  mSettings, mLoaded: TAtlasPluginSettings;
+  mStore: IAtlasSettingsStore;
+begin
+  mSettings := TAtlasPluginSettings.Defaults;
+  Assert.IsTrue(mSettings.BlockEndLabels, 'Blockende-Beschriftung standardmäßig an');
+  Assert.AreEqual($40BE, mSettings.HideElementKey, 'Strg+.');
+  mSettings.HideElementKey := -5;
+  mSettings.Normalize;
+  Assert.AreEqual(0, mSettings.HideElementKey, 'negativ = keine Taste');
+  Assert.AreEqual(25, TAtlasPluginSettings.Defaults.BlockEndLabelsMinLines, 'Mindestlänge (#620)');
+  Assert.IsTrue(mSettings.DimUnusedUses, 'ungenutzte uses standardmäßig abgeblendet (#621)');
+  // Fehlertext am Zeilenende, Zähler und Sprungtasten (#509).
+  Assert.AreEqual('errors', mSettings.InlineDiagnostics);
+  Assert.IsTrue(mSettings.ProblemsStatusCounter);
+  Assert.AreEqual($C077, mSettings.NextProblemKey);
+  Assert.AreEqual($E077, mSettings.PreviousProblemKey);
+  mSettings.InlineDiagnostics := 'ALL';
+  mSettings.Normalize;
+  Assert.AreEqual('all', mSettings.InlineDiagnostics, 'Schreibweise des Schemas');
+  mSettings.InlineDiagnostics := 'unsinn';
+  mSettings.Normalize;
+  Assert.AreEqual('errors', mSettings.InlineDiagnostics, 'Unbekanntes = Vorgabe');
+  mSettings.BlockEndLabelsMinLines := 0;
+  mSettings.Normalize;
+  Assert.AreEqual(TAtlasPluginSettings.cMinBlockEndLines, mSettings.BlockEndLabelsMinLines, 'unten begrenzt');
+  mSettings.BlockEndLabelsMinLines := 5000;
+  CheckDebugClamps(mSettings);
+  Assert.AreEqual(TAtlasPluginSettings.cMaxBlockEndLines, mSettings.BlockEndLabelsMinLines, 'oben begrenzt');
+  SetHideElementOptions(mSettings);
+  mStore := TMemoryStore.Create;
+  mSettings.Save(mStore);
+  mLoaded := TAtlasPluginSettings.Defaults;
+  mLoaded.Load(mStore);
+  AssertHideElementLoaded(mLoaded);
+end;
 /// <summary>Units suchen (#777): Werte von der Vorgabe abweichend setzen.</summary>
 procedure SetUnitSearchOptions(var ASettings: TAtlasPluginSettings);
 begin
@@ -180,231 +250,6 @@ begin
   Assert.AreEqual('folder', ALoaded.UnitSearchGroupBy);
   Assert.AreEqual('library', ALoaded.UnitSearchDefaultScope);
   Assert.AreEqual($6055, ALoaded.UnitSearchKey);
-end;
-/// <summary>Schnelle Lesezeichen (#1104): Werte von der Vorgabe abweichend setzen.</summary>
-procedure SetQuickBookmarkOptions(var ASettings: TAtlasPluginSettings);
-begin
-  ASettings.QuickBookmarks := False;
-  ASettings.QuickBookmarksGutter := False;
-  ASettings.QuickBookmarksGutterClick := False;
-  ASettings.QuickBookmarksNumberedKeys := False;
-  ASettings.QuickBookmarkKey := $604C;
-  ASettings.QuickBookmarkKeyPriority := False;
-  ASettings.QuickBookmarkChordWait := 500;
-  ASettings.QuickBookmarkSetKey := $C031;
-  ASettings.QuickBookmarkSetKeyPriority := False;
-  ASettings.QuickBookmarkJumpKey := $8031;
-  ASettings.QuickBookmarkJumpKeyPriority := False;
-  ASettings.QuickBookmarksScope := 'file';
-  ASettings.QuickBookmarksImportIde := False;
-  ASettings.NextBookmarkKey := $4071;
-  ASettings.PreviousBookmarkKey := $6071;
-end;
-/// <summary>Schnelle Lesezeichen (#1104): gespeicherte Werte gelesen.</summary>
-procedure AssertQuickBookmarkLoaded(const ALoaded: TAtlasPluginSettings);
-begin
-  Assert.IsFalse(ALoaded.QuickBookmarks);
-  Assert.IsFalse(ALoaded.QuickBookmarksGutter);
-  Assert.IsFalse(ALoaded.QuickBookmarksGutterClick);
-  Assert.IsFalse(ALoaded.QuickBookmarksNumberedKeys);
-  Assert.AreEqual($604C, ALoaded.QuickBookmarkKey);
-  Assert.IsFalse(ALoaded.QuickBookmarkKeyPriority);
-  Assert.AreEqual(500, ALoaded.QuickBookmarkChordWait);
-  Assert.AreEqual($C031, ALoaded.QuickBookmarkSetKey);
-  Assert.IsFalse(ALoaded.QuickBookmarkSetKeyPriority);
-  Assert.AreEqual($8031, ALoaded.QuickBookmarkJumpKey);
-  Assert.IsFalse(ALoaded.QuickBookmarkJumpKeyPriority);
-  Assert.AreEqual('file', ALoaded.QuickBookmarksScope);
-  Assert.IsFalse(ALoaded.QuickBookmarksImportIde);
-  Assert.AreEqual($4071, ALoaded.NextBookmarkKey);
-  Assert.AreEqual($6071, ALoaded.PreviousBookmarkKey);
-end;
-
-{ TAtlasViewSettingsTests }
-
-procedure TAtlasViewSettingsTests.EditorToolbarOptions;
-var
-  mSettings, mLoaded: TAtlasPluginSettings;
-  mStore: IAtlasSettingsStore;
-begin
-  mSettings := TAtlasPluginSettings.Defaults;
-  Assert.IsTrue(mSettings.EditorToolbar);
-  Assert.AreEqual('belowBreadcrumbs', mSettings.EditorToolbarPosition);
-  Assert.AreEqual(TAtlasToolbarItems.DefaultText, mSettings.EditorToolbarItems);
-  Assert.IsTrue(mSettings.EditorToolbarReturnButton);
-  Assert.IsFalse(mSettings.EditorToolbarLabels);
-  Assert.AreEqual(0, mSettings.GotoInterfaceKey, 'keine Taste');
-  Assert.AreEqual(0, mSettings.GotoImplementationKey, 'keine Taste');
-  mSettings.EditorToolbarPosition := 'INBREADCRUMBS';
-  mSettings.EditorToolbarItems := '|, Atlas.GotoInterface ,|,|,Atlas.NavBack,Atlas.navback,|';
-  mSettings.GotoInterfaceKey := $1FFFF;
-  mSettings.GotoImplementationKey := -3;
-  mSettings.Normalize;
-  Assert.AreEqual('inBreadcrumbs', mSettings.EditorToolbarPosition);
-  Assert.AreEqual('Atlas.GotoInterface,|,Atlas.NavBack', mSettings.EditorToolbarItems);
-  Assert.AreEqual($FFFF, mSettings.GotoInterfaceKey);
-  Assert.AreEqual(0, mSettings.GotoImplementationKey);
-  mSettings.EditorToolbarPosition := 'oben';
-  mSettings.Normalize;
-  Assert.AreEqual('belowBreadcrumbs', mSettings.EditorToolbarPosition, 'Unbekanntes = Vorgabe');
-  mSettings.EditorToolbar := False;
-  mSettings.EditorToolbarPosition := 'aboveBreadcrumbs';
-  mSettings.EditorToolbarItems := '';
-  mSettings.EditorToolbarReturnButton := False;
-  mSettings.EditorToolbarLabels := True;
-  mSettings.GotoInterfaceKey := $6049;
-  mSettings.GotoImplementationKey := $604D;
-  mStore := TMemoryStore.Create;
-  mSettings.Save(mStore);
-  mLoaded := TAtlasPluginSettings.Defaults;
-  mLoaded.Load(mStore);
-  Assert.IsFalse(mLoaded.EditorToolbar);
-  Assert.AreEqual('aboveBreadcrumbs', mLoaded.EditorToolbarPosition);
-  Assert.AreEqual('', mLoaded.EditorToolbarItems, 'alle Knöpfe entfernt bleibt leer');
-  Assert.IsFalse(mLoaded.EditorToolbarReturnButton);
-  Assert.IsTrue(mLoaded.EditorToolbarLabels);
-  Assert.AreEqual($6049, mLoaded.GotoInterfaceKey);
-  Assert.AreEqual($604D, mLoaded.GotoImplementationKey);
-end;
-procedure TAtlasViewSettingsTests.EditorStatusBarOptions;
-var
-  mSettings, mLoaded: TAtlasPluginSettings;
-  mStore: IAtlasSettingsStore;
-begin
-  mSettings := TAtlasPluginSettings.Defaults;
-  Assert.IsTrue(mSettings.EditorStatusBar);
-  Assert.AreEqual('status,findings,liveCheck,method', mSettings.EditorStatusBarItems);
-  Assert.AreEqual(TAtlasStatusBarItems.DefaultText, mSettings.EditorStatusBarItems);
-  mSettings.EditorStatusBarItems := ' METHOD, zahnrad ,status,method';
-  mSettings.Normalize;
-  Assert.AreEqual('method,status', mSettings.EditorStatusBarItems, 'nur bekannte, jedes einmal');
-  mSettings.EditorStatusBar := False;
-  mSettings.EditorStatusBarItems := '';
-  mStore := TMemoryStore.Create;
-  mSettings.Save(mStore);
-  mLoaded := TAtlasPluginSettings.Defaults;
-  mLoaded.Load(mStore);
-  Assert.IsFalse(mLoaded.EditorStatusBar);
-  Assert.AreEqual('', mLoaded.EditorStatusBarItems, 'alle Elemente aus bleibt leer');
-end;
-procedure TAtlasViewSettingsTests.CallHierarchyDiagramOption;
-var
-  mSettings, mLoaded: TAtlasPluginSettings;
-  mStore: IAtlasSettingsStore;
-begin
-  mSettings := TAtlasPluginSettings.Defaults;
-  Assert.IsTrue(mSettings.CallHierarchyDiagram, 'Aufrufdiagramm standardmäßig an');
-  mSettings.CallHierarchyDiagram := False;
-  mStore := TMemoryStore.Create;
-  mSettings.Save(mStore);
-  Assert.AreEqual(0, mStore.ReadInteger('CallHierarchyDiagram', 1));
-  mLoaded := TAtlasPluginSettings.Defaults;
-  mLoaded.Load(mStore);
-  Assert.IsFalse(mLoaded.CallHierarchyDiagram);
-end;
-procedure TAtlasViewSettingsTests.EditorDesignerBarOptions;
-var
-  mSettings, mLoaded: TAtlasPluginSettings;
-  mStore: IAtlasSettingsStore;
-begin
-  mSettings := TAtlasPluginSettings.Defaults;
-  Assert.IsTrue(mSettings.EditorDesignerBar);
-  Assert.AreEqual(32988, mSettings.DesignerSearchKey, 'Alt+^');
-  Assert.AreEqual(TAtlasPluginSettings.cDesignerSearchWindow, mSettings.DesignerSearchStyle, 'großes Fenster');
-  Assert.IsTrue(mSettings.DesignerTabOrderClick, 'Neuvergeben an (#603)');
-  Assert.IsFalse(mSettings.DesignerTabOrderOverlay, 'Marken nur auf Knopfdruck');
-  Assert.IsFalse(mSettings.DesignerTabOrderPaths);
-  Assert.IsTrue(mSettings.DesignerTabOrderColors, 'Farben je Container an');
-  Assert.IsFalse(mSettings.DesignerAlign, 'experimentell: aus');
-  mSettings.EditorDesignerBar := False;
-  mSettings.DesignerSearchKey := 0;
-  mSettings.DesignerSearchStyle := TAtlasPluginSettings.cDesignerSearchPopup;
-  mSettings.DesignerTabOrderClick := False;
-  mSettings.DesignerTabOrderOverlay := True;
-  mSettings.DesignerTabOrderPaths := True;
-  mSettings.DesignerTabOrderColors := False;
-  mSettings.DesignerAlign := True;
-  mStore := TMemoryStore.Create;
-  mSettings.Save(mStore);
-  mLoaded := TAtlasPluginSettings.Defaults;
-  mLoaded.Load(mStore);
-  Assert.IsFalse(mLoaded.EditorDesignerBar);
-  Assert.AreEqual(0, mLoaded.DesignerSearchKey, 'keine Taste');
-  Assert.AreEqual(TAtlasPluginSettings.cDesignerSearchPopup, mLoaded.DesignerSearchStyle);
-  Assert.IsFalse(mLoaded.DesignerTabOrderClick);
-  Assert.IsTrue(mLoaded.DesignerTabOrderOverlay);
-  Assert.IsTrue(mLoaded.DesignerTabOrderPaths);
-  Assert.IsFalse(mLoaded.DesignerTabOrderColors);
-  Assert.IsTrue(mLoaded.DesignerAlign);
-  mStore.WriteString('DesignerSearchStyle', 'riesig');
-  mLoaded.Load(mStore);
-  Assert.AreEqual(TAtlasPluginSettings.cDesignerSearchWindow, mLoaded.DesignerSearchStyle, 'Unbekanntes: Vorgabe');
-end;
-/// <summary>Eigenes Desktop-Layout im Designer (#2079): Vorgaben, Speichern und Laden, unbekannter Rückweg.
-/// </summary>
-procedure TAtlasViewSettingsTests.DesignerLayoutOptions;
-var
-  mSettings, mLoaded: TAtlasPluginSettings;
-  mStore: IAtlasSettingsStore;
-begin
-  mSettings := TAtlasPluginSettings.Defaults;
-  Assert.IsFalse(mSettings.DesignerLayout, 'Vorgabe aus');
-  Assert.AreEqual('', mSettings.DesignerLayoutName);
-  Assert.AreEqual(TAtlasPluginSettings.cDesignerLayoutPrevious, mSettings.DesignerLayoutReturnTo);
-  Assert.IsTrue(mSettings.DesignerLayoutSkipWhileDebugging);
-  mSettings.DesignerLayout := True;
-  mSettings.DesignerLayoutName := '  Designer ';
-  mSettings.DesignerLayoutReturnTo := TAtlasPluginSettings.cDesignerLayoutDefault;
-  mSettings.DesignerLayoutSkipWhileDebugging := False;
-  mStore := TMemoryStore.Create;
-  mSettings.Save(mStore);
-  mLoaded := TAtlasPluginSettings.Defaults;
-  mLoaded.Load(mStore);
-  Assert.IsTrue(mLoaded.DesignerLayout);
-  Assert.AreEqual('Designer', mLoaded.DesignerLayoutName, 'ohne Leerraum');
-  Assert.AreEqual(TAtlasPluginSettings.cDesignerLayoutDefault, mLoaded.DesignerLayoutReturnTo);
-  Assert.IsFalse(mLoaded.DesignerLayoutSkipWhileDebugging);
-  mStore.WriteString('DesignerLayoutReturnTo', 'irgendwo');
-  mLoaded.Load(mStore);
-  Assert.AreEqual(TAtlasPluginSettings.cDesignerLayoutPrevious, mLoaded.DesignerLayoutReturnTo, 'Unbekanntes: Vorgabe');
-end;
-procedure TAtlasViewSettingsTests.QuickBookmarkOptions;
-var
-  mSettings, mLoaded: TAtlasPluginSettings;
-  mStore: IAtlasSettingsStore;
-begin
-  mSettings := TAtlasPluginSettings.Defaults;
-  Assert.IsTrue(mSettings.QuickBookmarks);
-  Assert.IsTrue(mSettings.QuickBookmarksGutter);
-  Assert.IsTrue(mSettings.QuickBookmarksGutterClick);
-  Assert.IsTrue(mSettings.QuickBookmarksNumberedKeys);
-  Assert.AreEqual($604B, mSettings.QuickBookmarkKey, 'Strg+Umschalt+K');
-  Assert.IsTrue(mSettings.QuickBookmarkKeyPriority);
-  Assert.AreEqual(800, mSettings.QuickBookmarkChordWait);
-  Assert.AreEqual($6031, mSettings.QuickBookmarkSetKey, 'Strg+Umschalt+1');
-  Assert.AreEqual($4031, mSettings.QuickBookmarkJumpKey, 'Strg+1');
-  Assert.AreEqual('project', mSettings.QuickBookmarksScope);
-  Assert.IsTrue(mSettings.QuickBookmarksImportIde);
-  Assert.AreEqual(0, mSettings.NextBookmarkKey, 'ohne voreingestellte Taste');
-  Assert.AreEqual(0, mSettings.PreviousBookmarkKey);
-  mSettings.QuickBookmarkChordWait := 99999;
-  mSettings.QuickBookmarksScope := 'FILE';
-  mSettings.QuickBookmarkKey := -1;
-  mSettings.Normalize;
-  Assert.AreEqual(TAtlasPluginSettings.cMaxQuickChordWait, mSettings.QuickBookmarkChordWait);
-  Assert.AreEqual('file', mSettings.QuickBookmarksScope);
-  Assert.AreEqual(0, mSettings.QuickBookmarkKey);
-  mSettings.QuickBookmarksScope := 'irgendwo';
-  mSettings.QuickBookmarkChordWait := -5;
-  mSettings.Normalize;
-  Assert.AreEqual('project', mSettings.QuickBookmarksScope);
-  Assert.AreEqual(0, mSettings.QuickBookmarkChordWait);
-  SetQuickBookmarkOptions(mSettings);
-  mStore := TMemoryStore.Create;
-  mSettings.Save(mStore);
-  mLoaded := TAtlasPluginSettings.Defaults;
-  mLoaded.Load(mStore);
-  AssertQuickBookmarkLoaded(mLoaded);
 end;
 procedure TAtlasViewSettingsTests.UnitSearchOptions;
 var
@@ -580,6 +425,58 @@ begin
   Assert.IsFalse(mLoaded.OutlineFollowCursor);
   Assert.IsFalse(mLoaded.OutlineConditions);
 end;
+/// <summary>Setzt alle Breadcrumbs-Einstellungen auf das Gegenteil der Vorgabe.</summary>
+procedure SetBreadcrumbsOptions(var ASettings: TAtlasPluginSettings);
+begin
+  ASettings.Breadcrumbs := False;
+  ASettings.BreadcrumbsShowUnit := True;
+  ASettings.BreadcrumbsVisibility := False;
+  ASettings.BreadcrumbsMemberBlocks := False;
+  ASettings.BreadcrumbsVisibilityMark := False;
+  ASettings.BreadcrumbsDeclarationBlocks := False;
+  ASettings.BreadcrumbsConditionals := False;
+  ASettings.BreadcrumbsRegions := False;
+  ASettings.BreadcrumbsStatements := True;
+  ASettings.BreadcrumbsSectionCounts := False;
+  ASettings.BreadcrumbsSectionAppend := False;
+  ASettings.BreadcrumbsSectionCreate := False;
+  ASettings.SectionAppendKey := $C04E;
+  ASettings.BreadcrumbsContextMenu := False;
+  ASettings.BreadcrumbsOverloads := False;
+  ASettings.BreadcrumbsInterfaces := False;
+  ASettings.BreadcrumbsMetrics := False;
+  ASettings.MouseNavButtons := False;
+  ASettings.BreadcrumbsIdeColors := False;
+  ASettings.BreadcrumbsHideIdeToolbar := False;
+  ASettings.BreadcrumbsKey := 0;
+end;
+
+/// <summary>Prüft die von SetBreadcrumbsOptions gesetzten Werte nach Speichern und Laden.</summary>
+procedure AssertBreadcrumbsLoaded(const ALoaded: TAtlasPluginSettings);
+begin
+  Assert.IsFalse(ALoaded.Breadcrumbs);
+  Assert.IsTrue(ALoaded.BreadcrumbsShowUnit);
+  Assert.IsFalse(ALoaded.BreadcrumbsVisibility);
+  Assert.IsFalse(ALoaded.BreadcrumbsMemberBlocks);
+  Assert.IsFalse(ALoaded.BreadcrumbsVisibilityMark);
+  Assert.IsFalse(ALoaded.BreadcrumbsDeclarationBlocks);
+  Assert.IsFalse(ALoaded.BreadcrumbsConditionals);
+  Assert.IsFalse(ALoaded.BreadcrumbsRegions);
+  Assert.IsTrue(ALoaded.BreadcrumbsStatements);
+  Assert.IsFalse(ALoaded.BreadcrumbsSectionCounts);
+  Assert.IsFalse(ALoaded.BreadcrumbsSectionAppend);
+  Assert.IsFalse(ALoaded.BreadcrumbsSectionCreate);
+  Assert.AreEqual($C04E, ALoaded.SectionAppendKey, 'Strg+Alt+N');
+  Assert.IsFalse(ALoaded.BreadcrumbsContextMenu);
+  Assert.IsFalse(ALoaded.BreadcrumbsOverloads);
+  Assert.IsFalse(ALoaded.BreadcrumbsInterfaces);
+  Assert.IsFalse(ALoaded.BreadcrumbsMetrics);
+  Assert.IsFalse(ALoaded.MouseNavButtons);
+  Assert.IsFalse(ALoaded.BreadcrumbsIdeColors);
+  Assert.IsFalse(ALoaded.BreadcrumbsHideIdeToolbar);
+  Assert.AreEqual(0, ALoaded.BreadcrumbsKey);
+end;
+
 procedure TAtlasViewSettingsTests.BreadcrumbsOptions;
 var
   mSettings, mLoaded: TAtlasPluginSettings;
@@ -607,52 +504,12 @@ begin
   Assert.IsTrue(mSettings.BreadcrumbsIdeColors, 'Farben der IDE');
   Assert.IsTrue(mSettings.BreadcrumbsHideIdeToolbar, 'Navigationsleiste der IDE aus');
   Assert.AreEqual($60BE, mSettings.BreadcrumbsKey, 'Strg+Umschalt+.');
-  mSettings.Breadcrumbs := False;
-  mSettings.BreadcrumbsShowUnit := True;
-  mSettings.BreadcrumbsVisibility := False;
-  mSettings.BreadcrumbsMemberBlocks := False;
-  mSettings.BreadcrumbsVisibilityMark := False;
-  mSettings.BreadcrumbsDeclarationBlocks := False;
-  mSettings.BreadcrumbsConditionals := False;
-  mSettings.BreadcrumbsRegions := False;
-  mSettings.BreadcrumbsStatements := True;
-  mSettings.BreadcrumbsSectionCounts := False;
-  mSettings.BreadcrumbsSectionAppend := False;
-  mSettings.BreadcrumbsSectionCreate := False;
-  mSettings.SectionAppendKey := $C04E;
-  mSettings.BreadcrumbsContextMenu := False;
-  mSettings.BreadcrumbsOverloads := False;
-  mSettings.BreadcrumbsInterfaces := False;
-  mSettings.BreadcrumbsMetrics := False;
-  mSettings.MouseNavButtons := False;
-  mSettings.BreadcrumbsIdeColors := False;
-  mSettings.BreadcrumbsHideIdeToolbar := False;
-  mSettings.BreadcrumbsKey := 0;
+  SetBreadcrumbsOptions(mSettings);
   mStore := TMemoryStore.Create;
   mSettings.Save(mStore);
   mLoaded := TAtlasPluginSettings.Defaults;
   mLoaded.Load(mStore);
-  Assert.IsFalse(mLoaded.Breadcrumbs);
-  Assert.IsTrue(mLoaded.BreadcrumbsShowUnit);
-  Assert.IsFalse(mLoaded.BreadcrumbsVisibility);
-  Assert.IsFalse(mLoaded.BreadcrumbsMemberBlocks);
-  Assert.IsFalse(mLoaded.BreadcrumbsVisibilityMark);
-  Assert.IsFalse(mLoaded.BreadcrumbsDeclarationBlocks);
-  Assert.IsFalse(mLoaded.BreadcrumbsConditionals);
-  Assert.IsFalse(mLoaded.BreadcrumbsRegions);
-  Assert.IsTrue(mLoaded.BreadcrumbsStatements);
-  Assert.IsFalse(mLoaded.BreadcrumbsSectionCounts);
-  Assert.IsFalse(mLoaded.BreadcrumbsSectionAppend);
-  Assert.IsFalse(mLoaded.BreadcrumbsSectionCreate);
-  Assert.AreEqual($C04E, mLoaded.SectionAppendKey, 'Strg+Alt+N');
-  Assert.IsFalse(mLoaded.BreadcrumbsContextMenu);
-  Assert.IsFalse(mLoaded.BreadcrumbsOverloads);
-  Assert.IsFalse(mLoaded.BreadcrumbsInterfaces);
-  Assert.IsFalse(mLoaded.BreadcrumbsMetrics);
-  Assert.IsFalse(mLoaded.MouseNavButtons);
-  Assert.IsFalse(mLoaded.BreadcrumbsIdeColors);
-  Assert.IsFalse(mLoaded.BreadcrumbsHideIdeToolbar);
-  Assert.AreEqual(0, mLoaded.BreadcrumbsKey);
+  AssertBreadcrumbsLoaded(mLoaded);
   mLoaded.BreadcrumbsKey := -5;
   mLoaded.Normalize;
   Assert.AreEqual(0, mLoaded.BreadcrumbsKey);
@@ -790,34 +647,6 @@ begin
   Assert.AreEqual(TAtlasPluginSettings.cMaxMinimapScale, mLoaded.MinimapScale);
   Assert.AreEqual(TAtlasPluginSettings.cMaxMinimapColumn, mLoaded.MinimapMaxColumn);
 end;
-procedure TAtlasViewSettingsTests.GitChangeOptions;
-var
-  mSettings, mLoaded: TAtlasPluginSettings;
-  mStore: IAtlasSettingsStore;
-begin
-  mSettings := TAtlasPluginSettings.Defaults;
-  Assert.IsTrue(mSettings.GitGutter);
-  Assert.IsFalse(mSettings.GitBlame, 'blame nur auf Wunsch');
-  Assert.AreEqual($C022, mSettings.NextChangeKey, 'Strg+Alt+Bild↓');
-  Assert.AreEqual($C021, mSettings.PreviousChangeKey, 'Strg+Alt+Bild↑');
-  mSettings.GitGutter := False;
-  mSettings.GitBlame := True;
-  mSettings.NextChangeKey := 0;
-  mSettings.PreviousChangeKey := $4074;
-  mStore := TMemoryStore.Create;
-  mSettings.Save(mStore);
-  mLoaded := TAtlasPluginSettings.Defaults;
-  mLoaded.Load(mStore);
-  Assert.IsFalse(mLoaded.GitGutter);
-  Assert.IsTrue(mLoaded.GitBlame);
-  Assert.AreEqual(0, mLoaded.NextChangeKey);
-  Assert.AreEqual($4074, mLoaded.PreviousChangeKey);
-  mLoaded.NextChangeKey := -1;
-  mLoaded.PreviousChangeKey := $20000;
-  mLoaded.Normalize;
-  Assert.AreEqual(0, mLoaded.NextChangeKey);
-  Assert.AreEqual($FFFF, mLoaded.PreviousChangeKey);
-end;
 procedure TAtlasViewSettingsTests.GutterColumnOptions;
 var
   mSettings, mLoaded: TAtlasPluginSettings;
@@ -902,6 +731,34 @@ begin
   mSettings.Normalize;
   Assert.AreEqual(0, mSettings.ExpressionTypeKey);
 end;
+procedure TAtlasViewSettingsTests.GitChangeOptions;
+var
+  mSettings, mLoaded: TAtlasPluginSettings;
+  mStore: IAtlasSettingsStore;
+begin
+  mSettings := TAtlasPluginSettings.Defaults;
+  Assert.IsTrue(mSettings.GitGutter);
+  Assert.IsFalse(mSettings.GitBlame, 'blame nur auf Wunsch');
+  Assert.AreEqual($C022, mSettings.NextChangeKey, 'Strg+Alt+Bild↓');
+  Assert.AreEqual($C021, mSettings.PreviousChangeKey, 'Strg+Alt+Bild↑');
+  mSettings.GitGutter := False;
+  mSettings.GitBlame := True;
+  mSettings.NextChangeKey := 0;
+  mSettings.PreviousChangeKey := $4074;
+  mStore := TMemoryStore.Create;
+  mSettings.Save(mStore);
+  mLoaded := TAtlasPluginSettings.Defaults;
+  mLoaded.Load(mStore);
+  Assert.IsFalse(mLoaded.GitGutter);
+  Assert.IsTrue(mLoaded.GitBlame);
+  Assert.AreEqual(0, mLoaded.NextChangeKey);
+  Assert.AreEqual($4074, mLoaded.PreviousChangeKey);
+  mLoaded.NextChangeKey := -1;
+  mLoaded.PreviousChangeKey := $20000;
+  mLoaded.Normalize;
+  Assert.AreEqual(0, mLoaded.NextChangeKey);
+  Assert.AreEqual($FFFF, mLoaded.PreviousChangeKey);
+end;
 procedure TAtlasViewSettingsTests.OverviewRulerOptions;
 var
   mSettings, mLoaded: TAtlasPluginSettings;
@@ -926,68 +783,227 @@ begin
   mLoaded.Normalize;
   Assert.AreEqual('', mLoaded.OverviewRulerKinds, 'leer = keine Marken');
 end;
-procedure TAtlasViewSettingsTests.HideElementOptions;
+procedure TAtlasViewSettingsTests.CallHierarchyDiagramOption;
 var
   mSettings, mLoaded: TAtlasPluginSettings;
   mStore: IAtlasSettingsStore;
 begin
   mSettings := TAtlasPluginSettings.Defaults;
-  Assert.IsTrue(mSettings.BlockEndLabels, 'Blockende-Beschriftung standardmäßig an');
-  Assert.AreEqual($40BE, mSettings.HideElementKey, 'Strg+.');
-  mSettings.HideElementKey := -5;
+  Assert.IsTrue(mSettings.CallHierarchyDiagram, 'Aufrufdiagramm standardmäßig an');
+  mSettings.CallHierarchyDiagram := False;
+  mStore := TMemoryStore.Create;
+  mSettings.Save(mStore);
+  Assert.AreEqual(0, mStore.ReadInteger('CallHierarchyDiagram', 1));
+  mLoaded := TAtlasPluginSettings.Defaults;
+  mLoaded.Load(mStore);
+  Assert.IsFalse(mLoaded.CallHierarchyDiagram);
+end;
+procedure TAtlasViewSettingsTests.EditorToolbarOptions;
+var
+  mSettings, mLoaded: TAtlasPluginSettings;
+  mStore: IAtlasSettingsStore;
+begin
+  mSettings := TAtlasPluginSettings.Defaults;
+  Assert.IsTrue(mSettings.EditorToolbar);
+  Assert.AreEqual('belowBreadcrumbs', mSettings.EditorToolbarPosition);
+  Assert.AreEqual(TAtlasToolbarItems.DefaultText, mSettings.EditorToolbarItems);
+  Assert.IsTrue(mSettings.EditorToolbarReturnButton);
+  Assert.IsFalse(mSettings.EditorToolbarLabels);
+  Assert.AreEqual(0, mSettings.GotoInterfaceKey, 'keine Taste');
+  Assert.AreEqual(0, mSettings.GotoImplementationKey, 'keine Taste');
+  mSettings.EditorToolbarPosition := 'INBREADCRUMBS';
+  mSettings.EditorToolbarItems := '|, Atlas.GotoInterface ,|,|,Atlas.NavBack,Atlas.navback,|';
+  mSettings.GotoInterfaceKey := $1FFFF;
+  mSettings.GotoImplementationKey := -3;
   mSettings.Normalize;
-  Assert.AreEqual(0, mSettings.HideElementKey, 'negativ = keine Taste');
-  Assert.AreEqual(25, TAtlasPluginSettings.Defaults.BlockEndLabelsMinLines, 'Mindestlänge (#620)');
-  Assert.IsTrue(mSettings.DimUnusedUses, 'ungenutzte uses standardmäßig abgeblendet (#621)');
-  // Fehlertext am Zeilenende, Zähler und Sprungtasten (#509).
-  Assert.AreEqual('errors', mSettings.InlineDiagnostics);
-  Assert.IsTrue(mSettings.ProblemsStatusCounter);
-  Assert.AreEqual($C077, mSettings.NextProblemKey);
-  Assert.AreEqual($E077, mSettings.PreviousProblemKey);
-  mSettings.InlineDiagnostics := 'ALL';
+  Assert.AreEqual('inBreadcrumbs', mSettings.EditorToolbarPosition);
+  Assert.AreEqual('Atlas.GotoInterface,|,Atlas.NavBack', mSettings.EditorToolbarItems);
+  Assert.AreEqual($FFFF, mSettings.GotoInterfaceKey);
+  Assert.AreEqual(0, mSettings.GotoImplementationKey);
+  mSettings.EditorToolbarPosition := 'oben';
   mSettings.Normalize;
-  Assert.AreEqual('all', mSettings.InlineDiagnostics, 'Schreibweise des Schemas');
-  mSettings.InlineDiagnostics := 'unsinn';
-  mSettings.Normalize;
-  Assert.AreEqual('errors', mSettings.InlineDiagnostics, 'Unbekanntes = Vorgabe');
-  mSettings.BlockEndLabelsMinLines := 0;
-  mSettings.Normalize;
-  Assert.AreEqual(TAtlasPluginSettings.cMinBlockEndLines, mSettings.BlockEndLabelsMinLines, 'unten begrenzt');
-  mSettings.BlockEndLabelsMinLines := 5000;
-  mSettings.DebugInlineValuesPerLine := 0;
-  mSettings.DebugWhyHereDepth := 99;
-  mSettings.DebugVariablesSearchDepth := 0;
-  mSettings.DebugVariablesSearchLimit := 1000000;
-  mSettings.DebugPredictLines := 0;
-  mSettings.DebugHoverMaxChildren := 5000;
-  mSettings.Normalize;
-  Assert.AreEqual(TAtlasPluginSettings.cMinInlineValuesPerLine, mSettings.DebugInlineValuesPerLine,
-    'debug.inlineValuesPerLine unten begrenzt (#508)');
-  Assert.AreEqual(TAtlasPluginSettings.cMaxWhyHereDepth, mSettings.DebugWhyHereDepth,
-    'debug.whyHere.depth oben begrenzt (#1878)');
-  Assert.AreEqual(TAtlasPluginSettings.cMinVariablesSearchDepth, mSettings.DebugVariablesSearchDepth,
-    'debug.variablesWindow.searchDepth unten begrenzt (#853)');
-  Assert.AreEqual(TAtlasPluginSettings.cMaxVariablesSearchLimit, mSettings.DebugVariablesSearchLimit,
-    'debug.variablesWindow.searchLimit oben begrenzt (#853)');
-  Assert.AreEqual(TAtlasPluginSettings.cMinPredictLines, mSettings.DebugPredictLines,
-    'debug.predictConditions.lines unten begrenzt (#2169)');
-  Assert.AreEqual(TAtlasPluginSettings.cMaxHoverMaxChildren, mSettings.DebugHoverMaxChildren,
-    'debug.hoverMaxChildren oben begrenzt (#895)');
-  mSettings.DebugMemoryTimelineIntervalMs := 60000;
-  mSettings.Normalize;
-  Assert.AreEqual(TAtlasPluginSettings.cMaxMemoryTimelineIntervalMs, mSettings.DebugMemoryTimelineIntervalMs,
-    'debug.memoryTimeline.intervalMs oben begrenzt (#858)');
-  mSettings.DebugProfilerIntervalMs := 0;
-  mSettings.Normalize;
-  Assert.AreEqual(TAtlasPluginSettings.cMinProfilerIntervalMs, mSettings.DebugProfilerIntervalMs,
-    'debug.profiler.intervalMs unten begrenzt (#2057)');
-  Assert.AreEqual(TAtlasPluginSettings.cMaxBlockEndLines, mSettings.BlockEndLabelsMinLines, 'oben begrenzt');
-  SetHideElementOptions(mSettings);
+  Assert.AreEqual('belowBreadcrumbs', mSettings.EditorToolbarPosition, 'Unbekanntes = Vorgabe');
+  mSettings.EditorToolbar := False;
+  mSettings.EditorToolbarPosition := 'aboveBreadcrumbs';
+  mSettings.EditorToolbarItems := '';
+  mSettings.EditorToolbarReturnButton := False;
+  mSettings.EditorToolbarLabels := True;
+  mSettings.GotoInterfaceKey := $6049;
+  mSettings.GotoImplementationKey := $604D;
   mStore := TMemoryStore.Create;
   mSettings.Save(mStore);
   mLoaded := TAtlasPluginSettings.Defaults;
   mLoaded.Load(mStore);
-  AssertHideElementLoaded(mLoaded);
+  Assert.IsFalse(mLoaded.EditorToolbar);
+  Assert.AreEqual('aboveBreadcrumbs', mLoaded.EditorToolbarPosition);
+  Assert.AreEqual('', mLoaded.EditorToolbarItems, 'alle Knöpfe entfernt bleibt leer');
+  Assert.IsFalse(mLoaded.EditorToolbarReturnButton);
+  Assert.IsTrue(mLoaded.EditorToolbarLabels);
+  Assert.AreEqual($6049, mLoaded.GotoInterfaceKey);
+  Assert.AreEqual($604D, mLoaded.GotoImplementationKey);
+end;
+procedure TAtlasViewSettingsTests.EditorStatusBarOptions;
+var
+  mSettings, mLoaded: TAtlasPluginSettings;
+  mStore: IAtlasSettingsStore;
+begin
+  mSettings := TAtlasPluginSettings.Defaults;
+  Assert.IsTrue(mSettings.EditorStatusBar);
+  Assert.AreEqual('status,findings,liveCheck,method', mSettings.EditorStatusBarItems);
+  Assert.AreEqual(TAtlasStatusBarItems.DefaultText, mSettings.EditorStatusBarItems);
+  mSettings.EditorStatusBarItems := ' METHOD, zahnrad ,status,method';
+  mSettings.Normalize;
+  Assert.AreEqual('method,status', mSettings.EditorStatusBarItems, 'nur bekannte, jedes einmal');
+  mSettings.EditorStatusBar := False;
+  mSettings.EditorStatusBarItems := '';
+  mStore := TMemoryStore.Create;
+  mSettings.Save(mStore);
+  mLoaded := TAtlasPluginSettings.Defaults;
+  mLoaded.Load(mStore);
+  Assert.IsFalse(mLoaded.EditorStatusBar);
+  Assert.AreEqual('', mLoaded.EditorStatusBarItems, 'alle Elemente aus bleibt leer');
+end;
+procedure TAtlasViewSettingsTests.EditorDesignerBarOptions;
+var
+  mSettings, mLoaded: TAtlasPluginSettings;
+  mStore: IAtlasSettingsStore;
+begin
+  mSettings := TAtlasPluginSettings.Defaults;
+  Assert.IsTrue(mSettings.EditorDesignerBar);
+  Assert.AreEqual(32988, mSettings.DesignerSearchKey, 'Alt+^');
+  Assert.AreEqual(TAtlasPluginSettings.cDesignerSearchWindow, mSettings.DesignerSearchStyle, 'großes Fenster');
+  Assert.IsTrue(mSettings.DesignerTabOrderClick, 'Neuvergeben an (#603)');
+  Assert.IsFalse(mSettings.DesignerTabOrderOverlay, 'Marken nur auf Knopfdruck');
+  Assert.IsFalse(mSettings.DesignerTabOrderPaths);
+  Assert.IsTrue(mSettings.DesignerTabOrderColors, 'Farben je Container an');
+  Assert.IsFalse(mSettings.DesignerAlign, 'experimentell: aus');
+  mSettings.EditorDesignerBar := False;
+  mSettings.DesignerSearchKey := 0;
+  mSettings.DesignerSearchStyle := TAtlasPluginSettings.cDesignerSearchPopup;
+  mSettings.DesignerTabOrderClick := False;
+  mSettings.DesignerTabOrderOverlay := True;
+  mSettings.DesignerTabOrderPaths := True;
+  mSettings.DesignerTabOrderColors := False;
+  mSettings.DesignerAlign := True;
+  mStore := TMemoryStore.Create;
+  mSettings.Save(mStore);
+  mLoaded := TAtlasPluginSettings.Defaults;
+  mLoaded.Load(mStore);
+  Assert.IsFalse(mLoaded.EditorDesignerBar);
+  Assert.AreEqual(0, mLoaded.DesignerSearchKey, 'keine Taste');
+  Assert.AreEqual(TAtlasPluginSettings.cDesignerSearchPopup, mLoaded.DesignerSearchStyle);
+  Assert.IsFalse(mLoaded.DesignerTabOrderClick);
+  Assert.IsTrue(mLoaded.DesignerTabOrderOverlay);
+  Assert.IsTrue(mLoaded.DesignerTabOrderPaths);
+  Assert.IsFalse(mLoaded.DesignerTabOrderColors);
+  Assert.IsTrue(mLoaded.DesignerAlign);
+  mStore.WriteString('DesignerSearchStyle', 'riesig');
+  mLoaded.Load(mStore);
+  Assert.AreEqual(TAtlasPluginSettings.cDesignerSearchWindow, mLoaded.DesignerSearchStyle, 'Unbekanntes: Vorgabe');
+end;
+/// <summary>Eigenes Desktop-Layout im Designer (#2079): Vorgaben, Speichern und Laden, unbekannter Rückweg.
+/// </summary>
+procedure TAtlasViewSettingsTests.DesignerLayoutOptions;
+var
+  mSettings, mLoaded: TAtlasPluginSettings;
+  mStore: IAtlasSettingsStore;
+begin
+  mSettings := TAtlasPluginSettings.Defaults;
+  Assert.IsFalse(mSettings.DesignerLayout, 'Vorgabe aus');
+  Assert.AreEqual('', mSettings.DesignerLayoutName);
+  Assert.AreEqual(TAtlasPluginSettings.cDesignerLayoutPrevious, mSettings.DesignerLayoutReturnTo);
+  Assert.IsTrue(mSettings.DesignerLayoutSkipWhileDebugging);
+  mSettings.DesignerLayout := True;
+  mSettings.DesignerLayoutName := '  Designer ';
+  mSettings.DesignerLayoutReturnTo := TAtlasPluginSettings.cDesignerLayoutDefault;
+  mSettings.DesignerLayoutSkipWhileDebugging := False;
+  mStore := TMemoryStore.Create;
+  mSettings.Save(mStore);
+  mLoaded := TAtlasPluginSettings.Defaults;
+  mLoaded.Load(mStore);
+  Assert.IsTrue(mLoaded.DesignerLayout);
+  Assert.AreEqual('Designer', mLoaded.DesignerLayoutName, 'ohne Leerraum');
+  Assert.AreEqual(TAtlasPluginSettings.cDesignerLayoutDefault, mLoaded.DesignerLayoutReturnTo);
+  Assert.IsFalse(mLoaded.DesignerLayoutSkipWhileDebugging);
+  mStore.WriteString('DesignerLayoutReturnTo', 'irgendwo');
+  mLoaded.Load(mStore);
+  Assert.AreEqual(TAtlasPluginSettings.cDesignerLayoutPrevious, mLoaded.DesignerLayoutReturnTo, 'Unbekanntes: Vorgabe');
+end;
+/// <summary>Schnelle Lesezeichen (#1104): Werte von der Vorgabe abweichend setzen.</summary>
+procedure SetQuickBookmarkOptions(var ASettings: TAtlasPluginSettings);
+begin
+  ASettings.QuickBookmarks := False;
+  ASettings.QuickBookmarksGutter := False;
+  ASettings.QuickBookmarksGutterClick := False;
+  ASettings.QuickBookmarksNumberedKeys := False;
+  ASettings.QuickBookmarkKey := $604C;
+  ASettings.QuickBookmarkKeyPriority := False;
+  ASettings.QuickBookmarkChordWait := 500;
+  ASettings.QuickBookmarkSetKey := $C031;
+  ASettings.QuickBookmarkSetKeyPriority := False;
+  ASettings.QuickBookmarkJumpKey := $8031;
+  ASettings.QuickBookmarkJumpKeyPriority := False;
+  ASettings.QuickBookmarksScope := 'file';
+  ASettings.QuickBookmarksImportIde := False;
+  ASettings.NextBookmarkKey := $4071;
+  ASettings.PreviousBookmarkKey := $6071;
+end;
+/// <summary>Schnelle Lesezeichen (#1104): gespeicherte Werte gelesen.</summary>
+procedure AssertQuickBookmarkLoaded(const ALoaded: TAtlasPluginSettings);
+begin
+  Assert.IsFalse(ALoaded.QuickBookmarks);
+  Assert.IsFalse(ALoaded.QuickBookmarksGutter);
+  Assert.IsFalse(ALoaded.QuickBookmarksGutterClick);
+  Assert.IsFalse(ALoaded.QuickBookmarksNumberedKeys);
+  Assert.AreEqual($604C, ALoaded.QuickBookmarkKey);
+  Assert.IsFalse(ALoaded.QuickBookmarkKeyPriority);
+  Assert.AreEqual(500, ALoaded.QuickBookmarkChordWait);
+  Assert.AreEqual($C031, ALoaded.QuickBookmarkSetKey);
+  Assert.IsFalse(ALoaded.QuickBookmarkSetKeyPriority);
+  Assert.AreEqual($8031, ALoaded.QuickBookmarkJumpKey);
+  Assert.IsFalse(ALoaded.QuickBookmarkJumpKeyPriority);
+  Assert.AreEqual('file', ALoaded.QuickBookmarksScope);
+  Assert.IsFalse(ALoaded.QuickBookmarksImportIde);
+  Assert.AreEqual($4071, ALoaded.NextBookmarkKey);
+  Assert.AreEqual($6071, ALoaded.PreviousBookmarkKey);
+end;
+procedure TAtlasViewSettingsTests.QuickBookmarkOptions;
+var
+  mSettings, mLoaded: TAtlasPluginSettings;
+  mStore: IAtlasSettingsStore;
+begin
+  mSettings := TAtlasPluginSettings.Defaults;
+  Assert.IsTrue(mSettings.QuickBookmarks);
+  Assert.IsTrue(mSettings.QuickBookmarksGutter);
+  Assert.IsTrue(mSettings.QuickBookmarksGutterClick);
+  Assert.IsTrue(mSettings.QuickBookmarksNumberedKeys);
+  Assert.AreEqual($604B, mSettings.QuickBookmarkKey, 'Strg+Umschalt+K');
+  Assert.IsTrue(mSettings.QuickBookmarkKeyPriority);
+  Assert.AreEqual(800, mSettings.QuickBookmarkChordWait);
+  Assert.AreEqual($6031, mSettings.QuickBookmarkSetKey, 'Strg+Umschalt+1');
+  Assert.AreEqual($4031, mSettings.QuickBookmarkJumpKey, 'Strg+1');
+  Assert.AreEqual('project', mSettings.QuickBookmarksScope);
+  Assert.IsTrue(mSettings.QuickBookmarksImportIde);
+  Assert.AreEqual(0, mSettings.NextBookmarkKey, 'ohne voreingestellte Taste');
+  Assert.AreEqual(0, mSettings.PreviousBookmarkKey);
+  mSettings.QuickBookmarkChordWait := 99999;
+  mSettings.QuickBookmarksScope := 'FILE';
+  mSettings.QuickBookmarkKey := -1;
+  mSettings.Normalize;
+  Assert.AreEqual(TAtlasPluginSettings.cMaxQuickChordWait, mSettings.QuickBookmarkChordWait);
+  Assert.AreEqual('file', mSettings.QuickBookmarksScope);
+  Assert.AreEqual(0, mSettings.QuickBookmarkKey);
+  mSettings.QuickBookmarksScope := 'irgendwo';
+  mSettings.QuickBookmarkChordWait := -5;
+  mSettings.Normalize;
+  Assert.AreEqual('project', mSettings.QuickBookmarksScope);
+  Assert.AreEqual(0, mSettings.QuickBookmarkChordWait);
+  SetQuickBookmarkOptions(mSettings);
+  mStore := TMemoryStore.Create;
+  mSettings.Save(mStore);
+  mLoaded := TAtlasPluginSettings.Defaults;
+  mLoaded.Load(mStore);
+  AssertQuickBookmarkLoaded(mLoaded);
 end;
 
 initialization
