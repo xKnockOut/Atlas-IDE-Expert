@@ -1650,6 +1650,8 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.IDE.Tests.CaseTable` | `IDE/Tests/Atlas.IDE.Tests.CaseTable.pas` | Ordner `IDE/Tests` |
 | `Atlas.IDE.Tests.BoundaryCases` | `IDE/Tests/Atlas.IDE.Tests.BoundaryCases.pas` | Ordner `IDE/Tests` |
 | `Atlas.IDE.Tests.Composition.Cases` | `IDE/Tests/Atlas.IDE.Tests.Composition.Cases.pas` | Ordner `IDE/Tests` |
+| `Atlas.IDE.Tests.Composition.Coverage` | `IDE/Tests/Atlas.IDE.Tests.Composition.Coverage.pas` | Ordner `IDE/Tests`; Testabdeckung und Mutationslauf, von der Composition gestartet |
+| `Atlas.IDE.Tests.Composition.Explorer` | `IDE/Tests/Atlas.IDE.Tests.Composition.Explorer.pas` | Ordner `IDE/Tests`; Fenster „Atlas-Tests“, Testlisten und Teststand, von der Composition gestartet |
 | `Atlas.IDE.Tests.LeakSetup` | `IDE/Tests/Atlas.IDE.Tests.LeakSetup.pas` | Ordner `IDE/Tests`; Befehl „Leckprüfung einrichten …“ (#1880) |
 | `Atlas.IDE.Tests.Projects` | `IDE/Tests/Atlas.IDE.Tests.Projects.pas` | Ordner `IDE/Tests` |
 | `Atlas.IDE.Tests.Runner` | `IDE/Tests/Atlas.IDE.Tests.Runner.pas` | Ordner `IDE/Tests` |

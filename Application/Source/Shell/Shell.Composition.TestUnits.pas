@@ -62,6 +62,9 @@ type
     /// <summary>Befehle atlas.server.testUnit, atlas.server.testFromDebugStop und atlas.server.boundaryTests
     /// (#2173).</summary>
     procedure RegisterCommand(ACommands: TLspCommands);
+    /// <summary>Befehle atlas.server.testCases (#1879), atlas.server.boundaryCases (#2173) und
+    /// atlas.server.mutants (#1460); sie lesen über ReadText, geöffnete Dokumente vor der Platte.</summary>
+    procedure RegisterCaseCommands(ACommands: TLspCommands);
   end;
 
 implementation
@@ -74,6 +77,9 @@ uses
   Atlas.Common.Projects.Contract,
   Atlas.Common.Editing.TestUnits,
   Atlas.Common.Lsp.BoundaryTests,
+  Atlas.Common.Lsp.TestCases,
+  Atlas.Common.Lsp.BoundaryCases,
+  Atlas.Common.Lsp.Mutants,
   Atlas.Text.LogMarks;
 
 const
@@ -117,6 +123,23 @@ begin
       Result := FFromDebug.Execute(AArguments);
     end);
   TLspBoundaryTests.Attach(ACommands, FTestUnits);
+end;
+
+procedure TShellTestUnits.RegisterCaseCommands(ACommands: TLspCommands);
+var
+  mReadText: TShellTestUnitReadText;
+  mReadUri: TLspTestCasesReadText;
+begin
+  mReadText := FServices.ReadText;
+  // Closure: Free Pascal bricht ab, wenn eine Methode einer Klasse aus einer anderen Unit als Referenz geht.
+  mReadUri :=
+    function(const AUri: string; out AText: string): Boolean
+    begin
+      Result := mReadText(TDocumentUris.ToPath(AUri), AText);
+    end;
+  TLspTestCases.Attach(ACommands, mReadUri);
+  TLspBoundaryCases.Attach(ACommands, mReadUri);
+  TLspMutants.Attach(ACommands, mReadUri);
 end;
 
 function TShellTestUnits.ContextFor(const AUri: string; out AContext: TTestUnitContext): Boolean;

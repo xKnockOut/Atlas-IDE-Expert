@@ -5,7 +5,8 @@
 // - TestCase-Tabelle (#1879): Befehl „TestCase-Tabelle bearbeiten …“ und Marke „Tabelle“ der Testlinse;
 // - Grenzfälle als Testfälle (#2173): Befehl „Grenzfälle vorschlagen …“; sein Haken Remember steht vorn in
 //   OnReported des Läufers und reicht jeden Lauf an den bisherigen Haken weiter;
-// - Ungetestete Methoden des Projekts (#1783) und Test aus dem Debug-Halt (#1873).
+// - Ungetestete Methoden des Projekts (#1783) und Test aus dem Debug-Halt (#1873);
+// - Testunits zu Units der Projektgruppe: anlegen (#1821) und aus der Projektverwaltung ausführen (#1817).
 
 interface
 
@@ -36,6 +37,13 @@ procedure ListUntested;
 function TestFromDebugCommand: string;
 function TestFromDebugVisible: Boolean;
 procedure RunTestFromDebug(const AScope: IAtlasModuleScope);
+/// <summary>Sind in der Projektverwaltung Units gewählt, zu denen „Tests dieser Unit ausführen“ passt (#1817)?
+/// </summary>
+function ProjectUnitsSelected: Boolean;
+/// <summary>Tests der in der Projektverwaltung gewählten Units mit ATests ausführen (#1817).</summary>
+procedure RunSelectedUnitTests(ATests: TAtlasIdeTests);
+/// <summary>Assistent „DUnitX-Testunit zu Unit …“ (#1821).</summary>
+procedure NewTestUnitFor;
 
 implementation
 
@@ -45,7 +53,8 @@ uses
   Atlas.IDE.Tests.CaseTable,
   Atlas.IDE.Tests.BoundaryCases,
   Atlas.IDE.Tests.UntestedProject,
-  Atlas.IDE.Tests.FromDebugStop;
+  Atlas.IDE.Tests.FromDebugStop,
+  Atlas.IDE.Tests.UnitCommands;
 
 var
   GCaseTable: TAtlasIdeTestCaseTable;
@@ -128,6 +137,21 @@ end;
 procedure RunTestFromDebug(const AScope: IAtlasModuleScope);
 begin
   TAtlasIdeTestFromDebug.Run(AScope);
+end;
+
+function ProjectUnitsSelected: Boolean;
+begin
+  Result := TAtlasIdeTestUnitCommands.HasProjectUnits;
+end;
+
+procedure RunSelectedUnitTests(ATests: TAtlasIdeTests);
+begin
+  TAtlasIdeTestUnitCommands.RunProjectUnits(ATests);
+end;
+
+procedure NewTestUnitFor;
+begin
+  TAtlasIdeTestUnitCommands.NewTestUnitFor;
 end;
 
 end.

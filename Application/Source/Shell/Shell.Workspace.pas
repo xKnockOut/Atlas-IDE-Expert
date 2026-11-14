@@ -76,13 +76,11 @@ type
     /// (TShellCompilerEditions). False mit Grund in AError ohne Projekt, Installation oder unterstützte
     /// Plattform. Threadsicher.</summary>
     function CompileJob(out AJob: TShellCompileJob; out AError: string): Boolean;
-    /// <summary>Wechselt Konfiguration und/oder Plattform ('' = unverändert) und lädt das Projekt neu (#46).
-    /// False mit Grund in AError ohne Projekt oder bei unbekannten Werten. Threadsicher.</summary>
-    function SelectBuild(const AConfig, APlatform: string; out AError: string): Boolean; overload;
-    /// <summary>Wie oben; mit AHasDefines ersetzen ADefines die Symbole (DCC_Define) der .dproj,
-    /// etwa ungespeicherte Projektoptionen der IDE (#615).</summary>
+    /// <summary>Wechselt Konfiguration und/oder Plattform ('' = unverändert) und lädt das Projekt neu (#46);
+    /// mit AHasDefines ersetzen ADefines die Symbole (DCC_Define) der .dproj, etwa ungespeicherte Projektoptionen
+    /// der IDE (#615). False mit Grund in AError ohne Projekt oder bei unbekannten Werten. Threadsicher.</summary>
     function SelectBuild(const AConfig, APlatform: string; const ADefines: TArray<string>; AHasDefines: Boolean;
-      out AError: string): Boolean; overload;
+      out AError: string): Boolean;
     /// <summary>Fortschritt des laufenden Indexaufbaus in Prozent; -1, wenn keiner läuft (#647).</summary>
     function IndexLoading: Integer;
     /// <summary>Letzter Indexlauf für den Status-Befehl (#28). Threadsicher.</summary>
@@ -336,10 +334,6 @@ begin
     AError);
 end;
 
-function TShellWorkspace.SelectBuild(const AConfig, APlatform: string; out AError: string): Boolean;
-begin
-  Result := SelectBuild(AConfig, APlatform, nil, False, AError);
-end;
 
 function TShellWorkspace.SelectBuild(const AConfig, APlatform: string; const ADefines: TArray<string>;
   AHasDefines: Boolean; out AError: string): Boolean;

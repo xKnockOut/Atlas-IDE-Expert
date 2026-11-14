@@ -71,9 +71,6 @@ type
     procedure RegisterLeakSetup;
     /// <summary>Befehl atlas.server.ownership: Wer gibt das frei? (#1877)</summary>
     procedure RegisterOwnership;
-    /// <summary>Befehle atlas.server.testCases (#1879) und atlas.server.boundaryCases (#2173)
-    /// und atlas.server.mutants (#1460).</summary>
-    procedure RegisterTestCases;
     /// <summary>Befehle der Schnellbefehle: Einordnen, Erzeugen-Menü, Testunit, Unit-Suche.</summary>
     procedure RegisterSlashCommands;
   public
@@ -102,9 +99,6 @@ uses
   Atlas.Common.Editing.MethodOrder,
   Atlas.Common.Index.Scheduler,
   Atlas.Common.Lsp.ServerActivity,
-  Atlas.Common.Lsp.TestCases,
-  Atlas.Common.Lsp.BoundaryCases,
-  Atlas.Common.Lsp.Mutants,
   Atlas.Common.Lsp.SyntaxDiagnostics,
   Atlas.Common.Lsp.Ownership,
   Shell.Composition.DfmPropertyRules,
@@ -139,7 +133,7 @@ begin
   RegisterDfmPropertyRules;
   RegisterLeakSetup;
   RegisterOwnership;
-  RegisterTestCases;
+  FCode.TestUnits.RegisterCaseCommands(FCommands);
   FCode.Refactorings.Register(FCommands);
   FAnalysis.Analysis.RegisterReportCommands(FCommands);
   FAnalysis.Overviews.RegisterReportCommands(FCommands);
@@ -353,20 +347,6 @@ begin
   TLspOwnership.Attach(FCommands, mInput);
 end;
 
-procedure TShellCommandArea.RegisterTestCases;
-var
-  mReadText: TLspTestCasesReadText;
-begin
-  // Closure: Free Pascal bricht ab, wenn eine Methode einer Klasse aus einer anderen Unit als Referenz geht.
-  mReadText :=
-    function(const AUri: string; out AText: string): Boolean
-    begin
-      Result := ReadText(TDocumentUris.ToPath(AUri), AText);
-    end;
-  TLspTestCases.Attach(FCommands, mReadText);
-  TLspBoundaryCases.Attach(FCommands, mReadText);
-  TLspMutants.Attach(FCommands, mReadText);
-end;
 
 procedure TShellCommandArea.RegisterSlashCommands;
 begin
