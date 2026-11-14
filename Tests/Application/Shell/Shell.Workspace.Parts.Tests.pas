@@ -60,7 +60,6 @@ uses
   System.Generics.Collections,
   Atlas.Common.Logging.Contract,
   Atlas.Common.Logging.Providers.Logger,
-  Atlas.Common.JsonRpc.StreamTransport,
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Projects.Contract,
   Atlas.Common.Projects.DprojReader,
@@ -80,9 +79,7 @@ uses
   Shell.Workspace.RuleProjects,
   Shell.Workspace.Jobs,
   Shell.Workspace.Packages,
-  Shell.Workspace.Loader,
-  Shell.Workspace.Encodings,
-  Shell.Workspace.Indexing;
+  Shell.Workspace.Loader;
 
 function ProjectWith(const AConfigs, APlatforms: TArray<string>): TProjectInfo;
 begin

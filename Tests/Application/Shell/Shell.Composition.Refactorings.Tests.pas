@@ -84,12 +84,6 @@ uses
   Atlas.Common.Index.Extractor,
   Atlas.Common.Lsp.UnitRename,
   Atlas.Common.Lsp.RaiseVisibility,
-  Shell.Composition.Refactorings.Structure,
-  Shell.Composition.Refactorings.Visibility,
-  Shell.Composition.Refactorings.Conversions,
-  Shell.Composition.Refactorings.Types,
-  Shell.Composition.Refactorings.Fixes,
-  Shell.Composition.Stepping,
   Atlas.Common.Lsp.Profiler,
   Shell.Composition.Profiler,
   Shell.Composition.Refactorings.TestSupport;
