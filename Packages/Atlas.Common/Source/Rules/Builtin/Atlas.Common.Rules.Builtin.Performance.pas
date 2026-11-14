@@ -50,7 +50,6 @@ uses
   System.Generics.Collections,
   System.RegularExpressions,
   Atlas.Common.Pascal.TokenCursor,
-  Atlas.Text.Lines,
   Atlas.Common.Documents.Contract,
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Pascal.Contract,
@@ -716,8 +715,9 @@ type
     FTree: TSyntaxTree;
     FFileName: string;
     FResolver: TNameResolver;
-    /// <summary>Löst die Namensauflösung .AName bei AIndex als Feld auf oder als Property, die direkt ein Feld
-    /// liest (TPascalToken.Text aus einer anderen Unit)? Ein Feld zu lesen baut keinen String auf.</summary>
+    /// <summary>Löst die Namensauflösung .AName bei AIndex als Feld, Variable, Konstante oder Aufzählungswert
+    /// (TXmlNodeKind.Text) auf oder als Property, die direkt ein Feld liest (TPascalToken.Text aus einer anderen
+    /// Unit)? Ein gespeicherter Wert baut keinen String auf.</summary>
     function ReadsField(AIndex: Integer): Boolean;
     procedure CheckProperty(const ALoop: TLoop; AIndex, ADot: Integer; const AReport: IRuleReport);
   public
@@ -756,7 +756,8 @@ begin
   begin
     Exit(False);
   end;
-  Result := (mSymbol.SymbolKind = TIndexSymbolKind.Field) or ((mSymbol.SymbolKind = TIndexSymbolKind.Property_) and
+  Result := (mSymbol.SymbolKind in [TIndexSymbolKind.Field, TIndexSymbolKind.Variable, TIndexSymbolKind.Constant,
+    TIndexSymbolKind.EnumMember]) or ((mSymbol.SymbolKind = TIndexSymbolKind.Property_) and
     FResolver.PropertyReadsField(mSymbol, mReadsField) and mReadsField);
 end;
 

@@ -65,8 +65,6 @@ uses
   Atlas.Core.Tracker.Contract,
   Atlas.Core.Tracker.Board,
   Atlas.Core.Tracker.Sprint,
-  Atlas.Core.Tracker.Providers.YouTrack,
-  Atlas.Core.Tracker.Providers.GitHub,
   Atlas.Core.Tracker.GitHubBoards,
   Atlas.Core.Tracker.YouTrackBoards;
 

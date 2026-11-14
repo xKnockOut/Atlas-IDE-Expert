@@ -4,13 +4,14 @@
 //   interface-object-mixed        Eine lokale Objektvariable einer Klasse mit Referenzzählung (Nachfahre von
 //                                 TInterfacedObject ohne eigenes _AddRef/_Release in der Kette) wird als Interface
 //                                 weitergegeben und zusätzlich mit Free freigegeben (doppelte Freigabe), oder nur
-//                                 vorübergehend als Interface weitergegeben (X as IFoo, IFoo(X) als Argument) und danach
-//                                 weiter über die Objektvariable benutzt: Mit dem letzten Interface-Verweis ist das
-//                                 Objekt schon freigegeben.
+//                                 vorübergehend als Interface weitergegeben (X as IFoo, IFoo(X) als Argument) und
+//                                 danach weiter über die Objektvariable benutzt: Mit dem letzten Interface-Verweis ist
+//                                 das Objekt schon freigegeben.
 //   interface-cycle-without-weak  Zwei Klassen der Datei halten sich über Interface-Felder gegenseitig fest (direkt
 //                                 oder über eine Liste bzw. ein Array von Interfaces), auch eine Klasse mit sich selbst
-//                                 (Baum mit Rückverweis), und keines der Felder ist [weak] oder [unsafe]. Experimentell.
-//                                 Korrektur: [weak] am Rückverweis, wenn genau eine Seite ein einzelnes Feld ist.
+//                                 (Baum mit Rückverweis), und keines der Felder ist [weak] oder [unsafe].
+//                                 Experimentell. Korrektur: [weak] am Rückverweis, wenn genau eine Seite ein einzelnes
+//                                 Feld ist.
 
 interface
 

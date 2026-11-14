@@ -58,7 +58,8 @@ type
     ExpectedIsAFolderRelative, TheFolderDoesNotExist, ExpectedAreConfigurationAndOr, IsNeitherAConfigurationNor,
     DfmNeedsTheEditor, DfmOnlyAppliesInA, ThereIsNoDfmOr, IsNotATextDFM, NeedsTheEditor, NeedsASavedFile,
     HasNoUsesOrContains, HasNoRoomForDCCReference, ExpectedIsAUnitName, TheIndexDoesNotKnow, ExpectedIsAUnitName2,
-    OpenNeedsTheEditor, TheUnitIsNeitherIn, TestOnlyAppliesInThe, TestNeedsTheEditor, TestOnlyAppliesInA, AddASymbolToDCC, AddAFolderToThe,
+    OpenNeedsTheEditor, TheUnitIsNeitherIn, TestOnlyAppliesInThe, TestNeedsTheEditor, TestOnlyAppliesInA, AddASymbolToDCC,
+    AddAFolderToThe,
     SwitchConfigurationAndPlatform, JumpToThePositionIn, CreateANewUnitAdd, OpenAUnitFromThe, CreateANewComponentUnit,
     CreateADUnitXTestFor, NeedsALoadedProject, IsAlreadyIn, ConfigNeedsALoadedProject, IsAlreadyInTheProject,
     AlreadyExists, AddASymbolToDCC2, UnitCustomersData, ExpectedIsComponentTMyButtonTButton);

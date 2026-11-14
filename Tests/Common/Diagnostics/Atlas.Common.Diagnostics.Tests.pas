@@ -92,7 +92,6 @@ uses
   System.Diagnostics,
   System.DateUtils,
   System.Generics.Collections,
-  Atlas.Common.JsonRpc.Contract,
   Atlas.Common.JsonRpc.Dispatcher,
   Atlas.Common.Diagnostics.Contract,
   Atlas.Common.Diagnostics.Anonymizer,

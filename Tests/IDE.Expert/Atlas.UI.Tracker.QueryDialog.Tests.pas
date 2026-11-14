@@ -39,7 +39,6 @@ uses
   Atlas.Core.Tracker.Templates,
   Atlas.UI.Tracker.Settings.Strings,
   Atlas.UI.Tracker.MyIssues.Strings,
-  Atlas.UI.Settings.Page,
   Atlas.UI.Tracker.QueryDialog;
 
 function Connections: TArray<TAtlasTrackerConnection>;

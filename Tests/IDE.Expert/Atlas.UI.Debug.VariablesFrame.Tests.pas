@@ -161,7 +161,7 @@ begin
     mFrame.OnCanEditValue :=
       function: Boolean
       begin
-        Result := mCanEdit;
+        Result := mCanEdit; // lsp-ignore: captured-loop-variable -- Schalter, den der Test gewollt umlegt
       end;
     mList.SetResult(mList.Add('Betrag'), True, '125');
     mList.Add('Offen');

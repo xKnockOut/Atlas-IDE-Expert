@@ -322,6 +322,8 @@ begin
           end;
         end;
       end;
+  else
+    // Übrige Werte bewusst ohne Wirkung.
   end;
   Inc(FIndex);
 end;

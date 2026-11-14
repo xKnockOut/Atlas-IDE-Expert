@@ -261,7 +261,8 @@ end;
 /// <summary>Operator passt nicht zu den Operanden; Detail "Operator|Links|Rechts".</summary>
 function Mismatch(const AOperator: string; const ALeft, ARight: TExpressionTyped): TExpressionTyped;
 begin
-  Result := TExpressionOperators.Failed(TExpressionErrorKind.OperatorMismatch, AOperator + '|' + ALeft.Name + '|' + ARight.Name);
+  Result := TExpressionOperators.Failed(TExpressionErrorKind.OperatorMismatch,
+    AOperator + '|' + ALeft.Name + '|' + ARight.Name);
 end;
 
 /// <summary>Zeichen oder string.</summary>

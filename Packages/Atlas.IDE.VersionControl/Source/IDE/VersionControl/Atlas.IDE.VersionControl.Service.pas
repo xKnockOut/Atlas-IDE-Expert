@@ -131,7 +131,6 @@ uses
   System.SyncObjs,
   Atlas.UI.Strings,
   Atlas.UI.VersionControl.Strings,
-  Atlas.Core.Settings.Layers,
   Atlas.Core.Files.TextFile,
   Atlas.Core.Diagnostics.Guard,
   Atlas.Core.Diagnostics.Shutdown,

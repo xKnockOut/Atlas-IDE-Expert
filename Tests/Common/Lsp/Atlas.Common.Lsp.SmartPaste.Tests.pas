@@ -26,7 +26,6 @@ uses
   System.JSON,
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.Parser,
-  Atlas.Common.Editing.UsesActions,
   Atlas.Common.Editing.Contract,
   Atlas.Common.Editing.SmartPaste,
   Atlas.Common.Lsp.SmartPaste;

@@ -319,7 +319,9 @@ Atlas.Common.Rules.Builtin.Ownership.TokenScan.Tests
 Atlas.Common.Rules.Builtin.PaletteIcons.Tests
 Atlas.Common.Rules.Builtin.Performance.DynamicArrays.Tests
 Atlas.Common.Rules.Builtin.Performance.StringResets.Tests
+Atlas.Common.Rules.Builtin.Performance.Tests
 Atlas.Common.Rules.Builtin.Properties.Shapes.Tests
+Atlas.Common.Rules.Builtin.RtlPatterns.Tests
 Atlas.Common.Rules.Builtin.RtlTypePatterns.Tokens.Tests
 Atlas.Common.Rules.Builtin.Security.Tests
 Atlas.Common.Rules.Builtin.Statements.Tokens.Tests
@@ -339,6 +341,7 @@ Atlas.Common.Rules.Builtin.TrivialAccessor.Tests
 Atlas.Common.Rules.Builtin.TypeDeclarations.Scan.Tests
 Atlas.Common.Rules.Builtin.TypeMismatch.ProcShapes.Tests
 Atlas.Common.Rules.Builtin.TypeRestrictions.Symbols.Tests
+Atlas.Common.Rules.Builtin.TypeRestrictions.Tests
 Atlas.Common.Rules.Builtin.Unicode.Tests
 Atlas.Common.Rules.Builtin.Units.Tests
 Atlas.Common.Rules.Builtin.Unused.Tests

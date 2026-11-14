@@ -43,7 +43,6 @@ uses
   Atlas.Common.Index.Cache,
   Atlas.Common.Index.SymbolIndex,
   Atlas.Common.Semantics.NameResolver,
-  Atlas.Common.Lsp.CompletionRequest,
   Atlas.Common.Lsp.CompletionJson,
   Atlas.Common.Lsp.Completion,
   Atlas.Common.Lsp.Contract,

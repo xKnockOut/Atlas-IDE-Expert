@@ -244,6 +244,14 @@ begin
     '  while Result < Length(AToken.Text) do'#10'    Inc(Result);'#10'end;'#10'end.';
   Assert.AreEqual(0, Integer(Length(TRuleAssert.IndexFindings(TLoopInvariantCallRule.Create, mSource, mIndex, AllOn,
     ''))));
+  // TArt.Text ist ein Aufzählungswert (Selbstlauf, TXmlNodeKind.Text), keine Property.
+  mIndex.AddUnit(TIndexExtractor.ExtractText('unit Arten;'#10'interface'#10'{$SCOPEDENUMS ON}'#10'type'#10 +
+    '  TArt = (Text, Element);'#10'implementation'#10'end.', 'C:\Projekt\Arten.pas', nil));
+  mSource := 'unit U;'#10'interface'#10'uses'#10'  Arten;'#10'function P(AArt: TArt): Integer;'#10 +
+    'implementation'#10'function P(AArt: TArt): Integer;'#10'begin'#10'  Result := 0;'#10 +
+    '  while AArt = TArt.Text do'#10'    Inc(Result);'#10'end;'#10'end.';
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.IndexFindings(TLoopInvariantCallRule.Create, mSource, mIndex, AllOn,
+    ''))));
 end;
 
 procedure TPerformanceRulesTests.MissingBeginUpdateReported;

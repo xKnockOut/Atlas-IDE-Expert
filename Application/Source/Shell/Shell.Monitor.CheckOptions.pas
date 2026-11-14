@@ -165,10 +165,15 @@ var
   mCommand: TMonitorCommand;
   I: Integer;
 begin
-  FCommandBox.Items.Clear;
-  for mCommand := Low(TMonitorCommand) to High(TMonitorCommand) do
-  begin
-    FCommandBox.Items.Add(TMonitorCommands.Text(mCommand));
+  FCommandBox.Items.BeginUpdate;
+  try
+    FCommandBox.Items.Clear;
+    for mCommand := Low(TMonitorCommand) to High(TMonitorCommand) do
+    begin
+      FCommandBox.Items.Add(TMonitorCommands.Text(mCommand));
+    end;
+  finally
+    FCommandBox.Items.EndUpdate;
   end;
   FSeverityBox.Items.Clear;
   FSeverityBox.Items.Add(TMonitorTexts.Text(TMonitorText.SeverityAll));

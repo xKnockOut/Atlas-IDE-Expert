@@ -86,7 +86,6 @@ uses
   Atlas.Common.Editing.ChangeSignature,
   Atlas.Common.Editing.Extract,
   Atlas.Common.Editing.NestedRoutines,
-  Atlas.Common.Lsp.CompletionRequest,
   Atlas.Common.Lsp.Completion;
 
 const

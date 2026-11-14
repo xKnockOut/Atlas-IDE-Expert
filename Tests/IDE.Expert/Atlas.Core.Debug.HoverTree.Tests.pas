@@ -7,7 +7,6 @@ interface
 
 uses
   DUnitX.TestFramework,
-  Atlas.Core.Hover.DebugValue,
   Atlas.Core.Debug.HoverTree;
 
 type
@@ -53,7 +52,8 @@ type
 implementation
 
 uses
-  System.SysUtils;
+  System.SysUtils,
+  Atlas.Core.Hover.DebugValue;
 
 procedure TAtlasHoverTreeTests.Setup;
 var

@@ -34,8 +34,7 @@ uses
   Atlas.Core.Status.Contract,
   Atlas.Core.Status.Registry,
   Atlas.Core.Welcome.State,
-  Atlas.UI.Welcome.State,
-  Atlas.UI.Welcome.TestSupport;
+  Atlas.UI.Welcome.State;
 
 
 type

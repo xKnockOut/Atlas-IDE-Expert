@@ -30,7 +30,6 @@ implementation
 
 uses
   System.SysUtils,
-  Atlas.Core.Lsp.TextChanges,
   Atlas.Core.Lsp.WorkspaceEdits,
   Atlas.Core.Results.Model;
 

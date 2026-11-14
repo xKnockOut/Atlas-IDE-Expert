@@ -1,7 +1,8 @@
 ﻿unit Atlas.Common.Monitor.Texts;
 
 // Texte der Oberfläche von AtlasMonitor (#1900, #1901) in Deutsch und Englisch: Fenster, Reiter „Server“,
-// Kontextmenü des Symbols im Infobereich, Reiter „Prüfen“ und „Bericht“, Rückfragen und Meldungen. Die Sprache wählt TMonitorSettings.LanguageOf beim Start.
+// Kontextmenü des Symbols im Infobereich, Reiter „Prüfen“ und „Bericht“, Rückfragen und Meldungen. Die Sprache
+// wählt TMonitorSettings.LanguageOf beim Start.
 
 interface
 

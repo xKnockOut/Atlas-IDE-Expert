@@ -75,7 +75,6 @@ uses
   Winapi.Windows,
   Vcl.Forms,
   Vcl.ComCtrls,
-  Atlas.Core.Style.Palette,
   Atlas.Core.Notes.Store,
   Atlas.UI.Notes.Dialog,
   Atlas.UI.Notes.List,

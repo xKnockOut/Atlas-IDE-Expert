@@ -2,7 +2,7 @@
   "project": "Tests/Atlas.Tests.dproj",
   "minDelphiVersion": "23.0",
   "exclude": ["Tools/Linux/Compat/**", "Tests/Compilermeldungen/Faelle/**", "Tests/DccFaelle/**",
-    "Tests/Referenzprojekt/**", "Tests/**/*Golden.pas", "Setup/Beispiele/**"],
+    "Tests/Referenzprojekt/**", "Tests/**/*Golden.pas", "Setup/Beispiele/**", "docs/Beispiele/**"],
   "rules": {
     "metric-method-length": "off",
     "metric-nesting-depth": "off",
@@ -23,6 +23,10 @@
     "security-insecure-http": {"exclude": ["Tests/**"]},
     "security-hardcoded-credential": {"exclude": ["Tests/**", "**/Atlas.Common.Rules.Catalog.Data.*"]},
     "control-fixed-bounds": {"exclude": ["Tests/**"]},
+    "default-parameter": {"exclude": ["Tests/**"]},
+    "hardcoded-path": {"exclude": ["Tests/**"]},
+    "sql-select-star": {"exclude": ["Tests/**"]},
+    "security-path-traversal": {"exclude": ["Tests/**"]},
     "unused-unit": {"exclude": ["Tests/**/*Golden.pas"]},
     "loop-runs-at-most-once": {
       "allowFirstElement": true

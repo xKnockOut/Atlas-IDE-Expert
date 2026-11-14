@@ -89,7 +89,6 @@ implementation
 uses
   System.SysUtils,
   Atlas.Core.Settings.Plugin,
-  Atlas.Core.Settings.History,
   Atlas.Core.Welcome.Sections,
   Atlas.Core.Welcome.Layout,
   Atlas.Core.Welcome.Layouts;
