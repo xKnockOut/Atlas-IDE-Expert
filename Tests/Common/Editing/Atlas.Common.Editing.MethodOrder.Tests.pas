@@ -53,6 +53,8 @@ type
     procedure PlaceNewAddsTypeComment;
     [Test]
     procedure PlaceNewKeepsExistingTypeComment;
+    [Test]
+    procedure KeepsBodiesBelowLocalDeclarations;
   end;
 
 implementation
@@ -492,6 +494,34 @@ begin
   Options.TypeComment := TTypeCommentStyle.Brace;
   Assert.AreEqual(FooKopf + #10'{ TFoo }'#10 + Body('procedure TFoo.A') + Body('procedure TFoo.B') +
     Body('procedure TFoo.C') + Ende, PlacedWith(Before, Text, Options), 'kein zweiter Kommentar');
+end;
+
+procedure TMethodOrderTests.KeepsBodiesBelowLocalDeclarations;
+const
+  cEintrag = #10'type'#10'  TEintrag = record'#10'    Wert: Integer;'#10'  end;'#10;
+  cHilfe = #10'function Hilfe: Integer;'#10'begin'#10'  Result := 1;'#10'end;'#10;
+  cA = #10'procedure TFoo.A;'#10'var'#10'  mEintrag: TEintrag;'#10'begin'#10'  mEintrag.Wert := 0;'#10'end;'#10;
+  cB = #10'procedure TFoo.B;'#10'begin'#10'  Hilfe;'#10'end;'#10;
+var
+  mText, mDone: string;
+begin
+  // A braucht TEintrag und B die freie Routine Hilfe: Keiner wandert über das, was er braucht.
+  mText := FooKopf + Body('procedure TFoo.C') + cEintrag + cA + cHilfe + cB + Ende;
+  mDone := ArrangedWith(mText, TMethodOrderOptions.Create(TMethodPlacement.Declaration));
+  Assert.AreEqual(mText, mDone, 'nichts lässt sich vorziehen');
+  // Ohne Abhängigkeit über der Deklaration rückt der Rumpf vor, der abhängige nur so weit wie möglich.
+  mText := FooKopf + Body('procedure TFoo.C') + Body('procedure TFoo.B') + cEintrag + cA + Ende;
+  mDone := ArrangedWith(mText, TMethodOrderOptions.Create(TMethodPlacement.Declaration));
+  Assert.AreEqual(FooKopf + Body('procedure TFoo.B') + Body('procedure TFoo.C') + cEintrag + cA + Ende, mDone);
+  mText := FooKopf + Body('procedure TFoo.C') + cEintrag + Body('procedure TFoo.B') + cA + Ende;
+  mDone := ArrangedWith(mText, TMethodOrderOptions.Create(TMethodPlacement.Declaration));
+  Assert.AreEqual(FooKopf + Body('procedure TFoo.B') + cEintrag + cA + Body('procedure TFoo.C') + Ende, mDone);
+  Assert.IsTrue(ParsesClean(mDone));
+  // Ein gleichnamiger Aufzählungswert weiter oben hebt die Schranke der Routine nicht auf.
+  mText := FooKopf + #10'{$SCOPEDENUMS ON}'#10'type'#10'  TArt = (Hilfe, Anders);'#10'{$SCOPEDENUMS OFF}'#10 +
+    Body('procedure TFoo.C') + cHilfe + cB + Ende;
+  mDone := ArrangedWith(mText, TMethodOrderOptions.Create(TMethodPlacement.Declaration));
+  Assert.AreEqual(mText, mDone, 'B bleibt unter Hilfe');
 end;
 
 initialization

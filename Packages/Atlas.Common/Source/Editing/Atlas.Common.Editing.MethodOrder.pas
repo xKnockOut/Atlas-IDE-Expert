@@ -14,6 +14,10 @@
 //     eine solche Klammer nur zur Hälfte enthält,
 //   - der eine Zeile mit anderem Code teilt.
 //
+// Ein Rumpf wandert außerdem nie über eine Deklaration des implementation-Teils
+// (Typ, Konstante, Variable, freie Routine), deren Namen er nennt: Die Unit
+// übersetzt sonst nicht mehr. Er rückt dann nur so weit vor, wie es geht.
+//
 // PlaceNew setzt nur neue Rümpfe an ihre Stelle: hinter den Rumpf der
 // zuletzt davor deklarierten Methode desselben Typs, sonst vor den der
 // nächsten, sonst hinter den letzten Rumpf eines früheren bzw. vor den ersten
@@ -152,6 +156,9 @@ type
     Group, Sub: Integer;
     /// <summary>Erste Zeile (mit Kommentaren darüber), Kopfzeile, letzte Zeile.</summary>
     First, Header, Last: Integer;
+    /// <summary>Letzte Zeile über dem Rumpf, in der etwas steht, das er braucht (Typ, Konstante, Variable oder
+    /// freie Routine des implementation-Teils); -1 ohne. Höher als diese Zeile darf er nicht wandern.</summary>
+    Needs: Integer;
     Fixed, New: Boolean;
     Reason: TMethodStayReason;
   end;
@@ -477,6 +484,109 @@ begin
     AMethod.Declaration.Name);
 end;
 
+/// <summary>Ist ASymbol eine Deklaration des implementation-Teils, die ein Rumpf ohne Qualifizierung nennt
+/// (Typ, Konstante, Variable, freie Routine, Aufzählungswert)?</summary>
+function IsLocalDeclaration(const ASymbol: TIndexSymbol): Boolean;
+begin
+  Result := not ASymbol.InInterface and ((ASymbol.Container = '') or (ASymbol.Kind = TIndexSymbolKind.EnumMember))
+    and not (ASymbol.Kind in [TIndexSymbolKind.Method, TIndexSymbolKind.Constructor_, TIndexSymbolKind.Field,
+    TIndexSymbolKind.Property_]);
+end;
+
+/// <summary>Zeilen je Name (klein geschrieben), in denen der implementation-Teil von AUnit ihn deklariert. Alle
+/// zählen: Welche ein Rumpf meint, entscheidet erst der Compiler (gleichnamige Aufzählungswerte, forward).
+/// </summary>
+function LocalDeclarationLines(const AUnit: TUnitIndex): TDictionary<string, TArray<Integer>>;
+var
+  mSymbol: TIndexSymbol;
+  mLines: TArray<Integer>;
+begin
+  Result := TDictionary<string, TArray<Integer>>.Create;
+  for mSymbol in AUnit.Symbols do
+  begin
+    if IsLocalDeclaration(mSymbol) then
+    begin
+      if not Result.TryGetValue(LowerCase(mSymbol.Name), mLines) then
+      begin
+        mLines := nil;
+      end;
+      SetLength(mLines, Length(mLines) + 1);
+      mLines[High(mLines)] := mSymbol.SelectionRange.StartPos.Line;
+      Result.AddOrSetValue(LowerCase(mSymbol.Name), mLines);
+    end;
+  end;
+end;
+
+/// <summary>Letzte Zeile aus ALines vor ABefore; sonst ACurrent.</summary>
+function LatestBefore(const ALines: TArray<Integer>; ABefore, ACurrent: Integer): Integer;
+var
+  mLine: Integer;
+begin
+  Result := ACurrent;
+  for mLine in ALines do
+  begin
+    if (mLine < ABefore) and (mLine > Result) then
+    begin
+      Result := mLine;
+    end;
+  end;
+end;
+
+/// <summary>Rumpf je Zeile (Index in ABlocks, -1 außerhalb).</summary>
+function BlockAtLines(const ABlocks: TBlocks; ALineCount: Integer): TArray<Integer>;
+var
+  mIndex, mLine: Integer;
+begin
+  SetLength(Result, ALineCount);
+  for mLine := 0 to ALineCount - 1 do
+  begin
+    Result[mLine] := -1;
+  end;
+  for mIndex := 0 to High(ABlocks) do
+  begin
+    for mLine := Max(ABlocks[mIndex].First, 0) to Min(ABlocks[mIndex].Last, ALineCount - 1) do
+    begin
+      Result[mLine] := mIndex;
+    end;
+  end;
+end;
+
+/// <summary>Setzt Needs der Rümpfe ABlocks: Ein Rumpf, der einen Typ, eine Konstante oder eine freie Routine des
+/// implementation-Teils nennt, darf nicht über deren Deklaration wandern (sonst übersetzt die Unit nicht mehr).
+/// </summary>
+procedure MarkNeeds(ATree: TSyntaxTree; const AUnit: TUnitIndex; var ABlocks: TBlocks; ALineCount: Integer);
+var
+  mDeclared: TDictionary<string, TArray<Integer>>;
+  mLines: TArray<Integer>;
+  mBlockAt: TArray<Integer>;
+  mToken: TPascalToken;
+  mIndex: Integer;
+begin
+  for mIndex := 0 to High(ABlocks) do
+  begin
+    ABlocks[mIndex].Needs := -1;
+  end;
+  mBlockAt := BlockAtLines(ABlocks, ALineCount);
+  mDeclared := LocalDeclarationLines(AUnit);
+  try
+    for mToken in ATree.Tokens do
+    begin
+      if (mToken.Kind <> TPascalTokenKind.Identifier) or (mToken.StartPos.Line < 0) or
+        (mToken.StartPos.Line >= ALineCount) then
+      begin
+        Continue;
+      end;
+      mIndex := mBlockAt[mToken.StartPos.Line];
+      if (mIndex >= 0) and mDeclared.TryGetValue(LowerCase(mToken.Text), mLines) then
+      begin
+        ABlocks[mIndex].Needs := LatestBefore(mLines, ABlocks[mIndex].First, ABlocks[mIndex].Needs);
+      end;
+    end;
+  finally
+    mDeclared.Free;
+  end;
+end;
+
 /// <summary>Die Rümpfe deklarierter Methoden mit ihrem Bereich und Rang; markiert, was stehen bleiben muss.
 /// Direktiven in Zeilen mit AIgnore halten nichts fest.</summary>
 function CollectBlocks(ATree: TSyntaxTree; const AText: string; const ALines: TArray<string>;
@@ -505,6 +615,7 @@ begin
   end;
   Result := ByLine(Result);
   FixSharedLines(Result);
+  MarkNeeds(ATree, mUnit, Result, Length(ALines));
 end;
 
 type
@@ -1051,7 +1162,30 @@ begin
   end;
 end;
 
-/// <summary>Ordnet die verschiebbaren Rümpfe aus ABlocks nach AOptions; die Kommentare AHeaders gehen mit.</summary>
+/// <summary>Verteilt die geordneten Rümpfe ASorted auf die Plätze ASlots: Jeder Platz bekommt den ersten noch
+/// freien Rumpf, der dort schon alles sieht, was er braucht (Needs). Der Rumpf, der den Platz vorher hatte,
+/// erfüllt das immer; ohne Needs entsteht genau ASorted.</summary>
+function Placeable(const ASlots, ASorted: TBlocks): TBlocks;
+var
+  mTaken: TArray<Boolean>;
+  mSlot, mIndex: Integer;
+begin
+  SetLength(Result, Length(ASlots));
+  SetLength(mTaken, Length(ASorted));
+  for mSlot := 0 to High(ASlots) do
+  begin
+    mIndex := 0;
+    while mTaken[mIndex] or (ASorted[mIndex].Needs >= ASlots[mSlot].First) do
+    begin
+      Inc(mIndex);
+    end;
+    mTaken[mIndex] := True;
+    Result[mSlot] := ASorted[mIndex];
+  end;
+end;
+
+/// <summary>Ordnet die verschiebbaren Rümpfe aus ABlocks nach AOptions; die Kommentare AHeaders gehen mit. Ein
+/// Rumpf wandert nicht über eine Deklaration, die er braucht.</summary>
 function ArrangeBlocks(const ALines: TArray<string>; const ABlocks: TBlocks; const AHeaders: THeaders;
   const AOptions: TMethodOrderOptions; const ALineBreak: string): TMethodOrderResult;
 var
@@ -1061,7 +1195,7 @@ var
 begin
   Result := Default(TMethodOrderResult);
   mSlots := MovableOf(ABlocks);
-  mTarget := Sorted(mSlots, AOptions);
+  mTarget := Placeable(mSlots, Sorted(mSlots, AOptions));
   // Jeder Platz bekommt den Rumpf, der in der Ordnung an seiner Stelle steht.
   mText := Rearranged(ALines, ABlocks, mSlots, mTarget, AHeaders);
   if LinesEdit(ALines, mText.Lines, ALineBreak, mEdit) then
