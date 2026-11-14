@@ -722,6 +722,50 @@ begin
   Parse('{"metrics": 1}', mIssues);
   Assert.AreEqual(1, Integer(Length(mIssues)));
 end;
+/// <summary>Prüft Listen- und Schalteroptionen weiterer Regeln (Registrierung, TearDown, reine Funktionen,
+/// Format, Casts, Schleifen).</summary>
+procedure ChecksListAndSwitchOptions;
+var
+  mIssues: TArray<TConfigurationIssue>;
+begin
+  // registrationCalls von dunitx-fixture-not-registered (#1882).
+  Parse('{"rules": {"dunitx-fixture-not-registered": {"registrationCalls": ["RegistriereAlle"]}}}', mIssues);
+  Assert.AreEqual(0, Integer(Length(mIssues)));
+  Parse('{"rules": {"dunitx-fixture-not-registered": {"registrationCalls": "RegistriereAlle"}}}', mIssues);
+  Assert.AreEqual(1, Integer(Length(mIssues)));
+  Assert.Contains(mIssues[0].Message, '"registrationCalls"');
+  // managedFields von dunitx-setup-not-torn-down (#1781).
+  Parse('{"rules": {"dunitx-setup-not-torn-down": {"managedFields": false}}}', mIssues);
+  Assert.AreEqual(0, Integer(Length(mIssues)));
+  Parse('{"rules": {"dunitx-setup-not-torn-down": {"managedFields": "nein"}}}', mIssues);
+  Assert.AreEqual(1, Integer(Length(mIssues)));
+  Assert.Contains(mIssues[0].Message, '"managedFields"');
+  // pureFunctions von ignored-result (#624).
+  Parse('{"rules": {"ignored-result": {"pureFunctions": ["Bereinigt", "TText.Clean"]}}}', mIssues);
+  Assert.AreEqual(0, Integer(Length(mIssues)));
+  Parse('{"rules": {"ignored-result": {"pureFunctions": "Bereinigt"}}}', mIssues);
+  Assert.AreEqual(1, Integer(Length(mIssues)));
+  Assert.Contains(mIssues[0].Message, '"pureFunctions"');
+  // formatMethods von format-args (#56).
+  Parse('{"rules": {"format-args": {"formatMethods": ["TLogger.LogFmt", "Protokoll"]}}}', mIssues);
+  Assert.AreEqual(0, Integer(Length(mIssues)));
+  Parse('{"rules": {"format-args": {"formatMethods": "Protokoll"}}}', mIssues);
+  Assert.AreEqual(1, Integer(Length(mIssues)));
+  Assert.Contains(mIssues[0].Message, '"formatMethods"');
+  // checkFree von redundant-cast (#1139).
+  Parse('{"rules": {"redundant-cast": {"checkFree": false}}}', mIssues);
+  Assert.AreEqual(0, Integer(Length(mIssues)));
+  Parse('{"rules": {"redundant-cast": {"checkFree": "nein"}}}', mIssues);
+  Assert.AreEqual(1, Integer(Length(mIssues)));
+  Assert.Contains(mIssues[0].Message, '"checkFree"');
+  // allowFirstElement von loop-runs-at-most-once (#1131).
+  Parse('{"rules": {"loop-runs-at-most-once": {"allowFirstElement": true}}}', mIssues);
+  Assert.AreEqual(0, Integer(Length(mIssues)));
+  Parse('{"rules": {"loop-runs-at-most-once": {"allowFirstElement": "ja"}}}', mIssues);
+  Assert.AreEqual(1, Integer(Length(mIssues)));
+  Assert.Contains(mIssues[0].Message, '"allowFirstElement"');
+end;
+
 procedure TConfigurationParserTests.ChecksMetricLimitOption;
 var
   mSettings: TServerSettings;
@@ -764,42 +808,7 @@ begin
   Parse('{"rules": {"unrelated-class-cast": {"allowTypes": "TEdit"}}}', mIssues);
   Assert.AreEqual(1, Integer(Length(mIssues)));
   Assert.Contains(mIssues[0].Message, '"allowTypes"');
-  // registrationCalls von dunitx-fixture-not-registered (#1882).
-  Parse('{"rules": {"dunitx-fixture-not-registered": {"registrationCalls": ["RegistriereAlle"]}}}', mIssues);
-  Assert.AreEqual(0, Integer(Length(mIssues)));
-  Parse('{"rules": {"dunitx-fixture-not-registered": {"registrationCalls": "RegistriereAlle"}}}', mIssues);
-  Assert.AreEqual(1, Integer(Length(mIssues)));
-  Assert.Contains(mIssues[0].Message, '"registrationCalls"');
-  // managedFields von dunitx-setup-not-torn-down (#1781).
-  Parse('{"rules": {"dunitx-setup-not-torn-down": {"managedFields": false}}}', mIssues);
-  Assert.AreEqual(0, Integer(Length(mIssues)));
-  Parse('{"rules": {"dunitx-setup-not-torn-down": {"managedFields": "nein"}}}', mIssues);
-  Assert.AreEqual(1, Integer(Length(mIssues)));
-  Assert.Contains(mIssues[0].Message, '"managedFields"');
-  // pureFunctions von ignored-result (#624).
-  Parse('{"rules": {"ignored-result": {"pureFunctions": ["Bereinigt", "TText.Clean"]}}}', mIssues);
-  Assert.AreEqual(0, Integer(Length(mIssues)));
-  Parse('{"rules": {"ignored-result": {"pureFunctions": "Bereinigt"}}}', mIssues);
-  Assert.AreEqual(1, Integer(Length(mIssues)));
-  Assert.Contains(mIssues[0].Message, '"pureFunctions"');
-  // formatMethods von format-args (#56).
-  Parse('{"rules": {"format-args": {"formatMethods": ["TLogger.LogFmt", "Protokoll"]}}}', mIssues);
-  Assert.AreEqual(0, Integer(Length(mIssues)));
-  Parse('{"rules": {"format-args": {"formatMethods": "Protokoll"}}}', mIssues);
-  Assert.AreEqual(1, Integer(Length(mIssues)));
-  Assert.Contains(mIssues[0].Message, '"formatMethods"');
-  // checkFree von redundant-cast (#1139).
-  Parse('{"rules": {"redundant-cast": {"checkFree": false}}}', mIssues);
-  Assert.AreEqual(0, Integer(Length(mIssues)));
-  Parse('{"rules": {"redundant-cast": {"checkFree": "nein"}}}', mIssues);
-  Assert.AreEqual(1, Integer(Length(mIssues)));
-  Assert.Contains(mIssues[0].Message, '"checkFree"');
-  // allowFirstElement von loop-runs-at-most-once (#1131).
-  Parse('{"rules": {"loop-runs-at-most-once": {"allowFirstElement": true}}}', mIssues);
-  Assert.AreEqual(0, Integer(Length(mIssues)));
-  Parse('{"rules": {"loop-runs-at-most-once": {"allowFirstElement": "ja"}}}', mIssues);
-  Assert.AreEqual(1, Integer(Length(mIssues)));
-  Assert.Contains(mIssues[0].Message, '"allowFirstElement"');
+  ChecksListAndSwitchOptions;
 end;
 procedure TConfigurationParserTests.ChecksFactoriesOption;
 var

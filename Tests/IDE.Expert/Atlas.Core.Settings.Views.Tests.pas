@@ -132,6 +132,39 @@ begin
   Assert.AreEqual($6077, ALoaded.PreviousProblemKey);
   Assert.AreEqual(0, ALoaded.HideElementKey, '0 = keine Taste');
 end;
+/// <summary>Normalize begrenzt die Debug-Werte (Inline-Werte, Warum hier, Variablen, Vorhersage, Hover, Zeitachse,
+/// Profiler).</summary>
+procedure CheckDebugClamps(var ASettings: TAtlasPluginSettings);
+begin
+  ASettings.DebugInlineValuesPerLine := 0;
+  ASettings.DebugWhyHereDepth := 99;
+  ASettings.DebugVariablesSearchDepth := 0;
+  ASettings.DebugVariablesSearchLimit := 1000000;
+  ASettings.DebugPredictLines := 0;
+  ASettings.DebugHoverMaxChildren := 5000;
+  ASettings.Normalize;
+  Assert.AreEqual(TAtlasPluginSettings.cMinInlineValuesPerLine, ASettings.DebugInlineValuesPerLine,
+    'debug.inlineValuesPerLine unten begrenzt (#508)');
+  Assert.AreEqual(TAtlasPluginSettings.cMaxWhyHereDepth, ASettings.DebugWhyHereDepth,
+    'debug.whyHere.depth oben begrenzt (#1878)');
+  Assert.AreEqual(TAtlasPluginSettings.cMinVariablesSearchDepth, ASettings.DebugVariablesSearchDepth,
+    'debug.variablesWindow.searchDepth unten begrenzt (#853)');
+  Assert.AreEqual(TAtlasPluginSettings.cMaxVariablesSearchLimit, ASettings.DebugVariablesSearchLimit,
+    'debug.variablesWindow.searchLimit oben begrenzt (#853)');
+  Assert.AreEqual(TAtlasPluginSettings.cMinPredictLines, ASettings.DebugPredictLines,
+    'debug.predictConditions.lines unten begrenzt (#2169)');
+  Assert.AreEqual(TAtlasPluginSettings.cMaxHoverMaxChildren, ASettings.DebugHoverMaxChildren,
+    'debug.hoverMaxChildren oben begrenzt (#895)');
+  ASettings.DebugMemoryTimelineIntervalMs := 60000;
+  ASettings.Normalize;
+  Assert.AreEqual(TAtlasPluginSettings.cMaxMemoryTimelineIntervalMs, ASettings.DebugMemoryTimelineIntervalMs,
+    'debug.memoryTimeline.intervalMs oben begrenzt (#858)');
+  ASettings.DebugProfilerIntervalMs := 0;
+  ASettings.Normalize;
+  Assert.AreEqual(TAtlasPluginSettings.cMinProfilerIntervalMs, ASettings.DebugProfilerIntervalMs,
+    'debug.profiler.intervalMs unten begrenzt (#2057)');
+end;
+
 procedure TAtlasViewSettingsTests.HideElementOptions;
 var
   mSettings, mLoaded: TAtlasPluginSettings;
@@ -160,33 +193,7 @@ begin
   mSettings.Normalize;
   Assert.AreEqual(TAtlasPluginSettings.cMinBlockEndLines, mSettings.BlockEndLabelsMinLines, 'unten begrenzt');
   mSettings.BlockEndLabelsMinLines := 5000;
-  mSettings.DebugInlineValuesPerLine := 0;
-  mSettings.DebugWhyHereDepth := 99;
-  mSettings.DebugVariablesSearchDepth := 0;
-  mSettings.DebugVariablesSearchLimit := 1000000;
-  mSettings.DebugPredictLines := 0;
-  mSettings.DebugHoverMaxChildren := 5000;
-  mSettings.Normalize;
-  Assert.AreEqual(TAtlasPluginSettings.cMinInlineValuesPerLine, mSettings.DebugInlineValuesPerLine,
-    'debug.inlineValuesPerLine unten begrenzt (#508)');
-  Assert.AreEqual(TAtlasPluginSettings.cMaxWhyHereDepth, mSettings.DebugWhyHereDepth,
-    'debug.whyHere.depth oben begrenzt (#1878)');
-  Assert.AreEqual(TAtlasPluginSettings.cMinVariablesSearchDepth, mSettings.DebugVariablesSearchDepth,
-    'debug.variablesWindow.searchDepth unten begrenzt (#853)');
-  Assert.AreEqual(TAtlasPluginSettings.cMaxVariablesSearchLimit, mSettings.DebugVariablesSearchLimit,
-    'debug.variablesWindow.searchLimit oben begrenzt (#853)');
-  Assert.AreEqual(TAtlasPluginSettings.cMinPredictLines, mSettings.DebugPredictLines,
-    'debug.predictConditions.lines unten begrenzt (#2169)');
-  Assert.AreEqual(TAtlasPluginSettings.cMaxHoverMaxChildren, mSettings.DebugHoverMaxChildren,
-    'debug.hoverMaxChildren oben begrenzt (#895)');
-  mSettings.DebugMemoryTimelineIntervalMs := 60000;
-  mSettings.Normalize;
-  Assert.AreEqual(TAtlasPluginSettings.cMaxMemoryTimelineIntervalMs, mSettings.DebugMemoryTimelineIntervalMs,
-    'debug.memoryTimeline.intervalMs oben begrenzt (#858)');
-  mSettings.DebugProfilerIntervalMs := 0;
-  mSettings.Normalize;
-  Assert.AreEqual(TAtlasPluginSettings.cMinProfilerIntervalMs, mSettings.DebugProfilerIntervalMs,
-    'debug.profiler.intervalMs unten begrenzt (#2057)');
+  CheckDebugClamps(mSettings);
   Assert.AreEqual(TAtlasPluginSettings.cMaxBlockEndLines, mSettings.BlockEndLabelsMinLines, 'oben begrenzt');
   SetHideElementOptions(mSettings);
   mStore := TMemoryStore.Create;
@@ -418,6 +425,58 @@ begin
   Assert.IsFalse(mLoaded.OutlineFollowCursor);
   Assert.IsFalse(mLoaded.OutlineConditions);
 end;
+/// <summary>Setzt alle Breadcrumbs-Einstellungen auf das Gegenteil der Vorgabe.</summary>
+procedure SetBreadcrumbsOptions(var ASettings: TAtlasPluginSettings);
+begin
+  ASettings.Breadcrumbs := False;
+  ASettings.BreadcrumbsShowUnit := True;
+  ASettings.BreadcrumbsVisibility := False;
+  ASettings.BreadcrumbsMemberBlocks := False;
+  ASettings.BreadcrumbsVisibilityMark := False;
+  ASettings.BreadcrumbsDeclarationBlocks := False;
+  ASettings.BreadcrumbsConditionals := False;
+  ASettings.BreadcrumbsRegions := False;
+  ASettings.BreadcrumbsStatements := True;
+  ASettings.BreadcrumbsSectionCounts := False;
+  ASettings.BreadcrumbsSectionAppend := False;
+  ASettings.BreadcrumbsSectionCreate := False;
+  ASettings.SectionAppendKey := $C04E;
+  ASettings.BreadcrumbsContextMenu := False;
+  ASettings.BreadcrumbsOverloads := False;
+  ASettings.BreadcrumbsInterfaces := False;
+  ASettings.BreadcrumbsMetrics := False;
+  ASettings.MouseNavButtons := False;
+  ASettings.BreadcrumbsIdeColors := False;
+  ASettings.BreadcrumbsHideIdeToolbar := False;
+  ASettings.BreadcrumbsKey := 0;
+end;
+
+/// <summary>Prüft die von SetBreadcrumbsOptions gesetzten Werte nach Speichern und Laden.</summary>
+procedure AssertBreadcrumbsLoaded(const ALoaded: TAtlasPluginSettings);
+begin
+  Assert.IsFalse(ALoaded.Breadcrumbs);
+  Assert.IsTrue(ALoaded.BreadcrumbsShowUnit);
+  Assert.IsFalse(ALoaded.BreadcrumbsVisibility);
+  Assert.IsFalse(ALoaded.BreadcrumbsMemberBlocks);
+  Assert.IsFalse(ALoaded.BreadcrumbsVisibilityMark);
+  Assert.IsFalse(ALoaded.BreadcrumbsDeclarationBlocks);
+  Assert.IsFalse(ALoaded.BreadcrumbsConditionals);
+  Assert.IsFalse(ALoaded.BreadcrumbsRegions);
+  Assert.IsTrue(ALoaded.BreadcrumbsStatements);
+  Assert.IsFalse(ALoaded.BreadcrumbsSectionCounts);
+  Assert.IsFalse(ALoaded.BreadcrumbsSectionAppend);
+  Assert.IsFalse(ALoaded.BreadcrumbsSectionCreate);
+  Assert.AreEqual($C04E, ALoaded.SectionAppendKey, 'Strg+Alt+N');
+  Assert.IsFalse(ALoaded.BreadcrumbsContextMenu);
+  Assert.IsFalse(ALoaded.BreadcrumbsOverloads);
+  Assert.IsFalse(ALoaded.BreadcrumbsInterfaces);
+  Assert.IsFalse(ALoaded.BreadcrumbsMetrics);
+  Assert.IsFalse(ALoaded.MouseNavButtons);
+  Assert.IsFalse(ALoaded.BreadcrumbsIdeColors);
+  Assert.IsFalse(ALoaded.BreadcrumbsHideIdeToolbar);
+  Assert.AreEqual(0, ALoaded.BreadcrumbsKey);
+end;
+
 procedure TAtlasViewSettingsTests.BreadcrumbsOptions;
 var
   mSettings, mLoaded: TAtlasPluginSettings;
@@ -445,52 +504,12 @@ begin
   Assert.IsTrue(mSettings.BreadcrumbsIdeColors, 'Farben der IDE');
   Assert.IsTrue(mSettings.BreadcrumbsHideIdeToolbar, 'Navigationsleiste der IDE aus');
   Assert.AreEqual($60BE, mSettings.BreadcrumbsKey, 'Strg+Umschalt+.');
-  mSettings.Breadcrumbs := False;
-  mSettings.BreadcrumbsShowUnit := True;
-  mSettings.BreadcrumbsVisibility := False;
-  mSettings.BreadcrumbsMemberBlocks := False;
-  mSettings.BreadcrumbsVisibilityMark := False;
-  mSettings.BreadcrumbsDeclarationBlocks := False;
-  mSettings.BreadcrumbsConditionals := False;
-  mSettings.BreadcrumbsRegions := False;
-  mSettings.BreadcrumbsStatements := True;
-  mSettings.BreadcrumbsSectionCounts := False;
-  mSettings.BreadcrumbsSectionAppend := False;
-  mSettings.BreadcrumbsSectionCreate := False;
-  mSettings.SectionAppendKey := $C04E;
-  mSettings.BreadcrumbsContextMenu := False;
-  mSettings.BreadcrumbsOverloads := False;
-  mSettings.BreadcrumbsInterfaces := False;
-  mSettings.BreadcrumbsMetrics := False;
-  mSettings.MouseNavButtons := False;
-  mSettings.BreadcrumbsIdeColors := False;
-  mSettings.BreadcrumbsHideIdeToolbar := False;
-  mSettings.BreadcrumbsKey := 0;
+  SetBreadcrumbsOptions(mSettings);
   mStore := TMemoryStore.Create;
   mSettings.Save(mStore);
   mLoaded := TAtlasPluginSettings.Defaults;
   mLoaded.Load(mStore);
-  Assert.IsFalse(mLoaded.Breadcrumbs);
-  Assert.IsTrue(mLoaded.BreadcrumbsShowUnit);
-  Assert.IsFalse(mLoaded.BreadcrumbsVisibility);
-  Assert.IsFalse(mLoaded.BreadcrumbsMemberBlocks);
-  Assert.IsFalse(mLoaded.BreadcrumbsVisibilityMark);
-  Assert.IsFalse(mLoaded.BreadcrumbsDeclarationBlocks);
-  Assert.IsFalse(mLoaded.BreadcrumbsConditionals);
-  Assert.IsFalse(mLoaded.BreadcrumbsRegions);
-  Assert.IsTrue(mLoaded.BreadcrumbsStatements);
-  Assert.IsFalse(mLoaded.BreadcrumbsSectionCounts);
-  Assert.IsFalse(mLoaded.BreadcrumbsSectionAppend);
-  Assert.IsFalse(mLoaded.BreadcrumbsSectionCreate);
-  Assert.AreEqual($C04E, mLoaded.SectionAppendKey, 'Strg+Alt+N');
-  Assert.IsFalse(mLoaded.BreadcrumbsContextMenu);
-  Assert.IsFalse(mLoaded.BreadcrumbsOverloads);
-  Assert.IsFalse(mLoaded.BreadcrumbsInterfaces);
-  Assert.IsFalse(mLoaded.BreadcrumbsMetrics);
-  Assert.IsFalse(mLoaded.MouseNavButtons);
-  Assert.IsFalse(mLoaded.BreadcrumbsIdeColors);
-  Assert.IsFalse(mLoaded.BreadcrumbsHideIdeToolbar);
-  Assert.AreEqual(0, mLoaded.BreadcrumbsKey);
+  AssertBreadcrumbsLoaded(mLoaded);
   mLoaded.BreadcrumbsKey := -5;
   mLoaded.Normalize;
   Assert.AreEqual(0, mLoaded.BreadcrumbsKey);

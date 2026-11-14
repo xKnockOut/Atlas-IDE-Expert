@@ -159,18 +159,10 @@ const
     '  end'#13#10 +
     'end'#13#10;
 
-procedure TDataFieldNamesTests.LooksUpOwnFormAndDataModules;
-var
-  mIndex: ISymbolIndex;
-  mReader: TDataTextReader;
-  mCall: TDataNameCall;
-  mSql: string;
-  mFound: Boolean;
-  mItems: TArray<TDataName>;
+/// <summary>Liest Haupt-Unit, Datenmodul und ihre Formulare aus den Konstanten dieses Tests.</summary>
+function LooksUpReader(): TDataTextReader;
 begin
-  mIndex := TSymbolIndex.Create;
-  mIndex.AddUnit(TIndexExtractor.ExtractText(cLooksUpModuleText, cLooksUpModuleFile, nil));
-  mReader :=
+  Result :=
     function(const AFileName: string; out AText: string): Boolean
     begin
       Result := True;
@@ -195,6 +187,20 @@ begin
         Result := False;
       end;
     end;
+end;
+
+procedure TDataFieldNamesTests.LooksUpOwnFormAndDataModules;
+var
+  mIndex: ISymbolIndex;
+  mReader: TDataTextReader;
+  mCall: TDataNameCall;
+  mSql: string;
+  mFound: Boolean;
+  mItems: TArray<TDataName>;
+begin
+  mIndex := TSymbolIndex.Create;
+  mIndex.AddUnit(TIndexExtractor.ExtractText(cLooksUpModuleText, cLooksUpModuleFile, nil));
+  mReader := LooksUpReader();
   // Eigene Unit, auch über den Namen des eigenen Formulars.
   Assert.IsTrue(TDataFieldNames.CallAt('  qryOrders.FieldByName(''cu'');', 27, mCall));
   mItems := TDataFieldNames.Lookup(TDataLookupSource.Create(cLooksUpMainText, cLooksUpMainFile, mIndex, mReader), mCall,

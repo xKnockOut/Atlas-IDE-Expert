@@ -47,6 +47,9 @@ type
     procedure MissingBaselineFails;
     [Test]
     procedure CleanFileGivesZero;
+    /// <summary>TLinterCheck.Run ohne die Weiche von TLinterShell: fehlende Datei 3, Syntaxfehler 1.</summary>
+    [Test]
+    procedure CheckRunsWithoutShell;
     /// <summary>Wie im Editor: atlas.json wird von der Datei aus nach oben gesucht bis zum Stamm des
     /// Repositorys.</summary>
     [Test]
@@ -123,6 +126,7 @@ uses
   Atlas.Common.Editing.FormatCheck,
   Shell.CommandLine,
   Shell.Linter,
+  Shell.Linter.Check,
   Shell.Linter.Mutation,
   Shell.Workspace.Listings;
 
@@ -239,6 +243,18 @@ begin
   Assert.AreEqual(0, Run(['--check', Path('Src/Gut.pas'), '--format', 'json']));
   Assert.IsTrue(TFile.Exists(FOutput));
   Assert.DoesNotContain(OutputText, 'Kaputt.pas');
+end;
+
+procedure TShellLinterTests.CheckRunsWithoutShell;
+var
+  mCache: string;
+begin
+  mCache := TPath.Combine(ExtractFilePath(ParamStr(0)), 'TestIndexCache');
+  Assert.AreEqual(3, TLinterCheck.Run(TCommandLineOptions.Parse(['--check', Path('Src/Fehlt.pas'), '--output', FOutput,
+    '--index-cache', mCache])));
+  Assert.AreEqual(1, TLinterCheck.Run(TCommandLineOptions.Parse(['--check', Path('Src/Kaputt.pas'), '--format=json',
+    '--output', FOutput, '--index-cache', mCache])));
+  Assert.Contains(OutputText, 'Kaputt.pas');
 end;
 
 procedure TShellLinterTests.SyntaxErrorGivesOne;

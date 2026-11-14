@@ -1107,6 +1107,7 @@
         <DCCReference Include="IDE.Expert\Atlas.UI.Settings.Transfer.Tests.pas"/>,
         <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\UI\Settings\Atlas.UI.Settings.SnippetsPage.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.UI.Settings.Page.Tests.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.UI.Settings.Page.Tree.Tests.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.UI.Settings.Page.TestSupport.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.UI.Settings.Page.Build.Tests.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.UI.Settings.Page.Editor.Tests.pas"/>
@@ -2118,6 +2119,7 @@
         <DCCReference Include="Application\Shell\Shell.SlashHost.Tests.pas"/>
         <DCCReference Include="Application\Shell\Shell.Workspace.Tests.pas"/>
         <DCCReference Include="Application\Shell\Shell.Workspace.Parts.Tests.pas"/>
+        <DCCReference Include="Application\Shell\Shell.Workspace.Indexing.Tests.pas"/>
         <DCCReference Include="Application\Shell\Shell.WorkspaceGroup.Tests.pas"/>
         <DCCReference Include="Application\Shell\Shell.Bootstrap.Tests.pas"/>
         <DCCReference Include="..\Application\Source\Shell\Shell.Commands.Build.pas"/>
@@ -2199,6 +2201,8 @@
         <DCCReference Include="..\Application\Source\Shell\Shell.Composition.Capabilities.pas"/>
         <DCCReference Include="..\Application\Source\Shell\Shell.Composition.Refactorings.pas"/>
         <DCCReference Include="Application\Shell\Shell.Composition.Refactorings.Tests.pas"/>
+        <DCCReference Include="Application\Shell\Shell.Composition.Refactorings.Parts.Tests.pas"/>
+        <DCCReference Include="Application\Shell\Shell.Composition.Refactorings.TestSupport.pas"/>
         <DCCReference Include="Application\Shell\Shell.Composition.Baselines.Tests.pas"/>
         <DCCReference Include="Application\Shell\Shell.Composition.Overviews.Tests.pas"/>
         <DCCReference Include="Application\Shell\Shell.Composition.Analysis.Tests.pas"/>

@@ -1491,6 +1491,37 @@ begin
   Assert.AreEqual<TAtlasVcsOutcome>(TAtlasVcsOutcome.Failed, mHistory.ContentOf('x', mFileOf, True, mContent));
   Assert.AreEqual(5, Integer(Length(ARunner.Calls)));
 end;
+/// <summary>Unsichere Eingaben starten keinen Prozess (ARunner hat danach weiter fünf Aufrufe).</summary>
+procedure CheckUnsafeHistoryInput(const AHistory: IAtlasVcsHistory; const AFile: TAtlasVcsLogFile;
+  ARunner: TFakeRunner);
+var
+  mEntries: TArray<TAtlasVcsLogEntry>;
+  mContent: TBytes;
+  mAhead, mBehind: Integer;
+begin
+  Assert.AreEqual<TAtlasVcsOutcome>(TAtlasVcsOutcome.Failed, AHistory.SearchLog('', 10, mEntries));
+  Assert.AreEqual<TAtlasVcsOutcome>(TAtlasVcsOutcome.Failed, AHistory.SearchLog('a'#10'b', 10, mEntries));
+  Assert.AreEqual<TAtlasVcsOutcome>(TAtlasVcsOutcome.Failed, AHistory.Distance('--all', 'main', mAhead, mBehind));
+  Assert.AreEqual(-1, mAhead);
+  Assert.AreEqual<TAtlasVcsOutcome>(TAtlasVcsOutcome.Failed, AHistory.ContentOf('-x', AFile, False, mContent));
+  Assert.AreEqual(5, Integer(Length(ARunner.Calls)));
+end;
+
+/// <summary>Die leere Umsetzung meldet Disabled und startet keinen Prozess.</summary>
+procedure CheckNullHistory(ARunner: TFakeRunner);
+var
+  mVcs: IAtlasVersionControl;
+  mHistory: IAtlasVcsHistory;
+  mEntries: TArray<TAtlasVcsLogEntry>;
+  mRefs: TArray<TAtlasVcsRef>;
+begin
+  mVcs := TAtlasNullVersionControl.Create(TAtlasVcsOutcome.Disabled);
+  Assert.IsTrue(Supports(mVcs, IAtlasVcsHistory, mHistory));
+  Assert.AreEqual<TAtlasVcsOutcome>(TAtlasVcsOutcome.Disabled, mHistory.SearchLog('ATL-12', 50, mEntries));
+  Assert.AreEqual<TAtlasVcsOutcome>(TAtlasVcsOutcome.Disabled, mHistory.AllBranches(mRefs));
+  Assert.AreEqual(5, Integer(Length(ARunner.Calls)), 'die leere Umsetzung startet keinen Prozess');
+end;
+
 procedure TAtlasVcsTests.ProvidersRunHistoryCommands;
 const
   cPrefix = '--no-optional-locks -c core.quotepath=off -c color.ui=false ';
@@ -1541,25 +1572,14 @@ begin
   Assert.AreEqual<TAtlasVcsOutcome>(TAtlasVcsOutcome.Ok,
     mHistory.ContentOf(mEntries[0].Revision, mEntries[0].Files[2], False, mContent));
   Assert.AreEqual(5, Integer(Length(mRunner.Calls)));
-  // Unsichere Eingaben starten keinen Prozess.
-  Assert.AreEqual<TAtlasVcsOutcome>(TAtlasVcsOutcome.Failed, mHistory.SearchLog('', 10, mEntries));
-  Assert.AreEqual<TAtlasVcsOutcome>(TAtlasVcsOutcome.Failed, mHistory.SearchLog('a'#10'b', 10, mEntries));
-  Assert.AreEqual<TAtlasVcsOutcome>(TAtlasVcsOutcome.Failed, mHistory.Distance('--all', 'main', mAhead, mBehind));
-  Assert.AreEqual(-1, mAhead);
-  Assert.AreEqual<TAtlasVcsOutcome>(TAtlasVcsOutcome.Failed, mHistory.ContentOf('-x', mFileOf, False, mContent));
-  Assert.AreEqual(5, Integer(Length(mRunner.Calls)));
+  CheckUnsafeHistoryInput(mHistory, mFileOf, mRunner);
   // Unlesbare Ausgabe: Failed statt Ausnahme.
   mRunner.Answers[0] := #$1E'kurz'#0;
   Assert.AreEqual<TAtlasVcsOutcome>(TAtlasVcsOutcome.Failed, mHistory.SearchLog('ATL-12', 10, mEntries));
   Assert.AreEqual(0, Integer(Length(mEntries)));
 
   AssertSvnHistory(mRunner, mRunnerRef);
-
-  mVcs := TAtlasNullVersionControl.Create(TAtlasVcsOutcome.Disabled);
-  Assert.IsTrue(Supports(mVcs, IAtlasVcsHistory, mHistory));
-  Assert.AreEqual<TAtlasVcsOutcome>(TAtlasVcsOutcome.Disabled, mHistory.SearchLog('ATL-12', 50, mEntries));
-  Assert.AreEqual<TAtlasVcsOutcome>(TAtlasVcsOutcome.Disabled, mHistory.AllBranches(mRefs));
-  Assert.AreEqual(5, Integer(Length(mRunner.Calls)), 'die leere Umsetzung startet keinen Prozess');
+  CheckNullHistory(mRunner);
 end;
 initialization
   TDUnitX.RegisterTestFixture(TAtlasVcsTests);

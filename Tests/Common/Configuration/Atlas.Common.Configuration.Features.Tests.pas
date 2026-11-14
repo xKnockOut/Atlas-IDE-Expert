@@ -432,6 +432,32 @@ begin
   Parse('{"completion": {"attributes": "ja"}}', mIssues);
   Assert.AreEqual(1, Integer(Length(mIssues)));
 end;
+/// <summary>Liest Freigabe-Stil, Schlüsselwörter, Postfix-Vorlagen und Constraints der Vervollständigung.</summary>
+procedure ReadsFreeStyleAndTemplates;
+var
+  mIssues: TArray<TConfigurationIssue>;
+begin
+  // Freigabe absichern (#489)
+  Assert.IsTrue(Parse('{}', mIssues).Completion.OfferTryFinally);
+  Assert.AreEqual<TCompletionFreeStyle>(TCompletionFreeStyle.Free, Parse('{}', mIssues).Completion.FreeStyle);
+  Assert.IsFalse(Parse('{"completion": {"offerTryFinally": false}}', mIssues).Completion.OfferTryFinally);
+  Assert.AreEqual<TCompletionFreeStyle>(TCompletionFreeStyle.FreeAndNil,
+    Parse('{"completion": {"freeStyle": "freeAndNil"}}', mIssues).Completion.FreeStyle);
+  Assert.AreEqual(0, Integer(Length(mIssues)));
+  Parse('{"completion": {"freeStyle": "nil"}}', mIssues);
+  Assert.AreEqual(1, Integer(Length(mIssues)));
+  // Schlüsselwörter (#31)
+  Assert.IsTrue(Parse('{}', mIssues).Completion.Keywords);
+  Assert.IsFalse(Parse('{"completion": {"keywords": false}}', mIssues).Completion.Keywords);
+  Assert.AreEqual(0, Integer(Length(mIssues)));
+  // Postfix-Vorlagen und Inline-Variablen (#188)
+  Assert.IsTrue(Parse('{}', mIssues).Completion.PostfixTemplates);
+  Assert.IsFalse(Parse('{"completion": {"postfixTemplates": false}}', mIssues).Completion.PostfixTemplates);
+  // Typargumente nach den Constraints (#450)
+  Assert.IsTrue(Parse('{}', mIssues).Completion.GenericConstraints);
+  Assert.IsFalse(Parse('{"completion": {"genericConstraints": false}}', mIssues).Completion.GenericConstraints);
+end;
+
 /// <summary>Einstellungen ab „Anonyme Methoden (#468)“.</summary>
 procedure ReadsAnonymousMethodsAndKeywords;
 var
@@ -487,25 +513,7 @@ begin
   Assert.IsTrue(Parse('{}', mIssues).Completion.ProjectFrequency);
   Assert.IsFalse(Parse('{"completion": {"projectFrequency": false}}', mIssues).Completion.ProjectFrequency);
   Assert.AreEqual(0, Integer(Length(mIssues)));
-  // Freigabe absichern (#489)
-  Assert.IsTrue(Parse('{}', mIssues).Completion.OfferTryFinally);
-  Assert.AreEqual<TCompletionFreeStyle>(TCompletionFreeStyle.Free, Parse('{}', mIssues).Completion.FreeStyle);
-  Assert.IsFalse(Parse('{"completion": {"offerTryFinally": false}}', mIssues).Completion.OfferTryFinally);
-  Assert.AreEqual<TCompletionFreeStyle>(TCompletionFreeStyle.FreeAndNil,
-    Parse('{"completion": {"freeStyle": "freeAndNil"}}', mIssues).Completion.FreeStyle);
-  Assert.AreEqual(0, Integer(Length(mIssues)));
-  Parse('{"completion": {"freeStyle": "nil"}}', mIssues);
-  Assert.AreEqual(1, Integer(Length(mIssues)));
-  // Schlüsselwörter (#31)
-  Assert.IsTrue(Parse('{}', mIssues).Completion.Keywords);
-  Assert.IsFalse(Parse('{"completion": {"keywords": false}}', mIssues).Completion.Keywords);
-  Assert.AreEqual(0, Integer(Length(mIssues)));
-  // Postfix-Vorlagen und Inline-Variablen (#188)
-  Assert.IsTrue(Parse('{}', mIssues).Completion.PostfixTemplates);
-  Assert.IsFalse(Parse('{"completion": {"postfixTemplates": false}}', mIssues).Completion.PostfixTemplates);
-  // Typargumente nach den Constraints (#450)
-  Assert.IsTrue(Parse('{}', mIssues).Completion.GenericConstraints);
-  Assert.IsFalse(Parse('{"completion": {"genericConstraints": false}}', mIssues).Completion.GenericConstraints);
+  ReadsFreeStyleAndTemplates;
 end;
 /// <summary>Einstellungen ab „Namensvorschläge (#452)“.</summary>
 procedure ReadsNameSuggestionsAndRefactorings;

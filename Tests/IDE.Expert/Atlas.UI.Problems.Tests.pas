@@ -602,6 +602,16 @@ begin
   end;
 end;
 
+/// <summary>Englische Texte der Bereichsliste (Markierung des aktiven Projekts, Einstellung).</summary>
+procedure CheckScopeTextsEnglish;
+begin
+  TAtlasStrings.Language := TAtlasLanguage.English;
+  Assert.AreEqual('Atlas.Tests (active)', Format(TAtlasProblemsScopeBox.Text(TAtlasScopeBoxText.ActiveMark),
+    ['Atlas.Tests']));
+  Assert.AreEqual('Individual projects of the group in the window''s scope list',
+    TAtlasProblemsScopeBox.Text(TAtlasScopeBoxText.Setting));
+end;
+
 procedure TAtlasProblemsFrameTests.ScopeListOffersGroupProjects;
 var
   mHost: TForm;
@@ -662,11 +672,7 @@ begin
   finally
     mHost.Free;
   end;
-  TAtlasStrings.Language := TAtlasLanguage.English;
-  Assert.AreEqual('Atlas.Tests (active)', Format(TAtlasProblemsScopeBox.Text(TAtlasScopeBoxText.ActiveMark),
-    ['Atlas.Tests']));
-  Assert.AreEqual('Individual projects of the group in the window''s scope list',
-    TAtlasProblemsScopeBox.Text(TAtlasScopeBoxText.Setting));
+  CheckScopeTextsEnglish;
 end;
 
 initialization

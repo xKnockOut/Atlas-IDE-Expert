@@ -573,26 +573,32 @@ begin
   mSettings.Normalize;
   Assert.AreEqual(7680, mSettings.IssuesAttachMaxImageWidth);
 end;
+/// <summary>Vorgaben der Abgleich-Einstellungen für Issues.</summary>
+procedure AssertIssuesSyncDefaults(const ASettings: TAtlasPluginSettings);
+begin
+  Assert.IsTrue(ASettings.IssuesSyncState, 'an: geschrieben wird trotzdem nur nach Senden bzw. Beginnen');
+  Assert.AreEqual('State', ASettings.IssuesStateField);
+  Assert.AreEqual('Assignee', ASettings.IssuesAssigneeField);
+  Assert.AreEqual('', ASettings.IssuesStartState, 'Zustand beim Beginnen nicht ändern');
+  Assert.IsFalse(ASettings.IssuesAssignOnStart);
+  Assert.AreEqual('', ASettings.IssuesStartComment);
+  Assert.AreEqual('', ASettings.IssuesEndStates);
+  Assert.AreEqual('', ASettings.IssuesReviewStates);
+  Assert.IsTrue(ASettings.IssuesReopened, '#2127: Vorgabe an');
+  Assert.IsTrue(ASettings.IssuesReviewBuild, '#2126: Vorgabe an');
+  Assert.AreEqual('Geprüft: {build}, {tests}.', ASettings.IssuesReviewComment);
+  Assert.AreEqual('Erledigt in {branch}.\n{commits}', ASettings.IssuesEndComment);
+  Assert.AreEqual('', ASettings.IssuesEndFields, 'ab Werk keine Felder beim Beenden');
+  Assert.IsTrue(ASettings.IssuesEndTime, 'erfasste Zeit beim Beenden anbieten');
+end;
+
 procedure TAtlasIssueSettingsTests.IssuesSyncOptions;
 var
   mSettings, mLoaded: TAtlasPluginSettings;
   mStore: IAtlasSettingsStore;
 begin
   mSettings := TAtlasPluginSettings.Defaults;
-  Assert.IsTrue(mSettings.IssuesSyncState, 'an: geschrieben wird trotzdem nur nach Senden bzw. Beginnen');
-  Assert.AreEqual('State', mSettings.IssuesStateField);
-  Assert.AreEqual('Assignee', mSettings.IssuesAssigneeField);
-  Assert.AreEqual('', mSettings.IssuesStartState, 'Zustand beim Beginnen nicht ändern');
-  Assert.IsFalse(mSettings.IssuesAssignOnStart);
-  Assert.AreEqual('', mSettings.IssuesStartComment);
-  Assert.AreEqual('', mSettings.IssuesEndStates);
-  Assert.AreEqual('', mSettings.IssuesReviewStates);
-  Assert.IsTrue(mSettings.IssuesReopened, '#2127: Vorgabe an');
-  Assert.IsTrue(mSettings.IssuesReviewBuild, '#2126: Vorgabe an');
-  Assert.AreEqual('Geprüft: {build}, {tests}.', mSettings.IssuesReviewComment);
-  Assert.AreEqual('Erledigt in {branch}.\n{commits}', mSettings.IssuesEndComment);
-  Assert.AreEqual('', mSettings.IssuesEndFields, 'ab Werk keine Felder beim Beenden');
-  Assert.IsTrue(mSettings.IssuesEndTime, 'erfasste Zeit beim Beenden anbieten');
+  AssertIssuesSyncDefaults(mSettings);
   // Normalisieren: Felder ohne Leerraum außen, leer = Vorgabe; Vorlagen einzeilig mit \n.
   mSettings.IssuesStateField := '  Status ';
   mSettings.IssuesAssigneeField := '';

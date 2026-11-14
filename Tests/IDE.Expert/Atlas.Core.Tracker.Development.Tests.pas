@@ -665,6 +665,19 @@ end;
 const
   cTenThousandcCommits = 10000;
 
+/// <summary>Ergebnis über das erzeugte Repository: jeder hundertste Commit, sieben Units, ein Zweig.</summary>
+procedure CheckTenThousandDevelopment(const ADevelopment: TAtlasIssueDevelopment);
+begin
+  Assert.AreEqual(cTenThousandcCommits div 100, Integer(Length(ADevelopment.Commits)), 'ATL-770 zählt nicht');
+  Assert.IsFalse(ADevelopment.Truncated);
+  Assert.AreEqual(7, ADevelopment.UnitCount, 'Vereinigung der Dateien');
+  Assert.AreEqual(1, Integer(Length(ADevelopment.Branches)));
+  Assert.AreEqual('feature/ATL-77-tracker', ADevelopment.Branches[0].Name);
+  Assert.AreEqual('main', ADevelopment.Branches[0].Base);
+  Assert.AreEqual(0, ADevelopment.Branches[0].Ahead);
+  Assert.AreEqual(10, ADevelopment.Branches[0].Behind);
+end;
+
 procedure TAtlasIssueDevelopmentTests.TenThousandCommitsUnderTwoSeconds;
 var
   mGit, mFolder, mStream: string;
@@ -700,14 +713,7 @@ begin
     Assert.AreEqual<TAtlasVcsOutcome>(TAtlasVcsOutcome.Ok,
       TAtlasIssueDevelopmentQuery.Collect(mVcs, mRequest, mDevelopment));
     mWatch.Stop;
-    Assert.AreEqual(cTenThousandcCommits div 100, Integer(Length(mDevelopment.Commits)), 'ATL-770 zählt nicht');
-    Assert.IsFalse(mDevelopment.Truncated);
-    Assert.AreEqual(7, mDevelopment.UnitCount, 'Vereinigung der Dateien');
-    Assert.AreEqual(1, Integer(Length(mDevelopment.Branches)));
-    Assert.AreEqual('feature/ATL-77-tracker', mDevelopment.Branches[0].Name);
-    Assert.AreEqual('main', mDevelopment.Branches[0].Base);
-    Assert.AreEqual(0, mDevelopment.Branches[0].Ahead);
-    Assert.AreEqual(10, mDevelopment.Branches[0].Behind);
+    CheckTenThousandDevelopment(mDevelopment);
     mFile := mDevelopment.Commits[0].Files[0].Path;
     Assert.IsTrue(TFile.Exists(mFile), mFile);
     Assert.IsTrue(mWatch.ElapsedMilliseconds < 2000, Format('%d ms für %d Commits', [mWatch.ElapsedMilliseconds,
