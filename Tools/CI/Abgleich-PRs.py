@@ -15,8 +15,11 @@ Pull Requests bleiben unangetastet: ein Push startet die CI neu und zwingt den T
 
 Bearbeitet werden nur Pull Requests aus diesem Repository von Branches claude/…, keine Entwürfe.
 
-Umgebung: GH_TOKEN (gh), GITHUB_REPOSITORY, optional ZIEL (Vorgabe main-merging) und CI_STARTEN=1, wenn nach dem
-Push die Prüfungen per workflow_dispatch gestartet werden müssen (Push mit GITHUB_TOKEN löst keine Workflows aus).
+Umgebung: GH_TOKEN (gh), GITHUB_REPOSITORY, optional ZIEL (Vorgabe main-merging) und PUSHEN=1, wenn der Checkout
+mit einem Token (Secret ABGLEICH_TOKEN) pushen darf, dessen Pushes die Prüfungen des Pull Requests normal starten.
+Ohne das Token pusht das Skript nicht: Ein Push mit GITHUB_TOKEN erzeugt Pull-Request-Läufe, die auf Freigabe warten,
+und per workflow_dispatch nachgestartete Prüfungen zählen für Auto-Merge nicht (der Pull Request bleibt „blocked“,
+obwohl alle Pflichtprüfungen grün sind). Dann meldet das Skript am Pull Request, dass der Thread selbst abgleicht.
 """
 
 import json
@@ -31,8 +34,6 @@ LABEL = 'Konflikt mit main-merging'
 MARKE = '<!-- pr-abgleich -->'
 # Quellen erzeugter Dateien, wie in Tools/Merge-Integration.py.
 QUELLEN_ERZEUGTER = ('schemas/', 'Setup/Profile/', 'Packages/Atlas.Common/Katalog/')
-# Workflows, die nach einem Push mit GITHUB_TOKEN für den Branch gestartet werden.
-PRUEF_WORKFLOWS = ['package-dependencies.yml', 'linux-server.yml']
 
 
 def lauf(*args, check=True, eingabe=None):
@@ -122,7 +123,7 @@ def aufraeumen():
     git('clean', '-fdq', check=False)
 
 
-def gleiche_ab(repo, pr, ziel, skript, ci_starten, bericht):
+def gleiche_ab(repo, pr, ziel, skript, pushen, bericht):
     nummer = pr['number']
     branch = pr['head']['ref']
     labels = [l['name'] for l in pr.get('labels', [])]
@@ -163,6 +164,15 @@ def gleiche_ab(repo, pr, ziel, skript, ci_starten, bericht):
         bericht.append(f'#{nummer}: Merge-Integration.py Code {ergebnis.returncode}')
         return
 
+    if not pushen:
+        aufraeumen()
+        label_setzen(repo, nummer, True, labels)
+        kommentieren(repo, nummer, konflikt_text(
+            ziel, [], 'Tools/Merge-Integration.py löst ihn ohne Handarbeit; der automatische Abgleich darf ohne das '
+                      'Secret `ABGLEICH_TOKEN` nicht selbst pushen. Bitte im Thread abgleichen und pushen.'))
+        bericht.append(f'#{nummer}: lösbar, ohne ABGLEICH_TOKEN nur gemeldet')
+        return
+
     # Ohne --force: Hat der Thread inzwischen selbst gepusht, scheitert der Push, und der nächste Lauf versucht es neu.
     push = git('push', 'origin', f'HEAD:refs/heads/{branch}', check=False)
     if push.returncode != 0:
@@ -178,9 +188,6 @@ def gleiche_ab(repo, pr, ziel, skript, ci_starten, bericht):
             bericht.append(f'#{nummer}: Push gescheitert, nächster Lauf ({fehler.strip().splitlines()[-1:]})')
         return
     label_setzen(repo, nummer, False, labels)
-    if ci_starten:
-        for workflow in PRUEF_WORKFLOWS:
-            lauf('gh', 'workflow', 'run', workflow, '--ref', branch, check=False)
     art = 'Konflikt' if konflikt else 'erzeugte Dateien'
     bericht.append(f'#{nummer}: abgeglichen ({art}) und gepusht')
 
@@ -188,7 +195,7 @@ def gleiche_ab(repo, pr, ziel, skript, ci_starten, bericht):
 def main():
     repo = os.environ['GITHUB_REPOSITORY']
     ziel = os.environ.get('ZIEL', 'main-merging')
-    ci_starten = os.environ.get('CI_STARTEN') == '1'
+    pushen = os.environ.get('PUSHEN') == '1'
     os.chdir(git('rev-parse', '--show-toplevel').stdout.strip())
     git('fetch', '-q', 'origin', f'+refs/heads/{ziel}:refs/remotes/origin/{ziel}')
 
@@ -208,7 +215,7 @@ def main():
             bericht.append(f'#{pr["number"]}: Entwurf oder kein claude/…-Branch, übersprungen')
             continue
         try:
-            gleiche_ab(repo, pr, ziel, skript, ci_starten, bericht)
+            gleiche_ab(repo, pr, ziel, skript, pushen, bericht)
         except SystemExit as fehler:
             bericht.append(f'#{pr["number"]}: Fehler im Abgleich: {fehler}')
             aufraeumen()

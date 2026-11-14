@@ -40,6 +40,10 @@ jobs:
           echo "grenzen=$grenzen" >> "$GITHUB_OUTPUT"
       - name: Merge-Helfer, Selbsttest
         run: python3 Tools/Merge-Integration.py --selbsttest
+      - name: Konstante Arrays passen zu ihrer Aufzählung (Delphi E2072, FPC übersetzt VCL-Units nicht), Selbsttest
+        run: python3 Tools/Check-ConstArrays.py --selbsttest
+      - name: Konstante Arrays passen zu ihrer Aufzählung
+        run: python3 Tools/Check-ConstArrays.py
       - name: Changelog-Fragmente lesbar, keine neuen Einträge direkt in CHANGELOG.md
         shell: pwsh
         env:
