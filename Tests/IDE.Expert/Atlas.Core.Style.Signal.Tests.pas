@@ -134,10 +134,10 @@ procedure TAtlasSignalTests.StatusStatesMapToSignals;
 var
   mSignals: TAtlasSignals;
 begin
-  Assert.IsTrue(TAtlasSignals.KindOf(TAtlasStatusState.Green) = TAtlasSignalKind.Ok);
-  Assert.IsTrue(TAtlasSignals.KindOf(TAtlasStatusState.Yellow) = TAtlasSignalKind.Warn);
-  Assert.IsTrue(TAtlasSignals.KindOf(TAtlasStatusState.Red) = TAtlasSignalKind.Error);
-  Assert.IsTrue(TAtlasSignals.KindOf(TAtlasStatusState.Neutral) = TAtlasSignalKind.Idle);
+  Assert.AreEqual<TAtlasSignalKind>(TAtlasSignalKind.Ok, TAtlasSignals.KindOf(TAtlasStatusState.Green));
+  Assert.AreEqual<TAtlasSignalKind>(TAtlasSignalKind.Warn, TAtlasSignals.KindOf(TAtlasStatusState.Yellow));
+  Assert.AreEqual<TAtlasSignalKind>(TAtlasSignalKind.Error, TAtlasSignals.KindOf(TAtlasStatusState.Red));
+  Assert.AreEqual<TAtlasSignalKind>(TAtlasSignalKind.Idle, TAtlasSignals.KindOf(TAtlasStatusState.Neutral));
   mSignals := TAtlasSignals.Light;
   Assert.AreEqual(mSignals.Get(TAtlasSignalKind.Error).Fill, mSignals.ForStatus(TAtlasStatusState.Red).Fill);
 end;
@@ -154,7 +154,7 @@ begin
   Assert.AreEqual(TAtlasSignals.Dark.Get(TAtlasSignalKind.Ok).Fill, TAtlasColors.ForChrome(
     TAtlasColorMath.FromHex('#2B2B2B'), TAtlasColorMath.FromHex('#E6E6E6')).Signals.Get(TAtlasSignalKind.Ok).Fill);
   // Textfarben bleiben für Text.
-  Assert.IsTrue(TAtlasColors.Light.Add <> mOk);
+  Assert.AreNotEqual<TAtlasColor>(mOk, TAtlasColors.Light.Add);
 end;
 
 end.

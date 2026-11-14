@@ -99,13 +99,14 @@ begin
   Assert.AreEqual('pwsh', mTasks[0].Command);
   Assert.AreEqual('Tools/Check-Delphi12.ps1', string.Join('|', mTasks[0].Args));
   Assert.AreEqual('${projectDir}', mTasks[0].Cwd);
-  Assert.IsTrue(mTasks[0].Group = TAtlasTaskGroup.Check);
-  Assert.IsTrue(mTasks[0].Matcher.Kind = TAtlasTaskMatcherKind.Pwsh);
+  Assert.AreEqual<TAtlasTaskGroup>(TAtlasTaskGroup.Check, mTasks[0].Group);
+  Assert.AreEqual<TAtlasTaskMatcherKind>(TAtlasTaskMatcherKind.Pwsh, mTasks[0].Matcher.Kind);
   Assert.AreEqual(Integer($C031), Integer(mTasks[0].Key), 'Strg+Alt+1');
   Assert.AreEqual('pwsh Tools/Check-Delphi12.ps1', mTasks[0].CommandLine);
   Assert.IsFalse(mTasks[0].Global);
-  Assert.IsTrue(mTasks[1].Group = TAtlasTaskGroup.Other);
-  Assert.IsTrue(mTasks[1].Matcher.Kind = TAtlasTaskMatcherKind.None, 'ohne matcher keine Befunde');
+  Assert.AreEqual<TAtlasTaskGroup>(TAtlasTaskGroup.Other, mTasks[1].Group);
+  Assert.AreEqual<TAtlasTaskMatcherKind>(TAtlasTaskMatcherKind.None,
+    mTasks[1].Matcher.Kind, 'ohne matcher keine Befunde');
   Assert.AreEqual(0, Integer(mTasks[1].Key));
 end;
 
@@ -126,15 +127,15 @@ begin
   Assert.AreEqual('LINT_MODE|LEVEL', string.Join('|', mTasks[0].EnvNames));
   Assert.AreEqual('strict|${config}', string.Join('|', mTasks[0].EnvValues));
   Assert.IsTrue(mTasks[0].HasBeforeBuild);
-  Assert.IsTrue(mTasks[0].BeforeBuild = TAtlasTaskBeforeBuild.Block);
-  Assert.IsTrue(mTasks[0].Matcher.Kind = TAtlasTaskMatcherKind.Custom);
+  Assert.AreEqual<TAtlasTaskBeforeBuild>(TAtlasTaskBeforeBuild.Block, mTasks[0].BeforeBuild);
+  Assert.AreEqual<TAtlasTaskMatcherKind>(TAtlasTaskMatcherKind.Custom, mTasks[0].Matcher.Kind);
   Assert.AreEqual('bad|meh|fyi', string.Join('|', mTasks[0].Matcher.SeverityWords));
-  Assert.IsTrue(mTasks[0].Matcher.SeverityValues[1] = TAtlasTaskSeverity.Warning);
-  Assert.IsTrue(mTasks[0].Matcher.DefaultSeverity = TAtlasTaskSeverity.Warning);
+  Assert.AreEqual<TAtlasTaskSeverity>(TAtlasTaskSeverity.Warning, mTasks[0].Matcher.SeverityValues[1]);
+  Assert.AreEqual<TAtlasTaskSeverity>(TAtlasTaskSeverity.Warning, mTasks[0].Matcher.DefaultSeverity);
   Assert.IsTrue(mTasks[0].Global);
   // Vorgaben.
   Assert.AreEqual(TAtlasTasks.cDefaultTimeoutSec, mTasks[1].TimeoutSec);
-  Assert.IsTrue(mTasks[1].Group = TAtlasTaskGroup.Other);
+  Assert.AreEqual<TAtlasTaskGroup>(TAtlasTaskGroup.Other, mTasks[1].Group);
   Assert.IsFalse(mTasks[1].HasBeforeBuild);
   Assert.AreEqual('', mTasks[1].Cwd);
 end;
@@ -151,12 +152,12 @@ begin
   Assert.AreEqual(2, Integer(Length(mTasks)), 'C und D bleiben');
   Assert.AreEqual('C', mTasks[0].Name);
   Assert.AreEqual('c', mTasks[0].Command, 'doppelter Name: die erste gilt');
-  Assert.IsTrue(mTasks[0].Group = TAtlasTaskGroup.Other);
-  Assert.IsTrue(mTasks[0].Matcher.Kind = TAtlasTaskMatcherKind.None);
+  Assert.AreEqual<TAtlasTaskGroup>(TAtlasTaskGroup.Other, mTasks[0].Group);
+  Assert.AreEqual<TAtlasTaskMatcherKind>(TAtlasTaskMatcherKind.None, mTasks[0].Matcher.Kind);
   Assert.AreEqual(0, Integer(mTasks[0].Key), 'Q ohne Strg/Alt stört das Tippen');
   Assert.AreEqual(TAtlasTasks.cDefaultTimeoutSec, mTasks[0].TimeoutSec);
   Assert.IsFalse(mTasks[0].HasBeforeBuild);
-  Assert.IsTrue(mTasks[1].Matcher.Kind = TAtlasTaskMatcherKind.None, 'Objekt ohne regex');
+  Assert.AreEqual<TAtlasTaskMatcherKind>(TAtlasTaskMatcherKind.None, mTasks[1].Matcher.Kind, 'Objekt ohne regex');
   // ohne name, ohne command, kein Objekt, group, matcher, key, timeoutSec, beforeBuild, doppelt, regex.
   Assert.AreEqual('tasks[0] MissingName|B MissingCommand|tasks[2] TaskType|C UnknownGroup lint|' +
     'C UnknownMatcher gcc|C KeyUnreadable Q|C TimeoutValue|C BeforeBuildValue stop|c DuplicateName|' +
@@ -242,12 +243,17 @@ begin
     '{"name":"Aus","command":"b","group":"check","beforeBuild":"off"},' +
     '{"name":"Test","command":"c","group":"test","beforeBuild":"warn"},' +
     '{"name":"Doku","command":"d"}]}', False, mIssues);
-  Assert.IsTrue(mTasks[0].BeforeBuildFor(TAtlasTaskBeforeBuild.Block) = TAtlasTaskBeforeBuild.Block);
-  Assert.IsTrue(mTasks[0].BeforeBuildFor(TAtlasTaskBeforeBuild.Off) = TAtlasTaskBeforeBuild.Off);
-  Assert.IsTrue(mTasks[1].BeforeBuildFor(TAtlasTaskBeforeBuild.Block) = TAtlasTaskBeforeBuild.Off, 'eigener Wert');
-  Assert.IsTrue(mTasks[2].BeforeBuildFor(TAtlasTaskBeforeBuild.Off) = TAtlasTaskBeforeBuild.Warn,
+  Assert.AreEqual<TAtlasTaskBeforeBuild>(TAtlasTaskBeforeBuild.Block,
+    mTasks[0].BeforeBuildFor(TAtlasTaskBeforeBuild.Block));
+  Assert.AreEqual<TAtlasTaskBeforeBuild>(TAtlasTaskBeforeBuild.Off,
+    mTasks[0].BeforeBuildFor(TAtlasTaskBeforeBuild.Off));
+  Assert.AreEqual<TAtlasTaskBeforeBuild>(TAtlasTaskBeforeBuild.Off,
+    mTasks[1].BeforeBuildFor(TAtlasTaskBeforeBuild.Block), 'eigener Wert');
+  Assert.AreEqual<TAtlasTaskBeforeBuild>(TAtlasTaskBeforeBuild.Warn,
+    mTasks[2].BeforeBuildFor(TAtlasTaskBeforeBuild.Off),
     'eigener Wert auch außerhalb von check');
-  Assert.IsTrue(mTasks[3].BeforeBuildFor(TAtlasTaskBeforeBuild.Block) = TAtlasTaskBeforeBuild.Off);
+  Assert.AreEqual<TAtlasTaskBeforeBuild>(TAtlasTaskBeforeBuild.Off,
+    mTasks[3].BeforeBuildFor(TAtlasTaskBeforeBuild.Block));
   mBefore := TAtlasTasks.BeforeBuild(mTasks, TAtlasTaskBeforeBuild.Warn);
   Assert.AreEqual(2, Integer(Length(mBefore)));
   Assert.AreEqual('Prüfung', mBefore[0].Name);

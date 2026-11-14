@@ -127,12 +127,12 @@ begin
   Assert.AreEqual(1, Integer(Length(mQuery.Words)));
   Assert.AreEqual('sett', mQuery.Words[0]);
   Assert.IsTrue(TAtlasUnitKind.Test in mQuery.NotKinds);
-  Assert.IsTrue(mQuery.Kinds = []);
+  Assert.AreEqual<TAtlasUnitKinds>([], mQuery.Kinds);
   mQuery := TAtlasUnitQuery.Parse('p:ide  t:form|frame  -p:tests', True);
   Assert.IsFalse(mQuery.HasWords);
   Assert.AreEqual('ide', mQuery.Projects[0]);
   Assert.AreEqual('tests', mQuery.NotProjects[0]);
-  Assert.IsTrue(mQuery.Kinds = [TAtlasUnitKind.Form, TAtlasUnitKind.Frame]);
+  Assert.AreEqual<TAtlasUnitKinds>([TAtlasUnitKind.Form, TAtlasUnitKind.Frame], mQuery.Kinds);
   // Unvollständige oder unbekannte Filter bleiben Suchtext.
   mQuery := TAtlasUnitQuery.Parse('t: t:xyz p:', True);
   Assert.AreEqual(3, Integer(Length(mQuery.Words)));
@@ -147,7 +147,7 @@ var
 begin
   mQuery := TAtlasUnitQuery.Parse('p:ide form', False);
   Assert.AreEqual(2, Integer(Length(mQuery.Words)));
-  Assert.IsTrue(mQuery.Kinds = []);
+  Assert.AreEqual<TAtlasUnitKinds>([], mQuery.Kinds);
   Assert.AreEqual(0, Integer(Length(mQuery.Projects)));
 end;
 
@@ -158,19 +158,19 @@ var
 begin
   mList := Entries;
   Assert.AreEqual(9, Integer(Length(mList)));
-  Assert.IsTrue(mList[0].Origin = TAtlasUnitOrigin.Group, 'anderes Projekt der Gruppe');
-  Assert.IsTrue(mList[2].Origin = TAtlasUnitOrigin.Active);
-  Assert.IsTrue(mList[6].Origin = TAtlasUnitOrigin.SearchPath);
-  Assert.IsTrue(mList[7].Origin = TAtlasUnitOrigin.Library_);
+  Assert.AreEqual<TAtlasUnitOrigin>(TAtlasUnitOrigin.Group, mList[0].Origin, 'anderes Projekt der Gruppe');
+  Assert.AreEqual<TAtlasUnitOrigin>(TAtlasUnitOrigin.Active, mList[2].Origin);
+  Assert.AreEqual<TAtlasUnitOrigin>(TAtlasUnitOrigin.SearchPath, mList[6].Origin);
+  Assert.AreEqual<TAtlasUnitOrigin>(TAtlasUnitOrigin.Library_, mList[7].Origin);
   // Gehört die Unit auch zum aktiven Projekt, ist das ihr Projekt.
   Assert.AreEqual('Atlas.IDE.Expert', mList[5].Project);
-  Assert.IsTrue(mList[5].Origin = TAtlasUnitOrigin.Active);
+  Assert.AreEqual<TAtlasUnitOrigin>(TAtlasUnitOrigin.Active, mList[5].Origin);
   Assert.AreEqual('Atlas.Tests', mList[4].Project);
   mValue := TJSONObject.ParseJSONValue(cAnswer);
   try
     Assert.AreEqual(3, Integer(Length(TAtlasUnitSearch.ProjectsFromJson(mValue))));
     // Ohne aktives Projekt zählen alle Projekte als aktiv.
-    Assert.IsTrue(TAtlasUnitSearch.FromJson(mValue, '', Path)[0].Origin = TAtlasUnitOrigin.Active);
+    Assert.AreEqual<TAtlasUnitOrigin>(TAtlasUnitOrigin.Active, TAtlasUnitSearch.FromJson(mValue, '', Path)[0].Origin);
   finally
     mValue.Free;
   end;
@@ -182,11 +182,11 @@ var
   mKind: TAtlasUnitKind;
 begin
   Assert.IsTrue(TAtlasUnitSearch.KindFromText('dm', mKind));
-  Assert.IsTrue(mKind = TAtlasUnitKind.DataModule);
+  Assert.AreEqual<TAtlasUnitKind>(TAtlasUnitKind.DataModule, mKind);
   Assert.IsTrue(TAtlasUnitSearch.KindFromText('DataModule', mKind));
-  Assert.IsTrue(mKind = TAtlasUnitKind.DataModule);
+  Assert.AreEqual<TAtlasUnitKind>(TAtlasUnitKind.DataModule, mKind);
   Assert.IsTrue(TAtlasUnitSearch.KindFromText('INC', mKind));
-  Assert.IsTrue(mKind = TAtlasUnitKind.Include);
+  Assert.AreEqual<TAtlasUnitKind>(TAtlasUnitKind.Include, mKind);
   Assert.IsFalse(TAtlasUnitSearch.KindFromText('formular', mKind));
   Assert.AreEqual('frame', TAtlasUnitSearch.KindText(TAtlasUnitKind.Frame));
 end;
@@ -366,19 +366,20 @@ begin
   mSecond := TAtlasUnitSearch.DisplayPath(mList[mOrder[1]].FileName, cRoot, TAtlasUnitPathStyle.Compact, 40);
   Assert.AreNotEqual(mFirst, mSecond);
   Assert.IsFalse(mFirst.Contains('j9xhhv'), 'relativ ab der Projektgruppe');
-  Assert.IsTrue(mList[mOrder[0]].Kind <> mList[mOrder[1]].Kind);
+  Assert.AreNotEqual<TAtlasUnitKind>(mList[mOrder[1]].Kind, mList[mOrder[0]].Kind);
 end;
 
 procedure TAtlasUnitSearchTests.ScopesToOrigins;
 begin
-  Assert.IsTrue(TAtlasUnitSearch.OriginsForScope('project') = [TAtlasUnitOrigin.Active]);
-  Assert.IsTrue(TAtlasUnitSearch.OriginsForScope('group') = [TAtlasUnitOrigin.Active, TAtlasUnitOrigin.Group]);
+  Assert.AreEqual<TAtlasUnitOrigins>([TAtlasUnitOrigin.Active], TAtlasUnitSearch.OriginsForScope('project'));
+  Assert.AreEqual<TAtlasUnitOrigins>([TAtlasUnitOrigin.Active, TAtlasUnitOrigin.Group],
+    TAtlasUnitSearch.OriginsForScope('group'));
   Assert.IsTrue(TAtlasUnitOrigin.SearchPath in TAtlasUnitSearch.OriginsForScope('searchPath'));
   Assert.IsFalse(TAtlasUnitOrigin.Library_ in TAtlasUnitSearch.OriginsForScope('searchPath'));
   Assert.IsTrue(TAtlasUnitOrigin.Library_ in TAtlasUnitSearch.OriginsForScope('library'));
-  Assert.IsTrue(TAtlasUnitSearch.GroupingFromText('folder') = TAtlasUnitGrouping.Folder);
-  Assert.IsTrue(TAtlasUnitSearch.GroupingFromText('x') = TAtlasUnitGrouping.Project);
-  Assert.IsTrue(TAtlasUnitSearch.PathStyleFromText('compact') = TAtlasUnitPathStyle.Compact);
+  Assert.AreEqual<TAtlasUnitGrouping>(TAtlasUnitGrouping.Folder, TAtlasUnitSearch.GroupingFromText('folder'));
+  Assert.AreEqual<TAtlasUnitGrouping>(TAtlasUnitGrouping.Project, TAtlasUnitSearch.GroupingFromText('x'));
+  Assert.AreEqual<TAtlasUnitPathStyle>(TAtlasUnitPathStyle.Compact, TAtlasUnitSearch.PathStyleFromText('compact'));
 end;
 
 procedure TAtlasUnitSearchTests.ReadsPreview;
@@ -434,14 +435,14 @@ begin
     mState.PreviewVisible := False;
     mState.Sections[TAtlasPreviewSection.Types] := TAtlasSectionChoice.HandClosed;
     Assert.IsTrue(mLoaded.LoadJson(mState.ToJson));
-    Assert.IsTrue(mLoaded.Sections[TAtlasPreviewSection.Types] = TAtlasSectionChoice.Auto,
+    Assert.AreEqual<TAtlasSectionChoice>(TAtlasSectionChoice.Auto, mLoaded.Sections[TAtlasPreviewSection.Types],
       'Abschnitte gelten nur für die Sitzung (#876)');
     Assert.AreEqual(2, Integer(Length(mLoaded.Collapsed('c:\p\gruppe.groupproj', TAtlasUnitGrouping.Project))));
     Assert.AreEqual('atlas.common', mLoaded.Collapsed('C:\P\Gruppe.groupproj', TAtlasUnitGrouping.Project)[0]);
     Assert.AreEqual('tests', mLoaded.Collapsed('C:\P\Gruppe.groupproj', TAtlasUnitGrouping.Folder)[0]);
     Assert.IsTrue(mLoaded.Filters('C:\P\Gruppe.groupproj', mOrigins, mKinds));
-    Assert.IsTrue(mOrigins = [TAtlasUnitOrigin.Active, TAtlasUnitOrigin.Library_]);
-    Assert.IsTrue(mKinds = [TAtlasUnitKind.Form]);
+    Assert.AreEqual<TAtlasUnitOrigins>([TAtlasUnitOrigin.Active, TAtlasUnitOrigin.Library_], mOrigins);
+    Assert.AreEqual<TAtlasUnitKinds>([TAtlasUnitKind.Form], mKinds);
     Assert.AreEqual(10, mLoaded.Left);
     Assert.AreEqual(900, mLoaded.Width);
     Assert.AreEqual(320, mLoaded.PreviewWidth);
@@ -542,13 +543,13 @@ begin
   mState := TAtlasUnitSearchState.Create;
   try
     TFile.WriteAllText(mFileName, '[1, 2]');
-    Assert.IsTrue(mState.LoadFromFile(mFileName) = TAtlasDataLoad.Renewed);
+    Assert.AreEqual<TAtlasDataLoad>(TAtlasDataLoad.Renewed, mState.LoadFromFile(mFileName));
     Assert.IsTrue(TFile.Exists(mFileName + TAtlasDataFile.cDefectExtension), 'beiseitegelegt');
     mState.Width := 937;
     Assert.IsTrue(mState.SaveToFile(mFileName));
     mLock := TFileStream.Create(mFileName, fmOpenRead or fmShareExclusive);
     try
-      Assert.IsTrue(mState.LoadFromFile(mFileName) = TAtlasDataLoad.Kept);
+      Assert.AreEqual<TAtlasDataLoad>(TAtlasDataLoad.Kept, mState.LoadFromFile(mFileName));
     finally
       mLock.Free;
     end;

@@ -73,11 +73,12 @@ begin
   Assert.AreEqual('C:\p\Kunde.pas', mFound[0].Key);
   Assert.AreEqual('Delphi-12-Prüfung', mFound[0].Value.Source);
   Assert.AreEqual(87, mFound[0].Value.StartLine, '0-basiert');
-  Assert.IsTrue(mFound[0].Value.Severity = TAtlasProblemSeverity.Error);
+  Assert.AreEqual<TAtlasProblemSeverity>(TAtlasProblemSeverity.Error, mFound[0].Value.Severity);
   Assert.AreEqual(0, mFound[1].Value.StartLine, 'ohne Zeile die erste');
-  Assert.IsTrue(mFound[1].Value.Severity = TAtlasProblemSeverity.Warning);
-  Assert.IsTrue(mFound[2].Value.Severity = TAtlasProblemSeverity.Information);
-  Assert.IsTrue(TAtlasTaskReports.Severity(TAtlasTaskSeverity.Error) = TAtlasProblemSeverity.Error);
+  Assert.AreEqual<TAtlasProblemSeverity>(TAtlasProblemSeverity.Warning, mFound[1].Value.Severity);
+  Assert.AreEqual<TAtlasProblemSeverity>(TAtlasProblemSeverity.Information, mFound[2].Value.Severity);
+  Assert.AreEqual<TAtlasProblemSeverity>(TAtlasProblemSeverity.Error,
+    TAtlasTaskReports.Severity(TAtlasTaskSeverity.Error));
 end;
 
 procedure TAtlasTaskReportsTests.RangeFollowsColumnOrLine;

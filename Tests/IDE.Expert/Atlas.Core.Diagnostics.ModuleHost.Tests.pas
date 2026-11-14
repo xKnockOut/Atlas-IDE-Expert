@@ -153,7 +153,7 @@ begin
   Assert.AreEqual('Name', mInfo.Name);
   Assert.AreEqual('2.1.0', mInfo.Version);
   Assert.AreEqual(UInt64(42), UInt64(mInfo.Handle));
-  Assert.IsTrue(mInfo.MinLevel = TAtlasSafeLevel.Safe);
+  Assert.AreEqual<TAtlasSafeLevel>(TAtlasSafeLevel.Safe, mInfo.MinLevel);
   Assert.AreEqual('schalter', mInfo.Switch);
 end;
 

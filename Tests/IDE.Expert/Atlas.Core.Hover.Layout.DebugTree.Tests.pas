@@ -197,7 +197,8 @@ begin
     mLayout.Items[mOld].Rect.Left);
   // Wert und Zeile hinterlegt, jeweils vor ihrem Text.
   Assert.AreEqual(2, FillCount(mLayout, mColors.WarnSoft));
-  Assert.IsTrue(mLayout.Items[ItemOf(mLayout, 'Name = ''Meier''') - 1].Kind = TAtlasHoverItemKind.Fill);
+  Assert.AreEqual<TAtlasHoverItemKind>(TAtlasHoverItemKind.Fill,
+    mLayout.Items[ItemOf(mLayout, 'Name = ''Meier''') - 1].Kind);
 end;
 
 procedure THoverLayoutDebugTreeTests.SelectedRowIsFilled;
@@ -214,7 +215,7 @@ begin
   mLayout := BuildLayout(mInput);
   Assert.AreEqual(1, FillCount(mLayout, mColors.Selection));
   mText := ItemOf(mLayout, '▾ Adressen = (2)');
-  Assert.IsTrue(mLayout.Items[mText - 1].Kind = TAtlasHoverItemKind.Fill);
+  Assert.AreEqual<TAtlasHoverItemKind>(TAtlasHoverItemKind.Fill, mLayout.Items[mText - 1].Kind);
   Assert.AreEqual(mColors.Selection, mLayout.Items[mText - 1].Color);
   Assert.AreEqual(mLayout.Items[mText].Rect.Top, mLayout.Items[mText - 1].Rect.Top);
 end;

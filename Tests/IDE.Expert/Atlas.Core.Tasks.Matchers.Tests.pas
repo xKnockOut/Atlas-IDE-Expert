@@ -68,7 +68,7 @@ begin
     Assert.AreEqual('Packages\Atlas.Common\Source\Kunde.pas', mFinding.FileName);
     Assert.AreEqual(88, mFinding.Line);
     Assert.AreEqual(0, mFinding.Column);
-    Assert.IsTrue(mFinding.Severity = TAtlasTaskSeverity.Error, 'ohne Wort: error');
+    Assert.AreEqual<TAtlasTaskSeverity>(TAtlasTaskSeverity.Error, mFinding.Severity, 'ohne Wort: error');
     Assert.AreEqual('"is not" gibt es erst ab Delphi 13; "not (X is T)" verwenden', mFinding.Message);
     // Check-MainThreadQueue.ps1, unter Linux mit /.
     Assert.IsTrue(mLines.Match('  Packages/Atlas.IDE.Expert/Source/IDE/Foo.pas:12: Einreihen ohne Besitzer überlebt ' +
@@ -111,21 +111,21 @@ begin
   mLines := Matcher(TAtlasTaskMatcherKind.Pwsh);
   try
     Assert.IsTrue(mLines.Match('WARNUNG: Src\A.pas:3: lange Zeile', mFinding));
-    Assert.IsTrue(mFinding.Severity = TAtlasTaskSeverity.Warning);
+    Assert.AreEqual<TAtlasTaskSeverity>(TAtlasTaskSeverity.Warning, mFinding.Severity);
     Assert.AreEqual('Src\A.pas', mFinding.FileName);
     Assert.IsTrue(mLines.Match('Src\A.pas:3: HINWEIS: Kommentar fehlt', mFinding));
-    Assert.IsTrue(mFinding.Severity = TAtlasTaskSeverity.Info);
+    Assert.AreEqual<TAtlasTaskSeverity>(TAtlasTaskSeverity.Info, mFinding.Severity);
     Assert.AreEqual('Kommentar fehlt', mFinding.Message);
     Assert.IsTrue(mLines.Match('Src\A.pas:3: FEHLER unbekannter Typ', mFinding));
-    Assert.IsTrue(mFinding.Severity = TAtlasTaskSeverity.Error);
+    Assert.AreEqual<TAtlasTaskSeverity>(TAtlasTaskSeverity.Error, mFinding.Severity);
     Assert.AreEqual('unbekannter Typ', mFinding.Message);
     // Kleingeschrieben ist es Text, keine Schwere.
     Assert.IsTrue(mLines.Match('Src\A.pas:3: warnung im Text', mFinding));
-    Assert.IsTrue(mFinding.Severity = TAtlasTaskSeverity.Error);
+    Assert.AreEqual<TAtlasTaskSeverity>(TAtlasTaskSeverity.Error, mFinding.Severity);
     Assert.AreEqual('warnung im Text', mFinding.Message);
     Assert.IsTrue(mLines.Match('Write-Error: Src\B.pas:4: Parser weicht ab', mFinding));
     Assert.AreEqual('Src\B.pas', mFinding.FileName);
-    Assert.IsTrue(mFinding.Severity = TAtlasTaskSeverity.Error);
+    Assert.AreEqual<TAtlasTaskSeverity>(TAtlasTaskSeverity.Error, mFinding.Severity);
   finally
     mLines.Free;
   end;
@@ -143,17 +143,17 @@ begin
     Assert.AreEqual(12, mFinding.Line);
     Assert.AreEqual('E2003', mFinding.Code);
     Assert.AreEqual('Undeclared identifier: ''Foo''', mFinding.Message);
-    Assert.IsTrue(mFinding.Severity = TAtlasTaskSeverity.Error);
+    Assert.AreEqual<TAtlasTaskSeverity>(TAtlasTaskSeverity.Error, mFinding.Severity);
     Assert.IsTrue(mLines.Match('[dcc32 Warnung] Kunde.pas(40): W1036 Variable ''X'' ist möglicherweise nicht ' +
       'initialisiert worden', mFinding));
-    Assert.IsTrue(mFinding.Severity = TAtlasTaskSeverity.Warning);
+    Assert.AreEqual<TAtlasTaskSeverity>(TAtlasTaskSeverity.Warning, mFinding.Severity);
     Assert.AreEqual('W1036', mFinding.Code);
     Assert.IsTrue(mLines.Match('[dcc32 Hinweis] Kunde.pas(41): H2164 Variable ''Y'' wurde deklariert, aber in ' +
       '''Z'' nicht verwendet', mFinding));
-    Assert.IsTrue(mFinding.Severity = TAtlasTaskSeverity.Info);
+    Assert.AreEqual<TAtlasTaskSeverity>(TAtlasTaskSeverity.Info, mFinding.Severity);
     Assert.IsTrue(mLines.Match('[dcc32 Schwerer Fehler] Projekt.dpr(9): F2613 Unit ''Gibts'' nicht gefunden.',
       mFinding));
-    Assert.IsTrue(mFinding.Severity = TAtlasTaskSeverity.Error);
+    Assert.AreEqual<TAtlasTaskSeverity>(TAtlasTaskSeverity.Error, mFinding.Severity);
     Assert.AreEqual('F2613', mFinding.Code);
     // Kommandozeilen-Compiler.
     Assert.IsTrue(mLines.Match('C:\P\Unit1.pas(28) Error: E2003 Undeclared identifier: ''x''', mFinding));
@@ -161,7 +161,7 @@ begin
     Assert.AreEqual(28, mFinding.Line);
     Assert.AreEqual('E2003', mFinding.Code);
     Assert.IsTrue(mLines.Match('Unit1.pas(30) Hint: H2077 Value assigned to ''y'' never used', mFinding));
-    Assert.IsTrue(mFinding.Severity = TAtlasTaskSeverity.Info);
+    Assert.AreEqual<TAtlasTaskSeverity>(TAtlasTaskSeverity.Info, mFinding.Severity);
     Assert.IsFalse(mLines.Match('Embarcadero Delphi for Win64 compiler version 36.0', mFinding));
     Assert.IsFalse(mLines.Match('Unit1.pas(30)', mFinding));
   finally
@@ -184,14 +184,14 @@ begin
     Assert.AreEqual('E2003', mFinding.Code);
     Assert.AreEqual('Undeclared identifier: ''x''', mFinding.Message, 'ohne Projekt in Klammern');
     Assert.IsTrue(mLines.Match('Unit2.pas(7): warning W1000: Symbol ''Old'' is deprecated', mFinding));
-    Assert.IsTrue(mFinding.Severity = TAtlasTaskSeverity.Warning);
+    Assert.AreEqual<TAtlasTaskSeverity>(TAtlasTaskSeverity.Warning, mFinding.Severity);
     Assert.IsTrue(mLines.Match('Unit2.pas(7): dcc hint H2443: Inline function not expanded', mFinding));
-    Assert.IsTrue(mFinding.Severity = TAtlasTaskSeverity.Info);
+    Assert.AreEqual<TAtlasTaskSeverity>(TAtlasTaskSeverity.Info, mFinding.Severity);
     Assert.AreEqual('H2443', mFinding.Code);
     Assert.IsTrue(mLines.Match('MSBUILD : error MSB1009: Project file does not exist.', mFinding));
     Assert.AreEqual('', mFinding.FileName, 'Werkzeugname ist keine Datei');
     Assert.AreEqual('MSB1009', mFinding.Code);
-    Assert.IsTrue(mFinding.Severity = TAtlasTaskSeverity.Error);
+    Assert.AreEqual<TAtlasTaskSeverity>(TAtlasTaskSeverity.Error, mFinding.Severity);
     Assert.IsTrue(mLines.Match('C:\P\App.dproj : warning MSB3277: Konflikte', mFinding));
     Assert.AreEqual('C:\P\App.dproj', mFinding.FileName);
     Assert.AreEqual(0, mFinding.Line);
@@ -213,16 +213,16 @@ begin
     Assert.AreEqual('Datei.pas', mFinding.FileName);
     Assert.AreEqual(12, mFinding.Line);
     Assert.AreEqual('Text', mFinding.Message);
-    Assert.IsTrue(mFinding.Severity = TAtlasTaskSeverity.Error);
+    Assert.AreEqual<TAtlasTaskSeverity>(TAtlasTaskSeverity.Error, mFinding.Severity);
     Assert.IsTrue(mLines.Match('src\a.c(3,9): warning C4996: veraltet', mFinding));
     Assert.AreEqual(9, mFinding.Column);
-    Assert.IsTrue(mFinding.Severity = TAtlasTaskSeverity.Warning);
+    Assert.AreEqual<TAtlasTaskSeverity>(TAtlasTaskSeverity.Warning, mFinding.Severity);
     Assert.AreEqual('C4996', mFinding.Code);
     Assert.AreEqual('veraltet', mFinding.Message);
     Assert.IsTrue(mLines.Match('lib/x.py:10:4: Hinweis zu lang', mFinding));
     Assert.AreEqual('lib/x.py', mFinding.FileName);
     Assert.AreEqual(4, mFinding.Column);
-    Assert.IsTrue(mFinding.Severity = TAtlasTaskSeverity.Info);
+    Assert.AreEqual<TAtlasTaskSeverity>(TAtlasTaskSeverity.Info, mFinding.Severity);
     Assert.IsFalse(mLines.Match('fertig in 3 s', mFinding));
   finally
     mLines.Free;
@@ -251,14 +251,14 @@ begin
     Assert.AreEqual(4, mFinding.Column);
     Assert.AreEqual('K101', mFinding.Code);
     Assert.AreEqual('Feld ungenutzt', mFinding.Message);
-    Assert.IsTrue(mFinding.Severity = TAtlasTaskSeverity.Error);
+    Assert.AreEqual<TAtlasTaskSeverity>(TAtlasTaskSeverity.Error, mFinding.Severity);
     Assert.IsTrue(mLines.Match('[Meh] Kunde.pas L13 K102 Name', mFinding), 'Spalte fehlt');
     Assert.AreEqual(0, mFinding.Column);
-    Assert.IsTrue(mFinding.Severity = TAtlasTaskSeverity.Warning, 'Groß-/Kleinschreibung egal');
+    Assert.AreEqual<TAtlasTaskSeverity>(TAtlasTaskSeverity.Warning, mFinding.Severity, 'Groß-/Kleinschreibung egal');
     Assert.IsTrue(mLines.Match('[warning] Kunde.pas L14 K103 x', mFinding));
-    Assert.IsTrue(mFinding.Severity = TAtlasTaskSeverity.Warning, 'Standardwort ohne Eintrag');
+    Assert.AreEqual<TAtlasTaskSeverity>(TAtlasTaskSeverity.Warning, mFinding.Severity, 'Standardwort ohne Eintrag');
     Assert.IsTrue(mLines.Match('[NOTE] Kunde.pas L15 K104 y', mFinding));
-    Assert.IsTrue(mFinding.Severity = TAtlasTaskSeverity.Info, 'unbekannt: severity des Musters');
+    Assert.AreEqual<TAtlasTaskSeverity>(TAtlasTaskSeverity.Info, mFinding.Severity, 'unbekannt: severity des Musters');
     Assert.IsFalse(mLines.Match('Zusammenfassung: 4 Meldungen', mFinding));
   finally
     mLines.Free;
@@ -293,7 +293,7 @@ begin
   try
     Assert.IsTrue(mLines.Match('A.pas!3 kaputt ', mFinding));
     Assert.AreEqual('A.pas!3 kaputt', mFinding.Message);
-    Assert.IsTrue(mFinding.Severity = TAtlasTaskSeverity.Error);
+    Assert.AreEqual<TAtlasTaskSeverity>(TAtlasTaskSeverity.Error, mFinding.Severity);
   finally
     mLines.Free;
   end;

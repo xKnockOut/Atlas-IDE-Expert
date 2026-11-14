@@ -35,9 +35,9 @@ var
 begin
   mGroup := Default(TAtlasTaskOutputGroup);
   Assert.IsFalse(mGroup.Created);
-  Assert.IsTrue(mGroup.Release(False) = TAtlasTaskOutputRelease.None);
+  Assert.AreEqual<TAtlasTaskOutputRelease>(TAtlasTaskOutputRelease.None, mGroup.Release(False));
   // Abbau beim Beenden der IDE ohne gelaufene Aufgabe: kein Aufruf des Meldungsfensters.
-  Assert.IsTrue(mGroup.Release(True) = TAtlasTaskOutputRelease.None);
+  Assert.AreEqual<TAtlasTaskOutputRelease>(TAtlasTaskOutputRelease.None, mGroup.Release(True));
 end;
 
 procedure TAtlasTaskOutputGroupTests.IdeClosingOnlyForgets;
@@ -46,7 +46,7 @@ var
 begin
   mGroup := Default(TAtlasTaskOutputGroup);
   mGroup.Used;
-  Assert.IsTrue(mGroup.Release(True) = TAtlasTaskOutputRelease.Forget);
+  Assert.AreEqual<TAtlasTaskOutputRelease>(TAtlasTaskOutputRelease.Forget, mGroup.Release(True));
   Assert.IsFalse(mGroup.Created);
 end;
 
@@ -58,8 +58,8 @@ begin
   mGroup.Used;
   mGroup.Used;
   Assert.IsTrue(mGroup.Created);
-  Assert.IsTrue(mGroup.Release(False) = TAtlasTaskOutputRelease.Remove);
-  Assert.IsTrue(mGroup.Release(False) = TAtlasTaskOutputRelease.None);
+  Assert.AreEqual<TAtlasTaskOutputRelease>(TAtlasTaskOutputRelease.Remove, mGroup.Release(False));
+  Assert.AreEqual<TAtlasTaskOutputRelease>(TAtlasTaskOutputRelease.None, mGroup.Release(False));
 end;
 
 end.

@@ -167,9 +167,9 @@ begin
     Assert.AreEqual(124.0, Row.Last, 0.001, 'Anzahl der Einträge');
     // Reihenfolge: Kontext, Quellen, Filtern, Zeichnen, bis zur Liste, Einträge.
     Assert.AreEqual(7, Integer(Length(Rows)));
-    Assert.IsTrue(Rows[0].Step = TAtlasTimingStep.Context);
-    Assert.IsTrue(Rows[1].Kind = TAtlasTimingRowKind.Provider);
-    Assert.IsTrue(Rows[6].Kind = TAtlasTimingRowKind.Entries);
+    Assert.AreEqual<TAtlasTimingStep>(TAtlasTimingStep.Context, Rows[0].Step);
+    Assert.AreEqual<TAtlasTimingRowKind>(TAtlasTimingRowKind.Provider, Rows[1].Kind);
+    Assert.AreEqual<TAtlasTimingRowKind>(TAtlasTimingRowKind.Entries, Rows[6].Kind);
   finally
     Timings.Free;
   end;

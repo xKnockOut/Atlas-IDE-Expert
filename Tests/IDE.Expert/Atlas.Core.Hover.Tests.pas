@@ -178,8 +178,8 @@ begin
     '{"name": "OnKlick", "type": "TKlickEvent", "declaringClass": "TBasis", "event": true}]}}}');
   Assert.AreEqual(4, Integer(Length(Data.Members)));
   Assert.AreEqual('Items[I: Integer]: string', Data.DefaultProperty);
-  Assert.IsTrue(Data.Members[0].DefaultKind = hdImplicit);
-  Assert.IsTrue(Data.Members[2].DefaultKind = hdNoDefault);
+  Assert.AreEqual<TAtlasHoverDefaultKind>(hdImplicit, Data.Members[0].DefaultKind);
+  Assert.AreEqual<TAtlasHoverDefaultKind>(hdNoDefault, Data.Members[2].DefaultKind);
   Assert.IsTrue(Data.Members[3].IsEvent);
   Assert.AreEqual(3, Data.MemberCount(False));
   Assert.AreEqual(1, Data.MemberCount(True));
@@ -193,7 +193,7 @@ begin
     'Titel'#9'string'#9'stored False'#9'TBasis' + sLineBreak + 'Zahl'#9'Integer'#9'nodefault'#9'TBasis' + sLineBreak +
     'OnKlick'#9'TKlickEvent'#9#9'TBasis' + sLineBreak + 'Items[I: Integer]: string'#9'default',
     Data.MembersText(True, False, 'implizit'));
-  Assert.IsTrue(Parse(HoverJson).Members = nil);
+  Assert.AreEqual(0, Integer(Length(Parse(HoverJson).Members)));
 end;
 
 procedure TAtlasHoverTests.ReadsReassigned;

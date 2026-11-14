@@ -93,16 +93,16 @@ end;
 
 procedure TAtlasSymbolTests.DarkThemeTakesDarkVariant;
 begin
-  Assert.IsTrue(TAtlasSymbol.VariantFor(True) = TAtlasSymbolVariant.Dark);
-  Assert.IsTrue(TAtlasSymbol.VariantFor(False) = TAtlasSymbolVariant.Light);
+  Assert.AreEqual<TAtlasSymbolVariant>(TAtlasSymbolVariant.Dark, TAtlasSymbol.VariantFor(True));
+  Assert.AreEqual<TAtlasSymbolVariant>(TAtlasSymbolVariant.Light, TAtlasSymbol.VariantFor(False));
 end;
 
 procedure TAtlasSymbolTests.BackgroundDecidesVariant;
 begin
   // Hintergründe der IDE-Themen: Dunkel ($1E1E1E), Mountain Mist (hell), Weiß.
-  Assert.IsTrue(TAtlasSymbol.VariantFor(TAtlasColor($1E1E1E)) = TAtlasSymbolVariant.Dark);
-  Assert.IsTrue(TAtlasSymbol.VariantFor(TAtlasColor($F0F0F0)) = TAtlasSymbolVariant.Light);
-  Assert.IsTrue(TAtlasSymbol.VariantFor(TAtlasColor($FFFFFF)) = TAtlasSymbolVariant.Light);
+  Assert.AreEqual<TAtlasSymbolVariant>(TAtlasSymbolVariant.Dark, TAtlasSymbol.VariantFor(TAtlasColor($1E1E1E)));
+  Assert.AreEqual<TAtlasSymbolVariant>(TAtlasSymbolVariant.Light, TAtlasSymbol.VariantFor(TAtlasColor($F0F0F0)));
+  Assert.AreEqual<TAtlasSymbolVariant>(TAtlasSymbolVariant.Light, TAtlasSymbol.VariantFor(TAtlasColor($FFFFFF)));
 end;
 
 procedure TAtlasSymbolTests.ResourceNamesMatchResourceFile;
