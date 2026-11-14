@@ -144,6 +144,7 @@ begin
   Assert.IsTrue(ASettings.EditorStatusBarTests, 'Teststand in der Statusleiste standardmäßig an (#1777)');
   Assert.AreEqual(500, ASettings.TestsSlowMs, 'langsam ab 500 ms (#1772)');
   Assert.IsTrue(ASettings.TestsLeaks, 'Lecks je Test standardmäßig an (#1774)');
+  Assert.AreEqual(20, ASettings.TestsRepeatCount, 'N-mal ausführen: Vorgabe 20 (#1782)');
   Assert.IsTrue(ASettings.TestsFlaky, 'wackelnde Tests standardmäßig an (#1773)');
   Assert.AreEqual(10, ASettings.TestsFlakyRuns, 'zehn Läufe je Test (#1773)');
 end;
@@ -361,6 +362,7 @@ begin
   ASettings.TestsListsRunKey := 0;
   ASettings.TestsSlowMs := 1000;
   ASettings.TestsLeaks := False;
+  ASettings.TestsRepeatCount := 50;
   ASettings.TestsFlaky := False;
   ASettings.TestsFlakyRuns := 20;
 end;
@@ -547,6 +549,7 @@ begin
   Assert.AreEqual(0, ALoaded.TestsListsRunKey, 'tests.lists.runKey (#2167)');
   Assert.AreEqual(1000, ALoaded.TestsSlowMs, 'tests.slowMs (#1772)');
   Assert.IsFalse(ALoaded.TestsLeaks, 'tests.leaks (#1774)');
+  Assert.AreEqual(50, ALoaded.TestsRepeatCount, 'tests.repeat.count (#1782)');
   Assert.IsFalse(ALoaded.TestsFlaky, 'tests.flaky (#1773)');
   Assert.AreEqual(20, ALoaded.TestsFlakyRuns, 'tests.flaky.runs (#1773)');
 end;
@@ -1178,6 +1181,13 @@ begin
   Settings.TestsSlowMs := 100000;
   Settings.Normalize;
   Assert.AreEqual(TAtlasPluginSettings.cMaxTestsSlowMs, Settings.TestsSlowMs);
+  // tests.repeat.count (#1782): 2 bis 1000.
+  Settings.TestsRepeatCount := 1;
+  Settings.Normalize;
+  Assert.AreEqual(TAtlasPluginSettings.cMinTestsRepeatCount, Settings.TestsRepeatCount);
+  Settings.TestsRepeatCount := 5000;
+  Settings.Normalize;
+  Assert.AreEqual(TAtlasPluginSettings.cMaxTestsRepeatCount, Settings.TestsRepeatCount);
   // tests.flaky.runs (#1773): 3 bis 50.
   Settings.TestsFlakyRuns := 1;
   Settings.Normalize;

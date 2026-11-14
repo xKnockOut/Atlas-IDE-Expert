@@ -91,6 +91,8 @@ type
     cMaxTestsOnSaveMax = Atlas.Core.Settings.Plugin.Build.cMaxTestsOnSaveMax;
     cMinTestsSlowMs = Atlas.Core.Settings.Plugin.Build.cMinTestsSlowMs;
     cMaxTestsSlowMs = Atlas.Core.Settings.Plugin.Build.cMaxTestsSlowMs;
+    cMinTestsRepeatCount = Atlas.Core.Settings.Plugin.Build.cMinTestsRepeatCount;
+    cMaxTestsRepeatCount = Atlas.Core.Settings.Plugin.Build.cMaxTestsRepeatCount;
     cMinTestsFlakyRuns = Atlas.Core.Settings.Plugin.Build.cMinTestsFlakyRuns;
     cMaxTestsFlakyRuns = Atlas.Core.Settings.Plugin.Build.cMaxTestsFlakyRuns;
     cMinTestsBoundaryMax = Atlas.Core.Settings.Plugin.Build.cMinTestsBoundaryMax;
@@ -442,6 +444,7 @@ type
     property TestsBoundaryCases: Boolean read FBuild.TestsBoundaryCases write FBuild.TestsBoundaryCases;
     property TestsBoundaryMax: Integer read FBuild.TestsBoundaryMax write FBuild.TestsBoundaryMax;
     property TestsLeaks: Boolean read FBuild.TestsLeaks write FBuild.TestsLeaks;
+    property TestsRepeatCount: Integer read FBuild.TestsRepeatCount write FBuild.TestsRepeatCount;
     property TestsFlaky: Boolean read FBuild.TestsFlaky write FBuild.TestsFlaky;
     property TestsFlakyRuns: Integer read FBuild.TestsFlakyRuns write FBuild.TestsFlakyRuns;
     property BuildZeroHints: Boolean read FBuild.BuildZeroHints write FBuild.BuildZeroHints;

@@ -7,7 +7,8 @@
 // - Lauf im Hintergrund (#1775, tests.onSave): Zwischen BeginQuiet und
 //   EndQuiet schreibt Tell nichts in die Meldungsansicht, damit kein Fenster
 //   aufspringt; Zeilen und Fehlschläge bleiben stehen, bis ShowLast sie auf
-//   Klick im Statusfeld zeigt. EndQuiet meldet das Ende über OnQuietEnded.
+//   Klick im Statusfeld zeigt. EndQuiet meldet das Ende über OnQuietEnded,
+//   bzw. einmal an den Empfänger aus SendNextEndTo (Serie von Läufen, #1782).
 // - Jump schreibt eine anklickbare Zeile zu einer Stelle (ungetestete
 //   Methoden des Projekts, #1783), ShowView zeigt die Meldungsansicht.
 
@@ -29,6 +30,8 @@ type
     Total: Integer;
     /// <summary>Letzte Zeile des Laufs (Zusammenfassung bzw. Grund).</summary>
     Text: string;
+    /// <summary>Ergebnisse des Laufs, wenn Reported (Serie, #1782).</summary>
+    Run: TTestRunResult;
   end;
   TAtlasTestsQuietEndProc = reference to procedure(const AEnd: TAtlasTestsQuietEnd);
 
@@ -38,6 +41,7 @@ type
     FLines: TArray<string>;
     FFailures: TArray<TAtlasTestFailure>;
     FOnQuietEnded: TAtlasTestsQuietEndProc;
+    FNextEnd: TAtlasTestsQuietEndProc;
   public
     /// <summary>Zeile in der Meldungsansicht, immer.</summary>
     procedure Say(const AText: string);
@@ -53,6 +57,9 @@ type
     procedure BeginQuiet;
     /// <summary>Ende eines Laufs; nur im Hintergrund wirksam (OnQuietEnded). ARun zählt nur mit AReported.</summary>
     procedure EndQuiet(AReported: Boolean; const ARun: TTestRunResult);
+    /// <summary>Das Ende des nächsten Laufs im Hintergrund geht an AProc statt an OnQuietEnded (Serie, #1782); nil
+    /// nimmt es zurück.</summary>
+    procedure SendNextEndTo(const AProc: TAtlasTestsQuietEndProc);
     /// <summary>Zeilen und Fehlschläge des letzten Laufs im Hintergrund in die Meldungsansicht und diese zeigen;
     /// False ohne solchen Lauf.</summary>
     function ShowLast: Boolean;
@@ -170,6 +177,7 @@ end;
 procedure TAtlasIdeTestsOutput.EndQuiet(AReported: Boolean; const ARun: TTestRunResult);
 var
   mEnd: TAtlasTestsQuietEnd;
+  mNext: TAtlasTestsQuietEndProc;
 begin
   if not FQuiet then
   begin
@@ -183,15 +191,28 @@ begin
     mEnd.Passed := ARun.Count(TTestOutcome.Passed);
     mEnd.Failed := ARun.Count(TTestOutcome.Failed) + ARun.Count(TTestOutcome.Error);
     mEnd.Total := ARun.Total;
+    mEnd.Run := ARun;
   end;
   if Length(FLines) > 0 then
   begin
     mEnd.Text := FLines[High(FLines)];
   end;
-  if Assigned(FOnQuietEnded) then
+  if Assigned(FNextEnd) then
+  begin
+    // Einmalig: Der Empfänger kann im Aufruf schon den nächsten Lauf anmelden.
+    mNext := FNextEnd;
+    FNextEnd := nil;
+    mNext(mEnd);
+  end
+  else if Assigned(FOnQuietEnded) then
   begin
     FOnQuietEnded(mEnd);
   end;
+end;
+
+procedure TAtlasIdeTestsOutput.SendNextEndTo(const AProc: TAtlasTestsQuietEndProc);
+begin
+  FNextEnd := AProc;
 end;
 
 function TAtlasIdeTestsOutput.ShowLast: Boolean;

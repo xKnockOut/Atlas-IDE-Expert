@@ -227,7 +227,7 @@ begin
     Show(TAtlasTestsStrings.Fmt(TAtlasTestsTextId.TestsOnSaveRunning, [FCount]), TAtlasStatusState.Yellow,
       TAtlasTestsStrings.Text(TAtlasTestsTextId.TestsOnSaveSummaryRunning));
     // Der Server meldet nur Tests aus Testprogrammen: Eine Datei genügt, um das Testprojekt zu finden.
-    if FTests.RunQuiet(AFound.Tests[0].FileName, AFound.Run, mReason) then
+    if FTests.RunQuiet(AFound.Tests[0].FileName, AFound.Run, mReason, True) then
     begin
       Exit;
     end;

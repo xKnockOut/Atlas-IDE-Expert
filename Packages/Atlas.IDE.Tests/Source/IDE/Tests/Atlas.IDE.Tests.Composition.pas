@@ -28,6 +28,10 @@
 //   (#1880, Atlas.IDE.Tests.LeakSetup über Composition.Hooks) und „Test aus
 //   dem Debug-Halt anlegen …“ (#1873, über Atlas.IDE.Tests.Composition.Cases; Palette,
 //   Kontextmenü beim Debuggen, Knopf der Exception-Leiste über die Kennung),
+//   „Test am Cursor N-mal ausführen …“, „Tests der Klasse in zufälliger
+//   Reihenfolge ausführen“, „Mit dieser Reihenfolge erneut ausführen“ und
+//   „Testserie abbrechen“ (#1782, Atlas.IDE.Tests.Series; Kontextmenü einer
+//   Testunit und Palette; der Prozessläufer fragt den Abbruch der Serie ab),
 // - die Marke „getestet von“ an Methoden normaler Units (#1778),
 // - die Schicht der Testabdeckung in der Rinne (#275, IAtlasGutterLayer) mit den Befehlen „Testabdeckung laden …“
 //   und „Testabdeckung ausblenden“; ihr Zustand ist ein eigener Teil der Feature-Tabelle (läuft auch ohne
@@ -123,6 +127,7 @@ uses
   Atlas.IDE.Tests.Affected,
   Atlas.IDE.Tests.UnitCommands,
   Atlas.IDE.Tests.Explorer,
+  Atlas.IDE.Tests.Series,
   Atlas.IDE.Tests.Flaky,
   Atlas.IDE.Tests.StatusField,
   Atlas.IDE.Tests.Coverage,
@@ -140,6 +145,10 @@ var
   GCompare: TAtlasIdeTestCompare;
   GSlowest: TAtlasIdeTestSlowest;
   GExplorer: TAtlasIdeTestExplorer;
+  /// <summary>Serien (#1782) und ihr Abbruchwunsch, den der Prozessläufer liest; GStopRef hält ihn.</summary>
+  GSeries: TAtlasIdeTestSeries;
+  GStop: TAtlasIdeTestStop;
+  GStopRef: IInterface;
   GFlaky: TAtlasIdeFlakyTests;
   GLists: TAtlasIdeTestLists;
   GStatusField: TAtlasIdeTestStatusField;
@@ -163,14 +172,38 @@ end;
 
 { Läufer }
 
-/// <summary>Prozessläufer der Versionsverwaltung für das Testprogramm; eigene Routine, damit die Referenz nichts aus
-/// StartTests einfängt.</summary>
-function TestsProcess: TAtlasTestsRunnerFactory;
+/// <summary>Abbruch des Läufers (ACancelled, Entladen) oder der Serie (AStop, #1782); AKeep hält AStop am Leben,
+/// solange der Thread des Laufs fragt.</summary>
+function StopOrCancelled(const ACancelled: TFunc<Boolean>; AStop: TAtlasIdeTestStop;
+  const AKeep: IInterface): TFunc<Boolean>;
+var
+  mCancelled: TFunc<Boolean>;
+  mStop: TAtlasIdeTestStop;
+  mKeep: IInterface;
 begin
+  mCancelled := ACancelled;
+  mStop := AStop;
+  mKeep := AKeep;
+  Result :=
+    function: Boolean
+    begin
+      Result := ((mKeep <> nil) and mStop.Requested) or (Assigned(mCancelled) and mCancelled());
+    end;
+end;
+
+/// <summary>Prozessläufer der Versionsverwaltung für das Testprogramm; eigene Routine, damit die Referenz nichts aus
+/// StartTests einfängt. Bricht auch ab, wenn eine Serie abgebrochen wird (AStop, #1782).</summary>
+function TestsProcess(AStop: TAtlasIdeTestStop): TAtlasTestsRunnerFactory;
+var
+  mStop: TAtlasIdeTestStop;
+  mKeep: IInterface;
+begin
+  mStop := AStop;
+  mKeep := AStop;
   Result :=
     function(ACancelled: TFunc<Boolean>): IAtlasVcsRunner
     begin
-      Result := TAtlasVcsProcessRunner.Create(False, ACancelled);
+      Result := TAtlasVcsProcessRunner.Create(False, StopOrCancelled(ACancelled, mStop, mKeep));
     end;
 end;
 
@@ -241,12 +274,16 @@ begin
   Result.Show := GCompare.Show;
   // Vergleichsdateien (#1881): „Abweichung · Vergleich“ statt „Vergleichen“.
   Result.Caption := GCompare.CaptionOf;
+  // Serie (#1782): ihr Ergebnis an der Marke.
+  Result.Series := GSeries.MarkOf;
 end;
 
 procedure StartTests;
 begin
   GOutput := TAtlasIdeTestsOutput.Create;
-  GTests := TAtlasIdeTests.Create(TestsProcess(), GOutput);
+  GStop := TAtlasIdeTestStop.Create;
+  GStopRef := GStop;
+  GTests := TAtlasIdeTests.Create(TestsProcess(GStop), GOutput);
   GTests.OnBuild := BuildForTests;
   GTests.OnProblems := ShowProblems;
   GTests.OnFinished := AnnounceTests;
@@ -259,12 +296,15 @@ begin
   GSlowest := TAtlasIdeTestSlowest.Create(GTests, GCompare.Remember);
   // Einzelner Test ausführen bzw. debuggen (#585), auch aus dem Kontextmenü und der Lens.
   GDebugger := TAtlasIdeTestDebugger.Create(GTests);
+  // Tests N-mal bzw. in zufälliger Reihenfolge (#1782): Läufe im Hintergrund über den Läufer.
+  GSeries := TAtlasIdeTestSeries.Create(GTests, GOutput, GStop);
   // Wackelnde Tests (#1773): Verlauf je Test; reicht den Lauf an die langsamsten Tests weiter.
   GFlaky := TAtlasIdeFlakyTests.Create(GTests, GSlowest.Remember);
   // Fenster „Atlas-Tests“ (#1776): Ergebnisse je Testprojekt; reicht den Lauf an die wackelnden Tests weiter.
   // Testlisten (#2167): vor dem Fenster, das sie über TAtlasIdeTestLists.Instance findet, und nach ihm frei.
   GLists := TAtlasIdeTestLists.Create(GTests);
-  GExplorer := TAtlasIdeTestExplorer.Create(GTests, GDebugger, GFlaky.QueriesWith(GStale.StaleIn), GFlaky.Remember);
+  GExplorer := TAtlasIdeTestExplorer.Create(GTests, GDebugger, GSeries, GFlaky.QueriesWith(GStale.StaleIn),
+    GFlaky.Remember);
   GTests.OnReported := GExplorer.Remember;
   GStatusField := TAtlasIdeTestStatusField.Create(GTests, GExplorer);
   GLens := TAtlasIdeTestsLens.Create(GTests, GDebugger, GFlaky.QueriesWith(GStale.StaleIn), CompareHooks);
@@ -304,6 +344,8 @@ begin
   FreeAndNil(GLists);
   FreeAndNil(GCoveredBy);
   FreeAndNil(GLens);
+  // Serie (#1782) nach Fenster und Lens, die auf sie zeigen; vor dem Läufer, dessen Ende sie erwartet.
+  FreeAndNil(GSeries);
   StopCases(GTests);
   FreeAndNil(GDebugger);
   // Wackelnde Tests (#1773) nach Fenster und Lens, die sie abfragen.
@@ -314,6 +356,8 @@ begin
   try
     FreeAndNil(GTests);
     FreeAndNil(GOutput);
+    GStop := nil;
+    GStopRef := nil;
   finally
     ClearProblems;
   end;
@@ -358,6 +402,55 @@ begin
   if GTests <> nil then
   begin
     TAtlasGuard.Run(TAtlasFeature.Build, GTests.RunFailed);
+  end;
+end;
+
+{ Serien (#1782) }
+
+function SeriesVisible: Boolean;
+begin
+  Result := TestsVisible and (GSeries <> nil);
+end;
+
+function ShuffleAgainVisible: Boolean;
+begin
+  Result := SeriesVisible and GSeries.CanShuffleAgain;
+end;
+
+function CancelSeriesVisible: Boolean;
+begin
+  Result := SeriesVisible and GSeries.Running;
+end;
+
+procedure RepeatTest;
+begin
+  if GSeries <> nil then
+  begin
+    TAtlasGuard.Run(TAtlasFeature.Build, GSeries.RepeatAtCursor);
+  end;
+end;
+
+procedure ShuffleTests;
+begin
+  if GSeries <> nil then
+  begin
+    TAtlasGuard.Run(TAtlasFeature.Build, GSeries.ShuffleAtCursor);
+  end;
+end;
+
+procedure ShuffleTestsAgain;
+begin
+  if GSeries <> nil then
+  begin
+    TAtlasGuard.Run(TAtlasFeature.Build, GSeries.ShuffleAgain);
+  end;
+end;
+
+procedure CancelSeries;
+begin
+  if GSeries <> nil then
+  begin
+    TAtlasGuard.Run(TAtlasFeature.Build, GSeries.Cancel);
   end;
 end;
 
@@ -636,6 +729,12 @@ begin
     // Einzelner Test am Cursor (#585): ausführen (mit TestRun) und im Debugger (mit TestDebug).
     Command('Atlas.RunTest', TAtlasTestsTextId.TestsRunHereCommand, RunAtCursor, TestsVisible),
     Command('Atlas.DebugTest', TAtlasTestsTextId.TestsDebugCommand, DebugAtCursor, TestDebugVisible),
+    // Serien (#1782): N-mal, zufällige Reihenfolge, gleiche Reihenfolge erneut, abbrechen.
+    Command('Atlas.RepeatTest', TAtlasTestsTextId.SeriesRepeatCommand, RepeatTest, SeriesVisible),
+    Command('Atlas.ShuffleTests', TAtlasTestsTextId.SeriesShuffleCommand, ShuffleTests, SeriesVisible),
+    Command('Atlas.ShuffleTestsAgain', TAtlasTestsTextId.SeriesShuffleAgainCommand, ShuffleTestsAgain,
+      ShuffleAgainVisible),
+    Command('Atlas.CancelTestSeries', TAtlasTestsTextId.SeriesCancelCommand, CancelSeries, CancelSeriesVisible),
     // Kontextmenü der Projektverwaltung (#1817); außerhalb unsichtbar.
     Command('Atlas.ProjectRunUnitTests', TAtlasTestsTextId.TestsProjectRunUnit,
       Guarded(TAtlasFeature.Build, RunProjectUnitTests), ProjectUnitTestsVisible),
@@ -742,6 +841,10 @@ begin
     // Test am Cursor (#585) im Untermenü „Atlas“ des Editors.
     ContextEntry('Atlas.RunTest'),
     ContextEntry('Atlas.DebugTest'),
+    ContextEntry('Atlas.RepeatTest'),
+    ContextEntry('Atlas.ShuffleTests'),
+    ContextEntry('Atlas.ShuffleTestsAgain'),
+    ContextEntry('Atlas.CancelTestSeries'),
     DebugContextEntry(TestFromDebugCommand),
     ContextEntry('Atlas.CompareTestValues'),
     ContextEntry('Atlas.EditTestCases'),
