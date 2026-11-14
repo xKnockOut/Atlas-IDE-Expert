@@ -6639,6 +6639,53 @@
       "x-node": "editor.designerBar",
       "x-issue": "#612"
     },
+    "DesignerLayout": {
+      "description": "Im Formular-Designer ein eigenes Desktop-Layout verwenden: Bleibt der Designer (F12 oder Reiter „Design“) 300 ms vorn, merkt sich Atlas das aktuelle Layout und lädt das Designer-Layout über das Desktop-Auswahlfeld der IDE; zurück im Code kommt das vorherige bzw. das Standard-Layout der IDE wieder. Schnelles Hin- und Herschalten löst nichts aus. Hat man im Designer selbst ein anderes Layout gewählt, bleibt es. Kein Wechsel, solange ein Projekt lädt.",
+      "type": "boolean",
+      "default": false,
+      "x-key": "designer.layout",
+      "x-area": "editor",
+      "x-page": "Editor",
+      "x-node": "editor.designerBar",
+      "x-issue": "#2079"
+    },
+    "DesignerLayoutName": {
+      "description": "Name des Layouts für den Designer, wie er im Desktop-Auswahlfeld der IDE steht (Ansicht › Desktops › Desktop speichern …). Fehlt das Layout, meldet Atlas das einmal in der Meldungsansicht und schaltet nicht um. Leer = keine Wirkung.",
+      "type": "string",
+      "default": "",
+      "x-key": "designer.layout.name",
+      "x-area": "editor",
+      "x-page": "Editor",
+      "x-parent": "designer.layout",
+      "x-node": "editor.designerBar",
+      "x-issue": "#2079"
+    },
+    "DesignerLayoutReturnTo": {
+      "description": "Layout beim Wechsel zurück in den Code: das Layout vor dem Wechsel in den Designer (previous) oder das Standard-Layout der IDE (default, Ansicht › Desktops › Standard-Desktop festlegen).",
+      "type": "string",
+      "enum": [
+        "previous",
+        "default"
+      ],
+      "default": "previous",
+      "x-key": "designer.layout.returnTo",
+      "x-area": "editor",
+      "x-page": "Editor",
+      "x-parent": "designer.layout",
+      "x-node": "editor.designerBar",
+      "x-issue": "#2079"
+    },
+    "DesignerLayoutSkipWhileDebugging": {
+      "description": "Während einer Debug-Sitzung nicht umschalten: Die IDE lädt dann ihr Debug-Layout und danach wieder das vorherige; Atlas prüft die Ansicht nach dem Ende neu.",
+      "type": "boolean",
+      "default": true,
+      "x-key": "designer.layout.skipWhileDebugging",
+      "x-area": "editor",
+      "x-page": "Editor",
+      "x-parent": "designer.layout",
+      "x-node": "editor.designerBar",
+      "x-issue": "#2079"
+    },
     "DesignerFitToText": {
       "description": "Befehl „Breite nach Text“ im Menü „Anordnen“ der Designer-Leiste: setzt die markierten Steuerelemente auf die Breite des längsten Texts plus Innenabstand und Anteil des Steuerelements (Kästchen, Pfeil, Glyph), mindestens die Mindestbreite. In einer Reihe bleiben die Abstände und die linke bzw. (bei akRight oder am rechten Rand) die rechte Kante; AutoSize und Align ohne freie Breite bleiben. Ändert die .dfm.",
       "type": "boolean",
