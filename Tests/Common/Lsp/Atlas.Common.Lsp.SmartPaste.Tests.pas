@@ -75,6 +75,8 @@ begin
   end;
 end;
 
+{ TLspSmartPasteTests }
+
 procedure TLspSmartPasteTests.AnalyzesAndEdits;
 const
   cRange = '{"start":{"line":6,"character":0},"end":{"line":8,"character":0}}';

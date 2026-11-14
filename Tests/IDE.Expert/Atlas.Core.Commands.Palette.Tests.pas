@@ -92,6 +92,8 @@ type
       const AVisible: TFunc<Boolean>); overload;
   end;
 
+{ TFakeRegistry }
+
 procedure TFakeRegistry.RegisterCommand(const AId, ACaption, ADescription: string; const AProc: TProc);
 begin
   Ids := Ids + [AId];
@@ -123,6 +125,8 @@ begin
       Result := True;
     end);
 end;
+
+{ TAtlasCommandPaletteTests }
 
 procedure TAtlasCommandPaletteTests.WarmUpFirstUse;
 begin
@@ -195,32 +199,6 @@ begin
   end;
 end;
 
-procedure TAtlasCommandPaletteTests.KeepsListOrderForCodeActions;
-var
-  mCommands: TArray<TAtlasCommand>;
-begin
-  // Code-Aktionen (#399): bevorzugte zuerst, so wie der Server sie liefert.
-  mCommands := [Command('0', 'try/finally ergänzen', ''), Command('1', 'Befund kopieren', ''), Command('2', 'Als Konstante', '')];
-  Assert.AreEqual('try/finally ergänzen|Befund kopieren|Als Konstante|',
-    Captions(mCommands, TAtlasCommandPalette.Order(mCommands, '', nil, True)));
-  Assert.AreEqual('Als Konstante|Befund kopieren|try/finally ergänzen|',
-    Captions(mCommands, TAtlasCommandPalette.Order(mCommands, '', nil)), 'ohne KeepOrder alphabetisch');
-  Assert.AreEqual('Befund kopieren|', Captions(mCommands, TAtlasCommandPalette.Order(mCommands, 'befund', nil, True)));
-end;
-
-procedure TAtlasCommandPaletteTests.RegistryInterfaceIsUsableWithoutVcl;
-var
-  mFake: TFakeRegistry;
-  mRegistry: IAtlasCommandRegistry;
-begin
-  mFake := TFakeRegistry.Create;
-  mRegistry := mFake;
-  RegisterSample(mRegistry);
-  Assert.AreEqual(2, Integer(Length(mFake.Ids)));
-  Assert.AreEqual('Atlas.Zwei', mFake.Ids[1]);
-  Assert.AreEqual(1, mFake.Conditional);
-end;
-
 procedure TAtlasCommandPaletteTests.BrokenFileSetAsideLockedFileKept;
 var
   mHistory: TAtlasCommandHistory;
@@ -253,6 +231,32 @@ begin
   end;
   // Gemeldete Datendateien vergessen: Das Register bliebe sonst als Leck stehen.
   TAtlasDataFile.ForgetReports;
+end;
+
+procedure TAtlasCommandPaletteTests.KeepsListOrderForCodeActions;
+var
+  mCommands: TArray<TAtlasCommand>;
+begin
+  // Code-Aktionen (#399): bevorzugte zuerst, so wie der Server sie liefert.
+  mCommands := [Command('0', 'try/finally ergänzen', ''), Command('1', 'Befund kopieren', ''), Command('2', 'Als Konstante', '')];
+  Assert.AreEqual('try/finally ergänzen|Befund kopieren|Als Konstante|',
+    Captions(mCommands, TAtlasCommandPalette.Order(mCommands, '', nil, True)));
+  Assert.AreEqual('Als Konstante|Befund kopieren|try/finally ergänzen|',
+    Captions(mCommands, TAtlasCommandPalette.Order(mCommands, '', nil)), 'ohne KeepOrder alphabetisch');
+  Assert.AreEqual('Befund kopieren|', Captions(mCommands, TAtlasCommandPalette.Order(mCommands, 'befund', nil, True)));
+end;
+
+procedure TAtlasCommandPaletteTests.RegistryInterfaceIsUsableWithoutVcl;
+var
+  mFake: TFakeRegistry;
+  mRegistry: IAtlasCommandRegistry;
+begin
+  mFake := TFakeRegistry.Create;
+  mRegistry := mFake;
+  RegisterSample(mRegistry);
+  Assert.AreEqual(2, Integer(Length(mFake.Ids)));
+  Assert.AreEqual('Atlas.Zwei', mFake.Ids[1]);
+  Assert.AreEqual(1, mFake.Conditional);
 end;
 
 function Group(const AStatus: string; ACount: Integer): TAtlasPaletteGroup;

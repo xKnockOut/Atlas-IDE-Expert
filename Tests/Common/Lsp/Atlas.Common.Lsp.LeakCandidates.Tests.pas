@@ -69,6 +69,8 @@ type
     function ReadText(const AFileName: string; out AText: string): Boolean;
   end;
 
+{ TFakeFiles }
+
 function TFakeFiles.ProjectOf(const AUri: string; out AMainSource: string; out AFiles: TArray<string>;
   out AReason: string): Boolean;
 begin
@@ -105,24 +107,7 @@ begin
   end;
 end;
 
-procedure TLspLeakCandidatesTests.Setup;
-var
-  mFiles: TFakeFiles;
-begin
-  mFiles := TFakeFiles.Create;
-  mFiles.Loaded := True;
-  mFiles.MainText := 'program App;' + cNl + 'uses Kunden;' + cNl + 'begin' + cNl + 'end.';
-  FFiles := mFiles;
-  FFake := mFiles;
-  FCommand := TLspLeakCandidates.Create(FFiles);
-end;
-
-procedure TLspLeakCandidatesTests.TearDown;
-begin
-  FreeAndNil(FCommand);
-  FFiles := nil;
-  FFake := nil;
-end;
+{ TLspLeakCandidatesTests }
 
 function TLspLeakCandidatesTests.Run(const AOptions: string): string;
 var
@@ -145,6 +130,25 @@ begin
   finally
     mArguments.Free;
   end;
+end;
+
+procedure TLspLeakCandidatesTests.Setup;
+var
+  mFiles: TFakeFiles;
+begin
+  mFiles := TFakeFiles.Create;
+  mFiles.Loaded := True;
+  mFiles.MainText := 'program App;' + cNl + 'uses Kunden;' + cNl + 'begin' + cNl + 'end.';
+  FFiles := mFiles;
+  FFake := mFiles;
+  FCommand := TLspLeakCandidates.Create(FFiles);
+end;
+
+procedure TLspLeakCandidatesTests.TearDown;
+begin
+  FreeAndNil(FCommand);
+  FFiles := nil;
+  FFake := nil;
 end;
 
 procedure TLspLeakCandidatesTests.ClassesFromReportAndNames;

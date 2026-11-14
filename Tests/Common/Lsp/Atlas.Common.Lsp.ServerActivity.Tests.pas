@@ -57,6 +57,8 @@ type
       AQueueMs, AElapsedMs: Int64);
   end;
 
+{ TCountingObserver }
+
 procedure TCountingObserver.Started(const AMethod: string);
 begin
   Inc(StartedCount);
@@ -67,6 +69,8 @@ procedure TCountingObserver.Finished(const AMethod: string; const AParams, AResu
 begin
   Inc(FinishedCount);
 end;
+
+{ TServerActivityTests }
 
 procedure TServerActivityTests.Setup;
 begin

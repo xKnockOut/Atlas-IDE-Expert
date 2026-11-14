@@ -51,6 +51,18 @@ uses
 
 { TAtlasBreakpointCheckTests }
 
+function TAtlasBreakpointCheckTests.Read(const AJson: string): Boolean;
+var
+  mJson: TJSONValue;
+begin
+  mJson := TJSONObject.ParseJSONValue(AJson);
+  try
+    Result := TAtlasBreakpointCheck.ReadAnswer(mJson, FSpots, FProblems);
+  finally
+    mJson.Free;
+  end;
+end;
+
 procedure TAtlasBreakpointCheckTests.Setup;
 begin
   FSpots := [TAtlasBreakpointSpot.Create('C:\P\Kunden.pas', 'file:///C:/P/Kunden.pas', 9),
@@ -62,18 +74,6 @@ procedure TAtlasBreakpointCheckTests.TearDown;
 begin
   FSpots := nil;
   FProblems := nil;
-end;
-
-function TAtlasBreakpointCheckTests.Read(const AJson: string): Boolean;
-var
-  mJson: TJSONValue;
-begin
-  mJson := TJSONObject.ParseJSONValue(AJson);
-  try
-    Result := TAtlasBreakpointCheck.ReadAnswer(mJson, FSpots, FProblems);
-  finally
-    mJson.Free;
-  end;
 end;
 
 procedure TAtlasBreakpointCheckTests.ArgumentsGroupLinesByFile;

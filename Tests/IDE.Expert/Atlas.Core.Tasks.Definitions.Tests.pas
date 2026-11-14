@@ -75,6 +75,8 @@ begin
   end;
 end;
 
+{ TAtlasTaskDefinitionsTests }
+
 procedure TAtlasTaskDefinitionsTests.BeforeBuildNamesMatchSettings;
 var
   mMode: TAtlasTaskBeforeBuild;

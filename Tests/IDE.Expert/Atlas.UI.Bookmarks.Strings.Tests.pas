@@ -25,6 +25,8 @@ uses
   Atlas.UI.Strings.Tests,
   Atlas.UI.Bookmarks.Strings;
 
+{ TAtlasBookmarksStringsTests }
+
 procedure TAtlasBookmarksStringsTests.EveryTextExistsInBothLanguages;
 var
   mId: TAtlasBookmarksTextId;

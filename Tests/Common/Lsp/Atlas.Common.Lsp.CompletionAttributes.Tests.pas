@@ -202,20 +202,6 @@ end;
 
 { TCompletionAttributesTests }
 
-procedure TCompletionAttributesTests.Setup;
-begin
-  FIndex := TSymbolIndex.Create;
-  FIndex.AddUnit(TIndexExtractor.ExtractText(cUnitAttributes, cAttributesFile, nil));
-  FIndex.AddUnit(TIndexExtractor.ExtractText(cUnitFramework, cFrameworkFile, nil));
-  FResolver := TNameResolver.Create(FIndex);
-end;
-
-procedure TCompletionAttributesTests.TearDown;
-begin
-  FResolver.Free;
-  FIndex := nil;
-end;
-
 function TCompletionAttributesTests.ItemsAt(const AMarked: string;
   const ASettings: TCompletionSettings): TCompletionItems;
 var
@@ -273,6 +259,20 @@ begin
   end;
   AItem := Default(TCompletionItem);
   Result := False;
+end;
+
+procedure TCompletionAttributesTests.Setup;
+begin
+  FIndex := TSymbolIndex.Create;
+  FIndex.AddUnit(TIndexExtractor.ExtractText(cUnitAttributes, cAttributesFile, nil));
+  FIndex.AddUnit(TIndexExtractor.ExtractText(cUnitFramework, cFrameworkFile, nil));
+  FResolver := TNameResolver.Create(FIndex);
+end;
+
+procedure TCompletionAttributesTests.TearDown;
+begin
+  FResolver.Free;
+  FIndex := nil;
 end;
 
 procedure TCompletionAttributesTests.FindsAttributeBrackets;

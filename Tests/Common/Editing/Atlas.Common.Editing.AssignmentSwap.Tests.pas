@@ -76,6 +76,8 @@ begin
   Result := SwapAll(AText, nil);
 end;
 
+{ TAssignmentSwapTests }
+
 procedure TAssignmentSwapTests.SwapsExampleLinesKeepingComments;
 begin
   Assert.AreEqual('  Kunde.Name := edtName.Text; // Name'#10'  Kunde.Aktiv := chkAktiv.Checked;',

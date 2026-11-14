@@ -68,6 +68,8 @@ const
     'implementation'#10 +
     'end.';
 
+{ TImpactFormCacheTests }
+
 function TImpactFormCacheTests.ReadFile(const AFileName: string; out AText: string): Boolean;
 begin
   Result := True;

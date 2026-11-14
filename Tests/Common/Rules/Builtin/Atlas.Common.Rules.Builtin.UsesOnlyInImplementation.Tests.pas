@@ -129,6 +129,8 @@ begin
   Assert.AreEqual(0, Integer(Length(mIssues)));
 end;
 
+{ TUsesOnlyInImplementationTests }
+
 procedure TUsesOnlyInImplementationTests.ReportsEntryWithMoveFix;
 var
   mFindings: TArray<TRuleFinding>;

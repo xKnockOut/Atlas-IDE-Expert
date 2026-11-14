@@ -47,6 +47,8 @@ begin
   Result := Format('%d:%d-%d:%d "%s"', [AChange.StartPos.Line, AChange.StartPos.Character, AChange.EndPos.Line,
     AChange.EndPos.Character, AChange.Text]);
 end;
+{ TLspTextChangesTests }
+
 procedure TLspTextChangesTests.RangeCoversOnlyTheDifference;
 begin
   Assert.AreEqual('0:5-0:5 "X"', RangeText(TLspTextChanges.Between('unit A;', 'unit XA;')));

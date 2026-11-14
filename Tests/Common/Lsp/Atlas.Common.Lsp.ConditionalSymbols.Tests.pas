@@ -77,6 +77,8 @@ begin
   end;
 end;
 
+{ TConditionalSymbolsTests }
+
 procedure TConditionalSymbolsTests.HoverNamesConfiguration;
 begin
   Assert.AreEqual('**DEBUG**: aktiv, definiert in Konfiguration Debug (.dproj)',
@@ -180,62 +182,6 @@ begin
   Result.Config := 'Debug';
 end;
 
-procedure TConditionalSymbolsTests.ConditionHoverExplainsParts;
-var
-  mMarkdown: string;
-  mOff: TConditionalContext;
-begin
-  mMarkdown := ConditionAt('{$IF SizeOf(Pointer) = 8}'#10'{$IFEND}', 0, 3, SwitchContext);
-  Assert.IsTrue(StartsStr('**wahr**: `SizeOf(Pointer) = 8`', mMarkdown), mMarkdown);
-  Assert.IsTrue(ContainsStr(mMarkdown, '- `SizeOf(Pointer)` 8 · Zielplattform Win64'), mMarkdown);
-  mMarkdown := ConditionAt('{$IF Declared(Unbekannt)}'#10'{$IFEND}', 0, 3, SwitchContext);
-  Assert.IsTrue(StartsStr('**unbekannt = aktiv**', mMarkdown), mMarkdown);
-  Assert.IsTrue(ContainsStr(mMarkdown, '{$ELSE} dazu gelten als aktiv'), mMarkdown);
-  // Im inaktiven Zweig wird nichts ausgewertet.
-  mMarkdown := ConditionAt('{$IFDEF LINUX}'#10'{$IF SizeOf(Pointer) = 8}{$IFEND}'#10'{$ENDIF}', 1, 3, SwitchContext);
-  Assert.IsTrue(ContainsStr(mMarkdown, 'inaktiven Zweig'), mMarkdown);
-  // Auf anderen Direktiven und abgeschaltet: nichts.
-  Assert.AreEqual('-', ConditionAt('{$IFDEF DEBUG}{$ENDIF}', 0, 3, SwitchContext));
-  mOff := SwitchContext;
-  mOff.HoverEnabled := False;
-  Assert.AreEqual('-', ConditionAt('{$IF SizeOf(Pointer) = 8}{$IFEND}', 0, 3, mOff));
-  // Schaltereinträge sind keine Symbole.
-  Assert.AreEqual<NativeInt>(0, Length(TConditionalSymbols.SourcesOf(['$R+'], nil, nil, '')));
-end;
-
-procedure TConditionalSymbolsTests.ConditionHoverNamesSwitchOrigin;
-const
-  cSource =
-    '{$IFOPT R+}'#10 + // 0
-    '{$ENDIF}'#10 +    // 1
-    'x'#10 +           // 2
-    '{$R-}'#10 +       // 3
-    '{$IFOPT R+}'#10 + // 4
-    '{$ENDIF}';
-begin
-  Assert.AreEqual('**aktiv**: R+ aus DCC_RangeChecking (Debug)', ConditionAt(cSource, 0, 3, SwitchContext));
-  Assert.AreEqual('**inaktiv**: R- seit {$R-} in Zeile 4', ConditionAt(cSource, 4, 3, SwitchContext));
-  Assert.IsTrue(StartsStr('**unbekannt = aktiv**: R+ kein Projekt',
-    ConditionAt(cSource, 0, 3, TConditionalContext.Default)));
-end;
-
-procedure TConditionalSymbolsTests.ConditionHoverPairsPushAndPop;
-const
-  cSource =
-    '{$PUSHOPT}'#10 + // 0
-    '{$PUSHOPT}'#10 + // 1
-    '{$POPOPT}'#10 +  // 2
-    '{$POPOPT}'#10 +  // 3
-    '{$POPOPT}';      // 4
-begin
-  Assert.AreEqual('**{$PUSHOPT}** sichert den Schalterstand; {$POPOPT} in Zeile 4 stellt ihn wieder her.',
-    ConditionAt(cSource, 0, 3, Context));
-  Assert.IsTrue(ContainsStr(ConditionAt(cSource, 1, 3, Context), 'Zeile 3'));
-  Assert.AreEqual('**{$POPOPT}** stellt den Schalterstand von {$PUSHOPT} in Zeile 2 wieder her.',
-    ConditionAt(cSource, 2, 3, Context));
-  Assert.AreEqual('**{$POPOPT}** ohne passendes {$PUSHOPT} davor.', ConditionAt(cSource, 4, 3, Context));
-end;
-
 procedure TConditionalSymbolsTests.HoverIsSwitchable;
 var
   mOff: TConditionalContext;
@@ -330,6 +276,62 @@ begin
   Assert.IsTrue(IndexOf('BENUTZT') < IndexOf('LINUX'));
   // Jedes Symbol nur einmal.
   Assert.AreEqual(1, CountOf('MSWINDOWS'));
+end;
+
+procedure TConditionalSymbolsTests.ConditionHoverExplainsParts;
+var
+  mMarkdown: string;
+  mOff: TConditionalContext;
+begin
+  mMarkdown := ConditionAt('{$IF SizeOf(Pointer) = 8}'#10'{$IFEND}', 0, 3, SwitchContext);
+  Assert.IsTrue(StartsStr('**wahr**: `SizeOf(Pointer) = 8`', mMarkdown), mMarkdown);
+  Assert.IsTrue(ContainsStr(mMarkdown, '- `SizeOf(Pointer)` 8 · Zielplattform Win64'), mMarkdown);
+  mMarkdown := ConditionAt('{$IF Declared(Unbekannt)}'#10'{$IFEND}', 0, 3, SwitchContext);
+  Assert.IsTrue(StartsStr('**unbekannt = aktiv**', mMarkdown), mMarkdown);
+  Assert.IsTrue(ContainsStr(mMarkdown, '{$ELSE} dazu gelten als aktiv'), mMarkdown);
+  // Im inaktiven Zweig wird nichts ausgewertet.
+  mMarkdown := ConditionAt('{$IFDEF LINUX}'#10'{$IF SizeOf(Pointer) = 8}{$IFEND}'#10'{$ENDIF}', 1, 3, SwitchContext);
+  Assert.IsTrue(ContainsStr(mMarkdown, 'inaktiven Zweig'), mMarkdown);
+  // Auf anderen Direktiven und abgeschaltet: nichts.
+  Assert.AreEqual('-', ConditionAt('{$IFDEF DEBUG}{$ENDIF}', 0, 3, SwitchContext));
+  mOff := SwitchContext;
+  mOff.HoverEnabled := False;
+  Assert.AreEqual('-', ConditionAt('{$IF SizeOf(Pointer) = 8}{$IFEND}', 0, 3, mOff));
+  // Schaltereinträge sind keine Symbole.
+  Assert.AreEqual<NativeInt>(0, Length(TConditionalSymbols.SourcesOf(['$R+'], nil, nil, '')));
+end;
+
+procedure TConditionalSymbolsTests.ConditionHoverNamesSwitchOrigin;
+const
+  cSource =
+    '{$IFOPT R+}'#10 + // 0
+    '{$ENDIF}'#10 +    // 1
+    'x'#10 +           // 2
+    '{$R-}'#10 +       // 3
+    '{$IFOPT R+}'#10 + // 4
+    '{$ENDIF}';
+begin
+  Assert.AreEqual('**aktiv**: R+ aus DCC_RangeChecking (Debug)', ConditionAt(cSource, 0, 3, SwitchContext));
+  Assert.AreEqual('**inaktiv**: R- seit {$R-} in Zeile 4', ConditionAt(cSource, 4, 3, SwitchContext));
+  Assert.IsTrue(StartsStr('**unbekannt = aktiv**: R+ kein Projekt',
+    ConditionAt(cSource, 0, 3, TConditionalContext.Default)));
+end;
+
+procedure TConditionalSymbolsTests.ConditionHoverPairsPushAndPop;
+const
+  cSource =
+    '{$PUSHOPT}'#10 + // 0
+    '{$PUSHOPT}'#10 + // 1
+    '{$POPOPT}'#10 +  // 2
+    '{$POPOPT}'#10 +  // 3
+    '{$POPOPT}';      // 4
+begin
+  Assert.AreEqual('**{$PUSHOPT}** sichert den Schalterstand; {$POPOPT} in Zeile 4 stellt ihn wieder her.',
+    ConditionAt(cSource, 0, 3, Context));
+  Assert.IsTrue(ContainsStr(ConditionAt(cSource, 1, 3, Context), 'Zeile 3'));
+  Assert.AreEqual('**{$POPOPT}** stellt den Schalterstand von {$PUSHOPT} in Zeile 2 wieder her.',
+    ConditionAt(cSource, 2, 3, Context));
+  Assert.AreEqual('**{$POPOPT}** ohne passendes {$PUSHOPT} davor.', ConditionAt(cSource, 4, 3, Context));
 end;
 
 initialization

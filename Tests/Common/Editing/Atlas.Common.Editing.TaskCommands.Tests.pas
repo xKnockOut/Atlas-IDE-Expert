@@ -145,6 +145,8 @@ const
     'end;'#10 +
     'end.';
 
+{ TTaskCommandsTests }
+
 procedure TTaskCommandsTests.TaskWrapsStatements;
 var
   mText: string;

@@ -49,6 +49,8 @@ type
     procedure WriteMessage(const AMessage: TJSONObject);
   end;
 
+{ TRecordingTransport }
+
 constructor TRecordingTransport.Create;
 begin
   inherited Create;

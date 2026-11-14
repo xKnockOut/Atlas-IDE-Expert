@@ -43,6 +43,8 @@ begin
   Result.Fixed := 'fest mit %d';
 end;
 
+{ TAtlasTestListTextTests }
+
 procedure TAtlasTestListTextTests.RulesJoinedWithAnd;
 var
   mList: TAtlasTestList;

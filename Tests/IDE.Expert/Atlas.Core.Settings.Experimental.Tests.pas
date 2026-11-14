@@ -69,6 +69,8 @@ begin
   Result.PairColors := False;
 end;
 
+{ TAtlasExperimentalTests }
+
 procedure TAtlasExperimentalTests.CatalogMarksExperimentalEntries;
 var
   mCatalog: TAtlasSettingsCatalog;

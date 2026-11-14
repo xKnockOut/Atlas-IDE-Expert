@@ -134,6 +134,8 @@ type
     function Factor: Boolean;
   end;
 
+{ TEvaluator }
+
 function TEvaluator.Peek: string;
 var
   mStart: Integer;
@@ -194,31 +196,25 @@ begin
   raise Exception.Create('Unbekannt: ' + AName);
 end;
 
-function TEvaluator.Factor: Boolean;
+function TEvaluator.Expression: Boolean;
 var
-  mToken: string;
+  mOp: string;
+  mRight: Boolean;
 begin
-  mToken := Next;
-  if SameText(mToken, 'not') then
-  begin
-    Exit(not Factor);
-  end;
-  if mToken = '(' then
-  begin
-    Result := Expression;
-    Next;
-    Exit;
-  end;
-  Result := Value(mToken);
-end;
-
-function TEvaluator.Term: Boolean;
-begin
-  Result := Factor;
-  while SameText(Peek, 'and') do
+  Result := Simple;
+  mOp := Peek;
+  if (mOp = '=') or (mOp = '<>') then
   begin
     Next;
-    Result := Factor and Result;
+    mRight := Simple;
+    if mOp = '=' then
+    begin
+      Result := Result = mRight;
+    end
+    else
+    begin
+      Result := Result <> mRight;
+    end;
   end;
 end;
 
@@ -243,26 +239,32 @@ begin
   end;
 end;
 
-function TEvaluator.Expression: Boolean;
-var
-  mOp: string;
-  mRight: Boolean;
+function TEvaluator.Term: Boolean;
 begin
-  Result := Simple;
-  mOp := Peek;
-  if (mOp = '=') or (mOp = '<>') then
+  Result := Factor;
+  while SameText(Peek, 'and') do
   begin
     Next;
-    mRight := Simple;
-    if mOp = '=' then
-    begin
-      Result := Result = mRight;
-    end
-    else
-    begin
-      Result := Result <> mRight;
-    end;
+    Result := Factor and Result;
   end;
+end;
+
+function TEvaluator.Factor: Boolean;
+var
+  mToken: string;
+begin
+  mToken := Next;
+  if SameText(mToken, 'not') then
+  begin
+    Exit(not Factor);
+  end;
+  if mToken = '(' then
+  begin
+    Result := Expression;
+    Next;
+    Exit;
+  end;
+  Result := Value(mToken);
 end;
 
 function Evaluate(const AText: string; const AValues: TArray<string>): Boolean;

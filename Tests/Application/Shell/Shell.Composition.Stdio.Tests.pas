@@ -38,6 +38,8 @@ uses
   Atlas.Common.Diagnostics.Anonymizer,
   Shell.CommandLine;
 
+{ TShellStdioTests }
+
 procedure TShellStdioTests.Setup;
 begin
   FTempDir := TPath.Combine(TPath.GetTempPath, 'AtlasStdio' + TGUID.NewGuid.ToString);

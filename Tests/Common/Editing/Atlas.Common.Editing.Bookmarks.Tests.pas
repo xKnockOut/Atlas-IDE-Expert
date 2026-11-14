@@ -39,6 +39,8 @@ const
     'end;'#10 +
     'end.';
 
+{ TBookmarksTests }
+
 procedure TBookmarksTests.FindsMarkedComments;
 var
   mFound: TArray<TBookmark>;

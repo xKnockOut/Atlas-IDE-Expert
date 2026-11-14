@@ -64,6 +64,8 @@ begin
   end;
 end;
 
+{ TTypeAliasNamesTests }
+
 procedure TTypeAliasNamesTests.LastPartCutsQualifier;
 begin
   Assert.AreEqual('TList', TTypeAliasNames.LastPart('System.Generics.Collections.TList'));

@@ -29,6 +29,8 @@ implementation
 uses
   Atlas.Core.Editor.DisableWarning;
 
+{ TAtlasDisableWarningTests }
+
 procedure TAtlasDisableWarningTests.ParsesRequest;
 var
   mRequest: TAtlasDisableWarningRequest;

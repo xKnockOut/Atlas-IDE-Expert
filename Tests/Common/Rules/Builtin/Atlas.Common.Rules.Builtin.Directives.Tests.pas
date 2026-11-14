@@ -573,6 +573,8 @@ type
     function ReadProject(out AFileName, AText: string): Boolean;
   end;
 
+{ TFileLookup }
+
 constructor TFileLookup.Create(AAnswer: TRuleUnitAnswer);
 begin
   inherited Create;

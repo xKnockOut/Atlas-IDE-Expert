@@ -55,6 +55,8 @@ begin
     TAtlasLayerItem.Create('pnlC', Bounds(40, 40, 100, 100), True)];
 end;
 
+{ TAtlasLayersTests }
+
 procedure TAtlasLayersTests.StackTopmostFirst;
 var
   mItems: TArray<TAtlasLayerItem>;

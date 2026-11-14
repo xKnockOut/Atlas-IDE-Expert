@@ -62,6 +62,8 @@ begin
   Result.MemoryBytes := 300 * 1024 * 1024;
 end;
 
+{ TMonitorServersTests }
+
 procedure TMonitorServersTests.Setup;
 begin
   TAtlasLocale.Use(TTextLanguage.German);

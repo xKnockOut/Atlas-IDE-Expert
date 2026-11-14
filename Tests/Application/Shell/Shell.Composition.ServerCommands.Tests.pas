@@ -77,6 +77,8 @@ type
     procedure Error(const AText: string);
   end;
 
+{ TCollectingLogger }
+
 constructor TCollectingLogger.Create(const ASink: TLogLineProc);
 begin
   inherited Create;
@@ -108,40 +110,7 @@ begin
   FSink(AText);
 end;
 
-procedure TShellServerCommandsTests.TearDown;
-begin
-  FLog := nil;
-  FCompiled := nil;
-  FRetried := '';
-end;
-
-procedure TShellServerCommandsTests.Logged(const AText: string);
-begin
-  FLog := FLog + [AText];
-end;
-
-function TShellServerCommandsTests.Compile(const AFileName: string; out AChoice: TCompilerBackendChoice): Boolean;
-begin
-  FCompiled := FCompiled + [AFileName];
-  AChoice := TCompilerBackendChoice.Unavailable('Kein Compiler', 'Delphi installieren');
-  Result := False;
-end;
-
-function TShellServerCommandsTests.NoWorkspaces(const AUri: string): TArray<TShellWorkspace>;
-begin
-  Result := nil;
-end;
-
-function TShellServerCommandsTests.Retry(const AUri: string): Integer;
-begin
-  FRetried := AUri;
-  Result := 1;
-end;
-
-procedure TShellServerCommandsTests.Recheck;
-begin
-  Inc(FRechecks);
-end;
+{ TShellServerCommandsTests }
 
 function TShellServerCommandsTests.NewServices: TShellServerCommandServices;
 begin
@@ -175,6 +144,41 @@ begin
     mCommands.Free;
     mServerCommands.Free;
   end;
+end;
+
+procedure TShellServerCommandsTests.Logged(const AText: string);
+begin
+  FLog := FLog + [AText];
+end;
+
+function TShellServerCommandsTests.Compile(const AFileName: string; out AChoice: TCompilerBackendChoice): Boolean;
+begin
+  FCompiled := FCompiled + [AFileName];
+  AChoice := TCompilerBackendChoice.Unavailable('Kein Compiler', 'Delphi installieren');
+  Result := False;
+end;
+
+function TShellServerCommandsTests.NoWorkspaces(const AUri: string): TArray<TShellWorkspace>;
+begin
+  Result := nil;
+end;
+
+function TShellServerCommandsTests.Retry(const AUri: string): Integer;
+begin
+  FRetried := AUri;
+  Result := 1;
+end;
+
+procedure TShellServerCommandsTests.Recheck;
+begin
+  Inc(FRechecks);
+end;
+
+procedure TShellServerCommandsTests.TearDown;
+begin
+  FLog := nil;
+  FCompiled := nil;
+  FRetried := '';
 end;
 
 procedure TShellServerCommandsTests.RegistersAllCommands;

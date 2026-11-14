@@ -34,6 +34,8 @@ uses
   Atlas.Core.VersionControl.Internals.SvnParser,
   Atlas.Core.VersionControl.TestSupport;
 
+{ TAtlasVcsSvnParserTests }
+
 procedure TAtlasVcsSvnParserTests.SvnInfoReadsRootPathAndRevision;
 var
   mInfo: TAtlasSvnInfo;

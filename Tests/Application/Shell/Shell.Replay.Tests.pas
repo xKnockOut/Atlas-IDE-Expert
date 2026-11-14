@@ -44,6 +44,8 @@ uses
   Atlas.Common.JsonRpc.Messages,
   Atlas.Common.Logging.Contract;
 
+{ TShellReplayTests }
+
 function TShellReplayTests.SampleCase: TCrashCase;
 begin
   Result := TCrashCase.Empty;

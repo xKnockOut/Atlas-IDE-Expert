@@ -48,6 +48,17 @@ uses
 /// <summary>Zahl der offenen Handles des Prozesses (eigene Deklaration, unabhängig von der Delphi-Version).</summary>
 function ProcessHandleCount(AHProcess: THandle; var APdwHandleCount: DWORD): BOOL; stdcall;
   external kernel32 name 'GetProcessHandleCount';
+const
+  cCompilerMessagesUnitText =
+    'unit ProbeCompiler;'#13#10 +
+    'interface'#13#10 +
+    'implementation'#13#10 +
+    'procedure P;'#13#10 +
+    'begin'#13#10 +
+    '  Gibtsnicht.Create;'#13#10 +
+    'end;'#13#10 +
+    'end.';
+
 { TLspServerProcessTests }
 
 procedure TLspServerProcessTests.WarmUpFirstUse;
@@ -64,61 +75,6 @@ begin
         ;
     end;
 end;
-procedure TLspServerProcessTests.StartFailureLeavesNoHandles;
-const
-  cMissing = 'C:\nicht\vorhanden\AtlasServer.exe';
-var
-  mBefore, mAfter: DWORD;
-  mIndex: Integer;
-begin
-  // Vorlauf außerhalb der Messung: einmalige Handles der RTL (Ausnahmen, Codepages) vorwegnehmen.
-  Assert.WillRaise(
-    procedure
-    begin
-      TLspServerProcess.Create(cMissing, '').Free;
-    end, EOSError);
-  mBefore := 0;
-  mAfter := 0;
-  Assert.IsTrue(ProcessHandleCount(GetCurrentProcess, mBefore));
-  for mIndex := 1 to 10 do
-  begin
-    Assert.WillRaise(
-      procedure
-      begin
-        TLspServerProcess.Create(cMissing, '').Free;
-      end, EOSError);
-  end;
-  Assert.IsTrue(ProcessHandleCount(GetCurrentProcess, mAfter));
-  // Je Lauf vier Pipe-Enden und die stderr-Datei; ein Leck zeigte sich als Zuwachs um mindestens zehn.
-  Assert.IsTrue(Integer(mAfter) - Integer(mBefore) < 5, Format('Handles vorher %d, nachher %d', [mBefore, mAfter]));
-end;
-procedure TLspServerProcessTests.EndReportsExitCodeAndStderr;
-var
-  mServer: IAtlasLspServer;
-  mWatch: TStopwatch;
-  mInfo: TLspCloseInfo;
-  mText: string;
-begin
-  // Ein „Server“, der eine Zeile auf stderr schreibt und mit Code 3 endet.
-  mServer := TLspServerProcess.Create(GetEnvironmentVariable('ComSpec'), '/c echo Testausgabe auf stderr 1>&2 & exit 3');
-  mWatch := TStopwatch.StartNew;
-  while not mServer.Client.Closed and (mWatch.ElapsedMilliseconds < 10000) do
-  begin
-    Sleep(20);
-  end;
-  Assert.IsTrue(mServer.Client.Closed, 'Verbindung nach dem Ende des Prozesses geschlossen');
-  mInfo := mServer.Client.CloseInfo;
-  Assert.IsTrue(mInfo.ExitKnown, 'Exit-Code bekannt');
-  Assert.AreEqual(Int64(3), Int64(mInfo.ExitCode));
-  Assert.AreEqual(1, mInfo.ErrorLines);
-  Assert.IsTrue(mInfo.RuntimeMs >= 0);
-  mServer := nil;
-  mText := TFile.ReadAllText(TAtlasServerExits.StderrFileName(TAtlasGuard.RotatingLog.Folder), TEncoding.UTF8);
-  Assert.Contains(mText, 'Serverstart');
-  Assert.Contains(mText, 'Testausgabe auf stderr');
-end;
-{ TLspServerProcessTests }
-
 procedure TLspServerProcessTests.HoverAndDefinitionAgainstServer;
 const
   cUnitText =
@@ -208,17 +164,7 @@ begin
     mServer.Free;
   end;
 end;
-
-const
-  cCompilerMessagesUnitText =
-    'unit ProbeCompiler;'#13#10 +
-    'interface'#13#10 +
-    'implementation'#13#10 +
-    'procedure P;'#13#10 +
-    'begin'#13#10 +
-    '  Gibtsnicht.Create;'#13#10 +
-    'end;'#13#10 +
-    'end.';
+{ TLspServerProcessTests }
 
 procedure TLspServerProcessTests.CompilerMessagesReachPulledDiagnostics;
 var
@@ -274,6 +220,60 @@ begin
   finally
     mServer.Free;
   end;
+end;
+procedure TLspServerProcessTests.StartFailureLeavesNoHandles;
+const
+  cMissing = 'C:\nicht\vorhanden\AtlasServer.exe';
+var
+  mBefore, mAfter: DWORD;
+  mIndex: Integer;
+begin
+  // Vorlauf außerhalb der Messung: einmalige Handles der RTL (Ausnahmen, Codepages) vorwegnehmen.
+  Assert.WillRaise(
+    procedure
+    begin
+      TLspServerProcess.Create(cMissing, '').Free;
+    end, EOSError);
+  mBefore := 0;
+  mAfter := 0;
+  Assert.IsTrue(ProcessHandleCount(GetCurrentProcess, mBefore));
+  for mIndex := 1 to 10 do
+  begin
+    Assert.WillRaise(
+      procedure
+      begin
+        TLspServerProcess.Create(cMissing, '').Free;
+      end, EOSError);
+  end;
+  Assert.IsTrue(ProcessHandleCount(GetCurrentProcess, mAfter));
+  // Je Lauf vier Pipe-Enden und die stderr-Datei; ein Leck zeigte sich als Zuwachs um mindestens zehn.
+  Assert.IsTrue(Integer(mAfter) - Integer(mBefore) < 5, Format('Handles vorher %d, nachher %d', [mBefore, mAfter]));
+end;
+
+procedure TLspServerProcessTests.EndReportsExitCodeAndStderr;
+var
+  mServer: IAtlasLspServer;
+  mWatch: TStopwatch;
+  mInfo: TLspCloseInfo;
+  mText: string;
+begin
+  // Ein „Server“, der eine Zeile auf stderr schreibt und mit Code 3 endet.
+  mServer := TLspServerProcess.Create(GetEnvironmentVariable('ComSpec'), '/c echo Testausgabe auf stderr 1>&2 & exit 3');
+  mWatch := TStopwatch.StartNew;
+  while not mServer.Client.Closed and (mWatch.ElapsedMilliseconds < 10000) do
+  begin
+    Sleep(20);
+  end;
+  Assert.IsTrue(mServer.Client.Closed, 'Verbindung nach dem Ende des Prozesses geschlossen');
+  mInfo := mServer.Client.CloseInfo;
+  Assert.IsTrue(mInfo.ExitKnown, 'Exit-Code bekannt');
+  Assert.AreEqual(Int64(3), Int64(mInfo.ExitCode));
+  Assert.AreEqual(1, mInfo.ErrorLines);
+  Assert.IsTrue(mInfo.RuntimeMs >= 0);
+  mServer := nil;
+  mText := TFile.ReadAllText(TAtlasServerExits.StderrFileName(TAtlasGuard.RotatingLog.Folder), TEncoding.UTF8);
+  Assert.Contains(mText, 'Serverstart');
+  Assert.Contains(mText, 'Testausgabe auf stderr');
 end;
 
 initialization

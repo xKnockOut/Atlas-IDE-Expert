@@ -68,36 +68,7 @@ begin
   Result := '';
 end;
 
-procedure TShellIndexAreaTests.Setup;
-var
-  mCoreServices: TShellCoreServices;
-begin
-  FDocuments := TDocumentStore.Create;
-  mCoreServices := Default(TShellCoreServices);
-  mCoreServices.Logger := TLogger.Create;
-  mCoreServices.Documents := FDocuments;
-  mCoreServices.Index := NoIndex;
-  mCoreServices.SelectedProject := NoSelection;
-  mCoreServices.ActiveProject := NoActive;
-  FCore := TShellCore.Create(mCoreServices);
-  FDispatcher := TJsonRpcDispatcher.Create;
-  FProjectStarts := 0;
-  FNamespaceCalls := 0;
-  FRootCalls := 0;
-  FQueued := 0;
-  FArea := TShellIndexArea.Create(NewServices);
-end;
-
-procedure TShellIndexAreaTests.TearDown;
-begin
-  // Declared(X) hält den Index; ohne Abmelden lebte er bis zum Programmende.
-  TPascalPreprocessor.SetDeclaredProvider(nil);
-  FreeAndNil(FArea);
-  FreeAndNil(FDispatcher);
-  FDocuments := nil;
-  FCore.FreeWorkspaces;
-  FreeAndNil(FCore);
-end;
+{ TShellIndexAreaTests }
 
 function TShellIndexAreaTests.NewServices: TShellIndexAreaServices;
 begin
@@ -139,6 +110,37 @@ begin
       Inc(FQueued);
       Result := True;
     end;
+end;
+
+procedure TShellIndexAreaTests.Setup;
+var
+  mCoreServices: TShellCoreServices;
+begin
+  FDocuments := TDocumentStore.Create;
+  mCoreServices := Default(TShellCoreServices);
+  mCoreServices.Logger := TLogger.Create;
+  mCoreServices.Documents := FDocuments;
+  mCoreServices.Index := NoIndex;
+  mCoreServices.SelectedProject := NoSelection;
+  mCoreServices.ActiveProject := NoActive;
+  FCore := TShellCore.Create(mCoreServices);
+  FDispatcher := TJsonRpcDispatcher.Create;
+  FProjectStarts := 0;
+  FNamespaceCalls := 0;
+  FRootCalls := 0;
+  FQueued := 0;
+  FArea := TShellIndexArea.Create(NewServices);
+end;
+
+procedure TShellIndexAreaTests.TearDown;
+begin
+  // Declared(X) hält den Index; ohne Abmelden lebte er bis zum Programmende.
+  TPascalPreprocessor.SetDeclaredProvider(nil);
+  FreeAndNil(FArea);
+  FreeAndNil(FDispatcher);
+  FDocuments := nil;
+  FCore.FreeWorkspaces;
+  FreeAndNil(FCore);
 end;
 
 procedure TShellIndexAreaTests.CreatesIndexAndUsesGraph;

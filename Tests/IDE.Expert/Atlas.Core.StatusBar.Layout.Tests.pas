@@ -63,6 +63,8 @@ begin
   end;
 end;
 
+{ TAtlasStatusBarLayoutTests }
+
 procedure TAtlasStatusBarLayoutTests.EverythingFits;
 begin
   Assert.AreEqual(110 + 120 + 140 + 260 + 3 * cGap, TAtlasStatusBarLayout.FullWidth(Slots(1), cGap));

@@ -163,6 +163,8 @@ begin
   Result := TChangeSignature.ApplyEdits(AText, mEdits);
 end;
 
+{ TLspMoveClassTests }
+
 procedure TLspMoveClassTests.Setup;
 begin
   FIndex := TSymbolIndex.Create;

@@ -90,19 +90,6 @@ const
 
 { TLspValueEditTests }
 
-procedure TLspValueEditTests.Setup;
-begin
-  FStore := TDocumentStore.Create;
-  FIndex := TSymbolIndex.Create;
-  FIndex.AddUnit(TIndexExtractor.ExtractText(cUnitMain, cMainFile, nil));
-end;
-
-procedure TLspValueEditTests.TearDown;
-begin
-  FStore := nil;
-  FIndex := nil;
-end;
-
 function TLspValueEditTests.Run(ALine: Integer; const AExpression: string): TJSONObject;
 var
   mUri: string;
@@ -135,6 +122,19 @@ begin
   finally
     mReply.Free;
   end;
+end;
+
+procedure TLspValueEditTests.Setup;
+begin
+  FStore := TDocumentStore.Create;
+  FIndex := TSymbolIndex.Create;
+  FIndex.AddUnit(TIndexExtractor.ExtractText(cUnitMain, cMainFile, nil));
+end;
+
+procedure TLspValueEditTests.TearDown;
+begin
+  FStore := nil;
+  FIndex := nil;
 end;
 
 procedure TLspValueEditTests.BuiltinKinds;

@@ -80,6 +80,8 @@ const
     'unit U;'#10'implementation'#10'procedure P;'#10'begin'#10 +
     '  if A then'#10'  begin'#10'    B;'#10'  end;'#10'end;'#10'end.';
 
+{ TKeywordHighlightsTests }
+
 procedure TKeywordHighlightsTests.NestedBeginEndPairsInnermost;
 begin
   // inneres begin (Zeile 5) gehört zum end in Zeile 7

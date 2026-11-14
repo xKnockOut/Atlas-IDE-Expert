@@ -38,6 +38,8 @@ begin
   Result := string.Join('|', AHistory.Items);
 end;
 
+{ TAtlasSearchHistoryTests }
+
 procedure TAtlasSearchHistoryTests.RememberPutsNewestFirstAndMovesDuplicatesUp;
 var
   mHistory: TAtlasSearchHistory;

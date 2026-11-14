@@ -18,6 +18,8 @@ type
 
 implementation
 
+{ THoverDeclarationTests }
+
 procedure THoverDeclarationTests.DeclaredTypeFromHover;
 begin
   Assert.AreEqual('TObjectList<TKunde>', TAtlasHoverDeclaration.DeclaredType('var Kunden: TObjectList<TKunde>'));

@@ -46,6 +46,8 @@ begin
   Result := TChangedFiles.FullPath('C:\Repo', APath);
 end;
 
+{ TChangedFilesTests }
+
 procedure TChangedFilesTests.NameStatusRenamedAndDeleted;
 var
   mPaths: TArray<string>;

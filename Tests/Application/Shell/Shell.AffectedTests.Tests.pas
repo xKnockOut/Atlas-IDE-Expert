@@ -84,6 +84,8 @@ begin
     end;
 end;
 
+{ TShellAffectedTestsTests }
+
 procedure TShellAffectedTestsTests.TestProgramsAreDUnitXMainFiles;
 var
   mPrograms: TArray<string>;

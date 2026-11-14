@@ -81,21 +81,6 @@ uses
 
 { TVisualizerTests }
 
-procedure TVisualizerTests.Setup;
-begin
-  FValues := TDictionary<string, string>.Create;
-  FAsked := TList<string>.Create;
-  FMemory := nil;
-  FMemoryAddress := 0;
-end;
-
-procedure TVisualizerTests.TearDown;
-begin
-  FValues.Free;
-  FAsked.Free;
-  FMemory := nil;
-end;
-
 function TVisualizerTests.Context: TAtlasVisualizerContext;
 var
   mValues: TDictionary<string, string>;
@@ -127,6 +112,21 @@ function TVisualizerTests.Options(AEvaluation: TAtlasVisualizerEvaluation): TAtl
 begin
   Result := TAtlasVisualizerOptions.Defaults;
   Result.Evaluation := AEvaluation;
+end;
+
+procedure TVisualizerTests.Setup;
+begin
+  FValues := TDictionary<string, string>.Create;
+  FAsked := TList<string>.Create;
+  FMemory := nil;
+  FMemoryAddress := 0;
+end;
+
+procedure TVisualizerTests.TearDown;
+begin
+  FValues.Free;
+  FAsked.Free;
+  FMemory := nil;
 end;
 
 procedure TVisualizerTests.KindsAndSettings;

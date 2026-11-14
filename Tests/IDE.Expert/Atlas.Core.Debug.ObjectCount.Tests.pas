@@ -66,6 +66,8 @@ type
     function Read(AAddress: UInt64; var ABuffer; ASize: Integer): Integer;
   end;
 
+{ TFakeMemory }
+
 constructor TFakeMemory.Create(APointerSize: Integer);
 begin
   inherited Create;

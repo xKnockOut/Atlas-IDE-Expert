@@ -72,6 +72,8 @@ type
       Boolean;
   end;
 
+{ TFakeLinkTransport }
+
 procedure TFakeLinkTransport.Answer(const APart, AText: string);
 begin
   FParts := FParts + [APart];

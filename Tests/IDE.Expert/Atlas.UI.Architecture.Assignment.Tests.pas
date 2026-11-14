@@ -63,6 +63,8 @@ begin
   Assert.IsTrue(TAtlasArchitectureModel.Parse(AAnswer, Result, mEnabled));
 end;
 
+{ TAtlasArchitectureAssignmentTests }
+
 procedure TAtlasArchitectureAssignmentTests.WarmUpFirstUse;
 begin
   SetUp;

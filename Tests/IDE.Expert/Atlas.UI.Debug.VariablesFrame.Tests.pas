@@ -136,6 +136,25 @@ begin
   mRemoved := '';
 end;
 
+procedure TAtlasDebugVariablesFrameTests.ValueTextOnlyWithValue;
+var
+  mList: TAtlasEvalList;
+  mNode: TAtlasEvalNode;
+begin
+  mList := TAtlasEvalList.Create;
+  try
+    mNode := mList.Add('S');
+    Assert.AreEqual('', TAtlasDebugVariablesFrame.ValueText(mNode), 'noch offen');
+    mList.SetResult(mNode, True, '''abc''');
+    Assert.AreEqual('''abc''', TAtlasDebugVariablesFrame.ValueText(mNode));
+    mList.SetResult(mNode, False, 'E2003');
+    Assert.AreEqual('', TAtlasDebugVariablesFrame.ValueText(mNode), 'Fehler ist kein Wert');
+    Assert.AreEqual('', TAtlasDebugVariablesFrame.ValueText(nil));
+  finally
+    mList.Free;
+  end;
+end;
+
 procedure TAtlasDebugVariablesFrameTests.EditValueWithF2;
 var
   mHost: TForm;
@@ -185,25 +204,6 @@ begin
     mList.Free;
   end;
   mEdited := '';
-end;
-
-procedure TAtlasDebugVariablesFrameTests.ValueTextOnlyWithValue;
-var
-  mList: TAtlasEvalList;
-  mNode: TAtlasEvalNode;
-begin
-  mList := TAtlasEvalList.Create;
-  try
-    mNode := mList.Add('S');
-    Assert.AreEqual('', TAtlasDebugVariablesFrame.ValueText(mNode), 'noch offen');
-    mList.SetResult(mNode, True, '''abc''');
-    Assert.AreEqual('''abc''', TAtlasDebugVariablesFrame.ValueText(mNode));
-    mList.SetResult(mNode, False, 'E2003');
-    Assert.AreEqual('', TAtlasDebugVariablesFrame.ValueText(mNode), 'Fehler ist kein Wert');
-    Assert.AreEqual('', TAtlasDebugVariablesFrame.ValueText(nil));
-  finally
-    mList.Free;
-  end;
 end;
 
 end.

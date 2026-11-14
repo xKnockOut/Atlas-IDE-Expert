@@ -69,6 +69,75 @@ const
   cUri = 'file:///C:/P/UI.Auftrag.pas';
   cHover = 'textDocument/hover';
 
+/// <summary>Ist AMessage der Text, mit dem eine der übersprungenen Anfragen von ACases abgelehnt wird?</summary>
+function IsSkipText(ACases: TShellCrashCases; const AMessage: string): Boolean;
+var
+  mEntry: TCrashSkipEntry;
+begin
+  Result := False;
+  for mEntry in ACases.Skipped do
+  begin
+    if AMessage = TShellCrashCases.SkipText(mEntry) then
+    begin
+      Exit(True);
+    end;
+  end;
+end;
+
+{ TShellCrashCasesTests }
+
+procedure TShellCrashCasesTests.CreateCases;
+begin
+  FreeAndNil(FCases);
+  FCases := TShellCrashCases.Create(FRoot, TLogger.Create, FDocuments, FRecent);
+  FCases.TestMethod := '';
+  FCases.AtlasVersion := '1.2.0';
+  FCases.Notify :=
+    procedure(const AMethod: string; AParams: TJSONObject)
+    begin
+      FSent := FSent + [AMethod + ' ' + AParams.ToJSON];
+      AParams.Free;
+    end;
+end;
+
+procedure TShellCrashCasesTests.Crash;
+var
+  mParams: TJSONValue;
+  mError: Exception;
+begin
+  mParams := HoverParams;
+  mError := ECrashTest.Create('kaputt');
+  try
+    FCases.RequestFailed(cHover, mParams, mError, 'Stapel');
+  finally
+    mError.Free;
+    mParams.Free;
+  end;
+end;
+
+function TShellCrashCasesTests.HoverParams: TJSONValue;
+begin
+  Result := TJSONValue.ParseJSONValue('{"textDocument":{"uri":"' + cUri + '"},"position":{"line":4,"character":2}}');
+end;
+
+function TShellCrashCasesTests.GuardRejects: Boolean;
+var
+  mParams: TJSONValue;
+begin
+  Result := False;
+  mParams := HoverParams;
+  try
+    try
+      FCases.Guard(cHover, mParams);
+    except
+      on E: EJsonRpcError do
+        Result := IsSkipText(FCases, E.Message);
+    end;
+  finally
+    mParams.Free;
+  end;
+end;
+
 procedure TShellCrashCasesTests.WarmUpFirstUse;
 begin
   Setup;
@@ -100,73 +169,6 @@ begin
     TDirectory.Delete(FRoot, True);
   end;
   FRoot := '';
-end;
-
-procedure TShellCrashCasesTests.CreateCases;
-begin
-  FreeAndNil(FCases);
-  FCases := TShellCrashCases.Create(FRoot, TLogger.Create, FDocuments, FRecent);
-  FCases.TestMethod := '';
-  FCases.AtlasVersion := '1.2.0';
-  FCases.Notify :=
-    procedure(const AMethod: string; AParams: TJSONObject)
-    begin
-      FSent := FSent + [AMethod + ' ' + AParams.ToJSON];
-      AParams.Free;
-    end;
-end;
-
-function TShellCrashCasesTests.HoverParams: TJSONValue;
-begin
-  Result := TJSONValue.ParseJSONValue('{"textDocument":{"uri":"' + cUri + '"},"position":{"line":4,"character":2}}');
-end;
-
-procedure TShellCrashCasesTests.Crash;
-var
-  mParams: TJSONValue;
-  mError: Exception;
-begin
-  mParams := HoverParams;
-  mError := ECrashTest.Create('kaputt');
-  try
-    FCases.RequestFailed(cHover, mParams, mError, 'Stapel');
-  finally
-    mError.Free;
-    mParams.Free;
-  end;
-end;
-
-/// <summary>Ist AMessage der Text, mit dem eine der übersprungenen Anfragen von ACases abgelehnt wird?</summary>
-function IsSkipText(ACases: TShellCrashCases; const AMessage: string): Boolean;
-var
-  mEntry: TCrashSkipEntry;
-begin
-  Result := False;
-  for mEntry in ACases.Skipped do
-  begin
-    if AMessage = TShellCrashCases.SkipText(mEntry) then
-    begin
-      Exit(True);
-    end;
-  end;
-end;
-
-function TShellCrashCasesTests.GuardRejects: Boolean;
-var
-  mParams: TJSONValue;
-begin
-  Result := False;
-  mParams := HoverParams;
-  try
-    try
-      FCases.Guard(cHover, mParams);
-    except
-      on E: EJsonRpcError do
-        Result := IsSkipText(FCases, E.Message);
-    end;
-  finally
-    mParams.Free;
-  end;
 end;
 
 procedure TShellCrashCasesTests.CrashWritesCaseAndNotifies;

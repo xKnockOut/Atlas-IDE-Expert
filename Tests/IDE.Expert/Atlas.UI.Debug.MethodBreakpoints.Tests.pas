@@ -63,19 +63,7 @@ begin
   Result.Via := AVia;
 end;
 
-procedure TAtlasMethodBreakpointsDialogTests.Setup;
-begin
-  FLanguage := TAtlasStrings.Language;
-  TAtlasStrings.Language := TAtlasLanguage.German;
-  FQueries := 0;
-  FLastQuery := Default(TAtlasMethodQuery);
-end;
-
-procedure TAtlasMethodBreakpointsDialogTests.TearDown;
-begin
-  TAtlasStrings.Language := FLanguage;
-  FLastQuery := Default(TAtlasMethodQuery);
-end;
+{ TAtlasMethodBreakpointsDialogTests }
 
 function TAtlasMethodBreakpointsDialogTests.Hits: TAtlasMethodHits;
 begin
@@ -96,6 +84,20 @@ begin
       AError := '';
       Result := True;
     end;
+end;
+
+procedure TAtlasMethodBreakpointsDialogTests.Setup;
+begin
+  FLanguage := TAtlasStrings.Language;
+  TAtlasStrings.Language := TAtlasLanguage.German;
+  FQueries := 0;
+  FLastQuery := Default(TAtlasMethodQuery);
+end;
+
+procedure TAtlasMethodBreakpointsDialogTests.TearDown;
+begin
+  TAtlasStrings.Language := FLanguage;
+  FLastQuery := Default(TAtlasMethodQuery);
 end;
 
 procedure TAtlasMethodBreakpointsDialogTests.HitTextsCountFromOne;

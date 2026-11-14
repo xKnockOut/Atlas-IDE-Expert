@@ -73,6 +73,8 @@ begin
   Result.Cycles := Result.Cycles + [mCycle];
 end;
 
+{ TAtlasUseUnitTests }
+
 procedure TAtlasUseUnitTests.ParsesServerAnswer;
 var
   mValue: TAtlasUseUnitInfo;

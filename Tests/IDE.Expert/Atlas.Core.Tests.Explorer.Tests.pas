@@ -160,6 +160,8 @@ begin
   Result.DecimalSeparator := ',';
 end;
 
+{ TAtlasTestExplorerTests }
+
 procedure TAtlasTestExplorerTests.BuildsTreeWithTallies;
 var
   mNodes: TArray<TAtlasTestNode>;

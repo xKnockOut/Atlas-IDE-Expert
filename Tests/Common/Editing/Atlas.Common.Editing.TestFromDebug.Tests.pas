@@ -106,6 +106,8 @@ begin
   end;
 end;
 
+{ TTestFromDebugTests }
+
 procedure TTestFromDebugTests.NumbersBecomeLiterals;
 begin
   Assert.AreEqual('12', Literal('12', 'Integer'));

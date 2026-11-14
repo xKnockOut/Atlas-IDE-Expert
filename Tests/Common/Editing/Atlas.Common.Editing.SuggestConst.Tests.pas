@@ -125,6 +125,8 @@ begin
   end;
 end;
 
+{ TSuggestConstTests }
+
 procedure TSuggestConstTests.InlineVariableBecomesConst;
 var
   mTitle, mChanged: string;

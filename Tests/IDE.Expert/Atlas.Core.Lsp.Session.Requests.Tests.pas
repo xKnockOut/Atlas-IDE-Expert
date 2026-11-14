@@ -76,6 +76,8 @@ begin
   Result := mClient;
 end;
 
+{ TLspSessionPartsTests }
+
 procedure TLspSessionPartsTests.BaseClassSyncsDocuments;
 var
   mSeen: TStringList;

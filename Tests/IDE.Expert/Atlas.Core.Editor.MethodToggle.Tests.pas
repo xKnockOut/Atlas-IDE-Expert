@@ -129,6 +129,67 @@ begin
     'end.']);                                       // 28
 end;
 
+{ TAtlasMethodToggleTests }
+
+procedure TAtlasMethodToggleTests.IfdefAlternativeBodies;
+var
+  mText: string;
+
+  function ClockEnd(const APlaces: TArray<TAtlasMethodPlace>): Integer;
+  var
+    mPlace: TAtlasMethodPlace;
+  begin
+    Result := -1;
+    for mPlace in APlaces do
+    begin
+      if mPlace.IsBody and (mPlace.Name = 'Clock') then
+      begin
+        Result := mPlace.LastLine;
+      end;
+    end;
+  end;
+
+begin
+  mText := Source([
+    'unit Demo;',                       // 0
+    'interface',                        // 1
+    'type',                             // 2
+    '  TFoo = class',                   // 3
+    '    procedure Run;',               // 4
+    '  end;',                           // 5
+    'function Clock: Double;',          // 6
+    'implementation',                   // 7
+    'function Clock: Double;',          // 8
+    '{$IFDEF MSWINDOWS}',               // 9
+    'begin',                            // 10
+    '  Result := 1;',                   // 11
+    'end;',                             // 12
+    '{$ELSE}',                          // 13
+    '{$IFDEF FPC}',                     // 14
+    'var',                              // 15
+    '  T: Integer;',                    // 16
+    'begin',                            // 17
+    '  Result := T;',                   // 18
+    'end;',                             // 19
+    '{$ELSE}',                          // 20
+    'begin',                            // 21
+    '  Result := 3;',                   // 22
+    'end;',                             // 23
+    '{$ENDIF}',                         // 24
+    '{$ENDIF}',                         // 25
+    'procedure TFoo.Run;',              // 26
+    'begin',                            // 27
+    'end;',                             // 28
+    'end.']);
+  // Ohne Symbole wie Delphi für Win32: der MSWINDOWS-Zweig.
+  Assert.AreEqual('26:15', Jump(mText, 4, 15), 'Run nach den Zweigen');
+  Assert.AreEqual('4:14', Jump(mText, 27));
+  Assert.AreEqual('8:9', Jump(mText, 6, 10));
+  // Rumpf von Clock: ohne Symbole der erste Zweig, mit FPC (Free Pascal unter Linux) der mittlere.
+  Assert.AreEqual(12, ClockEnd(TAtlasMethodToggle.Places(mText)));
+  Assert.AreEqual(19, ClockEnd(TAtlasMethodToggle.Places(mText, ['FPC', 'UNIX'])));
+end;
+
 procedure TAtlasMethodToggleTests.DeclarationJumpsToImplementationAndBack;
 var
   mText: string;
@@ -542,6 +603,7 @@ begin
   Assert.AreEqual('-', Jump(mText, 9));
 end;
 
+
 procedure TAtlasMethodToggleTests.AsmLabelEndDoesNotCloseBody;
 var
   mText: string;
@@ -569,66 +631,6 @@ begin
   Assert.AreEqual('4:13', Jump(mText, 11, 2));
   Assert.AreEqual('4:13', Jump(mText, 13));
   Assert.AreEqual('5:13', Jump(mText, 16, 2));
-end;
-
-
-procedure TAtlasMethodToggleTests.IfdefAlternativeBodies;
-var
-  mText: string;
-
-  function ClockEnd(const APlaces: TArray<TAtlasMethodPlace>): Integer;
-  var
-    mPlace: TAtlasMethodPlace;
-  begin
-    Result := -1;
-    for mPlace in APlaces do
-    begin
-      if mPlace.IsBody and (mPlace.Name = 'Clock') then
-      begin
-        Result := mPlace.LastLine;
-      end;
-    end;
-  end;
-
-begin
-  mText := Source([
-    'unit Demo;',                       // 0
-    'interface',                        // 1
-    'type',                             // 2
-    '  TFoo = class',                   // 3
-    '    procedure Run;',               // 4
-    '  end;',                           // 5
-    'function Clock: Double;',          // 6
-    'implementation',                   // 7
-    'function Clock: Double;',          // 8
-    '{$IFDEF MSWINDOWS}',               // 9
-    'begin',                            // 10
-    '  Result := 1;',                   // 11
-    'end;',                             // 12
-    '{$ELSE}',                          // 13
-    '{$IFDEF FPC}',                     // 14
-    'var',                              // 15
-    '  T: Integer;',                    // 16
-    'begin',                            // 17
-    '  Result := T;',                   // 18
-    'end;',                             // 19
-    '{$ELSE}',                          // 20
-    'begin',                            // 21
-    '  Result := 3;',                   // 22
-    'end;',                             // 23
-    '{$ENDIF}',                         // 24
-    '{$ENDIF}',                         // 25
-    'procedure TFoo.Run;',              // 26
-    'begin',                            // 27
-    'end;',                             // 28
-    'end.']);
-  // Ohne Symbole wie Delphi für Win32: der MSWINDOWS-Zweig.
-  Assert.AreEqual('26:15', Jump(mText, 4, 15), 'Run nach den Zweigen');
-  Assert.AreEqual('4:14', Jump(mText, 27));
-  Assert.AreEqual('8:9', Jump(mText, 6, 10));
-  // Rumpf von Clock: ohne Symbole der erste Zweig, mit FPC (Free Pascal unter Linux) der mittlere.
-  Assert.AreEqual(12, ClockEnd(TAtlasMethodToggle.Places(mText)));
-  Assert.AreEqual(19, ClockEnd(TAtlasMethodToggle.Places(mText, ['FPC', 'UNIX'])));
 end;
 
 procedure TAtlasMethodToggleTests.BodyAtFindsImplementationAroundLine;

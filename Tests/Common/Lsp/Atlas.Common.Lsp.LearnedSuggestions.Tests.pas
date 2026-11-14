@@ -86,6 +86,26 @@ begin
   Result := TLearnedOptions.Default;
 end;
 
+{ TLspLearnedSuggestionsTests }
+
+function TLspLearnedSuggestionsTests.Run(const AArguments: string): string;
+var
+  mArguments: TJSONArray;
+  mAnswer: TJSONValue;
+begin
+  mArguments := TJSONObject.ParseJSONValue(AArguments) as TJSONArray;
+  try
+    mAnswer := TLspLearnedSuggestions.ExecuteSuggest(FStore, FIndex, OptionsFor, mArguments);
+    try
+      Result := mAnswer.ToJSON;
+    finally
+      mAnswer.Free;
+    end;
+  finally
+    mArguments.Free;
+  end;
+end;
+
 procedure TLspLearnedSuggestionsTests.Setup;
 var
   mIndex: Integer;
@@ -108,24 +128,6 @@ procedure TLspLearnedSuggestionsTests.TearDown;
 begin
   FStore := nil;
   FIndex := nil;
-end;
-
-function TLspLearnedSuggestionsTests.Run(const AArguments: string): string;
-var
-  mArguments: TJSONArray;
-  mAnswer: TJSONValue;
-begin
-  mArguments := TJSONObject.ParseJSONValue(AArguments) as TJSONArray;
-  try
-    mAnswer := TLspLearnedSuggestions.ExecuteSuggest(FStore, FIndex, OptionsFor, mArguments);
-    try
-      Result := mAnswer.ToJSON;
-    finally
-      mAnswer.Free;
-    end;
-  finally
-    mArguments.Free;
-  end;
 end;
 
 procedure TLspLearnedSuggestionsTests.SuggestsTryFinally;

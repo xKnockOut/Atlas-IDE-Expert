@@ -27,6 +27,8 @@ uses
   System.Classes,
   Atlas.Common.Diagnostics.CrashReserve;
 
+{ TCrashReserveTests }
+
 procedure TCrashReserveTests.RunsWorkInOtherThread;
 var
   mReserve: TCrashReserve;

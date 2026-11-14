@@ -283,6 +283,8 @@ begin
     TAtlasStrings.Language := mSaved;
   end;
 end;
+{ TAtlasWelcomeBoardTests }
+
 procedure TAtlasWelcomeBoardTests.WarmUpFirstUse;
 begin
   BoardPlacesSectionsInColumns;

@@ -52,6 +52,8 @@ begin
   Result.Text := 'Symbol veraltet';
 end;
 
+{ TLspDiagnosticItemsTests }
+
 procedure TLspDiagnosticItemsTests.CompilerMessageCoversIdentifier;
 var
   mItem: TJSONObject;

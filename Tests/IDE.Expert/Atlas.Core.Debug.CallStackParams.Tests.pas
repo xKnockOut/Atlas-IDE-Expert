@@ -62,6 +62,8 @@ begin
   end;
 end;
 
+{ TAtlasCallStackParamsTests }
+
 procedure TAtlasCallStackParamsTests.SplitsTopLevelCommasOnly;
 var
   mArgs: TArray<string>;

@@ -202,19 +202,6 @@ end;
 
 { TLspRenameTests }
 
-procedure TLspRenameTests.Setup;
-begin
-  FIndex := TSymbolIndex.Create;
-  FIndex.AddUnit(TIndexExtractor.ExtractText(cUnitWerkzeug, cWerkzeugFile, nil));
-  FResolver := TNameResolver.Create(FIndex);
-end;
-
-procedure TLspRenameTests.TearDown;
-begin
-  FResolver.Free;
-  FIndex := nil;
-end;
-
 function TLspRenameTests.CheckAt(const AMarker: string; const AFiles: TArray<string>): TRenameCheck;
 var
   mTree: TSyntaxTree;
@@ -341,6 +328,19 @@ begin
     mTree.Free;
     mResolver.Free;
   end;
+end;
+
+procedure TLspRenameTests.Setup;
+begin
+  FIndex := TSymbolIndex.Create;
+  FIndex.AddUnit(TIndexExtractor.ExtractText(cUnitWerkzeug, cWerkzeugFile, nil));
+  FResolver := TNameResolver.Create(FIndex);
+end;
+
+procedure TLspRenameTests.TearDown;
+begin
+  FResolver.Free;
+  FIndex := nil;
 end;
 
 procedure TLspRenameTests.ValidatesNewNames;

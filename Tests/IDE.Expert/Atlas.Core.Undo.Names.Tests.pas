@@ -26,6 +26,8 @@ uses
   Atlas.Core.Undo.Contract,
   Atlas.Core.Undo.Names;
 
+{ TAtlasUndoNamesTests }
+
 procedure TAtlasUndoNamesTests.ConflictModeRoundTrip;
 var
   mMode: TAtlasUndoConflictMode;

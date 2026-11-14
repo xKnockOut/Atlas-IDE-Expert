@@ -150,6 +150,8 @@ type
     function IsCancelled: Boolean;
   end;
 
+{ TCountingCancellation }
+
 function TCountingCancellation.IsCancelled: Boolean;
 begin
   Inc(FCalls);
@@ -312,6 +314,32 @@ begin
   end;
 end;
 
+procedure TPascalParserTests.ParsesTypeArgsBeforeIdentifier;
+var
+  mTree: TSyntaxTree;
+  mProp, mTypeRef: TSyntaxNode;
+begin
+  // Im Typverweis folgt den Typargumenten auch ein Bezeichner (read, write, deprecated) (#1004).
+  mTree := TPascalParser.Parse(Lines(['unit U;', 'interface', 'type',
+    '  TKarte = class',
+    '    property Liste: TList<Integer> read FListe write FListe;',
+    '    property Tabelle: TDictionary<string, TList<Integer>> read FTabelle;',
+    '  end;',
+    'implementation',
+    'end.']));
+  try
+    AssertNoDiagnostics(mTree);
+    mProp := FindFirst(mTree.Root, TSyntaxKind.PropertyDecl);
+    mTypeRef := mProp.FindChild(TSyntaxKind.TypeReference);
+    Assert.AreEqual('TList', mTypeRef.Name);
+    Assert.IsNotNull(mTypeRef.FindChild(TSyntaxKind.GenericArgs));
+    Assert.AreEqual(2, CountKind(mTree.Root, TSyntaxKind.PropertyDecl));
+    Assert.AreEqual(3, CountKind(mTree.Root, TSyntaxKind.GenericArgs));
+  finally
+    mTree.Free;
+  end;
+end;
+
 procedure TPascalParserTests.ParsesHelperWithAncestor;
 var
   mTree: TSyntaxTree;
@@ -353,32 +381,6 @@ begin
     Assert.AreEqual(2, Integer(mCall.ChildCount));
     Assert.AreEqual('File', mCall[1].Name);
     Assert.AreEqual<TSyntaxKind>(TSyntaxKind.Identifier, mCall[1].Kind);
-  finally
-    mTree.Free;
-  end;
-end;
-
-procedure TPascalParserTests.ParsesTypeArgsBeforeIdentifier;
-var
-  mTree: TSyntaxTree;
-  mProp, mTypeRef: TSyntaxNode;
-begin
-  // Im Typverweis folgt den Typargumenten auch ein Bezeichner (read, write, deprecated) (#1004).
-  mTree := TPascalParser.Parse(Lines(['unit U;', 'interface', 'type',
-    '  TKarte = class',
-    '    property Liste: TList<Integer> read FListe write FListe;',
-    '    property Tabelle: TDictionary<string, TList<Integer>> read FTabelle;',
-    '  end;',
-    'implementation',
-    'end.']));
-  try
-    AssertNoDiagnostics(mTree);
-    mProp := FindFirst(mTree.Root, TSyntaxKind.PropertyDecl);
-    mTypeRef := mProp.FindChild(TSyntaxKind.TypeReference);
-    Assert.AreEqual('TList', mTypeRef.Name);
-    Assert.IsNotNull(mTypeRef.FindChild(TSyntaxKind.GenericArgs));
-    Assert.AreEqual(2, CountKind(mTree.Root, TSyntaxKind.PropertyDecl));
-    Assert.AreEqual(3, CountKind(mTree.Root, TSyntaxKind.GenericArgs));
   finally
     mTree.Free;
   end;
@@ -455,26 +457,6 @@ begin
   end;
 end;
 
-procedure TPascalParserTests.KeepsEmptyThenBeforeElse;
-var
-  mTree: TSyntaxTree;
-  mNode: TSyntaxNode;
-begin
-  // if A then else B: Der then-Zweig ist leer, B gehört ins else (#656).
-  mTree := TPascalParser.Parse(Lines(['program P;', 'begin', '  if A then else B;', '  if C then ;', 'end.']));
-  try
-    AssertNoDiagnostics(mTree);
-    mNode := FindFirst(mTree.Root, TSyntaxKind.IfStatement);
-    Assert.AreEqual(3, mNode.ChildCount);
-    Assert.AreEqual(Ord(TSyntaxKind.EmptyStatement), Ord(mNode[1].Kind));
-    Assert.AreEqual(Ord(TSyntaxKind.CallStatement), Ord(mNode[2].Kind));
-    // Ohne else bleibt es bei Bedingung allein.
-    Assert.AreEqual(1, mNode.Parent[1].ChildCount);
-  finally
-    mTree.Free;
-  end;
-end;
-
 procedure TPascalParserTests.ParsesStatements;
 var
   mTree: TSyntaxTree;
@@ -509,6 +491,26 @@ begin
     Assert.AreEqual(Ord(TSyntaxKind.RangeExpr), Ord(mItem[0].Kind));
     Assert.AreEqual(2, mItem[0].ChildCount);
     Assert.AreEqual(Ord(TSyntaxKind.Literal), Ord(mItem[1].Kind));
+  finally
+    mTree.Free;
+  end;
+end;
+
+procedure TPascalParserTests.KeepsEmptyThenBeforeElse;
+var
+  mTree: TSyntaxTree;
+  mNode: TSyntaxNode;
+begin
+  // if A then else B: Der then-Zweig ist leer, B gehört ins else (#656).
+  mTree := TPascalParser.Parse(Lines(['program P;', 'begin', '  if A then else B;', '  if C then ;', 'end.']));
+  try
+    AssertNoDiagnostics(mTree);
+    mNode := FindFirst(mTree.Root, TSyntaxKind.IfStatement);
+    Assert.AreEqual(3, mNode.ChildCount);
+    Assert.AreEqual(Ord(TSyntaxKind.EmptyStatement), Ord(mNode[1].Kind));
+    Assert.AreEqual(Ord(TSyntaxKind.CallStatement), Ord(mNode[2].Kind));
+    // Ohne else bleibt es bei Bedingung allein.
+    Assert.AreEqual(1, mNode.Parent[1].ChildCount);
   finally
     mTree.Free;
   end;

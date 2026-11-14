@@ -153,6 +153,8 @@ begin
   end;
 end;
 
+{ TInlineAccessorTests }
+
 procedure TInlineAccessorTests.DetectsTrivialGetterAndSetter;
 var
   mLayout: TClassLayout;

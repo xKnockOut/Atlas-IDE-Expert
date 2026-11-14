@@ -173,31 +173,6 @@ const
 
 { TCompletionTypeGuardsTests }
 
-procedure TCompletionTypeGuardsTests.Setup;
-begin
-  FIndex := TSymbolIndex.Create;
-  FStore := TDocumentStore.Create;
-  FSettings := TCompletionSettings.Default;
-  FId := 0;
-  FCompletion := TLspCompletion.Create(FStore, FIndex);
-  FCompletion.Hooks.SettingsFor :=
-    function(const AUri: string): TCompletionSettings
-    begin
-      Result := FSettings;
-    end;
-  FDispatcher := TJsonRpcDispatcher.Create;
-  FCompletion.Attach(FDispatcher);
-  FIndex.AddUnit(TIndexExtractor.ExtractText(cUnitTypen, 'C:\P\Typen.pas', nil));
-end;
-
-procedure TCompletionTypeGuardsTests.TearDown;
-begin
-  FDispatcher.Free;
-  FCompletion.Free;
-  FStore := nil;
-  FIndex := nil;
-end;
-
 function TCompletionTypeGuardsTests.Complete(const AText: string): TJSONObject;
 var
   mMarker, mIndex, mLine, mLineStart: Integer;
@@ -253,6 +228,31 @@ begin
   finally
     mTree.Free;
   end;
+end;
+
+procedure TCompletionTypeGuardsTests.Setup;
+begin
+  FIndex := TSymbolIndex.Create;
+  FStore := TDocumentStore.Create;
+  FSettings := TCompletionSettings.Default;
+  FId := 0;
+  FCompletion := TLspCompletion.Create(FStore, FIndex);
+  FCompletion.Hooks.SettingsFor :=
+    function(const AUri: string): TCompletionSettings
+    begin
+      Result := FSettings;
+    end;
+  FDispatcher := TJsonRpcDispatcher.Create;
+  FCompletion.Attach(FDispatcher);
+  FIndex.AddUnit(TIndexExtractor.ExtractText(cUnitTypen, 'C:\P\Typen.pas', nil));
+end;
+
+procedure TCompletionTypeGuardsTests.TearDown;
+begin
+  FDispatcher.Free;
+  FCompletion.Free;
+  FStore := nil;
+  FIndex := nil;
 end;
 
 procedure TCompletionTypeGuardsTests.ThenBranchNarrows;

@@ -42,6 +42,8 @@ uses
   Atlas.Common.Pascal.Lexer,
   Atlas.Common.Rules.Builtin.Expressions.Tokens;
 
+{ TExpressionTokensTests }
+
 function TExpressionTokensTests.IndexOfText(const AText: string): Integer;
 var
   mIndex: Integer;

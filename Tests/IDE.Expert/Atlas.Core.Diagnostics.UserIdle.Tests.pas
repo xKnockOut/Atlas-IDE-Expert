@@ -24,6 +24,8 @@ implementation
 uses
   Atlas.Core.Diagnostics.UserIdle;
 
+{ TAtlasUserIdleTests }
+
 procedure TAtlasUserIdleTests.ElapsedWithoutWrap;
 begin
   Assert.AreEqual(Cardinal(0), TAtlasUserIdle.Elapsed(500, 500));

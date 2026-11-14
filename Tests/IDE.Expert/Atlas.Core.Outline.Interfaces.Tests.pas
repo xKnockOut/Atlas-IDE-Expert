@@ -100,6 +100,8 @@ begin
   Result := -1;
 end;
 
+{ TAtlasOutlineInterfacesTests }
+
 procedure TAtlasOutlineInterfacesTests.ReadsAnswer;
 var
   mMethods: TAtlasInterfaceMethods;

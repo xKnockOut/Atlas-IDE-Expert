@@ -48,6 +48,8 @@ begin
   Result.AddPair('message', AMessage);
 end;
 
+{ TCompactJsonTests }
+
 procedure TCompactJsonTests.RoundTripKeepsDiagnostics;
 var
   mItems, mBack: TJSONArray;

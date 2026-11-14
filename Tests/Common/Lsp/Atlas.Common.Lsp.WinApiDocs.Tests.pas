@@ -32,6 +32,8 @@ uses
   System.StrUtils,
   Atlas.Common.Lsp.WinApiDocs;
 
+{ TWinApiDocsTests }
+
 procedure TWinApiDocsTests.WinApiUnitsRecognized;
 begin
   Assert.IsTrue(TWinApiDocs.IsWinApiUnit('Winapi.Windows'));

@@ -61,6 +61,8 @@ type
     procedure ProjectFinished(const AProject: TAtlasCompileProject; ASucceeded: Boolean; ADurationMs: Int64); override;
   end;
 
+{ TRecorder }
+
 procedure TRecorder.GroupStarted(AKind: TAtlasCompileKind);
 begin
   Trace := Trace + 'G+' + TAtlasCompileEvents.KindText(AKind) + ' ';
@@ -69,11 +71,6 @@ end;
 procedure TRecorder.GroupFinished(ASucceeded: Boolean; ADurationMs: Int64);
 begin
   Trace := Trace + Format('G-%s/%d ', [BoolToStr(ASucceeded, True), ADurationMs]);
-end;
-
-procedure TRecorder.CompileCancelled(const AProject: TAtlasCompileProject; const AReason: string);
-begin
-  Trace := Trace + 'X(' + AReason + ') ';
 end;
 
 function TRecorder.CancelCompile(const AProject: TAtlasCompileProject; out AReason: string): Boolean;
@@ -94,6 +91,11 @@ begin
   end;
   Result := Cancel;
   AReason := 'Hinweise vorhanden';
+end;
+
+procedure TRecorder.CompileCancelled(const AProject: TAtlasCompileProject; const AReason: string);
+begin
+  Trace := Trace + 'X(' + AReason + ') ';
 end;
 
 procedure TRecorder.ProjectStarted(const AProject: TAtlasCompileProject);
@@ -139,6 +141,24 @@ begin
   Result.Configuration := 'Debug';
   Result.Platform := 'Win64';
 end;
+
+type
+  /// <summary>Meldet beim Gruppenstart AVictim ab.</summary>
+  TRemover = class(TAtlasCompileParticipant)
+  public
+    Events: TAtlasCompileEvents;
+    Victim: TAtlasCompileParticipant;
+    procedure GroupStarted(AKind: TAtlasCompileKind); override;
+  end;
+
+  /// <summary>Meldet seine Freigabe.</summary>
+  TFreeRecorder = class(TRecorder)
+  public
+    Freed: PBoolean;
+    destructor Destroy; override;
+  end;
+
+{ TAtlasCompileEventsTests }
 
 procedure TAtlasCompileEventsTests.ProjectOnceWithDurationAndNotifications;
 var
@@ -187,28 +207,6 @@ begin
   finally
     mEvents.Free;
     // Globaler Text darf den Leck-Monitor nicht über Testgrenzen täuschen.
-    Sent := '';
-  end;
-end;
-
-procedure TAtlasCompileEventsTests.CompilingIgnoresBackgroundChecks;
-var
-  mEvents: TAtlasCompileEvents;
-begin
-  mEvents := MakeEvents;
-  try
-    Assert.IsFalse(mEvents.Compiling, 'vor dem Lauf');
-    mEvents.Background := True;
-    mEvents.ProjectStarted(Project('C:\P\A.dproj'));
-    Assert.IsFalse(mEvents.Compiling, 'Hintergrundprüfung zählt nicht');
-    mEvents.ProjectFinished('C:\P\A.dproj', True);
-    mEvents.Background := False;
-    mEvents.ProjectStarted(Project('C:\P\B.dproj'));
-    Assert.IsTrue(mEvents.Compiling, 'Build des Benutzers');
-    mEvents.ProjectFinished('C:\P\B.dproj', True);
-    Assert.IsFalse(mEvents.Compiling, 'nach dem Lauf');
-  finally
-    mEvents.Free;
     Sent := '';
   end;
 end;
@@ -347,36 +345,6 @@ begin
   end;
 end;
 
-type
-  /// <summary>Meldet beim Gruppenstart AVictim ab.</summary>
-  TRemover = class(TAtlasCompileParticipant)
-  public
-    Events: TAtlasCompileEvents;
-    Victim: TAtlasCompileParticipant;
-    procedure GroupStarted(AKind: TAtlasCompileKind); override;
-  end;
-
-  /// <summary>Meldet seine Freigabe.</summary>
-  TFreeRecorder = class(TRecorder)
-  public
-    Freed: PBoolean;
-    destructor Destroy; override;
-  end;
-
-procedure TRemover.GroupStarted(AKind: TAtlasCompileKind);
-begin
-  Events.Remove(Victim);
-end;
-
-destructor TFreeRecorder.Destroy;
-begin
-  if Freed <> nil then
-  begin
-    Freed^ := True;
-  end;
-  inherited;
-end;
-
 procedure TAtlasCompileEventsTests.RemovedParticipantHearsNothing;
 var
   mEvents: TAtlasCompileEvents;
@@ -401,6 +369,24 @@ begin
     mEvents.Free;
     Sent := '';
   end;
+end;
+
+{ TRemover }
+
+procedure TRemover.GroupStarted(AKind: TAtlasCompileKind);
+begin
+  Events.Remove(Victim);
+end;
+
+{ TFreeRecorder }
+
+destructor TFreeRecorder.Destroy;
+begin
+  if Freed <> nil then
+  begin
+    Freed^ := True;
+  end;
+  inherited;
 end;
 
 procedure TAtlasCompileEventsTests.RemoveDuringDispatch;
@@ -429,6 +415,28 @@ begin
     mRemover.Victim := nil;
     mEvents.GroupStarted(TAtlasCompileKind.Make);
     Assert.AreEqual('G+build G+make ', mLast.Trace);
+  finally
+    mEvents.Free;
+    Sent := '';
+  end;
+end;
+
+procedure TAtlasCompileEventsTests.CompilingIgnoresBackgroundChecks;
+var
+  mEvents: TAtlasCompileEvents;
+begin
+  mEvents := MakeEvents;
+  try
+    Assert.IsFalse(mEvents.Compiling, 'vor dem Lauf');
+    mEvents.Background := True;
+    mEvents.ProjectStarted(Project('C:\P\A.dproj'));
+    Assert.IsFalse(mEvents.Compiling, 'Hintergrundprüfung zählt nicht');
+    mEvents.ProjectFinished('C:\P\A.dproj', True);
+    mEvents.Background := False;
+    mEvents.ProjectStarted(Project('C:\P\B.dproj'));
+    Assert.IsTrue(mEvents.Compiling, 'Build des Benutzers');
+    mEvents.ProjectFinished('C:\P\B.dproj', True);
+    Assert.IsFalse(mEvents.Compiling, 'nach dem Lauf');
   finally
     mEvents.Free;
     Sent := '';

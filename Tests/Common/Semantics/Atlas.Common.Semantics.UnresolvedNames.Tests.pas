@@ -111,19 +111,7 @@ const
     'end;'#10 +
     'end.';
 
-procedure TUnresolvedNamesTests.Setup;
-begin
-  FIndex := TSymbolIndex.Create;
-  FIndex.AddUnit(TIndexExtractor.ExtractText(cUnitSystem, 'C:\Lib\System.pas', nil));
-  FIndex.AddUnit(TIndexExtractor.ExtractText(cUnitBasis, 'C:\P\Basis.pas', nil));
-  FResolver := TNameResolver.Create(FIndex);
-end;
-
-procedure TUnresolvedNamesTests.TearDown;
-begin
-  FResolver.Free;
-  FIndex := nil;
-end;
+{ TUnresolvedNamesTests }
 
 function TUnresolvedNamesTests.Names(const AText: string): string;
 var
@@ -159,6 +147,20 @@ begin
   end;
 end;
 
+procedure TUnresolvedNamesTests.Setup;
+begin
+  FIndex := TSymbolIndex.Create;
+  FIndex.AddUnit(TIndexExtractor.ExtractText(cUnitSystem, 'C:\Lib\System.pas', nil));
+  FIndex.AddUnit(TIndexExtractor.ExtractText(cUnitBasis, 'C:\P\Basis.pas', nil));
+  FResolver := TNameResolver.Create(FIndex);
+end;
+
+procedure TUnresolvedNamesTests.TearDown;
+begin
+  FResolver.Free;
+  FIndex := nil;
+end;
+
 /// <summary>Unit mit object-Typ wie in den Fällen Cm.E2601/Cm.E2602; ABody steht in der Routine Fall.</summary>
 function ObjectUnit(const ABody: string): string;
 begin
@@ -167,6 +169,356 @@ begin
     '  PZahl = ^Integer;'#10'implementation'#10'constructor TAltObjekt.Init;'#10'begin'#10'end;'#10 +
     'destructor TAltObjekt.Done;'#10'begin'#10'end;'#10'procedure Fall;'#10'var'#10'  mObjekt: PAltObjekt;'#10 +
     '  mZahl: PZahl;'#10'begin'#10 + ABody + 'end;'#10'end.';
+end;
+
+procedure TUnresolvedNamesTests.ReportsUnknownName;
+begin
+  Assert.AreEqual('Unbekannt@5:2;', Names(
+    'unit Haupt;'#10 +
+    'interface'#10 +
+    'implementation'#10 +
+    'procedure P;'#10 +
+    'begin'#10 +
+    '  Unbekannt(1);'#10 +
+    'end;'#10 +
+    'end.'));
+end;
+
+procedure TUnresolvedNamesTests.KnowsLocalsUsesAndIntrinsics;
+begin
+  Assert.AreEqual('', Names(
+    'unit Haupt;'#10 +
+    'interface'#10 +
+    'implementation'#10 +
+    'uses Basis;'#10 +
+    'function P(A: Integer): Integer;'#10 +
+    'var'#10 +
+    '  B: Integer;'#10 +
+    'begin'#10 +
+    '  B := A;'#10 +
+    '  Inc(B);'#10 +
+    '  Melde(Length(''x'') + B);'#10 +
+    '  Result := B;'#10 +
+    'end;'#10 +
+    'end.'));
+end;
+
+procedure TUnresolvedNamesTests.KnowsCompilerVersion;
+begin
+  Assert.AreEqual('', Names(
+    'unit Haupt;'#10 +
+    'interface'#10 +
+    'implementation'#10 +
+    'function Version: Double;'#10 +
+    'begin'#10 +
+    '  Result := CompilerVersion;'#10 +
+    'end;'#10 +
+    'end.'));
+end;
+
+procedure TUnresolvedNamesTests.KnowsFloatMathOnRecordParameters;
+begin
+  FIndex.AddUnit(TIndexExtractor.ExtractText(
+    'unit Mathe;'#10 +
+    'interface'#10 +
+    'function Power(const ABase, AExponent: Double): Double; overload;'#10 +
+    'function DegToRad(const ADegrees: Double): Double; inline;'#10 +
+    'implementation'#10 +
+    'end.', 'C:\Lib\Mathe.pas', nil));
+  Assert.AreEqual('', Names(
+    'unit Haupt;'#10 +
+    'interface'#10 +
+    'type'#10 +
+    '  TLab = record'#10 +
+    '    L, A, B: Double;'#10 +
+    '  end;'#10 +
+    '  TFarbe = class'#10 +
+    '    class function Abstand(const A, B: TLab): Double; static;'#10 +
+    '  end;'#10 +
+    'implementation'#10 +
+    'uses Mathe;'#10 +
+    'class function TFarbe.Abstand(const A, B: TLab): Double;'#10 +
+    'var'#10 +
+    '  mC: Double;'#10 +
+    'begin'#10 +
+    '  mC := Sqrt(Sqr(A.A) + Sqr(A.B)) + Sqrt(Power(B.A, 7));'#10 +
+    '  Result := Abs(B.L - A.L) + mC * Sin(DegToRad(A.B)) + Cos(DegToRad(B.B)) + Exp(-Sqr(A.L / 25));'#10 +
+    'end;'#10 +
+    'end.'));
+end;
+
+procedure TUnresolvedNamesTests.KnowsForInVariableInBlock;
+begin
+  // #1239: for var X in … do begin … end; die Variable gilt im ganzen Rumpf.
+  Assert.AreEqual('', Names(
+    'unit Haupt;'#10 +
+    'interface'#10 +
+    'implementation'#10 +
+    'procedure P(const AWerte: TArray<string>);'#10 +
+    'begin'#10 +
+    '  for var mKunde in AWerte do'#10 +
+    '  begin'#10 +
+    '    Writeln(mKunde);'#10 +
+    '  end;'#10 +
+    'end;'#10 +
+    'end.'));
+end;
+
+procedure TUnresolvedNamesTests.SkipsWithAndExceptionVariables;
+begin
+  Assert.AreEqual('', Names(
+    'unit Haupt;'#10 +
+    'interface'#10 +
+    'implementation'#10 +
+    'procedure P(O: TObject);'#10 +
+    'begin'#10 +
+    '  with O do'#10 +
+    '    Feld := 1;'#10 +
+    '  try'#10 +
+    '  except'#10 +
+    '    on E: Exception do'#10 +
+    '      raise E;'#10 +
+    '  end;'#10 +
+    'end;'#10 +
+    'end.'));
+end;
+
+procedure TUnresolvedNamesTests.KnowsTypeParametersInGenericMethodBodies;
+begin
+  Assert.AreEqual('', Names(
+    'unit Haupt;'#10 +
+    'interface'#10 +
+    'type'#10 +
+    '  IComparer<T> = interface'#10 +
+    '    function Compare(const Left, Right: T): Integer;'#10 +
+    '  end;'#10 +
+    '  TComparer<T> = class(TObject, IComparer<T>)'#10 +
+    '  protected'#10 +
+    '    class function TryUseRecEqualityOperator: Pointer;'#10 +
+    '    class function _Default: Pointer;'#10 +
+    '  public'#10 +
+    '    function Compare(const Left, Right: T): Integer; virtual; abstract;'#10 +
+    '  end;'#10 +
+    '  TPaar<TKey, TValue> = class'#10 +
+    '    procedure Lauf;'#10 +
+    '  end;'#10 +
+    'implementation'#10 +
+    'class function TComparer<T>.TryUseRecEqualityOperator: Pointer;'#10 +
+    'var'#10 +
+    '  pEQ: Pointer;'#10 +
+    'begin'#10 +
+    '  pEQ := TypeInfo(T);'#10 +
+    '  if pEQ <> nil then'#10 +
+    '    Result := Pointer(SizeOf(T))'#10 +
+    '  else'#10 +
+    '    Result := nil;'#10 +
+    'end;'#10 +
+    'class function TComparer<T>._Default: Pointer;'#10 +
+    'begin'#10 +
+    '  if (GetTypeKind(T) = GetTypeKind(Integer)) and (TypeInfo(T) <> nil) then'#10 +
+    '    Exit(TryUseRecEqualityOperator);'#10 +
+    '  Result := Pointer(SizeOf(T));'#10 +
+    'end;'#10 +
+    'procedure TPaar<TKey, TValue>.Lauf;'#10 +
+    'var'#10 +
+    '  mSchluessel: TKey;'#10 +
+    'begin'#10 +
+    '  mSchluessel := Default(TKey);'#10 +
+    '  if SizeOf(TValue) = SizeOf(TKey) then'#10 +
+    '    mSchluessel := TKey(nil);'#10 +
+    'end;'#10 +
+    'end.'));
+  // Ein Name, der kein Typparameter ist, bleibt unbekannt.
+  Assert.AreEqual('U@9:19;', Names(
+    'unit Haupt;'#10 +
+    'interface'#10 +
+    'type'#10 +
+    '  TBox<T> = class'#10 +
+    '    class function Groesse: Integer;'#10 +
+    '  end;'#10 +
+    'implementation'#10 +
+    'class function TBox<T>.Groesse: Integer;'#10 +
+    'begin'#10 +
+    '  Result := SizeOf(U);'#10 +
+    'end;'#10 +
+    'end.'));
+end;
+
+procedure TUnresolvedNamesTests.NeedsSystemUnit;
+var
+  mEmpty: ISymbolIndex;
+begin
+  Assert.IsTrue(TUnresolvedNames.Available(FIndex));
+  mEmpty := TSymbolIndex.Create;
+  Assert.IsFalse(TUnresolvedNames.Available(mEmpty));
+  Assert.IsTrue(TUnresolvedNames.IsIntrinsic('writeln'));
+  // Aus TSystemIntrinsics (#880), früher als „nicht deklariert“ gemeldet.
+  Assert.IsTrue(TUnresolvedNames.IsIntrinsic('Sqr'));
+  Assert.IsTrue(TUnresolvedNames.IsIntrinsic('Pi'));
+  Assert.IsFalse(TUnresolvedNames.IsIntrinsic('GibtEsNicht'));
+end;
+
+procedure TUnresolvedNamesTests.RuleReportsInEditorOnlyWithIndex;
+const
+  cText =
+    'unit Haupt;'#10 +
+    'interface'#10 +
+    'implementation'#10 +
+    'procedure P;'#10 +
+    'begin'#10 +
+    '  fdsfds.Create;'#10 +
+    'end;'#10 +
+    'end.';
+var
+  mRegistry: TRuleRegistry;
+  mContext: TRuleContext;
+  mTree: TSyntaxTree;
+  mFindings: TArray<TRuleFinding>;
+begin
+  mRegistry := TRuleRegistry.Create;
+  mTree := TPascalParser.Parse(cText);
+  try
+    RegisterUnresolvedRules(mRegistry);
+    mContext := Default(TRuleContext);
+    mContext.RelativePath := 'Haupt.pas';
+    mContext.Text := cText;
+    mContext.Tree := mTree;
+    // Ohne Index (Linter): keine Aussage.
+    mFindings := TRuleEngine.Run(mRegistry.Rules, TServerSettings.Default, mContext);
+    Assert.AreEqual(0, Integer(Length(mFindings)));
+    mContext.Index := FIndex;
+    mFindings := TRuleEngine.Run(mRegistry.Rules, TServerSettings.Default, mContext);
+    Assert.AreEqual(1, Integer(Length(mFindings)));
+    Assert.AreEqual('unresolved-identifier', mFindings[0].RuleId);
+    Assert.AreEqual(5, mFindings[0].Range.StartPos.Line);
+    Assert.Contains(mFindings[0].Message, 'fdsfds');
+  finally
+    mTree.Free;
+    mRegistry.Free;
+  end;
+end;
+
+procedure TUnresolvedNamesTests.KnowsCastsUnitPrefixesAndNestedTypes;
+begin
+  // Fehlalarme aus der Problemliste zu Atlas selbst (#647).
+  FIndex.AddUnit(TIndexExtractor.ExtractText(
+    'unit Werk.Hilfe;'#10 +
+    'interface'#10 +
+    'procedure Hilf;'#10 +
+    'implementation'#10 +
+    'procedure Hilf;'#10 +
+    'begin'#10 +
+    'end;'#10 +
+    'end.', 'C:\P\Werk.Hilfe.pas', nil));
+  Assert.AreEqual('', Names(
+    'unit Haupt;'#10 +
+    'interface'#10 +
+    'type'#10 +
+    '  TAussen = class'#10 +
+    '  type'#10 +
+    '    TInnen = class'#10 +
+    '    private'#10 +
+    '      FWert: Integer;'#10 +
+    '      procedure Lauf;'#10 +
+    '    end;'#10 +
+    '  end;'#10 +
+    'implementation'#10 +
+    'uses Werk.Hilfe;'#10 +
+    'procedure TAussen.TInnen.Lauf;'#10 +
+    'var'#10 +
+    '  P: PChar;'#10 +
+    'begin'#10 +
+    '  FWert := Integer(MaxInt);'#10 +
+    '  P := PChar(''x'');'#10 +
+    '  AtomicIncrement(FWert);'#10 +
+    '  Werk.Hilfe.Hilf;'#10 +
+    'end;'#10 +
+    'end.'));
+end;
+
+procedure TUnresolvedNamesTests.KnowsMembersOfStrictNestedTypes;
+begin
+  // Der Kopf TAussen.TInnen.Lauf wurde mit den Sichtbarkeitsregeln des Rumpfs aufgelöst;
+  // für TInnen in strict private fragte IsVisible nach der Klasse der Methode, die gerade ermittelt wurde,
+  // und die Rekursion lief bis zum Stapelüberlauf. Jetzt gilt der Pfad im Kopf unabhängig von der
+  // Sichtbarkeit, und die strict-Mitglieder sind im eigenen Rumpf bekannt.
+  Assert.AreEqual('', Names(
+    'unit Haupt;'#10 +
+    'interface'#10 +
+    'type'#10 +
+    '  TAussen = class'#10 +
+    '  strict private'#10 +
+    '    type'#10 +
+    '      TInnen = class'#10 +
+    '      strict private'#10 +
+    '        FWert: Integer;'#10 +
+    '        procedure Lauf;'#10 +
+    '      end;'#10 +
+    '  strict protected'#10 +
+    '    type'#10 +
+    '      TGeschuetzt = class'#10 +
+    '      strict protected'#10 +
+    '        FZahl: Integer;'#10 +
+    '        procedure Zaehle;'#10 +
+    '      end;'#10 +
+    '  end;'#10 +
+    'implementation'#10 +
+    'procedure TAussen.TInnen.Lauf;'#10 +
+    'begin'#10 +
+    '  FWert := 1;'#10 +
+    '  Lauf;'#10 +
+    'end;'#10 +
+    'procedure TAussen.TGeschuetzt.Zaehle;'#10 +
+    'begin'#10 +
+    '  FZahl := FZahl + 1;'#10 +
+    'end;'#10 +
+    'end.'));
+end;
+
+procedure TUnresolvedNamesTests.SkipsNamesWithUnknownAncestor;
+const
+  cText =
+    'unit Haupt;'#10 +
+    'interface'#10 +
+    'type'#10 +
+    '  TFenster = class(TFremd)'#10 +
+    '    procedure Male;'#10 +
+    '  end;'#10 +
+    '  TEigen = class'#10 +
+    '    procedure Male;'#10 +
+    '  end;'#10 +
+    'implementation'#10 +
+    'uses Basis;'#10 +
+    'procedure TFenster.Male;'#10 +
+    'begin'#10 +
+    '  Melde(ClientWidth);'#10 +
+    'end;'#10 +
+    'procedure TEigen.Male;'#10 +
+    'begin'#10 +
+    '  Melde(ClientWidth);'#10 +
+    'end;'#10 +
+    'end.';
+begin
+  // TFremd steht nicht im Index: ClientWidth kann geerbt sein (#647). In TEigen ist es sicher unbekannt.
+  Assert.AreEqual('ClientWidth@17:8;', Names(cText));
+end;
+
+procedure TUnresolvedNamesTests.UsesKnownNeedsEveryUnit;
+var
+  mAsked: string;
+begin
+  // Für unresolved-attribute und xmldoc-mismatch (#979): auch über Namespaces und nachgeladene Units.
+  Assert.IsTrue(TUnresolvedNames.UsesKnown(FIndex, ['System', 'Basis'], nil, nil));
+  Assert.IsFalse(TUnresolvedNames.UsesKnown(FIndex, ['Basis', 'Fremd'], nil, nil));
+  Assert.IsTrue(TUnresolvedNames.UsesKnown(FIndex, ['Fremd'], nil,
+    function(const AUnitName: string): Boolean
+    begin
+      mAsked := AUnitName;
+      Result := True;
+    end));
+  Assert.AreEqual('Fremd', mAsked);
+  Assert.IsFalse(TUnresolvedNames.UsesKnown(FIndex, ['Lib'], ['Fremd'], nil));
+  mAsked := '';
 end;
 
 procedure TUnresolvedNamesTests.AncestorThroughAlias;
@@ -292,356 +644,6 @@ begin
     mTree.Free;
     mFound := nil;
   end;
-end;
-
-procedure TUnresolvedNamesTests.RuleReportsInEditorOnlyWithIndex;
-const
-  cText =
-    'unit Haupt;'#10 +
-    'interface'#10 +
-    'implementation'#10 +
-    'procedure P;'#10 +
-    'begin'#10 +
-    '  fdsfds.Create;'#10 +
-    'end;'#10 +
-    'end.';
-var
-  mRegistry: TRuleRegistry;
-  mContext: TRuleContext;
-  mTree: TSyntaxTree;
-  mFindings: TArray<TRuleFinding>;
-begin
-  mRegistry := TRuleRegistry.Create;
-  mTree := TPascalParser.Parse(cText);
-  try
-    RegisterUnresolvedRules(mRegistry);
-    mContext := Default(TRuleContext);
-    mContext.RelativePath := 'Haupt.pas';
-    mContext.Text := cText;
-    mContext.Tree := mTree;
-    // Ohne Index (Linter): keine Aussage.
-    mFindings := TRuleEngine.Run(mRegistry.Rules, TServerSettings.Default, mContext);
-    Assert.AreEqual(0, Integer(Length(mFindings)));
-    mContext.Index := FIndex;
-    mFindings := TRuleEngine.Run(mRegistry.Rules, TServerSettings.Default, mContext);
-    Assert.AreEqual(1, Integer(Length(mFindings)));
-    Assert.AreEqual('unresolved-identifier', mFindings[0].RuleId);
-    Assert.AreEqual(5, mFindings[0].Range.StartPos.Line);
-    Assert.Contains(mFindings[0].Message, 'fdsfds');
-  finally
-    mTree.Free;
-    mRegistry.Free;
-  end;
-end;
-
-procedure TUnresolvedNamesTests.KnowsCompilerVersion;
-begin
-  Assert.AreEqual('', Names(
-    'unit Haupt;'#10 +
-    'interface'#10 +
-    'implementation'#10 +
-    'function Version: Double;'#10 +
-    'begin'#10 +
-    '  Result := CompilerVersion;'#10 +
-    'end;'#10 +
-    'end.'));
-end;
-
-procedure TUnresolvedNamesTests.KnowsFloatMathOnRecordParameters;
-begin
-  FIndex.AddUnit(TIndexExtractor.ExtractText(
-    'unit Mathe;'#10 +
-    'interface'#10 +
-    'function Power(const ABase, AExponent: Double): Double; overload;'#10 +
-    'function DegToRad(const ADegrees: Double): Double; inline;'#10 +
-    'implementation'#10 +
-    'end.', 'C:\Lib\Mathe.pas', nil));
-  Assert.AreEqual('', Names(
-    'unit Haupt;'#10 +
-    'interface'#10 +
-    'type'#10 +
-    '  TLab = record'#10 +
-    '    L, A, B: Double;'#10 +
-    '  end;'#10 +
-    '  TFarbe = class'#10 +
-    '    class function Abstand(const A, B: TLab): Double; static;'#10 +
-    '  end;'#10 +
-    'implementation'#10 +
-    'uses Mathe;'#10 +
-    'class function TFarbe.Abstand(const A, B: TLab): Double;'#10 +
-    'var'#10 +
-    '  mC: Double;'#10 +
-    'begin'#10 +
-    '  mC := Sqrt(Sqr(A.A) + Sqr(A.B)) + Sqrt(Power(B.A, 7));'#10 +
-    '  Result := Abs(B.L - A.L) + mC * Sin(DegToRad(A.B)) + Cos(DegToRad(B.B)) + Exp(-Sqr(A.L / 25));'#10 +
-    'end;'#10 +
-    'end.'));
-end;
-
-procedure TUnresolvedNamesTests.ReportsUnknownName;
-begin
-  Assert.AreEqual('Unbekannt@5:2;', Names(
-    'unit Haupt;'#10 +
-    'interface'#10 +
-    'implementation'#10 +
-    'procedure P;'#10 +
-    'begin'#10 +
-    '  Unbekannt(1);'#10 +
-    'end;'#10 +
-    'end.'));
-end;
-
-procedure TUnresolvedNamesTests.KnowsLocalsUsesAndIntrinsics;
-begin
-  Assert.AreEqual('', Names(
-    'unit Haupt;'#10 +
-    'interface'#10 +
-    'implementation'#10 +
-    'uses Basis;'#10 +
-    'function P(A: Integer): Integer;'#10 +
-    'var'#10 +
-    '  B: Integer;'#10 +
-    'begin'#10 +
-    '  B := A;'#10 +
-    '  Inc(B);'#10 +
-    '  Melde(Length(''x'') + B);'#10 +
-    '  Result := B;'#10 +
-    'end;'#10 +
-    'end.'));
-end;
-
-procedure TUnresolvedNamesTests.KnowsForInVariableInBlock;
-begin
-  // #1239: for var X in … do begin … end; die Variable gilt im ganzen Rumpf.
-  Assert.AreEqual('', Names(
-    'unit Haupt;'#10 +
-    'interface'#10 +
-    'implementation'#10 +
-    'procedure P(const AWerte: TArray<string>);'#10 +
-    'begin'#10 +
-    '  for var mKunde in AWerte do'#10 +
-    '  begin'#10 +
-    '    Writeln(mKunde);'#10 +
-    '  end;'#10 +
-    'end;'#10 +
-    'end.'));
-end;
-
-procedure TUnresolvedNamesTests.SkipsWithAndExceptionVariables;
-begin
-  Assert.AreEqual('', Names(
-    'unit Haupt;'#10 +
-    'interface'#10 +
-    'implementation'#10 +
-    'procedure P(O: TObject);'#10 +
-    'begin'#10 +
-    '  with O do'#10 +
-    '    Feld := 1;'#10 +
-    '  try'#10 +
-    '  except'#10 +
-    '    on E: Exception do'#10 +
-    '      raise E;'#10 +
-    '  end;'#10 +
-    'end;'#10 +
-    'end.'));
-end;
-
-procedure TUnresolvedNamesTests.KnowsTypeParametersInGenericMethodBodies;
-begin
-  Assert.AreEqual('', Names(
-    'unit Haupt;'#10 +
-    'interface'#10 +
-    'type'#10 +
-    '  IComparer<T> = interface'#10 +
-    '    function Compare(const Left, Right: T): Integer;'#10 +
-    '  end;'#10 +
-    '  TComparer<T> = class(TObject, IComparer<T>)'#10 +
-    '  protected'#10 +
-    '    class function TryUseRecEqualityOperator: Pointer;'#10 +
-    '    class function _Default: Pointer;'#10 +
-    '  public'#10 +
-    '    function Compare(const Left, Right: T): Integer; virtual; abstract;'#10 +
-    '  end;'#10 +
-    '  TPaar<TKey, TValue> = class'#10 +
-    '    procedure Lauf;'#10 +
-    '  end;'#10 +
-    'implementation'#10 +
-    'class function TComparer<T>.TryUseRecEqualityOperator: Pointer;'#10 +
-    'var'#10 +
-    '  pEQ: Pointer;'#10 +
-    'begin'#10 +
-    '  pEQ := TypeInfo(T);'#10 +
-    '  if pEQ <> nil then'#10 +
-    '    Result := Pointer(SizeOf(T))'#10 +
-    '  else'#10 +
-    '    Result := nil;'#10 +
-    'end;'#10 +
-    'class function TComparer<T>._Default: Pointer;'#10 +
-    'begin'#10 +
-    '  if (GetTypeKind(T) = GetTypeKind(Integer)) and (TypeInfo(T) <> nil) then'#10 +
-    '    Exit(TryUseRecEqualityOperator);'#10 +
-    '  Result := Pointer(SizeOf(T));'#10 +
-    'end;'#10 +
-    'procedure TPaar<TKey, TValue>.Lauf;'#10 +
-    'var'#10 +
-    '  mSchluessel: TKey;'#10 +
-    'begin'#10 +
-    '  mSchluessel := Default(TKey);'#10 +
-    '  if SizeOf(TValue) = SizeOf(TKey) then'#10 +
-    '    mSchluessel := TKey(nil);'#10 +
-    'end;'#10 +
-    'end.'));
-  // Ein Name, der kein Typparameter ist, bleibt unbekannt.
-  Assert.AreEqual('U@9:19;', Names(
-    'unit Haupt;'#10 +
-    'interface'#10 +
-    'type'#10 +
-    '  TBox<T> = class'#10 +
-    '    class function Groesse: Integer;'#10 +
-    '  end;'#10 +
-    'implementation'#10 +
-    'class function TBox<T>.Groesse: Integer;'#10 +
-    'begin'#10 +
-    '  Result := SizeOf(U);'#10 +
-    'end;'#10 +
-    'end.'));
-end;
-
-procedure TUnresolvedNamesTests.KnowsCastsUnitPrefixesAndNestedTypes;
-begin
-  // Fehlalarme aus der Problemliste zu Atlas selbst (#647).
-  FIndex.AddUnit(TIndexExtractor.ExtractText(
-    'unit Werk.Hilfe;'#10 +
-    'interface'#10 +
-    'procedure Hilf;'#10 +
-    'implementation'#10 +
-    'procedure Hilf;'#10 +
-    'begin'#10 +
-    'end;'#10 +
-    'end.', 'C:\P\Werk.Hilfe.pas', nil));
-  Assert.AreEqual('', Names(
-    'unit Haupt;'#10 +
-    'interface'#10 +
-    'type'#10 +
-    '  TAussen = class'#10 +
-    '  type'#10 +
-    '    TInnen = class'#10 +
-    '    private'#10 +
-    '      FWert: Integer;'#10 +
-    '      procedure Lauf;'#10 +
-    '    end;'#10 +
-    '  end;'#10 +
-    'implementation'#10 +
-    'uses Werk.Hilfe;'#10 +
-    'procedure TAussen.TInnen.Lauf;'#10 +
-    'var'#10 +
-    '  P: PChar;'#10 +
-    'begin'#10 +
-    '  FWert := Integer(MaxInt);'#10 +
-    '  P := PChar(''x'');'#10 +
-    '  AtomicIncrement(FWert);'#10 +
-    '  Werk.Hilfe.Hilf;'#10 +
-    'end;'#10 +
-    'end.'));
-end;
-
-procedure TUnresolvedNamesTests.KnowsMembersOfStrictNestedTypes;
-begin
-  // Der Kopf TAussen.TInnen.Lauf wurde mit den Sichtbarkeitsregeln des Rumpfs aufgelöst;
-  // für TInnen in strict private fragte IsVisible nach der Klasse der Methode, die gerade ermittelt wurde,
-  // und die Rekursion lief bis zum Stapelüberlauf. Jetzt gilt der Pfad im Kopf unabhängig von der
-  // Sichtbarkeit, und die strict-Mitglieder sind im eigenen Rumpf bekannt.
-  Assert.AreEqual('', Names(
-    'unit Haupt;'#10 +
-    'interface'#10 +
-    'type'#10 +
-    '  TAussen = class'#10 +
-    '  strict private'#10 +
-    '    type'#10 +
-    '      TInnen = class'#10 +
-    '      strict private'#10 +
-    '        FWert: Integer;'#10 +
-    '        procedure Lauf;'#10 +
-    '      end;'#10 +
-    '  strict protected'#10 +
-    '    type'#10 +
-    '      TGeschuetzt = class'#10 +
-    '      strict protected'#10 +
-    '        FZahl: Integer;'#10 +
-    '        procedure Zaehle;'#10 +
-    '      end;'#10 +
-    '  end;'#10 +
-    'implementation'#10 +
-    'procedure TAussen.TInnen.Lauf;'#10 +
-    'begin'#10 +
-    '  FWert := 1;'#10 +
-    '  Lauf;'#10 +
-    'end;'#10 +
-    'procedure TAussen.TGeschuetzt.Zaehle;'#10 +
-    'begin'#10 +
-    '  FZahl := FZahl + 1;'#10 +
-    'end;'#10 +
-    'end.'));
-end;
-
-procedure TUnresolvedNamesTests.SkipsNamesWithUnknownAncestor;
-const
-  cText =
-    'unit Haupt;'#10 +
-    'interface'#10 +
-    'type'#10 +
-    '  TFenster = class(TFremd)'#10 +
-    '    procedure Male;'#10 +
-    '  end;'#10 +
-    '  TEigen = class'#10 +
-    '    procedure Male;'#10 +
-    '  end;'#10 +
-    'implementation'#10 +
-    'uses Basis;'#10 +
-    'procedure TFenster.Male;'#10 +
-    'begin'#10 +
-    '  Melde(ClientWidth);'#10 +
-    'end;'#10 +
-    'procedure TEigen.Male;'#10 +
-    'begin'#10 +
-    '  Melde(ClientWidth);'#10 +
-    'end;'#10 +
-    'end.';
-begin
-  // TFremd steht nicht im Index: ClientWidth kann geerbt sein (#647). In TEigen ist es sicher unbekannt.
-  Assert.AreEqual('ClientWidth@17:8;', Names(cText));
-end;
-
-procedure TUnresolvedNamesTests.NeedsSystemUnit;
-var
-  mEmpty: ISymbolIndex;
-begin
-  Assert.IsTrue(TUnresolvedNames.Available(FIndex));
-  mEmpty := TSymbolIndex.Create;
-  Assert.IsFalse(TUnresolvedNames.Available(mEmpty));
-  Assert.IsTrue(TUnresolvedNames.IsIntrinsic('writeln'));
-  // Aus TSystemIntrinsics (#880), früher als „nicht deklariert“ gemeldet.
-  Assert.IsTrue(TUnresolvedNames.IsIntrinsic('Sqr'));
-  Assert.IsTrue(TUnresolvedNames.IsIntrinsic('Pi'));
-  Assert.IsFalse(TUnresolvedNames.IsIntrinsic('GibtEsNicht'));
-end;
-
-procedure TUnresolvedNamesTests.UsesKnownNeedsEveryUnit;
-var
-  mAsked: string;
-begin
-  // Für unresolved-attribute und xmldoc-mismatch (#979): auch über Namespaces und nachgeladene Units.
-  Assert.IsTrue(TUnresolvedNames.UsesKnown(FIndex, ['System', 'Basis'], nil, nil));
-  Assert.IsFalse(TUnresolvedNames.UsesKnown(FIndex, ['Basis', 'Fremd'], nil, nil));
-  Assert.IsTrue(TUnresolvedNames.UsesKnown(FIndex, ['Fremd'], nil,
-    function(const AUnitName: string): Boolean
-    begin
-      mAsked := AUnitName;
-      Result := True;
-    end));
-  Assert.AreEqual('Fremd', mAsked);
-  Assert.IsFalse(TUnresolvedNames.UsesKnown(FIndex, ['Lib'], ['Fremd'], nil));
-  mAsked := '';
 end;
 
 initialization

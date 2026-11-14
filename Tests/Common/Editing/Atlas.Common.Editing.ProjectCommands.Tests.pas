@@ -303,6 +303,8 @@ begin
     AHost), AEdits);
 end;
 
+{ TProjectCommandsTests }
+
 procedure TProjectCommandsTests.DefineAddsToActiveConfiguration;
 var
   mHost: TFakeHost;
@@ -630,36 +632,6 @@ begin
   Assert.IsTrue(Pos('RegisterComponents(''Eigene'', [TZaehler2]);', mHost.WrittenFiles[0].Text) > 0);
 end;
 
-procedure TProjectCommandsTests.ComponentFollowsLineBreakAndStyle;
-var
-  mHost: TFakeHost;
-  mKeep: ISlashHost;
-  mEdits: TArray<TRuleEdit>;
-  mStyle: TFormatStyle;
-  mText, mUri: string;
-begin
-  // #299 (#121, #43): Zeilenende der Datei des Befehls und Einrückung nach dem Formatstil.
-  mHost := TFakeHost.Create;
-  mKeep := mHost;
-  mHost.Info.FileName := '';
-  mHost.Files.Remove('App.dproj');
-  mUri := TDocumentUris.FromPath(TPath.Combine(GetCurrentDir, 'Main.pas'));
-  Assert.IsTrue(TSlashCommandRegistry.Shared.AfterEnter(Format(cFormUnit, ['/component TZaehler']),
-    TTextPosition.Create(10, 0), TSlashEnvironment.Create(nil, nil, nil, '', mUri, mKeep), mEdits));
-  mText := mHost.WrittenFiles[0].Text;
-  Assert.AreEqual(0, Pos(#13, mText), 'LF wie die Datei des Befehls');
-  Assert.IsTrue(Pos(#10'  TZaehler = class(TComponent)'#10'  private'#10, mText) > 0, mText);
-  mStyle := TFormatStyle.Default;
-  mStyle.IndentSize := 4;
-  Assert.IsTrue(TSlashCommandRegistry.Shared.AfterEnter(StringReplace(Format(cFormUnit, ['/component TZaehler2']),
-    #10, #13#10, [rfReplaceAll]), TTextPosition.Create(10, 0),
-    TSlashEnvironment.Create(nil, nil, nil, '', mUri, mKeep).WithStyle(mStyle), mEdits));
-  mText := mHost.WrittenFiles[0].Text;
-  Assert.IsTrue(Pos(#13#10'    TZaehler2 = class(TComponent)'#13#10'    private'#13#10, mText) > 0, mText);
-  Assert.IsTrue(Pos(#13#10'    RegisterComponents(', mText) > 0, mText);
-  Assert.IsTrue(Parses(mText), mText);
-end;
-
 procedure TProjectCommandsTests.ComponentAncestorFromIndex;
 var
   mHost: TFakeHost;
@@ -700,6 +672,36 @@ begin
   Assert.AreEqual(0, Integer(Length(mHost.WrittenFiles)));
   mProblems := TSlashCommandRegistry.Shared.Problems(Format(cFormUnit, ['/component TA : TUnbekannt']), nil);
   Assert.AreEqual(1, Integer(Length(mProblems)));
+end;
+
+procedure TProjectCommandsTests.ComponentFollowsLineBreakAndStyle;
+var
+  mHost: TFakeHost;
+  mKeep: ISlashHost;
+  mEdits: TArray<TRuleEdit>;
+  mStyle: TFormatStyle;
+  mText, mUri: string;
+begin
+  // #299 (#121, #43): Zeilenende der Datei des Befehls und Einrückung nach dem Formatstil.
+  mHost := TFakeHost.Create;
+  mKeep := mHost;
+  mHost.Info.FileName := '';
+  mHost.Files.Remove('App.dproj');
+  mUri := TDocumentUris.FromPath(TPath.Combine(GetCurrentDir, 'Main.pas'));
+  Assert.IsTrue(TSlashCommandRegistry.Shared.AfterEnter(Format(cFormUnit, ['/component TZaehler']),
+    TTextPosition.Create(10, 0), TSlashEnvironment.Create(nil, nil, nil, '', mUri, mKeep), mEdits));
+  mText := mHost.WrittenFiles[0].Text;
+  Assert.AreEqual(0, Pos(#13, mText), 'LF wie die Datei des Befehls');
+  Assert.IsTrue(Pos(#10'  TZaehler = class(TComponent)'#10'  private'#10, mText) > 0, mText);
+  mStyle := TFormatStyle.Default;
+  mStyle.IndentSize := 4;
+  Assert.IsTrue(TSlashCommandRegistry.Shared.AfterEnter(StringReplace(Format(cFormUnit, ['/component TZaehler2']),
+    #10, #13#10, [rfReplaceAll]), TTextPosition.Create(10, 0),
+    TSlashEnvironment.Create(nil, nil, nil, '', mUri, mKeep).WithStyle(mStyle), mEdits));
+  mText := mHost.WrittenFiles[0].Text;
+  Assert.IsTrue(Pos(#13#10'    TZaehler2 = class(TComponent)'#13#10'    private'#13#10, mText) > 0, mText);
+  Assert.IsTrue(Pos(#13#10'    RegisterComponents(', mText) > 0, mText);
+  Assert.IsTrue(Parses(mText), mText);
 end;
 
 const

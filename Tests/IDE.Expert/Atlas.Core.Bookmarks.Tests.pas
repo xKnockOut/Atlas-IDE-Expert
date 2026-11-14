@@ -601,6 +601,27 @@ end;
 
 { TAtlasBookmarkStorageTests }
 
+function TAtlasBookmarkStorageTests.Project: string;
+begin
+  Result := TPath.Combine(FFolder, 'Demo.dproj');
+end;
+
+function TAtlasBookmarkStorageTests.UnitFile: string;
+begin
+  Result := TPath.Combine(TPath.Combine(FFolder, 'Source'), 'Kunde.pas');
+end;
+
+procedure TAtlasBookmarkStorageTests.WarmUpFirstUse;
+begin
+  // Gesperrte Datei: Erstgebrauch der Melde- und Fehlerpfade.
+  Setup;
+  try
+    BrokenFileSetAsideLockedFileKept;
+  finally
+    TearDown;
+  end;
+end;
+
 procedure TAtlasBookmarkStorageTests.Setup;
 begin
   FFolder := TPath.Combine(TPath.GetTempPath, 'AtlasBookmarks' + IntToStr(Random(1000000)));
@@ -615,16 +636,6 @@ begin
   end;
   // Der Leckmonitor misst den Saldo von Setup und TearDown.
   FFolder := '';
-end;
-
-function TAtlasBookmarkStorageTests.Project: string;
-begin
-  Result := TPath.Combine(FFolder, 'Demo.dproj');
-end;
-
-function TAtlasBookmarkStorageTests.UnitFile: string;
-begin
-  Result := TPath.Combine(TPath.Combine(FFolder, 'Source'), 'Kunde.pas');
 end;
 
 procedure TAtlasBookmarkStorageTests.FileForLiesNextToProject;
@@ -812,6 +823,36 @@ begin
   Assert.AreEqual(3, TAtlasBookmarks.FormatOf(TFile.ReadAllText(mFileName, TEncoding.UTF8)));
 end;
 
+procedure TAtlasBookmarkStorageTests.BrokenFileSetAsideLockedFileKept;
+var
+  mList: TAtlasBookmarkList;
+  mFileName: string;
+  mLock: TFileStream;
+begin
+  mFileName := TPath.Combine(FFolder, '.atlas-bookmarks.json');
+  WriteText(mFileName, '{"bookmarks": [');
+  Assert.IsFalse(TAtlasBookmarks.Load(Project, False, mList));
+  Assert.AreEqual(Project, mList.Project);
+  Assert.IsTrue(FileExists(mFileName + TAtlasDataFile.cDefectExtension), 'beiseitegelegt');
+  Assert.IsFalse(FileExists(mFileName));
+  mList.Add(UnitFile, Join(Code), 18, 'Rundung', 0);
+  Assert.IsTrue(TAtlasBookmarks.Save(mList, False));
+  mLock := TFileStream.Create(mFileName, fmOpenRead or fmShareExclusive);
+  try
+    Assert.IsFalse(TAtlasBookmarks.Load(Project, False, mList));
+  finally
+    mLock.Free;
+  end;
+  Assert.AreEqual(0, Integer(mList.Count));
+  Assert.AreEqual(mFileName, mList.KeptFile);
+  mList.Add(UnitFile, Join(Code), 18, 'Ersatz', 0);
+  Assert.IsFalse(TAtlasBookmarks.Save(mList, False), 'beim Laden gesperrt: nicht überschreiben');
+  Assert.Contains(TFile.ReadAllText(mFileName, TEncoding.UTF8), 'Rundung');
+  Assert.DoesNotContain(TFile.ReadAllText(mFileName, TEncoding.UTF8), 'Ersatz');
+  // Gemeldete Datendateien vergessen: Das Register bliebe sonst als Leck stehen.
+  TAtlasDataFile.ForgetReports;
+end;
+
 procedure TAtlasBookmarkStorageTests.LoadWithoutFileIsEmpty;
 var
   mList: TAtlasBookmarkList;
@@ -884,47 +925,6 @@ begin
   mList.Add(UnitFile, Join(Code), 18, 'Rundung', 0);
   Assert.IsTrue(TAtlasBookmarks.Save(mList, False), 'Speichern klappt auch ohne Git');
   Assert.IsFalse(DirectoryExists(TPath.Combine(FFolder, '.git')));
-end;
-
-procedure TAtlasBookmarkStorageTests.WarmUpFirstUse;
-begin
-  // Gesperrte Datei: Erstgebrauch der Melde- und Fehlerpfade.
-  Setup;
-  try
-    BrokenFileSetAsideLockedFileKept;
-  finally
-    TearDown;
-  end;
-end;
-
-procedure TAtlasBookmarkStorageTests.BrokenFileSetAsideLockedFileKept;
-var
-  mList: TAtlasBookmarkList;
-  mFileName: string;
-  mLock: TFileStream;
-begin
-  mFileName := TPath.Combine(FFolder, '.atlas-bookmarks.json');
-  WriteText(mFileName, '{"bookmarks": [');
-  Assert.IsFalse(TAtlasBookmarks.Load(Project, False, mList));
-  Assert.AreEqual(Project, mList.Project);
-  Assert.IsTrue(FileExists(mFileName + TAtlasDataFile.cDefectExtension), 'beiseitegelegt');
-  Assert.IsFalse(FileExists(mFileName));
-  mList.Add(UnitFile, Join(Code), 18, 'Rundung', 0);
-  Assert.IsTrue(TAtlasBookmarks.Save(mList, False));
-  mLock := TFileStream.Create(mFileName, fmOpenRead or fmShareExclusive);
-  try
-    Assert.IsFalse(TAtlasBookmarks.Load(Project, False, mList));
-  finally
-    mLock.Free;
-  end;
-  Assert.AreEqual(0, Integer(mList.Count));
-  Assert.AreEqual(mFileName, mList.KeptFile);
-  mList.Add(UnitFile, Join(Code), 18, 'Ersatz', 0);
-  Assert.IsFalse(TAtlasBookmarks.Save(mList, False), 'beim Laden gesperrt: nicht überschreiben');
-  Assert.Contains(TFile.ReadAllText(mFileName, TEncoding.UTF8), 'Rundung');
-  Assert.DoesNotContain(TFile.ReadAllText(mFileName, TEncoding.UTF8), 'Ersatz');
-  // Gemeldete Datendateien vergessen: Das Register bliebe sonst als Leck stehen.
-  TAtlasDataFile.ForgetReports;
 end;
 
 initialization

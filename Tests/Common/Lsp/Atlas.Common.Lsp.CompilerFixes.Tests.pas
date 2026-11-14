@@ -105,6 +105,8 @@ begin
   end;
 end;
 
+{ TLspCompilerFixesTests }
+
 procedure TLspCompilerFixesTests.OffersFixAndFixAll;
 begin
   Assert.AreEqual('Explizit umwandeln: string(…) (W1057) [quickfix]|' +

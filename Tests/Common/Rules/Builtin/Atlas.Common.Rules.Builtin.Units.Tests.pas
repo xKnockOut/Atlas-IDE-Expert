@@ -178,6 +178,8 @@ type
     function ReadProject(out AFileName, AText: string): Boolean;
   end;
 
+{ TFakeUnits }
+
 constructor TFakeUnits.Create(const AKnown: TArray<string>; AUnknown: Boolean);
 begin
   inherited Create;

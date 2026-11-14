@@ -47,6 +47,8 @@ begin
   Result.QuietMs := AQuietMs;
 end;
 
+{ TAtlasProblemsRefreshTests }
+
 procedure TAtlasProblemsRefreshTests.TickFollowsShortDelay;
 begin
   Assert.AreEqual(250, TAtlasProblemsRefresh.TickMs(400));

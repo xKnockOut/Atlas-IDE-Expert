@@ -162,6 +162,8 @@ begin
   end;
 end;
 
+{ TTypeAliasTests }
+
 procedure TTypeAliasTests.TitlesFromTextUnit;
 begin
   // Die Texte stehen in einer eigenen Unit (metric-unit-length); die Titel kommen weiter aus ihr.

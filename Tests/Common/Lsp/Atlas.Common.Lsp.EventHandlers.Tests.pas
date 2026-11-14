@@ -111,6 +111,23 @@ const
     'end;'#10 +                                            // 14
     'end.'#10;
 
+{ TLspEventHandlersTests }
+
+function TLspEventHandlersTests.Find(const AComponent, AEvent: string): TEventHandler;
+var
+  mItem: TEventHandler;
+begin
+  for mItem in FHandlers do
+  begin
+    if SameText(mItem.Component, AComponent) and SameText(mItem.Event, AEvent) then
+    begin
+      Exit(mItem);
+    end;
+  end;
+  Assert.Fail('nicht gefunden: ' + AComponent + '.' + AEvent);
+  Result := Default(TEventHandler);
+end;
+
 procedure TLspEventHandlersTests.Setup;
 begin
   FIndex := TSymbolIndex.Create;
@@ -142,21 +159,6 @@ begin
   FreeAndNil(FFiles);
   FIndex := nil;
   FHandlers := nil;
-end;
-
-function TLspEventHandlersTests.Find(const AComponent, AEvent: string): TEventHandler;
-var
-  mItem: TEventHandler;
-begin
-  for mItem in FHandlers do
-  begin
-    if SameText(mItem.Component, AComponent) and SameText(mItem.Event, AEvent) then
-    begin
-      Exit(mItem);
-    end;
-  end;
-  Assert.Fail('nicht gefunden: ' + AComponent + '.' + AEvent);
-  Result := Default(TEventHandler);
 end;
 
 procedure TLspEventHandlersTests.ProjectFilesWithForms;

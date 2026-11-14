@@ -106,6 +106,8 @@ const
     'uses Winapi.Messages;'#10 +
     'end.';
 
+{ TForbiddenUsesRuleTests }
+
 procedure TForbiddenUsesRuleTests.ReportsDeniedUnitByUnitName;
 var
   mFindings: TArray<TRuleFinding>;
@@ -180,6 +182,8 @@ function Classify(const AName: string): TArchitectureUnit;
 begin
   Result := TArchitectureMatrix.Classify(AName, PrefixList, TArchitectureMatrix.DefaultHostRoles);
 end;
+
+{ TArchitectureMatrixTests }
 
 procedure TArchitectureMatrixTests.ClassifiesFeatureRoles;
 var
@@ -311,6 +315,8 @@ const
     'implementation'#10 +
     'end.';
 
+{ TRoleImportRuleTests }
+
 procedure TRoleImportRuleTests.ReportsForbiddenImportAtUsesEntry;
 var
   mFindings: TArray<TRuleFinding>;
@@ -338,14 +344,6 @@ begin
     '{ "rules": { "architecture-role-import": "warning" } }', 'Source/x.pas'))));
   Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TRoleImportRule.Create, cRoleSource, '', 'Source/x.pas'))),
     'experimentell: ohne Konfiguration aus');
-end;
-
-procedure TRoleImportRuleTests.TestUnitIsSilent;
-begin
-  // Die Testunit trägt den Namen der getesteten Contract-Unit, gehört aber zu keiner Rolle.
-  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TRoleImportRule.Create,
-    'unit Atlas.Common.Logging.Contract.Tests;'#10'interface'#10'uses DUnitX.TestFramework;'#10 +
-    'implementation'#10'uses Atlas.Common.Logging.Providers.Logger;'#10'end.', cRoleConfig, 'Tests/x.pas'))));
 end;
 
 procedure TRoleImportRuleTests.ApprovedExceptionIsSilent;
@@ -388,6 +386,14 @@ begin
     'begin'#10'end.', cRoleConfig, 'Atlas.Common.Lsp.dpr'))));
 end;
 
+procedure TRoleImportRuleTests.TestUnitIsSilent;
+begin
+  // Die Testunit trägt den Namen der getesteten Contract-Unit, gehört aber zu keiner Rolle.
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TRoleImportRule.Create,
+    'unit Atlas.Common.Logging.Contract.Tests;'#10'interface'#10'uses DUnitX.TestFramework;'#10 +
+    'implementation'#10'uses Atlas.Common.Logging.Providers.Logger;'#10'end.', cRoleConfig, 'Tests/x.pas'))));
+end;
+
 procedure TRoleImportRuleTests.ParsesOptions;
 var
   mOptions: TRoleImportOptions;
@@ -417,12 +423,7 @@ begin
   Result := ContractFindings(ASource, cContractConfig);
 end;
 
-procedure TContractContentRuleTests.IgnoresTestUnitOfContract;
-begin
-  Assert.AreEqual(0, Integer(Length(ContractFindings('unit App.Orders.Contract.Tests;'#10'interface'#10 +
-    'uses DUnitX.TestFramework;'#10'type'#10'  [TestFixture]'#10'  TOrderTests = class'#10'  end;'#10 +
-    'implementation'#10'end.'))));
-end;
+{ TContractContentRuleTests }
 
 procedure TContractContentRuleTests.ReportsClassInContract;
 var
@@ -462,6 +463,13 @@ begin
     '  TOrderList = class'#10'  end;'#10'implementation'#10'end.'))));
   Assert.AreEqual(0, Integer(Length(ContractFindings('unit Other.Orders.Contract;'#10'interface'#10'type'#10 +
     '  TOrderList = class'#10'  end;'#10'implementation'#10'end.'))), 'ohne passendes Präfix');
+end;
+
+procedure TContractContentRuleTests.IgnoresTestUnitOfContract;
+begin
+  Assert.AreEqual(0, Integer(Length(ContractFindings('unit App.Orders.Contract.Tests;'#10'interface'#10 +
+    'uses DUnitX.TestFramework;'#10'type'#10'  [TestFixture]'#10'  TOrderTests = class'#10'  end;'#10 +
+    'implementation'#10'end.'))));
 end;
 
 procedure TContractContentRuleTests.ForwardDeclarationIsSilent;

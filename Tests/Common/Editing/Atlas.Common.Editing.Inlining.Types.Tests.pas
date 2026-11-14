@@ -27,6 +27,8 @@ uses
   Atlas.Common.Pascal.Parser,
   Atlas.Common.Editing.Inlining.Types;
 
+{ TInlineTypesTests }
+
 procedure TInlineTypesTests.SourceKeepsFileTextAndTree;
 var
   mTree: TSyntaxTree;

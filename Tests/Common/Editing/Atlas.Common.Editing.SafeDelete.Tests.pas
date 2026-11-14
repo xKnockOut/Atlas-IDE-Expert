@@ -155,6 +155,8 @@ begin
   end;
 end;
 
+{ TSafeDeleteTests }
+
 procedure TSafeDeleteTests.FindsSymbols;
 var
   mTarget: TSafeDeleteTarget;

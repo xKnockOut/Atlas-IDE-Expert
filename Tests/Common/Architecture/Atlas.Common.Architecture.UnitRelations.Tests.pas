@@ -133,6 +133,18 @@ end;
 
 { TUnitRelationsTests }
 
+function TUnitRelationsTests.Reader: TUsesTextReader;
+var
+  mTexts: TDictionary<string, string>;
+begin
+  mTexts := FTexts;
+  Result :=
+    function(const AFileName: string; out AText: string): Boolean
+    begin
+      Result := mTexts.TryGetValue(AFileName, AText);
+    end;
+end;
+
 procedure TUnitRelationsTests.Setup;
 var
   mUnits: TArray<TUnitIndex>;
@@ -168,18 +180,6 @@ begin
   FGraph := nil;
   FTexts.Free;
   FTexts := nil;
-end;
-
-function TUnitRelationsTests.Reader: TUsesTextReader;
-var
-  mTexts: TDictionary<string, string>;
-begin
-  mTexts := FTexts;
-  Result :=
-    function(const AFileName: string; out AText: string): Boolean
-    begin
-      Result := mTexts.TryGetValue(AFileName, AText);
-    end;
 end;
 
 function Build(AGraph: TUsesGraph; ALocator: TUsesLocator; const AReader: TUsesTextReader; const AFileName: string;

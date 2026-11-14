@@ -73,25 +73,7 @@ begin
   Result := '';
 end;
 
-procedure TShellCommandAreaTests.Setup;
-var
-  mCoreServices: TShellCoreServices;
-  mEditing: TShellEditingServices;
-begin
-  FDocuments := TDocumentStore.Create;
-  FDispatcher := TJsonRpcDispatcher.Create;
-  mCoreServices := Default(TShellCoreServices);
-  mCoreServices.Logger := TLogger.Create;
-  mCoreServices.Documents := FDocuments;
-  mCoreServices.Index := NoIndex;
-  mCoreServices.SelectedProject := NoSelection;
-  mCoreServices.ActiveProject := NoActive;
-  FCore := TShellCore.Create(mCoreServices);
-  mEditing := Default(TShellEditingServices);
-  mEditing.Documents := FDocuments;
-  FEditing := TShellEditing.Create(mEditing);
-  CreateAreas;
-end;
+{ TShellCommandAreaTests }
 
 procedure TShellCommandAreaTests.CreateAreas;
 var
@@ -119,18 +101,6 @@ begin
   FArea := TShellCommandArea.Create(FCore, FCode, FAnalysis, FEditing, mServices);
 end;
 
-procedure TShellCommandAreaTests.TearDown;
-begin
-  FreeAndNil(FArea);
-  FreeAndNil(FAnalysis);
-  FreeAndNil(FCode);
-  FreeAndNil(FEditing);
-  FCore.FreeWorkspaces;
-  FreeAndNil(FCore);
-  FreeAndNil(FDispatcher);
-  FDocuments := nil;
-end;
-
 function TShellCommandAreaTests.CommandList: string;
 var
   mCapability: TJSONObject;
@@ -141,6 +111,38 @@ begin
   finally
     mCapability.Free;
   end;
+end;
+
+procedure TShellCommandAreaTests.Setup;
+var
+  mCoreServices: TShellCoreServices;
+  mEditing: TShellEditingServices;
+begin
+  FDocuments := TDocumentStore.Create;
+  FDispatcher := TJsonRpcDispatcher.Create;
+  mCoreServices := Default(TShellCoreServices);
+  mCoreServices.Logger := TLogger.Create;
+  mCoreServices.Documents := FDocuments;
+  mCoreServices.Index := NoIndex;
+  mCoreServices.SelectedProject := NoSelection;
+  mCoreServices.ActiveProject := NoActive;
+  FCore := TShellCore.Create(mCoreServices);
+  mEditing := Default(TShellEditingServices);
+  mEditing.Documents := FDocuments;
+  FEditing := TShellEditing.Create(mEditing);
+  CreateAreas;
+end;
+
+procedure TShellCommandAreaTests.TearDown;
+begin
+  FreeAndNil(FArea);
+  FreeAndNil(FAnalysis);
+  FreeAndNil(FCode);
+  FreeAndNil(FEditing);
+  FCore.FreeWorkspaces;
+  FreeAndNil(FCore);
+  FreeAndNil(FDispatcher);
+  FDocuments := nil;
 end;
 
 procedure TShellCommandAreaTests.PartsExist;

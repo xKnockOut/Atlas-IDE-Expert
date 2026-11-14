@@ -31,6 +31,8 @@ uses
   Atlas.Common.Pascal.Parser,
   Atlas.Common.Rules.Builtin.Constants.Types;
 
+{ TConstantTypesTests }
+
 procedure TConstantTypesTests.CanonicalNames;
 begin
   Assert.AreEqual('integer', CanonicalTypeName('System.LongInt'));

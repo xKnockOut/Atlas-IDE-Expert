@@ -28,6 +28,8 @@ uses
   Atlas.Common.Rules.Builtin.Inheritance.Abstract,
   Atlas.Tests.RuleAssert;
 
+{ TInheritanceAbstractTests }
+
 procedure TInheritanceAbstractTests.AbstractSignatures;
 begin
   Assert.IsTrue(TInheritedAbstractCallRule.IsAbstractSignature('procedure A; virtual; abstract;'));

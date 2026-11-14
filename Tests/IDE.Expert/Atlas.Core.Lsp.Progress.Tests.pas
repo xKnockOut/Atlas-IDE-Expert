@@ -47,6 +47,8 @@ begin
   end;
 end;
 
+{ TLspProgressTests }
+
 procedure TLspProgressTests.TracksBeginReportEnd;
 var
   mProgress: ILspProgress;

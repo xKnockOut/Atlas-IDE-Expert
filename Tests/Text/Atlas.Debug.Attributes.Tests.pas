@@ -33,6 +33,8 @@ type
     Name, Ort: string;
   end;
 
+{ TAtlasDebugAttributesTests }
+
 procedure TAtlasDebugAttributesTests.WarmUpFirstUse;
 begin
   AttributesCarryTheirText;

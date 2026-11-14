@@ -139,6 +139,8 @@ begin
   Result := nil;
 end;
 
+{ TAtlasOutlineFrameTests }
+
 procedure TAtlasOutlineFrameTests.WarmUpFirstUse;
 begin
   SetUp;
@@ -268,26 +270,6 @@ begin
     TAtlasOutlineStrings.Text(TAtlasOutlineTextId.OutlineGoToImplementation)).Enabled);
 end;
 
-procedure TAtlasOutlineFrameTests.ShowsConditionUnlessSwitchedOff;
-var
-  mList: TAtlasOutlineNodes;
-  mIndex: Integer;
-begin
-  // #845: Bedingung des aktiven Zweigs hinter dem Eintrag, abschaltbar.
-  mList := FFrame.Nodes;
-  for mIndex := 0 to High(mList) do
-  begin
-    if mList[mIndex].Name = 'Make' then
-    begin
-      mList[mIndex].Condition := 'CPUX64';
-    end;
-  end;
-  FFrame.SetNodes(mList);
-  Assert.AreEqual('+ Make · class · CPUX64', FFrame.RowText(RowOf(FFrame, 'Make')));
-  FFrame.ShowConditions := False;
-  Assert.AreEqual('+ Make · class', FFrame.RowText(RowOf(FFrame, 'Make')));
-end;
-
 procedure TAtlasOutlineFrameTests.SortButtonAndMessage;
 var
   mSorted: Boolean;
@@ -315,6 +297,26 @@ begin
   Assert.AreEqual(0, Integer(Length(FFrame.Rows)));
   Assert.IsTrue(FFrame.MessageLabel.Visible);
   Assert.AreEqual('Keine Gliederung', FFrame.MessageLabel.Caption);
+end;
+
+procedure TAtlasOutlineFrameTests.ShowsConditionUnlessSwitchedOff;
+var
+  mList: TAtlasOutlineNodes;
+  mIndex: Integer;
+begin
+  // #845: Bedingung des aktiven Zweigs hinter dem Eintrag, abschaltbar.
+  mList := FFrame.Nodes;
+  for mIndex := 0 to High(mList) do
+  begin
+    if mList[mIndex].Name = 'Make' then
+    begin
+      mList[mIndex].Condition := 'CPUX64';
+    end;
+  end;
+  FFrame.SetNodes(mList);
+  Assert.AreEqual('+ Make · class · CPUX64', FFrame.RowText(RowOf(FFrame, 'Make')));
+  FFrame.ShowConditions := False;
+  Assert.AreEqual('+ Make · class', FFrame.RowText(RowOf(FFrame, 'Make')));
 end;
 
 initialization

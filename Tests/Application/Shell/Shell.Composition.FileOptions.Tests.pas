@@ -79,6 +79,8 @@ begin
   Result := '';
 end;
 
+{ TShellFileOptionsTests }
+
 procedure TShellFileOptionsTests.Setup;
 var
   mRegistry: TShellWorkspaceRegistryServices;

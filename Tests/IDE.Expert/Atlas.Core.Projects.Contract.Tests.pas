@@ -45,6 +45,8 @@ begin
   Result.Namespaces := ['System', 'Vcl'];
 end;
 
+{ TAtlasProjectContextTests }
+
 procedure TAtlasProjectContextTests.SplitsOptionLists;
 begin
   Assert.AreEqual('DEBUG|$(DCC_Define)', string.Join('|', TAtlasProjectContext.List(' DEBUG ;;$(DCC_Define);')));

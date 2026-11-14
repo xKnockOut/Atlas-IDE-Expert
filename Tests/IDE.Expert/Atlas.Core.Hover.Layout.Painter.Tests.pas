@@ -51,6 +51,8 @@ type
     class function Item(AColor: TAtlasColor): TAtlasHoverItem; static;
   end;
 
+{ TPainterProbe }
+
 function TPainterProbe.ScaleOf(AValue: Integer): Integer;
 begin
   Result := Scale(AValue);
@@ -90,6 +92,8 @@ begin
   mInput.PPI := APPI;
   Result := TPainterProbe.Create(mInput, TFakeMeasure.Create('x'));
 end;
+
+{ THoverPainterTests }
 
 procedure THoverPainterTests.HotSpots;
 var

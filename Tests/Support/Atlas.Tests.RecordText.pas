@@ -25,6 +25,8 @@ implementation
 uses
   System.SysUtils;
 
+{ TRecordText }
+
 class function TRecordText.Position(const APosition: TTextPosition): string;
 begin
   Result := Position(APosition.Line, APosition.Character);

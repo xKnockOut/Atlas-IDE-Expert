@@ -27,6 +27,8 @@ uses
   System.SysUtils,
   Atlas.Core.Diagnostics.Teardown;
 
+{ TTeardownTests }
+
 procedure TTeardownTests.RunsAllStepsAfterFailure;
 var
   mTeardown: TAtlasTeardown;

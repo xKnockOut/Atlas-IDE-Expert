@@ -111,21 +111,6 @@ end;
 
 { TLspExitPointsTests }
 
-procedure TLspExitPointsTests.Setup;
-begin
-  FStore := TDocumentStore.Create;
-  FIndex := TSymbolIndex.Create;
-  FIndex.AddUnit(TIndexExtractor.ExtractText(cUnitLoader, cLoaderFile, nil));
-  FIndex.AddUnit(TIndexExtractor.ExtractText(cUnitMain, cMainFile, nil));
-end;
-
-procedure TLspExitPointsTests.TearDown;
-begin
-  FStore := nil;
-  FIndex := nil;
-  FSettingsFor := nil;
-end;
-
 function TLspExitPointsTests.Run(const AText: string; ALine, ACharacter: Integer;
   const ASettings: string): TJSONObject;
 var
@@ -173,6 +158,21 @@ begin
     Result := Result + mPoint.GetValue('kind').Value + '@' + mPoint.GetValue('line').Value + ':' +
       mPoint.GetValue('character').Value;
   end;
+end;
+
+procedure TLspExitPointsTests.Setup;
+begin
+  FStore := TDocumentStore.Create;
+  FIndex := TSymbolIndex.Create;
+  FIndex.AddUnit(TIndexExtractor.ExtractText(cUnitLoader, cLoaderFile, nil));
+  FIndex.AddUnit(TIndexExtractor.ExtractText(cUnitMain, cMainFile, nil));
+end;
+
+procedure TLspExitPointsTests.TearDown;
+begin
+  FStore := nil;
+  FIndex := nil;
+  FSettingsFor := nil;
 end;
 
 procedure TLspExitPointsTests.ReplyCarriesRoutineAndPoints;

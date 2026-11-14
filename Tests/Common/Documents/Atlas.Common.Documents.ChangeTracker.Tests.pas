@@ -33,6 +33,8 @@ implementation
 uses
   System.SysUtils;
 
+{ TFileChangeTrackerTests }
+
 procedure TFileChangeTrackerTests.Setup;
 var
   mStamps: TDictionary<string, string>;

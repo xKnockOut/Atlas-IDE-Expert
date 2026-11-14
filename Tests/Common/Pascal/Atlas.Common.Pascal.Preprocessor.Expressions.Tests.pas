@@ -86,6 +86,8 @@ begin
   Result := EvaluateWith(Win64Settings, AExpression, mParts);
 end;
 
+{ TPreprocessorExpressionsTests }
+
 procedure TPreprocessorExpressionsTests.SizesFollowPointerSize;
 var
   mDefines: TDictionary<string, Boolean>;

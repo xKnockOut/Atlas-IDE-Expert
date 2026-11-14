@@ -26,6 +26,8 @@ uses
   Atlas.Core.Build.Events,
   Atlas.Core.Build.OpenBuildSettings;
 
+{ TAtlasOpenBuildSettingsTests }
+
 procedure TAtlasOpenBuildSettingsTests.NamesAndSettingsValues;
 var
   mExclude: TArray<string>;

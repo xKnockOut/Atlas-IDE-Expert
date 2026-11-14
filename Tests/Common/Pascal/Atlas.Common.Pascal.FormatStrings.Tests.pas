@@ -43,6 +43,8 @@ uses
   System.SysUtils,
   Atlas.Common.Pascal.FormatStrings;
 
+{ TFormatStringsTests }
+
 procedure TFormatStringsTests.SimpleSpecs;
 var
   mFormat: TFormatString;

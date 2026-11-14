@@ -153,36 +153,6 @@ const
 
 { TLspStepTargetsTests }
 
-procedure TLspStepTargetsTests.Setup;
-begin
-  FIndex := TSymbolIndex.Create;
-  FIndex.AddUnit(TIndexExtractor.ExtractText(cUnitBasis, cBasisFile, nil));
-  FIndex.AddUnit(TIndexExtractor.ExtractText(cUnitHaupt, cHauptFile, nil));
-  FResolver := TNameResolver.Create(FIndex);
-  FTree := TPascalParser.Parse(cUnitHaupt, nil);
-end;
-
-procedure TLspStepTargetsTests.TearDown;
-begin
-  FreeAndNil(FTree);
-  FreeAndNil(FResolver);
-  FIndex := nil;
-end;
-
-function TLspStepTargetsTests.Describe(const ACall: TLspStepCall): string;
-begin
-  Result := ACall.Name;
-  if ACall.Container <> '' then
-  begin
-    Result := ACall.Container + '.' + Result;
-  end;
-  Result := Result + ':' + ACall.Kind;
-  if Length(ACall.Targets) = 0 then
-  begin
-    Result := Result + '!';
-  end;
-end;
-
 function TLspStepTargetsTests.AnswerAt(const AMarker: string; out AAnswer: TLspStepAnswer): string;
 var
   mLines: TArray<string>;
@@ -218,6 +188,36 @@ begin
     mNames := mNames + [Describe(mCall)];
   end;
   Result := string.Join(' ', mNames);
+end;
+
+function TLspStepTargetsTests.Describe(const ACall: TLspStepCall): string;
+begin
+  Result := ACall.Name;
+  if ACall.Container <> '' then
+  begin
+    Result := ACall.Container + '.' + Result;
+  end;
+  Result := Result + ':' + ACall.Kind;
+  if Length(ACall.Targets) = 0 then
+  begin
+    Result := Result + '!';
+  end;
+end;
+
+procedure TLspStepTargetsTests.Setup;
+begin
+  FIndex := TSymbolIndex.Create;
+  FIndex.AddUnit(TIndexExtractor.ExtractText(cUnitBasis, cBasisFile, nil));
+  FIndex.AddUnit(TIndexExtractor.ExtractText(cUnitHaupt, cHauptFile, nil));
+  FResolver := TNameResolver.Create(FIndex);
+  FTree := TPascalParser.Parse(cUnitHaupt, nil);
+end;
+
+procedure TLspStepTargetsTests.TearDown;
+begin
+  FreeAndNil(FTree);
+  FreeAndNil(FResolver);
+  FIndex := nil;
 end;
 
 procedure TLspStepTargetsTests.AcceptanceOrderWithGetterAndUnknownFormat;

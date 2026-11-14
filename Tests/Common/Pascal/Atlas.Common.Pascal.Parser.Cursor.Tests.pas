@@ -117,6 +117,8 @@ begin
   Result := 'program P;' + sLineBreak + 'begin' + sLineBreak + ABody + sLineBreak + 'end.';
 end;
 
+{ TParserChainTests }
+
 procedure TParserChainTests.LayersInheritInOrder;
 begin
   Assert.IsTrue(TParserBase.InheritsFrom(TParserCursor));

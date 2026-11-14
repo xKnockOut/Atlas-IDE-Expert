@@ -111,6 +111,26 @@ end;
 
 { TPackageLocatorTests }
 
+procedure TPackageLocatorTests.WarmUpFileTimes;
+var
+  mFolder: string;
+  mLocator: TPackageLocator;
+  mContains: Boolean;
+begin
+  // Einmal der ganze Weg der Tests mit .dcp auf der Platte (Ordner, Zeitstempel, geteiltes Lesen).
+  mFolder := TPath.Combine(TPath.GetTempPath, 'AtlasDcpWarmUp' + TGUID.NewGuid.ToString);
+  TDirectory.CreateDirectory(mFolder);
+  TFile.WriteAllBytes(TPath.Combine(mFolder, 'Warm.dcp'), TEncoding.ASCII.GetBytes('WARM'));
+  mLocator := TPackageLocator.Create([mFolder]);
+  try
+    mLocator.Provides('Warm', 'Warm', mContains);
+  finally
+    mLocator.Free;
+    TPackageCompiledFiles.Clear;
+    TDirectory.Delete(mFolder, True);
+  end;
+end;
+
 procedure TPackageLocatorTests.SourceAnswersFromContains;
 var
   mLocator: TPackageLocator;
@@ -309,26 +329,6 @@ begin
     Assert.AreEqual(0, Integer(Length(mLocator.Requires('Fehlt'))));
   finally
     mLocator.Free;
-  end;
-end;
-
-procedure TPackageLocatorTests.WarmUpFileTimes;
-var
-  mFolder: string;
-  mLocator: TPackageLocator;
-  mContains: Boolean;
-begin
-  // Einmal der ganze Weg der Tests mit .dcp auf der Platte (Ordner, Zeitstempel, geteiltes Lesen).
-  mFolder := TPath.Combine(TPath.GetTempPath, 'AtlasDcpWarmUp' + TGUID.NewGuid.ToString);
-  TDirectory.CreateDirectory(mFolder);
-  TFile.WriteAllBytes(TPath.Combine(mFolder, 'Warm.dcp'), TEncoding.ASCII.GetBytes('WARM'));
-  mLocator := TPackageLocator.Create([mFolder]);
-  try
-    mLocator.Provides('Warm', 'Warm', mContains);
-  finally
-    mLocator.Free;
-    TPackageCompiledFiles.Clear;
-    TDirectory.Delete(mFolder, True);
   end;
 end;
 

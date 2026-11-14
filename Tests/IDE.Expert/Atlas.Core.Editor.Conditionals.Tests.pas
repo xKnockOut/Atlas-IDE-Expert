@@ -37,6 +37,8 @@ begin
   Result := TAtlasConditionals.Create(['MSWINDOWS', 'win32', 'CONDITIONALEXPRESSIONS'], 37.0);
 end;
 
+{ TAtlasConditionalsTests }
+
 procedure TAtlasConditionalsTests.IfdefElseEndif;
 var
   mConditionals: TAtlasConditionals;

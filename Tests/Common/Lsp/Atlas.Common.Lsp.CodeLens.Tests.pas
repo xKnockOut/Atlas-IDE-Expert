@@ -115,6 +115,27 @@ end;
 
 { TLspCodeLensTests }
 
+function TLspCodeLensTests.Describe(const AEntries: TArray<TCodeLensEntry>): string;
+var
+  mEntry: TCodeLensEntry;
+begin
+  Result := '';
+  for mEntry in AEntries do
+  begin
+    Result := Result + Format('%d %d %s %d|', [mEntry.Range.StartPos.Line, Ord(mEntry.Kind), mEntry.Title,
+      Length(mEntry.Targets)]);
+  end;
+end;
+
+function TLspCodeLensTests.SourceOf(ATree: TSyntaxTree): TCodeLensSource;
+begin
+  Result.Resolver := FResolver;
+  Result.Index := FIndex;
+  Result.Tree := ATree;
+  Result.FileName := cHauptFile;
+  Result.ReadText := ReadFile;
+end;
+
 procedure TLspCodeLensTests.Setup;
 begin
   FIndex := TSymbolIndex.Create;
@@ -127,27 +148,6 @@ procedure TLspCodeLensTests.TearDown;
 begin
   FResolver.Free;
   FIndex := nil;
-end;
-
-function TLspCodeLensTests.SourceOf(ATree: TSyntaxTree): TCodeLensSource;
-begin
-  Result.Resolver := FResolver;
-  Result.Index := FIndex;
-  Result.Tree := ATree;
-  Result.FileName := cHauptFile;
-  Result.ReadText := ReadFile;
-end;
-
-function TLspCodeLensTests.Describe(const AEntries: TArray<TCodeLensEntry>): string;
-var
-  mEntry: TCodeLensEntry;
-begin
-  Result := '';
-  for mEntry in AEntries do
-  begin
-    Result := Result + Format('%d %d %s %d|', [mEntry.Range.StartPos.Line, Ord(mEntry.Kind), mEntry.Title,
-      Length(mEntry.Targets)]);
-  end;
 end;
 
 procedure TLspCodeLensTests.FindsMessageHandlersAndInheritedOnes;

@@ -53,6 +53,8 @@ begin
   Assert.AreEqual(TAtlasCloseRules.Name(AExpected), TAtlasCloseRules.Name(AActual));
 end;
 
+{ TAtlasCloseRulesTests }
+
 function TAtlasCloseRulesTests.Opened: TAtlasEditorWindowState;
 begin
   Result := Default(TAtlasEditorWindowState);

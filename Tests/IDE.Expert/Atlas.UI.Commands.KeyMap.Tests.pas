@@ -82,6 +82,30 @@ begin
   TAtlasKeyMap.Analyze(Result);
 end;
 
+/// <summary>Jede Funktion hat eine eigene, nicht leere Beschriftung ohne Doppelpunkt oder Auslassung.</summary>
+procedure AssertCaptionsPlainAndUnique;
+var
+  mFunc, mOther: TAtlasKeyFunction;
+  mCaption: string;
+begin
+  for mFunc := Low(TAtlasKeyFunction) to High(TAtlasKeyFunction) do
+  begin
+    mCaption := TAtlasKeyMapWindow.FunctionCaption(mFunc);
+    Assert.AreNotEqual('', mCaption);
+    Assert.IsFalse(mCaption.EndsWith(':') or mCaption.EndsWith('…'), mCaption);
+    // Jede Funktion hat ihren eigenen Namen: Eine neue Funktion ohne eigenen Zweig fiele hier auf.
+    for mOther := Low(TAtlasKeyFunction) to High(TAtlasKeyFunction) do
+    begin
+      if mOther <> mFunc then
+      begin
+        Assert.AreNotEqual(mCaption, TAtlasKeyMapWindow.FunctionCaption(mOther), mCaption);
+      end;
+    end;
+  end;
+end;
+
+{ TAtlasKeyMapWindowTests }
+
 procedure TAtlasKeyMapWindowTests.WarmUpFirstUse;
 begin
   Setup;
@@ -238,6 +262,58 @@ begin
   end;
 end;
 
+procedure TAtlasKeyMapWindowTests.FunctionCaptionsWithoutPunctuation;
+begin
+  AssertCaptionsPlainAndUnique;
+  Assert.AreEqual('Deklaration/Implementierung wechseln',
+    TAtlasKeyMapWindow.FunctionCaption(TAtlasKeyFunction.MethodToggleUp));
+  Assert.AreEqual('Zwischen Unit und Testunit wechseln',
+    TAtlasKeyMapWindow.FunctionCaption(TAtlasKeyFunction.TestUnit));
+  Assert.AreEqual('Units suchen', TAtlasKeyMapWindow.FunctionCaption(TAtlasKeyFunction.UnitSearch));
+  Assert.AreEqual('Lesezeichen setzen', TAtlasKeyMapWindow.FunctionCaption(TAtlasKeyFunction.Bookmark));
+  Assert.AreEqual('Erzeugen', TAtlasKeyMapWindow.FunctionCaption(TAtlasKeyFunction.GenerateMenu));
+  Assert.AreEqual('Benachrichtigungen', TAtlasKeyMapWindow.FunctionCaption(TAtlasKeyFunction.Notifications));
+  Assert.AreEqual('Element ausblenden', TAtlasKeyMapWindow.FunctionCaption(TAtlasKeyFunction.HideElement));
+  Assert.AreEqual('Nächster Befund', TAtlasKeyMapWindow.FunctionCaption(TAtlasKeyFunction.NextProblem));
+  Assert.AreEqual('Vorheriger Befund', TAtlasKeyMapWindow.FunctionCaption(TAtlasKeyFunction.PreviousProblem));
+  Assert.AreEqual('Schnell öffnen', TAtlasKeyMapWindow.FunctionCaption(TAtlasKeyFunction.QuickOpen));
+  Assert.AreEqual('Letzte Bearbeitungsstelle', TAtlasKeyMapWindow.FunctionCaption(TAtlasKeyFunction.LastEdit));
+  Assert.AreEqual('Definition einblenden', TAtlasKeyMapWindow.FunctionCaption(TAtlasKeyFunction.PeekDefinition));
+  Assert.AreEqual('Referenzen einblenden', TAtlasKeyMapWindow.FunctionCaption(TAtlasKeyFunction.PeekReferences));
+  Assert.AreEqual('Brotkrumenleiste', TAtlasKeyMapWindow.FunctionCaption(TAtlasKeyFunction.Breadcrumbs));
+  Assert.AreEqual('Zum Gegenstück springen', TAtlasKeyMapWindow.FunctionCaption(TAtlasKeyFunction.JumpToMatch));
+  Assert.AreEqual('Bis zum Gegenstück markieren',
+    TAtlasKeyMapWindow.FunctionCaption(TAtlasKeyFunction.JumpToMatchSelect));
+  Assert.AreEqual('Nächste Änderung', TAtlasKeyMapWindow.FunctionCaption(TAtlasKeyFunction.NextChange));
+  Assert.AreEqual('Vorherige Änderung', TAtlasKeyMapWindow.FunctionCaption(TAtlasKeyFunction.PreviousChange));
+  Assert.AreEqual('Zeilen nach oben verschieben', TAtlasKeyMapWindow.FunctionCaption(TAtlasKeyFunction.MoveLinesUp));
+  Assert.AreEqual('Anweisung vervollständigen',
+    TAtlasKeyMapWindow.FunctionCaption(TAtlasKeyFunction.CompleteStatement));
+  Assert.AreEqual('Formatieren', TAtlasKeyMapWindow.FunctionCaption(TAtlasKeyFunction.FormatCode));
+  Assert.AreEqual('Blockkommentar umschalten',
+    TAtlasKeyMapWindow.FunctionCaption(TAtlasKeyFunction.ToggleBlockComment));
+  Assert.AreEqual('Neue Zeile darunter', TAtlasKeyMapWindow.FunctionCaption(TAtlasKeyFunction.NewLineBelow));
+  Assert.AreEqual('Neue Zeile darüber', TAtlasKeyMapWindow.FunctionCaption(TAtlasKeyFunction.NewLineAbove));
+  Assert.AreEqual('Umschließung entfernen', TAtlasKeyMapWindow.FunctionCaption(TAtlasKeyFunction.Unwrap));
+  Assert.AreEqual('Typ des Ausdrucks', TAtlasKeyMapWindow.FunctionCaption(TAtlasKeyFunction.ExpressionType));
+  Assert.AreEqual('Fenster „Atlas-Prüfung“', TAtlasKeyMapWindow.FunctionCaption(TAtlasKeyFunction.ProblemsWindow));
+  Assert.AreEqual('Zum interface-Teil', TAtlasKeyMapWindow.FunctionCaption(TAtlasKeyFunction.SectionInterface));
+  Assert.AreEqual('Zum implementation-Teil', TAtlasKeyMapWindow.FunctionCaption(TAtlasKeyFunction.SectionImplementation));
+  Assert.AreEqual('Lesezeichen 1–9 setzen', TAtlasKeyMapWindow.FunctionCaption(TAtlasKeyFunction.QuickBookmarkSet));
+  Assert.AreEqual('Zu Lesezeichen 1–9 springen',
+    TAtlasKeyMapWindow.FunctionCaption(TAtlasKeyFunction.QuickBookmarkJump));
+  Assert.AreEqual('Nächstes Lesezeichen', TAtlasKeyMapWindow.FunctionCaption(TAtlasKeyFunction.NextBookmark));
+  Assert.AreEqual('Zeilen darunter duplizieren',
+    TAtlasKeyMapWindow.FunctionCaption(TAtlasKeyFunction.DuplicateLinesDown));
+  // #764: Schnellaktionen der Willkommensseite.
+  Assert.AreEqual('Schnellaktion „Öffnen und bauen“',
+    TAtlasKeyMapWindow.FunctionCaption(TAtlasKeyFunction.WelcomeQuickBuild));
+  Assert.AreEqual('Schnellaktion „Tests“', TAtlasKeyMapWindow.FunctionCaption(TAtlasKeyFunction.WelcomeQuickTests));
+  Assert.AreEqual('Code-Aktionen', TAtlasKeyMapWindow.FunctionCaption(TAtlasKeyFunction.CodeActions));
+  Assert.AreEqual('Suchfeld der Willkommensseite',
+    TAtlasKeyMapWindow.FunctionCaption(TAtlasKeyFunction.WelcomeSearch));
+end;
+
 procedure TAtlasKeyMapWindowTests.RarelyByKeyboardColumn;
 var
   mItems: TArray<TAtlasKeyItem>;
@@ -293,80 +369,6 @@ begin
   finally
     mWindow.Free;
   end;
-end;
-
-/// <summary>Jede Funktion hat eine eigene, nicht leere Beschriftung ohne Doppelpunkt oder Auslassung.</summary>
-procedure AssertCaptionsPlainAndUnique;
-var
-  mFunc, mOther: TAtlasKeyFunction;
-  mCaption: string;
-begin
-  for mFunc := Low(TAtlasKeyFunction) to High(TAtlasKeyFunction) do
-  begin
-    mCaption := TAtlasKeyMapWindow.FunctionCaption(mFunc);
-    Assert.AreNotEqual('', mCaption);
-    Assert.IsFalse(mCaption.EndsWith(':') or mCaption.EndsWith('…'), mCaption);
-    // Jede Funktion hat ihren eigenen Namen: Eine neue Funktion ohne eigenen Zweig fiele hier auf.
-    for mOther := Low(TAtlasKeyFunction) to High(TAtlasKeyFunction) do
-    begin
-      if mOther <> mFunc then
-      begin
-        Assert.AreNotEqual(mCaption, TAtlasKeyMapWindow.FunctionCaption(mOther), mCaption);
-      end;
-    end;
-  end;
-end;
-
-procedure TAtlasKeyMapWindowTests.FunctionCaptionsWithoutPunctuation;
-begin
-  AssertCaptionsPlainAndUnique;
-  Assert.AreEqual('Deklaration/Implementierung wechseln',
-    TAtlasKeyMapWindow.FunctionCaption(TAtlasKeyFunction.MethodToggleUp));
-  Assert.AreEqual('Zwischen Unit und Testunit wechseln',
-    TAtlasKeyMapWindow.FunctionCaption(TAtlasKeyFunction.TestUnit));
-  Assert.AreEqual('Units suchen', TAtlasKeyMapWindow.FunctionCaption(TAtlasKeyFunction.UnitSearch));
-  Assert.AreEqual('Lesezeichen setzen', TAtlasKeyMapWindow.FunctionCaption(TAtlasKeyFunction.Bookmark));
-  Assert.AreEqual('Erzeugen', TAtlasKeyMapWindow.FunctionCaption(TAtlasKeyFunction.GenerateMenu));
-  Assert.AreEqual('Benachrichtigungen', TAtlasKeyMapWindow.FunctionCaption(TAtlasKeyFunction.Notifications));
-  Assert.AreEqual('Element ausblenden', TAtlasKeyMapWindow.FunctionCaption(TAtlasKeyFunction.HideElement));
-  Assert.AreEqual('Nächster Befund', TAtlasKeyMapWindow.FunctionCaption(TAtlasKeyFunction.NextProblem));
-  Assert.AreEqual('Vorheriger Befund', TAtlasKeyMapWindow.FunctionCaption(TAtlasKeyFunction.PreviousProblem));
-  Assert.AreEqual('Schnell öffnen', TAtlasKeyMapWindow.FunctionCaption(TAtlasKeyFunction.QuickOpen));
-  Assert.AreEqual('Letzte Bearbeitungsstelle', TAtlasKeyMapWindow.FunctionCaption(TAtlasKeyFunction.LastEdit));
-  Assert.AreEqual('Definition einblenden', TAtlasKeyMapWindow.FunctionCaption(TAtlasKeyFunction.PeekDefinition));
-  Assert.AreEqual('Referenzen einblenden', TAtlasKeyMapWindow.FunctionCaption(TAtlasKeyFunction.PeekReferences));
-  Assert.AreEqual('Brotkrumenleiste', TAtlasKeyMapWindow.FunctionCaption(TAtlasKeyFunction.Breadcrumbs));
-  Assert.AreEqual('Zum Gegenstück springen', TAtlasKeyMapWindow.FunctionCaption(TAtlasKeyFunction.JumpToMatch));
-  Assert.AreEqual('Bis zum Gegenstück markieren',
-    TAtlasKeyMapWindow.FunctionCaption(TAtlasKeyFunction.JumpToMatchSelect));
-  Assert.AreEqual('Nächste Änderung', TAtlasKeyMapWindow.FunctionCaption(TAtlasKeyFunction.NextChange));
-  Assert.AreEqual('Vorherige Änderung', TAtlasKeyMapWindow.FunctionCaption(TAtlasKeyFunction.PreviousChange));
-  Assert.AreEqual('Zeilen nach oben verschieben', TAtlasKeyMapWindow.FunctionCaption(TAtlasKeyFunction.MoveLinesUp));
-  Assert.AreEqual('Anweisung vervollständigen',
-    TAtlasKeyMapWindow.FunctionCaption(TAtlasKeyFunction.CompleteStatement));
-  Assert.AreEqual('Formatieren', TAtlasKeyMapWindow.FunctionCaption(TAtlasKeyFunction.FormatCode));
-  Assert.AreEqual('Blockkommentar umschalten',
-    TAtlasKeyMapWindow.FunctionCaption(TAtlasKeyFunction.ToggleBlockComment));
-  Assert.AreEqual('Neue Zeile darunter', TAtlasKeyMapWindow.FunctionCaption(TAtlasKeyFunction.NewLineBelow));
-  Assert.AreEqual('Neue Zeile darüber', TAtlasKeyMapWindow.FunctionCaption(TAtlasKeyFunction.NewLineAbove));
-  Assert.AreEqual('Umschließung entfernen', TAtlasKeyMapWindow.FunctionCaption(TAtlasKeyFunction.Unwrap));
-  Assert.AreEqual('Typ des Ausdrucks', TAtlasKeyMapWindow.FunctionCaption(TAtlasKeyFunction.ExpressionType));
-  Assert.AreEqual('Fenster „Atlas-Prüfung“', TAtlasKeyMapWindow.FunctionCaption(TAtlasKeyFunction.ProblemsWindow));
-  Assert.AreEqual('Zum interface-Teil', TAtlasKeyMapWindow.FunctionCaption(TAtlasKeyFunction.SectionInterface));
-  Assert.AreEqual('Zum implementation-Teil', TAtlasKeyMapWindow.FunctionCaption(TAtlasKeyFunction.SectionImplementation));
-  Assert.AreEqual('Lesezeichen 1–9 setzen', TAtlasKeyMapWindow.FunctionCaption(TAtlasKeyFunction.QuickBookmarkSet));
-  Assert.AreEqual('Zu Lesezeichen 1–9 springen',
-    TAtlasKeyMapWindow.FunctionCaption(TAtlasKeyFunction.QuickBookmarkJump));
-  Assert.AreEqual('Nächstes Lesezeichen', TAtlasKeyMapWindow.FunctionCaption(TAtlasKeyFunction.NextBookmark));
-  Assert.AreEqual('Zeilen darunter duplizieren',
-    TAtlasKeyMapWindow.FunctionCaption(TAtlasKeyFunction.DuplicateLinesDown));
-  // #764: Schnellaktionen der Willkommensseite.
-  Assert.AreEqual('Schnellaktion „Öffnen und bauen“',
-    TAtlasKeyMapWindow.FunctionCaption(TAtlasKeyFunction.WelcomeQuickBuild));
-  Assert.AreEqual('Schnellaktion „Tests“', TAtlasKeyMapWindow.FunctionCaption(TAtlasKeyFunction.WelcomeQuickTests));
-  Assert.AreEqual('Code-Aktionen', TAtlasKeyMapWindow.FunctionCaption(TAtlasKeyFunction.CodeActions));
-  Assert.AreEqual('Suchfeld der Willkommensseite',
-    TAtlasKeyMapWindow.FunctionCaption(TAtlasKeyFunction.WelcomeSearch));
 end;
 
 initialization

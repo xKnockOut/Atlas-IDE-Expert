@@ -68,6 +68,8 @@ begin
   end;
 end;
 
+{ TAtlasFormTextsTests }
+
 procedure TAtlasFormTextsTests.AcceleratorOf;
 begin
   Assert.AreEqual('S', string(TAtlasFormTexts.AcceleratorOf('&speichern')));

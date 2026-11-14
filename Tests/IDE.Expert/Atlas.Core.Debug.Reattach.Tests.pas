@@ -51,6 +51,8 @@ begin
     TAtlasReattachProcess.Create(30, 'C:\Alt\Kunden.exe', 'Kunden.exe')];
 end;
 
+{ TAtlasReattachTests }
+
 procedure TAtlasReattachTests.AttachesSamePath;
 var
   mCandidates: TAtlasReattachProcesses;

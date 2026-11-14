@@ -150,6 +150,18 @@ begin
   Result.MaxArgs := AArgs;
 end;
 
+{ TResolverPartsTests }
+
+procedure TResolverPartsTests.AddUnit(const AFileName, AText: string);
+begin
+  FIndex.AddUnit(TIndexExtractor.ExtractText(AText, AFileName, nil));
+end;
+
+procedure TResolverPartsTests.MoveTo(const AMarker: string);
+begin
+  FCore.Place.MoveTo(FTree, cMainFile, Pos(AMarker, cUnitMain) - 1);
+end;
+
 procedure TResolverPartsTests.Setup;
 begin
   FIndex := TSymbolIndex.Create;
@@ -165,16 +177,6 @@ begin
   FCore.Free;
   FTree.Free;
   FIndex := nil;
-end;
-
-procedure TResolverPartsTests.AddUnit(const AFileName, AText: string);
-begin
-  FIndex.AddUnit(TIndexExtractor.ExtractText(AText, AFileName, nil));
-end;
-
-procedure TResolverPartsTests.MoveTo(const AMarker: string);
-begin
-  FCore.Place.MoveTo(FTree, cMainFile, Pos(AMarker, cUnitMain) - 1);
 end;
 
 procedure TResolverPartsTests.TextSplitsAndBindsTypeArguments;

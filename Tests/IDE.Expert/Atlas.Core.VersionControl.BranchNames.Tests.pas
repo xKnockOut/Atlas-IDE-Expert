@@ -24,6 +24,8 @@ uses
   System.SysUtils,
   Atlas.Core.VersionControl.BranchNames;
 
+{ TAtlasVcsBranchNamesTests }
+
 procedure TAtlasVcsBranchNamesTests.ValidFollowsCheckRefFormat;
 begin
   Assert.IsTrue(TAtlasVcsBranchNames.Valid('feature/753-x'));

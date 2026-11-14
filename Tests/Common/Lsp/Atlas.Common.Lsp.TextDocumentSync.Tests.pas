@@ -55,6 +55,26 @@ const
 
 { TLspTextDocumentSyncTests }
 
+procedure TLspTextDocumentSyncTests.Send(const AJson: string);
+var
+  mMessage: TJSONObject;
+begin
+  mMessage := TJsonRpcTestSupport.Parse(AJson);
+  try
+    Assert.IsNull(FDispatcher.DispatchMessage(mMessage));
+  finally
+    mMessage.Free;
+  end;
+end;
+
+function TLspTextDocumentSyncTests.TextOf(const AUri: string): string;
+var
+  mDocument: ITextDocument;
+begin
+  Assert.IsTrue(FStore.TryGet(AUri, mDocument), 'Dokument nicht geöffnet');
+  Result := mDocument.Text;
+end;
+
 procedure TLspTextDocumentSyncTests.Setup;
 begin
   FStore := TDocumentStore.Create;
@@ -77,26 +97,6 @@ begin
   FreeAndNil(FDispatcher);
   FreeAndNil(FSync);
   FStore := nil;
-end;
-
-procedure TLspTextDocumentSyncTests.Send(const AJson: string);
-var
-  mMessage: TJSONObject;
-begin
-  mMessage := TJsonRpcTestSupport.Parse(AJson);
-  try
-    Assert.IsNull(FDispatcher.DispatchMessage(mMessage));
-  finally
-    mMessage.Free;
-  end;
-end;
-
-function TLspTextDocumentSyncTests.TextOf(const AUri: string): string;
-var
-  mDocument: ITextDocument;
-begin
-  Assert.IsTrue(FStore.TryGet(AUri, mDocument), 'Dokument nicht geöffnet');
-  Result := mDocument.Text;
 end;
 
 procedure TLspTextDocumentSyncTests.DidOpenStoresDocument;

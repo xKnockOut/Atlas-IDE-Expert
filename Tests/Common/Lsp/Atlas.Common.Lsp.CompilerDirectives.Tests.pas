@@ -44,6 +44,8 @@ uses
   Atlas.Common.Pascal.DirectiveNames,
   Atlas.Common.Lsp.CompilerDirectives;
 
+{ TCompilerDirectivesTests }
+
 procedure TCompilerDirectivesTests.EveryDirectiveHasTextAndLinkForDelphi12And13;
 var
   mInfo: TDirectiveInfo;

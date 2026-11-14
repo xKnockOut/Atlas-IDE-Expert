@@ -150,27 +150,6 @@ end;
 
 { TCompletionExceptionsTests }
 
-procedure TCompletionExceptionsTests.Setup;
-var
-  mRtl: TUnitIndex;
-begin
-  FIndex := TSymbolIndex.Create;
-  mRtl := TIndexExtractor.ExtractText(cUnitSysUtils, cSysUtilsFile, nil);
-  mRtl.Library_ := True;
-  FIndex.AddUnit(mRtl);
-  mRtl := TIndexExtractor.ExtractText('unit System.Classes;'#10'interface'#10'uses'#10'  System.SysUtils;'#10 +
-    'type'#10'  EFOpenError = class(Exception);'#10'implementation'#10'end.', cClassesFile, nil);
-  mRtl.Library_ := True;
-  FIndex.AddUnit(mRtl);
-  FResolver := TNameResolver.Create(FIndex);
-end;
-
-procedure TCompletionExceptionsTests.TearDown;
-begin
-  FResolver.Free;
-  FIndex := nil;
-end;
-
 function TCompletionExceptionsTests.ItemsAt(const AMarked: string; const ASettings: TCompletionSettings;
   const APostfix: TPostfixOptions): TCompletionItems;
 var
@@ -236,6 +215,27 @@ begin
     end;
   end;
   Result := -1;
+end;
+
+procedure TCompletionExceptionsTests.Setup;
+var
+  mRtl: TUnitIndex;
+begin
+  FIndex := TSymbolIndex.Create;
+  mRtl := TIndexExtractor.ExtractText(cUnitSysUtils, cSysUtilsFile, nil);
+  mRtl.Library_ := True;
+  FIndex.AddUnit(mRtl);
+  mRtl := TIndexExtractor.ExtractText('unit System.Classes;'#10'interface'#10'uses'#10'  System.SysUtils;'#10 +
+    'type'#10'  EFOpenError = class(Exception);'#10'implementation'#10'end.', cClassesFile, nil);
+  mRtl.Library_ := True;
+  FIndex.AddUnit(mRtl);
+  FResolver := TNameResolver.Create(FIndex);
+end;
+
+procedure TCompletionExceptionsTests.TearDown;
+begin
+  FResolver.Free;
+  FIndex := nil;
 end;
 
 procedure TCompletionExceptionsTests.RaiseOffersOnlyExceptionClasses;

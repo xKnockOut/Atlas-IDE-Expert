@@ -312,53 +312,6 @@ begin
   Assert.AreNotEqual('', mReason);
 end;
 
-procedure TAtlasWelcomeIndexFilesTests.FormatVersionMatchesServer;
-begin
-  // Plugin und Server lesen dasselbe Cache-Format.
-  Assert.AreEqual(TIndexCache.cFormatVersion, TAtlasWelcomeIndexFiles.cFormatVersion,
-    'Plugin und Server lesen dasselbe Cache-Format; beide Konstanten zusammen erhöhen.');
-end;
-
-procedure TAtlasWelcomeIndexFilesTests.FindsLibraryCachesPerKey;
-var
-  mRoot, mLibrary: string;
-  mFound: TArray<string>;
-begin
-  // Der Server legt die Bibliothek je Schlüssel ab (Bibliothek\<Hash>\index-<Format>.atlasidx); Caches ohne
-  // Format im Namen stammen von älteren Servern und zählen nicht.
-  mRoot := TempFolder;
-  try
-    mLibrary := mRoot + PathDelim + 'Index' + PathDelim + '37.0' + PathDelim + 'Bibliothek' + PathDelim;
-    WriteCache(mLibrary + 'WIN64' + PathDelim + TAtlasWelcomeIndexFiles.CacheFileName, SampleUnits, Now);
-    WriteCache(mLibrary + 'WIN32' + PathDelim + TAtlasWelcomeIndexFiles.CacheFileName, SampleUnits, Now);
-    WriteCache(mLibrary + 'ALT' + PathDelim + 'index.atlasidx', SampleUnits, Now);
-    mFound := TAtlasWelcomeIndexFiles.LibraryCacheFiles(mRoot);
-    Assert.AreEqual(2, Integer(Length(mFound)));
-    Assert.AreEqual(TIndexCacheDirectory.CacheFileName, TAtlasWelcomeIndexFiles.CacheFileName,
-      'Plugin und Server suchen dieselbe Datei.');
-  finally
-    RemoveTree(mRoot);
-  end;
-end;
-
-procedure TAtlasWelcomeIndexFilesTests.ReadsCacheOfServer;
-var
-  mUnit: TUnitIndex;
-  mFiles: TArray<TAtlasIndexFile>;
-  mReason: string;
-begin
-  mUnit := Default(TUnitIndex);
-  mUnit.UnitName := 'Haupt';
-  mUnit.FileName := 'C:\Projekte\Atlas\Haupt.pas';
-  mUnit.Directives := ['deprecated'];
-  mUnit.DeprecatedText := 'Nutze Neu';
-  mUnit.Rationale := ['W|3|Weil'];
-  mFiles := TAtlasWelcomeIndexFiles.Read(TIndexCache.Serialize([mUnit]), mReason);
-  Assert.AreEqual('', mReason);
-  Assert.AreEqual(1, Integer(Length(mFiles)));
-  Assert.AreEqual('C:\Projekte\Atlas\Haupt.pas', mFiles[0].FileName);
-end;
-
 procedure TAtlasWelcomeIndexFilesTests.RejectsBadChecksum;
 var
   mData: TBytes;
@@ -462,6 +415,53 @@ begin
   end;
 end;
 
+procedure TAtlasWelcomeIndexFilesTests.FormatVersionMatchesServer;
+begin
+  // Plugin und Server lesen dasselbe Cache-Format.
+  Assert.AreEqual(TIndexCache.cFormatVersion, TAtlasWelcomeIndexFiles.cFormatVersion,
+    'Plugin und Server lesen dasselbe Cache-Format; beide Konstanten zusammen erhöhen.');
+end;
+
+procedure TAtlasWelcomeIndexFilesTests.FindsLibraryCachesPerKey;
+var
+  mRoot, mLibrary: string;
+  mFound: TArray<string>;
+begin
+  // Der Server legt die Bibliothek je Schlüssel ab (Bibliothek\<Hash>\index-<Format>.atlasidx); Caches ohne
+  // Format im Namen stammen von älteren Servern und zählen nicht.
+  mRoot := TempFolder;
+  try
+    mLibrary := mRoot + PathDelim + 'Index' + PathDelim + '37.0' + PathDelim + 'Bibliothek' + PathDelim;
+    WriteCache(mLibrary + 'WIN64' + PathDelim + TAtlasWelcomeIndexFiles.CacheFileName, SampleUnits, Now);
+    WriteCache(mLibrary + 'WIN32' + PathDelim + TAtlasWelcomeIndexFiles.CacheFileName, SampleUnits, Now);
+    WriteCache(mLibrary + 'ALT' + PathDelim + 'index.atlasidx', SampleUnits, Now);
+    mFound := TAtlasWelcomeIndexFiles.LibraryCacheFiles(mRoot);
+    Assert.AreEqual(2, Integer(Length(mFound)));
+    Assert.AreEqual(TIndexCacheDirectory.CacheFileName, TAtlasWelcomeIndexFiles.CacheFileName,
+      'Plugin und Server suchen dieselbe Datei.');
+  finally
+    RemoveTree(mRoot);
+  end;
+end;
+
+procedure TAtlasWelcomeIndexFilesTests.ReadsCacheOfServer;
+var
+  mUnit: TUnitIndex;
+  mFiles: TArray<TAtlasIndexFile>;
+  mReason: string;
+begin
+  mUnit := Default(TUnitIndex);
+  mUnit.UnitName := 'Haupt';
+  mUnit.FileName := 'C:\Projekte\Atlas\Haupt.pas';
+  mUnit.Directives := ['deprecated'];
+  mUnit.DeprecatedText := 'Nutze Neu';
+  mUnit.Rationale := ['W|3|Weil'];
+  mFiles := TAtlasWelcomeIndexFiles.Read(TIndexCache.Serialize([mUnit]), mReason);
+  Assert.AreEqual('', mReason);
+  Assert.AreEqual(1, Integer(Length(mFiles)));
+  Assert.AreEqual('C:\Projekte\Atlas\Haupt.pas', mFiles[0].FileName);
+end;
+
 { TAtlasWelcomeSearchTests }
 
 function FileHit(const AName, AProject: string): TAtlasWelcomeHit;
@@ -501,6 +501,8 @@ begin
   end;
   Result := False;
 end;
+
+{ TAtlasWelcomeSearchTests }
 
 procedure TAtlasWelcomeSearchTests.WelFindsFileAndCommand;
 var

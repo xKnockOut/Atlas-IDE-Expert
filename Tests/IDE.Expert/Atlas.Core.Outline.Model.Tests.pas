@@ -140,6 +140,8 @@ begin
   end;
 end;
 
+{ TAtlasOutlineModelTests }
+
 procedure TAtlasOutlineModelTests.ReadsMembersAndMarks;
 var
   mList: TAtlasOutlineNodes;
@@ -257,6 +259,19 @@ begin
   Assert.AreEqual(-1, TAtlasOutline.NodeAt(mList, 2, 4), 'uses');
 end;
 
+procedure TAtlasOutlineModelTests.EmptyResponseGivesNoNodes;
+var
+  mValue: TJSONValue;
+begin
+  Assert.AreEqual(0, Integer(Length(TAtlasOutline.FromJson(nil))));
+  mValue := TJSONObject.ParseJSONValue('[]');
+  try
+    Assert.AreEqual(0, Integer(Length(TAtlasOutline.FromJson(mValue))));
+  finally
+    mValue.Free;
+  end;
+end;
+
 procedure TAtlasOutlineModelTests.ConditionOfBodyGoesToDeclaration;
 const
   cResponse =
@@ -285,19 +300,6 @@ begin
   Assert.IsTrue(mList[Find(mList, 'Foo', 1)].Hidden);
   // Eine eigene Bedingung der Deklaration bleibt.
   Assert.AreEqual('DEBUG', mList[Find(mList, 'Log', 0)].Condition);
-end;
-
-procedure TAtlasOutlineModelTests.EmptyResponseGivesNoNodes;
-var
-  mValue: TJSONValue;
-begin
-  Assert.AreEqual(0, Integer(Length(TAtlasOutline.FromJson(nil))));
-  mValue := TJSONObject.ParseJSONValue('[]');
-  try
-    Assert.AreEqual(0, Integer(Length(TAtlasOutline.FromJson(mValue))));
-  finally
-    mValue.Free;
-  end;
 end;
 
 initialization

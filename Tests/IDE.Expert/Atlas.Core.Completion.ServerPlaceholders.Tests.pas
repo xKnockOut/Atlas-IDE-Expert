@@ -57,6 +57,8 @@ begin
   end;
 end;
 
+{ TAtlasServerPlaceholdersTests }
+
 procedure TAtlasServerPlaceholdersTests.OffsetsInOrder;
 var
   mExpansion: TAtlasSnippetExpansion;

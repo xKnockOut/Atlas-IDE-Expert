@@ -270,19 +270,6 @@ end;
 
 { TInliningRulesTests }
 
-procedure TInliningRulesTests.UnknownCallKeepsSuppression;
-var
-  mFound: TArray<TRuleFinding>;
-begin
-  // RenameFile kennt der Index nicht (RTL fehlt): Die Regel kann die Zeile nicht entscheiden, ihr lsp-ignore ist
-  // keine unused-suppression. In einer Zeile mit nur bekannten Namen schon.
-  mFound := Findings(Haupt('Werk.Json', '  RenameFile(''a'', ''b''); // lsp-ignore: inline-not-expanded'#10));
-  Assert.AreEqual(0, Integer(Length(mFound)), Messages(mFound));
-  mFound := Findings(Haupt('Werk.Json', '  X := 1; // lsp-ignore: inline-not-expanded'#10));
-  Assert.AreEqual(1, Integer(Length(mFound)), Messages(mFound));
-  Assert.AreEqual('unused-suppression', mFound[0].RuleId);
-end;
-
 procedure TInliningRulesTests.MissingUnitIsReported;
 var
   mFound: TArray<TRuleFinding>;
@@ -645,6 +632,19 @@ begin
     end;
   end;
   Assert.IsTrue(mFound);
+end;
+
+procedure TInliningRulesTests.UnknownCallKeepsSuppression;
+var
+  mFound: TArray<TRuleFinding>;
+begin
+  // RenameFile kennt der Index nicht (RTL fehlt): Die Regel kann die Zeile nicht entscheiden, ihr lsp-ignore ist
+  // keine unused-suppression. In einer Zeile mit nur bekannten Namen schon.
+  mFound := Findings(Haupt('Werk.Json', '  RenameFile(''a'', ''b''); // lsp-ignore: inline-not-expanded'#10));
+  Assert.AreEqual(0, Integer(Length(mFound)), Messages(mFound));
+  mFound := Findings(Haupt('Werk.Json', '  X := 1; // lsp-ignore: inline-not-expanded'#10));
+  Assert.AreEqual(1, Integer(Length(mFound)), Messages(mFound));
+  Assert.AreEqual('unused-suppression', mFound[0].RuleId);
 end;
 
 procedure TInliningRulesTests.ManyCallsWithLongUsesChainStayFast;

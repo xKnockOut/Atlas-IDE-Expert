@@ -78,6 +78,8 @@ begin
   end;
 end;
 
+{ TAtlasBulkFixPreviewTests }
+
 procedure TAtlasBulkFixPreviewTests.FilesOfRuleOnceInOrder;
 var
   mFiles: TArray<string>;

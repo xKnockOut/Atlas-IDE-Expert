@@ -55,15 +55,14 @@ begin
   Result := TArray<string>.Create(cFileName);
 end;
 
-procedure TShellNavigationTests.Setup;
-begin
-  FDocuments := TDocumentStore.Create;
-  FReads := 0;
-end;
+{ TShellNavigationTests }
 
-procedure TShellNavigationTests.TearDown;
+function TShellNavigationTests.NewServices: TShellNavigationServices;
 begin
-  FDocuments := nil;
+  Result := Default(TShellNavigationServices);
+  Result.Documents := FDocuments;
+  Result.ReadText := ReadMarked;
+  Result.ProjectFiles := OneProjectFile;
 end;
 
 function TShellNavigationTests.ReadMarked(const AFileName: string; out AText: string): Boolean;
@@ -73,12 +72,30 @@ begin
   Result := True;
 end;
 
-function TShellNavigationTests.NewServices: TShellNavigationServices;
+procedure TShellNavigationTests.WarmUp;
+var
+  mNavigation: TShellNavigation;
 begin
-  Result := Default(TShellNavigationServices);
-  Result.Documents := FDocuments;
-  Result.ReadText := ReadMarked;
-  Result.ProjectFiles := OneProjectFile;
+  FDocuments := TDocumentStore.Create;
+  mNavigation := TShellNavigation.Create(NewServices);
+  try
+    mNavigation.SetNamespaces(TArray<string>.Create('System'));
+    mNavigation.Namespaces;
+  finally
+    mNavigation.Free;
+  end;
+  FDocuments := nil;
+end;
+
+procedure TShellNavigationTests.Setup;
+begin
+  FDocuments := TDocumentStore.Create;
+  FReads := 0;
+end;
+
+procedure TShellNavigationTests.TearDown;
+begin
+  FDocuments := nil;
 end;
 
 procedure TShellNavigationTests.CollectsBookmarksOfProjectFiles;
@@ -112,21 +129,6 @@ begin
   finally
     mNavigation.Free;
   end;
-end;
-
-procedure TShellNavigationTests.WarmUp;
-var
-  mNavigation: TShellNavigation;
-begin
-  FDocuments := TDocumentStore.Create;
-  mNavigation := TShellNavigation.Create(NewServices);
-  try
-    mNavigation.SetNamespaces(TArray<string>.Create('System'));
-    mNavigation.Namespaces;
-  finally
-    mNavigation.Free;
-  end;
-  FDocuments := nil;
 end;
 
 procedure TShellNavigationTests.SetNamespacesReachesNavigation;

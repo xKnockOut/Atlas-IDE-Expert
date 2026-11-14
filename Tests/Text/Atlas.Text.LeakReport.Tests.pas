@@ -94,6 +94,8 @@ begin
   Result := StringReplace(cFastMM4Block, '4C2B10', AAddress, []);
 end;
 
+{ TLeakReportTests }
+
 procedure TLeakReportTests.ReadsRtlDialog;
 var
   mReport: TLeakReport;

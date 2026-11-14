@@ -92,24 +92,7 @@ const
   cUri = 'file:///tmp/Kunden.pas';
   cSource = 'unit Kunden;'#10'interface'#10'implementation'#10'procedure Laden;'#10'begin'#10'end;'#10'end.'#10;
 
-procedure TShellRefactoringsTests.Setup;
-begin
-  FSettings := Default(TRefactoringSettings);
-  FDocuments := TDocumentStore.Create;
-  FServices := NewRefactoringServices(FDocuments, SettingsFor);
-  FRefactorings := TShellRefactorings.Create(FServices);
-  FCommands := TLspCommands.Create;
-  FRefactorings.Register(FCommands);
-end;
-
-procedure TShellRefactoringsTests.TearDown;
-begin
-  FreeAndNil(FCommands);
-  FreeAndNil(FRefactorings);
-  FDocuments := nil;
-  FServices := Default(TShellRefactoringServices);
-  FSettings := Default(TRefactoringSettings);
-end;
+{ TShellRefactoringsTests }
 
 function TShellRefactoringsTests.SettingsFor(const AUri: string): TRefactoringSettings;
 begin
@@ -147,6 +130,25 @@ begin
       Result := E.Message;
     end;
   end;
+end;
+
+procedure TShellRefactoringsTests.Setup;
+begin
+  FSettings := Default(TRefactoringSettings);
+  FDocuments := TDocumentStore.Create;
+  FServices := NewRefactoringServices(FDocuments, SettingsFor);
+  FRefactorings := TShellRefactorings.Create(FServices);
+  FCommands := TLspCommands.Create;
+  FRefactorings.Register(FCommands);
+end;
+
+procedure TShellRefactoringsTests.TearDown;
+begin
+  FreeAndNil(FCommands);
+  FreeAndNil(FRefactorings);
+  FDocuments := nil;
+  FServices := Default(TShellRefactoringServices);
+  FSettings := Default(TRefactoringSettings);
 end;
 
 procedure TShellRefactoringsTests.RegistersCommandsOfAllParts;

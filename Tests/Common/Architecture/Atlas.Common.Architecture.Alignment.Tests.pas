@@ -97,6 +97,8 @@ begin
   Result := AOverview.Subsystems[AOverview.Units[AOverview.IndexOf(AUnit)].Subsystem];
 end;
 
+{ TArchitectureAlignmentTests }
+
 procedure TArchitectureAlignmentTests.SwappedOrderKeepsColorsAndNames;
 var
   mBefore, mAfter, mAligned: TArchitectureOverview;

@@ -69,6 +69,8 @@ begin
   Assert.IsTrue(TStringLiterals.PlainText(AExpression, Result), AExpression);
 end;
 
+{ TStringLiteralsTests }
+
 procedure TStringLiteralsTests.QuoteSpecialCharacters;
 begin
   Assert.AreEqual('''Kunde''''s''', TStringLiterals.Quote('Kunde''s'));

@@ -30,6 +30,8 @@ uses
 const
   cRules = '{ // Projekt' + sLineBreak + '  "rules": { "no-with": "error" } }';
 
+{ TRuleChecksNoticeTests }
+
 procedure TRuleChecksNoticeTests.HasRulesNeedsRulesOrProfile;
 begin
   Assert.IsTrue(TAtlasRuleChecksNotice.HasRules(cRules));

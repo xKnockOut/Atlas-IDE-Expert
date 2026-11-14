@@ -40,6 +40,8 @@ uses
 const
   cForm = 'C:\Projekt\Main.dfm';
 
+{ TAtlasDesignerGroupsTests }
+
 procedure TAtlasDesignerGroupsTests.GroupAndExpand;
 var
   mGroups: TAtlasDesignerGroups;

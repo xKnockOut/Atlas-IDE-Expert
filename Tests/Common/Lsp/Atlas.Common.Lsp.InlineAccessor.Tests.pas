@@ -224,6 +224,8 @@ begin
   end;
 end;
 
+{ TLspInlineAccessorTests }
+
 procedure TLspInlineAccessorTests.Setup;
 begin
   FIndex := TSymbolIndex.Create;

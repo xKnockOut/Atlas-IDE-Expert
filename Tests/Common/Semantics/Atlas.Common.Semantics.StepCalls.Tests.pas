@@ -58,9 +58,22 @@ const
     'procedure P;'#10 +                                         // 3
     'begin'#10;                                                 // 4
 
-procedure TSemanticsStepCallsTests.TearDown;
+{ TSemanticsStepCallsTests }
+
+function TSemanticsStepCallsTests.SitesAt(const AText: string; ALine: Integer; out AStatement: TStepStatement): string;
+var
+  mSite: TStepCallSite;
+  mNames: TArray<string>;
 begin
   FreeAndNil(FTree);
+  FTree := TPascalParser.Parse(AText, nil);
+  Assert.IsTrue(TStepCalls.Find(FTree, ALine, AStatement), 'keine Anweisung');
+  mNames := nil;
+  for mSite in AStatement.Sites do
+  begin
+    mNames := mNames + [NameOf(mSite)];
+  end;
+  Result := string.Join(' ', mNames);
 end;
 
 function TSemanticsStepCallsTests.NameOf(const ASite: TStepCallSite): string;
@@ -89,20 +102,9 @@ begin
   end;
 end;
 
-function TSemanticsStepCallsTests.SitesAt(const AText: string; ALine: Integer; out AStatement: TStepStatement): string;
-var
-  mSite: TStepCallSite;
-  mNames: TArray<string>;
+procedure TSemanticsStepCallsTests.TearDown;
 begin
   FreeAndNil(FTree);
-  FTree := TPascalParser.Parse(AText, nil);
-  Assert.IsTrue(TStepCalls.Find(FTree, ALine, AStatement), 'keine Anweisung');
-  mNames := nil;
-  for mSite in AStatement.Sites do
-  begin
-    mNames := mNames + [NameOf(mSite)];
-  end;
-  Result := string.Join(' ', mNames);
 end;
 
 procedure TSemanticsStepCallsTests.NestedCallsArgumentsFirst;

@@ -61,6 +61,8 @@ begin
   Result := '';
 end;
 
+{ TServerPackageTests }
+
 procedure TServerPackageTests.ContainsStatusAndLogWithoutTrace;
 var
   mFiles: TArray<TServerPackageFile>;

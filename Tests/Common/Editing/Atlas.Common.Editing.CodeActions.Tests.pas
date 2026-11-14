@@ -84,6 +84,8 @@ type
     procedure Check(const AContext: TRuleContext; const AReport: IRuleReport);
   end;
 
+{ TMarkerRule }
+
 function TMarkerRule.Descriptor: TRuleDescriptor;
 begin
   Result := TRuleDescriptor.Create('marker', TRuleSeverity.Warning, 'Marker');
@@ -310,6 +312,15 @@ begin
   Assert.AreEqual(0, SyntaxErrors(mNewText));
 end;
 
+procedure TCodeActionTests.NoTryFinallyWhenAlreadyProtected;
+var
+  mAction: TCodeAction;
+begin
+  Assert.IsFalse(TCodeActions.TryFinally('procedure P;' + cLB + 'var' + cLB + '  L: T;' + cLB + 'begin' + cLB +
+    '  L := T.Create;' + cLB + cLB + '  try' + cLB + '    L.Run;' + cLB + '  finally' + cLB + '    L.Free;' + cLB + '  end;' + cLB +
+    'end;', 4, mAction));
+end;
+
 procedure TCodeActionTests.ResultGetsTryExceptInsteadOfFree;
 var
   mAction: TCodeAction;
@@ -347,15 +358,6 @@ begin
   Assert.IsFalse(TCodeActions.KindRequested(cFixAllKind, ['source.organizeImports']));
   Assert.IsFalse(TCodeActions.KindRequested(cQuickFixKind, ['source']));
   Assert.IsFalse(TCodeActions.KindRequested('sourceX', ['source']));
-end;
-
-procedure TCodeActionTests.NoTryFinallyWhenAlreadyProtected;
-var
-  mAction: TCodeAction;
-begin
-  Assert.IsFalse(TCodeActions.TryFinally('procedure P;' + cLB + 'var' + cLB + '  L: T;' + cLB + 'begin' + cLB +
-    '  L := T.Create;' + cLB + cLB + '  try' + cLB + '    L.Run;' + cLB + '  finally' + cLB + '    L.Free;' + cLB + '  end;' + cLB +
-    'end;', 4, mAction));
 end;
 
 procedure TCodeActionTests.NoTryFinallyWithoutCreate;

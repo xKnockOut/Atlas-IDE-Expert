@@ -208,6 +208,8 @@ begin
   Result := mPlace.Sections[mPlace.Current].Keyword;
 end;
 
+{ TAtlasVisibilitySectionsTests }
+
 procedure TAtlasVisibilitySectionsTests.SectionsInSourceOrder;
 var
   mList: TAtlasOutlineNodes;

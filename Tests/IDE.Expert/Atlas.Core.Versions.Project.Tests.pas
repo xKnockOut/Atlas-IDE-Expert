@@ -26,6 +26,8 @@ implementation
 uses
   Atlas.Core.Versions.Project;
 
+{ TAtlasProjectVersionTests }
+
 procedure TAtlasProjectVersionTests.IsOnReadsOptionValues;
 begin
   Assert.IsTrue(TAtlasProjectVersion.IsOn('True', False));

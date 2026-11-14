@@ -47,6 +47,8 @@ implementation
 const
   cForm = 'C:\Projekt\uKunden.dfm';
 
+{ TAtlasSelectionSetsTests }
+
 procedure TAtlasSelectionSetsTests.Setup;
 begin
   FSets := TAtlasSelectionSets.Create;

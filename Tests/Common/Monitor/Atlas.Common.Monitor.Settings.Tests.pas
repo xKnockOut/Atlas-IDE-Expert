@@ -40,6 +40,8 @@ uses
   Atlas.Common.Localization.Texts,
   Atlas.Common.Monitor.Settings;
 
+{ TMonitorSettingsTests }
+
 procedure TMonitorSettingsTests.Setup;
 begin
   FFolder := TPath.Combine(TPath.GetTempPath, 'Atlas-MonitorSettings-' + IntToStr(Random(MaxInt)));

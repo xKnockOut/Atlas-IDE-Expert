@@ -45,6 +45,8 @@ begin
   Result.AddUnit(U);
 end;
 
+{ TLibraryUnitsTests }
+
 procedure TLibraryUnitsTests.RecognizesLibraryNames;
 begin
   Assert.IsTrue(TLibraryUnits.IsLibraryUnit('System.SysUtils'));

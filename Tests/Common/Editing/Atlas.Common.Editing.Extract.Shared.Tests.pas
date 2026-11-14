@@ -73,6 +73,8 @@ begin
   Result.Style := TExtractOptions.Default.Style;
 end;
 
+{ TExtractSharedTests }
+
 procedure TExtractSharedTests.TrimmedSkipsCommentsAndSemicolons;
 var
   mText: string;

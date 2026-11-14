@@ -399,28 +399,6 @@ end;
 
 { TAffectedTestsTests }
 
-procedure TAffectedTestsTests.Setup;
-var
-  mFormular: TUnitIndex;
-begin
-  FIndex := TSymbolIndex.Create;
-  FIndex.AddUnit(TIndexExtractor.ExtractText(cUnitBasis, cBasisFile, nil, nil, True));
-  FIndex.AddUnit(TIndexExtractor.ExtractText(cUnitAndere, cAndereFile, nil, nil, True));
-  mFormular := TIndexExtractor.ExtractText(cUnitFormular, cFormularFile, nil, nil, True);
-  // Ohne Include-Auflösung im Test: Die eingebundene Datei wie der Index sie nennt.
-  mFormular.Includes := TArray<string>.Create(cFormularInclude);
-  FIndex.AddUnit(mFormular);
-  FIndex.AddUnit(TIndexExtractor.ExtractText(cUnitBasisTests, cBasisTestFile, nil, nil, True));
-  FIndex.AddUnit(TIndexExtractor.ExtractText(cUnitFormularTests, cFormularTestFile, nil, nil, True));
-  FResolver := TNameResolver.Create(FIndex);
-end;
-
-procedure TAffectedTestsTests.TearDown;
-begin
-  FResolver.Free;
-  FIndex := nil;
-end;
-
 function TAffectedTestsTests.Determine(const AInputs: TArray<TAffectedInput>): TAffectedResult;
 begin
   Result := Determine(AInputs, TArray<string>.Create(cProgramFile));
@@ -443,6 +421,28 @@ begin
     begin
       Result := ReadFile(AFileName, AText);
     end, nil);
+end;
+
+procedure TAffectedTestsTests.Setup;
+var
+  mFormular: TUnitIndex;
+begin
+  FIndex := TSymbolIndex.Create;
+  FIndex.AddUnit(TIndexExtractor.ExtractText(cUnitBasis, cBasisFile, nil, nil, True));
+  FIndex.AddUnit(TIndexExtractor.ExtractText(cUnitAndere, cAndereFile, nil, nil, True));
+  mFormular := TIndexExtractor.ExtractText(cUnitFormular, cFormularFile, nil, nil, True);
+  // Ohne Include-Auflösung im Test: Die eingebundene Datei wie der Index sie nennt.
+  mFormular.Includes := TArray<string>.Create(cFormularInclude);
+  FIndex.AddUnit(mFormular);
+  FIndex.AddUnit(TIndexExtractor.ExtractText(cUnitBasisTests, cBasisTestFile, nil, nil, True));
+  FIndex.AddUnit(TIndexExtractor.ExtractText(cUnitFormularTests, cFormularTestFile, nil, nil, True));
+  FResolver := TNameResolver.Create(FIndex);
+end;
+
+procedure TAffectedTestsTests.TearDown;
+begin
+  FResolver.Free;
+  FIndex := nil;
 end;
 
 procedure TAffectedTestsTests.ImplementationLineMapsToRoutine;

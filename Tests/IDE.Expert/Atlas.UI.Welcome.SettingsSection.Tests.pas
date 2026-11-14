@@ -78,6 +78,8 @@ type
     function CreateSection: IAtlasSettingsSection;
   end;
 
+{ TFixedProvider }
+
 constructor TFixedProvider.Create(const ASection: IAtlasSettingsSection);
 begin
   inherited Create;
@@ -98,6 +100,8 @@ begin
   end;
   Result := TTabSheet(AControl);
 end;
+
+{ TWelcomeSettingsSectionTests }
 
 procedure TWelcomeSettingsSectionTests.WarmUpFirstUse;
 begin

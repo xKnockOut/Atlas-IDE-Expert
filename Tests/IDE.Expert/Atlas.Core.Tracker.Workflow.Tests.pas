@@ -338,66 +338,6 @@ begin
   Assert.AreEqual(0, Integer(Length(TAtlasTrackerWorkflow.ParseList(' , ; '))));
 end;
 
-procedure TAtlasTrackerWorkflowTests.UsesFieldsOnlyWithoutGitHub;
-begin
-  Assert.IsTrue(TAtlasTrackerWorkflow.UsesFields(TAtlasTrackerTarget.cYouTrack), 'YouTrack');
-  Assert.IsFalse(TAtlasTrackerWorkflow.UsesFields(TAtlasTrackerTarget.cGitHub), 'GitHub');
-  Assert.IsFalse(TAtlasTrackerWorkflow.UsesFields(' GitHub '), 'Schreibweise und Leerraum');
-  Assert.IsTrue(TAtlasTrackerWorkflow.UsesFields(''), 'ohne Anbieter');
-end;
-
-procedure TAtlasTrackerWorkflowTests.CloseHelpers;
-var
-  mChange: TAtlasTrackerWrite;
-  mKey: string;
-begin
-  Assert.IsTrue(TAtlasTrackerWorkflow.DuplicateKey('#7', ' 418 ', mKey));
-  Assert.AreEqual('#418', mKey);
-  Assert.IsTrue(TAtlasTrackerWorkflow.DuplicateKey('#7', '#418', mKey));
-  Assert.AreEqual('#418', mKey);
-  Assert.IsFalse(TAtlasTrackerWorkflow.DuplicateKey('#7', '7', mKey), 'nicht das Issue selbst');
-  Assert.IsFalse(TAtlasTrackerWorkflow.DuplicateKey('#7', '', mKey));
-  Assert.IsFalse(TAtlasTrackerWorkflow.DuplicateKey('#7', 'abc', mKey));
-  // Offen lassen nimmt einen Erledigt-Zustand zurück, sonst würde das Issue doch geschlossen.
-  mChange := TAtlasTrackerWrite.CommentOnly('Fertig.');
-  mChange.State := 'Erledigt';
-  mChange := TAtlasTrackerWorkflow.WithClose(mChange, TAtlasTrackerClose.KeepOpen, '', '');
-  Assert.AreEqual('', mChange.State);
-  Assert.AreEqual('Fertig.', mChange.Comment);
-  Assert.IsTrue(TAtlasTrackerWorkflow.ClosesWithReason('GitHub'));
-  Assert.IsFalse(TAtlasTrackerWorkflow.ClosesWithReason('youtrack'));
-  Assert.AreEqual<TAtlasTrackerClose>(TAtlasTrackerClose.Completed, TAtlasTrackerWorkflow.DefaultClose('Erledigt'));
-  Assert.AreEqual<TAtlasTrackerClose>(TAtlasTrackerClose.KeepOpen, TAtlasTrackerWorkflow.DefaultClose('Zur Prüfung'));
-  Assert.AreEqual<TAtlasTrackerClose>(TAtlasTrackerClose.KeepOpen, TAtlasTrackerWorkflow.DefaultClose(''));
-  // Kommentar ohne Verweis: Ersatzkommentar für den Fall, dass der Server „Duplikat“ ablehnt.
-  mChange := TAtlasTrackerWorkflow.WithClose(TAtlasTrackerWrite.CommentOnly('Gibt es schon.'),
-    TAtlasTrackerClose.Duplicate, ' #418 ', 'Duplikat von #418.');
-  Assert.AreEqual('#418', mChange.DuplicateOf);
-  Assert.AreEqual('Duplikat von #418.', mChange.DuplicateNote);
-  Assert.IsTrue(TAtlasTrackerWorkflow.Abandons(mChange));
-  Assert.IsTrue(mChange.HasWork and mChange.Closes);
-  mChange := TAtlasTrackerWorkflow.WithClose(TAtlasTrackerWrite.Empty, TAtlasTrackerClose.KeepOpen, '#418', 'x');
-  Assert.IsFalse(mChange.HasWork, 'offen lassen allein schreibt nichts');
-  Assert.IsFalse(TAtlasTrackerWorkflow.Abandons(mChange));
-  Assert.IsFalse(TAtlasTrackerWorkflow.Abandons(TAtlasTrackerWorkflow.WithClose(TAtlasTrackerWrite.Empty,
-    TAtlasTrackerClose.Completed, '', '')));
-  Assert.IsTrue(TAtlasTrackerWorkflow.Abandons(TAtlasTrackerWorkflow.WithClose(TAtlasTrackerWrite.Empty,
-    TAtlasTrackerClose.NotPlanned, '', '')));
-end;
-
-procedure TAtlasTrackerWorkflowTests.EndCommentFollowsLanguage;
-begin
-  Assert.AreEqual(TAtlasPluginSettings.cDefaultIssuesEndComment, TAtlasTrackerWorkflow.cDefaultEndComment);
-  Assert.AreEqual(TAtlasTrackerWorkflow.cDefaultEndCommentEn,
-    TAtlasTrackerWorkflow.EndCommentFor(TAtlasTrackerWorkflow.cDefaultEndComment, True));
-  Assert.AreEqual(TAtlasTrackerWorkflow.cDefaultEndComment,
-    TAtlasTrackerWorkflow.EndCommentFor(TAtlasTrackerWorkflow.cDefaultEndCommentEn, False));
-  Assert.AreEqual(TAtlasTrackerWorkflow.cDefaultEndComment,
-    TAtlasTrackerWorkflow.EndCommentFor(TAtlasTrackerWorkflow.cDefaultEndComment, False));
-  Assert.AreEqual('Fertig: {pr}', TAtlasTrackerWorkflow.EndCommentFor('Fertig: {pr}', True), 'eigener Text');
-  Assert.AreEqual('', TAtlasTrackerWorkflow.EndCommentFor('', True), 'leer = kein Kommentar');
-end;
-
 procedure TAtlasTrackerWorkflowTests.FillReplacesPlaceholders;
 var
   mValues: TAtlasTrackerPlaceholders;
@@ -416,6 +356,19 @@ begin
   Assert.AreEqual('Erledigt in feature/ATL-123-export.',
     TAtlasTrackerWorkflow.Fill(TAtlasTrackerWorkflow.cDefaultEndComment, mValues));
   Assert.AreEqual('{unbekannt} bleibt', TAtlasTrackerWorkflow.Fill('{unbekannt} bleibt', mValues));
+end;
+
+procedure TAtlasTrackerWorkflowTests.EndCommentFollowsLanguage;
+begin
+  Assert.AreEqual(TAtlasPluginSettings.cDefaultIssuesEndComment, TAtlasTrackerWorkflow.cDefaultEndComment);
+  Assert.AreEqual(TAtlasTrackerWorkflow.cDefaultEndCommentEn,
+    TAtlasTrackerWorkflow.EndCommentFor(TAtlasTrackerWorkflow.cDefaultEndComment, True));
+  Assert.AreEqual(TAtlasTrackerWorkflow.cDefaultEndComment,
+    TAtlasTrackerWorkflow.EndCommentFor(TAtlasTrackerWorkflow.cDefaultEndCommentEn, False));
+  Assert.AreEqual(TAtlasTrackerWorkflow.cDefaultEndComment,
+    TAtlasTrackerWorkflow.EndCommentFor(TAtlasTrackerWorkflow.cDefaultEndComment, False));
+  Assert.AreEqual('Fertig: {pr}', TAtlasTrackerWorkflow.EndCommentFor('Fertig: {pr}', True), 'eigener Text');
+  Assert.AreEqual('', TAtlasTrackerWorkflow.EndCommentFor('', True), 'leer = kein Kommentar');
 end;
 
 procedure TAtlasTrackerWorkflowTests.MentionsKeyAsOwnWord;
@@ -578,6 +531,53 @@ begin
     TAtlasTrackerConnection.Create('X', 'github', 'https://github.com'))).Contains('stateField'));
   Assert.IsFalse(TAtlasTrackerConnections.ToJson(TArray<TAtlasTrackerConnection>.Create(
     TAtlasTrackerConnection.Create('X', 'github', 'https://github.com'))).Contains('reviewStates'));
+end;
+
+procedure TAtlasTrackerWorkflowTests.UsesFieldsOnlyWithoutGitHub;
+begin
+  Assert.IsTrue(TAtlasTrackerWorkflow.UsesFields(TAtlasTrackerTarget.cYouTrack), 'YouTrack');
+  Assert.IsFalse(TAtlasTrackerWorkflow.UsesFields(TAtlasTrackerTarget.cGitHub), 'GitHub');
+  Assert.IsFalse(TAtlasTrackerWorkflow.UsesFields(' GitHub '), 'Schreibweise und Leerraum');
+  Assert.IsTrue(TAtlasTrackerWorkflow.UsesFields(''), 'ohne Anbieter');
+end;
+
+procedure TAtlasTrackerWorkflowTests.CloseHelpers;
+var
+  mChange: TAtlasTrackerWrite;
+  mKey: string;
+begin
+  Assert.IsTrue(TAtlasTrackerWorkflow.DuplicateKey('#7', ' 418 ', mKey));
+  Assert.AreEqual('#418', mKey);
+  Assert.IsTrue(TAtlasTrackerWorkflow.DuplicateKey('#7', '#418', mKey));
+  Assert.AreEqual('#418', mKey);
+  Assert.IsFalse(TAtlasTrackerWorkflow.DuplicateKey('#7', '7', mKey), 'nicht das Issue selbst');
+  Assert.IsFalse(TAtlasTrackerWorkflow.DuplicateKey('#7', '', mKey));
+  Assert.IsFalse(TAtlasTrackerWorkflow.DuplicateKey('#7', 'abc', mKey));
+  // Offen lassen nimmt einen Erledigt-Zustand zurück, sonst würde das Issue doch geschlossen.
+  mChange := TAtlasTrackerWrite.CommentOnly('Fertig.');
+  mChange.State := 'Erledigt';
+  mChange := TAtlasTrackerWorkflow.WithClose(mChange, TAtlasTrackerClose.KeepOpen, '', '');
+  Assert.AreEqual('', mChange.State);
+  Assert.AreEqual('Fertig.', mChange.Comment);
+  Assert.IsTrue(TAtlasTrackerWorkflow.ClosesWithReason('GitHub'));
+  Assert.IsFalse(TAtlasTrackerWorkflow.ClosesWithReason('youtrack'));
+  Assert.AreEqual<TAtlasTrackerClose>(TAtlasTrackerClose.Completed, TAtlasTrackerWorkflow.DefaultClose('Erledigt'));
+  Assert.AreEqual<TAtlasTrackerClose>(TAtlasTrackerClose.KeepOpen, TAtlasTrackerWorkflow.DefaultClose('Zur Prüfung'));
+  Assert.AreEqual<TAtlasTrackerClose>(TAtlasTrackerClose.KeepOpen, TAtlasTrackerWorkflow.DefaultClose(''));
+  // Kommentar ohne Verweis: Ersatzkommentar für den Fall, dass der Server „Duplikat“ ablehnt.
+  mChange := TAtlasTrackerWorkflow.WithClose(TAtlasTrackerWrite.CommentOnly('Gibt es schon.'),
+    TAtlasTrackerClose.Duplicate, ' #418 ', 'Duplikat von #418.');
+  Assert.AreEqual('#418', mChange.DuplicateOf);
+  Assert.AreEqual('Duplikat von #418.', mChange.DuplicateNote);
+  Assert.IsTrue(TAtlasTrackerWorkflow.Abandons(mChange));
+  Assert.IsTrue(mChange.HasWork and mChange.Closes);
+  mChange := TAtlasTrackerWorkflow.WithClose(TAtlasTrackerWrite.Empty, TAtlasTrackerClose.KeepOpen, '#418', 'x');
+  Assert.IsFalse(mChange.HasWork, 'offen lassen allein schreibt nichts');
+  Assert.IsFalse(TAtlasTrackerWorkflow.Abandons(mChange));
+  Assert.IsFalse(TAtlasTrackerWorkflow.Abandons(TAtlasTrackerWorkflow.WithClose(TAtlasTrackerWrite.Empty,
+    TAtlasTrackerClose.Completed, '', '')));
+  Assert.IsTrue(TAtlasTrackerWorkflow.Abandons(TAtlasTrackerWorkflow.WithClose(TAtlasTrackerWrite.Empty,
+    TAtlasTrackerClose.NotPlanned, '', '')));
 end;
 
 { TAtlasTrackerWriterTests }

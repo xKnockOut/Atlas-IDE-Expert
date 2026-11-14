@@ -40,6 +40,8 @@ begin
     ABody + #10'end;'#10'end.';
 end;
 
+{ TFlowOutParamReadTests }
+
 procedure TFlowOutParamReadTests.ReadBeforeSetIsReported;
 var
   mFindings: TArray<TRuleFinding>;

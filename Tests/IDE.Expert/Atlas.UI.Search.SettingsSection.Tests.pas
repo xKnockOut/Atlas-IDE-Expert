@@ -38,6 +38,8 @@ uses
   Atlas.UI.Settings.Page.TestSupport,
   Atlas.UI.Search.SettingsSection;
 
+{ TSearchSettingsSectionTests }
+
 procedure TSearchSettingsSectionTests.WarmUp;
 begin
   WarmUpSettingsPage;

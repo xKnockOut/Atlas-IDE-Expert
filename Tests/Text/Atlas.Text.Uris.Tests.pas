@@ -32,6 +32,8 @@ implementation
 uses
   Atlas.Text.Uris;
 
+{ TTextUrisTests }
+
 procedure TTextUrisTests.ConvertsDrivePaths;
 begin
   Assert.AreEqual('file:///c%3A/Projekt/A%20B.pas', TTextUris.FromPath('C:\Projekt\A B.pas'));

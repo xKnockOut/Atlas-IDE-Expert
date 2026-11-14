@@ -31,6 +31,8 @@ uses
   Atlas.Common.Mcp.Server,
   Shell.Mcp.Conventions;
 
+{ TMcpConventionsTests }
+
 procedure TMcpConventionsTests.Setup;
 begin
   FSaved := TAtlasLocale.Language;

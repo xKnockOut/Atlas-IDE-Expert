@@ -62,6 +62,8 @@ begin
   AModel := TComponentModel.Create(mContext, Default(TUnitIndex));
 end;
 
+{ TComponentModelTests }
+
 procedure TComponentModelTests.ClassesAndMethods;
 var
   mTree: TSyntaxTree;

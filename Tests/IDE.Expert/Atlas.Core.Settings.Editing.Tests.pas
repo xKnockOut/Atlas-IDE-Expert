@@ -62,44 +62,8 @@ uses
   Atlas.Core.Settings.Plugin,
   Atlas.Core.Settings.TestSupport;
 
-procedure TAtlasEditingSettingsTests.GenerateMenuOptions;
-var
-  mSettings, mLoaded: TAtlasPluginSettings;
-  mStore: IAtlasSettingsStore;
-begin
-  mSettings := TAtlasPluginSettings.Defaults;
-  Assert.IsTrue(mSettings.GenerateMenu, 'standardmäßig an');
-  Assert.AreEqual($802D, mSettings.GenerateMenuKey, 'Alt+Einfg');
-  Assert.AreEqual('generate,surround,templates', mSettings.GenerateMenuGroups);
-  Assert.AreEqual('', mSettings.GenerateMenuHidden);
-  Assert.IsTrue(mSettings.GenerateMenuRecentFirst);
-  Assert.IsTrue(mSettings.GenerateMenuShowCommandNames);
-  // Unbekannte Gruppen entfallen, Reihenfolge bleibt; Ausgeblendete ohne Leere und Doppelte.
-  mSettings.GenerateMenuGroups := ' Templates; quatsch, generate ';
-  mSettings.GenerateMenuHidden := '/json, , /json,tryf';
-  mSettings.Normalize;
-  Assert.AreEqual('templates,generate', mSettings.GenerateMenuGroups);
-  Assert.AreEqual('/json, tryf', mSettings.GenerateMenuHidden);
-  mSettings.GenerateMenuGroups := 'nichts';
-  mSettings.Normalize;
-  Assert.AreEqual('generate,surround,templates', mSettings.GenerateMenuGroups, 'ohne bekannte Gruppe: Vorgabe');
-  // Speichern und Laden.
-  mSettings.GenerateMenu := False;
-  mSettings.GenerateMenuKey := 0;
-  mSettings.GenerateMenuGroups := 'surround,generate';
-  mSettings.GenerateMenuRecentFirst := False;
-  mSettings.GenerateMenuShowCommandNames := False;
-  mStore := TMemoryStore.Create;
-  mSettings.Save(mStore);
-  mLoaded := TAtlasPluginSettings.Defaults;
-  mLoaded.Load(mStore);
-  Assert.IsFalse(mLoaded.GenerateMenu, 'abschaltbar');
-  Assert.AreEqual(0, mLoaded.GenerateMenuKey, '0 = keine Taste');
-  Assert.AreEqual('surround,generate', mLoaded.GenerateMenuGroups);
-  Assert.AreEqual('/json, tryf', mLoaded.GenerateMenuHidden);
-  Assert.IsFalse(mLoaded.GenerateMenuRecentFirst);
-  Assert.IsFalse(mLoaded.GenerateMenuShowCommandNames);
-end;
+{ TAtlasEditingSettingsTests }
+
 procedure TAtlasEditingSettingsTests.MoveLinesOptions;
 var
   mSettings, mLoaded: TAtlasPluginSettings;
@@ -207,6 +171,30 @@ begin
   mLoaded.Normalize;
   Assert.AreEqual(0, mLoaded.FormatCodeKey);
 end;
+procedure TAtlasEditingSettingsTests.ContinuePatternOptions;
+var
+  mSettings, mLoaded: TAtlasPluginSettings;
+  mStore: IAtlasSettingsStore;
+begin
+  mSettings := TAtlasPluginSettings.Defaults;
+  Assert.IsTrue(mSettings.ContinuePattern);
+  Assert.AreEqual(2, mSettings.ContinuePatternMinLines);
+  mSettings.ContinuePattern := False;
+  mSettings.ContinuePatternMinLines := 4;
+  mStore := TMemoryStore.Create;
+  mSettings.Save(mStore);
+  mLoaded := TAtlasPluginSettings.Defaults;
+  mLoaded.Load(mStore);
+  Assert.IsFalse(mLoaded.ContinuePattern);
+  Assert.AreEqual(4, mLoaded.ContinuePatternMinLines);
+  // Nur 2 bis 5 Zeilen.
+  mLoaded.ContinuePatternMinLines := 1;
+  mLoaded.Normalize;
+  Assert.AreEqual(2, mLoaded.ContinuePatternMinLines);
+  mLoaded.ContinuePatternMinLines := 9;
+  mLoaded.Normalize;
+  Assert.AreEqual(5, mLoaded.ContinuePatternMinLines);
+end;
 procedure TAtlasEditingSettingsTests.MultiCursorOptions;
 var
   mSettings, mLoaded: TAtlasPluginSettings;
@@ -274,30 +262,6 @@ begin
   mLoaded.Normalize;
   Assert.AreEqual('off', mLoaded.SmartPaste);
 end;
-procedure TAtlasEditingSettingsTests.ContinuePatternOptions;
-var
-  mSettings, mLoaded: TAtlasPluginSettings;
-  mStore: IAtlasSettingsStore;
-begin
-  mSettings := TAtlasPluginSettings.Defaults;
-  Assert.IsTrue(mSettings.ContinuePattern);
-  Assert.AreEqual(2, mSettings.ContinuePatternMinLines);
-  mSettings.ContinuePattern := False;
-  mSettings.ContinuePatternMinLines := 4;
-  mStore := TMemoryStore.Create;
-  mSettings.Save(mStore);
-  mLoaded := TAtlasPluginSettings.Defaults;
-  mLoaded.Load(mStore);
-  Assert.IsFalse(mLoaded.ContinuePattern);
-  Assert.AreEqual(4, mLoaded.ContinuePatternMinLines);
-  // Nur 2 bis 5 Zeilen.
-  mLoaded.ContinuePatternMinLines := 1;
-  mLoaded.Normalize;
-  Assert.AreEqual(2, mLoaded.ContinuePatternMinLines);
-  mLoaded.ContinuePatternMinLines := 9;
-  mLoaded.Normalize;
-  Assert.AreEqual(5, mLoaded.ContinuePatternMinLines);
-end;
 procedure TAtlasEditingSettingsTests.ToggleBlockCommentOptions;
 var
   mSettings, mLoaded: TAtlasPluginSettings;
@@ -335,23 +299,6 @@ begin
   Assert.AreEqual('lineComments', mLoaded.ToggleBlockCommentFallback);
   Assert.AreEqual('statement', mLoaded.ToggleBlockCommentWithoutSelection);
 end;
-procedure TAtlasEditingSettingsTests.WrapSelectionOptions;
-var
-  mSettings, mLoaded: TAtlasPluginSettings;
-  mStore: IAtlasSettingsStore;
-begin
-  mSettings := TAtlasPluginSettings.Defaults;
-  Assert.IsTrue(mSettings.WrapSelection);
-  Assert.AreEqual('([{''', mSettings.WrapSelectionChars);
-  mSettings.WrapSelection := False;
-  mSettings.WrapSelectionChars := '(<';
-  mStore := TMemoryStore.Create;
-  mSettings.Save(mStore);
-  mLoaded := TAtlasPluginSettings.Defaults;
-  mLoaded.Load(mStore);
-  Assert.IsFalse(mLoaded.WrapSelection);
-  Assert.AreEqual('(<', mLoaded.WrapSelectionChars);
-end;
 procedure TAtlasEditingSettingsTests.NewLineAroundOptions;
 var
   mSettings, mLoaded: TAtlasPluginSettings;
@@ -377,6 +324,26 @@ begin
   mLoaded.NewLineBelowKey := -5;
   mLoaded.Normalize;
   Assert.AreEqual(0, mLoaded.NewLineBelowKey);
+end;
+procedure TAtlasEditingSettingsTests.UnwrapOptions;
+var
+  mSettings, mLoaded: TAtlasPluginSettings;
+  mStore: IAtlasSettingsStore;
+begin
+  mSettings := TAtlasPluginSettings.Defaults;
+  Assert.IsTrue(mSettings.Unwrap);
+  Assert.AreEqual($602E, mSettings.UnwrapKey, 'Strg+Umschalt+Entf');
+  mSettings.Unwrap := False;
+  mSettings.UnwrapKey := $402E;
+  mStore := TMemoryStore.Create;
+  mSettings.Save(mStore);
+  mLoaded := TAtlasPluginSettings.Defaults;
+  mLoaded.Load(mStore);
+  Assert.IsFalse(mLoaded.Unwrap);
+  Assert.AreEqual($402E, mLoaded.UnwrapKey);
+  mLoaded.UnwrapKey := $1FFFF;
+  mLoaded.Normalize;
+  Assert.AreEqual($FFFF, mLoaded.UnwrapKey);
 end;
 procedure TAtlasEditingSettingsTests.MethodPlacementOptions;
 var
@@ -421,26 +388,6 @@ begin
   mLoaded.Load(mStore);
   Assert.AreEqual('off', mLoaded.RegionFolds, 'abschaltbar');
 end;
-procedure TAtlasEditingSettingsTests.UnwrapOptions;
-var
-  mSettings, mLoaded: TAtlasPluginSettings;
-  mStore: IAtlasSettingsStore;
-begin
-  mSettings := TAtlasPluginSettings.Defaults;
-  Assert.IsTrue(mSettings.Unwrap);
-  Assert.AreEqual($602E, mSettings.UnwrapKey, 'Strg+Umschalt+Entf');
-  mSettings.Unwrap := False;
-  mSettings.UnwrapKey := $402E;
-  mStore := TMemoryStore.Create;
-  mSettings.Save(mStore);
-  mLoaded := TAtlasPluginSettings.Defaults;
-  mLoaded.Load(mStore);
-  Assert.IsFalse(mLoaded.Unwrap);
-  Assert.AreEqual($402E, mLoaded.UnwrapKey);
-  mLoaded.UnwrapKey := $1FFFF;
-  mLoaded.Normalize;
-  Assert.AreEqual($FFFF, mLoaded.UnwrapKey);
-end;
 procedure TAtlasEditingSettingsTests.SafeDeleteOptions;
 var
   mSettings, mLoaded: TAtlasPluginSettings;
@@ -460,6 +407,61 @@ begin
   mLoaded.SafeDeleteKey := -1;
   mLoaded.Normalize;
   Assert.AreEqual(0, mLoaded.SafeDeleteKey);
+end;
+procedure TAtlasEditingSettingsTests.WrapSelectionOptions;
+var
+  mSettings, mLoaded: TAtlasPluginSettings;
+  mStore: IAtlasSettingsStore;
+begin
+  mSettings := TAtlasPluginSettings.Defaults;
+  Assert.IsTrue(mSettings.WrapSelection);
+  Assert.AreEqual('([{''', mSettings.WrapSelectionChars);
+  mSettings.WrapSelection := False;
+  mSettings.WrapSelectionChars := '(<';
+  mStore := TMemoryStore.Create;
+  mSettings.Save(mStore);
+  mLoaded := TAtlasPluginSettings.Defaults;
+  mLoaded.Load(mStore);
+  Assert.IsFalse(mLoaded.WrapSelection);
+  Assert.AreEqual('(<', mLoaded.WrapSelectionChars);
+end;
+procedure TAtlasEditingSettingsTests.GenerateMenuOptions;
+var
+  mSettings, mLoaded: TAtlasPluginSettings;
+  mStore: IAtlasSettingsStore;
+begin
+  mSettings := TAtlasPluginSettings.Defaults;
+  Assert.IsTrue(mSettings.GenerateMenu, 'standardmäßig an');
+  Assert.AreEqual($802D, mSettings.GenerateMenuKey, 'Alt+Einfg');
+  Assert.AreEqual('generate,surround,templates', mSettings.GenerateMenuGroups);
+  Assert.AreEqual('', mSettings.GenerateMenuHidden);
+  Assert.IsTrue(mSettings.GenerateMenuRecentFirst);
+  Assert.IsTrue(mSettings.GenerateMenuShowCommandNames);
+  // Unbekannte Gruppen entfallen, Reihenfolge bleibt; Ausgeblendete ohne Leere und Doppelte.
+  mSettings.GenerateMenuGroups := ' Templates; quatsch, generate ';
+  mSettings.GenerateMenuHidden := '/json, , /json,tryf';
+  mSettings.Normalize;
+  Assert.AreEqual('templates,generate', mSettings.GenerateMenuGroups);
+  Assert.AreEqual('/json, tryf', mSettings.GenerateMenuHidden);
+  mSettings.GenerateMenuGroups := 'nichts';
+  mSettings.Normalize;
+  Assert.AreEqual('generate,surround,templates', mSettings.GenerateMenuGroups, 'ohne bekannte Gruppe: Vorgabe');
+  // Speichern und Laden.
+  mSettings.GenerateMenu := False;
+  mSettings.GenerateMenuKey := 0;
+  mSettings.GenerateMenuGroups := 'surround,generate';
+  mSettings.GenerateMenuRecentFirst := False;
+  mSettings.GenerateMenuShowCommandNames := False;
+  mStore := TMemoryStore.Create;
+  mSettings.Save(mStore);
+  mLoaded := TAtlasPluginSettings.Defaults;
+  mLoaded.Load(mStore);
+  Assert.IsFalse(mLoaded.GenerateMenu, 'abschaltbar');
+  Assert.AreEqual(0, mLoaded.GenerateMenuKey, '0 = keine Taste');
+  Assert.AreEqual('surround,generate', mLoaded.GenerateMenuGroups);
+  Assert.AreEqual('/json, tryf', mLoaded.GenerateMenuHidden);
+  Assert.IsFalse(mLoaded.GenerateMenuRecentFirst);
+  Assert.IsFalse(mLoaded.GenerateMenuShowCommandNames);
 end;
 
 initialization

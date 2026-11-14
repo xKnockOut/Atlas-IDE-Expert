@@ -38,6 +38,8 @@ type
     function TryLockWrite(const AFileName: string): IInterface;
   end;
 
+{ TStampFileSystem }
+
 constructor TStampFileSystem.Create;
 begin
   inherited Create;
@@ -82,6 +84,8 @@ function TStampFileSystem.TryLockWrite(const AFileName: string): IInterface;
 begin
   Result := nil;
 end;
+
+{ TMcpFreshnessTests }
 
 procedure TMcpFreshnessTests.ReportsChangedCreatedAndDeleted;
 var

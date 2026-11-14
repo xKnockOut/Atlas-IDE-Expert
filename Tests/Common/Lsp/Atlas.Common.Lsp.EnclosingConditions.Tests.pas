@@ -108,18 +108,6 @@ const
 
 { TLspEnclosingConditionsTests }
 
-procedure TLspEnclosingConditionsTests.Setup;
-begin
-  FTree := TSyntaxTreeCache.Parse(cSource);
-  FCalls := nil;
-end;
-
-procedure TLspEnclosingConditionsTests.TearDown;
-begin
-  FreeAndNil(FTree);
-  FCalls := nil;
-end;
-
 function TLspEnclosingConditionsTests.LineOf(const AMarker: string): Integer;
 var
   mLines: TArray<string>;
@@ -166,6 +154,18 @@ begin
     end;
   end;
   Result := Format('%s@%d[%s] ', [ABlock.Kind, ABlock.Line, ABlock.Branch]) + string.Join(' | ', mTexts);
+end;
+
+procedure TLspEnclosingConditionsTests.Setup;
+begin
+  FTree := TSyntaxTreeCache.Parse(cSource);
+  FCalls := nil;
+end;
+
+procedure TLspEnclosingConditionsTests.TearDown;
+begin
+  FreeAndNil(FTree);
+  FCalls := nil;
 end;
 
 procedure TLspEnclosingConditionsTests.CaseInIfInForFromInsideOut;

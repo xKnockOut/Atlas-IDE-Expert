@@ -33,6 +33,8 @@ const
   cSize = 10;
   cBigger = 14;
 
+{ TAtlasEditorFontTests }
+
 procedure TAtlasEditorFontTests.FollowsNameAndSizeItalic;
 var
   mEditor: TFont;

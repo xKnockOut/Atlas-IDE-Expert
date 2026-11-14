@@ -242,6 +242,8 @@ begin
   Result := TArray<TRect>.Create(Rect(10, 10, 60, 30), Rect(30, 50, 110, 90), Rect(5, 100, 25, 110));
 end;
 
+{ TAtlasDesignerAlignTests }
+
 procedure TAtlasDesignerAlignTests.EdgesAndCenters;
 var
   mOut: TArray<TRect>;

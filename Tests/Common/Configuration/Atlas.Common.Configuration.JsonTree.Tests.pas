@@ -27,6 +27,8 @@ uses
   System.SysUtils,
   Atlas.Common.Configuration.Internals.JsonTree;
 
+{ TJsonTreeCommentTests }
+
 procedure TJsonTreeCommentTests.SkipsLineAndBlockComments;
 var
   mNode: TJsonNode;

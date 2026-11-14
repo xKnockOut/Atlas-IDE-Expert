@@ -90,6 +90,8 @@ begin
   Result.Platforms := APlatforms;
 end;
 
+{ TShellWorkspacePartsTests }
+
 procedure TShellWorkspacePartsTests.WarmUpFirstUse;
 begin
   SetUp;

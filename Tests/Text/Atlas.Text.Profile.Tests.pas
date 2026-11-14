@@ -66,6 +66,8 @@ begin
   end;
 end;
 
+{ TAtlasProfileTests }
+
 procedure TAtlasProfileTests.BuilderMergesFramesAndStacks;
 var
   mProfile: TAtlasProfile;

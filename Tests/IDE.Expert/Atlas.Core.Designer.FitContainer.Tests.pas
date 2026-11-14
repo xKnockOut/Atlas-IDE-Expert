@@ -66,6 +66,8 @@ begin
   Result := TAtlasFitOptions.Create(TAtlasFitMode.Both, 8, False);
 end;
 
+{ TAtlasFitContainerTests }
+
 procedure TAtlasFitContainerTests.GroupBoxShrinksToContent;
 var
   mResult: TAtlasFitResult;

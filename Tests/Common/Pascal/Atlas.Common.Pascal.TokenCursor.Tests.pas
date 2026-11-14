@@ -75,6 +75,8 @@ begin
   Result := IndexOfText(ACursor, AText, 0);
 end;
 
+{ TTokenCursorTests }
+
 procedure TTokenCursorTests.AtOutsideGivesEmptyToken;
 var
   mCursor: TTokenCursor;

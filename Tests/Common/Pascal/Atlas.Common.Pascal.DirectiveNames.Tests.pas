@@ -33,6 +33,8 @@ uses
   Atlas.Common.Pascal.DirectiveNames,
   Atlas.Text.Fuzzy;
 
+{ TDirectiveNamesTests }
+
 procedure TDirectiveNamesTests.BodyAndLeadingName;
 begin
   Assert.AreEqual('IFDEF DEBUG', TDirectiveNames.Body('{$IFDEF DEBUG}'));

@@ -38,6 +38,8 @@ implementation
 uses
   Atlas.Common.Editing.Contract;
 
+{ TShellSlashTests }
+
 function TShellSlashTests.SettingsFor(const AUri: string): TServerSettings;
 begin
   Result := Default(TServerSettings);

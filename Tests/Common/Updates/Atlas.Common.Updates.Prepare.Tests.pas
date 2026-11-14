@@ -57,15 +57,7 @@ const
   cKey = 'Software\Embarcadero\BDS\37.0';
   cUpdater = 'C:\Atlas\AtlasUpdate.exe';
 
-procedure TCommonUpdatesPrepareTests.Setup;
-begin
-  FFake := TFakeUpdateSystem.Create;
-end;
-
-procedure TCommonUpdatesPrepareTests.TearDown;
-begin
-  FreeAndNil(FFake);
-end;
+{ TCommonUpdatesPrepareTests }
 
 function TCommonUpdatesPrepareTests.Args(const AIde: string): TUpdateArguments;
 begin
@@ -115,6 +107,16 @@ begin
     mPreparation.Free;
   end;
   Result := TUpdateStage.FromJson(FFake.Files.ReadText(cStaging + '\state.json'));
+end;
+
+procedure TCommonUpdatesPrepareTests.Setup;
+begin
+  FFake := TFakeUpdateSystem.Create;
+end;
+
+procedure TCommonUpdatesPrepareTests.TearDown;
+begin
+  FreeAndNil(FFake);
 end;
 
 procedure TCommonUpdatesPrepareTests.PreparesPackageOfIde;

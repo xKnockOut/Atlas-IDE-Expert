@@ -58,6 +58,8 @@ begin
   Result := TRationaleOptions.FromSettings(mSettings, '');
 end;
 
+{ TLspRationaleTests }
+
 procedure TLspRationaleTests.SelectsConfiguredMarkers;
 var
   mSelected: TArray<TRationaleEntry>;

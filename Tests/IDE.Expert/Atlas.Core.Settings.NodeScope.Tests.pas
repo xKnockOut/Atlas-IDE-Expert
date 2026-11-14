@@ -36,6 +36,8 @@ uses
   Atlas.Core.Settings.History,
   Atlas.Core.Settings.NodeScope;
 
+{ TAtlasSettingsNodeScopeTests }
+
 procedure TAtlasSettingsNodeScopeTests.BaseTakesElementsWithoutOwner;
 begin
   Assert.IsTrue(TAtlasSettingsNodeScope.Base.Includes(nil, nil));

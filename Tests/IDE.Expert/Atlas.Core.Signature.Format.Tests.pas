@@ -67,6 +67,8 @@ begin
   Result.Arguments := [Range(3, 35, 43), Range(3, 45, 50)];
 end;
 
+{ TAtlasSignatureFormatTests }
+
 procedure TAtlasSignatureFormatTests.LineNamesPlaceholderOfActiveArgument;
 var
   mLine: TAtlasFormatLine;

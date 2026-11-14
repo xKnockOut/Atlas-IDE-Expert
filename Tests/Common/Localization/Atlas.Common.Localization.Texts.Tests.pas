@@ -42,6 +42,8 @@ implementation
 uses
   System.SysUtils;
 
+{ TLocalizationTextsTests }
+
 procedure TLocalizationTextsTests.Setup;
 begin
   FSaved := TAtlasLocale.Language;

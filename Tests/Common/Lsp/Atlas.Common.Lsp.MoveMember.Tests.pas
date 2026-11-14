@@ -223,6 +223,8 @@ begin
   end;
 end;
 
+{ TLspMoveMemberTests }
+
 procedure TLspMoveMemberTests.Setup;
 begin
   FIndex := TSymbolIndex.Create;

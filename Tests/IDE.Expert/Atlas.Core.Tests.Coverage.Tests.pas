@@ -51,6 +51,13 @@ const
 
 { TAtlasCoverageStateTests }
 
+function TAtlasCoverageStateTests.WriteFile(const AName, AText: string; AAge: TDateTime): string;
+begin
+  Result := TPath.Combine(FFolder, AName);
+  TFile.WriteAllText(Result, AText, TEncoding.UTF8);
+  FileSetDate(Result, DateTimeToFileDate(AAge));
+end;
+
 procedure TAtlasCoverageStateTests.Setup;
 begin
   FFolder := TPath.Combine(TPath.GetTempPath, 'AtlasCoverage' + IntToStr(Random(1000000)));
@@ -64,13 +71,6 @@ begin
     TDirectory.Delete(FFolder, True);
   end;
   FFolder := '';
-end;
-
-function TAtlasCoverageStateTests.WriteFile(const AName, AText: string; AAge: TDateTime): string;
-begin
-  Result := TPath.Combine(FFolder, AName);
-  TFile.WriteAllText(Result, AText, TEncoding.UTF8);
-  FileSetDate(Result, DateTimeToFileDate(AAge));
 end;
 
 procedure TAtlasCoverageStateTests.LoadsAndLooksUpLines;

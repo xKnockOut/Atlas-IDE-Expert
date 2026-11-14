@@ -47,6 +47,8 @@ begin
   Result := TAtlasBarDockItem.Create(AOwn, AOrder, ATop, AHeight);
 end;
 
+{ TAtlasBarDockTests }
+
 function TAtlasBarDockTests.VclOrder(ASide: TAtlasBarSide; const AItems: TArray<TAtlasBarDockItem>;
   const ATops: TArray<Integer>): string;
 var

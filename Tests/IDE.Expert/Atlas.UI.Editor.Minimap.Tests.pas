@@ -61,6 +61,21 @@ uses
 type
   TViewAccess = class(TAtlasMinimapView);
 
+{ TAtlasMinimapViewTests }
+
+procedure TAtlasMinimapViewTests.Fill(ALineCount: Integer);
+var
+  mLines: TArray<string>;
+  mIndex: Integer;
+begin
+  SetLength(mLines, ALineCount);
+  for mIndex := 0 to High(mLines) do
+  begin
+    mLines[mIndex] := '  if Value > ' + IntToStr(mIndex) + ' then // Zeile';
+  end;
+  FView.SetContent(mLines, TAtlasMinimap.Runs(mLines, 120, 4), 4);
+end;
+
 procedure TAtlasMinimapViewTests.WarmUpFirstUse;
 begin
   SetUp;
@@ -87,19 +102,6 @@ begin
   FForm.Free;
   FForm := nil;
   FView := nil;
-end;
-
-procedure TAtlasMinimapViewTests.Fill(ALineCount: Integer);
-var
-  mLines: TArray<string>;
-  mIndex: Integer;
-begin
-  SetLength(mLines, ALineCount);
-  for mIndex := 0 to High(mLines) do
-  begin
-    mLines[mIndex] := '  if Value > ' + IntToStr(mIndex) + ' then // Zeile';
-  end;
-  FView.SetContent(mLines, TAtlasMinimap.Runs(mLines, 120, 4), 4);
 end;
 
 procedure TAtlasMinimapViewTests.WidthFollowsSetting;

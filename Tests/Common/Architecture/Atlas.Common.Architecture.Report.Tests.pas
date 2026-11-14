@@ -213,42 +213,6 @@ begin
     Integer(Length(ArchitectureMapHtmlEn.Split([#10]))));
 end;
 
-procedure TArchitectureReportTests.ReportsCarryComparison;
-var
-  mData, mOlder: TArchitectureOverview;
-  mComparison: TArchitectureComparison;
-  mText: string;
-  mRoot: TJSONValue;
-begin
-  // Vergleich (#1121): Der alte Stand hatte den Zyklus in Data noch nicht.
-  mData := Sample;
-  mOlder := mData;
-  mOlder.Cycles := nil;
-  mComparison := TArchitectureComparer.Compare(TArchitectureSnapshots.FromOverview(mOlder),
-    TArchitectureSnapshots.FromOverview(mData));
-  Assert.AreEqual(1, Integer(Length(mComparison.NewCycles)));
-  mText := TArchitectureReport.Markdown(mData, mComparison);
-  Assert.Contains(mText, '- [Vergleich](#vergleich)');
-  Assert.Contains(mText, '## Vergleich');
-  Assert.Contains(mText, '### Neue Zyklen (1)');
-  Assert.DoesNotContain(TArchitectureReport.Markdown(mData), '## Vergleich');
-  mText := TArchitectureReport.Json(mData, TArchitectureLayouter.Compute(mData), mComparison,
-    TArchitectureComparer.DefaultFailOn);
-  mRoot := TJSONObject.ParseJSONValue(mText);
-  try
-    Assert.IsTrue(mRoot is TJSONObject);
-    Assert.AreEqual(1, ((mRoot as TJSONObject).GetValue('comparison') as TJSONObject).GetValue<TJSONArray>(
-      'newCycles').Count);
-  finally
-    mRoot.Free;
-  end;
-  mText := TArchitectureReport.Html(mData, mComparison, TArchitectureComparer.DefaultFailOn);
-  Assert.Contains(mText, '"comparison":{"baseline":');
-  Assert.Contains(mText, 'id="vergleich"');
-  Assert.Contains(TArchitectureReport.ForFile(mData, 'bericht.htm', mComparison, []), '"comparison":');
-  Assert.Contains(TArchitectureReport.ForFile(mData, 'bericht.md', mComparison, []), '## Vergleich');
-end;
-
 procedure TArchitectureReportTests.TextSectionsAndLimit;
 var
   mData: TArchitectureOverview;
@@ -311,6 +275,42 @@ begin
     Assert.AreEqual(1, Integer(Length(mHtml.Split(['{{TITLE}}'])) - 1));
     Assert.Contains(mHtml, '</html>');
   end;
+end;
+
+procedure TArchitectureReportTests.ReportsCarryComparison;
+var
+  mData, mOlder: TArchitectureOverview;
+  mComparison: TArchitectureComparison;
+  mText: string;
+  mRoot: TJSONValue;
+begin
+  // Vergleich (#1121): Der alte Stand hatte den Zyklus in Data noch nicht.
+  mData := Sample;
+  mOlder := mData;
+  mOlder.Cycles := nil;
+  mComparison := TArchitectureComparer.Compare(TArchitectureSnapshots.FromOverview(mOlder),
+    TArchitectureSnapshots.FromOverview(mData));
+  Assert.AreEqual(1, Integer(Length(mComparison.NewCycles)));
+  mText := TArchitectureReport.Markdown(mData, mComparison);
+  Assert.Contains(mText, '- [Vergleich](#vergleich)');
+  Assert.Contains(mText, '## Vergleich');
+  Assert.Contains(mText, '### Neue Zyklen (1)');
+  Assert.DoesNotContain(TArchitectureReport.Markdown(mData), '## Vergleich');
+  mText := TArchitectureReport.Json(mData, TArchitectureLayouter.Compute(mData), mComparison,
+    TArchitectureComparer.DefaultFailOn);
+  mRoot := TJSONObject.ParseJSONValue(mText);
+  try
+    Assert.IsTrue(mRoot is TJSONObject);
+    Assert.AreEqual(1, ((mRoot as TJSONObject).GetValue('comparison') as TJSONObject).GetValue<TJSONArray>(
+      'newCycles').Count);
+  finally
+    mRoot.Free;
+  end;
+  mText := TArchitectureReport.Html(mData, mComparison, TArchitectureComparer.DefaultFailOn);
+  Assert.Contains(mText, '"comparison":{"baseline":');
+  Assert.Contains(mText, 'id="vergleich"');
+  Assert.Contains(TArchitectureReport.ForFile(mData, 'bericht.htm', mComparison, []), '"comparison":');
+  Assert.Contains(TArchitectureReport.ForFile(mData, 'bericht.md', mComparison, []), '## Vergleich');
 end;
 
 procedure TArchitectureReportTests.HeaderNamesChangedResolution;

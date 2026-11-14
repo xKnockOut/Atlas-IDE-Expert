@@ -104,6 +104,8 @@ begin
   Result := -1;
 end;
 
+{ TAtlasCrumbCardsTests }
+
 procedure TAtlasCrumbCardsTests.MethodShowsBodyMetrics;
 var
   mNodes: TAtlasOutlineNodes;

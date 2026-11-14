@@ -76,6 +76,8 @@ const
     'constructor TFoo.Create;'#10'begin'#10'  FList := TStringList.Create;'#10'end;'#10 +
     'function TFoo.Take: TStringList;'#10'begin'#10'  Result := FList;'#10'end;'#10'end.';
 
+{ TFreeFieldRulesTests }
+
 procedure TFreeFieldRulesTests.NotFreedIsWarningWithFix;
 var
   mFindings: TArray<TRuleFinding>;
@@ -374,6 +376,18 @@ begin
     mIndex, '', 'U.pas'))));
 end;
 
+procedure TFreeFieldRulesTests.InitializationRuleOffAndExclude;
+begin
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TInitializationNotFinalizedRule.Create, cProtokoll,
+    '{"rules": {"initialization-not-finalized": "off"}}', 'U.pas'))));
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TInitializationNotFinalizedRule.Create, cProtokoll,
+    '{"rules": {"group:robustness": "off"}}', 'U.pas'))));
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TInitializationNotFinalizedRule.Create, cProtokoll,
+    '{"rules": {"initialization-not-finalized": {"exclude": ["Alt/*.pas"]}}}', 'Alt/U.pas'))));
+  Assert.AreEqual(1, Integer(Length(TRuleAssert.Findings(TInitializationNotFinalizedRule.Create, cProtokoll,
+    '{"rules": {"initialization-not-finalized": {"exclude": ["Alt/*.pas"]}}}', 'Neu/U.pas'))));
+end;
+
 procedure TFreeFieldRulesTests.IndexedOwnerAndDynamicArrayAreSilent;
 const
   // Wie Atlas.IDE.Build.CheckOnSave: Der Dienst aus einer anderen Unit hält seine Teilnehmer in einer
@@ -426,18 +440,6 @@ begin
     Symbol('FItems', 'TEvents', TIndexSymbolKind.Field, 'TList', 'TParticipant')];
   mIndex.AddUnit(mEvents);
   Assert.AreEqual(1, Unclear(mIndex));
-end;
-
-procedure TFreeFieldRulesTests.InitializationRuleOffAndExclude;
-begin
-  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TInitializationNotFinalizedRule.Create, cProtokoll,
-    '{"rules": {"initialization-not-finalized": "off"}}', 'U.pas'))));
-  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TInitializationNotFinalizedRule.Create, cProtokoll,
-    '{"rules": {"group:robustness": "off"}}', 'U.pas'))));
-  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TInitializationNotFinalizedRule.Create, cProtokoll,
-    '{"rules": {"initialization-not-finalized": {"exclude": ["Alt/*.pas"]}}}', 'Alt/U.pas'))));
-  Assert.AreEqual(1, Integer(Length(TRuleAssert.Findings(TInitializationNotFinalizedRule.Create, cProtokoll,
-    '{"rules": {"initialization-not-finalized": {"exclude": ["Alt/*.pas"]}}}', 'Neu/U.pas'))));
 end;
 
 initialization

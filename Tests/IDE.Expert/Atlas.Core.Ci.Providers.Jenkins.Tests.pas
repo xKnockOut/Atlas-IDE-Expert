@@ -104,6 +104,8 @@ type
       out AError: TAtlasCiFetchError): Boolean;
   end;
 
+{ TFakeTransport }
+
 procedure TFakeTransport.Answer(const APrefix: string; AStatus: Integer; const AText: string);
 begin
   FPrefixes := FPrefixes + [APrefix];

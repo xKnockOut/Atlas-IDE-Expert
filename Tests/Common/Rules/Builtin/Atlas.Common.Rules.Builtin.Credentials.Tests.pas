@@ -69,6 +69,8 @@ begin
   Result := TSecurityHardcodedCredentialRule.Create;
 end;
 
+{ TCredentialRuleTests }
+
 procedure TCredentialRuleTests.ConnectionStringPasswordReports;
 var
   mFindings: TArray<TRuleFinding>;

@@ -98,6 +98,8 @@ begin
   ASettings.MinimapClickJumps := AValue;
 end;
 
+{ TAtlasMinimapTests }
+
 procedure TAtlasMinimapTests.OptionsFromSettings;
 var
   mOptions: TAtlasMinimapOptions;

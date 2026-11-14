@@ -39,6 +39,8 @@ begin
   Result := String.Join('|', AKeys);
 end;
 
+{ TAtlasCodeInsightKeysTests }
+
 procedure TAtlasCodeInsightKeysTests.VersionFromBaseKey;
 begin
   Assert.AreEqual('23.0', TAtlasCodeInsightKeys.VersionText(cDelphi12));

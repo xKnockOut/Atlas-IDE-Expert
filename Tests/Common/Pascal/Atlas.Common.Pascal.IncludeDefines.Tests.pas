@@ -97,6 +97,8 @@ begin
   Result := Length(mDiagnostics);
 end;
 
+{ TIncludeDefinesTests }
+
 procedure TIncludeDefinesTests.TearDown;
 begin
   TSyntaxTreeCache.SetIncludeProvider(nil);

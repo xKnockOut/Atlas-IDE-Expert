@@ -63,6 +63,8 @@ type
     procedure AssignProject;
   end;
 
+{ TFakeSprint }
+
 function TFakeSprint.View: TAtlasSprintTile;
 begin
   Result := FTile;

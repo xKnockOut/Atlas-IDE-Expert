@@ -48,6 +48,29 @@ begin
   Result := [TLspRange.Create(3, 2, 3, 7), TLspRange.Create(3, 2, 3, 20), TLspRange.Create(0, 0, 9, 0)];
 end;
 
+{ TAtlasEditorCommandsTests }
+
+procedure TAtlasEditorCommandsTests.SearchFindsNextAndPreviousWithWrap;
+var
+  mLines: TArray<string>;
+  mFound: TLspRange;
+begin
+  mLines := ['Foo := Bar;', 'if foo then', '  Baz(Foo);'];
+  // Markierung „Foo“ in Zeile 0, Zeichen 0..3: weiter ab dem Ende.
+  Assert.IsTrue(TAtlasSelectionSearch.Find(mLines, 'Foo', TLspTextPosition.Create(0, 3), False, mFound));
+  Assert.IsTrue(mFound.Same(TLspRange.Create(1, 3, 1, 6)), 'ohne Groß-/Kleinschreibung');
+  Assert.IsTrue(TAtlasSelectionSearch.Find(mLines, 'Foo', TLspTextPosition.Create(2, 9), False, mFound));
+  Assert.IsTrue(mFound.Same(TLspRange.Create(0, 0, 0, 3)), 'am Ende von vorn');
+  // Rückwärts: endet vor dem Anfang der Markierung.
+  Assert.IsTrue(TAtlasSelectionSearch.Find(mLines, 'Foo', TLspTextPosition.Create(2, 6), True, mFound));
+  Assert.IsTrue(mFound.Same(TLspRange.Create(1, 3, 1, 6)));
+  Assert.IsTrue(TAtlasSelectionSearch.Find(mLines, 'Foo', TLspTextPosition.Create(0, 0), True, mFound));
+  Assert.IsTrue(mFound.Same(TLspRange.Create(2, 6, 2, 9)), 'am Anfang von hinten');
+  Assert.IsTrue(TAtlasSelectionSearch.Find(mLines, 'Bar', TLspTextPosition.Create(0, 10), False, mFound));
+  Assert.IsTrue(mFound.Same(TLspRange.Create(0, 7, 0, 10)), 'einziges Vorkommen: wieder dasselbe');
+  Assert.IsFalse(TAtlasSelectionSearch.Find(mLines, 'Nichts', TLspTextPosition.Create(0, 0), False, mFound));
+end;
+
 procedure TAtlasEditorCommandsTests.ExpandsStepByStep;
 var
   mNext: TLspRange;
@@ -101,6 +124,18 @@ begin
   Assert.AreEqual(#10, TAtlasSlashTrigger.TriggerChar(TAtlasSlashKind.Command));
 end;
 
+procedure TAtlasEditorCommandsTests.DetectsDocCommentScaffold;
+begin
+  Assert.AreEqual(Ord(TAtlasSlashKind.DocComment), Ord(TAtlasSlashTrigger.Detect('', '    ///')));
+  Assert.AreEqual(Ord(TAtlasSlashKind.None), Ord(TAtlasSlashTrigger.Detect('', '    ////')));
+  Assert.AreEqual(Ord(TAtlasSlashKind.None), Ord(TAtlasSlashTrigger.Detect('', '  x := 1; ///')), 'hinter Code');
+  Assert.AreEqual('/', TAtlasSlashTrigger.TriggerChar(TAtlasSlashKind.DocComment));
+  Assert.AreEqual(TAtlasSlashTrigger.Key('c:\p\a.pas', 3, TAtlasSlashKind.Command, ' /try'),
+    TAtlasSlashTrigger.Key('C:\P\A.pas', 3, TAtlasSlashKind.Command, '/try '));
+  Assert.AreNotEqual(TAtlasSlashTrigger.Key('a.pas', 3, TAtlasSlashKind.Command, '/try'),
+    TAtlasSlashTrigger.Key('a.pas', 4, TAtlasSlashKind.Command, '/try'));
+end;
+
 procedure TAtlasEditorCommandsTests.DocCommentPlaceholdersInDescriptions;
 const
   cText = '  /// <summary></summary>'#13#10'  /// <param name="A"></param>'#13#10'  /// <returns></returns>'#13#10;
@@ -124,44 +159,11 @@ begin
   Assert.IsFalse(TAtlasSlashTrigger.DocCommentExpansion('/// <summary>X</summary>').HasPlaceholders);
 end;
 
-procedure TAtlasEditorCommandsTests.DetectsDocCommentScaffold;
-begin
-  Assert.AreEqual(Ord(TAtlasSlashKind.DocComment), Ord(TAtlasSlashTrigger.Detect('', '    ///')));
-  Assert.AreEqual(Ord(TAtlasSlashKind.None), Ord(TAtlasSlashTrigger.Detect('', '    ////')));
-  Assert.AreEqual(Ord(TAtlasSlashKind.None), Ord(TAtlasSlashTrigger.Detect('', '  x := 1; ///')), 'hinter Code');
-  Assert.AreEqual('/', TAtlasSlashTrigger.TriggerChar(TAtlasSlashKind.DocComment));
-  Assert.AreEqual(TAtlasSlashTrigger.Key('c:\p\a.pas', 3, TAtlasSlashKind.Command, ' /try'),
-    TAtlasSlashTrigger.Key('C:\P\A.pas', 3, TAtlasSlashKind.Command, '/try '));
-  Assert.AreNotEqual(TAtlasSlashTrigger.Key('a.pas', 3, TAtlasSlashKind.Command, '/try'),
-    TAtlasSlashTrigger.Key('a.pas', 4, TAtlasSlashKind.Command, '/try'));
-end;
-
 procedure TAtlasEditorCommandsTests.SlashAnswerOnlyForUnchangedText;
 begin
   Assert.IsTrue(TAtlasSlashTrigger.StillValid('C:\P\A.pas', '/try'#13#10, 'c:\p\a.pas', '/try'#13#10));
   Assert.IsFalse(TAtlasSlashTrigger.StillValid('A.pas', '/try'#13#10, 'A.pas', '/try'#13#10'x'), 'weitergetippt');
   Assert.IsFalse(TAtlasSlashTrigger.StillValid('A.pas', '/try'#13#10, 'B.pas', '/try'#13#10), 'andere Datei');
-end;
-
-procedure TAtlasEditorCommandsTests.SearchFindsNextAndPreviousWithWrap;
-var
-  mLines: TArray<string>;
-  mFound: TLspRange;
-begin
-  mLines := ['Foo := Bar;', 'if foo then', '  Baz(Foo);'];
-  // Markierung „Foo“ in Zeile 0, Zeichen 0..3: weiter ab dem Ende.
-  Assert.IsTrue(TAtlasSelectionSearch.Find(mLines, 'Foo', TLspTextPosition.Create(0, 3), False, mFound));
-  Assert.IsTrue(mFound.Same(TLspRange.Create(1, 3, 1, 6)), 'ohne Groß-/Kleinschreibung');
-  Assert.IsTrue(TAtlasSelectionSearch.Find(mLines, 'Foo', TLspTextPosition.Create(2, 9), False, mFound));
-  Assert.IsTrue(mFound.Same(TLspRange.Create(0, 0, 0, 3)), 'am Ende von vorn');
-  // Rückwärts: endet vor dem Anfang der Markierung.
-  Assert.IsTrue(TAtlasSelectionSearch.Find(mLines, 'Foo', TLspTextPosition.Create(2, 6), True, mFound));
-  Assert.IsTrue(mFound.Same(TLspRange.Create(1, 3, 1, 6)));
-  Assert.IsTrue(TAtlasSelectionSearch.Find(mLines, 'Foo', TLspTextPosition.Create(0, 0), True, mFound));
-  Assert.IsTrue(mFound.Same(TLspRange.Create(2, 6, 2, 9)), 'am Anfang von hinten');
-  Assert.IsTrue(TAtlasSelectionSearch.Find(mLines, 'Bar', TLspTextPosition.Create(0, 10), False, mFound));
-  Assert.IsTrue(mFound.Same(TLspRange.Create(0, 7, 0, 10)), 'einziges Vorkommen: wieder dasselbe');
-  Assert.IsFalse(TAtlasSelectionSearch.Find(mLines, 'Nichts', TLspTextPosition.Create(0, 0), False, mFound));
 end;
 
 initialization

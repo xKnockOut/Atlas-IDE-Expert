@@ -71,6 +71,8 @@ begin
   Result := string.Join(#10, mLines);
 end;
 
+{ TUnitTemplatesTests }
+
 procedure TUnitTemplatesTests.FormUnitParses;
 var
   mText: string;
@@ -182,24 +184,6 @@ begin
     mEdits));
 end;
 
-procedure TUnitTemplatesTests.ProgramGetsPlainUnit;
-const
-  cTests = 'program Tests;'#10'uses'#10'  DUnitX.TestFramework,'#10'  Kunden.Tests in ''Kunden.Tests.pas'';'#10 +
-    'begin'#10'end.';
-var
-  mEdit: TRuleEdit;
-  mText: string;
-begin
-  Assert.IsTrue(TUnitTemplates.UnitProgramEdit(cTests, 'Rechnung.Tests', 'Sub\Rechnung.Tests.pas', mEdit));
-  mText := ApplyOne(cTests, mEdit);
-  Assert.IsTrue(Pos('  Kunden.Tests in ''Kunden.Tests.pas'','#10'  Rechnung.Tests in ''Sub\Rechnung.Tests.pas'';',
-    mText) > 0, mText);
-  Assert.IsTrue(Parses(mText), mText);
-  // Schon eingetragen (auch mit anderer Schreibweise): kein Edit.
-  Assert.IsFalse(TUnitTemplates.UnitProgramEdit(cTests, 'kunden.tests', 'Kunden.Tests.pas', mEdit));
-  Assert.IsFalse(TUnitTemplates.UnitProgramEdit('program P;'#10'begin'#10'end.', 'A', 'A.pas', mEdit));
-end;
-
 procedure TUnitTemplatesTests.ProjectGetsReference;
 const
   cProject = '<Project>'#10'    <ItemGroup>'#10'        <DelphiCompile Include="App.dpr"/>'#10 +
@@ -218,6 +202,24 @@ begin
   Assert.IsTrue(TUnitTemplates.ProjectEdit(cProject, 'Werkzeug.pas', '', TFormKind.Form, False, mEdit));
   Assert.AreEqual(#10'        <DCCReference Include="Werkzeug.pas"/>', mEdit.NewText);
   Assert.IsFalse(TUnitTemplates.ProjectEdit('<Project/>', 'A.pas', 'TA', TFormKind.Form, True, mEdit));
+end;
+
+procedure TUnitTemplatesTests.ProgramGetsPlainUnit;
+const
+  cTests = 'program Tests;'#10'uses'#10'  DUnitX.TestFramework,'#10'  Kunden.Tests in ''Kunden.Tests.pas'';'#10 +
+    'begin'#10'end.';
+var
+  mEdit: TRuleEdit;
+  mText: string;
+begin
+  Assert.IsTrue(TUnitTemplates.UnitProgramEdit(cTests, 'Rechnung.Tests', 'Sub\Rechnung.Tests.pas', mEdit));
+  mText := ApplyOne(cTests, mEdit);
+  Assert.IsTrue(Pos('  Kunden.Tests in ''Kunden.Tests.pas'','#10'  Rechnung.Tests in ''Sub\Rechnung.Tests.pas'';',
+    mText) > 0, mText);
+  Assert.IsTrue(Parses(mText), mText);
+  // Schon eingetragen (auch mit anderer Schreibweise): kein Edit.
+  Assert.IsFalse(TUnitTemplates.UnitProgramEdit(cTests, 'kunden.tests', 'Kunden.Tests.pas', mEdit));
+  Assert.IsFalse(TUnitTemplates.UnitProgramEdit('program P;'#10'begin'#10'end.', 'A', 'A.pas', mEdit));
 end;
 
 procedure TUnitTemplatesTests.PackageGetsContains;

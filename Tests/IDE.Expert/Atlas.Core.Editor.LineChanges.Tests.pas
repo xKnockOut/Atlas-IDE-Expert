@@ -69,6 +69,8 @@ begin
   Result := Copy(mText, 1, mStart) + AEdit.NewText + Copy(mText, mStop + 1, MaxInt);
 end;
 
+{ TAtlasLineChangesTests }
+
 procedure TAtlasLineChangesTests.ComputesAddedModifiedDeleted;
 var
   mChanges: TAtlasLineChangeList;

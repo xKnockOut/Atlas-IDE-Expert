@@ -75,6 +75,8 @@ type
     procedure Error(const AText: string);
   end;
 
+{ TCollectingLogger }
+
 constructor TCollectingLogger.Create(const ASink: TLogLineProc);
 begin
   inherited Create;
@@ -106,46 +108,7 @@ begin
   FSink(AText);
 end;
 
-procedure TShellStatusReportsTests.WarmUpFirstUse;
-begin
-  StatusAsksAllStates;
-  TearDown;
-  FCompilerAsked := 0;
-  FCheckAsked := 0;
-  FQueueAsked := 0;
-end;
-
-procedure TShellStatusReportsTests.TearDown;
-begin
-  FLog := nil;
-end;
-
-procedure TShellStatusReportsTests.Logged(const AText: string);
-begin
-  FLog := FLog + [AText];
-end;
-
-procedure TShellStatusReportsTests.VisitNone(const AVisit: TShellWorkspacesProc);
-begin
-  AVisit(nil);
-end;
-
-procedure TShellStatusReportsTests.CompilerStatus(var AStatus: TServerStatus);
-begin
-  Inc(FCompilerAsked);
-end;
-
-procedure TShellStatusReportsTests.CheckStatus(var AStatus: TServerStatus; out AQueue: TWorkspaceCheckQueue);
-begin
-  Inc(FCheckAsked);
-  AQueue := Default(TWorkspaceCheckQueue);
-end;
-
-function TShellStatusReportsTests.IndexQueue: TIndexSchedulerQueue;
-begin
-  Inc(FQueueAsked);
-  Result := Default(TIndexSchedulerQueue);
-end;
+{ TShellStatusReportsTests }
 
 function TShellStatusReportsTests.NewServices: TShellStatusServices;
 begin
@@ -178,6 +141,47 @@ begin
   Result.CompilerStatus := CompilerStatus;
   Result.CheckStatus := CheckStatus;
   Result.IndexQueue := IndexQueue;
+end;
+
+procedure TShellStatusReportsTests.Logged(const AText: string);
+begin
+  FLog := FLog + [AText];
+end;
+
+procedure TShellStatusReportsTests.VisitNone(const AVisit: TShellWorkspacesProc);
+begin
+  AVisit(nil);
+end;
+
+procedure TShellStatusReportsTests.CompilerStatus(var AStatus: TServerStatus);
+begin
+  Inc(FCompilerAsked);
+end;
+
+procedure TShellStatusReportsTests.CheckStatus(var AStatus: TServerStatus; out AQueue: TWorkspaceCheckQueue);
+begin
+  Inc(FCheckAsked);
+  AQueue := Default(TWorkspaceCheckQueue);
+end;
+
+function TShellStatusReportsTests.IndexQueue: TIndexSchedulerQueue;
+begin
+  Inc(FQueueAsked);
+  Result := Default(TIndexSchedulerQueue);
+end;
+
+procedure TShellStatusReportsTests.WarmUpFirstUse;
+begin
+  StatusAsksAllStates;
+  TearDown;
+  FCompilerAsked := 0;
+  FCheckAsked := 0;
+  FQueueAsked := 0;
+end;
+
+procedure TShellStatusReportsTests.TearDown;
+begin
+  FLog := nil;
 end;
 
 procedure TShellStatusReportsTests.StatusAsksAllStates;

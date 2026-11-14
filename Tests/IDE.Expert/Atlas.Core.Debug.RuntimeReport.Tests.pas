@@ -48,6 +48,8 @@ const
     '"frames":[{"address":"$004C2C10","module":"","unit":"Kunden.Liste","routine":"TKundenListe.Lade",' +
     '"line":42,"file":"C:\\P\\Kunden.Liste.pas"}]}]}';
 
+{ TAtlasRuntimeReportTests }
+
 procedure TAtlasRuntimeReportTests.ArgumentsCarryProjectAndText;
 var
   mValue: TJSONValue;

@@ -110,6 +110,8 @@ begin
   end;
 end;
 
+{ TCreateMethodTests }
+
 procedure TCreateMethodTests.SiteOnNameAndAfterParen;
 begin
   Assert.AreEqual('CalcDiscount(Customer|0.1|) 1 Total @Total',

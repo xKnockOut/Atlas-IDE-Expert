@@ -56,19 +56,7 @@ uses
 const
   cBase: TDateTime = 46324.5;
 
-procedure TServerStatusFileTests.Setup;
-begin
-  FRoot := TPath.Combine(TPath.GetTempPath, 'Atlas-StatusFile-' + IntToStr(Random(MaxInt)));
-end;
-
-procedure TServerStatusFileTests.TearDown;
-begin
-  if TDirectory.Exists(FRoot) then
-  begin
-    TDirectory.Delete(FRoot, True);
-  end;
-  FRoot := '';
-end;
+{ TServerStatusFileTests }
 
 procedure TServerStatusFileTests.WriteStatus(APid: Cardinal; const ARoot: string; AUnits: Integer;
   AWritten: TDateTime);
@@ -82,6 +70,20 @@ begin
   finally
     mStatus.Free;
   end;
+end;
+
+procedure TServerStatusFileTests.Setup;
+begin
+  FRoot := TPath.Combine(TPath.GetTempPath, 'Atlas-StatusFile-' + IntToStr(Random(MaxInt)));
+end;
+
+procedure TServerStatusFileTests.TearDown;
+begin
+  if TDirectory.Exists(FRoot) then
+  begin
+    TDirectory.Delete(FRoot, True);
+  end;
+  FRoot := '';
 end;
 
 procedure TServerStatusFileTests.FindsStatusForFolderUnderRoot;

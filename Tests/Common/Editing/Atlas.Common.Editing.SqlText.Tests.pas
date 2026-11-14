@@ -34,6 +34,8 @@ begin
   Result := string.Join('|', AItems);
 end;
 
+{ TSqlTextTests }
+
 procedure TSqlTextTests.ParamsInOrder;
 begin
   Assert.AreEqual('Nr|Name', Joined(TSqlText.Params(

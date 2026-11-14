@@ -43,6 +43,8 @@ type
     procedure Write(const AEntry: TLogEntry);
   end;
 
+{ TCollectingSink }
+
 constructor TCollectingSink.Create(AEntries: TList<TLogEntry>);
 begin
   inherited Create;
@@ -53,6 +55,8 @@ procedure TCollectingSink.Write(const AEntry: TLogEntry);
 begin
   FEntries.Add(AEntry);
 end;
+
+{ TFailingSink }
 
 procedure TFailingSink.Write(const AEntry: TLogEntry);
 begin

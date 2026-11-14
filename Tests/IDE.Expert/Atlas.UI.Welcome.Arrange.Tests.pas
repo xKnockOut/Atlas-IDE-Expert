@@ -80,6 +80,8 @@ type
     function Last: string;
   end;
 
+{ TFakeArrangeSource }
+
 function TFakeArrangeSource.CanCustomize: Boolean;
 begin
   Result := Can;
@@ -183,6 +185,8 @@ begin
     Section(TAtlasWelcomeIds.cContinue, 20, TAtlasWelcomeColumn.Left),
     Section(TAtlasWelcomeIds.cProjects, 30, TAtlasWelcomeColumn.Left)], TAtlasWelcomeLayout.Atlas, 2);
 end;
+{ TAtlasWelcomeArrangeBoardTests }
+
 procedure TAtlasWelcomeArrangeBoardTests.WarmUpFirstUse;
 begin
   try

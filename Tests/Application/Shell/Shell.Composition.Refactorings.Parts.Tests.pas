@@ -76,6 +76,8 @@ begin
   end;
 end;
 
+{ TShellRefactoringPartsTests }
+
 procedure TShellRefactoringPartsTests.Setup;
 var
   mDocuments: IDocumentStore;

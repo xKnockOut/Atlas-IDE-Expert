@@ -45,6 +45,8 @@ const
   cTerms = 'ok=OK|Speichern|Übernehmen und schließen|Fertig|Ja; cancel=Abbrechen|Schließen|Nein; ' +
     'apply=Übernehmen|Anwenden; help=Hilfe|?; ok=Save; cancel=Cancel';
 
+{ TAtlasButtonBarTests }
+
 procedure TAtlasButtonBarTests.RolesFromCaptionAndName;
 begin
   Assert.AreEqual<TAtlasButtonRole>(TAtlasButtonRole.Ok, TAtlasButtonBar.RoleOf('Button1', '&OK', 0, cTerms));

@@ -48,6 +48,8 @@ const
   cUri = 'file:///C:/P/UI.Auftrag.pas';
   cHover = 'textDocument/hover';
 
+{ TCrashSkipTests }
+
 procedure TCrashSkipTests.Setup;
 begin
   FSkips := TCrashSkips.Create;

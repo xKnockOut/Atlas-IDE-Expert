@@ -106,6 +106,8 @@ begin
   Result.Severity := ASeverity;
 end;
 
+{ TAtlasIdeErrorsTests }
+
 procedure TAtlasIdeErrorsTests.ConvertsIdeValuesToZeroBasedProblems;
 var
   mProblem: TAtlasProblem;

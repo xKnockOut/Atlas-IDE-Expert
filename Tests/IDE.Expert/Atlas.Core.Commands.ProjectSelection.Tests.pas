@@ -60,6 +60,8 @@ begin
     'C:\P\CoreTools\Tool.pas', 'C:\P\App.res'];
 end;
 
+{ TAtlasProjectSelectionTests }
+
 procedure TAtlasProjectSelectionTests.KindFollowsExtension;
 begin
   Assert.AreEqual<TAtlasProjectNodeKind>(TAtlasProjectNodeKind.SourceFile,

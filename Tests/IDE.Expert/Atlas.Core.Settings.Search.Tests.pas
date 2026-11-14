@@ -88,18 +88,6 @@ uses
 
 { TAtlasSettingsSearchTests }
 
-procedure TAtlasSettingsSearchTests.Setup;
-begin
-  FCatalog := TAtlasSettingsCatalog.CreateDefault;
-  FGroups := TAtlasSettingsGroups.Create(FCatalog);
-end;
-
-procedure TAtlasSettingsSearchTests.TearDown;
-begin
-  FreeAndNil(FGroups);
-  FreeAndNil(FCatalog);
-end;
-
 function TAtlasSettingsSearchTests.RankOf(const AText, AName: string): Integer;
 begin
   Result := RankOf(AText, AName, False);
@@ -119,6 +107,18 @@ begin
     end;
   end;
   Result := -1;
+end;
+
+procedure TAtlasSettingsSearchTests.Setup;
+begin
+  FCatalog := TAtlasSettingsCatalog.CreateDefault;
+  FGroups := TAtlasSettingsGroups.Create(FCatalog);
+end;
+
+procedure TAtlasSettingsSearchTests.TearDown;
+begin
+  FreeAndNil(FGroups);
+  FreeAndNil(FCatalog);
 end;
 
 procedure TAtlasSettingsSearchTests.EmptyTextFindsNothing;
@@ -335,6 +335,8 @@ begin
     end);
 end;
 
+{ TAtlasSettingsPaletteSearchTests }
+
 procedure TAtlasSettingsPaletteSearchTests.PrefixIsRecognized;
 var
   mQuery: string;
@@ -450,6 +452,8 @@ type
     procedure Execute(const AItem: TAtlasCommand; AAction: TAtlasPaletteAction);
     procedure Closed;
   end;
+
+{ TFakeSource }
 
 procedure TFakeSource.Opened(const AShow: TProc<TAtlasPaletteGroup>);
 begin

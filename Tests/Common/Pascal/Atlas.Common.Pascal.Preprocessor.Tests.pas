@@ -299,31 +299,6 @@ begin
   Assert.AreEqual(2, R.Tokens[1].StartPos.Character);
 end;
 
-procedure TPascalPreprocessorTests.RecordsDefineSites;
-var
-  mOpts: TPreprocessorOptions;
-  R: TPreprocessorResult;
-begin
-  mOpts := Options([]);
-  mOpts.ResolveInclude := ResolveTestInclude;
-  R := TPascalPreprocessor.Process('{$DEFINE A}'#10'{$IFDEF NIE}{$DEFINE B}{$ENDIF}'#10'  {$I defs.inc}'#10 +
-    '{$UNDEF a}', mOpts);
-  // B liegt im inaktiven Zweig und zählt nicht.
-  Assert.AreEqual(3, Integer(Length(R.DefineSites)));
-  Assert.AreEqual('A', R.DefineSites[0].Name);
-  Assert.AreEqual(0, R.DefineSites[0].FileIndex);
-  Assert.IsFalse(R.DefineSites[0].Undefine);
-  // Aus defs.inc: Stelle in der Include-Datei, RootPos an der $I-Direktive.
-  Assert.AreEqual('AUS_INC', R.DefineSites[1].Name);
-  Assert.AreEqual(1, R.DefineSites[1].FileIndex);
-  Assert.AreEqual(0, R.DefineSites[1].Range.StartPos.Line);
-  Assert.AreEqual(2, R.DefineSites[1].RootPos.Line);
-  Assert.AreEqual(2, R.DefineSites[1].RootPos.Character);
-  Assert.AreEqual('A', R.DefineSites[2].Name);
-  Assert.IsTrue(R.DefineSites[2].Undefine);
-  Assert.AreEqual(3, R.DefineSites[2].RootPos.Line);
-end;
-
 procedure TPascalPreprocessorTests.ReportsMissingAndRecursiveIncludes;
 var
   mOpts: TPreprocessorOptions;
@@ -445,6 +420,31 @@ begin
   Assert.AreEqual('neu', Branch('VER360'));
   Assert.AreEqual('neu', Branch('VER360', 'RTLVersion'));
   Assert.AreEqual('alt', Branch('VER350'));
+end;
+
+procedure TPascalPreprocessorTests.RecordsDefineSites;
+var
+  mOpts: TPreprocessorOptions;
+  R: TPreprocessorResult;
+begin
+  mOpts := Options([]);
+  mOpts.ResolveInclude := ResolveTestInclude;
+  R := TPascalPreprocessor.Process('{$DEFINE A}'#10'{$IFDEF NIE}{$DEFINE B}{$ENDIF}'#10'  {$I defs.inc}'#10 +
+    '{$UNDEF a}', mOpts);
+  // B liegt im inaktiven Zweig und zählt nicht.
+  Assert.AreEqual(3, Integer(Length(R.DefineSites)));
+  Assert.AreEqual('A', R.DefineSites[0].Name);
+  Assert.AreEqual(0, R.DefineSites[0].FileIndex);
+  Assert.IsFalse(R.DefineSites[0].Undefine);
+  // Aus defs.inc: Stelle in der Include-Datei, RootPos an der $I-Direktive.
+  Assert.AreEqual('AUS_INC', R.DefineSites[1].Name);
+  Assert.AreEqual(1, R.DefineSites[1].FileIndex);
+  Assert.AreEqual(0, R.DefineSites[1].Range.StartPos.Line);
+  Assert.AreEqual(2, R.DefineSites[1].RootPos.Line);
+  Assert.AreEqual(2, R.DefineSites[1].RootPos.Character);
+  Assert.AreEqual('A', R.DefineSites[2].Name);
+  Assert.IsTrue(R.DefineSites[2].Undefine);
+  Assert.AreEqual(3, R.DefineSites[2].RootPos.Line);
 end;
 
 function Part(const AParts: TArray<TConditionPart>; const AText: string): TConditionPart;

@@ -152,20 +152,6 @@ end;
 
 { TLspSignatureHelpTests }
 
-procedure TLspSignatureHelpTests.Setup;
-begin
-  FIndex := TSymbolIndex.Create;
-  FIndex.AddUnit(TIndexExtractor.ExtractText(cUnitWerkzeug, cWerkzeugFile, nil));
-  FIndex.AddUnit(TIndexExtractor.ExtractText(cUnitListen, cListenFile, nil));
-  FResolver := TNameResolver.Create(FIndex);
-end;
-
-procedure TLspSignatureHelpTests.TearDown;
-begin
-  FResolver.Free;
-  FIndex := nil;
-end;
-
 function TLspSignatureHelpTests.HelpAt(const ACode, AMarker: string): TSignatureHelp;
 var
   mText: string;
@@ -179,6 +165,20 @@ begin
   finally
     mTree.Free;
   end;
+end;
+
+procedure TLspSignatureHelpTests.Setup;
+begin
+  FIndex := TSymbolIndex.Create;
+  FIndex.AddUnit(TIndexExtractor.ExtractText(cUnitWerkzeug, cWerkzeugFile, nil));
+  FIndex.AddUnit(TIndexExtractor.ExtractText(cUnitListen, cListenFile, nil));
+  FResolver := TNameResolver.Create(FIndex);
+end;
+
+procedure TLspSignatureHelpTests.TearDown;
+begin
+  FResolver.Free;
+  FIndex := nil;
 end;
 
 procedure TLspSignatureHelpTests.FindsCallSiteAndActiveParameter;

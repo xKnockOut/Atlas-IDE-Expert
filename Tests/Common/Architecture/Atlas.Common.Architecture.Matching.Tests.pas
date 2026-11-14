@@ -69,6 +69,8 @@ begin
   Result := '#';
 end;
 
+{ TSubsystemMatcherTests }
+
 procedure TSubsystemMatcherTests.MajorityNeedsBothSides;
 var
   mOld, mNew: TArchitectureSnapshot;

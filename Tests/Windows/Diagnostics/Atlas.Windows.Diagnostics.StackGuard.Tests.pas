@@ -41,6 +41,8 @@ begin
   Result := Exhaust(ADepth + 1) + mFiller[ADepth mod 256];
 end;
 
+{ TWindowsStackGuardTests }
+
 procedure TWindowsStackGuardTests.RemoveGuard;
 begin
   TWindowsStackGuard.Uninstall;

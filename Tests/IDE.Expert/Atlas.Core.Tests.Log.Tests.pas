@@ -115,6 +115,8 @@ begin
     Line(1225, 'I', 'fremd') + Line(1230, 'T-', '') + Line(1240, 'F-', '');
 end;
 
+{ TAtlasTestLogTests }
+
 procedure TAtlasTestLogTests.ThreeLogLinesOnlyOfOwnTest;
 var
   mRun: TAtlasTestLogRun;

@@ -91,6 +91,8 @@ begin
   Result := string.Join(',', AItems);
 end;
 
+{ TAtlasSettingsGroupsTests }
+
 procedure TAtlasSettingsGroupsTests.PrefixRuleFindsSwitchOrEnabled;
 var
   mSubject: TAtlasSettingsGroups;

@@ -104,6 +104,22 @@ end;
 
 { TAtlasResultsDataFlowTests }
 
+procedure TAtlasResultsDataFlowTests.WarmUp;
+var
+  mHost: TForm;
+  mFrame: TAtlasResultsFrame;
+begin
+  mHost := TForm.CreateNew(nil);
+  try
+    mFrame := TAtlasResultsFrame.Create(mHost);
+    mFrame.Parent := mHost;
+    mFrame.Flow.Show('Woher kommt X?', TAtlasDataFlowDirection.Sources,
+      Answer([Assignment('0', [Place(3, 'X := 0;')], nil)]), 6, False, False);
+  finally
+    mHost.Free;
+  end;
+end;
+
 procedure TAtlasResultsDataFlowTests.NodeTextShowsKindDetailViaUnsafeAndPlace;
 var
   mNode: TAtlasDataFlowNode;
@@ -127,32 +143,6 @@ begin
   Assert.Contains(mText, TAtlasResultsStrings.Text(TAtlasResultsTextId.DataFlowOriginLiteral));
   Assert.IsFalse(mText.Contains('Haupt.pas'), 'ohne Fundort');
   Assert.AreEqual('Haupt.pas:4: X := 0;', TAtlasResultsTexts.FlowPlaceText(mNode.Places[0]));
-end;
-
-procedure TAtlasResultsDataFlowTests.SourceTextShowsArrowLeafAndDepth;
-var
-  mChild: TAtlasDataFlowChild;
-begin
-  mChild := Default(TAtlasDataFlowChild);
-  mChild.Kind := TAtlasDataFlowChildKind.Source;
-  mChild.Source := Symbol('Summe', 'S', TAtlasDataFlowLeaf.None);
-  Assert.AreEqual('← Summe  (Daten.pas:11)', TAtlasResultsTexts.FlowSourceText(mChild,
-    TAtlasDataFlowDirection.Sources));
-  Assert.AreEqual('→ Summe  (Daten.pas:11)', TAtlasResultsTexts.FlowSourceText(mChild,
-    TAtlasDataFlowDirection.Targets));
-  mChild.DepthReached := True;
-  Assert.EndsWith(TAtlasResultsStrings.Text(TAtlasResultsTextId.DataFlowLeafDepth),
-    TAtlasResultsTexts.FlowSourceText(mChild,
-    TAtlasDataFlowDirection.Sources));
-  mChild.DepthReached := False;
-  mChild.Source.Leaf := TAtlasDataFlowLeaf.Cycle;
-  Assert.EndsWith(TAtlasResultsStrings.Text(TAtlasResultsTextId.DataFlowLeafCycle),
-    TAtlasResultsTexts.FlowSourceText(mChild,
-    TAtlasDataFlowDirection.Sources));
-  mChild.Source.Leaf := TAtlasDataFlowLeaf.Constant;
-  Assert.EndsWith(TAtlasResultsStrings.Text(TAtlasResultsTextId.DataFlowLeafConstant),
-    TAtlasResultsTexts.FlowSourceText(mChild,
-    TAtlasDataFlowDirection.Sources));
 end;
 
 type
@@ -188,20 +178,30 @@ begin
     end;
 end;
 
-procedure TAtlasResultsDataFlowTests.WarmUp;
+procedure TAtlasResultsDataFlowTests.SourceTextShowsArrowLeafAndDepth;
 var
-  mHost: TForm;
-  mFrame: TAtlasResultsFrame;
+  mChild: TAtlasDataFlowChild;
 begin
-  mHost := TForm.CreateNew(nil);
-  try
-    mFrame := TAtlasResultsFrame.Create(mHost);
-    mFrame.Parent := mHost;
-    mFrame.Flow.Show('Woher kommt X?', TAtlasDataFlowDirection.Sources,
-      Answer([Assignment('0', [Place(3, 'X := 0;')], nil)]), 6, False, False);
-  finally
-    mHost.Free;
-  end;
+  mChild := Default(TAtlasDataFlowChild);
+  mChild.Kind := TAtlasDataFlowChildKind.Source;
+  mChild.Source := Symbol('Summe', 'S', TAtlasDataFlowLeaf.None);
+  Assert.AreEqual('← Summe  (Daten.pas:11)', TAtlasResultsTexts.FlowSourceText(mChild,
+    TAtlasDataFlowDirection.Sources));
+  Assert.AreEqual('→ Summe  (Daten.pas:11)', TAtlasResultsTexts.FlowSourceText(mChild,
+    TAtlasDataFlowDirection.Targets));
+  mChild.DepthReached := True;
+  Assert.EndsWith(TAtlasResultsStrings.Text(TAtlasResultsTextId.DataFlowLeafDepth),
+    TAtlasResultsTexts.FlowSourceText(mChild,
+    TAtlasDataFlowDirection.Sources));
+  mChild.DepthReached := False;
+  mChild.Source.Leaf := TAtlasDataFlowLeaf.Cycle;
+  Assert.EndsWith(TAtlasResultsStrings.Text(TAtlasResultsTextId.DataFlowLeafCycle),
+    TAtlasResultsTexts.FlowSourceText(mChild,
+    TAtlasDataFlowDirection.Sources));
+  mChild.Source.Leaf := TAtlasDataFlowLeaf.Constant;
+  Assert.EndsWith(TAtlasResultsStrings.Text(TAtlasResultsTextId.DataFlowLeafConstant),
+    TAtlasResultsTexts.FlowSourceText(mChild,
+    TAtlasDataFlowDirection.Sources));
 end;
 
 procedure TAtlasResultsDataFlowTests.TreeGroupsPlacesExpandsLazilyAndJumps;

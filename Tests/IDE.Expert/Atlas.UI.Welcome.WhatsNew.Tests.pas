@@ -66,6 +66,8 @@ type
     procedure Show(AView: TAtlasWhatsNewView);
   end;
 
+{ TFakeWhatsNew }
+
 function TFakeWhatsNew.View: TAtlasWhatsNewView;
 begin
   Result := FView;

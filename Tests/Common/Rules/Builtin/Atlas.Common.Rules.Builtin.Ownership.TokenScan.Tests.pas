@@ -45,6 +45,8 @@ begin
   Result.Tree := ATree;
 end;
 
+{ TOwnershipTokenScanTests }
+
 procedure TOwnershipTokenScanTests.SkipsCommentsAndFindsTokens;
 var
   mTree: TSyntaxTree;

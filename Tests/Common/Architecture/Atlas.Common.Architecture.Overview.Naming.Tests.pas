@@ -45,6 +45,8 @@ begin
   end;
 end;
 
+{ TSubsystemNamingTests }
+
 procedure TSubsystemNamingTests.Setup;
 begin
   // App.Index.Reader, App.Index.Writer, app.Ui.Main, App.Ui.Index

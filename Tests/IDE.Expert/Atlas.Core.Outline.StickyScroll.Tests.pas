@@ -235,6 +235,8 @@ begin
   end;
 end;
 
+{ TAtlasStickyScrollTests }
+
 procedure TAtlasStickyScrollTests.HeaderOfLongMethodStaysOnTop;
 var
   mSource: TSource;
@@ -390,18 +392,28 @@ begin
   end;
 end;
 
-procedure TAtlasStickyScrollTests.SyntaxLikeTheEditor;
+procedure TAtlasStickyScrollTests.HeaderKeywordsTakeTheirDepthColor;
+const
+  cLines: array[0..5] of string = ('procedure Aussen;', '  procedure Innen(A,', '    B: Integer);', '  begin',
+    '  end;', 'begin');
+var
+  mTokens, mLine1: TArray<TAtlasPairToken>;
+  mSpans: TArray<TAtlasPairSpan>;
 begin
-  Assert.AreEqual('R:class|R:function|I:TCompilerEditions|Y:.|I:Detect|Y:(|I:AExists|Y::|I:Boolean|Y:;|R:const|' +
-    'I:AOutput|Y::|I:TArray|Y:<|R:string|Y:>|Y:)|Y::|I:TCompilerEdition|Y:;|',
-    Described('class function TCompilerEditions.Detect(AExists: Boolean; const AOutput: TArray<string>): ' +
-    'TCompilerEdition;'));
-  Assert.AreEqual('R:if|I:A|Y:=|S:''It''''s''|R:then|K:{ Kommentar }|', Described('if A = ''It''''s'' then { Kommentar }'));
-  Assert.AreEqual('I:X|Y::|Y:=|N:$FF|Y:+|N:1.5E-3|Y:+|C:#13|Y:;|K:// Rest|',
-    Described('X := $FF + 1.5E-3 + #13; // Rest'));
-  // Mitglied hinter "." und escapte Namen sind keine Schlüsselwörter; Direktiven schon.
-  Assert.AreEqual('I:Self|Y:.|I:Free|Y:;|I:&begin|Y:;|R:override|Y:;|P:{$IFDEF X}|',
-    Described('Self.Free; &begin; override; {$IFDEF X}'));
+  mTokens := TAtlasPairs.Analyze(string.Join(#10, cLines) + #10'end;');
+  mLine1 := TokensOfLine(mTokens, 1);
+  // Kopf der inneren Routine ohne Einrückung, Parameterliste gekürzt: procedure in der Farbe ihres begin.
+  mSpans := TAtlasPairs.Spans('procedure Innen(…): Boolean;', cLines[1], mLine1, True);
+  Assert.IsTrue(Length(mSpans) >= 1, 'procedure gefärbt');
+  Assert.AreEqual(1, mSpans[0].Start);
+  Assert.AreEqual(9, mSpans[0].Length);
+  Assert.AreEqual(TokensOfLine(mTokens, 3)[0].Depth, mSpans[0].Depth, 'Tiefe des eigenen begin');
+  Assert.AreEqual('(', Copy('procedure Innen(…): Boolean;', mSpans[High(mSpans)].Start, 1), 'Klammer vor „…“');
+  // Ohne Besitzer (PairOwners aus) bleibt procedure ungefärbt wie im Editor.
+  for var mSpan in TAtlasPairs.Spans('procedure Innen(…): Boolean;', cLines[1], mLine1, False) do
+  begin
+    Assert.AreNotEqual(1, mSpan.Start);
+  end;
 end;
 
 procedure TAtlasStickyScrollTests.BranchBlocksJoinTheHeader;
@@ -439,28 +451,18 @@ begin
   Assert.AreEqual('if Gueltig then › else if Leer then', mRows[0].Text);
 end;
 
-procedure TAtlasStickyScrollTests.HeaderKeywordsTakeTheirDepthColor;
-const
-  cLines: array[0..5] of string = ('procedure Aussen;', '  procedure Innen(A,', '    B: Integer);', '  begin',
-    '  end;', 'begin');
-var
-  mTokens, mLine1: TArray<TAtlasPairToken>;
-  mSpans: TArray<TAtlasPairSpan>;
+procedure TAtlasStickyScrollTests.SyntaxLikeTheEditor;
 begin
-  mTokens := TAtlasPairs.Analyze(string.Join(#10, cLines) + #10'end;');
-  mLine1 := TokensOfLine(mTokens, 1);
-  // Kopf der inneren Routine ohne Einrückung, Parameterliste gekürzt: procedure in der Farbe ihres begin.
-  mSpans := TAtlasPairs.Spans('procedure Innen(…): Boolean;', cLines[1], mLine1, True);
-  Assert.IsTrue(Length(mSpans) >= 1, 'procedure gefärbt');
-  Assert.AreEqual(1, mSpans[0].Start);
-  Assert.AreEqual(9, mSpans[0].Length);
-  Assert.AreEqual(TokensOfLine(mTokens, 3)[0].Depth, mSpans[0].Depth, 'Tiefe des eigenen begin');
-  Assert.AreEqual('(', Copy('procedure Innen(…): Boolean;', mSpans[High(mSpans)].Start, 1), 'Klammer vor „…“');
-  // Ohne Besitzer (PairOwners aus) bleibt procedure ungefärbt wie im Editor.
-  for var mSpan in TAtlasPairs.Spans('procedure Innen(…): Boolean;', cLines[1], mLine1, False) do
-  begin
-    Assert.AreNotEqual(1, mSpan.Start);
-  end;
+  Assert.AreEqual('R:class|R:function|I:TCompilerEditions|Y:.|I:Detect|Y:(|I:AExists|Y::|I:Boolean|Y:;|R:const|' +
+    'I:AOutput|Y::|I:TArray|Y:<|R:string|Y:>|Y:)|Y::|I:TCompilerEdition|Y:;|',
+    Described('class function TCompilerEditions.Detect(AExists: Boolean; const AOutput: TArray<string>): ' +
+    'TCompilerEdition;'));
+  Assert.AreEqual('R:if|I:A|Y:=|S:''It''''s''|R:then|K:{ Kommentar }|', Described('if A = ''It''''s'' then { Kommentar }'));
+  Assert.AreEqual('I:X|Y::|Y:=|N:$FF|Y:+|N:1.5E-3|Y:+|C:#13|Y:;|K:// Rest|',
+    Described('X := $FF + 1.5E-3 + #13; // Rest'));
+  // Mitglied hinter "." und escapte Namen sind keine Schlüsselwörter; Direktiven schon.
+  Assert.AreEqual('I:Self|Y:.|I:Free|Y:;|I:&begin|Y:;|R:override|Y:;|P:{$IFDEF X}|',
+    Described('Self.Free; &begin; override; {$IFDEF X}'));
 end;
 
 function Row(ALine: Integer; ASummary: Boolean): TAtlasStickyRow;

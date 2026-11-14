@@ -117,18 +117,6 @@ end;
 
 { TCompletionWithTests }
 
-procedure TCompletionWithTests.Setup;
-begin
-  FIndex := TSymbolIndex.Create;
-  FResolver := TNameResolver.Create(FIndex);
-end;
-
-procedure TCompletionWithTests.TearDown;
-begin
-  FResolver.Free;
-  FIndex := nil;
-end;
-
 function TCompletionWithTests.ItemsAt(const AMarked: string; const ASettings: TCompletionSettings): TCompletionItems;
 var
   mText: string;
@@ -186,6 +174,18 @@ begin
       Inc(Result);
     end;
   end;
+end;
+
+procedure TCompletionWithTests.Setup;
+begin
+  FIndex := TSymbolIndex.Create;
+  FResolver := TNameResolver.Create(FIndex);
+end;
+
+procedure TCompletionWithTests.TearDown;
+begin
+  FResolver.Free;
+  FIndex := nil;
 end;
 
 procedure TCompletionWithTests.MembersCarryOrigin;

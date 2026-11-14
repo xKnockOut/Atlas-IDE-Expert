@@ -118,6 +118,8 @@ type
     procedure ThrowIfCancellationRequested;
   end;
 
+{ TForeignToken }
+
 function TForeignToken.IsCancellationRequested: Boolean;
 begin
   Result := False;

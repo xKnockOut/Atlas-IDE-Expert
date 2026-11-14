@@ -34,6 +34,8 @@ uses
   Atlas.Common.Lsp.Metrics,
   Atlas.Common.Lsp.Todos;
 
+{ TShellAnalysisTests }
+
 procedure TShellAnalysisTests.RegistersReportCommands;
 var
   mAnalysis: TShellAnalysis;
@@ -59,23 +61,6 @@ begin
   end;
 end;
 
-procedure TShellAnalysisTests.SetNamespacesReachesAnalyses;
-var
-  mAnalysis: TShellAnalysis;
-  mNamespaces: TArray<string>;
-begin
-  mAnalysis := TShellAnalysis.Create(Default(TShellAnalysisServices));
-  try
-    mAnalysis.SetNamespaces(TArray<string>.Create('System', 'Vcl'));
-    mNamespaces := mAnalysis.Namespaces;
-    Assert.AreEqual(2, Integer(Length(mNamespaces)));
-    Assert.AreEqual('System', mNamespaces[0]);
-    Assert.AreEqual('Vcl', mNamespaces[1]);
-  finally
-    mAnalysis.Free;
-  end;
-end;
-
 procedure TShellAnalysisTests.ReadingCommandsRunConcurrently;
 var
   mAnalysis: TShellAnalysis;
@@ -92,6 +77,23 @@ begin
     end;
   finally
     mCommands.Free;
+    mAnalysis.Free;
+  end;
+end;
+
+procedure TShellAnalysisTests.SetNamespacesReachesAnalyses;
+var
+  mAnalysis: TShellAnalysis;
+  mNamespaces: TArray<string>;
+begin
+  mAnalysis := TShellAnalysis.Create(Default(TShellAnalysisServices));
+  try
+    mAnalysis.SetNamespaces(TArray<string>.Create('System', 'Vcl'));
+    mNamespaces := mAnalysis.Namespaces;
+    Assert.AreEqual(2, Integer(Length(mNamespaces)));
+    Assert.AreEqual('System', mNamespaces[0]);
+    Assert.AreEqual('Vcl', mNamespaces[1]);
+  finally
     mAnalysis.Free;
   end;
 end;

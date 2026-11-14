@@ -52,6 +52,8 @@ begin
     '"cacheHits":{"index":98,"trees":76,"treeCount":40},"markdown":"x"}';
 end;
 
+{ TAtlasServerSnapshotTests }
+
 procedure TAtlasServerSnapshotTests.ReadsDiagnosticsOfNewServer;
 var
   mSnapshot: TAtlasServerSnapshot;

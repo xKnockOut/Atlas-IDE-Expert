@@ -69,6 +69,8 @@ begin
   end;
 end;
 
+{ TFreeFieldTypesTests }
+
 procedure TFreeFieldTypesTests.GuessesKindsFromFile;
 begin
   Assert.AreEqual<TTypeGuess>(tgClass, Guess('TFoo'));

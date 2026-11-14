@@ -286,6 +286,8 @@ begin
     'procedure Lesen(Leser: TStreamReader);'#10'var'#10'  Zeile: string;'#10'begin'#10 + AStatements + 'end;'#10'end.';
 end;
 
+{ TInfiniteLoopTests }
+
 procedure TInfiniteLoopTests.IssueExample;
 var
   mFound: TArray<TRuleFinding>;
@@ -389,6 +391,8 @@ begin
     'procedure TPruefer.Pruefen(Liste: TStringList; var Fertig: Boolean);'#10'var'#10'  I: Integer;'#10 +
     '  Werte: TArray<Integer>;'#10'begin'#10 + AStatements + 'end;'#10'end.';
 end;
+
+{ TLoopConditionUnchangedTests }
 
 procedure TLoopConditionUnchangedTests.IssueExample;
 var
@@ -494,6 +498,8 @@ function JumpFindings(const ASource: string; const AConfig: string): TArray<TRul
 begin
   Result := JumpFindings(ASource, AConfig, '');
 end;
+
+{ TRedundantJumpTests }
 
 procedure TRedundantJumpTests.IssueExampleWithFix;
 var
@@ -613,6 +619,8 @@ begin
     'function TSuche.Finden(AId: Integer): TKunde;'#10'var'#10'  mKunde: TKunde;'#10'  I: Integer;'#10 +
     'begin'#10'  Result := nil;'#10 + AStatements + 'end;'#10'end.';
 end;
+
+{ TLoopRunsAtMostOnceTests }
 
 procedure TLoopRunsAtMostOnceTests.IssueExample;
 var

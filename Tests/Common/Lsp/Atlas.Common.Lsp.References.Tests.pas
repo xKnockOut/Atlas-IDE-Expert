@@ -119,19 +119,6 @@ end;
 
 { TLspReferencesTests }
 
-procedure TLspReferencesTests.Setup;
-begin
-  FIndex := TSymbolIndex.Create;
-  FIndex.AddUnit(TIndexExtractor.ExtractText(cUnitWerkzeug, cWerkzeugFile, nil));
-  FResolver := TNameResolver.Create(FIndex);
-end;
-
-procedure TLspReferencesTests.TearDown;
-begin
-  FResolver.Free;
-  FIndex := nil;
-end;
-
 function TLspReferencesTests.FindAt(const AMarker: string; ADeclaration: Boolean): TArray<TReferenceLocation>;
 var
   mTree: TSyntaxTree;
@@ -173,6 +160,19 @@ begin
       mLocation.Range.StartPos.Character]);
   end;
   Result := Trim(Result);
+end;
+
+procedure TLspReferencesTests.Setup;
+begin
+  FIndex := TSymbolIndex.Create;
+  FIndex.AddUnit(TIndexExtractor.ExtractText(cUnitWerkzeug, cWerkzeugFile, nil));
+  FResolver := TNameResolver.Create(FIndex);
+end;
+
+procedure TLspReferencesTests.TearDown;
+begin
+  FResolver.Free;
+  FIndex := nil;
 end;
 
 procedure TLspReferencesTests.FindsUsesAcrossUnits;

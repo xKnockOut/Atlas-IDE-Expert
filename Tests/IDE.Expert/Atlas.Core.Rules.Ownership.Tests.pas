@@ -88,6 +88,8 @@ begin
   Result.ClassName := 'TFoo';
 end;
 
+{ TAtlasOwnershipMarksTests }
+
 procedure TAtlasOwnershipMarksTests.ParseReadsSites;
 var
   mMarks: TArray<TAtlasOwnershipMark>;

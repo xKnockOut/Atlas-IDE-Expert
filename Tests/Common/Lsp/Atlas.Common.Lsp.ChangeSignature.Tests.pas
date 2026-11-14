@@ -246,22 +246,6 @@ end;
 
 { TLspChangeSignatureTests }
 
-procedure TLspChangeSignatureTests.Setup;
-begin
-  FIndex := TSymbolIndex.Create;
-  FTexts := nil;
-  FFiles := nil;
-  FReadOnly := '';
-end;
-
-procedure TLspChangeSignatureTests.TearDown;
-begin
-  FIndex := nil;
-  FTexts := nil;
-  FFiles := nil;
-  FReadOnly := '';
-end;
-
 procedure TLspChangeSignatureTests.AddFile(const AFileName, AText: string);
 begin
   FFiles := FFiles + [AFileName];
@@ -284,12 +268,6 @@ begin
     end;
   end;
   Result := '';
-end;
-
-procedure TLspChangeSignatureTests.LoadProject;
-begin
-  AddFile(cBasisFile, cUnitBasis);
-  AddFile(cHauptFile, cUnitHaupt);
 end;
 
 function TLspChangeSignatureTests.SourceAt(AResolver: TNameResolver; ATree: TSyntaxTree; const AFileName: string;
@@ -405,6 +383,28 @@ begin
       mTree.Free;
     end;
   end;
+end;
+
+procedure TLspChangeSignatureTests.LoadProject;
+begin
+  AddFile(cBasisFile, cUnitBasis);
+  AddFile(cHauptFile, cUnitHaupt);
+end;
+
+procedure TLspChangeSignatureTests.Setup;
+begin
+  FIndex := TSymbolIndex.Create;
+  FTexts := nil;
+  FFiles := nil;
+  FReadOnly := '';
+end;
+
+procedure TLspChangeSignatureTests.TearDown;
+begin
+  FIndex := nil;
+  FTexts := nil;
+  FFiles := nil;
+  FReadOnly := '';
 end;
 
 procedure TLspChangeSignatureTests.PrepareListsParametersAndMembers;

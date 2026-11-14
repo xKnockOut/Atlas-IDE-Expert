@@ -69,6 +69,8 @@ begin
   end;
 end;
 
+{ TAtlasLearnedSuggestionsTests }
+
 procedure TAtlasLearnedSuggestionsTests.BuildsArguments;
 var
   mAdjust: TAtlasLearnedAdjust;

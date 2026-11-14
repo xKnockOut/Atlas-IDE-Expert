@@ -350,6 +350,49 @@ begin
     'begin'#10'  Kunden := FKunden;'#10 + AStatements + 'end;'#10'end.';
 end;
 
+procedure TStatementRulesTests.RuleIsRegistered;
+var
+  mRule: IRule;
+  mFound: Boolean;
+begin
+  mFound := False;
+  for mRule in BuiltinRules do
+  begin
+    if mRule.Descriptor.Id = cEmptyStatementRuleId then
+    begin
+      mFound := True;
+    end;
+  end;
+  Assert.IsTrue(mFound);
+  mFound := False;
+  for mRule in BuiltinRules do
+  begin
+    if mRule.Descriptor.Id = cLoopOffByOneRuleId then
+    begin
+      mFound := True;
+    end;
+  end;
+  Assert.IsTrue(mFound, cLoopOffByOneRuleId);
+  mFound := False;
+  for mRule in BuiltinRules do
+  begin
+    if mRule.Descriptor.Id = cCollectionModifiedInLoopRuleId then
+    begin
+      mFound := True;
+    end;
+  end;
+  Assert.IsTrue(mFound, cCollectionModifiedInLoopRuleId);
+  mFound := False;
+  for mRule in BuiltinRules do
+  begin
+    if mRule.Descriptor.Id = cDestroyCalledDirectlyRuleId then
+    begin
+      mFound := True;
+    end;
+  end;
+  Assert.IsTrue(mFound, cDestroyCalledDirectlyRuleId);
+end;
+
 procedure TStatementRulesTests.CountUpperBoundIsReportedWithFix;
 var
   mFindings: TArray<TRuleFinding>;
@@ -595,48 +638,7 @@ begin
     '{"rules": {"collection-modified-in-loop": {"exclude": ["Alt/*.pas"]}}}', 'Neu/Kunden.pas'))));
 end;
 
-procedure TStatementRulesTests.RuleIsRegistered;
-var
-  mRule: IRule;
-  mFound: Boolean;
-begin
-  mFound := False;
-  for mRule in BuiltinRules do
-  begin
-    if mRule.Descriptor.Id = cEmptyStatementRuleId then
-    begin
-      mFound := True;
-    end;
-  end;
-  Assert.IsTrue(mFound);
-  mFound := False;
-  for mRule in BuiltinRules do
-  begin
-    if mRule.Descriptor.Id = cLoopOffByOneRuleId then
-    begin
-      mFound := True;
-    end;
-  end;
-  Assert.IsTrue(mFound, cLoopOffByOneRuleId);
-  mFound := False;
-  for mRule in BuiltinRules do
-  begin
-    if mRule.Descriptor.Id = cCollectionModifiedInLoopRuleId then
-    begin
-      mFound := True;
-    end;
-  end;
-  Assert.IsTrue(mFound, cCollectionModifiedInLoopRuleId);
-  mFound := False;
-  for mRule in BuiltinRules do
-  begin
-    if mRule.Descriptor.Id = cDestroyCalledDirectlyRuleId then
-    begin
-      mFound := True;
-    end;
-  end;
-  Assert.IsTrue(mFound, cDestroyCalledDirectlyRuleId);
-end;
+{ TStatementPatternRulesTests }
 
 procedure TStatementPatternRulesTests.DestroyCalledDirectlyIssueExample;
 var
@@ -744,6 +746,16 @@ begin
     TChangeSignature.ApplyEdits(mSource, mFindings[0].Fixes[0].Edits));
 end;
 
+procedure TStatementPatternRulesTests.CaseMissingEnumValueSilentCases;
+begin
+  // Vollständig, mit else, Ganzzahl, unbekannter Typ, Aufruf als Selektor.
+  TRuleAssert.Silent(TCaseMissingEnumValueRule.Create, Bestellung('  case Stand of'#10 +
+    '    bsNeu, bsBezahlt: Anlegen;'#10'    bsStorniert..bsZurueck: ;'#10'  end;'#10'  case Stand of'#10 +
+    '    bsNeu: Anlegen;'#10'  else'#10'    Protokoll;'#10'  end;'#10'  case Bestellung.Tag of'#10 +
+    '    1: Anlegen;'#10'  end;'#10'  case Fremd of'#10'    fxA: ;'#10'  end;'#10'  case Lesen(Stand) of'#10 +
+    '    bsNeu: ;'#10'  end;'));
+end;
+
 procedure TStatementPatternRulesTests.CaseMissingEnumValueCoverage;
 const
   cTypes = 'unit U;'#10'interface'#10'type'#10'  TFarbe = (f1, f2, f3, f4, f5, f6, f7, f8, f9, f10);'#10 +
@@ -762,16 +774,6 @@ begin
   Assert.AreEqual(1, Integer(Length(mFindings)));
   Assert.AreEqual(Ord(TRuleConfidence.High), Ord(mFindings[0].Confidence));
   mFindings := nil;
-end;
-
-procedure TStatementPatternRulesTests.CaseMissingEnumValueSilentCases;
-begin
-  // Vollständig, mit else, Ganzzahl, unbekannter Typ, Aufruf als Selektor.
-  TRuleAssert.Silent(TCaseMissingEnumValueRule.Create, Bestellung('  case Stand of'#10 +
-    '    bsNeu, bsBezahlt: Anlegen;'#10'    bsStorniert..bsZurueck: ;'#10'  end;'#10'  case Stand of'#10 +
-    '    bsNeu: Anlegen;'#10'  else'#10'    Protokoll;'#10'  end;'#10'  case Bestellung.Tag of'#10 +
-    '    1: Anlegen;'#10'  end;'#10'  case Fremd of'#10'    fxA: ;'#10'  end;'#10'  case Lesen(Stand) of'#10 +
-    '    bsNeu: ;'#10'  end;'));
 end;
 
 procedure TStatementPatternRulesTests.CaseMissingEnumValueOptions;
@@ -1332,6 +1334,8 @@ begin
   end;
 end;
 
+{ TAssignToPropertyMemberTests }
+
 procedure TAssignToPropertyMemberTests.IssueExampleWithFix;
 var
   mSource, mFixed: string;
@@ -1457,33 +1461,7 @@ begin
     'procedure TKunde.Umbenennen;'#10'begin'#10 + ABody + 'end;'#10'end.';
 end;
 
-procedure TReadonlyPropertyAssignedTests.RedeclaredPropertyInheritsAccessors;
-var
-  mFindings: TArray<TRuleFinding>;
-begin
-  mFindings := ReadonlyFindings('unit Kunden;'#10'interface'#10'uses'#10'  System.Classes;'#10'type'#10 +
-    '  TAuswahl = class'#10'  private'#10'    function GetPosten: TStrings;'#10 +
-    '    procedure SetPosten(AValue: TStrings);'#10'  public'#10 +
-    '    property Posten: TStrings read GetPosten write SetPosten;'#10'    property Nur: TStrings read GetPosten;'#10 +
-    '  end;'#10'  TDatenAuswahl = class(TAuswahl)'#10'  published'#10'    property Posten write SetPosten;'#10 +
-    '    property Nur;'#10'    procedure Nutzen;'#10'  end;'#10'implementation'#10 +
-    'function TAuswahl.GetPosten: TStrings;'#10'begin'#10'  Result := nil;'#10'end;'#10 +
-    'procedure TAuswahl.SetPosten(AValue: TStrings);'#10'begin'#10'end;'#10 +
-    'procedure TDatenAuswahl.Nutzen;'#10'var'#10'  mPosition: Integer;'#10'begin'#10 +
-    '  mPosition := Posten.Count;'#10'  Posten := nil;'#10'  if Nur.Count = mPosition then'#10'    Nur := nil;'#10 +
-    'end;'#10'end.');
-  // Nur Nur := nil: Auch die neu deklarierte Property hat kein write.
-  Assert.AreEqual(1, Integer(Length(mFindings)));
-  Assert.AreEqual('TDatenAuswahl.Nur hat kein write (wie E2129).', mFindings[0].Message);
-  Assert.AreEqual(34, mFindings[0].Range.StartPos.Line);
-  // JVCL: property Capacity write SetCapacity; in einem TObjectList-Nachfahren, der Vorfahr steht nicht im Index.
-  mFindings := ReadonlyFindings('unit Stapel;'#10'interface'#10'uses'#10'  System.Contnrs;'#10'type'#10 +
-    '  TStapel = class(TObjectList)'#10'  private'#10'    procedure SetCapacity(AValue: Integer);'#10 +
-    '  public'#10'    property Capacity write SetCapacity;'#10'    procedure Nutzen;'#10'  end;'#10 +
-    'implementation'#10'procedure TStapel.SetCapacity(AValue: Integer);'#10'begin'#10'end;'#10 +
-    'procedure TStapel.Nutzen;'#10'begin'#10'  if Capacity = 0 then'#10'    Capacity := 8;'#10'end;'#10'end.');
-  Assert.AreEqual(0, Integer(Length(mFindings)));
-end;
+{ TReadonlyPropertyAssignedTests }
 
 procedure TReadonlyPropertyAssignedTests.IssueExampleWithClear;
 var
@@ -1553,6 +1531,34 @@ begin
     'var'#10'  Count: Integer;'#10'begin'#10)))));
 end;
 
+procedure TReadonlyPropertyAssignedTests.RedeclaredPropertyInheritsAccessors;
+var
+  mFindings: TArray<TRuleFinding>;
+begin
+  mFindings := ReadonlyFindings('unit Kunden;'#10'interface'#10'uses'#10'  System.Classes;'#10'type'#10 +
+    '  TAuswahl = class'#10'  private'#10'    function GetPosten: TStrings;'#10 +
+    '    procedure SetPosten(AValue: TStrings);'#10'  public'#10 +
+    '    property Posten: TStrings read GetPosten write SetPosten;'#10'    property Nur: TStrings read GetPosten;'#10 +
+    '  end;'#10'  TDatenAuswahl = class(TAuswahl)'#10'  published'#10'    property Posten write SetPosten;'#10 +
+    '    property Nur;'#10'    procedure Nutzen;'#10'  end;'#10'implementation'#10 +
+    'function TAuswahl.GetPosten: TStrings;'#10'begin'#10'  Result := nil;'#10'end;'#10 +
+    'procedure TAuswahl.SetPosten(AValue: TStrings);'#10'begin'#10'end;'#10 +
+    'procedure TDatenAuswahl.Nutzen;'#10'var'#10'  mPosition: Integer;'#10'begin'#10 +
+    '  mPosition := Posten.Count;'#10'  Posten := nil;'#10'  if Nur.Count = mPosition then'#10'    Nur := nil;'#10 +
+    'end;'#10'end.');
+  // Nur Nur := nil: Auch die neu deklarierte Property hat kein write.
+  Assert.AreEqual(1, Integer(Length(mFindings)));
+  Assert.AreEqual('TDatenAuswahl.Nur hat kein write (wie E2129).', mFindings[0].Message);
+  Assert.AreEqual(34, mFindings[0].Range.StartPos.Line);
+  // JVCL: property Capacity write SetCapacity; in einem TObjectList-Nachfahren, der Vorfahr steht nicht im Index.
+  mFindings := ReadonlyFindings('unit Stapel;'#10'interface'#10'uses'#10'  System.Contnrs;'#10'type'#10 +
+    '  TStapel = class(TObjectList)'#10'  private'#10'    procedure SetCapacity(AValue: Integer);'#10 +
+    '  public'#10'    property Capacity write SetCapacity;'#10'    procedure Nutzen;'#10'  end;'#10 +
+    'implementation'#10'procedure TStapel.SetCapacity(AValue: Integer);'#10'begin'#10'end;'#10 +
+    'procedure TStapel.Nutzen;'#10'begin'#10'  if Capacity = 0 then'#10'    Capacity := 8;'#10'end;'#10'end.');
+  Assert.AreEqual(0, Integer(Length(mFindings)));
+end;
+
 procedure TReadonlyPropertyAssignedTests.OffAndExclude;
 var
   mSource: string;
@@ -1574,6 +1580,8 @@ begin
     '  public'#10'    procedure Setzen(const Besitzer: IBesitzer);'#10'  end;'#10'implementation'#10 +
     'procedure TTeil.Setzen(const Besitzer: IBesitzer);'#10 + ABody + 'end;'#10'end.';
 end;
+
+{ TUntypedPointerRefcountTests }
 
 procedure TUntypedPointerRefcountTests.IssueExample;
 var

@@ -57,9 +57,13 @@ uses
   Atlas.Common.Lsp.SmartIndent,
   Atlas.Common.Lsp.LearnedSuggestions;
 
-procedure TShellEditorCommandsTests.Setup;
+{ TShellEditorCommandsTests }
+
+function TShellEditorCommandsTests.NewServices: TShellEditorCommandServices;
 begin
-  FLiteralCalls := 0;
+  Result := Default(TShellEditorCommandServices);
+  Result.Documents := TDocumentStore.Create;
+  Result.StringLiteralFor := LiteralFor;
 end;
 
 function TShellEditorCommandsTests.LiteralFor(const AUri: string; out AMultiline: Boolean): TStringLiteralSettings;
@@ -69,11 +73,9 @@ begin
   Result := TStringLiteralSettings.Default;
 end;
 
-function TShellEditorCommandsTests.NewServices: TShellEditorCommandServices;
+procedure TShellEditorCommandsTests.Setup;
 begin
-  Result := Default(TShellEditorCommandServices);
-  Result.Documents := TDocumentStore.Create;
-  Result.StringLiteralFor := LiteralFor;
+  FLiteralCalls := 0;
 end;
 
 procedure TShellEditorCommandsTests.RegistersAllCommands;
@@ -102,6 +104,35 @@ begin
       TLspLearnedSuggestions.cListCommand) do
     begin
       Assert.IsTrue(Pos('"' + mName + '"', mText) > 0, mName);
+    end;
+  finally
+    mCommands.Free;
+    mEditorCommands.Free;
+  end;
+end;
+
+procedure TShellEditorCommandsTests.ReadingCommandsRunConcurrently;
+var
+  mEditorCommands: TShellEditorCommands;
+  mCommands: TLspCommands;
+  mName: string;
+begin
+  mEditorCommands := TShellEditorCommands.Create(NewServices);
+  mCommands := TLspCommands.Create;
+  try
+    mEditorCommands.RegisterMarkCommands(mCommands);
+    mEditorCommands.RegisterTextCommands(mCommands);
+    for mName in TArray<string>.Create(TLspExitPoints.cCommand, TLspReassigned.cCommand,
+      TLspExpressionType.cCommand, TLspMethodOrder.cCommand, TLspOverrideMarks.cCommand,
+      TLspInterfaceMethods.cCommand, TQualifiedNames.cCommand, TEnumValueCommands.cCommand,
+      TStringLiteralCommands.cPlainTextCommand, TStringLiteralCommands.cToLiteralCommand, TLspSmartIndent.cCommand,
+      TLspLearnedSuggestions.cSuggestCommand, TLspLearnedSuggestions.cListCommand) do
+    begin
+      Assert.IsTrue(mCommands.IsConcurrentCommand(mName), mName);
+    end;
+    for mName in TArray<string>.Create(TResourceStringCommands.cAddCommand) do
+    begin
+      Assert.IsFalse(mCommands.IsConcurrentCommand(mName), mName);
     end;
   finally
     mCommands.Free;
@@ -158,35 +189,6 @@ begin
       end, EJsonRpcError);
   finally
     mArguments.Free;
-    mCommands.Free;
-    mEditorCommands.Free;
-  end;
-end;
-
-procedure TShellEditorCommandsTests.ReadingCommandsRunConcurrently;
-var
-  mEditorCommands: TShellEditorCommands;
-  mCommands: TLspCommands;
-  mName: string;
-begin
-  mEditorCommands := TShellEditorCommands.Create(NewServices);
-  mCommands := TLspCommands.Create;
-  try
-    mEditorCommands.RegisterMarkCommands(mCommands);
-    mEditorCommands.RegisterTextCommands(mCommands);
-    for mName in TArray<string>.Create(TLspExitPoints.cCommand, TLspReassigned.cCommand,
-      TLspExpressionType.cCommand, TLspMethodOrder.cCommand, TLspOverrideMarks.cCommand,
-      TLspInterfaceMethods.cCommand, TQualifiedNames.cCommand, TEnumValueCommands.cCommand,
-      TStringLiteralCommands.cPlainTextCommand, TStringLiteralCommands.cToLiteralCommand, TLspSmartIndent.cCommand,
-      TLspLearnedSuggestions.cSuggestCommand, TLspLearnedSuggestions.cListCommand) do
-    begin
-      Assert.IsTrue(mCommands.IsConcurrentCommand(mName), mName);
-    end;
-    for mName in TArray<string>.Create(TResourceStringCommands.cAddCommand) do
-    begin
-      Assert.IsFalse(mCommands.IsConcurrentCommand(mName), mName);
-    end;
-  finally
     mCommands.Free;
     mEditorCommands.Free;
   end;

@@ -56,6 +56,8 @@ begin
   Result := '';
 end;
 
+{ TShellEditingAreaTests }
+
 procedure TShellEditingAreaTests.Setup;
 var
   mCoreServices: TShellCoreServices;

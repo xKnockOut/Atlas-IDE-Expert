@@ -177,6 +177,13 @@ begin
   Result := ' ' + string.Join(' ', ANames) + ' ';
 end;
 
+{ TMcpToolsTests }
+
+procedure TMcpToolsTests.WarmUpFirstUse;
+begin
+  ServicesStartWithoutLoading;
+end;
+
 procedure TMcpToolsTests.EachGroupRegistersItsTools;
 begin
   Assert.AreEqual(10, Integer(Length(NamesOf(RegisterNavigationTools))));
@@ -195,6 +202,11 @@ begin
   Assert.AreEqual(' resolve_address analyze_report ', Joined(NamesOf(RegisterReportTools)));
 end;
 
+function EchoTool(const AContext: TMcpToolContext; const AArguments: TJSONObject): string;
+begin
+  Result := AContext.Root + ':' + TMcpArgs.OptionalString(AArguments, 'name');
+end;
+
 procedure TMcpToolsTests.AllToolsHaveDistinctNames;
 var
   mNames: TArray<string>;
@@ -209,11 +221,6 @@ begin
       Assert.AreNotEqual(mNames[mIndex], mNames[mOther], 'doppelt angemeldet');
     end;
   end;
-end;
-
-function EchoTool(const AContext: TMcpToolContext; const AArguments: TJSONObject): string;
-begin
-  Result := AContext.Root + ':' + TMcpArgs.OptionalString(AArguments, 'name');
 end;
 
 procedure TMcpToolsTests.ContextToolPassesContextAndArguments;
@@ -251,6 +258,12 @@ begin
   end;
 end;
 
+function NewFolder: string;
+begin
+  Result := TPath.Combine(TPath.GetTempPath, 'atlas-mcp-' + TGUID.NewGuid.ToString.Replace('{', '').Replace('}', ''));
+  TDirectory.CreateDirectory(Result);
+end;
+
 procedure TMcpToolsTests.RootIsAbsoluteWithoutTrailingDelimiter;
 var
   mOptions: TCommandLineOptions;
@@ -263,17 +276,6 @@ begin
   Assert.AreEqual(ExcludeTrailingPathDelimiter(TPath.GetFullPath(TPath.GetTempPath)), mRoot);
   mOptions.McpRoot := '';
   Assert.AreEqual(ExcludeTrailingPathDelimiter(TPath.GetFullPath(GetCurrentDir)), RootOf(mOptions));
-end;
-
-function NewFolder: string;
-begin
-  Result := TPath.Combine(TPath.GetTempPath, 'atlas-mcp-' + TGUID.NewGuid.ToString.Replace('{', '').Replace('}', ''));
-  TDirectory.CreateDirectory(Result);
-end;
-
-procedure TMcpToolsTests.WarmUpFirstUse;
-begin
-  ServicesStartWithoutLoading;
 end;
 
 procedure TMcpToolsTests.ServicesStartWithoutLoading;

@@ -211,21 +211,6 @@ begin
   Assert.AreEqual('Konto.Saldo ist Cardinal; Konto.Saldo > Unten ist immer wahr (wie W1022).', mFound[2].Message);
 end;
 
-procedure TComparisonAlwaysConstantTests.CastConstantsAndUInt64;
-var
-  mFound: TArray<TRuleFinding>;
-begin
-  // Minimalfall aus #1324 (PascalScript): InvalidVal = Cardinal(-1) ist 4294967295, der Vergleich also offen.
-  mFound := ComparisonFindings('unit Zaehler;'#10'interface'#10'implementation'#10'const'#10 +
-    '  InvalidVal = Cardinal(-1);'#10'procedure Pruefen;'#10'var'#10'  P: Cardinal;'#10'  U: UInt64;'#10'begin'#10 +
-    '  if P <> InvalidVal then'#10'    Exit;'#10'  if P = Cardinal(-1) then'#10'    Exit;'#10 +
-    '  if U > UInt64(High(Int64)) then'#10'    Exit;'#10'  if U <= High(Int64) then'#10'    Exit;'#10 +
-    '  if P <> -1 then'#10'    Exit;'#10'end;'#10'end.');
-  // Gegentest: -1 ohne Umwandlung liegt weiter außerhalb von Cardinal.
-  Assert.AreEqual(1, Integer(Length(mFound)));
-  Assert.AreEqual('P ist Cardinal; P <> -1 ist immer wahr (wie W1022).', mFound[0].Message);
-end;
-
 procedure TComparisonAlwaysConstantTests.LengthIsNeverNegative;
 var
   mFound: TArray<TRuleFinding>;
@@ -298,6 +283,21 @@ begin
     '  if C - 1 >= 0 then'#10'    Exit;'#10'  if Stufe > 5 then'#10'    Exit;'#10 +
     '  if Unbekannt >= 0 then'#10'    Exit;'#10'  if Length(S) > 0 then'#10'    Exit;'#10'  if D >= 0 then'#10'    Exit;'#10'  if C >= I then'#10'    Exit;'#10 +
     '  if 1 > 2 then'#10'    Exit;'#10)))));
+end;
+
+procedure TComparisonAlwaysConstantTests.CastConstantsAndUInt64;
+var
+  mFound: TArray<TRuleFinding>;
+begin
+  // Minimalfall aus #1324 (PascalScript): InvalidVal = Cardinal(-1) ist 4294967295, der Vergleich also offen.
+  mFound := ComparisonFindings('unit Zaehler;'#10'interface'#10'implementation'#10'const'#10 +
+    '  InvalidVal = Cardinal(-1);'#10'procedure Pruefen;'#10'var'#10'  P: Cardinal;'#10'  U: UInt64;'#10'begin'#10 +
+    '  if P <> InvalidVal then'#10'    Exit;'#10'  if P = Cardinal(-1) then'#10'    Exit;'#10 +
+    '  if U > UInt64(High(Int64)) then'#10'    Exit;'#10'  if U <= High(Int64) then'#10'    Exit;'#10 +
+    '  if P <> -1 then'#10'    Exit;'#10'end;'#10'end.');
+  // Gegentest: -1 ohne Umwandlung liegt weiter außerhalb von Cardinal.
+  Assert.AreEqual(1, Integer(Length(mFound)));
+  Assert.AreEqual('P ist Cardinal; P <> -1 ist immer wahr (wie W1022).', mFound[0].Message);
 end;
 
 procedure TComparisonAlwaysConstantTests.OutcomeTable;
@@ -390,6 +390,8 @@ begin
   Result := string.Join(#10, mLines);
 end;
 
+{ TConstantInitializerMismatchTests }
+
 procedure TConstantInitializerMismatchTests.IssueExampleWithFix;
 var
   mSource, mFixed: string;
@@ -428,12 +430,6 @@ begin
   Assert.AreEqual('Fehlenden Eintrag ergänzen (stOffen)', mFound[0].Fixes[0].Title);
   Assert.IsTrue(Pos('(''Neu'', ''Offen'', ''Geschlossen'', ''Archiviert'');', Applied(mSource, mFound[0].Fixes[0])) >
     0);
-end;
-
-procedure TConstantInitializerMismatchTests.EmptyInitializerIsSilent;
-begin
-  Assert.AreEqual(0, Integer(Length(InitFindings(StatusUnit('  TRec = record'#10'    A: Integer;'#10'  end;'#10 +
-    'const'#10'  Leer: TRec = ();'#10'  Feld: array[TStatus] of Integer = ( );'#10'var'#10'  Start: TRec = ();'#10)))));
 end;
 
 procedure TConstantInitializerMismatchTests.TooManyAndSubranges;
@@ -559,6 +555,12 @@ begin
     '{"rules": {"constant-initializer-mismatch": {"exclude": ["Source/*.pas"]}}}', 'Source/Status.pas'))));
 end;
 
+procedure TConstantInitializerMismatchTests.EmptyInitializerIsSilent;
+begin
+  Assert.AreEqual(0, Integer(Length(InitFindings(StatusUnit('  TRec = record'#10'    A: Integer;'#10'  end;'#10 +
+    'const'#10'  Leer: TRec = ();'#10'  Feld: array[TStatus] of Integer = ( );'#10'var'#10'  Start: TRec = ();'#10)))));
+end;
+
 /// <summary>Konstante AName: array[0..ACount - 1] of AType mit den Werten 0 … AValues - 1, 20 je Zeile.</summary>
 function LargeConstant(const AName, AType: string; ACount, AValues: Integer): string;
 var
@@ -676,6 +678,8 @@ begin
   end;
 end;
 
+{ TCaseSelectorNotOrdinalTests }
+
 procedure TCaseSelectorNotOrdinalTests.IssueExampleWithFix;
 var
   mSource, mFixed: string;
@@ -725,26 +729,6 @@ begin
   Assert.AreEqual(0, Integer(Length(mFound[2].Fixes)));
 end;
 
-procedure TCaseSelectorNotOrdinalTests.GenericMethodWithTypeArguments;
-const
-  cSource = 'unit Daten;'#10'interface'#10'type'#10'  TBasis = class'#10 +
-    '    function Wert<T>(const APfad: string; AVorgabe: T): T;'#10'  end;'#10'  TObjekt = class(TBasis)'#10 +
-    '    function Wert(const AName: string): TBasis; overload;'#10'  end;'#10'implementation'#10 +
-    'function TBasis.Wert<T>(const APfad: string; AVorgabe: T): T;'#10'begin'#10'  Result := AVorgabe;'#10'end;'#10 +
-    'function TObjekt.Wert(const AName: string): TBasis;'#10'begin'#10'  Result := nil;'#10'end;'#10 +
-    'procedure Lesen(Objekt: TObjekt; Basis: TBasis);'#10'begin'#10 +
-    '  case Objekt.Wert<Integer>(''severity'', 1) of'#10'    1: Exit;'#10'  end;'#10 +
-    '  case Basis.Wert<Integer>(''severity'', 1) of'#10'    1: Exit;'#10'  end;'#10 +
-    '  case Basis.Wert<Double>(''faktor'', 1.0) of'#10'    1: Exit;'#10'  end;'#10'end;'#10'end.';
-var
-  mFound: TArray<TRuleFinding>;
-begin
-  // Die gleichnamige Überladung ohne Typparameter (wie TJSONObject.GetValue(Name): TJSONValue) gilt nicht.
-  mFound := CaseFindings(cSource);
-  Assert.AreEqual(1, Integer(Length(mFound)), 'nur Double');
-  Assert.Contains(mFound[0].Message, 'Double');
-end;
-
 procedure TCaseSelectorNotOrdinalTests.ForWithFloatCounter;
 var
   mFound: TArray<TRuleFinding>;
@@ -790,6 +774,26 @@ begin
     '  for var K := Low(TFeld) to High(TFeld) do'#10'    Exit;'#10'end;'#10'end.')));
 end;
 
+procedure TCaseSelectorNotOrdinalTests.GenericMethodWithTypeArguments;
+const
+  cSource = 'unit Daten;'#10'interface'#10'type'#10'  TBasis = class'#10 +
+    '    function Wert<T>(const APfad: string; AVorgabe: T): T;'#10'  end;'#10'  TObjekt = class(TBasis)'#10 +
+    '    function Wert(const AName: string): TBasis; overload;'#10'  end;'#10'implementation'#10 +
+    'function TBasis.Wert<T>(const APfad: string; AVorgabe: T): T;'#10'begin'#10'  Result := AVorgabe;'#10'end;'#10 +
+    'function TObjekt.Wert(const AName: string): TBasis;'#10'begin'#10'  Result := nil;'#10'end;'#10 +
+    'procedure Lesen(Objekt: TObjekt; Basis: TBasis);'#10'begin'#10 +
+    '  case Objekt.Wert<Integer>(''severity'', 1) of'#10'    1: Exit;'#10'  end;'#10 +
+    '  case Basis.Wert<Integer>(''severity'', 1) of'#10'    1: Exit;'#10'  end;'#10 +
+    '  case Basis.Wert<Double>(''faktor'', 1.0) of'#10'    1: Exit;'#10'  end;'#10'end;'#10'end.';
+var
+  mFound: TArray<TRuleFinding>;
+begin
+  // Die gleichnamige Überladung ohne Typparameter (wie TJSONObject.GetValue(Name): TJSONValue) gilt nicht.
+  mFound := CaseFindings(cSource);
+  Assert.AreEqual(1, Integer(Length(mFound)), 'nur Double');
+  Assert.Contains(mFound[0].Message, 'Double');
+end;
+
 procedure TCaseSelectorNotOrdinalTests.OffAndExclude;
 var
   mSource: string;
@@ -825,6 +829,8 @@ begin
     'function UTF8Encode(const S: string): RawByteString;'#10'begin'#10'end;'#10'end.',
     'C:\BDS\source\System.pas', nil));
 end;
+
+{ TSuspiciousStringPointerCastTests }
 
 procedure TSuspiciousStringPointerCastTests.IssueExampleWithFixes;
 var

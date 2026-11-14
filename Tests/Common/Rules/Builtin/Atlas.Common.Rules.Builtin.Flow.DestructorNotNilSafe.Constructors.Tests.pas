@@ -85,6 +85,8 @@ begin
   end;
 end;
 
+{ TFlowDestructorConstructorsTests }
+
 procedure TFlowDestructorConstructorsTests.FieldAfterRaisingCallIsRisky;
 var
   mRisky: TArray<TNilAtDestroy>;

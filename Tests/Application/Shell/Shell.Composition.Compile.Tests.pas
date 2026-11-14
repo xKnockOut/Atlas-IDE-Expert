@@ -39,6 +39,8 @@ uses
   Atlas.Common.Lsp.Status,
   Shell.Compiler;
 
+{ TShellCompileHostTests }
+
 procedure TShellCompileHostTests.CreateHost(const AError: string);
 var
   mServices: TShellCompileServices;

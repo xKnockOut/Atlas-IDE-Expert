@@ -55,6 +55,8 @@ begin
   TAtlasPairs.Analyze(AText, Result);
 end;
 
+{ TAtlasRoutineNestingTests }
+
 procedure TAtlasRoutineNestingTests.StyleNamesRoundTripAndUnknownIsDeeper;
 var
   mStyle: TAtlasNestedRoutineStyle;

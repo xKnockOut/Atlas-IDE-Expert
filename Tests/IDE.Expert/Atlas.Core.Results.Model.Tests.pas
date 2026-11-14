@@ -33,6 +33,8 @@ uses
   Atlas.Core.Lsp.WorkspaceEdits,
   Atlas.Core.Results.Model;
 
+{ TAtlasResultsTests }
+
 procedure TAtlasResultsTests.GroupsByFileAndSortsByPosition;
 var
   mGroups: TArray<TAtlasResultGroup>;
@@ -105,42 +107,6 @@ begin
   Assert.AreEqual('Kunde := Kunde.Next;', mEntries[1].Detail);
 end;
 
-procedure TAtlasResultsTests.RatesEntriesAndPreviewsUnchanged;
-var
-  mEdit: TLspWorkspaceEdit;
-  mEntries: TArray<TAtlasResultEntry>;
-begin
-  mEntries := TArray<TAtlasResultEntry>.Create(TAtlasResultEntry.Create('A.pas', 1, 0),
-    TAtlasResultEntry.Create('A.pas', 2, 0));
-  mEntries[1].Confidence.Inferred := True;
-  Assert.AreEqual(1, TAtlasResults.InferredCount(mEntries));
-  Assert.AreEqual(1, Integer(Length(TAtlasResults.SureOnly(mEntries))));
-  Assert.AreEqual(1, TAtlasResults.SureOnly(mEntries)[0].Line);
-  mEdit := Default(TLspWorkspaceEdit);
-  mEdit.Files := [Default(TLspFileEdits)];
-  mEdit.Files[0].FileName := 'A.pas';
-  mEdit.Files[0].Edits := [TextEdit(1, 4, 9, 'Kunde')];
-  mEdit.Unchanged := [Default(TLspUnchangedPlace)];
-  mEdit.Unchanged[0].FileName := 'A.pas';
-  mEdit.Unchanged[0].Line := 2;
-  mEdit.Unchanged[0].Character := 2;
-  mEdit.Unchanged[0].Confidence.Inferred := True;
-  mEdit.Unchanged[0].Confidence.Reason := 'interface';
-  mEntries := TAtlasResults.RenamePreview(mEdit,
-    function(const AFileName: string): string
-    begin
-      Result := 'var'#13#10'    Leser: TLeser;'#13#10'  I.Leser;';
-    end);
-  Assert.AreEqual(2, Integer(Length(mEntries)));
-  Assert.IsFalse(mEntries[0].Confidence.Inferred);
-  Assert.AreEqual('Kunde: TLeser;', mEntries[0].Detail);
-  // Nicht geändert: ohne Vorschau, mit Zeilentext und Grund.
-  Assert.IsTrue(mEntries[1].Confidence.Inferred);
-  Assert.AreEqual('interface', mEntries[1].Confidence.Reason);
-  Assert.AreEqual('I.Leser;', mEntries[1].Text);
-  Assert.AreEqual('', mEntries[1].Detail);
-end;
-
 procedure TAtlasResultsTests.PreviewsFileOperationsFirst;
 var
   mEdit: TLspWorkspaceEdit;
@@ -185,6 +151,42 @@ begin
   Assert.AreEqual('kw', TAtlasResults.SymbolBadge(99));
   Assert.IsTrue(TAtlasResults.IsCallHierarchy(TAtlasHierarchyDirection.Outgoing));
   Assert.IsFalse(TAtlasResults.IsCallHierarchy(TAtlasHierarchyDirection.Subtypes));
+end;
+
+procedure TAtlasResultsTests.RatesEntriesAndPreviewsUnchanged;
+var
+  mEdit: TLspWorkspaceEdit;
+  mEntries: TArray<TAtlasResultEntry>;
+begin
+  mEntries := TArray<TAtlasResultEntry>.Create(TAtlasResultEntry.Create('A.pas', 1, 0),
+    TAtlasResultEntry.Create('A.pas', 2, 0));
+  mEntries[1].Confidence.Inferred := True;
+  Assert.AreEqual(1, TAtlasResults.InferredCount(mEntries));
+  Assert.AreEqual(1, Integer(Length(TAtlasResults.SureOnly(mEntries))));
+  Assert.AreEqual(1, TAtlasResults.SureOnly(mEntries)[0].Line);
+  mEdit := Default(TLspWorkspaceEdit);
+  mEdit.Files := [Default(TLspFileEdits)];
+  mEdit.Files[0].FileName := 'A.pas';
+  mEdit.Files[0].Edits := [TextEdit(1, 4, 9, 'Kunde')];
+  mEdit.Unchanged := [Default(TLspUnchangedPlace)];
+  mEdit.Unchanged[0].FileName := 'A.pas';
+  mEdit.Unchanged[0].Line := 2;
+  mEdit.Unchanged[0].Character := 2;
+  mEdit.Unchanged[0].Confidence.Inferred := True;
+  mEdit.Unchanged[0].Confidence.Reason := 'interface';
+  mEntries := TAtlasResults.RenamePreview(mEdit,
+    function(const AFileName: string): string
+    begin
+      Result := 'var'#13#10'    Leser: TLeser;'#13#10'  I.Leser;';
+    end);
+  Assert.AreEqual(2, Integer(Length(mEntries)));
+  Assert.IsFalse(mEntries[0].Confidence.Inferred);
+  Assert.AreEqual('Kunde: TLeser;', mEntries[0].Detail);
+  // Nicht geändert: ohne Vorschau, mit Zeilentext und Grund.
+  Assert.IsTrue(mEntries[1].Confidence.Inferred);
+  Assert.AreEqual('interface', mEntries[1].Confidence.Reason);
+  Assert.AreEqual('I.Leser;', mEntries[1].Text);
+  Assert.AreEqual('', mEntries[1].Detail);
 end;
 
 initialization

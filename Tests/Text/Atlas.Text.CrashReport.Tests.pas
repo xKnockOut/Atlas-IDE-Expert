@@ -79,6 +79,8 @@ begin
   Assert.AreEqual(ALine, AFrame.Line);
 end;
 
+{ TCrashReportTests }
+
 procedure TCrashReportTests.ReadsMadExcept;
 var
   mReport: TCrashReport;

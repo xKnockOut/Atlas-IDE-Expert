@@ -43,6 +43,8 @@ begin
   Result.Symbols := ASymbols;
 end;
 
+{ TImportNameIndexTests }
+
 procedure TImportNameIndexTests.KeepsOnlyImportableSymbolsProjectFirst;
 var
   mIndex: ISymbolIndex;

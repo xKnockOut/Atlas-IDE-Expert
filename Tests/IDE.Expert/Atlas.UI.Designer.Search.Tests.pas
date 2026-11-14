@@ -49,6 +49,8 @@ uses
   Vcl.Clipbrd,
   Atlas.Core.Style.Palette;
 
+{ TAtlasComponentSearchWindowTests }
+
 function TAtlasComponentSearchWindowTests.Items: TArray<TAtlasDesignerItem>;
 var
   mItem: TAtlasDesignerItem;

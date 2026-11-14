@@ -37,6 +37,8 @@ begin
   Result.Add(AText);
 end;
 
+{ TLspSettingsCommandsTests }
+
 procedure TLspSettingsCommandsTests.ChecksTextWithServerParser;
 var
   mArgs: TJSONArray;

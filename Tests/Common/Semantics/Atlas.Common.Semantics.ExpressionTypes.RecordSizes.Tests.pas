@@ -80,6 +80,8 @@ begin
   end;
 end;
 
+{ TRecordSizesTests }
+
 procedure TRecordSizesTests.AlignedFields;
 var
   mSize, mAlign: Integer;

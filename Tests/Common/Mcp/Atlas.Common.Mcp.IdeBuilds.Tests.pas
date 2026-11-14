@@ -105,6 +105,8 @@ begin
   Result.Mode := AMode;
 end;
 
+{ TMcpIdeBuildsTests }
+
 procedure TMcpIdeBuildsTests.Setup;
 begin
   FInbox := TMcpIdeBuilds.InboxOf(TPath.Combine(TPath.GetTempPath, 'Atlas-IdeBuilds-' + IntToStr(Random(MaxInt))),

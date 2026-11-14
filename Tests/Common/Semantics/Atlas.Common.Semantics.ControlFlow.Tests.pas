@@ -88,6 +88,8 @@ type
     procedure Free;
   end;
 
+{ TFlowFixture }
+
 procedure TFlowFixture.Free;
 begin
   Graph.Free;
@@ -254,6 +256,30 @@ begin
   Assert.IsTrue(MayEndWithoutResult('  for I := 0 to 64 do'#13#10'    if I > X then'#13#10'      Result := I;'));
 end;
 
+/// <summary>Grenzen aus Zahlenliteralen (auch $hex, nach dem Typ einer Inline-Variablen) und downto aus dem
+/// Parser; ohne for-Schleife keine Aussage.</summary>
+procedure TControlFlowTests.ForBoundsAndDirection;
+var
+  mFixture: TFlowFixture;
+  mFor: TSyntaxNode;
+  mFrom, mTo: Int64;
+begin
+  mFixture := Flow('  for var J: Integer := $10 downto 2 do'#13#10'    Y := J;');
+  try
+    mFor := FindKind(mFixture.Tree.Root, TSyntaxKind.ForStatement);
+    Assert.IsTrue(TFlowStatements.LiteralBounds(mFor, mFrom, mTo));
+    Assert.AreEqual(Int64(16), mFrom);
+    Assert.AreEqual(Int64(2), mTo);
+    Assert.IsTrue(mFor.Descending);
+    Assert.IsTrue(TFlowStatements.RunsAtLeastOnce(mFor));
+    Assert.IsFalse(TFlowStatements.RunsAtLeastOnce(FindKind(mFixture.Tree.Root, TSyntaxKind.RoutineDecl)));
+    Assert.IsTrue(TFlowStatements.IsStatement(TSyntaxKind.ForStatement));
+    Assert.IsFalse(TFlowStatements.IsStatement(TSyntaxKind.Literal));
+  finally
+    mFixture.Free;
+  end;
+end;
+
 /// <summary>Eine echte Konstante der Unit als Grenze gilt wie ihr Wert (WithRetries
 /// im Update-Netzadapter, cAttempts = 3); typisierte, doppelt deklarierte oder verdeckte Namen
 /// nicht.</summary>
@@ -286,30 +312,6 @@ begin
     'procedure G(cAttempts: Integer);'#13#10'begin'#13#10'end;', cLoop));
 end;
 
-/// <summary>Grenzen aus Zahlenliteralen (auch $hex, nach dem Typ einer Inline-Variablen) und downto aus dem
-/// Parser; ohne for-Schleife keine Aussage.</summary>
-procedure TControlFlowTests.ForBoundsAndDirection;
-var
-  mFixture: TFlowFixture;
-  mFor: TSyntaxNode;
-  mFrom, mTo: Int64;
-begin
-  mFixture := Flow('  for var J: Integer := $10 downto 2 do'#13#10'    Y := J;');
-  try
-    mFor := FindKind(mFixture.Tree.Root, TSyntaxKind.ForStatement);
-    Assert.IsTrue(TFlowStatements.LiteralBounds(mFor, mFrom, mTo));
-    Assert.AreEqual(Int64(16), mFrom);
-    Assert.AreEqual(Int64(2), mTo);
-    Assert.IsTrue(mFor.Descending);
-    Assert.IsTrue(TFlowStatements.RunsAtLeastOnce(mFor));
-    Assert.IsFalse(TFlowStatements.RunsAtLeastOnce(FindKind(mFixture.Tree.Root, TSyntaxKind.RoutineDecl)));
-    Assert.IsTrue(TFlowStatements.IsStatement(TSyntaxKind.ForStatement));
-    Assert.IsFalse(TFlowStatements.IsStatement(TSyntaxKind.Literal));
-  finally
-    mFixture.Free;
-  end;
-end;
-
 procedure TControlFlowTests.ExitWithValueSetsResult;
 var
   F: TFlowFixture;
@@ -317,6 +319,19 @@ begin
   F := Flow('  if X > 0 then Exit(1);'#13#10'  Result := 2;');
   try
     Assert.AreEqual<TFlowAnswer>(TFlowAnswer.No, F.Graph.MayEndWithout('Result'));
+  finally
+    F.Free;
+  end;
+end;
+
+procedure TControlFlowTests.BreakLeavesLoop;
+var
+  F: TFlowFixture;
+begin
+  F := Flow('  while True do'#13#10'  begin'#13#10'    Break;'#13#10'    Dead;'#13#10'  end;'#13#10'  After;');
+  try
+    Assert.AreEqual<TFlowAnswer>(TFlowAnswer.No, F.Graph.IsReachable(NodeNamed(F, 'Dead')));
+    Assert.AreEqual<TFlowAnswer>(TFlowAnswer.Yes, F.Graph.IsReachable(NodeNamed(F, 'After')));
   finally
     F.Free;
   end;
@@ -343,19 +358,6 @@ begin
   F := Flow('  while True do'#13#10'    if X > 0 then Break else Exit(1);');
   try
     Assert.AreEqual<TFlowAnswer>(TFlowAnswer.Yes, F.Graph.MayEndWithout('Result'));
-  finally
-    F.Free;
-  end;
-end;
-
-procedure TControlFlowTests.BreakLeavesLoop;
-var
-  F: TFlowFixture;
-begin
-  F := Flow('  while True do'#13#10'  begin'#13#10'    Break;'#13#10'    Dead;'#13#10'  end;'#13#10'  After;');
-  try
-    Assert.AreEqual<TFlowAnswer>(TFlowAnswer.No, F.Graph.IsReachable(NodeNamed(F, 'Dead')));
-    Assert.AreEqual<TFlowAnswer>(TFlowAnswer.Yes, F.Graph.IsReachable(NodeNamed(F, 'After')));
   finally
     F.Free;
   end;
@@ -470,6 +472,19 @@ begin
   end;
 end;
 
+procedure TControlFlowTests.AsmGivesUnknown;
+var
+  F: TFlowFixture;
+begin
+  F := Flow('  asm'#13#10'    nop'#13#10'  end;');
+  try
+    Assert.IsFalse(F.Graph.Complete);
+    Assert.AreEqual<TFlowAnswer>(TFlowAnswer.Unknown, F.Graph.MayEndWithout('Result'));
+  finally
+    F.Free;
+  end;
+end;
+
 procedure TControlFlowTests.ExceptionPathThroughFinallyDoesNotEndNormally;
 var
   F: TFlowFixture;
@@ -493,6 +508,22 @@ begin
   end;
 end;
 
+procedure TControlFlowTests.ReachingDefinitionsWithoutEntryPath;
+var
+  F: TFlowFixture;
+  mDefs: TReachingDefinitions;
+begin
+  F := Flow('  Y := 1;'#13#10'  if X > 0 then Y := 2;'#13#10'  Use;');
+  try
+    mDefs := F.Graph.ReachingDefinitions(NodeNamed(F, 'Use'), 'Y');
+    Assert.AreEqual(2, Integer(Length(mDefs.Definitions)));
+    Assert.IsFalse(mDefs.FromEntry);
+    Assert.IsFalse(mDefs.MaybeFromEntry);
+  finally
+    F.Free;
+  end;
+end;
+
 // Wirft Load, wird Y nie gesetzt: Im except und dahinter gilt noch Y := nil (#1109).
 procedure TControlFlowTests.ReachingDefinitionsSkipFailedAssignment;
 var
@@ -506,22 +537,6 @@ begin
     mDefs := F.Graph.ReachingDefinitions(NodeNamed(F, 'Report'), 'Y');
     Assert.AreEqual(1, Integer(Length(mDefs.Definitions)));
     Assert.AreSame(NodeNamed(F, 'Y'), mDefs.Definitions[0], 'im except gilt nur Y := nil');
-  finally
-    F.Free;
-  end;
-end;
-
-procedure TControlFlowTests.ReachingDefinitionsWithoutEntryPath;
-var
-  F: TFlowFixture;
-  mDefs: TReachingDefinitions;
-begin
-  F := Flow('  Y := 1;'#13#10'  if X > 0 then Y := 2;'#13#10'  Use;');
-  try
-    mDefs := F.Graph.ReachingDefinitions(NodeNamed(F, 'Use'), 'Y');
-    Assert.AreEqual(2, Integer(Length(mDefs.Definitions)));
-    Assert.IsFalse(mDefs.FromEntry);
-    Assert.IsFalse(mDefs.MaybeFromEntry);
   finally
     F.Free;
   end;
@@ -687,19 +702,6 @@ begin
   try
     Assert.IsTrue(NodeNamed(F, 'Proc').TouchesName('Y'));
     Assert.AreEqual(1, Integer(Length(F.Graph.ReachingDefinitions(NodeNamed(F, 'Use'), 'Y').Uncertain)));
-  finally
-    F.Free;
-  end;
-end;
-
-procedure TControlFlowTests.AsmGivesUnknown;
-var
-  F: TFlowFixture;
-begin
-  F := Flow('  asm'#13#10'    nop'#13#10'  end;');
-  try
-    Assert.IsFalse(F.Graph.Complete);
-    Assert.AreEqual<TFlowAnswer>(TFlowAnswer.Unknown, F.Graph.MayEndWithout('Result'));
   finally
     F.Free;
   end;

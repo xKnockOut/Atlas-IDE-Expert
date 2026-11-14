@@ -79,12 +79,7 @@ type
       Boolean;
   end;
 
-procedure TFakePullTransport.Answer(const AMethod, AUrl: string; AStatus: Integer; const AText: string);
-begin
-  FKeys := FKeys + [AMethod + ' ' + AUrl];
-  FStatus := FStatus + [AStatus];
-  FTexts := FTexts + [AText];
-end;
+{ TFakePullTransport }
 
 function TFakePullTransport.Find(const AKey: string; out AStatus: Integer; out AText: string): Boolean;
 var
@@ -102,6 +97,13 @@ begin
     end;
   end;
   Result := False;
+end;
+
+procedure TFakePullTransport.Answer(const AMethod, AUrl: string; AStatus: Integer; const AText: string);
+begin
+  FKeys := FKeys + [AMethod + ' ' + AUrl];
+  FStatus := FStatus + [AStatus];
+  FTexts := FTexts + [AText];
 end;
 
 function TFakePullTransport.Get(const AUrl: string; ATimeoutMs: Integer; out AStatus: Integer; out AText: string;

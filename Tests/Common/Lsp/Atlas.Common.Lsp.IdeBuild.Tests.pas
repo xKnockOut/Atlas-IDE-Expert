@@ -35,6 +35,8 @@ const
     '{"file":"C:\\P\\A.dpr","line":7,"column":3,"severity":"hint","code":"H2164","text":"Variable nicht verwendet"},' +
     '{"file":"","line":0,"column":0,"severity":"fatal","code":"F1026","text":"Datei nicht gefunden"}]}';
 
+{ TLspIdeBuildTests }
+
 procedure TLspIdeBuildTests.ParsesMessagesZeroBased;
 var
   mParams: TJSONValue;

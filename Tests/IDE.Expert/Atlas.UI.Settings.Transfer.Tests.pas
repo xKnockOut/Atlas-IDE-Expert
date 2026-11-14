@@ -73,6 +73,8 @@ begin
   end;
 end;
 
+{ TAtlasSettingsTransferUiTests }
+
 procedure TAtlasSettingsTransferUiTests.WarmUpFirstUse;
 begin
   try

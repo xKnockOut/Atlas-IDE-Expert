@@ -72,6 +72,8 @@ begin
   end;
 end;
 
+{ TRoutineLocalsTests }
+
 procedure TRoutineLocalsTests.CollectsAllKinds;
 var
   mTree: TSyntaxTree;

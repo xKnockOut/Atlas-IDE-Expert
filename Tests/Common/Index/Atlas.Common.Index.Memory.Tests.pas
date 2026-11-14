@@ -79,6 +79,8 @@ begin
   end;
 end;
 
+{ TIndexMemoryTests }
+
 procedure TIndexMemoryTests.PoolReturnsSameStringForEqualValues;
 var
   mPool: TStringPool;

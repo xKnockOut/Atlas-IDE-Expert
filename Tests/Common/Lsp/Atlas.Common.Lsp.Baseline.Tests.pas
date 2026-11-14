@@ -224,6 +224,8 @@ begin
   Hits.Add(FullPath('B.pas'), [5]);
 end;
 
+{ TLspBaselineTests }
+
 procedure TLspBaselineTests.TearDown;
 begin
   Disk.Clear;

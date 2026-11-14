@@ -79,6 +79,8 @@ begin
   end;
 end;
 
+{ TAtlasTestStatusFieldTests }
+
 procedure TAtlasTestStatusFieldTests.HiddenWithoutProject;
 var
   mInput: TAtlasTestStatusInput;

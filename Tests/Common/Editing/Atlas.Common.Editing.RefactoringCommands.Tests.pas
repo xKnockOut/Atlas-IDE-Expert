@@ -129,6 +129,8 @@ begin
   end;
 end;
 
+{ TRefactoringCommandsTests }
+
 procedure TRefactoringCommandsTests.FmtFormatsRoutine;
 var
   mText: string;

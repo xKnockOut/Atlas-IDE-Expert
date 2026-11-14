@@ -38,6 +38,8 @@ begin
   Result := ATree.Root.FindChild(TSyntaxKind.Block);
 end;
 
+{ TStatementTextTests }
+
 procedure TStatementTextTests.StatementsOfBlockAndSingle;
 var
   mText: string;

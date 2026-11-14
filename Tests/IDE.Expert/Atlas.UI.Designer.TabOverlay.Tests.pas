@@ -44,6 +44,8 @@ uses
 type
   TOverlayAccess = class(TAtlasTabOrderOverlay);
 
+{ TAtlasTabOrderOverlayTests }
+
 procedure TAtlasTabOrderOverlayTests.SetUp;
 begin
   FOverlay := TAtlasTabOrderOverlay.CreateOverlay(nil, 0, TAtlasColors.Light);

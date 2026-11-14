@@ -62,6 +62,16 @@ uses
   Atlas.UI.Analysis.Strings,
   Atlas.Core.UnitRelations.Model.Tests;
 
+{ TAtlasUnitRelationsFrameTests }
+
+procedure TAtlasUnitRelationsFrameTests.Load;
+var
+  mRelations: TAtlasUnitRelations;
+begin
+  Assert.IsTrue(TAtlasUnitRelationsModel.Parse(SampleAnswer, mRelations));
+  FFrame.SetRelations(mRelations);
+end;
+
 procedure TAtlasUnitRelationsFrameTests.SetUp;
 begin
   FForm := TForm.CreateNew(nil);
@@ -105,14 +115,6 @@ begin
   FOpened := '';
   FMoved := '';
   FRemoved := '';
-end;
-
-procedure TAtlasUnitRelationsFrameTests.Load;
-var
-  mRelations: TAtlasUnitRelations;
-begin
-  Assert.IsTrue(TAtlasUnitRelationsModel.Parse(SampleAnswer, mRelations));
-  FFrame.SetRelations(mRelations);
 end;
 
 procedure TAtlasUnitRelationsFrameTests.ShowsSectionsAndLibraryGroup;

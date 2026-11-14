@@ -66,6 +66,8 @@ begin
   Result := ((mVariant0.GetValue('edits') as TJSONArray).Items[0] as TJSONObject).GetValue('newText').Value;
 end;
 
+{ TLspUnwrapTests }
+
 procedure TLspUnwrapTests.AnswerShape;
 var
   mAnswer, mItem, mVariant0: TJSONObject;

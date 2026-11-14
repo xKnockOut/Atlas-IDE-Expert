@@ -46,6 +46,8 @@ begin
     'procedure P(const Name: string);'#10'var'#10'  H: THandle;'#10'begin'#10 + ABody + #10'end;'#10'end.';
 end;
 
+{ TFlowHandleLeakTests }
+
 procedure TFlowHandleLeakTests.NeverClosedIsReported;
 var
   mFindings: TArray<TRuleFinding>;

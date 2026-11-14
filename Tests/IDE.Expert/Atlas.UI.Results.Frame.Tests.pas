@@ -79,6 +79,8 @@ begin
     ''), Entry('C:\P\Haupt.pas', 8, 'B.Speichern;', 'virtual'));
 end;
 
+{ TAtlasResultsFrameRatedTests }
+
 procedure TAtlasResultsFrameRatedTests.WithoutInferredLikeShowEntries;
 var
   mHost: TForm;
@@ -212,6 +214,8 @@ begin
   Result.DepthReached := True;
   Result.Unexpanded := 2;
 end;
+
+{ TAtlasResultsFrameImpactTests }
 
 procedure TAtlasResultsFrameImpactTests.WarmUp;
 var
@@ -368,6 +372,8 @@ begin
     Result.Commits[mIndex].Text := ACommits[mIndex];
   end;
 end;
+
+{ TAtlasResultsFrameIssueTests }
 
 procedure TAtlasResultsFrameIssueTests.IssuesWithCommitsAndActions;
 var

@@ -98,6 +98,8 @@ type
     function LinkBranch(const ACall: TAtlasTrackerCall; const AKey, ABranch, ABase: string): TAtlasTrackerBranchLink;
   end;
 
+{ TFakeLinkVcs }
+
 constructor TFakeLinkVcs.Create(AKind: TAtlasVcsKind);
 begin
   inherited Create;
@@ -230,6 +232,8 @@ begin
   Calls := Calls + ['fetch ' + ARemote];
   Result := FetchOutcome;
 end;
+
+{ TFakeLinker }
 
 function TFakeLinker.SameRepository(const ATarget: TAtlasTrackerTarget; const AOriginUrl: string): Boolean;
 begin

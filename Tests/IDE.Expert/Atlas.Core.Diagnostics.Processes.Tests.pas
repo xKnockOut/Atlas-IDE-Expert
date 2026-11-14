@@ -40,6 +40,8 @@ const
     '{"time":"10:00:02","text":"MCP 5120: Sperre belegt"}]},{"name":"Zweite","processes":[],"events":[]}],' +
     '"markdown":"## Prozesse am Projekt"}';
 
+{ TAtlasProcessesViewTests }
+
 procedure TAtlasProcessesViewTests.ParsesWorkspaceProcessesAndEvents;
 var
   mValue: TJSONValue;

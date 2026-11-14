@@ -131,18 +131,6 @@ end;
 
 { TSystemIntrinsicsTests }
 
-procedure TSystemIntrinsicsTests.Setup;
-begin
-  FIndex := TSymbolIndex.Create;
-  FResolver := TNameResolver.Create(FIndex);
-end;
-
-procedure TSystemIntrinsicsTests.TearDown;
-begin
-  FResolver.Free;
-  FIndex := nil;
-end;
-
 function TSystemIntrinsicsTests.ItemsAt(const ACode, AMarker: string): TCompletionItems;
 var
   mText: string;
@@ -158,23 +146,16 @@ begin
   end;
 end;
 
-procedure TSystemIntrinsicsTests.EnglishTextsFollowLanguage;
-var
-  mFound: TArray<TSystemIntrinsic>;
+procedure TSystemIntrinsicsTests.Setup;
 begin
-  // #1458: Beschreibung und Platzhalter im Kopf folgen der Sprache, die Köpfe sonst nicht.
-  TAtlasLocale.Use(TTextLanguage.English);
-  try
-    mFound := TSystemIntrinsics.Find('Abs');
-    Assert.AreEqual('Absolute value of a number.', mFound[0].Documentation);
-    Assert.AreEqual('function Abs(X): <type of X>;', mFound[0].Declaration);
-    Assert.AreEqual('Integer, 32 bits signed.', TSystemIntrinsics.Find('Integer')[0].Documentation);
-  finally
-    TAtlasLocale.Use(TTextLanguage.German);
-  end;
-  mFound := TSystemIntrinsics.Find('Abs');
-  Assert.AreEqual('Betrag einer Zahl.', mFound[0].Documentation);
-  Assert.AreEqual('function Abs(X): <Typ von X>;', mFound[0].Declaration);
+  FIndex := TSymbolIndex.Create;
+  FResolver := TNameResolver.Create(FIndex);
+end;
+
+procedure TSystemIntrinsicsTests.TearDown;
+begin
+  FResolver.Free;
+  FIndex := nil;
 end;
 
 procedure TSystemIntrinsicsTests.ListKnowsRoutinesTypesAndOverloads;
@@ -220,6 +201,25 @@ begin
   Assert.AreEqual(1, TSystemIntrinsics.Find('FreeMem')[0].MinArgs);
   Assert.AreEqual(2, TSystemIntrinsics.Find('FreeMem')[0].MaxArgs);
   Assert.IsTrue(TSystemIntrinsics.IsType('OleVariant'));
+end;
+
+procedure TSystemIntrinsicsTests.EnglishTextsFollowLanguage;
+var
+  mFound: TArray<TSystemIntrinsic>;
+begin
+  // #1458: Beschreibung und Platzhalter im Kopf folgen der Sprache, die Köpfe sonst nicht.
+  TAtlasLocale.Use(TTextLanguage.English);
+  try
+    mFound := TSystemIntrinsics.Find('Abs');
+    Assert.AreEqual('Absolute value of a number.', mFound[0].Documentation);
+    Assert.AreEqual('function Abs(X): <type of X>;', mFound[0].Declaration);
+    Assert.AreEqual('Integer, 32 bits signed.', TSystemIntrinsics.Find('Integer')[0].Documentation);
+  finally
+    TAtlasLocale.Use(TTextLanguage.German);
+  end;
+  mFound := TSystemIntrinsics.Find('Abs');
+  Assert.AreEqual('Betrag einer Zahl.', mFound[0].Documentation);
+  Assert.AreEqual('function Abs(X): <Typ von X>;', mFound[0].Declaration);
 end;
 
 procedure TSystemIntrinsicsTests.NameAtSkipsMembersAfterDot;

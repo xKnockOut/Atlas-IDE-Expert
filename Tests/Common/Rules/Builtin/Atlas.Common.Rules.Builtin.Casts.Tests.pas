@@ -294,6 +294,8 @@ begin
     'procedure TImport.Aufraeumen;'#10'begin'#10 + ABody + 'end;'#10'end.';
 end;
 
+{ TRedundantCastTests }
+
 procedure TRedundantCastTests.IssueExampleWithFix;
 var
   mSource, mFixed: string;

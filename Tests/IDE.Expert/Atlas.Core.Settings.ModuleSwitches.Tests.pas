@@ -91,6 +91,8 @@ begin
   end;
 end;
 
+{ TAtlasModuleSwitchesTests }
+
 procedure TAtlasModuleSwitchesTests.ReadFindsSwitchesAndMembers;
 var
   mSwitches: TArray<TAtlasModuleSwitch>;

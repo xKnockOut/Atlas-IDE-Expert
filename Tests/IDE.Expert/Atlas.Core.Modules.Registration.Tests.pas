@@ -37,6 +37,8 @@ type
     Fail: Boolean;
   end;
 
+{ TCountingRegistration }
+
 procedure TCountingRegistration.DoRevoke;
 begin
   Inc(Count);

@@ -69,6 +69,8 @@ begin
   Result := TTypeShape.Read(TIndexExtractor.ExtractText(cQuelle, 'U.pas', nil), cQuelle.Split([#10]), 'TKunde');
 end;
 
+{ TClassBodiesTests }
+
 procedure TClassBodiesTests.ReadsShape;
 var
   mKunde: TTypeShape;

@@ -61,6 +61,8 @@ begin
   end;
 end;
 
+{ TAtlasAnchorSuggestTests }
+
 procedure TAtlasAnchorSuggestTests.SearchDialog;
 var
   mResult: TArray<TAtlasAnchorSuggestion>;

@@ -637,6 +637,8 @@ type
     procedure OpenKeyConflicts;
   end;
 
+{ TFakeEnvironment }
+
 function TFakeEnvironment.Snapshot: TAtlasSetupInput;
 begin
   Result := GoodInput;

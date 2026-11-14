@@ -41,6 +41,8 @@ begin
   Result := AText.Split([#10]);
 end;
 
+{ TTypeCommentsTests }
+
 procedure TTypeCommentsTests.StyleNames;
 var
   mStyle: TTypeCommentStyle;

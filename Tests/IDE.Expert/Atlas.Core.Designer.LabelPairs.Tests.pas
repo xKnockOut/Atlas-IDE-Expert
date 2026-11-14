@@ -38,6 +38,8 @@ uses
   System.Types,
   Atlas.Core.Designer.LabelPairs;
 
+{ TAtlasLabelPairsTests }
+
 procedure TAtlasLabelPairsTests.LeftOfField;
 var
   mMatch: TAtlasPairMatch;

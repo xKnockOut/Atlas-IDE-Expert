@@ -27,6 +27,8 @@ uses
 const
   cConfig = '{"rules": {"default-parameter": "warning"}}';
 
+{ TDeclarationDefaultsTests }
+
 procedure TDeclarationDefaultsTests.IsReported;
 var
   mFindings: TArray<TRuleFinding>;

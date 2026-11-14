@@ -160,6 +160,8 @@ begin
   end;
 end;
 
+{ TUnwrapTests }
+
 procedure TUnwrapTests.BeginEndInList;
 var
   mBody: string;

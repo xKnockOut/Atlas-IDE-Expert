@@ -26,6 +26,8 @@ uses
   Atlas.Common.Rules.Builtin.Inheritance.InheritedCalls,
   Atlas.Tests.RuleAssert;
 
+{ TInheritanceInheritedCallsTests }
+
 procedure TInheritanceInheritedCallsTests.OnlyInheritedIsReported;
 var
   mFindings: TArray<TRuleFinding>;

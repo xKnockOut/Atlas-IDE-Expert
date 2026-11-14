@@ -44,10 +44,7 @@ uses
   Atlas.Common.Lsp.Commands,
   Atlas.Common.Lsp.TestUnits;
 
-procedure TShellTestUnitsTests.TearDown;
-begin
-  FPicked := '';
-end;
+{ TShellTestUnitsTests }
 
 procedure TShellTestUnitsTests.VisitNone(const AVisit: TShellWorkspacesProc);
 begin
@@ -76,6 +73,11 @@ begin
   Result.PickWorkspace := PickNone;
 end;
 
+procedure TShellTestUnitsTests.TearDown;
+begin
+  FPicked := '';
+end;
+
 procedure TShellTestUnitsTests.NoContextWithoutWorkspace;
 var
   mTestUnits: TShellTestUnits;
@@ -87,6 +89,26 @@ begin
     Assert.AreEqual(TDocumentUris.ToPath('file:///tmp/A.pas'), FPicked);
     Assert.AreEqual('', mContext.Root);
   finally
+    mTestUnits.Free;
+  end;
+end;
+
+procedure TShellTestUnitsTests.ReadingCommandsRunConcurrently;
+var
+  mTestUnits: TShellTestUnits;
+  mCommands: TLspCommands;
+  mName: string;
+begin
+  mTestUnits := TShellTestUnits.Create(NewServices);
+  mCommands := TLspCommands.Create;
+  try
+    mTestUnits.RegisterCommand(mCommands);
+    for mName in TArray<string>.Create(TLspTestUnits.cCommand) do
+    begin
+      Assert.IsTrue(mCommands.IsConcurrentCommand(mName), mName);
+    end;
+  finally
+    mCommands.Free;
     mTestUnits.Free;
   end;
 end;
@@ -110,26 +132,6 @@ begin
     end;
     Assert.IsTrue(Pos('"' + TLspTestUnits.cCommand + '"', mText) > 0);
     Assert.AreEqual(0, Integer(Length(mTestUnits.Actions('file:///tmp/A.pas', 0))));
-  finally
-    mCommands.Free;
-    mTestUnits.Free;
-  end;
-end;
-
-procedure TShellTestUnitsTests.ReadingCommandsRunConcurrently;
-var
-  mTestUnits: TShellTestUnits;
-  mCommands: TLspCommands;
-  mName: string;
-begin
-  mTestUnits := TShellTestUnits.Create(NewServices);
-  mCommands := TLspCommands.Create;
-  try
-    mTestUnits.RegisterCommand(mCommands);
-    for mName in TArray<string>.Create(TLspTestUnits.cCommand) do
-    begin
-      Assert.IsTrue(mCommands.IsConcurrentCommand(mName), mName);
-    end;
   finally
     mCommands.Free;
     mTestUnits.Free;

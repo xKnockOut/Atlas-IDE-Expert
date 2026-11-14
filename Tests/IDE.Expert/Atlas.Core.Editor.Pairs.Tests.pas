@@ -137,6 +137,8 @@ begin
   Result := DescribeTokens(AText, True);
 end;
 
+{ TAtlasPairsTests }
+
 procedure TAtlasPairsTests.NestedBeginEndHaveThreeDepths;
 begin
   Assert.AreEqual('begin@0 begin@1 begin@2 end@2 end@1 end@0',

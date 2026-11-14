@@ -52,6 +52,8 @@ begin
   end;
 end;
 
+{ TAtlasWrapLabelTests }
+
 procedure TAtlasWrapLabelTests.WiderMakesLower;
 var
   mForm: TForm;

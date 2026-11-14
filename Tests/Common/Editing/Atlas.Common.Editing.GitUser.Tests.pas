@@ -50,6 +50,8 @@ begin
     end;
 end;
 
+{ TGitUserTests }
+
 procedure TGitUserTests.NameInUserSection;
 begin
   Assert.AreEqual('Marco', TGitUser.NameIn('[core]'#10'  bare = false'#10'[user]'#10'  name = Marco'#10));

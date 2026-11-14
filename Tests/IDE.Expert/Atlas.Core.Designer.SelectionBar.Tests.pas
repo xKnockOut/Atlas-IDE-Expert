@@ -69,6 +69,8 @@ begin
   end;
 end;
 
+{ TAtlasSelectionBarTests }
+
 procedure TAtlasSelectionBarTests.CombineCommon;
 var
   mValue: TAtlasBarValue;

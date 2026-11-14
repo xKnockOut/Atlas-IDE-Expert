@@ -97,6 +97,8 @@ begin
   Result := ALookup.Find(AName, '', 'C:\P\Main.pas', [TRuleUnitSource.Project]);
 end;
 
+{ TUnitAliasesTests }
+
 procedure TUnitAliasesTests.DefaultsMapOldWindowsUnits;
 var
   mUnit: string;

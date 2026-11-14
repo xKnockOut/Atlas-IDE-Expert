@@ -340,6 +340,36 @@ begin
   Assert.AreEqual(mNewer, TFile.ReadAllText(mFileName, TEncoding.UTF8));
 end;
 
+procedure TAtlasNoteStoreTests.BrokenFileSetAsideLockedFileKept;
+var
+  mBook: TAtlasNoteBook;
+  mFileName: string;
+  mLock: TFileStream;
+begin
+  mFileName := TAtlasNotes.FileFor(FFolder, cProject);
+  ForceDirectories(FFolder);
+  TFile.WriteAllText(mFileName, '{"notes": [');
+  Assert.IsFalse(TAtlasNotes.Load(FFolder, cProject, mBook));
+  Assert.AreEqual(cProject, mBook.Project);
+  Assert.IsTrue(FileExists(mFileName + TAtlasDataFile.cDefectExtension), 'beiseitegelegt');
+  mBook.Add(cUnitFile, Code, 8, 'Rundung', Now);
+  Assert.IsTrue(TAtlasNotes.Save(FFolder, mBook));
+  mLock := TFileStream.Create(mFileName, fmOpenRead or fmShareExclusive);
+  try
+    Assert.IsFalse(TAtlasNotes.Load(FFolder, cProject, mBook));
+  finally
+    mLock.Free;
+  end;
+  Assert.AreEqual(0, Integer(mBook.Count));
+  Assert.AreEqual(mFileName, mBook.KeptFile);
+  mBook.Add(cUnitFile, Code, 8, 'Ersatz', Now);
+  Assert.IsFalse(TAtlasNotes.Save(FFolder, mBook), 'beim Laden gesperrt: nicht überschreiben');
+  Assert.Contains(TFile.ReadAllText(mFileName, TEncoding.UTF8), 'Rundung');
+  Assert.DoesNotContain(TFile.ReadAllText(mFileName, TEncoding.UTF8), 'Ersatz');
+  // Gemeldete Datendateien vergessen: Das Register bliebe sonst als Leck stehen.
+  TAtlasDataFile.ForgetReports;
+end;
+
 procedure TAtlasNoteStoreTests.LoadAllWithoutOpenProject;
 var
   mBook: TAtlasNoteBook;
@@ -380,36 +410,6 @@ begin
     Assert.AreEqual(IncludeTrailingPathDelimiter(IncludeTrailingPathDelimiter(mBase) + 'Atlas') + 'Notes',
       TAtlasNotes.DefaultFolder);
   end;
-end;
-
-procedure TAtlasNoteStoreTests.BrokenFileSetAsideLockedFileKept;
-var
-  mBook: TAtlasNoteBook;
-  mFileName: string;
-  mLock: TFileStream;
-begin
-  mFileName := TAtlasNotes.FileFor(FFolder, cProject);
-  ForceDirectories(FFolder);
-  TFile.WriteAllText(mFileName, '{"notes": [');
-  Assert.IsFalse(TAtlasNotes.Load(FFolder, cProject, mBook));
-  Assert.AreEqual(cProject, mBook.Project);
-  Assert.IsTrue(FileExists(mFileName + TAtlasDataFile.cDefectExtension), 'beiseitegelegt');
-  mBook.Add(cUnitFile, Code, 8, 'Rundung', Now);
-  Assert.IsTrue(TAtlasNotes.Save(FFolder, mBook));
-  mLock := TFileStream.Create(mFileName, fmOpenRead or fmShareExclusive);
-  try
-    Assert.IsFalse(TAtlasNotes.Load(FFolder, cProject, mBook));
-  finally
-    mLock.Free;
-  end;
-  Assert.AreEqual(0, Integer(mBook.Count));
-  Assert.AreEqual(mFileName, mBook.KeptFile);
-  mBook.Add(cUnitFile, Code, 8, 'Ersatz', Now);
-  Assert.IsFalse(TAtlasNotes.Save(FFolder, mBook), 'beim Laden gesperrt: nicht überschreiben');
-  Assert.Contains(TFile.ReadAllText(mFileName, TEncoding.UTF8), 'Rundung');
-  Assert.DoesNotContain(TFile.ReadAllText(mFileName, TEncoding.UTF8), 'Ersatz');
-  // Gemeldete Datendateien vergessen: Das Register bliebe sonst als Leck stehen.
-  TAtlasDataFile.ForgetReports;
 end;
 
 initialization

@@ -62,6 +62,8 @@ begin
   Result := TIndexExtractor.ExtractText(cUnitText, 'C:\P\Haupt.pas', nil);
 end;
 
+{ TCompletionSourceTests }
+
 procedure TCompletionSourceTests.EnclosingTypeFindsInnermost;
 var
   mSymbol: TIndexSymbol;

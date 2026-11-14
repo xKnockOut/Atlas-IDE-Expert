@@ -177,6 +177,8 @@ type
     function Waiting: Integer;
   end;
 
+{ TWaitGate }
+
 procedure TWaitGate.Wait;
 begin
   TMonitor.Enter(Self);

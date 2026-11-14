@@ -122,20 +122,6 @@ const
 
 { TAtlasForecastTests }
 
-procedure TAtlasForecastTests.Setup;
-begin
-  FForecast := TAtlasForecast.Create;
-  FTexts := Default(TAtlasForecastTexts);
-  FTexts.ElseBranch := 'else-Zweig';
-  FTexts.NoBranch := 'kein Zweig';
-end;
-
-procedure TAtlasForecastTests.TearDown;
-begin
-  FreeAndNil(FForecast);
-  FTexts := Default(TAtlasForecastTexts);
-end;
-
 procedure TAtlasForecastTests.Load(const AJson: string);
 var
   mBlocks: TAtlasWhyHereBlocks;
@@ -184,6 +170,20 @@ begin
       Result := Trim(Result + ' ' + IntToStr(mLine));
     end;
   end;
+end;
+
+procedure TAtlasForecastTests.Setup;
+begin
+  FForecast := TAtlasForecast.Create;
+  FTexts := Default(TAtlasForecastTexts);
+  FTexts.ElseBranch := 'else-Zweig';
+  FTexts.NoBranch := 'kein Zweig';
+end;
+
+procedure TAtlasForecastTests.TearDown;
+begin
+  FreeAndNil(FForecast);
+  FTexts := Default(TAtlasForecastTexts);
 end;
 
 procedure TAtlasForecastTests.ReadsAnswerWithBranches;

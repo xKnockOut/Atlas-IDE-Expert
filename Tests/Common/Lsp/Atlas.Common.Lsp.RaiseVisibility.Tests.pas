@@ -59,6 +59,8 @@ begin
   end;
 end;
 
+{ TLspRaiseVisibilityTests }
+
 procedure TLspRaiseVisibilityTests.ActionsOnDeclaration;
 var
   mTree: TSyntaxTree;

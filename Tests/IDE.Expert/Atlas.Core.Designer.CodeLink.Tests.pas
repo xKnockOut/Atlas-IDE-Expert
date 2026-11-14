@@ -52,6 +52,8 @@ begin
     Item('edtRabatt', 'TEdit', nil));
 end;
 
+{ TAtlasDesignerLinkTests }
+
 procedure TAtlasDesignerLinkTests.ChainUpToCursor;
 var
   mChain: TArray<string>;

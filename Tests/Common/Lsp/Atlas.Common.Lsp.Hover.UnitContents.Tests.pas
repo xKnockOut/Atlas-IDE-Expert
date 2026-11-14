@@ -139,6 +139,11 @@ end;
 
 { TLspHoverUnitContentsTests }
 
+function TLspHoverUnitContentsTests.Collected(const AText: string): TArray<THoverUnitEntry>;
+begin
+  Result := TLspHoverUnitContents.Collect(FUnit, TPascalLexer.Tokenize(AText));
+end;
+
 procedure TLspHoverUnitContentsTests.Setup;
 begin
   FUnit := TIndexExtractor.ExtractText(cUnitWerk, cWerkFile, nil);
@@ -147,11 +152,6 @@ end;
 procedure TLspHoverUnitContentsTests.TearDown;
 begin
   FUnit := Default(TUnitIndex);
-end;
-
-function TLspHoverUnitContentsTests.Collected(const AText: string): TArray<THoverUnitEntry>;
-begin
-  Result := TLspHoverUnitContents.Collect(FUnit, TPascalLexer.Tokenize(AText));
 end;
 
 procedure TLspHoverUnitContentsTests.CollectsInterfaceDeclarationsByGroup;

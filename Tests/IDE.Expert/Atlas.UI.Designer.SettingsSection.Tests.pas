@@ -103,6 +103,8 @@ uses
   Atlas.Core.Designer.SelectionBar,
   Atlas.UI.Designer.SettingsSection;
 
+{ TDesignerSettingsSectionTests }
+
 procedure TDesignerSettingsSectionTests.WarmUp;
 var
   mRegistrations: TArray<IAtlasRegistration>;
@@ -405,6 +407,42 @@ begin
     mPage.LoadFrom(mSaved);
     Assert.IsFalse(CheckOf(mPage, 'DesignerSelectionSets').Checked);
     Assert.AreEqual(1, ChoiceOf(mPage, 'DesignerSelectionSetsStorage').Choice);
+  finally
+    mPage.Free;
+  end;
+end;
+
+procedure TDesignerSettingsSectionTests.ShowInDesignerRoundTrip;
+var
+  mPage: TAtlasSettingsPage;
+  mSaved: TAtlasPluginSettings;
+begin
+  mPage := TAtlasSettingsPage.Create(nil);
+  try
+    mPage.LoadFrom(TAtlasPluginSettings.Defaults);
+    Assert.IsTrue(CheckOf(mPage, 'DesignerShowInDesigner').Checked, 'Vorgabe an');
+    Assert.IsTrue(CheckOf(mPage, 'DesignerPropertySearch').Checked, 'Eigenschaftssuche (#524): Vorgabe an');
+    CheckOf(mPage, 'DesignerPropertySearch').Checked := False;
+    Assert.IsTrue(CheckOf(mPage, 'DesignerFuzzySearch').Checked, 'unscharfe Suche (#539): Vorgabe an');
+    CheckOf(mPage, 'DesignerFuzzySearch').Checked := False;
+    Assert.IsTrue(CheckOf(mPage, 'DesignerUsages').Checked, 'Verwendungen im Code (#750): Vorgabe an');
+    Assert.IsTrue(CheckOf(mPage, 'DesignerUsagesStatusCount').Checked);
+    Assert.AreEqual(41078, TAtlasPluginSettings.Defaults.DesignerUsagesKey, 'Umschalt+Alt+F7');
+    Assert.AreEqual('project', TAtlasPluginSettings.Defaults.DesignerUsagesScope);
+    CheckOf(mPage, 'DesignerUsagesStatusCount').Checked := False;
+    Assert.AreEqual(8315, TAtlasPluginSettings.Defaults.DesignerShowInDesignerKey, 'Umschalt+F12');
+    CheckOf(mPage, 'DesignerShowInDesigner').Checked := False;
+    EditOf(mPage, 'DesignerShowInDesignerKey').Text := '';
+    mSaved := TAtlasPluginSettings.Defaults;
+    mPage.SaveTo(mSaved);
+    Assert.IsFalse(mSaved.DesignerShowInDesigner, 'abschaltbar');
+    Assert.IsFalse(mSaved.DesignerPropertySearch, 'Eigenschaftssuche abschaltbar');
+    Assert.IsFalse(mSaved.DesignerFuzzySearch, 'unscharfe Suche abschaltbar');
+    Assert.IsTrue(mSaved.DesignerUsages, 'Zähler aus lässt den Befehl an');
+    Assert.IsFalse(mSaved.DesignerUsagesStatusCount, 'Zähler abschaltbar');
+    Assert.AreEqual(0, mSaved.DesignerShowInDesignerKey, 'leer = keine Taste');
+    mPage.LoadFrom(mSaved);
+    Assert.IsFalse(CheckOf(mPage, 'DesignerShowInDesigner').Checked);
   finally
     mPage.Free;
   end;
@@ -798,6 +836,76 @@ begin
   end;
 end;
 
+procedure TDesignerSettingsSectionTests.FontsColorsRoundTrip;
+var
+  mPage: TAtlasSettingsPage;
+  mSaved: TAtlasPluginSettings;
+begin
+  mPage := TAtlasSettingsPage.Create(nil);
+  try
+    mPage.LoadFrom(TAtlasPluginSettings.Defaults);
+    Assert.IsTrue(CheckOf(mPage, 'DesignerFontsColors').Checked, 'Vorgabe an');
+    Assert.IsTrue(CheckOf(mPage, 'DesignerFontsColorsRestoreParent').Checked);
+    CheckOf(mPage, 'DesignerFontsColors').Checked := False;
+    CheckOf(mPage, 'DesignerFontsColorsRestoreParent').Checked := False;
+    EditOf(mPage, 'DesignerFontsColorsIgnoreColors').Text := 'clWindow';
+    mSaved := TAtlasPluginSettings.Defaults;
+    mPage.SaveTo(mSaved);
+    Assert.IsFalse(mSaved.DesignerFontsColors, 'abschaltbar');
+    Assert.IsFalse(mSaved.DesignerFontsColorsRestoreParent);
+    Assert.AreEqual('clWindow', mSaved.DesignerFontsColorsIgnoreColors);
+  finally
+    mPage.Free;
+  end;
+end;
+
+procedure TDesignerSettingsSectionTests.GroupsRoundTrip;
+var
+  mPage: TAtlasSettingsPage;
+  mSaved: TAtlasPluginSettings;
+begin
+  mPage := TAtlasSettingsPage.Create(nil);
+  try
+    mPage.LoadFrom(TAtlasPluginSettings.Defaults);
+    Assert.IsTrue(CheckOf(mPage, 'DesignerGroups').Checked, 'Vorgabe an');
+    CheckOf(mPage, 'DesignerGroups').Checked := False;
+    ChoiceOf(mPage, 'DesignerGroupsMemberClick').Choice := 1;
+    ChoiceOf(mPage, 'DesignerGroupsStorage').Choice := 1;
+    mSaved := TAtlasPluginSettings.Defaults;
+    mPage.SaveTo(mSaved);
+    Assert.IsFalse(mSaved.DesignerGroups, 'abschaltbar');
+    Assert.AreEqual(TAtlasPluginSettings.cDesignerGroupsDoubleClick, mSaved.DesignerGroupsMemberClick);
+    Assert.AreEqual(TAtlasPluginSettings.cDesignerSetsShared, mSaved.DesignerGroupsStorage);
+  finally
+    mPage.Free;
+  end;
+end;
+
+procedure TDesignerSettingsSectionTests.InlineCaptionRoundTrip;
+var
+  mPage: TAtlasSettingsPage;
+  mSaved: TAtlasPluginSettings;
+begin
+  mPage := TAtlasSettingsPage.Create(nil);
+  try
+    mPage.LoadFrom(TAtlasPluginSettings.Defaults);
+    Assert.IsTrue(CheckOf(mPage, 'DesignerInlineCaption').Checked, 'Vorgabe an');
+    Assert.IsTrue(CheckOf(mPage, 'DesignerInlineCaptionSlowDoubleClick').Checked);
+    Assert.IsFalse(CheckOf(mPage, 'DesignerInlineCaptionAutoWidth').Checked);
+    CheckOf(mPage, 'DesignerInlineCaption').Checked := False;
+    CheckOf(mPage, 'DesignerInlineCaptionAutoWidth').Checked := True;
+    EditOf(mPage, 'DesignerInlineCaptionProperties').Text := 'TMyHeader=Title';
+    mSaved := TAtlasPluginSettings.Defaults;
+    mPage.SaveTo(mSaved);
+    Assert.IsFalse(mSaved.DesignerInlineCaption, 'abschaltbar');
+    Assert.IsTrue(mSaved.DesignerInlineCaptionAutoWidth);
+    Assert.AreEqual('TMyHeader=Title', mSaved.DesignerInlineCaptionProperties);
+    Assert.AreEqual(113, mSaved.DesignerInlineCaptionKey, 'F2');
+  finally
+    mPage.Free;
+  end;
+end;
+
 procedure TDesignerSettingsSectionTests.GapHandlesRoundTrip;
 var
   mPage: TAtlasSettingsPage;
@@ -817,29 +925,6 @@ begin
     Assert.IsFalse(mSaved.DesignerGapHandles, 'abschaltbar');
     Assert.AreEqual('6, 10', mSaved.DesignerGapHandlesSnapValues);
     Assert.AreEqual(TAtlasPluginSettings.cGapAnchorLast, mSaved.DesignerGapHandlesAnchor);
-  finally
-    mPage.Free;
-  end;
-end;
-
-procedure TDesignerSettingsSectionTests.FontsColorsRoundTrip;
-var
-  mPage: TAtlasSettingsPage;
-  mSaved: TAtlasPluginSettings;
-begin
-  mPage := TAtlasSettingsPage.Create(nil);
-  try
-    mPage.LoadFrom(TAtlasPluginSettings.Defaults);
-    Assert.IsTrue(CheckOf(mPage, 'DesignerFontsColors').Checked, 'Vorgabe an');
-    Assert.IsTrue(CheckOf(mPage, 'DesignerFontsColorsRestoreParent').Checked);
-    CheckOf(mPage, 'DesignerFontsColors').Checked := False;
-    CheckOf(mPage, 'DesignerFontsColorsRestoreParent').Checked := False;
-    EditOf(mPage, 'DesignerFontsColorsIgnoreColors').Text := 'clWindow';
-    mSaved := TAtlasPluginSettings.Defaults;
-    mPage.SaveTo(mSaved);
-    Assert.IsFalse(mSaved.DesignerFontsColors, 'abschaltbar');
-    Assert.IsFalse(mSaved.DesignerFontsColorsRestoreParent);
-    Assert.AreEqual('clWindow', mSaved.DesignerFontsColorsIgnoreColors);
   finally
     mPage.Free;
   end;
@@ -943,89 +1028,6 @@ begin
     mSaved.DesignerUndoSteps := 1000;
     mSaved.Normalize;
     Assert.AreEqual(200, mSaved.DesignerUndoSteps, 'Obergrenze');
-  finally
-    mPage.Free;
-  end;
-end;
-
-procedure TDesignerSettingsSectionTests.ShowInDesignerRoundTrip;
-var
-  mPage: TAtlasSettingsPage;
-  mSaved: TAtlasPluginSettings;
-begin
-  mPage := TAtlasSettingsPage.Create(nil);
-  try
-    mPage.LoadFrom(TAtlasPluginSettings.Defaults);
-    Assert.IsTrue(CheckOf(mPage, 'DesignerShowInDesigner').Checked, 'Vorgabe an');
-    Assert.IsTrue(CheckOf(mPage, 'DesignerPropertySearch').Checked, 'Eigenschaftssuche (#524): Vorgabe an');
-    CheckOf(mPage, 'DesignerPropertySearch').Checked := False;
-    Assert.IsTrue(CheckOf(mPage, 'DesignerFuzzySearch').Checked, 'unscharfe Suche (#539): Vorgabe an');
-    CheckOf(mPage, 'DesignerFuzzySearch').Checked := False;
-    Assert.IsTrue(CheckOf(mPage, 'DesignerUsages').Checked, 'Verwendungen im Code (#750): Vorgabe an');
-    Assert.IsTrue(CheckOf(mPage, 'DesignerUsagesStatusCount').Checked);
-    Assert.AreEqual(41078, TAtlasPluginSettings.Defaults.DesignerUsagesKey, 'Umschalt+Alt+F7');
-    Assert.AreEqual('project', TAtlasPluginSettings.Defaults.DesignerUsagesScope);
-    CheckOf(mPage, 'DesignerUsagesStatusCount').Checked := False;
-    Assert.AreEqual(8315, TAtlasPluginSettings.Defaults.DesignerShowInDesignerKey, 'Umschalt+F12');
-    CheckOf(mPage, 'DesignerShowInDesigner').Checked := False;
-    EditOf(mPage, 'DesignerShowInDesignerKey').Text := '';
-    mSaved := TAtlasPluginSettings.Defaults;
-    mPage.SaveTo(mSaved);
-    Assert.IsFalse(mSaved.DesignerShowInDesigner, 'abschaltbar');
-    Assert.IsFalse(mSaved.DesignerPropertySearch, 'Eigenschaftssuche abschaltbar');
-    Assert.IsFalse(mSaved.DesignerFuzzySearch, 'unscharfe Suche abschaltbar');
-    Assert.IsTrue(mSaved.DesignerUsages, 'Zähler aus lässt den Befehl an');
-    Assert.IsFalse(mSaved.DesignerUsagesStatusCount, 'Zähler abschaltbar');
-    Assert.AreEqual(0, mSaved.DesignerShowInDesignerKey, 'leer = keine Taste');
-    mPage.LoadFrom(mSaved);
-    Assert.IsFalse(CheckOf(mPage, 'DesignerShowInDesigner').Checked);
-  finally
-    mPage.Free;
-  end;
-end;
-
-procedure TDesignerSettingsSectionTests.GroupsRoundTrip;
-var
-  mPage: TAtlasSettingsPage;
-  mSaved: TAtlasPluginSettings;
-begin
-  mPage := TAtlasSettingsPage.Create(nil);
-  try
-    mPage.LoadFrom(TAtlasPluginSettings.Defaults);
-    Assert.IsTrue(CheckOf(mPage, 'DesignerGroups').Checked, 'Vorgabe an');
-    CheckOf(mPage, 'DesignerGroups').Checked := False;
-    ChoiceOf(mPage, 'DesignerGroupsMemberClick').Choice := 1;
-    ChoiceOf(mPage, 'DesignerGroupsStorage').Choice := 1;
-    mSaved := TAtlasPluginSettings.Defaults;
-    mPage.SaveTo(mSaved);
-    Assert.IsFalse(mSaved.DesignerGroups, 'abschaltbar');
-    Assert.AreEqual(TAtlasPluginSettings.cDesignerGroupsDoubleClick, mSaved.DesignerGroupsMemberClick);
-    Assert.AreEqual(TAtlasPluginSettings.cDesignerSetsShared, mSaved.DesignerGroupsStorage);
-  finally
-    mPage.Free;
-  end;
-end;
-
-procedure TDesignerSettingsSectionTests.InlineCaptionRoundTrip;
-var
-  mPage: TAtlasSettingsPage;
-  mSaved: TAtlasPluginSettings;
-begin
-  mPage := TAtlasSettingsPage.Create(nil);
-  try
-    mPage.LoadFrom(TAtlasPluginSettings.Defaults);
-    Assert.IsTrue(CheckOf(mPage, 'DesignerInlineCaption').Checked, 'Vorgabe an');
-    Assert.IsTrue(CheckOf(mPage, 'DesignerInlineCaptionSlowDoubleClick').Checked);
-    Assert.IsFalse(CheckOf(mPage, 'DesignerInlineCaptionAutoWidth').Checked);
-    CheckOf(mPage, 'DesignerInlineCaption').Checked := False;
-    CheckOf(mPage, 'DesignerInlineCaptionAutoWidth').Checked := True;
-    EditOf(mPage, 'DesignerInlineCaptionProperties').Text := 'TMyHeader=Title';
-    mSaved := TAtlasPluginSettings.Defaults;
-    mPage.SaveTo(mSaved);
-    Assert.IsFalse(mSaved.DesignerInlineCaption, 'abschaltbar');
-    Assert.IsTrue(mSaved.DesignerInlineCaptionAutoWidth);
-    Assert.AreEqual('TMyHeader=Title', mSaved.DesignerInlineCaptionProperties);
-    Assert.AreEqual(113, mSaved.DesignerInlineCaptionKey, 'F2');
   finally
     mPage.Free;
   end;

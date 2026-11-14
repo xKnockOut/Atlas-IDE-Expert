@@ -103,6 +103,8 @@ type
     procedure ThrowIfCancellationRequested;
   end;
 
+{ TCancelledToken }
+
 function TCancelledToken.IsCancellationRequested: Boolean;
 begin
   Result := True;
@@ -114,20 +116,6 @@ begin
 end;
 
 { TLspReassignedTests }
-
-procedure TLspReassignedTests.Setup;
-begin
-  FStore := TDocumentStore.Create;
-  FIndex := TSymbolIndex.Create;
-  FIndex.AddUnit(TIndexExtractor.ExtractText(cUnitOther, cOtherFile, nil));
-  FIndex.AddUnit(TIndexExtractor.ExtractText(cUnitMain, cMainFile, nil));
-end;
-
-procedure TLspReassignedTests.TearDown;
-begin
-  FStore := nil;
-  FIndex := nil;
-end;
 
 function TLspReassignedTests.Run(const ASettings: string): TJSONObject;
 begin
@@ -171,6 +159,20 @@ begin
     end;
     Result := Result + (mItem as TJSONObject).GetValue('name').Value;
   end;
+end;
+
+procedure TLspReassignedTests.Setup;
+begin
+  FStore := TDocumentStore.Create;
+  FIndex := TSymbolIndex.Create;
+  FIndex.AddUnit(TIndexExtractor.ExtractText(cUnitOther, cOtherFile, nil));
+  FIndex.AddUnit(TIndexExtractor.ExtractText(cUnitMain, cMainFile, nil));
+end;
+
+procedure TLspReassignedTests.TearDown;
+begin
+  FStore := nil;
+  FIndex := nil;
 end;
 
 procedure TLspReassignedTests.ReplyCarriesUsesAndWrites;

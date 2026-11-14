@@ -51,6 +51,8 @@ uses
 const
   cAddress = UInt64($0A3F1C20);
 
+{ TCoreDebugInstanceBreakpointTests }
+
 procedure TCoreDebugInstanceBreakpointTests.ParsesAddressesFromDebugger;
 var
   mAddress: UInt64;

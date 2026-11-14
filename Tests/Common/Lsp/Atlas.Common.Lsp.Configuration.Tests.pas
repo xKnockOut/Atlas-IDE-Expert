@@ -123,6 +123,14 @@ begin
   FLegacyText := '';
 end;
 
+procedure TLspConfigurationTests.UsesDefaultsWithoutFile;
+begin
+  FConfiguration.LoadWorkspace(cRoot);
+  Assert.AreEqual('', FConfiguration.Settings.Language);
+  Assert.AreEqual(1, FChanges);
+  Assert.AreEqual(0, Integer(FCapture.Count));
+end;
+
 procedure TLspConfigurationTests.LoadWorkspaceWithGlobalTextChangesOnce;
 begin
   FDiskText := '{"platform": "Win64"}';
@@ -132,12 +140,22 @@ begin
   Assert.AreEqual('Win64', FConfiguration.Settings.Platform, 'Projekt-Schlüssel aus der globalen Datei wirkt nicht');
 end;
 
-procedure TLspConfigurationTests.UsesDefaultsWithoutFile;
+procedure TLspConfigurationTests.LoadsFileFromWorkspaceRoot;
+var
+  mMessage: TJSONObject;
 begin
+  FDiskText := '{"platform": "Win64", "unbekannt": 1}';
   FConfiguration.LoadWorkspace(cRoot);
-  Assert.AreEqual('', FConfiguration.Settings.Language);
-  Assert.AreEqual(1, FChanges);
-  Assert.AreEqual(0, Integer(FCapture.Count));
+  Assert.AreEqual('Win64', FConfiguration.Settings.Platform);
+  Assert.AreEqual(1, Integer(FCapture.Count));
+  mMessage := FCapture.MessageAt(0);
+  try
+    Assert.AreEqual(cConfigUri, mMessage.GetValue<string>('params.uri'));
+    Assert.AreEqual(1, mMessage.GetValue<TJSONArray>('params.diagnostics').Count);
+    Assert.AreEqual(2, mMessage.GetValue<Integer>('params.diagnostics[0].severity'));
+  finally
+    mMessage.Free;
+  end;
 end;
 
 procedure TLspConfigurationTests.LoadsFileFromParentFolder;
@@ -160,24 +178,6 @@ begin
   FDiskText := '';
   FConfiguration.LoadWorkspace(cRoot + '\Packages\Expert');
   Assert.AreEqual(cRoot + '\Packages\Expert', FConfiguration.ConfigRoot);
-end;
-
-procedure TLspConfigurationTests.LoadsFileFromWorkspaceRoot;
-var
-  mMessage: TJSONObject;
-begin
-  FDiskText := '{"platform": "Win64", "unbekannt": 1}';
-  FConfiguration.LoadWorkspace(cRoot);
-  Assert.AreEqual('Win64', FConfiguration.Settings.Platform);
-  Assert.AreEqual(1, Integer(FCapture.Count));
-  mMessage := FCapture.MessageAt(0);
-  try
-    Assert.AreEqual(cConfigUri, mMessage.GetValue<string>('params.uri'));
-    Assert.AreEqual(1, mMessage.GetValue<TJSONArray>('params.diagnostics').Count);
-    Assert.AreEqual(2, mMessage.GetValue<Integer>('params.diagnostics[0].severity'));
-  finally
-    mMessage.Free;
-  end;
 end;
 
 procedure TLspConfigurationTests.LoadsLegacyFileWithoutNewOne;
@@ -225,51 +225,6 @@ begin
   end;
   // Eine andere Datei als die des Arbeitsbereichs ändert die Einstellungen nicht.
   Assert.AreEqual(0, FChanges);
-end;
-
-procedure TLspConfigurationTests.ExtraIssuesAndRevalidate;
-var
-  mMessage: TJSONObject;
-  mKnown: Boolean;
-begin
-  mKnown := False;
-  FConfiguration.ExtraIssues :=
-    function(const ASettings: TServerSettings): TArray<TConfigurationIssue>
-    var
-      Issue: TConfigurationIssue;
-    begin
-      Result := nil;
-      if mKnown then
-      begin
-        Exit;
-      end;
-      Issue := Default(TConfigurationIssue);
-      Issue.Range := ASettings.DfmPropertyRules[0].ClassRange;
-      Issue.Message := 'unbekannt: ' + ASettings.DfmPropertyRules[0].ClassName;
-      Result := [Issue];
-    end;
-  FDiskText := '{"dfmPropertyRules": [{"class": "TLabelX", "property": "Transparent", "value": "True"}]}';
-  FConfiguration.LoadWorkspace(cRoot);
-  Assert.AreEqual(1, Integer(FCapture.Count));
-  mMessage := FCapture.MessageAt(0);
-  try
-    Assert.AreEqual(1, mMessage.GetValue<TJSONArray>('params.diagnostics').Count);
-    Assert.AreEqual('unbekannt: TLabelX', mMessage.GetValue<string>('params.diagnostics[0].message'));
-    Assert.AreEqual(32, mMessage.GetValue<Integer>('params.diagnostics[0].range.start.character'));
-  finally
-    mMessage.Free;
-  end;
-  // Später kennt der Index die Klasse: Revalidate sendet die Meldungen neu, jetzt ohne.
-  mKnown := True;
-  FConfiguration.Revalidate;
-  Assert.AreEqual(2, Integer(FCapture.Count));
-  mMessage := FCapture.MessageAt(1);
-  try
-    Assert.AreEqual(0, mMessage.GetValue<TJSONArray>('params.diagnostics').Count);
-  finally
-    mMessage.Free;
-  end;
-  FConfiguration.ExtraIssues := nil;
 end;
 
 procedure TLspConfigurationTests.AppliesEditsAndRevertsOnClose;
@@ -337,28 +292,6 @@ begin
   Assert.AreEqual('', TLspConfiguration.EditorSettingsFromParams(nil));
 end;
 
-procedure TLspConfigurationTests.ClientLocaleFromInitialize;
-
-  function LocaleOf(const AJson: string): string;
-  var
-    mParams: TJSONValue;
-  begin
-    mParams := TJSONObject.ParseJSONValue(AJson);
-    try
-      Result := TLspClientLocale.FromInitialize(mParams);
-    finally
-      mParams.Free;
-    end;
-  end;
-
-begin
-  Assert.AreEqual('de', LocaleOf('{"locale": "en-US", "initializationOptions": {"locale": "de"}}'));
-  Assert.AreEqual('en-US', LocaleOf('{"locale": "en-US", "initializationOptions": {"locale": " "}}'));
-  Assert.AreEqual('en-US', LocaleOf('{"locale": "en-US"}'));
-  Assert.AreEqual('', LocaleOf('{"processId": 1}'));
-  Assert.AreEqual('', TLspClientLocale.FromInitialize(nil));
-end;
-
 procedure TLspConfigurationTests.IndexComesFromGlobalLayers;
 var
   mMessage: TJSONObject;
@@ -384,6 +317,28 @@ begin
   finally
     mMessage.Free;
   end;
+end;
+
+procedure TLspConfigurationTests.ClientLocaleFromInitialize;
+
+  function LocaleOf(const AJson: string): string;
+  var
+    mParams: TJSONValue;
+  begin
+    mParams := TJSONObject.ParseJSONValue(AJson);
+    try
+      Result := TLspClientLocale.FromInitialize(mParams);
+    finally
+      mParams.Free;
+    end;
+  end;
+
+begin
+  Assert.AreEqual('de', LocaleOf('{"locale": "en-US", "initializationOptions": {"locale": "de"}}'));
+  Assert.AreEqual('en-US', LocaleOf('{"locale": "en-US", "initializationOptions": {"locale": " "}}'));
+  Assert.AreEqual('en-US', LocaleOf('{"locale": "en-US"}'));
+  Assert.AreEqual('', LocaleOf('{"processId": 1}'));
+  Assert.AreEqual('', TLspClientLocale.FromInitialize(nil));
 end;
 
 procedure TLspConfigurationTests.EachKeyHasOnePlace;
@@ -429,6 +384,51 @@ begin
   FDiskText := '{"platform": "Win32"}';
   Assert.IsFalse(FConfiguration.FileChanged(cRoot + '\' + cConfigurationFileName));
   Assert.AreEqual('Linux64', FConfiguration.Settings.Platform);
+end;
+
+procedure TLspConfigurationTests.ExtraIssuesAndRevalidate;
+var
+  mMessage: TJSONObject;
+  mKnown: Boolean;
+begin
+  mKnown := False;
+  FConfiguration.ExtraIssues :=
+    function(const ASettings: TServerSettings): TArray<TConfigurationIssue>
+    var
+      Issue: TConfigurationIssue;
+    begin
+      Result := nil;
+      if mKnown then
+      begin
+        Exit;
+      end;
+      Issue := Default(TConfigurationIssue);
+      Issue.Range := ASettings.DfmPropertyRules[0].ClassRange;
+      Issue.Message := 'unbekannt: ' + ASettings.DfmPropertyRules[0].ClassName;
+      Result := [Issue];
+    end;
+  FDiskText := '{"dfmPropertyRules": [{"class": "TLabelX", "property": "Transparent", "value": "True"}]}';
+  FConfiguration.LoadWorkspace(cRoot);
+  Assert.AreEqual(1, Integer(FCapture.Count));
+  mMessage := FCapture.MessageAt(0);
+  try
+    Assert.AreEqual(1, mMessage.GetValue<TJSONArray>('params.diagnostics').Count);
+    Assert.AreEqual('unbekannt: TLabelX', mMessage.GetValue<string>('params.diagnostics[0].message'));
+    Assert.AreEqual(32, mMessage.GetValue<Integer>('params.diagnostics[0].range.start.character'));
+  finally
+    mMessage.Free;
+  end;
+  // Später kennt der Index die Klasse: Revalidate sendet die Meldungen neu, jetzt ohne.
+  mKnown := True;
+  FConfiguration.Revalidate;
+  Assert.AreEqual(2, Integer(FCapture.Count));
+  mMessage := FCapture.MessageAt(1);
+  try
+    Assert.AreEqual(0, mMessage.GetValue<TJSONArray>('params.diagnostics').Count);
+  finally
+    mMessage.Free;
+  end;
+  FConfiguration.ExtraIssues := nil;
 end;
 
 initialization

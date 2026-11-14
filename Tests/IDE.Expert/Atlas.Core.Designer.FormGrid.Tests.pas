@@ -87,6 +87,8 @@ begin
     Lbl('lblTelefon', 12, 112, 70, 'edtTelefon'), Fld('edtTelefon', 90, 110, 120)];
 end;
 
+{ TAtlasFormGridTests }
+
 procedure TAtlasFormGridTests.PartnersByFocusAndPosition;
 var
   mPartners: TArray<Integer>;

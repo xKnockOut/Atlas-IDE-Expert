@@ -52,21 +52,7 @@ uses
   Atlas.UI.Settings.Page.TestSupport,
   Atlas.UI.Rules.Strings;
 
-procedure TRulesSettingsSectionTests.WarmUp;
-begin
-  WarmUpSettingsPage;
-end;
-
-procedure TRulesSettingsSectionTests.Setup;
-begin
-  FRegistrations := ProvideSections([TAtlasRulesChecksSection, TAtlasRulesEditorSection]);
-end;
-
-procedure TRulesSettingsSectionTests.TearDown;
-begin
-  RevokeAll(FRegistrations);
-  FOpened := '';
-end;
+{ TRulesSettingsSectionTests }
 
 function TRulesSettingsSectionTests.TestHooks: TAtlasRulesChecksHooks;
 begin
@@ -111,6 +97,22 @@ begin
   RevokeAll(FRegistrations);
   mSection := ASection;
   FRegistrations := [ProvideSection(mSection)];
+end;
+
+procedure TRulesSettingsSectionTests.WarmUp;
+begin
+  WarmUpSettingsPage;
+end;
+
+procedure TRulesSettingsSectionTests.Setup;
+begin
+  FRegistrations := ProvideSections([TAtlasRulesChecksSection, TAtlasRulesEditorSection]);
+end;
+
+procedure TRulesSettingsSectionTests.TearDown;
+begin
+  RevokeAll(FRegistrations);
+  FOpened := '';
 end;
 
 procedure TRulesSettingsSectionTests.RulesRoundTrip;

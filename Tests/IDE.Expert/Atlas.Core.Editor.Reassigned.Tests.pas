@@ -63,6 +63,8 @@ begin
   end;
 end;
 
+{ TAtlasReassignedTests }
+
 procedure TAtlasReassignedTests.ReadsServerAnswer;
 var
   mFound: TAtlasReassignedSet;

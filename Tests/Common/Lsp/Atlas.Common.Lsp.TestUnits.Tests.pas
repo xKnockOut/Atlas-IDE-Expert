@@ -95,6 +95,41 @@ const
     'implementation'#10 +
     'end.';
 
+{ TLspTestUnitsTests }
+
+function TLspTestUnitsTests.Context: TTestUnitContext;
+var
+  mFiles, mUnits: TDictionary<string, string>;
+begin
+  mFiles := FFiles;
+  mUnits := FUnits;
+  Result := Default(TTestUnitContext);
+  Result.Settings := TTestUnitSettings.Default;
+  Result.Root := 'C:\P';
+  Result.TestProgram := FTestProgram;
+  Result.ReadText :=
+    function(const AFileName: string): string
+    begin
+      if not mFiles.TryGetValue(AFileName, Result) then
+      begin
+        Result := '';
+      end;
+    end;
+  Result.Exists :=
+    function(const AFileName: string): Boolean
+    begin
+      Result := mFiles.ContainsKey(AFileName);
+    end;
+  Result.FindUnit :=
+    function(const AUnitName: string): string
+    begin
+      if not mUnits.TryGetValue(LowerCase(AUnitName), Result) then
+      begin
+        Result := '';
+      end;
+    end;
+end;
+
 procedure TLspTestUnitsTests.WarmUpFirstUse;
 begin
   Setup;
@@ -130,39 +165,6 @@ begin
   FFiles.Free;
   FStore := nil;
   FTestProgram := '';
-end;
-
-function TLspTestUnitsTests.Context: TTestUnitContext;
-var
-  mFiles, mUnits: TDictionary<string, string>;
-begin
-  mFiles := FFiles;
-  mUnits := FUnits;
-  Result := Default(TTestUnitContext);
-  Result.Settings := TTestUnitSettings.Default;
-  Result.Root := 'C:\P';
-  Result.TestProgram := FTestProgram;
-  Result.ReadText :=
-    function(const AFileName: string): string
-    begin
-      if not mFiles.TryGetValue(AFileName, Result) then
-      begin
-        Result := '';
-      end;
-    end;
-  Result.Exists :=
-    function(const AFileName: string): Boolean
-    begin
-      Result := mFiles.ContainsKey(AFileName);
-    end;
-  Result.FindUnit :=
-    function(const AUnitName: string): string
-    begin
-      if not mUnits.TryGetValue(LowerCase(AUnitName), Result) then
-      begin
-        Result := '';
-      end;
-    end;
 end;
 
 procedure TLspTestUnitsTests.MissingTestUnitCanBeCreated;

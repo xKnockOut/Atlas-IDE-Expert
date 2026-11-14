@@ -48,6 +48,8 @@ uses
 const
   cRoot = 'C:\Projekte\Geheim';
 
+{ TTextAnonymizerTests }
+
 procedure TTextAnonymizerTests.ReplacesWorkspaceAndOtherPaths;
 begin
   Assert.AreEqual('Datei <pfad> und <pfad> fehlt',

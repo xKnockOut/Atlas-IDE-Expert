@@ -24,6 +24,8 @@ uses
   Atlas.UI.Strings.Tests,
   Atlas.UI.Undo.Strings;
 
+{ TAtlasUndoStringsTests }
+
 procedure TAtlasUndoStringsTests.EveryTextExistsInBothLanguages;
 var
   mId: TAtlasUndoTextId;

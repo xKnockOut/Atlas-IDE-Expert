@@ -45,6 +45,8 @@ const
   cCreate = '  inherited Create;'#10'  FStrom := TFileStream.Create(Datei, fmOpenRead);'#10 +
     '  FZeilen := TStringList.Create;';
 
+{ TFlowDestructorNotNilSafeTests }
+
 procedure TFlowDestructorNotNilSafeTests.AccessAfterRaisingCreateIsReported;
 var
   mFindings: TArray<TRuleFinding>;

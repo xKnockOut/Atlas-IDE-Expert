@@ -24,6 +24,8 @@ uses
   Atlas.Common.Rules.Builtin.Declarations.Overloads,
   Atlas.Tests.RuleAssert;
 
+{ TDeclarationOverloadsTests }
+
 procedure TDeclarationOverloadsTests.IsReported;
 var
   mFindings: TArray<TRuleFinding>;

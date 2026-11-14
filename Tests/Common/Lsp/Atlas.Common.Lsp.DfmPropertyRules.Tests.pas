@@ -67,6 +67,8 @@ begin
   end;
 end;
 
+{ TLspDfmPropertyRulesTests }
+
 procedure TLspDfmPropertyRulesTests.CollectsFormEditsOfAllUnits;
 var
   mEdit: TJSONObject;

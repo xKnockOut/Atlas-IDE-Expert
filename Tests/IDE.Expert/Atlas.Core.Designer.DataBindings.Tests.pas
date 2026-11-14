@@ -152,6 +152,8 @@ begin
   Result := Result.Trim;
 end;
 
+{ TAtlasDataBindingsTests }
+
 procedure TAtlasDataBindingsTests.ObjectsWithFields;
 var
   mObjects: TArray<TAtlasBindingObject>;

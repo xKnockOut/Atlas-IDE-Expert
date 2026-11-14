@@ -54,6 +54,8 @@ begin
   Result := TJSONObject.ParseJSONValue(AText);
 end;
 
+{ TAtlasProcessesDialogTests }
+
 procedure TAtlasProcessesDialogTests.WarmUpFirstUse;
 begin
   ShowsWorkspaceProcessesAndLog;

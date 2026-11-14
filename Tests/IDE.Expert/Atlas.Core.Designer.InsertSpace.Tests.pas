@@ -55,6 +55,8 @@ begin
     Plain(Rect(300, 267, 375, 292))];
 end;
 
+{ TAtlasInsertSpaceTests }
+
 procedure TAtlasInsertSpaceTests.InsertMovesRowsBelow;
 var
   mResult: TAtlasSpaceResult;

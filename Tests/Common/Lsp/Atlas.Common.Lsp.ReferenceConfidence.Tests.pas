@@ -188,30 +188,6 @@ end;
 
 { TReferenceConfidenceTests }
 
-procedure TReferenceConfidenceTests.WarmUpFirstUse;
-begin
-  Setup;
-  try
-    LspResponses;
-  finally
-    TearDown;
-  end;
-end;
-
-procedure TReferenceConfidenceTests.Setup;
-begin
-  FIndex := TSymbolIndex.Create;
-  FIndex.AddUnit(TIndexExtractor.ExtractText(cUnitKunden, cKundenFile, nil));
-  FIndex.AddUnit(TIndexExtractor.ExtractText(cUnitWerte, cWerteFile, nil));
-  FResolver := TNameResolver.Create(FIndex);
-end;
-
-procedure TReferenceConfidenceTests.TearDown;
-begin
-  FResolver.Free;
-  FIndex := nil;
-end;
-
 function TReferenceConfidenceTests.Settings(AInferred, ATextMatches: Boolean): TReferenceSettings;
 begin
   Result.Inferred := AInferred;
@@ -285,6 +261,30 @@ begin
   end;
   ALocation := Default(TReferenceLocation);
   Result := False;
+end;
+
+procedure TReferenceConfidenceTests.WarmUpFirstUse;
+begin
+  Setup;
+  try
+    LspResponses;
+  finally
+    TearDown;
+  end;
+end;
+
+procedure TReferenceConfidenceTests.Setup;
+begin
+  FIndex := TSymbolIndex.Create;
+  FIndex.AddUnit(TIndexExtractor.ExtractText(cUnitKunden, cKundenFile, nil));
+  FIndex.AddUnit(TIndexExtractor.ExtractText(cUnitWerte, cWerteFile, nil));
+  FResolver := TNameResolver.Create(FIndex);
+end;
+
+procedure TReferenceConfidenceTests.TearDown;
+begin
+  FResolver.Free;
+  FIndex := nil;
 end;
 
 procedure TReferenceConfidenceTests.SureOnlyAsBefore;

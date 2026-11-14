@@ -30,6 +30,8 @@ uses
   System.SysUtils,
   Atlas.Text.LogMarks;
 
+{ TLogMarksTests }
+
 procedure TLogMarksTests.PlainRestoresValues;
 var
   mLine: string;

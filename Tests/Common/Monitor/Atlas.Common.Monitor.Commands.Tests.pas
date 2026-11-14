@@ -47,6 +47,8 @@ begin
   Result := string.Join(' ', AArgs);
 end;
 
+{ TMonitorCommandsTests }
+
 procedure TMonitorCommandsTests.Setup;
 begin
   TAtlasLocale.Use(TTextLanguage.German);

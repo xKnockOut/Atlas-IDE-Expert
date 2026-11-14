@@ -39,6 +39,8 @@ uses
   Atlas.Core.Settings.QuickToggles,
   Atlas.Core.Welcome.Sections;
 
+{ TAtlasDrawnElementsTests }
+
 procedure TAtlasDrawnElementsTests.EveryElementHasCatalogKey;
 var
   mCatalog, mProperties, mEntry: TJSONValue;

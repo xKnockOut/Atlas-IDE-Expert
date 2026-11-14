@@ -87,6 +87,11 @@ uses
 
 { TAtlasPluginTimingsTests }
 
+procedure TAtlasPluginTimingsTests.Call(AToken: Integer);
+begin
+  FRecorder.Leave(TAtlasFeature.Completion, AToken);
+end;
+
 procedure TAtlasPluginTimingsTests.WarmUpFirstUse;
 begin
   Setup;
@@ -136,11 +141,6 @@ begin
   FreeAndNil(FRecorder);
   FFolder := '';
   FOldFolder := '';
-end;
-
-procedure TAtlasPluginTimingsTests.Call(AToken: Integer);
-begin
-  FRecorder.Leave(TAtlasFeature.Completion, AToken);
 end;
 
 procedure TAtlasPluginTimingsTests.OwnTimeExcludesNestedCalls;
@@ -193,6 +193,22 @@ begin
   Assert.AreEqual(1, Integer(Length(mSnapshot.Busy)), 'eine abgeschlossene Sekunde');
   Assert.AreEqual(50.0, mSnapshot.Busy[0], 0.001);
   Assert.AreEqual(50.0, mSnapshot.BusyPercent, 0.001);
+end;
+
+procedure TAtlasPluginTimingsTests.BusySplitsAtSecondBoundary;
+var
+  mToken: Integer;
+  mSnapshot: TAtlasPluginSnapshot;
+begin
+  FClockUs := 900000;
+  mToken := FRecorder.Enter;
+  FClockUs := 1200000;
+  Call(mToken);
+  FClockUs := 2500000;
+  mSnapshot := FRecorder.Snapshot;
+  Assert.AreEqual(2, Integer(Length(mSnapshot.Busy)));
+  Assert.AreEqual(10.0, mSnapshot.Busy[0], 0.001);
+  Assert.AreEqual(20.0, mSnapshot.Busy[1], 0.001);
 end;
 
 procedure TAtlasPluginTimingsTests.ModalDialogIsNotOwnTime;
@@ -313,22 +329,6 @@ begin
   end;
   Assert.AreEqual(0.5, mSnapshot.Busy[0], 0.001);
   Assert.AreEqual(0.0, mSnapshot.Busy[3], 0.001, 'Projektladen ist keine Belegung durch Atlas');
-end;
-
-procedure TAtlasPluginTimingsTests.BusySplitsAtSecondBoundary;
-var
-  mToken: Integer;
-  mSnapshot: TAtlasPluginSnapshot;
-begin
-  FClockUs := 900000;
-  mToken := FRecorder.Enter;
-  FClockUs := 1200000;
-  Call(mToken);
-  FClockUs := 2500000;
-  mSnapshot := FRecorder.Snapshot;
-  Assert.AreEqual(2, Integer(Length(mSnapshot.Busy)));
-  Assert.AreEqual(10.0, mSnapshot.Busy[0], 0.001);
-  Assert.AreEqual(20.0, mSnapshot.Busy[1], 0.001);
 end;
 
 procedure TAtlasPluginTimingsTests.OtherThreadsAreNotMeasured;

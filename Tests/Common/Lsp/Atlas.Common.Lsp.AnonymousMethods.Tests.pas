@@ -107,6 +107,8 @@ begin
   end;
 end;
 
+{ TLspAnonymousMethodsTests }
+
 procedure TLspAnonymousMethodsTests.Setup;
 begin
   FIndex := TSymbolIndex.Create;

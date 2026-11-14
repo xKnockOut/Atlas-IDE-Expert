@@ -52,6 +52,8 @@ type
     function ReadProject(out AFileName, AText: string): Boolean;
   end;
 
+{ TProjectOnly }
+
 constructor TProjectOnly.Create(const AText: string);
 begin
   inherited Create;

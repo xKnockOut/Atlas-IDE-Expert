@@ -241,6 +241,8 @@ begin
   Assert.IsTrue(Pos(APart, AText) > 0, Format('"%s" fehlt in:'#10'%s', [APart, AText]));
 end;
 
+{ TLegacyTListTests }
+
 procedure TLegacyTListTests.IssueExample;
 var
   mFound: TArray<TRuleFinding>;
@@ -543,6 +545,8 @@ begin
     '    procedure Lauf;'#10'  end;'#10'implementation'#10'procedure TSuche.Lauf;'#10'var'#10 +
     '  Knoten: TKnoten;'#10'  Obj: TObject;'#10'begin'#10 + AStatements + 'end;'#10'end.';
 end;
+
+{ TLegacyStackQueueTests }
 
 procedure TLegacyStackQueueTests.IssueExample;
 var

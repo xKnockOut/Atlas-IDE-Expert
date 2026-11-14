@@ -118,6 +118,8 @@ begin
     ABody + cLB + 'end.';
 end;
 
+{ TCompilerFixesTests }
+
 procedure TCompilerFixesTests.QuotedNamesFromMessages;
 begin
   Assert.AreEqual('Add|System.Generics.Collections', string.Join('|', TCompilerFixes.QuotedNames(

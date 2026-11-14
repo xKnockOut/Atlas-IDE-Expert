@@ -58,6 +58,8 @@ begin
   Result.Cards := [Card('ATL-2052'), Card('ATL-2060')];
 end;
 
+{ TAtlasSprintStartTests }
+
 procedure TAtlasSprintStartTests.IssueOutsideRunningSprintIsMissing;
 var
   mSprint: TAtlasTrackerSprintRef;

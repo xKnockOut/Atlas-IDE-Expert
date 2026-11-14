@@ -109,18 +109,7 @@ begin
   Result := SameText(AFileName, cSysUtilsFile);
 end;
 
-procedure TSignatureFormatTests.Setup;
-begin
-  FIndex := TSymbolIndex.Create;
-  FIndex.AddUnit(TIndexExtractor.ExtractText(cUnitSysUtils, cSysUtilsFile, nil));
-  FResolver := TNameResolver.Create(FIndex);
-end;
-
-procedure TSignatureFormatTests.TearDown;
-begin
-  FResolver.Free;
-  FIndex := nil;
-end;
+{ TSignatureFormatTests }
 
 function TSignatureFormatTests.HelpAt(const ABody: string; const ARoutines: TArray<TFormatRoutine>): TSignatureHelp;
 var
@@ -161,6 +150,19 @@ end;
 function TSignatureFormatTests.HelpAt(const ABody: string): TSignatureHelp;
 begin
   Result := HelpAt(ABody, TFormatRoutines.Defaults);
+end;
+
+procedure TSignatureFormatTests.Setup;
+begin
+  FIndex := TSymbolIndex.Create;
+  FIndex.AddUnit(TIndexExtractor.ExtractText(cUnitSysUtils, cSysUtilsFile, nil));
+  FResolver := TNameResolver.Create(FIndex);
+end;
+
+procedure TSignatureFormatTests.TearDown;
+begin
+  FResolver.Free;
+  FIndex := nil;
 end;
 
 procedure TSignatureFormatTests.IssueExample;

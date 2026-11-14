@@ -59,6 +59,8 @@ begin
     end;
 end;
 
+{ TAtlasNoSourceTests }
+
 procedure TAtlasNoSourceTests.ParsesHeader;
 var
   mPlace: TAtlasNoSourcePlace;

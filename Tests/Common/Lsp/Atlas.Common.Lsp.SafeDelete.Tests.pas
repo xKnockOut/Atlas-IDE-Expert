@@ -301,6 +301,8 @@ begin
   end;
 end;
 
+{ TLspSafeDeleteTests }
+
 procedure TLspSafeDeleteTests.Setup;
 begin
   FIndex := TSymbolIndex.Create;

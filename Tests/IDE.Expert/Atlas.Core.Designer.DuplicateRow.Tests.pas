@@ -58,6 +58,8 @@ begin
   Result.Push := False;
 end;
 
+{ TAtlasDuplicateRowTests }
+
 procedure TAtlasDuplicateRowTests.ListGivesCount;
 var
   mList: TArray<string>;

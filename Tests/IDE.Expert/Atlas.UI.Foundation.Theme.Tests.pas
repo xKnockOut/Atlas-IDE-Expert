@@ -46,6 +46,8 @@ uses
   Atlas.Core.Style.Signal,
   Atlas.UI.Foundation.Theme;
 
+{ TAtlasUiThemeTests }
+
 procedure TAtlasUiThemeTests.WarmUpFirstUse;
 var
   mForm: TForm;

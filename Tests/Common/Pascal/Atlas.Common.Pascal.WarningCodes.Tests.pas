@@ -38,6 +38,8 @@ uses
   Atlas.Common.Pascal.DirectiveNames,
   Atlas.Common.Pascal.WarningCodes;
 
+{ TWarningCodesTests }
+
 procedure TWarningCodesTests.MapsKnownCodes;
 begin
   Assert.AreEqual('SYMBOL_DEPRECATED', TWarningCodes.Identifier('W1000', ''));

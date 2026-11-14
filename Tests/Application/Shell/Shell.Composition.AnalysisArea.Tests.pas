@@ -76,6 +76,8 @@ begin
   Result := cTimeout;
 end;
 
+{ TShellAnalysisAreaTests }
+
 procedure TShellAnalysisAreaTests.Setup;
 var
   mCoreServices: TShellCoreServices;

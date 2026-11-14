@@ -95,6 +95,8 @@ const
     '  end'#13#10 +
     'end'#13#10;
 
+{ TAtlasFormsTests }
+
 procedure TAtlasFormsTests.WarmUpFirstUse;
 begin
   WritesComponentsAndHandlers;
@@ -174,6 +176,20 @@ begin
     mChanges, mReason), 'anderes Ereignis');
 end;
 
+procedure TAtlasFormsTests.ReadsObjectNames;
+var
+  mIsObject: Boolean;
+begin
+  Assert.AreEqual('Button1', TAtlasFormChanges.ObjectName('    object Button1: TButton', mIsObject));
+  Assert.IsTrue(mIsObject);
+  Assert.AreEqual('Form2', TAtlasFormChanges.ObjectName('inherited Form2: TForm2', mIsObject));
+  Assert.AreEqual('Frame1', TAtlasFormChanges.ObjectName('  inline Frame1: TFrame1 [0]', mIsObject));
+  Assert.AreEqual('', TAtlasFormChanges.ObjectName('  object TTimer', mIsObject));
+  Assert.IsTrue(mIsObject, 'ohne Namen');
+  Assert.AreEqual('', TAtlasFormChanges.ObjectName('  ObjectName = ''x''', mIsObject));
+  Assert.IsFalse(mIsObject);
+end;
+
 procedure TAtlasFormsTests.FindsPropertyChanges;
 var
   mChanges: TArray<TAtlasFormEventChange>;
@@ -222,20 +238,6 @@ begin
   Assert.IsTrue(TAtlasFormChanges.StringValue('''Gr''#252''n''', mText));
   Assert.AreEqual('Gr' + Char(252) + 'n', mText);
   Assert.IsFalse(TAtlasFormChanges.StringValue('True', mText));
-end;
-
-procedure TAtlasFormsTests.ReadsObjectNames;
-var
-  mIsObject: Boolean;
-begin
-  Assert.AreEqual('Button1', TAtlasFormChanges.ObjectName('    object Button1: TButton', mIsObject));
-  Assert.IsTrue(mIsObject);
-  Assert.AreEqual('Form2', TAtlasFormChanges.ObjectName('inherited Form2: TForm2', mIsObject));
-  Assert.AreEqual('Frame1', TAtlasFormChanges.ObjectName('  inline Frame1: TFrame1 [0]', mIsObject));
-  Assert.AreEqual('', TAtlasFormChanges.ObjectName('  object TTimer', mIsObject));
-  Assert.IsTrue(mIsObject, 'ohne Namen');
-  Assert.AreEqual('', TAtlasFormChanges.ObjectName('  ObjectName = ''x''', mIsObject));
-  Assert.IsFalse(mIsObject);
 end;
 
 initialization

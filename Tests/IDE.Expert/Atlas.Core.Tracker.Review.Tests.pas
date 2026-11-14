@@ -86,6 +86,8 @@ begin
   Result.Text := 'x';
 end;
 
+{ TAtlasTrackerReviewTests }
+
 procedure TAtlasTrackerReviewTests.OfferedOnlyInReviewStates;
 var
   mStates: TArray<string>;

@@ -71,6 +71,8 @@ const
   /// <summary>Erfundenes Package: Der Test entlädt nichts und hält nichts im Speicher fest.</summary>
   cInstance = $5A5B0000;
 
+{ TLog }
+
 procedure TLog.Add(const AEntry: string);
 begin
   if Text <> '' then
@@ -79,6 +81,8 @@ begin
   end;
   Text := Text + AEntry;
 end;
+
+{ TFakeModule }
 
 constructor TFakeModule.Create(ALog: TLog; AFailStop: Boolean);
 begin

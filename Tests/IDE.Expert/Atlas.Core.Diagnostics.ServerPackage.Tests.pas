@@ -34,6 +34,8 @@ uses
   Atlas.Core.Diagnostics.Package,
   Atlas.Core.Diagnostics.ServerPackage;
 
+{ TAtlasServerDiagnosticsTests }
+
 procedure TAtlasServerDiagnosticsTests.ArgumentsCarryAnonymize;
 begin
   Assert.AreEqual('[{"anonymize":true,"traceMinutes":5}]', TAtlasServerDiagnostics.ServerArguments(True));

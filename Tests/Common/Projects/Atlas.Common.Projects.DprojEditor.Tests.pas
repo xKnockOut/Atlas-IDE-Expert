@@ -57,6 +57,8 @@ const
     '    </ItemGroup>'#13#10 +
     '</Project>'#13#10;
 
+{ TDprojEditorTests }
+
 procedure TDprojEditorTests.ConfigKeys;
 begin
   Assert.AreEqual('Cfg_1', TDprojEditor.ConfigKey(cDproj, 'debug'));

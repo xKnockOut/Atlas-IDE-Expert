@@ -205,23 +205,6 @@ end;
 
 { TSymbolPathTests }
 
-procedure TSymbolPathTests.Setup;
-begin
-  FFiles := TDictionary<string, string>.Create;
-  FIndex := TSymbolIndex.Create;
-end;
-
-procedure TSymbolPathTests.TearDown;
-begin
-  FLocator.Free;
-  FLocator := nil;
-  FGraph.Free;
-  FGraph := nil;
-  FIndex := nil;
-  FFiles.Free;
-  FFiles := nil;
-end;
-
 procedure TSymbolPathTests.AddUnit(const AName, AText: string);
 begin
   AddUnit(AName, AText, False);
@@ -235,17 +218,6 @@ begin
   mData := TIndexExtractor.ExtractText(AText, FileOf(AName), nil);
   mData.Library_ := ALibrary;
   FIndex.AddUnit(mData);
-end;
-
-procedure TSymbolPathTests.AddShop;
-begin
-  AddUnit('uDatenbank', cDatenbankText);
-  AddUnit('uRepoIntf', cRepoIntfText);
-  AddUnit('uKundenRepo', cKundenRepoText);
-  AddUnit('uCacheRepo', cCacheRepoText);
-  AddUnit('uKundenService', cKundenServiceText);
-  AddUnit('uKundenForm', cKundenFormText);
-  AddUnit('uLose', cLoseText);
 end;
 
 procedure TSymbolPathTests.Build;
@@ -269,13 +241,6 @@ begin
     begin
       Result := nil;
     end);
-end;
-
-function TSymbolPathTests.Request(const AFrom, ATo: string): TSymbolPathRequest;
-begin
-  Result := TSymbolPathRequest.Default;
-  Result.From := AFrom;
-  Result.To_ := ATo;
 end;
 
 function TSymbolPathTests.Find(const ARequest: TSymbolPathRequest): TSymbolPathResult;
@@ -303,6 +268,13 @@ end;
 function TSymbolPathTests.Find(const AFrom, ATo: string): TSymbolPathResult;
 begin
   Result := Find(Request(AFrom, ATo));
+end;
+
+function TSymbolPathTests.Request(const AFrom, ATo: string): TSymbolPathRequest;
+begin
+  Result := TSymbolPathRequest.Default;
+  Result.From := AFrom;
+  Result.To_ := ATo;
 end;
 
 function TSymbolPathTests.Captions(const ARoute: TSymbolPathRoute): string;
@@ -333,6 +305,34 @@ begin
     end;
     Result := Result + TSymbolPathSearch.EdgeName(mStep.Kind);
   end;
+end;
+
+procedure TSymbolPathTests.AddShop;
+begin
+  AddUnit('uDatenbank', cDatenbankText);
+  AddUnit('uRepoIntf', cRepoIntfText);
+  AddUnit('uKundenRepo', cKundenRepoText);
+  AddUnit('uCacheRepo', cCacheRepoText);
+  AddUnit('uKundenService', cKundenServiceText);
+  AddUnit('uKundenForm', cKundenFormText);
+  AddUnit('uLose', cLoseText);
+end;
+
+procedure TSymbolPathTests.Setup;
+begin
+  FFiles := TDictionary<string, string>.Create;
+  FIndex := TSymbolIndex.Create;
+end;
+
+procedure TSymbolPathTests.TearDown;
+begin
+  FLocator.Free;
+  FLocator := nil;
+  FGraph.Free;
+  FGraph := nil;
+  FIndex := nil;
+  FFiles.Free;
+  FFiles := nil;
 end;
 
 procedure TSymbolPathTests.UsesEdgesFollowTheGraph;

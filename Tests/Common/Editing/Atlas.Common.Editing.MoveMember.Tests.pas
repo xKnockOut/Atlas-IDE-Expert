@@ -151,18 +151,7 @@ begin
   end;
 end;
 
-procedure TMoveMemberTests.Setup;
-begin
-  FFiles := TMemberFiles.Create;
-  FFiles.Add(cFileU, cSource);
-end;
-
-procedure TMoveMemberTests.TearDown;
-begin
-  FreeAndNil(FFiles);
-  FText := '';
-  FReason := '';
-end;
+{ TMoveMemberTests }
 
 function TMoveMemberTests.Up(const AMembers, AAbstract: array of string; AOverrideSiblings: Boolean;
   out APlan: TMoveMemberPlan): Boolean;
@@ -200,6 +189,19 @@ begin
   Result := TMoveMember.PushDown(FFiles, TMemberClassRef.Create(cFileU, 'TBase'), mTargets, mRequest, APlan,
     FReason);
   FText := FFiles.Text(cFileU);
+end;
+
+procedure TMoveMemberTests.Setup;
+begin
+  FFiles := TMemberFiles.Create;
+  FFiles.Add(cFileU, cSource);
+end;
+
+procedure TMoveMemberTests.TearDown;
+begin
+  FreeAndNil(FFiles);
+  FText := '';
+  FReason := '';
 end;
 
 procedure TMoveMemberTests.PrepareFindsMember;

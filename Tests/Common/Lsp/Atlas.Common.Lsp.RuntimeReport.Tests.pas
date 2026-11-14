@@ -90,6 +90,8 @@ type
     function UnitFileOf(const AUri: string): TReportUnitFileFunc;
   end;
 
+{ TFakeFiles }
+
 procedure TFakeFiles.LoadSymbols(const AUri, AMapName, AExeName: string; ABase: UInt64;
   out ASymbols: TReportSymbols);
 begin
@@ -115,30 +117,7 @@ begin
     end;
 end;
 
-procedure TLspRuntimeReportTests.Setup;
-var
-  mFiles: TFakeFiles;
-begin
-  TAtlasLocale.Use(TTextLanguage.German);
-  mFiles := TFakeFiles.Create;
-  FFiles := mFiles;
-  FResults := TCompilerResults.Create;
-  FPublished := nil;
-  FCommand := TLspRuntimeReport.Create(FFiles, FResults,
-    procedure(const AFileNames: TArray<string>)
-    begin
-      FPublished := FPublished + AFileNames;
-    end);
-end;
-
-procedure TLspRuntimeReportTests.TearDown;
-begin
-  FreeAndNil(FCommand);
-  FreeAndNil(FResults);
-  FFiles := nil;
-  FPublished := nil;
-  TAtlasLocale.Use(TTextLanguage.German);
-end;
+{ TLspRuntimeReportTests }
 
 function TLspRuntimeReportTests.Run(const AOptions: string): string;
 var
@@ -178,6 +157,31 @@ begin
   finally
     mArguments.Free;
   end;
+end;
+
+procedure TLspRuntimeReportTests.Setup;
+var
+  mFiles: TFakeFiles;
+begin
+  TAtlasLocale.Use(TTextLanguage.German);
+  mFiles := TFakeFiles.Create;
+  FFiles := mFiles;
+  FResults := TCompilerResults.Create;
+  FPublished := nil;
+  FCommand := TLspRuntimeReport.Create(FFiles, FResults,
+    procedure(const AFileNames: TArray<string>)
+    begin
+      FPublished := FPublished + AFileNames;
+    end);
+end;
+
+procedure TLspRuntimeReportTests.TearDown;
+begin
+  FreeAndNil(FCommand);
+  FreeAndNil(FResults);
+  FFiles := nil;
+  FPublished := nil;
+  TAtlasLocale.Use(TTextLanguage.German);
 end;
 
 function Report(const AText: string): TRuntimeReport;

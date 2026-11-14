@@ -270,78 +270,6 @@ end;
 
 { TAtlasPaletteTests }
 
-procedure TAtlasPaletteTests.CheckPairs(const AColors: TAtlasColors; const AMode: string; const ABackgrounds,
-  ATexts: array of string);
-var
-  mIndex: Integer;
-  mPair, mOther: TAtlasColor;
-  mHex: string;
-  mName: string;
-
-  procedure CheckText(AText: TAtlasColor);
-  begin
-    Assert.IsTrue((TAtlasColorMath.Contrast(mPair, AText) >= 1.8) or
-      (TAtlasColorMath.DeltaE2000(mPair, AText) >= 30), mName + ' gegen Text ' + TAtlasColorMath.ToHex(AText));
-  end;
-
-begin
-  // Regeln aus #653: lesbar auf dem Hintergrund, vom normalen Text und von der Nachbartiefe verschieden.
-  for mIndex := 0 to High(AColors.Pairs) do
-  begin
-    mPair := AColors.Pairs[mIndex];
-    mName := Format('%s Paar %d (%s)', [AMode, mIndex, TAtlasColorMath.ToHex(mPair)]);
-    for mHex in ABackgrounds do
-    begin
-      Assert.IsTrue(TAtlasColorMath.Contrast(mPair, TAtlasColorMath.FromHex(mHex)) >= 4.5,
-        mName + ' auf ' + mHex);
-    end;
-    Assert.IsTrue(TAtlasColorMath.Contrast(mPair, AColors.Surface) >= 4.5, mName + ' auf Surface');
-    for mHex in ATexts do
-    begin
-      CheckText(TAtlasColorMath.FromHex(mHex));
-    end;
-    CheckText(AColors.Text);
-    mOther := AColors.Pairs[(mIndex + 1) mod Length(AColors.Pairs)];
-    Assert.IsTrue(TAtlasColorMath.DeltaE2000(mPair, mOther) >= 20, mName + ' gegen die nächste Tiefe');
-    // Unpaarige erkennt man am roten Grund, nicht an der Schriftfarbe: Paarfarben dürfen rot sein.
-  end;
-end;
-
-procedure TAtlasPaletteTests.LightPairsStandOut;
-begin
-  // Editor hell: weißer Hintergrund, schwarzer Text, dunkelblaue Schlüsselwörter.
-  CheckPairs(TAtlasColors.Light, 'Hell', ['#FFFFFF'], ['#000000', '#000080']);
-end;
-
-procedure TAtlasPaletteTests.DarkPairsStandOut;
-begin
-  // Editor dunkel: Hintergrund und Text des dunklen Schemas der IDE.
-  CheckPairs(TAtlasColors.Dark, 'Dunkel', ['#1E1E1E', '#2B2B2B'], ['#D4D4D4', '#FFFFFF']);
-end;
-
-procedure TAtlasPaletteTests.PlaceholderColorsDiffer;
-
-  procedure Check(const AColors: TAtlasColors; const AMode: string);
-  var
-    mIndex, mOther: Integer;
-  begin
-    for mIndex := 0 to High(AColors.Placeholders) do
-    begin
-      Assert.IsTrue(TAtlasColorMath.DeltaE2000(AColors.Placeholders[mIndex], AColors.Error) >= 20,
-        Format('%s Platzhalter %d gegen Fehler', [AMode, mIndex]));
-      for mOther := mIndex + 1 to High(AColors.Placeholders) do
-      begin
-        Assert.IsTrue(TAtlasColorMath.DeltaE2000(AColors.Placeholders[mIndex], AColors.Placeholders[mOther]) >= 15,
-          Format('%s Platzhalter %d gegen %d', [AMode, mIndex, mOther]));
-      end;
-    end;
-  end;
-
-begin
-  Check(TAtlasColors.Light, 'Hell');
-  Check(TAtlasColors.Dark, 'Dunkel');
-end;
-
 procedure TAtlasPaletteTests.CheckContrast(const AColors: TAtlasColors; const AMode: string);
 
   procedure Pair(const AName: string; AFront, ABack: TAtlasColor);
@@ -388,6 +316,43 @@ begin
   end;
 end;
 
+procedure TAtlasPaletteTests.CheckPairs(const AColors: TAtlasColors; const AMode: string; const ABackgrounds,
+  ATexts: array of string);
+var
+  mIndex: Integer;
+  mPair, mOther: TAtlasColor;
+  mHex: string;
+  mName: string;
+
+  procedure CheckText(AText: TAtlasColor);
+  begin
+    Assert.IsTrue((TAtlasColorMath.Contrast(mPair, AText) >= 1.8) or
+      (TAtlasColorMath.DeltaE2000(mPair, AText) >= 30), mName + ' gegen Text ' + TAtlasColorMath.ToHex(AText));
+  end;
+
+begin
+  // Regeln aus #653: lesbar auf dem Hintergrund, vom normalen Text und von der Nachbartiefe verschieden.
+  for mIndex := 0 to High(AColors.Pairs) do
+  begin
+    mPair := AColors.Pairs[mIndex];
+    mName := Format('%s Paar %d (%s)', [AMode, mIndex, TAtlasColorMath.ToHex(mPair)]);
+    for mHex in ABackgrounds do
+    begin
+      Assert.IsTrue(TAtlasColorMath.Contrast(mPair, TAtlasColorMath.FromHex(mHex)) >= 4.5,
+        mName + ' auf ' + mHex);
+    end;
+    Assert.IsTrue(TAtlasColorMath.Contrast(mPair, AColors.Surface) >= 4.5, mName + ' auf Surface');
+    for mHex in ATexts do
+    begin
+      CheckText(TAtlasColorMath.FromHex(mHex));
+    end;
+    CheckText(AColors.Text);
+    mOther := AColors.Pairs[(mIndex + 1) mod Length(AColors.Pairs)];
+    Assert.IsTrue(TAtlasColorMath.DeltaE2000(mPair, mOther) >= 20, mName + ' gegen die nächste Tiefe');
+    // Unpaarige erkennt man am roten Grund, nicht an der Schriftfarbe: Paarfarben dürfen rot sein.
+  end;
+end;
+
 procedure TAtlasPaletteTests.LightRolesMeetContrast;
 begin
   CheckContrast(TAtlasColors.Light, 'Hell');
@@ -426,6 +391,41 @@ begin
   Assert.IsFalse(TAtlasColors.ForBackground(TAtlasColorMath.FromHex('#FFFFFF')).IsDark);
   Assert.IsTrue(TAtlasColors.Dark.IsDark);
   Assert.IsFalse(TAtlasColors.Light.IsDark);
+end;
+
+procedure TAtlasPaletteTests.LightPairsStandOut;
+begin
+  // Editor hell: weißer Hintergrund, schwarzer Text, dunkelblaue Schlüsselwörter.
+  CheckPairs(TAtlasColors.Light, 'Hell', ['#FFFFFF'], ['#000000', '#000080']);
+end;
+
+procedure TAtlasPaletteTests.DarkPairsStandOut;
+begin
+  // Editor dunkel: Hintergrund und Text des dunklen Schemas der IDE.
+  CheckPairs(TAtlasColors.Dark, 'Dunkel', ['#1E1E1E', '#2B2B2B'], ['#D4D4D4', '#FFFFFF']);
+end;
+
+procedure TAtlasPaletteTests.PlaceholderColorsDiffer;
+
+  procedure Check(const AColors: TAtlasColors; const AMode: string);
+  var
+    mIndex, mOther: Integer;
+  begin
+    for mIndex := 0 to High(AColors.Placeholders) do
+    begin
+      Assert.IsTrue(TAtlasColorMath.DeltaE2000(AColors.Placeholders[mIndex], AColors.Error) >= 20,
+        Format('%s Platzhalter %d gegen Fehler', [AMode, mIndex]));
+      for mOther := mIndex + 1 to High(AColors.Placeholders) do
+      begin
+        Assert.IsTrue(TAtlasColorMath.DeltaE2000(AColors.Placeholders[mIndex], AColors.Placeholders[mOther]) >= 15,
+          Format('%s Platzhalter %d gegen %d', [AMode, mIndex, mOther]));
+      end;
+    end;
+  end;
+
+begin
+  Check(TAtlasColors.Light, 'Hell');
+  Check(TAtlasColors.Dark, 'Dunkel');
 end;
 
 { TAtlasScalingTests }
@@ -482,6 +482,8 @@ begin
     Result := Result + cNames[mToken.Kind] + ':' + Copy(AText, mToken.Start + 1, mToken.Stop - mToken.Start) + '|';
   end;
 end;
+
+{ TAtlasSyntaxTests }
 
 procedure TAtlasSyntaxTests.ColorsKeywordsAndStrings;
 begin

@@ -120,19 +120,6 @@ begin
   AText := cUnitAttribute;
 end;
 
-procedure TLspAttributesTests.Setup;
-begin
-  FIndex := TSymbolIndex.Create;
-  FIndex.AddUnit(TIndexExtractor.ExtractText(cUnitAttribute, cAttributeFile, nil));
-  FResolver := TNameResolver.Create(FIndex);
-end;
-
-procedure TLspAttributesTests.TearDown;
-begin
-  FResolver.Free;
-  FIndex := nil;
-end;
-
 function Hover(AResolver: TNameResolver; const AIndex: ISymbolIndex; const AMarker: string): THoverInfo;
 var
   mTree: TSyntaxTree;
@@ -146,6 +133,8 @@ begin
   end;
 end;
 
+{ TLspAttributesTests }
+
 procedure TLspAttributesTests.WarmUp;
 begin
   Setup;
@@ -155,6 +144,19 @@ begin
   finally
     TearDown;
   end;
+end;
+
+procedure TLspAttributesTests.Setup;
+begin
+  FIndex := TSymbolIndex.Create;
+  FIndex.AddUnit(TIndexExtractor.ExtractText(cUnitAttribute, cAttributeFile, nil));
+  FResolver := TNameResolver.Create(FIndex);
+end;
+
+procedure TLspAttributesTests.TearDown;
+begin
+  FResolver.Free;
+  FIndex := nil;
 end;
 
 procedure TLspAttributesTests.HoverShowsMatchingConstructor;

@@ -727,6 +727,39 @@ begin
     'end.']), False, mTitle));
 end;
 
+procedure TExtractTests.NewNamesWithPrefixes;
+var
+  mTitle, mChanged: string;
+  mNames: TPascalNamePrefixes;
+begin
+  mNames := TPascalNamePrefixes.None;
+  mNames.ConstantPrefix := 'c';
+  mNames.LocalPrefix := 'm';
+  mChanged := Apply(Join(['unit U;', 'interface', 'implementation', 'procedure Run;', 'begin', '  Sleep(«250»);',
+    'end;', 'end.']),
+    function(const AText: string; ATree: TSyntaxTree; const ARange: TTextRange; out AAction: TCodeAction): Boolean
+    var
+      Extract: TExtractOptions;
+    begin
+      Extract := Options(True);
+      Extract.Names := mNames;
+      Result := TExtractRefactoring.ExtractConstant(AText, ATree, ARange, Extract, False, AAction);
+    end, mTitle);
+  Assert.IsTrue(Pos('  cNewConstant = 250;', mChanged) > 0, mChanged);
+  Assert.IsTrue(Pos('Sleep(cNewConstant)', mChanged) > 0, mChanged);
+  mChanged := Apply(Join(['unit U;', 'interface', 'implementation', 'procedure Run(X: Integer);', 'begin',
+    '  Sleep(«X + 1»);', 'end;', 'end.']),
+    function(const AText: string; ATree: TSyntaxTree; const ARange: TTextRange; out AAction: TCodeAction): Boolean
+    var
+      Extract: TExtractOptions;
+    begin
+      Extract := Options(True);
+      Extract.Names := mNames;
+      Result := TExtractRefactoring.IntroduceVariable(AText, ATree, ARange, Extract, False, AAction);
+    end, mTitle);
+  Assert.IsTrue(Pos('mValue', mChanged) > 0, mChanged);
+end;
+
 procedure TExtractTests.ExtractConditionAsMethod;
 var
   mReason, mResult_: string;
@@ -831,6 +864,7 @@ begin
   Assert.Contains(mResult_, '  if ExtractedCondition(A) then');
 end;
 
+
 procedure TExtractTests.ExtractConditionRejectsWritesAndPartialSelection;
 var
   mReason: string;
@@ -873,40 +907,6 @@ begin
     'begin',
     'end.']), mReason));
   Assert.AreEqual('Result in der Bedingung', mReason);
-end;
-
-
-procedure TExtractTests.NewNamesWithPrefixes;
-var
-  mTitle, mChanged: string;
-  mNames: TPascalNamePrefixes;
-begin
-  mNames := TPascalNamePrefixes.None;
-  mNames.ConstantPrefix := 'c';
-  mNames.LocalPrefix := 'm';
-  mChanged := Apply(Join(['unit U;', 'interface', 'implementation', 'procedure Run;', 'begin', '  Sleep(«250»);',
-    'end;', 'end.']),
-    function(const AText: string; ATree: TSyntaxTree; const ARange: TTextRange; out AAction: TCodeAction): Boolean
-    var
-      Extract: TExtractOptions;
-    begin
-      Extract := Options(True);
-      Extract.Names := mNames;
-      Result := TExtractRefactoring.ExtractConstant(AText, ATree, ARange, Extract, False, AAction);
-    end, mTitle);
-  Assert.IsTrue(Pos('  cNewConstant = 250;', mChanged) > 0, mChanged);
-  Assert.IsTrue(Pos('Sleep(cNewConstant)', mChanged) > 0, mChanged);
-  mChanged := Apply(Join(['unit U;', 'interface', 'implementation', 'procedure Run(X: Integer);', 'begin',
-    '  Sleep(«X + 1»);', 'end;', 'end.']),
-    function(const AText: string; ATree: TSyntaxTree; const ARange: TTextRange; out AAction: TCodeAction): Boolean
-    var
-      Extract: TExtractOptions;
-    begin
-      Extract := Options(True);
-      Extract.Names := mNames;
-      Result := TExtractRefactoring.IntroduceVariable(AText, ATree, ARange, Extract, False, AAction);
-    end, mTitle);
-  Assert.IsTrue(Pos('mValue', mChanged) > 0, mChanged);
 end;
 
 initialization

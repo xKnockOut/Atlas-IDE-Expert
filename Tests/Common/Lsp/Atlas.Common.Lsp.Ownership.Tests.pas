@@ -104,6 +104,8 @@ begin
   end;
 end;
 
+{ TLspOwnershipTests }
+
 procedure TLspOwnershipTests.AnswerListsSites;
 var
   mAnswer: TJSONObject;

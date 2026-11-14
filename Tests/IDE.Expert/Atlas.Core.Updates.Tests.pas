@@ -52,6 +52,8 @@ type
     function Fetch(const AUrl: string; ATimeoutMs: Integer; out AText, AError: string): Boolean;
   end;
 
+{ TFakeSource }
+
 function TFakeSource.Fetch(const AUrl: string; ATimeoutMs: Integer; out AText, AError: string): Boolean;
 begin
   Inc(Calls);
@@ -71,6 +73,8 @@ begin
   Result.Installed := AInstalled;
   Result.IdeVersion := '37.0';
 end;
+
+{ TAtlasUpdatesTests }
 
 procedure TAtlasUpdatesTests.ComparesSemanticVersions;
 begin

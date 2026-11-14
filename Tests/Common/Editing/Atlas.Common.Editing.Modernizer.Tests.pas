@@ -65,6 +65,8 @@ begin
   Result := Run(AText, [TModernization.ForIn, TModernization.InlineVar, TModernization.FreeAndNilCall], mCount);
 end;
 
+{ TModernizerTests }
+
 procedure TModernizerTests.ForLoopBecomesForIn;
 begin
   Assert.AreEqual('procedure P(L: TStringList);'#10'begin'#10'  for var Item in L do'#10'    Log(Item);'#10'end;',

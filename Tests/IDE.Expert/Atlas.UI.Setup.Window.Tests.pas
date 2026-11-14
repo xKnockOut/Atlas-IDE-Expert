@@ -78,6 +78,8 @@ begin
   Result.AtlasProblems := True;
 end;
 
+{ TAtlasSetupWindowTests }
+
 procedure TAtlasSetupWindowTests.WarmUpFirstUse;
 begin
   Setup;

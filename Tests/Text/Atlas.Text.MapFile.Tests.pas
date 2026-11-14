@@ -76,6 +76,8 @@ const
     ''#13#10 +
     'Program entry point at 0001:00000180';
 
+{ TMapFileTests }
+
 procedure TMapFileTests.ReadsPublicsAndLines;
 var
   mMap: TMapFile;

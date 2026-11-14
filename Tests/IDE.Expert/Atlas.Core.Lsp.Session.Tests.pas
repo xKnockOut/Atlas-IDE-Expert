@@ -78,6 +78,8 @@ begin
   Result.Platform := 'Win64';
 end;
 
+{ TLspInitializeParamsTests }
+
 procedure TLspInitializeParamsTests.InitializeParamsAnnouncesApplyEditOnlyWithHandler;
 var
   mParams: TJSONObject;
@@ -136,35 +138,6 @@ begin
   end;
 end;
 
-procedure TLspInitializeParamsTests.InitializeOptionsForLocale;
-var
-  mOptions: TLspInitializeOptions;
-begin
-  mOptions := TLspInitializeOptions.ForLocale('de');
-  Assert.AreEqual('de', mOptions.Locale);
-  Assert.AreEqual('', mOptions.Settings);
-end;
-
-procedure TLspInitializeParamsTests.InitializeParamsCarriesLocale;
-var
-  mParams: TJSONObject;
-begin
-  mParams := TLspSession.InitializeParams(nil, '', nil, False, 'en');
-  try
-    Assert.AreEqual('en', mParams.GetValue<string>('initializationOptions.locale'));
-    Assert.AreEqual('en', mParams.GetValue<string>('locale'));
-  finally
-    mParams.Free;
-  end;
-  mParams := TLspSession.InitializeParams(nil, '', nil, False, '');
-  try
-    Assert.IsNull(mParams.GetValue('locale'));
-    Assert.IsNull(mParams.GetValue('initializationOptions'));
-  finally
-    mParams.Free;
-  end;
-end;
-
 procedure TLspInitializeParamsTests.InitializeParamsMergesSettingsAndContexts;
 var
   mParams: TJSONObject;
@@ -199,6 +172,35 @@ begin
   finally
     mParams.Free;
   end;
+end;
+
+procedure TLspInitializeParamsTests.InitializeParamsCarriesLocale;
+var
+  mParams: TJSONObject;
+begin
+  mParams := TLspSession.InitializeParams(nil, '', nil, False, 'en');
+  try
+    Assert.AreEqual('en', mParams.GetValue<string>('initializationOptions.locale'));
+    Assert.AreEqual('en', mParams.GetValue<string>('locale'));
+  finally
+    mParams.Free;
+  end;
+  mParams := TLspSession.InitializeParams(nil, '', nil, False, '');
+  try
+    Assert.IsNull(mParams.GetValue('locale'));
+    Assert.IsNull(mParams.GetValue('initializationOptions'));
+  finally
+    mParams.Free;
+  end;
+end;
+
+procedure TLspInitializeParamsTests.InitializeOptionsForLocale;
+var
+  mOptions: TLspInitializeOptions;
+begin
+  mOptions := TLspInitializeOptions.ForLocale('de');
+  Assert.AreEqual('de', mOptions.Locale);
+  Assert.AreEqual('', mOptions.Settings);
 end;
 
 procedure TLspInitializeParamsTests.ApplyEditAnswerOmitsEmptyReason;
@@ -333,6 +335,8 @@ const
     '"A.T.Fall.Zwei"],"uri":"file:///c%3A/p/A.pas","line":3,"level":2},{"name":"B.T.Ohne","uri":' +
     '"file:///c%3A/p/B.pas","line":4,"level":2}],"limits":{"depth":true,"count":false,"time":true},' +
     '"unexpanded":2,"maxPlaces":1000,"timeoutMs":8000}';
+
+{ TLspImpactResponseTests }
 
 procedure TLspImpactResponseTests.ImpactFromJson;
 var

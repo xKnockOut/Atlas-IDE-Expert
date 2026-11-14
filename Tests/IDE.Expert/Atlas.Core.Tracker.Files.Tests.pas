@@ -45,6 +45,8 @@ type
     property Opened: string read FOpened;
   end;
 
+{ TAtlasRecordingShell }
+
 function TAtlasRecordingShell.Open(const ATarget: string): Boolean;
 begin
   FOpened := FOpened + 'open:' + ATarget + ';';

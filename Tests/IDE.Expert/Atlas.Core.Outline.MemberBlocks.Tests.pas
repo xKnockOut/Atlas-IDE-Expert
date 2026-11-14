@@ -173,6 +173,8 @@ begin
       [TAtlasCrumbPart.Visibility, TAtlasCrumbPart.MemberBlocks])));
 end;
 
+{ TAtlasMemberBlocksTests }
+
 procedure TAtlasMemberBlocksTests.BlocksInSourceOrder;
 var
   mList: TAtlasOutlineNodes;

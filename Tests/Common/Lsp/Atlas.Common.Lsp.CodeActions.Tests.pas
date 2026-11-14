@@ -82,37 +82,7 @@ const
     'end;' + cLB +
     'end.';
 
-procedure TLspCodeActionsTests.WarmUpFirstUse;
-begin
-  Setup;
-  try
-    OffersTryFinallyAndClassActions;
-  finally
-    TearDown;
-  end;
-end;
-
-procedure TLspCodeActionsTests.Setup;
-begin
-  FStore := TDocumentStore.Create;
-  FSettings := TRefactoringSettings.Default;
-  FId := 0;
-  FActions := TLspCodeActions.Create(FStore, nil);
-  FActions.RefactoringFor :=
-    function(const AUri: string): TRefactoringSettings
-    begin
-      Result := FSettings;
-    end;
-  FDispatcher := TJsonRpcDispatcher.Create;
-  FActions.Attach(FDispatcher);
-end;
-
-procedure TLspCodeActionsTests.TearDown;
-begin
-  FDispatcher.Free;
-  FActions.Free;
-  FStore := nil;
-end;
+{ TLspCodeActionsTests }
 
 function TLspCodeActionsTests.Titles(const AText: string; ALine: Integer): string;
 var
@@ -144,6 +114,38 @@ begin
   finally
     mResponse.Free;
   end;
+end;
+
+procedure TLspCodeActionsTests.WarmUpFirstUse;
+begin
+  Setup;
+  try
+    OffersTryFinallyAndClassActions;
+  finally
+    TearDown;
+  end;
+end;
+
+procedure TLspCodeActionsTests.Setup;
+begin
+  FStore := TDocumentStore.Create;
+  FSettings := TRefactoringSettings.Default;
+  FId := 0;
+  FActions := TLspCodeActions.Create(FStore, nil);
+  FActions.RefactoringFor :=
+    function(const AUri: string): TRefactoringSettings
+    begin
+      Result := FSettings;
+    end;
+  FDispatcher := TJsonRpcDispatcher.Create;
+  FActions.Attach(FDispatcher);
+end;
+
+procedure TLspCodeActionsTests.TearDown;
+begin
+  FDispatcher.Free;
+  FActions.Free;
+  FStore := nil;
 end;
 
 procedure TLspCodeActionsTests.OffersTryFinallyAndClassActions;
@@ -208,63 +210,6 @@ begin
   end;
 end;
 
-procedure TLspCodeActionsTests.ActionJsonCarriesPreviewAndDisabled;
-var
-  mAction: TCodeAction;
-  mJson: TJSONObject;
-begin
-  mAction := Default(TCodeAction);
-  mAction.Title := 'Umwandeln';
-  mAction.Kind := cRewriteKind;
-  mAction.Preview := 'Neue Signatur: procedure A;';
-  mJson := TLspCodeActions.ActionToJson(TDocumentUris.FromPath(cFileName), mAction);
-  try
-    Assert.AreEqual('Neue Signatur: procedure A;', mJson.GetValue<string>('data.preview'));
-    Assert.IsNull(mJson.GetValue('disabled'));
-    Assert.IsNull(TJSONObject(mJson.GetValue('data')).GetValue('tag'));
-  finally
-    mJson.Free;
-  end;
-  mAction.Preview := '';
-  mAction.Disabled := 'erst die andere umwandeln';
-  mJson := TLspCodeActions.ActionToJson(TDocumentUris.FromPath(cFileName), mAction);
-  try
-    Assert.AreEqual('erst die andere umwandeln', mJson.GetValue<string>('disabled.reason'));
-    Assert.IsNull(mJson.GetValue('data'));
-  finally
-    mJson.Free;
-  end;
-end;
-
-procedure TLspCodeActionsTests.ActionJsonCarriesChoices;
-var
-  mAction: TCodeAction;
-  mJson: TJSONObject;
-  mChoices, mEditChoices: TJSONArray;
-begin
-  mAction := Default(TCodeAction);
-  mAction.Title := 'Methode extrahieren und gleiche Stelle ersetzen';
-  mAction.Kind := 'refactor.extract';
-  mAction.Edits := [TTextEdit.Create(TTextRange.Create(1, 0, 1, 5), 'A;'),
-    TTextEdit.Create(TTextRange.Create(3, 2, 4, 0), 'B;')];
-  mAction.Choices := [TCodeActionChoice.Create('Zeile 4 in TFoo.Bar', TTextRange.Create(3, 2, 4, 0))];
-  SetLength(mAction.EditChoices, 2);
-  mAction.EditChoices[1] := [0];
-  mJson := TLspCodeActions.ActionToJson(TDocumentUris.FromPath(cFileName), mAction);
-  try
-    mChoices := mJson.GetValue<TJSONArray>('data.choices');
-    Assert.AreEqual(1, mChoices.Count);
-    Assert.AreEqual('Zeile 4 in TFoo.Bar', mChoices.Items[0].GetValue<string>('title'));
-    Assert.AreEqual(3, mChoices.Items[0].GetValue<Integer>('range.start.line'));
-    mEditChoices := mJson.GetValue<TJSONArray>('data.editChoices');
-    Assert.AreEqual(2, mEditChoices.Count);
-    Assert.AreEqual(0, TJSONArray(mEditChoices.Items[0]).Count);
-    Assert.AreEqual('[0]', mEditChoices.Items[1].ToJSON);
-  finally
-    mJson.Free;
-  end;
-end;
-
 procedure TLspCodeActionsTests.UsesEntryActionsCarryTag;
 const
   cUsesText = 'unit Haupt;' + cLB + 'interface' + cLB + 'uses' + cLB + '  Vcl.Grids, Vcl.Menus, {$IFDEF X}Vcl.Forms, {$ENDIF}Vcl.Dialogs;' +
@@ -319,6 +264,63 @@ begin
     Assert.AreEqual('Vcl.Grids entfernen=uses.remove|Alle ungenutzten uses entfernen (2)=uses.removeAll|', mTags);
   finally
     mResponse.Free;
+  end;
+end;
+
+procedure TLspCodeActionsTests.ActionJsonCarriesPreviewAndDisabled;
+var
+  mAction: TCodeAction;
+  mJson: TJSONObject;
+begin
+  mAction := Default(TCodeAction);
+  mAction.Title := 'Umwandeln';
+  mAction.Kind := cRewriteKind;
+  mAction.Preview := 'Neue Signatur: procedure A;';
+  mJson := TLspCodeActions.ActionToJson(TDocumentUris.FromPath(cFileName), mAction);
+  try
+    Assert.AreEqual('Neue Signatur: procedure A;', mJson.GetValue<string>('data.preview'));
+    Assert.IsNull(mJson.GetValue('disabled'));
+    Assert.IsNull(TJSONObject(mJson.GetValue('data')).GetValue('tag'));
+  finally
+    mJson.Free;
+  end;
+  mAction.Preview := '';
+  mAction.Disabled := 'erst die andere umwandeln';
+  mJson := TLspCodeActions.ActionToJson(TDocumentUris.FromPath(cFileName), mAction);
+  try
+    Assert.AreEqual('erst die andere umwandeln', mJson.GetValue<string>('disabled.reason'));
+    Assert.IsNull(mJson.GetValue('data'));
+  finally
+    mJson.Free;
+  end;
+end;
+
+procedure TLspCodeActionsTests.ActionJsonCarriesChoices;
+var
+  mAction: TCodeAction;
+  mJson: TJSONObject;
+  mChoices, mEditChoices: TJSONArray;
+begin
+  mAction := Default(TCodeAction);
+  mAction.Title := 'Methode extrahieren und gleiche Stelle ersetzen';
+  mAction.Kind := 'refactor.extract';
+  mAction.Edits := [TTextEdit.Create(TTextRange.Create(1, 0, 1, 5), 'A;'),
+    TTextEdit.Create(TTextRange.Create(3, 2, 4, 0), 'B;')];
+  mAction.Choices := [TCodeActionChoice.Create('Zeile 4 in TFoo.Bar', TTextRange.Create(3, 2, 4, 0))];
+  SetLength(mAction.EditChoices, 2);
+  mAction.EditChoices[1] := [0];
+  mJson := TLspCodeActions.ActionToJson(TDocumentUris.FromPath(cFileName), mAction);
+  try
+    mChoices := mJson.GetValue<TJSONArray>('data.choices');
+    Assert.AreEqual(1, mChoices.Count);
+    Assert.AreEqual('Zeile 4 in TFoo.Bar', mChoices.Items[0].GetValue<string>('title'));
+    Assert.AreEqual(3, mChoices.Items[0].GetValue<Integer>('range.start.line'));
+    mEditChoices := mJson.GetValue<TJSONArray>('data.editChoices');
+    Assert.AreEqual(2, mEditChoices.Count);
+    Assert.AreEqual(0, TJSONArray(mEditChoices.Items[0]).Count);
+    Assert.AreEqual('[0]', mEditChoices.Items[1].ToJSON);
+  finally
+    mJson.Free;
   end;
 end;
 

@@ -56,6 +56,8 @@ begin
   Result.Conversions[0].ToType := 'Currency';
 end;
 
+{ TAtlasExpressionTypeTipTests }
+
 procedure TAtlasExpressionTypeTipTests.WarmUpFirstUse;
 begin
   TextsFromStrings;

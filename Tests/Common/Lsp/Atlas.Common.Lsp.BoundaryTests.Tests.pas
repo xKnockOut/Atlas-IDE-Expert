@@ -122,28 +122,6 @@ end;
 
 { TLspBoundaryTestsTests }
 
-procedure TLspBoundaryTestsTests.Setup;
-begin
-  FStore := TDocumentStore.Create;
-  FFiles := TDictionary<string, string>.Create;
-  FFiles.Add('C:\P\Tests\Tests.dpr', 'program Tests;' + cBreak + 'uses' + cBreak + '  DUnitX.TestFramework;' +
-    cBreak + 'begin' + cBreak + 'end.');
-  FStore.Open(TDocumentUris.FromPath(cKundenFile), 'pascal', 1, cKundenText);
-  FTestUnits := TLspTestUnits.Create(FStore,
-    function(const AUri: string; out AContext: TTestUnitContext): Boolean
-    begin
-      AContext := Context;
-      Result := True;
-    end);
-end;
-
-procedure TLspBoundaryTestsTests.TearDown;
-begin
-  FTestUnits.Free;
-  FFiles.Free;
-  FStore := nil;
-end;
-
 function TLspBoundaryTestsTests.Context: TTestUnitContext;
 var
   mFiles: TDictionary<string, string>;
@@ -179,6 +157,28 @@ begin
         Result := cTestFile;
       end;
     end;
+end;
+
+procedure TLspBoundaryTestsTests.Setup;
+begin
+  FStore := TDocumentStore.Create;
+  FFiles := TDictionary<string, string>.Create;
+  FFiles.Add('C:\P\Tests\Tests.dpr', 'program Tests;' + cBreak + 'uses' + cBreak + '  DUnitX.TestFramework;' +
+    cBreak + 'begin' + cBreak + 'end.');
+  FStore.Open(TDocumentUris.FromPath(cKundenFile), 'pascal', 1, cKundenText);
+  FTestUnits := TLspTestUnits.Create(FStore,
+    function(const AUri: string; out AContext: TTestUnitContext): Boolean
+    begin
+      AContext := Context;
+      Result := True;
+    end);
+end;
+
+procedure TLspBoundaryTestsTests.TearDown;
+begin
+  FTestUnits.Free;
+  FFiles.Free;
+  FStore := nil;
 end;
 
 procedure TLspBoundaryTestsTests.SeparatorAvoidsValues;
@@ -258,22 +258,6 @@ begin
   end;
 end;
 
-procedure TLspBoundaryTestsTests.ExpectedCompletedOrRefused;
-var
-  mCases: TArray<TLspBoundaryTestCase>;
-  mReason: string;
-begin
-  mCases := [Case_('A', ['1', 'x'], '')];
-  Assert.IsFalse(TLspBoundaryTests.Completed(DraftAt(10), mCases, False, mReason));
-  Assert.IsTrue(ContainsStr(mReason, 'A'), mReason);
-  Assert.IsTrue(TLspBoundaryTests.Completed(DraftAt(10), mCases, True, mReason), mReason);
-  Assert.AreEqual('0', mCases[0].Expected, 'Platzhalter von Integer');
-  // Prozedur: kein erwartetes Ergebnis.
-  mCases := [Case_('B', ['x'], '5')];
-  Assert.IsTrue(TLspBoundaryTests.Completed(DraftAt(14), mCases, False, mReason), mReason);
-  Assert.AreEqual('', mCases[0].Expected);
-end;
-
 procedure TLspBoundaryTestsTests.CommandWithoutTestUnitNamesReason;
 var
   mArguments: TJSONArray;
@@ -292,6 +276,22 @@ begin
   finally
     mResult.Free;
   end;
+end;
+
+procedure TLspBoundaryTestsTests.ExpectedCompletedOrRefused;
+var
+  mCases: TArray<TLspBoundaryTestCase>;
+  mReason: string;
+begin
+  mCases := [Case_('A', ['1', 'x'], '')];
+  Assert.IsFalse(TLspBoundaryTests.Completed(DraftAt(10), mCases, False, mReason));
+  Assert.IsTrue(ContainsStr(mReason, 'A'), mReason);
+  Assert.IsTrue(TLspBoundaryTests.Completed(DraftAt(10), mCases, True, mReason), mReason);
+  Assert.AreEqual('0', mCases[0].Expected, 'Platzhalter von Integer');
+  // Prozedur: kein erwartetes Ergebnis.
+  mCases := [Case_('B', ['x'], '5')];
+  Assert.IsTrue(TLspBoundaryTests.Completed(DraftAt(14), mCases, False, mReason), mReason);
+  Assert.AreEqual('', mCases[0].Expected);
 end;
 
 end.

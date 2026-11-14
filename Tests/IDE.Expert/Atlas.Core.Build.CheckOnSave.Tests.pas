@@ -25,6 +25,8 @@ implementation
 uses
   Atlas.Core.Build.CheckOnSave;
 
+{ TAtlasCheckOnSaveTests }
+
 procedure TAtlasCheckOnSaveTests.DebouncesSaves;
 var
   mCheck: TAtlasCheckOnSave;

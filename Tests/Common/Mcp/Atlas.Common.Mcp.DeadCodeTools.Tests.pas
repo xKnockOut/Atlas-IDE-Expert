@@ -131,6 +131,8 @@ begin
   AFixture.Sources := nil;
 end;
 
+{ TMcpDeadCodeToolsTests }
+
 procedure TMcpDeadCodeToolsTests.FindUnusedReportsAllRules;
 var
   mData: TFixture;

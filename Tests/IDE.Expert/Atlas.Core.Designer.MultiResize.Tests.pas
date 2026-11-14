@@ -63,18 +63,7 @@ begin
   Result.Follow := AFollow;
 end;
 
-procedure TAtlasMultiResizeTests.Setup;
-begin
-  // Drei Edits untereinander, 180 px breit.
-  FColumn := [TAtlasResizeItem.Create(Rect(10, 10, 190, 31), 0, 0, False, 0),
-    TAtlasResizeItem.Create(Rect(10, 40, 190, 61), 0, 0, False, 0),
-    TAtlasResizeItem.Create(Rect(10, 70, 190, 91), 0, 0, False, 0)];
-end;
-
-procedure TAtlasMultiResizeTests.TearDown;
-begin
-  FColumn := nil;
-end;
+{ TAtlasMultiResizeTests }
 
 function TAtlasMultiResizeTests.Run(ADragged: Integer; AEdge: TAtlasResizeEdge; ADX, ADY: Integer): TAtlasResizeResult;
 begin
@@ -91,6 +80,19 @@ function TAtlasMultiResizeTests.Run(ADragged: Integer; AEdge: TAtlasResizeEdge; 
   AMode: TAtlasResizeMode; AGrid: Integer): TAtlasResizeResult;
 begin
   Result := TAtlasMultiResize.Apply(FColumn, nil, Drag(ADragged, AEdge, Point(ADX, ADY), AMode, AGrid, False));
+end;
+
+procedure TAtlasMultiResizeTests.Setup;
+begin
+  // Drei Edits untereinander, 180 px breit.
+  FColumn := [TAtlasResizeItem.Create(Rect(10, 10, 190, 31), 0, 0, False, 0),
+    TAtlasResizeItem.Create(Rect(10, 40, 190, 61), 0, 0, False, 0),
+    TAtlasResizeItem.Create(Rect(10, 70, 190, 91), 0, 0, False, 0)];
+end;
+
+procedure TAtlasMultiResizeTests.TearDown;
+begin
+  FColumn := nil;
 end;
 
 procedure TAtlasMultiResizeTests.RightEdgeDeltaWidensAll;

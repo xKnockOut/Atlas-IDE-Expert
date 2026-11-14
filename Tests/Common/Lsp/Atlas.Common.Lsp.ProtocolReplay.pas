@@ -143,26 +143,15 @@ begin
   inherited;
 end;
 
-class function TProtocolReplay.DataDirectory: string;
+procedure TProtocolReplay.Send(const AMessage: TJSONObject);
 var
-  mDirectory: string;
-  mCandidate: string;
+  mResponse: TJSONObject;
 begin
-  mDirectory := ExtractFileDir(ParamStr(0));
-  while mDirectory <> '' do
+  mResponse := FDispatcher.DispatchMessage(AMessage);
+  if mResponse <> nil then
   begin
-    mCandidate := TPath.Combine(mDirectory, TPath.Combine('Tests', TPath.Combine('Data', 'Protocol')));
-    if TDirectory.Exists(mCandidate) then
-    begin
-      Exit(mCandidate);
-    end;
-    if ExtractFileDir(mDirectory) = mDirectory then
-    begin
-      Break;
-    end;
-    mDirectory := ExtractFileDir(mDirectory);
+    FOutput.Enqueue(mResponse);
   end;
-  raise EProtocolMismatch.Create('Ordner Tests\Data\Protocol nicht gefunden');
 end;
 
 /// <summary>Erste Abweichung zwischen den Objekten AExpected und AActual (AActual darf mehr Felder haben).
@@ -218,34 +207,6 @@ begin
   end;
 end;
 
-class function TProtocolReplay.Mismatch(const AExpected, AActual: TJSONValue; const APath: string): string;
-begin
-  Result := '';
-  if AExpected is TJSONObject then
-  begin
-    Result := ObjectMismatch(TJSONObject(AExpected), AActual, APath);
-  end
-  else if AExpected is TJSONArray then
-  begin
-    Result := ArrayMismatch(TJSONArray(AExpected), AActual, APath);
-  end
-  else if AExpected.ToJSON <> AActual.ToJSON then
-  begin
-    Result := Format('%s: %s erwartet, %s gefunden', [APath, AExpected.ToJSON, AActual.ToJSON]);
-  end;
-end;
-
-procedure TProtocolReplay.Send(const AMessage: TJSONObject);
-var
-  mResponse: TJSONObject;
-begin
-  mResponse := FDispatcher.DispatchMessage(AMessage);
-  if mResponse <> nil then
-  begin
-    FOutput.Enqueue(mResponse);
-  end;
-end;
-
 procedure TProtocolReplay.Expect(const AExpected: TJSONObject; AStep: Integer);
 var
   mActual: TJSONObject;
@@ -298,6 +259,45 @@ begin
   if FOutput.Count > 0 then
   begin
     raise EProtocolMismatch.CreateFmt('Unerwartete Nachricht vom Server: %s', [FOutput.Peek.ToJSON]);
+  end;
+end;
+
+class function TProtocolReplay.DataDirectory: string;
+var
+  mDirectory: string;
+  mCandidate: string;
+begin
+  mDirectory := ExtractFileDir(ParamStr(0));
+  while mDirectory <> '' do
+  begin
+    mCandidate := TPath.Combine(mDirectory, TPath.Combine('Tests', TPath.Combine('Data', 'Protocol')));
+    if TDirectory.Exists(mCandidate) then
+    begin
+      Exit(mCandidate);
+    end;
+    if ExtractFileDir(mDirectory) = mDirectory then
+    begin
+      Break;
+    end;
+    mDirectory := ExtractFileDir(mDirectory);
+  end;
+  raise EProtocolMismatch.Create('Ordner Tests\Data\Protocol nicht gefunden');
+end;
+
+class function TProtocolReplay.Mismatch(const AExpected, AActual: TJSONValue; const APath: string): string;
+begin
+  Result := '';
+  if AExpected is TJSONObject then
+  begin
+    Result := ObjectMismatch(TJSONObject(AExpected), AActual, APath);
+  end
+  else if AExpected is TJSONArray then
+  begin
+    Result := ArrayMismatch(TJSONArray(AExpected), AActual, APath);
+  end
+  else if AExpected.ToJSON <> AActual.ToJSON then
+  begin
+    Result := Format('%s: %s erwartet, %s gefunden', [APath, AExpected.ToJSON, AActual.ToJSON]);
   end;
 end;
 

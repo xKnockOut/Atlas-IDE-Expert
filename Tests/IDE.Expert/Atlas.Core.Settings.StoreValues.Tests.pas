@@ -52,6 +52,8 @@ begin
     TAtlasMemorySettingsStore.FromSettings(TAtlasPluginSettings.Defaults));
 end;
 
+{ TSettingsStoreValuesTests }
+
 procedure TSettingsStoreValuesTests.Setup;
 begin
   FCatalog := TAtlasSettingsCatalog.CreateDefault;
@@ -134,27 +136,6 @@ begin
   Assert.AreEqual('IssuesBoardOnlyMine', TAtlasSettingsStoreValues.PluginName(FCatalog, 'issues.board.onlyMine'));
 end;
 
-procedure TSettingsStoreValuesTests.JsonKeysAsText;
-var
-  mSettings: TAtlasPluginSettings;
-  mStore: IAtlasMemorySettingsStore;
-  mValues: IAtlasSettingsValues;
-  mJson: string;
-begin
-  mSettings := TAtlasPluginSettings.Defaults;
-  mValues := ValuesOf(FCatalog, mSettings, mStore);
-  Assert.AreEqual('[]', mValues.ReadString('issues.connections'));
-  mJson := '[{"name":"Firma","provider":"youtrack","url":"https://youtrack.example.com"}]';
-  mValues.WriteString('issues.connections', mJson);
-  mSettings.Load(mStore);
-  Assert.AreEqual(mJson, mSettings.IssuesConnections);
-  Assert.WillRaise(
-    procedure
-    begin
-      mValues.ReadInteger('issues.connections');
-    end, EAtlasSettingsKey);
-end;
-
 procedure TSettingsStoreValuesTests.StoredKeysAreKeysNotNames;
 var
   mStore: IAtlasMemorySettingsStore;
@@ -175,6 +156,27 @@ begin
     end;
   end;
   Assert.IsTrue(mFound, 'issues.board.onlyMine fehlt');
+end;
+
+procedure TSettingsStoreValuesTests.JsonKeysAsText;
+var
+  mSettings: TAtlasPluginSettings;
+  mStore: IAtlasMemorySettingsStore;
+  mValues: IAtlasSettingsValues;
+  mJson: string;
+begin
+  mSettings := TAtlasPluginSettings.Defaults;
+  mValues := ValuesOf(FCatalog, mSettings, mStore);
+  Assert.AreEqual('[]', mValues.ReadString('issues.connections'));
+  mJson := '[{"name":"Firma","provider":"youtrack","url":"https://youtrack.example.com"}]';
+  mValues.WriteString('issues.connections', mJson);
+  mSettings.Load(mStore);
+  Assert.AreEqual(mJson, mSettings.IssuesConnections);
+  Assert.WillRaise(
+    procedure
+    begin
+      mValues.ReadInteger('issues.connections');
+    end, EAtlasSettingsKey);
 end;
 
 initialization

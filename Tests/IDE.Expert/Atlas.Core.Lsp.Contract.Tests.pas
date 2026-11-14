@@ -35,6 +35,8 @@ uses
   Atlas.Core.Problems.Contract,
   Atlas.Core.Results.Model;
 
+{ TLspContractTests }
+
 procedure TLspContractTests.ProblemFromJsonViaLspContract;
 var
   mJson: TJSONObject;
@@ -52,65 +54,6 @@ begin
   Assert.AreEqual<Atlas.Core.Lsp.Contract.TAtlasProblemSeverity>(Atlas.Core.Lsp.Contract.TAtlasProblemSeverity.Warning,
     mProblem.Severity);
   Assert.AreEqual('Achtung (W1000)', mProblem.Caption);
-end;
-
-procedure TLspContractTests.RelatedFromJson;
-var
-  mJson: TJSONObject;
-  mProblem: Atlas.Core.Lsp.Contract.TAtlasProblem;
-begin
-  mJson := TJSONObject.ParseJSONValue('{"range":{"start":{"line":3,"character":2},"end":{"line":3,"character":4}},' +
-    '"severity":1,"code":"uses-cycle","source":"Atlas","message":"Zyklus","relatedInformation":[' +
-    '{"location":{"uri":"file:///c%3A/p/B.pas","range":{"start":{"line":5,"character":2},"end":{"line":5,' +
-    '"character":4}}},"message":"uC"},{"location":{"uri":"","range":{}},"message":"leer"},' +
-    '{"location":{"uri":"file:///c%3A/p/C.pas","range":{"start":{"line":3,"character":2},"end":{"line":3,' +
-    '"character":4}}},"message":"uA"}]}') as TJSONObject;
-  try
-    mProblem := Atlas.Core.Lsp.Contract.TAtlasProblem.FromJson(mJson);
-  finally
-    mJson.Free;
-  end;
-  // Einträge ohne URI fallen weg.
-  Assert.AreEqual(2, Integer(Length(mProblem.Related)));
-  Assert.AreEqual('uC', mProblem.Related[0].Message);
-  Assert.AreEqual('file:///c%3A/p/B.pas', mProblem.Related[0].Uri);
-  Assert.AreEqual(5, mProblem.Related[0].Line);
-  Assert.AreEqual(2, mProblem.Related[0].Character);
-  Assert.AreEqual('uA', mProblem.Related[1].Message);
-  mProblem.Related := nil;
-end;
-
-procedure TLspContractTests.ConfidenceFromJson;
-var
-  mJson: TJSONValue;
-  mConfidence: TAtlasConfidence;
-begin
-  mJson := TJSONObject.ParseJSONValue('{"uri":"file:///c%3A/a.pas","atlasConfidence":{"level":"inferred",' +
-    '"reason":"interface","detail":"Aufruf über I.M"}}');
-  try
-    mConfidence := TAtlasConfidence.FromJson(mJson);
-  finally
-    mJson.Free;
-  end;
-  Assert.IsTrue(mConfidence.Inferred);
-  Assert.AreEqual('interface', mConfidence.Reason);
-  Assert.AreEqual('Aufruf über I.M', mConfidence.Explanation);
-  mJson := TJSONObject.ParseJSONValue('{"atlasConfidence":{"level":"sure"}}');
-  try
-    mConfidence := TAtlasConfidence.FromJson(mJson);
-  finally
-    mJson.Free;
-  end;
-  Assert.IsFalse(mConfidence.Inferred);
-  Assert.AreEqual('', mConfidence.Reason);
-  // Ältere Server ohne Feld, und kein Objekt.
-  mJson := TJSONObject.ParseJSONValue('{"uri":"file:///c%3A/a.pas"}');
-  try
-    Assert.IsFalse(TAtlasConfidence.FromJson(mJson).Inferred);
-  finally
-    mJson.Free;
-  end;
-  Assert.IsFalse(TAtlasConfidence.FromJson(nil).Inferred);
 end;
 
 procedure TLspContractTests.AliasesAreTheSameTypes;
@@ -149,6 +92,65 @@ begin
   Assert.IsFalse(mProblem.CanSuppress);
   mProblem.Code := '';
   Assert.IsFalse(mProblem.CanSuppress);
+end;
+
+procedure TLspContractTests.ConfidenceFromJson;
+var
+  mJson: TJSONValue;
+  mConfidence: TAtlasConfidence;
+begin
+  mJson := TJSONObject.ParseJSONValue('{"uri":"file:///c%3A/a.pas","atlasConfidence":{"level":"inferred",' +
+    '"reason":"interface","detail":"Aufruf über I.M"}}');
+  try
+    mConfidence := TAtlasConfidence.FromJson(mJson);
+  finally
+    mJson.Free;
+  end;
+  Assert.IsTrue(mConfidence.Inferred);
+  Assert.AreEqual('interface', mConfidence.Reason);
+  Assert.AreEqual('Aufruf über I.M', mConfidence.Explanation);
+  mJson := TJSONObject.ParseJSONValue('{"atlasConfidence":{"level":"sure"}}');
+  try
+    mConfidence := TAtlasConfidence.FromJson(mJson);
+  finally
+    mJson.Free;
+  end;
+  Assert.IsFalse(mConfidence.Inferred);
+  Assert.AreEqual('', mConfidence.Reason);
+  // Ältere Server ohne Feld, und kein Objekt.
+  mJson := TJSONObject.ParseJSONValue('{"uri":"file:///c%3A/a.pas"}');
+  try
+    Assert.IsFalse(TAtlasConfidence.FromJson(mJson).Inferred);
+  finally
+    mJson.Free;
+  end;
+  Assert.IsFalse(TAtlasConfidence.FromJson(nil).Inferred);
+end;
+
+procedure TLspContractTests.RelatedFromJson;
+var
+  mJson: TJSONObject;
+  mProblem: Atlas.Core.Lsp.Contract.TAtlasProblem;
+begin
+  mJson := TJSONObject.ParseJSONValue('{"range":{"start":{"line":3,"character":2},"end":{"line":3,"character":4}},' +
+    '"severity":1,"code":"uses-cycle","source":"Atlas","message":"Zyklus","relatedInformation":[' +
+    '{"location":{"uri":"file:///c%3A/p/B.pas","range":{"start":{"line":5,"character":2},"end":{"line":5,' +
+    '"character":4}}},"message":"uC"},{"location":{"uri":"","range":{}},"message":"leer"},' +
+    '{"location":{"uri":"file:///c%3A/p/C.pas","range":{"start":{"line":3,"character":2},"end":{"line":3,' +
+    '"character":4}}},"message":"uA"}]}') as TJSONObject;
+  try
+    mProblem := Atlas.Core.Lsp.Contract.TAtlasProblem.FromJson(mJson);
+  finally
+    mJson.Free;
+  end;
+  // Einträge ohne URI fallen weg.
+  Assert.AreEqual(2, Integer(Length(mProblem.Related)));
+  Assert.AreEqual('uC', mProblem.Related[0].Message);
+  Assert.AreEqual('file:///c%3A/p/B.pas', mProblem.Related[0].Uri);
+  Assert.AreEqual(5, mProblem.Related[0].Line);
+  Assert.AreEqual(2, mProblem.Related[0].Character);
+  Assert.AreEqual('uA', mProblem.Related[1].Message);
+  mProblem.Related := nil;
 end;
 
 initialization

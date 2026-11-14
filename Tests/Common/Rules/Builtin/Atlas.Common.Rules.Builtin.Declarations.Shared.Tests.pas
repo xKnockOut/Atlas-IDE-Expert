@@ -26,6 +26,8 @@ uses
   Atlas.Common.Documents.Contract,
   Atlas.Common.Rules.Builtin.Declarations.Shared;
 
+{ TDeclarationSharedTests }
+
 procedure TDeclarationSharedTests.BlankBeforeAndAfter;
 var
   mLines: TArray<string>;

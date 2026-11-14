@@ -23,6 +23,8 @@ uses
   Atlas.Core.Hover.Contract,
   Atlas.Core.Hover.View;
 
+{ THoverViewTests }
+
 procedure THoverViewTests.CreateKeepsDataAndUnknownUsages;
 var
   mData: TAtlasHoverData;

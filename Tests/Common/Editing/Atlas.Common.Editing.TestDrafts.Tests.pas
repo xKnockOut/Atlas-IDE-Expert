@@ -134,6 +134,8 @@ begin
   end;
 end;
 
+{ TTestDraftsTests }
+
 procedure TTestDraftsTests.PlaceholdersPerType;
 begin
   Assert.AreEqual('0', TTestDrafts.Placeholder('Integer'));

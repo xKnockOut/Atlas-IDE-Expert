@@ -143,6 +143,8 @@ type
     function HookFolders(out AHooks, AGitDir: string): TAtlasVcsOutcome;
   end;
 
+{ TFakeBranchingVcs }
+
 constructor TFakeBranchingVcs.Create(AKind: TAtlasVcsKind);
 begin
   inherited Create;
@@ -233,24 +235,6 @@ begin
   Result := ExistsOutcome;
 end;
 
-function TFakeBranchingVcs.SwitchBranch(const AName: string;
-  const AOptions: TAtlasVcsSvnBranchOptions): TAtlasVcsOutcome;
-var
-  mPath: string;
-begin
-  if (VcsKind <> TAtlasVcsKind.Svn) or (SvnUrl = '') then
-  begin
-    Exit(SwitchBranch(AName));
-  end;
-  if not TAtlasSvnLayout.Resolve(AOptions, SvnUrl, AName, mPath) then
-  begin
-    Exit(TAtlasVcsOutcome.Failed);
-  end;
-  Calls := Calls + ['switch ^/' + mPath];
-  Current := mPath;
-  Result := TAtlasVcsOutcome.Ok;
-end;
-
 function TFakeBranchingVcs.RemoteBranchExists(const AName: string; out AExists: Boolean): TAtlasVcsOutcome;
 begin
   Calls := Calls + ['remote ' + AName];
@@ -319,6 +303,24 @@ function TFakeBranchingVcs.SwitchBranch(const AName: string): TAtlasVcsOutcome;
 begin
   Calls := Calls + ['switch ' + AName];
   Current := AName;
+  Result := TAtlasVcsOutcome.Ok;
+end;
+
+function TFakeBranchingVcs.SwitchBranch(const AName: string;
+  const AOptions: TAtlasVcsSvnBranchOptions): TAtlasVcsOutcome;
+var
+  mPath: string;
+begin
+  if (VcsKind <> TAtlasVcsKind.Svn) or (SvnUrl = '') then
+  begin
+    Exit(SwitchBranch(AName));
+  end;
+  if not TAtlasSvnLayout.Resolve(AOptions, SvnUrl, AName, mPath) then
+  begin
+    Exit(TAtlasVcsOutcome.Failed);
+  end;
+  Calls := Calls + ['switch ^/' + mPath];
+  Current := mPath;
   Result := TAtlasVcsOutcome.Ok;
 end;
 

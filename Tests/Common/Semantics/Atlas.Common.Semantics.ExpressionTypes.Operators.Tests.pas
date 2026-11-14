@@ -40,6 +40,8 @@ begin
     TExpressionOperators.Typed(ARight), False, mNoted).Name;
 end;
 
+{ TExpressionOperatorsTests }
+
 procedure TExpressionOperatorsTests.CategoriesOfBuiltinTypes;
 var
   mWidth: Integer;

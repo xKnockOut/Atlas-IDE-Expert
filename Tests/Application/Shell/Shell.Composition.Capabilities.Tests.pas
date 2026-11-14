@@ -29,6 +29,8 @@ uses
   Shell.CrashCases,
   Shell.Composition.Capabilities;
 
+{ TShellCapabilitiesTests }
+
 procedure TShellCapabilitiesTests.ReportsProviders;
 var
   mCapabilities: TJSONObject;

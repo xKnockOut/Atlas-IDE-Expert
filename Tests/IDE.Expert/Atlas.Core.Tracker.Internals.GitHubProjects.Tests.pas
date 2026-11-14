@@ -102,15 +102,7 @@ type
       Boolean;
   end;
 
-procedure TFakeProjectTransport.Answer(const AMethod, APrefix, APart: string; AStatus: Integer;
-  const AText: string);
-begin
-  FMethods := FMethods + [AMethod];
-  FPrefixes := FPrefixes + [APrefix];
-  FParts := FParts + [APart];
-  FStatus := FStatus + [AStatus];
-  FTexts := FTexts + [AText];
-end;
+{ TFakeProjectTransport }
 
 function TFakeProjectTransport.Reply(const AMethod, AUrl, ABody: string; out AStatus: Integer;
   out AText: string): Boolean;
@@ -132,6 +124,16 @@ begin
       Exit;
     end;
   end;
+end;
+
+procedure TFakeProjectTransport.Answer(const AMethod, APrefix, APart: string; AStatus: Integer;
+  const AText: string);
+begin
+  FMethods := FMethods + [AMethod];
+  FPrefixes := FPrefixes + [APrefix];
+  FParts := FParts + [APart];
+  FStatus := FStatus + [AStatus];
+  FTexts := FTexts + [AText];
 end;
 
 function TFakeProjectTransport.Get(const AUrl: string; ATimeoutMs: Integer; out AStatus: Integer;

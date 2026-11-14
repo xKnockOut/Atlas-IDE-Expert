@@ -143,6 +143,8 @@ begin
   Result := TMcpIndexTools.Create(mIndex, nil);
 end;
 
+{ TMcpIndexToolsTests }
+
 procedure TMcpIndexToolsTests.FindsSymbolWithLocation;
 var
   mTools: TMcpIndexTools;

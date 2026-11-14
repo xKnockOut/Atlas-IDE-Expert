@@ -76,6 +76,8 @@ const
     'end;'#10 +                                                              // 20
     'end.'#10;
 
+{ TLspOverloadsTests }
+
 procedure TLspOverloadsTests.Setup;
 begin
   FIndex := TSymbolIndex.Create;

@@ -115,6 +115,8 @@ begin
   end;
 end;
 
+{ TAnonymousSharedTests }
+
 procedure TAnonymousSharedTests.InputCreateSetsDefaults;
 var
   mInput: TAnonymousInput;

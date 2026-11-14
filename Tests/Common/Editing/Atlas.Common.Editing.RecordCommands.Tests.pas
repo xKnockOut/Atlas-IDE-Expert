@@ -152,6 +152,8 @@ begin
   end;
 end;
 
+{ TRecordCommandsTests }
+
 procedure TRecordCommandsTests.OperatorNames;
 begin
   Assert.AreEqual('Equal', OperatorName('='));

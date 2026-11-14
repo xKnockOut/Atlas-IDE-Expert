@@ -50,6 +50,11 @@ const
 
 { TAtlasTrackerLocalFilesTests }
 
+function TAtlasTrackerLocalFilesTests.PathOf(const AName: string): string;
+begin
+  Result := TPath.Combine(FDir, AName);
+end;
+
 procedure TAtlasTrackerLocalFilesTests.Setup;
 begin
   FDir := TPath.Combine(TPath.GetTempPath, 'AtlasTrackerFiles-' + TGUID.NewGuid.ToString);
@@ -64,11 +69,6 @@ begin
     TDirectory.Delete(FDir, True);
   end;
   FDir := '';
-end;
-
-function TAtlasTrackerLocalFilesTests.PathOf(const AName: string): string;
-begin
-  Result := TPath.Combine(FDir, AName);
 end;
 
 procedure TAtlasTrackerLocalFilesTests.TextRoundTripWithBom;

@@ -97,6 +97,45 @@ begin
   Result := AValue.GetValue<TJSONArray>(AName);
 end;
 
+{ TLspSlashMenuTests }
+
+function TLspSlashMenuTests.Arguments(ALine, AEndLine: Integer): TJSONArray;
+var
+  mPosition: TJSONObject;
+begin
+  mPosition := TJSONObject.Create;
+  mPosition.AddPair('line', TJSONNumber.Create(ALine));
+  mPosition.AddPair('character', TJSONNumber.Create(0));
+  Result := TJSONArray.Create;
+  Result.Add(TDocumentUris.FromPath(cFileName));
+  Result.AddElement(mPosition);
+  Result.Add(AEndLine);
+end;
+
+function TLspSlashMenuTests.Arguments(ALine, AEndLine: Integer; const AName: string): TJSONArray;
+begin
+  Result := Arguments(ALine, AEndLine);
+  Result.Add(AName);
+end;
+
+function TLspSlashMenuTests.Arguments(ALine, AEndLine: Integer; const AName, AArgument: string): TJSONArray;
+begin
+  Result := Arguments(ALine, AEndLine, AName);
+  Result.Add(AArgument);
+end;
+
+function TLspSlashMenuTests.Names(AResult: TJSONValue): string;
+var
+  mItem: TJSONValue;
+begin
+  Result := '';
+  for mItem in TJSONObject(AResult).GetValue<TJSONArray>('commands') do
+  begin
+    Result := Result + ',' + mItem.GetValue<string>('name');
+  end;
+  Result := Result + ',';
+end;
+
 procedure TLspSlashMenuTests.WarmUpFirstUse;
 begin
   Setup;
@@ -134,43 +173,6 @@ begin
   FStore := nil;
   // Vom Test gesetzt; der Leckmonitor zählte das Feld sonst dem Test an.
   FDisabled := nil;
-end;
-
-function TLspSlashMenuTests.Arguments(ALine, AEndLine: Integer): TJSONArray;
-var
-  mPosition: TJSONObject;
-begin
-  mPosition := TJSONObject.Create;
-  mPosition.AddPair('line', TJSONNumber.Create(ALine));
-  mPosition.AddPair('character', TJSONNumber.Create(0));
-  Result := TJSONArray.Create;
-  Result.Add(TDocumentUris.FromPath(cFileName));
-  Result.AddElement(mPosition);
-  Result.Add(AEndLine);
-end;
-
-function TLspSlashMenuTests.Arguments(ALine, AEndLine: Integer; const AName: string): TJSONArray;
-begin
-  Result := Arguments(ALine, AEndLine);
-  Result.Add(AName);
-end;
-
-function TLspSlashMenuTests.Arguments(ALine, AEndLine: Integer; const AName, AArgument: string): TJSONArray;
-begin
-  Result := Arguments(ALine, AEndLine, AName);
-  Result.Add(AArgument);
-end;
-
-function TLspSlashMenuTests.Names(AResult: TJSONValue): string;
-var
-  mItem: TJSONValue;
-begin
-  Result := '';
-  for mItem in TJSONObject(AResult).GetValue<TJSONArray>('commands') do
-  begin
-    Result := Result + ',' + mItem.GetValue<string>('name');
-  end;
-  Result := Result + ',';
 end;
 
 procedure TLspSlashMenuTests.MenuInClassOffersGenerateCommands;

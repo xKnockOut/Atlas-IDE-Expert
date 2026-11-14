@@ -50,6 +50,8 @@ type
     property Writes: Integer read FWrites;
   end;
 
+{ TFailingStream }
+
 function TFailingStream.Write(const Buffer; Count: Longint): Longint;
 begin
   Inc(FWrites);

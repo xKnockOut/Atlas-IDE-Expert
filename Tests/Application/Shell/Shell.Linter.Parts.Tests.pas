@@ -93,6 +93,20 @@ uses
   Shell.Linter.AffectedTests,
   Shell.Linter.Fix;
 
+{ TLinterPartsTests }
+
+function TLinterPartsTests.Path(const AName: string): string;
+begin
+  // Namen mit \ für alle Plattformen.
+  Result := TPath.Combine(FFolder, StringReplace(AName, '\', PathDelim, [rfReplaceAll]));
+end;
+
+procedure TLinterPartsTests.WriteFile(const AName, AText: string);
+begin
+  ForceDirectories(ExtractFileDir(Path(AName)));
+  TFile.WriteAllText(Path(AName), AText, TEncoding.UTF8);
+end;
+
 procedure TLinterPartsTests.SetUp;
 begin
   FFolder := TPath.Combine(TPath.GetTempPath, 'atlas-linter-parts-' + TGUID.NewGuid.ToString);
@@ -106,18 +120,6 @@ begin
     TDirectory.Delete(FFolder, True);
   end;
   FFolder := '';
-end;
-
-function TLinterPartsTests.Path(const AName: string): string;
-begin
-  // Namen mit \ für alle Plattformen.
-  Result := TPath.Combine(FFolder, StringReplace(AName, '\', PathDelim, [rfReplaceAll]));
-end;
-
-procedure TLinterPartsTests.WriteFile(const AName, AText: string);
-begin
-  ForceDirectories(ExtractFileDir(Path(AName)));
-  TFile.WriteAllText(Path(AName), AText, TEncoding.UTF8);
 end;
 
 procedure TLinterPartsTests.TargetResolvesFolderAndFile;

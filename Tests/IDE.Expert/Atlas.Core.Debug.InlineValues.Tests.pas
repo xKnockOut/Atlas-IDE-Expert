@@ -63,16 +63,6 @@ end;
 
 { TAtlasInlineValuesTests }
 
-procedure TAtlasInlineValuesTests.Setup;
-begin
-  FValues := TAtlasInlineValues.Create;
-end;
-
-procedure TAtlasInlineValuesTests.TearDown;
-begin
-  FreeAndNil(FValues);
-end;
-
 function TAtlasInlineValuesTests.EvaluateAll(const ASuffix: string): string;
 var
   mName: string;
@@ -87,6 +77,16 @@ begin
     Result := Result + mName;
     FValues.Put(mName, mName + ASuffix, True);
   end;
+end;
+
+procedure TAtlasInlineValuesTests.Setup;
+begin
+  FValues := TAtlasInlineValues.Create;
+end;
+
+procedure TAtlasInlineValuesTests.TearDown;
+begin
+  FreeAndNil(FValues);
 end;
 
 procedure TAtlasInlineValuesTests.GroupsPerLineWithLimit;

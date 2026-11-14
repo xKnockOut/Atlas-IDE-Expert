@@ -76,6 +76,8 @@ begin
   Result.AddFailure('Pairs');
 end;
 
+{ TAtlasSafeModeTests }
+
 procedure TAtlasSafeModeTests.MarkerRoundTrips;
 var
   mMarker, mLoaded: TAtlasSessionMarker;
@@ -310,22 +312,6 @@ begin
   Assert.IsTrue(Length(TAtlasSafeMode.Details(mMarker)) >= 5);
 end;
 
-procedure TAtlasSafeModeTests.LogLinesOfCrashedSession;
-var
-  mLines: TArray<string>;
-begin
-  mLines := ['2026-10-14 08:00:00.000 alte Sitzung', '2026-10-14 09:00:00.000 Start', 'Stack-Zeile ohne Zeit',
-    '2026-10-14 09:05:00.000 Fehler Klammerpaare', '2026-10-14 10:00:00.000 neue Sitzung'];
-  mLines := TAtlasSafeMode.LogLinesBetween(mLines, EncodeDateTime(2026, 10, 14, 9, 0, 0, 0),
-    EncodeDateTime(2026, 10, 14, 10, 0, 0, 0), 10);
-  Assert.AreEqual(3, Integer(Length(mLines)));
-  Assert.AreEqual('Stack-Zeile ohne Zeit', mLines[1]);
-  mLines := TAtlasSafeMode.LogLinesBetween(['2026-10-14 09:00:00.000 a', '2026-10-14 09:00:01.000 b',
-    '2026-10-14 09:00:02.000 c'], EncodeDateTime(2026, 10, 14, 9, 0, 0, 0), 0, 2);
-  Assert.AreEqual(2, Integer(Length(mLines)), 'nur die letzten');
-  Assert.AreEqual('2026-10-14 09:00:02.000 c', mLines[1]);
-end;
-
 procedure TAtlasSafeModeTests.SettingsHistoryRestores;
 var
   mHistory, mLoaded: TAtlasSettingsHistory;
@@ -373,6 +359,22 @@ begin
   finally
     mHistory.Free;
   end;
+end;
+
+procedure TAtlasSafeModeTests.LogLinesOfCrashedSession;
+var
+  mLines: TArray<string>;
+begin
+  mLines := ['2026-10-14 08:00:00.000 alte Sitzung', '2026-10-14 09:00:00.000 Start', 'Stack-Zeile ohne Zeit',
+    '2026-10-14 09:05:00.000 Fehler Klammerpaare', '2026-10-14 10:00:00.000 neue Sitzung'];
+  mLines := TAtlasSafeMode.LogLinesBetween(mLines, EncodeDateTime(2026, 10, 14, 9, 0, 0, 0),
+    EncodeDateTime(2026, 10, 14, 10, 0, 0, 0), 10);
+  Assert.AreEqual(3, Integer(Length(mLines)));
+  Assert.AreEqual('Stack-Zeile ohne Zeit', mLines[1]);
+  mLines := TAtlasSafeMode.LogLinesBetween(['2026-10-14 09:00:00.000 a', '2026-10-14 09:00:01.000 b',
+    '2026-10-14 09:00:02.000 c'], EncodeDateTime(2026, 10, 14, 9, 0, 0, 0), 0, 2);
+  Assert.AreEqual(2, Integer(Length(mLines)), 'nur die letzten');
+  Assert.AreEqual('2026-10-14 09:00:02.000 c', mLines[1]);
 end;
 
 procedure TAtlasSafeModeTests.MarkerFilesFindCrashedSessions;

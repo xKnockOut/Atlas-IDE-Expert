@@ -199,6 +199,8 @@ begin
     ALabels + 'begin'#10 + AStatements + 'end;'#10'end.';
 end;
 
+{ TLabelMisuseTests }
+
 procedure TLabelMisuseTests.IssueExample;
 const
   cStatements = '  try'#10'    if Fertig then goto Weiter;'#10'  finally'#10'    Aufraeumen;'#10'  end;'#10 +

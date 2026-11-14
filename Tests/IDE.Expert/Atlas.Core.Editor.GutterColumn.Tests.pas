@@ -47,6 +47,8 @@ uses
   System.SysUtils,
   System.JSON;
 
+{ TAtlasGutterColumnTests }
+
 function TAtlasGutterColumnTests.Problem(ALine: Integer; ASeverity: TAtlasProblemSeverity;
   const ACode: string): TAtlasProblem;
 begin

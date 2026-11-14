@@ -48,6 +48,8 @@ uses
 type
   TRulerAccess = class(TAtlasOverviewRuler);
 
+{ TAtlasOverviewRulerTests }
+
 procedure TAtlasOverviewRulerTests.WarmUpFirstUse;
 begin
   SetUp;

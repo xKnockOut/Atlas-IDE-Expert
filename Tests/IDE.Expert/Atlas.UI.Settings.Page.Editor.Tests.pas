@@ -66,6 +66,8 @@ uses
   Atlas.UI.Settings.Page.EditorCode,
   Atlas.UI.Settings.Page.EditorView;
 
+{ TAtlasSettingsPageEditorTests }
+
 procedure TAtlasSettingsPageEditorTests.WarmUp;
 begin
   WarmUpSettingsPage;
@@ -267,27 +269,6 @@ begin
   Assert.AreEqual(2, APage.Part<TAtlasSettingsEditorCodePart>.InlineDiagnostics.Choice);
   Assert.AreEqual('', EditOf(APage, 'HideElementKey').Text);
 end;
-procedure TAtlasSettingsPageEditorTests.HideElementRoundTrip;
-var
-  mPage: TAtlasSettingsPage;
-  mSaved: TAtlasPluginSettings;
-begin
-  mPage := TAtlasSettingsPage.Create(nil);
-  try
-    mPage.LoadFrom(TAtlasPluginSettings.Defaults);
-    EditHideElementMarkers(mPage);
-    EditHideElementSelection(mPage);
-    EditHideElementCommands(mPage);
-    mSaved := TAtlasPluginSettings.Defaults;
-    mPage.SaveTo(mSaved);
-    AssertHideElementSavedMarkers(mSaved);
-    AssertHideElementSavedEditing(mSaved);
-    mPage.LoadFrom(mSaved);
-    AssertHideElementReloaded(mPage);
-  finally
-    mPage.Free;
-  end;
-end;
 procedure TAtlasSettingsPageEditorTests.GenerateMenuRoundTrip;
 var
   mPage: TAtlasSettingsPage;
@@ -319,6 +300,52 @@ begin
     mPage.LoadFrom(mSaved);
     Assert.IsFalse(CheckOf(mPage, 'GenerateMenu').Checked);
     Assert.AreEqual('/json', EditOf(mPage, 'GenerateMenuHidden').Text);
+  finally
+    mPage.Free;
+  end;
+end;
+procedure TAtlasSettingsPageEditorTests.HideElementRoundTrip;
+var
+  mPage: TAtlasSettingsPage;
+  mSaved: TAtlasPluginSettings;
+begin
+  mPage := TAtlasSettingsPage.Create(nil);
+  try
+    mPage.LoadFrom(TAtlasPluginSettings.Defaults);
+    EditHideElementMarkers(mPage);
+    EditHideElementSelection(mPage);
+    EditHideElementCommands(mPage);
+    mSaved := TAtlasPluginSettings.Defaults;
+    mPage.SaveTo(mSaved);
+    AssertHideElementSavedMarkers(mSaved);
+    AssertHideElementSavedEditing(mSaved);
+    mPage.LoadFrom(mSaved);
+    AssertHideElementReloaded(mPage);
+  finally
+    mPage.Free;
+  end;
+end;
+procedure TAtlasSettingsPageEditorTests.MethodToggleRoundTrip;
+var
+  mPage: TAtlasSettingsPage;
+  mSettings, mSaved: TAtlasPluginSettings;
+begin
+  // #775: Schalter und beide Tasten; leeres Feld = keine Taste.
+  mSettings := TAtlasPluginSettings.Defaults;
+  mPage := TAtlasSettingsPage.Create(nil);
+  try
+    mPage.LoadFrom(mSettings);
+    Assert.IsTrue(CheckOf(mPage, 'MethodToggle').Checked);
+    Assert.AreEqual(ShortCutToText(TShortCut($6026)), EditOf(mPage, 'MethodToggleUpKey').Text);
+    Assert.AreEqual(ShortCutToText(TShortCut($6028)), EditOf(mPage, 'MethodToggleDownKey').Text);
+    CheckOf(mPage, 'MethodToggle').Checked := False;
+    EditOf(mPage, 'MethodToggleUpKey').Text := '';
+    EditOf(mPage, 'MethodToggleDownKey').Text := ShortCutToText(TShortCut($C044));
+    mSaved := TAtlasPluginSettings.Defaults;
+    mPage.SaveTo(mSaved);
+    Assert.IsFalse(mSaved.MethodToggle);
+    Assert.AreEqual(0, mSaved.MethodToggleUpKey);
+    Assert.AreEqual($C044, mSaved.MethodToggleDownKey);
   finally
     mPage.Free;
   end;
@@ -427,23 +454,24 @@ begin
     mPage.Free;
   end;
 end;
-procedure TAtlasSettingsPageEditorTests.CheckFileKeyRoundTrip;
+procedure TAtlasSettingsPageEditorTests.ContinuePatternRoundTrip;
 var
   mPage: TAtlasSettingsPage;
-  mSaved: TAtlasPluginSettings;
+  mSettings, mSaved: TAtlasPluginSettings;
 begin
+  // #671: Schalter und Mindestzeilen.
+  mSettings := TAtlasPluginSettings.Defaults;
   mPage := TAtlasSettingsPage.Create(nil);
   try
-    mPage.LoadFrom(TAtlasPluginSettings.Defaults);
-    Assert.AreEqual(ShortCutToText(TShortCut($E050)), EditOf(mPage, 'CheckFileKey').Text, 'Strg+Umschalt+Alt+P');
-    EditOf(mPage, 'CheckFileKey').Text := ShortCutToText(TShortCut($C04D));
+    mPage.LoadFrom(mSettings);
+    Assert.IsTrue(CheckOf(mPage, 'ContinuePattern').Checked);
+    Assert.AreEqual('2', EditOf(mPage, 'ContinuePatternMinLines').Text);
+    CheckOf(mPage, 'ContinuePattern').Checked := False;
+    EditOf(mPage, 'ContinuePatternMinLines').Text := '3';
     mSaved := TAtlasPluginSettings.Defaults;
     mPage.SaveTo(mSaved);
-    Assert.AreEqual($C04D, mSaved.CheckFileKey, 'Strg+Alt+M');
-    EditOf(mPage, 'CheckFileKey').Text := '';
-    mSaved := TAtlasPluginSettings.Defaults;
-    mPage.SaveTo(mSaved);
-    Assert.AreEqual(0, mSaved.CheckFileKey, 'leer = keine Taste');
+    Assert.IsFalse(mSaved.ContinuePattern);
+    Assert.AreEqual(3, mSaved.ContinuePatternMinLines);
   finally
     mPage.Free;
   end;
@@ -619,49 +647,23 @@ begin
     mPage.Free;
   end;
 end;
-procedure TAtlasSettingsPageEditorTests.ContinuePatternRoundTrip;
+procedure TAtlasSettingsPageEditorTests.CheckFileKeyRoundTrip;
 var
   mPage: TAtlasSettingsPage;
-  mSettings, mSaved: TAtlasPluginSettings;
+  mSaved: TAtlasPluginSettings;
 begin
-  // #671: Schalter und Mindestzeilen.
-  mSettings := TAtlasPluginSettings.Defaults;
   mPage := TAtlasSettingsPage.Create(nil);
   try
-    mPage.LoadFrom(mSettings);
-    Assert.IsTrue(CheckOf(mPage, 'ContinuePattern').Checked);
-    Assert.AreEqual('2', EditOf(mPage, 'ContinuePatternMinLines').Text);
-    CheckOf(mPage, 'ContinuePattern').Checked := False;
-    EditOf(mPage, 'ContinuePatternMinLines').Text := '3';
+    mPage.LoadFrom(TAtlasPluginSettings.Defaults);
+    Assert.AreEqual(ShortCutToText(TShortCut($E050)), EditOf(mPage, 'CheckFileKey').Text, 'Strg+Umschalt+Alt+P');
+    EditOf(mPage, 'CheckFileKey').Text := ShortCutToText(TShortCut($C04D));
     mSaved := TAtlasPluginSettings.Defaults;
     mPage.SaveTo(mSaved);
-    Assert.IsFalse(mSaved.ContinuePattern);
-    Assert.AreEqual(3, mSaved.ContinuePatternMinLines);
-  finally
-    mPage.Free;
-  end;
-end;
-procedure TAtlasSettingsPageEditorTests.MethodToggleRoundTrip;
-var
-  mPage: TAtlasSettingsPage;
-  mSettings, mSaved: TAtlasPluginSettings;
-begin
-  // #775: Schalter und beide Tasten; leeres Feld = keine Taste.
-  mSettings := TAtlasPluginSettings.Defaults;
-  mPage := TAtlasSettingsPage.Create(nil);
-  try
-    mPage.LoadFrom(mSettings);
-    Assert.IsTrue(CheckOf(mPage, 'MethodToggle').Checked);
-    Assert.AreEqual(ShortCutToText(TShortCut($6026)), EditOf(mPage, 'MethodToggleUpKey').Text);
-    Assert.AreEqual(ShortCutToText(TShortCut($6028)), EditOf(mPage, 'MethodToggleDownKey').Text);
-    CheckOf(mPage, 'MethodToggle').Checked := False;
-    EditOf(mPage, 'MethodToggleUpKey').Text := '';
-    EditOf(mPage, 'MethodToggleDownKey').Text := ShortCutToText(TShortCut($C044));
+    Assert.AreEqual($C04D, mSaved.CheckFileKey, 'Strg+Alt+M');
+    EditOf(mPage, 'CheckFileKey').Text := '';
     mSaved := TAtlasPluginSettings.Defaults;
     mPage.SaveTo(mSaved);
-    Assert.IsFalse(mSaved.MethodToggle);
-    Assert.AreEqual(0, mSaved.MethodToggleUpKey);
-    Assert.AreEqual($C044, mSaved.MethodToggleDownKey);
+    Assert.AreEqual(0, mSaved.CheckFileKey, 'leer = keine Taste');
   finally
     mPage.Free;
   end;

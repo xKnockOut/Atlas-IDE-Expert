@@ -85,37 +85,6 @@ const
 
 { TLspExpressionCompletionTests }
 
-procedure TLspExpressionCompletionTests.WarmUpFirstUse;
-begin
-  Setup;
-  try
-    OffersLocalsAndParameters;
-  finally
-    TearDown;
-  end;
-end;
-
-procedure TLspExpressionCompletionTests.Setup;
-begin
-  FIndex := TSymbolIndex.Create;
-  FStore := TDocumentStore.Create;
-  FStore.Open(TDocumentUris.FromPath(cFileName), 'delphi', 1, cUnitText);
-  FCompletion := TLspCompletion.Create(FStore, FIndex);
-  FExpressions := TLspExpressionCompletion.Create(FStore, FCompletion);
-  FId := 0;
-  FDispatcher := TJsonRpcDispatcher.Create;
-  FExpressions.Attach(FDispatcher);
-end;
-
-procedure TLspExpressionCompletionTests.TearDown;
-begin
-  FDispatcher.Free;
-  FExpressions.Free;
-  FCompletion.Free;
-  FStore := nil;
-  FIndex := nil;
-end;
-
 function TLspExpressionCompletionTests.Ask(ALine: Integer; const AExpression: string): TJSONObject;
 var
   mRequest, mResponse: TJSONObject;
@@ -149,6 +118,37 @@ begin
   begin
     Result := Result + (mValue as TJSONObject).GetValue('label').Value + ',';
   end;
+end;
+
+procedure TLspExpressionCompletionTests.WarmUpFirstUse;
+begin
+  Setup;
+  try
+    OffersLocalsAndParameters;
+  finally
+    TearDown;
+  end;
+end;
+
+procedure TLspExpressionCompletionTests.Setup;
+begin
+  FIndex := TSymbolIndex.Create;
+  FStore := TDocumentStore.Create;
+  FStore.Open(TDocumentUris.FromPath(cFileName), 'delphi', 1, cUnitText);
+  FCompletion := TLspCompletion.Create(FStore, FIndex);
+  FExpressions := TLspExpressionCompletion.Create(FStore, FCompletion);
+  FId := 0;
+  FDispatcher := TJsonRpcDispatcher.Create;
+  FExpressions.Attach(FDispatcher);
+end;
+
+procedure TLspExpressionCompletionTests.TearDown;
+begin
+  FDispatcher.Free;
+  FExpressions.Free;
+  FCompletion.Free;
+  FStore := nil;
+  FIndex := nil;
 end;
 
 procedure TLspExpressionCompletionTests.PlacesBeforeStatementAndAfterBegin;

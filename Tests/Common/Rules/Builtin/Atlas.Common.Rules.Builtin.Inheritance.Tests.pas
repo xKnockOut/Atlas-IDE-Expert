@@ -214,6 +214,8 @@ begin
   end;
 end;
 
+{ TInheritanceRulesTests }
+
 procedure TInheritanceRulesTests.DestroyWithoutOverrideReportsPreferredFix;
 var
   mFindings: TArray<TRuleFinding>;
@@ -363,6 +365,8 @@ type
     procedure AddWithDetails(const ARange: TTextRange; const AMessage, ADetails: string;
       AConfidence: TRuleConfidence; const AFixes: TArray<TRuleFix>);
   end;
+
+{ TCountingReport }
 
 procedure TCountingReport.Add(const ARange: TTextRange; const AMessage: string);
 begin
@@ -887,6 +891,8 @@ begin
     'function TForm.Name: string;'#10'begin'#10'  Result := '''';'#10'end;'#10 +
     'procedure Rechnen;'#10'var'#10'  Form: TForm;'#10'  Gesamt: Double;'#10'begin'#10 + ABody + 'end;'#10'end.';
 end;
+
+{ TInheritanceAbstractRulesTests }
 
 procedure TInheritanceAbstractRulesTests.AbstractInstantiatedIssueExample;
 var

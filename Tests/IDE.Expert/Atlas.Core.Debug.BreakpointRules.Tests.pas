@@ -60,6 +60,8 @@ begin
   Result := TAtlasStopThread.Create('Main', cMain, cMain);
 end;
 
+{ TAtlasBreakpointRulesTests }
+
 procedure TAtlasBreakpointRulesTests.HitConditions;
 begin
   Assert.IsTrue(TAtlasBreakpointRules.HitMatches(TAtlasHitMode.Any, 3, 1));

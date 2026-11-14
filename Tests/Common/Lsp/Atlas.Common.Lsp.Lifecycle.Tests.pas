@@ -54,6 +54,24 @@ uses
 
 { TLspLifecycleTests }
 
+function TLspLifecycleTests.Send(const AJson: string): TJSONObject;
+var
+  mMessage: TJSONObject;
+begin
+  mMessage := TJsonRpcTestSupport.Parse(AJson);
+  try
+    Result := FDispatcher.DispatchMessage(mMessage);
+  finally
+    mMessage.Free;
+  end;
+end;
+
+procedure TLspLifecycleTests.InitializeServer;
+begin
+  Send('{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"rootUri":"file:///C:/Projekt"}}').Free;
+  Assert.IsNull(Send('{"jsonrpc":"2.0","method":"initialized","params":{}}'));
+end;
+
 procedure TLspLifecycleTests.Setup;
 begin
   FExitCalled := False;
@@ -87,24 +105,6 @@ procedure TLspLifecycleTests.TearDown;
 begin
   FreeAndNil(FLifecycle);
   FreeAndNil(FDispatcher);
-end;
-
-function TLspLifecycleTests.Send(const AJson: string): TJSONObject;
-var
-  mMessage: TJSONObject;
-begin
-  mMessage := TJsonRpcTestSupport.Parse(AJson);
-  try
-    Result := FDispatcher.DispatchMessage(mMessage);
-  finally
-    mMessage.Free;
-  end;
-end;
-
-procedure TLspLifecycleTests.InitializeServer;
-begin
-  Send('{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"rootUri":"file:///C:/Projekt"}}').Free;
-  Assert.IsNull(Send('{"jsonrpc":"2.0","method":"initialized","params":{}}'));
 end;
 
 procedure TLspLifecycleTests.InitializeReturnsCapabilitiesAndServerInfo;

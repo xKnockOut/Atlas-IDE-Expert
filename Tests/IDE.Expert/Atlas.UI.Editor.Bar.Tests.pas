@@ -67,6 +67,8 @@ type
     procedure SetFixed(AValue: Boolean);
   end;
 
+{ TProbeBar }
+
 class function TProbeBar.BaseHeight: Integer;
 begin
   Result := 20;
@@ -136,6 +138,8 @@ function Probe(ABar: TAtlasEditorBar): TProbeBar;
 begin
   Result := ABar as TProbeBar;
 end;
+
+{ TAtlasEditorBarTests }
 
 procedure TAtlasEditorBarTests.WarmUpFirstUse;
 begin

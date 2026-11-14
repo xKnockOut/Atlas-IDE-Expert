@@ -205,6 +205,8 @@ begin
   Result := -1;
 end;
 
+{ TAtlasBreadcrumbsTests }
+
 procedure TAtlasBreadcrumbsTests.PathInLocalProcedureOfMethod;
 var
   mList: TAtlasOutlineNodes;

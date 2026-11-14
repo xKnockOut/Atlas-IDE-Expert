@@ -65,6 +65,8 @@ begin
   Result := [TPair<string, string>.Create('BDS', 'C:\RAD'), TPair<string, string>.Create('BDSLIB', 'C:\RAD\lib')];
 end;
 
+{ TLspIdeProjectTests }
+
 procedure TLspIdeProjectTests.ReadsContext;
 var
   mContext: TIdeProjectContext;
@@ -228,6 +230,41 @@ begin
   end;
 end;
 
+procedure TLspIdeProjectTests.TracksActiveProjectWithoutReload;
+var
+  mStore: TLspIdeProject;
+  mDispatcher: TJsonRpcDispatcher;
+  mChanged: Integer;
+begin
+  Assert.IsFalse(Parse('{"project":"C:\\P\\A.dproj"}').HasActive);
+  Assert.IsTrue(Parse('{"project":"C:\\P\\A.dproj","active":true}').Active);
+  mStore := TLspIdeProject.Create;
+  mDispatcher := TJsonRpcDispatcher.Create;
+  try
+    mChanged := 0;
+    mStore.OnChanged :=
+      procedure(const AContext: TIdeProjectContext)
+      begin
+        Inc(mChanged);
+      end;
+    mStore.Attach(mDispatcher);
+    Assert.AreEqual('', mStore.ActiveProject);
+    Notify(mDispatcher, '{"project":"C:\\P\\A.dproj","configuration":"Debug","active":true}');
+    Notify(mDispatcher, '{"project":"C:\\P\\B.dproj","configuration":"Debug","active":false}');
+    Assert.AreEqual(2, mChanged);
+    Assert.AreEqual('C:\P\A.dproj', mStore.ActiveProject);
+    // Wechsel des aktiven Projekts: gemerkt, aber kein neues Laden.
+    Notify(mDispatcher, '{"project":"C:\\P\\A.dproj","configuration":"Debug","active":false}');
+    Assert.AreEqual('', mStore.ActiveProject);
+    Notify(mDispatcher, '{"project":"C:\\P\\B.dproj","configuration":"Debug","active":true}');
+    Assert.AreEqual('C:\P\B.dproj', mStore.ActiveProject);
+    Assert.AreEqual(2, mChanged);
+  finally
+    mDispatcher.Free;
+    mStore.Free;
+  end;
+end;
+
 procedure TLspIdeProjectTests.KeepsFormatFunctionsWithoutReload;
 var
   mStore: TLspIdeProject;
@@ -258,41 +295,6 @@ begin
     Assert.AreEqual(1, mChanged);
     Assert.IsTrue(mStore.Find('C:\P\A.dproj', mContext));
     Assert.AreEqual(1, Integer(Length(mContext.FormatFunctions)));
-  finally
-    mDispatcher.Free;
-    mStore.Free;
-  end;
-end;
-
-procedure TLspIdeProjectTests.TracksActiveProjectWithoutReload;
-var
-  mStore: TLspIdeProject;
-  mDispatcher: TJsonRpcDispatcher;
-  mChanged: Integer;
-begin
-  Assert.IsFalse(Parse('{"project":"C:\\P\\A.dproj"}').HasActive);
-  Assert.IsTrue(Parse('{"project":"C:\\P\\A.dproj","active":true}').Active);
-  mStore := TLspIdeProject.Create;
-  mDispatcher := TJsonRpcDispatcher.Create;
-  try
-    mChanged := 0;
-    mStore.OnChanged :=
-      procedure(const AContext: TIdeProjectContext)
-      begin
-        Inc(mChanged);
-      end;
-    mStore.Attach(mDispatcher);
-    Assert.AreEqual('', mStore.ActiveProject);
-    Notify(mDispatcher, '{"project":"C:\\P\\A.dproj","configuration":"Debug","active":true}');
-    Notify(mDispatcher, '{"project":"C:\\P\\B.dproj","configuration":"Debug","active":false}');
-    Assert.AreEqual(2, mChanged);
-    Assert.AreEqual('C:\P\A.dproj', mStore.ActiveProject);
-    // Wechsel des aktiven Projekts: gemerkt, aber kein neues Laden.
-    Notify(mDispatcher, '{"project":"C:\\P\\A.dproj","configuration":"Debug","active":false}');
-    Assert.AreEqual('', mStore.ActiveProject);
-    Notify(mDispatcher, '{"project":"C:\\P\\B.dproj","configuration":"Debug","active":true}');
-    Assert.AreEqual('C:\P\B.dproj', mStore.ActiveProject);
-    Assert.AreEqual(2, mChanged);
   finally
     mDispatcher.Free;
     mStore.Free;

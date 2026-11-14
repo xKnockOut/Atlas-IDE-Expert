@@ -106,6 +106,8 @@ const
     '"targets":[{"name":"TChild","unit":"Kind","checked":true},{"name":"TOther","unit":"Kind","checked":true}],' +
     '"multiTarget":true,"needsRequired":false,"option":{"kind":"keepAbstract","value":false},"notes":[]}';
 
+{ TClassExtractionModelTests }
+
 function TClassExtractionModelTests.Prepared(const AJson: string): TAtlasClassExtractionModel;
 var
   mValue: TJSONValue;

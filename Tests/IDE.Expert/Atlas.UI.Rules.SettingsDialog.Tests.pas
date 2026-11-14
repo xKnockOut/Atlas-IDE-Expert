@@ -47,6 +47,8 @@ uses
   Atlas.UI.Rules.SettingsDialog,
   Atlas.UI.Settings.Page.TestSupport;
 
+{ TAtlasRulesSettingsDialogTests }
+
 procedure TAtlasRulesSettingsDialogTests.WarmUp;
 begin
   WarmUpSettingsPage;

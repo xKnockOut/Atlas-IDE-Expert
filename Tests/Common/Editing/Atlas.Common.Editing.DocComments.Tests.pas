@@ -107,6 +107,8 @@ begin
   Result := Joined(TDocComments.Skeleton(TDocComments.Signature(Lines(Format(cSource, [''])), ALine), ''));
 end;
 
+{ TDocCommentsTests }
+
 procedure TDocCommentsTests.FunctionWithGenericsAndParams;
 begin
   Assert.AreEqual('/// <summary></summary>|/// <typeparam name="T"></typeparam>|/// <param name="A"></param>|' +

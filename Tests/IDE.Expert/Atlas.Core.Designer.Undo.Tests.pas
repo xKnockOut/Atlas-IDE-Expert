@@ -118,6 +118,8 @@ begin
   Result.DefaultValue := '(default)';
 end;
 
+{ TAtlasDesignerUndoTests }
+
 procedure TAtlasDesignerUndoTests.ParseReadsObjectsAndValues;
 var
   mObjects: TArray<TAtlasUndoObject>;

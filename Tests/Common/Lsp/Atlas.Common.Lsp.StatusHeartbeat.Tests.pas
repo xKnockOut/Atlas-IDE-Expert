@@ -46,6 +46,8 @@ uses
 const
   cPid = 4711;
 
+{ TServerStatusHeartbeatTests }
+
 procedure TServerStatusHeartbeatTests.Setup;
 begin
   FRoot := TPath.Combine(TPath.GetTempPath, 'Atlas-Heartbeat-' + IntToStr(Random(MaxInt)));

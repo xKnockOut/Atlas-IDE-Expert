@@ -127,17 +127,7 @@ const
     'end;'#10 +
     'end.';
 
-procedure TPostfixCompletionTests.Setup;
-begin
-  FIndex := TSymbolIndex.Create;
-  FResolver := TNameResolver.Create(FIndex);
-end;
-
-procedure TPostfixCompletionTests.TearDown;
-begin
-  FResolver.Free;
-  FIndex := nil;
-end;
+{ TPostfixCompletionTests }
 
 function TPostfixCompletionTests.ItemsAt(const ACode: string; AInlineVar: Boolean): TCompletionItems;
 var
@@ -188,6 +178,18 @@ begin
     end;
   end;
   Result := False;
+end;
+
+procedure TPostfixCompletionTests.Setup;
+begin
+  FIndex := TSymbolIndex.Create;
+  FResolver := TNameResolver.Create(FIndex);
+end;
+
+procedure TPostfixCompletionTests.TearDown;
+begin
+  FResolver.Free;
+  FIndex := nil;
 end;
 
 procedure TPostfixCompletionTests.ForOverArray;

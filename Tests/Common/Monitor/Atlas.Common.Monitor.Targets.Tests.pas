@@ -47,6 +47,8 @@ begin
   Result.Enabled := True;
 end;
 
+{ TMonitorTargetsTests }
+
 procedure TMonitorTargetsTests.Setup;
 begin
   TAtlasLocale.Use(TTextLanguage.German);

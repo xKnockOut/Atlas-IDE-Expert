@@ -320,56 +320,6 @@ begin
     mHost.Free;
   end;
 end;
-procedure TAtlasWelcomeProjectsFrameTests.QuickActionsInRows;
-var
-  mHost: TForm;
-  mFake: TFakeProjects;
-  mSource: IAtlasProjectsSource;
-  mQuick: TAtlasFakeQuickActions;
-  mQuickSource: IAtlasQuickActionsSource;
-  mFrame: TAtlasWelcomeProjectsFrame;
-begin
-  mFake := TFakeProjects.Create;
-  mSource := mFake;
-  mQuick := TAtlasFakeQuickActions.Create;
-  mQuickSource := mQuick;
-  mFake.FEntries := [ProjectEntry('C:\P\Eins.dproj', 0), ProjectEntry('C:\P\Zwei.dproj', 0)];
-  mHost := TForm.CreateNew(nil);
-  try
-    mFrame := ProjectsFrame(mHost, mSource);
-    mFrame.QuickActions := mQuickSource;
-    Assert.AreEqual(7, Integer(Length(mFrame.Quick.ButtonsOf(0))), 'Vorgabe mit Aufgaben (#900)');
-    // items ohne console: nur dieser Knopf fehlt.
-    mQuick.Items := TAtlasWelcomeQuickActions.ParseItems('build,tests,run,pull,folder');
-    mFrame.UpdateContent;
-    Assert.AreEqual(5, Integer(Length(mFrame.Quick.ButtonsOf(0))));
-    Assert.AreEqual(-1, TAtlasWelcomeQuickActions.IndexOf(mFrame.Quick.ButtonsOf(0), TAtlasQuickAction.Console));
-    mFake.Calls := nil;
-    // Ohne Maus: Pfeil ab, Strg+B, Strg+T, Pos1 und Enter öffnet.
-    mQuick.FTests := ['C:\P\Tests\Zwei.Tests.dproj'];
-    Assert.IsTrue(mFrame.Quick.HandleKey(VK_DOWN, []));
-    Assert.IsTrue(mFrame.Quick.HandleKey(Ord('B'), [ssCtrl]));
-    Assert.IsTrue(mFrame.Quick.HandleKey(Ord('T'), [ssCtrl]));
-    Assert.IsTrue(mFrame.Quick.HandleKey(VK_HOME, []));
-    Assert.IsTrue(mFrame.Quick.HandleKey(VK_RETURN, []));
-    Assert.AreEqual(0, Integer(Length(mQuick.Calls)), 'alles über die Nachrichtenschleife');
-    CheckSynchronize;
-    Assert.AreEqual(2, Integer(Length(mQuick.Calls)));
-    Assert.AreEqual('build C:\P\Zwei.dproj', mQuick.Calls[0]);
-    Assert.AreEqual('tests C:\P\Zwei.dproj', mQuick.Calls[1]);
-    Assert.AreEqual(1, Integer(Length(mFake.Calls)));
-    Assert.AreEqual('open C:\P\Zwei.dproj', mFake.Calls[0]);
-    // Ausgeschaltet bzw. ohne Quelle: keine Knöpfe, Tasten bleiben bei der IDE.
-    mQuick.IsOn := False;
-    mFrame.UpdateContent;
-    Assert.AreEqual(0, Integer(Length(mFrame.Quick.ButtonsOf(0))));
-    Assert.IsFalse(mFrame.Quick.HandleKey(Ord('B'), [ssCtrl]));
-    mFrame.QuickActions := nil;
-    Assert.IsFalse(mFrame.Quick.Active);
-  finally
-    mHost.Free;
-  end;
-end;
 procedure TAtlasWelcomeProjectsFrameTests.ClickSelectsForHistory;
 var
   mHost: TForm;
@@ -417,6 +367,56 @@ begin
       TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeProjectsHintSelect));
     Assert.Contains(TAtlasProjectsTexts.HintFor(mFake.FEntries[0], False),
       TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeProjectsHintClick));
+  finally
+    mHost.Free;
+  end;
+end;
+procedure TAtlasWelcomeProjectsFrameTests.QuickActionsInRows;
+var
+  mHost: TForm;
+  mFake: TFakeProjects;
+  mSource: IAtlasProjectsSource;
+  mQuick: TAtlasFakeQuickActions;
+  mQuickSource: IAtlasQuickActionsSource;
+  mFrame: TAtlasWelcomeProjectsFrame;
+begin
+  mFake := TFakeProjects.Create;
+  mSource := mFake;
+  mQuick := TAtlasFakeQuickActions.Create;
+  mQuickSource := mQuick;
+  mFake.FEntries := [ProjectEntry('C:\P\Eins.dproj', 0), ProjectEntry('C:\P\Zwei.dproj', 0)];
+  mHost := TForm.CreateNew(nil);
+  try
+    mFrame := ProjectsFrame(mHost, mSource);
+    mFrame.QuickActions := mQuickSource;
+    Assert.AreEqual(7, Integer(Length(mFrame.Quick.ButtonsOf(0))), 'Vorgabe mit Aufgaben (#900)');
+    // items ohne console: nur dieser Knopf fehlt.
+    mQuick.Items := TAtlasWelcomeQuickActions.ParseItems('build,tests,run,pull,folder');
+    mFrame.UpdateContent;
+    Assert.AreEqual(5, Integer(Length(mFrame.Quick.ButtonsOf(0))));
+    Assert.AreEqual(-1, TAtlasWelcomeQuickActions.IndexOf(mFrame.Quick.ButtonsOf(0), TAtlasQuickAction.Console));
+    mFake.Calls := nil;
+    // Ohne Maus: Pfeil ab, Strg+B, Strg+T, Pos1 und Enter öffnet.
+    mQuick.FTests := ['C:\P\Tests\Zwei.Tests.dproj'];
+    Assert.IsTrue(mFrame.Quick.HandleKey(VK_DOWN, []));
+    Assert.IsTrue(mFrame.Quick.HandleKey(Ord('B'), [ssCtrl]));
+    Assert.IsTrue(mFrame.Quick.HandleKey(Ord('T'), [ssCtrl]));
+    Assert.IsTrue(mFrame.Quick.HandleKey(VK_HOME, []));
+    Assert.IsTrue(mFrame.Quick.HandleKey(VK_RETURN, []));
+    Assert.AreEqual(0, Integer(Length(mQuick.Calls)), 'alles über die Nachrichtenschleife');
+    CheckSynchronize;
+    Assert.AreEqual(2, Integer(Length(mQuick.Calls)));
+    Assert.AreEqual('build C:\P\Zwei.dproj', mQuick.Calls[0]);
+    Assert.AreEqual('tests C:\P\Zwei.dproj', mQuick.Calls[1]);
+    Assert.AreEqual(1, Integer(Length(mFake.Calls)));
+    Assert.AreEqual('open C:\P\Zwei.dproj', mFake.Calls[0]);
+    // Ausgeschaltet bzw. ohne Quelle: keine Knöpfe, Tasten bleiben bei der IDE.
+    mQuick.IsOn := False;
+    mFrame.UpdateContent;
+    Assert.AreEqual(0, Integer(Length(mFrame.Quick.ButtonsOf(0))));
+    Assert.IsFalse(mFrame.Quick.HandleKey(Ord('B'), [ssCtrl]));
+    mFrame.QuickActions := nil;
+    Assert.IsFalse(mFrame.Quick.Active);
   finally
     mHost.Free;
   end;

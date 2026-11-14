@@ -126,32 +126,6 @@ const
 
 { TCompletionProjectFrequencyTests }
 
-procedure TCompletionProjectFrequencyTests.Setup;
-begin
-  FIndex := TSymbolIndex.Create;
-  FStore := TDocumentStore.Create;
-  FSettings := TCompletionSettings.Default;
-  FId := 0;
-  FCompletion := TLspCompletion.Create(FStore, FIndex);
-  FCompletion.Hooks.SettingsFor :=
-    function(const AUri: string): TCompletionSettings
-    begin
-      Result := FSettings;
-    end;
-  FDispatcher := TJsonRpcDispatcher.Create;
-  FCompletion.Attach(FDispatcher);
-  FIndex.AddUnit(TIndexExtractor.ExtractText(cUnitZaehler, 'C:\P\Zaehler.pas', nil, nil, True));
-  FIndex.AddUnit(TIndexExtractor.ExtractText(cUnitNutzer, 'C:\P\Nutzer.pas', nil, nil, True));
-end;
-
-procedure TCompletionProjectFrequencyTests.TearDown;
-begin
-  FDispatcher.Free;
-  FCompletion.Free;
-  FStore := nil;
-  FIndex := nil;
-end;
-
 function TCompletionProjectFrequencyTests.Complete(const AText: string): TJSONObject;
 var
   mMarker, mIndex, mLine, mLineStart: Integer;
@@ -189,6 +163,32 @@ begin
   finally
     mResponse.Free;
   end;
+end;
+
+procedure TCompletionProjectFrequencyTests.Setup;
+begin
+  FIndex := TSymbolIndex.Create;
+  FStore := TDocumentStore.Create;
+  FSettings := TCompletionSettings.Default;
+  FId := 0;
+  FCompletion := TLspCompletion.Create(FStore, FIndex);
+  FCompletion.Hooks.SettingsFor :=
+    function(const AUri: string): TCompletionSettings
+    begin
+      Result := FSettings;
+    end;
+  FDispatcher := TJsonRpcDispatcher.Create;
+  FCompletion.Attach(FDispatcher);
+  FIndex.AddUnit(TIndexExtractor.ExtractText(cUnitZaehler, 'C:\P\Zaehler.pas', nil, nil, True));
+  FIndex.AddUnit(TIndexExtractor.ExtractText(cUnitNutzer, 'C:\P\Nutzer.pas', nil, nil, True));
+end;
+
+procedure TCompletionProjectFrequencyTests.TearDown;
+begin
+  FDispatcher.Free;
+  FCompletion.Free;
+  FStore := nil;
+  FIndex := nil;
 end;
 
 procedure TCompletionProjectFrequencyTests.MembersCarryProjectCount;

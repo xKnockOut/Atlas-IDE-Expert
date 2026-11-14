@@ -57,6 +57,8 @@ uses
   System.SysUtils,
   System.IOUtils;
 
+{ TFakeTransport }
+
 procedure TFakeTransport.Answer(const APrefix: string; AStatus: Integer; const AText: string);
 begin
   FPrefixes := FPrefixes + [APrefix];
@@ -94,6 +96,8 @@ begin
   AStatus := 404;
   Result := True;
 end;
+
+{ TFakePostTransport }
 
 procedure TFakePostTransport.AnswerPost(const APrefix: string; AStatus: Integer; const AText: string);
 begin

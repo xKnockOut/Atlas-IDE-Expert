@@ -51,6 +51,8 @@ uses
   System.IOUtils,
   Atlas.Core.Files.TextFile;
 
+{ TAtlasTextFileTests }
+
 procedure TAtlasTextFileTests.DetectsEncodings;
 var
   mContent: TAtlasTextFileContent;

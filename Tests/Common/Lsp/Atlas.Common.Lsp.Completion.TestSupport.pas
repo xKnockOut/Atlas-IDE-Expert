@@ -222,6 +222,8 @@ begin
   end;
 end;
 
+{ TLspCompletionTestCase }
+
 procedure TLspCompletionTestCase.Prepare;
 begin
   FIndex := TSymbolIndex.Create;

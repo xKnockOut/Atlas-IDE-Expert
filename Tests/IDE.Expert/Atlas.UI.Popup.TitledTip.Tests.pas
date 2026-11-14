@@ -30,6 +30,8 @@ uses
   Atlas.Core.Style.Palette,
   Atlas.UI.Popup.TitledTip;
 
+{ TAtlasTitledTipTests }
+
 procedure TAtlasTitledTipTests.MeasuresWrappedText;
 var
   mTip: TAtlasTitledTip;

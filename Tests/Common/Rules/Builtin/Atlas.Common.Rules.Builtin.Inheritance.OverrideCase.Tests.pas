@@ -26,6 +26,8 @@ uses
   Atlas.Common.Rules.Builtin.Inheritance.OverrideCase,
   Atlas.Tests.RuleAssert;
 
+{ TInheritanceOverrideCaseTests }
+
 procedure TInheritanceOverrideCaseTests.CaseMismatchIsReported;
 var
   mFindings: TArray<TRuleFinding>;

@@ -141,6 +141,8 @@ begin
   Result := Create_(AText, nil, TPropertyFromAccessorsOptions.Default);
 end;
 
+{ TPropertyFromAccessorsTests }
+
 procedure TPropertyFromAccessorsTests.OnlyGetter;
 var
   mFound: TArray<TAccessorProperty>;

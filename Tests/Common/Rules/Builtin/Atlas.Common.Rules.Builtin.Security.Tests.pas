@@ -66,6 +66,8 @@ begin
     'end;'#10'end.';
 end;
 
+{ TSecurityRulesTests }
+
 procedure TSecurityRulesTests.ComposedShellCommandReports;
 var
   mFindings: TArray<TRuleFinding>;

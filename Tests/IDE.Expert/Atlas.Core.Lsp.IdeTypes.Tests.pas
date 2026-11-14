@@ -29,6 +29,8 @@ uses
   System.JSON,
   Atlas.Core.Lsp.IdeTypes;
 
+{ TAtlasIdeTypesTests }
+
 procedure TAtlasIdeTypesTests.SplitsQualifiedNames;
 var
   mType: TAtlasIdeType;

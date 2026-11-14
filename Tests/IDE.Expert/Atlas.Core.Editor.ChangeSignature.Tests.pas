@@ -65,6 +65,8 @@ const
     '"interfaceMethod":false,"boundEvent":"TNotifyEvent","eventFixed":true,"overloadPossible":false,' +
     '"newParameter":"overload","virtualOverload":false,"warnings":[]}';
 
+{ TSignatureModelTests }
+
 function TSignatureModelTests.Prepared(const AJson: string): TAtlasSignatureModel;
 var
   mValue: TJSONValue;

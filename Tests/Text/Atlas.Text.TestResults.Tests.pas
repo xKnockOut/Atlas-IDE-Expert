@@ -217,6 +217,29 @@ begin
   Assert.AreEqual(Int64(0), TTestResults.SecondsToMs('-1'));
 end;
 
+procedure TTestResultsTests.NotAReport;
+var
+  mRun: TTestRunResult;
+begin
+  mRun := TTestResults.Parse('<html><body>kein Bericht</body></html>');
+  Assert.IsFalse(mRun.Valid);
+  Assert.AreNotEqual('', mRun.Error);
+  mRun := TTestResults.Parse('');
+  Assert.IsFalse(mRun.Valid);
+  mRun := TTestResults.Parse('<test-results total="0"></test-results>');
+  Assert.IsTrue(mRun.Valid, 'leerer Lauf ist ein Bericht');
+  Assert.AreEqual(0, mRun.Total);
+  Assert.IsFalse(mRun.AllPassed, 'ohne Tests nicht grün');
+end;
+
+function CaseOf(const AName: string; ADurationMs: Int64; AOutcome: TTestOutcome): TTestCaseResult;
+begin
+  Result := Default(TTestCaseResult);
+  Result.FullName := AName;
+  Result.DurationMs := ADurationMs;
+  Result.Outcome := AOutcome;
+end;
+
 procedure TTestResultsTests.DurationTextInMsAndSeconds;
 begin
   Assert.AreEqual('0 ms', TTestResults.DurationText(0, ','));
@@ -226,14 +249,6 @@ begin
   Assert.AreEqual('1.3 s', TTestResults.DurationText(1250, '.'), 'auf Zehntel gerundet');
   Assert.AreEqual('61,5 s', TTestResults.DurationText(61500, ','));
   Assert.AreEqual('0 ms', TTestResults.DurationText(-5, ','), 'negative Dauer gilt als 0');
-end;
-
-function CaseOf(const AName: string; ADurationMs: Int64; AOutcome: TTestOutcome): TTestCaseResult;
-begin
-  Result := Default(TTestCaseResult);
-  Result.FullName := AName;
-  Result.DurationMs := ADurationMs;
-  Result.Outcome := AOutcome;
 end;
 
 procedure TTestResultsTests.SlowestSortedAndLimited;
@@ -294,21 +309,6 @@ begin
   Assert.AreEqual(Int64(0), TTestResults.LeakBytesOf('bytes were leaked in the test method'));
   Assert.AreEqual(Int64(0), TTestResults.LeakBytesOf('-5 bytes were leaked in the test method'));
   Assert.AreEqual(Int64(0), TTestResults.LeakBytesOf(''));
-end;
-
-procedure TTestResultsTests.NotAReport;
-var
-  mRun: TTestRunResult;
-begin
-  mRun := TTestResults.Parse('<html><body>kein Bericht</body></html>');
-  Assert.IsFalse(mRun.Valid);
-  Assert.AreNotEqual('', mRun.Error);
-  mRun := TTestResults.Parse('');
-  Assert.IsFalse(mRun.Valid);
-  mRun := TTestResults.Parse('<test-results total="0"></test-results>');
-  Assert.IsTrue(mRun.Valid, 'leerer Lauf ist ein Bericht');
-  Assert.AreEqual(0, mRun.Total);
-  Assert.IsFalse(mRun.AllPassed, 'ohne Tests nicht grün');
 end;
 
 initialization

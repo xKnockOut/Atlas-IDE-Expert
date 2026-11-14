@@ -90,6 +90,8 @@ begin
   end;
 end;
 
+{ TDataFieldNamesTests }
+
 procedure TDataFieldNamesTests.FindsCallAtCursor;
 var
   mCall: TDataNameCall;

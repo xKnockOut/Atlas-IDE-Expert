@@ -187,20 +187,6 @@ end;
 
 { TLspHierarchiesTests }
 
-procedure TLspHierarchiesTests.Setup;
-begin
-  FIndex := TSymbolIndex.Create;
-  FIndex.AddUnit(TIndexExtractor.ExtractText(cUnitWerkzeug, cWerkzeugFile, nil));
-  FIndex.AddUnit(TIndexExtractor.ExtractText(cUnitHaupt, cHauptFile, nil));
-  FResolver := TNameResolver.Create(FIndex);
-end;
-
-procedure TLspHierarchiesTests.TearDown;
-begin
-  FResolver.Free;
-  FIndex := nil;
-end;
-
 function TLspHierarchiesTests.ItemAt(const AMarker: string; ACall: Boolean): THierarchyItem;
 var
   mTree: TSyntaxTree;
@@ -247,6 +233,20 @@ begin
     Result := Result + mCall.Item.Name + '(' + IntToStr(Length(mCall.Ranges)) + ') ';
   end;
   Result := Trim(Result);
+end;
+
+procedure TLspHierarchiesTests.Setup;
+begin
+  FIndex := TSymbolIndex.Create;
+  FIndex.AddUnit(TIndexExtractor.ExtractText(cUnitWerkzeug, cWerkzeugFile, nil));
+  FIndex.AddUnit(TIndexExtractor.ExtractText(cUnitHaupt, cHauptFile, nil));
+  FResolver := TNameResolver.Create(FIndex);
+end;
+
+procedure TLspHierarchiesTests.TearDown;
+begin
+  FResolver.Free;
+  FIndex := nil;
 end;
 
 procedure TLspHierarchiesTests.PrepareTypeFromVariableAndTypeName;

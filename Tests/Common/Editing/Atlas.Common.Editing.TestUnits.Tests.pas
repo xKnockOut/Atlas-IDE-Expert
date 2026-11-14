@@ -118,6 +118,8 @@ begin
   end;
 end;
 
+{ TTestUnitsTests }
+
 procedure TTestUnitsTests.NamesFollowPattern;
 begin
   Assert.AreEqual('Kunden.Tests', TTestUnits.TestUnitName('Kunden', '{unit}.Tests'));

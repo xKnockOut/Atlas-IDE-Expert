@@ -46,6 +46,8 @@ uses
   System.SysUtils,
   System.JSON;
 
+{ TAtlasMethodBreakpointsTests }
+
 function TAtlasMethodBreakpointsTests.Hit(const AContainer, AName: string; ALine: Integer): TAtlasMethodHit;
 begin
   Result := Default(TAtlasMethodHit);

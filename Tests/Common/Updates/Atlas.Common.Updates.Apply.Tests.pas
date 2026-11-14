@@ -55,26 +55,7 @@ const
   cKey = 'Software\Embarcadero\BDS\37.0';
   cKnown = cKey + '\Known Packages';
 
-procedure TCommonUpdatesApplyTests.Setup;
-begin
-  FFake := TFakeUpdateSystem.Create;
-  FFake.Files.WriteText(cFiles + '\AtlasServer.exe', 'server 2.0.1');
-  FFake.Files.WriteText(cFiles + '\Win32\Atlas.IDE.Base370.bpl', 'base 2.0.1');
-  FFake.Files.WriteText(cFiles + '\Win32\Atlas.IDE.Debugger370.bpl', 'debugger 2.0.1');
-  FFake.Files.WriteText(cFiles + '\Win32\Atlas.IDE.Debugger370.map', 'debugger map');
-  FFake.Files.WriteText(cFiles + '\Win32\Atlas.IDE.Search370.bpl', 'search 2.0.1');
-  FFake.Files.WriteText(cTarget + '\AtlasServer.exe', 'server 2.0.0');
-  FFake.Files.WriteText(cTarget + '\Win32\Atlas.IDE.Base370.bpl', 'base 2.0.0');
-  FFake.Files.WriteText(cTarget + '\Win32\Atlas.IDE.Debugger370.bpl', 'debugger 2.0.0');
-  FFake.Files.WriteText(cTarget + '\Win32\Atlas.IDE.Debugger370.map', 'debugger map 2.0.0');
-  FFake.Registry.WriteValue(cKnown, cTarget + '\Win32\Atlas.IDE.Base370.bpl', 'Atlas Base');
-  FFake.Registry.WriteValue(cKnown, cTarget + '\Win32\Atlas.IDE.Debugger370.bpl', 'Atlas Debugger');
-end;
-
-procedure TCommonUpdatesApplyTests.TearDown;
-begin
-  FreeAndNil(FFake);
-end;
+{ TCommonUpdatesApplyTests }
 
 function TCommonUpdatesApplyTests.Args(const ASelect: TArray<string>): TUpdateArguments;
 begin
@@ -112,6 +93,27 @@ begin
   finally
     mInstallation.Free;
   end;
+end;
+
+procedure TCommonUpdatesApplyTests.Setup;
+begin
+  FFake := TFakeUpdateSystem.Create;
+  FFake.Files.WriteText(cFiles + '\AtlasServer.exe', 'server 2.0.1');
+  FFake.Files.WriteText(cFiles + '\Win32\Atlas.IDE.Base370.bpl', 'base 2.0.1');
+  FFake.Files.WriteText(cFiles + '\Win32\Atlas.IDE.Debugger370.bpl', 'debugger 2.0.1');
+  FFake.Files.WriteText(cFiles + '\Win32\Atlas.IDE.Debugger370.map', 'debugger map');
+  FFake.Files.WriteText(cFiles + '\Win32\Atlas.IDE.Search370.bpl', 'search 2.0.1');
+  FFake.Files.WriteText(cTarget + '\AtlasServer.exe', 'server 2.0.0');
+  FFake.Files.WriteText(cTarget + '\Win32\Atlas.IDE.Base370.bpl', 'base 2.0.0');
+  FFake.Files.WriteText(cTarget + '\Win32\Atlas.IDE.Debugger370.bpl', 'debugger 2.0.0');
+  FFake.Files.WriteText(cTarget + '\Win32\Atlas.IDE.Debugger370.map', 'debugger map 2.0.0');
+  FFake.Registry.WriteValue(cKnown, cTarget + '\Win32\Atlas.IDE.Base370.bpl', 'Atlas Base');
+  FFake.Registry.WriteValue(cKnown, cTarget + '\Win32\Atlas.IDE.Debugger370.bpl', 'Atlas Debugger');
+end;
+
+procedure TCommonUpdatesApplyTests.TearDown;
+begin
+  FreeAndNil(FFake);
 end;
 
 procedure TCommonUpdatesApplyTests.InstallsProposal;

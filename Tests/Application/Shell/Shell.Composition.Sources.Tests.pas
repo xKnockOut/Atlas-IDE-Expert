@@ -94,6 +94,29 @@ begin
   Result := False;
 end;
 
+{ TShellSourcesTests }
+
+procedure TShellSourcesTests.AddWorkspace;
+begin
+  FRegistry.Add(TShellWorkspace.Create(FRoot, 'Ordner', TShellWorkspaceServices.Create(TDocumentStore.Create,
+    TJsonRpcStreamTransport.Create(nil, TBytesStream.Create, True), TLogger.Create, TSymbolIndex.Create,
+    'atlas-test-index')));
+end;
+
+procedure TShellSourcesTests.WarmUpFirstUse;
+var
+  mMetrics: TLspMetricsSource;
+begin
+  // Erste Benutzung (Einstellungen des Arbeitsbereichs, Monitor-Datensätze) nicht dem ersten Test anrechnen.
+  Setup;
+  try
+    AddWorkspace;
+    FSources.MetricsSource()('', False, mMetrics);
+  finally
+    TearDown;
+  end;
+end;
+
 procedure TShellSourcesTests.Setup;
 var
   mRegistry: TShellWorkspaceRegistryServices;
@@ -123,33 +146,12 @@ begin
   FRoot := TPath.Combine(TPath.GetTempPath, 'AtlasSources');
 end;
 
-procedure TShellSourcesTests.WarmUpFirstUse;
-var
-  mMetrics: TLspMetricsSource;
-begin
-  // Erste Benutzung (Einstellungen des Arbeitsbereichs, Monitor-Datensätze) nicht dem ersten Test anrechnen.
-  Setup;
-  try
-    AddWorkspace;
-    FSources.MetricsSource()('', False, mMetrics);
-  finally
-    TearDown;
-  end;
-end;
-
 procedure TShellSourcesTests.TearDown;
 begin
   FreeAndNil(FSources);
   FreeAndNil(FSettings);
   FreeAndNil(FRegistry);
   FRoot := '';
-end;
-
-procedure TShellSourcesTests.AddWorkspace;
-begin
-  FRegistry.Add(TShellWorkspace.Create(FRoot, 'Ordner', TShellWorkspaceServices.Create(TDocumentStore.Create,
-    TJsonRpcStreamTransport.Create(nil, TBytesStream.Create, True), TLogger.Create, TSymbolIndex.Create,
-    'atlas-test-index')));
 end;
 
 procedure TShellSourcesTests.NoWorkspaceNoSource;

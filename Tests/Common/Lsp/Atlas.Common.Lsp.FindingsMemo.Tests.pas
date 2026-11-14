@@ -341,6 +341,74 @@ begin
   Result.Start;
 end;
 
+procedure TRuleFindingsMemoTests.AwaitWaitsForRunningRun;
+var
+  mMemo: IRuleFindingsMemo;
+  mStarted, mGo: TEvent;
+  mThread: TThread;
+  mFound: TArray<TRuleFinding>;
+begin
+  mMemo := TRuleFindingsMemo.Create;
+  mStarted := TEvent.Create(nil, True, False, '');
+  mGo := TEvent.Create(nil, True, False, '');
+  try
+    mThread := ObtainInThread(mMemo, mStarted, mGo, 'erster-lauf');
+    try
+      Assert.AreEqual(Ord(wrSignaled), Ord(mStarted.WaitFor(10000)));
+      TThread.CreateAnonymousThread(
+        procedure
+        begin
+          Sleep(100);
+          mGo.SetEvent;
+        end).Start;
+      Assert.IsTrue(mMemo.Await(cFileName, cText, nil, mFound));
+      Assert.AreEqual('erster-lauf', mFound[0].RuleId);
+      mThread.WaitFor;
+    finally
+      mThread.Free;
+    end;
+  finally
+    mGo.Free;
+    mStarted.Free;
+  end;
+  mFound := nil;
+end;
+
+procedure TRuleFindingsMemoTests.AwaitEndsWhenCancelled;
+var
+  mMemo: IRuleFindingsMemo;
+  mStarted, mGo: TEvent;
+  mThread: TThread;
+begin
+  mMemo := TRuleFindingsMemo.Create;
+  mStarted := TEvent.Create(nil, True, False, '');
+  mGo := TEvent.Create(nil, True, False, '');
+  try
+    mThread := ObtainInThread(mMemo, mStarted, mGo, 'erster-lauf');
+    try
+      Assert.AreEqual(Ord(wrSignaled), Ord(mStarted.WaitFor(10000)));
+      Assert.WillRaise(
+        procedure
+        var
+          mFound: TArray<TRuleFinding>;
+        begin
+          mMemo.Await(cFileName, cText,
+            function: Boolean
+            begin
+              Result := True;
+            end, mFound);
+        end, ERuleCheckCancelled);
+      mGo.SetEvent;
+      mThread.WaitFor;
+    finally
+      mThread.Free;
+    end;
+  finally
+    mGo.Free;
+    mStarted.Free;
+  end;
+end;
+
 procedure TRuleFindingsMemoTests.ObtainWaitsForRunningRun;
 var
   mMemo: IRuleFindingsMemo;
@@ -419,74 +487,6 @@ begin
   Assert.IsTrue(mMemo.TryGet(cFileName, cText, mFound), 'der laufende Lauf legt ab');
   Assert.AreEqual('erster-lauf', mFound[0].RuleId);
   mFound := nil;
-end;
-
-procedure TRuleFindingsMemoTests.AwaitWaitsForRunningRun;
-var
-  mMemo: IRuleFindingsMemo;
-  mStarted, mGo: TEvent;
-  mThread: TThread;
-  mFound: TArray<TRuleFinding>;
-begin
-  mMemo := TRuleFindingsMemo.Create;
-  mStarted := TEvent.Create(nil, True, False, '');
-  mGo := TEvent.Create(nil, True, False, '');
-  try
-    mThread := ObtainInThread(mMemo, mStarted, mGo, 'erster-lauf');
-    try
-      Assert.AreEqual(Ord(wrSignaled), Ord(mStarted.WaitFor(10000)));
-      TThread.CreateAnonymousThread(
-        procedure
-        begin
-          Sleep(100);
-          mGo.SetEvent;
-        end).Start;
-      Assert.IsTrue(mMemo.Await(cFileName, cText, nil, mFound));
-      Assert.AreEqual('erster-lauf', mFound[0].RuleId);
-      mThread.WaitFor;
-    finally
-      mThread.Free;
-    end;
-  finally
-    mGo.Free;
-    mStarted.Free;
-  end;
-  mFound := nil;
-end;
-
-procedure TRuleFindingsMemoTests.AwaitEndsWhenCancelled;
-var
-  mMemo: IRuleFindingsMemo;
-  mStarted, mGo: TEvent;
-  mThread: TThread;
-begin
-  mMemo := TRuleFindingsMemo.Create;
-  mStarted := TEvent.Create(nil, True, False, '');
-  mGo := TEvent.Create(nil, True, False, '');
-  try
-    mThread := ObtainInThread(mMemo, mStarted, mGo, 'erster-lauf');
-    try
-      Assert.AreEqual(Ord(wrSignaled), Ord(mStarted.WaitFor(10000)));
-      Assert.WillRaise(
-        procedure
-        var
-          mFound: TArray<TRuleFinding>;
-        begin
-          mMemo.Await(cFileName, cText,
-            function: Boolean
-            begin
-              Result := True;
-            end, mFound);
-        end, ERuleCheckCancelled);
-      mGo.SetEvent;
-      mThread.WaitFor;
-    finally
-      mThread.Free;
-    end;
-  finally
-    mGo.Free;
-    mStarted.Free;
-  end;
 end;
 
 procedure TRuleFindingsMemoTests.ObtainAfterFailedRunComputes;

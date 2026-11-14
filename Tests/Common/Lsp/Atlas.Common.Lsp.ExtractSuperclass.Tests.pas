@@ -221,6 +221,8 @@ begin
   end;
 end;
 
+{ TLspExtractSuperclassTests }
+
 procedure TLspExtractSuperclassTests.Setup;
 begin
   FIndex := TSymbolIndex.Create;

@@ -61,6 +61,8 @@ begin
     Default(TAtlasToggleSession), nil);
 end;
 
+{ TAtlasQuickToggleWindowTests }
+
 procedure TAtlasQuickToggleWindowTests.WarmUpFirstUse;
 begin
   GroupsByPage;
@@ -115,6 +117,65 @@ begin
     Assert.AreEqual('HoverTooltip', mToggled);
   finally
     mWindow.Free;
+  end;
+end;
+
+procedure TAtlasQuickToggleWindowTests.HeaderCollapsesAndExpandsGroup;
+var
+  mWindow: TAtlasQuickToggleWindow;
+  mCount: Integer;
+begin
+  mCount := 0;
+  TAtlasQuickToggleRows.ExpandAll;
+  mWindow := TAtlasQuickToggleWindow.CreateToggles(nil, TAtlasColors.Light);
+  try
+    mWindow.SetItems(SampleItems, False);
+    mWindow.OnToggle :=
+      procedure(AItem: TAtlasQuickToggleItem)
+      begin
+        Inc(mCount);
+      end;
+    mWindow.ClickRow(0);
+    Assert.AreEqual(0, mCount, 'Überschrift schaltet nichts');
+    // Editor eingeklappt: Editor, Hints, Hover.
+    Assert.AreEqual(3, mWindow.Rows.Count);
+    Assert.AreEqual('Editor', mWindow.Rows.Text(0));
+    Assert.AreEqual('Hints', mWindow.Rows.Text(1));
+    Assert.AreEqual(0, mWindow.HotRow, 'Auswahl bleibt auf der Überschrift');
+    // Neues Fenster öffnet wie zuletzt verlassen.
+    mWindow.Free;
+    mWindow := TAtlasQuickToggleWindow.CreateToggles(nil, TAtlasColors.Light);
+    mWindow.SetItems(SampleItems, False);
+    Assert.AreEqual(3, mWindow.Rows.Count);
+    mWindow.ClickRow(0);
+    // Akkordeon: Editor wieder offen, dafür Hints zu (Editor, Klammerfarben, Blocklinien, Hints).
+    Assert.AreEqual(4, mWindow.Rows.Count, 'wieder ausgeklappt');
+    Assert.AreEqual('Klammerfarben', mWindow.Rows.Text(1));
+    Assert.AreEqual('Hints', mWindow.Rows.Text(3));
+  finally
+    mWindow.Free;
+    TAtlasQuickToggleRows.ExpandAll;
+  end;
+end;
+
+procedure TAtlasQuickToggleWindowTests.FirstOpenAndAccordion;
+var
+  mWindow: TAtlasQuickToggleWindow;
+begin
+  TAtlasQuickToggleRows.ResetCollapse;
+  mWindow := TAtlasQuickToggleWindow.CreateToggles(nil, TAtlasColors.Light);
+  try
+    mWindow.SetItems(SampleItems, False);
+    // Erstes Öffnen: nur die erste Seite offen (Editor, Klammerfarben, Blocklinien, Hints).
+    Assert.AreEqual(4, mWindow.Rows.Count);
+    Assert.AreEqual('Hints', mWindow.Rows.Text(3));
+    // Hints aufklappen schließt Editor: Editor, Hints, Hover.
+    mWindow.ClickRow(3);
+    Assert.AreEqual(3, mWindow.Rows.Count);
+    Assert.AreEqual('Hover', mWindow.Rows.Text(2));
+  finally
+    mWindow.Free;
+    TAtlasQuickToggleRows.ExpandAll;
   end;
 end;
 
@@ -205,65 +266,6 @@ begin
     Assert.AreEqual(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.QuickTogglesAllOn), mWindow.AllButton.Caption);
   finally
     mWindow.Free;
-  end;
-end;
-
-procedure TAtlasQuickToggleWindowTests.HeaderCollapsesAndExpandsGroup;
-var
-  mWindow: TAtlasQuickToggleWindow;
-  mCount: Integer;
-begin
-  mCount := 0;
-  TAtlasQuickToggleRows.ExpandAll;
-  mWindow := TAtlasQuickToggleWindow.CreateToggles(nil, TAtlasColors.Light);
-  try
-    mWindow.SetItems(SampleItems, False);
-    mWindow.OnToggle :=
-      procedure(AItem: TAtlasQuickToggleItem)
-      begin
-        Inc(mCount);
-      end;
-    mWindow.ClickRow(0);
-    Assert.AreEqual(0, mCount, 'Überschrift schaltet nichts');
-    // Editor eingeklappt: Editor, Hints, Hover.
-    Assert.AreEqual(3, mWindow.Rows.Count);
-    Assert.AreEqual('Editor', mWindow.Rows.Text(0));
-    Assert.AreEqual('Hints', mWindow.Rows.Text(1));
-    Assert.AreEqual(0, mWindow.HotRow, 'Auswahl bleibt auf der Überschrift');
-    // Neues Fenster öffnet wie zuletzt verlassen.
-    mWindow.Free;
-    mWindow := TAtlasQuickToggleWindow.CreateToggles(nil, TAtlasColors.Light);
-    mWindow.SetItems(SampleItems, False);
-    Assert.AreEqual(3, mWindow.Rows.Count);
-    mWindow.ClickRow(0);
-    // Akkordeon: Editor wieder offen, dafür Hints zu (Editor, Klammerfarben, Blocklinien, Hints).
-    Assert.AreEqual(4, mWindow.Rows.Count, 'wieder ausgeklappt');
-    Assert.AreEqual('Klammerfarben', mWindow.Rows.Text(1));
-    Assert.AreEqual('Hints', mWindow.Rows.Text(3));
-  finally
-    mWindow.Free;
-    TAtlasQuickToggleRows.ExpandAll;
-  end;
-end;
-
-procedure TAtlasQuickToggleWindowTests.FirstOpenAndAccordion;
-var
-  mWindow: TAtlasQuickToggleWindow;
-begin
-  TAtlasQuickToggleRows.ResetCollapse;
-  mWindow := TAtlasQuickToggleWindow.CreateToggles(nil, TAtlasColors.Light);
-  try
-    mWindow.SetItems(SampleItems, False);
-    // Erstes Öffnen: nur die erste Seite offen (Editor, Klammerfarben, Blocklinien, Hints).
-    Assert.AreEqual(4, mWindow.Rows.Count);
-    Assert.AreEqual('Hints', mWindow.Rows.Text(3));
-    // Hints aufklappen schließt Editor: Editor, Hints, Hover.
-    mWindow.ClickRow(3);
-    Assert.AreEqual(3, mWindow.Rows.Count);
-    Assert.AreEqual('Hover', mWindow.Rows.Text(2));
-  finally
-    mWindow.Free;
-    TAtlasQuickToggleRows.ExpandAll;
   end;
 end;
 

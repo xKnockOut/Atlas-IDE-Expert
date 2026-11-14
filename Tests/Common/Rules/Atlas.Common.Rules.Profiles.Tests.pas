@@ -94,6 +94,8 @@ begin
   Result := SeverityOf(ASettings, ACategory, ADefault, 'Source/Main.pas');
 end;
 
+{ TRuleProfilesTests }
+
 procedure TRuleProfilesTests.StandardKeepsDefault;
 begin
   Assert.AreEqual(Ord(TRuleSeverity.Hint), Ord(SeverityOf(TServerSettings.Default, 'code-smell', TRuleSeverity.Hint)));

@@ -114,6 +114,8 @@ begin
     end);
 end;
 
+{ TMcpCodeToolsTests }
+
 procedure TMcpCodeToolsTests.FindsReferencesAcrossFiles;
 var
   mTools: TMcpCodeTools;
@@ -179,6 +181,13 @@ begin
   finally
     mTools.Free;
   end;
+end;
+
+procedure TMcpCodeToolsTests.ParsesDirection;
+begin
+  Assert.AreEqual(Ord(TMcpCallDirection.Incoming), Ord(TMcpCodeTools.ParseDirection('Incoming')));
+  Assert.AreEqual(Ord(TMcpCallDirection.Outgoing), Ord(TMcpCodeTools.ParseDirection('outgoing')));
+  Assert.AreEqual(Ord(TMcpCallDirection.Both), Ord(TMcpCodeTools.ParseDirection('')));
 end;
 
 procedure TMcpCodeToolsTests.ReplacesLineRange;
@@ -260,13 +269,6 @@ begin
   Assert.Contains(TMcpCheckTools.Diagnostics(TMcpRuleScope.Create(BuiltinRules, TServerSettings.Default, 'C:\P'),
     [cZielFile],
     mReadWin64, mWin64), '0 Befunde');
-end;
-
-procedure TMcpCodeToolsTests.ParsesDirection;
-begin
-  Assert.AreEqual(Ord(TMcpCallDirection.Incoming), Ord(TMcpCodeTools.ParseDirection('Incoming')));
-  Assert.AreEqual(Ord(TMcpCallDirection.Outgoing), Ord(TMcpCodeTools.ParseDirection('outgoing')));
-  Assert.AreEqual(Ord(TMcpCallDirection.Both), Ord(TMcpCodeTools.ParseDirection('')));
 end;
 
 initialization

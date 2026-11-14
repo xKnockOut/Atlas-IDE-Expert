@@ -251,6 +251,8 @@ begin
   end;
 end;
 
+{ TDeclarationRulesTests }
+
 procedure TDeclarationRulesTests.MissingBodyReportsWithFix;
 var
   mFindings: TArray<TRuleFinding>;
@@ -373,19 +375,6 @@ begin
   Result := string.Join(#10, mLines);
 end;
 
-procedure TDeclarationRulesTests.SyncActionCanBeSwitchedOff;
-var
-  mSource: string;
-  mFindings: TArray<TRuleFinding>;
-begin
-  // refactoring.syncSignatures aus (#100): Meldung bleibt, ohne Angleich-Aktionen.
-  mSource := ClassUnit('    procedure Foo(A: Integer);', 'procedure TFoo.Foo(const A: Integer);'#10'begin'#10'end;');
-  mFindings := TRuleAssert.Findings(TSignatureMismatchRule.Create, mSource,
-    '{"refactoring": {"syncSignatures": false}}');
-  Assert.AreEqual(1, Integer(Length(mFindings)));
-  Assert.AreEqual(0, Integer(Length(mFindings[0].Fixes)));
-end;
-
 procedure TDeclarationRulesTests.ModifierMismatchAlignsBothWays;
 var
   mSource: string;
@@ -411,6 +400,19 @@ begin
   TRuleAssert.Silent(TImplementedNotDeclaredRule.Create, mSource);
 end;
 
+procedure TDeclarationRulesTests.SyncActionCanBeSwitchedOff;
+var
+  mSource: string;
+  mFindings: TArray<TRuleFinding>;
+begin
+  // refactoring.syncSignatures aus (#100): Meldung bleibt, ohne Angleich-Aktionen.
+  mSource := ClassUnit('    procedure Foo(A: Integer);', 'procedure TFoo.Foo(const A: Integer);'#10'begin'#10'end;');
+  mFindings := TRuleAssert.Findings(TSignatureMismatchRule.Create, mSource,
+    '{"refactoring": {"syncSignatures": false}}');
+  Assert.AreEqual(1, Integer(Length(mFindings)));
+  Assert.AreEqual(0, Integer(Length(mFindings[0].Fixes)));
+end;
+
 procedure TDeclarationRulesTests.DefaultsStayInDeclaration;
 var
   mSource: string;
@@ -421,6 +423,18 @@ begin
   mFindings := TRuleAssert.Findings(TSignatureMismatchRule.Create, mSource);
   Assert.AreEqual('(A: Integer; B: string): Boolean', mFindings[0].Fixes[0].Edits[0].NewText);
   Assert.AreEqual('(const A: Integer = 5; B: string = ''x;y''): Boolean', mFindings[0].Fixes[1].Edits[0].NewText);
+end;
+
+procedure TDeclarationRulesTests.AmbiguousOverloadOffersNoAlignment;
+var
+  mFindings: TArray<TRuleFinding>;
+begin
+  mFindings := TRuleAssert.Findings(TImplementedNotDeclaredRule.Create, ClassUnit(
+    '    procedure Foo(A: Integer); overload;'#10'    procedure Foo(A: string); overload;',
+    'procedure TFoo.Foo(A: Double);'#10'begin'#10'end;'));
+  Assert.AreEqual(1, Integer(Length(mFindings)));
+  // Nur "Deklaration ergänzen".
+  Assert.AreEqual(1, Integer(Length(mFindings[0].Fixes)));
 end;
 
 procedure TDeclarationRulesTests.SignatureMismatchIssueExample;
@@ -449,40 +463,6 @@ begin
     'procedure TKonto.Buchen(const A: Currency; const B: Currency);'#10'begin'#10'end;', 'TKonto = class'));
   TRuleAssert.Silent(TSignatureMismatchRule.Create, ClassUnit('    procedure Buchen(const A: Currency);',
     'procedure TKonto.Buchen;'#10'begin'#10'end;', 'TKonto = class'));
-end;
-
-procedure TDeclarationRulesTests.SignatureMismatchUnitRoutine;
-var
-  mFound: TArray<TRuleFinding>;
-
-  function UnitWith(const AInterface, AImplementation: string): string;
-  begin
-    Result := 'unit U;'#10'interface'#10 + AInterface + #10'implementation'#10#10 + AImplementation + #10'end.';
-  end;
-
-begin
-  // Cm.E2037: Routine im interface-Teil, Rumpf mit anderem Ergebnistyp (#1380).
-  mFound := TRuleAssert.Findings(TSignatureMismatchRule.Create, UnitWith('function Liefere: Integer;',
-    'function Liefere: string;'#10'begin'#10'  Result := '''';'#10'end;'));
-  Assert.AreEqual(1, Integer(Length(mFound)));
-  Assert.AreEqual('Liefere weicht von der Deklaration ab: Ergebnis string statt Integer (wie E2037).',
-    mFound[0].Message);
-  Assert.AreEqual(5, mFound[0].Range.StartPos.Line);
-  Assert.AreEqual('Nimm weicht von der Deklaration ab: B statt A (wie E2037).',
-    TRuleAssert.Findings(TSignatureMismatchRule.Create, UnitWith('procedure Nimm(A: Integer);',
-    'procedure Nimm(B: Integer);'#10'begin'#10'end;'))[0].Message);
-  // Kurzform, overload, external, gleiche Köpfe und eine zweite Implementierung bleiben still.
-  TRuleAssert.Silent(TSignatureMismatchRule.Create, UnitWith('function Liefere(A: Integer): Integer;',
-    'function Liefere;'#10'begin'#10'  Result := A;'#10'end;'));
-  TRuleAssert.Silent(TSignatureMismatchRule.Create, UnitWith('function Liefere: Integer; overload;',
-    'function Liefere: Integer;'#10'begin'#10'  Result := 0;'#10'end;'#10#10 +
-    'function Liefere(A: Integer): Integer; overload;'#10'begin'#10'  Result := A;'#10'end;'));
-  TRuleAssert.Silent(TSignatureMismatchRule.Create, UnitWith('function Liefere: Integer; overload;',
-    'function Liefere(A: Integer): Integer;'#10'begin'#10'  Result := A;'#10'end;'));
-  TRuleAssert.Silent(TSignatureMismatchRule.Create, UnitWith('function Liefere: Integer; external ''x.dll'';',
-    'function Andere: string;'#10'begin'#10'end;'));
-  TRuleAssert.Silent(TSignatureMismatchRule.Create, UnitWith('function Liefere(const A: string): Integer; stdcall;',
-    'function Liefere(const A: string): Integer;'#10'begin'#10'  Result := 0;'#10'end;'));
 end;
 
 procedure TDeclarationRulesTests.SignatureMismatchVariants;
@@ -617,16 +597,38 @@ begin
   mIndex := nil;
 end;
 
-procedure TDeclarationRulesTests.AmbiguousOverloadOffersNoAlignment;
+procedure TDeclarationRulesTests.SignatureMismatchUnitRoutine;
 var
-  mFindings: TArray<TRuleFinding>;
+  mFound: TArray<TRuleFinding>;
+
+  function UnitWith(const AInterface, AImplementation: string): string;
+  begin
+    Result := 'unit U;'#10'interface'#10 + AInterface + #10'implementation'#10#10 + AImplementation + #10'end.';
+  end;
+
 begin
-  mFindings := TRuleAssert.Findings(TImplementedNotDeclaredRule.Create, ClassUnit(
-    '    procedure Foo(A: Integer); overload;'#10'    procedure Foo(A: string); overload;',
-    'procedure TFoo.Foo(A: Double);'#10'begin'#10'end;'));
-  Assert.AreEqual(1, Integer(Length(mFindings)));
-  // Nur "Deklaration ergänzen".
-  Assert.AreEqual(1, Integer(Length(mFindings[0].Fixes)));
+  // Cm.E2037: Routine im interface-Teil, Rumpf mit anderem Ergebnistyp (#1380).
+  mFound := TRuleAssert.Findings(TSignatureMismatchRule.Create, UnitWith('function Liefere: Integer;',
+    'function Liefere: string;'#10'begin'#10'  Result := '''';'#10'end;'));
+  Assert.AreEqual(1, Integer(Length(mFound)));
+  Assert.AreEqual('Liefere weicht von der Deklaration ab: Ergebnis string statt Integer (wie E2037).',
+    mFound[0].Message);
+  Assert.AreEqual(5, mFound[0].Range.StartPos.Line);
+  Assert.AreEqual('Nimm weicht von der Deklaration ab: B statt A (wie E2037).',
+    TRuleAssert.Findings(TSignatureMismatchRule.Create, UnitWith('procedure Nimm(A: Integer);',
+    'procedure Nimm(B: Integer);'#10'begin'#10'end;'))[0].Message);
+  // Kurzform, overload, external, gleiche Köpfe und eine zweite Implementierung bleiben still.
+  TRuleAssert.Silent(TSignatureMismatchRule.Create, UnitWith('function Liefere(A: Integer): Integer;',
+    'function Liefere;'#10'begin'#10'  Result := A;'#10'end;'));
+  TRuleAssert.Silent(TSignatureMismatchRule.Create, UnitWith('function Liefere: Integer; overload;',
+    'function Liefere: Integer;'#10'begin'#10'  Result := 0;'#10'end;'#10#10 +
+    'function Liefere(A: Integer): Integer; overload;'#10'begin'#10'  Result := A;'#10'end;'));
+  TRuleAssert.Silent(TSignatureMismatchRule.Create, UnitWith('function Liefere: Integer; overload;',
+    'function Liefere(A: Integer): Integer;'#10'begin'#10'  Result := A;'#10'end;'));
+  TRuleAssert.Silent(TSignatureMismatchRule.Create, UnitWith('function Liefere: Integer; external ''x.dll'';',
+    'function Andere: string;'#10'begin'#10'end;'));
+  TRuleAssert.Silent(TSignatureMismatchRule.Create, UnitWith('function Liefere(const A: string): Integer; stdcall;',
+    'function Liefere(const A: string): Integer;'#10'begin'#10'  Result := 0;'#10'end;'));
 end;
 
 /// <summary>Unit mit ILogger (Info, Warnung, Fehler) und der Klasse AClass samt AImplementation.</summary>
@@ -804,6 +806,8 @@ begin
   Result := 'unit Kunden;'#10'interface'#10'type'#10'  TKunde = class'#10 + AMembers + '  end;'#10 +
     'implementation'#10'end.';
 end;
+
+{ TDeclarationOrderRulesTests }
 
 procedure TDeclarationOrderRulesTests.FieldAfterMethodIssueExample;
 const
@@ -1286,6 +1290,8 @@ begin
     '  TZaehler = record'#10'    N: Integer;'#10'    class operator Initialize(out ADest: TZaehler);'#10'  end;'#10 +
     ATypes + 'implementation'#10'end.';
 end;
+
+{ TDeclarationTypeRulesTests }
 
 procedure TDeclarationTypeRulesTests.VariantManagedIssueExample;
 var

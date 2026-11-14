@@ -143,6 +143,20 @@ end;
 
 { TFileEncodingTests }
 
+procedure TFileEncodingTests.EncodeKeepingLineBreaksKeepsMixed;
+var
+  mFormat: TFileFormat;
+  mBytes: TBytes;
+begin
+  mFormat := TFileFormat.Create(TFileEncodingKind.Utf8Bom, TLineBreakStyle.CRLF);
+  mBytes := TFileEncoding.EncodeKeepingLineBreaks('a'#10'b'#13#10'ä', mFormat);
+  Assert.AreEqual(10, Integer(Length(mBytes)));
+  Assert.AreEqual(Integer($EF), Integer(mBytes[0]));
+  Assert.AreEqual(Integer(10), Integer(mBytes[4]));
+  Assert.AreEqual(Integer(13), Integer(mBytes[6]));
+  Assert.AreEqual(11, Integer(Length(TFileEncoding.Encode('a'#10'b'#13#10'ä', mFormat))));
+end;
+
 procedure TFileEncodingTests.DetectsBoms;
 begin
   Assert.AreEqual<TFileEncodingKind>(TFileEncodingKind.Utf8Bom,
@@ -278,48 +292,7 @@ begin
   Assert.AreEqual('1 Datei in Windows-1252, 2 in UTF-8, 1 in UTF-16, 1 in reinem ASCII', mSurvey.Describe);
 end;
 
-procedure TFileEncodingTests.SurveyDetectsMixedProjects;
-var
-  mSurvey: TEncodingSurvey;
-begin
-  mSurvey := Default(TEncodingSurvey);
-  // ASCII passt zu allem und mischt nichts.
-  mSurvey.Add(Bytes([$41]));
-  mSurvey.Add(Bytes([$61, $E4]));
-  Assert.IsFalse(mSurvey.IsMixed);
-  mSurvey.Add(Bytes([$61, $C3, $A4]));
-  Assert.IsTrue(mSurvey.IsMixed);
-end;
-
 { TFileEncodingDefaultTests }
-
-procedure TFileEncodingDefaultTests.WarmUpFirstUse;
-begin
-  Setup;
-  try
-    DecodesCodePage1250;
-  finally
-    TearDown;
-  end;
-end;
-
-procedure TFileEncodingDefaultTests.Setup;
-begin
-  FFolder := IncludeTrailingPathDelimiter(TPath.Combine(TPath.GetTempPath, 'AtlasEncoding' + IntToStr(Random(1000000))));
-  ForceDirectories(FFolder + 'Sub');
-  TFileEncodingDefaults.Clear;
-end;
-
-procedure TFileEncodingDefaultTests.TearDown;
-begin
-  TFileEncoding.Reader := nil;
-  TFileEncodingDefaults.Clear;
-  if DirectoryExists(FFolder) then
-  begin
-    TDirectory.Delete(FFolder, True);
-  end;
-  FFolder := '';
-end;
 
 procedure TFileEncodingDefaultTests.WriteBytes(const AFileName: string; const ABytes: TBytes);
 var
@@ -350,6 +323,34 @@ begin
   finally
     mStream.Free;
   end;
+end;
+
+procedure TFileEncodingDefaultTests.WarmUpFirstUse;
+begin
+  Setup;
+  try
+    DecodesCodePage1250;
+  finally
+    TearDown;
+  end;
+end;
+
+procedure TFileEncodingDefaultTests.Setup;
+begin
+  FFolder := IncludeTrailingPathDelimiter(TPath.Combine(TPath.GetTempPath, 'AtlasEncoding' + IntToStr(Random(1000000))));
+  ForceDirectories(FFolder + 'Sub');
+  TFileEncodingDefaults.Clear;
+end;
+
+procedure TFileEncodingDefaultTests.TearDown;
+begin
+  TFileEncoding.Reader := nil;
+  TFileEncodingDefaults.Clear;
+  if DirectoryExists(FFolder) then
+  begin
+    TDirectory.Delete(FFolder, True);
+  end;
+  FFolder := '';
 end;
 
 procedure TFileEncodingDefaultTests.DecodesCodePage1250;
@@ -571,6 +572,19 @@ begin
   Assert.AreEqual('1 Datei in Windows-1252', mSurvey.Describe);
 end;
 
+procedure TFileEncodingTests.SurveyDetectsMixedProjects;
+var
+  mSurvey: TEncodingSurvey;
+begin
+  mSurvey := Default(TEncodingSurvey);
+  // ASCII passt zu allem und mischt nichts.
+  mSurvey.Add(Bytes([$41]));
+  mSurvey.Add(Bytes([$61, $E4]));
+  Assert.IsFalse(mSurvey.IsMixed);
+  mSurvey.Add(Bytes([$61, $C3, $A4]));
+  Assert.IsTrue(mSurvey.IsMixed);
+end;
+
 procedure TFileEncodingTests.InvalidUtf8GivesLineAndColumn;
 var
   mData: TBytes;
@@ -594,14 +608,6 @@ begin
   Assert.AreEqual(2, Integer(Length(mInvalid)));
   Assert.AreEqual(8, mInvalid[0].Position.Character);
   Assert.AreEqual(11, mInvalid[1].Position.Character);
-end;
-
-procedure TFileEncodingTests.InvalidUtf8InPlainAnsiIsEmpty;
-var
-  mFormat: TFileFormat;
-begin
-  mFormat := TFileFormat.Create(TFileEncodingKind.Ansi1252, TLineBreakStyle.CRLF);
-  Assert.AreEqual(0, Integer(Length(TFileEncoding.InvalidUtf8(Bytes([Ord('a'), $E4, Ord('b')]), mFormat))));
 end;
 
 procedure TFileEncodingDefaultTests.LoadsThroughPlatformReader;
@@ -644,6 +650,14 @@ begin
   end;
 end;
 
+procedure TFileEncodingTests.InvalidUtf8InPlainAnsiIsEmpty;
+var
+  mFormat: TFileFormat;
+begin
+  mFormat := TFileFormat.Create(TFileEncodingKind.Ansi1252, TLineBreakStyle.CRLF);
+  Assert.AreEqual(0, Integer(Length(TFileEncoding.InvalidUtf8(Bytes([Ord('a'), $E4, Ord('b')]), mFormat))));
+end;
+
 procedure TFileEncodingTests.AnsiWithStrayUtf8PairStaysAnsi;
 var
   mAnsi, mUtf8, mWithBom: TBytes;
@@ -682,20 +696,6 @@ begin
   Assert.AreEqual(1, Integer(Length(mInvalid)));
   Assert.AreEqual(7, mInvalid[0].ByteOffset);
   Assert.AreEqual($DF, Integer(mInvalid[0].Value));
-end;
-
-procedure TFileEncodingTests.EncodeKeepingLineBreaksKeepsMixed;
-var
-  mFormat: TFileFormat;
-  mBytes: TBytes;
-begin
-  mFormat := TFileFormat.Create(TFileEncodingKind.Utf8Bom, TLineBreakStyle.CRLF);
-  mBytes := TFileEncoding.EncodeKeepingLineBreaks('a'#10'b'#13#10'ä', mFormat);
-  Assert.AreEqual(10, Integer(Length(mBytes)));
-  Assert.AreEqual(Integer($EF), Integer(mBytes[0]));
-  Assert.AreEqual(Integer(10), Integer(mBytes[4]));
-  Assert.AreEqual(Integer(13), Integer(mBytes[6]));
-  Assert.AreEqual(11, Integer(Length(TFileEncoding.Encode('a'#10'b'#13#10'ä', mFormat))));
 end;
 
 initialization

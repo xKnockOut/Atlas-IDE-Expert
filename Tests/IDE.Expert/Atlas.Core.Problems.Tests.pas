@@ -107,6 +107,8 @@ begin
   Result := Problem(ALine, ACharacter, AMessage, ASource, TAtlasProblemSeverity.Error);
 end;
 
+{ TAtlasProblemsTests }
+
 procedure TAtlasProblemsTests.ReadsLspDiagnostics;
 var
   mItems: TJSONArray;
@@ -149,218 +151,6 @@ begin
   Assert.AreEqual<TAtlasProblemSeverity>(TAtlasProblemSeverity.Hint, mProblems[2].Severity);
   Assert.AreEqual('42', mProblems[3].Code);
   Assert.AreEqual<TAtlasProblemSeverity>(TAtlasProblemSeverity.Error, mProblems[3].Severity, 'ohne severity: Fehler');
-end;
-
-procedure TAtlasProblemsTests.ContainsTreatsEmptyRangeAsOneCharacter;
-var
-  mItem: TAtlasProblem;
-begin
-  mItem := Problem(2, 4, 'x');
-  Assert.IsTrue(mItem.Contains(2, 4));
-  Assert.IsTrue(mItem.Contains(2, 7), 'Ende gehört dazu');
-  Assert.IsFalse(mItem.Contains(2, 3));
-  Assert.IsFalse(mItem.Contains(1, 5));
-  mItem.EndCharacter := mItem.StartCharacter;
-  Assert.IsTrue(mItem.Contains(2, 5), 'leerer Bereich: ein Zeichen');
-  Assert.IsFalse(mItem.Contains(2, 6));
-  mItem.EndLine := 4;
-  mItem.EndCharacter := 1;
-  Assert.IsTrue(mItem.Contains(3, 99), 'mittlere Zeile ganz');
-  Assert.IsFalse(mItem.Contains(4, 2));
-end;
-
-procedure TAtlasProblemsTests.ReadsDiagnosticReports;
-var
-  mJson: TJSONObject;
-  mReport: TLspDiagnosticReport;
-begin
-  mJson := TJSONObject.ParseJSONValue('{"uri":"file:///c%3A/P/A.pas","kind":"full","resultId":"3:v2",' +
-    '"items":[{"range":{"start":{"line":0,"character":0},"end":{"line":0,"character":4}},"message":"m"}]}')
-    as TJSONObject;
-  try
-    mReport := TLspDiagnosticReport.FromJson(mJson, '');
-  finally
-    mJson.Free;
-  end;
-  Assert.AreEqual('c:\P\A.pas', mReport.FileName);
-  Assert.AreEqual('3:v2', mReport.ResultId);
-  Assert.IsFalse(mReport.Unchanged);
-  Assert.AreEqual(1, Integer(Length(mReport.Problems)));
-  mJson := TJSONObject.ParseJSONValue('{"kind":"unchanged","resultId":"3:v2"}') as TJSONObject;
-  try
-    mReport := TLspDiagnosticReport.FromJson(mJson, 'C:\P\B.pas');
-  finally
-    mJson.Free;
-  end;
-  Assert.AreEqual('C:\P\B.pas', mReport.FileName);
-  Assert.IsTrue(mReport.Unchanged);
-  Assert.AreEqual(0, Integer(Length(mReport.Problems)));
-end;
-
-procedure TAtlasProblemsTests.DeletedLinesDropTheirProblems;
-var
-  mStore: TAtlasProblemStore;
-  mProblems: TArray<TAtlasProblem>;
-begin
-  mStore := TAtlasProblemStore.Create;
-  try
-    mStore.DropDeletedLines := True;
-    mStore.Update('C:\P\A.pas', 'a'#10'b'#10'c'#10'd', True,
-      [Problem(0, 0, 'oben'), Problem(1, 0, 'weg'), Problem(3, 0, 'unten')], '1', False);
-    mStore.Edit('C:\P\A.pas', 'a'#10'c'#10'd');
-    mProblems := mStore.ForFile('C:\P\A.pas');
-    Assert.AreEqual(2, Integer(Length(mProblems)), 'Meldung der gelöschten Zeile fehlt');
-    Assert.AreEqual('oben', mProblems[0].Message);
-    Assert.AreEqual(2, mProblems[1].StartLine);
-    Assert.AreEqual(0, Integer(Length(mStore.OnLine('C:\P\A.pas', 1))), 'keine Marke auf der Folgezeile');
-    // Geänderte Zeile: bleibt blass wie bisher.
-    mStore.Edit('C:\P\A.pas', 'A'#10'c'#10'd');
-    mProblems := mStore.ForFile('C:\P\A.pas');
-    Assert.AreEqual(2, Integer(Length(mProblems)));
-    Assert.IsTrue(mProblems[0].Stale);
-    // Ausgeschaltet: blass auf der Folgezeile.
-    mStore.DropDeletedLines := False;
-    mStore.Update('C:\P\A.pas', 'a'#10'b'#10'c', True, [Problem(1, 0, 'bleibt')], '2', False);
-    mStore.Edit('C:\P\A.pas', 'a'#10'c');
-    mProblems := mStore.ForFile('C:\P\A.pas');
-    Assert.AreEqual(1, Integer(Length(mProblems)));
-    Assert.IsTrue(mProblems[0].Stale);
-  finally
-    mStore.Free;
-  end;
-end;
-
-procedure TAtlasProblemsTests.ProblemsMoveWithInsertedLinesAndTurnStaleWhereEdited;
-var
-  mStore: TAtlasProblemStore;
-  mProblems: TArray<TAtlasProblem>;
-  mVersion: Integer;
-begin
-  mStore := TAtlasProblemStore.Create;
-  try
-    mStore.Update('C:\P\A.pas', 'a'#10'b'#10'c'#10'd', True,
-      [Problem(0, 0, 'oben'), Problem(2, 0, 'mitte'), Problem(3, 0, 'unten')], '1', False);
-    mVersion := mStore.Version;
-    // Zwei Zeilen nach "a" eingefügt, "c" geändert.
-    mStore.Edit('c:\p\a.pas', 'a'#10'neu'#10'neu'#10'b'#10'C'#10'd');
-    Assert.AreNotEqual(mVersion, mStore.Version);
-    mProblems := mStore.ForFile('C:\P\A.pas');
-    Assert.AreEqual(3, Integer(Length(mProblems)));
-    Assert.AreEqual(0, mProblems[0].StartLine);
-    Assert.IsFalse(mProblems[0].Stale, 'vor der Änderung');
-    Assert.AreEqual(2, mProblems[1].StartLine, 'in der geänderten Stelle bleibt die Zeile');
-    Assert.IsTrue(mProblems[1].Stale);
-    Assert.AreEqual(5, mProblems[2].StartLine, 'dahinter um zwei verschoben');
-    Assert.IsFalse(mProblems[2].Stale);
-    Assert.AreEqual(1, Integer(Length(mStore.OnLine('C:\P\A.pas', 5))));
-    Assert.AreEqual(1, Integer(Length(mStore.At('C:\P\A.pas', 5, 1))));
-    // Gleicher Text: nichts ändert sich.
-    mVersion := mStore.Version;
-    mStore.Edit('C:\P\A.pas', 'a'#10'neu'#10'neu'#10'b'#10'C'#10'd');
-    Assert.AreEqual(mVersion, mStore.Version);
-  finally
-    mStore.Free;
-  end;
-end;
-
-procedure TAtlasProblemsTests.CompilerMessagesStayShiftedUntilReplaced;
-var
-  mStore: TAtlasProblemStore;
-  mProblems: TArray<TAtlasProblem>;
-begin
-  mStore := TAtlasProblemStore.Create;
-  try
-    // Erste Meldung: Compilermeldungen werden übernommen.
-    mStore.Update('C:\P\A.pas', 'a'#10'b'#10'c', True, [Problem(2, 0, 'E2003', 'dcc')], '1', False);
-    mStore.Edit('C:\P\A.pas', 'neu'#10'a'#10'b'#10'c');
-    mProblems := mStore.ForFile('C:\P\A.pas');
-    Assert.AreEqual(3, mProblems[0].StartLine);
-    Assert.IsTrue(mProblems[0].Stale, 'nach jeder Änderung blass bis zum nächsten Compile');
-    // Neue Atlas-Diagnosen mit der alten dcc-Zeile des Servers: die mitgewanderte bleibt.
-    mStore.Update('C:\P\A.pas', 'neu'#10'a'#10'b'#10'c', True,
-      [Problem(2, 0, 'E2003', 'dcc'), Problem(1, 0, 'Regel')], '2', False);
-    mProblems := mStore.ForFile('C:\P\A.pas');
-    Assert.AreEqual(2, Integer(Length(mProblems)));
-    Assert.AreEqual('Regel', mProblems[0].Message);
-    Assert.AreEqual(3, mProblems[1].StartLine);
-    Assert.IsTrue(mProblems[1].Stale);
-    // Nach refresh (neuer Compile): ersetzt.
-    mStore.Update('C:\P\A.pas', 'neu'#10'a'#10'b'#10'c', True, [Problem(3, 0, 'E2003', 'dcc')], '3', True);
-    mProblems := mStore.ForFile('C:\P\A.pas');
-    Assert.AreEqual(1, Integer(Length(mProblems)));
-    Assert.AreEqual(3, mProblems[0].StartLine);
-    Assert.IsFalse(mProblems[0].Stale);
-  finally
-    mStore.Free;
-  end;
-end;
-
-procedure TAtlasProblemsTests.ConfirmedCompilerMessagesMerge;
-var
-  mStore: TAtlasProblemStore;
-  mProblems: TArray<TAtlasProblem>;
-  mRule, mSame, mOther, mElsewhere: TAtlasProblem;
-begin
-  mRule := Problem(1, 2, 'Suchen erwartet 1 Argumente, übergeben sind 0; AName fehlt (wie E2035).');
-  mRule.Code := 'argument-count-mismatch';
-  mRule.CompilerCodes := ['E2034', 'E2035'];
-  mSame := Problem(1, 8, 'Nicht genügend wirkliche Parameter', 'dcc');
-  mSame.Code := 'E2035';
-  mOther := Problem(1, 8, 'Inkompatible Typen', 'dcc');
-  mOther.Code := 'E2010';
-  mElsewhere := Problem(2, 0, 'Nicht genügend wirkliche Parameter', 'dcc');
-  mElsewhere.Code := 'E2035';
-  mStore := TAtlasProblemStore.Create;
-  try
-    Assert.IsTrue(mStore.CompilerMerge, 'Vorgabe merge');
-    mStore.Update('C:\P\A.pas', 'a'#10'b'#10'c', True, [mRule, mSame, mOther, mElsewhere], '1', True);
-    mProblems := mStore.ForFile('C:\P\A.pas');
-    // Gleiche Zeile und Code: eine Meldung; anderer Code bzw. andere Zeile bleiben.
-    Assert.AreEqual(3, Integer(Length(mProblems)));
-    Assert.AreEqual('argument-count-mismatch', mProblems[0].Code);
-    Assert.IsTrue(mProblems[0].Confirmed);
-    Assert.AreEqual('E2035', mProblems[0].ConfirmedCode);
-    Assert.AreEqual('E2035', mProblems[0].CompilerCodeText);
-    Assert.AreEqual('E2010', mProblems[1].Code);
-    Assert.AreEqual(2, mProblems[2].StartLine);
-    // both: beide Meldungen, der Atlas-Befund bleibt bestätigt.
-    mStore.CompilerMerge := False;
-    mProblems := mStore.ForFile('C:\P\A.pas');
-    Assert.AreEqual(4, Integer(Length(mProblems)));
-    Assert.IsTrue(mProblems[0].Confirmed or mProblems[1].Confirmed);
-    // Nach dem nächsten Build ohne die Meldung: nur der Atlas-Befund, nicht mehr bestätigt.
-    mStore.CompilerMerge := True;
-    mStore.Update('C:\P\A.pas', 'a'#10'b'#10'c', True, [mRule], '2', True);
-    mProblems := mStore.ForFile('C:\P\A.pas');
-    Assert.AreEqual(1, Integer(Length(mProblems)));
-    Assert.IsFalse(mProblems[0].Confirmed);
-    Assert.AreEqual('E2034, E2035', mProblems[0].CompilerCodeText);
-  finally
-    mStore.Free;
-  end;
-end;
-
-procedure TAtlasProblemsTests.ReadsCompilerCodesAndStripsThem;
-var
-  mItem: TJSONValue;
-  mProblem: TAtlasProblem;
-begin
-  mItem := TJSONObject.ParseJSONValue('{"range":{"start":{"line":0,"character":0},"end":{"line":0,"character":4}},' +
-    '"severity":1,"code":"argument-count-mismatch","source":"Atlas","message":"X erwartet 1 Argumente (wie E2035).",' +
-    '"data":{"compilerCodes":["E2034","E2035"]}}');
-  try
-    mProblem := TAtlasProblem.FromJson(mItem as TJSONObject);
-    Assert.AreEqual(2, Integer(Length(mProblem.CompilerCodes)));
-    Assert.AreEqual('E2034, E2035', mProblem.CompilerCodeText);
-  finally
-    mItem.Free;
-  end;
-  Assert.AreEqual('X erwartet 1 Argumente.', TAtlasProblem.WithoutCompilerCode('X erwartet 1 Argumente (wie E2035).'));
-  Assert.AreEqual('A und B.', TAtlasProblem.WithoutCompilerCode('A (wie E2034, E2035) und B (wie W1000' + #$2013 +
-    'W1007).'));
-  // Anderer Text in Klammern bleibt.
-  Assert.AreEqual('Wert (wie oben) fehlt.', TAtlasProblem.WithoutCompilerCode('Wert (wie oben) fehlt.'));
-  Assert.AreEqual('Ohne Code', TAtlasProblem.WithoutCompilerCode('Ohne Code'));
 end;
 
 procedure TAtlasProblemsTests.LinesBetweenDirectivesAreInactive;
@@ -480,6 +270,218 @@ begin
   Assert.AreEqual('C WIN64', mInactive.InactiveHint('C %s', ' (%s · %s)', 'x'));
   mInactive.InactiveCondition := '';
   Assert.AreEqual('Inaktiver Bereich', mInactive.InactiveHint('C %s', ' (%s · %s)', 'Inaktiver Bereich'));
+end;
+
+procedure TAtlasProblemsTests.ContainsTreatsEmptyRangeAsOneCharacter;
+var
+  mItem: TAtlasProblem;
+begin
+  mItem := Problem(2, 4, 'x');
+  Assert.IsTrue(mItem.Contains(2, 4));
+  Assert.IsTrue(mItem.Contains(2, 7), 'Ende gehört dazu');
+  Assert.IsFalse(mItem.Contains(2, 3));
+  Assert.IsFalse(mItem.Contains(1, 5));
+  mItem.EndCharacter := mItem.StartCharacter;
+  Assert.IsTrue(mItem.Contains(2, 5), 'leerer Bereich: ein Zeichen');
+  Assert.IsFalse(mItem.Contains(2, 6));
+  mItem.EndLine := 4;
+  mItem.EndCharacter := 1;
+  Assert.IsTrue(mItem.Contains(3, 99), 'mittlere Zeile ganz');
+  Assert.IsFalse(mItem.Contains(4, 2));
+end;
+
+procedure TAtlasProblemsTests.ReadsDiagnosticReports;
+var
+  mJson: TJSONObject;
+  mReport: TLspDiagnosticReport;
+begin
+  mJson := TJSONObject.ParseJSONValue('{"uri":"file:///c%3A/P/A.pas","kind":"full","resultId":"3:v2",' +
+    '"items":[{"range":{"start":{"line":0,"character":0},"end":{"line":0,"character":4}},"message":"m"}]}')
+    as TJSONObject;
+  try
+    mReport := TLspDiagnosticReport.FromJson(mJson, '');
+  finally
+    mJson.Free;
+  end;
+  Assert.AreEqual('c:\P\A.pas', mReport.FileName);
+  Assert.AreEqual('3:v2', mReport.ResultId);
+  Assert.IsFalse(mReport.Unchanged);
+  Assert.AreEqual(1, Integer(Length(mReport.Problems)));
+  mJson := TJSONObject.ParseJSONValue('{"kind":"unchanged","resultId":"3:v2"}') as TJSONObject;
+  try
+    mReport := TLspDiagnosticReport.FromJson(mJson, 'C:\P\B.pas');
+  finally
+    mJson.Free;
+  end;
+  Assert.AreEqual('C:\P\B.pas', mReport.FileName);
+  Assert.IsTrue(mReport.Unchanged);
+  Assert.AreEqual(0, Integer(Length(mReport.Problems)));
+end;
+
+procedure TAtlasProblemsTests.ProblemsMoveWithInsertedLinesAndTurnStaleWhereEdited;
+var
+  mStore: TAtlasProblemStore;
+  mProblems: TArray<TAtlasProblem>;
+  mVersion: Integer;
+begin
+  mStore := TAtlasProblemStore.Create;
+  try
+    mStore.Update('C:\P\A.pas', 'a'#10'b'#10'c'#10'd', True,
+      [Problem(0, 0, 'oben'), Problem(2, 0, 'mitte'), Problem(3, 0, 'unten')], '1', False);
+    mVersion := mStore.Version;
+    // Zwei Zeilen nach "a" eingefügt, "c" geändert.
+    mStore.Edit('c:\p\a.pas', 'a'#10'neu'#10'neu'#10'b'#10'C'#10'd');
+    Assert.AreNotEqual(mVersion, mStore.Version);
+    mProblems := mStore.ForFile('C:\P\A.pas');
+    Assert.AreEqual(3, Integer(Length(mProblems)));
+    Assert.AreEqual(0, mProblems[0].StartLine);
+    Assert.IsFalse(mProblems[0].Stale, 'vor der Änderung');
+    Assert.AreEqual(2, mProblems[1].StartLine, 'in der geänderten Stelle bleibt die Zeile');
+    Assert.IsTrue(mProblems[1].Stale);
+    Assert.AreEqual(5, mProblems[2].StartLine, 'dahinter um zwei verschoben');
+    Assert.IsFalse(mProblems[2].Stale);
+    Assert.AreEqual(1, Integer(Length(mStore.OnLine('C:\P\A.pas', 5))));
+    Assert.AreEqual(1, Integer(Length(mStore.At('C:\P\A.pas', 5, 1))));
+    // Gleicher Text: nichts ändert sich.
+    mVersion := mStore.Version;
+    mStore.Edit('C:\P\A.pas', 'a'#10'neu'#10'neu'#10'b'#10'C'#10'd');
+    Assert.AreEqual(mVersion, mStore.Version);
+  finally
+    mStore.Free;
+  end;
+end;
+
+procedure TAtlasProblemsTests.DeletedLinesDropTheirProblems;
+var
+  mStore: TAtlasProblemStore;
+  mProblems: TArray<TAtlasProblem>;
+begin
+  mStore := TAtlasProblemStore.Create;
+  try
+    mStore.DropDeletedLines := True;
+    mStore.Update('C:\P\A.pas', 'a'#10'b'#10'c'#10'd', True,
+      [Problem(0, 0, 'oben'), Problem(1, 0, 'weg'), Problem(3, 0, 'unten')], '1', False);
+    mStore.Edit('C:\P\A.pas', 'a'#10'c'#10'd');
+    mProblems := mStore.ForFile('C:\P\A.pas');
+    Assert.AreEqual(2, Integer(Length(mProblems)), 'Meldung der gelöschten Zeile fehlt');
+    Assert.AreEqual('oben', mProblems[0].Message);
+    Assert.AreEqual(2, mProblems[1].StartLine);
+    Assert.AreEqual(0, Integer(Length(mStore.OnLine('C:\P\A.pas', 1))), 'keine Marke auf der Folgezeile');
+    // Geänderte Zeile: bleibt blass wie bisher.
+    mStore.Edit('C:\P\A.pas', 'A'#10'c'#10'd');
+    mProblems := mStore.ForFile('C:\P\A.pas');
+    Assert.AreEqual(2, Integer(Length(mProblems)));
+    Assert.IsTrue(mProblems[0].Stale);
+    // Ausgeschaltet: blass auf der Folgezeile.
+    mStore.DropDeletedLines := False;
+    mStore.Update('C:\P\A.pas', 'a'#10'b'#10'c', True, [Problem(1, 0, 'bleibt')], '2', False);
+    mStore.Edit('C:\P\A.pas', 'a'#10'c');
+    mProblems := mStore.ForFile('C:\P\A.pas');
+    Assert.AreEqual(1, Integer(Length(mProblems)));
+    Assert.IsTrue(mProblems[0].Stale);
+  finally
+    mStore.Free;
+  end;
+end;
+
+procedure TAtlasProblemsTests.CompilerMessagesStayShiftedUntilReplaced;
+var
+  mStore: TAtlasProblemStore;
+  mProblems: TArray<TAtlasProblem>;
+begin
+  mStore := TAtlasProblemStore.Create;
+  try
+    // Erste Meldung: Compilermeldungen werden übernommen.
+    mStore.Update('C:\P\A.pas', 'a'#10'b'#10'c', True, [Problem(2, 0, 'E2003', 'dcc')], '1', False);
+    mStore.Edit('C:\P\A.pas', 'neu'#10'a'#10'b'#10'c');
+    mProblems := mStore.ForFile('C:\P\A.pas');
+    Assert.AreEqual(3, mProblems[0].StartLine);
+    Assert.IsTrue(mProblems[0].Stale, 'nach jeder Änderung blass bis zum nächsten Compile');
+    // Neue Atlas-Diagnosen mit der alten dcc-Zeile des Servers: die mitgewanderte bleibt.
+    mStore.Update('C:\P\A.pas', 'neu'#10'a'#10'b'#10'c', True,
+      [Problem(2, 0, 'E2003', 'dcc'), Problem(1, 0, 'Regel')], '2', False);
+    mProblems := mStore.ForFile('C:\P\A.pas');
+    Assert.AreEqual(2, Integer(Length(mProblems)));
+    Assert.AreEqual('Regel', mProblems[0].Message);
+    Assert.AreEqual(3, mProblems[1].StartLine);
+    Assert.IsTrue(mProblems[1].Stale);
+    // Nach refresh (neuer Compile): ersetzt.
+    mStore.Update('C:\P\A.pas', 'neu'#10'a'#10'b'#10'c', True, [Problem(3, 0, 'E2003', 'dcc')], '3', True);
+    mProblems := mStore.ForFile('C:\P\A.pas');
+    Assert.AreEqual(1, Integer(Length(mProblems)));
+    Assert.AreEqual(3, mProblems[0].StartLine);
+    Assert.IsFalse(mProblems[0].Stale);
+  finally
+    mStore.Free;
+  end;
+end;
+
+procedure TAtlasProblemsTests.ConfirmedCompilerMessagesMerge;
+var
+  mStore: TAtlasProblemStore;
+  mProblems: TArray<TAtlasProblem>;
+  mRule, mSame, mOther, mElsewhere: TAtlasProblem;
+begin
+  mRule := Problem(1, 2, 'Suchen erwartet 1 Argumente, übergeben sind 0; AName fehlt (wie E2035).');
+  mRule.Code := 'argument-count-mismatch';
+  mRule.CompilerCodes := ['E2034', 'E2035'];
+  mSame := Problem(1, 8, 'Nicht genügend wirkliche Parameter', 'dcc');
+  mSame.Code := 'E2035';
+  mOther := Problem(1, 8, 'Inkompatible Typen', 'dcc');
+  mOther.Code := 'E2010';
+  mElsewhere := Problem(2, 0, 'Nicht genügend wirkliche Parameter', 'dcc');
+  mElsewhere.Code := 'E2035';
+  mStore := TAtlasProblemStore.Create;
+  try
+    Assert.IsTrue(mStore.CompilerMerge, 'Vorgabe merge');
+    mStore.Update('C:\P\A.pas', 'a'#10'b'#10'c', True, [mRule, mSame, mOther, mElsewhere], '1', True);
+    mProblems := mStore.ForFile('C:\P\A.pas');
+    // Gleiche Zeile und Code: eine Meldung; anderer Code bzw. andere Zeile bleiben.
+    Assert.AreEqual(3, Integer(Length(mProblems)));
+    Assert.AreEqual('argument-count-mismatch', mProblems[0].Code);
+    Assert.IsTrue(mProblems[0].Confirmed);
+    Assert.AreEqual('E2035', mProblems[0].ConfirmedCode);
+    Assert.AreEqual('E2035', mProblems[0].CompilerCodeText);
+    Assert.AreEqual('E2010', mProblems[1].Code);
+    Assert.AreEqual(2, mProblems[2].StartLine);
+    // both: beide Meldungen, der Atlas-Befund bleibt bestätigt.
+    mStore.CompilerMerge := False;
+    mProblems := mStore.ForFile('C:\P\A.pas');
+    Assert.AreEqual(4, Integer(Length(mProblems)));
+    Assert.IsTrue(mProblems[0].Confirmed or mProblems[1].Confirmed);
+    // Nach dem nächsten Build ohne die Meldung: nur der Atlas-Befund, nicht mehr bestätigt.
+    mStore.CompilerMerge := True;
+    mStore.Update('C:\P\A.pas', 'a'#10'b'#10'c', True, [mRule], '2', True);
+    mProblems := mStore.ForFile('C:\P\A.pas');
+    Assert.AreEqual(1, Integer(Length(mProblems)));
+    Assert.IsFalse(mProblems[0].Confirmed);
+    Assert.AreEqual('E2034, E2035', mProblems[0].CompilerCodeText);
+  finally
+    mStore.Free;
+  end;
+end;
+
+procedure TAtlasProblemsTests.ReadsCompilerCodesAndStripsThem;
+var
+  mItem: TJSONValue;
+  mProblem: TAtlasProblem;
+begin
+  mItem := TJSONObject.ParseJSONValue('{"range":{"start":{"line":0,"character":0},"end":{"line":0,"character":4}},' +
+    '"severity":1,"code":"argument-count-mismatch","source":"Atlas","message":"X erwartet 1 Argumente (wie E2035).",' +
+    '"data":{"compilerCodes":["E2034","E2035"]}}');
+  try
+    mProblem := TAtlasProblem.FromJson(mItem as TJSONObject);
+    Assert.AreEqual(2, Integer(Length(mProblem.CompilerCodes)));
+    Assert.AreEqual('E2034, E2035', mProblem.CompilerCodeText);
+  finally
+    mItem.Free;
+  end;
+  Assert.AreEqual('X erwartet 1 Argumente.', TAtlasProblem.WithoutCompilerCode('X erwartet 1 Argumente (wie E2035).'));
+  Assert.AreEqual('A und B.', TAtlasProblem.WithoutCompilerCode('A (wie E2034, E2035) und B (wie W1000' + #$2013 +
+    'W1007).'));
+  // Anderer Text in Klammern bleibt.
+  Assert.AreEqual('Wert (wie oben) fehlt.', TAtlasProblem.WithoutCompilerCode('Wert (wie oben) fehlt.'));
+  Assert.AreEqual('Ohne Code', TAtlasProblem.WithoutCompilerCode('Ohne Code'));
 end;
 
 procedure TAtlasProblemsTests.ForFileHidesInactiveRangesAndDuplicatesAndSorts;
@@ -688,6 +690,14 @@ begin
   Assert.AreEqual(0.55, cAtlasMixFaded, 0.0001);
 end;
 
+procedure TAtlasProblemsTests.ProblemColorHintMuted;
+var
+  mColors: TAtlasColors;
+begin
+  mColors := TAtlasColors.Light;
+  Assert.AreEqual(mColors.Muted, ProblemColor(mColors, Problem(0, 0, 'x', 'Atlas', TAtlasProblemSeverity.Hint)));
+end;
+
 procedure TAtlasProblemsTests.UsesHintsAreKeptApart;
 var
   mItem: TJSONObject;
@@ -737,14 +747,6 @@ begin
   finally
     mStore.Free;
   end;
-end;
-
-procedure TAtlasProblemsTests.ProblemColorHintMuted;
-var
-  mColors: TAtlasColors;
-begin
-  mColors := TAtlasColors.Light;
-  Assert.AreEqual(mColors.Muted, ProblemColor(mColors, Problem(0, 0, 'x', 'Atlas', TAtlasProblemSeverity.Hint)));
 end;
 
 procedure TAtlasProblemsTests.ManyProblemsInLargeUnitStayFast;

@@ -28,6 +28,8 @@ implementation
 uses
   Atlas.Core.Rules.CustomLayer;
 
+{ TAtlasCustomLayerTests }
+
 procedure TAtlasCustomLayerTests.LayerFromNamespace;
 begin
   Assert.AreEqual('Kunden.Logik.*', TAtlasCustomLayer.LayerFrom('Kunden.Logik.Engine'));

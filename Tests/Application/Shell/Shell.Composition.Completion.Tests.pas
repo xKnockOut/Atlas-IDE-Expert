@@ -47,15 +47,14 @@ uses
 const
   cUri = 'file:///tmp/A.pas';
 
-procedure TShellCompletionTests.Setup;
-begin
-  FLevel := '23.0';
-  FPostfix := True;
-end;
+{ TShellCompletionTests }
 
-procedure TShellCompletionTests.TearDown;
+function TShellCompletionTests.NewServices: TShellCompletionServices;
 begin
-  FLevel := '';
+  Result := Default(TShellCompletionServices);
+  Result.CompletionSettingsFor := CompletionSettings;
+  Result.RefactoringSettingsFor := RefactoringSettings;
+  Result.LanguageLevelFor := LanguageLevel;
 end;
 
 function TShellCompletionTests.CompletionSettings(const AUri: string): TCompletionSettings;
@@ -76,12 +75,15 @@ begin
   Result := FLevel;
 end;
 
-function TShellCompletionTests.NewServices: TShellCompletionServices;
+procedure TShellCompletionTests.Setup;
 begin
-  Result := Default(TShellCompletionServices);
-  Result.CompletionSettingsFor := CompletionSettings;
-  Result.RefactoringSettingsFor := RefactoringSettings;
-  Result.LanguageLevelFor := LanguageLevel;
+  FLevel := '23.0';
+  FPostfix := True;
+end;
+
+procedure TShellCompletionTests.TearDown;
+begin
+  FLevel := '';
 end;
 
 procedure TShellCompletionTests.MatchingFromSettings;

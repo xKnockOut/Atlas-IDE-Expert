@@ -212,6 +212,18 @@ begin
   Assert.AreEqual(1, Integer(Length(mLimits.Exceeded(mValues))));
 end;
 
+procedure TMetricsReportTests.KindKeysRoundTrip;
+var
+  mKind, mFound: TMetricKind;
+begin
+  for mKind := Low(TMetricKind) to High(TMetricKind) do
+  begin
+    Assert.IsTrue(TMetrics.TryKindOf(TMetrics.Key(mKind), mFound), TMetrics.Key(mKind));
+    Assert.AreEqual<TMetricKind>(mFound, mKind, TMetrics.Key(mKind));
+  end;
+  Assert.IsFalse(TMetrics.TryKindOf('lines', mFound));
+end;
+
 procedure TMetricsReportTests.StructureJsonAndLensPart;
 var
   mItem: TStructureMetrics;
@@ -234,18 +246,6 @@ begin
   Assert.AreEqual('87 Member (> 40)', TMetricsReport.StructureLensPart(TStructureKind.ClassSize, 87, mLimits));
   Assert.AreEqual('12 Units im uses', TMetricsReport.StructureLensPart(TStructureKind.UsesCount, 12, mLimits));
   Assert.AreEqual('unitLength', TMetricsReport.StructureKey(TStructureKind.UnitLength));
-end;
-
-procedure TMetricsReportTests.KindKeysRoundTrip;
-var
-  mKind, mFound: TMetricKind;
-begin
-  for mKind := Low(TMetricKind) to High(TMetricKind) do
-  begin
-    Assert.IsTrue(TMetrics.TryKindOf(TMetrics.Key(mKind), mFound), TMetrics.Key(mKind));
-    Assert.AreEqual<TMetricKind>(mFound, mKind, TMetrics.Key(mKind));
-  end;
-  Assert.IsFalse(TMetrics.TryKindOf('lines', mFound));
 end;
 
 initialization

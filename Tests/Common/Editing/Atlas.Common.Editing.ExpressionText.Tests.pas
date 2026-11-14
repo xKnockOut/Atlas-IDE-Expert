@@ -73,6 +73,8 @@ begin
   end;
 end;
 
+{ TExpressionTextTests }
+
 procedure TExpressionTextTests.NegatesComparisons;
 begin
   Assert.AreEqual('A <> B', Negated('A = B'));

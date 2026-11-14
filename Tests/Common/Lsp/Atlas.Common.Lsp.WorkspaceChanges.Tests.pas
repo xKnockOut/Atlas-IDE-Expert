@@ -87,6 +87,8 @@ begin
     end;
 end;
 
+{ TWorkspaceChangesTests }
+
 procedure TWorkspaceChangesTests.MergesEditsOfSameFile;
 var
   mChanges: TWorkspaceChanges;

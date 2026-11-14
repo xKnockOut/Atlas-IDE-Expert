@@ -54,6 +54,8 @@ begin
   Result.Source := 'Atlas';
 end;
 
+{ TAtlasInlineDiagnosticsTests }
+
 procedure TAtlasInlineDiagnosticsTests.ModeNamesRoundTrip;
 var
   mMode: TAtlasInlineDiagnosticsMode;

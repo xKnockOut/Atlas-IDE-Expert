@@ -36,6 +36,8 @@ uses
   Atlas.UI.Strings.Tests,
   Atlas.UI.Tracker.GitHubStrings;
 
+{ TAtlasGitHubStringsTests }
+
 procedure TAtlasGitHubStringsTests.EveryTextExistsInBothLanguages;
 var
   mId: TAtlasGitHubTextId;

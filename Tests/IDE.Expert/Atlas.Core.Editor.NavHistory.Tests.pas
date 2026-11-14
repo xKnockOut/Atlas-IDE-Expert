@@ -42,6 +42,8 @@ begin
   Result := TAtlasNavPlace.Create(AFileName, ALine, 1);
 end;
 
+{ TAtlasNavHistoryTests }
+
 procedure TAtlasNavHistoryTests.JumpNeedsOtherFileOrMoreThanTenLines;
 begin
   Assert.IsFalse(TAtlasNavHistory.IsJump(At('A.pas', 10), At('A.pas', 20)));

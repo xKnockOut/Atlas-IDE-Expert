@@ -26,6 +26,8 @@ uses
   Atlas.Common.Product.Version,
   Atlas.Core.Product.Version;
 
+{ TProductVersionTests }
+
 procedure TProductVersionTests.NameIsAtlas;
 begin
   Assert.AreEqual('Atlas', TProductVersion.cName);

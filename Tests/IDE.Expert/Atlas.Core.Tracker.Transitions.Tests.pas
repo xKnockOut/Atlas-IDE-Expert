@@ -106,6 +106,8 @@ type
       Boolean;
   end;
 
+{ TFakeRulesTransport }
+
 procedure TFakeRulesTransport.Answer(const AMethod, APrefix: string; AStatus: Integer; const AText: string);
 begin
   FMethods := FMethods + [AMethod];

@@ -64,6 +64,8 @@ type
     procedure Free;
   end;
 
+{ TTreeHost }
+
 class function TTreeHost.Create: TTreeHost;
 begin
   Result.Form := TForm.CreateNew(nil);

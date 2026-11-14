@@ -185,6 +185,8 @@ type
     procedure WriteString(const AName, AValue: string);
   end;
 
+{ TTestsStore }
+
 constructor TTestsStore.Create;
 begin
   inherited Create;

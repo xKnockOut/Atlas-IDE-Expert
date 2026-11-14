@@ -88,6 +88,221 @@ begin
   Result.Range := TTextRange.Create(ALine, 2, ALine, 5);
 end;
 
+/// <summary>Ordner des Referenzprojekts, gesucht von der Test-EXE aufwärts; '' ohne.</summary>
+function ReferenceFolder: string;
+var
+  mDirectory: string;
+begin
+  mDirectory := ExtractFileDir(ParamStr(0));
+  while mDirectory <> '' do
+  begin
+    Result := TPath.Combine(mDirectory, TPath.Combine('Tests', 'Referenzprojekt'));
+    if TDirectory.Exists(Result) then
+    begin
+      Exit;
+    end;
+    if ExtractFileDir(mDirectory) = mDirectory then
+    begin
+      Break;
+    end;
+    mDirectory := ExtractFileDir(mDirectory);
+  end;
+  Result := '';
+end;
+
+/// <summary>Text einer Datei des Referenzprojekts ohne BOM, wie ihn der Server liest.</summary>
+function ReadSource(const AFileName: string): string;
+var
+  mFormat: TFileFormat;
+begin
+  Result := TFileEncoding.Decode(TFile.ReadAllBytes(AFileName), mFormat);
+end;
+
+/// <summary>IDs der Syntaxprüfung und aller Regeln aus ARules.</summary>
+function KnownIds(const ARules: TArray<IRule>): TArray<string>;
+var
+  mRule: IRule;
+begin
+  Result := [cSyntaxRuleId];
+  for mRule in ARules do
+  begin
+    Result := Result + [mRule.Descriptor.Id];
+  end;
+end;
+
+/// <summary>Geplante IDs aus APlannedText ohne Issue (#94), je eine Zeile.</summary>
+function PlannedProblems(const APlannedText: string): string;
+var
+  mLine: string;
+begin
+  Result := '';
+  for mLine in TGoldenCorpus.PlannedWithoutIssue(APlannedText) do
+  begin
+    Result := Result + sLineBreak + mLine + ' in geplante-regeln.txt nennt kein Issue';
+  end;
+end;
+
+/// <summary>Vergleicht jede Unit unter ASourceFolder mit ihren Markierungen und liefert die Abweichungen;
+/// ATexts sind die gelesenen Texte, AMarkers zählt die Markierungen.</summary>
+function CompareSources(const ASourceFolder: string; const ARules: TArray<IRule>; const AKnown,
+  APlanned: TArray<string>; out ATexts: TArray<string>; out AMarkers: Integer): string;
+var
+  mFileName, mText, mLine: string;
+  mOutcome: TGoldenResult;
+begin
+  Result := '';
+  ATexts := nil;
+  AMarkers := 0;
+  for mFileName in TDirectory.GetFiles(ASourceFolder, '*.pas') do
+  begin
+    mText := ReadSource(mFileName);
+    ATexts := ATexts + [mText];
+    Inc(AMarkers, Length(TGoldenCorpus.Markers(mText)));
+    mOutcome := TGoldenCorpus.Compare(ExtractFileName(mFileName), TGoldenCorpus.Markers(mText),
+      TFileChecker.CheckText(ARules, TServerSettings.Default, ExtractFileName(mFileName), mText), AKnown, APlanned);
+    // Writeln statt CurrentRunner.Log: DUnitX hält Log-Meldungen bis zum Ende des Laufs (Leck-Monitor).
+    for mLine in mOutcome.Skipped do
+    begin
+      System.Writeln('  übersprungen: ', mLine);
+    end;
+    for mLine in mOutcome.Missing + mOutcome.FalseAlarms + mOutcome.Unknown do
+    begin
+      Result := Result + sLineBreak + mLine;
+    end;
+  end;
+end;
+
+type
+  /// <summary>Was der Lauf mit Index braucht: Regeln, bekannte und geplante IDs, Einstellungen und das Projekt
+  /// mit dem Symbolindex.</summary>
+  TIndexRun = record
+    Rules: TArray<IRule>;
+    Known: TArray<string>;
+    Planned: TArray<string>;
+    Settings: TServerSettings;
+    Project: TCheckProject;
+  end;
+
+/// <summary>Ob AText AMarker auch ohne Index (ERWARTET) erwartet.</summary>
+function HasPlainMarker(const AText: string; const AMarker: TGoldenMarker): Boolean;
+var
+  mPlain: TGoldenMarker;
+begin
+  Result := False;
+  for mPlain in TGoldenCorpus.Markers(AText) do
+  begin
+    if (mPlain.Line = AMarker.Line) and SameText(mPlain.RuleId, AMarker.RuleId) then
+    begin
+      Exit(True);
+    end;
+  end;
+end;
+
+/// <summary>Schaltet ARuleId in ASettings ein, wenn die Einstellungen sie noch nicht nennen.</summary>
+procedure EnableRule(var ASettings: TServerSettings; const ARuleId: string);
+var
+  mSetting: TRuleSetting;
+begin
+  for mSetting in ASettings.Rules do
+  begin
+    if SameText(mSetting.Id, ARuleId) then
+    begin
+      Exit;
+    end;
+  end;
+  mSetting := Default(TRuleSetting);
+  mSetting.Id := ARuleId;
+  mSetting.Severity := TRuleSeverity.Information;
+  ASettings.Rules := ASettings.Rules + [mSetting];
+end;
+
+/// <summary>Standardeinstellungen mit allen Regeln, die nur mit Index treffen (ERWARTET-INDEX). Sie sind teils
+/// experimentell (legacy-stack-queue) und liefen mit den Standardeinstellungen nie: ausdrücklich einschalten, wie
+/// es ein Projekt in atlas.json täte.</summary>
+function IndexOnlySettings(const ATexts: TArray<string>): TServerSettings;
+var
+  mText: string;
+  mMarker: TGoldenMarker;
+begin
+  Result := TServerSettings.Default;
+  for mText in ATexts do
+  begin
+    for mMarker in TGoldenCorpus.Markers(mText, True) do
+    begin
+      if mMarker.Expected and not HasPlainMarker(mText, mMarker) then
+      begin
+        EnableRule(Result, mMarker.RuleId);
+      end;
+    end;
+  end;
+end;
+
+/// <summary>Symbolindex mit RTL-Stubs über alle Units unter ASourceFolder; AFiles und ATexts sind die Units.
+/// </summary>
+function ReferenceIndex(const ASourceFolder: string; out AFiles, ATexts: TArray<string>): ISymbolIndex;
+var
+  mFileName: string;
+begin
+  Result := TSymbolIndex.Create;
+  TRtlStubs.AddTo(Result);
+  AFiles := nil;
+  ATexts := nil;
+  for mFileName in TDirectory.GetFiles(ASourceFolder, '*.pas') do
+  begin
+    AFiles := AFiles + [mFileName];
+    ATexts := ATexts + [ReadSource(mFileName)];
+    Result.AddUnit(TIndexExtractor.ExtractText(ATexts[High(ATexts)], mFileName, nil));
+  end;
+end;
+
+/// <summary>Vergleicht jede Unit mit ihren Markierungen samt ERWARTET-INDEX und liefert die Abweichungen.
+/// </summary>
+function CompareWithIndex(const ARun: TIndexRun; const AFiles, ATexts: TArray<string>): string;
+var
+  mIndex: Integer;
+  mOutcome: TGoldenResult;
+  mScopes: TFindingScopes;
+  mLine: string;
+begin
+  Result := '';
+  for mIndex := 0 to High(AFiles) do
+  begin
+    mOutcome := TGoldenCorpus.Compare(ExtractFileName(AFiles[mIndex]),
+      TGoldenCorpus.Markers(ATexts[mIndex], True), TFileChecker.CheckText(ARun.Rules, ARun.Settings,
+      ExtractFileName(AFiles[mIndex]), ATexts[mIndex],
+      TCheckOrigin.Make(ARun.Project, TCheckSource.Default), mScopes), ARun.Known,
+      ARun.Planned);
+    for mLine in mOutcome.Missing + mOutcome.FalseAlarms + mOutcome.Unknown do
+    begin
+      Result := Result + sLineBreak + mLine;
+    end;
+  end;
+end;
+
+{ TGoldenCorpusTests }
+
+procedure TGoldenCorpusTests.WarmUp;
+var
+  mFolder, mFileName, mText: string;
+  mRules: TArray<IRule>;
+  mTexts: TArray<string>;
+begin
+  mFolder := ReferenceFolder;
+  if mFolder = '' then
+  begin
+    Exit;
+  end;
+  mRules := BuiltinRules;
+  mTexts := nil;
+  for mFileName in TDirectory.GetFiles(TPath.Combine(mFolder, 'Source'), '*.pas') do
+  begin
+    mText := ReadSource(mFileName);
+    mTexts := mTexts + [mText];
+    TFileChecker.CheckText(mRules, TServerSettings.Default, ExtractFileName(mFileName), mText);
+  end;
+  TGoldenCorpus.TimeRules(mRules, TServerSettings.Default, mTexts);
+end;
+
 procedure TGoldenCorpusTests.MarkersReadExpectedAndNoFinding;
 var
   mMarkers: TArray<TGoldenMarker>;
@@ -201,112 +416,6 @@ begin
   end;
 end;
 
-/// <summary>Ordner des Referenzprojekts, gesucht von der Test-EXE aufwärts; '' ohne.</summary>
-function ReferenceFolder: string;
-var
-  mDirectory: string;
-begin
-  mDirectory := ExtractFileDir(ParamStr(0));
-  while mDirectory <> '' do
-  begin
-    Result := TPath.Combine(mDirectory, TPath.Combine('Tests', 'Referenzprojekt'));
-    if TDirectory.Exists(Result) then
-    begin
-      Exit;
-    end;
-    if ExtractFileDir(mDirectory) = mDirectory then
-    begin
-      Break;
-    end;
-    mDirectory := ExtractFileDir(mDirectory);
-  end;
-  Result := '';
-end;
-
-/// <summary>Text einer Datei des Referenzprojekts ohne BOM, wie ihn der Server liest.</summary>
-function ReadSource(const AFileName: string): string;
-var
-  mFormat: TFileFormat;
-begin
-  Result := TFileEncoding.Decode(TFile.ReadAllBytes(AFileName), mFormat);
-end;
-
-procedure TGoldenCorpusTests.WarmUp;
-var
-  mFolder, mFileName, mText: string;
-  mRules: TArray<IRule>;
-  mTexts: TArray<string>;
-begin
-  mFolder := ReferenceFolder;
-  if mFolder = '' then
-  begin
-    Exit;
-  end;
-  mRules := BuiltinRules;
-  mTexts := nil;
-  for mFileName in TDirectory.GetFiles(TPath.Combine(mFolder, 'Source'), '*.pas') do
-  begin
-    mText := ReadSource(mFileName);
-    mTexts := mTexts + [mText];
-    TFileChecker.CheckText(mRules, TServerSettings.Default, ExtractFileName(mFileName), mText);
-  end;
-  TGoldenCorpus.TimeRules(mRules, TServerSettings.Default, mTexts);
-end;
-
-/// <summary>IDs der Syntaxprüfung und aller Regeln aus ARules.</summary>
-function KnownIds(const ARules: TArray<IRule>): TArray<string>;
-var
-  mRule: IRule;
-begin
-  Result := [cSyntaxRuleId];
-  for mRule in ARules do
-  begin
-    Result := Result + [mRule.Descriptor.Id];
-  end;
-end;
-
-/// <summary>Geplante IDs aus APlannedText ohne Issue (#94), je eine Zeile.</summary>
-function PlannedProblems(const APlannedText: string): string;
-var
-  mLine: string;
-begin
-  Result := '';
-  for mLine in TGoldenCorpus.PlannedWithoutIssue(APlannedText) do
-  begin
-    Result := Result + sLineBreak + mLine + ' in geplante-regeln.txt nennt kein Issue';
-  end;
-end;
-
-/// <summary>Vergleicht jede Unit unter ASourceFolder mit ihren Markierungen und liefert die Abweichungen;
-/// ATexts sind die gelesenen Texte, AMarkers zählt die Markierungen.</summary>
-function CompareSources(const ASourceFolder: string; const ARules: TArray<IRule>; const AKnown,
-  APlanned: TArray<string>; out ATexts: TArray<string>; out AMarkers: Integer): string;
-var
-  mFileName, mText, mLine: string;
-  mOutcome: TGoldenResult;
-begin
-  Result := '';
-  ATexts := nil;
-  AMarkers := 0;
-  for mFileName in TDirectory.GetFiles(ASourceFolder, '*.pas') do
-  begin
-    mText := ReadSource(mFileName);
-    ATexts := ATexts + [mText];
-    Inc(AMarkers, Length(TGoldenCorpus.Markers(mText)));
-    mOutcome := TGoldenCorpus.Compare(ExtractFileName(mFileName), TGoldenCorpus.Markers(mText),
-      TFileChecker.CheckText(ARules, TServerSettings.Default, ExtractFileName(mFileName), mText), AKnown, APlanned);
-    // Writeln statt CurrentRunner.Log: DUnitX hält Log-Meldungen bis zum Ende des Laufs (Leck-Monitor).
-    for mLine in mOutcome.Skipped do
-    begin
-      System.Writeln('  übersprungen: ', mLine);
-    end;
-    for mLine in mOutcome.Missing + mOutcome.FalseAlarms + mOutcome.Unknown do
-    begin
-      Result := Result + sLineBreak + mLine;
-    end;
-  end;
-end;
-
 procedure TGoldenCorpusTests.ReferenceProjectMatchesMarkers;
 var
   mFolder, mText, mProblems: string;
@@ -334,131 +443,6 @@ begin
   Assert.AreEqual('', mProblems, 'Golden-Korpus weicht ab:' + mProblems);
 end;
 
-procedure TGoldenCorpusTests.IndexMarkersOnlyWithIndex;
-const
-  cText = 'a; // ERWARTET-INDEX: regel-a'#13#10'b; // ERWARTET: regel-b';
-var
-  mMarkers: TArray<TGoldenMarker>;
-begin
-  mMarkers := TGoldenCorpus.Markers(cText);
-  Assert.AreEqual(1, Integer(Length(mMarkers)));
-  Assert.AreEqual('regel-b', mMarkers[0].RuleId);
-  mMarkers := TGoldenCorpus.Markers(cText, True);
-  Assert.AreEqual(2, Integer(Length(mMarkers)));
-  Assert.AreEqual(0, mMarkers[0].Line);
-  Assert.AreEqual('regel-a', mMarkers[0].RuleId);
-  Assert.IsTrue(mMarkers[0].Expected);
-  Assert.AreEqual('regel-b', mMarkers[1].RuleId);
-  mMarkers := nil;
-end;
-
-type
-  /// <summary>Was der Lauf mit Index braucht: Regeln, bekannte und geplante IDs, Einstellungen und das Projekt
-  /// mit dem Symbolindex.</summary>
-  TIndexRun = record
-    Rules: TArray<IRule>;
-    Known: TArray<string>;
-    Planned: TArray<string>;
-    Settings: TServerSettings;
-    Project: TCheckProject;
-  end;
-
-/// <summary>Ob AText AMarker auch ohne Index (ERWARTET) erwartet.</summary>
-function HasPlainMarker(const AText: string; const AMarker: TGoldenMarker): Boolean;
-var
-  mPlain: TGoldenMarker;
-begin
-  Result := False;
-  for mPlain in TGoldenCorpus.Markers(AText) do
-  begin
-    if (mPlain.Line = AMarker.Line) and SameText(mPlain.RuleId, AMarker.RuleId) then
-    begin
-      Exit(True);
-    end;
-  end;
-end;
-
-/// <summary>Schaltet ARuleId in ASettings ein, wenn die Einstellungen sie noch nicht nennen.</summary>
-procedure EnableRule(var ASettings: TServerSettings; const ARuleId: string);
-var
-  mSetting: TRuleSetting;
-begin
-  for mSetting in ASettings.Rules do
-  begin
-    if SameText(mSetting.Id, ARuleId) then
-    begin
-      Exit;
-    end;
-  end;
-  mSetting := Default(TRuleSetting);
-  mSetting.Id := ARuleId;
-  mSetting.Severity := TRuleSeverity.Information;
-  ASettings.Rules := ASettings.Rules + [mSetting];
-end;
-
-/// <summary>Standardeinstellungen mit allen Regeln, die nur mit Index treffen (ERWARTET-INDEX). Sie sind teils
-/// experimentell (legacy-stack-queue) und liefen mit den Standardeinstellungen nie: ausdrücklich einschalten, wie
-/// es ein Projekt in atlas.json täte.</summary>
-function IndexOnlySettings(const ATexts: TArray<string>): TServerSettings;
-var
-  mText: string;
-  mMarker: TGoldenMarker;
-begin
-  Result := TServerSettings.Default;
-  for mText in ATexts do
-  begin
-    for mMarker in TGoldenCorpus.Markers(mText, True) do
-    begin
-      if mMarker.Expected and not HasPlainMarker(mText, mMarker) then
-      begin
-        EnableRule(Result, mMarker.RuleId);
-      end;
-    end;
-  end;
-end;
-
-/// <summary>Symbolindex mit RTL-Stubs über alle Units unter ASourceFolder; AFiles und ATexts sind die Units.
-/// </summary>
-function ReferenceIndex(const ASourceFolder: string; out AFiles, ATexts: TArray<string>): ISymbolIndex;
-var
-  mFileName: string;
-begin
-  Result := TSymbolIndex.Create;
-  TRtlStubs.AddTo(Result);
-  AFiles := nil;
-  ATexts := nil;
-  for mFileName in TDirectory.GetFiles(ASourceFolder, '*.pas') do
-  begin
-    AFiles := AFiles + [mFileName];
-    ATexts := ATexts + [ReadSource(mFileName)];
-    Result.AddUnit(TIndexExtractor.ExtractText(ATexts[High(ATexts)], mFileName, nil));
-  end;
-end;
-
-/// <summary>Vergleicht jede Unit mit ihren Markierungen samt ERWARTET-INDEX und liefert die Abweichungen.
-/// </summary>
-function CompareWithIndex(const ARun: TIndexRun; const AFiles, ATexts: TArray<string>): string;
-var
-  mIndex: Integer;
-  mOutcome: TGoldenResult;
-  mScopes: TFindingScopes;
-  mLine: string;
-begin
-  Result := '';
-  for mIndex := 0 to High(AFiles) do
-  begin
-    mOutcome := TGoldenCorpus.Compare(ExtractFileName(AFiles[mIndex]),
-      TGoldenCorpus.Markers(ATexts[mIndex], True), TFileChecker.CheckText(ARun.Rules, ARun.Settings,
-      ExtractFileName(AFiles[mIndex]), ATexts[mIndex],
-      TCheckOrigin.Make(ARun.Project, TCheckSource.Default), mScopes), ARun.Known,
-      ARun.Planned);
-    for mLine in mOutcome.Missing + mOutcome.FalseAlarms + mOutcome.Unknown do
-    begin
-      Result := Result + sLineBreak + mLine;
-    end;
-  end;
-end;
-
 procedure TGoldenCorpusTests.ReferenceProjectWithIndexMatchesMarkers;
 var
   mFolder, mProblems: string;
@@ -483,6 +467,24 @@ begin
   mTexts := nil;
   mRun := Default(TIndexRun);
   Assert.AreEqual('', mProblems, 'Golden-Korpus mit Index weicht ab:' + mProblems);
+end;
+
+procedure TGoldenCorpusTests.IndexMarkersOnlyWithIndex;
+const
+  cText = 'a; // ERWARTET-INDEX: regel-a'#13#10'b; // ERWARTET: regel-b';
+var
+  mMarkers: TArray<TGoldenMarker>;
+begin
+  mMarkers := TGoldenCorpus.Markers(cText);
+  Assert.AreEqual(1, Integer(Length(mMarkers)));
+  Assert.AreEqual('regel-b', mMarkers[0].RuleId);
+  mMarkers := TGoldenCorpus.Markers(cText, True);
+  Assert.AreEqual(2, Integer(Length(mMarkers)));
+  Assert.AreEqual(0, mMarkers[0].Line);
+  Assert.AreEqual('regel-a', mMarkers[0].RuleId);
+  Assert.IsTrue(mMarkers[0].Expected);
+  Assert.AreEqual('regel-b', mMarkers[1].RuleId);
+  mMarkers := nil;
 end;
 
 procedure TGoldenCorpusTests.MutationsParseAndReportBadLines;

@@ -51,20 +51,7 @@ uses
   System.IOUtils,
   System.JSON;
 
-procedure TCrashCaseTests.Setup;
-begin
-  FRoot := TPath.Combine(TPath.GetTempPath, 'AtlasCrashCaseTests_' + TGUID.NewGuid.ToString);
-  TDirectory.CreateDirectory(FRoot);
-end;
-
-procedure TCrashCaseTests.TearDown;
-begin
-  if TDirectory.Exists(FRoot) then
-  begin
-    TDirectory.Delete(FRoot, True);
-  end;
-  FRoot := '';
-end;
+{ TCrashCaseTests }
 
 function TCrashCaseTests.SampleCase: TCrashCase;
 begin
@@ -87,6 +74,21 @@ begin
   Result.AtlasVersion := '1.2.0';
   Result.BuildCompiler := 'Delphi 37.0';
   Result.Client := 'RAD Studio 37.0';
+end;
+
+procedure TCrashCaseTests.Setup;
+begin
+  FRoot := TPath.Combine(TPath.GetTempPath, 'AtlasCrashCaseTests_' + TGUID.NewGuid.ToString);
+  TDirectory.CreateDirectory(FRoot);
+end;
+
+procedure TCrashCaseTests.TearDown;
+begin
+  if TDirectory.Exists(FRoot) then
+  begin
+    TDirectory.Delete(FRoot, True);
+  end;
+  FRoot := '';
 end;
 
 procedure TCrashCaseTests.SummaryNamesMethodFileLineAndException;

@@ -88,25 +88,7 @@ const
     'implementation'#10 +
     'end.';
 
-procedure TSymbolPathGraphTests.Setup;
-begin
-  FIndex := TSymbolIndex.Create;
-  AddUnit('uIntf', cIntfText, False);
-  AddUnit('uRepo', cRepoText, False);
-  AddUnit('uBib', cBibText, True);
-  FTable := TSymbolPathNodeTable.Create(FIndex);
-  FGraph := TSymbolPathGraph.Create(FTable, nil);
-  FGraph.Configure([Low(TSymbolPathEdgeKind)..High(TSymbolPathEdgeKind)], False, nil);
-end;
-
-procedure TSymbolPathGraphTests.TearDown;
-begin
-  FGraph.Free;
-  FGraph := nil;
-  FTable.Free;
-  FTable := nil;
-  FIndex := nil;
-end;
+{ TSymbolPathGraphTests }
 
 procedure TSymbolPathGraphTests.AddUnit(const AName, AText: string; ALibrary: Boolean);
 var
@@ -137,6 +119,26 @@ begin
     end;
   end;
   Result := False;
+end;
+
+procedure TSymbolPathGraphTests.Setup;
+begin
+  FIndex := TSymbolIndex.Create;
+  AddUnit('uIntf', cIntfText, False);
+  AddUnit('uRepo', cRepoText, False);
+  AddUnit('uBib', cBibText, True);
+  FTable := TSymbolPathNodeTable.Create(FIndex);
+  FGraph := TSymbolPathGraph.Create(FTable, nil);
+  FGraph.Configure([Low(TSymbolPathEdgeKind)..High(TSymbolPathEdgeKind)], False, nil);
+end;
+
+procedure TSymbolPathGraphTests.TearDown;
+begin
+  FGraph.Free;
+  FGraph := nil;
+  FTable.Free;
+  FTable := nil;
+  FIndex := nil;
 end;
 
 procedure TSymbolPathGraphTests.ClassEdgesToAncestorAndInterface;

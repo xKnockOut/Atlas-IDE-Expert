@@ -29,6 +29,8 @@ uses
   Atlas.Common.Rules.Builtin.Declarations.Duplicates,
   Atlas.Tests.RuleAssert;
 
+{ TDeclarationDuplicatesTests }
+
 procedure TDeclarationDuplicatesTests.IsReported;
 var
   mFindings: TArray<TRuleFinding>;

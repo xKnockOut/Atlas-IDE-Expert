@@ -166,19 +166,6 @@ end;
 
 { TCompletionGenericsTests }
 
-procedure TCompletionGenericsTests.Setup;
-begin
-  FIndex := TSymbolIndex.Create;
-  FIndex.AddUnit(TIndexExtractor.ExtractText(cUnitListen, cListenFile, nil));
-  FResolver := TNameResolver.Create(FIndex);
-end;
-
-procedure TCompletionGenericsTests.TearDown;
-begin
-  FResolver.Free;
-  FIndex := nil;
-end;
-
 function TCompletionGenericsTests.ItemsAt(const ACode: string): TCompletionItems;
 var
   mText: string;
@@ -238,6 +225,19 @@ var
   mItem: TCompletionItem;
 begin
   Result := Find(AItems, AName, mItem);
+end;
+
+procedure TCompletionGenericsTests.Setup;
+begin
+  FIndex := TSymbolIndex.Create;
+  FIndex.AddUnit(TIndexExtractor.ExtractText(cUnitListen, cListenFile, nil));
+  FResolver := TNameResolver.Create(FIndex);
+end;
+
+procedure TCompletionGenericsTests.TearDown;
+begin
+  FResolver.Free;
+  FIndex := nil;
 end;
 
 procedure TCompletionGenericsTests.FindsOpenAngleBracket;

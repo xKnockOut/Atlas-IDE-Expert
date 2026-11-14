@@ -388,45 +388,6 @@ begin
   Assert.AreEqual('Vcl;System;Xml;Winapi', Joined(mProject.Namespaces));
 end;
 
-procedure TDprojReaderTests.RecordsDefineOrigins;
-var
-  mProject: TProjectInfo;
-  mOptions: TDprojOptions;
-  mText: string;
-
-  function OriginOf(const AName: string): string;
-  var
-    mOrigin: TPair<string, string>;
-  begin
-    Result := '-';
-    for mOrigin in mProject.DefineOrigins do
-    begin
-      if mOrigin.Key = AName then
-      begin
-        Exit(mOrigin.Value);
-      end;
-    end;
-  end;
-
-begin
-  mProject := ReadSample('Debug', 'Win32');
-  Assert.AreEqual('Projekt', OriginOf('APP'));
-  Assert.AreEqual('Konfiguration Debug', OriginOf('DEBUG'));
-  Assert.AreEqual('-', OriginOf('RELEASE'));
-  mOptions := Default(TDprojOptions);
-  mOptions.Config := 'Release';
-  mOptions.Platform := 'Win64';
-  // Symbol auf Ebene Base_Win64, RELEASE auf Ebene Cfg_2_Win64.
-  mText := StringReplace(cSampleDproj, '    <DCC_Namespace>Vcl;$(DCC_Namespace)</DCC_Namespace>'#13#10,
-    '    <DCC_Namespace>Vcl;$(DCC_Namespace)</DCC_Namespace>'#13#10 +
-    '    <DCC_Define>W64;$(DCC_Define)</DCC_Define>'#13#10, []);
-  mText := StringReplace(mText, '<PropertyGroup Condition="''$(Cfg_2)''!=''''">',
-    '<PropertyGroup Condition="''$(Cfg_2_Win64)''!='''' or ''$(Cfg_2)''!=''''">', []);
-  mProject := TDprojReader.Read(cProjectFile, mText, mOptions);
-  Assert.AreEqual('Projekt, Plattform Win64', OriginOf('W64'));
-  Assert.AreEqual('Konfiguration Release, Plattform Win64', OriginOf('RELEASE'));
-end;
-
 procedure TDprojReaderTests.ResolvesSearchPathsRelativeToProject;
 var
   mProject: TProjectInfo;
@@ -458,6 +419,15 @@ begin
     begin
       TDprojReader.Read(cProjectFile, '<Project><PropertyGroup></Project>', mOptions);
     end, EProjectError);
+end;
+
+procedure TDprojReaderTests.ListsConfigsAndPlatforms;
+var
+  mProject: TProjectInfo;
+begin
+  mProject := ReadSample('', '');
+  Assert.AreEqual('Debug;Release', Joined(mProject.Configs));
+  Assert.AreEqual('Win32;Win64', Joined(mProject.Platforms));
 end;
 
 { TGroupProjReaderTests }
@@ -530,6 +500,8 @@ begin
     end);
 end;
 
+{ TUnitResolverTests }
+
 procedure TUnitResolverTests.PrefersProjectUnits;
 var
   mResolver: TUnitResolver;
@@ -563,6 +535,19 @@ begin
   try
     Assert.AreEqual('C:\Studio\37.0\source\rtl\sys\System.SysUtils.pas', mResolver.Resolve('SysUtils'));
     Assert.AreEqual('C:\Studio\37.0\source\rtl\sys\System.SysUtils.pas', mResolver.Resolve('System.SysUtils'));
+  finally
+    mResolver.Free;
+  end;
+end;
+
+procedure TUnitResolverTests.ReturnsEmptyWhenNotFound;
+var
+  mResolver: TUnitResolver;
+begin
+  mResolver := ResolverFor([]);
+  try
+    Assert.AreEqual('', mResolver.Resolve('Fehlt'));
+    Assert.AreEqual('', mResolver.Resolve(''));
   finally
     mResolver.Free;
   end;
@@ -614,28 +599,6 @@ begin
   end;
 end;
 
-procedure TUnitResolverTests.ReturnsEmptyWhenNotFound;
-var
-  mResolver: TUnitResolver;
-begin
-  mResolver := ResolverFor([]);
-  try
-    Assert.AreEqual('', mResolver.Resolve('Fehlt'));
-    Assert.AreEqual('', mResolver.Resolve(''));
-  finally
-    mResolver.Free;
-  end;
-end;
-
-procedure TDprojReaderTests.ListsConfigsAndPlatforms;
-var
-  mProject: TProjectInfo;
-begin
-  mProject := ReadSample('', '');
-  Assert.AreEqual('Debug;Release', Joined(mProject.Configs));
-  Assert.AreEqual('Win32;Win64', Joined(mProject.Platforms));
-end;
-
 procedure TDprojReaderTests.ChecksSelectedTarget;
 var
   mProject: TProjectInfo;
@@ -647,6 +610,45 @@ begin
   Assert.IsTrue(Pos('Linux64', TDprojReader.CheckTarget(mProject, '', 'Linux64')) > 0);
   mProject.Configs := nil;
   Assert.AreEqual('', TDprojReader.CheckTarget(mProject, 'Profil', ''));
+end;
+
+procedure TDprojReaderTests.RecordsDefineOrigins;
+var
+  mProject: TProjectInfo;
+  mOptions: TDprojOptions;
+  mText: string;
+
+  function OriginOf(const AName: string): string;
+  var
+    mOrigin: TPair<string, string>;
+  begin
+    Result := '-';
+    for mOrigin in mProject.DefineOrigins do
+    begin
+      if mOrigin.Key = AName then
+      begin
+        Exit(mOrigin.Value);
+      end;
+    end;
+  end;
+
+begin
+  mProject := ReadSample('Debug', 'Win32');
+  Assert.AreEqual('Projekt', OriginOf('APP'));
+  Assert.AreEqual('Konfiguration Debug', OriginOf('DEBUG'));
+  Assert.AreEqual('-', OriginOf('RELEASE'));
+  mOptions := Default(TDprojOptions);
+  mOptions.Config := 'Release';
+  mOptions.Platform := 'Win64';
+  // Symbol auf Ebene Base_Win64, RELEASE auf Ebene Cfg_2_Win64.
+  mText := StringReplace(cSampleDproj, '    <DCC_Namespace>Vcl;$(DCC_Namespace)</DCC_Namespace>'#13#10,
+    '    <DCC_Namespace>Vcl;$(DCC_Namespace)</DCC_Namespace>'#13#10 +
+    '    <DCC_Define>W64;$(DCC_Define)</DCC_Define>'#13#10, []);
+  mText := StringReplace(mText, '<PropertyGroup Condition="''$(Cfg_2)''!=''''">',
+    '<PropertyGroup Condition="''$(Cfg_2_Win64)''!='''' or ''$(Cfg_2)''!=''''">', []);
+  mProject := TDprojReader.Read(cProjectFile, mText, mOptions);
+  Assert.AreEqual('Projekt, Plattform Win64', OriginOf('W64'));
+  Assert.AreEqual('Konfiguration Release, Plattform Win64', OriginOf('RELEASE'));
 end;
 
 initialization

@@ -188,6 +188,8 @@ begin
   Result := nil;
 end;
 
+{ TFlowRulesTests }
+
 procedure TFlowRulesTests.ResultSetOnlyInBranchReports;
 var
   mFindings: TArray<TRuleFinding>;
@@ -242,21 +244,6 @@ begin
     Routine('  if A then'#10'    I := 1;'#10'  J := I;', 'procedure P;', 'var'#10'  I, J: Integer;'#10));
 end;
 
-procedure TFlowRulesTests.AssignedBeforeReadIsSilent;
-begin
-  TRuleAssert.Silent(TPossiblyUninitializedRule.Create,
-    Routine('  I := 0;'#10'  if A then'#10'    I := 1;'#10'  J := I;', 'procedure P;', 'var'#10'  I, J: Integer;'#10));
-end;
-
-procedure TFlowRulesTests.OutArgumentIsSilent;
-begin
-  TRuleAssert.Silent(TPossiblyUninitializedRule.Create,
-    Routine('  Lese(I);'#10'  J := I;', 'procedure P;', 'var'#10'  I, J: Integer;'#10));
-  // Ein Feld als var- oder out-Argument schreibt einen Teil des Records.
-  TRuleAssert.Silent(TPossiblyUninitializedRule.Create,
-    Routine('  Lese(E.Wert);'#10'  J := E.Wert;', 'procedure P;', 'var'#10'  E: TEintrag;'#10'  J: Integer;'#10));
-end;
-
 procedure TFlowRulesTests.UninitializedFlagsNestedAndRecords;
 const
   cVars = 'var'#10'  I, J: Integer;'#10'  Gefunden: Boolean;'#10;
@@ -299,6 +286,21 @@ begin
   TRuleAssert.Reports(TPossiblyUninitializedRule.Create, 'unit U;'#10'interface'#10'implementation'#10'type'#10 +
     '  TLeser = record'#10'    Pos: Integer;'#10'  end;'#10'procedure P;'#10'var'#10'  L: TLeser;'#10 +
     '  J: Integer;'#10'begin'#10'  J := L.Pos;'#10'end;'#10'end.');
+end;
+
+procedure TFlowRulesTests.AssignedBeforeReadIsSilent;
+begin
+  TRuleAssert.Silent(TPossiblyUninitializedRule.Create,
+    Routine('  I := 0;'#10'  if A then'#10'    I := 1;'#10'  J := I;', 'procedure P;', 'var'#10'  I, J: Integer;'#10));
+end;
+
+procedure TFlowRulesTests.OutArgumentIsSilent;
+begin
+  TRuleAssert.Silent(TPossiblyUninitializedRule.Create,
+    Routine('  Lese(I);'#10'  J := I;', 'procedure P;', 'var'#10'  I, J: Integer;'#10));
+  // Ein Feld als var- oder out-Argument schreibt einen Teil des Records.
+  TRuleAssert.Silent(TPossiblyUninitializedRule.Create,
+    Routine('  Lese(E.Wert);'#10'  J := E.Wert;', 'procedure P;', 'var'#10'  E: TEintrag;'#10'  J: Integer;'#10));
 end;
 
 procedure TFlowRulesTests.ManagedTypeIsSilent;
@@ -1256,6 +1258,8 @@ begin
     mTree.Free;
   end;
 end;
+
+{ TNoreturnReturnsTests }
 
 procedure TNoreturnReturnsTests.IssueExample;
 var

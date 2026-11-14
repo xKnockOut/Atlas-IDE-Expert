@@ -53,6 +53,8 @@ begin
   Result := TAtlasReturnPoints(ATests.FPoints);
 end;
 
+{ TAtlasReturnPointsTests }
+
 procedure TAtlasReturnPointsTests.Setup;
 begin
   FPoints := TAtlasReturnPoints.Create;

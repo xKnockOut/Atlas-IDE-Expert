@@ -89,16 +89,6 @@ const
 
 { TLspUpcomingConditionsTests }
 
-procedure TLspUpcomingConditionsTests.Setup;
-begin
-  FTree := TSyntaxTreeCache.Parse(cSource);
-end;
-
-procedure TLspUpcomingConditionsTests.TearDown;
-begin
-  FreeAndNil(FTree);
-end;
-
 function TLspUpcomingConditionsTests.LineOf(const AMarker: string): Integer;
 var
   mLines: TArray<string>;
@@ -135,6 +125,16 @@ begin
     mTexts := mTexts + [Format('%s@%d', [mBlock.Kind, mBlock.Line])];
   end;
   Result := string.Join(' ', mTexts);
+end;
+
+procedure TLspUpcomingConditionsTests.Setup;
+begin
+  FTree := TSyntaxTreeCache.Parse(cSource);
+end;
+
+procedure TLspUpcomingConditionsTests.TearDown;
+begin
+  FreeAndNil(FTree);
 end;
 
 procedure TLspUpcomingConditionsTests.CallInBranchHidesFieldConditionsAfterIt;

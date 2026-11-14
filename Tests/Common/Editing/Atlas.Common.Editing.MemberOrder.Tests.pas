@@ -117,6 +117,8 @@ begin
   end;
 end;
 
+{ TMemberOrderTests }
+
 procedure TMemberOrderTests.SortsSectionsAndMembers;
 var
   mText: string;

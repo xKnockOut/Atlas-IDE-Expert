@@ -40,6 +40,8 @@ uses
   Atlas.Common.Semantics.NameResolver,
   Atlas.Common.Lsp.CompletionRequest;
 
+{ TCompletionRequestTests }
+
 procedure TCompletionRequestTests.LineBeforeStopsAtCursor;
 var
   mRequest: TCompletionRequest;

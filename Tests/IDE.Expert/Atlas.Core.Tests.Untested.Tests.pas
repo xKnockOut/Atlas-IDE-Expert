@@ -71,6 +71,8 @@ begin
   end;
 end;
 
+{ TAtlasUntestedTests }
+
 procedure TAtlasUntestedTests.UnitLineSkipsComments;
 begin
   Assert.AreEqual(0, TAtlasUntested.UnitLine('unit Basis;'#13#10'interface'));

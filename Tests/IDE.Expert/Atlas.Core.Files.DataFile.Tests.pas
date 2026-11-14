@@ -79,6 +79,23 @@ end;
 
 { TAtlasDataFileTests }
 
+function TAtlasDataFileTests.DataFile(const AName: string): string;
+begin
+  Result := TPath.Combine(FFolder, AName);
+end;
+
+function TAtlasDataFileTests.LogText: string;
+var
+  mFileName: string;
+begin
+  Result := '';
+  mFileName := TPath.Combine(FLogFolder, 'atlas.log');
+  if TFile.Exists(mFileName) then
+  begin
+    Result := TFile.ReadAllText(mFileName, TEncoding.UTF8);
+  end;
+end;
+
 procedure TAtlasDataFileTests.Setup;
 begin
   FFolder := TPath.Combine(TPath.GetTempPath, 'AtlasDataFileTests' + TGUID.NewGuid.ToString);
@@ -104,23 +121,6 @@ begin
   FFolder := '';
   FLogFolder := '';
   FOldLogFolder := '';
-end;
-
-function TAtlasDataFileTests.DataFile(const AName: string): string;
-begin
-  Result := TPath.Combine(FFolder, AName);
-end;
-
-function TAtlasDataFileTests.LogText: string;
-var
-  mFileName: string;
-begin
-  Result := '';
-  mFileName := TPath.Combine(FLogFolder, 'atlas.log');
-  if TFile.Exists(mFileName) then
-  begin
-    Result := TFile.ReadAllText(mFileName, TEncoding.UTF8);
-  end;
 end;
 
 procedure TAtlasDataFileTests.MissingFileIsMissing;

@@ -222,6 +222,8 @@ begin
     'procedure Lauf(Ziel: TStrings);'#10'var'#10 + AVars + 'begin'#10 + ABody + 'end;'#10'end.';
 end;
 
+{ TCreatedResultNotFreedTests }
+
 procedure TCreatedResultNotFreedTests.FactoryOfTheFile;
 var
   mSource, mFixed: string;

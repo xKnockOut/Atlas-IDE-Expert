@@ -125,6 +125,8 @@ begin
   end;
 end;
 
+{ TAtlasStatementsTests }
+
 procedure TAtlasStatementsTests.TryParts;
 var
   mFrames: TAtlasStatementFrames;

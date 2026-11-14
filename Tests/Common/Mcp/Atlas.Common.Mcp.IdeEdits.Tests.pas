@@ -70,6 +70,8 @@ begin
   end;
 end;
 
+{ TMcpIdeEditsTests }
+
 procedure TMcpIdeEditsTests.Setup;
 begin
   FInbox := TMcpIdeEdits.InboxOf(TPath.Combine(TPath.GetTempPath, 'Atlas-IdeEdits-' + IntToStr(Random(MaxInt))), 42);

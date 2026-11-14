@@ -89,6 +89,8 @@ type
     function Done: TAtlasRequestDone;
   end;
 
+{ TDoneProbe }
+
 function TDoneProbe.Done: TAtlasRequestDone;
 begin
   Result :=

@@ -165,6 +165,8 @@ begin
   Assert.IsFalse(Relocate(AText, AMarker, Into('Stock', FakeLookup()), mNewText, mOrigin, Result));
 end;
 
+{ TMoveClassTests }
+
 procedure TMoveClassTests.DefaultUnitNameDropsT;
 begin
   Assert.AreEqual('Kunde', TMoveClass.DefaultUnitName('TKunde'));
@@ -192,23 +194,6 @@ begin
   Assert.AreEqual(Join(['unit Lager;', '', 'interface', '', 'uses', '  System.SysUtils, System.Classes;', '',
     'type', '  TBase = class', '  end;', '', 'implementation', '', 'uses', '  Stock;', '', 'procedure Run;',
     'begin', '  TStock.Create.Free;', 'end;', '', 'end.']), mOrigin);
-end;
-
-procedure TMoveClassTests.MovesTypeComment;
-var
-  mNewText, mOrigin: string;
-begin
-  Assert.IsTrue(Relocate(Join(['unit Lager;', '', 'interface', '', 'type', '  TBase = class', '    procedure Go;',
-    '  end;', '', '  TStock = class', '    function Count: Integer;', '  end;', '', 'implementation', '',
-    '{ TBase }', '', 'procedure TBase.Go;', 'begin', 'end;', '', '{ TStock }', '', 'function TStock.Count: Integer;',
-    'begin', '  Result := 0;', 'end;', '', 'end.']), 'TStock = class', mNewText, mOrigin));
-  Assert.AreEqual(Join(['unit Stock;', '', 'interface', '', 'type', '  TStock = class',
-    '    function Count: Integer;', '  end;', '', 'implementation', '', '{ TStock }', '',
-    'function TStock.Count: Integer;', 'begin', '  Result := 0;', 'end;', '', 'end.']), mNewText,
-    'Kommentar steht in der neuen Unit vor den Rümpfen (#1838)');
-  Assert.AreEqual(Join(['unit Lager;', '', 'interface', '', 'type', '  TBase = class', '    procedure Go;',
-    '  end;', '', 'implementation', '', '{ TBase }', '', 'procedure TBase.Go;', 'begin', 'end;', '', 'end.']),
-    mOrigin, 'kein { TStock } bleibt zurück');
 end;
 
 procedure TMoveClassTests.UsesOriginInterface;
@@ -311,6 +296,23 @@ begin
   finally
     mTree.Free;
   end;
+end;
+
+procedure TMoveClassTests.MovesTypeComment;
+var
+  mNewText, mOrigin: string;
+begin
+  Assert.IsTrue(Relocate(Join(['unit Lager;', '', 'interface', '', 'type', '  TBase = class', '    procedure Go;',
+    '  end;', '', '  TStock = class', '    function Count: Integer;', '  end;', '', 'implementation', '',
+    '{ TBase }', '', 'procedure TBase.Go;', 'begin', 'end;', '', '{ TStock }', '', 'function TStock.Count: Integer;',
+    'begin', '  Result := 0;', 'end;', '', 'end.']), 'TStock = class', mNewText, mOrigin));
+  Assert.AreEqual(Join(['unit Stock;', '', 'interface', '', 'type', '  TStock = class',
+    '    function Count: Integer;', '  end;', '', 'implementation', '', '{ TStock }', '',
+    'function TStock.Count: Integer;', 'begin', '  Result := 0;', 'end;', '', 'end.']), mNewText,
+    'Kommentar steht in der neuen Unit vor den Rümpfen (#1838)');
+  Assert.AreEqual(Join(['unit Lager;', '', 'interface', '', 'type', '  TBase = class', '    procedure Go;',
+    '  end;', '', 'implementation', '', '{ TBase }', '', 'procedure TBase.Go;', 'begin', 'end;', '', 'end.']),
+    mOrigin, 'kein { TStock } bleibt zurück');
 end;
 
 initialization

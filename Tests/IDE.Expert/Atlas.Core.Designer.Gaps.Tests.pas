@@ -52,6 +52,8 @@ type
 
 implementation
 
+{ TAtlasGapsTests }
+
 procedure TAtlasGapsTests.Setup;
 begin
   // Vier Steuerelemente in einer Reihe mit Abständen 7, 15 und 10 (unsortiert übergeben).

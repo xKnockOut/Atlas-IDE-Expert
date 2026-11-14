@@ -106,6 +106,14 @@ begin
     '  DUnitX.MemoryLeakMonitor.Default'), 'FallTests.dpr'))));
 end;
 
+procedure TDUnitXLeakMonitorTests.SilentWithMonitor;
+begin
+  Assert.AreEqual(0, Integer(Length(Findings(TestProgram('  DUnitX.MemoryLeakMonitor.FastMM4,'#10 +
+    '  DUnitX.TestFramework'), 'FallTests.dpr'))));
+  Assert.AreEqual(0, Integer(Length(Findings(TestProgram('  FastMM5,'#10'  DUnitX.TestFramework,'#10 +
+    '  DUnitX.MemoryLeakMonitor.FastMM5'), 'FallTests.dpr'))));
+end;
+
 procedure TDUnitXLeakMonitorTests.SilentWithOwnMonitorInProject;
 var
   mRule: IRule;
@@ -121,14 +129,6 @@ begin
     'Monitor.pas', nil, nil, True));
   Assert.AreEqual(0, Integer(Length(TRuleAssert.IndexFindings(mRule, TestProgram('  DUnitX.TestFramework'), mIndex, '',
     'FallTests.dpr'))), 'eigener Monitor im Projekt');
-end;
-
-procedure TDUnitXLeakMonitorTests.SilentWithMonitor;
-begin
-  Assert.AreEqual(0, Integer(Length(Findings(TestProgram('  DUnitX.MemoryLeakMonitor.FastMM4,'#10 +
-    '  DUnitX.TestFramework'), 'FallTests.dpr'))));
-  Assert.AreEqual(0, Integer(Length(Findings(TestProgram('  FastMM5,'#10'  DUnitX.TestFramework,'#10 +
-    '  DUnitX.MemoryLeakMonitor.FastMM5'), 'FallTests.dpr'))));
 end;
 
 procedure TDUnitXLeakMonitorTests.SilentOutsideTestPrograms;

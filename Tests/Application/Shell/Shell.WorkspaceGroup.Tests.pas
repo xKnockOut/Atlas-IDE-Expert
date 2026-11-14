@@ -73,6 +73,11 @@ end;
 
 { TShellWorkspaceGroupTests }
 
+function TShellWorkspaceGroupTests.Path(const AName: string): string;
+begin
+  Result := TPath.Combine(FFolder, AName);
+end;
+
 procedure TShellWorkspaceGroupTests.WarmUpFirstUse;
 begin
   Setup;
@@ -96,11 +101,6 @@ begin
     TDirectory.Delete(FFolder, True);
   end;
   FFolder := '';
-end;
-
-function TShellWorkspaceGroupTests.Path(const AName: string): string;
-begin
-  Result := TPath.Combine(FFolder, AName);
 end;
 
 procedure TShellWorkspaceGroupTests.LoadIndexesProjectAndGivesRuleProject;

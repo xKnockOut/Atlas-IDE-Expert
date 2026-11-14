@@ -177,13 +177,7 @@ type
       Boolean;
   end;
 
-procedure TFakeBoardTransport.Answer(const APrefix, APart: string; AStatus: Integer; const AText: string);
-begin
-  FPrefixes := FPrefixes + [APrefix];
-  FParts := FParts + [APart];
-  FStatus := FStatus + [AStatus];
-  FTexts := FTexts + [AText];
-end;
+{ TFakeBoardTransport }
 
 function TFakeBoardTransport.Find(const AUrl, ABody: string; out AStatus: Integer; out AText: string): Boolean;
 var
@@ -202,6 +196,14 @@ begin
     end;
   end;
   Result := False;
+end;
+
+procedure TFakeBoardTransport.Answer(const APrefix, APart: string; AStatus: Integer; const AText: string);
+begin
+  FPrefixes := FPrefixes + [APrefix];
+  FParts := FParts + [APart];
+  FStatus := FStatus + [AStatus];
+  FTexts := FTexts + [AText];
 end;
 
 function TFakeBoardTransport.Get(const AUrl: string; ATimeoutMs: Integer; out AStatus: Integer; out AText: string;

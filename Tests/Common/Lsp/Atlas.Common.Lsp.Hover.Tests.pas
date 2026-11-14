@@ -206,19 +206,6 @@ end;
 
 { TLspHoverTests }
 
-procedure TLspHoverTests.Setup;
-begin
-  FIndex := TSymbolIndex.Create;
-  FIndex.AddUnit(TIndexExtractor.ExtractText(cUnitWerkzeug, cWerkzeugFile, nil));
-  FResolver := TNameResolver.Create(FIndex);
-end;
-
-procedure TLspHoverTests.TearDown;
-begin
-  FResolver.Free;
-  FIndex := nil;
-end;
-
 function TLspHoverTests.InfoAt(const AMarker: string): THoverInfo;
 begin
   Result := InfoAt(AMarker, 1);
@@ -239,6 +226,19 @@ begin
   finally
     mTree.Free;
   end;
+end;
+
+procedure TLspHoverTests.Setup;
+begin
+  FIndex := TSymbolIndex.Create;
+  FIndex.AddUnit(TIndexExtractor.ExtractText(cUnitWerkzeug, cWerkzeugFile, nil));
+  FResolver := TNameResolver.Create(FIndex);
+end;
+
+procedure TLspHoverTests.TearDown;
+begin
+  FResolver.Free;
+  FIndex := nil;
 end;
 
 procedure TLspHoverTests.ShowsDeclarationAndDocumentation;
@@ -389,6 +389,19 @@ begin
   Assert.AreEqual('Max = 10;'#10#10'Veraltet'#10#10'Wert: 10'#10#10'WM_PAINT', mInfo.ToPlainText);
 end;
 
+procedure TLspHoverTests.PlainTextKeepsLiteralAsterisks;
+var
+  mInfo: THoverInfo;
+begin
+  // In der IDE gesehen: "(Gallery.Page.*)" kam als "(Gallery.Page.)" an.
+  mInfo := Default(THoverInfo);
+  mInfo.Declaration := 'TFrameClass = class of TFrame;';
+  mInfo.Deprecation := '**Veraltet**: Stattdessen TNeu';
+  mInfo.Documentation := 'Frame einer Seite (Gallery.Page.*), a*b.'#10#10'*AName*: Der Name';
+  Assert.AreEqual('TFrameClass = class of TFrame;'#10#10'Veraltet: Stattdessen TNeu'#10#10 +
+    'Frame einer Seite (Gallery.Page.*), a*b.'#10#10'AName: Der Name', mInfo.ToPlainText);
+end;
+
 procedure TLspHoverTests.AtlasPartsForTooltip;
 var
   mInfo: THoverInfo;
@@ -424,70 +437,6 @@ begin
   finally
     mJson.Free;
   end;
-end;
-
-procedure TLspHoverTests.ReassignedNamesInAtlasPart;
-const
-  cSource =
-    'unit R;'#10 +
-    'interface'#10 +
-    'implementation'#10 +
-    'procedure P(A: Integer);'#10 +
-    'var'#10 +
-    '  Total: Integer;'#10 +
-    'begin'#10 +
-    '  Total := 0;'#10 +
-    '  Total := Total + A;'#10 +
-    'end;'#10 +
-    'end.';
-var
-  mTree: TSyntaxTree;
-  mInfo: THoverInfo;
-  mJson, mPart: TJSONObject;
-begin
-  mTree := TPascalParser.Parse(cSource);
-  try
-    mInfo := Default(THoverInfo);
-    mInfo.Declaration := 'Total: Integer;';
-    TLspHover.AddReassigned(FResolver, mTree, 'C:\P\R.pas', cSource, TTextPosition.Create(8, 12), mInfo);
-    Assert.AreEqual('locals', mInfo.ReassignedTarget);
-    Assert.AreEqual(2, mInfo.ReassignedWrites);
-    mJson := TLspHover.AtlasJson(mInfo);
-    try
-      mPart := mJson.GetValue('reassigned') as TJSONObject;
-      Assert.IsNotNull(mPart);
-      Assert.AreEqual('locals', mPart.GetValue('target').Value);
-      Assert.AreEqual('2', mPart.GetValue('writes').Value);
-      Assert.AreEqual('[7,8]', mPart.GetValue('lines').ToJSON);
-    finally
-      mJson.Free;
-    end;
-    // A wird nur gelesen: kein Eintrag.
-    mInfo := Default(THoverInfo);
-    TLspHover.AddReassigned(FResolver, mTree, 'C:\P\R.pas', cSource, TTextPosition.Create(8, 19), mInfo);
-    Assert.AreEqual('', mInfo.ReassignedTarget);
-    mJson := TLspHover.AtlasJson(mInfo);
-    try
-      Assert.IsNull(mJson.GetValue('reassigned'));
-    finally
-      mJson.Free;
-    end;
-  finally
-    mTree.Free;
-  end;
-end;
-
-procedure TLspHoverTests.PlainTextKeepsLiteralAsterisks;
-var
-  mInfo: THoverInfo;
-begin
-  // In der IDE gesehen: "(Gallery.Page.*)" kam als "(Gallery.Page.)" an.
-  mInfo := Default(THoverInfo);
-  mInfo.Declaration := 'TFrameClass = class of TFrame;';
-  mInfo.Deprecation := '**Veraltet**: Stattdessen TNeu';
-  mInfo.Documentation := 'Frame einer Seite (Gallery.Page.*), a*b.'#10#10'*AName*: Der Name';
-  Assert.AreEqual('TFrameClass = class of TFrame;'#10#10'Veraltet: Stattdessen TNeu'#10#10 +
-    'Frame einer Seite (Gallery.Page.*), a*b.'#10#10'AName: Der Name', mInfo.ToPlainText);
 end;
 
 procedure TLspHoverTests.DetectsMarkdownSupport;
@@ -712,6 +661,57 @@ begin
     Assert.AreEqual('.', mRuns.Items[4].GetValue<string>('text'));
   finally
     mAtlas.Free;
+  end;
+end;
+
+procedure TLspHoverTests.ReassignedNamesInAtlasPart;
+const
+  cSource =
+    'unit R;'#10 +
+    'interface'#10 +
+    'implementation'#10 +
+    'procedure P(A: Integer);'#10 +
+    'var'#10 +
+    '  Total: Integer;'#10 +
+    'begin'#10 +
+    '  Total := 0;'#10 +
+    '  Total := Total + A;'#10 +
+    'end;'#10 +
+    'end.';
+var
+  mTree: TSyntaxTree;
+  mInfo: THoverInfo;
+  mJson, mPart: TJSONObject;
+begin
+  mTree := TPascalParser.Parse(cSource);
+  try
+    mInfo := Default(THoverInfo);
+    mInfo.Declaration := 'Total: Integer;';
+    TLspHover.AddReassigned(FResolver, mTree, 'C:\P\R.pas', cSource, TTextPosition.Create(8, 12), mInfo);
+    Assert.AreEqual('locals', mInfo.ReassignedTarget);
+    Assert.AreEqual(2, mInfo.ReassignedWrites);
+    mJson := TLspHover.AtlasJson(mInfo);
+    try
+      mPart := mJson.GetValue('reassigned') as TJSONObject;
+      Assert.IsNotNull(mPart);
+      Assert.AreEqual('locals', mPart.GetValue('target').Value);
+      Assert.AreEqual('2', mPart.GetValue('writes').Value);
+      Assert.AreEqual('[7,8]', mPart.GetValue('lines').ToJSON);
+    finally
+      mJson.Free;
+    end;
+    // A wird nur gelesen: kein Eintrag.
+    mInfo := Default(THoverInfo);
+    TLspHover.AddReassigned(FResolver, mTree, 'C:\P\R.pas', cSource, TTextPosition.Create(8, 19), mInfo);
+    Assert.AreEqual('', mInfo.ReassignedTarget);
+    mJson := TLspHover.AtlasJson(mInfo);
+    try
+      Assert.IsNull(mJson.GetValue('reassigned'));
+    finally
+      mJson.Free;
+    end;
+  finally
+    mTree.Free;
   end;
 end;
 

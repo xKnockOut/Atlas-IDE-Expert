@@ -37,6 +37,8 @@ uses
   Atlas.UI.Settings.Strings,
   Atlas.UI.Settings.Keys;
 
+{ TAtlasKeysPageTests }
+
 procedure TAtlasKeysPageTests.WarmUp;
 begin
   TAtlasKeysPage.Create(nil).Free;

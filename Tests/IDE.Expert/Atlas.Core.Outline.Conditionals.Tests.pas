@@ -120,6 +120,8 @@ begin
   end;
 end;
 
+{ TAtlasConditionalsTests }
+
 procedure TAtlasConditionalsTests.DirectivesWithoutCommentsAndStrings;
 var
   mDirective: TAtlasDirective;

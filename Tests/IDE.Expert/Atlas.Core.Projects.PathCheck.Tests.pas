@@ -148,6 +148,8 @@ type
     function List(const AFolder: string): TArray<string>;
   end;
 
+{ TFakeDisk }
+
 constructor TFakeDisk.Create;
 begin
   inherited Create;

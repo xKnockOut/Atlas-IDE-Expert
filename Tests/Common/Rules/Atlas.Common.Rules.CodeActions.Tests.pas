@@ -57,6 +57,8 @@ begin
   Result.Fixes := [TRuleFix.Create('Fix', [TRuleEdit.Create(TTextRange.Create(ALine, 0, ALine, 1), ANewText)], ASafe)];
 end;
 
+{ TRuleCodeActionTests }
+
 procedure TRuleCodeActionTests.FixAllTakesOnlySafeFixes;
 var
   mAction: TCodeAction;
@@ -117,22 +119,6 @@ begin
   Assert.IsFalse(mActions[0].IsPreferred);
 end;
 
-procedure TRuleCodeActionTests.UnitRelationsFixRunsClientCommand;
-var
-  mFinding: TRuleFinding;
-  mActions: TArray<TCodeAction>;
-begin
-  // „Graph zeigen“ an einem Unit-Zyklus (#896): ohne Änderung, mit Client-Befehl.
-  mFinding := Default(TRuleFinding);
-  mFinding.RuleId := 'uses-cycle';
-  mFinding.Range := TTextRange.Create(5, 2, 5, 3);
-  mFinding.Fixes := [TRuleFix.UnitRelations('Graph zeigen (Unit-Beziehungen)')];
-  mActions := TRuleCodeActions.ForFindings([mFinding], cBody, TTextRange.Create(5, 0, 5, 0));
-  Assert.AreEqual('Graph zeigen (Unit-Beziehungen)', mActions[0].Title);
-  Assert.AreEqual(cShowUnitRelationsCommand, mActions[0].Command);
-  Assert.AreEqual(0, Integer(Length(mActions[0].Edits)));
-end;
-
 procedure TRuleCodeActionTests.FindingOutsideRangeIgnored;
 var
   mFinding: TRuleFinding;
@@ -170,6 +156,22 @@ begin
   Assert.AreEqual('C:\P\Andere.pas', mActions[0].FileEdits[0].FileName);
   Assert.AreEqual('Y', mActions[0].FileEdits[0].Edits[0].NewText);
   Assert.IsFalse(TRuleCodeActions.FixAll([mFinding], mAction));
+end;
+
+procedure TRuleCodeActionTests.UnitRelationsFixRunsClientCommand;
+var
+  mFinding: TRuleFinding;
+  mActions: TArray<TCodeAction>;
+begin
+  // „Graph zeigen“ an einem Unit-Zyklus (#896): ohne Änderung, mit Client-Befehl.
+  mFinding := Default(TRuleFinding);
+  mFinding.RuleId := 'uses-cycle';
+  mFinding.Range := TTextRange.Create(5, 2, 5, 3);
+  mFinding.Fixes := [TRuleFix.UnitRelations('Graph zeigen (Unit-Beziehungen)')];
+  mActions := TRuleCodeActions.ForFindings([mFinding], cBody, TTextRange.Create(5, 0, 5, 0));
+  Assert.AreEqual('Graph zeigen (Unit-Beziehungen)', mActions[0].Title);
+  Assert.AreEqual(cShowUnitRelationsCommand, mActions[0].Command);
+  Assert.AreEqual(0, Integer(Length(mActions[0].Edits)));
 end;
 
 initialization

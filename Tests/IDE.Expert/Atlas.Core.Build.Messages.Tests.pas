@@ -31,6 +31,8 @@ uses
   System.Generics.Collections,
   Atlas.Core.Build.Messages;
 
+{ TAtlasCompilerMessagesTests }
+
 procedure TAtlasCompilerMessagesTests.SplitsCodeAndSeverity;
 var
   mMessage: TAtlasCompilerMessage;
@@ -60,6 +62,23 @@ begin
     Ord(TAtlasCompilerMessages.FromIde('', 'F2063 Verwendete Unit ''X'' kann nicht compiliert werden', '', 1, 1).Severity));
 end;
 
+procedure TAtlasCompilerMessagesTests.JsonSkipsInfo;
+var
+  mJson: TJSONObject;
+begin
+  mJson := TAtlasCompilerMessages.ToJson([
+    TAtlasCompilerMessages.FromIde('msgInfo', 'brcc32 Befehlszeile', '', 1, 0),
+    TAtlasCompilerMessages.FromIde('msgError', 'E2003 Undeklarierter Bezeichner: ''Gibtsnicht''', 'C:\P\A.dpr', 10, 11)],
+    'C:\P\A.dproj', 'Win32', False);
+  try
+    Assert.AreEqual('{"project":"C:\\P\\A.dproj","platform":"Win32","success":false,"messages":[{"file":"C:\\P\\A.dpr",' +
+      '"line":10,"column":11,"severity":"error","code":"E2003","text":"Undeklarierter Bezeichner: ''Gibtsnicht''"}]}',
+      mJson.ToJSON);
+  finally
+    mJson.Free;
+  end;
+end;
+
 procedure TAtlasCompilerMessagesTests.ResolvesFileNamesWithoutPath;
 var
   mMessages: TArray<TAtlasCompilerMessage>;
@@ -84,23 +103,6 @@ begin
     Assert.AreEqual(TPath.Combine(mDir, 'ImOrdner.pas'), mMessages[4].FileName, 'Projektordner');
   finally
     TDirectory.Delete(mDir, True);
-  end;
-end;
-
-procedure TAtlasCompilerMessagesTests.JsonSkipsInfo;
-var
-  mJson: TJSONObject;
-begin
-  mJson := TAtlasCompilerMessages.ToJson([
-    TAtlasCompilerMessages.FromIde('msgInfo', 'brcc32 Befehlszeile', '', 1, 0),
-    TAtlasCompilerMessages.FromIde('msgError', 'E2003 Undeklarierter Bezeichner: ''Gibtsnicht''', 'C:\P\A.dpr', 10, 11)],
-    'C:\P\A.dproj', 'Win32', False);
-  try
-    Assert.AreEqual('{"project":"C:\\P\\A.dproj","platform":"Win32","success":false,"messages":[{"file":"C:\\P\\A.dpr",' +
-      '"line":10,"column":11,"severity":"error","code":"E2003","text":"Undeklarierter Bezeichner: ''Gibtsnicht''"}]}',
-      mJson.ToJSON);
-  finally
-    mJson.Free;
   end;
 end;
 

@@ -53,6 +53,8 @@ uses
   Atlas.Common.Diagnostics.CheckProfile,
   Atlas.Tests.RuleAssert;
 
+{ TCheckProfileTests }
+
 procedure TCheckProfileTests.SlowestUnitsComeFirstWithSums;
 var
   mProfiler: TCheckProfiler;

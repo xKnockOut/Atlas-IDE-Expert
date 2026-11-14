@@ -28,6 +28,8 @@ implementation
 uses
   Atlas.Core.Assistants.InboxPace;
 
+{ TAtlasInboxPaceTests }
+
 procedure TAtlasInboxPaceTests.FirstTickLists;
 var
   mPace: TAtlasInboxPace;

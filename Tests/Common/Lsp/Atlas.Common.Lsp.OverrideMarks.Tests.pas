@@ -105,21 +105,6 @@ const
 
 { TLspOverrideMarksTests }
 
-procedure TLspOverrideMarksTests.Setup;
-begin
-  FIndex := TSymbolIndex.Create;
-  FIndex.AddUnit(TIndexExtractor.ExtractText(cUnitBasis, cBasisFile, nil));
-  FIndex.AddUnit(TIndexExtractor.ExtractText(cUnitHaupt, cHauptFile, nil));
-  FIndex.AddUnit(TIndexExtractor.ExtractText(cUnitEnkel, cEnkelFile, nil));
-  FResolver := TNameResolver.Create(FIndex);
-end;
-
-procedure TLspOverrideMarksTests.TearDown;
-begin
-  FResolver.Free;
-  FIndex := nil;
-end;
-
 function TLspOverrideMarksTests.Describe(const AMarks: TArray<TOverrideMark>): string;
 var
   mMark: TOverrideMark;
@@ -141,6 +126,21 @@ begin
     end;
     Result := Result + '|';
   end;
+end;
+
+procedure TLspOverrideMarksTests.Setup;
+begin
+  FIndex := TSymbolIndex.Create;
+  FIndex.AddUnit(TIndexExtractor.ExtractText(cUnitBasis, cBasisFile, nil));
+  FIndex.AddUnit(TIndexExtractor.ExtractText(cUnitHaupt, cHauptFile, nil));
+  FIndex.AddUnit(TIndexExtractor.ExtractText(cUnitEnkel, cEnkelFile, nil));
+  FResolver := TNameResolver.Create(FIndex);
+end;
+
+procedure TLspOverrideMarksTests.TearDown;
+begin
+  FResolver.Free;
+  FIndex := nil;
 end;
 
 procedure TLspOverrideMarksTests.MarksOverridesOnDeclarationAndBody;

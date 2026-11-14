@@ -168,16 +168,6 @@ begin
   FWritten.SetEvent;
 end;
 
-function TCapturingTransport.Count: Integer;
-begin
-  TMonitor.Enter(FMessages);
-  try
-    Result := FMessages.Count;
-  finally
-    TMonitor.Exit(FMessages);
-  end;
-end;
-
 function TCapturingTransport.WaitForCount(ACount: Integer; ATimeoutMs: Cardinal): Boolean;
 var
   mWatch: TStopwatch;
@@ -192,6 +182,16 @@ begin
     FWritten.WaitFor(ATimeoutMs - Cardinal(mWatch.ElapsedMilliseconds));
   end;
   Result := True;
+end;
+
+function TCapturingTransport.Count: Integer;
+begin
+  TMonitor.Enter(FMessages);
+  try
+    Result := FMessages.Count;
+  finally
+    TMonitor.Exit(FMessages);
+  end;
 end;
 
 function TCapturingTransport.MessageAt(AIndex: Integer): TJSONObject;
@@ -320,34 +320,6 @@ begin
   end;
 end;
 
-procedure TLspSyntaxDiagnosticsTests.RefreshLaterBundlesCalls;
-var
-  mDiagnostics: TLspSyntaxDiagnostics;
-  mCalls: Integer;
-  mIndex: Integer;
-begin
-  // Jedes Projekt einer Gruppe meldet seine Indexstufen; neu geprüft wird einmal (#647).
-  mCalls := 0;
-  mDiagnostics := TLspSyntaxDiagnostics.Create(FStore, FTransport, Default(TSyntaxDiagnosticsProviders));
-  try
-    mDiagnostics.PullMode := True;
-    mDiagnostics.OnPullChanged :=
-      procedure
-      begin
-        TInterlocked.Increment(mCalls);
-      end;
-    for mIndex := 1 to 5 do
-    begin
-      mDiagnostics.RefreshLater;
-    end;
-    Assert.AreEqual(0, TInterlocked.CompareExchange(mCalls, 0, 0), 'erst nach der Pause');
-    Sleep(TLspSyntaxDiagnostics.cRefreshDelayMs + 500);
-    Assert.AreEqual(1, TInterlocked.CompareExchange(mCalls, 0, 0));
-  finally
-    mDiagnostics.Free;
-  end;
-end;
-
 procedure TLspSyntaxDiagnosticsTests.PublishesWithin200MsAfterLastChange;
 var
   mDiagnostics: TLspSyntaxDiagnostics;
@@ -377,6 +349,34 @@ begin
     finally
       mMessage.Free;
     end;
+  finally
+    mDiagnostics.Free;
+  end;
+end;
+
+procedure TLspSyntaxDiagnosticsTests.RefreshLaterBundlesCalls;
+var
+  mDiagnostics: TLspSyntaxDiagnostics;
+  mCalls: Integer;
+  mIndex: Integer;
+begin
+  // Jedes Projekt einer Gruppe meldet seine Indexstufen; neu geprüft wird einmal (#647).
+  mCalls := 0;
+  mDiagnostics := TLspSyntaxDiagnostics.Create(FStore, FTransport, Default(TSyntaxDiagnosticsProviders));
+  try
+    mDiagnostics.PullMode := True;
+    mDiagnostics.OnPullChanged :=
+      procedure
+      begin
+        TInterlocked.Increment(mCalls);
+      end;
+    for mIndex := 1 to 5 do
+    begin
+      mDiagnostics.RefreshLater;
+    end;
+    Assert.AreEqual(0, TInterlocked.CompareExchange(mCalls, 0, 0), 'erst nach der Pause');
+    Sleep(TLspSyntaxDiagnostics.cRefreshDelayMs + 500);
+    Assert.AreEqual(1, TInterlocked.CompareExchange(mCalls, 0, 0));
   finally
     mDiagnostics.Free;
   end;
@@ -412,194 +412,6 @@ begin
     Result.Settings := TConfigurationParser.Parse(AConfigJson, mIssues);
   end;
   Result.RelativePath := 'A.pas';
-end;
-
-procedure TLspSyntaxDiagnosticsTests.AddsRuleFindingsWithCode;
-var
-  mParams: TJSONObject;
-  mDocument: ITextDocument;
-  mItem: TJSONObject;
-begin
-  mDocument := FStore.Open(cUri, 'objectpascal', 1, cValidCode + ' // ' + Char($202E));
-  mParams := TLspSyntaxDiagnostics.BuildParams(mDocument, nil, '', RulesWith(''));
-  try
-    Assert.AreEqual(1, mParams.GetValue<TJSONArray>('diagnostics').Count);
-    mItem := mParams.GetValue<TJSONArray>('diagnostics').Items[0] as TJSONObject;
-    Assert.AreEqual('bidi-control', mItem.GetValue<string>('code'));
-    Assert.AreEqual(1, mItem.GetValue<Integer>('severity'));
-  finally
-    mParams.Free;
-  end;
-end;
-
-procedure TLspSyntaxDiagnosticsTests.RuleOffInSettingsAddsNothing;
-var
-  mParams: TJSONObject;
-  mDocument: ITextDocument;
-begin
-  mDocument := FStore.Open(cUri, 'objectpascal', 1, cValidCode + ' // ' + Char($202E));
-  mParams := TLspSyntaxDiagnostics.BuildParams(mDocument, nil, '', RulesWith('{ "rules": { "bidi-control": "off" } }'));
-  try
-    Assert.AreEqual(0, mParams.GetValue<TJSONArray>('diagnostics').Count);
-  finally
-    mParams.Free;
-  end;
-end;
-
-procedure TLspSyntaxDiagnosticsTests.BaselineHidesKnownRuleFindings;
-var
-  mParams: TJSONObject;
-  mDocument: ITextDocument;
-  mRules: TRuleCheckContext;
-  mSource: TBaselineSource;
-begin
-  mDocument := FStore.Open(cUri, 'objectpascal', 1, cValidCode + ' // ' + Char($202E));
-  mRules := RulesWith('');
-  mSource.Path := mRules.RelativePath;
-  mSource.Text := mDocument.Text;
-  mSource.Findings := TFileChecker.CheckText(mRules.Rules, mRules.Settings, mRules.RelativePath, mDocument.Text);
-  mRules.Baseline := TRuleBaseline.FromJson(TRuleBaseline.Build([mSource]));
-  mParams := TLspSyntaxDiagnostics.BuildParams(mDocument, nil, '', mRules);
-  try
-    Assert.AreEqual(0, mParams.GetValue<TJSONArray>('diagnostics').Count);
-  finally
-    mParams.Free;
-  end;
-end;
-
-procedure TLspSyntaxDiagnosticsTests.MapsRuleSeverityAndConfidence;
-var
-  mFinding: TRuleFinding;
-  mItem: TJSONObject;
-begin
-  mFinding := Default(TRuleFinding);
-  mFinding.RuleId := 'x';
-  mFinding.Message := 'Meldung';
-  mFinding.Severity := TRuleSeverity.Information;
-  mFinding.Confidence := TRuleConfidence.Medium;
-  mItem := TLspDiagnosticItems.FindingToJson(mFinding);
-  try
-    Assert.AreEqual(3, mItem.GetValue<Integer>('severity'));
-    // Konfidenz als eigenes Feld, nicht im Meldungstext (#144).
-    Assert.AreEqual('Meldung', mItem.GetValue<string>('message'));
-    Assert.AreEqual('medium', mItem.GetValue<string>('data.confidence'));
-    Assert.AreEqual(cRuleDocumentationBaseUri + mFinding.RuleId, mItem.GetValue<string>('codeDescription.href'));
-  finally
-    mItem.Free;
-  end;
-end;
-
-procedure TLspSyntaxDiagnosticsTests.RelatedPlacesBecomeRelatedInformation;
-var
-  mFinding: TRuleFinding;
-  mRelated: TRuleRelated;
-  mItem: TJSONObject;
-  mItems: TJSONArray;
-begin
-  // Unit-Zyklus (#896): jede Unit des Pfads mit ihrem uses-Eintrag als relatedInformation.
-  mFinding := Default(TRuleFinding);
-  mFinding.RuleId := 'uses-cycle';
-  mFinding.Message := 'Zirkuläre Unit-Referenz: C → A → C';
-  mRelated.FileName := 'C:\P\A.pas';
-  mRelated.Range := TTextRange.Create(3, 2, 3, 3);
-  mRelated.Message := 'C';
-  mFinding.Related := [mRelated];
-  mItem := TLspDiagnosticItems.FindingToJson(mFinding);
-  try
-    mItems := mItem.GetValue('relatedInformation') as TJSONArray;
-    Assert.AreEqual(1, mItems.Count);
-    Assert.AreEqual('C', (mItems.Items[0] as TJSONObject).GetValue('message').Value);
-    Assert.AreEqual(3, (mItems.Items[0] as TJSONObject).GetValue<Integer>('location.range.start.line'));
-    Assert.AreEqual(2, (mItems.Items[0] as TJSONObject).GetValue<Integer>('location.range.start.character'));
-    Assert.IsTrue(EndsText('A.pas', (mItems.Items[0] as TJSONObject).GetValue<string>('location.uri')));
-  finally
-    mItem.Free;
-  end;
-  // Ohne weitere Stellen kein Feld.
-  mFinding.Related := nil;
-  mItem := TLspDiagnosticItems.FindingToJson(mFinding);
-  try
-    Assert.IsNull(mItem.FindValue('relatedInformation'));
-  finally
-    mItem.Free;
-  end;
-end;
-
-procedure TLspSyntaxDiagnosticsTests.DataCarriesGroupCategoryAndFixTitle;
-var
-  mFinding: TRuleFinding;
-  mItem: TJSONObject;
-begin
-  // Fenster „Atlas-Prüfung“ und Befund-Hover (#909) brauchen Gruppe, Kategorie und Korrekturtitel.
-  mFinding := Default(TRuleFinding);
-  mFinding.RuleId := 'empty-except';
-  mFinding.Message := 'Leerer except-Block';
-  mFinding.Severity := TRuleSeverity.Warning;
-  mFinding.Fixes := [TRuleFix.Create('Ausnahme protokollieren', nil)];
-  mItem := TLspDiagnosticItems.FindingToJson(mFinding);
-  try
-    Assert.AreEqual('exceptions', mItem.GetValue<string>('data.group'));
-    Assert.AreEqual('code-smell', mItem.GetValue<string>('data.category'));
-    Assert.AreEqual('Ausnahme protokollieren', mItem.GetValue<string>('data.fix'));
-    // Ohne Compilercodes kein Feld.
-    Assert.IsNull((mItem.GetValue('data') as TJSONObject).FindValue('compilerCodes'));
-  finally
-    mItem.Free;
-  end;
-  // Gruppe „Compiler vorab“ (#1024): Codes für den Abgleich mit dcc im Plugin.
-  mFinding.RuleId := 'argument-count-mismatch';
-  mFinding.Fixes := nil;
-  mItem := TLspDiagnosticItems.FindingToJson(mFinding);
-  try
-    Assert.AreEqual('compiler', mItem.GetValue<string>('data.group'));
-    Assert.AreEqual('["E2034","E2035"]', (mItem.GetValue('data') as TJSONObject).GetValue('compilerCodes').ToJSON);
-    // Ohne Zusatz kein data.details.
-    Assert.IsNull(mItem.FindValue('data.details'));
-  finally
-    mItem.Free;
-  end;
-  // Zusatz für den Befund-Hover (#1102).
-  mFinding.Details := 'Durchsucht: 3 Dateien der Projektgruppe';
-  mItem := TLspDiagnosticItems.FindingToJson(mFinding);
-  try
-    Assert.AreEqual('Durchsucht: 3 Dateien der Projektgruppe', mItem.GetValue<string>('data.details'));
-  finally
-    mItem.Free;
-  end;
-end;
-
-procedure TLspSyntaxDiagnosticsTests.DataSkipsAlternativeFixesAndUnknownRules;
-var
-  mFinding: TRuleFinding;
-  mFirst, mSecond: TRuleFix;
-  mItem: TJSONObject;
-  mData: TJSONObject;
-begin
-  mFinding := Default(TRuleFinding);
-  mFinding.RuleId := 'gibt-es-nicht';
-  mFinding.Message := 'Meldung';
-  mFirst := TRuleFix.Create('Variante A', nil);
-  mFirst.Alternative := True;
-  mSecond := TRuleFix.Create('Bevorzugt', nil);
-  mFinding.Fixes := [mSecond, mFirst];
-  mItem := TLspDiagnosticItems.FindingToJson(mFinding);
-  try
-    mData := mItem.GetValue('data') as TJSONObject;
-    Assert.IsNull(mData.FindValue('group'));
-    Assert.IsNull(mData.FindValue('category'));
-    Assert.AreEqual('Bevorzugt', mData.GetValue<string>('fix'));
-  finally
-    mItem.Free;
-  end;
-  // Steht eine Alternative vorn, gibt es wie bei den Code-Aktionen keine bevorzugte Korrektur.
-  mFinding.Fixes := [mFirst, mSecond];
-  mItem := TLspDiagnosticItems.FindingToJson(mFinding);
-  try
-    mData := mItem.GetValue('data') as TJSONObject;
-    Assert.IsNull(mData.FindValue('fix'));
-  finally
-    mItem.Free;
-  end;
 end;
 
 procedure TLspSyntaxDiagnosticsTests.AddsInactiveRangesAsUnnecessaryHints;
@@ -776,6 +588,194 @@ begin
   finally
     mDiagnostics.Free;
     TSyntaxTreeCache.SetIncludeProvider(nil);
+  end;
+end;
+
+procedure TLspSyntaxDiagnosticsTests.AddsRuleFindingsWithCode;
+var
+  mParams: TJSONObject;
+  mDocument: ITextDocument;
+  mItem: TJSONObject;
+begin
+  mDocument := FStore.Open(cUri, 'objectpascal', 1, cValidCode + ' // ' + Char($202E));
+  mParams := TLspSyntaxDiagnostics.BuildParams(mDocument, nil, '', RulesWith(''));
+  try
+    Assert.AreEqual(1, mParams.GetValue<TJSONArray>('diagnostics').Count);
+    mItem := mParams.GetValue<TJSONArray>('diagnostics').Items[0] as TJSONObject;
+    Assert.AreEqual('bidi-control', mItem.GetValue<string>('code'));
+    Assert.AreEqual(1, mItem.GetValue<Integer>('severity'));
+  finally
+    mParams.Free;
+  end;
+end;
+
+procedure TLspSyntaxDiagnosticsTests.RuleOffInSettingsAddsNothing;
+var
+  mParams: TJSONObject;
+  mDocument: ITextDocument;
+begin
+  mDocument := FStore.Open(cUri, 'objectpascal', 1, cValidCode + ' // ' + Char($202E));
+  mParams := TLspSyntaxDiagnostics.BuildParams(mDocument, nil, '', RulesWith('{ "rules": { "bidi-control": "off" } }'));
+  try
+    Assert.AreEqual(0, mParams.GetValue<TJSONArray>('diagnostics').Count);
+  finally
+    mParams.Free;
+  end;
+end;
+
+procedure TLspSyntaxDiagnosticsTests.BaselineHidesKnownRuleFindings;
+var
+  mParams: TJSONObject;
+  mDocument: ITextDocument;
+  mRules: TRuleCheckContext;
+  mSource: TBaselineSource;
+begin
+  mDocument := FStore.Open(cUri, 'objectpascal', 1, cValidCode + ' // ' + Char($202E));
+  mRules := RulesWith('');
+  mSource.Path := mRules.RelativePath;
+  mSource.Text := mDocument.Text;
+  mSource.Findings := TFileChecker.CheckText(mRules.Rules, mRules.Settings, mRules.RelativePath, mDocument.Text);
+  mRules.Baseline := TRuleBaseline.FromJson(TRuleBaseline.Build([mSource]));
+  mParams := TLspSyntaxDiagnostics.BuildParams(mDocument, nil, '', mRules);
+  try
+    Assert.AreEqual(0, mParams.GetValue<TJSONArray>('diagnostics').Count);
+  finally
+    mParams.Free;
+  end;
+end;
+
+procedure TLspSyntaxDiagnosticsTests.MapsRuleSeverityAndConfidence;
+var
+  mFinding: TRuleFinding;
+  mItem: TJSONObject;
+begin
+  mFinding := Default(TRuleFinding);
+  mFinding.RuleId := 'x';
+  mFinding.Message := 'Meldung';
+  mFinding.Severity := TRuleSeverity.Information;
+  mFinding.Confidence := TRuleConfidence.Medium;
+  mItem := TLspDiagnosticItems.FindingToJson(mFinding);
+  try
+    Assert.AreEqual(3, mItem.GetValue<Integer>('severity'));
+    // Konfidenz als eigenes Feld, nicht im Meldungstext (#144).
+    Assert.AreEqual('Meldung', mItem.GetValue<string>('message'));
+    Assert.AreEqual('medium', mItem.GetValue<string>('data.confidence'));
+    Assert.AreEqual(cRuleDocumentationBaseUri + mFinding.RuleId, mItem.GetValue<string>('codeDescription.href'));
+  finally
+    mItem.Free;
+  end;
+end;
+
+procedure TLspSyntaxDiagnosticsTests.DataCarriesGroupCategoryAndFixTitle;
+var
+  mFinding: TRuleFinding;
+  mItem: TJSONObject;
+begin
+  // Fenster „Atlas-Prüfung“ und Befund-Hover (#909) brauchen Gruppe, Kategorie und Korrekturtitel.
+  mFinding := Default(TRuleFinding);
+  mFinding.RuleId := 'empty-except';
+  mFinding.Message := 'Leerer except-Block';
+  mFinding.Severity := TRuleSeverity.Warning;
+  mFinding.Fixes := [TRuleFix.Create('Ausnahme protokollieren', nil)];
+  mItem := TLspDiagnosticItems.FindingToJson(mFinding);
+  try
+    Assert.AreEqual('exceptions', mItem.GetValue<string>('data.group'));
+    Assert.AreEqual('code-smell', mItem.GetValue<string>('data.category'));
+    Assert.AreEqual('Ausnahme protokollieren', mItem.GetValue<string>('data.fix'));
+    // Ohne Compilercodes kein Feld.
+    Assert.IsNull((mItem.GetValue('data') as TJSONObject).FindValue('compilerCodes'));
+  finally
+    mItem.Free;
+  end;
+  // Gruppe „Compiler vorab“ (#1024): Codes für den Abgleich mit dcc im Plugin.
+  mFinding.RuleId := 'argument-count-mismatch';
+  mFinding.Fixes := nil;
+  mItem := TLspDiagnosticItems.FindingToJson(mFinding);
+  try
+    Assert.AreEqual('compiler', mItem.GetValue<string>('data.group'));
+    Assert.AreEqual('["E2034","E2035"]', (mItem.GetValue('data') as TJSONObject).GetValue('compilerCodes').ToJSON);
+    // Ohne Zusatz kein data.details.
+    Assert.IsNull(mItem.FindValue('data.details'));
+  finally
+    mItem.Free;
+  end;
+  // Zusatz für den Befund-Hover (#1102).
+  mFinding.Details := 'Durchsucht: 3 Dateien der Projektgruppe';
+  mItem := TLspDiagnosticItems.FindingToJson(mFinding);
+  try
+    Assert.AreEqual('Durchsucht: 3 Dateien der Projektgruppe', mItem.GetValue<string>('data.details'));
+  finally
+    mItem.Free;
+  end;
+end;
+
+procedure TLspSyntaxDiagnosticsTests.RelatedPlacesBecomeRelatedInformation;
+var
+  mFinding: TRuleFinding;
+  mRelated: TRuleRelated;
+  mItem: TJSONObject;
+  mItems: TJSONArray;
+begin
+  // Unit-Zyklus (#896): jede Unit des Pfads mit ihrem uses-Eintrag als relatedInformation.
+  mFinding := Default(TRuleFinding);
+  mFinding.RuleId := 'uses-cycle';
+  mFinding.Message := 'Zirkuläre Unit-Referenz: C → A → C';
+  mRelated.FileName := 'C:\P\A.pas';
+  mRelated.Range := TTextRange.Create(3, 2, 3, 3);
+  mRelated.Message := 'C';
+  mFinding.Related := [mRelated];
+  mItem := TLspDiagnosticItems.FindingToJson(mFinding);
+  try
+    mItems := mItem.GetValue('relatedInformation') as TJSONArray;
+    Assert.AreEqual(1, mItems.Count);
+    Assert.AreEqual('C', (mItems.Items[0] as TJSONObject).GetValue('message').Value);
+    Assert.AreEqual(3, (mItems.Items[0] as TJSONObject).GetValue<Integer>('location.range.start.line'));
+    Assert.AreEqual(2, (mItems.Items[0] as TJSONObject).GetValue<Integer>('location.range.start.character'));
+    Assert.IsTrue(EndsText('A.pas', (mItems.Items[0] as TJSONObject).GetValue<string>('location.uri')));
+  finally
+    mItem.Free;
+  end;
+  // Ohne weitere Stellen kein Feld.
+  mFinding.Related := nil;
+  mItem := TLspDiagnosticItems.FindingToJson(mFinding);
+  try
+    Assert.IsNull(mItem.FindValue('relatedInformation'));
+  finally
+    mItem.Free;
+  end;
+end;
+
+procedure TLspSyntaxDiagnosticsTests.DataSkipsAlternativeFixesAndUnknownRules;
+var
+  mFinding: TRuleFinding;
+  mFirst, mSecond: TRuleFix;
+  mItem: TJSONObject;
+  mData: TJSONObject;
+begin
+  mFinding := Default(TRuleFinding);
+  mFinding.RuleId := 'gibt-es-nicht';
+  mFinding.Message := 'Meldung';
+  mFirst := TRuleFix.Create('Variante A', nil);
+  mFirst.Alternative := True;
+  mSecond := TRuleFix.Create('Bevorzugt', nil);
+  mFinding.Fixes := [mSecond, mFirst];
+  mItem := TLspDiagnosticItems.FindingToJson(mFinding);
+  try
+    mData := mItem.GetValue('data') as TJSONObject;
+    Assert.IsNull(mData.FindValue('group'));
+    Assert.IsNull(mData.FindValue('category'));
+    Assert.AreEqual('Bevorzugt', mData.GetValue<string>('fix'));
+  finally
+    mItem.Free;
+  end;
+  // Steht eine Alternative vorn, gibt es wie bei den Code-Aktionen keine bevorzugte Korrektur.
+  mFinding.Fixes := [mFirst, mSecond];
+  mItem := TLspDiagnosticItems.FindingToJson(mFinding);
+  try
+    mData := mItem.GetValue('data') as TJSONObject;
+    Assert.IsNull(mData.FindValue('fix'));
+  finally
+    mItem.Free;
   end;
 end;
 

@@ -46,6 +46,8 @@ uses
   Vcl.ComCtrls,
   Atlas.Core.Style.Scaling;
 
+{ TAtlasListViewTests }
+
 procedure TAtlasListViewTests.WarmUpFirstUse;
 begin
   // Erste Benutzung (Liste mit Fenster, DPI-Wechsel) nicht dem ersten Test anrechnen.

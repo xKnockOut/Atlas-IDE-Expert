@@ -53,6 +53,8 @@ begin
   Result := 0;
 end;
 
+{ TShellSessionTests }
+
 procedure TShellSessionTests.Setup;
 var
   mServices: TShellSessionServices;

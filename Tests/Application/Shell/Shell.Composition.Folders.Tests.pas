@@ -69,6 +69,8 @@ begin
   Result := '';
 end;
 
+{ TShellFoldersTests }
+
 procedure TShellFoldersTests.ProjectLoaded;
 begin
   Inc(FLoaded);

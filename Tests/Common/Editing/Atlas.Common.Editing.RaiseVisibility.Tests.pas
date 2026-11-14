@@ -127,11 +127,7 @@ begin
   Result := TClassLayout.Read(ATree, AText, TClassLayout.DeclNamed(ATree, AName));
 end;
 
-procedure TRaiseVisibilityTests.TearDown;
-begin
-  FreeAndNil(FTree);
-  FText := '';
-end;
+{ TRaiseVisibilityTests }
 
 function TRaiseVisibilityTests.Applied(const AText: string; ALine: Integer; const AName, ATitle: string): string;
 var
@@ -152,6 +148,12 @@ begin
     mTree.Free;
   end;
   Assert.Fail('Aktion fehlt: ' + ATitle);
+end;
+
+procedure TRaiseVisibilityTests.TearDown;
+begin
+  FreeAndNil(FTree);
+  FText := '';
 end;
 
 procedure TRaiseVisibilityTests.TargetsFollowVisibility;

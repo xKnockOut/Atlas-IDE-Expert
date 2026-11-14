@@ -55,6 +55,8 @@ begin
   end;
 end;
 
+{ TAtlasJumpToMatchTests }
+
 procedure TAtlasJumpToMatchTests.BeginEndNested;
 const
   cCode =

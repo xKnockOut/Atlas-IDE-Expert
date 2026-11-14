@@ -38,6 +38,8 @@ uses
   System.SysUtils,
   Atlas.Core.Tests.Compare;
 
+{ TAtlasTestCompareTests }
+
 procedure TAtlasTestCompareTests.RecognizesJsonAndXml;
 begin
   Assert.AreEqual<TAtlasCompareFormat>(TAtlasCompareFormat.Json, TAtlasTestCompare.FormatOf(' {"a":1} '));

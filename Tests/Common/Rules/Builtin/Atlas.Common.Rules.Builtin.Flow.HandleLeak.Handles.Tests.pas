@@ -30,6 +30,8 @@ uses
   Atlas.Common.Pascal.Parser,
   Atlas.Common.Rules.Builtin.Flow.HandleLeak.Handles;
 
+{ TFlowHandleLeakHandlesTests }
+
 procedure TFlowHandleLeakHandlesTests.OptionPairsAreAppended;
 var
   mPairs: TArray<string>;

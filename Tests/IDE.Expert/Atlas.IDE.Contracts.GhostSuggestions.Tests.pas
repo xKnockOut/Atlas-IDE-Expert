@@ -37,6 +37,8 @@ type
     procedure Rejected(const AProposal: TAtlasGhostProposal);
   end;
 
+{ TFakeProvider }
+
 constructor TFakeProvider.Create(AEnabled: Boolean);
 begin
   inherited Create;
@@ -60,6 +62,8 @@ end;
 procedure TFakeProvider.Rejected(const AProposal: TAtlasGhostProposal);
 begin
 end;
+
+{ TAtlasGhostProvidersTests }
 
 procedure TAtlasGhostProvidersTests.TearDown;
 var

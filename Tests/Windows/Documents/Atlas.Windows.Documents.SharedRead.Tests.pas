@@ -49,6 +49,13 @@ uses
 
 { TWindowsSharedReadTests }
 
+function TWindowsSharedReadTests.OpenFor(AAccess: Cardinal): THandle;
+begin
+  Result := CreateFile(PChar(FFile), AAccess, FILE_SHARE_READ or FILE_SHARE_WRITE or FILE_SHARE_DELETE, nil,
+    OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, 0);
+  Assert.AreNotEqual<THandle>(INVALID_HANDLE_VALUE, Result, SysErrorMessage(GetLastError));
+end;
+
 procedure TWindowsSharedReadTests.Setup;
 begin
   FDir := TPath.Combine(TPath.GetTempPath, 'AtlasGeteilt' + TGUID.NewGuid.ToString);
@@ -66,13 +73,6 @@ begin
   end;
   FDir := '';
   FFile := '';
-end;
-
-function TWindowsSharedReadTests.OpenFor(AAccess: Cardinal): THandle;
-begin
-  Result := CreateFile(PChar(FFile), AAccess, FILE_SHARE_READ or FILE_SHARE_WRITE or FILE_SHARE_DELETE, nil,
-    OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, 0);
-  Assert.AreNotEqual<THandle>(INVALID_HANDLE_VALUE, Result, SysErrorMessage(GetLastError));
 end;
 
 procedure TWindowsSharedReadTests.ReadsWholeFile;

@@ -98,18 +98,6 @@ end;
 
 { TLspDocumentHighlightsTests }
 
-procedure TLspDocumentHighlightsTests.Setup;
-begin
-  FIndex := TSymbolIndex.Create;
-  FResolver := TNameResolver.Create(FIndex);
-end;
-
-procedure TLspDocumentHighlightsTests.TearDown;
-begin
-  FResolver.Free;
-  FIndex := nil;
-end;
-
 // "Zeile:Spalte/Art" je Vorkommen, z. B. "7:4/T 12:10/R"; Art T, R oder W.
 function TLspDocumentHighlightsTests.Describe(const AMarker: string): string;
 begin
@@ -139,6 +127,18 @@ begin
   finally
     mTree.Free;
   end;
+end;
+
+procedure TLspDocumentHighlightsTests.Setup;
+begin
+  FIndex := TSymbolIndex.Create;
+  FResolver := TNameResolver.Create(FIndex);
+end;
+
+procedure TLspDocumentHighlightsTests.TearDown;
+begin
+  FResolver.Free;
+  FIndex := nil;
 end;
 
 procedure TLspDocumentHighlightsTests.MarksReadsWritesAndDeclaration;

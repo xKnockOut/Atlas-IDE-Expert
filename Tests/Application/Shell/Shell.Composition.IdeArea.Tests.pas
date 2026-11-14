@@ -74,6 +74,8 @@ begin
   Result := nil;
 end;
 
+{ TShellIdeAreaTests }
+
 procedure TShellIdeAreaTests.Setup;
 var
   mCoreServices: TShellCoreServices;

@@ -43,6 +43,8 @@ begin
   Result[TAtlasRestartStep.Return] := 'Zurück';
 end;
 
+{ TAtlasRestartTests }
+
 procedure TAtlasRestartTests.PlansAllSteps;
 var
   mRun: TAtlasRestartRun;

@@ -66,6 +66,8 @@ type
     procedure Write(const AEntry: TLogEntry);
   end;
 
+{ TMemorySink }
+
 constructor TMemorySink.Create(ALines: TStrings);
 begin
   inherited Create;
@@ -123,6 +125,8 @@ begin
       Result := AAnonymizer.Anonymize(TLogMarks.Mark(AKind, AValue));
     end;
 end;
+
+{ TAnonymityTests }
 
 procedure TAnonymityTests.MarkedValuesBecomeLabels;
 var

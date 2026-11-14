@@ -334,6 +334,8 @@ begin
   Result := TAtlasPlaceholderSession.Create(ADocument, Length(ABefore), mExpansion);
 end;
 
+{ TAtlasPlaceholderSessionTests }
+
 procedure TAtlasPlaceholderSessionTests.TabWalksThroughPlaceholders;
 var
   mSession: TAtlasPlaceholderSession;
@@ -554,24 +556,6 @@ begin
   Assert.AreEqual('Snippet', mTags[0].Text);
 end;
 
-procedure TAtlasSnippetsTests.ConvertsServerSnippets;
-var
-  mExpansion: TAtlasSnippetExpansion;
-begin
-  // LSP-Syntax des Servers (#51) im eigenen Format.
-  Assert.AreEqual('property ${1:Farbe}: TColor;$0', TAtlasSnippets.FromLsp('property ${1:Farbe}: TColor;$0'));
-  Assert.AreEqual('X := $$FF; a}b\c', TAtlasSnippets.FromLsp('X := \$FF; a\}b\\c'));
-  Assert.AreEqual('${1} ${2:ja}', TAtlasSnippets.FromLsp('$1 ${2|ja,nein|}'));
-  Assert.AreEqual('${1:Liste.Free} $$FF', TAtlasSnippets.FromLsp('${1:${2:Liste}.Free} ${TM_SELECTED_TEXT}$FF'));
-  Assert.AreEqual('a$$b', TAtlasSnippets.FromLsp('a$b'));
-  // Eingesetzt: Platzhalter und Endposition wie bei den eigenen Vorlagen, Hexzahl als Text.
-  mExpansion := TAtlasSnippets.Expand(TAtlasSnippets.FromLsp('if F <> \$FF then'#10'  ${1:Invalidate};$0'), '  ',
-    #10);
-  Assert.AreEqual('if F <> $FF then'#10'    Invalidate;', mExpansion.Text);
-  Assert.AreEqual(2, Integer(Length(mExpansion.Stops)));
-  Assert.AreEqual(1, mExpansion.Stops[0].Number);
-end;
-
 procedure TAtlasSnippetsTests.DoubleDollarIsText;
 var
   mExpansion: TAtlasSnippetExpansion;
@@ -747,6 +731,24 @@ begin
   Assert.AreEqual('Postfix', mTags[0].Text);
 end;
 
+procedure TAtlasSnippetsTests.ConvertsServerSnippets;
+var
+  mExpansion: TAtlasSnippetExpansion;
+begin
+  // LSP-Syntax des Servers (#51) im eigenen Format.
+  Assert.AreEqual('property ${1:Farbe}: TColor;$0', TAtlasSnippets.FromLsp('property ${1:Farbe}: TColor;$0'));
+  Assert.AreEqual('X := $$FF; a}b\c', TAtlasSnippets.FromLsp('X := \$FF; a\}b\\c'));
+  Assert.AreEqual('${1} ${2:ja}', TAtlasSnippets.FromLsp('$1 ${2|ja,nein|}'));
+  Assert.AreEqual('${1:Liste.Free} $$FF', TAtlasSnippets.FromLsp('${1:${2:Liste}.Free} ${TM_SELECTED_TEXT}$FF'));
+  Assert.AreEqual('a$$b', TAtlasSnippets.FromLsp('a$b'));
+  // Eingesetzt: Platzhalter und Endposition wie bei den eigenen Vorlagen, Hexzahl als Text.
+  mExpansion := TAtlasSnippets.Expand(TAtlasSnippets.FromLsp('if F <> \$FF then'#10'  ${1:Invalidate};$0'), '  ',
+    #10);
+  Assert.AreEqual('if F <> $FF then'#10'    Invalidate;', mExpansion.Text);
+  Assert.AreEqual(2, Integer(Length(mExpansion.Stops)));
+  Assert.AreEqual(1, mExpansion.Stops[0].Number);
+end;
+
 { TAtlasSnippetCatalogTests }
 
 function OwnSnippet(const APrefix, ABody: string): TAtlasSnippet;
@@ -757,6 +759,8 @@ begin
   Result.Body := ABody;
   Result.Origin := TAtlasSnippetOrigin.User;
 end;
+
+{ TAtlasSnippetCatalogTests }
 
 procedure TAtlasSnippetCatalogTests.ListsAllWithOriginAndReplacement;
 var
@@ -921,6 +925,8 @@ begin
   end;
   Result := '';
 end;
+
+{ TAtlasLiveTemplatesTests }
 
 procedure TAtlasLiveTemplatesTests.ReadsDelphi12Folder;
 var

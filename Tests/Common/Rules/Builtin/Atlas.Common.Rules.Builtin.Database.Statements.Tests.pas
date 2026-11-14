@@ -33,6 +33,8 @@ implementation
 uses
   Atlas.Common.Rules.Builtin.Database.Statements;
 
+{ TDatabaseStatementsTests }
+
 procedure TDatabaseStatementsTests.WritesSkipCommentsAndLiterals;
 begin
   Assert.AreEqual(1, Integer(Length(SqlWrites('DELETE FROM Log /* WHERE Alt = 1 */', False))));

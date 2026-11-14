@@ -81,6 +81,8 @@ begin
   Result := TAtlasSettingsModel.Create(TAtlasSettingsSchema.Fields(AtlasSchemaJson), AText, AGlobal, AGlobalMode);
 end;
 
+{ TAtlasSettingsLayersTests }
+
 procedure TAtlasSettingsLayersTests.ProjectOverridesGlobalOverridesDefault;
 var
   mSettings: TAtlasSettingsModel;

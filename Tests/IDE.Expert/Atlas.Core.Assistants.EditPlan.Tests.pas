@@ -46,6 +46,8 @@ uses
   Atlas.Core.Lsp.WorkspaceEdits,
   Atlas.Tests.EditorFilesFake;
 
+{ TAtlasEditInboxPlanTests }
+
 procedure TAtlasEditInboxPlanTests.ClosedFileLetsTheServerWrite;
 var
   mDecision: TAtlasEditInboxDecision;

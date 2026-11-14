@@ -55,6 +55,8 @@ begin
   Result.Add(TAtlasFileSearch.SearchText('C:\P\B.pas', 'foo', mQuery));
 end;
 
+{ TAtlasSearchReplaceFrameTests }
+
 procedure TAtlasSearchReplaceFrameTests.Setup;
 begin
   FLanguage := TAtlasStrings.Language;

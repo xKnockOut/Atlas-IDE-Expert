@@ -489,6 +489,20 @@ begin
   Assert.AreEqual(25, mFindings[1].Range.StartPos.Line);
 end;
 
+procedure TOwnershipRulesTests.CreateSelfRegisteringOption;
+var
+  mSource: string;
+  mIssues: TArray<TConfigurationIssue>;
+begin
+  mSource := Import('  TImportProtokoll.Create;'#10);
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TCreateWithoutAssignmentRule.Create, mSource,
+    '{"rules": {"create-without-assignment": {"selfRegistering": ["TImport*"]}}}'))));
+  Assert.AreEqual(1, Integer(Length(TRuleAssert.Findings(TCreateWithoutAssignmentRule.Create, mSource,
+    '{"rules": {"create-without-assignment": {"selfRegistering": ["TExpert"]}}}'))));
+  TConfigurationParser.Parse('{"rules": {"create-without-assignment": {"selfRegistering": "TExpert"}}}', mIssues);
+  Assert.AreEqual(1, Integer(Length(mIssues)));
+end;
+
 procedure TOwnershipRulesTests.CreateOutParameterAndWillRaiseAreSilent;
 const
   cSource =
@@ -530,20 +544,6 @@ begin
   Assert.AreEqual(1, Integer(Length(mFindings)));
   Assert.AreEqual(26, mFindings[0].Range.StartPos.Line);
   mFindings := nil;
-end;
-
-procedure TOwnershipRulesTests.CreateSelfRegisteringOption;
-var
-  mSource: string;
-  mIssues: TArray<TConfigurationIssue>;
-begin
-  mSource := Import('  TImportProtokoll.Create;'#10);
-  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TCreateWithoutAssignmentRule.Create, mSource,
-    '{"rules": {"create-without-assignment": {"selfRegistering": ["TImport*"]}}}'))));
-  Assert.AreEqual(1, Integer(Length(TRuleAssert.Findings(TCreateWithoutAssignmentRule.Create, mSource,
-    '{"rules": {"create-without-assignment": {"selfRegistering": ["TExpert"]}}}'))));
-  TConfigurationParser.Parse('{"rules": {"create-without-assignment": {"selfRegistering": "TExpert"}}}', mIssues);
-  Assert.AreEqual(1, Integer(Length(mIssues)));
 end;
 
 procedure TOwnershipRulesTests.CreateOffAndExclude;
@@ -744,6 +744,8 @@ begin
     'end.';
 end;
 
+{ TRawMemoryLeakTests }
+
 procedure TRawMemoryLeakTests.IssueExampleWithFix;
 var
   mSource, mFixed: string;
@@ -882,6 +884,8 @@ begin
     'end;'#10 +
     'end.';
 end;
+
+{ TStringListObjectsLeakTests }
 
 procedure TStringListObjectsLeakTests.IssueExampleWithFix;
 var

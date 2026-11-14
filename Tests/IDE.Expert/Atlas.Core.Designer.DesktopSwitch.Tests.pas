@@ -100,6 +100,14 @@ begin
   end;
 end;
 
+{ TAtlasDesktopSwitchTests }
+
+function TAtlasDesktopSwitchTests.Step(const AOptions: TAtlasDesktopSwitchOptions; AView: TAtlasDesktopView;
+  ATicks: UInt64; const ACurrent: string): string;
+begin
+  Result := ActionText(FSwitch.Step(AOptions, State(AView, ATicks, ACurrent)));
+end;
+
 procedure TAtlasDesktopSwitchTests.Setup;
 begin
   FSwitch := TAtlasDesktopSwitch.Create;
@@ -108,12 +116,6 @@ end;
 procedure TAtlasDesktopSwitchTests.TearDown;
 begin
   FreeAndNil(FSwitch);
-end;
-
-function TAtlasDesktopSwitchTests.Step(const AOptions: TAtlasDesktopSwitchOptions; AView: TAtlasDesktopView;
-  ATicks: UInt64; const ACurrent: string): string;
-begin
-  Result := ActionText(FSwitch.Step(AOptions, State(AView, ATicks, ACurrent)));
 end;
 
 procedure TAtlasDesktopSwitchTests.WaitsForDelay;

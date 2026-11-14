@@ -119,6 +119,8 @@ begin
   Result.Platform := 'Win64';
 end;
 
+{ TAtlasReleaseGuardTests }
+
 procedure TAtlasReleaseGuardTests.ChecksTextDefaultsAndParse;
 var
   mChecks: TAtlasReleaseChecks;
@@ -369,6 +371,8 @@ type
     Clock: Int64;
     function Make: TAtlasCompileEvents;
   end;
+
+{ TGuardRun }
 
 function TGuardRun.Make: TAtlasCompileEvents;
 begin

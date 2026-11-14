@@ -61,6 +61,8 @@ begin
   Result := '';
 end;
 
+{ TShellRuleContextTests }
+
 function TShellRuleContextTests.ReadForm(const AFileName: string; out AText: string): Boolean;
 begin
   Result := SameText(ExtractFileExt(AFileName), '.dfm');

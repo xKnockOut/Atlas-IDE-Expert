@@ -101,32 +101,7 @@ const
     '"parameters": [{"name": "AText", "text": "''12,5 kg''"}], "fields": [{"name": "Genau", "text": "True"}], ' +
     '"stoppedAt": "2026-11-13 14:05"}';
 
-procedure TLspTestFromDebugTests.Setup;
-begin
-  FStore := TDocumentStore.Create;
-  FFiles := TDictionary<string, string>.Create;
-  FUnits := TDictionary<string, string>.Create;
-  FFiles.Add(cTestsDpr, cDprText);
-  FFiles.Add(cTestsDproj, cDprojText);
-  FUnits.Add('gewichte', cGewichtFile);
-  FStore.Open(TDocumentUris.FromPath(cGewichtFile), 'pascal', 1, cGewichtText);
-  FTestUnits := TLspTestUnits.Create(FStore,
-    function(const AUri: string; out AContext: TTestUnitContext): Boolean
-    begin
-      AContext := Context;
-      Result := True;
-    end);
-  FFromDebug := TLspTestFromDebug.Create(FTestUnits);
-end;
-
-procedure TLspTestFromDebugTests.TearDown;
-begin
-  FFromDebug.Free;
-  FTestUnits.Free;
-  FUnits.Free;
-  FFiles.Free;
-  FStore := nil;
-end;
+{ TLspTestFromDebugTests }
 
 function TLspTestFromDebugTests.Context: TTestUnitContext;
 var
@@ -181,6 +156,33 @@ begin
   finally
     mArguments.Free;
   end;
+end;
+
+procedure TLspTestFromDebugTests.Setup;
+begin
+  FStore := TDocumentStore.Create;
+  FFiles := TDictionary<string, string>.Create;
+  FUnits := TDictionary<string, string>.Create;
+  FFiles.Add(cTestsDpr, cDprText);
+  FFiles.Add(cTestsDproj, cDprojText);
+  FUnits.Add('gewichte', cGewichtFile);
+  FStore.Open(TDocumentUris.FromPath(cGewichtFile), 'pascal', 1, cGewichtText);
+  FTestUnits := TLspTestUnits.Create(FStore,
+    function(const AUri: string; out AContext: TTestUnitContext): Boolean
+    begin
+      AContext := Context;
+      Result := True;
+    end);
+  FFromDebug := TLspTestFromDebug.Create(FTestUnits);
+end;
+
+procedure TLspTestFromDebugTests.TearDown;
+begin
+  FFromDebug.Free;
+  FTestUnits.Free;
+  FUnits.Free;
+  FFiles.Free;
+  FStore := nil;
 end;
 
 procedure TLspTestFromDebugTests.DescribeNamesValuesAndLiterals;

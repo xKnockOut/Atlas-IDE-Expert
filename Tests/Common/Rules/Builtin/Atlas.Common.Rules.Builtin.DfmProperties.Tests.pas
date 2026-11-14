@@ -264,6 +264,164 @@ begin
   Result := ApplyEdits(AFormText, AFix.Edits);
 end;
 
+{ TDfmPropertyRulesTests }
+
+procedure TDfmPropertyRulesTests.WarmUp;
+begin
+  Run(Format(cTransparentRule, ['']), Form('  object Label1: TLabel'#10'  end'#10));
+end;
+
+procedure TDfmPropertyRulesTests.DefaultValueCountsWhenNotStored;
+var
+  mFindings: TArray<TRuleFinding>;
+begin
+  // Transparent nicht gespeichert: default aus TCustomLabel (ohne Angabe False), also Verstoß.
+  mFindings := Run(Format(cTransparentRule, ['']), Form('  object Label1: TLabel'#10'    Caption = ''Name'''#10'  end'#10));
+  Assert.AreEqual(1, Integer(Length(mFindings)));
+  Assert.AreEqual('Label1 (TLabel): Transparent soll True sein, ist False', mFindings[0].Message);
+  // Gemeldet am Feld Label1 in der Unit.
+  Assert.AreEqual(4, mFindings[0].Range.StartPos.Line);
+  Assert.AreEqual(4, mFindings[0].Range.StartPos.Character);
+  Assert.AreEqual(Ord(TRuleSeverity.Warning), Ord(mFindings[0].Severity));
+end;
+
+procedure TDfmPropertyRulesTests.StoredValueIsSilent;
+begin
+  Assert.AreEqual(0, Integer(Length(Run(Format(cTransparentRule, ['']),
+    Form('  object Label1: TLabel'#10'    Transparent = True'#10'  end'#10)))));
+end;
+
+procedure TDfmPropertyRulesTests.DescendantsOnlyWhenIncluded;
+const
+  cMyLabel = '  object MyLabel1: TMyLabel'#10'  end'#10;
+var
+  mFindings: TArray<TRuleFinding>;
+begin
+  mFindings := Run(Format(cTransparentRule, ['']), Form(cMyLabel));
+  Assert.AreEqual(1, Integer(Length(mFindings)), 'Nachfahr von TLabel');
+  Assert.AreEqual(6, mFindings[0].Range.StartPos.Line);
+  Assert.AreEqual(0, Integer(Length(Run(Format(cTransparentRule, [', "includeDescendants": false']), Form(cMyLabel)))));
+end;
+
+procedure TDfmPropertyRulesTests.ContainsOnSetUsesDefault;
+const
+  cRule = '{"dfmPropertyRules": [{"class": "TDBGrid", "property": "Options", "condition": "contains", ' +
+    '"value": "dgRowSelect"}]}';
+var
+  mFindings: TArray<TRuleFinding>;
+begin
+  // Nicht gespeichert: default [dgEditing, dgTitles] ohne dgRowSelect.
+  mFindings := Run(cRule, Form('  object Grid1: TDBGrid'#10'  end'#10));
+  Assert.AreEqual(1, Integer(Length(mFindings)));
+  Assert.AreEqual('Grid1 (TDBGrid): Options soll dgRowSelect enthalten, ist [dgEditing, dgTitles]', mFindings[0].Message);
+  Assert.AreEqual(0, Integer(Length(Run(cRule,
+    Form('  object Grid1: TDBGrid'#10'    Options = [dgTitles, dgRowSelect]'#10'  end'#10)))));
+end;
+
+procedure TDfmPropertyRulesTests.FormItselfWithOwnMessage;
+const
+  cRule = '{"dfmPropertyRules": [{"class": "TForm", "property": "Position", "condition": "<>", ' +
+    '"value": "poDesigned", "message": "Formulare werden zentriert geöffnet"}]}';
+var
+  mFindings: TArray<TRuleFinding>;
+begin
+  mFindings := Run(cRule, Form('', '  Position = poDesigned'#10));
+  Assert.AreEqual(1, Integer(Length(mFindings)));
+  Assert.AreEqual('Form1 (TForm1): Formulare werden zentriert geöffnet', mFindings[0].Message);
+  // Das Formular selbst: an der Formularklasse.
+  Assert.AreEqual(3, mFindings[0].Range.StartPos.Line);
+  Assert.AreEqual(0, Integer(Length(Run(cRule, Form('', '  Position = poScreenCenter'#10)))));
+  // Nicht gespeichert: default poDefaultPosOnly, erfüllt.
+  Assert.AreEqual(0, Integer(Length(Run(cRule, Form('')))));
+end;
+
+procedure TDfmPropertyRulesTests.InheritedObjectOnlyWhereSet;
+begin
+  // Aus dem Vorfahrenformular, hier nicht gesetzt: gehört zum Vorfahren.
+  Assert.AreEqual(0, Integer(Length(Run(Format(cTransparentRule, ['']),
+    'inherited Form1: TForm1'#10'  inherited Label1: TLabel'#10'  end'#10'end'))));
+  Assert.AreEqual(1, Integer(Length(Run(Format(cTransparentRule, ['']),
+    'inherited Form1: TForm1'#10'  inherited Label1: TLabel'#10'    Transparent = False'#10'  end'#10'end'))));
+end;
+
+procedure TDfmPropertyRulesTests.ExcludeAndSeverity;
+const
+  cLabel1 = '  object Label1: TLabel'#10'  end'#10;
+var
+  mFindings: TArray<TRuleFinding>;
+begin
+  Assert.AreEqual(0, Integer(Length(Run(Format(cTransparentRule, [', "exclude": ["Alt/*.dfm"]']), Form(cLabel1),
+    'Alt/Haupt.pas'))));
+  Assert.AreEqual(1, Integer(Length(Run(Format(cTransparentRule, [', "exclude": ["Alt/*.dfm"]']), Form(cLabel1),
+    'Neu/Haupt.pas'))));
+  mFindings := Run(Format(cTransparentRule, [', "severity": "hint"']), Form(cLabel1));
+  Assert.AreEqual(Ord(TRuleSeverity.Hint), Ord(mFindings[0].Severity));
+  Assert.AreEqual(0, Integer(Length(Run(Format(cTransparentRule, [', "severity": "off"']), Form(cLabel1)))));
+end;
+
+function MessagesOf(const AIssues: TArray<TConfigurationIssue>): TArray<string>;
+var
+  mIssue: TConfigurationIssue;
+begin
+  Result := nil;
+  for mIssue in AIssues do
+  begin
+    Result := Result + [mIssue.Message];
+  end;
+end;
+
+procedure TDfmPropertyRulesTests.WithoutRulesIsSilent;
+begin
+  Assert.AreEqual(0, Integer(Length(Run('{}', Form('  object Label1: TLabel'#10'  end'#10)))));
+end;
+
+{ TDfmPropertyRulesTests }
+
+procedure TDfmPropertyRulesTests.Conditions;
+var
+  mValue: string;
+begin
+  Assert.IsTrue(TDfmPropertyCheckRule.Satisfies(TDfmCondition.Equal, 'true', 'True'));
+  Assert.IsTrue(TDfmPropertyCheckRule.Satisfies(TDfmCondition.Equal, '''Segoe UI''', 'Segoe UI'));
+  Assert.IsTrue(TDfmPropertyCheckRule.Satisfies(TDfmCondition.Equal, '[b, a]', '[a, b]'));
+  Assert.IsTrue(TDfmPropertyCheckRule.Satisfies(TDfmCondition.NotContains, '[a, b]', 'c'));
+  Assert.IsTrue(TDfmPropertyCheckRule.Satisfies(TDfmCondition.Contains, '''Hallo Welt''', 'welt'));
+  Assert.IsTrue(TDfmPropertyCheckRule.Satisfies(TDfmCondition.Empty, '''''', ''));
+  Assert.IsTrue(TDfmPropertyCheckRule.Satisfies(TDfmCondition.Empty, '[]', ''));
+  Assert.IsTrue(TDfmPropertyCheckRule.Satisfies(TDfmCondition.NotEmpty, '''Hinweis''', ''));
+  Assert.IsFalse(TDfmPropertyCheckRule.Satisfies(TDfmCondition.NotEmpty, '', ''));
+  Assert.IsTrue(TDfmPropertyCheckRule.DeclaredDefault('property Tag: Integer read FTag write FTag default 7;',
+    mValue));
+  Assert.AreEqual('7', mValue);
+  Assert.IsFalse(TDfmPropertyCheckRule.DeclaredDefault('property Name: string read FName;', mValue));
+end;
+
+procedure TDfmPropertyRulesTests.DeclaredDefaultReadsValue;
+var
+  mValue: string;
+begin
+  Assert.IsTrue(TDfmPropertyCheckRule.DeclaredDefault(
+    'property Size: Integer read FSize write FSize default 5;', mValue));
+  Assert.AreEqual('5', mValue);
+  Assert.IsTrue(TDfmPropertyCheckRule.DeclaredDefault(
+    'property Options: TDBGridOptions read FOptions DEFAULT [dgEditing, dgTitles] ;', mValue));
+  Assert.AreEqual('[dgEditing, dgTitles]', mValue);
+  Assert.IsFalse(TDfmPropertyCheckRule.DeclaredDefault('property Caption: string read FCaption;', mValue));
+  Assert.AreEqual('', mValue);
+end;
+
+procedure TDfmPropertyRulesTests.DefaultFromDeclarationWithIndexedProperty;
+var
+  mValue: string;
+begin
+  // "default;" nach einer Array-Property ist keine Vorgabe.
+  Assert.IsFalse(TDfmPropertyCheckRule.DeclaredDefault(
+    'property Items[Index: Integer]: string read GetItem write SetItem; default;', mValue));
+  Assert.IsTrue(TDfmPropertyCheckRule.DeclaredDefault(
+    'property Flags[Index: Integer]: Integer index 1 read GetFlag default 0;', mValue));
+  Assert.AreEqual('0', mValue);
+end;
+
 procedure TDfmPropertyRulesTests.QuickFixReplacesStoredValue;
 var
   mFix: TRuleFix;
@@ -383,17 +541,6 @@ begin
     Fixed(cFontName, Form('  object Label1: TLabel'#10'    Font.Name = ''Tahoma'''#10'  end'#10), mFix));
 end;
 
-function MessagesOf(const AIssues: TArray<TConfigurationIssue>): TArray<string>;
-var
-  mIssue: TConfigurationIssue;
-begin
-  Result := nil;
-  for mIssue in AIssues do
-  begin
-    Result := Result + [mIssue.Message];
-  end;
-end;
-
 procedure TDfmPropertyRulesTests.UnknownClassOrPropertyInConfiguration;
 const
   cConfig = '{"dfmPropertyRules": [' + #10 +
@@ -431,151 +578,6 @@ begin
   Assert.IsFalse(mIssues[0].IsError, 'Warnung');
   Assert.AreEqual(0, Integer(Length(TDfmPropertyCheckRule.ConfigurationIssues(mSettings.DfmPropertyRules, nil, nil))),
     'ohne Index keine Aussage');
-end;
-
-{ TDfmPropertyRulesTests }
-
-procedure TDfmPropertyRulesTests.WarmUp;
-begin
-  Run(Format(cTransparentRule, ['']), Form('  object Label1: TLabel'#10'  end'#10));
-end;
-
-procedure TDfmPropertyRulesTests.DefaultValueCountsWhenNotStored;
-var
-  mFindings: TArray<TRuleFinding>;
-begin
-  // Transparent nicht gespeichert: default aus TCustomLabel (ohne Angabe False), also Verstoß.
-  mFindings := Run(Format(cTransparentRule, ['']), Form('  object Label1: TLabel'#10'    Caption = ''Name'''#10'  end'#10));
-  Assert.AreEqual(1, Integer(Length(mFindings)));
-  Assert.AreEqual('Label1 (TLabel): Transparent soll True sein, ist False', mFindings[0].Message);
-  // Gemeldet am Feld Label1 in der Unit.
-  Assert.AreEqual(4, mFindings[0].Range.StartPos.Line);
-  Assert.AreEqual(4, mFindings[0].Range.StartPos.Character);
-  Assert.AreEqual(Ord(TRuleSeverity.Warning), Ord(mFindings[0].Severity));
-end;
-
-procedure TDfmPropertyRulesTests.StoredValueIsSilent;
-begin
-  Assert.AreEqual(0, Integer(Length(Run(Format(cTransparentRule, ['']),
-    Form('  object Label1: TLabel'#10'    Transparent = True'#10'  end'#10)))));
-end;
-
-procedure TDfmPropertyRulesTests.DescendantsOnlyWhenIncluded;
-const
-  cMyLabel = '  object MyLabel1: TMyLabel'#10'  end'#10;
-var
-  mFindings: TArray<TRuleFinding>;
-begin
-  mFindings := Run(Format(cTransparentRule, ['']), Form(cMyLabel));
-  Assert.AreEqual(1, Integer(Length(mFindings)), 'Nachfahr von TLabel');
-  Assert.AreEqual(6, mFindings[0].Range.StartPos.Line);
-  Assert.AreEqual(0, Integer(Length(Run(Format(cTransparentRule, [', "includeDescendants": false']), Form(cMyLabel)))));
-end;
-
-procedure TDfmPropertyRulesTests.ContainsOnSetUsesDefault;
-const
-  cRule = '{"dfmPropertyRules": [{"class": "TDBGrid", "property": "Options", "condition": "contains", ' +
-    '"value": "dgRowSelect"}]}';
-var
-  mFindings: TArray<TRuleFinding>;
-begin
-  // Nicht gespeichert: default [dgEditing, dgTitles] ohne dgRowSelect.
-  mFindings := Run(cRule, Form('  object Grid1: TDBGrid'#10'  end'#10));
-  Assert.AreEqual(1, Integer(Length(mFindings)));
-  Assert.AreEqual('Grid1 (TDBGrid): Options soll dgRowSelect enthalten, ist [dgEditing, dgTitles]', mFindings[0].Message);
-  Assert.AreEqual(0, Integer(Length(Run(cRule,
-    Form('  object Grid1: TDBGrid'#10'    Options = [dgTitles, dgRowSelect]'#10'  end'#10)))));
-end;
-
-procedure TDfmPropertyRulesTests.FormItselfWithOwnMessage;
-const
-  cRule = '{"dfmPropertyRules": [{"class": "TForm", "property": "Position", "condition": "<>", ' +
-    '"value": "poDesigned", "message": "Formulare werden zentriert geöffnet"}]}';
-var
-  mFindings: TArray<TRuleFinding>;
-begin
-  mFindings := Run(cRule, Form('', '  Position = poDesigned'#10));
-  Assert.AreEqual(1, Integer(Length(mFindings)));
-  Assert.AreEqual('Form1 (TForm1): Formulare werden zentriert geöffnet', mFindings[0].Message);
-  // Das Formular selbst: an der Formularklasse.
-  Assert.AreEqual(3, mFindings[0].Range.StartPos.Line);
-  Assert.AreEqual(0, Integer(Length(Run(cRule, Form('', '  Position = poScreenCenter'#10)))));
-  // Nicht gespeichert: default poDefaultPosOnly, erfüllt.
-  Assert.AreEqual(0, Integer(Length(Run(cRule, Form('')))));
-end;
-
-procedure TDfmPropertyRulesTests.InheritedObjectOnlyWhereSet;
-begin
-  // Aus dem Vorfahrenformular, hier nicht gesetzt: gehört zum Vorfahren.
-  Assert.AreEqual(0, Integer(Length(Run(Format(cTransparentRule, ['']),
-    'inherited Form1: TForm1'#10'  inherited Label1: TLabel'#10'  end'#10'end'))));
-  Assert.AreEqual(1, Integer(Length(Run(Format(cTransparentRule, ['']),
-    'inherited Form1: TForm1'#10'  inherited Label1: TLabel'#10'    Transparent = False'#10'  end'#10'end'))));
-end;
-
-procedure TDfmPropertyRulesTests.ExcludeAndSeverity;
-const
-  cLabel1 = '  object Label1: TLabel'#10'  end'#10;
-var
-  mFindings: TArray<TRuleFinding>;
-begin
-  Assert.AreEqual(0, Integer(Length(Run(Format(cTransparentRule, [', "exclude": ["Alt/*.dfm"]']), Form(cLabel1),
-    'Alt/Haupt.pas'))));
-  Assert.AreEqual(1, Integer(Length(Run(Format(cTransparentRule, [', "exclude": ["Alt/*.dfm"]']), Form(cLabel1),
-    'Neu/Haupt.pas'))));
-  mFindings := Run(Format(cTransparentRule, [', "severity": "hint"']), Form(cLabel1));
-  Assert.AreEqual(Ord(TRuleSeverity.Hint), Ord(mFindings[0].Severity));
-  Assert.AreEqual(0, Integer(Length(Run(Format(cTransparentRule, [', "severity": "off"']), Form(cLabel1)))));
-end;
-
-procedure TDfmPropertyRulesTests.WithoutRulesIsSilent;
-begin
-  Assert.AreEqual(0, Integer(Length(Run('{}', Form('  object Label1: TLabel'#10'  end'#10)))));
-end;
-
-procedure TDfmPropertyRulesTests.Conditions;
-var
-  mValue: string;
-begin
-  Assert.IsTrue(TDfmPropertyCheckRule.Satisfies(TDfmCondition.Equal, 'true', 'True'));
-  Assert.IsTrue(TDfmPropertyCheckRule.Satisfies(TDfmCondition.Equal, '''Segoe UI''', 'Segoe UI'));
-  Assert.IsTrue(TDfmPropertyCheckRule.Satisfies(TDfmCondition.Equal, '[b, a]', '[a, b]'));
-  Assert.IsTrue(TDfmPropertyCheckRule.Satisfies(TDfmCondition.NotContains, '[a, b]', 'c'));
-  Assert.IsTrue(TDfmPropertyCheckRule.Satisfies(TDfmCondition.Contains, '''Hallo Welt''', 'welt'));
-  Assert.IsTrue(TDfmPropertyCheckRule.Satisfies(TDfmCondition.Empty, '''''', ''));
-  Assert.IsTrue(TDfmPropertyCheckRule.Satisfies(TDfmCondition.Empty, '[]', ''));
-  Assert.IsTrue(TDfmPropertyCheckRule.Satisfies(TDfmCondition.NotEmpty, '''Hinweis''', ''));
-  Assert.IsFalse(TDfmPropertyCheckRule.Satisfies(TDfmCondition.NotEmpty, '', ''));
-  Assert.IsTrue(TDfmPropertyCheckRule.DeclaredDefault('property Tag: Integer read FTag write FTag default 7;',
-    mValue));
-  Assert.AreEqual('7', mValue);
-  Assert.IsFalse(TDfmPropertyCheckRule.DeclaredDefault('property Name: string read FName;', mValue));
-end;
-
-procedure TDfmPropertyRulesTests.DeclaredDefaultReadsValue;
-var
-  mValue: string;
-begin
-  Assert.IsTrue(TDfmPropertyCheckRule.DeclaredDefault(
-    'property Size: Integer read FSize write FSize default 5;', mValue));
-  Assert.AreEqual('5', mValue);
-  Assert.IsTrue(TDfmPropertyCheckRule.DeclaredDefault(
-    'property Options: TDBGridOptions read FOptions DEFAULT [dgEditing, dgTitles] ;', mValue));
-  Assert.AreEqual('[dgEditing, dgTitles]', mValue);
-  Assert.IsFalse(TDfmPropertyCheckRule.DeclaredDefault('property Caption: string read FCaption;', mValue));
-  Assert.AreEqual('', mValue);
-end;
-
-procedure TDfmPropertyRulesTests.DefaultFromDeclarationWithIndexedProperty;
-var
-  mValue: string;
-begin
-  // "default;" nach einer Array-Property ist keine Vorgabe.
-  Assert.IsFalse(TDfmPropertyCheckRule.DeclaredDefault(
-    'property Items[Index: Integer]: string read GetItem write SetItem; default;', mValue));
-  Assert.IsTrue(TDfmPropertyCheckRule.DeclaredDefault(
-    'property Flags[Index: Integer]: Integer index 1 read GetFlag default 0;', mValue));
-  Assert.AreEqual('0', mValue);
 end;
 
 initialization

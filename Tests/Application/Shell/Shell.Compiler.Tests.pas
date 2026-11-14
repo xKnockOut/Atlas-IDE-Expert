@@ -63,6 +63,8 @@ type
     procedure Error(const AText: string);
   end;
 
+{ TFakeProcess }
+
 constructor TFakeProcess.Create(const AAnswer: TFakeAnswer);
 begin
   inherited Create;
@@ -94,6 +96,8 @@ procedure TFakeProcess.Cancel;
 begin
 end;
 
+{ TSilentLogger }
+
 procedure TSilentLogger.Log(ALevel: TLogLevel; const AText: string);
 begin
 end;
@@ -119,6 +123,8 @@ function Silent: ILogger;
 begin
   Result := TSilentLogger.Create;
 end;
+
+{ TShellCompilerTests }
 
 procedure TShellCompilerTests.Setup;
 begin

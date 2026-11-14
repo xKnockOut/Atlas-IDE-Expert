@@ -39,6 +39,8 @@ uses
   Vcl.StdCtrls,
   Atlas.UI.Settings.Page.TestSupport;
 
+{ TAtlasSettingsPageDialogTests }
+
 procedure TAtlasSettingsPageDialogTests.WarmUp;
 begin
   WarmUpSettingsPage;

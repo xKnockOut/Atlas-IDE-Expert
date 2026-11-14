@@ -118,6 +118,8 @@ const
     'uses System.SysUtils;'#10 +
     'end.'#10;
 
+{ TEnumTablesTests }
+
 procedure TEnumTablesTests.PrefixAndDisplayText;
 begin
   Assert.AreEqual('os', TEnumTables.CommonPrefix(Names));

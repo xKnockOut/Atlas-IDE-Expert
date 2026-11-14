@@ -76,6 +76,8 @@ begin
   Result := TJSONString(AValue).Value;
 end;
 
+{ TAtlasFormYamlTests }
+
 procedure TAtlasFormYamlTests.ReadsMapsAndLists;
 var
   mRoot: TJSONValue;

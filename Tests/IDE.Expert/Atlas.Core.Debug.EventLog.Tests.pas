@@ -57,6 +57,8 @@ begin
   Result := TAtlasEventEntry.Create(0, AKind, '', AText);
 end;
 
+{ TAtlasEventLogTests }
+
 procedure TAtlasEventLogTests.ClassifiesIdeLines;
 var
   mText, mThread: string;

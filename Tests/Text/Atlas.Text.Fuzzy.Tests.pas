@@ -43,6 +43,8 @@ implementation
 uses
   Atlas.Text.Fuzzy;
 
+{ TTextFuzzyTests }
+
 procedure TTextFuzzyTests.WordStart(const AName: string; AIndex: Integer; AExpected: Boolean);
 begin
   Assert.AreEqual(AExpected, TTextFuzzy.IsWordStart(AName, AIndex));

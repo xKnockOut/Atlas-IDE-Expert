@@ -92,6 +92,8 @@ begin
   Result := AUri;
 end;
 
+{ TAtlasUnitSearchTests }
+
 function TAtlasUnitSearchTests.Entries: TAtlasUnitEntries;
 var
   mValue: TJSONValue;
@@ -116,6 +118,36 @@ begin
       Result := Result + ',';
     end;
     Result := Result + AEntries[mIndex].Name;
+  end;
+end;
+
+/// <summary>Namen wie in einer großen Projektgruppe: Bereich, Feature, Rolle (10 × 25 × 20 = 5000).</summary>
+class function TAtlasUnitSearchTests.ManyUnits: TAtlasUnitEntries;
+const
+  cCount = 5000;
+  cAreas: array[0..9] of string = ('Common', 'Windows', 'Core', 'UI', 'IDE', 'Server', 'Setup', 'Tests', 'Tools',
+    'Shell');
+  cFeatures: array[0..24] of string = ('Settings', 'Completion', 'Hover', 'Index', 'Lsp', 'Dfm', 'Editing', 'Rules',
+    'Results', 'Problems', 'Forms', 'Build', 'Debug', 'Status', 'Style', 'Undo', 'Updates', 'Files', 'Projects',
+    'Commands', 'Signature', 'Documentation', 'Diagnostics', 'UnitSearch', 'Palette');
+  cRoles: array[0..19] of string = ('Page', 'Contract', 'Model', 'Window', 'Controller', 'Store', 'Parser', 'Writer',
+    'Reader', 'Provider', 'Editor', 'Painter', 'Commands', 'State', 'Tests', 'Frame', 'Dialog', 'Adapter', 'Cache',
+    'Composition');
+var
+  mIndex: Integer;
+begin
+  Result := nil;
+  SetLength(Result, cCount);
+  for mIndex := 0 to cCount - 1 do
+  begin
+    Result[mIndex].Name := Format('Atlas.%s.%s.%s', [cAreas[mIndex mod 10], cFeatures[(mIndex div 10) mod 25],
+      cRoles[mIndex div 250]]);
+    Result[mIndex].FileName := Format('%s\Packages\P%d\Source\Feature%d\%s.pas',
+      [cRoot, mIndex mod 7, mIndex mod 97, Result[mIndex].Name]);
+    Result[mIndex].Project := Format('Atlas.IDE.P%d', [mIndex mod 7]);
+    Result[mIndex].Projects := [Result[mIndex].Project];
+    Result[mIndex].Origin := TAtlasUnitOrigin.Group;
+    Result[mIndex].Kind := TAtlasUnitKind(mIndex mod 6);
   end;
 end;
 
@@ -460,34 +492,37 @@ begin
   end;
 end;
 
-/// <summary>Namen wie in einer großen Projektgruppe: Bereich, Feature, Rolle (10 × 25 × 20 = 5000).</summary>
-class function TAtlasUnitSearchTests.ManyUnits: TAtlasUnitEntries;
-const
-  cCount = 5000;
-  cAreas: array[0..9] of string = ('Common', 'Windows', 'Core', 'UI', 'IDE', 'Server', 'Setup', 'Tests', 'Tools',
-    'Shell');
-  cFeatures: array[0..24] of string = ('Settings', 'Completion', 'Hover', 'Index', 'Lsp', 'Dfm', 'Editing', 'Rules',
-    'Results', 'Problems', 'Forms', 'Build', 'Debug', 'Status', 'Style', 'Undo', 'Updates', 'Files', 'Projects',
-    'Commands', 'Signature', 'Documentation', 'Diagnostics', 'UnitSearch', 'Palette');
-  cRoles: array[0..19] of string = ('Page', 'Contract', 'Model', 'Window', 'Controller', 'Store', 'Parser', 'Writer',
-    'Reader', 'Provider', 'Editor', 'Painter', 'Commands', 'State', 'Tests', 'Frame', 'Dialog', 'Adapter', 'Cache',
-    'Composition');
+procedure TAtlasUnitSearchTests.BrokenFileSetAsideLockedFileKept;
 var
-  mIndex: Integer;
+  mState: TAtlasUnitSearchState;
+  mFileName: string;
+  mLock: TFileStream;
 begin
-  Result := nil;
-  SetLength(Result, cCount);
-  for mIndex := 0 to cCount - 1 do
-  begin
-    Result[mIndex].Name := Format('Atlas.%s.%s.%s', [cAreas[mIndex mod 10], cFeatures[(mIndex div 10) mod 25],
-      cRoles[mIndex div 250]]);
-    Result[mIndex].FileName := Format('%s\Packages\P%d\Source\Feature%d\%s.pas',
-      [cRoot, mIndex mod 7, mIndex mod 97, Result[mIndex].Name]);
-    Result[mIndex].Project := Format('Atlas.IDE.P%d', [mIndex mod 7]);
-    Result[mIndex].Projects := [Result[mIndex].Project];
-    Result[mIndex].Origin := TAtlasUnitOrigin.Group;
-    Result[mIndex].Kind := TAtlasUnitKind(mIndex mod 6);
+  mFileName := TPath.Combine(TPath.GetTempPath, 'atlas-unitsearch-' + IntToStr(Random(MaxInt)) + '.json');
+  mState := TAtlasUnitSearchState.Create;
+  try
+    TFile.WriteAllText(mFileName, '[1, 2]');
+    Assert.AreEqual<TAtlasDataLoad>(TAtlasDataLoad.Renewed, mState.LoadFromFile(mFileName));
+    Assert.IsTrue(TFile.Exists(mFileName + TAtlasDataFile.cDefectExtension), 'beiseitegelegt');
+    mState.Width := 937;
+    Assert.IsTrue(mState.SaveToFile(mFileName));
+    mLock := TFileStream.Create(mFileName, fmOpenRead or fmShareExclusive);
+    try
+      Assert.AreEqual<TAtlasDataLoad>(TAtlasDataLoad.Kept, mState.LoadFromFile(mFileName));
+    finally
+      mLock.Free;
+    end;
+    Assert.AreEqual(0, mState.Width);
+    mState.Width := 400;
+    Assert.IsFalse(mState.SaveToFile(mFileName), 'beim Lesen gesperrt: nicht überschreiben');
+    Assert.Contains(TFile.ReadAllText(mFileName, TEncoding.UTF8), '937');
+  finally
+    mState.Free;
+    System.SysUtils.DeleteFile(mFileName);
+    System.SysUtils.DeleteFile(mFileName + TAtlasDataFile.cDefectExtension);
   end;
+  // Gemeldete Datendateien vergessen: Das Register bliebe sonst als Leck stehen.
+  TAtlasDataFile.ForgetReports;
 end;
 
 procedure TAtlasUnitSearchTests.FiveThousandUnitsPerKeystroke;
@@ -531,39 +566,6 @@ begin
     Assert.IsTrue(Length(mOrder) > 0, mPattern);
   end;
   Assert.IsTrue(mWorst < 50, Format('langsamster Tastendruck %d ms', [mWorst]));
-end;
-
-procedure TAtlasUnitSearchTests.BrokenFileSetAsideLockedFileKept;
-var
-  mState: TAtlasUnitSearchState;
-  mFileName: string;
-  mLock: TFileStream;
-begin
-  mFileName := TPath.Combine(TPath.GetTempPath, 'atlas-unitsearch-' + IntToStr(Random(MaxInt)) + '.json');
-  mState := TAtlasUnitSearchState.Create;
-  try
-    TFile.WriteAllText(mFileName, '[1, 2]');
-    Assert.AreEqual<TAtlasDataLoad>(TAtlasDataLoad.Renewed, mState.LoadFromFile(mFileName));
-    Assert.IsTrue(TFile.Exists(mFileName + TAtlasDataFile.cDefectExtension), 'beiseitegelegt');
-    mState.Width := 937;
-    Assert.IsTrue(mState.SaveToFile(mFileName));
-    mLock := TFileStream.Create(mFileName, fmOpenRead or fmShareExclusive);
-    try
-      Assert.AreEqual<TAtlasDataLoad>(TAtlasDataLoad.Kept, mState.LoadFromFile(mFileName));
-    finally
-      mLock.Free;
-    end;
-    Assert.AreEqual(0, mState.Width);
-    mState.Width := 400;
-    Assert.IsFalse(mState.SaveToFile(mFileName), 'beim Lesen gesperrt: nicht überschreiben');
-    Assert.Contains(TFile.ReadAllText(mFileName, TEncoding.UTF8), '937');
-  finally
-    mState.Free;
-    System.SysUtils.DeleteFile(mFileName);
-    System.SysUtils.DeleteFile(mFileName + TAtlasDataFile.cDefectExtension);
-  end;
-  // Gemeldete Datendateien vergessen: Das Register bliebe sonst als Leck stehen.
-  TAtlasDataFile.ForgetReports;
 end;
 
 initialization

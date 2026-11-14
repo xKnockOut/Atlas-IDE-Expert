@@ -59,6 +59,8 @@ begin
   Assert.IsTrue(TMonitorResults.ParseSarif(cSarif, 'C:\Projekte\App', Result, mError), mError);
 end;
 
+{ TMonitorResultsTests }
+
 procedure TMonitorResultsTests.Setup;
 begin
   TAtlasLocale.Use(TTextLanguage.German);

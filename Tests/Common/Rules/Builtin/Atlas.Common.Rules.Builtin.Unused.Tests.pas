@@ -205,6 +205,19 @@ begin
     Copy(ASource, OffsetOf(mEdit.Range.EndPos.Line, mEdit.Range.EndPos.Character) + 1, MaxInt);
 end;
 
+function FindingLines(const AFindings: TArray<TRuleFinding>): string;
+var
+  mFinding: TRuleFinding;
+begin
+  Result := '';
+  for mFinding in AFindings do
+  begin
+    Result := Result + IntToStr(mFinding.Range.StartPos.Line) + ':' + mFinding.Message + '|';
+  end;
+end;
+
+{ TUnusedRulesTests }
+
 procedure TUnusedRulesTests.UnusedLocalReportsWithFix;
 var
   mSource: string;
@@ -455,34 +468,16 @@ begin
       'TInterfacedObject, IRunner'));
 end;
 
-// Bereichswächter und vorzeitige Freigabe wirken über den Referenzzähler (#1109).
-procedure TUnusedRulesTests.InterfaceAssignmentIsSilent;
-begin
-  TRuleAssert.Silent(TUnusedAssignmentRule.Create,
-    Routine('  Activity := Scope(''x'');'#10'  Writer := Buffer.CreateWriter;'#10'  Writer.Insert(''a'');'#10 +
-      '  Writer := nil;'#10'  Work;', 'procedure P;', 'var'#10'  Activity: IInterface;'#10'  Writer: IOTAEditWriter;'#10));
-  // Andere Typen weiterhin.
-  TRuleAssert.Reports(TUnusedAssignmentRule.Create,
-    Routine('  Item := Load;'#10'  Work;', 'procedure P;', 'var'#10'  Item: TItem;'#10));
-end;
-
-// Recent := nil vor try: Wirft RecentProjects, liest die Schleife den alten Wert (#1109).
-procedure TUnusedRulesTests.AssignmentBeforeFailingTryIsRead;
-begin
-  TRuleAssert.Silent(TUnusedAssignmentRule.Create,
-    Routine('  Recent := nil;'#10'  try'#10'    Recent := RecentProjects;'#10'  except'#10'    Report;'#10'  end;'#10 +
-      '  for S in Recent do'#10'    Use(S);', 'procedure P;', 'var'#10'  Recent: TArray<string>;'#10'  S: string;'#10));
-end;
-
-function FindingLines(const AFindings: TArray<TRuleFinding>): string;
+procedure TUnusedRulesTests.OverwrittenAssignmentReports;
 var
-  mFinding: TRuleFinding;
+  mFindings: TArray<TRuleFinding>;
 begin
-  Result := '';
-  for mFinding in AFindings do
-  begin
-    Result := Result + IntToStr(mFinding.Range.StartPos.Line) + ':' + mFinding.Message + '|';
-  end;
+  mFindings := TRuleAssert.Findings(TUnusedAssignmentRule.Create,
+    Routine('  I := 1;'#10'  I := 2;'#10'  J := I;', 'procedure P;', 'var'#10'  I, J: Integer;'#10));
+  // I := 1 wird überschrieben; der an J zugewiesene Wert wird nie gelesen.
+  Assert.AreEqual(2, Integer(Length(mFindings)));
+  Assert.AreEqual(7, mFindings[0].Range.StartPos.Line);
+  Assert.AreEqual(9, mFindings[1].Range.StartPos.Line);
 end;
 
 // Vorbelegung von Result, die jeder Weg überschreibt (#1345, wie H2077): vor try … except, vor einer Schleife
@@ -516,16 +511,23 @@ begin
     '    Inc(Result, I);', 'function P(N: Integer): Integer;', 'var'#10'  I: Integer;'#10));
 end;
 
-procedure TUnusedRulesTests.OverwrittenAssignmentReports;
-var
-  mFindings: TArray<TRuleFinding>;
+// Bereichswächter und vorzeitige Freigabe wirken über den Referenzzähler (#1109).
+procedure TUnusedRulesTests.InterfaceAssignmentIsSilent;
 begin
-  mFindings := TRuleAssert.Findings(TUnusedAssignmentRule.Create,
-    Routine('  I := 1;'#10'  I := 2;'#10'  J := I;', 'procedure P;', 'var'#10'  I, J: Integer;'#10));
-  // I := 1 wird überschrieben; der an J zugewiesene Wert wird nie gelesen.
-  Assert.AreEqual(2, Integer(Length(mFindings)));
-  Assert.AreEqual(7, mFindings[0].Range.StartPos.Line);
-  Assert.AreEqual(9, mFindings[1].Range.StartPos.Line);
+  TRuleAssert.Silent(TUnusedAssignmentRule.Create,
+    Routine('  Activity := Scope(''x'');'#10'  Writer := Buffer.CreateWriter;'#10'  Writer.Insert(''a'');'#10 +
+      '  Writer := nil;'#10'  Work;', 'procedure P;', 'var'#10'  Activity: IInterface;'#10'  Writer: IOTAEditWriter;'#10));
+  // Andere Typen weiterhin.
+  TRuleAssert.Reports(TUnusedAssignmentRule.Create,
+    Routine('  Item := Load;'#10'  Work;', 'procedure P;', 'var'#10'  Item: TItem;'#10));
+end;
+
+// Recent := nil vor try: Wirft RecentProjects, liest die Schleife den alten Wert (#1109).
+procedure TUnusedRulesTests.AssignmentBeforeFailingTryIsRead;
+begin
+  TRuleAssert.Silent(TUnusedAssignmentRule.Create,
+    Routine('  Recent := nil;'#10'  try'#10'    Recent := RecentProjects;'#10'  except'#10'    Report;'#10'  end;'#10 +
+      '  for S in Recent do'#10'    Use(S);', 'procedure P;', 'var'#10'  Recent: TArray<string>;'#10'  S: string;'#10));
 end;
 
 procedure TUnusedRulesTests.AssignmentCodeOnlyForUnmanagedTypes;
@@ -628,6 +630,8 @@ function DuplicateCount(const ASource: string): Integer; overload;
 begin
   Result := DuplicateCount(ASource, '');
 end;
+
+{ TDuplicateAssignmentTests }
 
 procedure TDuplicateAssignmentTests.IssueExampleWithJump;
 var

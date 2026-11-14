@@ -123,6 +123,8 @@ begin
     'C:\P\Unit1.pas', nil));
 end;
 
+{ TFormReferenceRulesTests }
+
 procedure TFormReferenceRulesTests.IssueExample;
 var
   mFindings: TArray<TRuleFinding>;

@@ -50,6 +50,8 @@ begin
   Result := TAtlasTaskLineMatcher.Create(TAtlasTaskMatcher.Create(AKind));
 end;
 
+{ TAtlasTaskMatchersTests }
+
 procedure TAtlasTaskMatchersTests.WarmUpFirstUse;
 begin
   CustomMatcherErrorsAndGroupNumbers;

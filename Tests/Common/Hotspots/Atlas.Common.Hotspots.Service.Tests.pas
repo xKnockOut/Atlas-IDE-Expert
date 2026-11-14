@@ -274,6 +274,8 @@ type
     function Read(const AFileName: string; out AText: string): Boolean;
   end;
 
+{ TTexts }
+
 constructor TTexts.Create;
 begin
   inherited Create;

@@ -102,6 +102,8 @@ begin
   end;
 end;
 
+{ TIndexInlineRefsTests }
+
 procedure TIndexInlineRefsTests.RefsOfSkipsLocalsAndParameters;
 begin
   Assert.AreEqual('Rechne', String.Join(',', RefsOfFirst(UnitText(['function Doppelt(A: Integer): Integer;',

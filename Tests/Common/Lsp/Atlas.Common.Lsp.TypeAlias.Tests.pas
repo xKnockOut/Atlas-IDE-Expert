@@ -136,6 +136,8 @@ begin
   end;
 end;
 
+{ TLspTypeAliasTests }
+
 procedure TLspTypeAliasTests.Setup;
 begin
   FIndex := TSymbolIndex.Create;

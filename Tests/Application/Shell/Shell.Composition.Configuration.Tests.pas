@@ -80,6 +80,21 @@ begin
   // Die Tests starten den Beobachter, ändern aber keine beobachtete Datei.
 end;
 
+{ TShellConfigurationTests }
+
+procedure TShellConfigurationTests.Notify(const AMethod, AParams: string);
+var
+  mMessage: TJSONObject;
+begin
+  mMessage := TJSONObject.ParseJSONValue('{"jsonrpc":"2.0","method":"' + AMethod + '","params":' + AParams + '}')
+    as TJSONObject;
+  try
+    FDispatcher.DispatchMessage(mMessage).Free;
+  finally
+    mMessage.Free;
+  end;
+end;
+
 procedure TShellConfigurationTests.WarmUpFirstUse;
 begin
   Setup;
@@ -126,19 +141,6 @@ begin
     TDirectory.Delete(FFolder, True);
   end;
   FFolder := '';
-end;
-
-procedure TShellConfigurationTests.Notify(const AMethod, AParams: string);
-var
-  mMessage: TJSONObject;
-begin
-  mMessage := TJSONObject.ParseJSONValue('{"jsonrpc":"2.0","method":"' + AMethod + '","params":' + AParams + '}')
-    as TJSONObject;
-  try
-    FDispatcher.DispatchMessage(mMessage).Free;
-  finally
-    mMessage.Free;
-  end;
 end;
 
 procedure TShellConfigurationTests.ReplaySettingsAreGlobal;

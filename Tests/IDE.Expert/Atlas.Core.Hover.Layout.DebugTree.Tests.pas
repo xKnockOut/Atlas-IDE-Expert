@@ -124,6 +124,8 @@ begin
   end;
 end;
 
+{ THoverLayoutDebugTreeTests }
+
 procedure THoverLayoutDebugTreeTests.CollapsedValueShowsGlyphAndHit;
 var
   mLayout: TAtlasHoverLayout;

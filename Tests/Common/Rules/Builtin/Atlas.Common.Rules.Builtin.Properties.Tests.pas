@@ -291,23 +291,6 @@ begin
     '  public'#10'    property Anzahl: Integer read GetAnzahl;'#10, '')));
 end;
 
-procedure TPropertyRulesTests.AccessorFormsDccAccepts;
-begin
-  // Minimalfälle PA1–PA6 aus Tests/DccFaelle (#1328): Das übersetzt Delphi (mORMot2, SynEdit, HtmlViewer,
-  // Graphics32).
-  Silent(Kunden('  private'#10'    FX, FName: string;'#10'    FWerte: array[TArt] of Integer;'#10 +
-    '    procedure SetX(AIndex: Integer; const AWert: string);'#10'    procedure SetWert(AIndex, AWert: Integer);'#10 +
-    '    function GetFlag(AArt: TArt): Boolean;'#10'    procedure SetFlag(AArt: TArt; const AWert: Boolean);'#10 +
-    '    function GetText: string; overload;'#10'    function GetText(AArt: TArt): string; overload;'#10 +
-    '  public'#10'    class function GetVersion: string; virtual;'#10 +
-    '    property X: string index 0 read FX write SetX;'#10 +
-    '    property Eins: Integer index Ord(aEins) read FWerte[aEins] write SetWert;'#10 +
-    '    property Name: string index 50 read FName write FName;'#10 +
-    '    property Flag: Boolean index aZwei read GetFlag write SetFlag;'#10 +
-    '    property Version: string read GetVersion;'#10'    property Text: string read GetText;'#10, '')
-    .Replace('  TKunde = class', '  TArt = (aEins, aZwei);'#10'  TKunde = class'));
-end;
-
 procedure TPropertyRulesTests.AccessorFieldSelectors;
 var
   mTypes: string;
@@ -351,6 +334,23 @@ begin
   // FWert ist geerbt, FGeheim privat in einer anderen Unit (keine Aussage), FFehlt fehlt in der ganzen Kette.
   Assert.AreEqual(1, Integer(Length(mFound)));
   Assert.AreEqual('FFehlt ist in TKunde nicht deklariert (wie E2168).', mFound[0].Message);
+end;
+
+procedure TPropertyRulesTests.AccessorFormsDccAccepts;
+begin
+  // Minimalfälle PA1–PA6 aus Tests/DccFaelle (#1328): Das übersetzt Delphi (mORMot2, SynEdit, HtmlViewer,
+  // Graphics32).
+  Silent(Kunden('  private'#10'    FX, FName: string;'#10'    FWerte: array[TArt] of Integer;'#10 +
+    '    procedure SetX(AIndex: Integer; const AWert: string);'#10'    procedure SetWert(AIndex, AWert: Integer);'#10 +
+    '    function GetFlag(AArt: TArt): Boolean;'#10'    procedure SetFlag(AArt: TArt; const AWert: Boolean);'#10 +
+    '    function GetText: string; overload;'#10'    function GetText(AArt: TArt): string; overload;'#10 +
+    '  public'#10'    class function GetVersion: string; virtual;'#10 +
+    '    property X: string index 0 read FX write SetX;'#10 +
+    '    property Eins: Integer index Ord(aEins) read FWerte[aEins] write SetWert;'#10 +
+    '    property Name: string index 50 read FName write FName;'#10 +
+    '    property Flag: Boolean index aZwei read GetFlag write SetFlag;'#10 +
+    '    property Version: string read GetVersion;'#10'    property Text: string read GetText;'#10, '')
+    .Replace('  TKunde = class', '  TArt = (aEins, aZwei);'#10'  TKunde = class'));
 end;
 
 procedure TPropertyRulesTests.AccessorOptions;

@@ -55,6 +55,8 @@ begin
   Result.Tests := [mTest, mTest];
 end;
 
+{ TAffectedReportTests }
+
 procedure TAffectedReportTests.ParsesFormats;
 var
   mFormat: TAffectedFormat;

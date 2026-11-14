@@ -71,17 +71,6 @@ const
 
 { TLspWorkspaceSymbolsTests }
 
-procedure TLspWorkspaceSymbolsTests.Setup;
-begin
-  FIndex := TSymbolIndex.Create;
-  FIndex.AddUnit(TIndexExtractor.ExtractText(cUnitKunden, 'C:\P\Kunden.pas', nil));
-end;
-
-procedure TLspWorkspaceSymbolsTests.TearDown;
-begin
-  FIndex := nil;
-end;
-
 function TLspWorkspaceSymbolsTests.Names(const AQuery: string): string;
 begin
   Result := Names(AQuery, 100);
@@ -100,6 +89,17 @@ begin
     end;
     Result := Result + mItem.Symbol.Name;
   end;
+end;
+
+procedure TLspWorkspaceSymbolsTests.Setup;
+begin
+  FIndex := TSymbolIndex.Create;
+  FIndex.AddUnit(TIndexExtractor.ExtractText(cUnitKunden, 'C:\P\Kunden.pas', nil));
+end;
+
+procedure TLspWorkspaceSymbolsTests.TearDown;
+begin
+  FIndex := nil;
 end;
 
 procedure TLspWorkspaceSymbolsTests.RanksExactPrefixAndSubstring;

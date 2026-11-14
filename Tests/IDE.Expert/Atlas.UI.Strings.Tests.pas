@@ -65,6 +65,8 @@ begin
   Assert.AreEqual(Placeholders(AGerman), Placeholders(AEnglish), AGerman + ' / ' + AEnglish);
 end;
 
+{ TAtlasStringsTests }
+
 procedure TAtlasStringsTests.EveryTextExistsInBothLanguagesWithSamePlaceholders;
 var
   mId: TAtlasTextId;
@@ -87,6 +89,24 @@ begin
   end;
 end;
 
+procedure TAtlasStringsTests.SwitchesLanguage;
+var
+  mSaved: TAtlasLanguage;
+begin
+  mSaved := TAtlasStrings.Language;
+  try
+    TAtlasStrings.Language := TAtlasLanguage.German;
+    Assert.AreEqual('Enter übernehmen · Esc schließen',
+      TAtlasCompletionStrings.Text(TAtlasCompletionTextId.FooterKeys));
+    Assert.AreEqual('3 von 84', TAtlasCompletionStrings.Fmt(TAtlasCompletionTextId.CountOf, [3, 84]));
+    TAtlasStrings.Language := TAtlasLanguage.English;
+    Assert.AreEqual('Enter to accept · Esc to close', TAtlasCompletionStrings.Text(TAtlasCompletionTextId.FooterKeys));
+    Assert.AreEqual('3 of 84', TAtlasCompletionStrings.Fmt(TAtlasCompletionTextId.CountOf, [3, 84]));
+  finally
+    TAtlasStrings.Language := mSaved;
+  end;
+end;
+
 procedure TAtlasStringsTests.ConfidenceLineForRuleFindings;
 var
   mSaved: TAtlasLanguage;
@@ -104,37 +124,38 @@ begin
   end;
 end;
 
-procedure TAtlasStringsTests.BuildCountsSingularAndPlural;
+procedure TAtlasStringsTests.DocLabelsGerman;
 var
   mSaved: TAtlasLanguage;
+  mLabels, mExpected: TAtlasDocLabels;
 begin
   mSaved := TAtlasStrings.Language;
   try
     TAtlasStrings.Language := TAtlasLanguage.German;
-    Assert.AreEqual('1 Hinweis', TAtlasStrings.BuildCounts(0, 1));
-    Assert.AreEqual('2 Warnungen, 1 Hinweis', TAtlasStrings.BuildCounts(2, 1));
-    Assert.AreEqual('1 Warnung, 3 Hinweise', TAtlasStrings.BuildCounts(1, 3));
-    Assert.AreEqual('', TAtlasStrings.BuildCounts(0, 0));
-    TAtlasStrings.Language := TAtlasLanguage.English;
-    Assert.AreEqual('2 warnings, 1 hint', TAtlasStrings.BuildCounts(2, 1));
-  finally
-    TAtlasStrings.Language := mSaved;
-  end;
-end;
-
-procedure TAtlasStringsTests.SwitchesLanguage;
-var
-  mSaved: TAtlasLanguage;
-begin
-  mSaved := TAtlasStrings.Language;
-  try
-    TAtlasStrings.Language := TAtlasLanguage.German;
-    Assert.AreEqual('Enter übernehmen · Esc schließen',
-      TAtlasCompletionStrings.Text(TAtlasCompletionTextId.FooterKeys));
-    Assert.AreEqual('3 von 84', TAtlasCompletionStrings.Fmt(TAtlasCompletionTextId.CountOf, [3, 84]));
-    TAtlasStrings.Language := TAtlasLanguage.English;
-    Assert.AreEqual('Enter to accept · Esc to close', TAtlasCompletionStrings.Text(TAtlasCompletionTextId.FooterKeys));
-    Assert.AreEqual('3 of 84', TAtlasCompletionStrings.Fmt(TAtlasCompletionTextId.CountOf, [3, 84]));
+    mLabels := TAtlasStrings.DocLabels;
+    mExpected := TAtlasDocLabels.German;
+    Assert.AreEqual(mExpected.Params, mLabels.Params);
+    Assert.AreEqual(mExpected.TypeParams, mLabels.TypeParams);
+    Assert.AreEqual(mExpected.Returns, mLabels.Returns);
+    Assert.AreEqual(mExpected.Value, mLabels.Value);
+    Assert.AreEqual(mExpected.Exceptions, mLabels.Exceptions);
+    Assert.AreEqual(mExpected.Remarks, mLabels.Remarks);
+    Assert.AreEqual(mExpected.Example, mLabels.Example);
+    Assert.AreEqual(mExpected.SeeAlso, mLabels.SeeAlso);
+    Assert.AreEqual(mExpected.Undocumented, mLabels.Undocumented);
+    Assert.AreEqual(mExpected.More, mLabels.More);
+    Assert.AreEqual(mExpected.Less, mLabels.Less);
+    Assert.AreEqual(mExpected.CountParam, mLabels.CountParam);
+    Assert.AreEqual(mExpected.CountParams, mLabels.CountParams);
+    Assert.AreEqual(mExpected.CountTypeParam, mLabels.CountTypeParam);
+    Assert.AreEqual(mExpected.CountTypeParams, mLabels.CountTypeParams);
+    Assert.AreEqual(mExpected.CountException, mLabels.CountException);
+    Assert.AreEqual(mExpected.CountExceptions, mLabels.CountExceptions);
+    Assert.AreEqual(mExpected.ItemReturns, mLabels.ItemReturns);
+    Assert.AreEqual(mExpected.ItemValue, mLabels.ItemValue);
+    Assert.AreEqual(mExpected.ItemRemarks, mLabels.ItemRemarks);
+    Assert.AreEqual(mExpected.ItemExample, mLabels.ItemExample);
+    Assert.AreEqual(mExpected.ItemSeeAlso, mLabels.ItemSeeAlso);
   finally
     TAtlasStrings.Language := mSaved;
   end;
@@ -203,43 +224,6 @@ begin
   end;
 end;
 
-procedure TAtlasStringsTests.DocLabelsGerman;
-var
-  mSaved: TAtlasLanguage;
-  mLabels, mExpected: TAtlasDocLabels;
-begin
-  mSaved := TAtlasStrings.Language;
-  try
-    TAtlasStrings.Language := TAtlasLanguage.German;
-    mLabels := TAtlasStrings.DocLabels;
-    mExpected := TAtlasDocLabels.German;
-    Assert.AreEqual(mExpected.Params, mLabels.Params);
-    Assert.AreEqual(mExpected.TypeParams, mLabels.TypeParams);
-    Assert.AreEqual(mExpected.Returns, mLabels.Returns);
-    Assert.AreEqual(mExpected.Value, mLabels.Value);
-    Assert.AreEqual(mExpected.Exceptions, mLabels.Exceptions);
-    Assert.AreEqual(mExpected.Remarks, mLabels.Remarks);
-    Assert.AreEqual(mExpected.Example, mLabels.Example);
-    Assert.AreEqual(mExpected.SeeAlso, mLabels.SeeAlso);
-    Assert.AreEqual(mExpected.Undocumented, mLabels.Undocumented);
-    Assert.AreEqual(mExpected.More, mLabels.More);
-    Assert.AreEqual(mExpected.Less, mLabels.Less);
-    Assert.AreEqual(mExpected.CountParam, mLabels.CountParam);
-    Assert.AreEqual(mExpected.CountParams, mLabels.CountParams);
-    Assert.AreEqual(mExpected.CountTypeParam, mLabels.CountTypeParam);
-    Assert.AreEqual(mExpected.CountTypeParams, mLabels.CountTypeParams);
-    Assert.AreEqual(mExpected.CountException, mLabels.CountException);
-    Assert.AreEqual(mExpected.CountExceptions, mLabels.CountExceptions);
-    Assert.AreEqual(mExpected.ItemReturns, mLabels.ItemReturns);
-    Assert.AreEqual(mExpected.ItemValue, mLabels.ItemValue);
-    Assert.AreEqual(mExpected.ItemRemarks, mLabels.ItemRemarks);
-    Assert.AreEqual(mExpected.ItemExample, mLabels.ItemExample);
-    Assert.AreEqual(mExpected.ItemSeeAlso, mLabels.ItemSeeAlso);
-  finally
-    TAtlasStrings.Language := mSaved;
-  end;
-end;
-
 procedure TAtlasStringsTests.SignatureFormatLines;
 var
   mSaved: TAtlasLanguage;
@@ -271,6 +255,24 @@ begin
     mLine.TypeChar := 's';
     Assert.AreEqual('Placeholder 2 of 2 expects string', TAtlasStrings.SignatureFormatLine(mLine));
     Assert.AreEqual('', TAtlasStrings.SignatureFormatLine(Default(TAtlasFormatLine)));
+  finally
+    TAtlasStrings.Language := mSaved;
+  end;
+end;
+
+procedure TAtlasStringsTests.BuildCountsSingularAndPlural;
+var
+  mSaved: TAtlasLanguage;
+begin
+  mSaved := TAtlasStrings.Language;
+  try
+    TAtlasStrings.Language := TAtlasLanguage.German;
+    Assert.AreEqual('1 Hinweis', TAtlasStrings.BuildCounts(0, 1));
+    Assert.AreEqual('2 Warnungen, 1 Hinweis', TAtlasStrings.BuildCounts(2, 1));
+    Assert.AreEqual('1 Warnung, 3 Hinweise', TAtlasStrings.BuildCounts(1, 3));
+    Assert.AreEqual('', TAtlasStrings.BuildCounts(0, 0));
+    TAtlasStrings.Language := TAtlasLanguage.English;
+    Assert.AreEqual('2 warnings, 1 hint', TAtlasStrings.BuildCounts(2, 1));
   finally
     TAtlasStrings.Language := mSaved;
   end;

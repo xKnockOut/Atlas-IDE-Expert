@@ -71,6 +71,8 @@ begin
   Result.Reason := 'assign';
 end;
 
+{ TAtlasTrackerChangesTests }
+
 procedure TAtlasTrackerChangesTests.YouTrackScopeAndUrls;
 var
   mUrl: string;

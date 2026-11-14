@@ -90,6 +90,8 @@ begin
   Result := 'unit U;'#10'interface'#10'implementation'#10'procedure P;'#10'begin'#10 + ABody + #10'end;'#10'end.';
 end;
 
+{ TExceptionRulesTests }
+
 procedure TExceptionRulesTests.GenericExceptionReported;
 var
   mFindings: TArray<TRuleFinding>;
@@ -402,6 +404,8 @@ begin
   Result := 'unit Importe;'#10'interface'#10'implementation'#10'procedure TImport.Abbrechen;'#10'begin'#10 +
     AStatements + 'end;'#10'end.';
 end;
+
+{ TReraiseOutsideHandlerTests }
 
 procedure TReraiseOutsideHandlerTests.IssueExample;
 var

@@ -58,6 +58,8 @@ begin
   Result.Created := EncodeDate(2026, 10, 14);
 end;
 
+{ TAtlasBugReportTests }
+
 procedure TAtlasBugReportTests.BuildsPluginAndServerPart;
 var
   mText: string;

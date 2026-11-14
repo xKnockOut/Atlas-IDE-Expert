@@ -36,6 +36,8 @@ implementation
 uses
   Atlas.Text.Checkin;
 
+{ TTextCheckinTests }
+
 procedure TTextCheckinTests.CredentialKeysAreWholeNames;
 begin
   Assert.IsTrue(TTextCheckin.IsCredentialKey('token'));

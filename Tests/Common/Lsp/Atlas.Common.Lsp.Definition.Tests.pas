@@ -145,19 +145,6 @@ end;
 
 { TLspDefinitionTests }
 
-procedure TLspDefinitionTests.Setup;
-begin
-  FIndex := TSymbolIndex.Create;
-  FIndex.AddUnit(TIndexExtractor.ExtractText(cUnitWerkzeug, 'C:\P\Werkzeug.pas', nil));
-  FResolver := TNameResolver.Create(FIndex);
-end;
-
-procedure TLspDefinitionTests.TearDown;
-begin
-  FResolver.Free;
-  FIndex := nil;
-end;
-
 function TLspDefinitionTests.TargetsAt(const AMarker: string; AOccurrence: Integer;
   ADeclaration: Boolean): TArray<TDefinitionTarget>;
 var
@@ -186,28 +173,17 @@ begin
   end;
 end;
 
-procedure TLspDefinitionTests.OverloadsPairByParameters;
-const
-  cZweite = 'Progress(const S: string; Force';
-  cErste = 'Progress(const S: string)';
-var
-  mTargets: TArray<TDefinitionTarget>;
+procedure TLspDefinitionTests.Setup;
 begin
-  // Hover und Strg+Umschalt+↑ auf der zweiten Überladung: ihre eigene Deklaration.
-  mTargets := TargetsIn(cUnitKonsole, cZweite, 1, True);
-  Assert.AreEqual(1, Integer(Length(mTargets)));
-  Assert.AreEqual(5, mTargets[0].SelectionRange.StartPos.Line, 'Deklaration der zweiten');
-  Assert.AreEqual(5, mTargets[0].Range.StartPos.Line, 'Bereich der zweiten');
-  // F12 auf der Deklaration der zweiten: ihre Implementierung, und zurück.
-  mTargets := TargetsIn(cUnitKonsole, cZweite, 1, False);
-  Assert.AreEqual(11, mTargets[0].SelectionRange.StartPos.Line, 'Implementierung der zweiten');
-  mTargets := TargetsIn(cUnitKonsole, cZweite, 2, False);
-  Assert.AreEqual(5, mTargets[0].SelectionRange.StartPos.Line, 'zurück zur zweiten');
-  // Die erste bleibt bei sich.
-  mTargets := TargetsIn(cUnitKonsole, cErste, 1, False);
-  Assert.AreEqual(8, mTargets[0].SelectionRange.StartPos.Line, 'Implementierung der ersten');
-  mTargets := TargetsIn(cUnitKonsole, cErste, 2, False);
-  Assert.AreEqual(4, mTargets[0].SelectionRange.StartPos.Line, 'zurück zur ersten');
+  FIndex := TSymbolIndex.Create;
+  FIndex.AddUnit(TIndexExtractor.ExtractText(cUnitWerkzeug, 'C:\P\Werkzeug.pas', nil));
+  FResolver := TNameResolver.Create(FIndex);
+end;
+
+procedure TLspDefinitionTests.TearDown;
+begin
+  FResolver.Free;
+  FIndex := nil;
 end;
 
 procedure TLspDefinitionTests.DefinitionOfMethodCallIsImplementation;
@@ -367,6 +343,30 @@ begin
   finally
     mJson.Free;
   end;
+end;
+
+procedure TLspDefinitionTests.OverloadsPairByParameters;
+const
+  cZweite = 'Progress(const S: string; Force';
+  cErste = 'Progress(const S: string)';
+var
+  mTargets: TArray<TDefinitionTarget>;
+begin
+  // Hover und Strg+Umschalt+↑ auf der zweiten Überladung: ihre eigene Deklaration.
+  mTargets := TargetsIn(cUnitKonsole, cZweite, 1, True);
+  Assert.AreEqual(1, Integer(Length(mTargets)));
+  Assert.AreEqual(5, mTargets[0].SelectionRange.StartPos.Line, 'Deklaration der zweiten');
+  Assert.AreEqual(5, mTargets[0].Range.StartPos.Line, 'Bereich der zweiten');
+  // F12 auf der Deklaration der zweiten: ihre Implementierung, und zurück.
+  mTargets := TargetsIn(cUnitKonsole, cZweite, 1, False);
+  Assert.AreEqual(11, mTargets[0].SelectionRange.StartPos.Line, 'Implementierung der zweiten');
+  mTargets := TargetsIn(cUnitKonsole, cZweite, 2, False);
+  Assert.AreEqual(5, mTargets[0].SelectionRange.StartPos.Line, 'zurück zur zweiten');
+  // Die erste bleibt bei sich.
+  mTargets := TargetsIn(cUnitKonsole, cErste, 1, False);
+  Assert.AreEqual(8, mTargets[0].SelectionRange.StartPos.Line, 'Implementierung der ersten');
+  mTargets := TargetsIn(cUnitKonsole, cErste, 2, False);
+  Assert.AreEqual(4, mTargets[0].SelectionRange.StartPos.Line, 'zurück zur ersten');
 end;
 
 initialization

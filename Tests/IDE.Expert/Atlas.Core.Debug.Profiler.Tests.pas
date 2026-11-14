@@ -103,6 +103,8 @@ begin
   Result := Default(TAtlasProfileRow);
 end;
 
+{ TAtlasProfilerTests }
+
 procedure TAtlasProfilerTests.StartArgumentsNameTheProcess;
 var
   mTarget: TAtlasProfilerTarget;

@@ -258,6 +258,8 @@ type
     procedure WriteString(const AName, AValue: string);
   end;
 
+{ TTrendStore }
+
 constructor TTrendStore.Create;
 begin
   inherited Create;
@@ -298,6 +300,8 @@ procedure TTrendStore.WriteString(const AName, AValue: string);
 begin
   FValues.AddOrSetValue(AName, AValue);
 end;
+
+{ TAtlasTrendSettingsTests }
 
 procedure TAtlasTrendSettingsTests.Defaults;
 var

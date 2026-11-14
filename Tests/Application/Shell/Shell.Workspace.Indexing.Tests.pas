@@ -33,6 +33,8 @@ uses
   Shell.Workspace.Encodings,
   Shell.Workspace.Indexing;
 
+{ TShellWorkspaceIndexingTests }
+
 procedure TShellWorkspaceIndexingTests.IndexingStartsIdle;
 var
   mParts: TShellIndexingParts;

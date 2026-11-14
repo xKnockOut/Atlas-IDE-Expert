@@ -41,6 +41,8 @@ begin
   end;
 end;
 
+{ TConditionalBranchesTests }
+
 procedure TConditionalBranchesTests.PathsPerToken;
 var
   mTokens: TArray<TPascalToken>;

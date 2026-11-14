@@ -135,18 +135,6 @@ end;
 
 { TNestedOverloadsTests }
 
-procedure TNestedOverloadsTests.Setup;
-begin
-  FIndex := TSymbolIndex.Create;
-  FResolver := TNameResolver.Create(FIndex);
-end;
-
-procedure TNestedOverloadsTests.TearDown;
-begin
-  FResolver.Free;
-  FIndex := nil;
-end;
-
 function TNestedOverloadsTests.HelpAt(const AMarker: string): TSignatureHelp;
 var
   mTree: TSyntaxTree;
@@ -173,6 +161,18 @@ begin
   finally
     mTree.Free;
   end;
+end;
+
+procedure TNestedOverloadsTests.Setup;
+begin
+  FIndex := TSymbolIndex.Create;
+  FResolver := TNameResolver.Create(FIndex);
+end;
+
+procedure TNestedOverloadsTests.TearDown;
+begin
+  FResolver.Free;
+  FIndex := nil;
 end;
 
 procedure TNestedOverloadsTests.SignatureHelpListsOverloadsBeforeAndAfterCall;

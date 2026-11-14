@@ -65,6 +65,8 @@ begin
   Result := '';
 end;
 
+{ TShellDfmPropertyRulesTests }
+
 procedure TShellDfmPropertyRulesTests.Setup;
 var
   mRegistry: TShellWorkspaceRegistryServices;

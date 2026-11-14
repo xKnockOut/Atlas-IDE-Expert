@@ -52,6 +52,8 @@ type
     destructor Destroy; override;
   end;
 
+{ TFakeModule }
+
 constructor TFakeModule.Create(const AId: string);
 begin
   inherited Create;
@@ -76,6 +78,8 @@ function TFakeModule.IsActive: Boolean;
 begin
   Result := False;
 end;
+
+{ TFreeFlag }
 
 constructor TFreeFlag.Create(AFreed: PBoolean);
 begin
@@ -108,6 +112,8 @@ function OpenHolding(const AScope: IAtlasModuleScope; AFreed: PBoolean): IAtlasM
 begin
   Result := TAtlasModuleAnswer.Open(AScope, HoldingCallback(TFreeFlag.Create(AFreed)));
 end;
+
+{ TModuleAnswerTests }
 
 procedure TModuleAnswerTests.DeliversOnce;
 var

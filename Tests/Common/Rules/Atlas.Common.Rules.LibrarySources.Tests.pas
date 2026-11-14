@@ -35,6 +35,8 @@ uses
 const
   cBds = 'C:\Program Files (x86)\Embarcadero\Studio\37.0';
 
+{ TLibrarySourcesTests }
+
 procedure TLibrarySourcesTests.InstallationSourceIsLibrary;
 var
   mSources: TLibrarySources;

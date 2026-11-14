@@ -169,19 +169,6 @@ end;
 
 { TLspCompletionContextTests }
 
-procedure TLspCompletionContextTests.Setup;
-begin
-  FIndex := TSymbolIndex.Create;
-  FIndex.AddUnit(TIndexExtractor.ExtractText(cUnitBasis, cBasisFile, nil));
-  FResolver := TNameResolver.Create(FIndex);
-end;
-
-procedure TLspCompletionContextTests.TearDown;
-begin
-  FResolver.Free;
-  FIndex := nil;
-end;
-
 function TLspCompletionContextTests.ItemsAt(const AText, AMarker: string): TCompletionItems;
 var
   mTree: TSyntaxTree;
@@ -219,6 +206,19 @@ begin
       Exit(True);
     end;
   end;
+end;
+
+procedure TLspCompletionContextTests.Setup;
+begin
+  FIndex := TSymbolIndex.Create;
+  FIndex.AddUnit(TIndexExtractor.ExtractText(cUnitBasis, cBasisFile, nil));
+  FResolver := TNameResolver.Create(FIndex);
+end;
+
+procedure TLspCompletionContextTests.TearDown;
+begin
+  FResolver.Free;
+  FIndex := nil;
 end;
 
 procedure TLspCompletionContextTests.PrivateFieldOfOtherUnitIsHidden;

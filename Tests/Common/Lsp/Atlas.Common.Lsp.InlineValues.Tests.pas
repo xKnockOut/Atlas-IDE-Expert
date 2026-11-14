@@ -101,26 +101,6 @@ const
 
 { TLspInlineValuesTests }
 
-procedure TLspInlineValuesTests.WarmUpFirstUse;
-begin
-  Setup;
-  try
-    HandlerWritesInlineValues;
-  finally
-    TearDown;
-  end;
-end;
-
-procedure TLspInlineValuesTests.Setup;
-begin
-  FIndex := TSymbolIndex.Create;
-end;
-
-procedure TLspInlineValuesTests.TearDown;
-begin
-  FIndex := nil;
-end;
-
 function TLspInlineValuesTests.ValuesFor(AFirstLine, ALastLine, AStoppedLine: Integer): string;
 var
   mTree: TSyntaxTree;
@@ -144,6 +124,26 @@ begin
     mResolver.Free;
     mTree.Free;
   end;
+end;
+
+procedure TLspInlineValuesTests.WarmUpFirstUse;
+begin
+  Setup;
+  try
+    HandlerWritesInlineValues;
+  finally
+    TearDown;
+  end;
+end;
+
+procedure TLspInlineValuesTests.Setup;
+begin
+  FIndex := TSymbolIndex.Create;
+end;
+
+procedure TLspInlineValuesTests.TearDown;
+begin
+  FIndex := nil;
 end;
 
 procedure TLspInlineValuesTests.LocalsParametersAndLoopVariable;

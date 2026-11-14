@@ -108,19 +108,6 @@ end;
 
 { TLspImplementationsTests }
 
-procedure TLspImplementationsTests.Setup;
-begin
-  FIndex := TSymbolIndex.Create;
-  FIndex.AddUnit(TIndexExtractor.ExtractText(cUnitHaupt, cHauptFile, nil));
-  FResolver := TNameResolver.Create(FIndex);
-end;
-
-procedure TLspImplementationsTests.TearDown;
-begin
-  FResolver.Free;
-  FIndex := nil;
-end;
-
 function TLspImplementationsTests.TargetsAt(const AMarker: string): TArray<TDefinitionTarget>;
 begin
   Result := TargetsAt(AMarker, 0);
@@ -149,6 +136,19 @@ begin
     Result := Result + IntToStr(mItem.SelectionRange.StartPos.Line) + ' ';
   end;
   Result := Trim(Result);
+end;
+
+procedure TLspImplementationsTests.Setup;
+begin
+  FIndex := TSymbolIndex.Create;
+  FIndex.AddUnit(TIndexExtractor.ExtractText(cUnitHaupt, cHauptFile, nil));
+  FResolver := TNameResolver.Create(FIndex);
+end;
+
+procedure TLspImplementationsTests.TearDown;
+begin
+  FResolver.Free;
+  FIndex := nil;
 end;
 
 procedure TLspImplementationsTests.VirtualMethodListsOwnAndOverridingBodies;

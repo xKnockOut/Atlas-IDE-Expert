@@ -50,6 +50,8 @@ begin
   Result := TJSONObject.ParseJSONValue(AJson) as TJSONArray;
 end;
 
+{ TShellCommandsTests }
+
 procedure TShellCommandsTests.SelectBuildArgs_Empty_NoChanges;
 var
   mParsed: TSelectBuildArgs;
@@ -57,61 +59,6 @@ begin
   mParsed := TSelectBuildArgs.Parse(nil);
   Assert.IsFalse(mParsed.Changes);
   Assert.AreEqual('', mParsed.Uri);
-end;
-
-procedure TShellCommandsTests.SelectProjectArgs_QueryClearAndChoose;
-var
-  mList: TJSONArray;
-  mParsed: TSelectProjectArgs;
-begin
-  mParsed := TSelectProjectArgs.Parse(nil);
-  Assert.IsFalse(mParsed.HasProject);
-  mList := Args('[{"project": 3}]');
-  try
-    Assert.IsFalse(TSelectProjectArgs.Parse(mList).HasProject, 'Keine Zahl');
-  finally
-    mList.Free;
-  end;
-  mList := Args('[{"project": ""}]');
-  try
-    mParsed := TSelectProjectArgs.Parse(mList);
-  finally
-    mList.Free;
-  end;
-  Assert.IsTrue(mParsed.HasProject);
-  Assert.AreEqual('', mParsed.Project);
-  mList := Args('[{"project": " Kern "}]');
-  try
-    mParsed := TSelectProjectArgs.Parse(mList);
-  finally
-    mList.Free;
-  end;
-  Assert.AreEqual('Kern', mParsed.Project);
-end;
-
-procedure TShellCommandsTests.ProjectChoices_NamesSelectedAndActive;
-var
-  mItems: TArray<TProjectChoiceItem>;
-  mAnswer: TJSONObject;
-begin
-  SetLength(mItems, 2);
-  mItems[0].Name := 'App';
-  mItems[0].Project := 'C:\P\App.dproj';
-  mItems[0].Active := True;
-  mItems[1].Name := 'Kern';
-  mItems[1].Project := 'C:\P\Kern.dproj';
-  mItems[1].Selected := True;
-  Assert.AreEqual(1, TBuildCommands.FindProject(mItems, 'kern'));
-  Assert.AreEqual(0, TBuildCommands.FindProject(mItems, 'c:\p\app.dproj'));
-  Assert.AreEqual(-1, TBuildCommands.FindProject(mItems, 'Fehlt'));
-  mAnswer := TBuildCommands.ProjectChoices(mItems);
-  try
-    Assert.AreEqual('C:\P\Kern.dproj', mAnswer.GetValue<string>('selected'));
-    Assert.AreEqual('C:\P\App.dproj', mAnswer.GetValue<string>('active'));
-    Assert.AreEqual(2, mAnswer.GetValue<TJSONArray>('projects').Count);
-  finally
-    mAnswer.Free;
-  end;
 end;
 
 procedure TShellCommandsTests.SelectBuildArgs_ReadsAllFields;
@@ -237,6 +184,61 @@ begin
     begin
       TDirectory.Delete(mRoot, True);
     end;
+  end;
+end;
+
+procedure TShellCommandsTests.SelectProjectArgs_QueryClearAndChoose;
+var
+  mList: TJSONArray;
+  mParsed: TSelectProjectArgs;
+begin
+  mParsed := TSelectProjectArgs.Parse(nil);
+  Assert.IsFalse(mParsed.HasProject);
+  mList := Args('[{"project": 3}]');
+  try
+    Assert.IsFalse(TSelectProjectArgs.Parse(mList).HasProject, 'Keine Zahl');
+  finally
+    mList.Free;
+  end;
+  mList := Args('[{"project": ""}]');
+  try
+    mParsed := TSelectProjectArgs.Parse(mList);
+  finally
+    mList.Free;
+  end;
+  Assert.IsTrue(mParsed.HasProject);
+  Assert.AreEqual('', mParsed.Project);
+  mList := Args('[{"project": " Kern "}]');
+  try
+    mParsed := TSelectProjectArgs.Parse(mList);
+  finally
+    mList.Free;
+  end;
+  Assert.AreEqual('Kern', mParsed.Project);
+end;
+
+procedure TShellCommandsTests.ProjectChoices_NamesSelectedAndActive;
+var
+  mItems: TArray<TProjectChoiceItem>;
+  mAnswer: TJSONObject;
+begin
+  SetLength(mItems, 2);
+  mItems[0].Name := 'App';
+  mItems[0].Project := 'C:\P\App.dproj';
+  mItems[0].Active := True;
+  mItems[1].Name := 'Kern';
+  mItems[1].Project := 'C:\P\Kern.dproj';
+  mItems[1].Selected := True;
+  Assert.AreEqual(1, TBuildCommands.FindProject(mItems, 'kern'));
+  Assert.AreEqual(0, TBuildCommands.FindProject(mItems, 'c:\p\app.dproj'));
+  Assert.AreEqual(-1, TBuildCommands.FindProject(mItems, 'Fehlt'));
+  mAnswer := TBuildCommands.ProjectChoices(mItems);
+  try
+    Assert.AreEqual('C:\P\Kern.dproj', mAnswer.GetValue<string>('selected'));
+    Assert.AreEqual('C:\P\App.dproj', mAnswer.GetValue<string>('active'));
+    Assert.AreEqual(2, mAnswer.GetValue<TJSONArray>('projects').Count);
+  finally
+    mAnswer.Free;
   end;
 end;
 

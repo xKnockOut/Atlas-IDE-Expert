@@ -71,6 +71,8 @@ type
     procedure HideSignature;
   end;
 
+{ TFakeSignatureView }
+
 procedure TFakeSignatureView.ShowSignature(const AHelp: TAtlasSignatureHelp; ASignature, AParameter: Integer);
 begin
   Shown := True;
@@ -167,6 +169,19 @@ begin
   Assert.AreEqual(1, ScanEnd('Foo(1, [2, 3').ActiveParameter, 'Mengen- bzw. Array-Klammern');
 end;
 
+procedure TAtlasCallScannerTests.KeywordParenthesesAreNoCall;
+begin
+  Assert.IsFalse(ScanEnd('if (A').Found);
+  Assert.IsFalse(ScanEnd('while not (A').Found);
+  Assert.IsTrue(ScanEnd('X := Liste[0].Add(').Found, 'Nach ] und Punkt ist es ein Aufruf');
+end;
+
+procedure TAtlasCallScannerTests.ClosedCallIsLeft;
+begin
+  Assert.IsFalse(ScanEnd('Foo(1, 2)').Found, 'Nach ) ist der Aufruf verlassen');
+  Assert.IsFalse(ScanEnd('Foo(1);'#13#10'  ').Found);
+end;
+
 procedure TAtlasCallScannerTests.NamesCallAndOuterCalls;
 var
   mSite: TAtlasCallSite;
@@ -185,19 +200,6 @@ begin
   Assert.AreEqual('Create', mSite.Name);
   Assert.AreEqual('A,B', String.Join(',', mSite.Outer));
   Assert.AreEqual('', ScanEnd('Liste[0](').Name, 'Nach ] kein Name');
-end;
-
-procedure TAtlasCallScannerTests.KeywordParenthesesAreNoCall;
-begin
-  Assert.IsFalse(ScanEnd('if (A').Found);
-  Assert.IsFalse(ScanEnd('while not (A').Found);
-  Assert.IsTrue(ScanEnd('X := Liste[0].Add(').Found, 'Nach ] und Punkt ist es ein Aufruf');
-end;
-
-procedure TAtlasCallScannerTests.ClosedCallIsLeft;
-begin
-  Assert.IsFalse(ScanEnd('Foo(1, 2)').Found, 'Nach ) ist der Aufruf verlassen');
-  Assert.IsFalse(ScanEnd('Foo(1);'#13#10'  ').Found);
 end;
 
 { TAtlasSignatureControllerTests }
@@ -265,6 +267,31 @@ begin
   end;
 end;
 
+procedure TAtlasSignatureControllerTests.ReadsLspSignatureHelp;
+var
+  mResponse: TJSONValue;
+  mHelp: TAtlasSignatureHelp;
+begin
+  mResponse := TJSONObject.ParseJSONValue(
+    '{"signatures":[{"label":"procedure Add(const S: string; Index: Integer)",' +
+    '"documentation":{"kind":"markdown","value":"Fügt ein."},' +
+    '"parameters":[{"label":[14,29],"documentation":"Der Text"},{"label":"Index: Integer"}]}],' +
+    '"activeSignature":0,"activeParameter":1}');
+  try
+    mHelp := TAtlasServerSignatureProvider.HelpFromLsp(mResponse);
+  finally
+    mResponse.Free;
+  end;
+  Assert.AreEqual(1, Integer(Length(mHelp.Signatures)));
+  Assert.AreEqual(0, mHelp.ActiveSignature);
+  Assert.AreEqual(1, mHelp.ActiveParameter);
+  Assert.AreEqual('Fügt ein.', mHelp.Signatures[0].Documentation);
+  Assert.AreEqual('const S: string', mHelp.Signatures[0].Parameters[0].Text(mHelp.Signatures[0].Label_));
+  Assert.AreEqual('Der Text', mHelp.Signatures[0].Parameters[0].Documentation);
+  Assert.AreEqual('Index: Integer', mHelp.Signatures[0].Parameters[1].Text(mHelp.Signatures[0].Label_));
+  Assert.IsTrue(TAtlasServerSignatureProvider.HelpFromLsp(nil).IsEmpty);
+end;
+
 procedure TAtlasSignatureControllerTests.TypeMismatchDimsAndSkipsOverload;
 var
   mView: TFakeSignatureView;
@@ -317,6 +344,27 @@ begin
   Assert.IsFalse(mHelp.Signatures[2].TypeMismatch, 'Ohne Angabe passend');
 end;
 
+procedure TAtlasSignatureControllerTests.TooManyArgumentsCountsOnly;
+var
+  mHelp: TAtlasSignatureHelp;
+begin
+  // StrToInt(Edit1.Text, 10 (#439): eine Überladung mit einem Parameter, zweites Argument zu viel.
+  mHelp := Default(TAtlasSignatureHelp);
+  SetLength(mHelp.Signatures, 2);
+  SetLength(mHelp.Signatures[0].Parameters, 1);
+  SetLength(mHelp.Signatures[1].Parameters, 1);
+  Assert.IsFalse(TAtlasSignatureController.TooManyArguments(mHelp, 0));
+  Assert.IsTrue(TAtlasSignatureController.TooManyArguments(mHelp, 1));
+  // Nur die Anzahl zählt: ein unverträglicher Typ ist kein Fehlerzustand.
+  mHelp.Signatures[0].TypeMismatch := True;
+  Assert.IsFalse(TAtlasSignatureController.TooManyArguments(mHelp, 0));
+  // Leere Klammern passen immer, ohne Signaturen gibt es keinen Fehler.
+  Assert.IsTrue(TAtlasSignatureController.CountFits(Default(TAtlasSignature), 0));
+  Assert.IsFalse(TAtlasSignatureController.CountFits(Default(TAtlasSignature), 1));
+  Assert.IsFalse(TAtlasSignatureController.TooManyArguments(Default(TAtlasSignatureHelp), 3));
+  mHelp := Default(TAtlasSignatureHelp);
+end;
+
 procedure TAtlasSignatureControllerTests.ReadsFormatPlaceholders;
 var
   mResponse: TJSONValue;
@@ -353,6 +401,29 @@ begin
   Assert.IsFalse(TAtlasServerSignatureProvider.HelpFromLsp(nil).Format.Found);
 end;
 
+procedure TAtlasCallScannerTests.DetectsRemovedClosingParen;
+const
+  cTyped = '  myList := TStringList.Create(True)';
+begin
+  // Rücktaste hinter ")".
+  Assert.IsTrue(TAtlasCallScanner.RemovedClosingParen(cTyped + ';', '  myList := TStringList.Create(True;'));
+  Assert.IsTrue(TAtlasCallScanner.RemovedClosingParen(cTyped, '  myList := TStringList.Create(True'));
+  // Entf vor ")" mitten in der Zeile, auch bei doppelter Klammer.
+  Assert.IsTrue(TAtlasCallScanner.RemovedClosingParen('Foo(Bar()) + 1', 'Foo(Bar() + 1'));
+  // Danach steht der Caret wieder im Aufruf.
+  Assert.IsTrue(TAtlasCallScanner.Scan('  myList := TStringList.Create(True', 35).Found);
+end;
+
+procedure TAtlasCallScannerTests.OtherEditsAreNoRemovedParen;
+begin
+  Assert.IsFalse(TAtlasCallScanner.RemovedClosingParen('Foo(True)', 'Foo(Tru)'));
+  Assert.IsFalse(TAtlasCallScanner.RemovedClosingParen('Foo(True)', 'Foo(True)'));
+  Assert.IsFalse(TAtlasCallScanner.RemovedClosingParen('Foo(True)', 'Foo(True));'));
+  Assert.IsFalse(TAtlasCallScanner.RemovedClosingParen('Foo(True)', 'Foo(Tr)'));
+  Assert.IsFalse(TAtlasCallScanner.RemovedClosingParen('Foo(', 'Foo'));
+  Assert.IsFalse(TAtlasCallScanner.RemovedClosingParen('', ''));
+end;
+
 procedure TAtlasSignatureControllerTests.UpdateFormatKeepsOverload;
 var
   mView: TFakeSignatureView;
@@ -384,75 +455,6 @@ begin
   finally
     mController.Free;
   end;
-end;
-
-procedure TAtlasSignatureControllerTests.ReadsLspSignatureHelp;
-var
-  mResponse: TJSONValue;
-  mHelp: TAtlasSignatureHelp;
-begin
-  mResponse := TJSONObject.ParseJSONValue(
-    '{"signatures":[{"label":"procedure Add(const S: string; Index: Integer)",' +
-    '"documentation":{"kind":"markdown","value":"Fügt ein."},' +
-    '"parameters":[{"label":[14,29],"documentation":"Der Text"},{"label":"Index: Integer"}]}],' +
-    '"activeSignature":0,"activeParameter":1}');
-  try
-    mHelp := TAtlasServerSignatureProvider.HelpFromLsp(mResponse);
-  finally
-    mResponse.Free;
-  end;
-  Assert.AreEqual(1, Integer(Length(mHelp.Signatures)));
-  Assert.AreEqual(0, mHelp.ActiveSignature);
-  Assert.AreEqual(1, mHelp.ActiveParameter);
-  Assert.AreEqual('Fügt ein.', mHelp.Signatures[0].Documentation);
-  Assert.AreEqual('const S: string', mHelp.Signatures[0].Parameters[0].Text(mHelp.Signatures[0].Label_));
-  Assert.AreEqual('Der Text', mHelp.Signatures[0].Parameters[0].Documentation);
-  Assert.AreEqual('Index: Integer', mHelp.Signatures[0].Parameters[1].Text(mHelp.Signatures[0].Label_));
-  Assert.IsTrue(TAtlasServerSignatureProvider.HelpFromLsp(nil).IsEmpty);
-end;
-
-procedure TAtlasCallScannerTests.DetectsRemovedClosingParen;
-const
-  cTyped = '  myList := TStringList.Create(True)';
-begin
-  // Rücktaste hinter ")".
-  Assert.IsTrue(TAtlasCallScanner.RemovedClosingParen(cTyped + ';', '  myList := TStringList.Create(True;'));
-  Assert.IsTrue(TAtlasCallScanner.RemovedClosingParen(cTyped, '  myList := TStringList.Create(True'));
-  // Entf vor ")" mitten in der Zeile, auch bei doppelter Klammer.
-  Assert.IsTrue(TAtlasCallScanner.RemovedClosingParen('Foo(Bar()) + 1', 'Foo(Bar() + 1'));
-  // Danach steht der Caret wieder im Aufruf.
-  Assert.IsTrue(TAtlasCallScanner.Scan('  myList := TStringList.Create(True', 35).Found);
-end;
-
-procedure TAtlasCallScannerTests.OtherEditsAreNoRemovedParen;
-begin
-  Assert.IsFalse(TAtlasCallScanner.RemovedClosingParen('Foo(True)', 'Foo(Tru)'));
-  Assert.IsFalse(TAtlasCallScanner.RemovedClosingParen('Foo(True)', 'Foo(True)'));
-  Assert.IsFalse(TAtlasCallScanner.RemovedClosingParen('Foo(True)', 'Foo(True));'));
-  Assert.IsFalse(TAtlasCallScanner.RemovedClosingParen('Foo(True)', 'Foo(Tr)'));
-  Assert.IsFalse(TAtlasCallScanner.RemovedClosingParen('Foo(', 'Foo'));
-  Assert.IsFalse(TAtlasCallScanner.RemovedClosingParen('', ''));
-end;
-
-procedure TAtlasSignatureControllerTests.TooManyArgumentsCountsOnly;
-var
-  mHelp: TAtlasSignatureHelp;
-begin
-  // StrToInt(Edit1.Text, 10 (#439): eine Überladung mit einem Parameter, zweites Argument zu viel.
-  mHelp := Default(TAtlasSignatureHelp);
-  SetLength(mHelp.Signatures, 2);
-  SetLength(mHelp.Signatures[0].Parameters, 1);
-  SetLength(mHelp.Signatures[1].Parameters, 1);
-  Assert.IsFalse(TAtlasSignatureController.TooManyArguments(mHelp, 0));
-  Assert.IsTrue(TAtlasSignatureController.TooManyArguments(mHelp, 1));
-  // Nur die Anzahl zählt: ein unverträglicher Typ ist kein Fehlerzustand.
-  mHelp.Signatures[0].TypeMismatch := True;
-  Assert.IsFalse(TAtlasSignatureController.TooManyArguments(mHelp, 0));
-  // Leere Klammern passen immer, ohne Signaturen gibt es keinen Fehler.
-  Assert.IsTrue(TAtlasSignatureController.CountFits(Default(TAtlasSignature), 0));
-  Assert.IsFalse(TAtlasSignatureController.CountFits(Default(TAtlasSignature), 1));
-  Assert.IsFalse(TAtlasSignatureController.TooManyArguments(Default(TAtlasSignatureHelp), 3));
-  mHelp := Default(TAtlasSignatureHelp);
 end;
 
 initialization

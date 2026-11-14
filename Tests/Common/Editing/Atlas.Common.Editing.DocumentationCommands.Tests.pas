@@ -77,6 +77,8 @@ begin
   end;
 end;
 
+{ TDocumentationCommandsTests }
+
 procedure TDocumentationCommandsTests.HeaderOnlyOnce;
 var
   mOnce, mTwice: string;

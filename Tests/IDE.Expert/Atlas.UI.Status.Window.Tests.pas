@@ -46,6 +46,8 @@ begin
   mItem.Update(AText, AState);
 end;
 
+{ TAtlasStatusWindowTests }
+
 procedure TAtlasStatusWindowTests.WarmUpFirstUse;
 begin
   ShowsEveryRegisteredLine;

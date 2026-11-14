@@ -49,6 +49,8 @@ begin
   Result.Value := AValue;
 end;
 
+{ TAssignFieldsTests }
+
 procedure TAssignFieldsTests.WritableMembers;
 var
   mIndexed: TAssignMember;

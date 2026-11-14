@@ -47,6 +47,8 @@ const
     'end;'#10 +
     'end.'#10;
 
+{ TMethodAnalysisTests }
+
 procedure TMethodAnalysisTests.SimpleTypesForHelper;
 begin
   Assert.IsTrue(TMethodPlan.IsSimpleType('string'));

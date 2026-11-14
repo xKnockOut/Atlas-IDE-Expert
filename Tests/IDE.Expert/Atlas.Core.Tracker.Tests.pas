@@ -905,6 +905,8 @@ type
       Boolean;
   end;
 
+{ TFakeSendTransport }
+
 constructor TFakeSendTransport.Create;
 begin
   inherited Create;
@@ -1052,6 +1054,8 @@ begin
   end;
   raise Exception.Create(AKey + ' fehlt');
 end;
+
+{ TAtlasTrackerLinkProviderTests }
 
 procedure TAtlasTrackerLinkProviderTests.YouTrackLinksEnglish;
 var

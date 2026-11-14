@@ -35,6 +35,8 @@ begin
     TArray<string>.Create('FNr = 4711', 'FName = ''Meier'''), TArray<string>.Create('Übernehmen', 'Abbrechen'), 1);
 end;
 
+{ TAtlasInstanceBreakpointDialogTests }
+
 procedure TAtlasInstanceBreakpointDialogTests.ButtonsInOrder;
 var
   mDialog: TAtlasInstanceBreakpointDialog;

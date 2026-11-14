@@ -112,6 +112,8 @@ begin
   Result.Template := ATemplate;
 end;
 
+{ TAtlasDisplayRulesTests }
+
 procedure TAtlasDisplayRulesTests.LoadServerJson;
 var
   mRules: TAtlasDisplayRules;

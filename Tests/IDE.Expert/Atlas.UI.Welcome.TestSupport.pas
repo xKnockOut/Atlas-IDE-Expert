@@ -41,6 +41,8 @@ type
     function CreateSection: IAtlasSettingsSection;
   end;
 
+{ TWelcomeSettingsProvider }
+
 function TWelcomeSettingsProvider.CreateSection: IAtlasSettingsSection;
 var
   mSection: TAtlasWelcomeSettingsSection;
@@ -63,6 +65,8 @@ begin
   Result := AtlasModuleRegistry.Provide(IAtlasSettingsSectionProvider,
     TWelcomeSettingsProvider.Create as IAtlasSettingsSectionProvider);
 end;
+
+{ TTestSection }
 
 procedure TTestSection.UpdateContent;
 begin

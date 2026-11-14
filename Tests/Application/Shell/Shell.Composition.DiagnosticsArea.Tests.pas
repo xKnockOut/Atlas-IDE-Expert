@@ -52,6 +52,24 @@ begin
   Result := 'unit';
 end;
 
+{ TShellDiagnosticsAreaTests }
+
+function TShellDiagnosticsAreaTests.CapabilitiesFor(const AInitializeParams: string): string;
+var
+  mParams: TJSONObject;
+  mCapabilities: TJSONObject;
+begin
+  mParams := TJSONObject.ParseJSONValue(AInitializeParams) as TJSONObject;
+  mCapabilities := TJSONObject.Create;
+  try
+    FArea.ApplyClientCapabilities(mParams, mCapabilities);
+    Result := mCapabilities.ToJSON;
+  finally
+    mCapabilities.Free;
+    mParams.Free;
+  end;
+end;
+
 procedure TShellDiagnosticsAreaTests.Setup;
 var
   mServices: TShellDiagnosticsAreaServices;
@@ -71,22 +89,6 @@ begin
   FArea.FreeChecks;
   FreeAndNil(FArea);
   FreeAndNil(FDispatcher);
-end;
-
-function TShellDiagnosticsAreaTests.CapabilitiesFor(const AInitializeParams: string): string;
-var
-  mParams: TJSONObject;
-  mCapabilities: TJSONObject;
-begin
-  mParams := TJSONObject.ParseJSONValue(AInitializeParams) as TJSONObject;
-  mCapabilities := TJSONObject.Create;
-  try
-    FArea.ApplyClientCapabilities(mParams, mCapabilities);
-    Result := mCapabilities.ToJSON;
-  finally
-    mCapabilities.Free;
-    mParams.Free;
-  end;
 end;
 
 procedure TShellDiagnosticsAreaTests.PartsExist;

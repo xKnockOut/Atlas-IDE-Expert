@@ -58,6 +58,8 @@ type
     function IsActive: Boolean;
   end;
 
+{ TLog }
+
 procedure TLog.Add(const AEntry: string);
 begin
   if Text <> '' then
@@ -66,6 +68,8 @@ begin
   end;
   Text := Text + AEntry;
 end;
+
+{ TFakeModule }
 
 constructor TFakeModule.Create(ALog: TLog; const AId: string; AMinLevel: TAtlasSafeLevel; const ASwitch: string);
 begin
@@ -124,6 +128,8 @@ function Module(ALog: TLog; const AId: string): IAtlasModule;
 begin
   Result := TFakeModule.Create(ALog, AId, TAtlasSafeLevel.Normal, '');
 end;
+
+{ TModuleHostingTests }
 
 procedure TModuleHostingTests.RegisteredModulesBecomeParts;
 var

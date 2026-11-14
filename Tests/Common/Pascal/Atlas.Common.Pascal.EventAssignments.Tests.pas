@@ -29,6 +29,8 @@ begin
   Result := string.Join(',', TEventAssignments.Names(TPascalLexer.Tokenize(AText)));
 end;
 
+{ TEventAssignmentsTests }
+
 procedure TEventAssignmentsTests.FindsAssignedMethods;
 begin
   Assert.AreEqual('FormClose,PaintLine,Tick,Run,Stop', NamesOf('begin'#10'  OnClose := FormClose;'#10 +

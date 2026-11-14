@@ -41,6 +41,8 @@ uses
   Atlas.Core.Completion.Parentheses,
   Atlas.Core.Completion.Preview;
 
+{ TAtlasParenthesesTests }
+
 procedure TAtlasParenthesesTests.WantsParenthesesOnlyForRoutinesWithParameters;
 begin
   Assert.IsTrue(TAtlasParentheses.Wanted(True, True, ';'));
@@ -126,6 +128,8 @@ begin
   Assert.IsFalse(TAtlasParentheses.CallOpened('  S := ''Rechne(', 15));
   Assert.IsFalse(TAtlasParentheses.CallOpened('(', 1));
 end;
+
+{ TAtlasPreviewTests }
 
 procedure TAtlasPreviewTests.ShowsRestOfName;
 begin

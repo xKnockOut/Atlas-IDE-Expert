@@ -112,6 +112,8 @@ begin
     TAtlasCrumbRequest.Create(ALine, ACharacter, 'Kunden', True, [TAtlasCrumbPart.Visibility]));
 end;
 
+{ TAtlasCrumbMenuTests }
+
 procedure TAtlasCrumbMenuTests.ActionsFitTheCrumb;
 var
   mCrumbs: TAtlasCrumbs;

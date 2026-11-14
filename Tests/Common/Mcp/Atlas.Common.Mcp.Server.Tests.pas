@@ -73,6 +73,8 @@ begin
   end;
 end;
 
+{ TMcpServerTests }
+
 procedure TMcpServerTests.InitializeEchoesVersionAndOffersTools;
 var
   mServer: TMcpServer;

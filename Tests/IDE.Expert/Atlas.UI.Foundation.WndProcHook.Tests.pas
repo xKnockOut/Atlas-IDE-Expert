@@ -59,6 +59,8 @@ type
     procedure Handle(var AMessage: TMessage);
   end;
 
+{ TRecorder }
+
 procedure TRecorder.Handle(var AMessage: TMessage);
 begin
   if AMessage.Msg = cProbe then

@@ -41,6 +41,8 @@ begin
     '  end;'#10'implementation'#10 + AImplementation + 'end.';
 end;
 
+{ TFlowFieldFreeWithoutNilTests }
+
 procedure TFlowFieldFreeWithoutNilTests.FreeWithoutNilIsReported;
 var
   mFindings: TArray<TRuleFinding>;

@@ -172,21 +172,6 @@ const
 
 { TLspMethodBreakpointsTests }
 
-procedure TLspMethodBreakpointsTests.Setup;
-begin
-  FIndex := TSymbolIndex.Create;
-  AddUnit(cKunden, cUnitKunden);
-  AddUnit(cAndere, cUnitAndere);
-  AddUnit(cRtl, cUnitRtl, True);
-end;
-
-procedure TLspMethodBreakpointsTests.TearDown;
-begin
-  FIndex := nil;
-  FTexts := nil;
-  FFiles := nil;
-end;
-
 procedure TLspMethodBreakpointsTests.AddUnit(const AFileName, AText: string);
 begin
   AddUnit(AFileName, AText, False);
@@ -283,6 +268,21 @@ begin
     end;
   end;
   Result := -2;
+end;
+
+procedure TLspMethodBreakpointsTests.Setup;
+begin
+  FIndex := TSymbolIndex.Create;
+  AddUnit(cKunden, cUnitKunden);
+  AddUnit(cAndere, cUnitAndere);
+  AddUnit(cRtl, cUnitRtl, True);
+end;
+
+procedure TLspMethodBreakpointsTests.TearDown;
+begin
+  FIndex := nil;
+  FTexts := nil;
+  FFiles := nil;
 end;
 
 procedure TLspMethodBreakpointsTests.ParsesPatterns;

@@ -71,6 +71,8 @@ begin
   Result := '';
 end;
 
+{ TShellDirectivesTests }
+
 procedure TShellDirectivesTests.Setup;
 var
   mRegistry: TShellWorkspaceRegistryServices;

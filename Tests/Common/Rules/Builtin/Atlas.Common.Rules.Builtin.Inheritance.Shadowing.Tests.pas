@@ -26,6 +26,8 @@ uses
   Atlas.Common.Rules.Builtin.Inheritance.Shadowing,
   Atlas.Tests.RuleAssert;
 
+{ TInheritanceShadowingTests }
+
 procedure TInheritanceShadowingTests.ParameterHidesField;
 var
   mFindings: TArray<TRuleFinding>;

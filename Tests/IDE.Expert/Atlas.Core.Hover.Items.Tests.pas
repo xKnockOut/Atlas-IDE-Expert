@@ -44,6 +44,8 @@ begin
   Result.Rect := Rect(0, ATop, 50, ABottom);
 end;
 
+{ THoverItemsTests }
+
 procedure THoverItemsTests.LimitTakesSmallerBound;
 begin
   Assert.AreEqual(0, TAtlasHoverScroll.LimitOf(Request(0, 0, 0), 20));

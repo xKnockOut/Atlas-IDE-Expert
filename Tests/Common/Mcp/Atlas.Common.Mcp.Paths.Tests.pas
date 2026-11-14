@@ -28,6 +28,8 @@ uses
   Atlas.Common.Mcp.Server,
   Atlas.Common.Mcp.Paths;
 
+{ TMcpPathGuardTests }
+
 procedure TMcpPathGuardTests.RelativeAndAbsoluteInsideRoot;
 var
   mGuard: TMcpPathGuard;

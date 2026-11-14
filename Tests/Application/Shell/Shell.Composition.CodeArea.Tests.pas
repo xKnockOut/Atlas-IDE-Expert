@@ -66,6 +66,22 @@ begin
   Result := '';
 end;
 
+{ TShellCodeAreaTests }
+
+function TShellCodeAreaTests.HasMethod(const AMethod: string): Boolean;
+var
+  mMethod: string;
+begin
+  Result := False;
+  for mMethod in FDispatcher.Methods do
+  begin
+    if mMethod = AMethod then
+    begin
+      Result := True;
+    end;
+  end;
+end;
+
 procedure TShellCodeAreaTests.Setup;
 var
   mCoreServices: TShellCoreServices;
@@ -100,20 +116,6 @@ begin
   FreeAndNil(FCore);
   FreeAndNil(FDispatcher);
   FDocuments := nil;
-end;
-
-function TShellCodeAreaTests.HasMethod(const AMethod: string): Boolean;
-var
-  mMethod: string;
-begin
-  Result := False;
-  for mMethod in FDispatcher.Methods do
-  begin
-    if mMethod = AMethod then
-    begin
-      Result := True;
-    end;
-  end;
 end;
 
 procedure TShellCodeAreaTests.PartsExist;

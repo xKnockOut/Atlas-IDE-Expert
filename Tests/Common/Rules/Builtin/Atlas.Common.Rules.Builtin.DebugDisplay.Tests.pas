@@ -78,6 +78,8 @@ begin
     '    Name: string;'#10'  end;'#10'implementation'#10'end.', 'Basis.pas', nil));
 end;
 
+{ TDebugDisplayRuleTests }
+
 procedure TDebugDisplayRuleTests.KnownMembersSilent;
 begin
   Assert.AreEqual(0, Integer(Length(Findings(cKunden))));

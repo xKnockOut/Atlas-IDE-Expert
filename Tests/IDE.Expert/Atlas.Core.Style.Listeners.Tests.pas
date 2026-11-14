@@ -42,6 +42,8 @@ implementation
 uses
   System.SysUtils;
 
+{ TAtlasThemeListenersTests }
+
 procedure TAtlasThemeListenersTests.SetUp;
 begin
   FListeners := TAtlasThemeListeners.Create;

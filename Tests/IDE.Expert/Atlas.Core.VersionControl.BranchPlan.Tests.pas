@@ -299,53 +299,6 @@ begin
   Result := BranchExists(AName, AExists);
 end;
 
-function TPlanVcs.SwitchBranch(const AName: string; const AOptions: TAtlasVcsSvnBranchOptions): TAtlasVcsOutcome;
-begin
-  Result := SwitchBranch(AName);
-end;
-
-function TPlanVcs.WorkingRevisions(out AText: string): TAtlasVcsOutcome;
-begin
-  Calls := Calls + ['svnversion'];
-  AText := SvnVersion;
-  Result := SvnVersionOutcome;
-end;
-
-function TPlanVcs.WorkingRevisions(const AFolder: string; out AText: string): TAtlasVcsOutcome;
-var
-  mEntry: string;
-begin
-  Calls := Calls + ['svnversion ' + AFolder];
-  AText := '';
-  Result := TAtlasVcsOutcome.Failed;
-  for mEntry in FolderVersions do
-  begin
-    if mEntry.StartsWith(AFolder + '=') then
-    begin
-      AText := Copy(mEntry, Length(AFolder) + 2, MaxInt);
-      Result := TAtlasVcsOutcome.Ok;
-    end;
-  end;
-end;
-
-function TPlanVcs.ExternalsXml(out AText: string): TAtlasVcsOutcome;
-begin
-  AText := ExternalsText;
-  Result := ExternalsOutcome;
-end;
-
-function TPlanVcs.RepositoryRoot(out AUrl: string): TAtlasVcsOutcome;
-begin
-  AUrl := RepositoryUrl;
-  Result := TAtlasVcsOutcome.Ok;
-end;
-
-function TPlanVcs.ToolVersion(out AVersion: string): TAtlasVcsOutcome;
-begin
-  AVersion := Version;
-  Result := TAtlasVcsOutcome.Ok;
-end;
-
 function TPlanVcs.RemoteBranchExists(const AName: string; out AExists: Boolean): TAtlasVcsOutcome;
 begin
   Calls := Calls + ['remote ' + AName];
@@ -392,10 +345,57 @@ begin
   Result := TAtlasVcsOutcome.Ok;
 end;
 
+function TPlanVcs.SwitchBranch(const AName: string; const AOptions: TAtlasVcsSvnBranchOptions): TAtlasVcsOutcome;
+begin
+  Result := SwitchBranch(AName);
+end;
+
 function TPlanVcs.HookFolders(out AHooks, AGitDir: string): TAtlasVcsOutcome;
 begin
   AHooks := '';
   AGitDir := '';
+  Result := TAtlasVcsOutcome.Ok;
+end;
+
+function TPlanVcs.WorkingRevisions(out AText: string): TAtlasVcsOutcome;
+begin
+  Calls := Calls + ['svnversion'];
+  AText := SvnVersion;
+  Result := SvnVersionOutcome;
+end;
+
+function TPlanVcs.WorkingRevisions(const AFolder: string; out AText: string): TAtlasVcsOutcome;
+var
+  mEntry: string;
+begin
+  Calls := Calls + ['svnversion ' + AFolder];
+  AText := '';
+  Result := TAtlasVcsOutcome.Failed;
+  for mEntry in FolderVersions do
+  begin
+    if mEntry.StartsWith(AFolder + '=') then
+    begin
+      AText := Copy(mEntry, Length(AFolder) + 2, MaxInt);
+      Result := TAtlasVcsOutcome.Ok;
+    end;
+  end;
+end;
+
+function TPlanVcs.ExternalsXml(out AText: string): TAtlasVcsOutcome;
+begin
+  AText := ExternalsText;
+  Result := ExternalsOutcome;
+end;
+
+function TPlanVcs.RepositoryRoot(out AUrl: string): TAtlasVcsOutcome;
+begin
+  AUrl := RepositoryUrl;
+  Result := TAtlasVcsOutcome.Ok;
+end;
+
+function TPlanVcs.ToolVersion(out AVersion: string): TAtlasVcsOutcome;
+begin
+  AVersion := Version;
   Result := TAtlasVcsOutcome.Ok;
 end;
 

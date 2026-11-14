@@ -65,6 +65,8 @@ begin
     TArray<TAtlasLeakPlace>.Create(mPlace), nil, False);
 end;
 
+{ TAtlasDebugLeaksTests }
+
 procedure TAtlasDebugLeaksTests.Setup;
 begin
   FLanguage := TAtlasStrings.Language;

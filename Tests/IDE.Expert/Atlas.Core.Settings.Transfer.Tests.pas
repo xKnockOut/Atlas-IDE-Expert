@@ -823,97 +823,6 @@ begin
   Assert.DoesNotContain(mAfter.GlobalText, 'logLevel');
 end;
 
-procedure TAtlasSettingsTransferTests.TrackerConnectionsTravel;
-const
-  cList = '[{"name":"Firma","provider":"youtrack","url":"https://youtrack.firma.local"}]';
-var
-  mSettings: TAtlasPluginSettings;
-  mExported: TAtlasExportResult;
-  mPreview: TAtlasImportPreview;
-  mAfter: TAtlasSettingsState;
-begin
-  mSettings := TAtlasPluginSettings.Defaults;
-  mSettings.IssuesConnections := cList;
-  mExported := TAtlasSettingsTransfer.ExportSettings(FCatalog, State(mSettings, ''),
-    TAtlasExportOptions.Create(['issues'], smOmit), Macros());
-  Assert.AreEqual(1, Integer(mExported.Count), mExported.Text);
-  Assert.Contains(mExported.Text, '"issues.connections": [');
-  mPreview := TAtlasSettingsTransfer.Preview(FCatalog, State(TAtlasPluginSettings.Defaults, ''),
-    TAtlasSettingsTransfer.ParseFile(mExported.Text), TAtlasImportOptions.Create(imMerge, nil, Macros()));
-  Assert.AreEqual(1, mPreview.SelectedCount);
-  mAfter := TAtlasSettingsTransfer.Apply(FCatalog, State(TAtlasPluginSettings.Defaults, ''), mPreview);
-  Assert.AreEqual(cList, mAfter.Plugin.IssuesConnections);
-  // Zurücksetzen: leere Liste.
-  mAfter := TAtlasSettingsTransfer.ResetAreas(FCatalog, State(mSettings, ''), ['issues']);
-  Assert.AreEqual('[]', mAfter.Plugin.IssuesConnections);
-end;
-
-procedure TAtlasSettingsTransferTests.TrackerProjectsTravel;
-const
-  cList = '[{"match":"C:\\Projekte\\Kasse","connection":"Firma","project":"KASSE"}]';
-var
-  mSettings: TAtlasPluginSettings;
-  mExported: TAtlasExportResult;
-  mPreview: TAtlasImportPreview;
-  mAfter: TAtlasSettingsState;
-begin
-  mSettings := TAtlasPluginSettings.Defaults;
-  mSettings.IssuesProjects := cList;
-  mExported := TAtlasSettingsTransfer.ExportSettings(FCatalog, State(mSettings, ''),
-    TAtlasExportOptions.Create(['issues'], smOmit), Macros());
-  Assert.AreEqual(1, Integer(mExported.Count), mExported.Text);
-  Assert.Contains(mExported.Text, '"issues.projects": [');
-  mPreview := TAtlasSettingsTransfer.Preview(FCatalog, State(TAtlasPluginSettings.Defaults, ''),
-    TAtlasSettingsTransfer.ParseFile(mExported.Text), TAtlasImportOptions.Create(imMerge, nil, Macros()));
-  mAfter := TAtlasSettingsTransfer.Apply(FCatalog, State(TAtlasPluginSettings.Defaults, ''), mPreview);
-  Assert.AreEqual(cList, mAfter.Plugin.IssuesProjects);
-  mAfter := TAtlasSettingsTransfer.ResetAreas(FCatalog, State(mSettings, ''), ['issues']);
-  Assert.AreEqual('[]', mAfter.Plugin.IssuesProjects);
-end;
-
-procedure TAtlasSettingsTransferTests.WelcomeLayoutsTravel;
-const
-  cLayoutsJson = '[{"name":"Arbeit","columns":3,"slots":[{"id":"atlas.state","column":0}]}]';
-var
-  S: TAtlasPluginSettings;
-  mExported: TAtlasExportResult;
-  mPreview: TAtlasImportPreview;
-  mAfter: TAtlasSettingsState;
-  mNames: TArray<string>;
-begin
-  // #767: Layouts, aktives Layout, Spalten und der Schalter gehören zum Bereich „Willkommensseite“.
-  S := TAtlasPluginSettings.Defaults;
-  S.WelcomePageCustomLayout := False;
-  S.WelcomePageColumns := 3;
-  S.WelcomePageLayouts := cLayoutsJson;
-  S.WelcomePageActiveLayout := 'Arbeit';
-  mExported := TAtlasSettingsTransfer.ExportSettings(FCatalog, State(S, ''),
-    TAtlasExportOptions.Create(['welcome'], smOmit), Macros());
-  Assert.AreEqual(4, Integer(mExported.Count));
-  Assert.Contains(mExported.Text, '"welcomePage.customLayout": false');
-  Assert.Contains(mExported.Text, '"welcomePage.columns": 3');
-  Assert.Contains(mExported.Text, '"welcomePage.layouts"');
-  Assert.Contains(mExported.Text, '"welcomePage.activeLayout": "Arbeit"');
-  // Import auf einem frischen Rechner.
-  mPreview := TAtlasSettingsTransfer.Preview(FCatalog, State(TAtlasPluginSettings.Defaults, ''),
-    TAtlasSettingsTransfer.ParseFile(mExported.Text), TAtlasImportOptions.Create(imMerge, nil, Macros()));
-  Assert.AreEqual(4, mPreview.SelectedCount);
-  mAfter := TAtlasSettingsTransfer.Apply(FCatalog, State(TAtlasPluginSettings.Defaults, ''), mPreview);
-  Assert.IsFalse(mAfter.Plugin.WelcomePageCustomLayout);
-  Assert.AreEqual(3, mAfter.Plugin.WelcomePageColumns);
-  Assert.AreEqual(cLayoutsJson, mAfter.Plugin.WelcomePageLayouts);
-  Assert.AreEqual('Arbeit', mAfter.Plugin.WelcomePageActiveLayout);
-  // Geändert-Markierung und Zurücksetzen.
-  mNames := TAtlasSettingsTransfer.ModifiedNames(FCatalog, S);
-  Assert.AreEqual(4, Integer(Length(mNames)));
-  mAfter := TAtlasSettingsTransfer.ResetAreas(FCatalog, State(S, ''), ['welcome']);
-  Assert.IsTrue(mAfter.Plugin.WelcomePageCustomLayout);
-  Assert.AreEqual(2, mAfter.Plugin.WelcomePageColumns);
-  Assert.AreEqual('', mAfter.Plugin.WelcomePageLayouts);
-  Assert.AreEqual('Standard', mAfter.Plugin.WelcomePageActiveLayout);
-  Assert.AreEqual(0, Integer(Length(TAtlasSettingsTransfer.ModifiedKeys(FCatalog, mAfter))));
-end;
-
 procedure TAtlasSettingsTransferTests.ResetNamesAndModifiedNamesForPage;
 var
   S, mAfter: TAtlasPluginSettings;
@@ -1010,6 +919,97 @@ begin
   Assert.IsFalse(mAfter.Plugin.HelpEnabled);
   Assert.IsTrue(mAfter.Plugin.DebugInlineValues, 'Einzelschalter auf Vorgabe, nur das Modul ist aus');
   Assert.AreEqual(14, Integer(Length(TAtlasSettingsTransfer.ModifiedKeys(FCatalog, mAfter))));
+end;
+
+procedure TAtlasSettingsTransferTests.WelcomeLayoutsTravel;
+const
+  cLayoutsJson = '[{"name":"Arbeit","columns":3,"slots":[{"id":"atlas.state","column":0}]}]';
+var
+  S: TAtlasPluginSettings;
+  mExported: TAtlasExportResult;
+  mPreview: TAtlasImportPreview;
+  mAfter: TAtlasSettingsState;
+  mNames: TArray<string>;
+begin
+  // #767: Layouts, aktives Layout, Spalten und der Schalter gehören zum Bereich „Willkommensseite“.
+  S := TAtlasPluginSettings.Defaults;
+  S.WelcomePageCustomLayout := False;
+  S.WelcomePageColumns := 3;
+  S.WelcomePageLayouts := cLayoutsJson;
+  S.WelcomePageActiveLayout := 'Arbeit';
+  mExported := TAtlasSettingsTransfer.ExportSettings(FCatalog, State(S, ''),
+    TAtlasExportOptions.Create(['welcome'], smOmit), Macros());
+  Assert.AreEqual(4, Integer(mExported.Count));
+  Assert.Contains(mExported.Text, '"welcomePage.customLayout": false');
+  Assert.Contains(mExported.Text, '"welcomePage.columns": 3');
+  Assert.Contains(mExported.Text, '"welcomePage.layouts"');
+  Assert.Contains(mExported.Text, '"welcomePage.activeLayout": "Arbeit"');
+  // Import auf einem frischen Rechner.
+  mPreview := TAtlasSettingsTransfer.Preview(FCatalog, State(TAtlasPluginSettings.Defaults, ''),
+    TAtlasSettingsTransfer.ParseFile(mExported.Text), TAtlasImportOptions.Create(imMerge, nil, Macros()));
+  Assert.AreEqual(4, mPreview.SelectedCount);
+  mAfter := TAtlasSettingsTransfer.Apply(FCatalog, State(TAtlasPluginSettings.Defaults, ''), mPreview);
+  Assert.IsFalse(mAfter.Plugin.WelcomePageCustomLayout);
+  Assert.AreEqual(3, mAfter.Plugin.WelcomePageColumns);
+  Assert.AreEqual(cLayoutsJson, mAfter.Plugin.WelcomePageLayouts);
+  Assert.AreEqual('Arbeit', mAfter.Plugin.WelcomePageActiveLayout);
+  // Geändert-Markierung und Zurücksetzen.
+  mNames := TAtlasSettingsTransfer.ModifiedNames(FCatalog, S);
+  Assert.AreEqual(4, Integer(Length(mNames)));
+  mAfter := TAtlasSettingsTransfer.ResetAreas(FCatalog, State(S, ''), ['welcome']);
+  Assert.IsTrue(mAfter.Plugin.WelcomePageCustomLayout);
+  Assert.AreEqual(2, mAfter.Plugin.WelcomePageColumns);
+  Assert.AreEqual('', mAfter.Plugin.WelcomePageLayouts);
+  Assert.AreEqual('Standard', mAfter.Plugin.WelcomePageActiveLayout);
+  Assert.AreEqual(0, Integer(Length(TAtlasSettingsTransfer.ModifiedKeys(FCatalog, mAfter))));
+end;
+
+procedure TAtlasSettingsTransferTests.TrackerConnectionsTravel;
+const
+  cList = '[{"name":"Firma","provider":"youtrack","url":"https://youtrack.firma.local"}]';
+var
+  mSettings: TAtlasPluginSettings;
+  mExported: TAtlasExportResult;
+  mPreview: TAtlasImportPreview;
+  mAfter: TAtlasSettingsState;
+begin
+  mSettings := TAtlasPluginSettings.Defaults;
+  mSettings.IssuesConnections := cList;
+  mExported := TAtlasSettingsTransfer.ExportSettings(FCatalog, State(mSettings, ''),
+    TAtlasExportOptions.Create(['issues'], smOmit), Macros());
+  Assert.AreEqual(1, Integer(mExported.Count), mExported.Text);
+  Assert.Contains(mExported.Text, '"issues.connections": [');
+  mPreview := TAtlasSettingsTransfer.Preview(FCatalog, State(TAtlasPluginSettings.Defaults, ''),
+    TAtlasSettingsTransfer.ParseFile(mExported.Text), TAtlasImportOptions.Create(imMerge, nil, Macros()));
+  Assert.AreEqual(1, mPreview.SelectedCount);
+  mAfter := TAtlasSettingsTransfer.Apply(FCatalog, State(TAtlasPluginSettings.Defaults, ''), mPreview);
+  Assert.AreEqual(cList, mAfter.Plugin.IssuesConnections);
+  // Zurücksetzen: leere Liste.
+  mAfter := TAtlasSettingsTransfer.ResetAreas(FCatalog, State(mSettings, ''), ['issues']);
+  Assert.AreEqual('[]', mAfter.Plugin.IssuesConnections);
+end;
+
+procedure TAtlasSettingsTransferTests.TrackerProjectsTravel;
+const
+  cList = '[{"match":"C:\\Projekte\\Kasse","connection":"Firma","project":"KASSE"}]';
+var
+  mSettings: TAtlasPluginSettings;
+  mExported: TAtlasExportResult;
+  mPreview: TAtlasImportPreview;
+  mAfter: TAtlasSettingsState;
+begin
+  mSettings := TAtlasPluginSettings.Defaults;
+  mSettings.IssuesProjects := cList;
+  mExported := TAtlasSettingsTransfer.ExportSettings(FCatalog, State(mSettings, ''),
+    TAtlasExportOptions.Create(['issues'], smOmit), Macros());
+  Assert.AreEqual(1, Integer(mExported.Count), mExported.Text);
+  Assert.Contains(mExported.Text, '"issues.projects": [');
+  mPreview := TAtlasSettingsTransfer.Preview(FCatalog, State(TAtlasPluginSettings.Defaults, ''),
+    TAtlasSettingsTransfer.ParseFile(mExported.Text), TAtlasImportOptions.Create(imMerge, nil, Macros()));
+  mAfter := TAtlasSettingsTransfer.Apply(FCatalog, State(TAtlasPluginSettings.Defaults, ''), mPreview);
+  Assert.AreEqual(cList, mAfter.Plugin.IssuesProjects);
+  mAfter := TAtlasSettingsTransfer.ResetAreas(FCatalog, State(mSettings, ''), ['issues']);
+  Assert.AreEqual('[]', mAfter.Plugin.IssuesProjects);
 end;
 
 initialization

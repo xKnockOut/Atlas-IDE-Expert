@@ -80,18 +80,6 @@ end;
 
 { TAtlasBreakpointSetsTests }
 
-procedure TAtlasBreakpointSetsTests.Setup;
-begin
-  FFolder := PathDelim + 'P';
-  FText := cSource;
-end;
-
-procedure TAtlasBreakpointSetsTests.TearDown;
-begin
-  FFolder := '';
-  FText := '';
-end;
-
 function TAtlasBreakpointSetsTests.Entry(ALine: Integer): TAtlasBreakpointSetEntry;
 begin
   Result := TAtlasBreakpointSets.Capture(FileIn(FFolder, 'Kunden.pas'), cSource, ALine,
@@ -102,6 +90,18 @@ function TAtlasBreakpointSetsTests.TextOf(const AFileName: string; out AText: st
 begin
   Result := AFileName.EndsWith('Kunden.pas');
   AText := FText;
+end;
+
+procedure TAtlasBreakpointSetsTests.Setup;
+begin
+  FFolder := PathDelim + 'P';
+  FText := cSource;
+end;
+
+procedure TAtlasBreakpointSetsTests.TearDown;
+begin
+  FFolder := '';
+  FText := '';
 end;
 
 procedure TAtlasBreakpointSetsTests.NamesAndFiles;

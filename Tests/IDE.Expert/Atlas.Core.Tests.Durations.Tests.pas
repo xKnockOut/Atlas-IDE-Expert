@@ -47,6 +47,8 @@ begin
   Result.Outcome := TTestOutcome.Passed;
 end;
 
+{ TAtlasTestDurationsTests }
+
 procedure TAtlasTestDurationsTests.SlowOnlyAboveLimit;
 begin
   Assert.IsTrue(TAtlasTestDurations.IsSlow(800, 500), 'Sleep(800) bei 500 ms');
