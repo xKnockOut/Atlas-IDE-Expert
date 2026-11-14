@@ -196,7 +196,7 @@ begin
     '  A in ''A.pas'';', 'end.']));
   try
     AssertNoDiagnostics(Tree);
-    Assert.AreEqual(TSyntaxKind.PackageFile, Tree.Root.Kind);
+    Assert.AreEqual<TSyntaxKind>(TSyntaxKind.PackageFile, Tree.Root.Kind);
     Assert.AreEqual(2, CountKind(Tree.Root, TSyntaxKind.UsesClause));
   finally
     Tree.Free;
@@ -353,7 +353,7 @@ begin
     Assert.AreEqual('Default', Call.Name);
     Assert.AreEqual(2, Integer(Call.ChildCount));
     Assert.AreEqual('File', Call[1].Name);
-    Assert.IsTrue(Call[1].Kind = TSyntaxKind.Identifier);
+    Assert.AreEqual<TSyntaxKind>(TSyntaxKind.Identifier, Call[1].Kind);
   finally
     Tree.Free;
   end;
@@ -543,8 +543,10 @@ begin
   try
     AssertNoDiagnostics(Tree);
     Node := FindFirst(Tree.Root, TSyntaxKind.AssignStatement);
-    Assert.IsTrue(TTextPosition.Create(2, 2) = Node.StartPos);
-    Assert.IsTrue(TTextPosition.Create(2, 11) = Node.EndPos);
+    Assert.AreEqual(2, Node.StartPos.Line);
+    Assert.AreEqual(2, Node.StartPos.Character);
+    Assert.AreEqual(2, Node.EndPos.Line);
+    Assert.AreEqual(11, Node.EndPos.Character);
   finally
     Tree.Free;
   end;
@@ -558,8 +560,10 @@ begin
   try
     Assert.AreEqual<NativeInt>(1, Length(Tree.Diagnostics));
     // Gemeldet am Ende der Zeile, in der das Semikolon fehlt.
-    Assert.IsTrue(TTextPosition.Create(2, 8) = Tree.Diagnostics[0].StartPos);
-    Assert.IsTrue(TTextPosition.Create(2, 8) = Tree.Diagnostics[0].EndPos);
+    Assert.AreEqual(2, Tree.Diagnostics[0].StartPos.Line);
+    Assert.AreEqual(8, Tree.Diagnostics[0].StartPos.Character);
+    Assert.AreEqual(2, Tree.Diagnostics[0].EndPos.Line);
+    Assert.AreEqual(8, Tree.Diagnostics[0].EndPos.Character);
     Assert.AreEqual(''';'' fehlt (wie E2066).', Tree.Diagnostics[0].Message);
     Assert.AreEqual(2, CountKind(Tree.Root, TSyntaxKind.AssignStatement));
   finally
@@ -589,7 +593,8 @@ begin
     'implementation', 'procedure B;', 'begin', 'end;', 'end.']));
   try
     Assert.AreEqual<NativeInt>(1, Length(Tree.Diagnostics));
-    Assert.IsTrue(TTextPosition.Create(5, 0) = Tree.Diagnostics[0].StartPos);
+    Assert.AreEqual(5, Tree.Diagnostics[0].StartPos.Line);
+    Assert.AreEqual(0, Tree.Diagnostics[0].StartPos.Character);
     Assert.IsNotNull(FindFirst(Tree.Root, TSyntaxKind.RoutineDecl));
   finally
     Tree.Free;
@@ -604,7 +609,7 @@ begin
   try
     AssertNoDiagnostics(Tree);
     Assert.AreEqual<NativeInt>(7, Length(Tree.Tokens));
-    Assert.AreEqual(TPascalTokenKind.Comment, Tree.Tokens[3].Kind);
+    Assert.AreEqual<TPascalTokenKind>(TPascalTokenKind.Comment, Tree.Tokens[3].Kind);
   finally
     Tree.Free;
   end;
@@ -668,7 +673,7 @@ begin
     Assert.AreEqual(0, Integer(Length(Tree.Diagnostics)));
     Clause := FindFirst(Tree.Root, TSyntaxKind.ExportsClause);
     Assert.IsNotNull(Clause);
-    Assert.IsTrue(Clause.Parent.Kind = TSyntaxKind.RoutineDecl);
+    Assert.AreEqual<TSyntaxKind>(TSyntaxKind.RoutineDecl, Clause.Parent.Kind);
   finally
     Tree.Free;
   end;

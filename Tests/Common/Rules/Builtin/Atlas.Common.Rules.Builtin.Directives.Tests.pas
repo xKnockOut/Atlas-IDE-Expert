@@ -358,7 +358,7 @@ begin
   Found := TypoFindings(Source);
   Assert.AreEqual(1, Integer(Length(Found)));
   Assert.AreEqual('Unbekannte Direktive overide; gemeint ist override (wie E2070).', Found[0].Message);
-  Assert.IsTrue(Found[0].Confidence = TRuleConfidence.High);
+  Assert.AreEqual<TRuleConfidence>(TRuleConfidence.High, Found[0].Confidence);
   Assert.AreEqual(4, Found[0].Range.StartPos.Line);
   Assert.AreEqual(21, Found[0].Range.StartPos.Character);
   Assert.AreEqual(28, Found[0].Range.EndPos.Character);

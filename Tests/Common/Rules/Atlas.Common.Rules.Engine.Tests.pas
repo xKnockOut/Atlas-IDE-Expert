@@ -424,7 +424,7 @@ begin
   // Regeln außerhalb des Katalogs haben keine Gruppe.
   Assert.AreEqual(1, Integer(Length(TRuleAssert.Findings(TMarkerRule.Create, Source,
     '{ "rules": { "group:exceptions": "off" } }'))));
-  Assert.IsTrue(TRuleEngine.GroupOff('EMPTY-EXCEPT', TServerSettings.Default) = False);
+  Assert.IsFalse(TRuleEngine.GroupOff('EMPTY-EXCEPT', TServerSettings.Default));
 end;
 
 procedure TRuleEngineTests.CompilerGroupTypeLevel;

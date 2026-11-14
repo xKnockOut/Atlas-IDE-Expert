@@ -98,7 +98,7 @@ var
 begin
   Items := Findings(InlineVarSource, '19.0');
   Assert.AreEqual(1, Integer(Length(Items)));
-  Assert.IsTrue(Items[0].Feature = TLanguageFeature.InlineVariable);
+  Assert.AreEqual<TLanguageFeature>(TLanguageFeature.InlineVariable, Items[0].Feature);
   Assert.AreEqual(5, Items[0].StartPos.Line);
   Assert.IsTrue(Pos('Delphi 10.3 Rio', Items[0].Message) > 0);
 end;
@@ -114,7 +114,7 @@ var
 begin
   Items := Findings(IfExprSource, '36.0');
   Assert.AreEqual(1, Integer(Length(Items)));
-  Assert.IsTrue(Items[0].Feature = TLanguageFeature.IfExpression);
+  Assert.AreEqual<TLanguageFeature>(TLanguageFeature.IfExpression, Items[0].Feature);
   Assert.AreEqual(0, Integer(Length(Findings(IfExprSource, '37.0'))));
 end;
 
@@ -129,7 +129,7 @@ var
 begin
   Items := Findings(Source, '20.0');
   Assert.AreEqual(1, Integer(Length(Items)));
-  Assert.IsTrue(Items[0].Feature = TLanguageFeature.ManagedRecord);
+  Assert.AreEqual<TLanguageFeature>(TLanguageFeature.ManagedRecord, Items[0].Feature);
   Assert.AreEqual(0, Integer(Length(Findings(Source, '21.0'))));
 end;
 
@@ -143,7 +143,7 @@ var
 begin
   Items := Findings(Source, '22.0');
   Assert.AreEqual(1, Integer(Length(Items)));
-  Assert.IsTrue(Items[0].Feature = TLanguageFeature.MultilineString);
+  Assert.AreEqual<TLanguageFeature>(TLanguageFeature.MultilineString, Items[0].Feature);
   Assert.AreEqual(0, Integer(Length(Findings(Source, '23.0'))));
 end;
 
@@ -176,9 +176,9 @@ var
 begin
   Items := Findings(Source, '21.0');
   Assert.AreEqual(2, Integer(Length(Items)));
-  Assert.IsTrue(Items[0].Feature = TLanguageFeature.DigitSeparator);
+  Assert.AreEqual<TLanguageFeature>(TLanguageFeature.DigitSeparator, Items[0].Feature);
   Assert.AreEqual(3, Items[0].StartPos.Line);
-  Assert.IsTrue(Items[1].Feature = TLanguageFeature.BinaryLiteral);
+  Assert.AreEqual<TLanguageFeature>(TLanguageFeature.BinaryLiteral, Items[1].Feature);
   Assert.AreEqual(4, Items[1].StartPos.Line);
   Assert.AreEqual(0, Integer(Length(Findings(Source, '22.0'))));
 end;
@@ -189,9 +189,9 @@ var
 begin
   Items := Findings(OperatorSource, '23.0');
   Assert.AreEqual(2, Integer(Length(Items)));
-  Assert.IsTrue(Items[0].Feature = TLanguageFeature.IsNotOperator);
+  Assert.AreEqual<TLanguageFeature>(TLanguageFeature.IsNotOperator, Items[0].Feature);
   Assert.AreEqual(5, Items[0].StartPos.Line);
-  Assert.IsTrue(Items[1].Feature = TLanguageFeature.NotInOperator);
+  Assert.AreEqual<TLanguageFeature>(TLanguageFeature.NotInOperator, Items[1].Feature);
   Assert.AreEqual(7, Items[1].StartPos.Line);
   Assert.AreEqual(0, Integer(Length(Findings(OperatorSource, '37.0'))));
   // "not (C in S)" und "not X" sind alte Schreibweisen.

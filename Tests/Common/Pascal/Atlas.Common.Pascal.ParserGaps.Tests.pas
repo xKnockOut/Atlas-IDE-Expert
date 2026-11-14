@@ -385,7 +385,7 @@ begin
   try
     Decl := Find(Tree.Root, TSyntaxKind.ConstDecl, 'Empty');
     Assert.IsNotNull(Decl);
-    Assert.IsTrue(Decl[Decl.ChildCount - 1].Kind = TSyntaxKind.ParenExpr);
+    Assert.AreEqual<TSyntaxKind>(TSyntaxKind.ParenExpr, Decl[Decl.ChildCount - 1].Kind);
     Assert.AreEqual(0, Decl[Decl.ChildCount - 1].ChildCount);
     Assert.IsNotNull(Find(Tree.Root, TSyntaxKind.ConstDecl, 'Ordinal'), 'Klassenkonstante');
     Assert.IsNotNull(Find(Tree.Root, TSyntaxKind.ConstDecl, 'Lokal'), 'lokale Konstante');

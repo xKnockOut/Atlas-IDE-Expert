@@ -73,13 +73,14 @@ end;
 
 procedure TWarningCodesTests.KindOfCodes;
 begin
-  Assert.IsTrue(TWarningCodes.KindOf('H2164') = TWarningCodeKind.Hint);
-  Assert.IsTrue(TWarningCodes.KindOf('w1000') = TWarningCodeKind.Warning);
-  Assert.IsTrue(TWarningCodes.KindOf('W9999') = TWarningCodeKind.Warning, 'unbekannte Warnung bleibt Warnung');
-  Assert.IsTrue(TWarningCodes.KindOf('E2003') = TWarningCodeKind.None);
-  Assert.IsTrue(TWarningCodes.KindOf('F2613') = TWarningCodeKind.None);
-  Assert.IsTrue(TWarningCodes.KindOf('W10') = TWarningCodeKind.None);
-  Assert.IsTrue(TWarningCodes.KindOf('W10x0') = TWarningCodeKind.None);
+  Assert.AreEqual<TWarningCodeKind>(TWarningCodeKind.Hint, TWarningCodes.KindOf('H2164'));
+  Assert.AreEqual<TWarningCodeKind>(TWarningCodeKind.Warning, TWarningCodes.KindOf('w1000'));
+  Assert.AreEqual<TWarningCodeKind>(TWarningCodeKind.Warning,
+    TWarningCodes.KindOf('W9999'), 'unbekannte Warnung bleibt Warnung');
+  Assert.AreEqual<TWarningCodeKind>(TWarningCodeKind.None, TWarningCodes.KindOf('E2003'));
+  Assert.AreEqual<TWarningCodeKind>(TWarningCodeKind.None, TWarningCodes.KindOf('F2613'));
+  Assert.AreEqual<TWarningCodeKind>(TWarningCodeKind.None, TWarningCodes.KindOf('W10'));
+  Assert.AreEqual<TWarningCodeKind>(TWarningCodeKind.None, TWarningCodes.KindOf('W10x0'));
 end;
 
 procedure TWarningCodesTests.RoutineWideCodes;
@@ -101,7 +102,7 @@ begin
     begin
       Assert.IsFalse(Seen.ContainsKey(Code), 'doppelt: ' + Code);
       Seen.Add(Code, True);
-      Assert.IsTrue(TWarningCodes.KindOf(Code) = TWarningCodeKind.Warning, Code);
+      Assert.AreEqual<TWarningCodeKind>(TWarningCodeKind.Warning, TWarningCodes.KindOf(Code), Code);
       Name := TWarningCodes.Identifier(Code, '');
       Assert.IsTrue(TDirectiveNames.IsWarning(Name), Code + ' → ' + Name);
     end;

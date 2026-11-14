@@ -134,7 +134,7 @@ begin
   // Ohne gleichnamiges Feld bleibt es beim Entfernen; der Name steht wie geschrieben in der Meldung.
   Assert.AreEqual(17, Findings[1].Range.StartPos.Line);
   Assert.AreEqual(1, Integer(Length(Findings[1].Fixes)));
-  Assert.IsTrue(Pos('Zahl wird sich selbst zugewiesen', Findings[1].Message) = 1, Findings[1].Message);
+  Assert.AreEqual(1, Pos('Zahl wird sich selbst zugewiesen', Findings[1].Message), Findings[1].Message);
 end;
 
 procedure TRtlPatternRulesTests.SelfAssignmentThroughSetterSilent;

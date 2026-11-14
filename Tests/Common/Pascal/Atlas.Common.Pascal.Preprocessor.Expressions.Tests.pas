@@ -164,19 +164,19 @@ end;
 
 procedure TPreprocessorExpressionsTests.ComparisonsAndFunctions;
 begin
-  Assert.IsTrue(Evaluate('SizeOf(Pointer) = 8') = TConditionValue.Yes);
-  Assert.IsTrue(Evaluate('High(Word) <> 65535') = TConditionValue.No);
-  Assert.IsTrue(Evaluate('Defined(WIN64) and not Defined(WIN32)') = TConditionValue.Yes);
-  Assert.IsTrue(Evaluate('Ord(''A'') >= 65') = TConditionValue.Yes);
-  Assert.IsTrue(Evaluate('CompilerVersion < 36') = TConditionValue.No);
-  Assert.IsTrue(Evaluate('(2 * 3) div 4 = 1') = TConditionValue.Yes);
+  Assert.AreEqual<TConditionValue>(TConditionValue.Yes, Evaluate('SizeOf(Pointer) = 8'));
+  Assert.AreEqual<TConditionValue>(TConditionValue.No, Evaluate('High(Word) <> 65535'));
+  Assert.AreEqual<TConditionValue>(TConditionValue.Yes, Evaluate('Defined(WIN64) and not Defined(WIN32)'));
+  Assert.AreEqual<TConditionValue>(TConditionValue.Yes, Evaluate('Ord(''A'') >= 65'));
+  Assert.AreEqual<TConditionValue>(TConditionValue.No, Evaluate('CompilerVersion < 36'));
+  Assert.AreEqual<TConditionValue>(TConditionValue.Yes, Evaluate('(2 * 3) div 4 = 1'));
 end;
 
 procedure TPreprocessorExpressionsTests.UnknownConstantIsUnknownPart;
 var
   mParts: TArray<TConditionPart>;
 begin
-  Assert.IsTrue(EvaluateWith(Win64Settings, 'MyConst > 2', mParts) = TConditionValue.Unknown);
+  Assert.AreEqual<TConditionValue>(TConditionValue.Unknown, EvaluateWith(Win64Settings, 'MyConst > 2', mParts));
   Assert.AreEqual(1, Integer(Length(mParts)));
   Assert.AreEqual('MyConst', mParts[0].Text);
   Assert.AreEqual('unbekannt', mParts[0].Value);
@@ -194,12 +194,12 @@ begin
     begin
       Result := SameText(AName, 'TKnown');
     end;
-  Assert.IsTrue(EvaluateWith(mSettings, 'Declared(TKnown)', mParts) = TConditionValue.Yes);
+  Assert.AreEqual<TConditionValue>(TConditionValue.Yes, EvaluateWith(mSettings, 'Declared(TKnown)', mParts));
   Assert.AreEqual('Index', mParts[0].Origin);
-  Assert.IsTrue(EvaluateWith(mSettings, 'Declared(TOther)', mParts) = TConditionValue.Unknown);
+  Assert.AreEqual<TConditionValue>(TConditionValue.Unknown, EvaluateWith(mSettings, 'Declared(TOther)', mParts));
   mSettings.Constants := [TPair<string, Double>.Create('MyLevel', 3)];
-  Assert.IsTrue(EvaluateWith(mSettings, 'MyLevel = 3', mParts) = TConditionValue.Yes);
-  Assert.IsTrue(EvaluateWith(mSettings, 'Declared(MyLevel)', mParts) = TConditionValue.Yes);
+  Assert.AreEqual<TConditionValue>(TConditionValue.Yes, EvaluateWith(mSettings, 'MyLevel = 3', mParts));
+  Assert.AreEqual<TConditionValue>(TConditionValue.Yes, EvaluateWith(mSettings, 'Declared(MyLevel)', mParts));
 end;
 
 procedure TPreprocessorExpressionsTests.VersionConstantsFollowCompilerVersion;
@@ -207,13 +207,13 @@ var
   mSettings: TExpressionSettings;
   mParts: TArray<TConditionPart>;
 begin
-  Assert.IsTrue(Evaluate('RTLVersion123') = TConditionValue.Yes);
+  Assert.AreEqual<TConditionValue>(TConditionValue.Yes, Evaluate('RTLVersion123'));
   mSettings := Win64Settings;
   mSettings.CompilerVersion := 35;
-  Assert.IsTrue(EvaluateWith(mSettings, 'RTLVersion121', mParts) = TConditionValue.No);
+  Assert.AreEqual<TConditionValue>(TConditionValue.No, EvaluateWith(mSettings, 'RTLVersion121', mParts));
   Assert.AreEqual('Delphi 13', mParts[0].Origin);
   mSettings.CompilerVersion := 0;
-  Assert.IsTrue(EvaluateWith(mSettings, 'RTLVersion121', mParts) = TConditionValue.Unknown);
+  Assert.AreEqual<TConditionValue>(TConditionValue.Unknown, EvaluateWith(mSettings, 'RTLVersion121', mParts));
 end;
 
 procedure TPreprocessorExpressionsTests.SyntaxErrorRaises;

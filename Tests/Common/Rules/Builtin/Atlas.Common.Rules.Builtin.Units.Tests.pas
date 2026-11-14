@@ -389,15 +389,15 @@ var
   Header: TModuleHeader;
 begin
   Header := TModuleHeader.Read(TPascalLexer.Tokenize('{ Kopf } unit Kunden.{x}Daten platform;'));
-  Assert.IsTrue(Header.Kind = TModuleKind.UnitModule);
+  Assert.AreEqual<TModuleKind>(TModuleKind.UnitModule, Header.Kind);
   Assert.AreEqual('Kunden.Daten', Header.Name);
   Header := TModuleHeader.Read(TPascalLexer.Tokenize('package Atlas.Common;'));
-  Assert.IsTrue(Header.Kind = TModuleKind.PackageModule);
+  Assert.AreEqual<TModuleKind>(TModuleKind.PackageModule, Header.Kind);
   Assert.AreEqual('Atlas.Common', Header.Name);
   Header := TModuleHeader.Read(TPascalLexer.Tokenize('library Werkzeug;'));
-  Assert.IsTrue(Header.Kind = TModuleKind.LibraryModule);
+  Assert.AreEqual<TModuleKind>(TModuleKind.LibraryModule, Header.Kind);
   Header := TModuleHeader.Read(TPascalLexer.Tokenize('begin end.'));
-  Assert.IsTrue(Header.Kind = TModuleKind.None);
+  Assert.AreEqual<TModuleKind>(TModuleKind.None, Header.Kind);
   Assert.AreEqual('', Header.Name);
   Assert.AreEqual('Neu', TUnitNameMismatchRule.ExpectedName('C:\Projekt\Quellen\Neu.pas'));
   Assert.AreEqual('Kunden.Daten', TUnitNameMismatchRule.ExpectedName('Quellen/Kunden.Daten.PAS'));

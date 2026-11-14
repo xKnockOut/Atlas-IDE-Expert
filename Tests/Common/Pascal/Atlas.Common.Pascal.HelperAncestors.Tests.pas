@@ -204,14 +204,14 @@ var
 begin
   U := TIndexExtractor.ExtractText(CaseFour, 'C:\P\U4.pas', nil);
   Symbol := SymbolOf(U, 'TMyHelper');
-  Assert.IsTrue(Symbol.Kind = TIndexSymbolKind.HelperType);
+  Assert.AreEqual<TIndexSymbolKind>(TIndexSymbolKind.HelperType, Symbol.Kind);
   Assert.AreEqual('TBaseHelper,TFoo', string.Join(',', Symbol.Ancestors));
   Symbol := SymbolOf(U, 'TOther');
-  Assert.IsTrue(Symbol.Kind = TIndexSymbolKind.ClassType);
+  Assert.AreEqual<TIndexSymbolKind>(TIndexSymbolKind.ClassType, Symbol.Kind);
   // Keine Felder namens "helper" oder "TFoo" mehr.
   for Symbol in U.Symbols do
   begin
-    Assert.IsFalse(Symbol.Kind = TIndexSymbolKind.Field, Symbol.Name);
+    Assert.AreNotEqual<TIndexSymbolKind>(TIndexSymbolKind.Field, Symbol.Kind, Symbol.Name);
   end;
 end;
 

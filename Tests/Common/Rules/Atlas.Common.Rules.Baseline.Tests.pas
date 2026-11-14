@@ -322,8 +322,8 @@ begin
   Renamed := Swap(TwoRoutines, 'procedure TFoo.A;', 'procedure TFoo.Umbenannt;');
   Marks := Baseline.Classify('U.pas', Renamed, TFindingScopes.FromText(Renamed), [Finding('a', 5)]);
   Assert.AreEqual<NativeInt>(1, Length(Marks));
-  Assert.IsTrue(Marks[0].State = TBaselineState.Unchanged);
-  Assert.IsTrue(Marks[0].Match = TBaselineMatch.Renamed);
+  Assert.AreEqual<TBaselineState>(TBaselineState.Unchanged, Marks[0].State);
+  Assert.AreEqual<TBaselineMatch>(TBaselineMatch.Renamed, Marks[0].Match);
   Assert.AreEqual('TFoo.Umbenannt', Marks[0].Routine);
   // Anderer Code in der umbenannten Routine bleibt neu.
   Renamed := Swap(Renamed, '  X.Free;', '  W.Free;');
@@ -429,12 +429,12 @@ begin
   Marks := Baseline.Classify('U.pas', TwoRoutines, TFindingScopes.FromText(TwoRoutines),
     [Finding('a', 5), Finding('c', 9)]);
   Assert.AreEqual<NativeInt>(3, Length(Marks));
-  Assert.IsTrue(Marks[0].State = TBaselineState.Unchanged);
-  Assert.IsTrue(Marks[0].Match = TBaselineMatch.Exact);
+  Assert.AreEqual<TBaselineState>(TBaselineState.Unchanged, Marks[0].State);
+  Assert.AreEqual<TBaselineMatch>(TBaselineMatch.Exact, Marks[0].Match);
   Assert.AreEqual('TFoo.A', Marks[0].Routine);
-  Assert.IsTrue(Marks[1].State = TBaselineState.New);
+  Assert.AreEqual<TBaselineState>(TBaselineState.New, Marks[1].State);
   Assert.AreEqual('TFoo.B', Marks[1].Routine);
-  Assert.IsTrue(Marks[2].State = TBaselineState.Absent);
+  Assert.AreEqual<TBaselineState>(TBaselineState.Absent, Marks[2].State);
   Assert.AreEqual('b', Marks[2].Finding.RuleId);
   Assert.AreEqual('TFoo.B', Marks[2].Routine);
   // Ganze Datei als nicht mehr gefunden.
@@ -524,7 +524,8 @@ begin
     [Finding('h2164', 9)])]).Json);
   for Mark in Old.Classify('U.pas', TwoRoutines, TFindingScopes.FromText(TwoRoutines), [Finding('a', 5)]) do
   begin
-    Assert.IsTrue(Mark.State <> TBaselineState.Absent, 'Compilermeldung ist für die Regeln nicht verschwunden');
+    Assert.AreNotEqual<TBaselineState>(TBaselineState.Absent,
+      Mark.State, 'Compilermeldung ist für die Regeln nicht verschwunden');
   end;
   Assert.AreEqual<NativeInt>(0, Length(Old.AbsentOf('Alt.pas')));
   // Alt.pas gibt es nicht mehr: dessen Compilermeldung fällt heraus, die von U.pas bleibt.

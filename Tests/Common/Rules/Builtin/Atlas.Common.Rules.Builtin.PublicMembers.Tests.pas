@@ -735,7 +735,7 @@ begin
     end;
   end;
   Assert.AreEqual(Expected, Actual);
-  Assert.IsTrue(Expected <> '', 'Keine Markierungen im Referenzprojekt');
+  Assert.AreNotEqual('', Expected, 'Keine Markierungen im Referenzprojekt');
 end;
 
 procedure TUnusedPublicMemberTests.UnitTypesAndVariables;

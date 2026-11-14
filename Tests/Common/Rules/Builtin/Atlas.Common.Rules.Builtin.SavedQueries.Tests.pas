@@ -134,7 +134,7 @@ begin
   for mFinding in mFindings do
   begin
     Assert.AreEqual('query:rechnen', mFinding.RuleId);
-    Assert.IsTrue(mFinding.Severity = TRuleSeverity.Error);
+    Assert.AreEqual<TRuleSeverity>(TRuleSeverity.Error, mFinding.Severity);
     Assert.AreEqual('Rechne', Copy(mText.Split([#10])[mFinding.Range.StartPos.Line],
       mFinding.Range.StartPos.Character + 1, 6));
   end;
@@ -190,7 +190,8 @@ begin
   mSettings := SettingsOf('{"rules": {"query:rechnen": "off"}, ' + Copy(cSettings, 2, MaxInt));
   Assert.AreEqual(0, Integer(Length(QueryFindings(Check(mSettings, TextOf(cFile), Services, cFile)))));
   mSettings := SettingsOf('{"rules": {"query:rechnen": "hint"}, ' + Copy(cSettings, 2, MaxInt));
-  Assert.IsTrue(QueryFindings(Check(mSettings, TextOf(cFile), Services, cFile))[0].Severity = TRuleSeverity.Hint);
+  Assert.AreEqual<TRuleSeverity>(TRuleSeverity.Hint,
+    QueryFindings(Check(mSettings, TextOf(cFile), Services, cFile))[0].Severity);
 end;
 
 procedure TSavedQueryRuleTests.ConfigurationIssuesPointAtColumn;

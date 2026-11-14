@@ -108,7 +108,7 @@ begin
     Assert.IsTrue(Cache.TryGet('rules.unitIndex', Stored), 'abgelegt');
     Second := TRuleDerived.UnitIndex(Cache, Context);
     Assert.IsTrue(Cache.TryGet('rules.unitIndex', StoredAgain));
-    Assert.IsTrue(Stored = StoredAgain, 'nicht neu berechnet');
+    Assert.AreSame(Stored, StoredAgain, 'nicht neu berechnet');
     Assert.IsTrue(Length(First.Symbols) > 0, 'Symbole gefunden');
     Assert.AreEqual(Integer(Length(First.Symbols)), Integer(Length(Second.Symbols)));
     Assert.AreEqual('U', First.UnitName);
@@ -126,11 +126,11 @@ begin
   Context := Default(TRuleContext);
   First := TRuleDerived.Open(Context);
   Second := TRuleDerived.Open(Context);
-  Assert.IsTrue(First <> nil);
+  Assert.IsNotNull(First);
   Assert.IsTrue(First <> Second, 'ohne Engine je Aufruf ein eigener Cache');
   Shared := TRuleDerivedCache.Create;
   Context.Derived := Shared;
-  Assert.IsTrue(TRuleDerived.Open(Context) = Shared, 'Cache des Laufs');
+  Assert.AreSame(Shared, TRuleDerived.Open(Context), 'Cache des Laufs');
   Context.Derived := nil;
 end;
 
@@ -207,8 +207,8 @@ begin
     First := TRuleDerived.Graph(Cache, Context, Routines[0]);
     Again := TRuleDerived.Graph(Cache, Context, Routines[0]);
     Other := TRuleDerived.Graph(Cache, Context, Routines[1]);
-    Assert.IsTrue(First <> nil);
-    Assert.IsTrue(First = Again, 'derselbe Graph');
+    Assert.IsNotNull(First);
+    Assert.AreSame(Again, First, 'derselbe Graph');
     Assert.IsTrue(First <> Other, 'je Routine ein Graph');
     Assert.IsTrue(First.Complete);
     Cache := nil;
@@ -285,7 +285,7 @@ begin
   First := TRuleDerived.Get<TCounted>(Cache, 'test.counted', Factory);
   Second := TRuleDerived.Get<TCounted>(Cache, 'test.counted', Factory);
   Assert.AreEqual(1, Calls);
-  Assert.IsTrue(First = Second);
+  Assert.AreSame(Second, First);
   Cache := nil;
   Assert.AreEqual(1, CountedFreed, 'mit dem Cache freigegeben');
 end;

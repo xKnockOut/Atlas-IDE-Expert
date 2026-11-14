@@ -301,7 +301,7 @@ begin
   mSaved := TAtlasLocale.Language;
   try
     TAtlasLocale.Use(TTextLanguage.English);
-    Assert.IsTrue(TRuleCatalog.Localized = TRuleCatalog.Shared);
+    Assert.AreSame(TRuleCatalog.Shared, TRuleCatalog.Localized);
     Assert.IsTrue(TRuleCatalog.Localized.TryFind('empty-except', mEnglish));
     TAtlasLocale.Use(TTextLanguage.German);
     Assert.IsTrue(TRuleCatalog.Localized.TryFind('empty-except', mGerman));
@@ -586,7 +586,7 @@ begin
     for Item in TJSONArray(TJSONObject(Root).GetValue('rules')) do
     begin
       Id := TJSONObject(Item).GetValue<string>('id');
-      Assert.IsTrue(TJSONObject(Item).GetValue('group') <> nil, Id);
+      Assert.IsNotNull(TJSONObject(Item).GetValue('group'), Id);
       Assert.IsTrue(TRuleCatalog.TryParseGroup(TJSONObject(Item).GetValue<string>('group'), Group), Id);
       Assert.IsFalse(MatchText(Id, Seen), Id);
       Seen := Seen + [Id];
@@ -615,7 +615,7 @@ procedure TRuleCatalogTests.SharedCatalogIsReadOnce;
 var
   Entry: TRuleCatalogEntry;
 begin
-  Assert.IsTrue(TRuleCatalog.Shared = TRuleCatalog.Shared);
+  Assert.AreSame(TRuleCatalog.Shared, TRuleCatalog.Shared);
   Assert.IsTrue(TRuleCatalog.Shared.TryFind('empty-except', Entry));
   Assert.AreEqual(Ord(TRuleGroup.Exceptions), Ord(Entry.Group));
 end;

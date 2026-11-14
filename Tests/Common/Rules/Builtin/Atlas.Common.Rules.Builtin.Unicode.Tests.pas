@@ -535,7 +535,7 @@ var
 begin
   mData := F15Bytes;
   mSource := TFileEncoding.Decode(mData, mFormat);
-  Assert.IsTrue(mFormat.Encoding = TFileEncodingKind.Ansi1252, 'Kodierung');
+  Assert.AreEqual<TFileEncodingKind>(TFileEncodingKind.Ansi1252, mFormat.Encoding, 'Kodierung');
   Assert.AreEqual(0, Integer(Length(Run(TControlCharRule.Create, mSource, '', mData, nil, ''))));
 end;
 
@@ -550,7 +550,7 @@ begin
     Bytes([$EF, $BF, $BD, $EF, $BF, $BD]) +
     TEncoding.ASCII.GetBytes(' im Text'#13#10'interface'#13#10'implementation'#13#10'end.'#13#10);
   mSource := TFileEncoding.Decode(mData, mFormat);
-  Assert.IsTrue(mFormat.Encoding = TFileEncodingKind.Utf8, 'Kodierung');
+  Assert.AreEqual<TFileEncodingKind>(TFileEncodingKind.Utf8, mFormat.Encoding, 'Kodierung');
   Assert.AreEqual(0, Integer(Length(Run(TControlCharRule.Create, mSource, '', mData, nil, ''))));
   TRuleAssert.Silent(TControlCharRule.Create, UnitWith('{ a' + Char($FFFD) + ' }'#13#10'(* ' + Char($FFFD) + ' *)'));
 end;
@@ -561,11 +561,11 @@ var
 begin
   mFindings := TRuleAssert.Findings(TControlCharRule.Create, UnitWith('const S = ''a' + Char($FFFD) + 'b'';'));
   Assert.AreEqual(1, Integer(Length(mFindings)));
-  Assert.IsTrue(mFindings[0].Severity = TRuleSeverity.Hint, 'Schweregrad');
+  Assert.AreEqual<TRuleSeverity>(TRuleSeverity.Hint, mFindings[0].Severity, 'Schweregrad');
   // Mit einem echten Steuerzeichen daneben bleibt es ein Fehler.
   mFindings := TRuleAssert.Findings(TControlCharRule.Create, UnitWith('const S = ''a' + Char($FFFD) + #1'b'';'));
   Assert.AreEqual(1, Integer(Length(mFindings)));
-  Assert.IsTrue(mFindings[0].Severity = TRuleSeverity.Error, 'Schweregrad mit Steuerzeichen');
+  Assert.AreEqual<TRuleSeverity>(TRuleSeverity.Error, mFindings[0].Severity, 'Schweregrad mit Steuerzeichen');
 end;
 
 procedure TUnicodeRuleTests.ReplacementCharInCodeIsError;
@@ -574,7 +574,7 @@ var
 begin
   mFindings := TRuleAssert.Findings(TControlCharRule.Create, UnitWith('var X' + Char($FFFD) + ': Integer;'));
   Assert.AreEqual(1, Integer(Length(mFindings)));
-  Assert.IsTrue(mFindings[0].Severity = TRuleSeverity.Error, 'Schweregrad');
+  Assert.AreEqual<TRuleSeverity>(TRuleSeverity.Error, mFindings[0].Severity, 'Schweregrad');
 end;
 
 { file-encoding-unsupported (#1085) }

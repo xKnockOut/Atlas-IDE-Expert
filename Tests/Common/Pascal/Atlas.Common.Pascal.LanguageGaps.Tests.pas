@@ -394,10 +394,10 @@ var
 begin
   U := TIndexExtractor.ExtractText(CaseNine, MainFile, nil, IncludeFiles());
   Symbol := SymbolOf(U, 'TFoo', 'A');
-  Assert.IsTrue(Symbol.Kind = TIndexSymbolKind.Method);
+  Assert.AreEqual<TIndexSymbolKind>(TIndexSymbolKind.Method, Symbol.Kind);
   Assert.AreEqual('C:\P\members.inc', Symbol.FileName);
   Assert.AreEqual(0, Symbol.SelectionRange.StartPos.Line);
-  Assert.IsTrue(Symbol.Visibility = TIndexVisibility.Public);
+  Assert.AreEqual<TIndexVisibility>(TIndexVisibility.Public, Symbol.Visibility);
   Symbol := SymbolOf(U, 'TFoo', 'B');
   Assert.AreEqual(1, Symbol.SelectionRange.StartPos.Line);
   Assert.IsTrue(HasSymbol(U, 'TFoo', 'After'));
@@ -422,7 +422,7 @@ begin
     Assert.IsNotNull(Call);
     // Ziel und zwei Werte; die Namen der Argumente stehen nicht als Bezeichner im Baum.
     Assert.AreEqual(3, Call.ChildCount);
-    Assert.IsTrue(Call[1].Kind = TSyntaxKind.Literal);
+    Assert.AreEqual<TSyntaxKind>(TSyntaxKind.Literal, Call[1].Kind);
     Assert.IsNull(Find(Tree.Root, TSyntaxKind.Identifier, 'FileName'));
   finally
     Tree.Free;
@@ -459,9 +459,9 @@ begin
     Assert.AreEqual('', ChildNames(Section, TSyntaxKind.Attribute));
     // Das Attribut steht im Rumpf direkt vor dem Methodenkopf.
     Index := Body.ChildCount - 1;
-    Assert.IsTrue(Body[Index].Kind = TSyntaxKind.RoutineHeader);
+    Assert.AreEqual<TSyntaxKind>(TSyntaxKind.RoutineHeader, Body[Index].Kind);
     Assert.AreEqual('T1', Body[Index].Name);
-    Assert.IsTrue(Body[Index - 1].Kind = TSyntaxKind.Attribute);
+    Assert.AreEqual<TSyntaxKind>(TSyntaxKind.Attribute, Body[Index - 1].Kind);
     Assert.AreEqual('Test', Body[Index - 1].Name);
   finally
     Tree.Free;
@@ -630,13 +630,13 @@ begin
     // Der Wert (1, 2, …) steht als eigenes Kind hinter dem Typ, nicht in der Obergrenze 3.
     Decl := Find(Tree.Root, TSyntaxKind.ConstDecl, 'D2D');
     Assert.AreEqual(2, Decl.ChildCount);
-    Assert.IsTrue(Decl[0].Kind = TSyntaxKind.ArrayType);
-    Assert.IsTrue(Decl[1].Kind = TSyntaxKind.ParenExpr);
+    Assert.AreEqual<TSyntaxKind>(TSyntaxKind.ArrayType, Decl[0].Kind);
+    Assert.AreEqual<TSyntaxKind>(TSyntaxKind.ParenExpr, Decl[1].Kind);
     Decl := Find(Tree.Root, TSyntaxKind.VarDecl, 'X');
     Subrange := Find(Decl, TSyntaxKind.SubrangeType, '');
     Assert.AreEqual(2, Subrange.ChildCount);
-    Assert.IsTrue(Subrange[1].Kind = TSyntaxKind.Literal);
-    Assert.IsTrue(Decl[Decl.ChildCount - 1].Kind = TSyntaxKind.Literal);
+    Assert.AreEqual<TSyntaxKind>(TSyntaxKind.Literal, Subrange[1].Kind);
+    Assert.AreEqual<TSyntaxKind>(TSyntaxKind.Literal, Decl[Decl.ChildCount - 1].Kind);
   finally
     Tree.Free;
   end;
@@ -653,7 +653,7 @@ begin
   try
     Decl := Find(Tree.Root, TSyntaxKind.ConstDecl, 'SYNOPSE_FRAMEWORK_VERSION');
     Assert.AreEqual(1, Decl.ChildCount);
-    Assert.IsTrue(Decl[0].Kind = TSyntaxKind.Literal);
+    Assert.AreEqual<TSyntaxKind>(TSyntaxKind.Literal, Decl[0].Kind);
     Assert.AreEqual('{$I mormot.commit.inc}', Decl[0].Name);
   finally
     Tree.Free;
@@ -681,7 +681,7 @@ begin
     Assert.IsNotNull(F);
     Assert.IsNotNull(G);
     Assert.IsNotNull(Find(F, TSyntaxKind.AsmBlock, ''));
-    Assert.IsTrue(F.Parent = G.Parent, 'G muss neben F liegen');
+    Assert.AreSame(F.Parent, G.Parent, 'G muss neben F liegen');
     Assert.IsNull(Find(Tree.Root, TSyntaxKind.InitializationSection, ''));
   finally
     Tree.Free;

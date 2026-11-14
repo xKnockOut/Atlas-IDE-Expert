@@ -468,20 +468,27 @@ begin
   Opts := Options([]);
   Win64 := ['MSWINDOWS', 'WIN64', 'CPU64BITS', 'CPUX64'];
   Win32 := ['MSWINDOWS', 'WIN32', 'CPU32BITS', 'CPUX86'];
-  Assert.IsTrue(TConditionValue.Yes = TPascalPreprocessor.Explain('SizeOf(Pointer) = 8', Opts, Win64, Parts, Error));
+  Assert.AreEqual<TConditionValue>(TConditionValue.Yes,
+    TPascalPreprocessor.Explain('SizeOf(Pointer) = 8', Opts, Win64, Parts, Error));
   Assert.AreEqual('8', Part(Parts, 'SizeOf(Pointer)').Value);
   Assert.AreEqual('Zielplattform Win64', Part(Parts, 'SizeOf(Pointer)').Origin);
-  Assert.IsTrue(TConditionValue.No = TPascalPreprocessor.Explain('SizeOf(Pointer) = 8', Opts, Win32, Parts, Error));
-  Assert.IsTrue(TConditionValue.Yes = TPascalPreprocessor.Explain('SizeOf(Integer) = 4', Opts, Win32, Parts, Error));
-  Assert.IsTrue(TConditionValue.Yes =
+  Assert.AreEqual<TConditionValue>(TConditionValue.No,
+    TPascalPreprocessor.Explain('SizeOf(Pointer) = 8', Opts, Win32, Parts, Error));
+  Assert.AreEqual<TConditionValue>(TConditionValue.Yes,
+    TPascalPreprocessor.Explain('SizeOf(Integer) = 4', Opts, Win32, Parts, Error));
+  Assert.AreEqual<TConditionValue>(TConditionValue.Yes,
     TPascalPreprocessor.Explain('High(NativeInt) > High(Integer)', Opts, Win64, Parts, Error));
-  Assert.IsTrue(TConditionValue.No =
+  Assert.AreEqual<TConditionValue>(TConditionValue.No,
     TPascalPreprocessor.Explain('High(NativeInt) > High(Integer)', Opts, Win32, Parts, Error));
-  Assert.IsTrue(TConditionValue.Yes = TPascalPreprocessor.Explain('Low(Integer) < 0', Opts, Win32, Parts, Error));
-  Assert.IsTrue(TConditionValue.Yes = TPascalPreprocessor.Explain('High(Byte) = 255', Opts, [], Parts, Error));
-  Assert.IsTrue(TConditionValue.Yes = TPascalPreprocessor.Explain('Ord(''A'') = 65', Opts, [], Parts, Error));
+  Assert.AreEqual<TConditionValue>(TConditionValue.Yes,
+    TPascalPreprocessor.Explain('Low(Integer) < 0', Opts, Win32, Parts, Error));
+  Assert.AreEqual<TConditionValue>(TConditionValue.Yes,
+    TPascalPreprocessor.Explain('High(Byte) = 255', Opts, [], Parts, Error));
+  Assert.AreEqual<TConditionValue>(TConditionValue.Yes,
+    TPascalPreprocessor.Explain('Ord(''A'') = 65', Opts, [], Parts, Error));
   // Ohne Plattform ist die Zeigergröße unbekannt.
-  Assert.IsTrue(TConditionValue.Unknown = TPascalPreprocessor.Explain('SizeOf(Pointer) = 8', Opts, [], Parts, Error));
+  Assert.AreEqual<TConditionValue>(TConditionValue.Unknown,
+    TPascalPreprocessor.Explain('SizeOf(Pointer) = 8', Opts, [], Parts, Error));
   Assert.AreEqual('', Error);
   Assert.AreEqual('a', Words(Run('{$IF SizeOf(Pointer) = 8} a {$ELSE} b {$ENDIF}', ['WIN64', 'CPU64BITS'])));
 end;
@@ -493,16 +500,21 @@ var
   Error: string;
 begin
   Opts := Options([]);
-  Assert.IsTrue(TConditionValue.Yes = TPascalPreprocessor.Explain('RTLVersion111', Opts, [], Parts, Error));
+  Assert.AreEqual<TConditionValue>(TConditionValue.Yes,
+    TPascalPreprocessor.Explain('RTLVersion111', Opts, [], Parts, Error));
   Assert.AreEqual('wahr', Part(Parts, 'RTLVersion111').Value);
   Assert.AreEqual('Delphi 13', Part(Parts, 'RTLVersion111').Origin);
-  Assert.IsTrue(TConditionValue.Yes = TPascalPreprocessor.Explain('Declared(RTLVersion111)', Opts, [], Parts, Error));
+  Assert.AreEqual<TConditionValue>(TConditionValue.Yes,
+    TPascalPreprocessor.Explain('Declared(RTLVersion111)', Opts, [], Parts, Error));
   Assert.AreEqual('wahr', Part(Parts, 'Declared(RTLVersion111)').Value);
   Opts.CompilerVersion := 34;
-  Assert.IsTrue(TConditionValue.No = TPascalPreprocessor.Explain('RTLVersion111', Opts, [], Parts, Error));
+  Assert.AreEqual<TConditionValue>(TConditionValue.No,
+    TPascalPreprocessor.Explain('RTLVersion111', Opts, [], Parts, Error));
   Opts.CompilerVersion := 36;
-  Assert.IsTrue(TConditionValue.Yes = TPascalPreprocessor.Explain('RTLVersion122', Opts, [], Parts, Error));
-  Assert.IsTrue(TConditionValue.No = TPascalPreprocessor.Explain('RTLVersion131', Opts, [], Parts, Error));
+  Assert.AreEqual<TConditionValue>(TConditionValue.Yes,
+    TPascalPreprocessor.Explain('RTLVersion122', Opts, [], Parts, Error));
+  Assert.AreEqual<TConditionValue>(TConditionValue.No,
+    TPascalPreprocessor.Explain('RTLVersion131', Opts, [], Parts, Error));
   Assert.AreEqual('Delphi 12', TPascalPreprocessor.ProductName(36));
   Assert.AreEqual('', Error);
 end;
@@ -528,10 +540,11 @@ begin
   Assert.AreEqual('a b', Words(Run('{$IF MeineKonstante > 2} a {$ELSEIF Defined(X)} b {$ELSE} c {$ENDIF}', ['X'])));
   Assert.AreEqual('a c', Words(Run('{$IF MeineKonstante > 2} a {$ELSEIF Defined(X)} b {$ELSE} c {$ENDIF}', [])));
   Opts := Options([]);
-  Assert.IsTrue(TConditionValue.Unknown =
+  Assert.AreEqual<TConditionValue>(TConditionValue.Unknown,
     TPascalPreprocessor.Explain('Declared(Unbekannt)', Opts, [], Parts, Error));
   Assert.AreEqual('unbekannt', Part(Parts, 'Declared(Unbekannt)').Value);
-  Assert.IsTrue(TConditionValue.Unknown = TPascalPreprocessor.Explain('MeineKonstante > 2', Opts, [], Parts, Error));
+  Assert.AreEqual<TConditionValue>(TConditionValue.Unknown,
+    TPascalPreprocessor.Explain('MeineKonstante > 2', Opts, [], Parts, Error));
   Assert.AreEqual('Konstante aus dem Code', Part(Parts, 'MeineKonstante').Origin);
 end;
 
@@ -550,16 +563,20 @@ begin
     end;
   TPascalPreprocessor.SetDeclaredProvider(Provider);
   try
-    Assert.IsTrue(TConditionValue.Yes = TPascalPreprocessor.Explain('Declared(TFoo)', Opts, [], Parts, Error));
+    Assert.AreEqual<TConditionValue>(TConditionValue.Yes,
+      TPascalPreprocessor.Explain('Declared(TFoo)', Opts, [], Parts, Error));
     Assert.AreEqual('Index', Part(Parts, 'Declared(TFoo)').Origin);
-    Assert.IsTrue(TConditionValue.Unknown = TPascalPreprocessor.Explain('Declared(TBar)', Opts, [], Parts, Error));
+    Assert.AreEqual<TConditionValue>(TConditionValue.Unknown,
+      TPascalPreprocessor.Explain('Declared(TBar)', Opts, [], Parts, Error));
     Assert.AreEqual('b', Words(TPascalPreprocessor.Process('{$IF not Declared(TFoo)} a {$ELSE} b {$ENDIF}', Opts)));
   finally
     TPascalPreprocessor.SetDeclaredProvider(nil);
   end;
-  Assert.IsTrue(TConditionValue.Unknown = TPascalPreprocessor.Explain('Declared(TFoo)', Opts, [], Parts, Error));
+  Assert.AreEqual<TConditionValue>(TConditionValue.Unknown,
+    TPascalPreprocessor.Explain('Declared(TFoo)', Opts, [], Parts, Error));
   Opts.Declared := Provider;
-  Assert.IsTrue(TConditionValue.Yes = TPascalPreprocessor.Explain('Declared(TFoo)', Opts, [], Parts, Error));
+  Assert.AreEqual<TConditionValue>(TConditionValue.Yes,
+    TPascalPreprocessor.Explain('Declared(TFoo)', Opts, [], Parts, Error));
 end;
 
 procedure TPascalPreprocessorTests.IfoptFollowsProjectAndLocalSwitches;
@@ -640,10 +657,10 @@ begin
   Assert.AreEqual<NativeInt>(2, Length(R.Checks));
   Assert.AreEqual('IF', R.Checks[0].Directive);
   Assert.AreEqual('Defined(A)', R.Checks[0].Expression);
-  Assert.IsTrue(TConditionValue.No = R.Checks[0].Value);
+  Assert.AreEqual<TConditionValue>(TConditionValue.No, R.Checks[0].Value);
   Assert.AreEqual(1, R.Checks[0].Range.StartPos.Line);
   Assert.AreEqual('ELSEIF', R.Checks[1].Directive);
-  Assert.IsTrue(TConditionValue.Yes = R.Checks[1].Value);
+  Assert.AreEqual<TConditionValue>(TConditionValue.Yes, R.Checks[1].Value);
   Assert.AreEqual('Delphi 13', Part(R.Checks[1].Parts, 'RTLVersion111').Origin);
 end;
 

@@ -166,11 +166,14 @@ begin
     mSwitches := TRuleWarnSwitches.Create(mContext);
     try
       // Vor dem Schalter ab Werk aus, mitten im Bezeichner Hier und dahinter als Fehler.
-      Assert.IsTrue(mSwitches.StateAtOffset('UNSAFE_CODE', False, 0) = TRuleWarnState.Disabled);
-      Assert.IsTrue(mSwitches.StateAtOffset('UNSAFE_CODE', False, Pos('Hier', mSource) - 1) = TRuleWarnState.AsError);
-      Assert.IsTrue(mSwitches.StateAtOffset('UNSAFE_CODE', False, Pos('end.', mSource) - 1) = TRuleWarnState.AsError);
+      Assert.AreEqual<TRuleWarnState>(TRuleWarnState.Disabled, mSwitches.StateAtOffset('UNSAFE_CODE', False, 0));
+      Assert.AreEqual<TRuleWarnState>(TRuleWarnState.AsError,
+        mSwitches.StateAtOffset('UNSAFE_CODE', False, Pos('Hier', mSource) - 1));
+      Assert.AreEqual<TRuleWarnState>(TRuleWarnState.AsError,
+        mSwitches.StateAtOffset('UNSAFE_CODE', False, Pos('end.', mSource) - 1));
       // Hinter dem letzten Token ist der Stand unbekannt.
-      Assert.IsTrue(mSwitches.StateAtOffset('UNSAFE_CODE', False, Length(mSource) + 5) = TRuleWarnState.Unknown);
+      Assert.AreEqual<TRuleWarnState>(TRuleWarnState.Unknown,
+        mSwitches.StateAtOffset('UNSAFE_CODE', False, Length(mSource) + 5));
     finally
       mSwitches.Free;
     end;
