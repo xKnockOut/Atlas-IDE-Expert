@@ -2047,6 +2047,8 @@ uses
   Shell.Mcp.Ide in '..\Application\Source\Shell\Shell.Mcp.Ide.pas',
   Shell.Mcp.Services in '..\Application\Source\Shell\Shell.Mcp.Services.pas',
   Shell.Mcp.Startup in '..\Application\Source\Shell\Shell.Mcp.Startup.pas',
+  Shell.Mcp.ServerSetup in '..\Application\Source\Shell\Shell.Mcp.ServerSetup.pas',
+  Shell.Mcp.ServerSetup.Tests in 'Application\Shell\Shell.Mcp.ServerSetup.Tests.pas',
   Shell.Mcp.Tools in '..\Application\Source\Shell\Shell.Mcp.Tools.pas',
   Shell.Mcp.NavigationTools in '..\Application\Source\Shell\Shell.Mcp.NavigationTools.pas',
   Shell.Mcp.BuildTestTools in '..\Application\Source\Shell\Shell.Mcp.BuildTestTools.pas',

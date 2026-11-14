@@ -201,10 +201,9 @@ var
   function Fix(const ADecl: TSignatureHeader; ADeclNode: TSyntaxNode; const ABody: TBodyMatch; ADeclIsBody: Boolean;
     AFirst: Integer): TArray<TRuleEdit>;
   var
-    mCount, mIndex: Integer;
+    mCount: Integer;
     mPrefix: TChangeParameters;
     mChanges: TArray<TParameterChange>;
-    mParameter: Atlas.Common.Editing.ChangeSignature.TSignatureParameter;
     mIndent, mDeclarations, mRoutines, mName: string;
 
     function Routine(const AHeader: TSignatureHeader; const AQualified, ADirectives: string): string;
@@ -212,6 +211,56 @@ var
       Result := TChangeSignature.HeaderText(AHeader, AQualified, mPrefix, False) + ADirectives + mLineBreak + 'begin' +
         mLineBreak + '  ' + TChangeSignature.ForwardCall(AHeader, mPrefix, mChanges) + mLineBreak + 'end;' + mLineBreak +
         mLineBreak;
+    end;
+
+    // Die ersten ACount Parameter bleiben, die übrigen setzt der Aufruf mit ihrem Standardwert.
+    function Changes(ACount: Integer): TArray<TParameterChange>;
+    var
+      mIndex: Integer;
+      mParameter: Atlas.Common.Editing.ChangeSignature.TSignatureParameter;
+    begin
+      Result := nil;
+      for mIndex := 0 to High(ADecl.Parameters) do
+      begin
+        mParameter := ADecl.Parameters[mIndex];
+        if mIndex < ACount then
+        begin
+          Result := Result + [TParameterChange.Kept(mIndex, mParameter.Name)];
+        end
+        else
+        begin
+          Result := Result + [TParameterChange.Added(mParameter.Name, mParameter.TypeName, mParameter.Modifier,
+            mParameter.DefaultValue)];
+        end;
+      end;
+    end;
+
+    // Fügt die erzeugten Köpfe und Rümpfe ein und streicht die Standardwerte der vollen Fassung.
+    function Edits: TArray<TRuleEdit>;
+    begin
+      Result := DefaultRemovals(ADeclNode);
+      if mDeclarations <> '' then
+      begin
+        Result := [TRuleEdit.Create(TTextRange.Create(mTokens[ADecl.StartToken].StartPos,
+          mTokens[ADecl.StartToken].StartPos), mDeclarations)] + Result;
+      end;
+      if not ADecl.HasDirective('overload') then
+      begin
+        Result := Result + [TRuleEdit.Create(TTextRange.Create(mTokens[ADecl.EndToken].EndPos,
+          mTokens[ADecl.EndToken].EndPos), ' overload;')];
+      end;
+      if ABody.Found then
+      begin
+        Result := Result + [TRuleEdit.Create(TTextRange.Create(mTokens[ABody.Header.StartToken].StartPos,
+          mTokens[ABody.Header.StartToken].StartPos), mRoutines)];
+        // Ein im Rumpf wiederholter Standardwert fällt ebenfalls weg.
+        Result := Result + DefaultRemovals(ABody.Node);
+      end;
+      if ADeclIsBody then
+      begin
+        Result := Result + [TRuleEdit.Create(TTextRange.Create(ADeclNode.Parent.EndPos, ADeclNode.Parent.EndPos),
+          mRoutines)];
+      end;
     end;
 
   begin
@@ -222,20 +271,7 @@ var
     for mCount := AFirst to High(ADecl.Parameters) do
     begin
       mPrefix := Copy(ADecl.Parameters, 0, mCount);
-      mChanges := nil;
-      for mIndex := 0 to High(ADecl.Parameters) do
-      begin
-        mParameter := ADecl.Parameters[mIndex];
-        if mIndex < mCount then
-        begin
-          mChanges := mChanges + [TParameterChange.Kept(mIndex, mParameter.Name)];
-        end
-        else
-        begin
-          mChanges := mChanges + [TParameterChange.Added(mParameter.Name, mParameter.TypeName, mParameter.Modifier,
-            mParameter.DefaultValue)];
-        end;
-      end;
+      mChanges := Changes(mCount);
       if ADeclIsBody then
       begin
         mRoutines := mRoutines + mLineBreak + mLineBreak + TrimRight(Routine(ADecl, ADecl.QualifiedName,
@@ -251,29 +287,7 @@ var
         end;
       end;
     end;
-    Result := DefaultRemovals(ADeclNode);
-    if mDeclarations <> '' then
-    begin
-      Result := [TRuleEdit.Create(TTextRange.Create(mTokens[ADecl.StartToken].StartPos,
-        mTokens[ADecl.StartToken].StartPos), mDeclarations)] + Result;
-    end;
-    if not ADecl.HasDirective('overload') then
-    begin
-      Result := Result + [TRuleEdit.Create(TTextRange.Create(mTokens[ADecl.EndToken].EndPos,
-        mTokens[ADecl.EndToken].EndPos), ' overload;')];
-    end;
-    if ABody.Found then
-    begin
-      Result := Result + [TRuleEdit.Create(TTextRange.Create(mTokens[ABody.Header.StartToken].StartPos,
-        mTokens[ABody.Header.StartToken].StartPos), mRoutines)];
-      // Ein im Rumpf wiederholter Standardwert fällt ebenfalls weg.
-      Result := Result + DefaultRemovals(ABody.Node);
-    end;
-    if ADeclIsBody then
-    begin
-      Result := Result + [TRuleEdit.Create(TTextRange.Create(ADeclNode.Parent.EndPos, ADeclNode.Parent.EndPos),
-        mRoutines)];
-    end;
+    Result := Edits;
   end;
 
   // Sieht keine andere Unit die Routine? implementation-Teil (auch Methoden dort deklarierter Typen und lokale

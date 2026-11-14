@@ -41,11 +41,15 @@ type
 
 implementation
 
+{ AtlasDebugDisplayAttribute }
+
 constructor AtlasDebugDisplayAttribute.Create(const ATemplate: string);
 begin
   inherited Create;
   FTemplate := ATemplate;
 end;
+
+{ AtlasDebugChildrenAttribute }
 
 constructor AtlasDebugChildrenAttribute.Create(const ANames: string);
 begin

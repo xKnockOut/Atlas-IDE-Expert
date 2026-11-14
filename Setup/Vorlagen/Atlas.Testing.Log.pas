@@ -89,33 +89,6 @@ begin
   inherited;
 end;
 
-class function TAtlasTestLogger.SideFileOf(const AReportFile: string): string;
-begin
-  Result := ChangeFileExt(AReportFile, cSideExtension);
-end;
-
-class function TAtlasTestLogger.KindOf(ALevel: TLogLevel): string;
-begin
-  Result := cKinds[ALevel];
-end;
-
-class function TAtlasTestLogger.Lines(AMs: Int64; const AKind, AText: string): TArray<string>;
-var
-  mParts: TArray<string>;
-  mIndex: Integer;
-begin
-  mParts := AText.Replace(#13#10, #10).Replace(#13, #10).Split([#10]);
-  if Length(mParts) = 0 then
-  begin
-    mParts := TArray<string>.Create('');
-  end;
-  SetLength(Result, Length(mParts));
-  for mIndex := 0 to High(mParts) do
-  begin
-    Result[mIndex] := IntToStr(AMs) + #9 + AKind + #9 + mParts[mIndex].Replace(#9, ' ');
-  end;
-end;
-
 procedure TAtlasTestLogger.Put(const AKind, AText: string);
 var
   mLine: string;
@@ -262,6 +235,33 @@ end;
 procedure TAtlasTestLogger.OnTestingEnds(const RunResults: IRunResults);
 begin
   FreeAndNil(FWriter);
+end;
+
+class function TAtlasTestLogger.SideFileOf(const AReportFile: string): string;
+begin
+  Result := ChangeFileExt(AReportFile, cSideExtension);
+end;
+
+class function TAtlasTestLogger.Lines(AMs: Int64; const AKind, AText: string): TArray<string>;
+var
+  mParts: TArray<string>;
+  mIndex: Integer;
+begin
+  mParts := AText.Replace(#13#10, #10).Replace(#13, #10).Split([#10]);
+  if Length(mParts) = 0 then
+  begin
+    mParts := TArray<string>.Create('');
+  end;
+  SetLength(Result, Length(mParts));
+  for mIndex := 0 to High(mParts) do
+  begin
+    Result[mIndex] := IntToStr(AMs) + #9 + AKind + #9 + mParts[mIndex].Replace(#9, ' ');
+  end;
+end;
+
+class function TAtlasTestLogger.KindOf(ALevel: TLogLevel): string;
+begin
+  Result := cKinds[ALevel];
 end;
 
 end.

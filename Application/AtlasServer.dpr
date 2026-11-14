@@ -135,6 +135,7 @@ uses
   Shell.Mcp.Ide in 'Source\Shell\Shell.Mcp.Ide.pas',
   Shell.Mcp.Services in 'Source\Shell\Shell.Mcp.Services.pas',
   Shell.Mcp.Startup in 'Source\Shell\Shell.Mcp.Startup.pas',
+  Shell.Mcp.ServerSetup in 'Source\Shell\Shell.Mcp.ServerSetup.pas',
   Shell.Mcp.Tools in 'Source\Shell\Shell.Mcp.Tools.pas',
   Shell.Mcp.NavigationTools in 'Source\Shell\Shell.Mcp.NavigationTools.pas',
   Shell.Mcp.BuildTestTools in 'Source\Shell\Shell.Mcp.BuildTestTools.pas',

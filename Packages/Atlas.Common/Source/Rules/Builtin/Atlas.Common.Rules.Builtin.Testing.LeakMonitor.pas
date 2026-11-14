@@ -80,7 +80,7 @@ begin
 end;
 
 /// <summary>Meldet eine Unit des Projekts einen eigenen Leckmonitor an
-/// (TDUnitXIoC.DefaultContainer.RegisterType<IMemoryLeakMonitor>)? Bibliotheken wie DUnitX selbst zählen nicht.
+/// (TDUnitXIoC.DefaultContainer.RegisterType mit IMemoryLeakMonitor)? Bibliotheken wie DUnitX selbst zählen nicht.
 /// </summary>
 function HasOwnMonitor(const AContext: TRuleContext): Boolean;
 begin
