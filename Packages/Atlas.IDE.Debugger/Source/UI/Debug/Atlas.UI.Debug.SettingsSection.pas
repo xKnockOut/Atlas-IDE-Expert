@@ -254,6 +254,8 @@ begin
   Switch('debug.memoryTimeline', TAtlasMemoryStrings.Text(TAtlasMemoryTextId.SettingsDebugMemoryTimeline));
   Number('debug.memoryTimeline.intervalMs',
     TAtlasMemoryStrings.Text(TAtlasMemoryTextId.SettingsDebugMemoryTimelineInterval));
+  Switch('debug.memoryTimeline.objectCount',
+    TAtlasMemoryStrings.Text(TAtlasMemoryTextId.SettingsDebugMemoryTimelineObjectCount));
 end;
 
 procedure TAtlasDebugSettingsSection.BuildStopValues;
