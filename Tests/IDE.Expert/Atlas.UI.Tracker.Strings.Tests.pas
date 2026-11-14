@@ -140,6 +140,8 @@ begin
   Result := IssueTables + MoreTables;
 end;
 
+{ TAtlasTrackerStringsTests }
+
 procedure TAtlasTrackerStringsTests.EveryTextExistsInBothLanguages;
 var
   mTable: TTable;

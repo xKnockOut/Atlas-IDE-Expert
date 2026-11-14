@@ -59,6 +59,8 @@ uses
   Atlas.UI.Settings.Page.EditorView,
   Atlas.UI.Settings.Page.General;
 
+{ TAtlasSettingsPageTreeTests }
+
 procedure TAtlasSettingsPageTreeTests.WarmUp;
 begin
   WarmUpSettingsPage;
