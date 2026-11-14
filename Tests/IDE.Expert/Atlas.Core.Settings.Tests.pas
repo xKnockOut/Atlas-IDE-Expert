@@ -212,6 +212,26 @@ begin
   Assert.IsTrue(ASettings.TestDebug, 'Test debuggen standardmäßig da (#585)');
   Assert.IsTrue(ASettings.TestBreakAtStart, 'debug.testBreakAtStart standardmäßig an (#585)');
 end;
+/// <summary>Vorgaben der Befehle, Vorlagen und Tasten außerhalb des Debuggers.</summary>
+procedure AssertCommandDefaults(const ASettings: TAtlasPluginSettings);
+begin
+  Assert.IsTrue(ASettings.TodoList, 'Befehl standardmäßig da (#68)');
+  Assert.IsTrue(ASettings.MetricsReport, 'Befehl standardmäßig da (#66)');
+  Assert.IsTrue(ASettings.TeamFile, 'Projektdatei standardmäßig an (#486)');
+  Assert.IsTrue(ASettings.McpBuild, 'Builds für Claude Code standardmäßig erlaubt (#261)');
+  Assert.IsTrue(ASettings.BaselineUpdate, 'Befehl standardmäßig da (#97)');
+  Assert.IsTrue(ASettings.SlashCommands, 'Schnellbefehle standardmäßig an (#399)');
+  Assert.IsTrue(ASettings.Snippets, 'Code-Vorlagen standardmäßig an (#51)');
+  Assert.IsTrue(ASettings.ImportIdeTemplates, 'Live Templates der IDE standardmäßig an (#51)');
+  // Vervollständigung und Parameter-Hint über die Tasten der IDE, ohne eigene Belegung (#494).
+  Assert.AreEqual(0, ASettings.CompletionKey);
+  Assert.AreEqual(0, ASettings.SignatureKey);
+  Assert.IsFalse(ASettings.SignatureKeyPriority);
+  Assert.AreEqual(200, ASettings.ProviderTimeLimitMs, 'Zeitlimit für Quellen (#493)');
+  Assert.AreEqual($E041, ASettings.QuickToggleKey, 'Schnellschalter: Strg+Umschalt+Alt+A (#604)');
+  Assert.IsFalse(ASettings.QuickToggleKeyPriority);
+end;
+
 /// <summary>Vorgaben für Debugger, Befehle und Tasten.</summary>
 procedure AssertDebugDefaults(const ASettings: TAtlasPluginSettings);
 begin
@@ -261,21 +281,7 @@ begin
   Assert.AreEqual(100, ASettings.DebugHoverMaxChildren, 'debug.hoverMaxChildren (#895)');
   Assert.IsTrue(ASettings.DebugPinnedValues, 'debug.pinnedValues (#526)');
   Assert.AreEqual('', ASettings.DebugOwnCodeFolders, 'debug.ownCodeFolders leer (#578)');
-  Assert.IsTrue(ASettings.TodoList, 'Befehl standardmäßig da (#68)');
-  Assert.IsTrue(ASettings.MetricsReport, 'Befehl standardmäßig da (#66)');
-  Assert.IsTrue(ASettings.TeamFile, 'Projektdatei standardmäßig an (#486)');
-  Assert.IsTrue(ASettings.McpBuild, 'Builds für Claude Code standardmäßig erlaubt (#261)');
-  Assert.IsTrue(ASettings.BaselineUpdate, 'Befehl standardmäßig da (#97)');
-  Assert.IsTrue(ASettings.SlashCommands, 'Schnellbefehle standardmäßig an (#399)');
-  Assert.IsTrue(ASettings.Snippets, 'Code-Vorlagen standardmäßig an (#51)');
-  Assert.IsTrue(ASettings.ImportIdeTemplates, 'Live Templates der IDE standardmäßig an (#51)');
-  // Vervollständigung und Parameter-Hint über die Tasten der IDE, ohne eigene Belegung (#494).
-  Assert.AreEqual(0, ASettings.CompletionKey);
-  Assert.AreEqual(0, ASettings.SignatureKey);
-  Assert.IsFalse(ASettings.SignatureKeyPriority);
-  Assert.AreEqual(200, ASettings.ProviderTimeLimitMs, 'Zeitlimit für Quellen (#493)');
-  Assert.AreEqual($E041, ASettings.QuickToggleKey, 'Schnellschalter: Strg+Umschalt+Alt+A (#604)');
-  Assert.IsFalse(ASettings.QuickToggleKeyPriority);
+  AssertCommandDefaults(ASettings);
 end;
 /// <summary>Vorgaben für Diagnose, Einrichtung, Start, Zurücknehmen und Lesezeichen.</summary>
 procedure AssertToolDefaults(const ASettings: TAtlasPluginSettings);
@@ -429,6 +435,28 @@ begin
   ASettings.StartProfiles := False;
   ASettings.StartProfilesStatusField := False;
 end;
+/// <summary>Setzt Befehle, Vorlagen und Tasten außerhalb des Debuggers für den Rundlauf.</summary>
+procedure SetRoundTripCommands(var ASettings: TAtlasPluginSettings);
+begin
+  ASettings.TodoList := False;
+  ASettings.MetricsReport := False;
+  ASettings.TeamFile := False;
+  ASettings.McpBuild := False;
+  ASettings.BaselineUpdate := False;
+  ASettings.EditorKeysPriority := True;
+  ASettings.SlashCommands := False;
+  ASettings.Snippets := False;
+  ASettings.ImportIdeTemplates := False;
+  ASettings.ServerPath := '  D:\Atlas\AtlasServer.exe ';
+  ASettings.SignatureKey := $6048; // Strg+Umschalt+H
+  ASettings.SignatureKeyPriority := True;
+  ASettings.CompletionKey := $4020; // Strg+Leer
+  ASettings.ProviderTimeLimitMs := 350;
+  ASettings.QuickToggleKey := $6051;
+  ASettings.QuickToggleKeyPriority := True;
+  ASettings.DiagnosticMode := True;
+end;
+
 /// <summary>Rundreise: Debugger, Befehle und Tasten von der Vorgabe abweichend setzen.</summary>
 procedure SetRoundTripDebug(var ASettings: TAtlasPluginSettings);
 begin
@@ -480,23 +508,7 @@ begin
   ASettings.DebugHoverMaxChildren := 250;
   ASettings.DebugPinnedValues := False;
   ASettings.DebugOwnCodeFolders := '  C:\Komponenten;D:\Lib ';
-  ASettings.TodoList := False;
-  ASettings.MetricsReport := False;
-  ASettings.TeamFile := False;
-  ASettings.McpBuild := False;
-  ASettings.BaselineUpdate := False;
-  ASettings.EditorKeysPriority := True;
-  ASettings.SlashCommands := False;
-  ASettings.Snippets := False;
-  ASettings.ImportIdeTemplates := False;
-  ASettings.ServerPath := '  D:\Atlas\AtlasServer.exe ';
-  ASettings.SignatureKey := $6048; // Strg+Umschalt+H
-  ASettings.SignatureKeyPriority := True;
-  ASettings.CompletionKey := $4020; // Strg+Leer
-  ASettings.ProviderTimeLimitMs := 350;
-  ASettings.QuickToggleKey := $6051;
-  ASettings.QuickToggleKeyPriority := True;
-  ASettings.DiagnosticMode := True;
+  SetRoundTripCommands(ASettings);
 end;
 /// <summary>Rundreise: Diagnose, Start, Zurücknehmen und Blocklinien von der Vorgabe abweichend setzen.</summary>
 procedure SetRoundTripTools(var ASettings: TAtlasPluginSettings);
@@ -623,6 +635,28 @@ begin
   Assert.IsFalse(ALoaded.StartProfiles);
   Assert.IsFalse(ALoaded.StartProfilesStatusField);
 end;
+/// <summary>Prüft die von SetRoundTripCommands gesetzten Werte nach dem Rundlauf.</summary>
+procedure AssertRoundTripCommands(const ALoaded: TAtlasPluginSettings);
+begin
+  Assert.IsFalse(ALoaded.TodoList);
+  Assert.IsFalse(ALoaded.MetricsReport);
+  Assert.IsFalse(ALoaded.TeamFile);
+  Assert.IsFalse(ALoaded.McpBuild);
+  Assert.IsFalse(ALoaded.BaselineUpdate);
+  Assert.IsTrue(ALoaded.EditorKeysPriority);
+  Assert.IsFalse(ALoaded.SlashCommands);
+  Assert.IsFalse(ALoaded.Snippets);
+  Assert.IsFalse(ALoaded.ImportIdeTemplates);
+  Assert.IsFalse(ALoaded.PairOwners);
+  Assert.AreEqual(3, ALoaded.PairGuideWidth);
+  Assert.AreEqual(80, ALoaded.PairGuideOpacity);
+  Assert.AreEqual('#112233,#445566,#778899,#AABBCC,#DDEEFF', ALoaded.PairColorsDark, 'einheitlich geschrieben');
+  Assert.AreEqual('color', ALoaded.NestedRoutines);
+  Assert.IsTrue(ALoaded.NestedRoutineBand);
+  Assert.AreEqual('#A85A00', ALoaded.NestedRoutineColorLight, 'einheitlich geschrieben');
+  Assert.IsTrue(ALoaded.ProblemsMessageList, 'Liste „Atlas-Probleme“ eingeschaltet');
+end;
+
 /// <summary>Rundreise: Debugger, Befehle und Blocklinien gelesen.</summary>
 procedure AssertRoundTripDebug(const ALoaded: TAtlasPluginSettings);
 begin
@@ -675,23 +709,7 @@ begin
   Assert.AreEqual(250, ALoaded.DebugHoverMaxChildren, 'debug.hoverMaxChildren (#895)');
   Assert.IsFalse(ALoaded.DebugPinnedValues, 'debug.pinnedValues (#526)');
   Assert.AreEqual('C:\Komponenten;D:\Lib', ALoaded.DebugOwnCodeFolders, 'debug.ownCodeFolders ohne Leerraum (#578)');
-  Assert.IsFalse(ALoaded.TodoList);
-  Assert.IsFalse(ALoaded.MetricsReport);
-  Assert.IsFalse(ALoaded.TeamFile);
-  Assert.IsFalse(ALoaded.McpBuild);
-  Assert.IsFalse(ALoaded.BaselineUpdate);
-  Assert.IsTrue(ALoaded.EditorKeysPriority);
-  Assert.IsFalse(ALoaded.SlashCommands);
-  Assert.IsFalse(ALoaded.Snippets);
-  Assert.IsFalse(ALoaded.ImportIdeTemplates);
-  Assert.IsFalse(ALoaded.PairOwners);
-  Assert.AreEqual(3, ALoaded.PairGuideWidth);
-  Assert.AreEqual(80, ALoaded.PairGuideOpacity);
-  Assert.AreEqual('#112233,#445566,#778899,#AABBCC,#DDEEFF', ALoaded.PairColorsDark, 'einheitlich geschrieben');
-  Assert.AreEqual('color', ALoaded.NestedRoutines);
-  Assert.IsTrue(ALoaded.NestedRoutineBand);
-  Assert.AreEqual('#A85A00', ALoaded.NestedRoutineColorLight, 'einheitlich geschrieben');
-  Assert.IsTrue(ALoaded.ProblemsMessageList, 'Liste „Atlas-Probleme“ eingeschaltet');
+  AssertRoundTripCommands(ALoaded);
 end;
 /// <summary>Rundreise: Serverpfad, Tasten, Diagnose, Start und Zurücknehmen gelesen.</summary>
 procedure AssertRoundTripTools(const ALoaded: TAtlasPluginSettings);
@@ -1145,6 +1163,81 @@ begin
   Assert.AreEqual('atlas', mSettings.ShortcutTipsScope);
 end;
 
+/// <summary>Normalize begrenzt die Zahlenwerte der Testeinstellungen auf ihre Bereiche.</summary>
+procedure CheckTestsClamps(var ASettings: TAtlasPluginSettings);
+begin
+  // tests.affectedDepth (#1353): 1 bis 5.
+  ASettings.TestsAffectedDepth := 0;
+  ASettings.Normalize;
+  Assert.AreEqual(TAtlasPluginSettings.cMinTestsAffectedDepth, ASettings.TestsAffectedDepth);
+  ASettings.TestsAffectedDepth := 7;
+  ASettings.Normalize;
+  Assert.AreEqual(TAtlasPluginSettings.cMaxTestsAffectedDepth, ASettings.TestsAffectedDepth);
+  // tests.coveredBy.depth (#1778): 1 bis 5.
+  ASettings.TestsCoveredByDepth := 0;
+  ASettings.Normalize;
+  Assert.AreEqual(TAtlasPluginSettings.cMinTestsCoveredByDepth, ASettings.TestsCoveredByDepth);
+  ASettings.TestsCoveredByDepth := 7;
+  ASettings.Normalize;
+  Assert.AreEqual(TAtlasPluginSettings.cMaxTestsCoveredByDepth, ASettings.TestsCoveredByDepth);
+  // tests.fromDebugStop.maxArray (#1873): 0 bis 1000.
+  ASettings.TestsFromDebugStopMaxArray := -1;
+  ASettings.Normalize;
+  Assert.AreEqual(TAtlasPluginSettings.cMinTestsFromDebugStopMaxArray, ASettings.TestsFromDebugStopMaxArray);
+  ASettings.TestsFromDebugStopMaxArray := 5000;
+  ASettings.Normalize;
+  Assert.AreEqual(TAtlasPluginSettings.cMaxTestsFromDebugStopMaxArray, ASettings.TestsFromDebugStopMaxArray);
+  // tests.untested.warnPercent (#1783): 0 bis 100.
+  ASettings.TestsUntestedWarnPercent := -5;
+  ASettings.Normalize;
+  Assert.AreEqual(TAtlasPluginSettings.cMinTestsUntestedWarnPercent, ASettings.TestsUntestedWarnPercent);
+  ASettings.TestsUntestedWarnPercent := 150;
+  ASettings.Normalize;
+  Assert.AreEqual(TAtlasPluginSettings.cMaxTestsUntestedWarnPercent, ASettings.TestsUntestedWarnPercent);
+  // tests.onSave.max (#1775): 1 bis 1000.
+  ASettings.TestsOnSaveMax := 0;
+  ASettings.Normalize;
+  Assert.AreEqual(TAtlasPluginSettings.cMinTestsOnSaveMax, ASettings.TestsOnSaveMax);
+  ASettings.TestsOnSaveMax := 5000;
+  ASettings.Normalize;
+  Assert.AreEqual(TAtlasPluginSettings.cMaxTestsOnSaveMax, ASettings.TestsOnSaveMax);
+  // tests.slowMs (#1772): 50 bis 60000.
+  ASettings.TestsSlowMs := 10;
+  ASettings.Normalize;
+  Assert.AreEqual(TAtlasPluginSettings.cMinTestsSlowMs, ASettings.TestsSlowMs);
+  ASettings.TestsSlowMs := 100000;
+  ASettings.Normalize;
+  Assert.AreEqual(TAtlasPluginSettings.cMaxTestsSlowMs, ASettings.TestsSlowMs);
+  // tests.repeat.count (#1782): 2 bis 1000.
+  ASettings.TestsRepeatCount := 1;
+  ASettings.Normalize;
+  Assert.AreEqual(TAtlasPluginSettings.cMinTestsRepeatCount, ASettings.TestsRepeatCount);
+  ASettings.TestsRepeatCount := 5000;
+  ASettings.Normalize;
+  Assert.AreEqual(TAtlasPluginSettings.cMaxTestsRepeatCount, ASettings.TestsRepeatCount);
+  // tests.flaky.runs (#1773): 3 bis 50.
+  ASettings.TestsFlakyRuns := 1;
+  ASettings.Normalize;
+  Assert.AreEqual(TAtlasPluginSettings.cMinTestsFlakyRuns, ASettings.TestsFlakyRuns);
+  ASettings.TestsFlakyRuns := 500;
+  ASettings.Normalize;
+  Assert.AreEqual(TAtlasPluginSettings.cMaxTestsFlakyRuns, ASettings.TestsFlakyRuns);
+  // tests.boundaryCases.maxCases (#2173): 1 bis 200.
+  ASettings.TestsBoundaryMax := 0;
+  ASettings.Normalize;
+  Assert.AreEqual(TAtlasPluginSettings.cMinTestsBoundaryMax, ASettings.TestsBoundaryMax);
+  ASettings.TestsBoundaryMax := 500;
+  ASettings.Normalize;
+  Assert.AreEqual(TAtlasPluginSettings.cMaxTestsBoundaryMax, ASettings.TestsBoundaryMax);
+  // tests.mutation.timeoutSec (#1460): 5 bis 3600.
+  ASettings.TestsMutationTimeoutSec := 1;
+  ASettings.Normalize;
+  Assert.AreEqual(TAtlasPluginSettings.cMinTestsMutationTimeoutSec, ASettings.TestsMutationTimeoutSec);
+  ASettings.TestsMutationTimeoutSec := 100000;
+  ASettings.Normalize;
+  Assert.AreEqual(TAtlasPluginSettings.cMaxTestsMutationTimeoutSec, ASettings.TestsMutationTimeoutSec);
+end;
+
 procedure TAtlasPluginSettingsTests.ClampsNormalizedRanges;
 var
   mSettings: TAtlasPluginSettings;
@@ -1158,76 +1251,7 @@ begin
   mSettings.ImpactDepth := 9;
   mSettings.Normalize;
   Assert.AreEqual(TAtlasPluginSettings.cMaxImpactDepth, mSettings.ImpactDepth);
-  // tests.affectedDepth (#1353): 1 bis 5.
-  mSettings.TestsAffectedDepth := 0;
-  mSettings.Normalize;
-  Assert.AreEqual(TAtlasPluginSettings.cMinTestsAffectedDepth, mSettings.TestsAffectedDepth);
-  mSettings.TestsAffectedDepth := 7;
-  mSettings.Normalize;
-  Assert.AreEqual(TAtlasPluginSettings.cMaxTestsAffectedDepth, mSettings.TestsAffectedDepth);
-  // tests.coveredBy.depth (#1778): 1 bis 5.
-  mSettings.TestsCoveredByDepth := 0;
-  mSettings.Normalize;
-  Assert.AreEqual(TAtlasPluginSettings.cMinTestsCoveredByDepth, mSettings.TestsCoveredByDepth);
-  mSettings.TestsCoveredByDepth := 7;
-  mSettings.Normalize;
-  Assert.AreEqual(TAtlasPluginSettings.cMaxTestsCoveredByDepth, mSettings.TestsCoveredByDepth);
-  // tests.fromDebugStop.maxArray (#1873): 0 bis 1000.
-  mSettings.TestsFromDebugStopMaxArray := -1;
-  mSettings.Normalize;
-  Assert.AreEqual(TAtlasPluginSettings.cMinTestsFromDebugStopMaxArray, mSettings.TestsFromDebugStopMaxArray);
-  mSettings.TestsFromDebugStopMaxArray := 5000;
-  mSettings.Normalize;
-  Assert.AreEqual(TAtlasPluginSettings.cMaxTestsFromDebugStopMaxArray, mSettings.TestsFromDebugStopMaxArray);
-  // tests.untested.warnPercent (#1783): 0 bis 100.
-  mSettings.TestsUntestedWarnPercent := -5;
-  mSettings.Normalize;
-  Assert.AreEqual(TAtlasPluginSettings.cMinTestsUntestedWarnPercent, mSettings.TestsUntestedWarnPercent);
-  mSettings.TestsUntestedWarnPercent := 150;
-  mSettings.Normalize;
-  Assert.AreEqual(TAtlasPluginSettings.cMaxTestsUntestedWarnPercent, mSettings.TestsUntestedWarnPercent);
-  // tests.onSave.max (#1775): 1 bis 1000.
-  mSettings.TestsOnSaveMax := 0;
-  mSettings.Normalize;
-  Assert.AreEqual(TAtlasPluginSettings.cMinTestsOnSaveMax, mSettings.TestsOnSaveMax);
-  mSettings.TestsOnSaveMax := 5000;
-  mSettings.Normalize;
-  Assert.AreEqual(TAtlasPluginSettings.cMaxTestsOnSaveMax, mSettings.TestsOnSaveMax);
-  // tests.slowMs (#1772): 50 bis 60000.
-  mSettings.TestsSlowMs := 10;
-  mSettings.Normalize;
-  Assert.AreEqual(TAtlasPluginSettings.cMinTestsSlowMs, mSettings.TestsSlowMs);
-  mSettings.TestsSlowMs := 100000;
-  mSettings.Normalize;
-  Assert.AreEqual(TAtlasPluginSettings.cMaxTestsSlowMs, mSettings.TestsSlowMs);
-  // tests.repeat.count (#1782): 2 bis 1000.
-  mSettings.TestsRepeatCount := 1;
-  mSettings.Normalize;
-  Assert.AreEqual(TAtlasPluginSettings.cMinTestsRepeatCount, mSettings.TestsRepeatCount);
-  mSettings.TestsRepeatCount := 5000;
-  mSettings.Normalize;
-  Assert.AreEqual(TAtlasPluginSettings.cMaxTestsRepeatCount, mSettings.TestsRepeatCount);
-  // tests.flaky.runs (#1773): 3 bis 50.
-  mSettings.TestsFlakyRuns := 1;
-  mSettings.Normalize;
-  Assert.AreEqual(TAtlasPluginSettings.cMinTestsFlakyRuns, mSettings.TestsFlakyRuns);
-  mSettings.TestsFlakyRuns := 500;
-  mSettings.Normalize;
-  Assert.AreEqual(TAtlasPluginSettings.cMaxTestsFlakyRuns, mSettings.TestsFlakyRuns);
-  // tests.boundaryCases.maxCases (#2173): 1 bis 200.
-  mSettings.TestsBoundaryMax := 0;
-  mSettings.Normalize;
-  Assert.AreEqual(TAtlasPluginSettings.cMinTestsBoundaryMax, mSettings.TestsBoundaryMax);
-  mSettings.TestsBoundaryMax := 500;
-  mSettings.Normalize;
-  Assert.AreEqual(TAtlasPluginSettings.cMaxTestsBoundaryMax, mSettings.TestsBoundaryMax);
-  // tests.mutation.timeoutSec (#1460): 5 bis 3600.
-  mSettings.TestsMutationTimeoutSec := 1;
-  mSettings.Normalize;
-  Assert.AreEqual(TAtlasPluginSettings.cMinTestsMutationTimeoutSec, mSettings.TestsMutationTimeoutSec);
-  mSettings.TestsMutationTimeoutSec := 100000;
-  mSettings.Normalize;
-  Assert.AreEqual(TAtlasPluginSettings.cMaxTestsMutationTimeoutSec, mSettings.TestsMutationTimeoutSec);
+  CheckTestsClamps(mSettings);
 end;
 
 procedure TAtlasPluginSettingsTests.NormalizesUpdateChoices;

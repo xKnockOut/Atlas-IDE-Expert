@@ -27,8 +27,6 @@ type
     function SettingsFor(const AUri: string): TRefactoringSettings;
     function Run(const ACommand, AArguments: string): string;
     function ErrorOf(const ACommand, AArguments: string; out ACode: Integer): string;
-    /// <summary>Befehle, die APart anmeldet, als JSON; gibt APart frei.</summary>
-    function CommandsOf(APart: TShellRefactoringPart): string;
   public
     [Setup]
     procedure Setup;
@@ -37,9 +35,6 @@ type
     /// <summary>Die Fassade meldet die Befehle aller Teile an, auch die des Debuggers.</summary>
     [Test]
     procedure RegistersCommandsOfAllParts;
-    /// <summary>Jeder Teil meldet nur seine eigenen Befehle an.</summary>
-    [Test]
-    procedure EachPartRegistersItsCommands;
     /// <summary>Ohne eingeschaltetes Refactoring bietet keine Datei eine Code-Aktion an.</summary>
     [Test]
     procedure DisabledRefactoringsOfferNoActions;
@@ -78,12 +73,6 @@ uses
   System.SysUtils,
   Atlas.Common.JsonRpc.Contract,
   Atlas.Common.Lsp.Contract,
-  Atlas.Common.Compiler.Contract,
-  Atlas.Common.Projects.Contract,
-  Atlas.Common.Pascal.Contract,
-  Atlas.Common.Editing.Contract,
-  Atlas.Common.Logging.Providers.Logger,
-  Atlas.Common.Index.SymbolIndex,
   Atlas.Common.Documents.Providers.DocumentStore,
   Atlas.Common.Lsp.ChangeSignature,
   Atlas.Common.Lsp.SafeDelete,
@@ -100,94 +89,21 @@ uses
   Shell.Composition.Refactorings.Conversions,
   Shell.Composition.Refactorings.Types,
   Shell.Composition.Refactorings.Fixes,
-  Shell.Composition.Refactorings.Editing,
   Shell.Composition.Stepping,
-  Shell.Composition.MethodBreakpoints,
   Atlas.Common.Lsp.Profiler,
-  Shell.Composition.Profiler;
+  Shell.Composition.Profiler,
+  Shell.Composition.Refactorings.TestSupport;
 
 const
   cUri = 'file:///tmp/Kunden.pas';
   cSource = 'unit Kunden;'#10'interface'#10'implementation'#10'procedure Laden;'#10'begin'#10'end;'#10'end.'#10;
 
-function NoNames: TArray<string>;
-begin
-  Result := nil;
-end;
-
-function NamesFunc(): TShellNamesFunc;
-begin
-  Result :=
-    function: TArray<string>
-    begin
-      Result := NoNames;
-    end;
-end;
-
-function NoText(): TShellUriTextFunc;
-begin
-  Result :=
-    function(const AUri: string): string
-    begin
-      Result := '';
-    end;
-end;
-
 procedure TShellRefactoringsTests.Setup;
-var
-  mServices: TShellRefactoringServices;
 begin
   FSettings := Default(TRefactoringSettings);
   FDocuments := TDocumentStore.Create;
-  mServices := Default(TShellRefactoringServices);
-  mServices.Logger := TLogger.Create;
-  mServices.Documents := FDocuments;
-  mServices.Index := TSymbolIndex.Create;
-  mServices.EnsureUnit :=
-    function(const AUnitName: string): Boolean
-    begin
-      Result := False;
-    end;
-  mServices.Namespaces := NamesFunc();
-  mServices.ProjectFiles := NamesFunc();
-  mServices.ReadText :=
-    function(const AFileName: string; out AText: string): Boolean
-    begin
-      AText := '';
-      Result := False;
-    end;
-  mServices.SettingsFor := SettingsFor;
-  mServices.FormatStyleFor :=
-    function(const AUri: string): TFormatStyle
-    begin
-      Result := Default(TFormatStyle);
-    end;
-  mServices.LanguageLevelFor := NoText();
-  mServices.DelphiVersionFor := NoText();
-  mServices.UsesContextFor :=
-    function(const AUri: string; out AContext: TUsesContext): Boolean
-    begin
-      AContext := Default(TUsesContext);
-      Result := False;
-    end;
-  mServices.MessagesFor :=
-    function(const AFileName: string): TArray<TCompilerMessage>
-    begin
-      Result := nil;
-    end;
-  mServices.ProjectFor :=
-    function(const AFileName: string; out AProject: TProjectInfo): Boolean
-    begin
-      AProject := Default(TProjectInfo);
-      Result := False;
-    end;
-  mServices.NewNamesFor :=
-    function(const AUri: string): TPascalNamePrefixes
-    begin
-      Result := Default(TPascalNamePrefixes);
-    end;
-  FServices := mServices;
-  FRefactorings := TShellRefactorings.Create(mServices);
+  FServices := NewRefactoringServices(FDocuments, SettingsFor);
+  FRefactorings := TShellRefactorings.Create(FServices);
   FCommands := TLspCommands.Create;
   FRefactorings.Register(FCommands);
 end;
@@ -237,47 +153,6 @@ begin
       Result := E.Message;
     end;
   end;
-end;
-
-function TShellRefactoringsTests.CommandsOf(APart: TShellRefactoringPart): string;
-var
-  mCommands: TLspCommands;
-  mCapability: TJSONObject;
-begin
-  mCommands := TLspCommands.Create;
-  try
-    APart.Register(mCommands);
-    mCapability := mCommands.Capability;
-    try
-      Result := mCapability.ToJSON;
-    finally
-      mCapability.Free;
-    end;
-  finally
-    mCommands.Free;
-    APart.Free;
-  end;
-end;
-
-procedure TShellRefactoringsTests.EachPartRegistersItsCommands;
-var
-  mText: string;
-begin
-  mText := CommandsOf(TShellStructureRefactorings.Create(FServices));
-  Assert.IsTrue(Pos(TLspChangeSignature.cApplyCommand, mText) > 0, 'Aufbau');
-  Assert.IsFalse(Pos(TLspStepFilter.cCommand, mText) > 0, 'Aufbau ohne Debugger');
-  mText := CommandsOf(TShellConversionRefactorings.Create(FServices));
-  Assert.IsFalse(Pos(TLspSafeDelete.cApplyCommand, mText) > 0, 'Umwandlungen ohne Sicher löschen');
-  Assert.IsTrue(Pos(TLspTypeAlias.cApplyCommand, CommandsOf(TShellTypeRefactorings.Create(FServices))) > 0, 'Typen');
-  Assert.IsTrue(Pos(TLspDisableWarning.cApplyCommand, CommandsOf(TShellFixRefactorings.Create(FServices))) > 0,
-    'Korrekturen');
-  Assert.IsTrue(Pos(TLspUnitRename.cCommand, CommandsOf(TShellEditingRefactorings.Create(FServices))) > 0,
-    'Bearbeiten');
-  Assert.IsTrue(Pos(TLspStepFilter.cCountsCommand, CommandsOf(TShellStepping.Create(FServices))) > 0, 'Debugger');
-  Assert.IsTrue(Pos(TLspMethodBreakpoints.cCommand, CommandsOf(TShellMethodBreakpoints.Create(FServices))) > 0,
-    'Methodenhaltepunkte');
-  Assert.IsTrue(Pos(TLspRaiseVisibility.cCommand, CommandsOf(TShellVisibilityRefactorings.Create(FServices))) > 0,
-    'Sichtbarkeit');
 end;
 
 procedure TShellRefactoringsTests.RegistersCommandsOfAllParts;

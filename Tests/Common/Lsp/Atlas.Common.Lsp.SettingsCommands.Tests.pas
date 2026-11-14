@@ -175,6 +175,44 @@ begin
   Assert.IsTrue(mOption.GetValue<TJSONArray>('columns').Items[5].GetValue<Boolean>('list'));
 end;
 
+/// <summary>Prüft einen Eintrag des Katalogs und merkt, ob Metrik, syntax und magic-number vorkamen.</summary>
+procedure CheckCatalogRule(const ARule: TJSONValue; var ASeenMetric, ASeenSyntax, ASeenMagic: Boolean);
+var
+  mOverrides: TJSONArray;
+begin
+  Assert.AreNotEqual('', ARule.GetValue<string>('group'), ARule.GetValue<string>('id'));
+  if ARule.GetValue<string>('id') = 'metric-method-length' then
+  begin
+    ASeenMetric := True;
+    AssertMethodLengthEntry(ARule);
+  end;
+  // Tabelle der Symbole (#1133): Spalten, Listen markiert.
+  if ARule.GetValue<string>('id') = 'forbidden-symbol' then
+  begin
+    AssertForbiddenSymbolColumns(ARule);
+  end;
+  // Experimentell laut "profiles" des Katalogs (#145).
+  if ARule.GetValue<string>('id') = 'magic-number' then
+  begin
+    ASeenMagic := True;
+    Assert.IsTrue(ARule.GetValue<Boolean>('experimental'));
+  end;
+  // Gegenregel (#1025).
+  if ARule.GetValue<string>('id') = 'redundant-begin-end' then
+  begin
+    mOverrides := ARule.GetValue<TJSONArray>('overriddenBy');
+    Assert.AreEqual(1, Integer(mOverrides.Count));
+    Assert.AreEqual('missing-begin-end', mOverrides.Items[0].Value);
+  end;
+  if ARule.GetValue<string>('id') = 'syntax' then
+  begin
+    ASeenSyntax := True;
+    Assert.IsNull(ARule.FindValue('experimental'));
+    Assert.IsNull(ARule.FindValue('overriddenBy'));
+    Assert.AreEqual(0, ARule.GetValue<TJSONArray>('options').Count);
+  end;
+end;
+
 procedure TLspSettingsCommandsTests.CatalogCarriesGroupOptionsAndExperimental;
 var
   mArgs: TJSONArray;
@@ -182,7 +220,6 @@ var
   mAnswer: TJSONObject;
   mRules: TJSONArray;
   mRule: TJSONValue;
-  mOverrides: TJSONArray;
   mIndex: Integer;
   mSeenMetric: Boolean;
   mSeenSyntax: Boolean;
@@ -203,37 +240,7 @@ begin
     for mIndex := 0 to mRules.Count - 1 do
     begin
       mRule := mRules.Items[mIndex];
-      Assert.AreNotEqual('', mRule.GetValue<string>('group'), mRule.GetValue<string>('id'));
-      if mRule.GetValue<string>('id') = 'metric-method-length' then
-      begin
-        mSeenMetric := True;
-        AssertMethodLengthEntry(mRule);
-      end;
-      // Tabelle der Symbole (#1133): Spalten, Listen markiert.
-      if mRule.GetValue<string>('id') = 'forbidden-symbol' then
-      begin
-        AssertForbiddenSymbolColumns(mRule);
-      end;
-      // Experimentell laut "profiles" des Katalogs (#145).
-      if mRule.GetValue<string>('id') = 'magic-number' then
-      begin
-        mSeenMagic := True;
-        Assert.IsTrue(mRule.GetValue<Boolean>('experimental'));
-      end;
-      // Gegenregel (#1025).
-      if mRule.GetValue<string>('id') = 'redundant-begin-end' then
-      begin
-        mOverrides := mRule.GetValue<TJSONArray>('overriddenBy');
-        Assert.AreEqual(1, Integer(mOverrides.Count));
-        Assert.AreEqual('missing-begin-end', mOverrides.Items[0].Value);
-      end;
-      if mRule.GetValue<string>('id') = 'syntax' then
-      begin
-        mSeenSyntax := True;
-        Assert.IsNull(mRule.FindValue('experimental'));
-        Assert.IsNull(mRule.FindValue('overriddenBy'));
-        Assert.AreEqual(0, mRule.GetValue<TJSONArray>('options').Count);
-      end;
+      CheckCatalogRule(mRule, mSeenMetric, mSeenSyntax, mSeenMagic);
     end;
     Assert.IsTrue(mSeenMetric);
     Assert.IsTrue(mSeenSyntax);

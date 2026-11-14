@@ -91,8 +91,7 @@ uses
   Shell.Linter.Query,
   Shell.Linter.Formatting,
   Shell.Linter.AffectedTests,
-  Shell.Linter.Fix,
-  Shell.Linter.Check;
+  Shell.Linter.Fix;
 
 procedure TLinterPartsTests.SetUp;
 begin

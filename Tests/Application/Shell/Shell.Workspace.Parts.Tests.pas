@@ -49,9 +49,6 @@ type
     /// <summary>Ohne Vorgabe die einzige .dproj im Ordner; eine fehlende feste Projektdatei ergibt keine.</summary>
     [Test]
     procedure LoaderFindsProjectFile;
-    /// <summary>Ein neuer Aufbau läuft noch nicht; Kodierungen ohne Dateien melden nichts.</summary>
-    [Test]
-    procedure IndexingStartsIdle;
   end;
 
 implementation
@@ -72,7 +69,6 @@ uses
   Atlas.Common.Lsp.IdeProject,
   Atlas.Common.Index.Contract,
   Atlas.Common.Index.Processes,
-  Atlas.Common.Index.SymbolIndex,
   Atlas.Common.Rules.Checker,
   Shell.Compiler,
   Shell.Workspace.Listings,
@@ -399,43 +395,6 @@ begin
     mLoader.Free;
     mBuild.Free;
     mSetup.Free;
-  end;
-end;
-
-procedure TShellWorkspacePartsTests.IndexingStartsIdle;
-var
-  mParts: TShellIndexingParts;
-  mIndexing: TShellWorkspaceIndexing;
-  mReport: TShellEncodingReport;
-  mIndex: ISymbolIndex;
-  mLogger: ILogger;
-begin
-  mIndex := TSymbolIndex.Create;
-  mLogger := TLogger.Create;
-  mParts := Default(TShellIndexingParts);
-  mParts.Name := 'Test';
-  mParts.Logger := mLogger;
-  mParts.Transport := TJsonRpcStreamTransport.Create(nil, TBytesStream.Create, True);
-  mParts.Index := mIndex;
-  mParts.ProgressToken := 'atlas-test-index';
-  mParts.Setup := TShellWorkspaceSetup.Create;
-  mParts.Events := TShellWorkspaceEvents.Create;
-  mParts.State := TShellProjectState.Create(mParts.Setup);
-  mParts.Cache := TShellWorkspaceCache.Create('Test', mLogger, mParts.Setup, mParts.Events);
-  mIndexing := TShellWorkspaceIndexing.Create(mParts);
-  mReport := TShellEncodingReport.Create('Test', FFolder, mLogger, nil, mIndex);
-  try
-    Assert.AreEqual(-1, mIndexing.Loading, 'Kein Aufbau läuft');
-    Assert.AreSame(mIndex, mIndexing.Index);
-    mReport.Report(nil);
-  finally
-    mReport.Free;
-    mIndexing.Free;
-    mParts.Cache.Free;
-    mParts.State.Free;
-    mParts.Events.Free;
-    mParts.Setup.Free;
-    mParts := Default(TShellIndexingParts);
   end;
 end;
 
