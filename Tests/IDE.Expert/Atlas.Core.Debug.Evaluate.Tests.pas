@@ -224,11 +224,11 @@ begin
   try
     mNode := mList.Add(' Summe ');
     Assert.AreEqual('Summe', mNode.Expression);
-    Assert.IsTrue(mNode.State = TAtlasEvalState.Pending);
+    Assert.AreEqual<TAtlasEvalState>(TAtlasEvalState.Pending, mNode.State);
     mList.SetResult(mNode, True, '1');
     Assert.IsFalse(mNode.Changed, 'erster Halt');
     mList.BeginStop;
-    Assert.IsTrue(mNode.State = TAtlasEvalState.Pending);
+    Assert.AreEqual<TAtlasEvalState>(TAtlasEvalState.Pending, mNode.State);
     mList.SetResult(mNode, True, '2');
     Assert.IsTrue(mNode.Changed, 'geändert');
     mList.BeginStop;
@@ -236,13 +236,13 @@ begin
     Assert.IsFalse(mNode.Changed, 'gleich geblieben');
     mList.BeginStop;
     mList.SetResult(mNode, False, 'Fehler');
-    Assert.IsTrue(mNode.State = TAtlasEvalState.Error);
+    Assert.AreEqual<TAtlasEvalState>(TAtlasEvalState.Error, mNode.State);
     Assert.IsFalse(mNode.Changed);
     mList.BeginStop;
     mList.SetResult(mNode, True, '3');
     Assert.IsTrue(mNode.Changed, 'verglichen mit dem letzten gültigen Wert');
     mList.Unavailable;
-    Assert.IsTrue(mNode.State = TAtlasEvalState.Unavailable);
+    Assert.AreEqual<TAtlasEvalState>(TAtlasEvalState.Unavailable, mNode.State);
     Assert.IsNull(mList.Add('  '));
   finally
     mList.Free;
@@ -346,10 +346,10 @@ begin
     mLong := mList.Add('AB');
     mChild := mLong.AddChild('X', 'AB.X');
     mDouble := mChild.AddChild('Y', 'AB.X.Y');
-    Assert.IsTrue(mList.Find('AB'#1'X') = mChild, 'Kind unter AB');
-    Assert.IsTrue(mList.Find('AB'#1'X'#1'Y') = mDouble, 'Enkel');
-    Assert.IsTrue(mList.Find('A'#1'X') = mShort.Children[0], 'Kind unter A');
-    Assert.IsTrue(mList.Find('AB') = mLong);
+    Assert.AreSame(mChild, mList.Find('AB'#1'X'), 'Kind unter AB');
+    Assert.AreSame(mDouble, mList.Find('AB'#1'X'#1'Y'), 'Enkel');
+    Assert.AreSame(mShort.Children[0], mList.Find('A'#1'X'), 'Kind unter A');
+    Assert.AreSame(mLong, mList.Find('AB'));
     Assert.IsNull(mList.Find('A'#1'Z'));
     Assert.IsNull(mList.Find('AB'#1));
   finally

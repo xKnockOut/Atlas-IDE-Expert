@@ -104,11 +104,11 @@ begin
   Assert.AreEqual('TKunde.Validiere', mAnswer.Hits[0].DisplayName);
   Assert.AreEqual('Kunden.TKunde.Validiere', mAnswer.Hits[0].QualifiedName);
   Assert.AreEqual(41, mAnswer.Hits[0].Line);
-  Assert.IsTrue(mAnswer.Hits[0].Reason = TAtlasMethodHitReason.Override_);
+  Assert.AreEqual<TAtlasMethodHitReason>(TAtlasMethodHitReason.Override_, mAnswer.Hits[0].Reason);
   Assert.AreEqual('TBasis.Validiere', mAnswer.Hits[0].Via);
   Assert.AreEqual('Frei', mAnswer.Hits[1].DisplayName);
   Assert.IsFalse(mAnswer.Hits[1].HasSource);
-  Assert.IsTrue(mAnswer.Hits[1].Reason = TAtlasMethodHitReason.Implementation_);
+  Assert.AreEqual<TAtlasMethodHitReason>(TAtlasMethodHitReason.Implementation_, mAnswer.Hits[1].Reason);
   Assert.AreEqual(1, TAtlasMethodBreakpoints.WithSource(mAnswer.Hits));
 end;
 

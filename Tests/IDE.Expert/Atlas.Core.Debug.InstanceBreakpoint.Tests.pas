@@ -56,13 +56,13 @@ var
   mAddress: UInt64;
 begin
   Assert.IsTrue(TAtlasInstanceBreakpoint.TryParseAddress('$A3F1C20', mAddress));
-  Assert.IsTrue(cAddress = mAddress);
+  Assert.AreEqual<UInt64>(cAddress, mAddress);
   Assert.IsTrue(TAtlasInstanceBreakpoint.TryParseAddress(':0A3F1C20', mAddress));
-  Assert.IsTrue(cAddress = mAddress);
+  Assert.AreEqual<UInt64>(cAddress, mAddress);
   Assert.IsTrue(TAtlasInstanceBreakpoint.TryParseAddress(' Pointer($0a3f1c20) ', mAddress));
-  Assert.IsTrue(cAddress = mAddress);
+  Assert.AreEqual<UInt64>(cAddress, mAddress);
   Assert.IsTrue(TAtlasInstanceBreakpoint.TryParseAddress('0x00007FF6A3F1C20', mAddress));
-  Assert.IsTrue(UInt64($00007FF6A3F1C20) = mAddress);
+  Assert.AreEqual<UInt64>(mAddress, UInt64($00007FF6A3F1C20));
   Assert.AreEqual('$0A3F1C20', TAtlasInstanceBreakpoint.AddressText(cAddress));
   Assert.AreEqual('$7FF6A3F1C20', TAtlasInstanceBreakpoint.AddressText(UInt64($7FF6A3F1C20)));
 end;
@@ -123,9 +123,9 @@ var
   mAddress: UInt64;
 begin
   Assert.IsTrue(TAtlasInstanceBreakpoint.IsAddressCondition('pointer( self )=Pointer($0A3F1C20)', mAddress));
-  Assert.IsTrue(cAddress = mAddress);
+  Assert.AreEqual<UInt64>(cAddress, mAddress);
   Assert.IsTrue(TAtlasInstanceBreakpoint.IsAddressCondition('(NativeUInt(Self) = $A3F1C20)', mAddress));
-  Assert.IsTrue(cAddress = mAddress);
+  Assert.AreEqual<UInt64>(cAddress, mAddress);
   Assert.IsFalse(TAtlasInstanceBreakpoint.IsAddressCondition('Pointer(Kunde) = Pointer($0A3F1C20)', mAddress));
   Assert.IsFalse(TAtlasInstanceBreakpoint.IsAddressCondition('Pointer(Self) = Pointer($0A3F1C20) + 1', mAddress));
   Assert.IsTrue(TAtlasInstanceBreakpoint.HasAddressCondition(

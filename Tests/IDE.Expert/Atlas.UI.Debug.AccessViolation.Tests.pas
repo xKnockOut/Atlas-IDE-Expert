@@ -148,7 +148,7 @@ begin
     Assert.IsFalse(mExplanation.Busy);
     Assert.AreEqual('Auftrag.Kunde ist nil', mExplanation.Headline);
     Assert.AreEqual('Zugriff auf Feld FAdresse (Versatz $1C)', mExplanation.Detail);
-    Assert.IsTrue(mExplanation.HeadlineMark = TAtlasDebugBannerMark.Bad);
+    Assert.AreEqual<TAtlasDebugBannerMark>(TAtlasDebugBannerMark.Bad, mExplanation.HeadlineMark);
     Assert.AreEqual('Kunde', mExplanation.WhereName);
     Assert.AreEqual('Auftrag.Kunde', mExplanation.EvaluateExpression);
   finally
@@ -252,7 +252,7 @@ begin
     Assert.AreEqual('Ursache nicht eindeutig', mExplanation.Headline);
     Assert.IsTrue(mExplanation.Detail.Contains('kein geprüftes Glied'), mExplanation.Detail);
     Assert.IsTrue(mExplanation.Detail.EndsWith('2 Anweisungen in der Zeile'), mExplanation.Detail);
-    Assert.IsTrue(mExplanation.HeadlineMark = TAtlasDebugBannerMark.Neutral);
+    Assert.AreEqual<TAtlasDebugBannerMark>(TAtlasDebugBannerMark.Neutral, mExplanation.HeadlineMark);
     Assert.AreEqual('', mExplanation.WhereName);
     Assert.AreEqual('Auftrag.Kunde.Adresse', mExplanation.EvaluateExpression);
   finally
@@ -271,9 +271,9 @@ begin
   try
     mExplanation := TAtlasAvTexts.FromAnalysis(mAnalysis, True, True, '');
     Assert.AreEqual(2, Integer(Length(mExplanation.Lines)));
-    Assert.IsTrue(mExplanation.Lines[0].Mark = TAtlasDebugBannerMark.Ok);
+    Assert.AreEqual<TAtlasDebugBannerMark>(TAtlasDebugBannerMark.Ok, mExplanation.Lines[0].Mark);
     Assert.AreEqual('Auftrag = $02A41230', mExplanation.Lines[0].Text);
-    Assert.IsTrue(mExplanation.Lines[1].Mark = TAtlasDebugBannerMark.Neutral);
+    Assert.AreEqual<TAtlasDebugBannerMark>(TAtlasDebugBannerMark.Neutral, mExplanation.Lines[1].Mark);
     Assert.AreEqual('Auftrag.Kunde: nicht ausgewertet: ruft etwas auf (debug.explainAccessViolation.allowCalls)',
       mExplanation.Lines[1].Text);
   finally
@@ -283,7 +283,7 @@ begin
   mAnalysis := Analyse(KundenKette(True), $1C, True);
   try
     mExplanation := TAtlasAvTexts.FromAnalysis(mAnalysis, True, True, '');
-    Assert.IsTrue(mExplanation.Lines[1].Mark = TAtlasDebugBannerMark.Bad);
+    Assert.AreEqual<TAtlasDebugBannerMark>(TAtlasDebugBannerMark.Bad, mExplanation.Lines[1].Mark);
     Assert.AreEqual('Auftrag.Kunde = nil', mExplanation.Lines[1].Text);
   finally
     mAnalysis.Free;

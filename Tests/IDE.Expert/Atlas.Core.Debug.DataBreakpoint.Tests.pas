@@ -138,7 +138,7 @@ begin
   mPlan := TAtlasDataBreakpoint.Plan($2000, 24, 8);
   Assert.AreEqual(8, mPlan.Length, 'Record');
   Assert.IsTrue(mPlan.Partial);
-  Assert.IsTrue(UInt64($2000) = mPlan.Address);
+  Assert.AreEqual<UInt64>(mPlan.Address, UInt64($2000));
 end;
 
 procedure TCoreDebugDataBreakpointTests.PlanRespectsAlignment;
@@ -176,33 +176,41 @@ var
   mValue: Int64;
 begin
   Assert.IsTrue(TAtlasDataBreakpoint.TryReadInteger(Bytes([$2A, 0, 0, 0]), True, mValue));
-  Assert.IsTrue(mValue = 42);
+  Assert.AreEqual<Int64>(42, mValue);
   Assert.IsTrue(TAtlasDataBreakpoint.TryReadInteger(Bytes([$FF, $FF, $FF, $FF]), True, mValue));
-  Assert.IsTrue(mValue = -1, 'mit Vorzeichen');
+  Assert.AreEqual<Int64>(-1, mValue, 'mit Vorzeichen');
   Assert.IsTrue(TAtlasDataBreakpoint.TryReadInteger(Bytes([$FF, $FF, $FF, $FF]), False, mValue));
-  Assert.IsTrue(mValue = 4294967295, 'ohne Vorzeichen');
+  Assert.AreEqual<Int64>(4294967295, mValue, 'ohne Vorzeichen');
   Assert.IsTrue(TAtlasDataBreakpoint.TryReadInteger(Bytes([$FE, $FF]), True, mValue));
-  Assert.IsTrue(mValue = -2);
+  Assert.AreEqual<Int64>(-2, mValue);
   Assert.IsTrue(TAtlasDataBreakpoint.TryReadInteger(Bytes([$FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF]), True, mValue));
-  Assert.IsTrue(mValue = -1, 'acht Byte');
+  Assert.AreEqual<Int64>(-1, mValue, 'acht Byte');
   Assert.IsFalse(TAtlasDataBreakpoint.TryReadInteger(nil, True, mValue));
   Assert.IsFalse(TAtlasDataBreakpoint.TryReadInteger(Bytes([1, 2, 3, 4, 5, 6, 7, 8, 9]), True, mValue));
 end;
 
 procedure TCoreDebugDataBreakpointTests.KindFromDebuggerText;
 begin
-  Assert.IsTrue(TAtlasDataValueKind.Signed = TAtlasDataBreakpoint.KindOf('-5', Bytes([$FB, $FF, $FF, $FF]), False));
-  Assert.IsTrue(TAtlasDataValueKind.Unsigned =
+  Assert.AreEqual<TAtlasDataValueKind>(TAtlasDataValueKind.Signed,
+    TAtlasDataBreakpoint.KindOf('-5', Bytes([$FB, $FF, $FF, $FF]), False));
+  Assert.AreEqual<TAtlasDataValueKind>(TAtlasDataValueKind.Unsigned,
     TAtlasDataBreakpoint.KindOf('4294967291', Bytes([$FB, $FF, $FF, $FF]), False));
-  Assert.IsTrue(TAtlasDataValueKind.Signed = TAtlasDataBreakpoint.KindOf('42', Bytes([$2A, 0, 0, 0]), False));
-  Assert.IsTrue(TAtlasDataValueKind.Boolean = TAtlasDataBreakpoint.KindOf('True', Bytes([1]), False));
-  Assert.IsTrue(TAtlasDataValueKind.Text = TAtlasDataBreakpoint.KindOf('''Meier''', Bytes([0, $10, 0, 0]), False));
-  Assert.IsTrue(TAtlasDataValueKind.Text = TAtlasDataBreakpoint.KindOf('#13#10', Bytes([0, $10, 0, 0]), False));
-  Assert.IsTrue(TAtlasDataValueKind.Raw = TAtlasDataBreakpoint.KindOf('3.5', Bytes([0, 0, $60, $40]), False),
+  Assert.AreEqual<TAtlasDataValueKind>(TAtlasDataValueKind.Signed,
+    TAtlasDataBreakpoint.KindOf('42', Bytes([$2A, 0, 0, 0]), False));
+  Assert.AreEqual<TAtlasDataValueKind>(TAtlasDataValueKind.Boolean,
+    TAtlasDataBreakpoint.KindOf('True', Bytes([1]), False));
+  Assert.AreEqual<TAtlasDataValueKind>(TAtlasDataValueKind.Text,
+    TAtlasDataBreakpoint.KindOf('''Meier''', Bytes([0, $10, 0, 0]), False));
+  Assert.AreEqual<TAtlasDataValueKind>(TAtlasDataValueKind.Text,
+    TAtlasDataBreakpoint.KindOf('#13#10', Bytes([0, $10, 0, 0]), False));
+  Assert.AreEqual<TAtlasDataValueKind>(TAtlasDataValueKind.Raw,
+    TAtlasDataBreakpoint.KindOf('3.5', Bytes([0, 0, $60, $40]), False),
     'Gleitkomma');
-  Assert.IsTrue(TAtlasDataValueKind.Raw = TAtlasDataBreakpoint.KindOf('42', Bytes([$2A, 0, 0, 0]), True),
+  Assert.AreEqual<TAtlasDataValueKind>(TAtlasDataValueKind.Raw,
+    TAtlasDataBreakpoint.KindOf('42', Bytes([$2A, 0, 0, 0]), True),
     'nur der erste Teil');
-  Assert.IsTrue(TAtlasDataValueKind.Raw = TAtlasDataBreakpoint.KindOf('7', Bytes([$2A, 0, 0, 0]), False),
+  Assert.AreEqual<TAtlasDataValueKind>(TAtlasDataValueKind.Raw,
+    TAtlasDataBreakpoint.KindOf('7', Bytes([$2A, 0, 0, 0]), False),
     'Text passt nicht zu den Bytes');
 end;
 

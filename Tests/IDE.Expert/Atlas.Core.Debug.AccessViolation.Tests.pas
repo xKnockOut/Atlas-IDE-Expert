@@ -199,15 +199,15 @@ begin
     'Zugriffsverletzung bei Adresse 00451234 in Modul ''Kasse.exe''. Lesen von Adresse 0000001C');
   Assert.IsTrue(mParsed.IsAccessViolation);
   Assert.IsTrue(mParsed.AddressKnown);
-  Assert.IsTrue(mParsed.Operation = TAtlasAvOperation.Read);
+  Assert.AreEqual<TAtlasAvOperation>(TAtlasAvOperation.Read, mParsed.Operation);
   Assert.AreEqual<UInt64>(UInt64($1C), mParsed.Address);
   mParsed := TAtlasAvMessage.Parse('EAccessViolation',
     'Zugriffsverletzung bei Adresse 00451234 in Modul ''Kasse.exe''. Schreiben von Adresse 00000008');
-  Assert.IsTrue(mParsed.Operation = TAtlasAvOperation.Write);
+  Assert.AreEqual<TAtlasAvOperation>(TAtlasAvOperation.Write, mParsed.Operation);
   Assert.AreEqual<UInt64>(UInt64(8), mParsed.Address);
   mParsed := TAtlasAvMessage.Parse('EAccessViolation',
     'Zugriffsverletzung bei Adresse 00000000. Ausführung von Adresse 00000000');
-  Assert.IsTrue(mParsed.Operation = TAtlasAvOperation.Execute);
+  Assert.AreEqual<TAtlasAvOperation>(TAtlasAvOperation.Execute, mParsed.Operation);
   Assert.AreEqual<UInt64>(UInt64(0), mParsed.Address);
 end;
 
@@ -218,7 +218,7 @@ begin
   mParsed := TAtlasAvMessage.Parse('EAccessViolation',
     'Access violation at address 00007FF6A1B21234 in module ''Kasse.exe''. Write of address 0000000000000010');
   Assert.IsTrue(mParsed.AddressKnown);
-  Assert.IsTrue(mParsed.Operation = TAtlasAvOperation.Write);
+  Assert.AreEqual<TAtlasAvOperation>(TAtlasAvOperation.Write, mParsed.Operation);
   Assert.AreEqual<UInt64>(UInt64($10), mParsed.Address);
   mParsed := TAtlasAvMessage.Parse('EAccessViolation',
     'Access violation at address 00451234. Read of address FEEEFEEEFEEEFEF2');
@@ -295,7 +295,7 @@ begin
   try
     Run(mAnalysis);
     mVerdict := mAnalysis.Verdict;
-    Assert.IsTrue(mVerdict.Kind = TAtlasAvVerdictKind.NilLink);
+    Assert.AreEqual<TAtlasAvVerdictKind>(TAtlasAvVerdictKind.NilLink, mVerdict.Kind);
     Assert.IsTrue(mVerdict.HasCulprit);
     Assert.AreEqual('Auftrag.Kunde', mVerdict.Culprit.Expression);
     Assert.AreEqual('FAdresse', mVerdict.Field);
@@ -303,9 +303,9 @@ begin
     Assert.IsTrue(mVerdict.FieldExact);
     Assert.IsFalse(mVerdict.VmtAccess);
     Assert.AreEqual(1, mVerdict.Causes);
-    Assert.IsTrue(mAnalysis.Checks[0].State = TAtlasAvCheckState.Ok);
+    Assert.AreEqual<TAtlasAvCheckState>(TAtlasAvCheckState.Ok, mAnalysis.Checks[0].State);
     Assert.AreEqual('$02A41230', mAnalysis.Checks[0].Value);
-    Assert.IsTrue(mAnalysis.Checks[1].State = TAtlasAvCheckState.NilValue);
+    Assert.AreEqual<TAtlasAvCheckState>(TAtlasAvCheckState.NilValue, mAnalysis.Checks[1].State);
     // Die Schätzung zuerst: eine einzige Frage nach dem Versatz, kein Kopf.
     Assert.AreEqual('NativeInt(@TKunde(nil).FAdresse)', FAsked[High(FAsked)]);
     Assert.AreEqual(3, Integer(Length(FAsked)));
@@ -326,7 +326,7 @@ begin
   try
     Run(mAnalysis);
     mVerdict := mAnalysis.Verdict;
-    Assert.IsTrue(mVerdict.Kind = TAtlasAvVerdictKind.NilLink);
+    Assert.AreEqual<TAtlasAvVerdictKind>(TAtlasAvVerdictKind.NilLink, mVerdict.Kind);
     Assert.AreEqual('FAdresse', mVerdict.Field);
     Assert.IsFalse(mVerdict.FieldExact);
     // Nach dem ersten Fehler fragt Atlas nicht weiter.
@@ -350,7 +350,7 @@ begin
   try
     Run(mAnalysis);
     mVerdict := mAnalysis.Verdict;
-    Assert.IsTrue(mVerdict.Kind = TAtlasAvVerdictKind.NilLink);
+    Assert.AreEqual<TAtlasAvVerdictKind>(TAtlasAvVerdictKind.NilLink, mVerdict.Kind);
     // Geschätzt war FOrt (12), der Debugger sagt 24; kein anderes Feld liegt bei 12.
     Assert.AreEqual('', mVerdict.Field);
     Assert.IsTrue(Asked('NativeInt(@TKunde(nil).FName)'));
@@ -381,7 +381,7 @@ begin
   mAnalysis := TAtlasAvAnalysis.Create(KundenKette(False), AvMessage(0), 4, False);
   try
     Run(mAnalysis);
-    Assert.IsTrue(mAnalysis.Verdict.Kind = TAtlasAvVerdictKind.NilLink);
+    Assert.AreEqual<TAtlasAvVerdictKind>(TAtlasAvVerdictKind.NilLink, mAnalysis.Verdict.Kind);
     Assert.IsTrue(mAnalysis.Verdict.VmtAccess);
     Assert.AreEqual('', mAnalysis.Verdict.Field);
     Assert.AreEqual(2, Integer(Length(FAsked)));
@@ -398,10 +398,10 @@ begin
   mAnalysis := TAtlasAvAnalysis.Create(KundenKette(False), AvMessage($80808088), 4, False);
   try
     Run(mAnalysis);
-    Assert.IsTrue(mAnalysis.Verdict.Kind = TAtlasAvVerdictKind.Freed);
+    Assert.AreEqual<TAtlasAvVerdictKind>(TAtlasAvVerdictKind.Freed, mAnalysis.Verdict.Kind);
     Assert.AreEqual('Auftrag', mAnalysis.Verdict.Culprit.Expression);
     Assert.AreEqual<UInt64>(UInt64($80808080), mAnalysis.Verdict.Value);
-    Assert.IsTrue(mAnalysis.Checks[1].State = TAtlasAvCheckState.NotReached);
+    Assert.AreEqual<TAtlasAvCheckState>(TAtlasAvCheckState.NotReached, mAnalysis.Checks[1].State);
     Assert.IsFalse(Asked('Pointer(Auftrag.Kunde)'));
   finally
     mAnalysis.Free;
@@ -419,10 +419,10 @@ begin
   mAnalysis := TAtlasAvAnalysis.Create(KundenKette(False), AvMessage($02A50008), 4, False);
   try
     Run(mAnalysis);
-    Assert.IsTrue(mAnalysis.Verdict.Kind = TAtlasAvVerdictKind.Freed);
+    Assert.AreEqual<TAtlasAvVerdictKind>(TAtlasAvVerdictKind.Freed, mAnalysis.Verdict.Kind);
     Assert.AreEqual('Auftrag.Kunde', mAnalysis.Verdict.Culprit.Expression);
-    Assert.IsTrue(mAnalysis.Checks[0].State = TAtlasAvCheckState.Ok);
-    Assert.IsTrue(mAnalysis.Checks[1].State = TAtlasAvCheckState.Freed);
+    Assert.AreEqual<TAtlasAvCheckState>(TAtlasAvCheckState.Ok, mAnalysis.Checks[0].State);
+    Assert.AreEqual<TAtlasAvCheckState>(TAtlasAvCheckState.Freed, mAnalysis.Checks[1].State);
   finally
     mAnalysis.Free;
   end;
@@ -442,7 +442,7 @@ begin
   mAnalysis := TAtlasAvAnalysis.Create(KundenKette(False), AvMessage($02A50008), 4, False);
   try
     Run(mAnalysis);
-    Assert.IsTrue(mAnalysis.Verdict.Kind = TAtlasAvVerdictKind.Freed);
+    Assert.AreEqual<TAtlasAvVerdictKind>(TAtlasAvVerdictKind.Freed, mAnalysis.Verdict.Kind);
     Assert.AreEqual('Auftrag.Kunde', mAnalysis.Verdict.Culprit.Expression);
     Assert.IsTrue(Asked('PNativeUInt($02A41234)^'), 'zweites Wort auch beim ersten Objekt');
   finally
@@ -459,7 +459,7 @@ begin
   mAnalysis := TAtlasAvAnalysis.Create(KundenKette(False), AvMessage($24), 4, False);
   try
     Run(mAnalysis);
-    Assert.IsTrue(mAnalysis.Verdict.Kind = TAtlasAvVerdictKind.Invalid);
+    Assert.AreEqual<TAtlasAvVerdictKind>(TAtlasAvVerdictKind.Invalid, mAnalysis.Verdict.Kind);
     Assert.AreEqual<UInt64>(UInt64($1C), mAnalysis.Verdict.Value);
     Assert.AreEqual('Auftrag.Kunde', mAnalysis.Verdict.Culprit.Expression);
   finally
@@ -483,10 +483,10 @@ begin
     AvMessage($03000030), 4, False);
   try
     Run(mAnalysis);
-    Assert.IsTrue(mAnalysis.Verdict.Kind = TAtlasAvVerdictKind.OutOfRange);
+    Assert.AreEqual<TAtlasAvVerdictKind>(TAtlasAvVerdictKind.OutOfRange, mAnalysis.Verdict.Kind);
     Assert.AreEqual<Int64>(Int64(7), mAnalysis.Verdict.Index);
     Assert.AreEqual<Int64>(Int64(5), mAnalysis.Verdict.Length);
-    Assert.IsTrue(mAnalysis.Checks[1].State = TAtlasAvCheckState.NotReached);
+    Assert.AreEqual<TAtlasAvCheckState>(TAtlasAvCheckState.NotReached, mAnalysis.Checks[1].State);
     Assert.AreEqual('$03000010 · I = 7 / 5', mAnalysis.Checks[0].Value);
   finally
     mAnalysis.Free;
@@ -500,7 +500,7 @@ begin
     AvMessage(4), 4, False);
   try
     Run(mAnalysis);
-    Assert.IsTrue(mAnalysis.Verdict.Kind = TAtlasAvVerdictKind.NilLink);
+    Assert.AreEqual<TAtlasAvVerdictKind>(TAtlasAvVerdictKind.NilLink, mAnalysis.Verdict.Kind);
     Assert.AreEqual('Liste[I]', mAnalysis.Verdict.Culprit.Expression);
   finally
     mAnalysis.Free;
@@ -517,9 +517,9 @@ begin
   mAnalysis := TAtlasAvAnalysis.Create(KundenKette(True), AvMessage(8), 4, False);
   try
     Run(mAnalysis);
-    Assert.IsTrue(mAnalysis.Checks[1].State = TAtlasAvCheckState.NotEvaluated);
+    Assert.AreEqual<TAtlasAvCheckState>(TAtlasAvCheckState.NotEvaluated, mAnalysis.Checks[1].State);
     Assert.IsFalse(Asked('Pointer(Auftrag.Kunde)'));
-    Assert.IsTrue(mAnalysis.Verdict.Kind = TAtlasAvVerdictKind.Ambiguous);
+    Assert.AreEqual<TAtlasAvVerdictKind>(TAtlasAvVerdictKind.Ambiguous, mAnalysis.Verdict.Kind);
     Assert.AreEqual(0, mAnalysis.Verdict.Causes);
   finally
     mAnalysis.Free;
@@ -537,7 +537,7 @@ begin
   mAnalysis := TAtlasAvAnalysis.Create(KundenKette(True), AvMessage(8), 4, True);
   try
     Run(mAnalysis);
-    Assert.IsTrue(mAnalysis.Verdict.Kind = TAtlasAvVerdictKind.NilLink);
+    Assert.AreEqual<TAtlasAvVerdictKind>(TAtlasAvVerdictKind.NilLink, mAnalysis.Verdict.Kind);
     Assert.AreEqual('Auftrag.Kunde', mAnalysis.Verdict.Culprit.Expression);
     for mIndex := 0 to High(FAsked) do
     begin
@@ -562,11 +562,11 @@ begin
   mAnalysis := TAtlasAvAnalysis.Create(mInput, AvMessage(4), 4, False);
   try
     Run(mAnalysis);
-    Assert.IsTrue(mAnalysis.Verdict.Kind = TAtlasAvVerdictKind.Ambiguous);
+    Assert.AreEqual<TAtlasAvVerdictKind>(TAtlasAvVerdictKind.Ambiguous, mAnalysis.Verdict.Kind);
     Assert.AreEqual(2, mAnalysis.Verdict.Causes);
     Assert.IsFalse(mAnalysis.Verdict.HasCulprit);
-    Assert.IsTrue(mAnalysis.Checks[0].State = TAtlasAvCheckState.NilValue);
-    Assert.IsTrue(mAnalysis.Checks[1].State = TAtlasAvCheckState.NilValue);
+    Assert.AreEqual<TAtlasAvCheckState>(TAtlasAvCheckState.NilValue, mAnalysis.Checks[0].State);
+    Assert.AreEqual<TAtlasAvCheckState>(TAtlasAvCheckState.NilValue, mAnalysis.Checks[1].State);
   finally
     mAnalysis.Free;
   end;
@@ -583,7 +583,7 @@ begin
   mAnalysis := TAtlasAvAnalysis.Create(KundenKette(False), AvMessage($80808094), 4, False);
   try
     Run(mAnalysis);
-    Assert.IsTrue(mAnalysis.Verdict.Kind = TAtlasAvVerdictKind.FreedMemory);
+    Assert.AreEqual<TAtlasAvVerdictKind>(TAtlasAvVerdictKind.FreedMemory, mAnalysis.Verdict.Kind);
     Assert.AreEqual<UInt64>(UInt64($80808094), mAnalysis.Verdict.Value);
   finally
     mAnalysis.Free;
@@ -600,7 +600,7 @@ begin
     Run(mAnalysis);
     Assert.IsTrue(Asked('Pointer(Auftrag)'));
     Assert.IsTrue(Asked('Auftrag'));
-    Assert.IsTrue(mAnalysis.Verdict.Kind = TAtlasAvVerdictKind.NilLink);
+    Assert.AreEqual<TAtlasAvVerdictKind>(TAtlasAvVerdictKind.NilLink, mAnalysis.Verdict.Kind);
     Assert.AreEqual('Auftrag', mAnalysis.Verdict.Culprit.Expression);
   finally
     mAnalysis.Free;
@@ -619,9 +619,9 @@ begin
     mAnalysis.Abort;
     Assert.IsTrue(mAnalysis.Done);
     Assert.IsFalse(mAnalysis.Next(mRequest));
-    Assert.IsTrue(mAnalysis.Checks[0].State = TAtlasAvCheckState.NotEvaluated);
-    Assert.IsTrue(mAnalysis.Checks[1].State = TAtlasAvCheckState.NotEvaluated);
-    Assert.IsTrue(mAnalysis.Verdict.Kind = TAtlasAvVerdictKind.Ambiguous);
+    Assert.AreEqual<TAtlasAvCheckState>(TAtlasAvCheckState.NotEvaluated, mAnalysis.Checks[0].State);
+    Assert.AreEqual<TAtlasAvCheckState>(TAtlasAvCheckState.NotEvaluated, mAnalysis.Checks[1].State);
+    Assert.AreEqual<TAtlasAvVerdictKind>(TAtlasAvVerdictKind.Ambiguous, mAnalysis.Verdict.Kind);
   finally
     mAnalysis.Free;
   end;

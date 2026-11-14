@@ -213,22 +213,22 @@ begin
     mList.BeginStop;
     mHost.Sync.Sync(mList);
     Assert.AreEqual(3, Integer(mHost.Tree.Items.Count));
-    Assert.IsTrue(Pointer(mHost.Tree.Items[0]) = Pointer(mRoot), 'derselbe Knoten');
+    Assert.AreSame(mRoot, mHost.Tree.Items[0], 'derselbe Knoten');
     // Aufgeklappt mit Teilen: Kinder kommen dazu, die Zeile bleibt.
     mNode.Expanded := True;
     mList.SetResult(mNode, True, '(FName: ''Meier''; FCount: 4)');
     mHost.Sync.Sync(mList);
     Assert.AreEqual(4, Integer(mHost.Tree.Items.Count), 'Self, FName, FCount, Zahl');
-    Assert.IsTrue(Pointer(mHost.Tree.Items[0]) = Pointer(mRoot));
+    Assert.AreSame(mRoot, mHost.Tree.Items[0]);
     Assert.IsTrue(mRoot.Expanded);
     Assert.AreEqual('FCount = 4', mHost.Tree.Items[2].Text);
     mField := mHost.Tree.Items[1];
     // Nur ein neuer Wert für Zahl: alle Baumknoten bleiben.
     mList.SetResult(mList.Roots[1], True, '8');
     mHost.Sync.Sync(mList);
-    Assert.IsTrue(Pointer(mHost.Tree.Items[1]) = Pointer(mField), 'Feld bleibt');
+    Assert.AreSame(mField, mHost.Tree.Items[1], 'Feld bleibt');
     Assert.AreEqual('Zahl = 8', mHost.Tree.Items[3].Text);
-    Assert.IsTrue(mHost.Sync.ItemOf('Zahl') = mHost.Tree.Items[3]);
+    Assert.AreSame(mHost.Tree.Items[3], mHost.Sync.ItemOf('Zahl'));
     Assert.IsNull(mHost.Sync.ItemOf('weg'));
   finally
     mHost.Free;
@@ -254,8 +254,8 @@ begin
     mList.Delete(1);
     mHost.Sync.Sync(mList);
     Assert.AreEqual(2, Integer(mHost.Tree.Items.Count));
-    Assert.IsTrue(Pointer(mHost.Tree.Items[0]) = Pointer(mFirst));
-    Assert.IsTrue(Pointer(mHost.Tree.Items[1]) = Pointer(mThird), 'C bleibt stehen');
+    Assert.AreSame(mFirst, mHost.Tree.Items[0]);
+    Assert.AreSame(mThird, mHost.Tree.Items[1], 'C bleibt stehen');
     mList.Add('D');
     mHost.Sync.Sync(mList);
     Assert.AreEqual(3, Integer(mHost.Tree.Items.Count));
@@ -284,12 +284,12 @@ begin
     mList.SetResult(mOther, False, 'Fehler');
     mHost.Sync.Sync(mList);
     Assert.IsTrue(mHost.Sync.InfoOf(mHost.Tree.Items[0]).Bold, 'festgeheftet fett');
-    Assert.IsTrue(mHost.Sync.InfoOf(mHost.Tree.Items[0]).Look = TAtlasEvalLook.Normal);
-    Assert.IsTrue(mHost.Sync.InfoOf(mHost.Tree.Items[1]).Look = TAtlasEvalLook.Gray, 'Fehler grau');
+    Assert.AreEqual<TAtlasEvalLook>(TAtlasEvalLook.Normal, mHost.Sync.InfoOf(mHost.Tree.Items[0]).Look);
+    Assert.AreEqual<TAtlasEvalLook>(TAtlasEvalLook.Gray, mHost.Sync.InfoOf(mHost.Tree.Items[1]).Look, 'Fehler grau');
     mList.BeginStop;
     mList.SetResult(mNode, True, '2');
     mHost.Sync.Sync(mList);
-    Assert.IsTrue(mHost.Sync.InfoOf(mHost.Tree.Items[0]).Look = TAtlasEvalLook.Changed, 'geändert');
+    Assert.AreEqual<TAtlasEvalLook>(TAtlasEvalLook.Changed, mHost.Sync.InfoOf(mHost.Tree.Items[0]).Look, 'geändert');
     mNode.Pinned := False;
     mHost.Sync.Sync(mList);
     Assert.IsFalse(mHost.Sync.InfoOf(mHost.Tree.Items[0]).Bold);
@@ -297,9 +297,9 @@ begin
     mList.SetFields(mOther, nil);
     mHost.Sync.Sync(mList);
     Assert.AreEqual('(keine Felder)', mHost.Tree.Items[2].Text);
-    Assert.IsTrue(mHost.Sync.InfoOf(mHost.Tree.Items[2]).Look = TAtlasEvalLook.Gray);
+    Assert.AreEqual<TAtlasEvalLook>(TAtlasEvalLook.Gray, mHost.Sync.InfoOf(mHost.Tree.Items[2]).Look);
     Assert.AreEqual('', mHost.Sync.KeyOf(mHost.Tree.Items[2]));
-    Assert.IsTrue(mHost.Sync.InfoOf(nil).Look = TAtlasEvalLook.Gray, 'nil');
+    Assert.AreEqual<TAtlasEvalLook>(TAtlasEvalLook.Gray, mHost.Sync.InfoOf(nil).Look, 'nil');
   finally
     mHost.Free;
     mList.Free;

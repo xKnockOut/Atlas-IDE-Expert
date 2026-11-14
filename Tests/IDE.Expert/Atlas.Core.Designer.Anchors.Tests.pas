@@ -64,8 +64,8 @@ begin
   mResult := TAtlasAnchorSuggest.Suggest([Item('edtSearch', 8, 8, 384, 21), Item('grdHits', 8, 37, 384, 216, True),
     Item('btnOk', 236, 267, 75, 25), Item('btnCancel', 317, 267, 75, 25)], TSize.Create(400, 300), 16, True);
   Assert.AreEqual('[L T R -][L T R B][- - R B][- - R B]', Texts(mResult));
-  Assert.IsTrue(mResult[2].Reason = TAtlasAnchorReason.Row, 'OK folgt Abbrechen');
-  Assert.IsTrue(mResult[3].Reason = TAtlasAnchorReason.BottomRight);
+  Assert.AreEqual<TAtlasAnchorReason>(TAtlasAnchorReason.Row, mResult[2].Reason, 'OK folgt Abbrechen');
+  Assert.AreEqual<TAtlasAnchorReason>(TAtlasAnchorReason.BottomRight, mResult[3].Reason);
   Assert.IsTrue(mResult[0].Changed);
 end;
 
@@ -84,7 +84,7 @@ begin
   mItems := [Item('pnlBottom', 0, 260, 400, 40)];
   mItems[0].Aligned := True;
   mResult := TAtlasAnchorSuggest.Suggest(mItems, TSize.Create(400, 300), 16, True);
-  Assert.IsTrue(mResult[0].Reason = TAtlasAnchorReason.Aligned);
+  Assert.AreEqual<TAtlasAnchorReason>(TAtlasAnchorReason.Aligned, mResult[0].Reason);
   Assert.IsFalse(mResult[0].Changed);
 end;
 
@@ -96,7 +96,7 @@ begin
   mItems := [Item('btnOk', 317, 267, 75, 25)];
   mItems[0].Existing := [TAtlasAnchorSide.Top, TAtlasAnchorSide.Right];
   mResult := TAtlasAnchorSuggest.Suggest(mItems, TSize.Create(400, 300), 16, True);
-  Assert.IsTrue(mResult[0].Reason = TAtlasAnchorReason.Existing);
+  Assert.AreEqual<TAtlasAnchorReason>(TAtlasAnchorReason.Existing, mResult[0].Reason);
   Assert.IsFalse(mResult[0].Changed);
   mResult := TAtlasAnchorSuggest.Suggest(mItems, TSize.Create(400, 300), 16, False);
   Assert.AreEqual('[- - R B]', Texts(mResult));
@@ -120,7 +120,7 @@ begin
     Item('edtNote', 8, 280, 384, 21)];
   mResult := TAtlasAnchorSuggest.Suggest(mItems, TSize.Create(400, 300), 16, True);
   Assert.AreEqual('[L - - B][L - R B]', Texts(mResult));
-  Assert.IsTrue(mResult[0].Reason = TAtlasAnchorReason.FollowsField);
+  Assert.AreEqual<TAtlasAnchorReason>(TAtlasAnchorReason.FollowsField, mResult[0].Reason);
 end;
 
 procedure TAtlasAnchorSuggestTests.EdgeDistance;

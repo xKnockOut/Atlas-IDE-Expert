@@ -120,7 +120,7 @@ var
   mReport: TAtlasDebugWaitReport;
 begin
   mReport := Report;
-  Assert.IsTrue(mReport.Patterns[0].Kind = TAtlasDebugDeadlockKind.MainWaitsForSynchronize);
+  Assert.AreEqual<TAtlasDebugDeadlockKind>(TAtlasDebugDeadlockKind.MainWaitsForSynchronize, mReport.Patterns[0].Kind);
   Assert.AreEqual('Verklemmung: Der Hauptthread wartet in TThread.WaitFor im Destruktor eines Threads, ' +
     'Thread 7 „Worker“ wartet in Synchronize auf den Hauptthread (Regel synchronize-in-destructor)',
     TAtlasDebugWaitTexts.PatternText(mReport, mReport.Patterns[0]));

@@ -245,9 +245,10 @@ begin
   Assert.AreEqual('#3,#2,#1', string.Join(',', mAsked), 'alle Kennungen eines Projekts in einer Frage');
   Assert.AreEqual(2, Integer(Length(mRows)), 'behobenes Issue fehlt');
   Assert.AreEqual('#3', mRows[0].Entry.Key);
-  Assert.IsTrue(mRows[0].Status = TAtlasIssueStateKind.Open);
+  Assert.AreEqual<TAtlasIssueStateKind>(TAtlasIssueStateKind.Open, mRows[0].Status);
   Assert.AreEqual('#1', mRows[1].Entry.Key);
-  Assert.IsTrue(mRows[1].Status = TAtlasIssueStateKind.Unknown, 'ohne Antwort: Zustand unbekannt, bleibt');
+  Assert.AreEqual<TAtlasIssueStateKind>(TAtlasIssueStateKind.Unknown,
+    mRows[1].Status, 'ohne Antwort: Zustand unbekannt, bleibt');
   Assert.AreEqual(cProject, mRows[0].Project);
   Assert.AreEqual(Path('Main.pas'), mRows[0].LastTab.FileName);
   // Ohne Tracker: alle unbekannt, keiner fällt weg.
@@ -258,7 +259,7 @@ begin
       Result := True;
     end, nil, 10);
   Assert.AreEqual(2, Integer(Length(mRows)));
-  Assert.IsTrue(mRows[1].Status = TAtlasIssueStateKind.Unknown);
+  Assert.AreEqual<TAtlasIssueStateKind>(TAtlasIssueStateKind.Unknown, mRows[1].Status);
 end;
 
 procedure TAtlasWelcomeContinueIssuesTests.RowsNewestFirstLimitedAndEachProjectOnce;
@@ -292,13 +293,17 @@ end;
 
 procedure TAtlasWelcomeContinueIssuesTests.BranchStepAsksOnlyForOtherExistingBranch;
 begin
-  Assert.IsTrue(TAtlasWelcomeContinueIssues.BranchStep('', 'main', False) = TAtlasIssueBranchStep.Keep,
+  Assert.AreEqual<TAtlasIssueBranchStep>(TAtlasIssueBranchStep.Keep,
+    TAtlasWelcomeContinueIssues.BranchStep('', 'main', False),
     'ohne gespeicherten Branch');
-  Assert.IsTrue(TAtlasWelcomeContinueIssues.BranchStep('feature/1', 'Feature/1', True) = TAtlasIssueBranchStep.Keep,
+  Assert.AreEqual<TAtlasIssueBranchStep>(TAtlasIssueBranchStep.Keep,
+    TAtlasWelcomeContinueIssues.BranchStep('feature/1', 'Feature/1', True),
     'schon ausgecheckt');
-  Assert.IsTrue(TAtlasWelcomeContinueIssues.BranchStep('feature/1', 'main', True) = TAtlasIssueBranchStep.Ask,
+  Assert.AreEqual<TAtlasIssueBranchStep>(TAtlasIssueBranchStep.Ask,
+    TAtlasWelcomeContinueIssues.BranchStep('feature/1', 'main', True),
     'anderer Branch: Rückfrage');
-  Assert.IsTrue(TAtlasWelcomeContinueIssues.BranchStep('feature/1', 'main', False) = TAtlasIssueBranchStep.Missing,
+  Assert.AreEqual<TAtlasIssueBranchStep>(TAtlasIssueBranchStep.Missing,
+    TAtlasWelcomeContinueIssues.BranchStep('feature/1', 'main', False),
     'Branch gelöscht: nur Reiter');
 end;
 

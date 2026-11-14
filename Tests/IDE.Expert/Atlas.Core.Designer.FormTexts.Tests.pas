@@ -171,10 +171,11 @@ end;
 
 procedure TAtlasFormTextsTests.ParseChecks;
 begin
-  Assert.IsTrue(TAtlasFormTexts.ParseChecks(TAtlasFormTexts.cDefaultChecks) = [TAtlasTextCheck.Accelerators,
-    TAtlasTextCheck.Variants, TAtlasTextCheck.Truncated, TAtlasTextCheck.Whitespace]);
-  Assert.IsTrue(TAtlasFormTexts.ParseChecks('labelcolon; unknown') = [TAtlasTextCheck.LabelColon]);
-  Assert.IsTrue(TAtlasFormTexts.ParseChecks('') = []);
+  Assert.AreEqual<TAtlasTextChecks>([TAtlasTextCheck.Accelerators,
+    TAtlasTextCheck.Variants, TAtlasTextCheck.Truncated, TAtlasTextCheck.Whitespace],
+    TAtlasFormTexts.ParseChecks(TAtlasFormTexts.cDefaultChecks));
+  Assert.AreEqual<TAtlasTextChecks>([TAtlasTextCheck.LabelColon], TAtlasFormTexts.ParseChecks('labelcolon; unknown'));
+  Assert.AreEqual<TAtlasTextChecks>([], TAtlasFormTexts.ParseChecks(''));
 end;
 
 procedure TAtlasFormTextsTests.FilterMatches;

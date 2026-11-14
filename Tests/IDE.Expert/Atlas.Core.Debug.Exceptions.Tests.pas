@@ -96,8 +96,8 @@ begin
   Assert.AreEqual(2, FHistory[0].Count);
   Assert.AreEqual('zwei', FHistory[0].Message, 'Meldung des letzten Auftretens');
   Assert.AreEqual(99, Integer(FHistory[0].ThreadId));
-  Assert.IsTrue(FHistory[0].FirstTime = 1, 'zuerst gesehen bleibt');
-  Assert.IsTrue(FHistory[0].LastTime = 2, 'zuletzt gesehen');
+  Assert.AreEqual<TDateTime>(1, FHistory[0].FirstTime, 'zuerst gesehen bleibt');
+  Assert.AreEqual<TDateTime>(2, FHistory[0].LastTime, 'zuletzt gesehen');
   Assert.AreEqual(2, FHistory.Total);
   Assert.AreEqual(1, Integer(Length(FHistory[0].Frames)), 'Stapel des letzten Auftretens (#578)');
 end;

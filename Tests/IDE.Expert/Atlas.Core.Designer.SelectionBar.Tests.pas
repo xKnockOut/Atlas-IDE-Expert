@@ -74,7 +74,7 @@ var
   mValue: TAtlasBarValue;
 begin
   mValue := TAtlasSelectionBar.Combine(Props(['9', '9', '9']));
-  Assert.IsTrue(mValue.State = TAtlasBarState.On);
+  Assert.AreEqual<TAtlasBarState>(TAtlasBarState.On, mValue.State);
   Assert.AreEqual('9', mValue.Value);
   Assert.AreEqual(3, mValue.Count);
   Assert.IsFalse(mValue.Partial);
@@ -85,7 +85,7 @@ var
   mValue: TAtlasBarValue;
 begin
   mValue := TAtlasSelectionBar.Combine(Props(['9', '10', '9']));
-  Assert.IsTrue(mValue.State = TAtlasBarState.Mixed);
+  Assert.AreEqual<TAtlasBarState>(TAtlasBarState.Mixed, mValue.State);
   Assert.AreEqual('', mValue.Value);
 end;
 
@@ -95,7 +95,7 @@ var
 begin
   // Zwei Labels, ein Edit, eine ComboBox: Alignment haben nur zwei.
   mValue := TAtlasSelectionBar.Combine(Props(['taLeftJustify', 'taLeftJustify', '-', '-']));
-  Assert.IsTrue(mValue.State = TAtlasBarState.On);
+  Assert.AreEqual<TAtlasBarState>(TAtlasBarState.On, mValue.State);
   Assert.AreEqual(2, mValue.Count);
   Assert.AreEqual(4, mValue.Total);
   Assert.IsTrue(mValue.Partial);
@@ -106,34 +106,35 @@ var
   mValue: TAtlasBarValue;
 begin
   mValue := TAtlasSelectionBar.Combine(Props(['-', '-']));
-  Assert.IsTrue(mValue.State = TAtlasBarState.None);
+  Assert.AreEqual<TAtlasBarState>(TAtlasBarState.None, mValue.State);
   Assert.AreEqual(0, mValue.Count);
   Assert.IsFalse(mValue.Partial);
 end;
 
 procedure TAtlasSelectionBarTests.FlagStates;
 begin
-  Assert.IsTrue(TAtlasSelectionBar.Flag(Props(['True', 'True']), 'True') = TAtlasBarState.On);
-  Assert.IsTrue(TAtlasSelectionBar.Flag(Props(['False', 'False']), 'True') = TAtlasBarState.Off);
-  Assert.IsTrue(TAtlasSelectionBar.Flag(Props(['True', 'False']), 'True') = TAtlasBarState.Mixed);
-  Assert.IsTrue(TAtlasSelectionBar.Flag(Props(['taCenter', 'taCenter']), 'TACENTER') = TAtlasBarState.On);
+  Assert.AreEqual<TAtlasBarState>(TAtlasBarState.On, TAtlasSelectionBar.Flag(Props(['True', 'True']), 'True'));
+  Assert.AreEqual<TAtlasBarState>(TAtlasBarState.Off, TAtlasSelectionBar.Flag(Props(['False', 'False']), 'True'));
+  Assert.AreEqual<TAtlasBarState>(TAtlasBarState.Mixed, TAtlasSelectionBar.Flag(Props(['True', 'False']), 'True'));
+  Assert.AreEqual<TAtlasBarState>(TAtlasBarState.On,
+    TAtlasSelectionBar.Flag(Props(['taCenter', 'taCenter']), 'TACENTER'));
 end;
 
 procedure TAtlasSelectionBarTests.FlagIgnoresMissing;
 begin
-  Assert.IsTrue(TAtlasSelectionBar.Flag(Props(['True', '-', 'True']), 'True') = TAtlasBarState.On);
-  Assert.IsTrue(TAtlasSelectionBar.Flag(Props(['-', '-']), 'True') = TAtlasBarState.None);
+  Assert.AreEqual<TAtlasBarState>(TAtlasBarState.On, TAtlasSelectionBar.Flag(Props(['True', '-', 'True']), 'True'));
+  Assert.AreEqual<TAtlasBarState>(TAtlasBarState.None, TAtlasSelectionBar.Flag(Props(['-', '-']), 'True'));
 end;
 
 procedure TAtlasSelectionBarTests.SetFlagBoldMixed;
 begin
   // Nur ein Label fett: halb gefüllt.
-  Assert.IsTrue(TAtlasSelectionBar.SetFlag(Props(['[fsBold]', '[]', '[fsItalic]', '']), 'fsBold') =
-    TAtlasBarState.Mixed);
-  Assert.IsTrue(TAtlasSelectionBar.SetFlag(Props(['[akLeft,akTop]', 'akTop,akLeft', '-']), 'akTop') =
-    TAtlasBarState.On);
-  Assert.IsTrue(TAtlasSelectionBar.SetFlag(Props(['[akLeft,akTop]', '[akLeft]']), 'akRight') =
-    TAtlasBarState.Off);
+  Assert.AreEqual<TAtlasBarState>(TAtlasBarState.Mixed,
+    TAtlasSelectionBar.SetFlag(Props(['[fsBold]', '[]', '[fsItalic]', '']), 'fsBold'));
+  Assert.AreEqual<TAtlasBarState>(TAtlasBarState.On,
+    TAtlasSelectionBar.SetFlag(Props(['[akLeft,akTop]', 'akTop,akLeft', '-']), 'akTop'));
+  Assert.AreEqual<TAtlasBarState>(TAtlasBarState.Off,
+    TAtlasSelectionBar.SetFlag(Props(['[akLeft,akTop]', '[akLeft]']), 'akRight'));
 end;
 
 procedure TAtlasSelectionBarTests.SetWithAddsAndRemoves;
@@ -169,10 +170,10 @@ var
 begin
   mItems := TAtlasSelectionBar.ParseItems('bold; anchorRight, unknown, BOLD fitText Transfer');
   Assert.AreEqual(4, Integer(Length(mItems)));
-  Assert.IsTrue(mItems[0] = TAtlasBarItem.Bold);
-  Assert.IsTrue(mItems[1] = TAtlasBarItem.AnchorRight);
-  Assert.IsTrue(mItems[2] = TAtlasBarItem.FitText);
-  Assert.IsTrue(mItems[3] = TAtlasBarItem.Transfer);
+  Assert.AreEqual<TAtlasBarItem>(TAtlasBarItem.Bold, mItems[0]);
+  Assert.AreEqual<TAtlasBarItem>(TAtlasBarItem.AnchorRight, mItems[1]);
+  Assert.AreEqual<TAtlasBarItem>(TAtlasBarItem.FitText, mItems[2]);
+  Assert.AreEqual<TAtlasBarItem>(TAtlasBarItem.Transfer, mItems[3]);
   Assert.AreEqual(0, Integer(Length(TAtlasSelectionBar.ParseItems(''))));
 end;
 
@@ -182,8 +183,8 @@ var
 begin
   mItems := TAtlasSelectionBar.ParseItems(TAtlasSelectionBar.DefaultItems);
   Assert.AreEqual(Ord(TAtlasBarItem.Transfer) + 1, Integer(Length(mItems)));
-  Assert.IsTrue(mItems[High(mItems)] = TAtlasBarItem.Transfer);
-  Assert.IsTrue(mItems[0] = TAtlasBarItem.FontSmaller);
+  Assert.AreEqual<TAtlasBarItem>(TAtlasBarItem.Transfer, mItems[High(mItems)]);
+  Assert.AreEqual<TAtlasBarItem>(TAtlasBarItem.FontSmaller, mItems[0]);
   Assert.IsFalse(TAtlasSelectionBar.DefaultItems.Contains('fitText'));
   Assert.AreEqual('anchorRight', TAtlasSelectionBar.KeyOf(TAtlasBarItem.AnchorRight));
 end;

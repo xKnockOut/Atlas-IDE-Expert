@@ -228,36 +228,36 @@ end;
 
 procedure TAtlasWhatsNewTests.AfterUpdateShowsOnceAfterSwitch;
 begin
-  Assert.IsTrue(TAtlasWhatsNew.ViewFor(TAtlasWhatsNewMode.AfterUpdate, Versions, '1.0.0', '1.1.0') =
-    TAtlasWhatsNewView.Unread);
+  Assert.AreEqual<TAtlasWhatsNewView>(TAtlasWhatsNewView.Unread,
+    TAtlasWhatsNew.ViewFor(TAtlasWhatsNewMode.AfterUpdate, Versions, '1.0.0', '1.1.0'));
   // Nach „Gelesen“ ist 1.1.0 gesehen: nach dem nächsten Start keine Karte.
-  Assert.IsTrue(TAtlasWhatsNew.ViewFor(TAtlasWhatsNewMode.AfterUpdate, Versions, '1.1.0', '1.1.0') =
-    TAtlasWhatsNewView.Hidden);
+  Assert.AreEqual<TAtlasWhatsNewView>(TAtlasWhatsNewView.Hidden,
+    TAtlasWhatsNew.ViewFor(TAtlasWhatsNewMode.AfterUpdate, Versions, '1.1.0', '1.1.0'));
   // Versionswechsel ohne Einträge: keine Karte.
-  Assert.IsTrue(TAtlasWhatsNew.ViewFor(TAtlasWhatsNewMode.AfterUpdate, Versions, '1.2.0', '1.2.1') =
-    TAtlasWhatsNewView.Hidden);
+  Assert.AreEqual<TAtlasWhatsNewView>(TAtlasWhatsNewView.Hidden,
+    TAtlasWhatsNew.ViewFor(TAtlasWhatsNewMode.AfterUpdate, Versions, '1.2.0', '1.2.1'));
 end;
 
 procedure TAtlasWhatsNewTests.AlwaysKeepsCurrentVersion;
 begin
-  Assert.IsTrue(TAtlasWhatsNew.ViewFor(TAtlasWhatsNewMode.Always, Versions, '1.0.0', '1.2.0') =
-    TAtlasWhatsNewView.Unread);
-  Assert.IsTrue(TAtlasWhatsNew.ViewFor(TAtlasWhatsNewMode.Always, Versions, '1.2.0', '1.2.0') =
-    TAtlasWhatsNewView.Current);
-  Assert.IsTrue(TAtlasWhatsNew.ViewFor(TAtlasWhatsNewMode.Always, nil, '1.2.0', '1.2.0') =
-    TAtlasWhatsNewView.Hidden, 'ohne whatsnew.json keine Karte');
+  Assert.AreEqual<TAtlasWhatsNewView>(TAtlasWhatsNewView.Unread,
+    TAtlasWhatsNew.ViewFor(TAtlasWhatsNewMode.Always, Versions, '1.0.0', '1.2.0'));
+  Assert.AreEqual<TAtlasWhatsNewView>(TAtlasWhatsNewView.Current,
+    TAtlasWhatsNew.ViewFor(TAtlasWhatsNewMode.Always, Versions, '1.2.0', '1.2.0'));
+  Assert.AreEqual<TAtlasWhatsNewView>(TAtlasWhatsNewView.Hidden,
+    TAtlasWhatsNew.ViewFor(TAtlasWhatsNewMode.Always, nil, '1.2.0', '1.2.0'), 'ohne whatsnew.json keine Karte');
 end;
 
 procedure TAtlasWhatsNewTests.OffHidesEverything;
 begin
-  Assert.IsTrue(TAtlasWhatsNew.ViewFor(TAtlasWhatsNewMode.Off, Versions, '1.0.0', '1.2.0') =
-    TAtlasWhatsNewView.Hidden);
+  Assert.AreEqual<TAtlasWhatsNewView>(TAtlasWhatsNewView.Hidden,
+    TAtlasWhatsNew.ViewFor(TAtlasWhatsNewMode.Off, Versions, '1.0.0', '1.2.0'));
 end;
 
 procedure TAtlasWhatsNewTests.FirstInstallHasNothingUnread;
 begin
-  Assert.IsTrue(TAtlasWhatsNew.ViewFor(TAtlasWhatsNewMode.AfterUpdate, Versions, '', '1.2.0') =
-    TAtlasWhatsNewView.Hidden);
+  Assert.AreEqual<TAtlasWhatsNewView>(TAtlasWhatsNewView.Hidden,
+    TAtlasWhatsNew.ViewFor(TAtlasWhatsNewMode.AfterUpdate, Versions, '', '1.2.0'));
   Assert.AreEqual('1.2.0', TAtlasWhatsNew.SeenAfterStart('', '1.2.0'));
   Assert.AreEqual('1.0.0', TAtlasWhatsNew.SeenAfterStart('1.0.0', '1.2.0'), 'bis „Gelesen“ unverändert');
 end;
@@ -268,10 +268,10 @@ var
 begin
   for mMode := Low(TAtlasWhatsNewMode) to High(TAtlasWhatsNewMode) do
   begin
-    Assert.IsTrue(TAtlasWhatsNew.ModeOf(TAtlasWhatsNew.ModeName(mMode)) = mMode);
+    Assert.AreEqual<TAtlasWhatsNewMode>(mMode, TAtlasWhatsNew.ModeOf(TAtlasWhatsNew.ModeName(mMode)));
   end;
-  Assert.IsTrue(TAtlasWhatsNew.ModeOf('ALWAYS') = TAtlasWhatsNewMode.Always);
-  Assert.IsTrue(TAtlasWhatsNew.ModeOf('irgendwas') = TAtlasWhatsNewMode.AfterUpdate);
+  Assert.AreEqual<TAtlasWhatsNewMode>(TAtlasWhatsNewMode.Always, TAtlasWhatsNew.ModeOf('ALWAYS'));
+  Assert.AreEqual<TAtlasWhatsNewMode>(TAtlasWhatsNewMode.AfterUpdate, TAtlasWhatsNew.ModeOf('irgendwas'));
 end;
 
 function Item(const ATitle: string): TAtlasWhatsNewItem;

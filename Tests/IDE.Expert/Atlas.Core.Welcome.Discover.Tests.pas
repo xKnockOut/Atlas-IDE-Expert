@@ -246,7 +246,7 @@ begin
     mOrder := TAtlasDiscover.Order(Tips, mUsage, NoState, nil, True);
     Assert.AreEqual('codeActions', mOrder[0]);
     mAge := TAtlasDiscover.UsageAge(Tips[0], mUsage, True, Moment(15, 10));
-    Assert.IsTrue(mAge.Kind = TAtlasDiscoverAgeKind.Never);
+    Assert.AreEqual<TAtlasDiscoverAgeKind>(TAtlasDiscoverAgeKind.Never, mAge.Kind);
     // „Ausprobieren“ führt den Befehl über die Palette aus: Das zählt als Aufruf.
     mUsage.Count('Atlas.CodeActions', TAtlasCommandInput.Mouse, Moment(15, 10));
     mUsage.SaveToFiles(mTipsFile, mUsageFile);
@@ -255,7 +255,7 @@ begin
     mOrder := TAtlasDiscover.Order(Tips, mLoaded, NoState, nil, True);
     Assert.AreEqual('expand,undo,Atlas.SymbolSearch,codeActions', Joined(mOrder));
     mAge := TAtlasDiscover.UsageAge(Tips[0], mLoaded, True, Moment(16, 9));
-    Assert.IsTrue(mAge.Kind = TAtlasDiscoverAgeKind.Yesterday, 'nicht mehr „noch nie benutzt“');
+    Assert.AreEqual<TAtlasDiscoverAgeKind>(TAtlasDiscoverAgeKind.Yesterday, mAge.Kind, 'nicht mehr „noch nie benutzt“');
   finally
     mLoaded.Free;
     mUsage.Free;
@@ -421,7 +421,7 @@ begin
     Assert.AreEqual('expand,undo,Atlas.SymbolSearch,codeActions',
       Joined(TAtlasDiscover.Order(Tips, mUsage, mState, nil, False)));
     mAge := TAtlasDiscover.UsageAge(Tips[0], mUsage, False, Moment(15, 9));
-    Assert.IsTrue(mAge.Kind = TAtlasDiscoverAgeKind.None, 'kein Hinweis zur Nutzung');
+    Assert.AreEqual<TAtlasDiscoverAgeKind>(TAtlasDiscoverAgeKind.None, mAge.Kind, 'kein Hinweis zur Nutzung');
     Assert.AreEqual('codeActions,expand,undo,Atlas.SymbolSearch',
       Joined(TAtlasDiscover.Order(Tips, nil, NoState, nil, True)), 'ohne Zählung (nil) ebenso');
   finally
@@ -453,7 +453,7 @@ procedure TAtlasDiscoverTests.AgeTextsFollowCalendarDays;
     mAge: TAtlasDiscoverAge;
   begin
     mAge := TAtlasDiscover.AgeOf(ALastUsed, ANow);
-    Assert.IsTrue(mAge.Kind = AKind, AMessage);
+    Assert.AreEqual<TAtlasDiscoverAgeKind>(AKind, mAge.Kind, AMessage);
     Assert.AreEqual(ACount, mAge.Count, AMessage);
   end;
 

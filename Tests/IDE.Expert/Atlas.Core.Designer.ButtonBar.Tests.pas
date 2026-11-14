@@ -47,28 +47,33 @@ const
 
 procedure TAtlasButtonBarTests.RolesFromCaptionAndName;
 begin
-  Assert.IsTrue(TAtlasButtonBar.RoleOf('Button1', '&OK', 0, cTerms) = TAtlasButtonRole.Ok);
-  Assert.IsTrue(TAtlasButtonBar.RoleOf('Button2', '&Abbrechen', 0, cTerms) = TAtlasButtonRole.Cancel);
-  Assert.IsTrue(TAtlasButtonBar.RoleOf('Button3', 'Übernehmen', 0, cTerms) = TAtlasButtonRole.Apply);
-  Assert.IsTrue(TAtlasButtonBar.RoleOf('Button4', 'ÜBERNEHMEN UND SCHLIEßEN', 0, cTerms) = TAtlasButtonRole.Ok);
-  Assert.IsTrue(TAtlasButtonBar.RoleOf('btnHilfe', 'Mehr …', 0, cTerms) = TAtlasButtonRole.Help, 'Name');
-  Assert.IsTrue(TAtlasButtonBar.RoleOf('btnDrucken', 'Drucken', 0, cTerms) = TAtlasButtonRole.Other);
+  Assert.AreEqual<TAtlasButtonRole>(TAtlasButtonRole.Ok, TAtlasButtonBar.RoleOf('Button1', '&OK', 0, cTerms));
+  Assert.AreEqual<TAtlasButtonRole>(TAtlasButtonRole.Cancel,
+    TAtlasButtonBar.RoleOf('Button2', '&Abbrechen', 0, cTerms));
+  Assert.AreEqual<TAtlasButtonRole>(TAtlasButtonRole.Apply, TAtlasButtonBar.RoleOf('Button3', 'Übernehmen', 0, cTerms));
+  Assert.AreEqual<TAtlasButtonRole>(TAtlasButtonRole.Ok,
+    TAtlasButtonBar.RoleOf('Button4', 'ÜBERNEHMEN UND SCHLIEßEN', 0, cTerms));
+  Assert.AreEqual<TAtlasButtonRole>(TAtlasButtonRole.Help,
+    TAtlasButtonBar.RoleOf('btnHilfe', 'Mehr …', 0, cTerms), 'Name');
+  Assert.AreEqual<TAtlasButtonRole>(TAtlasButtonRole.Other, TAtlasButtonBar.RoleOf('btnDrucken', 'Drucken', 0, cTerms));
 end;
 
 procedure TAtlasButtonBarTests.ModalResultDecides;
 begin
-  Assert.IsTrue(TAtlasButtonBar.RoleOf('btnCancel', 'Abbrechen', TAtlasButtonBar.cMrYes, '') =
-    TAtlasButtonRole.Ok);
-  Assert.IsTrue(TAtlasButtonBar.RoleOf('btnOk', 'OK', TAtlasButtonBar.cMrNo, '') = TAtlasButtonRole.Cancel);
+  Assert.AreEqual<TAtlasButtonRole>(TAtlasButtonRole.Ok,
+    TAtlasButtonBar.RoleOf('btnCancel', 'Abbrechen', TAtlasButtonBar.cMrYes, ''));
+  Assert.AreEqual<TAtlasButtonRole>(TAtlasButtonRole.Cancel,
+    TAtlasButtonBar.RoleOf('btnOk', 'OK', TAtlasButtonBar.cMrNo, ''));
 end;
 
 procedure TAtlasButtonBarTests.CustomTerms;
 var
   mRole: TAtlasButtonRole;
 begin
-  Assert.IsTrue(TAtlasButtonBar.RoleOf('Button1', 'Weiter', 0, 'ok=Weiter|Los; cancel=Zurück') =
-    TAtlasButtonRole.Ok);
-  Assert.IsTrue(TAtlasButtonBar.RoleOf('Button1', 'OK', 0, 'cancel=ok;' + cTerms) = TAtlasButtonRole.Cancel,
+  Assert.AreEqual<TAtlasButtonRole>(TAtlasButtonRole.Ok,
+    TAtlasButtonBar.RoleOf('Button1', 'Weiter', 0, 'ok=Weiter|Los; cancel=Zurück'));
+  Assert.AreEqual<TAtlasButtonRole>(TAtlasButtonRole.Cancel,
+    TAtlasButtonBar.RoleOf('Button1', 'OK', 0, 'cancel=ok;' + cTerms),
     'eigene Begriffe gehen vor');
   Assert.IsFalse(TAtlasButtonBar.TryParseRole('quatsch', mRole));
 end;
@@ -112,18 +117,18 @@ begin
   mRects := TAtlasButtonBar.Layout(2, TSize.Create(75, 25), TAtlasButtonBarPosition.RightBottom, Rect(0, 0, 400, 300), 8, 8);
   Assert.AreEqual(267, mRects[1].Top, 'letzter unten');
   Assert.AreEqual(234, mRects[0].Top);
-  Assert.IsTrue(TAtlasButtonBar.PositionOf('RIGHTTOP') = TAtlasButtonBarPosition.RightTop);
-  Assert.IsTrue(TAtlasButtonBar.PositionOf('') = TAtlasButtonBarPosition.BottomRight);
+  Assert.AreEqual<TAtlasButtonBarPosition>(TAtlasButtonBarPosition.RightTop, TAtlasButtonBar.PositionOf('RIGHTTOP'));
+  Assert.AreEqual<TAtlasButtonBarPosition>(TAtlasButtonBarPosition.BottomRight, TAtlasButtonBar.PositionOf(''));
 end;
 
 procedure TAtlasButtonBarTests.Anchors;
 begin
-  Assert.IsTrue(TAtlasButtonBar.AnchorsOf(TAtlasButtonBarPosition.BottomRight) = [TAtlasButtonAnchor.Right,
-    TAtlasButtonAnchor.Bottom]);
-  Assert.IsTrue(TAtlasButtonBar.AnchorsOf(TAtlasButtonBarPosition.BottomLeft) = [TAtlasButtonAnchor.Left,
-    TAtlasButtonAnchor.Bottom]);
-  Assert.IsTrue(TAtlasButtonBar.AnchorsOf(TAtlasButtonBarPosition.RightTop) = [TAtlasButtonAnchor.Top,
-    TAtlasButtonAnchor.Right]);
+  Assert.AreEqual<TAtlasButtonAnchors>([TAtlasButtonAnchor.Right,
+    TAtlasButtonAnchor.Bottom], TAtlasButtonBar.AnchorsOf(TAtlasButtonBarPosition.BottomRight));
+  Assert.AreEqual<TAtlasButtonAnchors>([TAtlasButtonAnchor.Left,
+    TAtlasButtonAnchor.Bottom], TAtlasButtonBar.AnchorsOf(TAtlasButtonBarPosition.BottomLeft));
+  Assert.AreEqual<TAtlasButtonAnchors>([TAtlasButtonAnchor.Top,
+    TAtlasButtonAnchor.Right], TAtlasButtonBar.AnchorsOf(TAtlasButtonBarPosition.RightTop));
 end;
 
 procedure TAtlasButtonBarTests.CommonHeight;

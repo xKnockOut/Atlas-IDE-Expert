@@ -160,7 +160,7 @@ var
 begin
   FPins.Add(Pin('Kasse.pas', 12, 'Summe'));
   mItem := FPins.ValueOf(Pin('Kasse.pas', 12, 'Summe'));
-  Assert.IsTrue(mItem.State = TAtlasInlineValueState.Pending);
+  Assert.AreEqual<TAtlasInlineValueState>(TAtlasInlineValueState.Pending, mItem.State);
   Assert.AreEqual('Summe = …', mItem.Caption);
   FPins.Put(Pin('Kasse.pas', 12, 'Summe'), '125', True);
   mItem := FPins.ValueOf(Pin('Kasse.pas', 12, 'Summe'));

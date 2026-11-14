@@ -186,7 +186,7 @@ begin
   Assert.IsTrue(AFrame.DismissLabel.Visible);
   Assert.IsFalse(AFrame.Button(TAtlasSetupButton.Options).Visible, 'ohne Funde keine Projektoptionen');
   // Vorgabe der Vorlage: Bestehendes Projekt.
-  Assert.IsTrue(AFrame.SelectedTemplate = TAtlasSetupTemplate.Existing);
+  Assert.AreEqual<TAtlasSetupTemplate>(TAtlasSetupTemplate.Existing, AFrame.SelectedTemplate);
   Assert.AreEqual(3, Integer(AFrame.TemplateBox.Items.Count));
   Assert.AreEqual(Integer(Ord(TAtlasSetupTemplate.Existing)), AFrame.TemplateBox.ItemIndex);
   // Knöpfe rechts neben dem Text ihres Schritts, Schritte untereinander.

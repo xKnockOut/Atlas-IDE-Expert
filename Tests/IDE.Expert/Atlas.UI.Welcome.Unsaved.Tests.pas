@@ -144,10 +144,10 @@ begin
     Assert.AreEqual('Ansehen', TAtlasUnsavedTexts.ButtonText(mRow.Item));
     Assert.AreEqual('seit 1 Tag', TAtlasUnsavedTexts.AgeText(IncHour(mNowUtc, -30), mNowUtc));
     Assert.AreEqual('', TAtlasUnsavedTexts.AgeText(0, mNowUtc));
-    Assert.IsTrue(TAtlasUnsavedTexts.LevelColor(TAtlasUnsavedLevel.Fresh) <>
-      TAtlasUnsavedTexts.LevelColor(TAtlasUnsavedLevel.Alert), 'rot ist nicht grün');
-    Assert.IsTrue(TAtlasUnsavedTexts.LevelColor(TAtlasUnsavedLevel.Warning) <>
-      TAtlasUnsavedTexts.LevelColor(TAtlasUnsavedLevel.Alert), 'gelb ist nicht rot');
+    Assert.AreNotEqual<TColor>(TAtlasUnsavedTexts.LevelColor(TAtlasUnsavedLevel.Alert),
+      TAtlasUnsavedTexts.LevelColor(TAtlasUnsavedLevel.Fresh), 'rot ist nicht grün');
+    Assert.AreNotEqual<TColor>(TAtlasUnsavedTexts.LevelColor(TAtlasUnsavedLevel.Alert),
+      TAtlasUnsavedTexts.LevelColor(TAtlasUnsavedLevel.Warning), 'gelb ist nicht rot');
     Assert.Contains(TAtlasUnsavedTexts.HintFor(mRow), 'C:\P\Git.dproj');
     TAtlasStrings.Language := TAtlasLanguage.English;
     Assert.AreEqual('View', TAtlasUnsavedTexts.ButtonText(mRow.Item));
@@ -263,7 +263,7 @@ begin
       Assert.IsTrue(mDialog.CancelButton.Default);
       Assert.IsTrue(mDialog.CancelButton.Cancel);
       Assert.IsFalse(mDialog.PushButton.Default);
-      Assert.IsTrue(mDialog.ActiveControl = mDialog.CancelButton);
+      Assert.AreSame(mDialog.CancelButton, mDialog.ActiveControl);
       Assert.AreEqual(Integer(mrOk), Integer(mDialog.PushButton.ModalResult));
       Assert.AreEqual(Integer(mrCancel), Integer(mDialog.CancelButton.ModalResult));
     finally

@@ -137,7 +137,7 @@ begin
   FWindow.SetFields([TAtlasDesignerField.ClassName]);
   Assert.AreEqual(0, Integer(Length(FWindow.Hits)), 'nur Klasse: kein Treffer für ok');
   FWindow.SetFields([]);
-  Assert.IsTrue(FWindow.Fields = [TAtlasDesignerField.ClassName], 'ein Feld bleibt gewählt');
+  Assert.AreEqual<TAtlasDesignerFields>([TAtlasDesignerField.ClassName], FWindow.Fields, 'ein Feld bleibt gewählt');
   FWindow.SetFields([TAtlasDesignerField.Name]);
   FWindow.SetPattern('');
   FWindow.SetKind(TAtlasDesignerKind.NonVisual);
@@ -179,8 +179,8 @@ var
   mRow: TAtlasDesignerRow;
 begin
   Open(True, '');
-  Assert.IsTrue(FWindow.Grouping = TAtlasDesignerGrouping.Flat, 'klein: flach');
-  Assert.IsTrue(FWindow.Kind = TAtlasDesignerKind.All, 'klein: alle Arten');
+  Assert.AreEqual<TAtlasDesignerGrouping>(TAtlasDesignerGrouping.Flat, FWindow.Grouping, 'klein: flach');
+  Assert.AreEqual<TAtlasDesignerKind>(TAtlasDesignerKind.All, FWindow.Kind, 'klein: alle Arten');
   Assert.IsFalse(FWindow.PreviewVisible, 'klein: ohne Vorschau');
   for mRow in FWindow.Rows do
   begin

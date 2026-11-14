@@ -548,20 +548,20 @@ begin
     // Modulschalter und Einstellungen des Moduls auf dem Reiter Willkommensseite.
     mWelcome := SheetOf(mPage.ControlOfSetting('WelcomePage'));
     Assert.IsNotNull(mWelcome);
-    Assert.IsTrue(SheetOf(FSection.Start.IdePage) = mWelcome);
-    Assert.IsTrue(SheetOf(FSection.Layouts.Choice) = SheetOf(FSection.Start.Columns), 'Layouts stehen bei den Spalten');
+    Assert.AreSame(mWelcome, SheetOf(FSection.Start.IdePage));
+    Assert.AreSame(SheetOf(FSection.Start.Columns), SheetOf(FSection.Layouts.Choice), 'Layouts stehen bei den Spalten');
     // Sprint-Kachel (#1277): eigener Knoten welcome.sprint (Schema).
-    Assert.IsTrue(SheetOf(FSection.Tiles.ModuleTiles[1]) = mPage.NodeSheet('welcome.sprint'));
+    Assert.AreSame(mPage.NodeSheet('welcome.sprint'), SheetOf(FSection.Tiles.ModuleTiles[1]));
     // „Meine Issues“: nur der Schalter, daneben der Weg zur Seite Issue-Tracker; ohne Modul Tracker gibt es die
     // Seite nicht und der Knopf ist verborgen (#1456).
-    Assert.IsTrue(SheetOf(FSection.Tiles.ModuleTileLinks[0]) = SheetOf(FSection.Tiles.ModuleTiles[0]));
+    Assert.AreSame(SheetOf(FSection.Tiles.ModuleTiles[0]), SheetOf(FSection.Tiles.ModuleTileLinks[0]));
     Assert.AreEqual(TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.SettingsWelcomeIssuesLink),
       FSection.Tiles.ModuleTileLinks[0].Caption);
     Assert.IsNull(mPage.ControlOfSetting('IssuesEnabled'), 'ohne Modul Tracker');
     Assert.IsFalse(FSection.Tiles.ModuleTileLinks[0].Visible, 'kein Weg ins Leere');
     mPage.Pages.ActivePage := SheetOf(FSection.Tiles.ModuleTiles[0]);
     FSection.Tiles.ModuleTileLinks[0].Click;
-    Assert.IsTrue(mPage.Pages.ActivePage = SheetOf(FSection.Tiles.ModuleTiles[0]), 'Klick bleibt auf der Seite');
+    Assert.AreSame(SheetOf(FSection.Tiles.ModuleTiles[0]), mPage.Pages.ActivePage, 'Klick bleibt auf der Seite');
     // Der Kopf der Willkommensseite hat keine experimentelle Einstellung: Der Filter blendet ihn aus (#890).
     Assert.IsNotNull(mPage.NodeSheet('welcome.header'));
     mPage.Filter.Choice := 2;

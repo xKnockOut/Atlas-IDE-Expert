@@ -153,15 +153,19 @@ end;
 
 procedure TAtlasStructureTests.Kinds;
 begin
-  Assert.IsTrue(TAtlasStructure.KindOf(['TMyQuery', 'TFDCustomQuery', 'TFDDataSet', 'TDataSet']) =
-    TAtlasStructureKind.Data, 'über den Vorfahren');
-  Assert.IsTrue(TAtlasStructure.KindOf(['TFDConnection']) = TAtlasStructureKind.Data, 'Verbindung');
-  Assert.IsTrue(TAtlasStructure.KindOf(['TActionList', 'TCustomActionList']) = TAtlasStructureKind.Actions);
-  Assert.IsTrue(TAtlasStructure.KindOf(['TPopupMenu', 'TMenu']) = TAtlasStructureKind.Actions, 'Menü');
-  Assert.IsTrue(TAtlasStructure.KindOf(['TSaveDialog', 'TOpenDialog', 'TCommonDialog']) =
-    TAtlasStructureKind.Dialogs);
-  Assert.IsTrue(TAtlasStructure.KindOf(['TVirtualImageList', 'TCustomImageList']) = TAtlasStructureKind.Images);
-  Assert.IsTrue(TAtlasStructure.KindOf(['TTimer', 'TComponent']) = TAtlasStructureKind.Other);
+  Assert.AreEqual<TAtlasStructureKind>(TAtlasStructureKind.Data,
+    TAtlasStructure.KindOf(['TMyQuery', 'TFDCustomQuery', 'TFDDataSet', 'TDataSet']), 'über den Vorfahren');
+  Assert.AreEqual<TAtlasStructureKind>(TAtlasStructureKind.Data,
+    TAtlasStructure.KindOf(['TFDConnection']), 'Verbindung');
+  Assert.AreEqual<TAtlasStructureKind>(TAtlasStructureKind.Actions,
+    TAtlasStructure.KindOf(['TActionList', 'TCustomActionList']));
+  Assert.AreEqual<TAtlasStructureKind>(TAtlasStructureKind.Actions,
+    TAtlasStructure.KindOf(['TPopupMenu', 'TMenu']), 'Menü');
+  Assert.AreEqual<TAtlasStructureKind>(TAtlasStructureKind.Dialogs,
+    TAtlasStructure.KindOf(['TSaveDialog', 'TOpenDialog', 'TCommonDialog']));
+  Assert.AreEqual<TAtlasStructureKind>(TAtlasStructureKind.Images,
+    TAtlasStructure.KindOf(['TVirtualImageList', 'TCustomImageList']));
+  Assert.AreEqual<TAtlasStructureKind>(TAtlasStructureKind.Other, TAtlasStructure.KindOf(['TTimer', 'TComponent']));
   Assert.AreEqual('dialogs', TAtlasStructure.KindKey(TAtlasStructureKind.Dialogs));
 end;
 
@@ -170,7 +174,7 @@ var
   mNodes: TArray<TAtlasStructureNode>;
 begin
   mNodes := Fixture(False);
-  Assert.IsTrue(mNodes[0].Kind = TAtlasStructureNodeKind.Controls);
+  Assert.AreEqual<TAtlasStructureNodeKind>(TAtlasStructureNodeKind.Controls, mNodes[0].Kind);
   Assert.AreEqual(5, mNodes[0].Count, 'ohne das Formular');
   Assert.AreEqual('MainForm', mNodes[1].Name);
   Assert.AreEqual(1, mNodes[1].Level);
@@ -183,7 +187,7 @@ begin
   Assert.AreEqual(4, mNodes[5].Level);
   Assert.AreEqual('TComboBox', mNodes[5].ClassName);
   Assert.AreEqual('SchemaLabel', mNodes[6].Name);
-  Assert.IsTrue(mNodes[7].Kind = TAtlasStructureNodeKind.NonVisual);
+  Assert.AreEqual<TAtlasStructureNodeKind>(TAtlasStructureNodeKind.NonVisual, mNodes[7].Kind);
   Assert.AreEqual(8, mNodes[7].Count);
 end;
 
@@ -197,7 +201,7 @@ begin
   mQuery := NodeOf(mNodes, 'class:tsqlquery');
   Assert.IsTrue(NodeOf(mNodes, 'class:tdatasource') < NodeOf(mNodes, 'class:timagelist'), 'nach Klassennamen');
   Assert.IsTrue(mPopup < NodeOf(mNodes, 'class:tsqlconnection'));
-  Assert.IsTrue(mNodes[mPopup].Kind = TAtlasStructureNodeKind.Group);
+  Assert.AreEqual<TAtlasStructureNodeKind>(TAtlasStructureNodeKind.Group, mNodes[mPopup].Kind);
   Assert.AreEqual('TPopupMenu', mNodes[mPopup].ClassName);
   Assert.AreEqual(3, mNodes[mPopup].Count);
   Assert.AreEqual(2, mNodes[mQuery].Count);
@@ -216,7 +220,7 @@ begin
   Assert.IsTrue(mData < NodeOf(mNodes, 'kind:actions'), 'Daten vor Aktionen');
   Assert.IsTrue(NodeOf(mNodes, 'kind:actions') < NodeOf(mNodes, 'kind:images'));
   Assert.AreEqual(4, mNodes[mData].Count, 'Verbindung, zwei Abfragen, DataSource');
-  Assert.IsTrue(mNodes[mData].StructureKind = TAtlasStructureKind.Data);
+  Assert.AreEqual<TAtlasStructureKind>(TAtlasStructureKind.Data, mNodes[mData].StructureKind);
   Assert.AreEqual(-1, NodeOf(mNodes, 'class:tsqlquery'));
 end;
 
@@ -235,7 +239,7 @@ begin
   Assert.AreEqual('SchemaCombo', mLinks[1].Name);
   Assert.AreEqual('SchemaLabel', mLinks[2].Name);
   Assert.AreEqual(3, mLinks[2].Level);
-  Assert.IsTrue(mLinks[2].Kind = TAtlasStructureNodeKind.Link);
+  Assert.AreEqual<TAtlasStructureNodeKind>(TAtlasStructureNodeKind.Link, mLinks[2].Kind);
   Assert.AreNotEqual(mLinks[1].Key, mLinks[2].Key);
 end;
 
@@ -249,15 +253,17 @@ begin
   Assert.AreEqual(1, Integer(Length(mLinks)), 'leeres Tag ist kein Pflichtverweis');
   Assert.AreEqual('SQLConnection', mLinks[0].Prop);
   Assert.AreEqual('', mLinks[0].Name);
-  Assert.IsTrue(mLinks[0].Finding = TAtlasStructureFinding.Empty);
-  Assert.IsTrue(TAtlasStructure.FindingOf(mItems, 'PopupMenu3') = TAtlasStructureFinding.Unused);
-  Assert.IsTrue(TAtlasStructure.FindingOf(mItems, 'dsKKKKKK') = TAtlasStructureFinding.Unused);
-  Assert.IsTrue(TAtlasStructure.FindingOf(mItems, 'PopupMenu1') = TAtlasStructureFinding.None,
+  Assert.AreEqual<TAtlasStructureFinding>(TAtlasStructureFinding.Empty, mLinks[0].Finding);
+  Assert.AreEqual<TAtlasStructureFinding>(TAtlasStructureFinding.Unused,
+    TAtlasStructure.FindingOf(mItems, 'PopupMenu3'));
+  Assert.AreEqual<TAtlasStructureFinding>(TAtlasStructureFinding.Unused, TAtlasStructure.FindingOf(mItems, 'dsKKKKKK'));
+  Assert.AreEqual<TAtlasStructureFinding>(TAtlasStructureFinding.None, TAtlasStructure.FindingOf(mItems, 'PopupMenu1'),
     'vom Formular verwendet');
-  Assert.IsTrue(TAtlasStructure.FindingOf(mItems, 'SQLConnection1') = TAtlasStructureFinding.None,
+  Assert.AreEqual<TAtlasStructureFinding>(TAtlasStructureFinding.None,
+    TAtlasStructure.FindingOf(mItems, 'SQLConnection1'),
     'Verbindungen ohne Befund');
-  Assert.IsTrue(Fixture(False)[NodeOf(Fixture(False), 'item:popupmenu3')].Finding =
-    TAtlasStructureFinding.Unused);
+  Assert.AreEqual<TAtlasStructureFinding>(TAtlasStructureFinding.Unused,
+    Fixture(False)[NodeOf(Fixture(False), 'item:popupmenu3')].Finding);
 end;
 
 procedure TAtlasStructureTests.Filter;

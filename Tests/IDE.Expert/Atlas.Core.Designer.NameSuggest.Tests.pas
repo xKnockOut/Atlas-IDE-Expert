@@ -131,7 +131,7 @@ var
 begin
   mProposals := TAtlasNameSuggest.Propose([Input('Button1', 'TButton', 'Speichern')], Options, ['Button1']);
   Assert.AreEqual('btnSpeichern', mProposals[0].NewName);
-  Assert.IsTrue(mProposals[0].Source = TAtlasNameSource.Caption);
+  Assert.AreEqual<TAtlasNameSource>(TAtlasNameSource.Caption, mProposals[0].Source);
   Assert.IsFalse(mProposals[0].Collision);
 end;
 
@@ -145,9 +145,9 @@ begin
   mInputs[1].DataField := 'KUNDE_NAME';
   mProposals := TAtlasNameSuggest.Propose(mInputs, Options, ['Edit3', 'DBEdit1']);
   Assert.AreEqual('edtPlz', mProposals[0].NewName);
-  Assert.IsTrue(mProposals[0].Source = TAtlasNameSource.LabelText);
+  Assert.AreEqual<TAtlasNameSource>(TAtlasNameSource.LabelText, mProposals[0].Source);
   Assert.AreEqual('edtKundeName', mProposals[1].NewName);
-  Assert.IsTrue(mProposals[1].Source = TAtlasNameSource.DataField);
+  Assert.AreEqual<TAtlasNameSource>(TAtlasNameSource.DataField, mProposals[1].Source);
 end;
 
 procedure TAtlasNameSuggestTests.Collisions;
@@ -170,7 +170,7 @@ begin
   mInputs[0].Handlers := ['Button1Click'];
   mProposals := TAtlasNameSuggest.Propose(mInputs, Options, ['Button1']);
   Assert.AreEqual('', mProposals[0].NewName);
-  Assert.IsTrue(mProposals[0].Source = TAtlasNameSource.None);
+  Assert.AreEqual<TAtlasNameSource>(TAtlasNameSource.None, mProposals[0].Source);
   mInputs[0].Handlers := ['Button1Click', 'DoExport'];
   mProposals := TAtlasNameSuggest.Propose(mInputs, Options, ['Button1']);
   Assert.AreEqual('btnExport', mProposals[0].NewName, 'sprechender Handler');

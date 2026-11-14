@@ -236,7 +236,7 @@ begin
   Assert.AreEqual(2, CountOfClass(mCount, 'TKeep'));
   Assert.AreEqual(5, mCount.Total);
   Assert.AreEqual(24, mCount.Classes[mCount.IndexOf('TLeak')].InstanceSize);
-  Assert.IsTrue(mCount.ScannedBytes = cDataSize, 'gelesene Bytes');
+  Assert.AreEqual<UInt64>(cDataSize, mCount.ScannedBytes, 'gelesene Bytes');
 end;
 
 procedure TAtlasObjectCountTests.CountsObjectsWin32;
