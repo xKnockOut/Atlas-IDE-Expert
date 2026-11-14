@@ -1,0 +1,3 @@
+### Geändert
+- Regel `dunitx-istrue-equality` (#2197): Vergleich zweier Objekte bzw. zweier Interfaces wird zu `Assert.AreSame` bzw. `Assert.AreNotSame` (sichere Korrektur). Still bleiben Records (`AreEqual<T>` vergliche binär statt mit ihrem `=`) sowie `nil` und `Assigned` bei Methodenzeigern und -referenzen, für die es kein passendes Assert gibt.
+- Werkzeug `Tools/Convert-IsTrueAsserts.py` (#2197): stellt `Assert.IsTrue(A = B)` usw. in DUnitX-Tests nach dem Typ beider Seiten auf `AreEqual`, `AreEqual<T>` mit ausdrücklichem Typ, `AreSame`, `IsNull` usw. um; was sich nicht sicher bestimmen lässt, listet es zur Entscheidung von Hand.
