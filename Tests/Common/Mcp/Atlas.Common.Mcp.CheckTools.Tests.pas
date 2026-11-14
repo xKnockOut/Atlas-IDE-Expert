@@ -100,9 +100,9 @@ end;
 
 procedure TMcpCheckToolsTests.ParsesHookSeverity;
 begin
-  Assert.IsTrue(TMcpCheckTools.ParseHookSeverity('') = TRuleSeverity.Warning);
-  Assert.IsTrue(TMcpCheckTools.ParseHookSeverity('Error') = TRuleSeverity.Error);
-  Assert.IsTrue(TMcpCheckTools.ParseHookSeverity('hint') = TRuleSeverity.Hint);
+  Assert.AreEqual<TRuleSeverity>(TRuleSeverity.Warning, TMcpCheckTools.ParseHookSeverity(''));
+  Assert.AreEqual<TRuleSeverity>(TRuleSeverity.Error, TMcpCheckTools.ParseHookSeverity('Error'));
+  Assert.AreEqual<TRuleSeverity>(TRuleSeverity.Hint, TMcpCheckTools.ParseHookSeverity('hint'));
   Assert.WillRaise(
     procedure
     begin

@@ -241,7 +241,7 @@ begin
   begin
     Keys := Keys + Template.Key + ' ';
     Assert.IsFalse(Template.IsCustom);
-    Assert.IsTrue(Template.Description <> '');
+    Assert.AreNotEqual('', Template.Description);
   end;
   Assert.AreEqual('for forin tryf ifa notnil nil not if fmt free try var exit ', Keys);
 end;

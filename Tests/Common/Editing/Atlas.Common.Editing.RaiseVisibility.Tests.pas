@@ -164,11 +164,11 @@ begin
   try
     mTargets := TRaiseVisibility.Targets(mLayout, mLayout.Find('FHidden')[0]);
     Assert.AreEqual(2, Integer(Length(mTargets)), 'strict private');
-    Assert.IsTrue(mTargets[0] = TClassVisibility.Protected_);
-    Assert.IsTrue(mTargets[1] = TClassVisibility.Public_);
+    Assert.AreEqual<TClassVisibility>(TClassVisibility.Protected_, mTargets[0]);
+    Assert.AreEqual<TClassVisibility>(TClassVisibility.Public_, mTargets[1]);
     mTargets := TRaiseVisibility.Targets(mLayout, mLayout.Find('Step')[0]);
     Assert.AreEqual(1, Integer(Length(mTargets)), 'protected');
-    Assert.IsTrue(mTargets[0] = TClassVisibility.Public_);
+    Assert.AreEqual<TClassVisibility>(TClassVisibility.Public_, mTargets[0]);
     Assert.AreEqual(0, Integer(Length(TRaiseVisibility.Targets(mLayout, mLayout.Find('Run')[0]))), 'public');
     Assert.AreEqual(0, Integer(Length(TRaiseVisibility.Targets(mLayout, mLayout.Find('Count')[0]))), 'published');
   finally

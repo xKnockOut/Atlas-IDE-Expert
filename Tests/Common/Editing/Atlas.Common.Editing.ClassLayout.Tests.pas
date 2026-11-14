@@ -157,8 +157,8 @@ begin
       Assert.AreEqual('FB', ALayout.Members[1].Name);
       Assert.IsTrue(ALayout.Members[1].IsFieldGroup);
       Assert.AreEqual('Integer', ALayout.Members[1].TypeName);
-      Assert.IsTrue(ALayout.Members[0].Visibility = TClassVisibility.Private_);
-      Assert.IsTrue(ALayout.Members[3].Visibility = TClassVisibility.Public_);
+      Assert.AreEqual<TClassVisibility>(TClassVisibility.Private_, ALayout.Members[0].Visibility);
+      Assert.AreEqual<TClassVisibility>(TClassVisibility.Public_, ALayout.Members[3].Visibility);
       Assert.AreEqual(10, ALayout.Members[3].FirstLine, 'mit Doku-Kommentar');
       Assert.AreEqual(10, ALayout.Members[3].DocLine);
       Assert.IsTrue(ALayout.Members[3].IsVirtual);
@@ -166,7 +166,7 @@ begin
       Assert.IsTrue(ALayout.Members[5].IsClassMember);
       Assert.AreEqual('TKunde', ALayout.Members[5].TypeName);
       Name := ALayout.Members[6];
-      Assert.IsTrue(Name.Kind = TClassMemberKind.Property_);
+      Assert.AreEqual<TClassMemberKind>(TClassMemberKind.Property_, Name.Kind);
       Assert.AreEqual('GetName', Name.ReadAccessor);
       Assert.AreEqual('FB', Name.WriteAccessor);
       Assert.AreEqual('procedure Load(AValue: Integer);', ALayout.Head(3));

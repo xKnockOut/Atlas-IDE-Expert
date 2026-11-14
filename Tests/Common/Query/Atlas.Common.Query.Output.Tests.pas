@@ -92,13 +92,13 @@ var
   mFormat: TQueryOutputFormat;
 begin
   Assert.IsTrue(TQueryOutput.TryParseFormat('', TQueryOutputFormat.Text, mFormat));
-  Assert.IsTrue(mFormat = TQueryOutputFormat.Text);
+  Assert.AreEqual<TQueryOutputFormat>(TQueryOutputFormat.Text, mFormat);
   Assert.IsTrue(TQueryOutput.TryParseFormat('CSV', TQueryOutputFormat.Text, mFormat));
-  Assert.IsTrue(mFormat = TQueryOutputFormat.Csv);
+  Assert.AreEqual<TQueryOutputFormat>(TQueryOutputFormat.Csv, mFormat);
   Assert.IsTrue(TQueryOutput.TryParseFormat('json', TQueryOutputFormat.Text, mFormat));
-  Assert.IsTrue(mFormat = TQueryOutputFormat.Json);
+  Assert.AreEqual<TQueryOutputFormat>(TQueryOutputFormat.Json, mFormat);
   Assert.IsFalse(TQueryOutput.TryParseFormat('sarif', TQueryOutputFormat.Markdown, mFormat));
-  Assert.IsTrue(mFormat = TQueryOutputFormat.Markdown);
+  Assert.AreEqual<TQueryOutputFormat>(TQueryOutputFormat.Markdown, mFormat);
 end;
 
 procedure TQueryOutputTests.MarkdownHasTableAndInferredMark;

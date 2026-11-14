@@ -288,9 +288,9 @@ var
   Section: TArchitectureSection;
 begin
   Assert.IsTrue(TArchitectureReport.ParseSection('', Section));
-  Assert.IsTrue(Section = TArchitectureSection.Overview);
+  Assert.AreEqual<TArchitectureSection>(TArchitectureSection.Overview, Section);
   Assert.IsTrue(TArchitectureReport.ParseSection('crosslinks', Section));
-  Assert.IsTrue(Section = TArchitectureSection.CrossLinks);
+  Assert.AreEqual<TArchitectureSection>(TArchitectureSection.CrossLinks, Section);
   Assert.IsFalse(TArchitectureReport.ParseSection('alles', Section));
   Assert.AreEqual('crossLinks', TArchitectureReport.SectionName(TArchitectureSection.CrossLinks));
 end;

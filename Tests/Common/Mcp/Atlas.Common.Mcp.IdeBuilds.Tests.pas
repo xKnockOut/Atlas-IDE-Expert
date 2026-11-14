@@ -188,12 +188,12 @@ var
 begin
   Wanted := Request('C:\P\App.dproj', 'Build');
   Wanted.Configuration := 'Release';
-  Assert.IsTrue(TMcpIdeBuilds.Send(FInbox, Wanted,
+  Assert.AreEqual<TMcpIdeBuildOutcome>(TMcpIdeBuildOutcome.Done, TMcpIdeBuilds.Send(FInbox, Wanted,
     procedure
     begin
       Inc(Now_, 100);
       Plugin(FInbox, PluginAnswer, Seen);
-    end, Clock, BuildText, Reason) = TMcpIdeBuildOutcome.Done, Reason);
+    end, Clock, BuildText, Reason), Reason);
   Json := TJSONObject.ParseJSONValue(Seen);
   try
     Assert.AreEqual('C:\P\App.dproj', Json.GetValue<string>('project'));
@@ -216,12 +216,13 @@ procedure TMcpIdeBuildsTests.ReportsRefusal;
 var
   BuildText, Reason, Seen: string;
 begin
-  Assert.IsTrue(TMcpIdeBuilds.Send(FInbox, Request('C:\P\App.dproj', 'make'),
+  Assert.AreEqual<TMcpIdeBuildOutcome>(TMcpIdeBuildOutcome.Refused,
+    TMcpIdeBuilds.Send(FInbox, Request('C:\P\App.dproj', 'make'),
     procedure
     begin
       Inc(Now_, 100);
       Plugin(FInbox, '{"ok":false,"reason":"In der IDE läuft der Debugger"}', Seen);
-    end, Clock, BuildText, Reason) = TMcpIdeBuildOutcome.Refused);
+    end, Clock, BuildText, Reason));
   Assert.AreEqual('In der IDE läuft der Debugger', Reason);
   Assert.AreEqual('', BuildText);
 end;
@@ -230,11 +231,12 @@ procedure TMcpIdeBuildsTests.WithdrawsWhenNobodyTakesTheRequest;
 var
   BuildText, Reason: string;
 begin
-  Assert.IsTrue(TMcpIdeBuilds.Send(FInbox, Request('C:\P\App.dproj', 'make'),
+  Assert.AreEqual<TMcpIdeBuildOutcome>(TMcpIdeBuildOutcome.NotTaken,
+    TMcpIdeBuilds.Send(FInbox, Request('C:\P\App.dproj', 'make'),
     procedure
     begin
       Inc(Now_, 100);
-    end, Clock, BuildText, Reason) = TMcpIdeBuildOutcome.NotTaken);
+    end, Clock, BuildText, Reason));
   Assert.IsNotEmpty(Reason);
   Assert.AreEqual(0, Integer(Length(TDirectory.GetFiles(FInbox))), 'Auftrag zurückgezogen');
 end;
@@ -243,12 +245,13 @@ procedure TMcpIdeBuildsTests.TimesOutWhenTakenButNeverAnswered;
 var
   BuildText, Reason, Seen: string;
 begin
-  Assert.IsTrue(TMcpIdeBuilds.Send(FInbox, Request('C:\P\App.dproj', 'check'), TMcpIdeBuildWaiting.Make(
+  Assert.AreEqual<TMcpIdeBuildOutcome>(TMcpIdeBuildOutcome.TimedOut,
+    TMcpIdeBuilds.Send(FInbox, Request('C:\P\App.dproj', 'check'), TMcpIdeBuildWaiting.Make(
     procedure
     begin
       Inc(Now_, 1000);
       Plugin(FInbox, '', Seen);
-    end, Clock, 5000, 3000), BuildText, Reason) = TMcpIdeBuildOutcome.TimedOut);
+    end, Clock, 5000, 3000), BuildText, Reason));
   Assert.IsNotEmpty(Reason);
   Assert.IsTrue(TMcpIdeBuilds.ModeValid('Check'));
   Assert.IsFalse(TMcpIdeBuilds.ModeValid('clean'));

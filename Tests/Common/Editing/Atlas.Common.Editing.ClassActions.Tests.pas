@@ -229,7 +229,7 @@ var
   FileName: string;
 begin
   FileName := TestsFile(TPath.Combine('Common', TPath.Combine('Editing', AName + '.pas')));
-  Assert.IsTrue(FileName <> '', 'Golden-Datei nicht gefunden: ' + AName);
+  Assert.AreNotEqual('', FileName, 'Golden-Datei nicht gefunden: ' + AName);
   Result := TFile.ReadAllText(FileName, TEncoding.UTF8);
   if (Result <> '') and (Result[1] = #$FEFF) then
   begin

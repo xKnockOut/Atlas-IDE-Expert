@@ -160,7 +160,7 @@ begin
     '    FTree: TTree;'#10'  end;'#10);
   Findings := Analyze(Source);
   Assert.AreEqual(1, Integer(Length(Findings)));
-  Assert.IsTrue(Findings[0].Issue = TForwardIssue.UsedBeforeDeclaration);
+  Assert.AreEqual<TForwardIssue>(TForwardIssue.UsedBeforeDeclaration, Findings[0].Issue);
   Assert.AreEqual('TNode', Findings[0].TypeName);
   Assert.AreEqual('TTree', Findings[0].UserName);
   Assert.AreEqual(4, Findings[0].Range.StartPos.Line);
@@ -290,7 +290,7 @@ begin
   Source := UnitText('type'#10'  TNode = class;'#10'  TTree = class'#10'  end;'#10'  TNode = class'#10'  end;'#10);
   Findings := Analyze(Source);
   Assert.AreEqual(1, Integer(Length(Findings)));
-  Assert.IsTrue(Findings[0].Issue = TForwardIssue.UnneededForward);
+  Assert.AreEqual<TForwardIssue>(TForwardIssue.UnneededForward, Findings[0].Issue);
   Assert.AreEqual(3, Findings[0].Range.StartPos.Line);
   Assert.AreEqual(UnitText('type'#10'  TTree = class'#10'  end;'#10'  TNode = class'#10'  end;'#10),
     Apply(Source, Findings[0].Edits));
@@ -330,7 +330,7 @@ begin
   // Gegentest UG1: Die Klasse steht erst im nächsten type-Block.
   mFindings := Analyze(UnitText('type'#10'  TAKlasse = class of TA;'#10'type'#10'  TA = class'#10'  end;'#10));
   Assert.AreEqual(1, Integer(Length(mFindings)));
-  Assert.IsTrue(mFindings[0].Issue = TForwardIssue.UsedBeforeDeclaration);
+  Assert.AreEqual<TForwardIssue>(TForwardIssue.UsedBeforeDeclaration, mFindings[0].Issue);
   Assert.AreEqual('TA', mFindings[0].TypeName);
   // Ein Feld vom Typ der Klassenreferenz braucht die Klassenreferenz vorher.
   mFindings := Analyze(UnitText('type'#10'  THalter = class'#10'    FKlasse: TAKlasse;'#10'  end;'#10 +
@@ -345,7 +345,7 @@ var
 begin
   mFindings := Analyze(UnitText('type'#10'  TA = class;'#10'  TAKlasse = class of TA;'#10'  TA = class'#10'  end;'#10));
   Assert.AreEqual(1, Integer(Length(mFindings)));
-  Assert.IsTrue(mFindings[0].Issue = TForwardIssue.UnneededForward);
+  Assert.AreEqual<TForwardIssue>(TForwardIssue.UnneededForward, mFindings[0].Issue);
 end;
 
 procedure TForwardDeclarationsTests.SameNameAliasLaterIsSilent;

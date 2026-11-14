@@ -78,7 +78,7 @@ begin
   // Die ältesten sieben sind verdrängt, Reihenfolge älteste zuerst.
   Assert.AreEqual('m8', Recent[0].Method);
   Assert.AreEqual('m57', Recent[High(Recent)].Method);
-  Assert.IsTrue(Recent[High(Recent)].Failed = False);
+  Assert.IsFalse(Recent[High(Recent)].Failed);
   Assert.AreEqual(Int64(57), Recent[High(Recent)].ElapsedMs);
 end;
 

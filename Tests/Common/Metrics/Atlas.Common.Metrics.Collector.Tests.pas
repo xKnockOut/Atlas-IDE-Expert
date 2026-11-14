@@ -86,8 +86,8 @@ end;
 
 procedure TMetricsCollectorTests.ChecksumDiffers;
 begin
-  Assert.IsTrue(TMetricsCollector.Checksum('ab') <> TMetricsCollector.Checksum('ba'));
-  Assert.IsTrue(TMetricsCollector.Checksum('') = 2166136261);
+  Assert.AreNotEqual<Cardinal>(TMetricsCollector.Checksum('ab'), TMetricsCollector.Checksum('ba'));
+  Assert.AreEqual<Cardinal>(2166136261, TMetricsCollector.Checksum(''));
 end;
 
 initialization

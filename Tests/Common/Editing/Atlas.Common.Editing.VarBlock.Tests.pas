@@ -722,10 +722,10 @@ end;
 
 procedure TVarBlockTests.SortNames;
 begin
-  Assert.IsTrue(TVarBlock.SortOf('alpha') = TVarBlockSort.Alpha);
-  Assert.IsTrue(TVarBlock.SortOf('NONE') = TVarBlockSort.None);
-  Assert.IsTrue(TVarBlock.SortOf('usage') = TVarBlockSort.Usage);
-  Assert.IsTrue(TVarBlock.SortOf('quer') = TVarBlockSort.Usage);
+  Assert.AreEqual<TVarBlockSort>(TVarBlockSort.Alpha, TVarBlock.SortOf('alpha'));
+  Assert.AreEqual<TVarBlockSort>(TVarBlockSort.None, TVarBlock.SortOf('NONE'));
+  Assert.AreEqual<TVarBlockSort>(TVarBlockSort.Usage, TVarBlock.SortOf('usage'));
+  Assert.AreEqual<TVarBlockSort>(TVarBlockSort.Usage, TVarBlock.SortOf('quer'));
   Assert.AreEqual('alpha', TVarBlock.cSortNames[TVarBlockSort.Alpha]);
 end;
 

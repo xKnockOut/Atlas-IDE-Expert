@@ -173,14 +173,14 @@ end;
 
 procedure THotspotAnalysisTests.TrendWithTolerance;
 begin
-  Assert.IsTrue(THotspotAnalyzer.TrendOf(10, -2) = THotspotTrend.New);
-  Assert.IsTrue(THotspotAnalyzer.TrendOf(10, -1) = THotspotTrend.Unknown);
-  Assert.IsTrue(THotspotAnalyzer.TrendOf(10, 10) = THotspotTrend.Steady);
-  Assert.IsTrue(THotspotAnalyzer.TrendOf(11, 10) = THotspotTrend.Steady, 'mindestens 1 Toleranz');
-  Assert.IsTrue(THotspotAnalyzer.TrendOf(12, 10) = THotspotTrend.Rising);
-  Assert.IsTrue(THotspotAnalyzer.TrendOf(8, 10) = THotspotTrend.Falling);
-  Assert.IsTrue(THotspotAnalyzer.TrendOf(104, 100) = THotspotTrend.Steady, '5 %');
-  Assert.IsTrue(THotspotAnalyzer.TrendOf(106, 100) = THotspotTrend.Rising);
+  Assert.AreEqual<THotspotTrend>(THotspotTrend.New, THotspotAnalyzer.TrendOf(10, -2));
+  Assert.AreEqual<THotspotTrend>(THotspotTrend.Unknown, THotspotAnalyzer.TrendOf(10, -1));
+  Assert.AreEqual<THotspotTrend>(THotspotTrend.Steady, THotspotAnalyzer.TrendOf(10, 10));
+  Assert.AreEqual<THotspotTrend>(THotspotTrend.Steady, THotspotAnalyzer.TrendOf(11, 10), 'mindestens 1 Toleranz');
+  Assert.AreEqual<THotspotTrend>(THotspotTrend.Rising, THotspotAnalyzer.TrendOf(12, 10));
+  Assert.AreEqual<THotspotTrend>(THotspotTrend.Falling, THotspotAnalyzer.TrendOf(8, 10));
+  Assert.AreEqual<THotspotTrend>(THotspotTrend.Steady, THotspotAnalyzer.TrendOf(104, 100), '5 %');
+  Assert.AreEqual<THotspotTrend>(THotspotTrend.Rising, THotspotAnalyzer.TrendOf(106, 100));
 end;
 
 procedure THotspotAnalysisTests.CouplingFindsPairWithoutUsesEdge;
@@ -286,7 +286,7 @@ begin
   Assert.AreEqual('svn', THotspots.KindName(THotspotVcsKind.Svn));
   for mTrend := Low(THotspotTrend) to High(THotspotTrend) do
   begin
-    Assert.IsTrue(THotspots.TrendOf(THotspots.TrendKey(mTrend)) = mTrend);
+    Assert.AreEqual<THotspotTrend>(mTrend, THotspots.TrendOf(THotspots.TrendKey(mTrend)));
   end;
   Assert.AreEqual('method', THotspots.LevelKey(THotspotLevel.Methods));
   Assert.IsTrue(THotspots.TryLevelOf('', mLevel) and (mLevel = THotspotLevel.Units), 'Vorgabe unit');

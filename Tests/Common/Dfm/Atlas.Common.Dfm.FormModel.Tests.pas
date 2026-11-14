@@ -98,7 +98,7 @@ begin
     Assert.IsTrue(Model.Components[0].HasField);
     Assert.AreEqual(4, Model.Components[0].Field.Range.StartPos.Line);
     Assert.IsTrue(Model.Components[1].HasField);
-    Assert.IsTrue(Model.FindComponent('grid') <> nil);
+    Assert.IsNotNull(Model.FindComponent('grid'));
   finally
     Model.Free;
   end;

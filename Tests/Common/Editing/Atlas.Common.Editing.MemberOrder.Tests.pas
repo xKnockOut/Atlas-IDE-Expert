@@ -163,7 +163,7 @@ var
 begin
   Once := Sorted(Wrap('  public'#10'    procedure Run;'#10'    constructor Create;'#10'  private'#10 +
     '    FA: Integer;'#10));
-  Assert.IsTrue(Once <> '');
+  Assert.AreNotEqual('', Once);
   Assert.AreEqual('', Sorted(Once));
 end;
 

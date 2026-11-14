@@ -136,13 +136,13 @@ var
   mFormat: TMutationOutputFormat;
 begin
   Assert.IsTrue(TMutationReport.TryParseFormat('', mFormat));
-  Assert.IsTrue(mFormat = TMutationOutputFormat.Markdown);
+  Assert.AreEqual<TMutationOutputFormat>(TMutationOutputFormat.Markdown, mFormat);
   Assert.IsTrue(TMutationReport.TryParseFormat('Text', mFormat));
-  Assert.IsTrue(mFormat = TMutationOutputFormat.Markdown);
+  Assert.AreEqual<TMutationOutputFormat>(TMutationOutputFormat.Markdown, mFormat);
   Assert.IsTrue(TMutationReport.TryParseFormat('JSON', mFormat));
-  Assert.IsTrue(mFormat = TMutationOutputFormat.Json);
+  Assert.AreEqual<TMutationOutputFormat>(TMutationOutputFormat.Json, mFormat);
   Assert.IsTrue(TMutationReport.TryParseFormat('diff', mFormat));
-  Assert.IsTrue(mFormat = TMutationOutputFormat.Patch);
+  Assert.AreEqual<TMutationOutputFormat>(TMutationOutputFormat.Patch, mFormat);
   Assert.IsTrue(TMutationReport.TryParseFormat('patch', mFormat));
   Assert.IsFalse(TMutationReport.TryParseFormat('sarif', mFormat));
 end;

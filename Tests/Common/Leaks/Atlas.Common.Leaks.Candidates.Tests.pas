@@ -88,8 +88,8 @@ begin
   mFound := TLeakCandidates.InFile(SourceFile('U.pas', Body(['procedure Lade;', 'begin',
     '  TStringList.Create;', '  TStringList.Create.Add(''x'');', 'end;']), True), TArray<string>.Create('TStringList'));
   Assert.AreEqual(2, Integer(Length(mFound)));
-  Assert.IsTrue(mFound[0].Rating = TLeakRating.NeverFreed);
-  Assert.IsTrue(mFound[1].Rating = TLeakRating.NeverFreed, 'verkettet');
+  Assert.AreEqual<TLeakRating>(TLeakRating.NeverFreed, mFound[0].Rating);
+  Assert.AreEqual<TLeakRating>(TLeakRating.NeverFreed, mFound[1].Rating, 'verkettet');
   Assert.AreEqual(5, mFound[0].Position.Line);
   Assert.AreEqual(2, mFound[0].Position.Character);
   Assert.AreEqual('Lade', mFound[0].Routine);
@@ -104,19 +104,21 @@ begin
     'procedure TForm1.Speichere;', 'var L: TStringList;', 'begin', '  L := TStringList.Create;', 'end;']), True),
     TArray<string>.Create('TStringList'));
   Assert.AreEqual(2, Integer(Length(mFound)));
-  Assert.IsTrue(mFound[0].Rating = TLeakRating.LocalFreed);
+  Assert.AreEqual<TLeakRating>(TLeakRating.LocalFreed, mFound[0].Rating);
   Assert.AreEqual('L', mFound[0].Target);
   Assert.AreEqual('TForm1.Lade', mFound[0].Routine);
-  Assert.IsTrue(mFound[1].Rating = TLeakRating.NeverFreed, 'Free steht in einer anderen Routine');
+  Assert.AreEqual<TLeakRating>(TLeakRating.NeverFreed, mFound[1].Rating, 'Free steht in einer anderen Routine');
 end;
 
 procedure TLeakCandidatesTests.FieldFreedInDestructor;
 begin
-  Assert.IsTrue(Only(Body(['constructor TListe.Create;', 'begin', '  FItems := TStringList.Create;', 'end;',
+  Assert.AreEqual<TLeakRating>(TLeakRating.FieldFreed,
+    Only(Body(['constructor TListe.Create;', 'begin', '  FItems := TStringList.Create;', 'end;',
     'destructor TListe.Destroy;', 'begin', '  FreeAndNil(FItems);', '  inherited;', 'end;']),
-    'TStringList').Rating = TLeakRating.FieldFreed);
-  Assert.IsTrue(Only(Body(['constructor TListe.Create;', 'begin', '  Self.Items := TStringList.Create;', 'end;',
-    'destructor TListe.Destroy;', 'begin', '  Items.Free;', 'end;']), 'TStringList').Rating = TLeakRating.FieldFreed,
+    'TStringList').Rating);
+  Assert.AreEqual<TLeakRating>(TLeakRating.FieldFreed,
+    Only(Body(['constructor TListe.Create;', 'begin', '  Self.Items := TStringList.Create;', 'end;',
+    'destructor TListe.Destroy;', 'begin', '  Items.Free;', 'end;']), 'TStringList').Rating,
     'Self.X gilt als Feld');
 end;
 
@@ -126,36 +128,43 @@ var
 begin
   mCandidate := Only(Body(['constructor TListe.Create;', 'begin', '  FItems := TStringList.Create;', 'end;',
     'destructor TListe.Destroy;', 'begin', '  FAndere.Free;', 'end;']), 'TStringList');
-  Assert.IsTrue(mCandidate.Rating = TLeakRating.NeverFreed);
+  Assert.AreEqual<TLeakRating>(TLeakRating.NeverFreed, mCandidate.Rating);
   Assert.AreEqual('FItems', mCandidate.Target);
 end;
 
 procedure TLeakCandidatesTests.ReturnedToCaller;
 begin
-  Assert.IsTrue(Only(Body(['function Neu: TKunde;', 'begin', '  Result := TKunde.Create;', 'end;']),
-    'TKunde').Rating = TLeakRating.Returned);
-  Assert.IsTrue(Only(Body(['function Neu: TKunde;', 'begin', '  Exit(TKunde.Create);', 'end;']),
-    'TKunde').Rating = TLeakRating.Returned, 'Exit(…)');
-  Assert.IsTrue(Only(Body(['function Neu: TKunde;', 'var K: TKunde;', 'begin', '  K := TKunde.Create;',
-    '  K.Name := ''x'';', '  Result := K;', 'end;']), 'TKunde').Rating = TLeakRating.Returned, 'über Variable');
+  Assert.AreEqual<TLeakRating>(TLeakRating.Returned,
+    Only(Body(['function Neu: TKunde;', 'begin', '  Result := TKunde.Create;', 'end;']),
+    'TKunde').Rating);
+  Assert.AreEqual<TLeakRating>(TLeakRating.Returned,
+    Only(Body(['function Neu: TKunde;', 'begin', '  Exit(TKunde.Create);', 'end;']),
+    'TKunde').Rating, 'Exit(…)');
+  Assert.AreEqual<TLeakRating>(TLeakRating.Returned,
+    Only(Body(['function Neu: TKunde;', 'var K: TKunde;', 'begin', '  K := TKunde.Create;',
+    '  K.Name := ''x'';', '  Result := K;', 'end;']), 'TKunde').Rating, 'über Variable');
 end;
 
 procedure TLeakCandidatesTests.PassedAsArgument;
 begin
-  Assert.IsTrue(Only(Body(['procedure Fuelle(AListe: TObjectList);', 'begin',
-    '  AListe.Add(TKunde.Create);', 'end;']), 'TKunde').Rating = TLeakRating.Passed);
-  Assert.IsTrue(Only(Body(['procedure Fuelle;', 'begin', '  Merke(1, TKunde.Create);', 'end;']),
-    'TKunde').Rating = TLeakRating.Passed, 'zweites Argument');
+  Assert.AreEqual<TLeakRating>(TLeakRating.Passed, Only(Body(['procedure Fuelle(AListe: TObjectList);', 'begin',
+    '  AListe.Add(TKunde.Create);', 'end;']), 'TKunde').Rating);
+  Assert.AreEqual<TLeakRating>(TLeakRating.Passed,
+    Only(Body(['procedure Fuelle;', 'begin', '  Merke(1, TKunde.Create);', 'end;']),
+    'TKunde').Rating, 'zweites Argument');
 end;
 
 procedure TLeakCandidatesTests.OwnerInConstructor;
 begin
-  Assert.IsTrue(Only(Body(['procedure TForm1.Baue;', 'begin', '  FKnopf := TButton.Create(Self);', 'end;']),
-    'TButton').Rating = TLeakRating.Owned);
-  Assert.IsTrue(Only(Body(['procedure Baue(AOwner: TComponent);', 'begin', '  TButton.Create(AOwner);', 'end;']),
-    'TButton').Rating = TLeakRating.Owned);
-  Assert.IsTrue(Only(Body(['procedure Baue;', 'begin', '  TButton.Create(nil);', 'end;']),
-    'TButton').Rating = TLeakRating.NeverFreed, 'nil ist kein Owner');
+  Assert.AreEqual<TLeakRating>(TLeakRating.Owned,
+    Only(Body(['procedure TForm1.Baue;', 'begin', '  FKnopf := TButton.Create(Self);', 'end;']),
+    'TButton').Rating);
+  Assert.AreEqual<TLeakRating>(TLeakRating.Owned,
+    Only(Body(['procedure Baue(AOwner: TComponent);', 'begin', '  TButton.Create(AOwner);', 'end;']),
+    'TButton').Rating);
+  Assert.AreEqual<TLeakRating>(TLeakRating.NeverFreed,
+    Only(Body(['procedure Baue;', 'begin', '  TButton.Create(nil);', 'end;']),
+    'TButton').Rating, 'nil ist kein Owner');
 end;
 
 procedure TLeakCandidatesTests.SkipsHeaderRaiseCommentsAndStrings;
@@ -187,7 +196,7 @@ begin
   mFound := TLeakCandidates.InFile(SourceFile('Kunde.Tests.pas', Body(['procedure Test;', 'begin',
     '  TKunde.Create;', 'end;']), False), TArray<string>.Create('TKunde'));
   Assert.AreEqual(1, Integer(Length(mFound)));
-  Assert.IsTrue(mFound[0].Rating = TLeakRating.NotInProgram);
+  Assert.AreEqual<TLeakRating>(TLeakRating.NotInProgram, mFound[0].Rating);
 end;
 
 procedure TLeakCandidatesTests.FindSortsByRatingThenFile;
@@ -200,9 +209,9 @@ begin
     TArray<string>.Create('TKunde'));
   Assert.AreEqual(3, Integer(Length(mFound)));
   Assert.AreEqual('A.pas', mFound[0].FileName);
-  Assert.IsTrue(mFound[0].Rating = TLeakRating.NeverFreed);
+  Assert.AreEqual<TLeakRating>(TLeakRating.NeverFreed, mFound[0].Rating);
   Assert.AreEqual('B.pas', mFound[1].FileName);
-  Assert.IsTrue(mFound[2].Rating = TLeakRating.Returned);
+  Assert.AreEqual<TLeakRating>(TLeakRating.Returned, mFound[2].Rating);
 end;
 
 procedure TLeakCandidatesTests.ScanReadsUseTargetAndDestructorFrees;
@@ -213,11 +222,11 @@ begin
     '  Merke(TStringList.Create);', 'end;', 'destructor TListe.Destroy;', 'begin', '  FreeAndNil(Self.FItems);',
     'end;']), TArray<string>.Create('TStringList'));
   Assert.AreEqual(2, Integer(Length(mScan.Sites)));
-  Assert.IsTrue(mScan.Sites[0].Use = TLeakCreateUse.Assigned);
+  Assert.AreEqual<TLeakCreateUse>(TLeakCreateUse.Assigned, mScan.Sites[0].Use);
   Assert.AreEqual('FItems', mScan.Sites[0].Target);
   Assert.IsTrue(mScan.Sites[0].TargetIsField);
   Assert.AreEqual('TListe.Create', mScan.Sites[0].Routine);
-  Assert.IsTrue(mScan.Sites[1].Use = TLeakCreateUse.Argument);
+  Assert.AreEqual<TLeakCreateUse>(TLeakCreateUse.Argument, mScan.Sites[1].Use);
   Assert.IsTrue(mScan.DestructorFrees('fitems'), 'FreeAndNil(Self.X)');
   Assert.IsFalse(mScan.DestructorFrees('fandere'));
 end;

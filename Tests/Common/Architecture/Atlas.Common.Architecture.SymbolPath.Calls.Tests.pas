@@ -130,7 +130,7 @@ begin
   mEdges := FCalls.CallsOf(NodeOf('Start'));
   Assert.AreEqual(1, Integer(Length(mEdges)));
   Assert.AreEqual(NodeOf('Ziel'), mEdges[0].Target);
-  Assert.IsTrue(mEdges[0].Kind = TSymbolPathEdgeKind.Calls);
+  Assert.AreEqual<TSymbolPathEdgeKind>(TSymbolPathEdgeKind.Calls, mEdges[0].Kind);
   // Fundstelle ist der Aufruf im Rumpf.
   Assert.AreEqual(7, mEdges[0].Position.Line);
   Assert.IsTrue(FCalls.Leads(NodeOf('Start'), NodeOf('Ziel')));

@@ -113,7 +113,7 @@ begin
     Assert.AreEqual('{"jsonrpc":"2.0","method":"textDocument/didOpen","params":{"uri":"file:///c:/p/a.pas"}}',
       Message.ToJSON);
     // Die Parameter gehen in die Nachricht über.
-    Assert.IsTrue(Message.GetValue('params') = Params);
+    Assert.AreSame(Params, Message.GetValue('params'));
   finally
     Message.Free;
   end;

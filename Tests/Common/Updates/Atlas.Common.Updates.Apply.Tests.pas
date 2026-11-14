@@ -119,7 +119,8 @@ var
   mOutcome: TUpdateOutcome;
 begin
   mOutcome := Apply(nil);
-  Assert.IsTrue(mOutcome.Kind = TUpdateOutcomeKind.Installed, mOutcome.Reason + ' ' + mOutcome.Detail);
+  Assert.AreEqual<TUpdateOutcomeKind>(TUpdateOutcomeKind.Installed,
+    mOutcome.Kind, mOutcome.Reason + ' ' + mOutcome.Detail);
   Assert.AreEqual('server 2.0.1', FFake.Files.ReadText(cTarget + '\AtlasServer.exe'));
   Assert.AreEqual('search 2.0.1', FFake.Files.ReadText(cTarget + '\Win32\Atlas.IDE.Search370.bpl'));
   Assert.IsTrue(FFake.Registry.Has(cKnown, cTarget + '\Win32\Atlas.IDE.Search370.bpl'));
@@ -134,7 +135,8 @@ var
   mOutcome: TUpdateOutcome;
 begin
   mOutcome := Apply(TArray<string>.Create('Atlas.IDE.Base'));
-  Assert.IsTrue(mOutcome.Kind = TUpdateOutcomeKind.Installed, mOutcome.Reason + ' ' + mOutcome.Detail);
+  Assert.AreEqual<TUpdateOutcomeKind>(TUpdateOutcomeKind.Installed,
+    mOutcome.Kind, mOutcome.Reason + ' ' + mOutcome.Detail);
   Assert.IsFalse(FFake.Files.FileExists(cTarget + '\Win32\Atlas.IDE.Debugger370.bpl'));
   Assert.IsFalse(FFake.Files.FileExists(cTarget + '\Win32\Atlas.IDE.Debugger370.map'));
   Assert.IsFalse(FFake.Files.FileExists(cTarget + '\Win32\Atlas.IDE.Search370.bpl'));
@@ -151,7 +153,7 @@ begin
   FFake.Registry.WriteValue('Software\Embarcadero\Test\37.0\Known Packages',
     cTarget + '\Win32\Atlas.IDE.Debugger370.bpl', 'Atlas Debugger');
   mOutcome := Apply(TArray<string>.Create('Atlas.IDE.Base'));
-  Assert.IsTrue(mOutcome.Kind = TUpdateOutcomeKind.Installed);
+  Assert.AreEqual<TUpdateOutcomeKind>(TUpdateOutcomeKind.Installed, mOutcome.Kind);
   Assert.AreEqual('debugger 2.0.0', FFake.Files.ReadText(cTarget + '\Win32\Atlas.IDE.Debugger370.bpl'));
   Assert.IsFalse(FFake.Registry.Has(cKnown, cTarget + '\Win32\Atlas.IDE.Debugger370.bpl'));
   Assert.Contains(FFake.LogText, 'anderes Profil');
@@ -163,7 +165,7 @@ var
 begin
   FFake.Processes.Run(4711, 'bds.exe', 3);
   mOutcome := Apply(nil);
-  Assert.IsTrue(mOutcome.Kind = TUpdateOutcomeKind.Installed);
+  Assert.AreEqual<TUpdateOutcomeKind>(TUpdateOutcomeKind.Installed, mOutcome.Kind);
   Assert.AreEqual(3, FFake.Processes.Sleeps);
   Assert.Contains(FFake.LogText, 'bds.exe (4711)');
 end;
@@ -175,7 +177,7 @@ begin
   FFake.Processes.Run(4711, 'bds.exe', 10);
   FFake.Processes.CancelAfter := 2;
   mOutcome := Apply(nil);
-  Assert.IsTrue(mOutcome.Kind = TUpdateOutcomeKind.Cancelled);
+  Assert.AreEqual<TUpdateOutcomeKind>(TUpdateOutcomeKind.Cancelled, mOutcome.Kind);
   Assert.AreEqual('server 2.0.0', FFake.Files.ReadText(cTarget + '\AtlasServer.exe'));
   Assert.IsFalse(FFake.Files.FileExists(cTarget + '\Win32\Atlas.IDE.Search370.bpl'));
 end;
@@ -189,7 +191,7 @@ begin
   // Die letzte Datei lässt sich nicht schreiben: alles davor wird zurückgenommen.
   FFake.Files.Damage(cTarget + '\Win32\Atlas.IDE.Search370.bpl');
   mOutcome := Apply(nil);
-  Assert.IsTrue(mOutcome.Kind = TUpdateOutcomeKind.RolledBack);
+  Assert.AreEqual<TUpdateOutcomeKind>(TUpdateOutcomeKind.RolledBack, mOutcome.Kind);
   Assert.AreEqual(TUpdateErrors.cCopyFailed, mOutcome.Reason);
   Assert.AreEqual('server 2.0.0', FFake.Files.ReadText(cTarget + '\AtlasServer.exe'));
   Assert.AreEqual('base 2.0.0', FFake.Files.ReadText(cTarget + '\Win32\Atlas.IDE.Base370.bpl'));
@@ -205,7 +207,7 @@ begin
   FFake.Files.WriteText(cFiles + '\Win64\Atlas.IDE.Search370.bpl', 'search64 2.0.1');
   FFake.Files.WriteText(cTarget + '\Win64\Atlas.IDE.Base370.bpl', 'base64 2.0.0');
   mOutcome := Apply(nil);
-  Assert.IsTrue(mOutcome.Kind = TUpdateOutcomeKind.Installed);
+  Assert.AreEqual<TUpdateOutcomeKind>(TUpdateOutcomeKind.Installed, mOutcome.Kind);
   Assert.AreEqual('base64 2.0.1', FFake.Files.ReadText(cTarget + '\Win64\Atlas.IDE.Base370.bpl'));
   // Neue Module der anderen IDE bleiben ihrem eigenen Update überlassen.
   Assert.IsFalse(FFake.Files.FileExists(cTarget + '\Win64\Atlas.IDE.Search370.bpl'));

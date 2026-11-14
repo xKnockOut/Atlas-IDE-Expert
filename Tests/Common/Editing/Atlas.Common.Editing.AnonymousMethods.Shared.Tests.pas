@@ -121,10 +121,10 @@ var
 begin
   mInput := TAnonymousInput.Create('X', nil, TTextPosition.Create(1, 2), Default(TAnonymousLookup));
   Assert.AreEqual('X', mInput.Text);
-  Assert.IsTrue(mInput.Tree = nil);
+  Assert.IsNull(mInput.Tree);
   Assert.AreEqual(1, mInput.Position.Line);
   Assert.AreEqual(2, mInput.Position.Character);
-  Assert.IsTrue(mInput.Capture = TDeferredCapture.Forward);
+  Assert.AreEqual<TDeferredCapture>(TDeferredCapture.Forward, mInput.Capture);
 end;
 
 procedure TAnonymousSharedTests.LookupFromTreeWithoutTreeIsEmpty;
@@ -149,8 +149,8 @@ begin
     mOuter := NodeNamed(mTree, TSyntaxKind.RoutineDecl, 'Outer');
     mNode := NodeNamed(mTree, TSyntaxKind.Identifier, 'Marke');
     Assert.IsNotNull(mNode);
-    Assert.IsTrue(TAnonymousSyntax.TopRoutineOf(mNode) = mOuter);
-    Assert.IsTrue(TAnonymousSyntax.TopRoutineOf(mTree.Root) = nil);
+    Assert.AreSame(mOuter, TAnonymousSyntax.TopRoutineOf(mNode));
+    Assert.IsNull(TAnonymousSyntax.TopRoutineOf(mTree.Root));
   finally
     mTree.Free;
   end;
@@ -206,7 +206,7 @@ begin
   try
     mArgument := NodeNamed(mTree, TSyntaxKind.Identifier, 'Wert');
     mCall := mArgument.Parent;
-    Assert.IsTrue(mCall.Kind = TSyntaxKind.Call);
+    Assert.AreEqual<TSyntaxKind>(TSyntaxKind.Call, mCall.Kind);
     Assert.IsTrue(TAnonymousSyntax.IsArgument(mArgument, mCall));
     Assert.IsFalse(TAnonymousSyntax.IsArgument(mCall[0], mCall), 'der Aufgerufene');
     Assert.IsFalse(TAnonymousSyntax.IsArgument(mArgument, nil));

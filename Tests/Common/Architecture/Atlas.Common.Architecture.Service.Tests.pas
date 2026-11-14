@@ -189,9 +189,9 @@ begin
   Settings.ArchitectureGroupingMinCohesion := 0;
   Settings.ArchitectureGroupingFoundations := 'attach';
   Request := TArchitectureRequest.FromSettings(Settings);
-  Assert.IsTrue(Request.Grouping.Foundations = TArchitectureFoundations.Attach);
-  Assert.IsTrue(TArchitectureRequest.FromSettings(TServerSettings.Default).Grouping.Foundations =
-    TArchitectureFoundations.Separate);
+  Assert.AreEqual<TArchitectureFoundations>(TArchitectureFoundations.Attach, Request.Grouping.Foundations);
+  Assert.AreEqual<TArchitectureFoundations>(TArchitectureFoundations.Separate,
+    TArchitectureRequest.FromSettings(TServerSettings.Default).Grouping.Foundations);
   Assert.AreEqual(Double(1.5), Request.Grouping.Resolution, 1E-9);
   Assert.AreEqual(Double(0.4), Request.Grouping.MaxShare, 1E-9);
   Assert.AreEqual(Double(0), Request.Grouping.MinCohesion, 1E-9);

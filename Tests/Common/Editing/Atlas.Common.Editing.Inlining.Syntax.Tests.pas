@@ -96,9 +96,9 @@ begin
     Assert.IsTrue(TInlineSyntax.CallAt(mTree, cCall, TTextPosition.Create(5, 7), mCall));
     Assert.AreEqual('Run', mCall.Name);
     Assert.AreEqual(2, Integer(Length(mCall.Arguments)));
-    Assert.IsTrue(mCall.Receiver <> nil);
+    Assert.IsNotNull(mCall.Receiver);
     Assert.AreEqual('Obj', mCall.Receiver.Name);
-    Assert.IsTrue(mCall.Statement <> nil);
+    Assert.IsNotNull(mCall.Statement);
     Assert.AreEqual(5, mCall.NamePos.Line);
     Assert.AreEqual(6, mCall.NamePos.Character);
   finally

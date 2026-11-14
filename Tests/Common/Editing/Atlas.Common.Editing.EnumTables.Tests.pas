@@ -212,9 +212,9 @@ begin
     Assert.IsTrue(TEnumTables.TableAt(Tree, TTextPosition.Create(5, 40), Table));
     Assert.AreEqual('A', Table.Decl.Name);
     Assert.IsFalse(TEnumTables.TableAt(Tree, TTextPosition.Create(6, 10), Table));
-    Assert.IsTrue(TEnumTables.ElementOf('String') = TEnumTableElement.Text);
-    Assert.IsTrue(TEnumTables.ElementOf('Integer') = TEnumTableElement.Number);
-    Assert.IsTrue(TEnumTables.ElementOf('TKunde') = TEnumTableElement.Other);
+    Assert.AreEqual<TEnumTableElement>(TEnumTableElement.Text, TEnumTables.ElementOf('String'));
+    Assert.AreEqual<TEnumTableElement>(TEnumTableElement.Number, TEnumTables.ElementOf('Integer'));
+    Assert.AreEqual<TEnumTableElement>(TEnumTableElement.Other, TEnumTables.ElementOf('TKunde'));
   finally
     Tree.Free;
   end;

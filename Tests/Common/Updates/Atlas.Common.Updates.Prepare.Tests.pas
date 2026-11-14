@@ -123,7 +123,7 @@ var
 begin
   Release(TFakeTrust.HashOf('pkg'));
   mStage := Prepare('37.0');
-  Assert.IsTrue(mStage.Phase = TUpdatePhase.Ready, mStage.Error + ' ' + mStage.Detail);
+  Assert.AreEqual<TUpdatePhase>(TUpdatePhase.Ready, mStage.Phase, mStage.Error + ' ' + mStage.Detail);
   Assert.AreEqual('2.0.1', mStage.Version);
   Assert.AreEqual('2.0.0', mStage.Previous);
   Assert.IsFalse(mStage.FromSource);
@@ -144,7 +144,7 @@ var
 begin
   Release(TFakeTrust.HashOf('anders'));
   mStage := Prepare('37.0');
-  Assert.IsTrue(mStage.Phase = TUpdatePhase.Failed);
+  Assert.AreEqual<TUpdatePhase>(TUpdatePhase.Failed, mStage.Phase);
   Assert.AreEqual(TUpdateErrors.cHash, mStage.Error);
   Assert.IsFalse(FFake.Files.FileExists(cStaging + '\files\AtlasServer.exe'));
 end;
@@ -166,7 +166,7 @@ var
 begin
   Release(TFakeTrust.HashOf('pkg'));
   mStage := Prepare('36.0');
-  Assert.IsTrue(mStage.Phase = TUpdatePhase.Ready, mStage.Error + ' ' + mStage.Detail);
+  Assert.AreEqual<TUpdatePhase>(TUpdatePhase.Ready, mStage.Phase, mStage.Error + ' ' + mStage.Detail);
   Assert.IsTrue(mStage.FromSource);
   Assert.AreEqual('Atlas.IDE.Base,Atlas.IDE.Debugger', string.Join(',', FFake.Builder.Projects));
   // Die BPLs für Delphi 13 und ihre Maps sind ersetzt; Server und Daten kommen aus dem Paket.
@@ -229,7 +229,7 @@ begin
   FFake.Trust.Sign(cStaging + '\files\Win32\Atlas.IDE.Debugger370.bpl', 'Atlas');
   FFake.Trust.Sign(cStaging + '\files\Win32\Atlas.IDE.Search370.bpl', 'Atlas');
   mStage := Prepare('37.0');
-  Assert.IsTrue(mStage.Phase = TUpdatePhase.Ready, mStage.Error + ' ' + mStage.Detail);
+  Assert.AreEqual<TUpdatePhase>(TUpdatePhase.Ready, mStage.Phase, mStage.Error + ' ' + mStage.Detail);
 end;
 
 procedure TCommonUpdatesPrepareTests.SkipsNewModulesOnRequest;

@@ -76,7 +76,7 @@ var
   Text: string;
 begin
   Text := Markdown('btnSpeichern');
-  Assert.IsTrue(Pos('**In Unit1.dfm** ([Zeile 3](file:///', Text) = 1, Text);
+  Assert.AreEqual(1, Pos('**In Unit1.dfm** ([Zeile 3](file:///', Text), Text);
   Assert.IsTrue(Pos('#L3)', Text) > 0, Text);
   Assert.IsTrue(Pos('- Caption = `''Speichern''`', Text) > 0, Text);
   Assert.IsTrue(Pos('- OnClick → `btnSpeichernClick`', Text) > 0, Text);

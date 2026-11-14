@@ -80,7 +80,7 @@ begin
     Assert.AreEqual<NativeInt>(1, First.Count);
     Assert.AreEqual<NativeInt>(1, Second.Count);
     Assert.AreEqual('Hallo', First[0].Text);
-    Assert.IsTrue(First[0].Level = TLogLevel.Info);
+    Assert.AreEqual<TLogLevel>(TLogLevel.Info, First[0].Level);
     LoggerRef := nil;
   finally
     Second.Free;

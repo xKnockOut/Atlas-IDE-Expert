@@ -237,7 +237,7 @@ begin
     try
       for Method in APlan.Methods do
       begin
-        Assert.IsTrue(Layout.Find(Method) <> nil, Method + ' fehlt: ' + Result);
+        Assert.AreNotEqual(0, Integer(Length(Layout.Find(Method))), Method + ' fehlt: ' + Result);
       end;
     finally
       Layout.Free;
