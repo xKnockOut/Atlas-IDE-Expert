@@ -121,7 +121,7 @@ begin
       Result := True;
     end);
   Assert.AreEqual(Under('Portable/git/' + Exe('git')), mLocation.Executable, 'ohne Anführungszeichen und Leerzeichen');
-  Assert.IsTrue(mLocation.Source = TAtlasVcsToolSource.Configured, 'eigener Pfad vor PATH');
+  Assert.AreEqual<TAtlasVcsToolSource>(TAtlasVcsToolSource.Configured, mLocation.Source, 'eigener Pfad vor PATH');
   Assert.AreEqual(Under('Portable/git/' + Exe('git')), mLocation.Configured);
 end;
 
@@ -135,7 +135,7 @@ begin
       Result := APath <> Under('fehlt/' + Exe('svn'));
     end);
   Assert.AreEqual('', mLocation.Executable, 'kein Ersatz aus PATH, wenn der eigene Pfad fehlt');
-  Assert.IsTrue(mLocation.Source = TAtlasVcsToolSource.ConfiguredMissing);
+  Assert.AreEqual<TAtlasVcsToolSource>(TAtlasVcsToolSource.ConfiguredMissing, mLocation.Source);
   Assert.AreEqual(Under('fehlt/' + Exe('svn')), mLocation.Configured, 'Pfad für die Meldung');
 end;
 
@@ -149,21 +149,22 @@ begin
       Result := True;
     end);
   Assert.AreEqual(Under('bin/' + Exe('svn')), mLocation.Executable);
-  Assert.IsTrue(mLocation.Source = TAtlasVcsToolSource.Path, 'PATH vor üblichen Ordnern');
+  Assert.AreEqual<TAtlasVcsToolSource>(TAtlasVcsToolSource.Path, mLocation.Source, 'PATH vor üblichen Ordnern');
   mLocation := TAtlasVcsTools.Resolve('svn', '  ', Under('bin'), [Under('TortoiseSVN/bin')],
     function(const APath: string): Boolean
     begin
       Result := APath = Under('TortoiseSVN/bin/' + Exe('svn'));
     end);
   Assert.AreEqual(Under('TortoiseSVN/bin/' + Exe('svn')), mLocation.Executable);
-  Assert.IsTrue(mLocation.Source = TAtlasVcsToolSource.KnownDir, 'leerer eigener Pfad = automatisch');
+  Assert.AreEqual<TAtlasVcsToolSource>(TAtlasVcsToolSource.KnownDir,
+    mLocation.Source, 'leerer eigener Pfad = automatisch');
   mLocation := TAtlasVcsTools.Resolve('svn', '', Under('bin'), [Under('TortoiseSVN/bin')],
     function(const APath: string): Boolean
     begin
       Result := False;
     end);
   Assert.AreEqual('', mLocation.Executable);
-  Assert.IsTrue(mLocation.Source = TAtlasVcsToolSource.None, 'nicht installiert');
+  Assert.AreEqual<TAtlasVcsToolSource>(TAtlasVcsToolSource.None, mLocation.Source, 'nicht installiert');
 end;
 
 procedure TAtlasVcsToolCheckTests.ConfigureForgetsRememberedLocation;
@@ -173,7 +174,8 @@ begin
     Assert.AreEqual(Under('alt/' + Exe('git')), TAtlasVcsTools.Find(TAtlasVcsKind.Git));
     TAtlasVcsTools.Configure(TAtlasVcsKind.Git, Under('neu/' + Exe('git')));
     Assert.AreEqual(Under('neu/' + Exe('git')), TAtlasVcsTools.Configured(TAtlasVcsKind.Git));
-    Assert.IsTrue(TAtlasVcsTools.Where(TAtlasVcsKind.Git).Source = TAtlasVcsToolSource.ConfiguredMissing,
+    Assert.AreEqual<TAtlasVcsToolSource>(TAtlasVcsToolSource.ConfiguredMissing,
+      TAtlasVcsTools.Where(TAtlasVcsKind.Git).Source,
       'neuer Pfad gilt sofort, der alte Fund ist vergessen');
   finally
     TAtlasVcsTools.Configure(TAtlasVcsKind.Git, '');
@@ -216,23 +218,24 @@ var
 begin
   mGit := Found(Under('bin/' + Exe('git')));
   mCheck := TAtlasVcsToolChecks.Classify(TAtlasVcsKind.Git, mGit, Run(TAtlasVcsOutcome.Ok, 0, 'git version 2.47.1'));
-  Assert.IsTrue(mCheck.State = TAtlasVcsToolState.Found);
+  Assert.AreEqual<TAtlasVcsToolState>(TAtlasVcsToolState.Found, mCheck.State);
   Assert.AreEqual('git version 2.47.1', mCheck.Version);
   Assert.AreEqual(mGit.Executable, mCheck.Location.Executable);
   mCheck := TAtlasVcsToolChecks.Classify(TAtlasVcsKind.Git, mGit, Run(TAtlasVcsOutcome.Ok, 0, 'Hallo'));
-  Assert.IsTrue(mCheck.State = TAtlasVcsToolState.NotRecognized, 'falsches Programm unter dem Namen');
+  Assert.AreEqual<TAtlasVcsToolState>(TAtlasVcsToolState.NotRecognized,
+    mCheck.State, 'falsches Programm unter dem Namen');
   mCheck := TAtlasVcsToolChecks.Classify(TAtlasVcsKind.Git, mGit, Run(TAtlasVcsOutcome.Ok, 128, ''));
-  Assert.IsTrue(mCheck.State = TAtlasVcsToolState.StartFailed);
+  Assert.AreEqual<TAtlasVcsToolState>(TAtlasVcsToolState.StartFailed, mCheck.State);
   Assert.AreEqual(128, mCheck.ExitCode);
   mCheck := TAtlasVcsToolChecks.Classify(TAtlasVcsKind.Git, mGit, Run(TAtlasVcsOutcome.Failed, -1, ''));
-  Assert.IsTrue(mCheck.State = TAtlasVcsToolState.StartFailed, 'Start misslungen');
+  Assert.AreEqual<TAtlasVcsToolState>(TAtlasVcsToolState.StartFailed, mCheck.State, 'Start misslungen');
   mCheck := TAtlasVcsToolChecks.Classify(TAtlasVcsKind.Git, mGit, Run(TAtlasVcsOutcome.TimedOut, -1, ''));
-  Assert.IsTrue(mCheck.State = TAtlasVcsToolState.NoAnswer);
+  Assert.AreEqual<TAtlasVcsToolState>(TAtlasVcsToolState.NoAnswer, mCheck.State);
   mCheck := TAtlasVcsToolChecks.Classify(TAtlasVcsKind.Git, mGit, Run(TAtlasVcsOutcome.ToolMissing, -1, ''));
-  Assert.IsTrue(mCheck.State = TAtlasVcsToolState.Missing);
+  Assert.AreEqual<TAtlasVcsToolState>(TAtlasVcsToolState.Missing, mCheck.State);
   mCheck := TAtlasVcsToolChecks.Classify(TAtlasVcsKind.Svn, TAtlasVcsToolLocation.Empty,
     Run(TAtlasVcsOutcome.Ok, 0, '1.14.3'));
-  Assert.IsTrue(mCheck.State = TAtlasVcsToolState.Missing, 'ohne Programm zählt keine Ausgabe');
+  Assert.AreEqual<TAtlasVcsToolState>(TAtlasVcsToolState.Missing, mCheck.State, 'ohne Programm zählt keine Ausgabe');
   Assert.AreEqual(-1, mCheck.ExitCode);
 end;
 
@@ -246,7 +249,7 @@ begin
   mKeep := mRunner;
   mRunner.Answer := Run(TAtlasVcsOutcome.Ok, 0, '1.14.3'#13#10);
   mCheck := TAtlasVcsToolChecks.Check(TAtlasVcsKind.Svn, Found(Under('TortoiseSVN/bin/' + Exe('svn'))), mKeep);
-  Assert.IsTrue(mCheck.State = TAtlasVcsToolState.Found);
+  Assert.AreEqual<TAtlasVcsToolState>(TAtlasVcsToolState.Found, mCheck.State);
   Assert.AreEqual('svn 1.14.3', mCheck.Version);
   Assert.AreEqual(Under('TortoiseSVN/bin/' + Exe('svn')), mRunner.Executable);
   Assert.AreEqual('--version --quiet', mRunner.Arguments);
@@ -267,7 +270,7 @@ begin
   mLocation.Source := TAtlasVcsToolSource.ConfiguredMissing;
   mLocation.Configured := Under('fehlt/' + Exe('git'));
   mCheck := TAtlasVcsToolChecks.Check(TAtlasVcsKind.Git, mLocation, mKeep);
-  Assert.IsTrue(mCheck.State = TAtlasVcsToolState.Missing);
+  Assert.AreEqual<TAtlasVcsToolState>(TAtlasVcsToolState.Missing, mCheck.State);
   Assert.AreEqual(Under('fehlt/' + Exe('git')), mCheck.Location.Configured);
   Assert.AreEqual(0, mRunner.Calls, 'kein Prozess ohne Programm');
 end;

@@ -69,17 +69,17 @@ begin
   Changes := TAtlasSvnParser.ParseStatus(SvnStatusSample, Root);
   Assert.AreEqual(6, Integer(Length(Changes)), 'ignorierte entfallen');
   Assert.AreEqual(Under('src/Main.pas'), Changes[0].Path);
-  Assert.IsTrue(Changes[0].Kind = TAtlasVcsChangeKind.Modified);
+  Assert.AreEqual<TAtlasVcsChangeKind>(TAtlasVcsChangeKind.Modified, Changes[0].Kind);
   Assert.IsTrue(Changes[0].Unstaged);
   Assert.IsFalse(Changes[0].Staged);
   Assert.AreEqual(Under('src/Neu & Alt.pas'), Changes[1].Path);
-  Assert.IsTrue(Changes[1].Kind = TAtlasVcsChangeKind.Added);
+  Assert.AreEqual<TAtlasVcsChangeKind>(TAtlasVcsChangeKind.Added, Changes[1].Kind);
   Assert.AreEqual(Under('notizen.txt'), Changes[2].Path);
-  Assert.IsTrue(Changes[2].Kind = TAtlasVcsChangeKind.Untracked);
+  Assert.AreEqual<TAtlasVcsChangeKind>(TAtlasVcsChangeKind.Untracked, Changes[2].Kind);
   Assert.AreEqual(Under('res/Logo.png'), Changes[3].Path, 'nur Eigenschaften geändert');
-  Assert.IsTrue(Changes[3].Kind = TAtlasVcsChangeKind.Modified);
-  Assert.IsTrue(Changes[4].Kind = TAtlasVcsChangeKind.Deleted, 'leeres wc-status-Element');
-  Assert.IsTrue(Changes[5].Kind = TAtlasVcsChangeKind.Missing);
+  Assert.AreEqual<TAtlasVcsChangeKind>(TAtlasVcsChangeKind.Modified, Changes[3].Kind);
+  Assert.AreEqual<TAtlasVcsChangeKind>(TAtlasVcsChangeKind.Deleted, Changes[4].Kind, 'leeres wc-status-Element');
+  Assert.AreEqual<TAtlasVcsChangeKind>(TAtlasVcsChangeKind.Missing, Changes[5].Kind);
   Assert.AreEqual(0, Integer(Length(TAtlasSvnParser.ParseStatus('<status><target path="."></target></status>', Root))));
 end;
 procedure TAtlasVcsSvnParserTests.SvnBlameReadsLines;
@@ -123,9 +123,9 @@ begin
   Assert.AreEqual(2, Integer(Length(Entries[0].Files)), 'Ordner zählen nicht');
   Assert.AreEqual('/projekt/branches/ATL-12-tracker/src/Main.pas', Entries[0].Files[0].RepositoryPath);
   Assert.AreEqual(Under('src/Main.pas'), Entries[0].Files[0].Path);
-  Assert.IsTrue(Entries[0].Files[1].Kind = TAtlasVcsChangeKind.Deleted);
+  Assert.AreEqual<TAtlasVcsChangeKind>(TAtlasVcsChangeKind.Deleted, Entries[0].Files[1].Kind);
   Assert.AreEqual('', Entries[0].Files[1].Path, 'außerhalb der Arbeitskopie');
-  Assert.IsTrue(Entries[1].Files[0].Kind = TAtlasVcsChangeKind.Added);
+  Assert.AreEqual<TAtlasVcsChangeKind>(TAtlasVcsChangeKind.Added, Entries[1].Files[0].Kind);
 
   Refs := TAtlasSvnParser.ParseList(SvnListSample, 'branches/release-2');
   Assert.AreEqual(2, Integer(Length(Refs)), 'nur Ordner');

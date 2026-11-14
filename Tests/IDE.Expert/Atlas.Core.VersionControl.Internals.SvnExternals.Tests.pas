@@ -247,42 +247,46 @@ var
 begin
   mItems := Externals;
   mOptions := TAtlasVcsSvnBranchOptions.Default;
-  Assert.IsTrue(TAtlasSvnExternals.DefaultAction(Find(mItems, 'Packages/Basis'), mOptions) =
-    TAtlasVcsExternalAction.Pin, 'Vorgabe pin');
-  Assert.IsTrue(TAtlasSvnExternals.DefaultAction(Find(mItems, 'Packages/Kunden'), mOptions) =
-    TAtlasVcsExternalAction.Keep, 'mit Revision');
+  Assert.AreEqual<TAtlasVcsExternalAction>(TAtlasVcsExternalAction.Pin,
+    TAtlasSvnExternals.DefaultAction(Find(mItems, 'Packages/Basis'), mOptions), 'Vorgabe pin');
+  Assert.AreEqual<TAtlasVcsExternalAction>(TAtlasVcsExternalAction.Keep,
+    TAtlasSvnExternals.DefaultAction(Find(mItems, 'Packages/Kunden'), mOptions), 'mit Revision');
   // Regel vor Vorgabe; die längste gewinnt.
   mOptions.ExternalsRules := [TAtlasVcsExternalRule.Make('^/Packages', TAtlasVcsExternalAction.Branch),
     TAtlasVcsExternalRule.Make('^/Packages/Basis/', TAtlasVcsExternalAction.Keep),
     TAtlasVcsExternalRule.Make('https://svn.lieferant.de/komponenten', TAtlasVcsExternalAction.Branch)];
-  Assert.IsTrue(TAtlasSvnExternals.DefaultAction(Find(mItems, 'Packages/Basis'), mOptions) =
-    TAtlasVcsExternalAction.Keep);
-  Assert.IsTrue(TAtlasSvnExternals.DefaultAction(Find(mItems, 'Packages/Mein Paket'), mOptions) =
-    TAtlasVcsExternalAction.Branch);
+  Assert.AreEqual<TAtlasVcsExternalAction>(TAtlasVcsExternalAction.Keep,
+    TAtlasSvnExternals.DefaultAction(Find(mItems, 'Packages/Basis'), mOptions));
+  Assert.AreEqual<TAtlasVcsExternalAction>(TAtlasVcsExternalAction.Branch,
+    TAtlasSvnExternals.DefaultAction(Find(mItems, 'Packages/Mein Paket'), mOptions));
   Assert.IsTrue(TAtlasSvnExternals.MatchRule(Find(mItems, 'Lieferant'), mOptions.ExternalsRules, mAction));
-  Assert.IsTrue(TAtlasSvnExternals.DefaultAction(Find(mItems, 'Lieferant'), mOptions) =
-    TAtlasVcsExternalAction.Pin, 'fremdes Repository: Regel „branch“ gilt nicht');
+  Assert.AreEqual<TAtlasVcsExternalAction>(TAtlasVcsExternalAction.Pin,
+    TAtlasSvnExternals.DefaultAction(Find(mItems, 'Lieferant'), mOptions), 'fremdes Repository: Regel „branch“ gilt nicht');
   Assert.IsFalse(TAtlasSvnExternals.MatchRule(Find(mItems, 'Server'),
     [TAtlasVcsExternalRule.Make('^/Packages/Serv', TAtlasVcsExternalAction.Keep)], mAction), 'ganze Pfadteile');
   // Mitverzweigen vorschlagen.
   mOptions.ExternalsRules := nil;
   mItem := Find(mItems, 'Packages/Basis');
   mItem.Modified := True;
-  Assert.IsTrue(TAtlasSvnExternals.DefaultAction(mItem, mOptions) = TAtlasVcsExternalAction.Branch, 'geändert');
+  Assert.AreEqual<TAtlasVcsExternalAction>(TAtlasVcsExternalAction.Branch,
+    TAtlasSvnExternals.DefaultAction(mItem, mOptions), 'geändert');
   mOptions.ExternalsSuggest := TAtlasVcsExternalSuggest.Never;
-  Assert.IsTrue(TAtlasSvnExternals.DefaultAction(mItem, mOptions) = TAtlasVcsExternalAction.Pin);
+  Assert.AreEqual<TAtlasVcsExternalAction>(TAtlasVcsExternalAction.Pin,
+    TAtlasSvnExternals.DefaultAction(mItem, mOptions));
   mOptions.ExternalsSuggest := TAtlasVcsExternalSuggest.Always;
   mItem.Modified := False;
-  Assert.IsTrue(TAtlasSvnExternals.DefaultAction(mItem, mOptions) = TAtlasVcsExternalAction.Branch);
+  Assert.AreEqual<TAtlasVcsExternalAction>(TAtlasVcsExternalAction.Branch,
+    TAtlasSvnExternals.DefaultAction(mItem, mOptions));
   mItem.IsFile := True;
-  Assert.IsTrue(TAtlasSvnExternals.DefaultAction(mItem, mOptions) = TAtlasVcsExternalAction.Pin, 'Datei');
+  Assert.AreEqual<TAtlasVcsExternalAction>(TAtlasVcsExternalAction.Pin,
+    TAtlasSvnExternals.DefaultAction(mItem, mOptions), 'Datei');
   // ask: keine Vorauswahl; keep wie vor #1291.
   mOptions := TAtlasVcsSvnBranchOptions.Default;
   mOptions.ExternalsOnBranch := TAtlasVcsExternalAction.Ask;
-  Assert.IsTrue(TAtlasSvnExternals.DefaultAction(Find(mItems, 'Lieferant'), mOptions) =
-    TAtlasVcsExternalAction.Ask);
-  Assert.IsTrue(TAtlasSvnExternals.DefaultAction(Find(mItems, 'Lieferant'), TAtlasVcsSvnBranchOptions.Legacy) =
-    TAtlasVcsExternalAction.Keep);
+  Assert.AreEqual<TAtlasVcsExternalAction>(TAtlasVcsExternalAction.Ask,
+    TAtlasSvnExternals.DefaultAction(Find(mItems, 'Lieferant'), mOptions));
+  Assert.AreEqual<TAtlasVcsExternalAction>(TAtlasVcsExternalAction.Keep,
+    TAtlasSvnExternals.DefaultAction(Find(mItems, 'Lieferant'), TAtlasVcsSvnBranchOptions.Legacy));
   Assert.IsTrue(TAtlasSvnExternals.Allowed(Find(mItems, 'Packages/Kunden'), TAtlasVcsExternalAction.Keep));
   Assert.IsFalse(TAtlasSvnExternals.Allowed(Find(mItems, 'Packages/Kunden'), TAtlasVcsExternalAction.Pin));
   Assert.IsFalse(TAtlasSvnExternals.Allowed(Find(mItems, 'Packages/Basis'), TAtlasVcsExternalAction.Ask));

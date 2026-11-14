@@ -193,9 +193,9 @@ end;
 
 procedure TAtlasProjectSummaryTests.InvalidTimeGivesZero;
 begin
-  Assert.IsTrue(TAtlasProjectSummaries.TimeOf('') = 0);
-  Assert.IsTrue(TAtlasProjectSummaries.TimeOf('gestern') = 0);
-  Assert.IsTrue(TAtlasProjectSummaries.TimeOf('2026-13-40T25:00:00Z') = 0);
+  Assert.AreEqual<TDateTime>(0, TAtlasProjectSummaries.TimeOf(''));
+  Assert.AreEqual<TDateTime>(0, TAtlasProjectSummaries.TimeOf('gestern'));
+  Assert.AreEqual<TDateTime>(0, TAtlasProjectSummaries.TimeOf('2026-13-40T25:00:00Z'));
 end;
 
 procedure TAtlasProjectSummaryTests.ParsesAllFields;
@@ -258,7 +258,7 @@ begin
   Assert.IsTrue(TAtlasProjectSummaries.Parse(TAtlasProjectSummaries.ToJson(Summary), Read));
   Assert.AreEqual(Project, Read.Project);
   Assert.IsTrue(SameTime(Summary.LastOpened, Read.LastOpened));
-  Assert.IsTrue(Read.LastClosed = 0, 'nicht geschrieben');
+  Assert.AreEqual<TDateTime>(0, Read.LastClosed, 'nicht geschrieben');
   Assert.IsFalse(Read.Hidden);
   Assert.AreEqual('svn', Read.Vcs.Kind);
   Assert.AreEqual('branches/x', Read.Vcs.Branch);
@@ -320,7 +320,7 @@ begin
   Assert.IsFalse(Summary.Release.Known);
   Assert.IsFalse(Summary.Ci.Known);
   Assert.IsFalse(Summary.Ci.HasBuild);
-  Assert.IsTrue(Summary.LastOpened = 0);
+  Assert.AreEqual<TDateTime>(0, Summary.LastOpened);
   Assert.IsTrue(TAtlasProjectSummaries.Parse('{"project": "C:\\P.dproj", "vcs": {"kind": "none"}}', Summary));
   Assert.IsTrue(Summary.Vcs.Known);
   Assert.IsFalse(Summary.Vcs.InWorkingCopy, 'ohne Arbeitskopie');
@@ -433,7 +433,7 @@ begin
   Stamp := EncodeDate(2026, 10, 15) + EncodeTime(9, 30, 0, 0);
   Assert.IsTrue(TAtlasProjectMetrics.FromServer(Answer, Stamp, Metrics));
   Assert.IsTrue(Metrics.Known);
-  Assert.IsTrue(Metrics.At = Stamp, 'Zeitpunkt des Builds');
+  Assert.AreEqual<TDateTime>(Stamp, Metrics.At, 'Zeitpunkt des Builds');
   Assert.AreEqual(2, Metrics.Files);
   Assert.AreEqual(3, Metrics.Methods);
   Assert.AreEqual(1, Metrics.OverLimits);
@@ -451,7 +451,7 @@ begin
   Assert.IsTrue(Read.Metrics.Known);
   Assert.AreEqual(303, Read.Metrics.AverageTenths[0]);
   Assert.AreEqual(20, Read.Metrics.Maximum[3]);
-  Assert.IsTrue(Read.Metrics.At = Stamp);
+  Assert.AreEqual<TDateTime>(Stamp, Read.Metrics.At);
   // Unbekannte Felder im Abschnitt bleiben (z. B. eine Verlaufsreihe aus #758).
   Assert.IsTrue(TAtlasProjectSummaries.Parse('{"project": "C:\\P.dproj", "metrics": {"methods": 1, ' +
     '"history": [1, 2]}}', Read));
@@ -481,7 +481,7 @@ begin
   Stamp := EncodeDate(2026, 10, 15) + EncodeTime(9, 30, 0, 0);
   Assert.IsTrue(TAtlasProjectTodos.FromServer(Answer, Stamp, Todos));
   Assert.IsTrue(Todos.Known);
-  Assert.IsTrue(Todos.At = Stamp, 'Zeitpunkt des Builds');
+  Assert.AreEqual<TDateTime>(Stamp, Todos.At, 'Zeitpunkt des Builds');
   Assert.AreEqual(2, Todos.Files);
   Assert.AreEqual(5, Todos.Open, 'Reihe „offene TODOs“ des Projektverlaufs (#758)');
   Assert.AreEqual(1, Todos.Done);
@@ -497,7 +497,7 @@ begin
   Assert.IsTrue(Read.Todos.Known);
   Assert.AreEqual(5, Read.Todos.Open);
   Assert.AreEqual(3, Read.Todos.CountOf('TODO'));
-  Assert.IsTrue(Read.Todos.At = Stamp);
+  Assert.AreEqual<TDateTime>(Stamp, Read.Todos.At);
   // Ohne Abschnitt bleibt er unbekannt; unbekannte Felder im Abschnitt bleiben.
   Assert.IsTrue(TAtlasProjectSummaries.Parse('{"project": "C:\\P.dproj"}', Read));
   Assert.IsFalse(Read.Todos.Known);
@@ -697,7 +697,8 @@ begin
   Assert.IsTrue(TAtlasProjectSummaries.Parse('{"project": "C:\\P.dproj", "ci": {"provider": "jenkins",' +
     ' "server": "https://ci", "job": "kasse", "number": 7, "result": "success", "error": "neu", "extra": 1,' +
     ' "failures": [{"test": "A.B", "flaky": true}]}}', mRead));
-  Assert.IsTrue(mRead.Ci.Error = TAtlasCiFetchError.Network, 'unbekannter Fehler gilt als Netzfehler');
+  Assert.AreEqual<TAtlasCiFetchError>(TAtlasCiFetchError.Network,
+    mRead.Ci.Error, 'unbekannter Fehler gilt als Netzfehler');
   Assert.IsTrue(mRead.Ci.Build.TestsKnown);
   mJson := TAtlasProjectSummaries.ToJson(mRead);
   Assert.Contains(mJson, '"extra":1');
@@ -752,11 +753,11 @@ begin
   Assert.IsTrue(Read.Ci.Matches(Job));
   Assert.IsFalse(Read.Ci.Matches(TAtlasCiJob.Create('jenkins', 'https://ci.firma.de', 'team/kasse', True,
     'develop')), 'anderer Branch');
-  Assert.IsTrue(Read.Ci.Error = TAtlasCiFetchError.Timeout);
+  Assert.AreEqual<TAtlasCiFetchError>(TAtlasCiFetchError.Timeout, Read.Ci.Error);
   Assert.IsTrue(SameTime(At(2026, 10, 16, 8, 30, 0), Read.Ci.At));
   Assert.IsTrue(SameTime(At(2026, 10, 16, 9, 5, 0), Read.Ci.Attempt));
   Assert.AreEqual(482, Read.Ci.Build.Number);
-  Assert.IsTrue(Read.Ci.Build.Outcome = TAtlasCiOutcome.Unstable);
+  Assert.AreEqual<TAtlasCiOutcome>(TAtlasCiOutcome.Unstable, Read.Ci.Build.Outcome);
   Assert.IsTrue(Read.Ci.Build.TestsKnown);
   Assert.AreEqual(410, Read.Ci.Build.Passed);
   Assert.AreEqual(2, Read.Ci.Build.Failed);
@@ -811,7 +812,7 @@ begin
   Assert.AreEqual(40, Read.Baseline.Entries);
   Assert.AreEqual(52, Read.Baseline.Hits);
   Assert.AreEqual(2, Read.Baseline.Orphaned);
-  Assert.IsTrue(Read.Baseline.Updated = Stamp);
+  Assert.AreEqual<TDateTime>(Stamp, Read.Baseline.Updated);
   Assert.AreEqual(3, Read.Baseline.Added);
   Assert.AreEqual(5, Read.Baseline.Removed);
   // Keine Baseline: bekannt, aber nicht vorhanden (Lücke im Projektverlauf, „Baseline erzeugen“ in der
@@ -820,10 +821,10 @@ begin
     '"2026-10-15T09:30:00Z", "exists": false, "trend": [1, 2]}}', Read));
   Assert.IsTrue(Read.Baseline.Known);
   Assert.IsFalse(Read.Baseline.Exists);
-  Assert.IsTrue(Read.Baseline.Updated = 0);
+  Assert.AreEqual<TDateTime>(0, Read.Baseline.Updated);
   Json := TAtlasProjectSummaries.ToJson(Read);
   Assert.Contains(Json, '"trend":[1,2]');
-  Assert.IsTrue(Pos('"updated"', Json) = 0, Json);
+  Assert.AreEqual(0, Pos('"updated"', Json), Json);
 end;
 
 /// <summary>Sauber; unbekannte Felder bleiben, Zähler nie kleiner als die Funde.</summary>
@@ -886,12 +887,12 @@ begin
   Assert.Contains(Json, '"setup":{"paths":{"at":"2026-10-15T09:30:00Z","files":12,"unreadable":0,' +
     '"missingUnits":60,"undefinedDefines":1,"units":[{"name":"Unit1","file":"Src\\Main.pas","line":1,"count":1}');
   Assert.Contains(Json, '"defines":[{"name":"USE_LOG","count":3}]');
-  Assert.IsTrue(Pos('"Unit51"', Json) = 0, 'höchstens MaxFindings je Liste');
+  Assert.AreEqual(0, Pos('"Unit51"', Json), 'höchstens MaxFindings je Liste');
   Assert.IsTrue(TAtlasProjectSummaries.Parse(Json, Read));
   Assert.IsTrue(Read.Setup.Known);
   Assert.IsFalse(Read.Setup.Dismissed);
   Assert.IsTrue(Read.Setup.Checked);
-  Assert.IsTrue(Read.Setup.CheckedAt = Stamp);
+  Assert.AreEqual<TDateTime>(Stamp, Read.Setup.CheckedAt);
   Assert.AreEqual(12, Read.Setup.Files);
   Assert.AreEqual(60, Read.Setup.MissingUnitCount);
   Assert.AreEqual(TAtlasProjectSetup.cMaxFindings, Integer(Length(Read.Setup.MissingUnits)));
@@ -922,10 +923,10 @@ begin
   Summary.Setup.MissingUnits := [Finding];
   Json := TAtlasProjectSummaries.ToJson(Summary);
   Assert.Contains(Json, '"uncertainUnits":1');
-  Assert.IsTrue(Pos('"uncertainDefines"', Json) = 0, 'nur, wenn es unsichere gibt');
+  Assert.AreEqual(0, Pos('"uncertainDefines"', Json), 'nur, wenn es unsichere gibt');
   Assert.Contains(Json, '"skippedMacros":["MYLIB","TOOLS"]');
   Assert.Contains(Json, '{"name":"Lib.Core","count":1,"uncertain":true}');
-  Assert.IsTrue(Pos('"App"', Json) = 0);
+  Assert.AreEqual(0, Pos('"App"', Json));
   Assert.IsTrue(TAtlasProjectSummaries.Parse(Json, Read));
   Assert.AreEqual(1, Read.Setup.UncertainUnitCount);
   Assert.AreEqual('MYLIB|TOOLS', string.Join('|', Read.Setup.SkippedMacros));
@@ -978,7 +979,7 @@ begin
   Assert.AreEqual(7, TJsonRead.IntOr(nil, 'errors', 7));
   Assert.IsFalse(TJsonRead.Flag(nil, 'hidden'));
   Assert.AreEqual('2026-10-15T09:30:05Z', SummaryTimeText(SummaryTimeOf('2026-10-15 09:30:05')));
-  Assert.IsTrue(SummaryTimeOf('2026-10-15X09:30:05Z') = 0, 'Trenner');
+  Assert.AreEqual<TDateTime>(0, SummaryTimeOf('2026-10-15X09:30:05Z'), 'Trenner');
   Assert.IsFalse(TAtlasSummarySections.SetupOf(nil).Known);
   Assert.IsFalse(TAtlasSummarySections.TestsOf(nil).Known);
   Assert.IsFalse(TAtlasSummarySections.ReleaseOf(nil).Known);

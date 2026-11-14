@@ -213,7 +213,7 @@ begin
     Assert.IsTrue(mDialog.CreateButton.Default, 'Enter legt an');
     mRequest := mDialog.Request;
     Assert.AreEqual('feature/13-y', mRequest.Name);
-    Assert.IsTrue(mRequest.Base.Kind = TAtlasVcsBranchBaseKind.LocalMain);
+    Assert.AreEqual<TAtlasVcsBranchBaseKind>(TAtlasVcsBranchBaseKind.LocalMain, mRequest.Base.Kind);
     mDialog.CreateButton.Click;
     Assert.AreEqual(Integer(mrOk), Integer(mDialog.ModalResult));
   finally
@@ -262,7 +262,7 @@ begin
     mDialog.Names.BaseBox.OnChange(mDialog.Names.BaseBox);
     Assert.AreEqual('1. git checkout --quiet --no-track -b feature/13-y refs/remotes/origin/main --',
       mDialog.Steps.Memo.Lines[0]);
-    Assert.IsTrue(mDialog.Request.Base.Kind = TAtlasVcsBranchBaseKind.RemoteMain);
+    Assert.AreEqual<TAtlasVcsBranchBaseKind>(TAtlasVcsBranchBaseKind.RemoteMain, mDialog.Request.Base.Kind);
     mDialog.Names.BaseBox.ItemIndex := 2;
     mDialog.Names.BaseBox.OnChange(mDialog.Names.BaseBox);
     Assert.AreEqual('1. git checkout --quiet --no-track -b feature/13-y refs/heads/feature/12-x --',
@@ -354,7 +354,7 @@ begin
     Assert.IsTrue(mDialog.Svn.FolderPanel.Visible);
     Assert.AreEqual('C:\Projekte\Kasse-ATL-123', mDialog.Svn.FolderEdit.Text);
     mRequest := mDialog.Request;
-    Assert.IsTrue(mRequest.After = TAtlasVcsSvnAfter.Checkout);
+    Assert.AreEqual<TAtlasVcsSvnAfter>(TAtlasVcsSvnAfter.Checkout, mRequest.After);
     Assert.AreEqual('C:\Projekte\Kasse-ATL-123', mRequest.CheckoutFolder);
     Assert.Contains(mDialog.Steps.Memo.Lines[1], 'svn checkout ^/Kasse/branches/ATL-123-kasse@');
   finally
@@ -396,7 +396,7 @@ begin
     Assert.IsTrue(mDialog.Svn.MixedLabel.Visible);
     mRequest := mDialog.Request;
     Assert.AreEqual('Kasse/branches/ATL-123-kasse', mRequest.Location);
-    Assert.IsTrue(mRequest.After = TAtlasVcsSvnAfter.Switch);
+    Assert.AreEqual<TAtlasVcsSvnAfter>(TAtlasVcsSvnAfter.Switch, mRequest.After);
     Assert.AreEqual('', mRequest.CheckoutFolder);
     Assert.Contains(mDialog.Steps.Memo.Lines[0], '^/Kasse/branches/ATL-123-kasse@');
     // Name ändern: Ort folgt.
@@ -491,15 +491,15 @@ begin
     // Drucken: lokale Änderungen, „mitverzweigen“ vorgeschlagen.
     Assert.AreEqual(TAtlasVcsStrings.Text(TAtlasVcsTextId.VcsBranchExternalBranch), mDialog.Externals.Boxes[1].Text);
     // Kunden: feste Revision, keine Auswahl.
-    Assert.IsTrue(mDialog.Externals.Boxes[2] = nil);
+    Assert.IsNull(mDialog.Externals.Boxes[2]);
     // Fremdes Repository: festschreiben oder unverändert.
     Assert.AreEqual(2, Integer(mDialog.Externals.Boxes[3].Items.Count));
     Assert.IsFalse(mDialog.Externals.Hint.Visible);
     Assert.IsTrue(mDialog.CreateButton.Enabled);
     mRequest := mDialog.Request;
-    Assert.IsTrue(mRequest.ExternalActions[0] = TAtlasVcsExternalAction.Pin);
-    Assert.IsTrue(mRequest.ExternalActions[1] = TAtlasVcsExternalAction.Branch);
-    Assert.IsTrue(mRequest.ExternalActions[2] = TAtlasVcsExternalAction.Keep);
+    Assert.AreEqual<TAtlasVcsExternalAction>(TAtlasVcsExternalAction.Pin, mRequest.ExternalActions[0]);
+    Assert.AreEqual<TAtlasVcsExternalAction>(TAtlasVcsExternalAction.Branch, mRequest.ExternalActions[1]);
+    Assert.AreEqual<TAtlasVcsExternalAction>(TAtlasVcsExternalAction.Keep, mRequest.ExternalActions[2]);
     Assert.AreEqual('Packages/Drucken/branches/KASSE-42-bon', mRequest.ExternalLocations[1]);
     // Reihenfolge: Package kopieren, Projekt kopieren, umschreiben, umschalten.
     mText := mDialog.Steps.Memo.Lines.Text;
@@ -509,7 +509,7 @@ begin
     // Drucken unverändert: kein Package-Schritt mehr; Basis und Lieferant schreibt Atlas selbst fest.
     mDialog.Externals.Boxes[1].ItemIndex := 1;
     mDialog.Externals.Boxes[1].OnChange(mDialog.Externals.Boxes[1]);
-    Assert.IsTrue(mDialog.Request.ExternalActions[1] = TAtlasVcsExternalAction.Keep);
+    Assert.AreEqual<TAtlasVcsExternalAction>(TAtlasVcsExternalAction.Keep, mDialog.Request.ExternalActions[1]);
     Assert.IsFalse(mDialog.Steps.Memo.Lines.Text.Contains('Packages/Drucken/branches'));
   finally
     mDialog.Free;

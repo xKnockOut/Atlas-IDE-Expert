@@ -269,7 +269,7 @@ begin
   Assert.AreEqual('Packages/Kunden', mRows[4].Path);
   Assert.IsTrue(mRows[4].Fixed);
   Assert.AreEqual('4711', mRows[4].FixedRevision);
-  Assert.IsTrue(mRows[4].Kind = TAtlasVcsWorkingCopyKind.External);
+  Assert.AreEqual<TAtlasVcsWorkingCopyKind>(TAtlasVcsWorkingCopyKind.External, mRows[4].Kind);
   // Ohne Status: Zeilen aus svn:externals, Änderungen unbekannt.
   mRows := TAtlasVcsWorkingCopies.FromSvn(Root, 'Kasse/trunk', '48231', Externals, '');
   Assert.AreEqual(4, Integer(Length(mRows)));
@@ -291,7 +291,7 @@ begin
   Assert.AreEqual('main', mRows[0].RepositoryPath);
   Assert.AreEqual('Libs/Json', mRows[1].Path);
   Assert.AreEqual('0123456', mRows[1].Revision);
-  Assert.IsTrue(mRows[1].Kind = TAtlasVcsWorkingCopyKind.Submodule);
+  Assert.AreEqual<TAtlasVcsWorkingCopyKind>(TAtlasVcsWorkingCopyKind.Submodule, mRows[1].Kind);
   Assert.AreEqual(-1, mRows[1].Changed, 'kommt mit FillChanges');
   Assert.AreEqual('Libs/Zip', mRows[2].Path);
   Assert.AreEqual('Vendor/Alt', mRows[3].Path);
@@ -343,9 +343,10 @@ end;
 
 procedure TAtlasVcsWorkingCopiesTests.ParsesUpdateSetting;
 begin
-  Assert.IsTrue(AtlasVcsExternalsUpdateOf('without') = TAtlasVcsExternalsUpdate.WithoutExternals);
-  Assert.IsTrue(AtlasVcsExternalsUpdateOf('ASK') = TAtlasVcsExternalsUpdate.Ask);
-  Assert.IsTrue(AtlasVcsExternalsUpdateOf('') = TAtlasVcsExternalsUpdate.WithExternals);
+  Assert.AreEqual<TAtlasVcsExternalsUpdate>(TAtlasVcsExternalsUpdate.WithoutExternals,
+    AtlasVcsExternalsUpdateOf('without'));
+  Assert.AreEqual<TAtlasVcsExternalsUpdate>(TAtlasVcsExternalsUpdate.Ask, AtlasVcsExternalsUpdateOf('ASK'));
+  Assert.AreEqual<TAtlasVcsExternalsUpdate>(TAtlasVcsExternalsUpdate.WithExternals, AtlasVcsExternalsUpdateOf(''));
 end;
 
 procedure TAtlasVcsWorkingCopiesTests.PinsOneLine;
@@ -373,7 +374,7 @@ begin
   Assert.IsFalse(TAtlasVcsWorkingCopies.PinnedText(mList, 3, mOwner, mText));
   Assert.IsFalse(TAtlasVcsWorkingCopies.PinnedText(mList, 0, mOwner, mText));
   Assert.IsFalse(TAtlasVcsWorkingCopies.PinnedText(mList, 9, mOwner, mText));
-  Assert.IsTrue(TAtlasVcsWorkingCopies.Pin(mList, 3, nil) = TAtlasVcsOutcome.Failed);
+  Assert.AreEqual<TAtlasVcsOutcome>(TAtlasVcsOutcome.Failed, TAtlasVcsWorkingCopies.Pin(mList, 3, nil));
   mList := TAtlasVcsWorkingCopyList.Empty;
   mText := '';
 end;
@@ -393,7 +394,7 @@ begin
     '"><property name="svn:externals">^/Packages/Basis/trunk Packages/Basis'#10 +
     '-r 4711 ^/Packages/Kunden/trunk Packages/Kunden'#10'</property></target></properties>';
   mList := TAtlasVcsWorkingCopies.Collect(mVcs);
-  Assert.IsTrue(mList.Outcome = TAtlasVcsOutcome.Ok);
+  Assert.AreEqual<TAtlasVcsOutcome>(TAtlasVcsOutcome.Ok, mList.Outcome);
   Assert.IsTrue(mList.Several);
   // Basis und Kunden aus svn:externals, Drucken und Lib nur aus dem Status.
   Assert.AreEqual(5, Integer(Length(mList.Rows)));
@@ -408,21 +409,21 @@ begin
   // Server prüfen: fest nach der festen Revision, sonst nach der Revision der Arbeitskopie; ohne Pfad nicht.
   Assert.IsTrue(Supports(mVcs, IAtlasVcsSvnExternals, mExternals));
   mFake.Commits := 3;
-  Assert.IsTrue(TAtlasVcsWorkingCopies.CheckServer(mList, 4, mExternals) = TAtlasVcsOutcome.Ok);
+  Assert.AreEqual<TAtlasVcsOutcome>(TAtlasVcsOutcome.Ok, TAtlasVcsWorkingCopies.CheckServer(mList, 4, mExternals));
   Assert.AreEqual(3, mList.Rows[4].Incoming);
   Assert.AreEqual('log Packages/Kunden/trunk 4711', mFake.Calls[1]);
   mFake.Commits := 0;
   TAtlasVcsWorkingCopies.CheckServer(mList, 1, mExternals);
   Assert.AreEqual('log Packages/Basis/trunk 48211', mFake.Calls[2]);
   Assert.AreEqual(0, mList.Rows[1].Incoming);
-  Assert.IsTrue(TAtlasVcsWorkingCopies.CheckServer(mList, 3, mExternals) = TAtlasVcsOutcome.Failed);
+  Assert.AreEqual<TAtlasVcsOutcome>(TAtlasVcsOutcome.Failed, TAtlasVcsWorkingCopies.CheckServer(mList, 3, mExternals));
   Assert.AreEqual(-1, mList.Rows[3].Incoming);
   // Festschreiben: propset im definierenden Ordner, kein Commit.
-  Assert.IsTrue(TAtlasVcsWorkingCopies.Pin(mList, 1, mExternals) = TAtlasVcsOutcome.Ok);
+  Assert.AreEqual<TAtlasVcsOutcome>(TAtlasVcsOutcome.Ok, TAtlasVcsWorkingCopies.Pin(mList, 1, mExternals));
   Assert.AreEqual('propset [] -r 48211 ^/Packages/Basis/trunk Packages/Basis'#10 +
     '-r 4711 ^/Packages/Kunden/trunk Packages/Kunden'#10, mFake.Calls[3]);
   Assert.AreEqual(4, Integer(Length(mFake.Calls)));
-  Assert.IsTrue(TAtlasVcsWorkingCopies.Collect(nil).Outcome = TAtlasVcsOutcome.NoWorkingCopy);
+  Assert.AreEqual<TAtlasVcsOutcome>(TAtlasVcsOutcome.NoWorkingCopy, TAtlasVcsWorkingCopies.Collect(nil).Outcome);
   mFake.Calls := nil;
   mFake.StatusText := '';
   mFake.ExternalsText := '';

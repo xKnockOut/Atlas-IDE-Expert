@@ -56,18 +56,18 @@ begin
   Assert.AreEqual(-1, Head.Ahead, 'ohne verfolgten Branch unbekannt');
   Assert.AreEqual(5, Integer(Length(Changes)));
   Assert.AreEqual(Under('A.pas'), Changes[0].Path);
-  Assert.IsTrue(Changes[0].Kind = TAtlasVcsChangeKind.Modified);
+  Assert.AreEqual<TAtlasVcsChangeKind>(TAtlasVcsChangeKind.Modified, Changes[0].Kind);
   Assert.IsFalse(Changes[0].Staged);
   Assert.IsTrue(Changes[0].Unstaged);
   Assert.AreEqual(Under('C.pas'), Changes[1].Path);
   Assert.AreEqual(Under('B.pas'), Changes[1].OldPath, 'alter Name als eigener Eintrag');
-  Assert.IsTrue(Changes[1].Kind = TAtlasVcsChangeKind.Renamed);
+  Assert.AreEqual<TAtlasVcsChangeKind>(TAtlasVcsChangeKind.Renamed, Changes[1].Kind);
   Assert.IsTrue(Changes[1].Staged);
   Assert.IsFalse(Changes[1].Unstaged);
   Assert.AreEqual(Under(#$00DC + ' m.pas'), Changes[2].Path, 'Umlaut und Leerzeichen unverändert');
-  Assert.IsTrue(Changes[2].Kind = TAtlasVcsChangeKind.Deleted);
+  Assert.AreEqual<TAtlasVcsChangeKind>(TAtlasVcsChangeKind.Deleted, Changes[2].Kind);
   Assert.AreEqual(Under('Neu.pas'), Changes[3].Path);
-  Assert.IsTrue(Changes[3].Kind = TAtlasVcsChangeKind.Untracked);
+  Assert.AreEqual<TAtlasVcsChangeKind>(TAtlasVcsChangeKind.Untracked, Changes[3].Kind);
   Assert.AreEqual(Under('sub/Q.pas'), Changes[4].Path);
 end;
 procedure TAtlasVcsGitParserTests.GitStatusReadsUpstreamDetachedAndInitial;
@@ -107,12 +107,12 @@ begin
     '! ignoriert.dcu'#0, Root, Head, Changes);
   Assert.AreEqual(4, Integer(Length(Changes)), 'ignorierte Dateien entfallen');
   Assert.AreEqual(Under('src/Konflikt Datei.pas'), Changes[0].Path);
-  Assert.IsTrue(Changes[0].Kind = TAtlasVcsChangeKind.Conflicted);
-  Assert.IsTrue(Changes[1].Kind = TAtlasVcsChangeKind.Added);
+  Assert.AreEqual<TAtlasVcsChangeKind>(TAtlasVcsChangeKind.Conflicted, Changes[0].Kind);
+  Assert.AreEqual<TAtlasVcsChangeKind>(TAtlasVcsChangeKind.Added, Changes[1].Kind);
   Assert.IsTrue(Changes[1].Staged);
-  Assert.IsTrue(Changes[2].Kind = TAtlasVcsChangeKind.Modified);
+  Assert.AreEqual<TAtlasVcsChangeKind>(TAtlasVcsChangeKind.Modified, Changes[2].Kind);
   Assert.IsTrue(Changes[2].Staged and Changes[2].Unstaged);
-  Assert.IsTrue(Changes[3].Kind = TAtlasVcsChangeKind.TypeChanged);
+  Assert.AreEqual<TAtlasVcsChangeKind>(TAtlasVcsChangeKind.TypeChanged, Changes[3].Kind);
   Assert.WillRaise(
     procedure
     begin
@@ -244,10 +244,10 @@ begin
     'R100'#0'Alt.pas'#0'Umbenannt.pas'#0, Root);
   Assert.AreEqual(4, Integer(Length(Changes)));
   Assert.AreEqual(Under('src/A.pas'), Changes[0].Path);
-  Assert.IsTrue(Changes[0].Kind = TAtlasVcsChangeKind.Modified);
-  Assert.IsTrue(Changes[1].Kind = TAtlasVcsChangeKind.Added);
-  Assert.IsTrue(Changes[2].Kind = TAtlasVcsChangeKind.Deleted);
-  Assert.IsTrue(Changes[3].Kind = TAtlasVcsChangeKind.Renamed);
+  Assert.AreEqual<TAtlasVcsChangeKind>(TAtlasVcsChangeKind.Modified, Changes[0].Kind);
+  Assert.AreEqual<TAtlasVcsChangeKind>(TAtlasVcsChangeKind.Added, Changes[1].Kind);
+  Assert.AreEqual<TAtlasVcsChangeKind>(TAtlasVcsChangeKind.Deleted, Changes[2].Kind);
+  Assert.AreEqual<TAtlasVcsChangeKind>(TAtlasVcsChangeKind.Renamed, Changes[3].Kind);
   Assert.AreEqual(Under('Umbenannt.pas'), Changes[3].Path);
   Assert.AreEqual(Under('Alt.pas'), Changes[3].OldPath);
 
@@ -324,11 +324,11 @@ begin
   Assert.AreEqual('ATL-12: weiter', Entries[0].Summary);
   Assert.AreEqual(Double(VcsUnixToDate(1761603600)), Double(Entries[0].Date), 1 / 86400);
   Assert.AreEqual(3, Integer(Length(Entries[0].Files)), 'Zeilenende vor der ersten Art zählt nicht');
-  Assert.IsTrue(Entries[0].Files[0].Kind = TAtlasVcsChangeKind.Modified);
+  Assert.AreEqual<TAtlasVcsChangeKind>(TAtlasVcsChangeKind.Modified, Entries[0].Files[0].Kind);
   Assert.AreEqual('A.pas', Entries[0].Files[0].RepositoryPath);
   Assert.AreEqual(Under('A.pas'), Entries[0].Files[0].Path);
-  Assert.IsTrue(Entries[0].Files[1].Kind = TAtlasVcsChangeKind.Added);
-  Assert.IsTrue(Entries[0].Files[2].Kind = TAtlasVcsChangeKind.Deleted);
+  Assert.AreEqual<TAtlasVcsChangeKind>(TAtlasVcsChangeKind.Added, Entries[0].Files[1].Kind);
+  Assert.AreEqual<TAtlasVcsChangeKind>(TAtlasVcsChangeKind.Deleted, Entries[0].Files[2].Kind);
   Assert.AreEqual(Under('src/B.pas'), Entries[0].Files[2].Path);
   // Mehrzeilige Nachricht: ganz in Message, erste Zeile als Betreff.
   Assert.AreEqual('ATL-12 Erster Stand', Entries[1].Summary);
