@@ -1,8 +1,8 @@
 ﻿unit Atlas.UI.Debug.Memory.Strings;
 
 // Oberflächentexte des Speicherverlaufs (#858) im Modul Debugger, auf Deutsch und Englisch: Fenster „Atlas:
-// Speicher“, Befehl, Meldungen und Einstellungen. Eigene Unit, weil Atlas.UI.Debug.Strings die Längengrenze
-// erreicht. Die Sprache bestimmt Base (`TAtlasStrings.Language`); jeder Aufruf liest sie neu.
+// Speicher“ samt Objektzählung, Befehl, Meldungen und Einstellungen. Eigene Unit, weil Atlas.UI.Debug.Strings
+// die Längengrenze erreicht. Die Sprache bestimmt Base (`TAtlasStrings.Language`); jeder Aufruf liest sie neu.
 
 interface
 
@@ -13,7 +13,10 @@ type
     MemoryCommand, MemoryCaption, MemorySeriesPrivateBytes, MemorySeriesWorkingSet, MemorySeriesHandles,
     MemorySeriesGdiObjects, MemorySeriesUserObjects, MemoryMark, MemoryCopyCsv, MemoryClear, MemoryEmpty, MemoryNow,
     MemoryRange, MemoryRangeHint, MemoryMarkName, MemoryMarkStop, MemoryMarkException, MemoryCopied, MemoryOff,
-    MemoryNoAccess, MemoryHover, SettingsDebugMemoryTimeline, SettingsDebugMemoryTimelineInterval);
+    MemoryNoAccess, MemoryHover, SettingsDebugMemoryTimeline, SettingsDebugMemoryTimelineInterval,
+    ObjectCountButton, ObjectCountFilter, ObjectCountColumnClass, ObjectCountColumnCount, ObjectCountColumnDelta,
+    ObjectCountColumnBytes, ObjectCountSummary, ObjectCountCompared, ObjectCountHint, ObjectCountNotStopped,
+    ObjectCountNoAccess, SettingsDebugMemoryTimelineObjectCount);
 
   TAtlasMemoryStrings = class
   public
@@ -52,7 +55,20 @@ const
      'Atlas: Die Speicherwerte des Prozesses %d sind nicht lesbar (%s).',
      '%s s: %s',
      'Speicherverlauf beim Debuggen (Fenster „Atlas: Speicher“)',
-     'Abstand der Messungen in ms:'),
+     'Abstand der Messungen in ms:',
+     'Objekte zählen',
+     'Klasse filtern',
+     'Klasse',
+     'Anzahl',
+     'Zuwachs',
+     'Größe',
+     '%d Objekte in %d Klassen, %s Speicher gelesen.',
+     'Zuwachs gegenüber der vorigen Zählung.',
+     'Experimentell: zählt Verweise auf Klassen im Speicher des angehaltenen Programms (Näherung). Jede ' +
+       'Zählung wird mit der vorigen verglichen.',
+     'Objekte zählen geht nur, solange das Programm angehalten ist.',
+     'Der Speicher des Prozesses %d ist nicht lesbar (%s).',
+     'Objekte je Klasse zählen und vergleichen (experimentell)'),
     ('Memory timeline',
      'Atlas: Memory',
      'Private bytes',
@@ -75,7 +91,20 @@ const
      'Atlas: The memory values of process %d cannot be read (%s).',
      '%s s: %s',
      'Memory timeline while debugging (window “Atlas: Memory”)',
-     'Interval between samples in ms:'));
+     'Interval between samples in ms:',
+     'Count objects',
+     'Filter classes',
+     'Class',
+     'Count',
+     'Change',
+     'Size',
+     '%d objects in %d classes, %s of memory read.',
+     'Change against the previous count.',
+     'Experimental: counts references to classes in the memory of the paused program (approximation). Each ' +
+       'count is compared with the previous one.',
+     'Counting objects only works while the program is paused.',
+     'The memory of process %d cannot be read (%s).',
+     'Count and compare objects per class (experimental)'));
 
 { TAtlasMemoryStrings }
 

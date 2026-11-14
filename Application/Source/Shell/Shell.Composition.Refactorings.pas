@@ -33,7 +33,8 @@ uses
   Shell.Composition.Refactorings.Fixes,
   Shell.Composition.Refactorings.Editing,
   Shell.Composition.Stepping,
-  Shell.Composition.MethodBreakpoints;
+  Shell.Composition.MethodBreakpoints,
+  Shell.Composition.Profiler;
 
 constructor TShellRefactorings.Create(const AServices: TShellRefactoringServices);
 begin
@@ -42,7 +43,7 @@ begin
     TShellVisibilityRefactorings.Create(AServices),
     TShellConversionRefactorings.Create(AServices), TShellTypeRefactorings.Create(AServices),
     TShellFixRefactorings.Create(AServices), TShellEditingRefactorings.Create(AServices),
-    TShellStepping.Create(AServices), TShellMethodBreakpoints.Create(AServices));
+    TShellStepping.Create(AServices), TShellMethodBreakpoints.Create(AServices), TShellProfiler.Create(AServices));
 end;
 
 destructor TShellRefactorings.Destroy;

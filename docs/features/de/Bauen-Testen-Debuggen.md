@@ -381,8 +381,23 @@ Aufruf: Atlas-Menü › Speicherverlauf bzw. Befehl `Atlas.DebugMemory`.
 - Mit der Maus einen Bereich ziehen: Darunter steht der Zuwachs aller Werte, etwa `Privater Speicher +38,0 MB · Handles +12`. Doppelklick hebt die Wahl auf.
 - „CSV kopieren“ legt den Verlauf samt Marken in die Zwischenablage, „Leeren“ beginnt neu.
 - Grenze: In der 32-Bit-IDE kappt Windows Speicherwerte eines 64-Bit-Programms über 4 GB.
+- Experimentell (`debug.memoryTimeline.objectCount`, Vorgabe aus): Unter der Linie steht der Bereich „Objekte zählen“. Im angehaltenen Programm durchsucht Atlas dessen Speicher nach Verweisen auf Klassen und zeigt Anzahl und Größe lebender Objekte je Klasse. Jede weitere Zählung wird mit der vorigen verglichen; Zuwächse stehen oben (`+10` bei einer Klasse, die zehnmal angelegt und nicht freigegeben wurde). Das Feld „Klasse filtern“ schränkt die Tabelle ein.
+- Die Zählung hängt nicht vom Speichermanager ab und ist eine Näherung: Klassenverweise in Feldern (`TClass`) zählen mit, freigegebene Objekte fallen weg, sobald der Speichermanager ihren Anfang überschreibt (FastMM tut das).
 
-Einstellungen: `debug.memoryTimeline`, `debug.memoryTimeline.intervalMs`
+Einstellungen: `debug.memoryTimeline`, `debug.memoryTimeline.intervalMs`, `debug.memoryTimeline.objectCount`
+
+<a id="window-atlasprofiler"></a>
+#### Profiler
+
+Experimentell. Aufruf: Atlas-Menü › Mit Profil ausführen, Profil starten/beenden bzw. Profil (Befehle `Atlas.DebugProfileRun`, `Atlas.DebugProfileToggle`, `Atlas.DebugProfile`).
+
+- „Mit Profil ausführen“ übersetzt das aktive Projekt bei Bedarf, startet es ohne Debugger mit seinen Startoptionen und misst es.
+- „Profil starten/beenden“ misst das gerade debuggte Programm bzw. beendet einen laufenden Lauf.
+- Gemessen wird im Atlas-Server: In festem Abstand (Vorgabe 10 ms) nimmt er die Aufrufstapel aller Threads, ohne das Programm anzuhalten, und löst sie über die Map-Datei auf. Dafür in den Projektoptionen › Linker „Map-Datei = Detailliert“ einstellen, sonst zeigt das Profil nur Module.
+- Endet das Programm, endet auch die Messung. Atlas behält die letzten fünf Läufe.
+- Das Fenster „Atlas: Profil“ zeigt die Methoden nach Eigenanteil (Programm stand genau dort) mit Gesamtanteil (irgendwo im Aufrufstapel) und der heißesten Zeile. „Nur eigener Code“ fasst Bibliotheksrahmen zur aufgerufenen RTL- oder VCL-Routine zusammen, „Mit vorigem Lauf vergleichen“ zeigt die Änderung je Methode. Doppelklick oder Enter öffnet die Zeile.
+
+Einstellungen: `debug.profiler`, `debug.profiler.intervalMs`
 
 <a id="window-atlasbreakpoints"></a>
 #### Haltepunktfenster

@@ -183,6 +183,10 @@ begin
   Settings.Normalize;
   Assert.AreEqual(TAtlasPluginSettings.cMaxMemoryTimelineIntervalMs, Settings.DebugMemoryTimelineIntervalMs,
     'debug.memoryTimeline.intervalMs oben begrenzt (#858)');
+  Settings.DebugProfilerIntervalMs := 0;
+  Settings.Normalize;
+  Assert.AreEqual(TAtlasPluginSettings.cMinProfilerIntervalMs, Settings.DebugProfilerIntervalMs,
+    'debug.profiler.intervalMs unten begrenzt (#2057)');
   Assert.AreEqual(TAtlasPluginSettings.cMaxBlockEndLines, Settings.BlockEndLabelsMinLines, 'oben begrenzt');
   SetHideElementOptions(Settings);
   Store := TMemoryStore.Create;

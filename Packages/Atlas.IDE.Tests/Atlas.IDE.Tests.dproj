@@ -108,6 +108,9 @@
         <DCCReference Include="Source\Core\Tests\Atlas.Core.Tests.FromDebugStop.pas"/>
         <DCCReference Include="Source\Core\Tests\Atlas.Core.Tests.Compare.pas"/>
         <DCCReference Include="Source\Core\Tests\Atlas.Core.Tests.Coverage.pas"/>
+        <DCCReference Include="Source\Core\Tests\Atlas.Core.Tests.Mutants.pas"/>
+        <DCCReference Include="Source\Core\Tests\Atlas.Core.Tests.MutationShadow.pas"/>
+        <DCCReference Include="Source\Core\Tests\Atlas.Core.Tests.MutationResults.pas"/>
         <DCCReference Include="Source\Core\Tests\Atlas.Core.Tests.Approval.pas"/>
         <DCCReference Include="Source\Core\Tests\Atlas.Core.Tests.Durations.pas"/>
         <DCCReference Include="Source\Core\Tests\Atlas.Core.Tests.Flaky.pas"/>

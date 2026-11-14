@@ -920,6 +920,8 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.Core.Debug.AsyncOrigin` | `Core/Debug/Atlas.Core.Debug.AsyncOrigin.pas` | Ordner `Core/Debug` |
 | `Atlas.Core.Debug.Exceptions` | `Core/Debug/Atlas.Core.Debug.Exceptions.pas` | Ordner `Core/Debug` |
 | `Atlas.Core.Debug.MemoryTimeline` | `Core/Debug/Atlas.Core.Debug.MemoryTimeline.pas` | Ordner `Core/Debug` |
+| `Atlas.Core.Debug.Profiler` | `Core/Debug/Atlas.Core.Debug.Profiler.pas` | Ordner `Core/Debug` |
+| `Atlas.Core.Debug.ObjectCount` | `Core/Debug/Atlas.Core.Debug.ObjectCount.pas` | Ordner `Core/Debug` |
 | `Atlas.Core.Debug.IgnoreList` | `Core/Debug/Atlas.Core.Debug.IgnoreList.pas` | Ordner `Core/Debug` |
 | `Atlas.Core.Debug.InlineValues` | `Core/Debug/Atlas.Core.Debug.InlineValues.pas` | Ordner `Core/Debug` |
 | `Atlas.Core.Debug.WhyHere` | `Core/Debug/Atlas.Core.Debug.WhyHere.pas` | Ordner `Core/Debug` |
@@ -984,6 +986,10 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.IDE.Debug.MemoryCounters` | `IDE/Debug/Atlas.IDE.Debug.MemoryCounters.pas` | Ordner `IDE/Debug` |
 | `Atlas.IDE.Debug.MemoryTimeline` | `IDE/Debug/Atlas.IDE.Debug.MemoryTimeline.pas` | Ordner `IDE/Debug` |
 | `Atlas.IDE.Debug.MemoryWindow` | `IDE/Debug/Atlas.IDE.Debug.MemoryWindow.pas` | Ordner `IDE/Debug` |
+| `Atlas.IDE.Debug.ProfileWindow` | `IDE/Debug/Atlas.IDE.Debug.ProfileWindow.pas` | Ordner `IDE/Debug` |
+| `Atlas.IDE.Debug.Profiler` | `IDE/Debug/Atlas.IDE.Debug.Profiler.pas` | Ordner `IDE/Debug` |
+| `Atlas.IDE.Debug.ObjectCount` | `IDE/Debug/Atlas.IDE.Debug.ObjectCount.pas` | Ordner `IDE/Debug` |
+| `Atlas.IDE.Debug.ObjectCountReader` | `IDE/Debug/Atlas.IDE.Debug.ObjectCountReader.pas` | Ordner `IDE/Debug` |
 | `Atlas.IDE.Debug.MethodBreakpoints` | `IDE/Debug/Atlas.IDE.Debug.MethodBreakpoints.pas` | Ordner `IDE/Debug` |
 | `Atlas.IDE.Debug.BreakpointListMenu` | `IDE/Debug/Atlas.IDE.Debug.BreakpointListMenu.pas` | Ordner `IDE/Debug` |
 | `Atlas.IDE.Debug.WhyHere` | `IDE/Debug/Atlas.IDE.Debug.WhyHere.pas` | Ordner `IDE/Debug` |
@@ -1033,12 +1039,15 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.UI.Debug.InlineValuePainter` | `UI/Debug/Atlas.UI.Debug.InlineValuePainter.pas` | Ordner `UI/Debug` |
 | `Atlas.UI.Debug.MemoryChart` | `UI/Debug/Atlas.UI.Debug.MemoryChart.pas` | Ordner `UI/Debug` |
 | `Atlas.UI.Debug.MemoryFrame` | `UI/Debug/Atlas.UI.Debug.MemoryFrame.pas` | Ordner `UI/Debug` |
+| `Atlas.UI.Debug.ProfileFrame` | `UI/Debug/Atlas.UI.Debug.ProfileFrame.pas` | Ordner `UI/Debug` |
+| `Atlas.UI.Debug.ObjectCountPanel` | `UI/Debug/Atlas.UI.Debug.ObjectCountPanel.pas` | Ordner `UI/Debug` |
 | `Atlas.UI.Debug.MethodBreakpoints` | `UI/Debug/Atlas.UI.Debug.MethodBreakpoints.pas` | Ordner `UI/Debug` |
 | `Atlas.UI.Debug.SettingsSection` | `UI/Debug/Atlas.UI.Debug.SettingsSection.pas` | Ordner `UI/Debug`; Einstellungen des Moduls als Abschnitte (#1456) |
 | `Atlas.UI.Debug.StepFilterFrame` | `UI/Debug/Atlas.UI.Debug.StepFilterFrame.pas` | Ordner `UI/Debug` |
 | `Atlas.UI.Debug.StepInto` | `UI/Debug/Atlas.UI.Debug.StepInto.pas` | Ordner `UI/Debug` |
 | `Atlas.UI.Debug.Strings` | `UI/Debug/Atlas.UI.Debug.Strings.pas` | Texte des Moduls (Debugger), Sprache von Base, #1455 |
 | `Atlas.UI.Debug.Memory.Strings` | `UI/Debug/Atlas.UI.Debug.Memory.Strings.pas` | Texte des Speicherverlaufs, Sprache von Base, #858 |
+| `Atlas.UI.Debug.Profile.Strings` | `UI/Debug/Atlas.UI.Debug.Profile.Strings.pas` | Texte des Profilers, Sprache von Base, #2057 |
 | `Atlas.UI.Debug.VariablesFrame` | `UI/Debug/Atlas.UI.Debug.VariablesFrame.pas` | Ordner `UI/Debug` |
 | `Atlas.UI.Debug.VariablesStrings` | `UI/Debug/Atlas.UI.Debug.VariablesStrings.pas` | Texte des Fensters „Variablen“ (Debugger), Sprache von Base, #853 |
 | `Atlas.UI.Debug.Viewer` | `UI/Debug/Atlas.UI.Debug.Viewer.pas` | Ordner `UI/Debug` |
@@ -1050,6 +1059,7 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.IDE.Debug.EventLogWindow` | `IDE/Debug/Atlas.IDE.Debug.EventLogWindow.pas` | Andockbares Fenster Ereignisprotokoll, #580 |
 | `Atlas.IDE.Debug.EventLog` | `IDE/Debug/Atlas.IDE.Debug.EventLog.pas` | Ereignisprotokoll beim Debuggen, #580 |
 | `Atlas.IDE.Debug.Composition.Run` | `IDE/Debug/Atlas.IDE.Debug.Composition.Run.pas` | Teile rund um den Lauf des Moduls `atlas.debugger` (Ereignisprotokoll #580, Logpunkte #583) |
+| `Atlas.IDE.Debug.Composition.Profiler` | `IDE/Debug/Atlas.IDE.Debug.Composition.Profiler.pas` | Teil, Befehle und Menüeinträge des Profilers im Modul `atlas.debugger`, #2057 |
 | `Atlas.Core.Debug.Logpoint` | `Core/Debug/Atlas.Core.Debug.Logpoint.pas` | Logpunkte ohne IDE: Platzhaltertext, Eigenschaften des Haltepunkts, Zusammenführen, #583 |
 | `Atlas.UI.Debug.LogpointDialog` | `UI/Debug/Atlas.UI.Debug.LogpointDialog.pas` | Ordner `UI/Debug` |
 | `Atlas.IDE.Debug.Logpoints` | `IDE/Debug/Atlas.IDE.Debug.Logpoints.pas` | Logpunkte als Haltepunkte der IDE, #583 |
@@ -1586,6 +1596,9 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 |---|---|---|
 | `Atlas.Core.Tests.AffectedHook` | `Core/Tests/Atlas.Core.Tests.AffectedHook.pas` | Ordner `Core/Tests` |
 | `Atlas.Core.Tests.Coverage` | `Core/Tests/Atlas.Core.Tests.Coverage.pas` | Ordner `Core/Tests`; Testabdeckung (#275) |
+| `Atlas.Core.Tests.Mutants` | `Core/Tests/Atlas.Core.Tests.Mutants.pas` | Ordner `Core/Tests`; Mutanten anwenden, Prüfsumme der Routine (#1460) |
+| `Atlas.Core.Tests.MutationShadow` | `Core/Tests/Atlas.Core.Tests.MutationShadow.pas` | Ordner `Core/Tests`; Schattenprojekt des Mutationslaufs (#1460) |
+| `Atlas.Core.Tests.MutationResults` | `Core/Tests/Atlas.Core.Tests.MutationResults.pas` | Ordner `Core/Tests`; Ergebnisse des Mutationslaufs (#1460) |
 | `Atlas.Core.Tests.CoveredBy` | `Core/Tests/Atlas.Core.Tests.CoveredBy.pas` | Ordner `Core/Tests` |
 | `Atlas.Core.Tests.Debug` | `Core/Tests/Atlas.Core.Tests.Debug.pas` | Ordner `Core/Tests` |
 | `Atlas.Core.Tests.ProjectChoice` | `Core/Tests/Atlas.Core.Tests.ProjectChoice.pas` | Ordner `Core/Tests` |

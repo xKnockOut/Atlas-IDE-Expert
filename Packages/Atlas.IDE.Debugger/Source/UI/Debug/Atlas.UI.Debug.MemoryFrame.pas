@@ -6,6 +6,8 @@
 // gewählten Bereich und ein Hinweis zur Bedienung. Den Verlauf besitzt die
 // IDE-Schicht (Atlas.IDE.Debug.MemoryTimeline); sie meldet neue Messungen mit
 // Refresh und reagiert auf OnMark, OnCopyCsv und OnClear.
+// Mit debug.memoryTimeline.objectCount (experimentell) steht unter der Linie
+// der Bereich „Objekte zählen“ (TAtlasDebugObjectCountPanel, ShowObjectCount).
 
 interface
 
@@ -18,7 +20,8 @@ uses
   Vcl.ExtCtrls,
   Vcl.Forms,
   Atlas.Core.Debug.MemoryTimeline,
-  Atlas.UI.Debug.MemoryChart;
+  Atlas.UI.Debug.MemoryChart,
+  Atlas.UI.Debug.ObjectCountPanel;
 
 type
   /// <summary>Texte des Fensters „Atlas: Speicher“.</summary>
@@ -42,6 +45,8 @@ type
       Chart: TAtlasDebugMemoryChart;
       NowLabel: TLabel;
       RangeLabel: TLabel;
+      ObjectCount: TAtlasDebugObjectCountPanel;
+      ObjectCountSplitter: TSplitter;
     end;
     TEvents = record
       Mark: TProc;
@@ -67,6 +72,8 @@ type
     procedure SetTimeline(ATimeline: TAtlasMemoryTimeline);
     /// <summary>Neue Messung oder Marke: Linie und Werte neu.</summary>
     procedure Refresh;
+    /// <summary>Bereich „Objekte zählen“ zeigen oder verbergen (debug.memoryTimeline.objectCount).</summary>
+    procedure ShowObjectCount(AVisible: Boolean);
     property Chart: TAtlasDebugMemoryChart read FControls.Chart;
     property SeriesBox: TComboBox read FControls.SeriesBox;
     property MarkButton: TButton read FControls.Mark;
@@ -74,6 +81,7 @@ type
     property ClearButton: TButton read FControls.Clear;
     property NowLabel: TLabel read FControls.NowLabel;
     property RangeLabel: TLabel read FControls.RangeLabel;
+    property ObjectCount: TAtlasDebugObjectCountPanel read FControls.ObjectCount;
     property OnMark: TProc read FEvents.Mark write FEvents.Mark;
     property OnCopyCsv: TProc read FEvents.CopyCsv write FEvents.CopyCsv;
     property OnClear: TProc read FEvents.Clear write FEvents.Clear;
@@ -100,6 +108,10 @@ const
   cOrderHint = 30000;
   cOrderRange = 20000;
   cOrderNow = 10000;
+  /// <summary>Objektzählung ganz unten unter den Beschriftungen, die Trennleiste darüber.</summary>
+  cOrderObjectCount = 50000;
+  cOrderSplitter = 40000;
+  cObjectCountHeight = 220;
 
 function Seconds(AMs: Int64): string;
 begin
@@ -202,6 +214,22 @@ begin
   AFrame.FControls.SeriesBox.OnChange := AFrame.SeriesChange;
 end;
 
+/// <summary>Bereich „Objekte zählen“ samt Trennleiste, zunächst verborgen.</summary>
+procedure CreateObjectCount(AFrame: TAtlasDebugMemoryFrame);
+begin
+  AFrame.FControls.ObjectCount := TAtlasDebugObjectCountPanel.Create(AFrame);
+  AFrame.FControls.ObjectCount.Visible := False;
+  AFrame.FControls.ObjectCount.Top := cOrderObjectCount;
+  AFrame.FControls.ObjectCount.Height := MulDiv(cObjectCountHeight, AFrame.CurrentPPI, 96);
+  AFrame.FControls.ObjectCount.Align := alBottom;
+  AFrame.FControls.ObjectCount.Parent := AFrame;
+  AFrame.FControls.ObjectCountSplitter := TSplitter.Create(AFrame);
+  AFrame.FControls.ObjectCountSplitter.Visible := False;
+  AFrame.FControls.ObjectCountSplitter.Top := cOrderSplitter;
+  AFrame.FControls.ObjectCountSplitter.Align := alBottom;
+  AFrame.FControls.ObjectCountSplitter.Parent := AFrame;
+end;
+
 { TAtlasDebugMemoryFrame }
 
 constructor TAtlasDebugMemoryFrame.Create(AOwner: TComponent);
@@ -216,6 +244,7 @@ begin
   mHint.Font.Color := clGrayText;
   FControls.RangeLabel := AddBottomLabel(Self, cOrderRange, '');
   FControls.NowLabel := AddBottomLabel(Self, cOrderNow, '');
+  CreateObjectCount(Self);
   FControls.Chart := TAtlasDebugMemoryChart.Create(Self);
   FControls.Chart.Parent := Self;
   FControls.Chart.Align := alClient;
@@ -271,6 +300,19 @@ procedure TAtlasDebugMemoryFrame.Refresh;
 begin
   FControls.Chart.Invalidate;
   UpdateLabels;
+end;
+
+procedure TAtlasDebugMemoryFrame.ShowObjectCount(AVisible: Boolean);
+begin
+  if FControls.ObjectCount.Visible = AVisible then
+  begin
+    Exit;
+  end;
+  // Ganz nach unten (unter die Beschriftungen), die Trennleiste direkt darüber.
+  FControls.ObjectCount.Top := ClientHeight + cOrderObjectCount;
+  FControls.ObjectCount.Visible := AVisible;
+  FControls.ObjectCountSplitter.Top := FControls.ObjectCount.Top - 1;
+  FControls.ObjectCountSplitter.Visible := AVisible;
 end;
 
 procedure TAtlasDebugMemoryFrame.UpdateLabels;

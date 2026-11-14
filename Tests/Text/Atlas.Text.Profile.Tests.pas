@@ -1,4 +1,4 @@
-﻿unit Atlas.Common.Profiling.Profile.Tests;
+﻿unit Atlas.Text.Profile.Tests;
 
 // Tests für die Profildatei des Stichproben-Profilers (#2057): Zusammenfassen gleicher Rahmen und Stapel, JSON hin
 // und zurück, kaputte Dateien, Ablage der letzten fünf Läufe und Bibliotheks-Units.
@@ -15,6 +15,8 @@ type
     [Test]
     procedure BuilderMergesFramesAndStacks;
     [Test]
+    procedure BuilderTakesRepeatedSamples;
+    [Test]
     procedure JsonRoundTrip;
     [Test]
     procedure ParseRejectsBrokenFiles;
@@ -29,7 +31,7 @@ implementation
 uses
   System.SysUtils,
   System.DateUtils,
-  Atlas.Common.Profiling.Profile;
+  Atlas.Text.Profile;
 
 function Frame(const ARoutine: string; ALine: Integer; AIsLibrary: Boolean): TAtlasProfileFrame;
 begin
@@ -75,6 +77,27 @@ begin
   Assert.AreEqual(2, mProfile.Stacks[0].Count);
   Assert.AreEqual(1, mProfile.Stacks[1].Count);
   Assert.AreEqual('System.Sin', mProfile.Frames[mProfile.Stacks[1].Frames[0]].Routine);
+end;
+
+procedure TAtlasProfileTests.BuilderTakesRepeatedSamples;
+var
+  mBuilder: TAtlasProfileBuilder;
+  mProfile: TAtlasProfile;
+begin
+  // Wer gleiche Stapel schon zusammengefasst hat, übergibt die Anzahl auf einmal.
+  mProfile := Default(TAtlasProfile);
+  mBuilder := TAtlasProfileBuilder.Create;
+  try
+    mBuilder.AddSample([Frame('Main', 90, False)], 5);
+    mBuilder.AddSample([Frame('Main', 90, False)]);
+    mBuilder.AddSample([Frame('Main', 90, False)], 0);
+    mBuilder.FillProfile(mProfile);
+  finally
+    mBuilder.Free;
+  end;
+  Assert.AreEqual(6, mProfile.Samples, 'Anzahl 0 zählt nicht');
+  Assert.AreEqual(1, Integer(Length(mProfile.Stacks)));
+  Assert.AreEqual(6, mProfile.Stacks[0].Count);
 end;
 
 procedure TAtlasProfileTests.JsonRoundTrip;

@@ -61,7 +61,8 @@ uses
   Atlas.UI.Strings,
   Atlas.UI.Debug.Strings,
   Atlas.UI.Debug.VariablesStrings,
-  Atlas.UI.Debug.Memory.Strings;
+  Atlas.UI.Debug.Memory.Strings,
+  Atlas.UI.Debug.Profile.Strings;
 
 const
   cVisualizerTypesKey = 'debug.visualizers.types';
@@ -240,7 +241,7 @@ end;
 
 procedure TAtlasDebugSettingsSection.BuildRestartRows;
 begin
-  // Neu starten, erneut anhängen (#2171), Startverbünde (#867), Speicherverlauf (#858).
+  // Neu starten, erneut anhängen (#2171), Startverbünde (#867), Speicherverlauf (#858), Profiler (#2057).
   Switch('debug.restart', TAtlasDebugStrings.Text(TAtlasDebugTextId.SettingsDebugRestart));
   Switch('debug.restart.reenableBreakpoints', TAtlasDebugStrings.Text(TAtlasDebugTextId.SettingsDebugRestartReenable));
   // Erneut anhängen (#2171).
@@ -254,6 +255,11 @@ begin
   Switch('debug.memoryTimeline', TAtlasMemoryStrings.Text(TAtlasMemoryTextId.SettingsDebugMemoryTimeline));
   Number('debug.memoryTimeline.intervalMs',
     TAtlasMemoryStrings.Text(TAtlasMemoryTextId.SettingsDebugMemoryTimelineInterval));
+  // Profiler (#2057, experimentell).
+  Switch('debug.profiler', TAtlasProfileStrings.Text(TAtlasProfileTextId.SettingsDebugProfiler));
+  Number('debug.profiler.intervalMs', TAtlasProfileStrings.Text(TAtlasProfileTextId.SettingsDebugProfilerInterval));
+  Switch('debug.memoryTimeline.objectCount',
+    TAtlasMemoryStrings.Text(TAtlasMemoryTextId.SettingsDebugMemoryTimelineObjectCount));
 end;
 
 procedure TAtlasDebugSettingsSection.BuildStopValues;

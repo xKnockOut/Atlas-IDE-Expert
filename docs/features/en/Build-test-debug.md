@@ -579,8 +579,23 @@ Open it from the Atlas menu › Memory timeline or with the command `Atlas.Debug
 - Drag a range with the mouse to see the growth of every value below, e.g. `Private bytes +38.0 MB · Handles +12`. Double-click clears the range.
 - “Copy CSV” puts the timeline with its marks on the clipboard, “Clear” starts over.
 - Limit: in the 32-bit IDE, Windows caps memory values of a 64-bit program above 4 GB.
+- Experimental (`debug.memoryTimeline.objectCount`, default off): below the line is the section “Count objects”. In the paused program Atlas searches its memory for references to classes and shows count and size of live objects per class. Every further count is compared with the previous one; growth is on top (`+10` for a class created ten times and never freed). The field “Filter classes” narrows the table.
+- The count does not depend on the memory manager and is an approximation: class references in fields (`TClass`) count too, freed objects drop out once the memory manager overwrites their start (FastMM does).
 
-Settings: `debug.memoryTimeline`, `debug.memoryTimeline.intervalMs`
+Settings: `debug.memoryTimeline`, `debug.memoryTimeline.intervalMs`, `debug.memoryTimeline.objectCount`
+
+<a id="window-atlasprofiler"></a>
+### Profiler
+
+Experimental. Open it from the Atlas menu › Run with profile, Start/stop profile or Profile (commands `Atlas.DebugProfileRun`, `Atlas.DebugProfileToggle`, `Atlas.DebugProfile`).
+
+- “Run with profile” builds the active project if needed, starts it without the debugger with its run parameters and samples it.
+- “Start/stop profile” samples the program being debugged or stops a running profile.
+- The Atlas server samples: at a fixed interval (default 10 ms) it takes the call stacks of all threads without stopping the program and resolves them through the map file. Set Project options › Linker “Map file = Detailed”, otherwise the profile shows modules only.
+- When the program ends, sampling ends too. Atlas keeps the last five runs.
+- The window “Atlas: Profile” lists the methods by self share (the program was exactly there) with total share (anywhere in the call stack) and the hottest line. “Own code only” folds library frames into the RTL or VCL routine your code called, “Compare with previous run” shows the change per method. Double-click or Enter opens the line.
+
+Settings: `debug.profiler`, `debug.profiler.intervalMs`
 
 <a id="window-atlasbreakpoints"></a>
 ### Breakpoints window

@@ -87,6 +87,7 @@ $Exempt = @{
     'Atlas.Windows.Monitor.Adapters.System'             = 'Prozesse, Registry (Autostart) und ShellExecute des Systems'
     'Atlas.Windows.Monitor.Adapters.Process'            = 'Kindprozess mit CreateProcess und Job-Objekt des Systems'
     'Shell.Update.Install'                              = 'Dialog auf der Konsole; Ablauf testet Atlas.Common.Updates.Apply'
+    'Atlas.Windows.Profiling.Adapters.Sampler'          = 'hält Threads eines fremden Prozesses an (SuspendThread, StackWalk64); Zusammenfassen und Auflösen testet Atlas.Common.Profiling.Sampling'
 }
 
 $testFiles = Get-ChildItem -Path (Join-Path $Root 'Tests') -Recurse -File -Filter '*.pas'

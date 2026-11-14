@@ -14,6 +14,8 @@
 //   - Fenster „Atlas: Speicher“ (Befehl Atlas.DebugMemory): Linie je Reihe,
 //     Bereich wählen zeigt den Zuwachs, „Marke setzen“, „CSV kopieren“,
 //     „Leeren“.
+//   - Mit debug.memoryTimeline.objectCount (experimentell) darunter „Objekte
+//     zählen“ (TAtlasIdeDebugObjectCount).
 // Ohne debug.memoryTimeline misst Atlas nichts und meldet keinen Zuhörer an.
 // Gesichert über TAtlasFeature.Debugger. Nur im Hauptthread.
 
@@ -95,6 +97,7 @@ uses
   Atlas.Core.Diagnostics.Guard,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Debug.MemoryWindow,
+  Atlas.IDE.Debug.ObjectCount,
   Atlas.UI.Debug.Memory.Strings;
 
 { TAtlasIdeDebugMemoryTimeline.TListener }
@@ -180,6 +183,11 @@ begin
     mFrame.OnCopyCsv := nil;
     mFrame.OnClear := nil;
     mFrame.SetTimeline(nil);
+    TAtlasIdeDebugObjectCount.Release(mFrame.ObjectCount);
+  end
+  else
+  begin
+    TAtlasIdeDebugObjectCount.Release(nil);
   end;
   TAtlasIdeDebugMemoryWindow.OnFrame := nil;
   TAtlasIdeDebugMemoryWindow.Release;
@@ -208,6 +216,11 @@ begin
   if not TAtlasIdeSettings.Current.DebugMemoryTimeline then
   begin
     TAtlasIdeDebugMemoryWindow.Hide;
+  end;
+  if TAtlasIdeDebugMemoryWindow.ExistingFrame <> nil then
+  begin
+    TAtlasIdeDebugMemoryWindow.ExistingFrame.ShowObjectCount(
+      TAtlasIdeSettings.Current.DebugMemoryTimelineObjectCount);
   end;
 end;
 
@@ -242,6 +255,8 @@ begin
   AFrame.OnCopyCsv := CopyCsv;
   AFrame.OnClear := ClearTimeline;
   AFrame.SetTimeline(FTimeline);
+  TAtlasIdeDebugObjectCount.Wire(AFrame.ObjectCount);
+  AFrame.ShowObjectCount(TAtlasIdeSettings.Current.DebugMemoryTimelineObjectCount);
 end;
 
 class procedure TAtlasIdeDebugMemoryTimeline.RefreshWindow;
@@ -353,6 +368,7 @@ begin
   FTimeline.Clear;
   FSession := Default(TSessionState);
   FSession.StartTicks := GetTickCount64;
+  TAtlasIdeDebugObjectCount.Reset;
   FTimer.Interval := TAtlasIdeSettings.Current.DebugMemoryTimelineIntervalMs;
   FTimer.Enabled := True;
   Sample;
