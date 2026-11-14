@@ -33,7 +33,6 @@ uses
   System.SysUtils,
   System.Types,
   Atlas.Core.Style.Palette,
-  Atlas.Core.Lsp.TextChanges,
   Atlas.Core.Lsp.WorkspaceEdits,
   Atlas.Core.Editor.Unwrap,
   Atlas.UI.Strings,

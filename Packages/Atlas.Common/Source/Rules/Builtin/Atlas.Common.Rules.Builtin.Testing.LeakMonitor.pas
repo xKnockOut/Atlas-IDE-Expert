@@ -6,7 +6,8 @@
 //                        Testmarken im Editor zeigen sie dann nie. DUnitX.MemoryLeakMonitor.Default zählt nicht,
 //                        er misst nichts. Gemeldet am Eintrag DUnitX.TestFramework. Korrektur: den Monitor ins uses
 //                        eintragen; FastMM5, wenn das Programm FastMM5 verwendet, sonst FastMM4 (er arbeitet auch
-//                        mit dem Speichermanager der RTL, FastMM4.pas ist dafür nicht nötig).
+//                        mit dem Speichermanager der RTL, FastMM4.pas ist dafür nicht nötig). Still, wenn eine Unit
+//                        des Projekts einen eigenen Monitor anmeldet (IMemoryLeakMonitor laut Index verwendet).
 
 interface
 
@@ -33,6 +34,7 @@ uses
   Atlas.Text.Lines,
   Atlas.Common.Documents.Contract,
   Atlas.Common.Configuration.Contract,
+  Atlas.Common.Index.Contract,
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Editing.UsesClause,
   Atlas.Common.Localization.Texts;
@@ -58,6 +60,7 @@ const
   cNoMonitor = 'DUnitX.MemoryLeakMonitor.Default';
   cMonitorFastMM4 = 'DUnitX.MemoryLeakMonitor.FastMM4';
   cMonitorFastMM5 = 'DUnitX.MemoryLeakMonitor.FastMM5';
+  cMonitorInterface = 'IMemoryLeakMonitor';
   cFastMM5 = 'FastMM5';
 
 { TDUnitXLeakMonitorRule }
@@ -76,6 +79,14 @@ begin
   end;
 end;
 
+/// <summary>Meldet eine Unit des Projekts einen eigenen Leckmonitor an
+/// (TDUnitXIoC.DefaultContainer.RegisterType<IMemoryLeakMonitor>)? Bibliotheken wie DUnitX selbst zählen nicht.
+/// </summary>
+function HasOwnMonitor(const AContext: TRuleContext): Boolean;
+begin
+  Result := (AContext.Index <> nil) and (AContext.Index.UsageCount(cMonitorInterface) > 0);
+end;
+
 procedure TDUnitXLeakMonitorRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
 var
   mReference: TUsesReference;
@@ -85,7 +96,8 @@ var
   mMonitor: string;
   mEdit: TTextEdit;
 begin
-  if (AContext.Tree = nil) or (AContext.Tree.Root = nil) or (AContext.Tree.Root.Kind <> TSyntaxKind.ProgramFile) then
+  if (AContext.Tree = nil) or (AContext.Tree.Root = nil) or (AContext.Tree.Root.Kind <> TSyntaxKind.ProgramFile) or
+    HasOwnMonitor(AContext) then
   begin
     Exit;
   end;

@@ -349,7 +349,8 @@ begin
   end;
 end;
 
-function CrashText(const AReport: TCrashReport; const ASymbols: TReportSymbols; const AFileOf: TReportUnitFileFunc): string;
+function CrashText(const AReport: TCrashReport; const ASymbols: TReportSymbols;
+  const AFileOf: TReportUnitFileFunc): string;
 var
   mFrames: TArray<TCrashFrame>;
   mSite: Integer;

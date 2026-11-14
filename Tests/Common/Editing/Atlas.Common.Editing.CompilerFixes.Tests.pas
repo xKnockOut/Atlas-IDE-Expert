@@ -49,7 +49,6 @@ implementation
 uses
   System.SysUtils,
   System.IOUtils,
-  Atlas.Common.Documents.Contract,
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.Parser,
   Atlas.Common.Editing.ChangeSignature,

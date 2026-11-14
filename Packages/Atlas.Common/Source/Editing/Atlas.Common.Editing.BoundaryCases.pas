@@ -1259,6 +1259,8 @@ begin
       CaseStatement(ANode);
     TSyntaxKind.Identifier:
       LogicalUse(ANode);
+  else
+    // Übrige Werte bewusst ohne Wirkung.
   end;
 end;
 

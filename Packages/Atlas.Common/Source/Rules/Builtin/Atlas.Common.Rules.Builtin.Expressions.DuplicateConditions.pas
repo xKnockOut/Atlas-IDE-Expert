@@ -35,7 +35,6 @@ uses
   Atlas.Common.Pascal.Lexer,
   Atlas.Common.Pascal.LanguageFeatures,
   Atlas.Common.Editing.ConditionalExpression,
-  Atlas.Text.Lines,
   Atlas.Common.Localization.Texts;
 
 {$SCOPEDENUMS ON}

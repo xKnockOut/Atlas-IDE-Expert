@@ -109,21 +109,18 @@ var
   mRun: TAtlasRestartRun;
   mStep: TAtlasRestartStep;
   mFormat: TFormatSettings;
-  mSeparator: Char;
 begin
   mFormat := TFormatSettings.Create;
   mFormat.DecimalSeparator := ',';
   Assert.AreEqual('2,1 s', TAtlasRestartRun.SecondsText(2150, mFormat));
-  mSeparator := FormatSettings.DecimalSeparator;
   mRun := TAtlasRestartRun.Create(True, True);
   try
+    mRun.NumberFormat := mFormat;
     mRun.Advance(1000, mStep);
     mRun.Advance(1300, mStep);
     mRun.Finish(False, 3400);
-    FormatSettings.DecimalSeparator := ',';
     Assert.AreEqual('Beenden 0,3 s OK · Bauen X', mRun.Text(Captions, 'OK', 'X'));
   finally
-    FormatSettings.DecimalSeparator := mSeparator;
     mRun.Free;
   end;
   mRun := TAtlasRestartRun.Create(False, False);

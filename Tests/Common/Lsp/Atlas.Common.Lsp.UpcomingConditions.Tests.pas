@@ -4,7 +4,6 @@ interface
 
 uses
   DUnitX.TestFramework,
-  Atlas.Common.Documents.Contract,
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Lsp.UpcomingConditions;
 

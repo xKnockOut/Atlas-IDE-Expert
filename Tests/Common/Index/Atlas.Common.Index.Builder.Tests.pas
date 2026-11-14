@@ -137,17 +137,11 @@ uses
   System.Classes,
   System.SyncObjs,
   System.Diagnostics,
-  Atlas.Common.Documents.Contract,
-  Atlas.Common.Projects.Contract,
-  Atlas.Common.Index.Extractor,
   Atlas.Common.Index.SymbolIndex,
   Atlas.Common.Index.Memory,
   Atlas.Common.Index.Cache,
-  Atlas.Common.Rationale.Contract,
   Atlas.Common.Index.Builder,
-  Atlas.Common.Index.Service,
-  Atlas.Common.Index.Scheduler,
-  Atlas.Common.Index.ProjectFiles;
+  Atlas.Common.Index.Service;
 
 /// <summary>Projekt P mit A und die Bibliothek B bis F der Index-Aufbau-Tests.</summary>
 procedure PutBuilderFiles(AFiles: TMemoryIndexFileSystem);

@@ -26,7 +26,6 @@ uses
   Vcl.ExtCtrls,
   ToolsAPI,
   Atlas.Core.Status.Contract,
-  Atlas.Core.Status.Registry,
   Atlas.Core.Debug.CallStack,
   Atlas.Core.Debug.AsyncOrigin,
   Atlas.IDE.Debug.Session;
@@ -102,6 +101,7 @@ type
 implementation
 
 uses
+  Atlas.Core.Status.Registry,
   Atlas.Core.Diagnostics.Guard,
   Atlas.UI.Results.Items,
   Atlas.IDE.Foundation.Files,

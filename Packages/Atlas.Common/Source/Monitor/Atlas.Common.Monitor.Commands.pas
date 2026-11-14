@@ -76,7 +76,8 @@ type
     class function CommandLine(const AServer: string; const AArguments: TArray<string>): string; static;
     /// <summary>Alle Schalter, die der Monitor anbietet.</summary>
     class function CoveredSwitches: TArray<string>; static;
-    /// <summary>Schalter des Servers, die der Monitor bewusst nicht anbietet (Protokoll, LSP/MCP, Editor, CI).</summary>
+    /// <summary>Schalter des Servers, die der Monitor bewusst nicht anbietet (Protokoll, LSP/MCP, Editor, CI).
+    /// </summary>
     class function SkippedSwitches: TArray<string>; static;
   end;
 

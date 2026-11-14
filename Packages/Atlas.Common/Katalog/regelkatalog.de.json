@@ -316,7 +316,7 @@
     {
       "id": "security-path-traversal",
       "name": "Pfad-Traversal",
-      "description": "Ein Dateizugriff (TFileStream.Create, LoadFromFile, AssignFile, TFile.*) verwendet einen Pfad aus Eingabedaten (Text, ParamStr, Request) ohne Prüfung über TPath.GetFullPath. Nur der Pfad (erstes Argument) zählt, nicht der geschriebene Inhalt (WriteAllText(Pfad, Liste.Text)). Experimentell, bis die Datenflussanalyse verfügbar ist."
+      "description": "Ein Dateizugriff (TFileStream.Create, LoadFromFile, AssignFile, TFile.*) verwendet einen Pfad aus Eingabedaten (Edit1.Text, ParamStr, Request.PathInfo; eine schlichte Variable namens Text oder Request zählt nicht) ohne Prüfung über TPath.GetFullPath. Nur der Pfad (erstes Argument) zählt, nicht der geschriebene Inhalt (WriteAllText(Pfad, Liste.Text)). Experimentell, bis die Datenflussanalyse verfügbar ist."
     },
     {
       "id": "security-weak-crypto",
@@ -464,7 +464,7 @@
     {
       "id": "random-without-randomize",
       "name": "Random ohne Randomize",
-      "description": "Random wird verwendet, aber die Unit ruft nie Randomize auf; jeder Start liefert dieselbe Folge. Ein eigenes Random (Aufzählungswert, Routine) ist nicht System.Random. Randomize steht oft in der .dpr, deshalb ist die Regel standardmäßig aus und hat niedrige Konfidenz."
+      "description": "Random wird verwendet, aber weder die Unit noch eine andere Unit des Projekts (laut Index, etwa die .dpr) ruft Randomize auf; jeder Start liefert dieselbe Folge. Ein eigenes Random (Aufzählungswert, Routine) ist nicht System.Random. Ohne Index sieht die Regel nur die Unit, deshalb ist sie standardmäßig aus und hat niedrige Konfidenz."
     },
     {
       "id": "int32-mul-overflow",
@@ -546,7 +546,7 @@
     {
       "id": "loop-invariant-call",
       "name": "Teurer Aufruf in der Schleifenbedingung",
-      "description": "Die Bedingung von while und until wird bei jedem Durchlauf ausgewertet. Aufrufe wie Trim oder Format und Eigenschaften wie Lines.Text werden dort jedes Mal neu berechnet; besser einmal vor der Schleife. Die Grenzen von for werden nur einmal ausgewertet und nicht gemeldet, ebenso .Text als Feld (Record-Feld eines Typs derselben Datei oder laut Namensauflösung ein Feld bzw. eine Property, die ein Feld liest), eine Property, deren Empfänger die Schleife ändert (Items[I].Text), FileExists und DirectoryExists (Warten auf eine Datei) und Aufrufe, deren Argument die Schleife ändert (Zuweisung, Inc, Dec, Delete, SetLength, Include, Exclude). Standardmäßig aus."
+      "description": "Die Bedingung von while und until wird bei jedem Durchlauf ausgewertet. Aufrufe wie Trim oder Format und Eigenschaften wie Lines.Text werden dort jedes Mal neu berechnet; besser einmal vor der Schleife. Die Grenzen von for werden nur einmal ausgewertet und nicht gemeldet, ebenso .Text als Feld (Record-Feld eines Typs derselben Datei oder laut Namensauflösung ein Feld, eine Variable, Konstante, ein Aufzählungswert wie TXmlNodeKind.Text bzw. eine Property, die ein Feld liest), eine Property, deren Empfänger die Schleife ändert (Items[I].Text), FileExists und DirectoryExists (Warten auf eine Datei) und Aufrufe, deren Argument die Schleife ändert (Zuweisung, Inc, Dec, Delete, SetLength, Include, Exclude). Standardmäßig aus."
     },
     {
       "id": "missing-begin-update",
@@ -1268,7 +1268,7 @@
     {
       "id": "dunitx-leak-monitor",
       "name": "DUnitX-Testprogramm ohne Leckmonitor",
-      "description": "Ein Programm (.dpr), das DUnitX.TestFramework, aber keinen Leckmonitor von DUnitX (DUnitX.MemoryLeakMonitor.FastMM4 oder .FastMM5) verwendet: Ohne ihn misst DUnitX keine Lecks je Test, die Testmarken im Editor zeigen sie nie. DUnitX.MemoryLeakMonitor.Default zählt nicht, er misst nichts. Gemeldet am Eintrag DUnitX.TestFramework. Korrektur (sicher): den Monitor ins uses eintragen, DUnitX.MemoryLeakMonitor.FastMM5, wenn das Programm FastMM5 verwendet, sonst DUnitX.MemoryLeakMonitor.FastMM4, der auch mit dem Speichermanager der RTL ohne FastMM4.pas arbeitet. Units bleiben still. Sicherheit hoch."
+      "description": "Ein Programm (.dpr), das DUnitX.TestFramework, aber keinen Leckmonitor von DUnitX (DUnitX.MemoryLeakMonitor.FastMM4 oder .FastMM5) verwendet: Ohne ihn misst DUnitX keine Lecks je Test, die Testmarken im Editor zeigen sie nie. DUnitX.MemoryLeakMonitor.Default zählt nicht, er misst nichts. Gemeldet am Eintrag DUnitX.TestFramework. Korrektur (sicher): den Monitor ins uses eintragen, DUnitX.MemoryLeakMonitor.FastMM5, wenn das Programm FastMM5 verwendet, sonst DUnitX.MemoryLeakMonitor.FastMM4, der auch mit dem Speichermanager der RTL ohne FastMM4.pas arbeitet. Units bleiben still, ebenso ein Programm, dessen Projekt einen eigenen Monitor anmeldet (eine Unit verwendet laut Index IMemoryLeakMonitor). Sicherheit hoch."
     },
     {
       "id": "dunitx-ignore-without-reason",
@@ -1324,7 +1324,7 @@
     {
       "id": "created-result-not-freed",
       "name": "Neues Objekt aus einer Funktion nie freigegeben",
-      "description": "Eine lokale Variable erhält das Ergebnis einer Funktion, die immer ein neues Objekt liefert, und die Routine gibt es weder frei noch weiter (gleiche Regeln wie local-object-not-freed). Eine Funktion derselben Datei zählt, wenn jede Zuweisung an Result T.Create(…) ohne Owner ist, Result sonst nur über seine Mitglieder benutzt oder freigegeben wird (Aufräumen im except) und nie weitergeht, und jedes Exit(…) ebenfalls ein Objekt erzeugt; gleichnamige Überladungen müssen das alle erfüllen. Erkannt wird sie unqualifiziert, über Self oder über einen Typnamen aufgerufen; Methoden anderer Objekte kennt die Regel nur aus der Option factories. Konfidenz mittel. Schnellkorrektur: die folgenden Anweisungen des Blocks in try … finally mit Free einschließen.",
+      "description": "Eine lokale Variable erhält das Ergebnis einer Funktion, die immer ein neues Objekt liefert, und die Routine gibt es weder frei noch weiter (gleiche Regeln wie local-object-not-freed). Eine Funktion derselben Datei zählt, wenn ihr Ergebnistyp eine Klasse ist (kein Record aus einer Klassenfunktion Create), jede Zuweisung an Result T.Create(…) ohne Owner ist, Result sonst nur über seine Mitglieder benutzt oder freigegeben wird (Aufräumen im except) und nie weitergeht, und jedes Exit(…) ebenfalls ein Objekt erzeugt; gleichnamige Überladungen müssen das alle erfüllen. Erkannt wird sie unqualifiziert, über Self oder über einen Typnamen aufgerufen; Methoden anderer Objekte kennt die Regel nur aus der Option factories. Konfidenz mittel. Schnellkorrektur: die folgenden Anweisungen des Blocks in try … finally mit Free einschließen.",
       "options": [
         {
           "name": "factories",

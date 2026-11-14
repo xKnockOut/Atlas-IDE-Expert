@@ -549,9 +549,10 @@ const
     '      "id": "created-result-not-freed",',
     '      "name": "Neues Objekt aus einer Funktion nie freigegeben",',
     '      "description": "Eine lokale Variable erhält das Ergebnis einer Funktion, die immer ein neues Objekt liefert, und die Routine gibt es weder frei noch weiter (gleiche Regeln wie local-object-not-f' +
-    'reed). Eine Funktion derselben Datei zählt, wenn jede Zuweisung an Result T.Create(…) ohne Owner ist, Result sonst nur über seine Mitglieder benutzt oder freigegeben wird (Aufräumen im except) und nie' +
-    ' weitergeht, und jedes Exit(…) ebenfalls ein Objekt erzeugt; gleichnamige Überladungen müssen das alle erfüllen. Erkannt wird sie unqualifiziert, über Self oder über einen Typnamen aufgerufen; Methode' +
-    'n anderer Objekte kennt die Regel nur aus der Option factories. Konfidenz mittel. Schnellkorrektur: die folgenden Anweisungen des Blocks in try … finally mit Free einschließen.",',
+    'reed). Eine Funktion derselben Datei zählt, wenn ihr Ergebnistyp eine Klasse ist (kein Record aus einer Klassenfunktion Create), jede Zuweisung an Result T.Create(…) ohne Owner ist, Result sonst nur ü' +
+    'ber seine Mitglieder benutzt oder freigegeben wird (Aufräumen im except) und nie weitergeht, und jedes Exit(…) ebenfalls ein Objekt erzeugt; gleichnamige Überladungen müssen das alle erfüllen. Erkannt' +
+    ' wird sie unqualifiziert, über Self oder über einen Typnamen aufgerufen; Methoden anderer Objekte kennt die Regel nur aus der Option factories. Konfidenz mittel. Schnellkorrektur: die folgenden Anweis' +
+    'ungen des Blocks in try … finally mit Free einschließen.",',
     '      "options": [',
     '        {',
     '          "name": "factories",',

@@ -514,8 +514,9 @@ begin
     not MatchText(ACall.FirstArgument, ['Self', 'Owner', 'AOwner', 'Application']));
 end;
 
-/// <summary>Liefert ARoutine immer ein neues Objekt ohne Owner? Alle Zuweisungen an Result sind T.Create, Result
-/// wird sonst nur über seine Mitglieder benutzt oder freigegeben (Aufräumen im except), nie weitergegeben.</summary>
+/// <summary>Liefert ARoutine immer ein neues Objekt ohne Owner? Der Ergebnistyp ist eine Klasse (kein Record aus
+/// einer Klassenfunktion Create), alle Zuweisungen an Result sind T.Create, Result wird sonst nur über seine
+/// Mitglieder benutzt oder freigegeben (Aufräumen im except), nie weitergegeben.</summary>
 function TLocalObjectScan.IsFactoryRoutine(ARoutine: TSyntaxNode): Boolean;
 var
   mFound: TArray<TSyntaxNode>;
@@ -524,7 +525,7 @@ var
   mCall: TConstructorCall;
   mCreates: Boolean;
 begin
-  if (ResultType(ARoutine) = '') or LooksLikeInterface(ResultType(ARoutine)) or
+  if (ResultType(ARoutine) = '') or LooksLikeInterface(ResultType(ARoutine)) or not IsClass(ResultType(ARoutine)) or
     (TRoutineBody.BodyOf(ARoutine) = nil) or HasAsmOrWith(ARoutine) then
   begin
     Exit(False);

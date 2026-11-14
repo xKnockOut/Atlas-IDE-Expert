@@ -50,7 +50,7 @@ const
     '"end": {"line": 3, "character": 4}}, "newText": "x"}]}}},' +
     '{"file": "C:\\P\\C.pas", "fixes": 0, "rejected": true, "rules": []}]}';
 
-function Finding(const AFileName, ARule: string; ASource: string): TAtlasFinding;
+function Finding(const AFileName, ARule: string; const ASource: string): TAtlasFinding;
 begin
   Result := Default(TAtlasFinding);
   Result.FileName := AFileName;

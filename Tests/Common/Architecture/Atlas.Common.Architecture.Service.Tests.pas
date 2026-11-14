@@ -42,7 +42,6 @@ uses
   Atlas.Common.Index.Contract,
   Atlas.Common.Index.SymbolIndex,
   Atlas.Common.Configuration.Contract,
-  Atlas.Common.Architecture.UsesLocator,
   Atlas.Common.Architecture.Overview,
   Atlas.Common.Architecture.Grouping,
   Atlas.Common.Architecture.Service,

@@ -134,7 +134,7 @@ begin
   mGroup.Pattern := '*.Validiere';
   mGroup.Overrides := True;
   mGroup.Overloads := True;
-  mDialog := TAtlasMethodBreakpointsDialog.CreateDialog(nil, mGroup, SearchOk);
+  mDialog := TAtlasMethodBreakpointsDialog.CreateDialog(nil, mGroup, SearchOk());
   try
     mDialog.HandleNeeded;
     mDialog.HitList.HandleNeeded;
@@ -166,7 +166,7 @@ var
 begin
   mGroup := Default(TAtlasMethodGroup);
   mGroup.Pattern := 'TKunde.*';
-  mDialog := TAtlasMethodBreakpointsDialog.CreateDialog(nil, mGroup, SearchOk);
+  mDialog := TAtlasMethodBreakpointsDialog.CreateDialog(nil, mGroup, SearchOk());
   try
     mDialog.HandleNeeded;
     mDialog.HitList.HandleNeeded;
@@ -196,7 +196,7 @@ begin
   mGroup := Default(TAtlasMethodGroup);
   mGroup.Pattern := 'TKunde.*';
   mGroup.Overrides := True;
-  mDialog := TAtlasMethodBreakpointsDialog.CreateDialog(nil, mGroup, SearchOk);
+  mDialog := TAtlasMethodBreakpointsDialog.CreateDialog(nil, mGroup, SearchOk());
   try
     mDialog.HandleNeeded;
     mDialog.HitList.HandleNeeded;

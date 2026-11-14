@@ -34,7 +34,6 @@ implementation
 
 uses
   System.SysUtils,
-  Atlas.Common.Logging.Contract,
   Atlas.Common.Logging.Providers.Logger,
   Atlas.Common.Compiler.Backend,
   Atlas.Common.Lsp.Status,

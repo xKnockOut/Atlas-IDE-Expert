@@ -70,8 +70,9 @@ type
       ADiagnostics: Integer): TJSONObject; static;
     /// <summary>atlas.server.runtimeReport; EJsonRpcError ohne uri, ohne text oder bei unlesbarer base.</summary>
     function Execute(const AArguments: TJSONArray): TJSONValue;
-    /// <summary>atlas.server.runtimeReport.clear: {cleared: Zahl der Dateien}.</summary>
-    function Clear(const AArguments: TJSONArray): TJSONValue;
+    /// <summary>atlas.server.runtimeReport.clear: {cleared: Zahl der Dateien}. Der Bericht gilt für alle Projekte,
+    /// die Argumente des Befehls (URI) braucht es nicht.</summary>
+    function Clear: TJSONValue;
   end;
 
 implementation
@@ -392,11 +393,10 @@ begin
   end;
 end;
 
-function TLspRuntimeReport.Clear(const AArguments: TJSONArray): TJSONValue;
+function TLspRuntimeReport.Clear: TJSONValue;
 var
   mResult: TJSONObject;
 begin
-  // Der Bericht gilt für alle Projekte; die URI braucht es nicht.
   mResult := TJSONObject.Create;
   mResult.AddPair('cleared', TJSONNumber.Create(Store(nil)));
   Result := mResult;

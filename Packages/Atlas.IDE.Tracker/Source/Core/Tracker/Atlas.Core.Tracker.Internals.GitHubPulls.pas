@@ -17,7 +17,6 @@ interface
 
 uses
   Atlas.Core.Ci.Contract,
-  Atlas.Core.CiBuild.Contract,
   Atlas.Core.Tracker.Contract;
 
 type
@@ -56,6 +55,7 @@ uses
   System.StrUtils,
   System.JSON,
   System.Generics.Collections,
+  Atlas.Core.CiBuild.Contract,
   Atlas.Text.Uris,
   Atlas.Core.Tracker.Internals.GitHubApi,
   Atlas.Core.Tracker.Internals.GitHubJson,

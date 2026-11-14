@@ -50,7 +50,7 @@ type
   TLog = class
   public
     Text: string;
-    procedure Add(AEntry: string);
+    procedure Add(const AEntry: string);
   end;
 
   TFakeModule = class(TInterfacedObject, IAtlasModule)
@@ -71,7 +71,7 @@ const
   /// <summary>Erfundenes Package: Der Test entlädt nichts und hält nichts im Speicher fest.</summary>
   cInstance = $5A5B0000;
 
-procedure TLog.Add(AEntry: string);
+procedure TLog.Add(const AEntry: string);
 begin
   if Text <> '' then
   begin

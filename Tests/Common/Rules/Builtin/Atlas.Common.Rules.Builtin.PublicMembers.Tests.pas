@@ -79,7 +79,6 @@ uses
   System.IOUtils,
   System.Diagnostics,
   System.Generics.Collections,
-  Atlas.Common.Documents.Contract,
   Atlas.Common.Documents.FileEncoding,
   Atlas.Common.Pascal.Contract,
   Atlas.Common.Configuration.Contract,

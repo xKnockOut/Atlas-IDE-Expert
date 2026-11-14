@@ -14,8 +14,8 @@
 //                     nirgends gespeichert und nie freigegeben. Still bleiben Komponenten mit Owner (erstes Argument
 //                     Self, Owner, AOwner, Application bzw. ein Nachfahr von TComponent mit Argument ungleich nil),
 //                     Threads (geben sich mit FreeOnTerminate selbst frei), unbekannte Klassen mit Argumenten und
-//                     Klassen aus "selfRegistering", Konstruktoren mit var- oder out-Parameter und Aufrufe in
-//                     einer anonymen Methode für Assert.WillRaise…. Korrektur: Zuweisung an eine neue lokale Variable, die
+//                     Klassen aus "selfRegistering", Konstruktoren mit var- oder out-Parameter und Aufrufe in einer
+//                     anonymen Methode für Assert.WillRaise…. Korrektur: Zuweisung an eine neue lokale Variable, die
 //                     folgenden Anweisungen des Blocks in try/finally mit Free.
 //   self-as-interface-in-constructor  Self als Interface weitergegeben, während die Referenzzählung das Objekt
 //                     freigeben kann (#950). Nur zwei echte Fehlerfälle: (1) Klassen mit eigener Referenzzählung

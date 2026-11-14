@@ -44,8 +44,7 @@ uses
   Atlas.Core.Welcome.Saved,
   Atlas.UI.Welcome.Continue,
   Atlas.UI.Welcome.QuickActions,
-  Atlas.UI.Welcome.QuickActions.Tests,
-  Atlas.UI.Welcome.TestSupport;
+  Atlas.UI.Welcome.QuickActions.Tests;
 
 type
   /// <summary>Quelle des Bereichs „Weiterarbeiten“ für die Tests; merkt sich die Aufrufe.</summary>

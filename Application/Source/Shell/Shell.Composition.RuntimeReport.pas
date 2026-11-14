@@ -162,7 +162,7 @@ begin
     begin
       mCommand := NewCommand(mLeakServices, mServices);
       try
-        Result := mCommand.Clear(AArguments);
+        Result := mCommand.Clear;
       finally
         mCommand.Free;
       end;

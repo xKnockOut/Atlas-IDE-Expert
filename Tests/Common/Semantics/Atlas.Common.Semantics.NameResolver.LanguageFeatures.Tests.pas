@@ -515,18 +515,18 @@ begin
   Checked := 0;
   for Symbol in Units[0].Symbols do
   begin
-    if (Symbol.Name = 'TList') then
+    if Symbol.Name = 'TList' then
     begin
       Assert.AreEqual('T', Symbol.TypeParams);
       Inc(Checked);
     end
-    else if (Symbol.Name = 'Items') then
+    else if Symbol.Name = 'Items' then
     begin
       Assert.IsTrue(Symbol.IsDefault);
       Assert.AreEqual(1, Symbol.MaxArgs);
       Inc(Checked);
     end
-    else if (Symbol.Name = 'FCount') then
+    else if Symbol.Name = 'FCount' then
     begin
       Assert.AreEqual(Ord(TIndexVisibility.Private), Ord(Symbol.Visibility));
       Inc(Checked);

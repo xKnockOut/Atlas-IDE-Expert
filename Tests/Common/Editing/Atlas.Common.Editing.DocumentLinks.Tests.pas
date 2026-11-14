@@ -40,7 +40,6 @@ implementation
 uses
   System.Generics.Collections,
   System.SysUtils,
-  Atlas.Common.Documents.Contract,
   System.JSON,
   Atlas.Common.Documents.Uris,
   Atlas.Common.Editing.DocumentLinks,

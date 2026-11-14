@@ -310,13 +310,13 @@ var
   mNode: TSyntaxNode;
 begin
   Result := nil;
-  mNormal := TExtractSupport.NormalText(FTree, FExpression);
+  mNormal := TExtractSupport.NormalText(FTree, FExpression, False);
   mNodes := TList<TSyntaxNode>.Create;
   try
     TRoutineLocals.CollectKind(AHost.Parent, FExpression.Kind, mNodes);
     for mNode in mNodes do
     begin
-      if (mNode.StartOffset >= AHost.StartOffset) and (TExtractSupport.NormalText(FTree, mNode) = mNormal) and
+      if (mNode.StartOffset >= AHost.StartOffset) and (TExtractSupport.NormalText(FTree, mNode, False) = mNormal) and
         (TRoutineBody.HostStatement(mNode, FBody) <> nil) and
         ((Result = nil) or (mNode.StartOffset >= Result[High(Result)].EndOffset)) then
       begin

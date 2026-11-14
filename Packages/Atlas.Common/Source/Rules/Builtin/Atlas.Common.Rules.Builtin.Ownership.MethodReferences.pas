@@ -8,9 +8,10 @@
 //   event-handler-not-unhooked   Eine Methode weist eine eigene Methode dem Ereignis OnXyz eines fremden Objekts zu
 //                                (Parameter oder Feld, das die Klasse nicht selbst erzeugt und das nicht im
 //                                published-Teil steht), und weder Destroy, BeforeDestruction, Notification noch Release
-//                                (Abmelden einer Klasse mit Klassenmethoden) der Klasse setzen dieses Ereignis zurück. Lebt das fremde Objekt länger, ruft es nach
-//                                dem Freigeben die Methode eines toten Objekts auf. Korrektur bei Feldern: im
-//                                Destruktor der Datei "if Assigned(FFeld) then FFeld.OnXyz := nil;" einfügen.
+//                                (Abmelden einer Klasse mit Klassenmethoden) der Klasse setzen dieses Ereignis zurück.
+//                                Lebt das fremde Objekt länger, ruft es nach dem Freigeben die Methode eines toten
+//                                Objekts auf. Korrektur bei Feldern: im Destruktor der Datei "if Assigned(FFeld) then
+//                                FFeld.OnXyz := nil;" einfügen.
 
 interface
 

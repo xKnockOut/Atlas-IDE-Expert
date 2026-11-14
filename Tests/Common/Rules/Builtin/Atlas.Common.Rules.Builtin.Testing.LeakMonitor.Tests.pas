@@ -1,7 +1,8 @@
 ﻿unit Atlas.Common.Rules.Builtin.Testing.LeakMonitor.Tests;
 
 // Tests der Regel dunitx-leak-monitor (#1774): Testprogramm ohne Leckmonitor mit Korrektur (FastMM4, bei FastMM5
-// dessen Monitor), still mit Monitor, in Units und in Programmen ohne DUnitX; der Monitor Default zählt nicht.
+// dessen Monitor), still mit Monitor (auch einem eigenen, den eine Unit des Projekts anmeldet), in Units
+// und in Programmen ohne DUnitX; der Monitor Default zählt nicht.
 
 interface
 
@@ -21,6 +22,8 @@ type
     [Test]
     procedure SilentWithMonitor;
     [Test]
+    procedure SilentWithOwnMonitorInProject;
+    [Test]
     procedure SilentOutsideTestPrograms;
     [Test]
     procedure RuleIsRegistered;
@@ -35,6 +38,9 @@ uses
   Atlas.Common.Rules.Builtin,
   Atlas.Common.Editing.ChangeSignature,
   Atlas.Common.Rules.Builtin.Testing.LeakMonitor,
+  Atlas.Common.Index.Contract,
+  Atlas.Common.Index.SymbolIndex,
+  Atlas.Common.Index.Extractor,
   Atlas.Tests.RuleAssert;
 
 /// <summary>Testprogramm mit AUses als uses-Liste.</summary>
@@ -98,6 +104,23 @@ procedure TDUnitXLeakMonitorTests.DefaultMonitorCountsAsNone;
 begin
   Assert.AreEqual(1, Integer(Length(Findings(TestProgram('  DUnitX.TestFramework,'#10 +
     '  DUnitX.MemoryLeakMonitor.Default'), 'FallTests.dpr'))));
+end;
+
+procedure TDUnitXLeakMonitorTests.SilentWithOwnMonitorInProject;
+var
+  mRule: IRule;
+  mIndex: ISymbolIndex;
+begin
+  // Eigener Monitor (Atlas.Tests.LeakMonitor): eine Unit des Projekts meldet IMemoryLeakMonitor an.
+  mRule := TDUnitXLeakMonitorRule.Create;
+  mIndex := TSymbolIndex.Create;
+  Assert.AreEqual(1, Integer(Length(TRuleAssert.IndexFindings(mRule, TestProgram('  DUnitX.TestFramework'), mIndex, '',
+    'FallTests.dpr'))), 'ohne eigenen Monitor');
+  mIndex.AddUnit(TIndexExtractor.ExtractText('unit Monitor;'#10'interface'#10'implementation'#10'procedure Anmelden;' +
+    #10'begin'#10'  TDUnitXIoC.DefaultContainer.RegisterType<IMemoryLeakMonitor>(Erzeugen);'#10'end;'#10'end.',
+    'Monitor.pas', nil, nil, True));
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.IndexFindings(mRule, TestProgram('  DUnitX.TestFramework'), mIndex, '',
+    'FallTests.dpr'))), 'eigener Monitor im Projekt');
 end;
 
 procedure TDUnitXLeakMonitorTests.SilentWithMonitor;

@@ -44,7 +44,6 @@ implementation
 uses
   System.SysUtils,
   System.Generics.Collections,
-  Atlas.Common.Projects.Contract,
   Atlas.Common.Projects.MissingUnit;
 
 var

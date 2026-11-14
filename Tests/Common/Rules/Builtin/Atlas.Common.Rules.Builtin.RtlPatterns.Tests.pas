@@ -45,6 +45,8 @@ type
     procedure IfThenWithoutSideEffectSilent;
     [Test]
     procedure RandomWithoutRandomize;
+    [Test]
+    procedure RandomizeInOtherProjectUnitIsSilent;
   end;
 
 implementation
@@ -58,6 +60,7 @@ uses
   Atlas.Common.Editing.ChangeSignature,
   Atlas.Common.Index.Contract,
   Atlas.Common.Index.SymbolIndex,
+  Atlas.Common.Index.Extractor,
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.Parser,
   Atlas.Tests.RuleAssert;
@@ -359,6 +362,26 @@ begin
   Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TRandomWithoutRandomizeRule.Create,
     'unit U;'#10'interface'#10'{$SCOPEDENUMS ON}'#10'type'#10'  TTexts = (Title, Random);'#10'implementation'#10 +
     'end.', Config))));
+end;
+
+procedure TRtlPatternRulesTests.RandomizeInOtherProjectUnitIsSilent;
+const
+  Config = '{ "minConfidence": "low", "rules": { "random-without-randomize": "hint" } }';
+var
+  mIndex: ISymbolIndex;
+  mUnit: TUnitIndex;
+begin
+  // Randomize steht einmal am Programmstart (Testprogramm), Random in einer Testunit: kein Befund.
+  mIndex := TSymbolIndex.Create;
+  mUnit := TIndexExtractor.ExtractText(InRoutine('  Random(6);'), 'U.pas', nil, nil, True);
+  mIndex.AddUnit(mUnit);
+  Assert.AreEqual(1, Integer(Length(TRuleAssert.IndexFindings(TRandomWithoutRandomizeRule.Create,
+    InRoutine('  N := Random(6);'), mIndex, Config, 'U.pas'))), 'ohne Randomize im Projekt');
+  mUnit := TIndexExtractor.ExtractText('unit Start;'#10'interface'#10'implementation'#10'initialization'#10 +
+    '  Randomize;'#10'end.', 'Start.pas', nil, nil, True);
+  mIndex.AddUnit(mUnit);
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.IndexFindings(TRandomWithoutRandomizeRule.Create,
+    InRoutine('  N := Random(6);'), mIndex, Config, 'U.pas'))), 'Randomize in einer anderen Unit');
 end;
 
 initialization

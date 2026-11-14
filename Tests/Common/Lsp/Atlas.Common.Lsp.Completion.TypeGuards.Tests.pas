@@ -85,7 +85,6 @@ implementation
 
 uses
   System.SysUtils,
-  Atlas.Common.Pascal.Contract,
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.TreeCache,
   Atlas.Common.Pascal.TokenCursor,

@@ -20,7 +20,6 @@ interface
 uses
   System.SysUtils,
   System.JSON,
-  Atlas.Core.Editor.LineAnchor,
   Atlas.Core.Editor.MethodAnchor;
 
 type
@@ -99,6 +98,7 @@ uses
   System.Math,
   System.Generics.Collections,
   System.Generics.Defaults,
+  Atlas.Core.Editor.LineAnchor,
   Atlas.Core.Editor.MethodToggle,
   Atlas.Text.Json;
 

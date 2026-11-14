@@ -38,7 +38,6 @@ implementation
 
 uses
   System.SysUtils,
-  Atlas.Core.Debug.Threads,
   Atlas.Core.Debug.Threads.Tests,
   Atlas.Core.Debug.Deadlocks,
   Atlas.UI.Debug.Deadlocks;

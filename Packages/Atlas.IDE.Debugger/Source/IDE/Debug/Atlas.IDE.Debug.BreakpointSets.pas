@@ -81,7 +81,6 @@ uses
   System.Generics.Collections,
   Vcl.ExtCtrls,
   ToolsAPI,
-  Atlas.Core.Editor.LineAnchor,
   Atlas.Core.Files.DataFile,
   Atlas.Core.VersionControl.Contract,
   Atlas.Core.VersionControl.Switches,

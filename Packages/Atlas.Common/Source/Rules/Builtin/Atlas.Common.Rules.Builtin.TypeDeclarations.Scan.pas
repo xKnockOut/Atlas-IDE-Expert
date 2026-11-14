@@ -75,8 +75,7 @@ uses
   System.Generics.Collections,
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Pascal.ConditionalBranches,
-  Atlas.Common.Rules.Builtin.General,
-  Atlas.Text.Lines;
+  Atlas.Common.Rules.Builtin.General;
 
 const
   // Spezifizierer einer Property nach Name und Typ.
@@ -154,7 +153,11 @@ end;
 
 destructor TDeclarationScan.Destroy;
 begin
-  FResolver.UnpinTree;
+  // Scheitert der Konstruktor vor dem Anlegen, ist FResolver noch nil.
+  if FResolver <> nil then
+  begin
+    FResolver.UnpinTree;
+  end;
   FResolver.Free;
   FTokens := nil;
   FPaths := nil;

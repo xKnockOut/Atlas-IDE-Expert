@@ -66,7 +66,6 @@ uses
   Atlas.Common.Documents.Contract,
   Atlas.Common.Documents.Uris,
   Atlas.Common.Documents.Providers.DocumentStore,
-  Atlas.Common.Editing.Contract,
   Atlas.Common.Configuration.Contract,
   Atlas.Common.JsonRpc.Dispatcher,
   Atlas.Common.Rules.Contract,
