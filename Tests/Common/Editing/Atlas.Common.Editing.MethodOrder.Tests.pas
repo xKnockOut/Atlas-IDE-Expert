@@ -506,20 +506,20 @@ var
   mText, mDone: string;
 begin
   // A braucht TEintrag und B die freie Routine Hilfe: Keiner wandert über das, was er braucht.
-  mText := FooKopf + Body('procedure TFoo.C') + cEintrag + cA + cHilfe + cB + Ende;
+  mText := cFooKopf + Body('procedure TFoo.C') + cEintrag + cA + cHilfe + cB + cEnde;
   mDone := ArrangedWith(mText, TMethodOrderOptions.Create(TMethodPlacement.Declaration));
   Assert.AreEqual(mText, mDone, 'nichts lässt sich vorziehen');
   // Ohne Abhängigkeit über der Deklaration rückt der Rumpf vor, der abhängige nur so weit wie möglich.
-  mText := FooKopf + Body('procedure TFoo.C') + Body('procedure TFoo.B') + cEintrag + cA + Ende;
+  mText := cFooKopf + Body('procedure TFoo.C') + Body('procedure TFoo.B') + cEintrag + cA + cEnde;
   mDone := ArrangedWith(mText, TMethodOrderOptions.Create(TMethodPlacement.Declaration));
-  Assert.AreEqual(FooKopf + Body('procedure TFoo.B') + Body('procedure TFoo.C') + cEintrag + cA + Ende, mDone);
-  mText := FooKopf + Body('procedure TFoo.C') + cEintrag + Body('procedure TFoo.B') + cA + Ende;
+  Assert.AreEqual(cFooKopf + Body('procedure TFoo.B') + Body('procedure TFoo.C') + cEintrag + cA + cEnde, mDone);
+  mText := cFooKopf + Body('procedure TFoo.C') + cEintrag + Body('procedure TFoo.B') + cA + cEnde;
   mDone := ArrangedWith(mText, TMethodOrderOptions.Create(TMethodPlacement.Declaration));
-  Assert.AreEqual(FooKopf + Body('procedure TFoo.B') + cEintrag + cA + Body('procedure TFoo.C') + Ende, mDone);
+  Assert.AreEqual(cFooKopf + Body('procedure TFoo.B') + cEintrag + cA + Body('procedure TFoo.C') + cEnde, mDone);
   Assert.IsTrue(ParsesClean(mDone));
   // Ein gleichnamiger Aufzählungswert weiter oben hebt die Schranke der Routine nicht auf.
-  mText := FooKopf + #10'{$SCOPEDENUMS ON}'#10'type'#10'  TArt = (Hilfe, Anders);'#10'{$SCOPEDENUMS OFF}'#10 +
-    Body('procedure TFoo.C') + cHilfe + cB + Ende;
+  mText := cFooKopf + #10'{$SCOPEDENUMS ON}'#10'type'#10'  TArt = (Hilfe, Anders);'#10'{$SCOPEDENUMS OFF}'#10 +
+    Body('procedure TFoo.C') + cHilfe + cB + cEnde;
   mDone := ArrangedWith(mText, TMethodOrderOptions.Create(TMethodPlacement.Declaration));
   Assert.AreEqual(mText, mDone, 'B bleibt unter Hilfe');
 end;
