@@ -167,13 +167,13 @@ var
   mTrigger: TAtlasCommentTrigger;
 begin
   mTrigger := TriggerAtEnd('Danke @an', GitHubTarget);
-  Assert.IsTrue(mTrigger.Kind = TAtlasCommentTriggerKind.Mention);
+  Assert.AreEqual<TAtlasCommentTriggerKind>(TAtlasCommentTriggerKind.Mention, mTrigger.Kind);
   Assert.AreEqual('an', mTrigger.Text);
   Assert.AreEqual(6, mTrigger.Start, 'vor dem "@"');
   Assert.AreEqual(3, mTrigger.Length);
   // Mitten im Text: die Schreibmarke direkt hinter dem Wort.
   mTrigger := TAtlasCommentEditing.Trigger('@ber, bitte prüfen', 4, GitHubTarget);
-  Assert.IsTrue(mTrigger.Kind = TAtlasCommentTriggerKind.Mention);
+  Assert.AreEqual<TAtlasCommentTriggerKind>(TAtlasCommentTriggerKind.Mention, mTrigger.Kind);
   Assert.AreEqual('ber', mTrigger.Text);
   Assert.AreEqual(0, mTrigger.Start);
   // Über Zeilen: CR LF zählen wie im Memo.
@@ -185,16 +185,24 @@ end;
 
 procedure TAtlasCommentEditorTests.NoMentionInMailOrWord;
 begin
-  Assert.IsTrue(KindAtEnd('mail an anna@firma', GitHubTarget) = TAtlasCommentTriggerKind.None, 'E-Mail');
-  Assert.IsTrue(TAtlasCommentEditing.Trigger('@anna', 3, GitHubTarget).Kind = TAtlasCommentTriggerKind.None,
+  Assert.AreEqual<TAtlasCommentTriggerKind>(TAtlasCommentTriggerKind.None,
+    KindAtEnd('mail an anna@firma', GitHubTarget), 'E-Mail');
+  Assert.AreEqual<TAtlasCommentTriggerKind>(TAtlasCommentTriggerKind.None,
+    TAtlasCommentEditing.Trigger('@anna', 3, GitHubTarget).Kind,
     'mitten im Wort');
-  Assert.IsTrue(KindAtEnd('Preis @1', GitHubTarget) = TAtlasCommentTriggerKind.None, 'ohne Buchstaben');
-  Assert.IsTrue(KindAtEnd('@', GitHubTarget) = TAtlasCommentTriggerKind.None, 'nur das Zeichen');
-  Assert.IsTrue(KindAtEnd('`@Override', GitHubTarget) = TAtlasCommentTriggerKind.None, 'im Code');
-  Assert.IsTrue(KindAtEnd('pfad/@scope', GitHubTarget) = TAtlasCommentTriggerKind.None, 'im Pfad');
-  Assert.IsTrue(KindAtEnd('@@an', GitHubTarget) = TAtlasCommentTriggerKind.None, 'doppelt');
-  Assert.IsTrue(TAtlasCommentEditing.Trigger('', 0, GitHubTarget).Kind = TAtlasCommentTriggerKind.None);
-  Assert.IsTrue(TAtlasCommentEditing.Trigger('@an', 9, GitHubTarget).Kind = TAtlasCommentTriggerKind.None,
+  Assert.AreEqual<TAtlasCommentTriggerKind>(TAtlasCommentTriggerKind.None,
+    KindAtEnd('Preis @1', GitHubTarget), 'ohne Buchstaben');
+  Assert.AreEqual<TAtlasCommentTriggerKind>(TAtlasCommentTriggerKind.None,
+    KindAtEnd('@', GitHubTarget), 'nur das Zeichen');
+  Assert.AreEqual<TAtlasCommentTriggerKind>(TAtlasCommentTriggerKind.None,
+    KindAtEnd('`@Override', GitHubTarget), 'im Code');
+  Assert.AreEqual<TAtlasCommentTriggerKind>(TAtlasCommentTriggerKind.None,
+    KindAtEnd('pfad/@scope', GitHubTarget), 'im Pfad');
+  Assert.AreEqual<TAtlasCommentTriggerKind>(TAtlasCommentTriggerKind.None, KindAtEnd('@@an', GitHubTarget), 'doppelt');
+  Assert.AreEqual<TAtlasCommentTriggerKind>(TAtlasCommentTriggerKind.None,
+    TAtlasCommentEditing.Trigger('', 0, GitHubTarget).Kind);
+  Assert.AreEqual<TAtlasCommentTriggerKind>(TAtlasCommentTriggerKind.None,
+    TAtlasCommentEditing.Trigger('@an', 9, GitHubTarget).Kind,
     'Schreibmarke hinter dem Text');
 end;
 
@@ -203,18 +211,22 @@ var
   mTrigger: TAtlasCommentTrigger;
 begin
   mTrigger := TriggerAtEnd('siehe #42', GitHubTarget);
-  Assert.IsTrue(mTrigger.Kind = TAtlasCommentTriggerKind.Issue);
-  Assert.IsTrue(mTrigger.Query.Kind = TAtlasIssueSearchKind.Key);
+  Assert.AreEqual<TAtlasCommentTriggerKind>(TAtlasCommentTriggerKind.Issue, mTrigger.Kind);
+  Assert.AreEqual<TAtlasIssueSearchKind>(TAtlasIssueSearchKind.Key, mTrigger.Query.Kind);
   Assert.AreEqual('#42', mTrigger.Query.Key);
   Assert.AreEqual(6, mTrigger.Start);
   Assert.AreEqual(3, mTrigger.Length);
   mTrigger := TriggerAtEnd('wie #Speicher', GitHubTarget);
-  Assert.IsTrue(mTrigger.Query.Kind = TAtlasIssueSearchKind.Text);
+  Assert.AreEqual<TAtlasIssueSearchKind>(TAtlasIssueSearchKind.Text, mTrigger.Query.Kind);
   Assert.AreEqual('Speicher', mTrigger.Query.Text);
-  Assert.IsTrue(KindAtEnd('siehe #', GitHubTarget) = TAtlasCommentTriggerKind.None, '"#" allein nicht');
-  Assert.IsTrue(KindAtEnd('ATL-12', GitHubTarget) = TAtlasCommentTriggerKind.None, 'kein Kürzel bei GitHub');
-  Assert.IsTrue(KindAtEnd('Farbe a#42', GitHubTarget) = TAtlasCommentTriggerKind.None, 'mitten im Wort');
-  Assert.IsTrue(KindAtEnd('```#42', GitHubTarget) = TAtlasCommentTriggerKind.None, 'im Code');
+  Assert.AreEqual<TAtlasCommentTriggerKind>(TAtlasCommentTriggerKind.None,
+    KindAtEnd('siehe #', GitHubTarget), '"#" allein nicht');
+  Assert.AreEqual<TAtlasCommentTriggerKind>(TAtlasCommentTriggerKind.None,
+    KindAtEnd('ATL-12', GitHubTarget), 'kein Kürzel bei GitHub');
+  Assert.AreEqual<TAtlasCommentTriggerKind>(TAtlasCommentTriggerKind.None,
+    KindAtEnd('Farbe a#42', GitHubTarget), 'mitten im Wort');
+  Assert.AreEqual<TAtlasCommentTriggerKind>(TAtlasCommentTriggerKind.None,
+    KindAtEnd('```#42', GitHubTarget), 'im Code');
 end;
 
 procedure TAtlasCommentEditorTests.IssueTriggerYouTrack;
@@ -222,20 +234,24 @@ var
   mTrigger: TAtlasCommentTrigger;
 begin
   mTrigger := TriggerAtEnd('hängt an ATL-12', YouTrackTarget);
-  Assert.IsTrue(mTrigger.Kind = TAtlasCommentTriggerKind.Issue);
-  Assert.IsTrue(mTrigger.Query.Kind = TAtlasIssueSearchKind.Key);
+  Assert.AreEqual<TAtlasCommentTriggerKind>(TAtlasCommentTriggerKind.Issue, mTrigger.Kind);
+  Assert.AreEqual<TAtlasIssueSearchKind>(TAtlasIssueSearchKind.Key, mTrigger.Query.Kind);
   Assert.AreEqual('ATL-12', mTrigger.Query.Key);
   Assert.AreEqual(9, mTrigger.Start, 'ohne "#" beginnt das Wort beim Kürzel');
   Assert.AreEqual(6, mTrigger.Length);
   mTrigger := TriggerAtEnd('atl-Speicher', YouTrackTarget);
-  Assert.IsTrue(mTrigger.Query.Kind = TAtlasIssueSearchKind.Text);
+  Assert.AreEqual<TAtlasIssueSearchKind>(TAtlasIssueSearchKind.Text, mTrigger.Query.Kind);
   Assert.AreEqual('Speicher', mTrigger.Query.Text);
-  Assert.IsTrue(TriggerAtEnd('ATL-', YouTrackTarget).Query.Kind = TAtlasIssueSearchKind.Recent, 'zuletzt geöffnet');
+  Assert.AreEqual<TAtlasIssueSearchKind>(TAtlasIssueSearchKind.Recent,
+    TriggerAtEnd('ATL-', YouTrackTarget).Query.Kind, 'zuletzt geöffnet');
   mTrigger := TriggerAtEnd('#42', YouTrackTarget);
   Assert.AreEqual('ATL-42', mTrigger.Query.Key, 'Nummer im Projekt');
-  Assert.IsTrue(KindAtEnd('C:\Daten\ATL-1', YouTrackTarget) = TAtlasCommentTriggerKind.None, 'Pfad');
-  Assert.IsTrue(KindAtEnd('ein well-known', YouTrackTarget) = TAtlasCommentTriggerKind.None, 'Bindestrich');
-  Assert.IsTrue(KindAtEnd('XYZ-12', YouTrackTarget) = TAtlasCommentTriggerKind.None, 'fremdes Kürzel');
+  Assert.AreEqual<TAtlasCommentTriggerKind>(TAtlasCommentTriggerKind.None,
+    KindAtEnd('C:\Daten\ATL-1', YouTrackTarget), 'Pfad');
+  Assert.AreEqual<TAtlasCommentTriggerKind>(TAtlasCommentTriggerKind.None,
+    KindAtEnd('ein well-known', YouTrackTarget), 'Bindestrich');
+  Assert.AreEqual<TAtlasCommentTriggerKind>(TAtlasCommentTriggerKind.None,
+    KindAtEnd('XYZ-12', YouTrackTarget), 'fremdes Kürzel');
 end;
 
 procedure TAtlasCommentEditorTests.ReplaceWord;
@@ -464,9 +480,9 @@ begin
     Assert.AreEqual(0, mRead.Count);
     Assert.IsFalse(mRead.Parse('kein JSON'));
     Assert.IsTrue(mDrafts.SaveToFile(mFile));
-    Assert.IsTrue(mRead.LoadFromFile(mFile) = TAtlasDataLoad.Loaded);
+    Assert.AreEqual<TAtlasDataLoad>(TAtlasDataLoad.Loaded, mRead.LoadFromFile(mFile));
     Assert.AreEqual(1, mRead.Count);
-    Assert.IsTrue(mRead.LoadFromFile(mFile + '.fehlt') = TAtlasDataLoad.Missing);
+    Assert.AreEqual<TAtlasDataLoad>(TAtlasDataLoad.Missing, mRead.LoadFromFile(mFile + '.fehlt'));
     Assert.AreEqual(0, mRead.Count);
   finally
     if TFile.Exists(mFile) then

@@ -366,9 +366,9 @@ begin
   Assert.AreEqual('Fertig.', mChange.Comment);
   Assert.IsTrue(TAtlasTrackerWorkflow.ClosesWithReason('GitHub'));
   Assert.IsFalse(TAtlasTrackerWorkflow.ClosesWithReason('youtrack'));
-  Assert.IsTrue(TAtlasTrackerWorkflow.DefaultClose('Erledigt') = TAtlasTrackerClose.Completed);
-  Assert.IsTrue(TAtlasTrackerWorkflow.DefaultClose('Zur Prüfung') = TAtlasTrackerClose.KeepOpen);
-  Assert.IsTrue(TAtlasTrackerWorkflow.DefaultClose('') = TAtlasTrackerClose.KeepOpen);
+  Assert.AreEqual<TAtlasTrackerClose>(TAtlasTrackerClose.Completed, TAtlasTrackerWorkflow.DefaultClose('Erledigt'));
+  Assert.AreEqual<TAtlasTrackerClose>(TAtlasTrackerClose.KeepOpen, TAtlasTrackerWorkflow.DefaultClose('Zur Prüfung'));
+  Assert.AreEqual<TAtlasTrackerClose>(TAtlasTrackerClose.KeepOpen, TAtlasTrackerWorkflow.DefaultClose(''));
   // Kommentar ohne Verweis: Ersatzkommentar für den Fall, dass der Server „Duplikat“ ablehnt.
   mChange := TAtlasTrackerWorkflow.WithClose(TAtlasTrackerWrite.CommentOnly('Gibt es schon.'),
     TAtlasTrackerClose.Duplicate, ' #418 ', 'Duplikat von #418.');
@@ -972,12 +972,12 @@ begin
   mChange := TAtlasTrackerWorkflow.WithClose(TAtlasTrackerWrite.CommentOnly('x'), TAtlasTrackerClose.Duplicate,
     '#7', '');
   mResult := mWriter.Apply(GitHubTarget, mKeep, '#7', mChange, 5000);
-  Assert.IsTrue(mResult.Error = TAtlasCiFetchError.Invalid, 'Duplikat von sich selbst');
+  Assert.AreEqual<TAtlasCiFetchError>(TAtlasCiFetchError.Invalid, mResult.Error, 'Duplikat von sich selbst');
   Assert.AreEqual(0, Integer(Length(mTransport.Calls)));
   mChange := TAtlasTrackerWorkflow.WithClose(TAtlasTrackerWrite.CommentOnly('x'), TAtlasTrackerClose.Duplicate,
     '#999', '');
   mResult := mWriter.Apply(GitHubTarget, mKeep, '#7', mChange, 5000);
-  Assert.IsTrue(mResult.Error = TAtlasCiFetchError.NotFound, 'unbekanntes Original');
+  Assert.AreEqual<TAtlasCiFetchError>(TAtlasCiFetchError.NotFound, mResult.Error, 'unbekanntes Original');
   Assert.AreEqual(1, Integer(Length(mTransport.Calls)), 'kein Kommentar, kein PATCH');
   mTransport.Calls := nil;
 end;

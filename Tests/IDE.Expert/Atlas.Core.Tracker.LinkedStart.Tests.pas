@@ -281,7 +281,7 @@ begin
   mResult := TAtlasLinkedStart.Run(Request(mKeepVcs, mKeepLinker, cOrigin));
   Assert.IsTrue(mResult.CheckedOut);
   Assert.AreEqual('fetch origin|switch ' + cBranch, string.Join('|', mVcs.Calls));
-  Assert.IsTrue(mResult.Link.Outcome = TAtlasTrackerBranchLinkOutcome.Created);
+  Assert.AreEqual<TAtlasTrackerBranchLinkOutcome>(TAtlasTrackerBranchLinkOutcome.Created, mResult.Link.Outcome);
   Assert.AreEqual(cBranch, mResult.Link.Branch);
   Assert.AreEqual('main', mResult.Link.Base);
   Assert.AreEqual('C:\Repo\.git\hooks', mResult.Hooks);
@@ -317,7 +317,7 @@ begin
   mKeepLinker := mLinker;
   mLinker.Answer := Created;
   mResult := TAtlasLinkedStart.Run(Request(mKeepVcs, mKeepLinker, 'https://github.com/fork/atlas.git'));
-  Assert.IsTrue(mResult.Link.Outcome = TAtlasTrackerBranchLinkOutcome.Foreign);
+  Assert.AreEqual<TAtlasTrackerBranchLinkOutcome>(TAtlasTrackerBranchLinkOutcome.Foreign, mResult.Link.Outcome);
   Assert.IsFalse(mResult.CheckedOut);
   Assert.IsFalse(mLinker.Asked, 'nichts auf dem Server angelegt');
   Assert.AreEqual(0, Integer(Length(mVcs.Calls)));
@@ -338,7 +338,7 @@ begin
   mKeepLinker := mLinker;
   mLinker.Answer := Created;
   mResult := TAtlasLinkedStart.Run(Request(mKeepVcs, mKeepLinker, cOrigin));
-  Assert.IsTrue(mResult.Link.Outcome = TAtlasTrackerBranchLinkOutcome.Exists);
+  Assert.AreEqual<TAtlasTrackerBranchLinkOutcome>(TAtlasTrackerBranchLinkOutcome.Exists, mResult.Link.Outcome);
   Assert.AreEqual(cBranch, mResult.Link.Branch);
   Assert.IsFalse(mLinker.Asked);
 end;
@@ -357,7 +357,7 @@ begin
   mKeepLinker := mLinker;
   mLinker.Answer := TAtlasTrackerBranchLink.Failure(TAtlasCiFetchError.Unauthorized, 'nein');
   mResult := TAtlasLinkedStart.Run(Request(mKeepVcs, mKeepLinker, cOrigin));
-  Assert.IsTrue(mResult.Link.Outcome = TAtlasTrackerBranchLinkOutcome.Denied);
+  Assert.AreEqual<TAtlasTrackerBranchLinkOutcome>(TAtlasTrackerBranchLinkOutcome.Denied, mResult.Link.Outcome);
   Assert.IsFalse(mResult.CheckedOut);
   Assert.AreEqual(0, Integer(Length(mVcs.Calls)), 'kein Abruf');
 end;
@@ -377,8 +377,8 @@ begin
   mKeepLinker := mLinker;
   mLinker.Answer := Created;
   mResult := TAtlasLinkedStart.Run(Request(mKeepVcs, mKeepLinker, cOrigin));
-  Assert.IsTrue(mResult.Link.Outcome = TAtlasTrackerBranchLinkOutcome.Created);
-  Assert.IsTrue(mResult.Fetch = TAtlasVcsOutcome.Failed);
+  Assert.AreEqual<TAtlasTrackerBranchLinkOutcome>(TAtlasTrackerBranchLinkOutcome.Created, mResult.Link.Outcome);
+  Assert.AreEqual<TAtlasVcsOutcome>(TAtlasVcsOutcome.Failed, mResult.Fetch);
   Assert.IsFalse(mResult.CheckedOut);
   Assert.AreEqual('fetch origin', string.Join('|', mVcs.Calls), 'nicht ausgecheckt');
 end;
@@ -397,7 +397,7 @@ begin
   mKeepLinker := mLinker;
   mLinker.Answer := Created;
   mResult := TAtlasLinkedStart.Run(Request(mKeepVcs, mKeepLinker, cOrigin));
-  Assert.IsTrue(mResult.Link.Outcome = TAtlasTrackerBranchLinkOutcome.None);
+  Assert.AreEqual<TAtlasTrackerBranchLinkOutcome>(TAtlasTrackerBranchLinkOutcome.None, mResult.Link.Outcome);
   Assert.IsFalse(mLinker.Asked);
 end;
 

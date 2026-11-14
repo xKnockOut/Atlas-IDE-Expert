@@ -233,44 +233,50 @@ var
   mTests: TAtlasProjectTests;
 begin
   mTests := TAtlasProjectTests.Empty;
-  Assert.IsTrue(TAtlasTestResults.LocalLevel(mTests) = TAtlasTestLevel.Unknown);
-  Assert.IsTrue(TAtlasTestResults.LocalLevel(LocalRun) = TAtlasTestLevel.Failed);
-  Assert.IsTrue(TAtlasTestResults.LocalLevel(GreenRun) = TAtlasTestLevel.Passed);
+  Assert.AreEqual<TAtlasTestLevel>(TAtlasTestLevel.Unknown, TAtlasTestResults.LocalLevel(mTests));
+  Assert.AreEqual<TAtlasTestLevel>(TAtlasTestLevel.Failed, TAtlasTestResults.LocalLevel(LocalRun));
+  Assert.AreEqual<TAtlasTestLevel>(TAtlasTestLevel.Passed, TAtlasTestResults.LocalLevel(GreenRun));
   mTests := GreenRun;
   mTests.Errors := 1;
-  Assert.IsTrue(TAtlasTestResults.LocalLevel(mTests) = TAtlasTestLevel.Failed, 'Fehler zählen als rot');
+  Assert.AreEqual<TAtlasTestLevel>(TAtlasTestLevel.Failed,
+    TAtlasTestResults.LocalLevel(mTests), 'Fehler zählen als rot');
   mTests := GreenRun;
   mTests.Passed := 0;
   mTests.Skipped := 4;
-  Assert.IsTrue(TAtlasTestResults.LocalLevel(mTests) = TAtlasTestLevel.Warning, 'nur übersprungen');
+  Assert.AreEqual<TAtlasTestLevel>(TAtlasTestLevel.Warning, TAtlasTestResults.LocalLevel(mTests), 'nur übersprungen');
 end;
 
 procedure TAtlasTestResultsTests.CiLevel;
 var
   mValue: TAtlasCiBuild;
 begin
-  Assert.IsTrue(TAtlasTestResults.CiLevel(TAtlasCiBuild.Empty) = TAtlasTestLevel.Unknown);
-  Assert.IsTrue(TAtlasTestResults.CiLevel(Build(5, TAtlasCiOutcome.Success, 0)) = TAtlasTestLevel.Passed);
-  Assert.IsTrue(TAtlasTestResults.CiLevel(Build(5, TAtlasCiOutcome.Unstable, 2)) = TAtlasTestLevel.Failed);
-  Assert.IsTrue(TAtlasTestResults.CiLevel(Build(5, TAtlasCiOutcome.Unstable, 0)) = TAtlasTestLevel.Warning);
-  Assert.IsTrue(TAtlasTestResults.CiLevel(Build(5, TAtlasCiOutcome.Aborted, 0)) = TAtlasTestLevel.Warning);
+  Assert.AreEqual<TAtlasTestLevel>(TAtlasTestLevel.Unknown, TAtlasTestResults.CiLevel(TAtlasCiBuild.Empty));
+  Assert.AreEqual<TAtlasTestLevel>(TAtlasTestLevel.Passed,
+    TAtlasTestResults.CiLevel(Build(5, TAtlasCiOutcome.Success, 0)));
+  Assert.AreEqual<TAtlasTestLevel>(TAtlasTestLevel.Failed,
+    TAtlasTestResults.CiLevel(Build(5, TAtlasCiOutcome.Unstable, 2)));
+  Assert.AreEqual<TAtlasTestLevel>(TAtlasTestLevel.Warning,
+    TAtlasTestResults.CiLevel(Build(5, TAtlasCiOutcome.Unstable, 0)));
+  Assert.AreEqual<TAtlasTestLevel>(TAtlasTestLevel.Warning,
+    TAtlasTestResults.CiLevel(Build(5, TAtlasCiOutcome.Aborted, 0)));
   mValue := Build(5, TAtlasCiOutcome.Failure, 0);
   mValue.TestsKnown := False;
-  Assert.IsTrue(TAtlasTestResults.CiLevel(mValue) = TAtlasTestLevel.Failed, 'Build rot ohne Testbericht');
+  Assert.AreEqual<TAtlasTestLevel>(TAtlasTestLevel.Failed,
+    TAtlasTestResults.CiLevel(mValue), 'Build rot ohne Testbericht');
 end;
 
 procedure TAtlasTestResultsTests.CompareLocalAndServer;
 begin
-  Assert.IsTrue(TAtlasTestResults.Compare(TAtlasTestLevel.Passed, TAtlasTestLevel.Failed) =
-    TAtlasTestMismatch.LocalGreenServerRed);
-  Assert.IsTrue(TAtlasTestResults.Compare(TAtlasTestLevel.Failed, TAtlasTestLevel.Passed) =
-    TAtlasTestMismatch.LocalRedServerGreen);
-  Assert.IsTrue(TAtlasTestResults.Compare(TAtlasTestLevel.Failed, TAtlasTestLevel.Failed) =
-    TAtlasTestMismatch.None);
-  Assert.IsTrue(TAtlasTestResults.Compare(TAtlasTestLevel.Unknown, TAtlasTestLevel.Failed) =
-    TAtlasTestMismatch.None, 'ohne lokalen Lauf kein Abgleich');
-  Assert.IsTrue(TAtlasTestResults.Compare(TAtlasTestLevel.Passed, TAtlasTestLevel.Warning) =
-    TAtlasTestMismatch.None);
+  Assert.AreEqual<TAtlasTestMismatch>(TAtlasTestMismatch.LocalGreenServerRed,
+    TAtlasTestResults.Compare(TAtlasTestLevel.Passed, TAtlasTestLevel.Failed));
+  Assert.AreEqual<TAtlasTestMismatch>(TAtlasTestMismatch.LocalRedServerGreen,
+    TAtlasTestResults.Compare(TAtlasTestLevel.Failed, TAtlasTestLevel.Passed));
+  Assert.AreEqual<TAtlasTestMismatch>(TAtlasTestMismatch.None,
+    TAtlasTestResults.Compare(TAtlasTestLevel.Failed, TAtlasTestLevel.Failed));
+  Assert.AreEqual<TAtlasTestMismatch>(TAtlasTestMismatch.None,
+    TAtlasTestResults.Compare(TAtlasTestLevel.Unknown, TAtlasTestLevel.Failed), 'ohne lokalen Lauf kein Abgleich');
+  Assert.AreEqual<TAtlasTestMismatch>(TAtlasTestMismatch.None,
+    TAtlasTestResults.Compare(TAtlasTestLevel.Passed, TAtlasTestLevel.Warning));
 end;
 
 procedure TAtlasTestResultsTests.SameTestAcceptsMissingUnit;
@@ -291,7 +297,7 @@ begin
   Assert.AreEqual(1, Integer(Length(mView.Rows)));
   Assert.IsTrue(mView.SelectedRow(mRow));
   Assert.AreEqual('Atlas.Tests', mRow.Name);
-  Assert.IsTrue(mRow.LocalLevel = TAtlasTestLevel.Failed);
+  Assert.AreEqual<TAtlasTestLevel>(TAtlasTestLevel.Failed, mRow.LocalLevel);
   Assert.AreEqual(2, mRow.Local.Failed);
   Assert.IsFalse(mRow.HasCi);
   Assert.AreEqual(2, Integer(Length(mView.Failures)));
@@ -399,16 +405,16 @@ var
 begin
   mOld := Ci(Job, Build(482, TAtlasCiOutcome.Unstable, 2));
   Assert.IsTrue(mOld.Matches(Job));
-  Assert.IsTrue(mOld.Error = TAtlasCiFetchError.None);
+  Assert.AreEqual<TAtlasCiFetchError>(TAtlasCiFetchError.None, mOld.Error);
   mNext := TAtlasTestResults.Recorded(mOld, Job, False, TAtlasCiBuild.Empty, TAtlasCiFetchError.Timeout, Now0);
   Assert.AreEqual(482, mNext.Build.Number, 'letzter Stand bleibt');
-  Assert.IsTrue(mNext.Error = TAtlasCiFetchError.Timeout);
+  Assert.AreEqual<TAtlasCiFetchError>(TAtlasCiFetchError.Timeout, mNext.Error);
   Assert.IsTrue(SameDateTime(Now0, mNext.Attempt));
   Assert.IsTrue(SameDateTime(mOld.At, mNext.At), 'Stand vom … bleibt der letzte gelungene Abruf');
   mNext := TAtlasTestResults.Recorded(mNext, Job, True, Build(483, TAtlasCiOutcome.Success, 0),
     TAtlasCiFetchError.None, Now0 + OneHour);
   Assert.AreEqual(483, mNext.Build.Number);
-  Assert.IsTrue(mNext.Error = TAtlasCiFetchError.None);
+  Assert.AreEqual<TAtlasCiFetchError>(TAtlasCiFetchError.None, mNext.Error);
   Assert.IsTrue(SameDateTime(Now0 + OneHour, mNext.At));
 end;
 
@@ -423,8 +429,8 @@ begin
   Assert.IsTrue(mNext.Matches(mOther));
   Assert.AreEqual('develop', mNext.Branch);
   Assert.IsFalse(mNext.HasBuild, 'Build des anderen Branches gilt nicht');
-  Assert.IsTrue(mNext.Error = TAtlasCiFetchError.Network, 'Fehler ohne Angabe');
-  Assert.IsTrue(mNext.At = 0);
+  Assert.AreEqual<TAtlasCiFetchError>(TAtlasCiFetchError.Network, mNext.Error, 'Fehler ohne Angabe');
+  Assert.AreEqual<TDateTime>(0, mNext.At);
 end;
 
 procedure TAtlasTestResultsTests.TurnedRedOnlyOnTransition;
@@ -456,10 +462,10 @@ begin
   Assert.IsTrue(mView.SelectedRow(mRow));
   Assert.IsTrue(mRow.HasCi);
   Assert.AreEqual(482, mRow.Ci.Build.Number);
-  Assert.IsTrue(mRow.LocalLevel = TAtlasTestLevel.Passed);
-  Assert.IsTrue(mRow.CiLevel = TAtlasTestLevel.Failed);
-  Assert.IsTrue(mRow.Mismatch = TAtlasTestMismatch.LocalGreenServerRed, 'lokal grün, Server rot');
-  Assert.IsTrue(mRow.Level = TAtlasTestLevel.Failed);
+  Assert.AreEqual<TAtlasTestLevel>(TAtlasTestLevel.Passed, mRow.LocalLevel);
+  Assert.AreEqual<TAtlasTestLevel>(TAtlasTestLevel.Failed, mRow.CiLevel);
+  Assert.AreEqual<TAtlasTestMismatch>(TAtlasTestMismatch.LocalGreenServerRed, mRow.Mismatch, 'lokal grün, Server rot');
+  Assert.AreEqual<TAtlasTestLevel>(TAtlasTestLevel.Failed, mRow.Level);
   Assert.IsFalse(mRow.CiStale);
   Assert.AreEqual(2, Integer(Length(mView.Failures)), 'Server-Fehlschläge in derselben Liste');
   Assert.IsTrue(mView.Failures[0].Server);
@@ -475,13 +481,13 @@ begin
     True);
   Assert.AreEqual(1, Integer(Length(mView.Rows)));
   Assert.AreEqual('Kasse', mView.Rows[0].Name);
-  Assert.IsTrue(mView.Rows[0].Mismatch = TAtlasTestMismatch.None);
+  Assert.AreEqual<TAtlasTestMismatch>(TAtlasTestMismatch.None, mView.Rows[0].Mismatch);
   // Stand eines anderen Branches zählt nicht.
   mView := TAtlasTestResults.View([Project(cTestProject, GreenRun, TAtlasCiJob.Create('jenkins',
     'https://ci.firma.de', 'atlas', True, 'develop'), mState)], '', 5, True);
   Assert.IsTrue(mView.Rows[0].HasCi);
   Assert.IsFalse(mView.Rows[0].Ci.HasBuild);
-  Assert.IsTrue(mView.Rows[0].CiLevel = TAtlasTestLevel.Unknown);
+  Assert.AreEqual<TAtlasTestLevel>(TAtlasTestLevel.Unknown, mView.Rows[0].CiLevel);
 end;
 
 procedure TAtlasTestResultsTests.ViewWithoutCiIgnoresServer;

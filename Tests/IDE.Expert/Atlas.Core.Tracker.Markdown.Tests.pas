@@ -67,18 +67,19 @@ begin
     'zweite Zeile', '', '```js', 'var x = 1;', '```', '', '> Zitat', '> weiter', '', '---', '',
     '<!-- Kommentar -->', 'Ende')));
   Assert.AreEqual(Integer(6), Integer(Length(mBlocks)));
-  Assert.IsTrue(mBlocks[0].Kind = TAtlasMarkdownBlockKind.Heading);
+  Assert.AreEqual<TAtlasMarkdownBlockKind>(TAtlasMarkdownBlockKind.Heading, mBlocks[0].Kind);
   Assert.AreEqual(Integer(2), mBlocks[0].Level);
   Assert.AreEqual('Ziel', mBlocks[0].Text);
-  Assert.IsTrue(mBlocks[1].Kind = TAtlasMarkdownBlockKind.Paragraph);
+  Assert.AreEqual<TAtlasMarkdownBlockKind>(TAtlasMarkdownBlockKind.Paragraph, mBlocks[1].Kind);
   Assert.AreEqual('Erste Zeile'#10'zweite Zeile', mBlocks[1].Text, 'Umbruch bleibt');
-  Assert.IsTrue(mBlocks[2].Kind = TAtlasMarkdownBlockKind.Code);
+  Assert.AreEqual<TAtlasMarkdownBlockKind>(TAtlasMarkdownBlockKind.Code, mBlocks[2].Kind);
   Assert.AreEqual('js', mBlocks[2].Info);
   Assert.AreEqual('var x = 1;', mBlocks[2].Text);
-  Assert.IsTrue(mBlocks[3].Kind = TAtlasMarkdownBlockKind.Quote);
+  Assert.AreEqual<TAtlasMarkdownBlockKind>(TAtlasMarkdownBlockKind.Quote, mBlocks[3].Kind);
   Assert.AreEqual('Zitat'#10'weiter', mBlocks[3].Text);
-  Assert.IsTrue(mBlocks[4].Kind = TAtlasMarkdownBlockKind.Rule);
-  Assert.IsTrue(mBlocks[5].Kind = TAtlasMarkdownBlockKind.Paragraph, 'HTML-Kommentar entfällt');
+  Assert.AreEqual<TAtlasMarkdownBlockKind>(TAtlasMarkdownBlockKind.Rule, mBlocks[4].Kind);
+  Assert.AreEqual<TAtlasMarkdownBlockKind>(TAtlasMarkdownBlockKind.Paragraph,
+    mBlocks[5].Kind, 'HTML-Kommentar entfällt');
   Assert.AreEqual('Ende', mBlocks[5].Text);
 end;
 
@@ -104,7 +105,7 @@ begin
   Assert.AreEqual('1.', mBlocks[7].Marker);
   Assert.AreEqual('2.', mBlocks[8].Marker);
   Assert.AreEqual('Klammer', mBlocks[8].Text);
-  Assert.IsTrue(mBlocks[9].Kind = TAtlasMarkdownBlockKind.Paragraph);
+  Assert.AreEqual<TAtlasMarkdownBlockKind>(TAtlasMarkdownBlockKind.Paragraph, mBlocks[9].Kind);
 end;
 
 procedure TAtlasTrackerMarkdownTests.TableRowsAndCells;
@@ -114,7 +115,7 @@ begin
   mBlocks := TAtlasTrackerMarkdown.Blocks(Lines(TArray<string>.Create('| Feld | Wert |', '|:---|---:|',
     '| a \| b | `x|y` |', '| c | d |', '', 'danach')));
   Assert.AreEqual(Integer(2), Integer(Length(mBlocks)));
-  Assert.IsTrue(mBlocks[0].Kind = TAtlasMarkdownBlockKind.Table);
+  Assert.AreEqual<TAtlasMarkdownBlockKind>(TAtlasMarkdownBlockKind.Table, mBlocks[0].Kind);
   Assert.AreEqual(Integer(3), Integer(Length(mBlocks[0].Rows)));
   Assert.AreEqual('Feld', mBlocks[0].Rows[0][0]);
   Assert.AreEqual('Wert', mBlocks[0].Rows[0][1]);
@@ -131,13 +132,13 @@ begin
     '![](https://h.de/a.png "Titel")', '', '<img src="b.png" alt="B &amp; C">', '',
     'Text mit ![inline](c.png) bleibt Absatz')));
   Assert.AreEqual(Integer(4), Integer(Length(mBlocks)));
-  Assert.IsTrue(mBlocks[0].Kind = TAtlasMarkdownBlockKind.Image);
+  Assert.AreEqual<TAtlasMarkdownBlockKind>(TAtlasMarkdownBlockKind.Image, mBlocks[0].Kind);
   Assert.AreEqual('Skizze', mBlocks[0].Text);
   Assert.AreEqual('skizze.png', mBlocks[0].Info);
   Assert.AreEqual('https://h.de/a.png', mBlocks[1].Info, 'ohne Titel');
   Assert.AreEqual('b.png', mBlocks[2].Info);
   Assert.AreEqual('B & C', mBlocks[2].Text);
-  Assert.IsTrue(mBlocks[3].Kind = TAtlasMarkdownBlockKind.Paragraph);
+  Assert.AreEqual<TAtlasMarkdownBlockKind>(TAtlasMarkdownBlockKind.Paragraph, mBlocks[3].Kind);
 end;
 
 procedure TAtlasTrackerMarkdownTests.IndentedAndUnclosedCode;
@@ -147,9 +148,9 @@ begin
   mBlocks := TAtlasTrackerMarkdown.Blocks(Lines(TArray<string>.Create('    begin', '      x := 1;', '    end;', '',
     '~~~', 'offen bis zum Ende')));
   Assert.AreEqual(Integer(2), Integer(Length(mBlocks)));
-  Assert.IsTrue(mBlocks[0].Kind = TAtlasMarkdownBlockKind.Code);
+  Assert.AreEqual<TAtlasMarkdownBlockKind>(TAtlasMarkdownBlockKind.Code, mBlocks[0].Kind);
   Assert.AreEqual('begin'#10'  x := 1;'#10'end;', mBlocks[0].Text);
-  Assert.IsTrue(mBlocks[1].Kind = TAtlasMarkdownBlockKind.Code);
+  Assert.AreEqual<TAtlasMarkdownBlockKind>(TAtlasMarkdownBlockKind.Code, mBlocks[1].Kind);
   Assert.AreEqual('offen bis zum Ende', mBlocks[1].Text);
   Assert.AreEqual('', mBlocks[1].Info);
 end;
@@ -167,12 +168,12 @@ begin
   Assert.IsFalse(mRuns[1].Bold);
   Assert.AreEqual('kursiv', mRuns[2].Text);
   Assert.IsTrue(mRuns[2].Italic);
-  Assert.IsTrue(mRuns[4].Kind = TAtlasDocRunKind.Code);
+  Assert.AreEqual<TAtlasDocRunKind>(TAtlasDocRunKind.Code, mRuns[4].Kind);
   Assert.AreEqual('code', mRuns[4].Text);
-  Assert.IsTrue(mRuns[6].Kind = TAtlasDocRunKind.Link);
+  Assert.AreEqual<TAtlasDocRunKind>(TAtlasDocRunKind.Link, mRuns[6].Kind);
   Assert.AreEqual('Link', mRuns[6].Text);
   Assert.AreEqual('https://x.de/a', mRuns[6].Target);
-  Assert.IsTrue(mRuns[8].Kind = TAtlasDocRunKind.Link, 'nackte Adresse');
+  Assert.AreEqual<TAtlasDocRunKind>(TAtlasDocRunKind.Link, mRuns[8].Kind, 'nackte Adresse');
   Assert.AreEqual('https://y.de/b', mRuns[8].Target, 'Punkt am Ende gehört nicht dazu');
   Assert.AreEqual('.', mRuns[9].Text);
 end;
@@ -196,10 +197,10 @@ begin
   mRuns := TAtlasTrackerMarkdown.InlineRuns('a &amp; b &#65;<br>c'#10'<a href="https://z.de">Z</a> <https://w.de>');
   Assert.AreEqual(Integer(7), Integer(Length(mRuns)));
   Assert.AreEqual('a & b A', mRuns[0].Text);
-  Assert.IsTrue(mRuns[1].Kind = TAtlasDocRunKind.LineBreak);
+  Assert.AreEqual<TAtlasDocRunKind>(TAtlasDocRunKind.LineBreak, mRuns[1].Kind);
   Assert.AreEqual('c', mRuns[2].Text);
-  Assert.IsTrue(mRuns[3].Kind = TAtlasDocRunKind.LineBreak);
-  Assert.IsTrue(mRuns[4].Kind = TAtlasDocRunKind.Link);
+  Assert.AreEqual<TAtlasDocRunKind>(TAtlasDocRunKind.LineBreak, mRuns[3].Kind);
+  Assert.AreEqual<TAtlasDocRunKind>(TAtlasDocRunKind.Link, mRuns[4].Kind);
   Assert.AreEqual('Z', mRuns[4].Text);
   Assert.AreEqual('https://z.de', mRuns[4].Target);
   Assert.AreEqual('https://w.de', mRuns[6].Target);
@@ -218,15 +219,15 @@ begin
   mRuns := mDoc.Sections[0].Runs;
   Assert.AreEqual('Kopf', mRuns[0].Text);
   Assert.IsTrue(mRuns[0].Bold);
-  Assert.IsTrue(mRuns[1].Kind = TAtlasDocRunKind.Paragraph);
-  Assert.IsTrue(mRuns[2].Kind = TAtlasDocRunKind.Bullet);
+  Assert.AreEqual<TAtlasDocRunKind>(TAtlasDocRunKind.Paragraph, mRuns[1].Kind);
+  Assert.AreEqual<TAtlasDocRunKind>(TAtlasDocRunKind.Bullet, mRuns[2].Kind);
   Assert.AreEqual(Integer(1), mRuns[2].Level);
-  Assert.IsTrue(mRuns[4].Kind = TAtlasDocRunKind.Bullet, 'kein Absatz zwischen Punkten');
-  Assert.IsTrue(mRuns[6].Kind = TAtlasDocRunKind.Paragraph, 'Absatz nach der Liste');
-  Assert.IsTrue(mRuns[7].Kind = TAtlasDocRunKind.CodeBlock);
+  Assert.AreEqual<TAtlasDocRunKind>(TAtlasDocRunKind.Bullet, mRuns[4].Kind, 'kein Absatz zwischen Punkten');
+  Assert.AreEqual<TAtlasDocRunKind>(TAtlasDocRunKind.Paragraph, mRuns[6].Kind, 'Absatz nach der Liste');
+  Assert.AreEqual<TAtlasDocRunKind>(TAtlasDocRunKind.CodeBlock, mRuns[7].Kind);
   Assert.AreEqual('json', mRuns[7].Target);
   Assert.IsFalse(mRuns[7].IsDelphiCode, 'JSON nicht als Delphi einfärben');
-  Assert.IsTrue(mRuns[8].Kind = TAtlasDocRunKind.CodeBlock);
+  Assert.AreEqual<TAtlasDocRunKind>(TAtlasDocRunKind.CodeBlock, mRuns[8].Kind);
   Assert.IsTrue(mRuns[8].IsDelphiCode);
   Assert.AreEqual(Integer(9), Integer(Length(mRuns)), 'kein Absatz am Ende');
   Assert.IsTrue(TAtlasTrackerMarkdown.ToDoc('   ').IsEmpty);
@@ -239,15 +240,15 @@ begin
   mBlocks := TAtlasTrackerMarkdown.Blocks(Lines(TArray<string>.Create('Vorher', '', '1. [ ] eins', '   weiter',
     '2) [X] zwei', '- [x]')));
   Assert.AreEqual(Integer(4), Integer(Length(mBlocks)));
-  Assert.IsTrue(mBlocks[1].Task = TAtlasMarkdownTask.Open);
+  Assert.AreEqual<TAtlasMarkdownTask>(TAtlasMarkdownTask.Open, mBlocks[1].Task);
   Assert.AreEqual('☐', mBlocks[1].Marker);
   Assert.AreEqual('1.', mBlocks[1].ListMarker);
   Assert.AreEqual('eins'#10'weiter', mBlocks[1].Text);
   Assert.AreEqual(Integer(2), mBlocks[1].Line);
   Assert.AreEqual(Integer(3), mBlocks[1].LastLine);
-  Assert.IsTrue(mBlocks[2].Task = TAtlasMarkdownTask.Done, 'großes X');
+  Assert.AreEqual<TAtlasMarkdownTask>(TAtlasMarkdownTask.Done, mBlocks[2].Task, 'großes X');
   Assert.AreEqual('2.', mBlocks[2].ListMarker);
-  Assert.IsTrue(mBlocks[3].Task = TAtlasMarkdownTask.Done, 'ohne Text');
+  Assert.AreEqual<TAtlasMarkdownTask>(TAtlasMarkdownTask.Done, mBlocks[3].Task, 'ohne Text');
   Assert.AreEqual('', mBlocks[3].Text);
   Assert.AreEqual(Integer(-1), mBlocks[0].Line, 'nur Listenpunkte tragen die Zeile');
 end;
@@ -264,7 +265,7 @@ begin
   Assert.AreEqual('', mRuns[0].Target, 'Kästchen ohne Ziel');
   // Plain (Checklisten aus): Listenmarke und das Kästchen als Text.
   mRuns := TAtlasTrackerMarkdown.ToDoc(cText, TAtlasMarkdownTasks.Plain).Sections[0].Runs;
-  Assert.IsTrue(mRuns[0].Kind = TAtlasDocRunKind.Bullet);
+  Assert.AreEqual<TAtlasDocRunKind>(TAtlasDocRunKind.Bullet, mRuns[0].Kind);
   Assert.AreEqual('•', mRuns[0].Text);
   Assert.AreEqual('[ ] a', mRuns[1].Text);
   Assert.AreEqual('1.', mRuns[4].Text);
@@ -288,11 +289,11 @@ begin
   mSegments := TAtlasTrackerMarkdown.Segments(Lines(TArray<string>.Create('Vorher', '', '![s](bilder/skizze.png)',
     '', 'Nachher')));
   Assert.AreEqual(Integer(3), Integer(Length(mSegments)));
-  Assert.IsTrue(mSegments[0].Kind = TAtlasMarkdownSegmentKind.Doc);
-  Assert.IsTrue(mSegments[1].Kind = TAtlasMarkdownSegmentKind.Image);
+  Assert.AreEqual<TAtlasMarkdownSegmentKind>(TAtlasMarkdownSegmentKind.Doc, mSegments[0].Kind);
+  Assert.AreEqual<TAtlasMarkdownSegmentKind>(TAtlasMarkdownSegmentKind.Image, mSegments[1].Kind);
   Assert.AreEqual('bilder/skizze.png', mSegments[1].Image.Url);
   Assert.AreEqual('s', mSegments[1].Image.Text);
-  Assert.IsTrue(mSegments[2].Kind = TAtlasMarkdownSegmentKind.Doc);
+  Assert.AreEqual<TAtlasMarkdownSegmentKind>(TAtlasMarkdownSegmentKind.Doc, mSegments[2].Kind);
   // In einer Doku ohne Bildfläche wird das Bild zum Link mit dem Dateinamen.
   Assert.AreEqual('skizze.png', TAtlasTrackerMarkdown.ToDoc('![](bilder/skizze.png)').Sections[0].Runs[0].Text);
 end;

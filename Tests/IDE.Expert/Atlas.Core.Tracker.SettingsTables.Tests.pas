@@ -208,9 +208,9 @@ begin
     mTable.SetWorkflow('State', 'Assignee', 'In Arbeit', 'Fertig, Erledigt', 'Ursache');
     // Absicht: Die Seite soll eine Adresse ohne https ablehnen.
     // lsp-ignore: security-insecure-http
-    Assert.IsTrue(mTable.SetUrl('http://yt2.firma.local') = TAtlasTrackerUrlCheck.NotHttps);
+    Assert.AreEqual<TAtlasTrackerUrlCheck>(TAtlasTrackerUrlCheck.NotHttps, mTable.SetUrl('http://yt2.firma.local'));
     Assert.AreEqual('https://yt.firma.local', mTable.SelectedRow.Url);
-    Assert.IsTrue(mTable.SetUrl('https://yt2.firma.local/') = TAtlasTrackerUrlCheck.Valid);
+    Assert.AreEqual<TAtlasTrackerUrlCheck>(TAtlasTrackerUrlCheck.Valid, mTable.SetUrl('https://yt2.firma.local/'));
     Assert.AreEqual('https://yt2.firma.local', mTable.SelectedRow.Url);
     Assert.AreEqual('State', mTable.SelectedRow.StateField, 'Werte bleiben mit neuer Adresse');
     Assert.AreEqual(2, Integer(Length(mTable.SelectedRow.EndStates)));
@@ -277,22 +277,24 @@ begin
   mTable := TAtlasTrackerProjectTable.Create;
   try
     mTable.Load('[{"match": "C:\\Src\\Kasse.dproj", "connection": "Firma", "project": "KASSE"}]');
-    Assert.IsTrue(mTable.NoteOf(mTable.SelectedRow) = TAtlasTrackerProjectNote.NoConnection);
+    Assert.AreEqual<TAtlasTrackerProjectNote>(TAtlasTrackerProjectNote.NoConnection, mTable.NoteOf(mTable.SelectedRow));
     mTable.SetChoices(TArray<string>.Create('Lager'));
-    Assert.IsTrue(mTable.NoteOf(mTable.SelectedRow) = TAtlasTrackerProjectNote.ConnectionMissing);
+    Assert.AreEqual<TAtlasTrackerProjectNote>(TAtlasTrackerProjectNote.ConnectionMissing,
+      mTable.NoteOf(mTable.SelectedRow));
     mTable.SetChoices(TArray<string>.Create('Lager', 'Firma'));
-    Assert.IsTrue(mTable.NoteOf(mTable.SelectedRow) = TAtlasTrackerProjectNote.None);
+    Assert.AreEqual<TAtlasTrackerProjectNote>(TAtlasTrackerProjectNote.None, mTable.NoteOf(mTable.SelectedRow));
     Assert.AreEqual(1, mTable.ChoiceOf('firma'));
-    Assert.IsTrue(mTable.SourceOf(mTable.SelectedRow) = TAtlasTrackerProjectSource.Personal);
+    Assert.AreEqual<TAtlasTrackerProjectSource>(TAtlasTrackerProjectSource.Personal,
+      mTable.SourceOf(mTable.SelectedRow));
     mContext := TAtlasTrackerProjectContext.Empty;
     mContext.ProjectFile := 'C:\Src\Kasse.dproj';
     mContext.Team := TArray<TAtlasTrackerProjectMapping>.Create(
       TAtlasTrackerProjectMapping.FromTeamFile('C:\Src\Kasse.dproj', 'Atlas', 'KASSE'));
     mTable.SetContext(mContext);
-    Assert.IsTrue(mTable.SourceOf(mTable.Items[0]) = TAtlasTrackerProjectSource.Covered);
-    Assert.IsTrue(mTable.NoteOf(mTable.Items[0]) = TAtlasTrackerProjectNote.Covered);
-    Assert.IsTrue(mTable.SourceOf(mTable.Rows[1]) = TAtlasTrackerProjectSource.Team);
-    Assert.IsTrue(mTable.NoteOf(mTable.Rows[1]) = TAtlasTrackerProjectNote.ReadOnly);
+    Assert.AreEqual<TAtlasTrackerProjectSource>(TAtlasTrackerProjectSource.Covered, mTable.SourceOf(mTable.Items[0]));
+    Assert.AreEqual<TAtlasTrackerProjectNote>(TAtlasTrackerProjectNote.Covered, mTable.NoteOf(mTable.Items[0]));
+    Assert.AreEqual<TAtlasTrackerProjectSource>(TAtlasTrackerProjectSource.Team, mTable.SourceOf(mTable.Rows[1]));
+    Assert.AreEqual<TAtlasTrackerProjectNote>(TAtlasTrackerProjectNote.ReadOnly, mTable.NoteOf(mTable.Rows[1]));
     Assert.AreEqual('C:\Src\Kasse.dproj', mTable.CurrentMatch);
     // Hinzufügen: vorhandene Zeile wählen, neue mit der ersten Verbindung.
     Assert.IsFalse(mTable.Add(' '));
@@ -366,7 +368,7 @@ begin
     mTable.Add('Neu');
     mTable.Add('Neu');
     Assert.AreEqual('Neu 2', mTable.SelectedRow.Name);
-    Assert.IsTrue(mTable.NoteOf(mTable.SelectedRow) = TAtlasTrackerQueryNote.Empty);
+    Assert.AreEqual<TAtlasTrackerQueryNote>(TAtlasTrackerQueryNote.Empty, mTable.NoteOf(mTable.SelectedRow));
     Assert.AreEqual(0, Integer(Length(TAtlasTrackerQueries.Read(mTable.ToJson))), 'ohne Abfrage nicht gespeichert');
     mTable.SetQuery('#Unresolved');
     Assert.IsFalse(mTable.SetName('Neu'), 'Name vergeben');
@@ -384,9 +386,10 @@ begin
     Assert.AreEqual(1, Integer(Length(mTable.Taken)));
     Assert.AreEqual('Neu', mTable.Taken[0]);
     mTable.Replace(TAtlasTrackerQuery.Create('Offen', 'state: Open', 'Lager', ''));
-    Assert.IsTrue(mTable.NoteOf(mTable.SelectedRow) = TAtlasTrackerQueryNote.ConnectionMissing);
+    Assert.AreEqual<TAtlasTrackerQueryNote>(TAtlasTrackerQueryNote.ConnectionMissing,
+      mTable.NoteOf(mTable.SelectedRow));
     mTable.RenameConnection('Lager', 'Firma');
-    Assert.IsTrue(mTable.NoteOf(mTable.SelectedRow) = TAtlasTrackerQueryNote.None);
+    Assert.AreEqual<TAtlasTrackerQueryNote>(TAtlasTrackerQueryNote.None, mTable.NoteOf(mTable.SelectedRow));
     Assert.AreEqual(1, Integer(Length(TAtlasTrackerQueries.Read(mTable.ToJson))));
     mTable.Remove;
     Assert.AreEqual(0, mTable.Selected);

@@ -642,7 +642,7 @@ begin
     mObject := TJSONObject(mValue);
     Assert.AreEqual('1h 25m', mObject.GetValue<string>('duration.presentation'));
     // Mittag des Tages in UTC: in jeder Zeitzone derselbe Tag.
-    Assert.IsTrue(DateTimeToUnix(EncodeDateTime(2026, 10, 28, 12, 0, 0, 0), True) * 1000 =
+    Assert.AreEqual<Int64>(DateTimeToUnix(EncodeDateTime(2026, 10, 28, 12, 0, 0, 0), True) * 1000,
       mObject.GetValue<Int64>('date'));
     Assert.AreEqual('Entwicklung', mObject.GetValue<string>('type.name'));
     Assert.AreEqual('Parser repariert', mObject.GetValue<string>('text'));

@@ -343,9 +343,9 @@ begin
   Assert.IsTrue(TAtlasGitHubNewIssue.ParseIssueFields(cFields, mFields));
   Assert.AreEqual(4, Integer(Length(mFields)), 'ohne Mehrfachauswahl und ohne Kennung');
   Assert.AreEqual(Int64(12), mFields[1].Id);
-  Assert.IsTrue(mFields[1].Kind = TAtlasIssueFieldKind.Number);
-  Assert.IsTrue(mFields[2].Kind = TAtlasIssueFieldKind.Date);
-  Assert.IsTrue(mFields[3].Kind = TAtlasIssueFieldKind.SingleSelect);
+  Assert.AreEqual<TAtlasIssueFieldKind>(TAtlasIssueFieldKind.Number, mFields[1].Kind);
+  Assert.AreEqual<TAtlasIssueFieldKind>(TAtlasIssueFieldKind.Date, mFields[2].Kind);
+  Assert.AreEqual<TAtlasIssueFieldKind>(TAtlasIssueFieldKind.SingleSelect, mFields[3].Kind);
   Assert.AreEqual('Kasse,Lager', string.Join(',', mFields[3].Options));
 end;
 

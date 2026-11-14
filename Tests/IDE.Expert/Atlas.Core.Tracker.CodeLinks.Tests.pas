@@ -124,7 +124,7 @@ begin
   Assert.AreEqual(123, mMatches[0].Number);
   Assert.AreEqual(Pos('ATL-123', mLine) - 1, mMatches[0].Character);
   Assert.AreEqual(7, mMatches[0].Length);
-  Assert.IsTrue(mMatches[0].Place = TAtlasCodeLinkPlace.Comment);
+  Assert.AreEqual<TAtlasCodeLinkPlace>(TAtlasCodeLinkPlace.Comment, mMatches[0].Place);
   Assert.AreEqual('ATL-123', mMatches[0].IssueKey);
   Assert.AreEqual('ATL-7|', Keys(YouTrack('ATL'), '{ TODO ATL-7 }'));
 end;
@@ -179,12 +179,12 @@ begin
     '{$DEFINE',
     '  ATL-11 } V := ''// ATL-12''; { ATL-13 }');
   mStates := TAtlasCodeLinks.States(mLines);
-  Assert.IsTrue(mStates[0] = TAtlasCodeLinkState.Code);
-  Assert.IsTrue(mStates[1] = TAtlasCodeLinkState.BraceComment);
-  Assert.IsTrue(mStates[2] = TAtlasCodeLinkState.BraceComment);
-  Assert.IsTrue(mStates[3] = TAtlasCodeLinkState.Code);
-  Assert.IsTrue(mStates[4] = TAtlasCodeLinkState.ParenComment);
-  Assert.IsTrue(mStates[8] = TAtlasCodeLinkState.BraceDirective);
+  Assert.AreEqual<TAtlasCodeLinkState>(TAtlasCodeLinkState.Code, mStates[0]);
+  Assert.AreEqual<TAtlasCodeLinkState>(TAtlasCodeLinkState.BraceComment, mStates[1]);
+  Assert.AreEqual<TAtlasCodeLinkState>(TAtlasCodeLinkState.BraceComment, mStates[2]);
+  Assert.AreEqual<TAtlasCodeLinkState>(TAtlasCodeLinkState.Code, mStates[3]);
+  Assert.AreEqual<TAtlasCodeLinkState>(TAtlasCodeLinkState.ParenComment, mStates[4]);
+  Assert.AreEqual<TAtlasCodeLinkState>(TAtlasCodeLinkState.BraceDirective, mStates[8]);
   Assert.AreEqual('0:ATL-1|1:ATL-2|2:ATL-3|3:ATL-5|4:ATL-6|4:ATL-7|6:ATL-10|8:ATL-13|',
     LineKeys(YouTrack('ATL'), mLines));
 end;
@@ -196,7 +196,7 @@ begin
   mMatches := TAtlasCodeLinks.LineMatches(YouTrack('ATL'), 'Msg := ''ATL-12 Sperre behoben'';',
     TAtlasCodeLinkState.Code, cCommit);
   Assert.AreEqual(1, Integer(Length(mMatches)));
-  Assert.IsTrue(mMatches[0].Place = TAtlasCodeLinkPlace.Literal);
+  Assert.AreEqual<TAtlasCodeLinkPlace>(TAtlasCodeLinkPlace.Literal, mMatches[0].Place);
   Assert.AreEqual('', Keys(YouTrack('ATL'), 'Msg := ''Siehe ATL-12'';'), 'Literal ohne Präfix');
   // Ohne Commit-Muster nie in Literalen.
   Assert.AreEqual(0, Integer(Length(TAtlasCodeLinks.LineMatches(YouTrack('ATL'), 'Msg := ''ATL-12 x'';',

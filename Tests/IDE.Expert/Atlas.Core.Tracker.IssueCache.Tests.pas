@@ -139,7 +139,7 @@ begin
   Assert.AreEqual('depends on', mDetails.Links[0].Relation);
   Assert.IsTrue(mDetails.Links[0].Local);
   // Art und Zustand der Verknüpfung (#1279).
-  Assert.IsTrue(mDetails.Links[0].Kind = TAtlasTrackerLinkKind.DependsOn);
+  Assert.AreEqual<TAtlasTrackerLinkKind>(TAtlasTrackerLinkKind.DependsOn, mDetails.Links[0].Kind);
   Assert.IsTrue(mDetails.Links[0].StateKnown);
   Assert.AreEqual('In Progress', mDetails.Links[0].State);
   Assert.IsFalse(mDetails.Links[0].Resolved);

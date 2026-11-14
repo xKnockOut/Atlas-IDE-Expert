@@ -241,7 +241,7 @@ begin
   mKeepPulls := mPulls;
   mPulls.Answer := Created;
   mPull := TAtlasEndPull.Run(Request(mKeepVcs, mKeepPulls, cOrigin));
-  Assert.IsTrue(mPull.Outcome = TAtlasTrackerPullOutcome.Created);
+  Assert.AreEqual<TAtlasTrackerPullOutcome>(TAtlasTrackerPullOutcome.Created, mPull.Outcome);
   Assert.AreEqual(42, mPull.Number);
   Assert.AreEqual(1, Integer(Length(mVcs.Calls)));
   Assert.AreEqual('push ' + cBranch + ' origin refs/heads/' + cBranch + ' True', mVcs.Calls[0]);
@@ -262,7 +262,7 @@ begin
   mPulls := TFakePulls.Create;
   mKeepPulls := mPulls;
   mPull := TAtlasEndPull.Run(Request(mKeepVcs, mKeepPulls, 'git@github.com:fork/atlas.git'));
-  Assert.IsTrue(mPull.Outcome = TAtlasTrackerPullOutcome.Foreign);
+  Assert.AreEqual<TAtlasTrackerPullOutcome>(TAtlasTrackerPullOutcome.Foreign, mPull.Outcome);
   Assert.AreEqual(0, Integer(Length(mVcs.Calls)));
   Assert.IsFalse(mPulls.Asked);
 end;
@@ -281,7 +281,7 @@ begin
   mPulls := TFakePulls.Create;
   mKeepPulls := mPulls;
   mPull := TAtlasEndPull.Run(Request(mKeepVcs, mKeepPulls, cOrigin));
-  Assert.IsTrue(mPull.Outcome = TAtlasTrackerPullOutcome.Dirty);
+  Assert.AreEqual<TAtlasTrackerPullOutcome>(TAtlasTrackerPullOutcome.Dirty, mPull.Outcome);
   Assert.AreEqual(0, Integer(Length(mVcs.Calls)));
   Assert.IsFalse(mPulls.Asked);
 end;
@@ -307,7 +307,7 @@ begin
   mPulls := TFakePulls.Create;
   mKeepPulls := mPulls;
   mPull := TAtlasEndPull.Run(Request(mKeepVcs, mKeepPulls, cOrigin));
-  Assert.IsTrue(mPull.Outcome = TAtlasTrackerPullOutcome.PushFailed);
+  Assert.AreEqual<TAtlasTrackerPullOutcome>(TAtlasTrackerPullOutcome.PushFailed, mPull.Outcome);
   Assert.AreEqual(AtlasVcsOutcomeName(TAtlasVcsOutcome.Failed), mPull.Message);
   Assert.IsFalse(mPulls.Asked);
 end;
@@ -325,8 +325,8 @@ begin
   mPulls := TFakePulls.Create;
   mKeepPulls := mPulls;
   mPull := TAtlasEndPull.Run(Request(mKeepVcs, mKeepPulls, cOrigin));
-  Assert.IsTrue(mPull.Outcome = TAtlasTrackerPullOutcome.Failed);
-  Assert.IsTrue(mPull.Error = TAtlasCiFetchError.NotConfigured);
+  Assert.AreEqual<TAtlasTrackerPullOutcome>(TAtlasTrackerPullOutcome.Failed, mPull.Outcome);
+  Assert.AreEqual<TAtlasCiFetchError>(TAtlasCiFetchError.NotConfigured, mPull.Error);
   Assert.AreEqual(0, Integer(Length(mVcs.Calls)));
 end;
 
@@ -344,8 +344,8 @@ procedure TAtlasEndPullTests.FailedPullStopsEnd;
 begin
   Assert.IsFalse(TAtlasTrackerPullResult.Make(TAtlasTrackerPullOutcome.Dirty).Stands);
   Assert.IsTrue(TAtlasTrackerPullResult.Make(TAtlasTrackerPullOutcome.Existing).Stands);
-  Assert.IsTrue(TAtlasTrackerPullResult.Failure(TAtlasCiFetchError.Server, 500, 'x').Outcome =
-    TAtlasTrackerPullOutcome.Failed);
+  Assert.AreEqual<TAtlasTrackerPullOutcome>(TAtlasTrackerPullOutcome.Failed,
+    TAtlasTrackerPullResult.Failure(TAtlasCiFetchError.Server, 500, 'x').Outcome);
 end;
 
 procedure TAtlasEndPullTests.FillWritesClosesKeyword;

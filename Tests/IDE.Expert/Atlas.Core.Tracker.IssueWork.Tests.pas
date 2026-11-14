@@ -72,29 +72,30 @@ end;
 
 procedure TAtlasTrackerIssueWorkTests.FreshPreviewWinsOverList;
 begin
-  Assert.IsTrue(TAtlasTrackerIssueStates.StatusOf(Facts('github', True, True, True, 'closed')) =
-    TAtlasTrackerResolution.Resolved, 'frisch geschlossen, auch wenn noch in der Liste');
-  Assert.IsTrue(TAtlasTrackerIssueStates.StatusOf(Facts('github', False, True, True, 'open')) =
-    TAtlasTrackerResolution.Open);
+  Assert.AreEqual<TAtlasTrackerResolution>(TAtlasTrackerResolution.Resolved,
+    TAtlasTrackerIssueStates.StatusOf(Facts('github', True, True, True, 'closed')), 'frisch geschlossen, auch wenn noch in der Liste');
+  Assert.AreEqual<TAtlasTrackerResolution>(TAtlasTrackerResolution.Open,
+    TAtlasTrackerIssueStates.StatusOf(Facts('github', False, True, True, 'open')));
 end;
 
 procedure TAtlasTrackerIssueWorkTests.ListMeansOpenWithoutFreshPreview;
 begin
-  Assert.IsTrue(TAtlasTrackerIssueStates.StatusOf(Facts('github', True, False, False, '')) =
-    TAtlasTrackerResolution.Open);
-  Assert.IsTrue(TAtlasTrackerIssueStates.StatusOf(Facts('github', True, True, False, 'closed')) =
-    TAtlasTrackerResolution.Open, 'alter Stand zählt nicht gegen die Liste');
+  Assert.AreEqual<TAtlasTrackerResolution>(TAtlasTrackerResolution.Open,
+    TAtlasTrackerIssueStates.StatusOf(Facts('github', True, False, False, '')));
+  Assert.AreEqual<TAtlasTrackerResolution>(TAtlasTrackerResolution.Open,
+    TAtlasTrackerIssueStates.StatusOf(Facts('github', True, True, False, 'closed')), 'alter Stand zählt nicht gegen die Liste');
 end;
 
 procedure TAtlasTrackerIssueWorkTests.OldPreviewOutsideListCounts;
 begin
-  Assert.IsTrue(TAtlasTrackerIssueStates.StatusOf(Facts('youtrack', False, True, False, 'Fixed')) =
-    TAtlasTrackerResolution.Resolved);
+  Assert.AreEqual<TAtlasTrackerResolution>(TAtlasTrackerResolution.Resolved,
+    TAtlasTrackerIssueStates.StatusOf(Facts('youtrack', False, True, False, 'Fixed')));
 end;
 
 procedure TAtlasTrackerIssueWorkTests.NothingKnownIsUnknown;
 begin
-  Assert.IsTrue(TAtlasTrackerIssueStates.StatusOf(TAtlasTrackerIssueFacts.Empty) = TAtlasTrackerResolution.Unknown,
+  Assert.AreEqual<TAtlasTrackerResolution>(TAtlasTrackerResolution.Unknown,
+    TAtlasTrackerIssueStates.StatusOf(TAtlasTrackerIssueFacts.Empty),
     'ohne Netz und Liste: unbekannt');
 end;
 

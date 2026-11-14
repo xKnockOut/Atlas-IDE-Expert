@@ -248,7 +248,7 @@ begin
   Assert.AreEqual('review', mPlan.TransitionPart.Transition.Id);
   Assert.AreEqual('82-11', mPlan.TransitionPart.FieldId);
   Assert.AreEqual('', mPlan.TransitionPart.Comment, 'Übergang ohne Kommentar');
-  Assert.IsTrue(mPlan.TransitionPart.Assign = TAtlasTrackerAssign.Keep);
+  Assert.AreEqual<TAtlasTrackerAssign>(TAtlasTrackerAssign.Keep, mPlan.TransitionPart.Assign);
   Assert.IsTrue(mPlan.HasWork);
   Assert.IsFalse(TAtlasTrackerEndPlan.Create(TAtlasTrackerWrite.Empty).HasWork);
 end;
@@ -288,7 +288,7 @@ begin
   mProgress := TAtlasTrackerEndProgress.Empty;
   TAtlasTrackerEndSteps.Run(CallOf(mWriter), mPlan, mProgress);
   Assert.IsTrue(mProgress.Failed);
-  Assert.IsTrue(mProgress.FailedStep = TAtlasTrackerEndStep.Transition);
+  Assert.AreEqual<TAtlasTrackerEndStep>(TAtlasTrackerEndStep.Transition, mProgress.FailedStep);
   Assert.AreEqual(400, mProgress.Outcome.Status);
   Assert.IsTrue(mProgress.TimeBooked and mProgress.CommentDone);
   Assert.IsTrue(mProgress.Wrote);
@@ -307,7 +307,7 @@ begin
   mProgress := TAtlasTrackerEndProgress.Empty;
   TAtlasTrackerEndSteps.Run(CallOf(mWriter), mPlan, mProgress);
   Assert.AreEqual('Ursache', mProgress.FailedField);
-  Assert.IsTrue(mProgress.FailedStep = TAtlasTrackerEndStep.Fields);
+  Assert.AreEqual<TAtlasTrackerEndStep>(TAtlasTrackerEndStep.Fields, mProgress.FailedStep);
   Assert.AreEqual(3, Integer(Length(mWriter.Calls)), 'kein Kommentar, kein Übergang');
 end;
 
@@ -324,7 +324,7 @@ begin
   mPlan := FullPlan;
   mProgress := TAtlasTrackerEndProgress.Empty;
   TAtlasTrackerEndSteps.Run(CallOf(mWriter), mPlan, mProgress);
-  Assert.IsTrue(mProgress.FailedStep = TAtlasTrackerEndStep.Comment);
+  Assert.AreEqual<TAtlasTrackerEndStep>(TAtlasTrackerEndStep.Comment, mProgress.FailedStep);
   mWriter.FailOn := '';
   mWriter.Calls := nil;
   mPlan.Fields[0].Value := '2.2.0';
@@ -346,8 +346,8 @@ begin
   mCall.Time := nil;
   mProgress := TAtlasTrackerEndProgress.Empty;
   TAtlasTrackerEndSteps.Run(mCall, FullPlan, mProgress);
-  Assert.IsTrue(mProgress.FailedStep = TAtlasTrackerEndStep.Time);
-  Assert.IsTrue(mProgress.Outcome.Error = TAtlasCiFetchError.UnknownProvider);
+  Assert.AreEqual<TAtlasTrackerEndStep>(TAtlasTrackerEndStep.Time, mProgress.FailedStep);
+  Assert.AreEqual<TAtlasCiFetchError>(TAtlasCiFetchError.UnknownProvider, mProgress.Outcome.Error);
   Assert.AreEqual(0, Integer(Length(mWriter.Calls)), 'nichts geschrieben');
   mCall.Writer := nil;
   TAtlasTrackerEndSteps.Run(mCall, FullPlan, mProgress);
@@ -361,14 +361,19 @@ var
 begin
   mPlan := TAtlasTrackerEndPlan.Create(TAtlasTrackerWrite.CommentOnly('x'));
   mProgress := TAtlasTrackerEndProgress.Empty;
-  Assert.IsTrue(mProgress.StateOf(mPlan, TAtlasTrackerEndStep.Time) = TAtlasTrackerStepState.Skipped);
-  Assert.IsTrue(mProgress.StateOf(mPlan, TAtlasTrackerEndStep.Comment) = TAtlasTrackerStepState.Pending);
-  Assert.IsTrue(mProgress.StateOf(mPlan, TAtlasTrackerEndStep.Transition) = TAtlasTrackerStepState.Skipped);
+  Assert.AreEqual<TAtlasTrackerStepState>(TAtlasTrackerStepState.Skipped,
+    mProgress.StateOf(mPlan, TAtlasTrackerEndStep.Time));
+  Assert.AreEqual<TAtlasTrackerStepState>(TAtlasTrackerStepState.Pending,
+    mProgress.StateOf(mPlan, TAtlasTrackerEndStep.Comment));
+  Assert.AreEqual<TAtlasTrackerStepState>(TAtlasTrackerStepState.Skipped,
+    mProgress.StateOf(mPlan, TAtlasTrackerEndStep.Transition));
   mProgress.Fail(mPlan, TAtlasTrackerWriteResult.Failed(TAtlasCiFetchError.NotConfigured, 0, ''));
-  Assert.IsTrue(mProgress.StateOf(mPlan, TAtlasTrackerEndStep.Comment) = TAtlasTrackerStepState.Failed,
+  Assert.AreEqual<TAtlasTrackerStepState>(TAtlasTrackerStepState.Failed,
+    mProgress.StateOf(mPlan, TAtlasTrackerEndStep.Comment),
     'erster offener Schritt');
   mProgress.CommentDone := True;
-  Assert.IsTrue(mProgress.StateOf(mPlan, TAtlasTrackerEndStep.Comment) = TAtlasTrackerStepState.Done);
+  Assert.AreEqual<TAtlasTrackerStepState>(TAtlasTrackerStepState.Done,
+    mProgress.StateOf(mPlan, TAtlasTrackerEndStep.Comment));
   Assert.IsTrue(mProgress.Finished(mPlan));
   Assert.IsTrue(TAtlasTrackerEndProgress.Empty.Finished(TAtlasTrackerEndPlan.Create(TAtlasTrackerWrite.Empty)),
     'nichts zu schreiben');
@@ -445,8 +450,8 @@ begin
   mProgress := TAtlasTrackerEndProgress.Empty;
   TAtlasTrackerEndSteps.Run(mCall, DuplicatePlan('#999'), mProgress);
   Assert.IsTrue(mProgress.DuplicateMissing);
-  Assert.IsTrue(mProgress.Outcome.Error = TAtlasCiFetchError.NotFound);
-  Assert.IsTrue(mProgress.FailedStep = TAtlasTrackerEndStep.Comment, 'erster offener Schritt');
+  Assert.AreEqual<TAtlasCiFetchError>(TAtlasCiFetchError.NotFound, mProgress.Outcome.Error);
+  Assert.AreEqual<TAtlasTrackerEndStep>(TAtlasTrackerEndStep.Comment, mProgress.FailedStep, 'erster offener Schritt');
   Assert.AreEqual(1, mTransport.Calls);
   Assert.AreEqual(0, Integer(Length(mWriter.Calls)));
   // Vorhanden: Kommentar, dann Schließen als Duplikat (der Kommentar nennt #418, kein Ersatzkommentar).
@@ -474,8 +479,8 @@ begin
     TAtlasTrackerClose.NotPlanned, '#5', 'x');
   Assert.AreEqual('', mChange.DuplicateOf, 'Original nur beim Duplikat');
   mPlan := TAtlasTrackerEndPlan.Create(mChange);
-  Assert.IsTrue(mPlan.CommentPart.Close = TAtlasTrackerClose.ByState, 'Kommentar schließt nicht');
-  Assert.IsTrue(mPlan.TransitionPart.Close = TAtlasTrackerClose.NotPlanned);
+  Assert.AreEqual<TAtlasTrackerClose>(TAtlasTrackerClose.ByState, mPlan.CommentPart.Close, 'Kommentar schließt nicht');
+  Assert.AreEqual<TAtlasTrackerClose>(TAtlasTrackerClose.NotPlanned, mPlan.TransitionPart.Close);
   Assert.IsTrue(mPlan.Has(TAtlasTrackerEndStep.Transition), 'Schließen ist ein Schritt');
   mPlan := DuplicatePlan('#418');
   Assert.AreEqual('#418', mPlan.TransitionPart.DuplicateOf);
@@ -516,7 +521,7 @@ begin
   TAtlasTrackerEndSteps.Run(mCall, mPlan, mProgress);
   Assert.AreEqual('transition review', string.Join('|', mWriter.Calls));
   Assert.IsTrue(mProgress.Finished(mPlan));
-  Assert.IsTrue(mProgress.Pull.Outcome = TAtlasTrackerPullOutcome.Created);
+  Assert.AreEqual<TAtlasTrackerPullOutcome>(TAtlasTrackerPullOutcome.Created, mProgress.Pull.Outcome);
 end;
 
 procedure TAtlasTrackerEndStepsTests.FailedPullStopsBeforeComment;
@@ -533,7 +538,7 @@ begin
   mProgress := TAtlasTrackerEndProgress.Empty;
   TAtlasTrackerEndSteps.Run(mCall, PullPlan, mProgress);
   Assert.IsTrue(mProgress.Failed);
-  Assert.IsTrue(mProgress.FailedStep = TAtlasTrackerEndStep.PullRequest);
+  Assert.AreEqual<TAtlasTrackerEndStep>(TAtlasTrackerEndStep.PullRequest, mProgress.FailedStep);
   Assert.AreEqual('time 85|field Behoben in Version=2.1.0|pull 7-statusfeld', string.Join('|', mWriter.Calls),
     'kein Kommentar, kein Übergang');
   // Ohne Runner scheitert der Schritt, statt still nichts anzulegen.
@@ -541,8 +546,8 @@ begin
   mCall.Pull := nil;
   mProgress := TAtlasTrackerEndProgress.Empty;
   TAtlasTrackerEndSteps.Run(mCall, PullPlan, mProgress);
-  Assert.IsTrue(mProgress.FailedStep = TAtlasTrackerEndStep.PullRequest);
-  Assert.IsTrue(mProgress.Pull.Error = TAtlasCiFetchError.UnknownProvider);
+  Assert.AreEqual<TAtlasTrackerEndStep>(TAtlasTrackerEndStep.PullRequest, mProgress.FailedStep);
+  Assert.AreEqual<TAtlasCiFetchError>(TAtlasCiFetchError.UnknownProvider, mProgress.Pull.Error);
 end;
 
 initialization

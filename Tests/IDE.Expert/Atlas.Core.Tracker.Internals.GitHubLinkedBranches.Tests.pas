@@ -186,7 +186,7 @@ begin
   mTransport.Answer('createLinkedBranch', cLinkOk);
   mTransport.Answer('repository(owner', FactsJson(cHead, '', 'null'));
   mLink := Link(mTransport, 'main');
-  Assert.IsTrue(mLink.Outcome = TAtlasTrackerBranchLinkOutcome.Created);
+  Assert.AreEqual<TAtlasTrackerBranchLinkOutcome>(TAtlasTrackerBranchLinkOutcome.Created, mLink.Outcome);
   Assert.AreEqual(cBranch, mLink.Branch);
   Assert.AreEqual('main', mLink.Base);
   Assert.AreEqual(2, Integer(Length(mTransport.Bodies)));
@@ -207,7 +207,7 @@ begin
   mTransport.Answer('createLinkedBranch', cLinkOk);
   mTransport.Answer('repository(owner', FactsJson('null', '', 'null'));
   mLink := Link(mTransport, 'main-merging');
-  Assert.IsTrue(mLink.Outcome = TAtlasTrackerBranchLinkOutcome.Created);
+  Assert.AreEqual<TAtlasTrackerBranchLinkOutcome>(TAtlasTrackerBranchLinkOutcome.Created, mLink.Outcome);
   Assert.AreEqual('develop', mLink.Base);
   Assert.AreEqual('def456', Variable(mTransport.Bodies[1], 'oid'));
 end;
@@ -222,7 +222,7 @@ begin
   mKeep := mTransport;
   mTransport.Answer('repository(owner', FactsJson(cHead, '{"ref":{"name":"7-anderer-name"}}', 'null'));
   mLink := Link(mTransport, 'main');
-  Assert.IsTrue(mLink.Outcome = TAtlasTrackerBranchLinkOutcome.Found);
+  Assert.AreEqual<TAtlasTrackerBranchLinkOutcome>(TAtlasTrackerBranchLinkOutcome.Found, mLink.Outcome);
   Assert.AreEqual('7-anderer-name', mLink.Branch);
   Assert.IsTrue(mLink.OnServer);
   Assert.AreEqual(1, Integer(Length(mTransport.Bodies)), 'nichts angelegt');
@@ -238,7 +238,7 @@ begin
   mKeep := mTransport;
   mTransport.Answer('repository(owner', FactsJson(cHead, '', '{"name":"' + cBranch + '"}'));
   mLink := Link(mTransport, 'main');
-  Assert.IsTrue(mLink.Outcome = TAtlasTrackerBranchLinkOutcome.Exists);
+  Assert.AreEqual<TAtlasTrackerBranchLinkOutcome>(TAtlasTrackerBranchLinkOutcome.Exists, mLink.Outcome);
   Assert.IsFalse(mLink.OnServer);
   Assert.AreEqual(1, Integer(Length(mTransport.Bodies)), 'nichts angelegt');
 end;
@@ -254,8 +254,8 @@ begin
   mTransport.Answer('createLinkedBranch', cForbidden);
   mTransport.Answer('repository(owner', FactsJson(cHead, '', 'null'));
   mLink := Link(mTransport, 'main');
-  Assert.IsTrue(mLink.Outcome = TAtlasTrackerBranchLinkOutcome.Denied);
-  Assert.IsTrue(mLink.Error = TAtlasCiFetchError.Unauthorized);
+  Assert.AreEqual<TAtlasTrackerBranchLinkOutcome>(TAtlasTrackerBranchLinkOutcome.Denied, mLink.Outcome);
+  Assert.AreEqual<TAtlasCiFetchError>(TAtlasCiFetchError.Unauthorized, mLink.Error);
   Assert.AreEqual('Resource not accessible by integration', mLink.Message);
 end;
 
@@ -273,7 +273,7 @@ begin
   Assert.IsTrue(TAtlasGitHubLinkedBranches.Linked(TAtlasTrackerCall.Create(GitHubTarget, mKeep, 5000), mTransport,
     '#7', mNames, mError));
   Assert.AreEqual('7-a|feature/7-b', string.Join('|', mNames));
-  Assert.IsTrue(Pos('existing', mTransport.Bodies[0]) = 0, 'nur die verknüpften Branches');
+  Assert.AreEqual(0, Pos('existing', mTransport.Bodies[0]), 'nur die verknüpften Branches');
 end;
 
 procedure TAtlasGitHubLinkedBranchesTests.SameRepositoryForHttpsSshAndScp;

@@ -279,7 +279,7 @@ begin
   // Eine ungespeicherte Zeile vorn verschiebt den Bereich im Puffer um eins.
   mBuffer := TArray<string>.Create('// neu', 'unit A;', 'procedure X;', 'begin', 'end;');
   mHistory := TAtlasBlameLinks.History(mVcs, mFile, mBuffer, 2, 4, 50);
-  Assert.IsTrue(mHistory.Outcome = TAtlasBlameHistoryOutcome.Ok);
+  Assert.AreEqual<TAtlasBlameHistoryOutcome>(TAtlasBlameHistoryOutcome.Ok, mHistory.Outcome);
   Assert.AreEqual(1, Integer(Length(mHistory.Commits)));
   Assert.AreEqual('ATL-7 X', mHistory.Commits[0].Message);
   Assert.AreEqual(2, Integer(Length(mRunner.Calls)));
@@ -289,15 +289,15 @@ begin
   // Nur die neue Zeile: keine Historie, kein Aufruf von log.
   mRunner.Calls := nil;
   mHistory := TAtlasBlameLinks.History(mVcs, mFile, mBuffer, 0, 0, 50);
-  Assert.IsTrue(mHistory.Outcome = TAtlasBlameHistoryOutcome.Ok);
+  Assert.AreEqual<TAtlasBlameHistoryOutcome>(TAtlasBlameHistoryOutcome.Ok, mHistory.Outcome);
   Assert.AreEqual(0, Integer(Length(mHistory.Commits)));
   Assert.AreEqual(1, Integer(Length(mRunner.Calls)));
   // Nicht übernommen: show scheitert.
   mRunner.Committed := False;
   mHistory := TAtlasBlameLinks.History(mVcs, mFile, mBuffer, 2, 4, 50);
-  Assert.IsTrue(mHistory.Outcome = TAtlasBlameHistoryOutcome.NotCommitted);
-  Assert.IsTrue(TAtlasBlameLinks.History(nil, mFile, mBuffer, 2, 4, 50).Outcome =
-    TAtlasBlameHistoryOutcome.Failed);
+  Assert.AreEqual<TAtlasBlameHistoryOutcome>(TAtlasBlameHistoryOutcome.NotCommitted, mHistory.Outcome);
+  Assert.AreEqual<TAtlasBlameHistoryOutcome>(TAtlasBlameHistoryOutcome.Failed,
+    TAtlasBlameLinks.History(nil, mFile, mBuffer, 2, 4, 50).Outcome);
 end;
 
 procedure TAtlasBlameLinksTests.BlameRevisionsAreDistinctAndCommitted;
@@ -412,8 +412,8 @@ begin
   mVcs := TAtlasSvnVersionControl.Create(mRoot, mRunnerRef, 'svn.exe', 5000);
   Assert.IsTrue(Supports(mVcs, IAtlasVcsLineHistory, mHistory));
   mWatch := TStopwatch.StartNew;
-  Assert.IsTrue(mHistory.LineHistory(mRoot + PathDelim + 'Kunde.pas', 1000, 1040, cRevisions, mCommits) =
-    TAtlasVcsOutcome.Ok);
+  Assert.AreEqual<TAtlasVcsOutcome>(TAtlasVcsOutcome.Ok,
+    mHistory.LineHistory(mRoot + PathDelim + 'Kunde.pas', 1000, 1040, cRevisions, mCommits));
   mList := TAtlasBlameLinks.Group(YouTrack, mCommits);
   mWatch.Stop;
   Assert.AreEqual(cRevisions div 5, Integer(Length(mCommits)), 'jede fünfte Revision trifft die Methode');

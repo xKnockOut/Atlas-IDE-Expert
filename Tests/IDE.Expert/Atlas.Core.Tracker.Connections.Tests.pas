@@ -268,7 +268,7 @@ begin
   mStatus := TAtlasTrackerConnections.Check(mProvider, mTarget, mKeep, mNow);
   Assert.AreEqual(Ord(TAtlasTrackerTokenState.Verified), Ord(mStatus.State));
   Assert.AreEqual(200, mStatus.HttpStatus);
-  Assert.IsTrue(mStatus.CheckedAt = mNow, 'Zeit der Prüfung');
+  Assert.AreEqual<TDateTime>(mNow, mStatus.CheckedAt, 'Zeit der Prüfung');
   Assert.AreEqual('https://yt.local/api/users/me?fields=login', mTransport.Calls[0]);
   Assert.AreEqual(TAtlasTrackerConnections.cCheckTimeoutMs, mTransport.Timeouts[0]);
   // Danach in der restlichen Zeit die Sprache der Oberfläche (#1263): localeSettings, ohne Antwort darauf die Probe

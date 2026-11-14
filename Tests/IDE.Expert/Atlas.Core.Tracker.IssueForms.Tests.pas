@@ -129,7 +129,7 @@ begin
   Assert.IsFalse(FForm.IsMarkdown);
   Assert.IsFalse(FForm.Unsupported);
   Assert.AreEqual(6, Integer(Length(FForm.Fields)));
-  Assert.IsTrue(FForm.Fields[0].Kind = TAtlasIssueFormKind.Markdown);
+  Assert.AreEqual<TAtlasIssueFormKind>(TAtlasIssueFormKind.Markdown, FForm.Fields[0].Kind);
   Assert.IsFalse(FForm.Fields[0].Editable);
   Assert.AreEqual('Bitte den Fehlerbericht anhängen.', FForm.Fields[0].Value);
   Assert.AreEqual('version', FForm.Fields[1].Id);

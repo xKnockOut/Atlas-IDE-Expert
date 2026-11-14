@@ -69,10 +69,11 @@ begin
   try
     Assert.AreEqual('ATL-2071 beginnen', mDialog.Caption);
     Assert.IsTrue(mDialog.AddButton.Default, 'Eingabe nimmt auf');
-    Assert.IsTrue(TAtlasTrackerSprintDialog.AnswerOf(mDialog.AddButton.ModalResult) = TAtlasSprintAnswer.Add);
-    Assert.IsTrue(TAtlasTrackerSprintDialog.AnswerOf(mDialog.WithoutButton.ModalResult) =
-      TAtlasSprintAnswer.Without);
-    Assert.IsTrue(TAtlasTrackerSprintDialog.AnswerOf(mrCancel) = TAtlasSprintAnswer.Cancel);
+    Assert.AreEqual<TAtlasSprintAnswer>(TAtlasSprintAnswer.Add,
+      TAtlasTrackerSprintDialog.AnswerOf(mDialog.AddButton.ModalResult));
+    Assert.AreEqual<TAtlasSprintAnswer>(TAtlasSprintAnswer.Without,
+      TAtlasTrackerSprintDialog.AnswerOf(mDialog.WithoutButton.ModalResult));
+    Assert.AreEqual<TAtlasSprintAnswer>(TAtlasSprintAnswer.Cancel, TAtlasTrackerSprintDialog.AnswerOf(mrCancel));
     Assert.IsFalse(mDialog.DontAskCheck.Checked);
   finally
     mDialog.Free;

@@ -68,7 +68,7 @@ var
 begin
   mShort := TAtlasIssueStatus.Short('Wartet auf Rückmeldung des Kunden');
   Assert.AreEqual('Wartet auf Rückmeldung…', mShort, 'ohne Leerzeichen vor „…“');
-  Assert.IsTrue(Length(TAtlasIssueStatus.Short(StringOfChar('x', 40))) = TAtlasIssueStatus.cMaxState);
+  Assert.AreEqual(TAtlasIssueStatus.cMaxState, Integer(Length(TAtlasIssueStatus.Short(StringOfChar('x', 40)))));
   Assert.AreEqual('Offen', TAtlasIssueStatus.Short(' Offen '));
 end;
 
@@ -134,7 +134,7 @@ begin
   Assert.AreEqual('82-11', mChange.FieldId);
   Assert.AreEqual('', mChange.State);
   Assert.AreEqual('Bitte prüfen', mChange.Comment);
-  Assert.IsTrue(mChange.Assign = TAtlasTrackerAssign.Keep);
+  Assert.AreEqual<TAtlasTrackerAssign>(TAtlasTrackerAssign.Keep, mChange.Assign);
   Assert.AreEqual('Zur Prüfung', TAtlasIssueStatus.After(mEntries[0], States));
   Assert.AreEqual('', TAtlasIssueStatus.After(mEntries[1], States), 'Ziel von „Pausieren“ unbekannt');
 
