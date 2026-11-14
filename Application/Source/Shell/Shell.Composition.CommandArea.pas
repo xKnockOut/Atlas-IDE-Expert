@@ -71,7 +71,8 @@ type
     procedure RegisterLeakSetup;
     /// <summary>Befehl atlas.server.ownership: Wer gibt das frei? (#1877)</summary>
     procedure RegisterOwnership;
-    /// <summary>Befehle atlas.server.testCases (#1879) und atlas.server.boundaryCases (#2173).</summary>
+    /// <summary>Befehle atlas.server.testCases (#1879) und atlas.server.boundaryCases (#2173)
+    /// und atlas.server.mutants (#1460).</summary>
     procedure RegisterTestCases;
     /// <summary>Befehle der Schnellbefehle: Einordnen, Erzeugen-Menü, Testunit, Unit-Suche.</summary>
     procedure RegisterSlashCommands;
@@ -103,6 +104,7 @@ uses
   Atlas.Common.Lsp.ServerActivity,
   Atlas.Common.Lsp.TestCases,
   Atlas.Common.Lsp.BoundaryCases,
+  Atlas.Common.Lsp.Mutants,
   Atlas.Common.Lsp.SyntaxDiagnostics,
   Atlas.Common.Lsp.Ownership,
   Shell.Composition.DfmPropertyRules,
@@ -363,6 +365,7 @@ begin
     end;
   TLspTestCases.Attach(FCommands, mReadText);
   TLspBoundaryCases.Attach(FCommands, mReadText);
+  TLspMutants.Attach(FCommands, mReadText);
 end;
 
 procedure TShellCommandArea.RegisterSlashCommands;

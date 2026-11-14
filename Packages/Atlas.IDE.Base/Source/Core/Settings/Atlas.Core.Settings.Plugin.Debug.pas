@@ -17,6 +17,10 @@ const
   cMinMemoryTimelineIntervalMs = 250;
   cMaxMemoryTimelineIntervalMs = 10000;
   cDefaultMemoryTimelineIntervalMs = 1000;
+  /// <summary>Abstand der Proben des Profilers (#2057) in Millisekunden.</summary>
+  cMinProfilerIntervalMs = 1;
+  cMaxProfilerIntervalMs = 100;
+  cDefaultProfilerIntervalMs = 10;
   /// <summary>Grenzen für debug.whyHere.depth (#1878).</summary>
   cMinWhyHereDepth = 1;
   cMaxWhyHereDepth = 10;
@@ -267,6 +271,12 @@ type
     DebugMemoryTimeline: Boolean;
     /// <summary>Abstand der Messungen in Millisekunden (#858, debug.memoryTimeline.intervalMs).</summary>
     DebugMemoryTimelineIntervalMs: Integer;
+    /// <summary>Stichproben-Profiler (#2057, debug.profiler, experimentell): Befehle „Mit Profil ausführen“ und
+    /// „Profil starten/beenden“, Fenster „Atlas: Profil“. Gemessen wird im Server. Aus = keine Befehle, kein
+    /// Fenster.</summary>
+    DebugProfiler: Boolean;
+    /// <summary>Abstand der Proben in Millisekunden (#2057, debug.profiler.intervalMs).</summary>
+    DebugProfilerIntervalMs: Integer;
     /// <summary>Objekte je Klasse zählen und vergleichen (#858, debug.memoryTimeline.objectCount, experimentell):
     /// Bereich „Objekte zählen“ im Fenster „Atlas: Speicher“. Aus = kein Bereich, nichts wird gelesen.</summary>
     DebugMemoryTimelineObjectCount: Boolean;
@@ -458,6 +468,7 @@ begin
   DebugInlineValuesPerLine := EnsureRange(DebugInlineValuesPerLine, cMinInlineValuesPerLine, cMaxInlineValuesPerLine);
   DebugMemoryTimelineIntervalMs := EnsureRange(DebugMemoryTimelineIntervalMs, cMinMemoryTimelineIntervalMs,
     cMaxMemoryTimelineIntervalMs);
+  DebugProfilerIntervalMs := EnsureRange(DebugProfilerIntervalMs, cMinProfilerIntervalMs, cMaxProfilerIntervalMs);
   DebugWhyHereDepth := EnsureRange(DebugWhyHereDepth, cMinWhyHereDepth, cMaxWhyHereDepth);
   DebugVariablesSearchDepth := EnsureRange(DebugVariablesSearchDepth, cMinVariablesSearchDepth,
     cMaxVariablesSearchDepth);
@@ -562,6 +573,8 @@ begin
   DebugPinnedValues := True;
   DebugMemoryTimeline := True;
   DebugMemoryTimelineIntervalMs := cDefaultMemoryTimelineIntervalMs;
+  DebugProfiler := False;
+  DebugProfilerIntervalMs := cDefaultProfilerIntervalMs;
   DebugMemoryTimelineObjectCount := False;
   DebugCallStackWindow := True;
   DebugCallStackWindowEvaluateParams := True;
@@ -600,6 +613,8 @@ begin
   AIo.Flag('DebugPinnedValues', DebugPinnedValues);
   AIo.Flag('DebugMemoryTimeline', DebugMemoryTimeline);
   AIo.Number('DebugMemoryTimelineIntervalMs', DebugMemoryTimelineIntervalMs);
+  AIo.Flag('DebugProfiler', DebugProfiler);
+  AIo.Number('DebugProfilerIntervalMs', DebugProfilerIntervalMs);
   AIo.Flag('DebugMemoryTimelineObjectCount', DebugMemoryTimelineObjectCount);
   AIo.Flag('DebugCallStackWindow', DebugCallStackWindow);
   AIo.Flag('DebugCallStackWindowEvaluateParams', DebugCallStackWindowEvaluateParams);
