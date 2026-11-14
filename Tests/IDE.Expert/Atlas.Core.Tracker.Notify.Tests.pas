@@ -129,10 +129,11 @@ var
 begin
   for mScope := Low(TAtlasTrackerNotifyScope) to High(TAtlasTrackerNotifyScope) do
   begin
-    Assert.IsTrue(TAtlasTrackerNotify.ScopeOf(TAtlasTrackerNotify.ScopeName(mScope)) = mScope);
+    Assert.AreEqual<TAtlasTrackerNotifyScope>(mScope, TAtlasTrackerNotify.ScopeOf(TAtlasTrackerNotify.ScopeName(mScope)));
   end;
-  Assert.IsTrue(TAtlasTrackerNotify.ScopeOf(' WATCHED ') = TAtlasTrackerNotifyScope.Watched);
-  Assert.IsTrue(TAtlasTrackerNotify.ScopeOf('alles') = TAtlasTrackerNotifyScope.AssignedOrCreated, 'Vorgabe');
+  Assert.AreEqual<TAtlasTrackerNotifyScope>(TAtlasTrackerNotifyScope.Watched, TAtlasTrackerNotify.ScopeOf(' WATCHED '));
+  Assert.AreEqual<TAtlasTrackerNotifyScope>(TAtlasTrackerNotifyScope.AssignedOrCreated,
+    TAtlasTrackerNotify.ScopeOf('alles'), 'Vorgabe');
   // Die Einstellungen kennen den Kern der Meldungen nicht: dieselben Werte wie dort.
   Assert.AreEqual(TAtlasTrackerNotify.cScopeAssigned, TAtlasPluginSettings.cIssuesNotifyAssigned);
   Assert.AreEqual(TAtlasTrackerNotify.cScopeAssignedOrCreated, TAtlasPluginSettings.cIssuesNotifyAssignedOrCreated);

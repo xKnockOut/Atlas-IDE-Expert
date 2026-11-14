@@ -68,59 +68,75 @@ end;
 
 procedure TAtlasTrackerLinksTests.YouTrackKindEnglish;
 begin
-  Assert.IsTrue(Kind('Depend', 'is required for', 'depends on', 'INWARD') = TAtlasTrackerLinkKind.DependsOn);
-  Assert.IsTrue(Kind('Depend', 'is required for', 'depends on', 'OUTWARD') = TAtlasTrackerLinkKind.Blocks);
-  Assert.IsTrue(Kind('depend', 'is required for', 'depends on', 'inward') = TAtlasTrackerLinkKind.DependsOn,
+  Assert.AreEqual<TAtlasTrackerLinkKind>(TAtlasTrackerLinkKind.DependsOn,
+    Kind('Depend', 'is required for', 'depends on', 'INWARD'));
+  Assert.AreEqual<TAtlasTrackerLinkKind>(TAtlasTrackerLinkKind.Blocks,
+    Kind('Depend', 'is required for', 'depends on', 'OUTWARD'));
+  Assert.AreEqual<TAtlasTrackerLinkKind>(TAtlasTrackerLinkKind.DependsOn,
+    Kind('depend', 'is required for', 'depends on', 'inward'),
     'Groß-/Kleinschreibung egal');
-  Assert.IsTrue(Kind('Depend', 'is required for', 'depends on', 'BOTH') = TAtlasTrackerLinkKind.Relates,
+  Assert.AreEqual<TAtlasTrackerLinkKind>(TAtlasTrackerLinkKind.Relates,
+    Kind('Depend', 'is required for', 'depends on', 'BOTH'),
     'ohne Richtung keine Abhängigkeit');
-  Assert.IsTrue(Kind('Subtask', 'parent for', 'subtask of', 'OUTWARD') = TAtlasTrackerLinkKind.Subtask);
-  Assert.IsTrue(Kind('Subtask', 'parent for', 'subtask of', 'INWARD') = TAtlasTrackerLinkKind.Parent);
-  Assert.IsTrue(Kind('Duplicate', 'is duplicated by', 'duplicates', 'INWARD') = TAtlasTrackerLinkKind.Duplicates);
-  Assert.IsTrue(Kind('Duplicate', 'is duplicated by', 'duplicates', 'OUTWARD') =
-    TAtlasTrackerLinkKind.DuplicatedBy);
-  Assert.IsTrue(Kind('Relates', 'relates to', 'relates to', 'BOTH') = TAtlasTrackerLinkKind.Relates);
+  Assert.AreEqual<TAtlasTrackerLinkKind>(TAtlasTrackerLinkKind.Subtask,
+    Kind('Subtask', 'parent for', 'subtask of', 'OUTWARD'));
+  Assert.AreEqual<TAtlasTrackerLinkKind>(TAtlasTrackerLinkKind.Parent,
+    Kind('Subtask', 'parent for', 'subtask of', 'INWARD'));
+  Assert.AreEqual<TAtlasTrackerLinkKind>(TAtlasTrackerLinkKind.Duplicates,
+    Kind('Duplicate', 'is duplicated by', 'duplicates', 'INWARD'));
+  Assert.AreEqual<TAtlasTrackerLinkKind>(TAtlasTrackerLinkKind.DuplicatedBy,
+    Kind('Duplicate', 'is duplicated by', 'duplicates', 'OUTWARD'));
+  Assert.AreEqual<TAtlasTrackerLinkKind>(TAtlasTrackerLinkKind.Relates,
+    Kind('Relates', 'relates to', 'relates to', 'BOTH'));
   // Unbekannter Name: an den Beschriftungen erkannt.
-  Assert.IsTrue(Kind('Requirement', 'is required for', 'depends on', 'INWARD') = TAtlasTrackerLinkKind.DependsOn);
-  Assert.IsTrue(Kind('Blocker', 'blocks', 'is blocked by', 'OUTWARD') = TAtlasTrackerLinkKind.Blocks);
+  Assert.AreEqual<TAtlasTrackerLinkKind>(TAtlasTrackerLinkKind.DependsOn,
+    Kind('Requirement', 'is required for', 'depends on', 'INWARD'));
+  Assert.AreEqual<TAtlasTrackerLinkKind>(TAtlasTrackerLinkKind.Blocks,
+    Kind('Blocker', 'blocks', 'is blocked by', 'OUTWARD'));
 end;
 
 procedure TAtlasTrackerLinksTests.YouTrackKindGerman;
 begin
-  Assert.IsTrue(Kind('Abhängigkeit', 'ist erforderlich für', 'hängt ab von', 'INWARD') =
-    TAtlasTrackerLinkKind.DependsOn);
-  Assert.IsTrue(Kind('Voraussetzung', 'ist erforderlich für', 'hängt ab von', 'OUTWARD') =
-    TAtlasTrackerLinkKind.Blocks, 'an den Beschriftungen');
-  Assert.IsTrue(Kind('Unteraufgabe', 'übergeordnet zu', 'Unteraufgabe von', 'OUTWARD') =
-    TAtlasTrackerLinkKind.Subtask);
-  Assert.IsTrue(Kind('Teil', 'übergeordnet zu', 'Unteraufgabe von', 'INWARD') = TAtlasTrackerLinkKind.Parent);
-  Assert.IsTrue(Kind('Duplikat', 'wird dupliziert durch', 'dupliziert', 'INWARD') =
-    TAtlasTrackerLinkKind.Duplicates);
-  Assert.IsTrue(Kind('Bezieht sich auf', '', '', 'BOTH') = TAtlasTrackerLinkKind.Relates);
-  Assert.IsTrue(Kind('Eigen', 'bezieht sich auf', 'bezieht sich auf', 'BOTH') = TAtlasTrackerLinkKind.Relates);
+  Assert.AreEqual<TAtlasTrackerLinkKind>(TAtlasTrackerLinkKind.DependsOn,
+    Kind('Abhängigkeit', 'ist erforderlich für', 'hängt ab von', 'INWARD'));
+  Assert.AreEqual<TAtlasTrackerLinkKind>(TAtlasTrackerLinkKind.Blocks,
+    Kind('Voraussetzung', 'ist erforderlich für', 'hängt ab von', 'OUTWARD'), 'an den Beschriftungen');
+  Assert.AreEqual<TAtlasTrackerLinkKind>(TAtlasTrackerLinkKind.Subtask,
+    Kind('Unteraufgabe', 'übergeordnet zu', 'Unteraufgabe von', 'OUTWARD'));
+  Assert.AreEqual<TAtlasTrackerLinkKind>(TAtlasTrackerLinkKind.Parent,
+    Kind('Teil', 'übergeordnet zu', 'Unteraufgabe von', 'INWARD'));
+  Assert.AreEqual<TAtlasTrackerLinkKind>(TAtlasTrackerLinkKind.Duplicates,
+    Kind('Duplikat', 'wird dupliziert durch', 'dupliziert', 'INWARD'));
+  Assert.AreEqual<TAtlasTrackerLinkKind>(TAtlasTrackerLinkKind.Relates, Kind('Bezieht sich auf', '', '', 'BOTH'));
+  Assert.AreEqual<TAtlasTrackerLinkKind>(TAtlasTrackerLinkKind.Relates,
+    Kind('Eigen', 'bezieht sich auf', 'bezieht sich auf', 'BOTH'));
 end;
 
 procedure TAtlasTrackerLinksTests.YouTrackKindReversedLabels;
 begin
-  Assert.IsTrue(Kind('Eigene Abhängigkeit', 'hängt ab von', 'ist erforderlich für', 'OUTWARD') =
-    TAtlasTrackerLinkKind.DependsOn);
-  Assert.IsTrue(Kind('Eigene Abhängigkeit', 'hängt ab von', 'ist erforderlich für', 'INWARD') =
-    TAtlasTrackerLinkKind.Blocks);
+  Assert.AreEqual<TAtlasTrackerLinkKind>(TAtlasTrackerLinkKind.DependsOn,
+    Kind('Eigene Abhängigkeit', 'hängt ab von', 'ist erforderlich für', 'OUTWARD'));
+  Assert.AreEqual<TAtlasTrackerLinkKind>(TAtlasTrackerLinkKind.Blocks,
+    Kind('Eigene Abhängigkeit', 'hängt ab von', 'ist erforderlich für', 'INWARD'));
   // Bekannter Name, aber vertauschte Beschriftungen (wie im Fixture der Vorschau).
-  Assert.IsTrue(Kind('Depend', 'depends on', 'is required for', 'OUTWARD') = TAtlasTrackerLinkKind.DependsOn);
-  Assert.IsTrue(Kind('Subtask', 'subtask of', 'parent for', 'OUTWARD') = TAtlasTrackerLinkKind.Parent);
-  Assert.IsTrue(Kind('Duplicate', 'duplicates', 'is duplicated by', 'OUTWARD') = TAtlasTrackerLinkKind.Duplicates);
+  Assert.AreEqual<TAtlasTrackerLinkKind>(TAtlasTrackerLinkKind.DependsOn,
+    Kind('Depend', 'depends on', 'is required for', 'OUTWARD'));
+  Assert.AreEqual<TAtlasTrackerLinkKind>(TAtlasTrackerLinkKind.Parent,
+    Kind('Subtask', 'subtask of', 'parent for', 'OUTWARD'));
+  Assert.AreEqual<TAtlasTrackerLinkKind>(TAtlasTrackerLinkKind.Duplicates,
+    Kind('Duplicate', 'duplicates', 'is duplicated by', 'OUTWARD'));
 end;
 
 procedure TAtlasTrackerLinksTests.YouTrackKindUnknown;
 begin
-  Assert.IsTrue(Kind('Kunde', 'meldet', 'gemeldet von', 'OUTWARD') = TAtlasTrackerLinkKind.Other);
-  Assert.IsTrue(Kind('', '', '', '') = TAtlasTrackerLinkKind.Other);
+  Assert.AreEqual<TAtlasTrackerLinkKind>(TAtlasTrackerLinkKind.Other,
+    Kind('Kunde', 'meldet', 'gemeldet von', 'OUTWARD'));
+  Assert.AreEqual<TAtlasTrackerLinkKind>(TAtlasTrackerLinkKind.Other, Kind('', '', '', ''));
   // Eltern-Kind-Typ mit eigenem Namen.
-  Assert.IsTrue(TAtlasTrackerLinks.YouTrackKind('Epic', 'enthält', 'gehört zu', 'OUTWARD', True) =
-    TAtlasTrackerLinkKind.Subtask);
-  Assert.IsTrue(TAtlasTrackerLinks.YouTrackKind('Epic', 'enthält', 'gehört zu', 'INWARD', True) =
-    TAtlasTrackerLinkKind.Parent);
+  Assert.AreEqual<TAtlasTrackerLinkKind>(TAtlasTrackerLinkKind.Subtask,
+    TAtlasTrackerLinks.YouTrackKind('Epic', 'enthält', 'gehört zu', 'OUTWARD', True));
+  Assert.AreEqual<TAtlasTrackerLinkKind>(TAtlasTrackerLinkKind.Parent,
+    TAtlasTrackerLinks.YouTrackKind('Epic', 'enthält', 'gehört zu', 'INWARD', True));
 end;
 
 procedure TAtlasTrackerLinksTests.KindKeyRoundTrip;
@@ -129,11 +145,12 @@ var
 begin
   for mKind := Low(TAtlasTrackerLinkKind) to High(TAtlasTrackerLinkKind) do
   begin
-    Assert.IsTrue(TAtlasTrackerLink.KindOf(TAtlasTrackerLink.KindKey(mKind)) = mKind, TAtlasTrackerLink.KindKey(mKind));
+    Assert.AreEqual<TAtlasTrackerLinkKind>(mKind, TAtlasTrackerLink.KindOf(TAtlasTrackerLink.KindKey(mKind)),
+      TAtlasTrackerLink.KindKey(mKind));
   end;
   Assert.AreEqual('dependsOn', TAtlasTrackerLink.KindKey(TAtlasTrackerLinkKind.DependsOn));
   Assert.AreEqual('', TAtlasTrackerLink.KindKey(TAtlasTrackerLinkKind.Other));
-  Assert.IsTrue(TAtlasTrackerLink.KindOf('unbekannt') = TAtlasTrackerLinkKind.Other);
+  Assert.AreEqual<TAtlasTrackerLinkKind>(TAtlasTrackerLinkKind.Other, TAtlasTrackerLink.KindOf('unbekannt'));
 end;
 
 procedure TAtlasTrackerLinksTests.GroupsInOrder;
@@ -148,11 +165,11 @@ begin
     Link('#5', TAtlasTrackerLinkKind.Duplicates, True, False),
     Link('#2', TAtlasTrackerLinkKind.Blocks, True, False)));
   Assert.AreEqual(Integer(5), Integer(Length(mGroups)), 'leere Gruppen entfallen');
-  Assert.IsTrue(mGroups[0].Kind = TAtlasTrackerLinkKind.DependsOn);
-  Assert.IsTrue(mGroups[1].Kind = TAtlasTrackerLinkKind.Blocks);
-  Assert.IsTrue(mGroups[2].Kind = TAtlasTrackerLinkKind.Subtask);
-  Assert.IsTrue(mGroups[3].Kind = TAtlasTrackerLinkKind.Duplicates);
-  Assert.IsTrue(mGroups[4].Kind = TAtlasTrackerLinkKind.Mentioned);
+  Assert.AreEqual<TAtlasTrackerLinkKind>(TAtlasTrackerLinkKind.DependsOn, mGroups[0].Kind);
+  Assert.AreEqual<TAtlasTrackerLinkKind>(TAtlasTrackerLinkKind.Blocks, mGroups[1].Kind);
+  Assert.AreEqual<TAtlasTrackerLinkKind>(TAtlasTrackerLinkKind.Subtask, mGroups[2].Kind);
+  Assert.AreEqual<TAtlasTrackerLinkKind>(TAtlasTrackerLinkKind.Duplicates, mGroups[3].Kind);
+  Assert.AreEqual<TAtlasTrackerLinkKind>(TAtlasTrackerLinkKind.Mentioned, mGroups[4].Kind);
   Assert.AreEqual('#3', mGroups[2].Links[0].Key, 'Reihenfolge des Trackers');
   Assert.AreEqual('#4', mGroups[2].Links[1].Key);
   Assert.AreEqual(1, mGroups[2].Done);
@@ -216,14 +233,14 @@ end;
 
 procedure TAtlasTrackerLinksTests.MarkOfRows;
 begin
-  Assert.IsTrue(TAtlasTrackerLinks.Mark(Link('#1', TAtlasTrackerLinkKind.DependsOn, True, False)) =
-    TAtlasTrackerLinkMark.Blocking);
-  Assert.IsTrue(TAtlasTrackerLinks.Mark(Link('#1', TAtlasTrackerLinkKind.Subtask, True, False)) =
-    TAtlasTrackerLinkMark.Open);
-  Assert.IsTrue(TAtlasTrackerLinks.Mark(Link('#1', TAtlasTrackerLinkKind.DependsOn, True, True)) =
-    TAtlasTrackerLinkMark.Done);
-  Assert.IsTrue(TAtlasTrackerLinks.Mark(Link('#1', TAtlasTrackerLinkKind.DependsOn, False, False)) =
-    TAtlasTrackerLinkMark.Unknown);
+  Assert.AreEqual<TAtlasTrackerLinkMark>(TAtlasTrackerLinkMark.Blocking,
+    TAtlasTrackerLinks.Mark(Link('#1', TAtlasTrackerLinkKind.DependsOn, True, False)));
+  Assert.AreEqual<TAtlasTrackerLinkMark>(TAtlasTrackerLinkMark.Open,
+    TAtlasTrackerLinks.Mark(Link('#1', TAtlasTrackerLinkKind.Subtask, True, False)));
+  Assert.AreEqual<TAtlasTrackerLinkMark>(TAtlasTrackerLinkMark.Done,
+    TAtlasTrackerLinks.Mark(Link('#1', TAtlasTrackerLinkKind.DependsOn, True, True)));
+  Assert.AreEqual<TAtlasTrackerLinkMark>(TAtlasTrackerLinkMark.Unknown,
+    TAtlasTrackerLinks.Mark(Link('#1', TAtlasTrackerLinkKind.DependsOn, False, False)));
 end;
 
 procedure TAtlasTrackerLinksTests.TextDependenciesInline;

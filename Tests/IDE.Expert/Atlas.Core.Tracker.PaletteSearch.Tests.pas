@@ -182,19 +182,20 @@ procedure TAtlasIssuePaletteSearchTests.ParseGitHub;
 var
   mQuery: TAtlasIssueSearchQuery;
 begin
-  Assert.IsTrue(KindOf(GitHubTarget, '#') = TAtlasIssueSearchKind.Recent);
-  Assert.IsTrue(KindOf(GitHubTarget, '  #  ') = TAtlasIssueSearchKind.Recent, 'Leerzeichen zählen nicht');
+  Assert.AreEqual<TAtlasIssueSearchKind>(TAtlasIssueSearchKind.Recent, KindOf(GitHubTarget, '#'));
+  Assert.AreEqual<TAtlasIssueSearchKind>(TAtlasIssueSearchKind.Recent,
+    KindOf(GitHubTarget, '  #  '), 'Leerzeichen zählen nicht');
   mQuery := TAtlasIssuePaletteSearch.Parse(GitHubTarget, '#42');
-  Assert.IsTrue(mQuery.Kind = TAtlasIssueSearchKind.Key);
+  Assert.AreEqual<TAtlasIssueSearchKind>(TAtlasIssueSearchKind.Key, mQuery.Kind);
   Assert.AreEqual('#42', mQuery.Key);
   Assert.AreEqual('#42', TAtlasIssuePaletteSearch.Parse(GitHubTarget, '#042').Key, 'ohne führende Null');
   mQuery := TAtlasIssuePaletteSearch.Parse(GitHubTarget, '#Speicherleck beim Schließen ');
-  Assert.IsTrue(mQuery.Kind = TAtlasIssueSearchKind.Text);
+  Assert.AreEqual<TAtlasIssueSearchKind>(TAtlasIssueSearchKind.Text, mQuery.Kind);
   Assert.AreEqual('Speicherleck beim Schließen', mQuery.Text);
   Assert.AreEqual('0', TAtlasIssuePaletteSearch.Parse(GitHubTarget, '#0').Text, 'keine Nummer: Text');
   // "owner/repo" ist kein Kürzel: "atlas-…" bleibt bei den Befehlen.
-  Assert.IsTrue(KindOf(GitHubTarget, 'ATL-12') = TAtlasIssueSearchKind.None);
-  Assert.IsTrue(KindOf(GitHubTarget, 'beispiel/atlas-1') = TAtlasIssueSearchKind.None);
+  Assert.AreEqual<TAtlasIssueSearchKind>(TAtlasIssueSearchKind.None, KindOf(GitHubTarget, 'ATL-12'));
+  Assert.AreEqual<TAtlasIssueSearchKind>(TAtlasIssueSearchKind.None, KindOf(GitHubTarget, 'beispiel/atlas-1'));
 end;
 
 procedure TAtlasIssuePaletteSearchTests.ParseYouTrack;
@@ -202,32 +203,37 @@ var
   mQuery: TAtlasIssueSearchQuery;
 begin
   mQuery := TAtlasIssuePaletteSearch.Parse(YouTrackTarget, 'ATL-12');
-  Assert.IsTrue(mQuery.Kind = TAtlasIssueSearchKind.Key);
+  Assert.AreEqual<TAtlasIssueSearchKind>(TAtlasIssueSearchKind.Key, mQuery.Kind);
   Assert.AreEqual('ATL-12', mQuery.Key);
   Assert.AreEqual('ATL-12', TAtlasIssuePaletteSearch.Parse(YouTrackTarget, 'atl-12').Key, 'Kürzel groß');
   Assert.AreEqual('ATL-42', TAtlasIssuePaletteSearch.Parse(YouTrackTarget, '#42').Key, 'Nummer im Projekt');
   Assert.AreEqual('ATL-7', TAtlasIssuePaletteSearch.Parse(YouTrackTarget, '#atl-7').Key);
   mQuery := TAtlasIssuePaletteSearch.Parse(YouTrackTarget, 'ATL-Speicher');
-  Assert.IsTrue(mQuery.Kind = TAtlasIssueSearchKind.Text);
+  Assert.AreEqual<TAtlasIssueSearchKind>(TAtlasIssueSearchKind.Text, mQuery.Kind);
   Assert.AreEqual('Speicher', mQuery.Text);
   Assert.AreEqual('Speicherleck', TAtlasIssuePaletteSearch.Parse(YouTrackTarget, '#Speicherleck').Text);
-  Assert.IsTrue(KindOf(YouTrackTarget, 'ATL-') = TAtlasIssueSearchKind.Recent);
-  Assert.IsTrue(KindOf(YouTrackTarget, '#') = TAtlasIssueSearchKind.Recent);
+  Assert.AreEqual<TAtlasIssueSearchKind>(TAtlasIssueSearchKind.Recent, KindOf(YouTrackTarget, 'ATL-'));
+  Assert.AreEqual<TAtlasIssueSearchKind>(TAtlasIssueSearchKind.Recent, KindOf(YouTrackTarget, '#'));
   // Ohne Projekt keine Kennung aus "#42", nur Text; Kürzel mit Leerzeichen nie als Auslöser.
-  Assert.IsTrue(KindOf(TAtlasTrackerTarget.Create('youtrack', 'https://yt.firma.de', '', ''), '#42') =
-    TAtlasIssueSearchKind.Text);
-  Assert.IsTrue(KindOf(TAtlasTrackerTarget.Create('youtrack', 'https://yt.firma.de', 'Atlas IDE', ''),
-    'Atlas IDE-3') = TAtlasIssueSearchKind.None);
+  Assert.AreEqual<TAtlasIssueSearchKind>(TAtlasIssueSearchKind.Text,
+    KindOf(TAtlasTrackerTarget.Create('youtrack', 'https://yt.firma.de', '', ''), '#42'));
+  Assert.AreEqual<TAtlasIssueSearchKind>(TAtlasIssueSearchKind.None,
+    KindOf(TAtlasTrackerTarget.Create('youtrack', 'https://yt.firma.de', 'Atlas IDE', ''),
+    'Atlas IDE-3'));
 end;
 
 procedure TAtlasIssuePaletteSearchTests.ParseKeepsCommands;
 begin
-  Assert.IsTrue(KindOf(YouTrackTarget, '') = TAtlasIssueSearchKind.None);
-  Assert.IsTrue(KindOf(YouTrackTarget, 'Projekt erzeugen') = TAtlasIssueSearchKind.None);
-  Assert.IsTrue(KindOf(YouTrackTarget, 'ATLAS') = TAtlasIssueSearchKind.None, 'Kürzel ohne "-"');
-  Assert.IsTrue(KindOf(YouTrackTarget, 'Atlas-Optionen') = TAtlasIssueSearchKind.None, 'nur Anfang gleich');
-  Assert.IsTrue(KindOf(YouTrackTarget, 'x #12') = TAtlasIssueSearchKind.None, '"#" nur am Anfang');
-  Assert.IsTrue(KindOf(TAtlasTrackerTarget.Create('', '', '', ''), '#42') = TAtlasIssueSearchKind.None,
+  Assert.AreEqual<TAtlasIssueSearchKind>(TAtlasIssueSearchKind.None, KindOf(YouTrackTarget, ''));
+  Assert.AreEqual<TAtlasIssueSearchKind>(TAtlasIssueSearchKind.None, KindOf(YouTrackTarget, 'Projekt erzeugen'));
+  Assert.AreEqual<TAtlasIssueSearchKind>(TAtlasIssueSearchKind.None,
+    KindOf(YouTrackTarget, 'ATLAS'), 'Kürzel ohne "-"');
+  Assert.AreEqual<TAtlasIssueSearchKind>(TAtlasIssueSearchKind.None,
+    KindOf(YouTrackTarget, 'Atlas-Optionen'), 'nur Anfang gleich');
+  Assert.AreEqual<TAtlasIssueSearchKind>(TAtlasIssueSearchKind.None,
+    KindOf(YouTrackTarget, 'x #12'), '"#" nur am Anfang');
+  Assert.AreEqual<TAtlasIssueSearchKind>(TAtlasIssueSearchKind.None,
+    KindOf(TAtlasTrackerTarget.Create('', '', '', ''), '#42'),
     'ohne Tracker');
 end;
 
@@ -382,7 +388,7 @@ begin
     Fixture('GitHub', 'issue-details.json'));
   Assert.IsTrue(mProvider.Search(TAtlasTrackerCall.Create(GitHubTarget, mTransportRef, 5000), 'Willkommensseite', 20,
     mIssues, mError));
-  Assert.IsTrue(mError = TAtlasCiFetchError.None);
+  Assert.AreEqual<TAtlasCiFetchError>(TAtlasCiFetchError.None, mError);
   Assert.AreEqual(1, Integer(Length(mTransport.Calls)));
   Assert.AreEqual(TAtlasGitHubApi.TextSearchUrl(GitHubTarget, 'Willkommensseite', 20), mTransport.Calls[0]);
   Assert.AreEqual(3, Integer(Length(mIssues)), 'ohne Pull Requests');
@@ -447,27 +453,27 @@ begin
   // Ohne Projekt bzw. ohne Transport: keine Anfrage.
   Assert.IsFalse(mGitHub.Search(TAtlasTrackerCall.Create(TAtlasTrackerTarget.Create('github', '', '', ''),
     mTransportRef, 5000), 'x', 20, mIssues, mError));
-  Assert.IsTrue(mError = TAtlasCiFetchError.NotConfigured);
+  Assert.AreEqual<TAtlasCiFetchError>(TAtlasCiFetchError.NotConfigured, mError);
   Assert.IsFalse(mYouTrack.Lookup(YouTrackTarget, nil, 'ATL-1', 5000, mIssue, mError));
-  Assert.IsTrue(mError = TAtlasCiFetchError.NotConfigured);
+  Assert.AreEqual<TAtlasCiFetchError>(TAtlasCiFetchError.NotConfigured, mError);
   Assert.IsFalse(mGitHub.Lookup(GitHubTarget, mTransportRef, 'ATL-1', 5000, mIssue, mError), 'keine GitHub-Kennung');
-  Assert.IsTrue(mError = TAtlasCiFetchError.NotConfigured);
+  Assert.AreEqual<TAtlasCiFetchError>(TAtlasCiFetchError.NotConfigured, mError);
   Assert.AreEqual(0, Integer(Length(mTransport.Calls)));
   // Antworten des Servers.
   mTransport.Answer('https://api.github.com/search/', 401, '{"message":"Bad credentials"}');
   mTransport.Answer('https://beispiel.youtrack.cloud/api/issues/ATL-9?', 200, 'kein JSON');
   Assert.IsFalse(mGitHub.Search(TAtlasTrackerCall.Create(GitHubTarget, mTransportRef, 5000), 'x', 20, mIssues, mError));
-  Assert.IsTrue(mError = TAtlasCiFetchError.Unauthorized);
+  Assert.AreEqual<TAtlasCiFetchError>(TAtlasCiFetchError.Unauthorized, mError);
   Assert.IsFalse(mGitHub.Lookup(GitHubTarget, mTransportRef, '#99', 5000, mIssue, mError), 'unbekannte Adresse');
-  Assert.IsTrue(mError = TAtlasCiFetchError.NotFound);
+  Assert.AreEqual<TAtlasCiFetchError>(TAtlasCiFetchError.NotFound, mError);
   Assert.IsFalse(mYouTrack.Lookup(YouTrackTarget, mTransportRef, 'ATL-9', 5000, mIssue, mError));
-  Assert.IsTrue(mError = TAtlasCiFetchError.Invalid);
+  Assert.AreEqual<TAtlasCiFetchError>(TAtlasCiFetchError.Invalid, mError);
   Assert.AreEqual('', mIssue.Key);
   // Zeitgrenze des Transports kommt unverändert an.
   mTransport.FailWith(TAtlasCiFetchError.Timeout);
   Assert.IsFalse(mYouTrack.Search(TAtlasTrackerCall.Create(YouTrackTarget, mTransportRef, 5000), 'x', 20, mIssues,
     mError));
-  Assert.IsTrue(mError = TAtlasCiFetchError.Timeout);
+  Assert.AreEqual<TAtlasCiFetchError>(TAtlasCiFetchError.Timeout, mError);
   Assert.AreEqual(0, Integer(Length(mIssues)));
 end;
 
@@ -577,12 +583,12 @@ begin
     Assert.IsTrue(mCopy.Parse('{"version":1,"issues":[{"tracker":"a"},{"key":"B-1"},3,{"tracker":"a","key":"B-2"}]}'));
     Assert.AreEqual(1, mCopy.Count);
     // Datei: fehlt = leer, geschrieben = gleich.
-    Assert.IsTrue(mCopy.LoadFromFile(mFileName) = TAtlasDataLoad.Missing);
+    Assert.AreEqual<TAtlasDataLoad>(TAtlasDataLoad.Missing, mCopy.LoadFromFile(mFileName));
     Assert.IsTrue(mRecent.SaveToFile(mFileName));
-    Assert.IsTrue(mCopy.LoadFromFile(mFileName) = TAtlasDataLoad.Loaded);
+    Assert.AreEqual<TAtlasDataLoad>(TAtlasDataLoad.Loaded, mCopy.LoadFromFile(mFileName));
     Assert.AreEqual(2, Integer(Length(mCopy.Items(YouTrackTarget))));
     TFile.WriteAllText(mFileName, '[1]');
-    Assert.IsTrue(mCopy.LoadFromFile(mFileName) = TAtlasDataLoad.Renewed);
+    Assert.AreEqual<TAtlasDataLoad>(TAtlasDataLoad.Renewed, mCopy.LoadFromFile(mFileName));
     Assert.AreEqual(0, mCopy.Count);
   finally
     mCopy.Free;

@@ -325,7 +325,7 @@ begin
     Assert.IsTrue(mFrame.Parts.Fix.Visible);
     Assert.AreEqual(TAtlasIssueStrings.Text(TAtlasIssueTextId.IssuePreviewFixToken), mFrame.Parts.Fix.Caption);
     mFrame.Parts.Fix.Click;
-    Assert.IsTrue(mFix = TAtlasIssueFix.EnterToken);
+    Assert.AreEqual<TAtlasIssueFix>(TAtlasIssueFix.EnterToken, mFix);
     // Alter Stand mit Hinweis statt Fehler.
     mFrame.ShowDetails(Sample(0), cNow, 'Stand vom 28.10.2026 10:00', False);
     Assert.AreEqual('Stand vom 28.10.2026 10:00', mFrame.StatusText);

@@ -101,7 +101,7 @@ begin
   Assert.AreEqual(Integer(1), Integer(Length(mIssues)), 'nur nach dem Stand und mit gültiger Kennung');
   Assert.AreEqual('ATL-1', mIssues[0].Key);
   Assert.AreEqual('Absturz beim Speichern', mIssues[0].Title);
-  Assert.IsTrue(mIssues[0].Kind = TAtlasTrackerChangeKind.Other);
+  Assert.AreEqual<TAtlasTrackerChangeKind>(TAtlasTrackerChangeKind.Other, mIssues[0].Kind);
   Assert.AreEqual(EncodeDateTime(2026, 1, 1, 0, 4, 0, 0), mIssues[0].Time, 1 / MSecsPerDay);
   Assert.IsFalse(TAtlasYouTrackParse.ParseChangedIssues('{"error":"x"}', Since, mIssues));
 end;
@@ -113,15 +113,15 @@ begin
   Assert.IsTrue(TAtlasYouTrackParse.ParseActivities(Fixture('YouTrack', 'activities.json'), 'ATL-1', 'Titel',
     'marco', Since, mChanges));
   Assert.AreEqual(Integer(3), Integer(Length(mChanges)));
-  Assert.IsTrue(mChanges[0].Kind = TAtlasTrackerChangeKind.Comment);
+  Assert.AreEqual<TAtlasTrackerChangeKind>(TAtlasTrackerChangeKind.Comment, mChanges[0].Kind);
   Assert.AreEqual('anna', mChanges[0].Author);
   Assert.AreEqual('Anna Muster', mChanges[0].Who);
   Assert.AreEqual('ATL-1', mChanges[0].Key);
   Assert.AreEqual('Titel', mChanges[0].Title);
-  Assert.IsTrue(mChanges[1].Kind = TAtlasTrackerChangeKind.Assigned);
+  Assert.AreEqual<TAtlasTrackerChangeKind>(TAtlasTrackerChangeKind.Assigned, mChanges[1].Kind);
   Assert.AreEqual('Marco B.', mChanges[1].Value);
   Assert.IsTrue(mChanges[1].ToMe, 'an den angemeldeten Benutzer');
-  Assert.IsTrue(mChanges[2].Kind = TAtlasTrackerChangeKind.State);
+  Assert.AreEqual<TAtlasTrackerChangeKind>(TAtlasTrackerChangeKind.State, mChanges[2].Kind);
   Assert.AreEqual('Fertig', mChanges[2].Value);
   // #2127: Zustand davor und Text des Kommentars.
   Assert.AreEqual('Zur Prüfung', mChanges[2].Previous);
@@ -162,7 +162,7 @@ begin
   mPoll := TAtlasTrackerPoll.Create(Since, 'marco', TAtlasTrackerNotifyScope.Assigned);
   Assert.IsTrue(mProvider.Changes(YouTrackTarget, mTransportRef, 5000, mPoll, mChanges, mError));
   Assert.AreEqual(Integer(1), Integer(Length(mChanges)));
-  Assert.IsTrue(mChanges[0].Kind = TAtlasTrackerChangeKind.Other);
+  Assert.AreEqual<TAtlasTrackerChangeKind>(TAtlasTrackerChangeKind.Other, mChanges[0].Kind);
 end;
 
 procedure TAtlasTrackerChangesTests.GitHubNotificationsOnlyIssues;
@@ -203,17 +203,17 @@ begin
   Assert.AreEqual('#12', mChanges[0].Key);
   Assert.AreEqual('beispiel/atlas', mChanges[0].Project);
   Assert.AreEqual('anna', mChanges[0].Author);
-  Assert.IsTrue(mChanges[0].Kind = TAtlasTrackerChangeKind.Comment);
+  Assert.AreEqual<TAtlasTrackerChangeKind>(TAtlasTrackerChangeKind.Comment, mChanges[0].Kind);
   Assert.AreEqual('marco', mChanges[1].Author);
-  Assert.IsTrue(mChanges[0].Text <> '', '#2127: Text des Kommentars');
+  Assert.AreNotEqual('', mChanges[0].Text, '#2127: Text des Kommentars');
   Assert.IsTrue(TAtlasGitHubParse.ParseEventChanges(Fixture('GitHub', 'issue-events.json'),
     GitHubThread('beispiel/atlas', 12), 'Marco', Since, mChanges));
   Assert.AreEqual(Integer(2), Integer(Length(mChanges)), 'labeled und alte Ereignisse nicht');
-  Assert.IsTrue(mChanges[0].Kind = TAtlasTrackerChangeKind.Assigned);
+  Assert.AreEqual<TAtlasTrackerChangeKind>(TAtlasTrackerChangeKind.Assigned, mChanges[0].Kind);
   Assert.AreEqual('marco', mChanges[0].Value);
   Assert.IsTrue(mChanges[0].ToMe, 'Anmeldename ohne Groß-/Kleinschreibung');
   Assert.AreEqual('ben', mChanges[0].Author);
-  Assert.IsTrue(mChanges[1].Kind = TAtlasTrackerChangeKind.State);
+  Assert.AreEqual<TAtlasTrackerChangeKind>(TAtlasTrackerChangeKind.State, mChanges[1].Kind);
   Assert.AreEqual('closed', mChanges[1].Value);
   Assert.AreEqual('open', mChanges[1].Previous, '#2127: Zustand davor');
   Assert.IsFalse(TAtlasGitHubParse.ParseEventChanges('nichts', GitHubThread('beispiel/atlas', 12), '', Since,
@@ -241,7 +241,7 @@ begin
   Assert.IsTrue(mProvider.Changes(GitHubTarget, mTransportRef, 5000, mPoll, mChanges, mError));
   // #12: zwei Kommentare, Zuweisung, geschlossen; #7 (beobachtet, ohne Einzelheiten): allgemeine Änderung.
   Assert.AreEqual(Integer(5), Integer(Length(mChanges)));
-  Assert.IsTrue(mChanges[4].Kind = TAtlasTrackerChangeKind.Other);
+  Assert.AreEqual<TAtlasTrackerChangeKind>(TAtlasTrackerChangeKind.Other, mChanges[4].Kind);
   Assert.AreEqual('#7', mChanges[4].Key);
   Assert.AreEqual('beispiel/andere', mChanges[4].Project);
   Assert.AreEqual(EncodeDateTime(2026, 1, 1, 0, 2, 0, 0), mPoll.Latest, 1 / MSecsPerDay);
@@ -264,22 +264,22 @@ begin
   mProvider := TAtlasGitHubTracker.Create;
   mPoll := TAtlasTrackerPoll.Create(Since, '', TAtlasTrackerNotifyScope.Watched);
   Assert.IsFalse(mProvider.Changes(GitHubTarget, nil, 5000, mPoll, mChanges, mError));
-  Assert.IsTrue(mError = TAtlasCiFetchError.NotConfigured, 'ohne Token');
+  Assert.AreEqual<TAtlasCiFetchError>(TAtlasCiFetchError.NotConfigured, mError, 'ohne Token');
   mTransport := TFakeTransport.Create;
   mTransportRef := mTransport;
   mTransport.Answer('https://api.github.com/notifications', 401, '{}');
   Assert.IsFalse(mProvider.Changes(GitHubTarget, mTransportRef, 5000, mPoll, mChanges, mError));
-  Assert.IsTrue(mError = TAtlasCiFetchError.Unauthorized);
+  Assert.AreEqual<TAtlasCiFetchError>(TAtlasCiFetchError.Unauthorized, mError);
   mTransport.FailWith(TAtlasCiFetchError.Timeout);
   Assert.IsFalse(mProvider.Changes(GitHubTarget, mTransportRef, 5000, mPoll, mChanges, mError));
-  Assert.IsTrue(mError = TAtlasCiFetchError.Timeout);
+  Assert.AreEqual<TAtlasCiFetchError>(TAtlasCiFetchError.Timeout, mError);
   mProvider := TAtlasYouTrackTracker.Create;
   mTransport := TFakeTransport.Create;
   mTransportRef := mTransport;
   mTransport.Answer('https://beispiel.youtrack.cloud/api/issues?', 200, '<html>Anmeldung</html>');
   Assert.IsFalse(mProvider.Changes(YouTrackTarget, mTransportRef, 5000, mPoll, mChanges, mError));
-  Assert.IsTrue(mError = TAtlasCiFetchError.Invalid, 'Anmeldeseite statt JSON');
-  Assert.IsTrue(mPoll.Since = Since, 'Stand unverändert');
+  Assert.AreEqual<TAtlasCiFetchError>(TAtlasCiFetchError.Invalid, mError, 'Anmeldeseite statt JSON');
+  Assert.AreEqual<TDateTime>(Since, mPoll.Since, 'Stand unverändert');
 end;
 
 initialization

@@ -125,7 +125,7 @@ begin
     mBox.SetValues(TArray<string>.Create('Offen', 'In Arbeit'));
     Assert.AreEqual('In Arbeit', mBox.Value, 'ohne Fenster, ohne Leerraum außen');
     Assert.AreEqual(2, Integer(Length(mBox.Values)));
-    Assert.IsTrue(mBox.Style = csDropDown, 'Eingabe von Hand');
+    Assert.AreEqual<TComboBoxStyle>(csDropDown, mBox.Style, 'Eingabe von Hand');
   finally
     mBox.Free;
   end;
@@ -517,7 +517,7 @@ var
 begin
   mDialog := NewDialog('ATL-1', Options('Erledigt'), '');
   try
-    Assert.IsTrue(mDialog.BorderStyle = bsSizeable);
+    Assert.AreEqual<TFormBorderStyle>(bsSizeable, mDialog.BorderStyle);
     Assert.AreEqual(mDialog.Height, Integer(mDialog.Constraints.MinHeight), 'kleiner als gebaut geht nicht');
     mStateWidth := mDialog.Parts.State.Width;
     mEditorHeight := mDialog.Parts.Editor.Height;
@@ -539,27 +539,27 @@ var
 begin
   mDialog := NewDialog('ATL-1', Options('Erledigt'), '');
   try
-    Assert.IsTrue(mDialog.Parts.CloseCompleted = nil, 'ohne Schließgründe kein Abschnitt');
-    Assert.IsTrue(mDialog.Change.Close = TAtlasTrackerClose.ByState);
+    Assert.IsNull(mDialog.Parts.CloseCompleted, 'ohne Schließgründe kein Abschnitt');
+    Assert.AreEqual<TAtlasTrackerClose>(TAtlasTrackerClose.ByState, mDialog.Change.Close);
   finally
     mDialog.Free;
   end;
   mDialog := NewGitHubDialog('#7', Options('Erledigt'), 'Fertig.');
   try
     Assert.IsTrue(mDialog.Parts.CloseCompleted.Checked, 'Erledigt-Zustand: erledigt');
-    Assert.IsTrue(mDialog.Change.Close = TAtlasTrackerClose.Completed);
+    Assert.AreEqual<TAtlasTrackerClose>(TAtlasTrackerClose.Completed, mDialog.Change.Close);
     Assert.IsFalse(mDialog.Parts.DuplicateOf.Enabled);
     Assert.AreEqual('Senden', mDialog.Parts.Send.Caption);
     mDialog.Parts.Close.Choose(TAtlasTrackerClose.NotPlanned);
     Assert.IsTrue(mDialog.Parts.CloseNotPlanned.Checked);
     Assert.IsFalse(mDialog.Parts.CloseCompleted.Checked);
     Assert.AreEqual('Als nicht geplant schließen', mDialog.Parts.Send.Caption);
-    Assert.IsTrue(mDialog.Change.Close = TAtlasTrackerClose.NotPlanned);
+    Assert.AreEqual<TAtlasTrackerClose>(TAtlasTrackerClose.NotPlanned, mDialog.Change.Close);
     mDialog.Parts.Close.Choose(TAtlasTrackerClose.Duplicate);
     Assert.IsTrue(mDialog.Parts.DuplicateOf.Enabled);
     Assert.AreEqual('Als Duplikat schließen', mDialog.Parts.Send.Caption);
     mDialog.Parts.DuplicateOf.Text := '418';
-    Assert.IsTrue(mDialog.Change.Close = TAtlasTrackerClose.Duplicate);
+    Assert.AreEqual<TAtlasTrackerClose>(TAtlasTrackerClose.Duplicate, mDialog.Change.Close);
     Assert.AreEqual('#418', mDialog.Change.DuplicateOf);
     mDialog.Parts.Close.Choose(TAtlasTrackerClose.KeepOpen);
     Assert.AreEqual('', mDialog.Change.State, 'offen lassen nimmt den Erledigt-Zustand zurück');
@@ -605,7 +605,7 @@ begin
     mDialog.Parts.DuplicateOf.Text := '#999';
     mDialog.Parts.Send.Click;
     Assert.AreEqual(1, mCalls);
-    Assert.IsTrue(mPlan.Change.Close = TAtlasTrackerClose.Duplicate);
+    Assert.AreEqual<TAtlasTrackerClose>(TAtlasTrackerClose.Duplicate, mPlan.Change.Close);
     mProgress.Fail(mPlan, TAtlasTrackerWriteResult.Failed(TAtlasCiFetchError.NotFound, 404, ''));
     mProgress.DuplicateMissing := True;
     mPending(mProgress);

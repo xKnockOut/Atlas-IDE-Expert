@@ -42,6 +42,7 @@ uses
   System.Classes,
   System.DateUtils,
   Vcl.Forms,
+  Vcl.Graphics,
   Atlas.Core.CiBuild.Contract,
   Atlas.Core.Projects.Summary,
   Atlas.Core.Tracker.TestResults,
@@ -290,8 +291,8 @@ begin
       TAtlasTrackerTestResultsText.ButtonText(TAtlasTestResultsButton.Rerun));
     Assert.AreEqual('Im Debugger', TAtlasTrackerTestResultsText.ButtonText(TAtlasTestResultsButton.Debug));
     Assert.AreEqual('Im Browser', TAtlasTrackerTestResultsText.ButtonText(TAtlasTestResultsButton.Browse));
-    Assert.IsTrue(TAtlasTrackerTestResultsText.LevelColor(TAtlasTestLevel.Passed) <>
-      TAtlasTrackerTestResultsText.LevelColor(TAtlasTestLevel.Failed), 'rot ist nicht grün');
+    Assert.AreNotEqual<TColor>(TAtlasTrackerTestResultsText.LevelColor(TAtlasTestLevel.Failed),
+      TAtlasTrackerTestResultsText.LevelColor(TAtlasTestLevel.Passed), 'rot ist nicht grün');
     Assert.Contains(TAtlasTrackerTestResultsText.RowHint(mView.Rows[0]), cTestProject);
     Assert.Contains(TAtlasTrackerTestResultsText.EmptyText, 'Tests ausführen');
   finally
@@ -419,8 +420,9 @@ begin
     Assert.AreEqual('query Atlas.Tests', mFake.Calls[6]);
     Assert.AreEqual('login https://ci.firma.de', mFake.Calls[7]);
     Assert.AreEqual('project Atlas.Tests', mFake.Calls[8]);
-    Assert.IsTrue(mFrame.HitTest(20, -5).Kind = TAtlasTestResultsHitKind.None, 'über der ersten Zeile');
-    Assert.IsTrue(mFrame.HitTest(20, 10).Kind = TAtlasTestResultsHitKind.Row);
+    Assert.AreEqual<TAtlasTestResultsHitKind>(TAtlasTestResultsHitKind.None,
+      mFrame.HitTest(20, -5).Kind, 'über der ersten Zeile');
+    Assert.AreEqual<TAtlasTestResultsHitKind>(TAtlasTestResultsHitKind.Row, mFrame.HitTest(20, 10).Kind);
   finally
     mHost.Free;
   end;
@@ -457,7 +459,8 @@ begin
     mFake.FView := Default(TAtlasTestResultsView);
     mFake.FView.Selected := -1;
     mFrame.UpdateContent;
-    Assert.IsTrue(mFrame.HitTest(20, 10).Kind = TAtlasTestResultsHitKind.None, 'leerer Bereich');
+    Assert.AreEqual<TAtlasTestResultsHitKind>(TAtlasTestResultsHitKind.None,
+      mFrame.HitTest(20, 10).Kind, 'leerer Bereich');
   finally
     mHost.Free;
   end;

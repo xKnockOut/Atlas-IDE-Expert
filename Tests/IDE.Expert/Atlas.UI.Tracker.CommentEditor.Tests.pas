@@ -253,7 +253,7 @@ begin
     mEditor := NewEditor(mHost);
     mEditor.Bind(mRef);
     TypeText(mEditor, 'Danke @an');
-    Assert.IsTrue(mEditor.Suggest.Trigger.Kind = TAtlasCommentTriggerKind.Mention);
+    Assert.AreEqual<TAtlasCommentTriggerKind>(TAtlasCommentTriggerKind.Mention, mEditor.Suggest.Trigger.Kind);
     Assert.AreEqual(2, Integer(Length(mEditor.Suggest.Rows)));
     Assert.AreEqual('@anna · Anna Berger', mEditor.Suggest.Rows[0]);
     Assert.AreEqual(0, mEditor.Suggest.Selected);
@@ -284,7 +284,7 @@ begin
     mEditor.Suggest.RequestDelay := TAtlasCommentEditor.cDelayMs;
     mEditor.Bind(mRef);
     TypeText(mEditor, 'siehe ATL-');
-    Assert.IsTrue(mEditor.Suggest.Trigger.Query.Kind = TAtlasIssueSearchKind.Recent);
+    Assert.AreEqual<TAtlasIssueSearchKind>(TAtlasIssueSearchKind.Recent, mEditor.Suggest.Trigger.Query.Kind);
     Assert.AreEqual(1, Integer(Length(mEditor.Suggest.Rows)), 'ohne Wartezeit');
     Assert.AreEqual('ATL-7 · Zuletzt', mEditor.Suggest.Rows[0]);
     Press(mEditor, VK_TAB, []);
@@ -503,7 +503,7 @@ begin
   try
     mFrame := TAtlasIssueFrame.Create(mHost);
     mFrame.Parent := mHost;
-    Assert.IsTrue(mFrame.Parts.CommentEdit = mFrame.Parts.Comment.Memo);
+    Assert.AreSame(mFrame.Parts.Comment.Memo, mFrame.Parts.CommentEdit);
     mFrame.Parts.Comment.Bind(mRef);
     mFrame.Parts.CommentEdit.Text := 'gesendet';
     mFrame.CommentDone('');
@@ -519,7 +519,7 @@ begin
   mDialog := TAtlasTrackerEndDialog.CreateDialog(nil, TAtlasTrackerEndRequest.Create('ATL-1',
     TAtlasTrackerSyncOptions.Create(True, 'Status', ''), 'Vorlage'));
   try
-    Assert.IsTrue(mDialog.Parts.Comment = mDialog.Parts.Editor.Memo);
+    Assert.AreSame(mDialog.Parts.Editor.Memo, mDialog.Parts.Comment);
     Assert.AreEqual('Vorlage', mDialog.Parts.Comment.Text);
   finally
     mDialog.Free;

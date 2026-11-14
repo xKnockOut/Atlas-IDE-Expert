@@ -171,12 +171,12 @@ begin
   mDetails.Updated := 46000;
   mBadges := TAtlasIssuePreview.Badges(mDetails);
   Assert.AreEqual(Integer(5), Integer(Length(mBadges)), 'leere Felder entfallen');
-  Assert.IsTrue(mBadges[0].Kind = TAtlasIssueBadgeKind.State);
-  Assert.IsTrue(mBadges[1].Kind = TAtlasIssueBadgeKind.Sprint);
-  Assert.IsTrue(mBadges[2].Kind = TAtlasIssueBadgeKind.LabelName);
+  Assert.AreEqual<TAtlasIssueBadgeKind>(TAtlasIssueBadgeKind.State, mBadges[0].Kind);
+  Assert.AreEqual<TAtlasIssueBadgeKind>(TAtlasIssueBadgeKind.Sprint, mBadges[1].Kind);
+  Assert.AreEqual<TAtlasIssueBadgeKind>(TAtlasIssueBadgeKind.LabelName, mBadges[2].Kind);
   Assert.AreEqual('ui', mBadges[2].Text);
   Assert.AreEqual('plugin', mBadges[3].Text);
-  Assert.IsTrue(mBadges[4].Kind = TAtlasIssueBadgeKind.Updated);
+  Assert.AreEqual<TAtlasIssueBadgeKind>(TAtlasIssueBadgeKind.Updated, mBadges[4].Kind);
   Assert.AreEqual(Double(46000), Double(mBadges[4].Time), 0.0001);
 end;
 
@@ -186,23 +186,26 @@ const
 var
   mAge: TAtlasIssueAge;
 begin
-  Assert.IsTrue(TAtlasIssuePreview.Age(cNow - 20 / SecsPerDay, cNow).UnitKind = TAtlasIssueAgeUnit.JustNow);
-  Assert.IsTrue(TAtlasIssuePreview.Age(cNow + 1, cNow).UnitKind = TAtlasIssueAgeUnit.JustNow, 'Zukunft');
-  Assert.IsTrue(TAtlasIssuePreview.Age(0, cNow).UnitKind = TAtlasIssueAgeUnit.JustNow, 'ohne Zeit');
+  Assert.AreEqual<TAtlasIssueAgeUnit>(TAtlasIssueAgeUnit.JustNow,
+    TAtlasIssuePreview.Age(cNow - 20 / SecsPerDay, cNow).UnitKind);
+  Assert.AreEqual<TAtlasIssueAgeUnit>(TAtlasIssueAgeUnit.JustNow,
+    TAtlasIssuePreview.Age(cNow + 1, cNow).UnitKind, 'Zukunft');
+  Assert.AreEqual<TAtlasIssueAgeUnit>(TAtlasIssueAgeUnit.JustNow,
+    TAtlasIssuePreview.Age(0, cNow).UnitKind, 'ohne Zeit');
   mAge := TAtlasIssuePreview.Age(cNow - 5.5 / MinsPerDay, cNow);
-  Assert.IsTrue(mAge.UnitKind = TAtlasIssueAgeUnit.Minutes);
+  Assert.AreEqual<TAtlasIssueAgeUnit>(TAtlasIssueAgeUnit.Minutes, mAge.UnitKind);
   Assert.AreEqual(Integer(5), mAge.Count);
   mAge := TAtlasIssuePreview.Age(cNow - 3.5 / HoursPerDay, cNow);
-  Assert.IsTrue(mAge.UnitKind = TAtlasIssueAgeUnit.Hours);
+  Assert.AreEqual<TAtlasIssueAgeUnit>(TAtlasIssueAgeUnit.Hours, mAge.UnitKind);
   Assert.AreEqual(Integer(3), mAge.Count);
   mAge := TAtlasIssuePreview.Age(cNow - 12.2, cNow);
-  Assert.IsTrue(mAge.UnitKind = TAtlasIssueAgeUnit.Days);
+  Assert.AreEqual<TAtlasIssueAgeUnit>(TAtlasIssueAgeUnit.Days, mAge.UnitKind);
   Assert.AreEqual(Integer(12), mAge.Count);
   mAge := TAtlasIssuePreview.Age(cNow - 95.2, cNow);
-  Assert.IsTrue(mAge.UnitKind = TAtlasIssueAgeUnit.Months);
+  Assert.AreEqual<TAtlasIssueAgeUnit>(TAtlasIssueAgeUnit.Months, mAge.UnitKind);
   Assert.AreEqual(Integer(3), mAge.Count);
   mAge := TAtlasIssuePreview.Age(cNow - 800.2, cNow);
-  Assert.IsTrue(mAge.UnitKind = TAtlasIssueAgeUnit.Years);
+  Assert.AreEqual<TAtlasIssueAgeUnit>(TAtlasIssueAgeUnit.Years, mAge.UnitKind);
   Assert.AreEqual(Integer(2), mAge.Count);
 end;
 
@@ -273,12 +276,12 @@ end;
 
 procedure TAtlasIssuePreviewTests.FixPerError;
 begin
-  Assert.IsTrue(TAtlasIssuePreview.FixOf(TAtlasCiFetchError.Unauthorized) = TAtlasIssueFix.EnterToken);
-  Assert.IsTrue(TAtlasIssuePreview.FixOf(TAtlasCiFetchError.NotConfigured) = TAtlasIssueFix.Settings);
-  Assert.IsTrue(TAtlasIssuePreview.FixOf(TAtlasCiFetchError.NotFound) = TAtlasIssueFix.Browser);
-  Assert.IsTrue(TAtlasIssuePreview.FixOf(TAtlasCiFetchError.Timeout) = TAtlasIssueFix.Retry);
-  Assert.IsTrue(TAtlasIssuePreview.FixOf(TAtlasCiFetchError.Network) = TAtlasIssueFix.Retry);
-  Assert.IsTrue(TAtlasIssuePreview.FixOf(TAtlasCiFetchError.None) = TAtlasIssueFix.None);
+  Assert.AreEqual<TAtlasIssueFix>(TAtlasIssueFix.EnterToken, TAtlasIssuePreview.FixOf(TAtlasCiFetchError.Unauthorized));
+  Assert.AreEqual<TAtlasIssueFix>(TAtlasIssueFix.Settings, TAtlasIssuePreview.FixOf(TAtlasCiFetchError.NotConfigured));
+  Assert.AreEqual<TAtlasIssueFix>(TAtlasIssueFix.Browser, TAtlasIssuePreview.FixOf(TAtlasCiFetchError.NotFound));
+  Assert.AreEqual<TAtlasIssueFix>(TAtlasIssueFix.Retry, TAtlasIssuePreview.FixOf(TAtlasCiFetchError.Timeout));
+  Assert.AreEqual<TAtlasIssueFix>(TAtlasIssueFix.Retry, TAtlasIssuePreview.FixOf(TAtlasCiFetchError.Network));
+  Assert.AreEqual<TAtlasIssueFix>(TAtlasIssueFix.None, TAtlasIssuePreview.FixOf(TAtlasCiFetchError.None));
 end;
 
 procedure TAtlasIssuePreviewTests.KeyFromInput;

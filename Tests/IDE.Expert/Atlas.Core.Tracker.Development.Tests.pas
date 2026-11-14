@@ -459,7 +459,7 @@ begin
     Assert.IsTrue(mCache.Get(mTarget, 'atl-1', mDevelopment), 'Kennung ohne Groß-/Kleinschreibung');
     Assert.IsTrue(mDevelopment.Truncated);
     Assert.IsFalse(mCache.Get(mOther, 'ATL-1', mDevelopment), 'je Tracker');
-    Assert.IsTrue(mDevelopment.VcsOutcome = TAtlasVcsOutcome.NoWorkingCopy, 'ohne Treffer leer');
+    Assert.AreEqual<TAtlasVcsOutcome>(TAtlasVcsOutcome.NoWorkingCopy, mDevelopment.VcsOutcome, 'ohne Treffer leer');
     // ATL-1 bleibt, weil zuletzt gelesen; das älteste andere fällt heraus.
     for mIndex := 2 to TAtlasIssueDevelopmentCache.cMaxEntries do
     begin
@@ -495,13 +495,14 @@ begin
     TAtlasVcsChangeKind.Modified))));
   mFake.Refs := TArray<TAtlasVcsRef>.Create(Ref('main', 'main', False, False),
     Ref('origin/feature/753-x', 'feature/753-x', True, False));
-  Assert.IsTrue(TAtlasIssueDevelopmentQuery.Collect(mVcs, GitHubRequest(TArray<string>.Create('main')),
-    mDevelopment) = TAtlasVcsOutcome.Ok);
+  Assert.AreEqual<TAtlasVcsOutcome>(TAtlasVcsOutcome.Ok,
+    TAtlasIssueDevelopmentQuery.Collect(mVcs, GitHubRequest(TArray<string>.Create('main')),
+    mDevelopment));
   Assert.AreEqual('log #753 200', mFake.Calls[0], 'grobe Suche mit der Kennung');
   Assert.AreEqual('branches', mFake.Calls[1]);
   Assert.AreEqual('distance origin/feature/753-x main', mFake.Calls[2], 'nur entfernt: über den Remote-Namen');
   Assert.AreEqual('#753', mDevelopment.Key);
-  Assert.IsTrue(mDevelopment.VcsKind = TAtlasVcsKind.Git);
+  Assert.AreEqual<TAtlasVcsKind>(TAtlasVcsKind.Git, mDevelopment.VcsKind);
   Assert.AreEqual(1, Integer(Length(mDevelopment.Commits)), '#7530 fällt heraus');
   Assert.IsFalse(mDevelopment.Truncated);
   Assert.AreEqual(1, mDevelopment.UnitCount);
@@ -511,14 +512,15 @@ begin
   // Branches scheitern: Commits bleiben.
   mFake.Calls := nil;
   mFake.BranchOutcome := TAtlasVcsOutcome.Failed;
-  Assert.IsTrue(TAtlasIssueDevelopmentQuery.Collect(mVcs, GitHubRequest(nil), mDevelopment) = TAtlasVcsOutcome.Ok);
+  Assert.AreEqual<TAtlasVcsOutcome>(TAtlasVcsOutcome.Ok,
+    TAtlasIssueDevelopmentQuery.Collect(mVcs, GitHubRequest(nil), mDevelopment));
   Assert.AreEqual(1, Integer(Length(mDevelopment.Commits)));
   Assert.AreEqual(0, Integer(Length(mDevelopment.Branches)));
   // Suche scheitert: das Ergebnis sagt es.
   mFake.SearchOutcome := TAtlasVcsOutcome.TimedOut;
-  Assert.IsTrue(TAtlasIssueDevelopmentQuery.Collect(mVcs, GitHubRequest(nil), mDevelopment) =
-    TAtlasVcsOutcome.TimedOut);
-  Assert.IsTrue(mDevelopment.VcsOutcome = TAtlasVcsOutcome.TimedOut);
+  Assert.AreEqual<TAtlasVcsOutcome>(TAtlasVcsOutcome.TimedOut,
+    TAtlasIssueDevelopmentQuery.Collect(mVcs, GitHubRequest(nil), mDevelopment));
+  Assert.AreEqual<TAtlasVcsOutcome>(TAtlasVcsOutcome.TimedOut, mDevelopment.VcsOutcome);
   Assert.AreEqual(0, Integer(Length(mDevelopment.Commits)));
 end;
 
@@ -530,12 +532,12 @@ var
   mRequest: TAtlasIssueDevelopmentRequest;
   mIndex: Integer;
 begin
-  Assert.IsTrue(TAtlasIssueDevelopmentQuery.Collect(nil, GitHubRequest(nil), mDevelopment) =
-    TAtlasVcsOutcome.NoWorkingCopy);
-  Assert.IsTrue(mDevelopment.VcsOutcome = TAtlasVcsOutcome.NoWorkingCopy);
+  Assert.AreEqual<TAtlasVcsOutcome>(TAtlasVcsOutcome.NoWorkingCopy,
+    TAtlasIssueDevelopmentQuery.Collect(nil, GitHubRequest(nil), mDevelopment));
+  Assert.AreEqual<TAtlasVcsOutcome>(TAtlasVcsOutcome.NoWorkingCopy, mDevelopment.VcsOutcome);
   mVcs := TPlainVcs.Create;
-  Assert.IsTrue(TAtlasIssueDevelopmentQuery.Collect(mVcs, GitHubRequest(nil), mDevelopment) =
-    TAtlasVcsOutcome.NoWorkingCopy, 'ohne IAtlasVcsHistory');
+  Assert.AreEqual<TAtlasVcsOutcome>(TAtlasVcsOutcome.NoWorkingCopy,
+    TAtlasIssueDevelopmentQuery.Collect(mVcs, GitHubRequest(nil), mDevelopment), 'ohne IAtlasVcsHistory');
   // So viele Treffer wie erlaubt: ältere wurden nicht durchsucht.
   mFake := TFakeHistory.Create;
   mVcs := mFake;
@@ -545,11 +547,13 @@ begin
   end;
   mRequest := GitHubRequest(nil);
   mRequest.MaxCommits := 5;
-  Assert.IsTrue(TAtlasIssueDevelopmentQuery.Collect(mVcs, mRequest, mDevelopment) = TAtlasVcsOutcome.Ok);
+  Assert.AreEqual<TAtlasVcsOutcome>(TAtlasVcsOutcome.Ok,
+    TAtlasIssueDevelopmentQuery.Collect(mVcs, mRequest, mDevelopment));
   Assert.IsTrue(mDevelopment.Truncated);
   Assert.AreEqual('log #753 5', mFake.Calls[0]);
   mRequest.Key := '';
-  Assert.IsTrue(TAtlasIssueDevelopmentQuery.Collect(mVcs, mRequest, mDevelopment) = TAtlasVcsOutcome.Failed,
+  Assert.AreEqual<TAtlasVcsOutcome>(TAtlasVcsOutcome.Failed,
+    TAtlasIssueDevelopmentQuery.Collect(mVcs, mRequest, mDevelopment),
     'ohne Kennung keine Suche');
   Assert.AreEqual(2, Integer(Length(mFake.Calls)), 'nur die eine Suche von vorhin und ihre Branches');
 end;
@@ -693,7 +697,8 @@ begin
     mRequest := TAtlasIssueDevelopmentRequest.Create('youtrack', 'ATL', 'ATL-77', TArray<string>.Create('main'),
       nil);
     mWatch := TStopwatch.StartNew;
-    Assert.IsTrue(TAtlasIssueDevelopmentQuery.Collect(mVcs, mRequest, mDevelopment) = TAtlasVcsOutcome.Ok);
+    Assert.AreEqual<TAtlasVcsOutcome>(TAtlasVcsOutcome.Ok,
+      TAtlasIssueDevelopmentQuery.Collect(mVcs, mRequest, mDevelopment));
     mWatch.Stop;
     Assert.AreEqual(cTenThousandcCommits div 100, Integer(Length(mDevelopment.Commits)), 'ATL-770 zählt nicht');
     Assert.IsFalse(mDevelopment.Truncated);

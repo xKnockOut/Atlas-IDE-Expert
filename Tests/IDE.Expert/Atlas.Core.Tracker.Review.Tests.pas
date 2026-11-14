@@ -136,14 +136,14 @@ var
 begin
   mState := TAtlasReviewState.Create('ATL-2052', False);
   Assert.AreEqual('ATL-2052', mState.Key);
-  Assert.IsTrue(mState.Marks[TAtlasReviewStep.Build] = TAtlasReviewMark.Skipped);
-  Assert.IsTrue(mState.Marks[TAtlasReviewStep.Tests] = TAtlasReviewMark.Skipped);
+  Assert.AreEqual<TAtlasReviewMark>(TAtlasReviewMark.Skipped, mState.Marks[TAtlasReviewStep.Build]);
+  Assert.AreEqual<TAtlasReviewMark>(TAtlasReviewMark.Skipped, mState.Marks[TAtlasReviewStep.Tests]);
   Assert.IsTrue(mState.Busy, 'Stand und Wechsel warten');
   mState.Marks[TAtlasReviewStep.Saved] := TAtlasReviewMark.Done;
   mState.Marks[TAtlasReviewStep.Switched] := TAtlasReviewMark.Done;
   Assert.IsFalse(mState.Busy);
   mState := TAtlasReviewState.Create('ATL-2052', True);
-  Assert.IsTrue(mState.Marks[TAtlasReviewStep.Build] = TAtlasReviewMark.Waiting);
+  Assert.AreEqual<TAtlasReviewMark>(TAtlasReviewMark.Waiting, mState.Marks[TAtlasReviewStep.Build]);
 end;
 
 procedure TAtlasTrackerReviewTests.FailedBuildSkipsTests;
@@ -155,15 +155,15 @@ begin
   mBuild := Default(TAtlasReviewBuild);
   mBuild.Errors := 2;
   mState.Built(mBuild);
-  Assert.IsTrue(mState.Marks[TAtlasReviewStep.Build] = TAtlasReviewMark.Failed);
-  Assert.IsTrue(mState.Marks[TAtlasReviewStep.Tests] = TAtlasReviewMark.Skipped);
+  Assert.AreEqual<TAtlasReviewMark>(TAtlasReviewMark.Failed, mState.Marks[TAtlasReviewStep.Build]);
+  Assert.AreEqual<TAtlasReviewMark>(TAtlasReviewMark.Skipped, mState.Marks[TAtlasReviewStep.Tests]);
   Assert.AreEqual(2, mState.Build.Errors);
   mState := TAtlasReviewState.Create('ATL-2052', True);
   mBuild.Errors := 0;
   mBuild.Succeeded := True;
   mState.Built(mBuild);
-  Assert.IsTrue(mState.Marks[TAtlasReviewStep.Build] = TAtlasReviewMark.Done);
-  Assert.IsTrue(mState.Marks[TAtlasReviewStep.Tests] = TAtlasReviewMark.Waiting);
+  Assert.AreEqual<TAtlasReviewMark>(TAtlasReviewMark.Done, mState.Marks[TAtlasReviewStep.Build]);
+  Assert.AreEqual<TAtlasReviewMark>(TAtlasReviewMark.Waiting, mState.Marks[TAtlasReviewStep.Tests]);
 end;
 
 procedure TAtlasTrackerReviewTests.TestsFailOrPass;
@@ -172,10 +172,10 @@ var
 begin
   mState := TAtlasReviewState.Create('ATL-2052', True);
   mState.Tested(14, 0);
-  Assert.IsTrue(mState.Marks[TAtlasReviewStep.Tests] = TAtlasReviewMark.Done);
+  Assert.AreEqual<TAtlasReviewMark>(TAtlasReviewMark.Done, mState.Marks[TAtlasReviewStep.Tests]);
   Assert.AreEqual(14, mState.TestsPassed);
   mState.Tested(12, 2);
-  Assert.IsTrue(mState.Marks[TAtlasReviewStep.Tests] = TAtlasReviewMark.Failed);
+  Assert.AreEqual<TAtlasReviewMark>(TAtlasReviewMark.Failed, mState.Marks[TAtlasReviewStep.Tests]);
   Assert.AreEqual(2, mState.TestsFailed);
 end;
 

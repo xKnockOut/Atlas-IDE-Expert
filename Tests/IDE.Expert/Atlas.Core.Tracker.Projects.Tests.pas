@@ -133,11 +133,14 @@ end;
 
 procedure TAtlasTrackerProjectsTests.KindFollowsExtension;
 begin
-  Assert.IsTrue(TAtlasTrackerProjectMapping.Create(cKasseProject, 'Firma', '').Kind = TAtlasTrackerMatch.Project);
-  Assert.IsTrue(TAtlasTrackerProjectMapping.Create('C:\Projekte\Kasse\KASSE.GROUPPROJ', 'Firma', '').Kind =
-    TAtlasTrackerMatch.Group);
-  Assert.IsTrue(TAtlasTrackerProjectMapping.Create(cKassePath + '\', 'Firma', '').Kind = TAtlasTrackerMatch.Folder);
-  Assert.IsTrue(TAtlasTrackerProjectMapping.Create('  ', 'Firma', '').Kind = TAtlasTrackerMatch.None);
+  Assert.AreEqual<TAtlasTrackerMatch>(TAtlasTrackerMatch.Project,
+    TAtlasTrackerProjectMapping.Create(cKasseProject, 'Firma', '').Kind);
+  Assert.AreEqual<TAtlasTrackerMatch>(TAtlasTrackerMatch.Group,
+    TAtlasTrackerProjectMapping.Create('C:\Projekte\Kasse\KASSE.GROUPPROJ', 'Firma', '').Kind);
+  Assert.AreEqual<TAtlasTrackerMatch>(TAtlasTrackerMatch.Folder,
+    TAtlasTrackerProjectMapping.Create(cKassePath + '\', 'Firma', '').Kind);
+  Assert.AreEqual<TAtlasTrackerMatch>(TAtlasTrackerMatch.None,
+    TAtlasTrackerProjectMapping.Create('  ', 'Firma', '').Kind);
 end;
 
 procedure TAtlasTrackerProjectsTests.PathsCompareCaseInsensitiveWithUnc;
@@ -148,14 +151,18 @@ begin
   Assert.AreEqual('\\server\freigabe', TAtlasTrackerProjects.NormalizedPath('//server/freigabe'));
   Assert.AreEqual('', TAtlasTrackerProjects.NormalizedPath('  '));
   // Projekt auf einer Freigabe, Zeile als Ordner der Freigabe; Laufwerk als Ordner.
-  Assert.IsTrue(TAtlasTrackerProjects.Matches(TAtlasTrackerProjectMapping.Create('\\SERVER\Freigabe', 'Firma', ''),
-    '\\server\freigabe\Kasse\Kasse.dproj', '') = TAtlasTrackerMatch.Folder);
-  Assert.IsTrue(TAtlasTrackerProjects.Matches(TAtlasTrackerProjectMapping.Create('D:\', 'Firma', ''),
-    'd:\x\y.dproj', '') = TAtlasTrackerMatch.Folder);
-  Assert.IsTrue(TAtlasTrackerProjects.Matches(TAtlasTrackerProjectMapping.Create('D:\', 'Firma', ''),
-    'C:\x\y.dproj', '') = TAtlasTrackerMatch.None, 'anderes Laufwerk');
-  Assert.IsTrue(TAtlasTrackerProjects.Matches(TAtlasTrackerProjectMapping.Create('c:/projekte/kasse/KASSE.dproj',
-    'Firma', ''), cKasseProject, '') = TAtlasTrackerMatch.Project);
+  Assert.AreEqual<TAtlasTrackerMatch>(TAtlasTrackerMatch.Folder,
+    TAtlasTrackerProjects.Matches(TAtlasTrackerProjectMapping.Create('\\SERVER\Freigabe', 'Firma', ''),
+    '\\server\freigabe\Kasse\Kasse.dproj', ''));
+  Assert.AreEqual<TAtlasTrackerMatch>(TAtlasTrackerMatch.Folder,
+    TAtlasTrackerProjects.Matches(TAtlasTrackerProjectMapping.Create('D:\', 'Firma', ''),
+    'd:\x\y.dproj', ''));
+  Assert.AreEqual<TAtlasTrackerMatch>(TAtlasTrackerMatch.None,
+    TAtlasTrackerProjects.Matches(TAtlasTrackerProjectMapping.Create('D:\', 'Firma', ''),
+    'C:\x\y.dproj', ''), 'anderes Laufwerk');
+  Assert.AreEqual<TAtlasTrackerMatch>(TAtlasTrackerMatch.Project,
+    TAtlasTrackerProjects.Matches(TAtlasTrackerProjectMapping.Create('c:/projekte/kasse/KASSE.dproj',
+    'Firma', ''), cKasseProject, ''));
 end;
 
 procedure TAtlasTrackerProjectsTests.ResolveFollowsOrder;
@@ -169,16 +176,16 @@ begin
     TAtlasTrackerProjectMapping.Create(cBonProject, 'Firma', 'BON')];
   // .dproj vor .groupproj vor Ordner.
   mResult := TAtlasTrackerProjects.Resolve(NoTeam, mRows, Connections, cBonProject, cKasseGroup);
-  Assert.IsTrue(mResult.Match = TAtlasTrackerMatch.Project);
+  Assert.AreEqual<TAtlasTrackerMatch>(TAtlasTrackerMatch.Project, mResult.Match);
   Assert.AreEqual(3, mResult.Index);
   Assert.AreEqual('BON', mResult.Project);
   Assert.AreEqual('Firma', mResult.Connection.Name);
   mResult := TAtlasTrackerProjects.Resolve(NoTeam, mRows, Connections, cKasseProject, cKasseGroup);
-  Assert.IsTrue(mResult.Match = TAtlasTrackerMatch.Group);
+  Assert.AreEqual<TAtlasTrackerMatch>(TAtlasTrackerMatch.Group, mResult.Match);
   Assert.AreEqual('KASSE', mResult.Project);
   // Ohne geöffnete Gruppe: der längste Ordner (C:\Projekte\Kasse vor C:\Projekte).
   mResult := TAtlasTrackerProjects.Resolve(NoTeam, mRows, Connections, cKasseProject, '');
-  Assert.IsTrue(mResult.Match = TAtlasTrackerMatch.Folder);
+  Assert.AreEqual<TAtlasTrackerMatch>(TAtlasTrackerMatch.Folder, mResult.Match);
   Assert.AreEqual('ORDNER', mResult.Project);
   mResult := TAtlasTrackerProjects.Resolve(NoTeam, mRows, Connections, 'C:\Projekte\Lager\Lager.dproj', '');
   Assert.AreEqual('owner/alle', mResult.Project);
@@ -217,10 +224,10 @@ var
   mRow: TAtlasTrackerProjectMapping;
 begin
   mRow := TAtlasTrackerProjectMapping.Create(cKassePath, 'Firma', 'KASSE');
-  Assert.IsTrue(TAtlasTrackerProjects.Matches(mRow, cBonProject, '') = TAtlasTrackerMatch.Folder);
-  Assert.IsTrue(TAtlasTrackerProjects.Matches(mRow, 'C:\Projekte\Kassenbuch\X.dproj', '') =
-    TAtlasTrackerMatch.None);
-  Assert.IsTrue(TAtlasTrackerProjects.Matches(mRow, '', '') = TAtlasTrackerMatch.None);
+  Assert.AreEqual<TAtlasTrackerMatch>(TAtlasTrackerMatch.Folder, TAtlasTrackerProjects.Matches(mRow, cBonProject, ''));
+  Assert.AreEqual<TAtlasTrackerMatch>(TAtlasTrackerMatch.None,
+    TAtlasTrackerProjects.Matches(mRow, 'C:\Projekte\Kassenbuch\X.dproj', ''));
+  Assert.AreEqual<TAtlasTrackerMatch>(TAtlasTrackerMatch.None, TAtlasTrackerProjects.Matches(mRow, '', ''));
 end;
 
 procedure TAtlasTrackerProjectsTests.RowWithoutConnectionDoesNotCount;
@@ -232,7 +239,7 @@ begin
   mRows := [TAtlasTrackerProjectMapping.Create(cKasseProject, 'Gelöscht', 'ALT'),
     TAtlasTrackerProjectMapping.Create(cKassePath, 'firma', 'KASSE')];
   mResult := TAtlasTrackerProjects.Resolve(NoTeam, mRows, Connections, cKasseProject, '');
-  Assert.IsTrue(mResult.Match = TAtlasTrackerMatch.Folder);
+  Assert.AreEqual<TAtlasTrackerMatch>(TAtlasTrackerMatch.Folder, mResult.Match);
   Assert.AreEqual('KASSE', mResult.Project);
   Assert.AreEqual('Firma', mResult.Connection.Name, 'Name ohne Groß-/Kleinschreibung');
   Assert.IsFalse(TAtlasTrackerProjects.Resolve(NoTeam, mRows, nil, cKasseProject, '').Found, 'keine Verbindungen');
@@ -249,7 +256,7 @@ begin
     TAtlasTrackerProjectMapping.Create('D:\Anderes', 'Firma', 'X')];
   mTeam := TAtlasTrackerTarget.Create('youtrack', 'https://yt.team.local/', 'TEAM', '');
   mResult := TAtlasTrackerProjects.Resolve(mTeam, mRows, Connections, cKasseProject, '');
-  Assert.IsTrue(mResult.Match = TAtlasTrackerMatch.TeamFile);
+  Assert.AreEqual<TAtlasTrackerMatch>(TAtlasTrackerMatch.TeamFile, mResult.Match);
   Assert.AreEqual(-1, mResult.Index);
   Assert.AreEqual('TEAM', mResult.Project);
   Assert.AreEqual('https://yt.team.local', mResult.Connection.Url);
@@ -263,8 +270,8 @@ begin
     'TEAM'), True, cKasseProject, ''), 'die Zeile der .atlas selbst');
   // Tracker in der .atlas ohne Adresse zählt nicht: die persönliche Zeile gilt.
   mTeam := TAtlasTrackerTarget.Create('youtrack', '', 'TEAM', '');
-  Assert.IsTrue(TAtlasTrackerProjects.Resolve(mTeam, mRows, Connections, cKasseProject, '').Match =
-    TAtlasTrackerMatch.Project);
+  Assert.AreEqual<TAtlasTrackerMatch>(TAtlasTrackerMatch.Project,
+    TAtlasTrackerProjects.Resolve(mTeam, mRows, Connections, cKasseProject, '').Match);
   mRows := nil;
 end;
 

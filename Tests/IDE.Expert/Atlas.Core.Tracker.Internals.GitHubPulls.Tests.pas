@@ -199,7 +199,7 @@ begin
   mKeep := mTransport;
   mTransport.Answer('GET', cOpenUrl, 200, '[' + cCreated + ']');
   mPull := CreatePull(mTransport, Spec('main'));
-  Assert.IsTrue(mPull.Outcome = TAtlasTrackerPullOutcome.Existing);
+  Assert.AreEqual<TAtlasTrackerPullOutcome>(TAtlasTrackerPullOutcome.Existing, mPull.Outcome);
   Assert.AreEqual(42, mPull.Number);
   Assert.AreEqual('https://github.com/beispiel/atlas/pull/42', mPull.Url);
   Assert.IsTrue(mPull.Stands);
@@ -221,7 +221,7 @@ begin
   mTransport.Answer('PATCH', cRepo + '/issues/42', 200, '{}');
   mTransport.Answer('POST', cRepo + '/pulls/42/requested_reviewers', 201, '{}');
   mPull := CreatePull(mTransport, Spec('main'));
-  Assert.IsTrue(mPull.Outcome = TAtlasTrackerPullOutcome.Created);
+  Assert.AreEqual<TAtlasTrackerPullOutcome>(TAtlasTrackerPullOutcome.Created, mPull.Outcome);
   Assert.AreEqual(42, mPull.Number);
   Assert.AreEqual('main', mPull.Base);
   Assert.IsFalse(mPull.DecorateFailed);
@@ -257,7 +257,7 @@ begin
   mSpec.CopyIssue := False;
   mSpec.Reviewers := nil;
   mPull := CreatePull(mTransport, mSpec);
-  Assert.IsTrue(mPull.Outcome = TAtlasTrackerPullOutcome.Created);
+  Assert.AreEqual<TAtlasTrackerPullOutcome>(TAtlasTrackerPullOutcome.Created, mPull.Outcome);
   Assert.AreEqual('develop', mPull.Base);
   mIndex := CallIndex(mTransport, 'POST ' + cRepo + '/pulls');
   Assert.AreEqual('"develop"', Field(mTransport.Bodies[mIndex], 'base'));
@@ -276,8 +276,8 @@ begin
   mTransport.Answer('POST', cRepo + '/pulls', 422,
     '{"message":"Validation Failed","errors":[{"message":"No commits between main and feature/7-statusfeld"}]}');
   mPull := CreatePull(mTransport, Spec('main'));
-  Assert.IsTrue(mPull.Outcome = TAtlasTrackerPullOutcome.Failed);
-  Assert.IsTrue(mPull.Error = TAtlasCiFetchError.Invalid);
+  Assert.AreEqual<TAtlasTrackerPullOutcome>(TAtlasTrackerPullOutcome.Failed, mPull.Outcome);
+  Assert.AreEqual<TAtlasCiFetchError>(TAtlasCiFetchError.Invalid, mPull.Error);
   Assert.AreEqual(422, mPull.Status);
   Assert.AreEqual('No commits between main and feature/7-statusfeld', mPull.Message);
   Assert.IsFalse(mPull.Stands);
@@ -297,7 +297,7 @@ begin
   mTransport.Answer('PATCH', cRepo + '/issues/42', 403, '{"message":"Forbidden"}');
   mTransport.Answer('POST', cRepo + '/pulls/42/requested_reviewers', 422, '{"message":"not a collaborator"}');
   mPull := CreatePull(mTransport, Spec('main'));
-  Assert.IsTrue(mPull.Outcome = TAtlasTrackerPullOutcome.Created);
+  Assert.AreEqual<TAtlasTrackerPullOutcome>(TAtlasTrackerPullOutcome.Created, mPull.Outcome);
   Assert.IsTrue(mPull.DecorateFailed);
   Assert.IsTrue(mPull.ReviewersFailed);
   Assert.AreEqual(42, mPull.Number);
@@ -315,8 +315,8 @@ begin
   mSpec := Spec('main');
   mSpec.Title := ' ';
   mPull := CreatePull(mTransport, mSpec);
-  Assert.IsTrue(mPull.Outcome = TAtlasTrackerPullOutcome.Failed);
-  Assert.IsTrue(mPull.Error = TAtlasCiFetchError.NotConfigured);
+  Assert.AreEqual<TAtlasTrackerPullOutcome>(TAtlasTrackerPullOutcome.Failed, mPull.Outcome);
+  Assert.AreEqual<TAtlasCiFetchError>(TAtlasCiFetchError.NotConfigured, mPull.Error);
   Assert.AreEqual(0, Integer(Length(mTransport.Calls)));
 end;
 

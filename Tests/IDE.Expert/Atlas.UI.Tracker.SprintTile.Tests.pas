@@ -333,13 +333,13 @@ begin
     mFrame.Source := mSource;
     Assert.AreEqual('shown', mFake.Calls[0], 'Anzeigen lädt bei Bedarf');
     // Klickflächen: Kopf, die drei Zahlen, Diagramm.
-    Assert.IsTrue(mFrame.HitTest(20, 5) = TAtlasSprintHitKind.Title);
+    Assert.AreEqual<TAtlasSprintHitKind>(TAtlasSprintHitKind.Title, mFrame.HitTest(20, 5));
     mRect := mFrame.NumberRect(0, mFrame.ClientWidth);
-    Assert.IsTrue(mFrame.HitTest(mRect.Left + 4, mRect.Top + 4) = TAtlasSprintHitKind.MineOpen);
+    Assert.AreEqual<TAtlasSprintHitKind>(TAtlasSprintHitKind.MineOpen, mFrame.HitTest(mRect.Left + 4, mRect.Top + 4));
     mRect := mFrame.NumberRect(2, mFrame.ClientWidth);
-    Assert.IsTrue(mFrame.HitTest(mRect.Left + 4, mRect.Top + 4) = TAtlasSprintHitKind.TeamLeft);
+    Assert.AreEqual<TAtlasSprintHitKind>(TAtlasSprintHitKind.TeamLeft, mFrame.HitTest(mRect.Left + 4, mRect.Top + 4));
     mRect := mFrame.ChartRect(mFrame.ClientWidth);
-    Assert.IsTrue(mFrame.HitTest(mRect.Left + 10, mRect.Top + 10) = TAtlasSprintHitKind.Chart);
+    Assert.AreEqual<TAtlasSprintHitKind>(TAtlasSprintHitKind.Chart, mFrame.HitTest(mRect.Left + 10, mRect.Top + 10));
     mFake.Calls := nil;
     mFrame.ClickAt(TAtlasSprintHitKind.MineOpen);
     mFrame.ClickAt(TAtlasSprintHitKind.MineDone);
@@ -357,7 +357,7 @@ begin
     mFake.FTile.Status := TAtlasSprintTileStatus.NoTracker;
     mFake.FTile.CanAssign := True;
     mFrame.UpdateContent;
-    Assert.IsTrue(mFrame.HitTest(20, 10) = TAtlasSprintHitKind.Assign);
+    Assert.AreEqual<TAtlasSprintHitKind>(TAtlasSprintHitKind.Assign, mFrame.HitTest(20, 10));
     mFake.Calls := nil;
     mFrame.ClickAt(TAtlasSprintHitKind.Assign);
     CheckSynchronize;

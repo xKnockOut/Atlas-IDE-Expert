@@ -397,8 +397,8 @@ begin
   Assert.IsTrue(mReader.StateRules(YouTrackTarget, mKeep, 'ATL-2052', 'Status', 5000, mRules).Succeeded);
   Assert.AreEqual(3, Integer(Length(mRules.Transitions)));
   Assert.Contains(mTransport.Calls[0], 'possibleEvents');
-  Assert.IsTrue(mReader.StateRules(YouTrackTarget, mKeep, 'ATL-9', 'Status', 5000, mRules).Error =
-    TAtlasCiFetchError.NotFound);
+  Assert.AreEqual<TAtlasCiFetchError>(TAtlasCiFetchError.NotFound,
+    mReader.StateRules(YouTrackTarget, mKeep, 'ATL-9', 'Status', 5000, mRules).Error);
   Assert.IsFalse(mReader.StateRules(YouTrackTarget, mKeep, 'ATL 1/..', 'Status', 5000, mRules).Succeeded,
     'ungültige Kennung');
   Assert.AreEqual(2, Integer(Length(mTransport.Calls)), 'ungültige Kennung fragt nicht');
@@ -474,7 +474,7 @@ begin
     Fixture('event-no-event.json'));
   mWriter := TAtlasYouTrackTracker.Create;
   mResult := mWriter.Apply(YouTrackTarget, mKeep, 'ATL-2052', ReviewChange(''), 5000);
-  Assert.IsTrue(mResult.Error = TAtlasCiFetchError.Invalid);
+  Assert.AreEqual<TAtlasCiFetchError>(TAtlasCiFetchError.Invalid, mResult.Error);
   Assert.AreEqual(400, mResult.Status);
   Assert.Contains(mResult.Message, 'No event found');
   // Kommentar abgelehnt: das Ereignis geht nicht mehr hinaus.
@@ -494,8 +494,8 @@ begin
   mKeep := mTransport;
   mChange := ReviewChange('Fertig');
   mChange.FieldId := '82/11';
-  Assert.IsTrue(TAtlasYouTrackApi.ApplyChange(YouTrackTarget, mKeep, 'ATL-2052', mChange, 5000).Error =
-    TAtlasCiFetchError.NotConfigured);
+  Assert.AreEqual<TAtlasCiFetchError>(TAtlasCiFetchError.NotConfigured,
+    TAtlasYouTrackApi.ApplyChange(YouTrackTarget, mKeep, 'ATL-2052', mChange, 5000).Error);
   Assert.AreEqual(0, Integer(Length(mTransport.Calls)), 'nichts halb geschrieben');
 end;
 
@@ -535,8 +535,8 @@ begin
   Assert.AreEqual('Fehlende Prüfung|Falsche Annahme', string.Join('|', mValues));
   Assert.IsTrue(mFields.SetField(YouTrackTarget, mKeep, 'ATL-2052', 'Behoben in Version', '2.1.0', 5000).Succeeded);
   Assert.AreEqual('{Behoben in Version} 2.1.0', JsonText(mTransport.Bodies[0], 'query'));
-  Assert.IsTrue(mFields.SetField(YouTrackTarget, mKeep, 'ATL-2052', 'Ursache', '', 5000).Error =
-    TAtlasCiFetchError.NotConfigured, 'leerer Wert geht nicht hinaus');
+  Assert.AreEqual<TAtlasCiFetchError>(TAtlasCiFetchError.NotConfigured,
+    mFields.SetField(YouTrackTarget, mKeep, 'ATL-2052', 'Ursache', '', 5000).Error, 'leerer Wert geht nicht hinaus');
   Assert.AreEqual(1, Integer(Length(mTransport.Bodies)));
 end;
 
@@ -571,7 +571,7 @@ begin
   Assert.IsTrue(mProgress.TimeBooked);
   Assert.IsTrue(mProgress.CommentDone);
   Assert.IsFalse(mProgress.TransitionDone);
-  Assert.IsTrue(mProgress.FailedStep = TAtlasTrackerEndStep.Transition);
+  Assert.AreEqual<TAtlasTrackerEndStep>(TAtlasTrackerEndStep.Transition, mProgress.FailedStep);
   Assert.AreEqual('Behoben in Version', TAtlasTrackerEndSteps.MentionedField(mProgress.Outcome.Message,
     TArray<string>.Create('Status', 'Behoben in Version', 'Ursache', 'Version')), 'längster ganzer Name');
   // Feld ergänzt, Regel erfüllt: nur Feld und Übergang gehen hinaus.

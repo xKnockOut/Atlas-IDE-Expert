@@ -223,9 +223,9 @@ var
 begin
   Assert.IsTrue(TAtlasNewIssues.TodoAt('  // todo: klein geschrieben', mTodo));
   Assert.AreEqual('klein geschrieben', mTodo.Text);
-  Assert.IsTrue(mTodo.Style = TAtlasTodoStyle.Slashes);
+  Assert.AreEqual<TAtlasTodoStyle>(TAtlasTodoStyle.Slashes, mTodo.Style);
   Assert.IsTrue(TAtlasNewIssues.TodoAt('Foo; (* FIXME Bar *) // Rest', mTodo));
-  Assert.IsTrue(mTodo.Style = TAtlasTodoStyle.Parens);
+  Assert.AreEqual<TAtlasTodoStyle>(TAtlasTodoStyle.Parens, mTodo.Style);
   Assert.AreEqual('Bar', mTodo.Text);
   Assert.IsTrue(TAtlasNewIssues.TodoAt('{ TODO 2 -oMarco : Mit Priorität }', mTodo));
   Assert.IsTrue(mTodo.HasOptions);
@@ -352,7 +352,7 @@ begin
     '{"idReadable":"ATL-130","numberInProject":130,"$type":"Issue"}');
   mProvider := TAtlasYouTrackTracker.Create;
   mResult := TAtlasNewIssues.CreateIssue(mProvider, YouTrackTarget, mRef, mDraft);
-  Assert.IsTrue(mResult.Outcome = TAtlasNewIssueOutcome.Created);
+  Assert.AreEqual<TAtlasNewIssueOutcome>(TAtlasNewIssueOutcome.Created, mResult.Outcome);
   Assert.AreEqual('ATL-130', mResult.Key);
   Assert.AreEqual(130, mResult.Number);
   Assert.AreEqual('https://yt.local/issue/ATL-130', mResult.Page);
@@ -395,7 +395,7 @@ begin
   mTransport.Reply('POST', 'https://api.github.com/repos/acme/kasse/issues', 201,
     '{"number":42,"html_url":"https://github.com/acme/kasse/issues/42"}');
   mResult := TAtlasNewIssues.CreateIssue(mGitHub, GitHubTarget, mRef, mDraft);
-  Assert.IsTrue(mResult.Outcome = TAtlasNewIssueOutcome.Created);
+  Assert.AreEqual<TAtlasNewIssueOutcome>(TAtlasNewIssueOutcome.Created, mResult.Outcome);
   Assert.AreEqual('#42', mResult.Key);
   Assert.AreEqual(1, Integer(Length(mTransport.Calls)), 'ohne „mir zuweisen“ keine Abfrage des Benutzers');
   mBody := mTransport.Bodies[0];
@@ -440,7 +440,7 @@ begin
     '{"number":42,"node_id":"I_42","html_url":"https://github.com/acme/kasse/issues/42",' +
     '"milestone":{"number":3},"type":null}');
   mResult := TAtlasNewIssues.CreateIssue(mGitHub, GitHubTarget, mRef, mDraft);
-  Assert.IsTrue(mResult.Outcome = TAtlasNewIssueOutcome.Created);
+  Assert.AreEqual<TAtlasNewIssueOutcome>(TAtlasNewIssueOutcome.Created, mResult.Outcome);
   mBody := mTransport.Bodies[0];
   Assert.AreEqual('["bug"]', JsonAt(mBody, 'labels'));
   Assert.AreEqual('["octocat","anna"]', JsonAt(mBody, 'assignees'), 'ohne Dubletten');
@@ -467,7 +467,7 @@ begin
   mRef := mTransport;
   mTransport.Reply('POST', 'https://api.github.com/', 403, '{"message":"Resource not accessible"}');
   mResult := TAtlasNewIssues.CreateIssue(mGitHub, GitHubTarget, mRef, mDraft);
-  Assert.IsTrue(mResult.Outcome = TAtlasNewIssueOutcome.Rejected);
+  Assert.AreEqual<TAtlasNewIssueOutcome>(TAtlasNewIssueOutcome.Rejected, mResult.Outcome);
   Assert.AreEqual(403, mResult.HttpStatus);
   Assert.AreEqual('', mResult.Key);
   // 422 mit Meldung des Trackers.
@@ -475,30 +475,30 @@ begin
   mRef := mTransport;
   mTransport.Reply('POST', 'https://api.github.com/', 422, '{"message":"Validation Failed"}');
   mResult := TAtlasNewIssues.CreateIssue(mGitHub, GitHubTarget, mRef, mDraft);
-  Assert.IsTrue(mResult.Outcome = TAtlasNewIssueOutcome.Invalid);
+  Assert.AreEqual<TAtlasNewIssueOutcome>(TAtlasNewIssueOutcome.Invalid, mResult.Outcome);
   Assert.AreEqual('Validation Failed', mResult.TrackerMessage);
   // YouTrack: Projektkürzel unbekannt, nichts gesendet.
   mTransport := TFakeTransport.Create;
   mRef := mTransport;
   mTransport.Reply('GET', 'https://yt.local/api/admin/projects?', 200, '[{"id":"0-1","shortName":"KASSE"}]');
   mResult := TAtlasNewIssues.CreateIssue(mYouTrack, YouTrackTarget, mRef, mDraft);
-  Assert.IsTrue(mResult.Outcome = TAtlasNewIssueOutcome.ProjectUnknown);
+  Assert.AreEqual<TAtlasNewIssueOutcome>(TAtlasNewIssueOutcome.ProjectUnknown, mResult.Outcome);
   Assert.AreEqual(0, Integer(Length(mTransport.Bodies)), 'kein POST');
   // Angelegt, aber Antwort ohne Kennung: nichts in den Code.
   mTransport := TFakeTransport.Create;
   mRef := mTransport;
   mTransport.Reply('POST', 'https://api.github.com/', 201, '<html>');
   mResult := TAtlasNewIssues.CreateIssue(mGitHub, GitHubTarget, mRef, mDraft);
-  Assert.IsTrue(mResult.Outcome = TAtlasNewIssueOutcome.Unreadable);
+  Assert.AreEqual<TAtlasNewIssueOutcome>(TAtlasNewIssueOutcome.Unreadable, mResult.Outcome);
   Assert.AreEqual('', mResult.Key);
   // Ohne Token (kein Transport) und ohne Titel kein Netz.
   mResult := TAtlasNewIssues.CreateIssue(mGitHub, GitHubTarget, nil, mDraft);
-  Assert.IsTrue(mResult.Outcome = TAtlasNewIssueOutcome.NoToken);
+  Assert.AreEqual<TAtlasNewIssueOutcome>(TAtlasNewIssueOutcome.NoToken, mResult.Outcome);
   mTransport := TFakeTransport.Create;
   mRef := mTransport;
   mDraft.Title := '  ';
   mResult := TAtlasNewIssues.CreateIssue(mGitHub, GitHubTarget, mRef, mDraft);
-  Assert.IsTrue(mResult.Outcome = TAtlasNewIssueOutcome.NotConfigured);
+  Assert.AreEqual<TAtlasNewIssueOutcome>(TAtlasNewIssueOutcome.NotConfigured, mResult.Outcome);
   Assert.AreEqual(0, Integer(Length(mTransport.Calls)));
 end;
 

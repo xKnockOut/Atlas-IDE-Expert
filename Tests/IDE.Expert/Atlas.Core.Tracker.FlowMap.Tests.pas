@@ -306,7 +306,7 @@ begin
   Assert.IsTrue(Pos('ATL', mUrl) > 0, mUrl);
   Assert.IsTrue(Pos('&start=1767225600000', mUrl) > 0, mUrl);
   Assert.IsTrue(Pos('&$top=400', mUrl) > 0, mUrl);
-  Assert.IsTrue(Pos('cursor=', mUrl) = 0, mUrl);
+  Assert.AreEqual(0, Pos('cursor=', mUrl), mUrl);
   mUrl := TAtlasYouTrackFlow.ActivitiesUrl(Target, 0, 'AI.2-1');
   Assert.IsTrue(Pos('&cursor=AI.2-1', mUrl) > 0, mUrl);
   mUrl := TAtlasYouTrackFlow.OpenUrl(Target, 500, False);

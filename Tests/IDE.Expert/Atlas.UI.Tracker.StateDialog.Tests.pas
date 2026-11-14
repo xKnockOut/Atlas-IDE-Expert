@@ -88,7 +88,7 @@ var
 begin
   mDialog := TAtlasTrackerStateDialog.CreateDialog(nil, 'ATL-1', nil, -1);
   try
-    Assert.IsTrue(mDialog.BorderStyle = bsSizeable);
+    Assert.AreEqual<TFormBorderStyle>(bsSizeable, mDialog.BorderStyle);
     mEditorHeight := mDialog.Editor.Height;
     mSendTop := mDialog.SendButton.Parent.Top;
     mDialog.Height := mDialog.Height + mDialog.ScaleValue(cMore);

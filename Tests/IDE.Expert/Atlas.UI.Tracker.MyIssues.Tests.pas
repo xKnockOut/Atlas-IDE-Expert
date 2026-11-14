@@ -70,6 +70,7 @@ uses
   System.Classes,
   System.DateUtils,
   Vcl.Forms,
+  Vcl.Graphics,
   Atlas.Core.CiBuild.Contract,
   Atlas.Core.Tracker.Contract,
   Atlas.Core.Tracker.Queries,
@@ -279,8 +280,8 @@ begin
     mPull.Draft := True;
     Assert.AreEqual('PR #760 (Entwurf)', TAtlasTrackerIssuesText.PullRequestText(mPull));
     Assert.AreEqual('', TAtlasTrackerIssuesText.PullRequestText(mView.Items[1].PullRequest));
-    Assert.IsTrue(TAtlasTrackerIssuesText.ChecksColor(TAtlasTrackerChecks.Success) <>
-      TAtlasTrackerIssuesText.ChecksColor(TAtlasTrackerChecks.Failure), 'rot ist nicht grün');
+    Assert.AreNotEqual<TColor>(TAtlasTrackerIssuesText.ChecksColor(TAtlasTrackerChecks.Failure),
+      TAtlasTrackerIssuesText.ChecksColor(TAtlasTrackerChecks.Success), 'rot ist nicht grün');
     // Hinweis auf „Beginnen“ mit dem Branch nach Muster (Abnahme: feature/753-atlas-bereiche-und).
     Assert.AreEqual('Branch: feature/753-atlas-bereiche-und', TAtlasTrackerIssuesText.StartHint(mView,
       mView.Items[0]));
@@ -419,7 +420,8 @@ begin
     mFrame.ClickAt(TAtlasIssuesHit.Create(TAtlasIssuesHitKind.Start, 0));
     CheckSynchronize;
     Assert.AreEqual(0, Integer(Length(mFake.Calls)));
-    Assert.IsTrue(mFrame.HitTest(20, -5).Kind = TAtlasIssuesHitKind.None, 'über der ersten Zeile');
+    Assert.AreEqual<TAtlasIssuesHitKind>(TAtlasIssuesHitKind.None,
+      mFrame.HitTest(20, -5).Kind, 'über der ersten Zeile');
   finally
     mHost.Free;
     mFake.Calls := nil;

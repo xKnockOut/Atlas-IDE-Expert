@@ -489,7 +489,7 @@ begin
   Assert.IsFalse(mBack.Swimlanes.HideOrphans);
   Assert.AreEqual('Baehring, Marco', mBack.Cards[0].Lane);
   Assert.AreEqual('marco', mBack.Cards[0].LaneId);
-  Assert.IsTrue(mBack.Kind = TAtlasBoardKind.Project);
+  Assert.AreEqual<TAtlasBoardKind>(TAtlasBoardKind.Project, mBack.Kind);
   Assert.AreEqual('Roadmap', mBack.Board.Name);
   Assert.AreEqual(Integer(1), Integer(Length(mBack.Boards)));
   Assert.AreEqual('F1', mBack.FieldId);
@@ -695,7 +695,7 @@ begin
   mTransport.Answer('https://firma.youtrack.cloud/api/users/me', '', 200, Fixture('YouTrack', 'users-me.json'));
   mBoards := TAtlasYouTrackBoards.Create;
   Assert.IsTrue(mBoards.LoadBoard(TAtlasBoardRequest.Create(YouTrackTarget, mKeep, '', '', 10000), mSnapshot, mError));
-  Assert.IsTrue(mError = TAtlasCiFetchError.None);
+  Assert.AreEqual<TAtlasCiFetchError>(TAtlasCiFetchError.None, mError);
   Assert.AreEqual(Integer(4), Integer(Length(mTransport.Calls)));
   Assert.AreEqual(Integer(2), Integer(Length(mSnapshot.Sprints)));
   Assert.AreEqual(Integer(3), Integer(Length(mSnapshot.Cards)));
@@ -720,12 +720,12 @@ begin
   mTransport.Answer('https://firma.youtrack.cloud/api/agiles?', '', 200, '[]');
   mBoards := TAtlasYouTrackBoards.Create;
   Assert.IsFalse(mBoards.LoadBoard(TAtlasBoardRequest.Create(YouTrackTarget, mKeep, '', '', 10000), mSnapshot, mError));
-  Assert.IsTrue(mError = TAtlasCiFetchError.NotFound);
+  Assert.AreEqual<TAtlasCiFetchError>(TAtlasCiFetchError.NotFound, mError);
   mTransport := TFakeBoardTransport.Create;
   mKeep := mTransport;
   mTransport.Answer('https://firma.youtrack.cloud/api/agiles', '', 401, '');
   Assert.IsFalse(mBoards.LoadBoard(TAtlasBoardRequest.Create(YouTrackTarget, mKeep, '', '', 10000), mSnapshot, mError));
-  Assert.IsTrue(mError = TAtlasCiFetchError.Unauthorized);
+  Assert.AreEqual<TAtlasCiFetchError>(TAtlasCiFetchError.Unauthorized, mError);
 end;
 
 procedure TAtlasYouTrackBoardTests.TrackerOffersBoards;
@@ -743,7 +743,7 @@ begin
   mKeep := mTransport;
   mTransport.Answer('https://firma.youtrack.cloud/api/agiles?', '', 200, '[]');
   Assert.IsFalse(mBoards.LoadBoard(TAtlasBoardRequest.Create(YouTrackTarget, mKeep, '', '', 10000), mSnapshot, mError));
-  Assert.IsTrue(mError = TAtlasCiFetchError.NotFound, 'weitergeleitet an TAtlasYouTrackBoards');
+  Assert.AreEqual<TAtlasCiFetchError>(TAtlasCiFetchError.NotFound, mError, 'weitergeleitet an TAtlasYouTrackBoards');
 end;
 
 function YouTrackSnapshot: TAtlasBoardSnapshot;
@@ -800,7 +800,7 @@ begin
   mResult := mBoards.MoveCard(TAtlasBoardMove.Create(YouTrackTarget, mKeep, mSnapshot.Cards[0], 2, '', 15000),
     mSnapshot);
   Assert.IsFalse(mResult.Succeeded);
-  Assert.IsTrue(mResult.Error = TAtlasCiFetchError.Unauthorized);
+  Assert.AreEqual<TAtlasCiFetchError>(TAtlasCiFetchError.Unauthorized, mResult.Error);
   Assert.AreEqual(403, mResult.Status);
   Assert.IsTrue(Pos('Keine Berechtigung', mResult.Message) > 0);
 end;
@@ -855,7 +855,7 @@ begin
   mResult := mBoards.MoveCard(TAtlasBoardMove.Create(YouTrackTarget, mKeep, mSnapshot.Cards[1], 3, '', 15000),
     mSnapshot);
   Assert.IsFalse(mResult.Succeeded);
-  Assert.IsTrue(mResult.Error = TAtlasCiFetchError.Invalid);
+  Assert.AreEqual<TAtlasCiFetchError>(TAtlasCiFetchError.Invalid, mResult.Error);
   Assert.AreEqual('No event found', mResult.Message);
   Assert.AreEqual(Integer(1), Integer(Length(mTransport.Calls)));
 end;
@@ -887,7 +887,7 @@ begin
     '{"error_description": "Workflow: nicht erlaubt"}');
   mResult := mBoards.MoveCard(TAtlasBoardMove.Create(YouTrackTarget, mKeep, mSnapshot.Cards[0], 0, '', 15000),
     mSnapshot);
-  Assert.IsTrue(mResult.Error = TAtlasCiFetchError.Invalid);
+  Assert.AreEqual<TAtlasCiFetchError>(TAtlasCiFetchError.Invalid, mResult.Error);
   Assert.AreEqual('Workflow: nicht erlaubt', mResult.Message);
   Assert.AreEqual(Integer(2), Integer(Length(mTransport.Calls)));
   // Ohne Recht: kein zweiter Versuch.
@@ -896,7 +896,7 @@ begin
   mTransport.Answer('https://firma.youtrack.cloud/api/commands', '', 403, '{}');
   mResult := mBoards.MoveCard(TAtlasBoardMove.Create(YouTrackTarget, mKeep, mSnapshot.Cards[0], 0, '', 15000),
     mSnapshot);
-  Assert.IsTrue(mResult.Error = TAtlasCiFetchError.Unauthorized);
+  Assert.AreEqual<TAtlasCiFetchError>(TAtlasCiFetchError.Unauthorized, mResult.Error);
   Assert.AreEqual(Integer(1), Integer(Length(mTransport.Calls)));
 end;
 
@@ -954,7 +954,7 @@ begin
   mSnapshot := TAtlasBoardSnapshot.Empty;
   Assert.IsTrue(TAtlasGitHubBoards.ParseProject(Fixture('GitHub', 'project-v2.json'), GitHubTarget, '',
     EncodeDate(2026, 10, 28), mSnapshot));
-  Assert.IsTrue(mSnapshot.Kind = TAtlasBoardKind.Project);
+  Assert.AreEqual<TAtlasBoardKind>(TAtlasBoardKind.Project, mSnapshot.Kind);
   Assert.AreEqual('Status', mSnapshot.Field);
   Assert.AreEqual('PVTSSF_status', mSnapshot.FieldId);
   Assert.AreEqual(Integer(4), Integer(Length(mSnapshot.Columns)));
@@ -984,13 +984,13 @@ procedure TAtlasGitHubBoardTests.MissingScopesAreUnauthorized;
 var
   mMessage: string;
 begin
-  Assert.IsTrue(TAtlasGitHubGraphQl.Error(Fixture('GitHub', 'graphql-scopes.json'), mMessage) =
-    TAtlasCiFetchError.Unauthorized);
+  Assert.AreEqual<TAtlasCiFetchError>(TAtlasCiFetchError.Unauthorized,
+    TAtlasGitHubGraphQl.Error(Fixture('GitHub', 'graphql-scopes.json'), mMessage));
   Assert.IsTrue(Pos('read:project', mMessage) > 0);
-  Assert.IsTrue(TAtlasGitHubGraphQl.Error(Fixture('GitHub', 'projects-v2.json'), mMessage) =
-    TAtlasCiFetchError.None);
-  Assert.IsTrue(TAtlasGitHubGraphQl.Error('{"errors":[{"message":"x"}]}', mMessage) =
-    TAtlasCiFetchError.Invalid);
+  Assert.AreEqual<TAtlasCiFetchError>(TAtlasCiFetchError.None,
+    TAtlasGitHubGraphQl.Error(Fixture('GitHub', 'projects-v2.json'), mMessage));
+  Assert.AreEqual<TAtlasCiFetchError>(TAtlasCiFetchError.Invalid,
+    TAtlasGitHubGraphQl.Error('{"errors":[{"message":"x"}]}', mMessage));
 end;
 
 procedure TAtlasGitHubBoardTests.LoadBoardWithProject;
@@ -1035,7 +1035,7 @@ begin
     Fixture('GitHub', 'repo-issues-closed.json'));
   mBoards := TAtlasGitHubBoards.Create;
   Assert.IsTrue(mBoards.LoadBoard(TAtlasBoardRequest.Create(GitHubTarget, mKeep, '', '', 10000), mSnapshot, mError));
-  Assert.IsTrue(mSnapshot.Kind = TAtlasBoardKind.Repository);
+  Assert.AreEqual<TAtlasBoardKind>(TAtlasBoardKind.Repository, mSnapshot.Kind);
   Assert.AreEqual(Integer(2), Integer(Length(mSnapshot.Columns)));
   Assert.AreEqual(Integer(2), Integer(Length(mSnapshot.Cards)), 'ohne Pull Request');
   Assert.AreEqual(0, mSnapshot.CardColumn(0));
@@ -1065,7 +1065,7 @@ begin
   mTransport.Answer('https://api.github.com/repos/beispiel/atlas/issues?state=closed', '', 200,
     Fixture('GitHub', 'repo-issues-closed.json'));
   Assert.IsTrue(mBoards.LoadBoard(TAtlasBoardRequest.Create(GitHubTarget, mKeep, '', '', 10000), mSnapshot, mError));
-  Assert.IsTrue(mSnapshot.Kind = TAtlasBoardKind.Repository, 'weitergeleitet an TAtlasGitHubBoards');
+  Assert.AreEqual<TAtlasBoardKind>(TAtlasBoardKind.Repository, mSnapshot.Kind, 'weitergeleitet an TAtlasGitHubBoards');
 end;
 
 procedure TAtlasGitHubBoardTests.LoadBoardWithoutProjectScopeFallsBack;
@@ -1085,7 +1085,7 @@ begin
     Fixture('GitHub', 'repo-issues-closed.json'));
   mBoards := TAtlasGitHubBoards.Create;
   Assert.IsTrue(mBoards.LoadBoard(TAtlasBoardRequest.Create(GitHubTarget, mKeep, '', '', 10000), mSnapshot, mError));
-  Assert.IsTrue(mSnapshot.Kind = TAtlasBoardKind.Repository);
+  Assert.AreEqual<TAtlasBoardKind>(TAtlasBoardKind.Repository, mSnapshot.Kind);
   Assert.IsTrue(mSnapshot.ProjectsDenied);
   Assert.AreEqual(Integer(2), Integer(Length(mSnapshot.Cards)));
   // Nicht im Zwischenspeicher.
@@ -1123,7 +1123,7 @@ begin
   mTransport.Answer('https://api.github.com/graphql', '', 200, Fixture('GitHub', 'graphql-scopes.json'));
   mResult := mBoards.MoveCard(TAtlasBoardMove.Create(GitHubTarget, mKeep, mSnapshot.Cards[0], 2, '', 15000), mSnapshot);
   Assert.IsFalse(mResult.Succeeded);
-  Assert.IsTrue(mResult.Error = TAtlasCiFetchError.Unauthorized);
+  Assert.AreEqual<TAtlasCiFetchError>(TAtlasCiFetchError.Unauthorized, mResult.Error);
   Assert.IsTrue(Pos('read:project', mResult.Message) > 0);
 end;
 

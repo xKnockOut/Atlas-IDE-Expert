@@ -113,9 +113,9 @@ begin
   try
     Assert.AreEqual('#753 hängt ab von …', mDialog.DependsOnButton.Caption);
     Assert.AreEqual('#753 blockiert …', mDialog.BlocksButton.Caption);
-    Assert.IsTrue(mDialog.Kind = TAtlasTrackerLinkKind.DependsOn, 'Vorgabe');
+    Assert.AreEqual<TAtlasTrackerLinkKind>(TAtlasTrackerLinkKind.DependsOn, mDialog.Kind, 'Vorgabe');
     mDialog.BlocksButton.Checked := True;
-    Assert.IsTrue(mDialog.Kind = TAtlasTrackerLinkKind.Blocks);
+    Assert.AreEqual<TAtlasTrackerLinkKind>(TAtlasTrackerLinkKind.Blocks, mDialog.Kind);
     mDialog.OtherEdit.Text := '760';
     Assert.AreEqual('#760', mDialog.OtherKey);
     mDialog.OtherEdit.Text := '#753';
@@ -135,7 +135,8 @@ begin
   Assert.AreEqual('ATL-129 und 2 weitere blockieren dieses Issue und sind noch offen.',
     TAtlasBlockedPrompt.Text(TArray<TAtlasTrackerLink>.Create(Blocker('ATL-129'), Blocker('ATL-7'),
     Blocker('ATL-8'))));
-  Assert.IsTrue(TAtlasBlockedPrompt.Ask(nil) = TAtlasBlockedChoice.Cancel, 'ohne Blocker keine Rückfrage');
+  Assert.AreEqual<TAtlasBlockedChoice>(TAtlasBlockedChoice.Cancel,
+    TAtlasBlockedPrompt.Ask(nil), 'ohne Blocker keine Rückfrage');
 end;
 
 initialization
